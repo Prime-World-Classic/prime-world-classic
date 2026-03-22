@@ -7,6 +7,6 @@
 	<enableAnnouncements>true</enableAnnouncements>
 	<hintsCollection href="/Dialog/SessionTutorial/Tournament/Hint" />
 	<questsCollection href="/Dialog/SessionTutorial/Tournament/Quest" />
-	<scriptFileName>/GameLogic/Scripts/Tournament.lua</scriptFileName>
+	<scriptFileName></scriptFileName>
 	<useCustomBattleStartAnnouncement>false</useCustomBattleStartAnnouncement>
 </AdvMapSettings>
