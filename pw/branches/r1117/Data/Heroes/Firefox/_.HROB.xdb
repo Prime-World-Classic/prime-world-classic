@@ -712,9 +712,9 @@
 				<Item href="/Heroes/Firefox/_.HROB" id="57138382-5F07-4F54-A4B1-98E119280A9D">
 					<SpellSwitchApplicator>
 						<activeSpellIndex>
-							<compiledString>FTAAAAADAAAANwAAAFAAAACMAAAARmlyZWZveF9BNF8yAAAAAEZpcmVmb3hfQTRfMgAAAABGaXJlZm94X0E0XzJfT04AVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0KWoBi1UQUmggAAAAi0UIixCLTQiLgpwBAAD/0DtFEHQJx0X0AQAAAOsHx0X0AAAAAItF9IvlXcM=</compiledString>
+							<compiledString>FUYAAAAFAAAATQAAAGYAAACcAAAAsgAAAMQAAABGaXJlZm94X0E0XzIAAAAARmlyZWZveF9BNF8yAAAAAEE0XzJfU3RvcEVmZmVjdABGaXJlZm94X0E0X1RvZ2dsZUZsYWcAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0S2ggAAAAi1UIiwKLTQiLkIgBAAD/0twd9AAAAN/g9sRBdSlqAYtFEFBoMAAAAItNCIsRi00Ii4KcAQAA/9A7RRB0CcdF9AEAAADrB8dF9AAAAACLRfSL5V3DAAAAAAAAAAA=</compiledString>
 							<returnType>int</returnType>
-							<sString>( tal("Firefox_A4_2") &amp;&amp; sender.FindApplicator("Firefox_A4_2_ON",pMisc,UNIT) != pMisc ) ? 1 : 0</sString>
+							<sString> ( tal("Firefox_A4_2") &amp;&amp; sender.vA4_2_StopEffect &gt; 0 &amp;&amp; sender.FindApplicator("Firefox_A4_ToggleFlag", pMisc, UNIT) != pMisc ) ? 1 : 0</sString>
 						</activeSpellIndex>
 						<applyTarget>ApplicatorTarget</applyTarget>
 						<caption>choose default attack</caption>
@@ -929,9 +929,9 @@
 						<caption>A4_2_StopEffect</caption>
 						<customApplyType>None</customApplyType>
 						<enabled>
-							<compiledString></compiledString>
+							<compiledString>FSYAAAADAAAAKwAAAEEAAABTAAAAQTRfMl9TdG9wRWZmZWN0AEZpcmVmb3hfQTRfVG9nZ2xlRmxhZwBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B2DAAAA3+D2xEF1KWoBi00QUWgQAAAAi1UIiwKLTQiLkJwBAAD/0jtFEHQJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
 							<returnType>bool</returnType>
-							<sString>true</sString>
+							<sString>sender.vA4_2_StopEffect &gt; 0 &amp;&amp; sender.applFirefox_A4_ToggleFlag(UNIT) != pMisc</sString>
 						</enabled>
 						<formulaName></formulaName>
 						<LoggingEvent>-1</LoggingEvent>

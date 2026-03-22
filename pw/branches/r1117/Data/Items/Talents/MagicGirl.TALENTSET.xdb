@@ -100,7 +100,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G566_AxesStrInt.TALENT" />
+					<talent href="/Items/Talents/Class/MagicGirl/Ability_A3u.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

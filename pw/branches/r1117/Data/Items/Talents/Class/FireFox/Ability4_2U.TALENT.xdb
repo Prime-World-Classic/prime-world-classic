@@ -5,6 +5,7 @@
 	<BackLink DBID="/Items/Talents/Class/FireFox/Ability4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/FireFox/Ability4_Upg1.TALENT" Count="1" />
 	<BackLink DBID="/Test/Talents/Firefox/Epic_IntDex_Ult2.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/FireFox.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

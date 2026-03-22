@@ -8,6 +8,7 @@
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Test/Talents/TestSetNewUltimates1.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Firefox/Epic_IntDex_Ult2.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/FireFox.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -31,35 +32,15 @@
 			<ProgramApplicator>
 				<applicators>
 					<Item>
-						<applicator href="/Items/Talents/Class/FireFox/A0Heal.APLR" />
-						<continueCondition>
-							<compiledString></compiledString>
-							<returnType>bool</returnType>
-							<sString>0</sString>
-						</continueCondition>
-						<continueEvents>2</continueEvents>
-						<delay>
-							<compiledString></compiledString>
-							<returnType>float</returnType>
-							<sString>-1.0</sString>
-						</delay>
-						<stopCondition>
-							<compiledString></compiledString>
-							<returnType>bool</returnType>
-							<sString>0</sString>
-						</stopCondition>
-						<stopEvents>0</stopEvents>
-					</Item>
-					<Item>
 						<applicator href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="F67133A2-B43E-44FC-A3B5-65A7F73C98A6">
 							<PermanentStatModApplicator>
 								<applyTarget>AbilityOwner</applyTarget>
 								<caption>A4_2_StopEffect</caption>
 								<customApplyType>None</customApplyType>
 								<enabled>
-									<compiledString></compiledString>
+									<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 									<returnType>bool</returnType>
-									<sString>true</sString>
+									<sString>false</sString>
 								</enabled>
 								<formulaName></formulaName>
 								<LoggingEvent>-1</LoggingEvent>
@@ -80,111 +61,6 @@
 								</modifier>
 								<providerName></providerName>
 							</PermanentStatModApplicator>
-						</applicator>
-						<continueCondition>
-							<compiledString></compiledString>
-							<returnType>bool</returnType>
-							<sString>0</sString>
-						</continueCondition>
-						<continueEvents>2</continueEvents>
-						<delay>
-							<compiledString></compiledString>
-							<returnType>float</returnType>
-							<sString>-1.0</sString>
-						</delay>
-						<stopCondition>
-							<compiledString></compiledString>
-							<returnType>bool</returnType>
-							<sString>0</sString>
-						</stopCondition>
-						<stopEvents>0</stopEvents>
-					</Item>
-					<Item>
-						<applicator href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="C7BB9054-9797-4157-9459-F2F2715D2ECA">
-							<StatusApplicator>
-								<applicators>
-									<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="4F3F2C1E-7B73-4890-A1B9-CD9FCD83D5E4">
-										<ChangeAnimationApplicator>
-											<affectAllSets>false</affectAllSets>
-											<animation>ability4</animation>
-											<animState>Attack</animState>
-											<applyTarget>ApplicatorTarget</applyTarget>
-											<behaviorFlags>1</behaviorFlags>
-											<caption>подмена анимации</caption>
-											<effect>
-												<Item href="" />
-												<Item href="" />
-											</effect>
-											<enabled>
-												<compiledString></compiledString>
-												<returnType>bool</returnType>
-												<sString>true</sString>
-											</enabled>
-											<formulaName></formulaName>
-											<lifeTime>
-												<compiledString></compiledString>
-												<returnType>float</returnType>
-												<sString>-1.0</sString>
-											</lifeTime>
-											<LoggingEvent>-1</LoggingEvent>
-											<marker>doCast4</marker>
-											<providerName></providerName>
-											<startCondition>
-												<compiledString></compiledString>
-												<returnType>bool</returnType>
-												<sString>true</sString>
-											</startCondition>
-											<upper>false</upper>
-										</ChangeAnimationApplicator>
-									</Item>
-								</applicators>
-								<applyTarget>AbilityOwner</applyTarget>
-								<behaviorFlags>3</behaviorFlags>
-								<caption>Статус про то, что моя след атаки модифицированы</caption>
-								<customCounter>
-									<compiledString>FRAAAAABAAAAFAAAAEE0XzJfU3RvcEVmZmVjdABVi+xoAAAAAItFCIsQi00Ii4KIAQAA/9BR2Rwk6AUAAACDxARdw7gBAAAAD6L3wgAAAAR0B/MPLEQkBMPpAAAAAFWL7IPsDNlFCNl9/A+3RfwNAAwAAIlF+Nlt+Ntd9Nlt/ItF9IvlXcM=</compiledString>
-									<returnType>int</returnType>
-									<sString>f2l(sender.vA4_2_StopEffect)</sString>
-								</customCounter>
-								<customProgress>
-									<compiledString></compiledString>
-									<returnType>float</returnType>
-									<sString>-1.0</sString>
-								</customProgress>
-								<description textref="/Items/Talents/Class/FireFox/Ability4_2.TALENT_c7bb9054979741579459f2f2715d2eca_description.txt" />
-								<dispellPriority>NonDispellable</dispellPriority>
-								<effect>
-									<Item href="/Effects/Buffs/Defence/_Firefox.EFFT" />
-									<Item href="" />
-								</effect>
-								<enabled>
-									<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
-									<returnType>bool</returnType>
-									<sString>sender.vA4_2_StopEffect &gt; 0</sString>
-								</enabled>
-								<flags>4</flags>
-								<formulaName>Firefox_A4_2_ON</formulaName>
-								<image href="/UI/Styles/Icons/Heroes/Firefox/A4_2.ITEX" />
-								<lifeTime>
-									<compiledString></compiledString>
-									<returnType>float</returnType>
-									<sString>-1.0</sString>
-								</lifeTime>
-								<LoggingEvent>-1</LoggingEvent>
-								<name textref="/Items/Talents/Class/FireFox/Ability4_2.TALENT_c7bb9054979741579459f2f2715d2eca_name.txt" />
-								<power>0</power>
-								<providerName></providerName>
-								<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
-								<stackCount>0</stackCount>
-								<startCondition>
-									<compiledString></compiledString>
-									<returnType>bool</returnType>
-									<sString>true</sString>
-								</startCondition>
-								<statusPosition>0</statusPosition>
-								<stopBehaviour>StopByTime</stopBehaviour>
-								<unstackableWith href="" />
-							</StatusApplicator>
 						</applicator>
 						<continueCondition>
 							<compiledString></compiledString>
@@ -232,6 +108,196 @@
 				</startCondition>
 			</ProgramApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="B7BE34A3-DCD8-433C-B0E1-47ECB2F91DF7">
+			<StatusApplicator>
+				<applicators>
+					<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="FEEC4148-5B8A-470A-BA98-EC598291F39C">
+						<ChangeAnimationApplicator>
+							<affectAllSets>false</affectAllSets>
+							<animation>ability4</animation>
+							<animState>Attack</animState>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>3</behaviorFlags>
+							<caption>подмена анимации</caption>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+								<returnType>bool</returnType>
+								<sString>sender.vA4_2_StopEffect &gt; 0</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<marker>doCast4</marker>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<upper>false</upper>
+						</ChangeAnimationApplicator>
+					</Item>
+				</applicators>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>3</behaviorFlags>
+				<caption>Флаг включенной ульты</caption>
+				<customCounter>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</customCounter>
+				<customProgress>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</customProgress>
+				<description textref="" />
+				<dispellPriority>NonDispellable</dispellPriority>
+				<effect>
+					<Item href="/Effects/Buffs/Defence/_Firefox.EFFT" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FRAAAAACAAAAKAAAAD4AAABBNF8yX1N0b3BFZmZlY3QAVYvsUYtFEIsQi00QiwL/0A+2yIXJdCtoAAAAAItVCIsCi00Ii5CIAQAA/9LcHWAAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>mIsAbilityOn &amp;&amp; sender.vA4_2_StopEffect &gt; 0</sString>
+				</enabled>
+				<flags>0</flags>
+				<formulaName> Firefox_A4_ToggleFlag</formulaName>
+				<image href="" />
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<name textref="" />
+				<power>0</power>
+				<providerName></providerName>
+				<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+				<stackCount>0</stackCount>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statusPosition>0</statusPosition>
+				<stopBehaviour>StopByTime</stopBehaviour>
+				<unstackableWith href="" />
+			</StatusApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="3C289770-ABB3-47D4-935B-69C092A4FE3B">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>200</behaviorFlags>
+				<caption>Добивание Героя</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="FB287DFF-513C-4B7A-926F-FCD5C3BDC0C0">
+					<EventProcessorCondition>
+						<applyTarget>AbilityOwner</applyTarget>
+						<condition>
+							<compiledString>FQAAAAAAAAAAVYvsi0UMixCLTQyLQlT/0F3D</compiledString>
+							<returnType>bool</returnType>
+							<sString>receiver.IsHero()</sString>
+						</condition>
+						<events>131072</events>
+						<onlyParent>false</onlyParent>
+						<spell href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="32E606E5-7E6E-471B-98CC-85CDC0001E33">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="3EAAFAB8-2216-4971-89FC-EA31FE88C5E7">
+										<PermanentStatModApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<caption>Выдача фулл стаков за килл</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FSAAAAACAAAALwAAAEEAAABBNF8yX01heENoYXJnZXMAQTRfMl9TdG9wRWZmZWN0AFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaBAAAACLRQiLEItNCIuCiAEAAN1d+P/Q3G342V302UX0i+Vdww==</compiledString>
+													<returnType>float</returnType>
+													<sString>cA4_2_MaxCharges - sender.vA4_2_StopEffect</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>A4_2_StopEffect</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="3B058FCB-D201-4A92-BC7B-25E76B2EB10C">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>true</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+					</EventProcessorCondition>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
 	</applicators>
 	<askId>4</askId>
 	<autoTargetSelector href="" />
@@ -249,6 +315,16 @@
 					<compiledString>FRwAAAACAAAAIQAAADoAAABGaXJlZm94X0E0AABGaXJlZm94X0E0X1VwZzEAVYvsUWgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdSJoDAAAAItNCIsRi00Ii4KoAQAA/9CFwHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
 					<returnType>bool</returnType>
 					<sString>!sender.GetTalent( "Firefox_A4" ) &amp;&amp; !sender.GetTalent( "Firefox_A4_Upg1" )</sString>
+				</condition>
+				<uiEvent href="" />
+			</ConditionCastLimitation>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="C4DDE3A1-B2B7-4EF5-A932-2B329B5EAC99">
+			<ConditionCastLimitation>
+				<condition>
+					<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vA4_2_StopEffect &gt; 0</sString>
 				</condition>
 				<uiEvent href="" />
 			</ConditionCastLimitation>
@@ -281,9 +357,9 @@
 					<UnitConstant>
 						<name>A4_2AttackCount</name>
 						<var>
-							<compiledString>FRIAAAACAAAARQAAAGUAAABBNF8yX1RlcnJhaW5TdHVjawBVi+yD7AhWi0UIixCLTQiLQkz/0Ivwi00IixGLTQiLgpABAAD/0DvwdR+LTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0Nld/OsF2e7ZXfzZRfzcBXQAAADZXfjZRfhei+VdwwAAAAAAAAhAAAAAAA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>3 + nt( cA4_2_TerrainStuck, 0) </sString>
+							<sString>5</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -301,9 +377,9 @@
 					<UnitConstant>
 						<name>A4_2_TerrainStuck</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 							<returnType>float</returnType>
-							<sString>2</sString>
+							<sString>1</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -319,6 +395,26 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="32057F42-4FC7-4E02-83E1-2FB427DD270C">
+					<UnitConstant>
+						<name>A4_2_StackCooldown</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+							<returnType>float</returnType>
+							<sString>40.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="6CAFEB14-9965-4186-B169-03CA16B60316">
+					<UnitConstant>
+						<name>A4_2_MaxCharges</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>5.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -327,9 +423,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>80</sString>
+		<sString>0.5</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -366,9 +462,9 @@
 	<isUltimateTalent>true</isUltimateTalent>
 	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
 	<manaCost>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB6Qw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAC0Qg==</compiledString>
 		<returnType>float</returnType>
-		<sString>250</sString>
+		<sString>90</sString>
 	</manaCost>
 	<marker></marker>
 	<microAI href="" />
@@ -482,6 +578,645 @@
 				<useAbilityOwnerMana>false</useAbilityOwnerMana>
 			</TriggerApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="4352BCCF-DD37-4278-908D-D714540967D8">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>выдача зарядов</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQ4AAAACAAAAEwAAACkAAABBNF8yX0luaXREb25lAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHUsAAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vA4_2_InitDone == 0</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsCount</scaleMode>
+				<spell href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="81197DE9-F064-4AF2-9733-A1FE9A6A0E2E">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="CAB1F24A-0349-44C9-BE08-B05070936D78">
+								<PermanentStatModApplicator>
+									<applyTarget>AbilityOwner</applyTarget>
+									<caption>Выдаем стартовые стаки A4_2_StopEffect</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FRAAAAABAAAAHAAAAEE0XzJBdHRhY2tDb3VudABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+											<returnType>float</returnType>
+											<sString>cA4_2AttackCount</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+											<returnType>float</returnType>
+											<sString>0.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable> A4_2_StopEffect</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="3F905FFE-BEBC-4A99-8B97-0197BC804B28">
+								<PermanentStatModApplicator>
+									<applyTarget>AbilityOwner</applyTarget>
+									<caption>Ставим флаг инициализации A4_2_InitDone</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</addValue>
+										<multValue>
+											<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+											<returnType>float</returnType>
+											<sString>0.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>A4_2_InitDone</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="7CAD49F4-F959-4665-B1D2-115FB5C01935">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>true</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</startOffset>
+				<targetSelector href="" />
+			</SpellPeriodicallyApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="4CB44D1E-86B4-481B-8644-5511DDF92B6F">
+			<StatusApplicator>
+				<applicators />
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>218</behaviorFlags>
+				<caption>Статус про то, что моя след атаки модифицированы</caption>
+				<customCounter>
+					<compiledString>FRAAAAABAAAAFAAAAEE0XzJfU3RvcEVmZmVjdABVi+xoAAAAAItFCIsQi00Ii4KIAQAA/9BR2Rwk6AUAAACDxARdw7gBAAAAD6L3wgAAAAR0B/MPLEQkBMPpAAAAAFWL7IPsDNlFCNl9/A+3RfwNAAwAAIlF+Nlt+Ntd9Nlt/ItF9IvlXcM=</compiledString>
+					<returnType>int</returnType>
+					<sString>f2l(sender.vA4_2_StopEffect)</sString>
+				</customCounter>
+				<customProgress>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</customProgress>
+				<description textref="" />
+				<dispellPriority>NonDispellable</dispellPriority>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vA4_2_StopEffect &gt; 0</sString>
+				</enabled>
+				<flags>4</flags>
+				<formulaName>Firefox_A4_2_ON</formulaName>
+				<image href="/UI/Styles/Icons/Heroes/Firefox/A4_2.ITEX" />
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<name textref="" />
+				<power>0</power>
+				<providerName></providerName>
+				<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+				<stackCount>0</stackCount>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statusPosition>0</statusPosition>
+				<stopBehaviour>StopByTime</stopBehaviour>
+				<unstackableWith href="" />
+			</StatusApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="76BBA135-9370-4BF4-B2AF-558A8F8834B6">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>208</behaviorFlags>
+				<caption>Автовыключение ульты при 0 стаков</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="92B78AF1-DC80-4648-BC5D-5332B951112E">
+					<EventProcessorCondition>
+						<applyTarget>AbilityOwner</applyTarget>
+						<condition>
+							<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sRBegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+							<returnType>bool</returnType>
+							<sString>sender.vA4_2_StopEffect &lt;= 0</sString>
+						</condition>
+						<events>32784</events>
+						<onlyParent>false</onlyParent>
+						<spell href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="09F39E81-7040-410B-9BA4-359765D9C68C">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="701B32FC-EF11-4C57-BDC9-781B014E6C28">
+										<AbilityEndApplicator>
+											<applyTarget>ApplicatorTarget</applyTarget>
+											<cancelApplicators>true</cancelApplicators>
+											<caption>отключить абилку</caption>
+											<enabled>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+										</AbilityEndApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="A9F6C096-79E9-4484-AFBD-4B0DF9BC2EE5">
+									<DispatchImmediate>
+										<alwaysApply>true</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>true</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+					</EventProcessorCondition>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="47FBC740-E48F-4569-9944-5B1033189153">
+			<StatusApplicator>
+				<applicators />
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>216</behaviorFlags>
+				<caption>Таймер 40 сек стаки</caption>
+				<customCounter>
+					<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</customCounter>
+				<customProgress>
+					<compiledString>FT8AAAADAAAATAAAAGwAAAB+AAAARmlyZWZveF9BNFN0YWNrQ29vbGRvd25TcGVsbAAAAABkdXJhdGlvbgAAAABBNF8yX1N0YWNrQ29vbGRvd24AVYvsg+wQagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QiUX8i00MUYtVCFJoLAAAAItFEIsQi00Qi0JQ/9BoIAAAAItN/IsRi038i0JU3V30/9DcdfTZXfDZRfCL5V3D</compiledString>
+					<returnType>float</returnType>
+					<sString>sender.applFirefox_A4StackCooldownSpell(UNIT).GetVariable("duration") / cA4_2_StackCooldown</sString>
+				</customProgress>
+				<description textref="" />
+				<dispellPriority>NonDispellable</dispellPriority>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FRAAAAACAAAAFQAAACsAAABBNF8yX1N0b3BFZmZlY3QAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdTQAAAN/g9sQFegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAABRA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vA4_2_StopEffect &lt; 5</sString>
+				</enabled>
+				<flags>0</flags>
+				<formulaName></formulaName>
+				<image href="/UI/Styles/Icons/Heroes/Firefox/A4_2.ITEX" />
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<name textref="" />
+				<power>0</power>
+				<providerName></providerName>
+				<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+				<stackCount>0</stackCount>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statusPosition>0</statusPosition>
+				<stopBehaviour>StopByTime</stopBehaviour>
+				<unstackableWith href="" />
+			</StatusApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="928E14DB-7082-454C-89B8-805654F8B68D">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>контроль зарядов, запуск восстановления</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FT8AAAADAAAARgAAAGMAAACIAAAAQTRfMl9TdG9wRWZmZWN0AEE0XzJfTWF4Q2hhcmdlcwBGaXJlZm94X0E0U3RhY2tDb29sZG93blByb2dyYW0AVYvsg+wMaAAAAACLRQiLEItNCIuCiAEAAP/Qi00MUYtVCFJoEAAAAItFEIsQi00Qi0JQ3V34/9DcXfjf4PbEQXUpagGLTRBRaCAAAACLVQiLAotNCIuQnAEAAP/SO0UQdQnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges &amp;&amp; sender.applFirefox_A4StackCooldownProgram(UNIT) == pMisc</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsTime</scaleMode>
+				<spell href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="737917B4-43D1-4C68-8F17-1A09537C35EC">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="E72D4A2B-DB8F-4E0C-B2F1-571EC071FCA5">
+								<ProgramApplicator>
+									<applicators>
+										<Item>
+											<applicator href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="03636BD6-DB2A-46B7-A3A4-1F73FCB346D8">
+												<StatusApplicator>
+													<applicators />
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<behaviorFlags>217</behaviorFlags>
+													<caption>Статус таймера кулдауна со стеками</caption>
+													<customCounter>
+														<compiledString></compiledString>
+														<returnType>int</returnType>
+														<sString>0</sString>
+													</customCounter>
+													<customProgress>
+														<compiledString></compiledString>
+														<returnType>float</returnType>
+														<sString>-1.0</sString>
+													</customProgress>
+													<description textref="" />
+													<dispellPriority>Medium</dispellPriority>
+													<effect>
+														<Item href="" />
+														<Item href="" />
+													</effect>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<flags>0</flags>
+													<formulaName>Firefox_A4StackCooldownSpell</formulaName>
+													<image href="" />
+													<lifeTime>
+														<compiledString>FRMAAAABAAAAHwAAAEE0XzJfU3RhY2tDb29sZG93bgBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+														<returnType>float</returnType>
+														<sString>cA4_2_StackCooldown</sString>
+													</lifeTime>
+													<LoggingEvent>-1</LoggingEvent>
+													<name textref="" />
+													<power>0</power>
+													<providerName></providerName>
+													<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+													<stackCount>0</stackCount>
+													<startCondition>
+														<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+														<returnType>bool</returnType>
+														<sString> sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+													</startCondition>
+													<statusPosition>-88</statusPosition>
+													<stopBehaviour>StopByTime</stopBehaviour>
+													<unstackableWith href="" />
+												</StatusApplicator>
+											</applicator>
+											<continueCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>0</sString>
+											</continueCondition>
+											<continueEvents>2</continueEvents>
+											<delay>
+												<compiledString></compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</delay>
+											<stopCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>0</sString>
+											</stopCondition>
+											<stopEvents>0</stopEvents>
+										</Item>
+										<Item>
+											<applicator href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="50313214-2140-419F-A8C4-084553124481">
+												<PermanentStatModApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<caption>Добавляем стек, если можно</caption>
+													<customApplyType>None</customApplyType>
+													<enabled>
+														<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+														<returnType>bool</returnType>
+														<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<modifier>
+														<addValue>
+															<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+															<returnType>float</returnType>
+															<sString>1.0f</sString>
+														</addValue>
+														<multValue>
+															<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+															<returnType>float</returnType>
+															<sString>1.0f</sString>
+														</multValue>
+														<stat>Life</stat>
+														<topModifier>false</topModifier>
+														<variable>A4_2_StopEffect</variable>
+													</modifier>
+													<providerName></providerName>
+												</PermanentStatModApplicator>
+											</applicator>
+											<continueCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>0</sString>
+											</continueCondition>
+											<continueEvents>2</continueEvents>
+											<delay>
+												<compiledString></compiledString>
+												<returnType>float</returnType>
+												<sString>-1.0</sString>
+											</delay>
+											<stopCondition>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>0</sString>
+											</stopCondition>
+											<stopEvents>0</stopEvents>
+										</Item>
+									</applicators>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<behaviorFlags>219</behaviorFlags>
+									<caption>Программа набирания стеков</caption>
+									<effect>
+										<Item href="" />
+										<Item href="" />
+									</effect>
+									<enabled>
+										<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+										<returnType>bool</returnType>
+										<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+									</enabled>
+									<formulaName>Firefox_A4StackCooldownProgram</formulaName>
+									<lifeTime>
+										<compiledString></compiledString>
+										<returnType>float</returnType>
+										<sString>-1.0</sString>
+									</lifeTime>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+									<startCondition>
+										<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+										<returnType>bool</returnType>
+										<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+									</startCondition>
+								</ProgramApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="26E9DAC2-5288-4E2F-9F67-2FAD6B24C6EC">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+					<returnType>float</returnType>
+					<sString>0.1f</sString>
+				</startOffset>
+				<targetSelector href="" />
+			</SpellPeriodicallyApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="52CA25BB-F128-4536-9918-9EFF066DFBEE">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>200</behaviorFlags>
+				<caption>Добивание Героя</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="6A996235-586E-43D1-855F-28134D44A1F0">
+					<EventProcessorUnitDieNearMe>
+						<applyTarget>AbilityOwner</applyTarget>
+						<checkSender>0</checkSender>
+						<killerFlags>1</killerFlags>
+						<range>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>0.0f</sString>
+						</range>
+						<senderMatchTarget>ApplicatorTarget</senderMatchTarget>
+						<spell href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="35AAF08F-6643-45D4-B7DB-E73C28E27D64">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="1597B33C-CD76-4E0C-95D1-D2E2809F7299">
+										<PermanentStatModApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<caption>Выдача фулл стаков за килл</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString>FSAAAAACAAAAJwAAAEQAAABBNF8yX1N0b3BFZmZlY3QAQTRfMl9NYXhDaGFyZ2VzAFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+												<returnType>bool</returnType>
+												<sString>sender.vA4_2_StopEffect &lt; cA4_2_MaxCharges</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FSAAAAACAAAALwAAAEEAAABBNF8yX01heENoYXJnZXMAQTRfMl9TdG9wRWZmZWN0AFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaBAAAACLRQiLEItNCIuCiAEAAN1d+P/Q3G342V302UX0i+Vdww==</compiledString>
+													<returnType>float</returnType>
+													<sString>cA4_2_MaxCharges - sender.vA4_2_StopEffect</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+													<returnType>float</returnType>
+													<sString>1.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>A4_2_StopEffect</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" id="489CE8AF-99EF-4828-95F2-57311A8B2244">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>true</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+						<targets>536870915</targets>
+					</EventProcessorUnitDieNearMe>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>Firefox_A4_2</persistentId>
 	<prerequisiteTalents />
@@ -491,7 +1226,7 @@
 	<talentRollGroups>63</talentRollGroups>
 	<talentStats />
 	<targetType>0</targetType>
-	<type>Active</type>
+	<type>Switchable</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
 		<compiledString></compiledString>

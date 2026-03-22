@@ -61,7 +61,7 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/FireFox/Ability4.TALENT" />
+					<talent href="/Items/Talents/Class/FireFox/Ability4_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -101,7 +101,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/FireFox/Ability4_Upg1.TALENT" />
+					<talent href="/Items/Talents/Class/FireFox/Ability4_2U.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
