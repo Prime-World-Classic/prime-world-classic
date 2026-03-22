@@ -1,33 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Hero>
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/c1/c13_qB" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/darken/d10_qB" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/darken/d11_qB" Count="6" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/darken/d12_qB" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/darken/d13_qB" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/darken/d21_qB" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/s1/s11_qB" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Ador/ts1/ts11_qB" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Conditions/d11_rep" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Conditions/d12_rep" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Conditions/d13_rep" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Conditions/d21_rep" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/c1/c13_qA" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/darken/d10_qA" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/darken/d11_qA" Count="6" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/darken/d12_qA" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/darken/d13_qA" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/darken/d21_qA" Count="4" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/s1/s11_qA" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/Dokt/ts1/ts11_qA" Count="2" />
-	<BackLink DBID="/Dialog/CastleTutorial/test/testQ" Count="6" />
 	<BackLink DBID="/Heroes/_.HRDB" Count="1" />
-	<BackLink DBID="/Items/GuildBuffs/B041_vanguard_exp" Count="1" />
-	<BackLink DBID="/Items/GuildBuffs/B042_vanguard_exp" Count="1" />
-	<BackLink DBID="/Items/GuildBuffs/B043_vanguard_exp" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/MOBA/Tutorial/_.ADMPDSCR" Count="2" />
-	<BackLink DBID="/Maps/Tutorial/_1.ADMPDSCR" Count="2" />
-	<BackLink DBID="/Maps/Tutorial/_2.ADMPDSCR" Count="3" />
 	<abilities>
 		<Item href="" />
 		<Item href="" />
@@ -46,11 +19,11 @@
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>9</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>9</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
@@ -98,13 +71,13 @@
 				</Item>
 			</settings>
 			<sounds>
-				<Item href="/Heroes/Firefox/_.HROB" id="274C00FC-54C5-4F94-87C1-B666F997DB4D">
+				<Item href="/Heroes/IronKnight/_.HROB" id="EFC28C51-E899-4841-8944-A2BC4EB17233">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Move</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>move</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -113,13 +86,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="567502EB-699D-4DE9-AE62-911474F461EC">
+				<Item href="/Heroes/IronKnight/_.HROB" id="0711638B-9D65-4567-B3BD-D22EFA7CFA60">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability1</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>ability_1</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -128,13 +101,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="E05A5F3F-1F44-4771-BC41-121BF59FF93C">
+				<Item href="/Heroes/IronKnight/_.HROB" id="C8633239-65DA-4A29-9CD4-051C958905A2">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability2</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>ability_2</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -143,13 +116,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="6EAF6BC5-BAE5-4DFB-B0BF-404F029AF726">
+				<Item href="/Heroes/IronKnight/_.HROB" id="B0E7CDD6-6497-48D7-BD66-967BD2C08E5A">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability3</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>ability_3</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -158,13 +131,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="E358357D-9D18-4207-BE3B-CB2F14063AFD">
+				<Item href="/Heroes/IronKnight/_.HROB" id="398EE490-D3DE-4ABC-BD9B-9DE272E5C0E7">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>UltimateAbility</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>ability_ult</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -173,13 +146,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="615BB068-A75D-4073-8A8C-45A9193D38F7">
+				<Item href="/Heroes/IronKnight/_.HROB" id="E4A1012E-CD18-42A9-879C-09AC3839574F">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Attack</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>attack</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -188,13 +161,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="D7993C03-1747-4334-9E4A-0DA25587023F">
+				<Item href="/Heroes/IronKnight/_.HROB" id="6431EDB4-C2D0-4827-9582-EE27367BA1F6">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Death</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>death</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -203,13 +176,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="C983BB7E-F4D1-4B17-896F-ED368621B165">
+				<Item href="/Heroes/IronKnight/_.HROB" id="6AD540ED-E981-4DB2-9D42-B4360BDC3F86">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Revive</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>revive</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -218,13 +191,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="DFDA584F-DE08-498B-AAD1-6424F03DF45D">
+				<Item href="/Heroes/IronKnight/_.HROB" id="34683B3C-86F5-49CD-BB7B-416AC7D062A9">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Deathenemyhero</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>kill</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -233,13 +206,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="6417B945-34C4-42E5-9EF6-69E747406389">
+				<Item href="/Heroes/IronKnight/_.HROB" id="4450B2A9-39F7-4971-B045-401C1EEC5A29">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Iddle</eventName>
-							<groupName>Heroes/Firefox/Asks/Human</groupName>
+							<eventName>idle</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -278,11 +251,11 @@
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>9</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>9</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
@@ -330,13 +303,13 @@
 				</Item>
 			</settings>
 			<sounds>
-				<Item href="/Heroes/Firefox/_.HROB" id="C44FB0A5-F7DB-4463-9975-DFE1C1321D01">
+				<Item href="/Heroes/IronKnight/_.HROB" id="0C35CAAB-BAD3-43E0-9B77-BEF0FC8D7CEF">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Move</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>move</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -345,13 +318,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="B4C7EAEC-B0D1-4A77-83F1-96971C10624D">
+				<Item href="/Heroes/IronKnight/_.HROB" id="A4C0325E-93FD-42A3-98F0-26506AEED2B6">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability1</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>ability_1</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -360,13 +333,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="2764B344-065A-4DB9-AE9A-AD9D624D93B6">
+				<Item href="/Heroes/IronKnight/_.HROB" id="643A1A07-538F-41C2-9CF2-DCC954F65082">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability2</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>ability_2</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -375,13 +348,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="04F07B87-9200-469F-9DD0-A7A79A3FFB6C">
+				<Item href="/Heroes/IronKnight/_.HROB" id="3D2A7E33-9F5B-4B8D-9ECA-091070B6F5E7">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Ability3</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>ability_3</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -390,13 +363,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="7ED27CB9-AA78-44CF-9166-92319C0AD6D1">
+				<Item href="/Heroes/IronKnight/_.HROB" id="E3287C6A-DC5A-4941-9024-56AF7F7ABE88">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>UltimateAbility</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>ability_ult</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -405,13 +378,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="1318AD7C-1099-4C9C-A30A-FE751AA19DE4">
+				<Item href="/Heroes/IronKnight/_.HROB" id="B6F02B75-C3AB-4CA9-A301-4D204F18799F">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Attack</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>attack</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -420,13 +393,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="712B40F6-7FC4-42FC-83A9-AB024F2F5B91">
+				<Item href="/Heroes/IronKnight/_.HROB" id="B51EFC0E-FD4F-4F1E-8779-59F85A01372A">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Death</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>death</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -435,13 +408,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="E53ED06F-EAE1-4A0B-9EC0-5D629D68D00C">
+				<Item href="/Heroes/IronKnight/_.HROB" id="FF90F9BD-859C-4133-B489-4A324E064F68">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Revive</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>revive</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -450,13 +423,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="0E5A1222-8C3E-4362-A10B-251A1D2AA03D">
+				<Item href="/Heroes/IronKnight/_.HROB" id="3546A668-0A9F-4AEE-BE1E-856C05B20AE8">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Deathenemyhero</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>kill</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -465,13 +438,13 @@
 						<timeInterval>0</timeInterval>
 					</DBSoundSceneComponent>
 				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="CE3213BA-2F30-4E46-97FA-92CBA97F3A6F">
+				<Item href="/Heroes/IronKnight/_.HROB" id="6532EED4-DADD-4C3D-AC21-60A274F03415">
 					<DBSoundSceneComponent>
 						<attached />
 						<caption>sound</caption>
 						<desc>
-							<eventName>Iddle</eventName>
-							<groupName>Heroes/Firefox/Asks/Elf</groupName>
+							<eventName>idle</eventName>
+							<groupName>Heroes/IronKnight/Asks</groupName>
 							<projectName>PF</projectName>
 						</desc>
 						<groupFlags>0</groupFlags>
@@ -689,11 +662,11 @@
 			</sounds3d>
 		</Item>
 	</askListsSecondState>
-	<attackAbility href="/Heroes/Firefox/_.HROB" id="D48944D7-79F0-4BB8-A496-E516A4CCF5C5">
+	<attackAbility href="/Heroes/IronKnight/_.HROB" id="FC68520E-750B-4BD0-8016-C4FF978D5669">
 		<BaseAttack>
 			<activeCustomTrigger>true</activeCustomTrigger>
 			<allowChase>
-				<compiledString></compiledString>
+				<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 				<returnType>bool</returnType>
 				<sString>true</sString>
 			</allowChase>
@@ -709,12 +682,59 @@
 			</aoeSize>
 			<aoeType>None</aoeType>
 			<applicators>
-				<Item href="/Heroes/Firefox/_.HROB" id="57138382-5F07-4F54-A4B1-98E119280A9D">
+				<Item href="/Heroes/IronKnight/_.HROB" id="020C7F34-BC8A-4204-9D38-F3CC52ED1AB1">
+					<StatModApplicator>
+						<applyTarget>AbilityOwner</applyTarget>
+						<behaviorFlags>0</behaviorFlags>
+						<caption>A1_StopEffect</caption>
+						<constraint>None</constraint>
+						<dontUpdate>false</dontUpdate>
+						<effect>
+							<Item href="" />
+							<Item href="" />
+						</effect>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<lifeTime>
+							<compiledString>FQUAAAABAAAAEQAAAFNURVAAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>cSTEP</sString>
+						</lifeTime>
+						<LoggingEvent>-1</LoggingEvent>
+						<modifier>
+							<addValue>
+								<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+								<returnType>float</returnType>
+								<sString>1.0f</sString>
+							</addValue>
+							<multValue>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>1.0f</sString>
+							</multValue>
+							<stat>Life</stat>
+							<topModifier>false</topModifier>
+							<variable>A1_StopEffect</variable>
+						</modifier>
+						<providerName></providerName>
+						<startCondition>
+							<compiledString>FTEAAAADAAAAOAAAAFEAAACNAAAASXJvbktuaWdodF9BMQAAAElyb25LbmlnaHRfQTEAAABJcm9uS25pZ2h0X0ExX09OAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdClqAYtVEFJoIAAAAItFCIsQi00Ii4KcAQAA/9A7RRB0CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+							<returnType>bool</returnType>
+							<sString>tal("IronKnight_A1") &amp;&amp; sender.FindApplicator("IronKnight_A1_ON",pMisc,UNIT) != pMisc</sString>
+						</startCondition>
+						<statModName></statModName>
+					</StatModApplicator>
+				</Item>
+				<Item href="/Heroes/IronKnight/_.HROB" id="067BD00E-8600-4743-A310-C56C4AB276FF">
 					<SpellSwitchApplicator>
 						<activeSpellIndex>
-							<compiledString>FUYAAAAFAAAATQAAAGYAAACcAAAAsgAAAMQAAABGaXJlZm94X0E0XzIAAAAARmlyZWZveF9BNF8yAAAAAEE0XzJfU3RvcEVmZmVjdABGaXJlZm94X0E0X1RvZ2dsZUZsYWcAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0S2ggAAAAi1UIiwKLTQiLkIgBAAD/0twd9AAAAN/g9sRBdSlqAYtFEFBoMAAAAItNCIsRi00Ii4KcAQAA/9A7RRB0CcdF9AEAAADrB8dF9AAAAACLRfSL5V3DAAAAAAAAAAA=</compiledString>
+							<compiledString>FTEAAAADAAAAOAAAAFEAAACNAAAASXJvbktuaWdodF9BMQAAAElyb25LbmlnaHRfQTEAAABJcm9uS25pZ2h0X0ExX09OAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdClqAYtVEFJoIAAAAItFCIsQi00Ii4KcAQAA/9A7RRB0CcdF9AEAAADrB8dF9AAAAACLRfSL5V3D</compiledString>
 							<returnType>int</returnType>
-							<sString> ( tal("Firefox_A4_2") &amp;&amp; sender.vA4_2_StopEffect &gt; 0 &amp;&amp; sender.FindApplicator("Firefox_A4_ToggleFlag", pMisc, UNIT) != pMisc ) ? 1 : 0</sString>
+							<sString>( tal("IronKnight_A1") &amp;&amp; sender.FindApplicator("IronKnight_A1_ON",pMisc,UNIT) != pMisc ) ? 1 : 0</sString>
 						</activeSpellIndex>
 						<applyTarget>ApplicatorTarget</applyTarget>
 						<caption>choose default attack</caption>
@@ -728,50 +748,14 @@
 						<LoggingEvent>-1</LoggingEvent>
 						<providerName></providerName>
 						<spells>
-							<Item href="/Heroes/Firefox/_.HROB" id="D8BE4074-CC13-4F0A-BA9A-E652A2CC87E2">
+							<Item href="/Heroes/IronKnight/_.HROB" id="EDC195AF-18A3-4337-A422-19867E9AE93C">
 								<Spell>
 									<applicators>
-										<Item href="/Effects/Shots/HitsApplicators/FireFox.APLR" />
-										<Item href="/Heroes/Firefox/_.HROB" id="DEF47A24-73F6-4AEE-93B5-54215BED87E6">
-											<VariableProxyApplicator>
-												<applicators>
-													<Item>
-														<applicator href="/Heroes/Firefox/_.HROB" id="D1301A28-FB18-4675-B157-F08DDF153C3B">
-															<DamageApplicator parent="/GameLogic/GeneralApplicators/BaseAttackDmg_Hero.APLR">
-																<damageType>Native</damageType>
-																<formulaName>FireFox_AA</formulaName>
-																<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
-															</DamageApplicator>
-														</applicator>
-														<variableNames>
-															<Item>damageDealed</Item>
-														</variableNames>
-													</Item>
-													<Item>
-														<applicator href="/Items/Talents/Class/FireFox/status_A2_Burn.APLR" />
-														<variableNames />
-													</Item>
-													<Item>
-														<applicator href="/Items/Talents/Class/FireFox/status_A2_Burn_Upg.APLR" />
-														<variableNames />
-													</Item>
-												</applicators>
-												<applyTarget>ApplicatorTarget</applyTarget>
-												<caption>урон и статус горение</caption>
-												<enabled>
-													<compiledString></compiledString>
-													<returnType>bool</returnType>
-													<sString>true</sString>
-												</enabled>
-												<formulaName></formulaName>
-												<LoggingEvent>-1</LoggingEvent>
-												<providerName></providerName>
-											</VariableProxyApplicator>
-										</Item>
+										<Item href="/Heroes/IronKnight/HitBerserk.APLR" />
+										<Item href="/GameLogic/GeneralApplicators/BaseAttackDmg_Hero_material.APLR" />
 									</applicators>
-									<dispatch href="/Heroes/Firefox/_.HROB" id="E34B0DBD-BFC5-4EA3-9F00-33E0ED0934C2">
-										<DispatchLinear>
-											<aiming>Straight</aiming>
+									<dispatch href="/Heroes/IronKnight/_.HROB" id="CF99E3A0-96C5-40DE-8FAB-E5993A4B41BD">
+										<DispatchImmediate>
 											<alwaysApply>false</alwaysApply>
 											<applyEffect>
 												<Item href="" />
@@ -782,69 +766,56 @@
 											<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
 											<dieAfterApply>true</dieAfterApply>
 											<dispatchEffect>
-												<Item href="/Effects/Shots/FireBall/_FireFox.EFFT" />
+												<Item href="" />
 												<Item href="" />
 											</dispatchEffect>
 											<flags>7</flags>
-											<flyMode>Parabolic</flyMode>
-											<fromLocator>Attack</fromLocator>
-											<height>0</height>
-											<killEffect>true</killEffect>
-											<locatorOrient>false</locatorOrient>
-											<maxDeviation>180</maxDeviation>
-											<maxDistance>-1</maxDistance>
-											<maxRise>0.5</maxRise>
-											<minRise>0</minRise>
-											<persistentApplicators />
-											<speed>25</speed>
-											<suspendTime>0</suspendTime>
-											<toLocator>Body</toLocator>
-										</DispatchLinear>
+											<instantApply>false</instantApply>
+										</DispatchImmediate>
 									</dispatch>
 								</Spell>
 							</Item>
-							<Item href="/Heroes/Firefox/_.HROB" id="BD3D6F04-FFB8-4EBB-827E-24BEE75CF362">
+							<Item href="/Heroes/IronKnight/_.HROB" id="069CD3D5-12E1-4AB5-95AE-5D82A37E372F">
 								<Spell>
 									<applicators>
-										<Item href="/Effects/Shots/HitsApplicators/FireFox_Power.APLR" />
-										<Item href="/Heroes/Firefox/_.HROB" id="22E3E02A-C3AE-4627-B49F-0F544E241D92">
+										<Item href="/Heroes/IronKnight/HitBerserk.APLR" />
+										<Item href="/Heroes/IronKnight/_.HROB" id="7A098079-3281-46E8-ADB0-2C31DCB624F8">
 											<VariableProxyApplicator>
 												<applicators>
 													<Item>
-														<applicator href="/Heroes/Firefox/_.HROB" id="A5722AA9-8963-4F64-BB62-A9360536A168">
+														<applicator href="/Heroes/IronKnight/_.HROB" id="F28AAAC2-FB11-4355-98B2-D35A4C78788D">
 															<DamageApplicator parent="/GameLogic/GeneralApplicators/BaseAttackDmg_Hero.APLR">
-																<damageType>Native</damageType>
-																<formulaName>FireFox_AA</formulaName>
-																<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+																<uiEvent href="" />
 															</DamageApplicator>
 														</applicator>
 														<variableNames>
 															<Item>damageDealed</Item>
+															<Item>isCritical</Item>
 														</variableNames>
 													</Item>
 													<Item>
-														<applicator href="/Heroes/Firefox/_.HROB" id="CD94548A-7E6B-4AE7-8C3B-D40D61ED5911">
+														<applicator href="/Heroes/IronKnight/_.HROB" id="7649C2ED-A171-4B32-A9A6-6B045D42F5B7">
 															<DamageApplicator>
 																<applyTarget>ApplicatorTarget</applyTarget>
 																<cancelInvisibility>false</cancelInvisibility>
-																<caption>(A4) доп урон</caption>
+																<caption>(A1) доп урон</caption>
 																<damage>
-																	<compiledString>FQsAAAABAAAAFwAAAEE0XzJEYW1hZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																	<compiledString>FToAAAAEAAAAQQAAAFoAAACQAAAAsAAAAElyb25LbmlnaHRfQTEAAABJcm9uS25pZ2h0X0ExAAAASXJvbktuaWdodF9BMQAAAEExX0RhbWFnZQBVi+yD7BBoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aCAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoMAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXwi+VdwwAAAAA=</compiledString>
 																	<returnType>float</returnType>
-																	<sString>cA4_2Damage</sString>
+																	<sString>talconst("IronKnight_A1","A1_Damage")</sString>
 																</damage>
 																<damageMode>4</damageMode>
-																<damageType>Energy</damageType>
+																<damageType>Native</damageType>
 																<enabled>
-																	<compiledString>FQAAAAAAAAAAVYvsi0UMixCLTQyLQlD/0DPJg/gRD5XBisFdww==</compiledString>
+																	<compiledString>FRQAAAACAAAAMQAAAFEAAABXYXJkAAAAAEltTWFnaWNHYXRlAFWL7FGLRQyLEItNDItCUP/Qg/gRdElqAItNEFFoAAAAAItVDIsCi00Mi5CcAQAA/9I7RRB1KWoAi0UQUGgIAAAAi00MixGLTQyLgpwBAAD/0DtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
 																	<returnType>bool</returnType>
-																	<sString>rUnitKind != 17</sString>
+																	<sString>rUnitKind != 17 &amp;&amp; receiver.applWard(GLOBAL) == pMisc &amp;&amp; receiver.applImMagicGate(GLOBAL) == pMisc</sString>
 																</enabled>
-																<formulaName>FireFox_A4_2Damage</formulaName>
+																<formulaName>IronKnight_A1Damage</formulaName>
 																<LoggingEvent>-1</LoggingEvent>
 																<providerName></providerName>
 																<timeLimiter>-1</timeLimiter>
-																<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+																<uiEvent href="" />
 															</DamageApplicator>
 														</applicator>
 														<variableNames>
@@ -852,29 +823,16 @@
 														</variableNames>
 													</Item>
 													<Item>
-														<applicator href="/Items/Talents/Class/FireFox/status_A2_Burn.APLR" />
+														<applicator href="/UI/Events/CommonEvents/UI_Message_Damage_Material.APLR" />
 														<variableNames />
 													</Item>
 													<Item>
-														<applicator href="/Items/Talents/Class/FireFox/status_A2_Burn_Upg.APLR" />
-														<variableNames />
-													</Item>
-													<Item>
-														<applicator href="/Heroes/Firefox/_.HROB" id="5EAF5E0D-FF2F-4557-BE00-7AB5303021D9">
-															<HealApplicator parent="/GameLogic/GeneralApplicators/Heal.APLR">
-																<applyTarget>AbilityOwner</applyTarget>
-																<enabled>
-																	<compiledString>FR4AAAACAAAAJQAAAD4AAABGaXJlZm94X0E0XzJVAAAARmlyZWZveF9BNF8yVQBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
-																	<returnType>bool</returnType>
-																	<sString>tal("Firefox_A4_2U")</sString>
-																</enabled>
-															</HealApplicator>
-														</applicator>
+														<applicator href="/UI/Events/CommonEvents/UI_Message_Crit_Material.APLR" />
 														<variableNames />
 													</Item>
 												</applicators>
 												<applyTarget>ApplicatorTarget</applyTarget>
-												<caption>урон, хил и статус горение</caption>
+												<caption>уроны</caption>
 												<enabled>
 													<compiledString></compiledString>
 													<returnType>bool</returnType>
@@ -885,9 +843,10 @@
 												<providerName></providerName>
 											</VariableProxyApplicator>
 										</Item>
+										<Item href="/Heroes/DefaultStatus/_STUN_Status.APLR" />
 									</applicators>
-									<dispatch href="/Heroes/Firefox/_.HROB" id="74B40ED1-4F8C-41DD-B71C-397F47540E26">
-										<DispatchLinear>
+									<dispatch href="/Heroes/IronKnight/_.HROB" id="0E5B32F1-2F5F-46D1-851C-800F6A5BBFD1">
+										<DispatchLinearWithLink>
 											<aiming>Straight</aiming>
 											<alwaysApply>false</alwaysApply>
 											<applyEffect>
@@ -899,59 +858,37 @@
 											<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
 											<dieAfterApply>true</dieAfterApply>
 											<dispatchEffect>
-												<Item href="/Effects/Shots/FireBall/_.EFFT" />
+												<Item href="/Effects/Shots/Axe/_.EFFT" />
 												<Item href="" />
 											</dispatchEffect>
 											<flags>7</flags>
-											<flyMode>Parabolic</flyMode>
-											<fromLocator>Attack3</fromLocator>
+											<flyMode>Linear</flyMode>
+											<fromLocator>Attack</fromLocator>
 											<height>0</height>
-											<killEffect>true</killEffect>
-											<locatorOrient>false</locatorOrient>
+											<killEffect>false</killEffect>
+											<links>
+												<Item>
+													<effect>
+														<Item href="/Heroes/IronKnight/AbilityLink01.EFFT" />
+														<Item href="" />
+													</effect>
+												</Item>
+											</links>
+											<locatorOrient>true</locatorOrient>
 											<maxDeviation>180</maxDeviation>
-											<maxDistance>-1</maxDistance>
-											<maxRise>0.5</maxRise>
+											<maxDistance>24</maxDistance>
+											<maxRise>0</maxRise>
 											<minRise>0</minRise>
 											<persistentApplicators />
-											<speed>25</speed>
+											<speed>30</speed>
 											<suspendTime>0</suspendTime>
 											<toLocator>Body</toLocator>
-										</DispatchLinear>
+										</DispatchLinearWithLink>
 									</dispatch>
 								</Spell>
 							</Item>
 						</spells>
 					</SpellSwitchApplicator>
-				</Item>
-				<Item href="/Heroes/Firefox/_.HROB" id="CED038CD-76D0-41B8-BF78-9770310EE72E">
-					<PermanentStatModApplicator>
-						<applyTarget>AbilityOwner</applyTarget>
-						<caption>A4_2_StopEffect</caption>
-						<customApplyType>None</customApplyType>
-						<enabled>
-							<compiledString>FSYAAAADAAAAKwAAAEEAAABTAAAAQTRfMl9TdG9wRWZmZWN0AEZpcmVmb3hfQTRfVG9nZ2xlRmxhZwBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B2DAAAA3+D2xEF1KWoBi00QUWgQAAAAi1UIiwKLTQiLkJwBAAD/0jtFEHQJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
-							<returnType>bool</returnType>
-							<sString>sender.vA4_2_StopEffect &gt; 0 &amp;&amp; sender.applFirefox_A4_ToggleFlag(UNIT) != pMisc</sString>
-						</enabled>
-						<formulaName></formulaName>
-						<LoggingEvent>-1</LoggingEvent>
-						<modifier>
-							<addValue>
-								<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
-								<returnType>float</returnType>
-								<sString>-1</sString>
-							</addValue>
-							<multValue>
-								<compiledString></compiledString>
-								<returnType>float</returnType>
-								<sString>1.0f</sString>
-							</multValue>
-							<stat>Life</stat>
-							<topModifier>false</topModifier>
-							<variable>A4_2_StopEffect</variable>
-						</modifier>
-						<providerName></providerName>
-					</PermanentStatModApplicator>
 				</Item>
 			</applicators>
 			<autoTargetSelector href="" />
@@ -966,11 +903,29 @@
 			<compiledDescriptionA textref="" />
 			<compiledDescriptionB textref="" />
 			<conditionFormulas />
-			<constants href="/Heroes/Firefox/_.HROB" id="8A4B9216-88FA-43AE-A681-4DC6BF0D4F7C">
+			<constants href="/Heroes/IronKnight/_.HROB" id="4F47DFF0-0BDE-4FF1-A163-5D51DC988268">
 				<UnitConstantsContainer>
 					<vars>
-						<Item href="/Items/Talents/Class/FireFox/const_A4_2_Damage" />
-						<Item href="/Items/Talents/Class/FireFox/const_A4_2u_Heal" />
+						<Item href="/Heroes/IronKnight/_.HROB" id="4D987F9A-4D38-4AA6-B94A-B90391EE40EA">
+							<UnitConstant>
+								<name>Stun_StartCondition</name>
+								<var>
+									<compiledString>FR8AAAACAAAAJgAAAD8AAABJcm9uS25pZ2h0X0ExdQAASXJvbktuaWdodF9BMXUAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37iU3020X0i+Vdww==</compiledString>
+									<returnType>float</returnType>
+									<sString>tal("IronKnight_A1u")</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Heroes/IronKnight/_.HROB" id="38B3AEEC-6603-4507-9636-109B54CCCE22">
+							<UnitConstant>
+								<name>Stun_Duration</name>
+								<var>
+									<compiledString>FUEAAAAEAAAASAAAAGEAAACXAAAAtwAAAElyb25LbmlnaHRfQTF1AABJcm9uS25pZ2h0X0ExdQAASXJvbktuaWdodF9BMXUAAEExdV9TdHVuRHVyYXRpb24AVYvsg+wQaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2ggAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaDAAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8IvlXcMAAAAA</compiledString>
+									<returnType>float</returnType>
+									<sString>talconst("IronKnight_A1u", "A1u_StunDuration")</sString>
+								</var>
+							</UnitConstant>
+						</Item>
 					</vars>
 				</UnitConstantsContainer>
 			</constants>
@@ -985,9 +940,9 @@
 				<sString>0.0f</sString>
 			</cooldownTimeSecondState>
 			<description textref="" />
-			<dispatch href="/Heroes/Firefox/_.HROB" id="B3E3DD77-1F86-4B9C-9E8A-A25CBDDB03D5">
+			<dispatch href="/Heroes/IronKnight/_.HROB" id="164C6CBB-68D8-4732-9158-55A9373C633D">
 				<DispatchImmediate>
-					<alwaysApply>false</alwaysApply>
+					<alwaysApply>true</alwaysApply>
 					<applyEffect>
 						<Item href="" />
 						<Item href="" />
@@ -1001,10 +956,10 @@
 						<Item href="" />
 					</dispatchEffect>
 					<flags>0</flags>
-					<instantApply>false</instantApply>
+					<instantApply>true</instantApply>
 				</DispatchImmediate>
 			</dispatch>
-			<flags>1</flags>
+			<flags>5</flags>
 			<image href="" />
 			<imageSecondState href="" />
 			<isMelee>false</isMelee>
@@ -1023,9 +978,9 @@
 			<requireLineOfSight>false</requireLineOfSight>
 			<shortDescription textref="" />
 			<targetType>0</targetType>
-			<type>Simple</type>
+			<type>Passive</type>
 			<useRange>
-				<compiledString></compiledString>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 				<returnType>float</returnType>
 				<sString>0.0f</sString>
 			</useRange>
@@ -1038,12 +993,12 @@
 	<canMount>false</canMount>
 	<classEfficiency>
 		<Item>0</Item>
-		<Item>0.25</Item>
+		<Item>0.5</Item>
 		<Item>0.5</Item>
 		<Item>0</Item>
-		<Item>0.5</Item>
 		<Item>0</Item>
-		<Item>0.5</Item>
+		<Item>0</Item>
+		<Item>1</Item>
 	</classEfficiency>
 	<collision>
 		<x1>0</x1>
@@ -1051,41 +1006,33 @@
 		<y1>0</y1>
 		<y2>0</y2>
 	</collision>
-	<deathParameters href="/GameLogic/HeroFemale.UNDP" />
+	<deathParameters href="/GameLogic/HeroMale.UNDP" />
 	<defaultTalentsSets>
-		<Item href="/Items/Talents/FireFox.TALENTSET" />
-		<Item href="/Items/Talents/FireFox_Alternative.TALENTSET" />
+		<Item href="/Items/Talents/IronKnight.TALENTSET" />
+		<Item href="/Items/Talents/IronKnight_Alternative.TALENTSET" />
 	</defaultTalentsSets>
 	<description textref="" />
-	<gender>Female</gender>
+	<gender>Male</gender>
 	<heightObject>false</heightObject>
-	<heroImageA href="/UI/Styles/Icons/Heroes/Firefox/FaceA.ITEX" />
-	<heroImageB href="/UI/Styles/Icons/Heroes/Firefox/FaceB.ITEX" />
-	<heroNameA textref="/Heroes/Firefox/_.HROB_heroNameA.txt" />
-	<heroNameB textref="/Heroes/Firefox/_.HROB_heroNameB.txt" />
+	<heroImageA href="/UI/Styles/Icons/Heroes/IronKnight/Face.ITEX" />
+	<heroImageB href="/UI/Styles/Icons/Heroes/IronKnight/Face.ITEX" />
+	<heroNameA textref="/Heroes/IronKnight/_.HROB_heroNameA.txt" />
+	<heroNameB textref="/Heroes/IronKnight/_.HROB_heroNameB.txt" />
 	<heroRace>3</heroRace>
 	<heroSceneObjects>
-		<Item href="/Heroes/Firefox/_A.SOBJ" />
-		<Item href="/Heroes/Firefox/_B.SOBJ" />
+		<Item href="/Heroes/IronKnight/_.SOBJ" />
+		<Item href="/Heroes/IronKnight/_.SOBJ" />
 	</heroSceneObjects>
 	<heroSkins>
-		<Item href="/Heroes/Firefox/S0/_A.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S0/_B.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S1/_A.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S1/_B.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S2/_A.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S2/_B.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S3/_.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S4/_A.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S4/_B.HEROSKIN" />
-		<Item href="/Heroes/Firefox/S5/_.HEROSKIN" />
+		<Item href="/Heroes/IronKnight/S1/_.HEROSKIN" />
+		<Item href="/Heroes/IronKnight/S2/_.HEROSKIN" />
 	</heroSkins>
-	<id>firefox</id>
+	<id>ironknight</id>
 	<image href="" />
 	<interaction href="" />
 	<legal>true</legal>
 	<lobbyData>
-		<BonusTalentsForLevel href="/Items/Talents/TalentLists/Int_Dex_Upg2" />
+		<BonusTalentsForLevel href="/Items/Talents/TalentLists/Str_Sta_AtkSpd_Upg2" />
 		<CharacterBarSettings>
 			<Attak>
 				<BarColor>Red</BarColor>
@@ -1093,18 +1040,18 @@
 			</Attak>
 			<Complexity>
 				<BarColor>Yellow</BarColor>
-				<Count>4</Count>
+				<Count>6</Count>
 			</Complexity>
 			<Defence>
 				<BarColor>Green</BarColor>
-				<Count>6</Count>
+				<Count>8</Count>
 			</Defence>
 			<Talents>
 				<BarColor>Blue</BarColor>
-				<Count>7</Count>
+				<Count>6</Count>
 			</Talents>
 		</CharacterBarSettings>
-		<Classes>2</Classes>
+		<Classes>1</Classes>
 		<CostFemale>
 			<Currencies />
 			<CWPoints_Clan>0</CWPoints_Clan>
@@ -1120,7 +1067,7 @@
 			<Resource3>0</Resource3>
 			<Resource3_Rare>0</Resource3_Rare>
 			<Shard>0</Shard>
-			<Silver>0</Silver>
+			<Silver>750000</Silver>
 		</CostFemale>
 		<CostMale>
 			<Currencies />
@@ -1137,21 +1084,21 @@
 			<Resource3>0</Resource3>
 			<Resource3_Rare>0</Resource3_Rare>
 			<Shard>0</Shard>
-			<Silver>2200</Silver>
+			<Silver>750000</Silver>
 		</CostMale>
 		<FameIncrement href="/Social/FameIncPerLevel" />
-		<heroAskSoundA>Heroes/Asks/firefox_a_iddle_1</heroAskSoundA>
-		<heroAskSoundB>Heroes/Asks/firefox_b_iddle_2</heroAskSoundB>
-		<heroBiographyA textref="/Heroes/Firefox/_.HROB_lobbyData_heroBiographyA.txt" />
-		<heroBiographyB textref="/Heroes/Firefox/_.HROB_lobbyData_heroBiographyB.txt" />
-		<heroDescriptionA textref="/Heroes/Firefox/_.HROB_lobbyData_heroDescriptionA.txt" />
-		<heroDescriptionB textref="/Heroes/Firefox/_.HROB_lobbyData_heroDescriptionB.txt" />
-		<heroRenderA href="/UI/Styles/Icons/Heroes/Firefox/FigureA.ITEX" />
-		<heroRenderB href="/UI/Styles/Icons/Heroes/Firefox/FigureB.ITEX" />
-		<IsHeroHiredByDefaultFemale>true</IsHeroHiredByDefaultFemale>
-		<IsHeroHiredByDefaultMale>true</IsHeroHiredByDefaultMale>
-		<LevelRequireFemale>1</LevelRequireFemale>
-		<LevelRequireMale>1</LevelRequireMale>
+		<heroAskSoundA>Heroes/Asks/iron_knight_iddle_1</heroAskSoundA>
+		<heroAskSoundB>Heroes/Asks/iron_knight_iddle_1</heroAskSoundB>
+		<heroBiographyA textref="" />
+		<heroBiographyB textref="" />
+		<heroDescriptionA textref="/Heroes/IronKnight/_.HROB_lobbyData_heroDescriptionA.txt" />
+		<heroDescriptionB textref="/Heroes/IronKnight/_.HROB_lobbyData_heroDescriptionB.txt" />
+		<heroRenderA href="/UI/Styles/Icons/Heroes/IronKnight/Figure.ITEX" />
+		<heroRenderB href="/UI/Styles/Icons/Heroes/IronKnight/Figure.ITEX" />
+		<IsHeroHiredByDefaultFemale>false</IsHeroHiredByDefaultFemale>
+		<IsHeroHiredByDefaultMale>false</IsHeroHiredByDefaultMale>
+		<LevelRequireFemale>25</LevelRequireFemale>
+		<LevelRequireMale>25</LevelRequireMale>
 		<ProductionResultIncrement>
 			<Currencies />
 			<CWPoints_Clan>0</CWPoints_Clan>
@@ -1177,19 +1124,19 @@
 		<mask />
 		<tileSize>0.5</tileSize>
 	</lockMask>
-	<mightyTalentSet href="/Items/Talents/TalentList_Mighty/FireFox_Mighty.TALENTSET" />
+	<mightyTalentSet href="/Items/Talents/TalentList_Mighty/IronKnight_Mighty.TALENTSET" />
 	<minimapIcon>Default</minimapIcon>
-	<minimapIconA href="/UI/Styles/Icons/Heroes/Firefox/Sign.ITEX" />
-	<minimapIconB href="/UI/Styles/Icons/Heroes/Firefox/Sign.ITEX" />
+	<minimapIconA href="/UI/Styles/Icons/Heroes/IronKnight/Sign.ITEX" />
+	<minimapIconB href="/UI/Styles/Icons/Heroes/IronKnight/Sign.ITEX" />
 	<minLockScale>0</minLockScale>
 	<mmakingAntagonists />
 	<nativeAttack>Material</nativeAttack>
-	<nativeDefence>Energy</nativeDefence>
+	<nativeDefence>Material</nativeDefence>
 	<normalLevelling>0</normalLevelling>
 	<overtipBarsWidth>10</overtipBarsWidth>
-	<overtipVerticalOffset>1</overtipVerticalOffset>
-	<pathFindingSteps>10</pathFindingSteps>
-	<persistentId>firefox</persistentId>
+	<overtipVerticalOffset>1.2</overtipVerticalOffset>
+	<pathFindingSteps>1</pathFindingSteps>
+	<persistentId>ironknight</persistentId>
 	<recolor>
 		<A>0</A>
 		<B>0</B>
@@ -1198,8 +1145,7 @@
 	</recolor>
 	<recommendedStats>
 		<Item>Life</Item>
-		<Item>Intellect</Item>
-		<Item>Dexterity</Item>
+		<Item>Strength</Item>
 	</recommendedStats>
 	<rounded>false</rounded>
 	<sceneObject href="" />
@@ -1207,126 +1153,126 @@
 		<Item href="" />
 		<Item href="" />
 	</selectionAoe>
-	<size>3</size>
-	<sizeDynamic>1.5</sizeDynamic>
-	<stats href="/Heroes/Firefox/_.HROB" id="3EDC5370-54B2-4AFB-B700-791C07CC5CEF">
+	<size>2</size>
+	<sizeDynamic>-1</sizeDynamic>
+	<stats href="/Heroes/IronKnight/_.HROB" id="5C77FCDF-C18A-4244-B330-D749EA5FD68D">
 		<StatsContainer>
 			<stats>
 				<Item>
-					<calcIncrement>27.5</calcIncrement>
-					<calcValue>800</calcValue>
+					<calcIncrement>30</calcIncrement>
+					<calcValue>820</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQQ==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>28</sString>
+						<sString>32</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIA7RA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBtRA==</compiledString>
 						<returnType>float</returnType>
-						<sString>750</sString>
+						<sString>950</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>13.5</calcIncrement>
-					<calcValue>675</calcValue>
+					<calcIncrement>6</calcIncrement>
+					<calcValue>555</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABYQQ==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAcQQ==</compiledString>
 						<returnType>float</returnType>
-						<sString>13.5</sString>
+						<sString>9.75</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Energy</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAMAoRA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAEADRA==</compiledString>
 						<returnType>float</returnType>
-						<sString>675</sString>
+						<sString>525</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.8</calcIncrement>
-					<calcValue>55</calcValue>
+					<calcIncrement>1</calcIncrement>
+					<calcValue>59</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.8</sString>
+						<sString>0.75</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Strength</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABcQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>55</sString>
+						<sString>60</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.8</calcIncrement>
-					<calcValue>54</calcValue>
+					<calcIncrement>0</calcIncrement>
+					<calcValue>20</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPw==</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 						<returnType>float</returnType>
-						<sString>0.8</sString>
+						<sString>0</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Intellect</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABYQg==</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 						<returnType>float</returnType>
-						<sString>54</sString>
+						<sString>0</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.5</calcIncrement>
-					<calcValue>54</calcValue>
+					<calcIncrement>0.2</calcIncrement>
+					<calcValue>49</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzOzPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.5</sString>
+						<sString>0.35</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Dexterity</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABYQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABQQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>54</sString>
+						<sString>52</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.3</calcIncrement>
-					<calcValue>54</calcValue>
+					<calcIncrement>0.2</calcIncrement>
+					<calcValue>50</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.3</sString>
+						<sString>0.4</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>AttackSpeed</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABYQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABQQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>54</sString>
+						<sString>52</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.4</calcIncrement>
-					<calcValue>54</calcValue>
+					<calcIncrement>1</calcIncrement>
+					<calcValue>65</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpkZPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.25</sString>
+						<sString>0.6</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAMQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACCQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>35</sString>
+						<sString>65</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.6</calcIncrement>
-					<calcValue>56</calcValue>
+					<calcIncrement>0.4</calcIncrement>
+					<calcValue>57</calcValue>
 					<increment>
 						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
 						<returnType>float</returnType>
@@ -1335,14 +1281,14 @@
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAA0Qg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>45</sString>
+						<sString>50</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0</calcIncrement>
-					<calcValue>0</calcValue>
+					<calcValue>3.3</calcValue>
 					<increment>
 						<compiledString></compiledString>
 						<returnType>float</returnType>
@@ -1351,9 +1297,9 @@
 					<levelUpgrades />
 					<statId>LifeRegenerationAbsolute</statId>
 					<value>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzNTQA==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.0f</sString>
+						<sString>3.3</sString>
 					</value>
 				</Item>
 				<Item>
@@ -1374,43 +1320,43 @@
 				</Item>
 				<Item>
 					<calcIncrement>0</calcIncrement>
-					<calcValue>51</calcValue>
+					<calcValue>41</calcValue>
 					<increment>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 						<returnType>float</returnType>
-						<sString>0.0f</sString>
+						<sString>0</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>MoveSpeed</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABMQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABQQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>51</sString>
+						<sString>52</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0</calcIncrement>
-					<calcValue>14</calcValue>
+					<calcValue>4</calcValue>
 					<increment>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 						<returnType>float</returnType>
-						<sString>0.0f</sString>
+						<sString>0</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Range</statId>
 					<value>
-						<compiledString>FQsAAAABAAAAFwAAAFJhbmdlX0xvbmcAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmaGQA==</compiledString>
 						<returnType>float</returnType>
-						<sString>cRange_Long</sString>
+						<sString>4.2</sString>
 					</value>
 				</Item>
 				<Item>
-					<calcIncrement>0.16</calcIncrement>
-					<calcValue>0</calcValue>
+					<calcIncrement>0.56</calcIncrement>
+					<calcValue>30</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DuB6FPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DXI9CPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.26</sString>
+						<sString>0.76</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>VirtualStat</statId>
@@ -1423,8 +1369,13 @@
 			</stats>
 		</StatsContainer>
 	</stats>
-	<summonedUnits />
-	<targetingParams href="/GameLogic/TargetingParams_HeroRanged.UNTP" />
-	<totalStatsBudget>5.2</totalStatsBudget>
+	<summonedUnits>
+		<Item>
+			<unitA href="/Summons/Axe/_.SUMMONED" />
+			<unitB href="/Summons/Axe/_.SUMMONED" />
+		</Item>
+	</summonedUnits>
+	<targetingParams href="/GameLogic/TargetingParams_HeroMelee.UNTP" />
+	<totalStatsBudget>0</totalStatsBudget>
 	<uniqueResource href="" />
 </Hero>
