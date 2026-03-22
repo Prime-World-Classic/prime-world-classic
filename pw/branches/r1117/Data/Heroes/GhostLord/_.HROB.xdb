@@ -940,16 +940,16 @@
 					<calcIncrement>28.5</calcIncrement>
 					<calcValue>825</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwIQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>34.2</sString>
+						<sString>32</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIB3RA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBtRA==</compiledString>
 						<returnType>float</returnType>
-						<sString>990</sString>
+						<sString>950</sString>
 					</value>
 				</Item>
 				<Item>
@@ -1036,9 +1036,9 @@
 					<calcIncrement>0.6</calcIncrement>
 					<calcValue>55.5</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzMzPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.55</sString>
+						<sString>0.7</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
@@ -1052,16 +1052,16 @@
 					<calcIncrement>0.3</calcIncrement>
 					<calcValue>57</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.30</sString>
+						<sString>0.45</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACIQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>68</sString>
+						<sString>50</sString>
 					</value>
 				</Item>
 				<Item>

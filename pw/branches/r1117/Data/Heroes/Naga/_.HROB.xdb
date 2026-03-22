@@ -847,16 +847,16 @@
 					<calcIncrement>28.75</calcIncrement>
 					<calcValue>800</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAKQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAMQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>34.5</sString>
+						<sString>35</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB/RA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAECDRA==</compiledString>
 						<returnType>float</returnType>
-						<sString>1020</sString>
+						<sString>1050</sString>
 					</value>
 				</Item>
 				<Item>
@@ -943,32 +943,32 @@
 					<calcIncrement>0.5</calcIncrement>
 					<calcValue>56</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DhevRPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.41</sString>
+						<sString>0.50</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABsQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABcQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>59</sString>
+						<sString>55</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0.8</calcIncrement>
 					<calcValue>58</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DexQuPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmZmPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.68</sString>
+						<sString>0.9</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACCQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>65</sString>
+						<sString>75</sString>
 					</value>
 				</Item>
 				<Item>

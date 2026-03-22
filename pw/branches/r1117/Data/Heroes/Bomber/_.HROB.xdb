@@ -15,39 +15,39 @@
 			<settings>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>12</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>12</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
-					<minInterval>6</minInterval>
+					<minInterval>3</minInterval>
 				</Item>
 				<Item>
 					<ask3dRecipient>Enemies</ask3dRecipient>
@@ -880,360 +880,7 @@
 		<Item href="/Heroes/Bomber/_.SOBJ" />
 		<Item href="/Heroes/Bomber/_.SOBJ" />
 	</heroSceneObjects>
-	<heroSkins>
-		<Item href="/Heroes/Bomber/_.HROB" id="5FA6F5AE-652B-47DA-BCCA-E2C7F46F213E">
-			<HeroSkin>
-				<antagonistSkinId></antagonistSkinId>
-				<askList href="/Heroes/Bomber/_.HROB" id="78A4F6F8-74D5-4F37-B3B7-5D612640BD21">
-					<AskSoundsRef>
-						<asks>
-							<settings>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>12</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>12</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>6</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-							</settings>
-							<sounds>
-								<Item href="/Heroes/Bomber/_.HROB" id="A5F95FC2-3A01-4ABA-8806-9E8093D4B811">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>move</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="F32E9E6A-E418-470F-879A-949A771647BF">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>ability_1</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="8C6EEF70-9528-4836-839C-8A1F096B50FE">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>ability_2</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="368C446F-4E23-4AE9-8A3D-638FEDF1E444">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>ability_3</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="54AF6EDE-4ED6-4F04-9093-2B56D0181807">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>ability_ult</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="AD97B26A-5F97-4495-86EE-F3AC7DB37E98">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>attack</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="AC3B4198-F8C9-4D50-AC4C-BB25CB759D9E">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>death</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="20EDF590-1F35-46D6-A520-DA6263E095F1">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>revive</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="AE5BA3AF-C0A4-417A-9D1F-A2CD08C63A83">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>kill</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="/Heroes/Bomber/_.HROB" id="0C55A69C-ECAF-48EA-933C-4021702B9C2C">
-									<DBSoundSceneComponent>
-										<attached />
-										<caption>sound</caption>
-										<desc>
-											<eventName>idle</eventName>
-											<groupName>Heroes/Bomber_S1/Asks</groupName>
-											<projectName>PF</projectName>
-										</desc>
-										<groupFlags>0</groupFlags>
-										<locatorList href="" />
-										<orientation>Default</orientation>
-										<timeInterval>0</timeInterval>
-									</DBSoundSceneComponent>
-								</Item>
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-							</sounds>
-							<sounds3d>
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-							</sounds3d>
-						</asks>
-					</AskSoundsRef>
-				</askList>
-				<askListSecondState href="/Heroes/Bomber/_.HROB" id="65E32044-E6F4-48B3-AF11-4A30594BBB80">
-					<AskSoundsRef>
-						<asks>
-							<settings>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-								<Item>
-									<ask3dRecipient>Enemies</ask3dRecipient>
-									<minInterval>3</minInterval>
-								</Item>
-							</settings>
-							<sounds>
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-							</sounds>
-							<sounds3d>
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-								<Item href="" />
-							</sounds3d>
-						</asks>
-					</AskSoundsRef>
-				</askListSecondState>
-				<botRoll>true</botRoll>
-				<cost>500</cost>
-				<deathParameters href="" />
-				<gender>Female</gender>
-				<heroImageA href="/UI/Styles/Icons/Heroes/Bomber/Face_S1.ITEX" />
-				<heroImageB href="/UI/Styles/Icons/Heroes/Bomber/Face_S1.ITEX" />
-				<heroName textref="/Heroes/Bomber/_.HROB_5fa6f5ae652b47dabccae2c7f46f213e_heroName.txt" />
-				<heroRace>3</heroRace>
-				<heroRenderA href="/UI/Styles/Icons/Heroes/Bomber/Face_S1.ITEX" />
-				<heroRenderB href="/UI/Styles/Icons/Heroes/Bomber/Face_S1.ITEX" />
-				<legal>false</legal>
-				<lobbyAskSound></lobbyAskSound>
-				<mute>false</mute>
-				<persistentId>Bomber_S1</persistentId>
-				<sceneObject href="/Heroes/Bomber/S1/_.SOBJ" />
-			</HeroSkin>
-		</Item>
-	</heroSkins>
+	<heroSkins />
 	<id>bomber</id>
 	<image href="" />
 	<interaction href="" />
@@ -1370,16 +1017,16 @@
 					<calcIncrement>25</calcIncrement>
 					<calcValue>725</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQQ==</compiledString>
 						<returnType>float</returnType>
-						<sString>30</sString>
+						<sString>28</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBURA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIA7RA==</compiledString>
 						<returnType>float</returnType>
-						<sString>850</sString>
+						<sString>750</sString>
 					</value>
 				</Item>
 				<Item>
@@ -1466,32 +1113,32 @@
 					<calcIncrement>0.4</calcIncrement>
 					<calcValue>54</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.55</sString>
+						<sString>0.45</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAwQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAA0Qg==</compiledString>
 						<returnType>float</returnType>
-						<sString>44</sString>
+						<sString>45</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0.7</calcIncrement>
 					<calcValue>57</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.45</sString>
+						<sString>0.25</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAsQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAMQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>43</sString>
+						<sString>35</sString>
 					</value>
 				</Item>
 				<Item>
