@@ -1,0 +1,487 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<BackLink DBID="/Items/RerollShop/TalentsList_Alchemy" Count="1" />
+	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set10_kit4" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset7_5_Alchemy/Redset7_5_Alchemy.TALKIT" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Assassin_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/BladeDancer_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Brewer_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Crusader_A_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Crusader_B_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Faceless_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Fluffy_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Frogenglut_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Highlander_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Invisible_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/IronKnight_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Katana_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Marine_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Monster_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Mowgli_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/PinkGirl_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Prince_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Reaper_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Shadow_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Shaman_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Stalker_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Unicorn_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Vampire_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Warlord_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Wendigo_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Werewolf_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Witcher_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Zealot_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Social/TalentsCollection" Count="4" />
+	<BackLink DBID="/Social/Lootboxes/LB_Alchemy_Red6_Set7" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/LB_Alchemy_Red7_Set7" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/LB_Alchemy_Redset7" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/LB_RedEvent6" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/LB_RedEvent7" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_CollectionGoodList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_GoodList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_RedSet10.ROLLCONT" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_GoodList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season9_CollectionList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Test/Talents/RedSet7_5.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/RedSet7_6.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/RedSet7_7.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>G725: Дерзость алхимика</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="C3614A65-90E6-49EF-A4F0-457E9D42A4E9">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQ4AAAACAAAAEwAAACkAAABHNzI0X1N0ck9ySW50AFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHUsAAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAADwPw==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vG724_StrOrInt==1</sString>
+				</condition>
+				<name>StrOrInt</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="E1D7B694-7212-44AC-9C46-54DC5255B191">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="854FCDA2-FF7F-462F-8766-77DD36CE065F">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw2Zm5kAAAAA/</compiledString>
+							<returnType>float</returnType>
+							<sString>refineScale(7.2, 0.5)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/const_Redset7_5_Discount2" />
+				<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/const_Redset7_5_Discount3" />
+				<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/const_Redset7_5_Discount" />
+				<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/const_Redset7_5_G725_AddDamage" />
+				<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/const_TimeGift" />
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQkAAAABAAAAFQAAAFRpbWVHaWZ0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cTimeGift</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Level2/G725_StrOrInt.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>1</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Talents/_725.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>1</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>-1</naftaCost>
+	<name textref="/Items/Talents/Level2/G725_StrOrInt.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="F51CC06B-247D-4D34-BE1C-FEBB89F19871">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="935447C7-8519-47D1-A817-2F0EB1CF2798">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="B8CE1F7B-A3C5-49DA-8AF4-FF5CACF7F6BA">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>StrOrInt</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>G724_StrOrInt</variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset7_5_Alchemy/Program_Redset7_5_Discount.APLR" />
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="9AA2C5A5-2FA5-4B4F-9E13-60B9F06BC021">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Периодическая выдача </caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQcAAAADAAAAGgAAACYAAAA8AAAAVG9zc2VkAFWL7FGLRRCLEItNEItCHP/Q3B1mAAAA3+D2xER6K2gAAAAAi00IixGLTQiLgogBAAD/0NwdXgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAAAAAAAAAA8D8=</compiledString>
+					<returnType>bool</returnType>
+					<sString>mPreparedness == 1.0f &amp;&amp; sender.vTossed == 0</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+					<returnType>float</returnType>
+					<sString>0.1</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsCount</scaleMode>
+				<spell href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="6AC05A8A-437D-4039-B34A-419718680839">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="73C1F181-34C7-4A35-9C26-54E17773B172">
+								<GiveConsumable>
+									<amount>
+										<compiledString></compiledString>
+										<returnType>int</returnType>
+										<sString>1</sString>
+									</amount>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>GiveConsumable</caption>
+									<consumable href="/Items/Consumables/KU-Stick.ARCT" />
+									<enabled>
+										<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRRCLEItNEItCHP/Q3B01AAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAA8D8=</compiledString>
+										<returnType>bool</returnType>
+										<sString>mPreparedness == 1.0f</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+								</GiveConsumable>
+							</Item>
+							<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="A17816BD-206C-4E57-92F5-B2163B7C83B9">
+								<PermanentStatModApplicator>
+									<applyTarget>AbilityOwner</applyTarget>
+									<caption>KU_StickConsumableGived</caption>
+									<customApplyType>None</customApplyType>
+									<enabled>
+										<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRRCLEItNEItCHP/Q3B01AAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAA8D8=</compiledString>
+										<returnType>bool</returnType>
+										<sString>mPreparedness == 1.0f</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</addValue>
+										<multValue>
+											<compiledString></compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable>KU_StickConsumableGived</variable>
+									</modifier>
+									<providerName></providerName>
+								</PermanentStatModApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="676C12B4-3CD0-463B-AD3C-0E11941EB976">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<returnType>float</returnType>
+					<sString>0</sString>
+				</startOffset>
+				<targetSelector href="" />
+			</SpellPeriodicallyApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="F2B6F125-D584-4590-89B8-A4888E691CE2">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>184</behaviorFlags>
+				<caption>Запускаем принудительно кд</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="FDC824D9-2B95-4D54-92E0-B435EA4EA7C6">
+					<EventProcessorCondition>
+						<applyTarget>AbilityOwner</applyTarget>
+						<condition>
+							<compiledString>FRgAAAACAAAAHQAAADMAAABLVV9TdGlja0NvbnN1bWFibGVHaXZlZABVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1VAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+							<returnType>bool</returnType>
+							<sString>sender.vKU_StickConsumableGived &gt; 0</sString>
+						</condition>
+						<events>8192</events>
+						<onlyParent>false</onlyParent>
+						<spell href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="93FFA529-C440-4CA1-AF40-3062A63D02FC">
+							<Spell>
+								<applicators>
+									<Item href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="B5E2C092-B16B-4DAC-9C54-1AD4900A7403">
+										<PermanentStatModApplicator>
+											<applyTarget>AbilityOwner</applyTarget>
+											<caption>KU_StickConsumableGived</caption>
+											<customApplyType>None</customApplyType>
+											<enabled>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<modifier>
+												<addValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</addValue>
+												<multValue>
+													<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+													<returnType>float</returnType>
+													<sString>0.0f</sString>
+												</multValue>
+												<stat>Life</stat>
+												<topModifier>false</topModifier>
+												<variable>KU_StickConsumableGived</variable>
+											</modifier>
+											<providerName></providerName>
+										</PermanentStatModApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Items/Talents/Level2/G725_StrOrInt.TALENT" id="5C9F2BDC-228F-4FF8-844F-0F84FC9EC83D">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>false</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+					</EventProcessorCondition>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>true</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>G725</persistentId>
+	<prerequisiteTalents />
+	<rarity>outstanding</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>16</talentRollGroups>
+	<talentStats />
+	<targetType>136258047</targetType>
+	<type>Passive</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>
