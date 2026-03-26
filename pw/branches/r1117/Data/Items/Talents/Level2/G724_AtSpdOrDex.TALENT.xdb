@@ -22,6 +22,7 @@
 	<BackLink DBID="/Test/Talents/RedSet7_7.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet7_8.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet7_9.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Plane.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -226,9 +227,9 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRRCLEItNEItCHP/Q3B01AAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAA8D8=</compiledString>
+					<compiledString>FQcAAAADAAAAGgAAACYAAAA8AAAAVG9zc2VkAFWL7FGLRRCLEItNEItCHP/Q3B1mAAAA3+D2xER6K2gAAAAAi00IixGLTQiLgogBAAD/0NwdXgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAAAAAAAAAA8D8=</compiledString>
 					<returnType>bool</returnType>
-					<sString>mPreparedness == 1.0f</sString>
+					<sString>mPreparedness == 1.0f &amp;&amp; sender.vTossed == 0</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
