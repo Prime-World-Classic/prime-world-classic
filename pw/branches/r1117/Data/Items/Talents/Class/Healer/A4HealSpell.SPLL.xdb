@@ -5,6 +5,7 @@
 		<Item href="/Items/Talents/Class/Healer/HealAndGiveNafta.APLR" />
 		<Item href="/Items/Talents/Class/Healer/CharityDefenceSpell.APLR" />
 		<Item href="/Items/Talents/Class/Healer/CharityPowerSpell.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<dispatch href="/Items/Talents/Class/Healer/A4HealSpell.SPLL" id="6D3A562D-94C5-4B6E-B5F5-F44BBE28A957">
 		<DispatchImmediate>

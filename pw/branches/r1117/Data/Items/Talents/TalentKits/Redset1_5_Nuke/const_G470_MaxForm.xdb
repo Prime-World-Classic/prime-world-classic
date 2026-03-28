@@ -7,8 +7,8 @@
 	<BackLink DBID="/Items/Talents/Level4/G473_Life_StrOrInt.TALENT" Count="1" />
 	<name>G470_MaxForm</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>2</sString>
+		<sString>3</sString>
 	</var>
 </UnitConstant>

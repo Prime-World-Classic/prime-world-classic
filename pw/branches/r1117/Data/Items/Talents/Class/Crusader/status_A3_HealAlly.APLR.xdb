@@ -71,7 +71,7 @@
 									<Item href="" />
 									<Item href="" />
 								</dispatchEffect>
-								<flags>0</flags>
+								<flags>1</flags>
 								<instantApply>false</instantApply>
 							</DispatchImmediate>
 						</dispatch>

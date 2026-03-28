@@ -7,8 +7,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G617_StrOrInt.TALENT" Count="1" />
 	<name>Total_CooldownUltimateReduction</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
-		<sString>30</sString>
+		<sString>0</sString>
 	</var>
 </UnitConstant>

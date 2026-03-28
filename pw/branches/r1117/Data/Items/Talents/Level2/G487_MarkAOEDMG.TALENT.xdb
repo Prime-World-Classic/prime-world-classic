@@ -14,6 +14,7 @@
 	<BackLink DBID="/Test/Talents/RedSet4Add.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -33,7 +34,80 @@
 	</aoeSize>
 	<aoeType>Disk</aoeType>
 	<applicators>
-		<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" />
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="05A9086B-B89C-47A8-AAAA-44EA054281B1">
+			<SpellSwitchApplicator>
+				<activeSpellIndex>
+					<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CD+AZ0LYtNDIsRi00Mi0JQ/9CD+Ad0G4tNDIsRi00Mi0JQ/9CD+Ah0CcdF/AEAAADrB8dF/AAAAACLRfyL5V3D</compiledString>
+					<returnType>int</returnType>
+					<sString>(rUnitKind == 6 || rUnitKind == 7 || rUnitKind == 8) ? 0 : 1</sString>
+				</activeSpellIndex>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption></caption>
+				<dontUseDispatches>false</dontUseDispatches>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<spells>
+					<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="B6F7842B-5941-4DBD-8AF5-CB1411464C14">
+						<Spell>
+							<applicators>
+								<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_Building.APLR" />
+							</applicators>
+							<dispatch href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="8B784F0C-758E-4119-8CD1-15F61CCF61B9">
+								<DispatchImmediate>
+									<alwaysApply>false</alwaysApply>
+									<applyEffect>
+										<Item href="" />
+										<Item href="" />
+									</applyEffect>
+									<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+									<applyEffectOrientation>Default</applyEffectOrientation>
+									<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+									<dieAfterApply>true</dieAfterApply>
+									<dispatchEffect>
+										<Item href="" />
+										<Item href="" />
+									</dispatchEffect>
+									<flags>0</flags>
+									<instantApply>false</instantApply>
+								</DispatchImmediate>
+							</dispatch>
+						</Spell>
+					</Item>
+					<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="42D82B45-3326-467D-B683-E943CA81622D">
+						<Spell>
+							<applicators>
+								<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" />
+							</applicators>
+							<dispatch href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="20190A09-7B39-4AE3-84B9-C9C78AAC306A">
+								<DispatchImmediate>
+									<alwaysApply>false</alwaysApply>
+									<applyEffect>
+										<Item href="" />
+										<Item href="" />
+									</applyEffect>
+									<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+									<applyEffectOrientation>Default</applyEffectOrientation>
+									<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+									<dieAfterApply>true</dieAfterApply>
+									<dispatchEffect>
+										<Item href="" />
+										<Item href="" />
+									</dispatchEffect>
+									<flags>0</flags>
+									<instantApply>false</instantApply>
+								</DispatchImmediate>
+							</dispatch>
+						</Spell>
+					</Item>
+				</spells>
+			</SpellSwitchApplicator>
+		</Item>
 	</applicators>
 	<askId>0</askId>
 	<autoTargetSelector href="" />
@@ -44,7 +118,34 @@
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</castAllowRange>
-	<castLimitations />
+	<castLimitations>
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="680B079B-EAF7-4528-B0E0-EB501919F6C8">
+			<ConditionCastLimitation>
+				<condition>
+					<compiledString>FQwAAAACAAAARwAAAF0AAABHNDg5X0FjdGl2ZQBVi+xRi0UMixCLTQyLQlD/0IP4BnQki00MixGLTQyLQlD/0IP4B3QSi00MixGLTQyLQlD/0IP4CHUoaAAAAACLTQiLEYtNCIuCiAEAAP/Q3B27AAAA3+D2xEF1BsZF/wHrRotNDIsRi00Mi0JQ/9CD+AZ0KotNDIsRi00Mi0JQ/9CD+Ad0GItNDIsRi00Mi0JQ/9CD+Ah0BsZF/gHrBMZF/gCKTf6ITf+KRf+L5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>((rUnitKind == 6 || rUnitKind == 7 || rUnitKind == 8)&amp;&amp; sender.vG489_Active &gt; 0 ) ? true :  ((rUnitKind == 6 || rUnitKind == 7 || rUnitKind == 8)? false: true )</sString>
+				</condition>
+				<uiEvent href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="E70E14EB-C503-4D98-8746-141B184FB960">
+					<UIEvent>
+						<signRecipients>PLAYER_ONLY</signRecipients>
+						<UISigns>
+							<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="966C91BA-B15D-4259-A2A5-C75230E387A0">
+								<UISignMessageToStatusLine>
+									<messages>
+										<Item textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_966c91bab15d4259a2a5c75230e387a0_messages_0.txt" />
+										<Item textref="" />
+										<Item textref="" />
+									</messages>
+									<signRecipients>USE_FROM_PARENT</signRecipients>
+								</UISignMessageToStatusLine>
+							</Item>
+						</UISigns>
+					</UIEvent>
+				</uiEvent>
+			</ConditionCastLimitation>
+		</Item>
+	</castLimitations>
 	<commonDescription textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_commonDescription.txt" />
 	<compiledDescriptionA textref="" />
 	<compiledDescriptionB textref="" />
@@ -92,9 +193,9 @@
 		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="06277D65-9DE1-41AC-B56F-19E4EEB06B1F">
 			<ConditionFormula>
 				<condition>
-					<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEc0ODhfQWN0aXZlAEc0OTBfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXQraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEc0ODhfQWN0aXZlAEc0ODlfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXQraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
 					<returnType>bool</returnType>
-					<sString>sender.vG488_Active&gt;0 || sender.vG490_Active&gt;0</sString>
+					<sString>sender.vG488_Active&gt;0 || sender.vG489_Active&gt;0</sString>
 				</condition>
 				<name>G488_Blow</name>
 			</ConditionFormula>
@@ -119,11 +220,63 @@
 				<name>G490_Cooldown</name>
 			</ConditionFormula>
 		</Item>
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="6643C339-7765-475D-9CBC-1440E5EA9506">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQwAAAACAAAAEQAAACcAAABHNDg5X0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vG489_Active&gt;0 </sString>
+				</condition>
+				<name>G488_Building</name>
+			</ConditionFormula>
+		</Item>
 	</conditionFormulas>
 	<conflictingTalents />
 	<constants href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="068691B7-CF50-4396-8BD6-C20DBFD1D3C5">
 		<UnitConstantsContainer>
 			<vars>
+				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="1E324D7B-76CC-42BB-A34D-E1B8CC11B788">
+					<UnitConstant>
+						<name>Cooldown</name>
+						<var>
+							<compiledString>FQwAAAACAAAAEQAAACcAAABHNDkwX0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/DwAAADrB8dF/FoAAADbRfyL5V3DAAAAAAAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vG490_Active &gt; 0 ? 60 : 90</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="6AC95722-71FA-4288-BAC4-E3944F5F888D">
+					<UnitConstant>
+						<name>Delay</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="6A34EC68-281A-4186-9AB8-AA76D0D93B1F">
+					<UnitConstant>
+						<name>Damage</name>
+						<var>
+							<compiledString>FScAAAAEAAAALgAAAEQAAABYAAAAfAAAAEc0ODdfRGFtYWdlAEc0ODlfQWN0aXZlAEc0ODlfQWRkRGFtYWdlAFWL7IPsCGgMAAAAi0UIixCLTQiLgogBAAD/0NwdngAAAN/g9sRBdR+LTQxRi1UIUmgYAAAAi0UQixCLTRCLQlD/0Nld/OsF2e7ZXfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0NhF/Nld+NlF+IvlXcMAAAAAAAAAAAAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>cG487_Damage+ (sender.vG489_Active&gt; 0 ? cG489_AddDamage : 0)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_ResTimeInc" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G489_AddDamage" />
+				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="23CC2634-666C-4A04-A497-CA59DE729E76">
+					<UnitConstant>
+						<name>G487_Damage</name>
+						<var>
+							<compiledString>FQAAAAADAAAACQAAABMAAABgAAAAVYvsUWoBUdkFegAAANkcJFHZBXYAAADZHCRqAItFCIsQi00Ii4IwAQAA/9BR2Rwki00IixGLTQiLgjQBAAD/0FHZHCToNQAAAIPEBNkcJGoBi00QixGLTRCLQmD/0NwFbgAAANld/NlF/IvlXcMAAAAAAABUQAAAGEIAgIxDVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(max(sIntellect,sStrength), 38, 281)+80</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="DE4BFE10-5268-4CD8-A05B-20E70432FA47">
 					<UnitConstant>
 						<name>G487_kitCounter_TT</name>
@@ -155,49 +308,16 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxForm" />
-				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="6AC95722-71FA-4288-BAC4-E3944F5F888D">
-					<UnitConstant>
-						<name>Delay</name>
-						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
-							<returnType>float</returnType>
-							<sString>3.0f</sString>
-						</var>
-					</UnitConstant>
-				</Item>
-				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="6A34EC68-281A-4186-9AB8-AA76D0D93B1F">
-					<UnitConstant>
-						<name>Damage</name>
-						<var>
-							<compiledString>FScAAAAEAAAALgAAAEQAAABYAAAAfAAAAEc0ODdfRGFtYWdlAEc0ODlfQWN0aXZlAEc0ODlfQWRkRGFtYWdlAFWL7IPsCGgMAAAAi0UIixCLTQiLgogBAAD/0NwdngAAAN/g9sRBdR+LTQxRi1UIUmgYAAAAi0UQixCLTRCLQlD/0Nld/OsF2e7ZXfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0NhF/Nld+NlF+IvlXcMAAAAAAAAAAAAAAAA=</compiledString>
-							<returnType>float</returnType>
-							<sString>cG487_Damage+ (sender.vG489_Active&gt; 0 ? cG489_AddDamage : 0)</sString>
-						</var>
-					</UnitConstant>
-				</Item>
-				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G489_AddDamage" />
-				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="23CC2634-666C-4A04-A497-CA59DE729E76">
-					<UnitConstant>
-						<name>G487_Damage</name>
-						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA8EIAAABB</compiledString>
-							<returnType>float</returnType>
-							<sString>refineScale(120, 8)</sString>
-						</var>
-					</UnitConstant>
-				</Item>
-				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_ResTimeInc" />
 				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="07746615-8864-4473-A5A0-9D6D234D1EA7">
 					<UnitConstant>
 						<name>MarkCondition</name>
 						<var>
-							<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEc0ODhfQWN0aXZlAEc0OTBfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXQraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAADbRfyL5V3DAAAAAAAAAAA=</compiledString>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 							<returnType>float</returnType>
-							<sString>sender.vG488_Active &gt; 0 || sender.vG490_Active &gt; 0</sString>
+							<sString>true</sString>
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G488_MaxBlowCount" />
 				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="C71E8AC0-A7FA-40E4-9028-E8CE96A70434">
 					<UnitConstant>
 						<name>RefreshCDCondition</name>
@@ -228,33 +348,19 @@
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="7995EA08-EB92-4970-A9F6-C8DADD5C1DC7">
-					<UnitConstant>
-						<name>G487_MaxCount</name>
-						<var>
-							<compiledString>FTYAAAAGAAAAPQAAAFMAAABnAAAAgwAAAJkAAACtAAAARzQ4OF9BY3RpdmUARzQ4OF9NYXhDb3VudAAAAEc0OTBfQWN0aXZlAEc0OTBfTWF4Q291bnQAVYvsg+wMaAAAAACLRQiLEItNCIuCiAEAAP/Q3B3cAAAA3+D2xEF1H4tNDFGLVQhSaAwAAACLRRCLEItNEItCUP/Q2V386wXZ7tld/GgcAAAAi00IixGLTQiLgogBAAD/0Nwd3AAAAN/g9sRBdR+LTQxRi1UIUmgoAAAAi0UQixCLTRCLQlD/0Nld+OsF2e7ZXfjZRfzYRfjZXfTZRfSL5V3DAAAAAAAAAAAAAAAA</compiledString>
-							<returnType>float</returnType>
-							<sString>(sender.vG488_Active &gt; 0 ? cG488_MaxCount : 0) + (sender.vG490_Active&gt;0 ? cG490_MaxCount : 0)</sString>
-						</var>
-					</UnitConstant>
-				</Item>
-				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="FB4EC583-8830-4DDC-8244-EE78DE1434E4">
-					<UnitConstant>
-						<name>G490_MaxCount</name>
-						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
-							<returnType>float</returnType>
-							<sString>2.0f</sString>
-						</var>
-					</UnitConstant>
-				</Item>
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G488_MaxBlowCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G489_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G490_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxCountBuilding" />
 				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="40F0AE8B-EF57-469C-853E-7473A5D57525">
 					<UnitConstant>
 						<name>Dec_MoveSpeed</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+							<compiledString>FQwAAAAEAAAAEQAAACcAAAA0AAAAPwAAAEc0ODhfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVUAAADf4PbEQXUL2QVRAAAA2V386wnZBU0AAADZXfzZRfyL5V3DAACgQQAAIEIAAAAAAAAAAA==</compiledString>
 							<returnType>float</returnType>
-							<sString>20.0f</sString>
+							<sString>sender.vG488_Active &gt; 0 ? 40.f :20.0f </sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -268,6 +374,17 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G490_CDReduction" />
+				<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="ED2454F5-FE11-40FA-96BD-8F5EAE3EFCD5">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw2Zm5kAAAAA/</compiledString>
+							<returnType>float</returnType>
+							<sString>refineScale(7.2, 0.5)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -276,9 +393,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQg==</compiledString>
+		<compiledString>FQkAAAABAAAAFQAAAENvb2xkb3duAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>80</sString>
+		<sString>cCooldown</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -326,7 +443,68 @@
 	<naftaCost>-1</naftaCost>
 	<name textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_name.txt" />
 	<node></node>
-	<passiveApplicators />
+	<passiveApplicators>
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="00186341-7B55-42FF-9030-7A5E295462ED">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="06C91333-85EF-4E94-B116-CEC2502D2736">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+	</passiveApplicators>
 	<persistentId>G487</persistentId>
 	<prerequisiteTalents />
 	<rarity>outstanding</rarity>
@@ -334,7 +512,7 @@
 	<shortDescription textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_shortDescription.txt" />
 	<talentRollGroups>16</talentRollGroups>
 	<talentStats />
-	<targetType>672989247</targetType>
+	<targetType>672989695</targetType>
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>

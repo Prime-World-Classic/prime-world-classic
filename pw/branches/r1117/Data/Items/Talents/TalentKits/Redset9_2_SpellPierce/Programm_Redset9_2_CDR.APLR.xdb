@@ -55,34 +55,13 @@
 			<stopEvents>0</stopEvents>
 		</Item>
 		<Item>
-			<applicator href="/Items/Talents/TalentKits/Redset9_2_SpellPierce/Programm_Redset9_2_CDR.APLR" id="99BC20B1-D5C3-4EDF-ADDE-02D21A5C8BD9">
-				<PermanentStatModApplicator>
-					<applyTarget>ApplicatorTarget</applyTarget>
-					<caption>Total_CooldownUltimateReduction</caption>
-					<customApplyType>None</customApplyType>
+			<applicator href="/Items/Talents/TalentKits/Redset9_2_SpellPierce/Programm_Redset9_2_CDR.APLR" id="7780E476-0CF7-47F9-85AC-F49D37FBF663">
+				<PermanentStatModApplicator parent="/Items/Talents/_commonData/Total_CDR.APLR">
 					<enabled>
 						<compiledString>FRkAAAACAAAAHgAAADQAAABBZGRfQ0RSX1JlZHNldDlfMkNvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdVgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAABA</compiledString>
 						<returnType>bool</returnType>
 						<sString>sender.vAdd_CDR_Redset9_2Counter == 2</sString>
 					</enabled>
-					<formulaName></formulaName>
-					<LoggingEvent>-1</LoggingEvent>
-					<modifier>
-						<addValue>
-							<compiledString>FRIAAAABAAAAHgAAAENvb2xkb3duUmVkdWN0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
-							<returnType>float</returnType>
-							<sString>cCooldownReduction</sString>
-						</addValue>
-						<multValue>
-							<compiledString></compiledString>
-							<returnType>float</returnType>
-							<sString>1.0f</sString>
-						</multValue>
-						<stat>Life</stat>
-						<topModifier>false</topModifier>
-						<variable>Total_CooldownReduction</variable>
-					</modifier>
-					<providerName></providerName>
 				</PermanentStatModApplicator>
 			</applicator>
 			<continueCondition>

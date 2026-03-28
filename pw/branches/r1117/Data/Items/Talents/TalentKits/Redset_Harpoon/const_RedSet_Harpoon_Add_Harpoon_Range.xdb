@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level5/G800_Harpoon_AtSpdOrDex.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" Count="1" />
+	<name>Add_Harpoon_Range</name>
+	<var>
+		<compiledString>FQwAAAACAAAAGQAAACwAAABHODAwX0FjdGl2ZQBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHU4AAADf4PbERHoJx0X8BwAAAOsHx0X8AAAAANtF/IvlXcMAAAAAAADwPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>cG800_Active == 1 ? 7 :  0</sString>
+	</var>
+</UnitConstant>

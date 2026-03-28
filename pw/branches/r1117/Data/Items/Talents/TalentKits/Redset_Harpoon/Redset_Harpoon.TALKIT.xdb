@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentKit>
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<caption>G798_Harpoon</caption>
+	<kitCapacity>0</kitCapacity>
+	<name textref="/Items/Talents/TalentKits/Redset_Harpoon/Redset_Harpoon.TALKIT_name.txt" />
+	<special href="" />
+	<talents>
+		<Item href="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" />
+		<Item href="/Items/Talents/Level4/G799_Harpoon_StrOrInt.TALENT" />
+		<Item href="/Items/Talents/Level5/G800_Harpoon_AtSpdOrDex.TALENT" />
+		<Item href="/Items/Talents/Level6/G801_Harpoon_StrOrIntAtSpd.TALENT" />
+	</talents>
+</TalentKit>

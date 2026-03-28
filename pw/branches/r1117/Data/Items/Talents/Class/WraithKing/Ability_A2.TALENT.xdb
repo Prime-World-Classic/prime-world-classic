@@ -29,6 +29,7 @@
 	<aoeType>None</aoeType>
 	<applicators>
 		<Item href="/Items/Talents/Class/WraithKing/status_A2.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>2</askId>
 	<autoTargetSelector href="/Items/Talents/Class/WraithKing/Ability_A2.TALENT" id="268DF432-92DC-4E8E-95BF-9993E11DE3E3">

@@ -7,6 +7,7 @@
 			<AuraApplicator>
 				<applicators>
 					<Item href="/Items/Talents/Class/Crusader/status_A3_HealAlly.APLR" />
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 				</applicators>
 				<applyTarget>ApplicatorTarget</applyTarget>
 				<behaviorFlags>155</behaviorFlags>
@@ -123,6 +124,7 @@
 									<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 								</HealApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Crusader/status_A3_HealSelf.APLR" id="6D371A22-39AB-4136-AB2F-ED81F4B239ED">
 							<DispatchImmediate>
@@ -139,7 +141,7 @@
 									<Item href="" />
 									<Item href="" />
 								</dispatchEffect>
-								<flags>0</flags>
+								<flags>1</flags>
 								<instantApply>false</instantApply>
 							</DispatchImmediate>
 						</dispatch>

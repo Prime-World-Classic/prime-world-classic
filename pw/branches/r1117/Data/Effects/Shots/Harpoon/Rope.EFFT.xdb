@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <LightningEffect>
 	<BackLink DBID="/Creeps/Normals/Normal6/HarpoonProgram.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_Harpoon/G798_Harpoon_Life.TALENT" Count="1" />
 	<component href="/Effects/Shots/Harpoon/Rope.EFFT" id="967CA88F-352E-433E-ABF5-A9DFB1C76D48">
 		<DBLightningSceneComponent>
 			<attached />

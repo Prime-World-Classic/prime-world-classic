@@ -97,6 +97,7 @@
 													<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
 												</DamageApplicator>
 											</Item>
+											<Item href="/Heroes/DefaultStatus/_SLOW_MOVE.APLR" />
 											<Item href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="148C3AF5-5CAC-4075-911B-8428C3D4F12B">
 												<StatModApplicator>
 													<applyTarget>AbilityOwner</applyTarget>

@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" Count="2" />
+	<BackLink DBID="/Heroes/DefaultStatus/List_HasteUnstacked.APLS" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" Count="2" />
+	<applicators>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_haste.APLR" id="562350D0-36FC-450E-98ED-E18B5FEF2800">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>144</behaviorFlags>
+				<caption>+MoveSpeed</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_haste.APLR" id="00D53784-3F1E-48C1-BFFD-FDF5E27D08DD">
+						<EffectList>
+							<deathType>Manual</deathType>
+							<effects>
+								<Item href="/Effects/Buffs/SpeedingUp/_Move.EFFT" />
+								<Item href="/Effects/Buffs/SpeedingUp/_MoveCycle.EFFT" />
+							</effects>
+							<enableCondition href="" />
+							<lifeTime>0</lifeTime>
+						</EffectList>
+					</Item>
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FSYAAAAFAAAALQAAAEYAAAB8AAAAnAAAALwAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABIYXN0ZV9QZXJjZW50AFWL7IPsFGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoCAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdDdoEAAAAItVCIsCi00Ii5CoAQAA/9KJRfSLRQxQi00IUWgYAAAAi1X0iwKLTfSLUFD/0tld8OsF2e7ZXfDZRfDcDdYAAADZ6N7B2V3s2UXsi+VdwwAAAAAAAPA/exSuR+F6hD8AAAAA</compiledString>
+						<returnType>float</returnType>
+						<sString>1 + talconst("G792","Haste_Percent")*0.01</sString>
+					</multValue>
+					<stat>MoveSpeed</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName>Haste_Percent</statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption>Ускорение Символ моря (G795)</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>false</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName></formulaName>
+	<image href="" />
+	<lifeTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="" />
+	<power>10</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FSQAAAAFAAAAKwAAAEQAAAB6AAAAmgAAALoAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk1X0FjdGl2ZQBVi+yD7BRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXw3B3cAAAA3+D2xER6CcdF7AEAAADrB8dF7AAAAACKReyL5V3DAAAAAAAA8D8AAAAA</compiledString>
+		<returnType>bool</returnType>
+		<sString>talconst("G792","G795_Active") ==1</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Heroes/DefaultStatus/List_HasteUnstacked.APLS" />
+</StatusApplicator>

@@ -271,6 +271,7 @@
 									</spells>
 								</SpellSwitchApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Brewer/spell_SpreadHoney.SPLL" id="0690D335-599D-4822-8863-4DC3198B6BEC">
 							<DispatchImmediate>

@@ -9,7 +9,6 @@
 	<BackLink DBID="/Creeps/Bosses/Boss3/A2_CatSong.APLR" Count="2" />
 	<BackLink DBID="/Creeps/Minions/Minion3/CTF_S5.CREEP" Count="1" />
 	<BackLink DBID="/Creeps/Minions/Minion3/DummyTestDps.ATCK" Count="1" />
-	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Artist/status_A3_damage.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/FireFox/status_A2_Burn.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/FireFox/status_A2_Burn_Upg.APLR" Count="1" />
@@ -57,6 +56,8 @@
 	<BackLink DBID="/Items/Talents/Level1/G273_AntiCreep-Proc.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level3/G038_ManaBurnProc-Mana.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Katana/status_A0_SUP_Burn_Base.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_Building.APLR" Count="5" />
 	<signRecipients>EVENT_PARTICIPANTS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventDamageDealed.UIEV" id="00B3EB47-25ED-4F60-8A69-8807269EE6D0">

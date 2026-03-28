@@ -260,6 +260,7 @@
 																</spells>
 															</SpellSwitchApplicator>
 														</Item>
+														<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 													</applicators>
 													<dispatch href="/Items/Talents/Class/Banshee/Ability_A1.TALENT" id="52B4844B-F032-4D22-9237-0C03807D8620">
 														<DispatchImmediate>

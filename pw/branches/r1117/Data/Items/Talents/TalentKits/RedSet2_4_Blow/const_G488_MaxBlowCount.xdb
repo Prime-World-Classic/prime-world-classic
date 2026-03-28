@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Level3/G488_StaOrWill.TALENT" Count="1" />
 	<name>G488_MaxCount</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 		<returnType>float</returnType>
-		<sString>2</sString>
+		<sString>1</sString>
 	</var>
 </UnitConstant>

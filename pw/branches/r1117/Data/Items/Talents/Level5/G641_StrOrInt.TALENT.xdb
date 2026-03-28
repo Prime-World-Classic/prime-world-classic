@@ -38,6 +38,7 @@
 	<BackLink DBID="/Test/Talents/RedSet7_5.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet8.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet8Add.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Inventor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -283,6 +284,18 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Level5/G641_StrOrInt.TALENT" id="FFC4CF30-8CDC-46D3-8C35-9E06A2FAC3D0">
+					<UnitConstant>
+						<name>CooldownMainTalent</name>
+						<var>
+							<compiledString>FRwAAAAFAAAAKwAAAD4AAABLAAAAXQAAAHAAAABBY3RpdmF0ZWRJbktpdAAAQ0RyZWR1Y3Rpb24AVYvsg+wMi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHYwAAADf4PbEBXoL3QWEAAAA3V346yOLRQxQi00IUWgQAAAAi1UQiwKLTRCLUFD/0twthAAAAN1d+N1F+Nld9NlF9IvlXcMAAAAAAIBmQAAAAAAAAABA</compiledString>
+							<returnType>float</returnType>
+							<sString>cActivatedInKit &lt; 2 ? 180 : 180-cCDreduction</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_Add_Duration" />
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_CDreduction" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -291,9 +304,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAA0Qw==</compiledString>
+		<compiledString>FRMAAAABAAAAHwAAAENvb2xkb3duTWFpblRhbGVudABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 		<returnType>float</returnType>
-		<sString>180</sString>
+		<sString>cCooldownMainTalent</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -438,16 +451,16 @@
 			<FlagsApplicator>
 				<applyTarget>AbilityOwner</applyTarget>
 				<behaviorFlags>0</behaviorFlags>
-				<caption>Запрет использовать талант, если нет 3</caption>
+				<caption>Запрет использовать талант, если нет 3(отключено)</caption>
 				<consumables />
 				<effect>
 					<Item href="" />
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString>FRkAAAACAAAAHgAAADQAAABSZWRzZXQ2XzRfVG9vbHRpcENvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdVgAAAN/g9sQFegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAhA</compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 					<returnType>bool</returnType>
-					<sString>sender.vRedset6_4_TooltipCounter &lt; 3</sString>
+					<sString>false</sString>
 				</enabled>
 				<flag>1024</flag>
 				<formulaName></formulaName>

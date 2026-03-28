@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/Items/Talents/WraithKing.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A4_2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/WraithKing_Mighty.TALENTSET" Count="1" />

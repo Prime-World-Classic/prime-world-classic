@@ -49,6 +49,7 @@
 					<Spell>
 						<applicators>
 							<Item href="/Items/Talents/Class/Hunter/status_A2_SelfDexterity.APLR" />
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Hunter/Ability2.TALENT" id="E51FE1AB-8298-4557-923A-859F65406230">
 							<DispatchImmediate>
@@ -91,6 +92,7 @@
 					<Spell>
 						<applicators>
 							<Item href="/Items/Talents/Class/Hunter/status_A2_dexterity.APLR" />
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Hunter/Ability2.TALENT" id="AF2D18B7-FA5B-4DB4-99AB-364121DEC885">
 							<DispatchImmediate>

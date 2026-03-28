@@ -80,6 +80,7 @@
 				<targetSelector href="" />
 			</SpellPeriodicallyApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>144</behaviorFlags>

@@ -1189,6 +1189,46 @@
 				</TimeController>
 			</timeController>
 		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Debuffs/Bomb/_.PRXY" id="05B4F2CD-C967-4C6A-BA57-E2779A68F4C3">
+				<DBSoundSceneComponent>
+					<attached />
+					<caption>sound</caption>
+					<desc>
+						<eventName>Bomb-in</eventName>
+						<groupName>SFX</groupName>
+						<projectName>PF</projectName>
+					</desc>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<orientation>Default</orientation>
+					<timeInterval>0</timeInterval>
+				</DBSoundSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
 	</attached>
 	<caption></caption>
 	<groupFlags>0</groupFlags>

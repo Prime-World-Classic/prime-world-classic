@@ -18,14 +18,14 @@
 			<stats>
 				<Item>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 						<returnType>float</returnType>
-						<sString>25</sString>
+						<sString>30</sString>
 					</increment>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAICiQw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACvQw==</compiledString>
 						<returnType>float</returnType>
-						<sString>325</sString>
+						<sString>350</sString>
 					</value>
 				</Item>
 				<Item>
@@ -41,7 +41,13 @@
 					</value>
 				</Item>
 				<Item skip="1" />
-				<Item skip="1" />
+				<Item>
+					<increment>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
+						<returnType>float</returnType>
+						<sString>0.2</sString>
+					</increment>
+				</Item>
 				<Item skip="1" />
 				<Item skip="1" />
 				<Item skip="1" />

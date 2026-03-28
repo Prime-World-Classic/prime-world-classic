@@ -239,6 +239,7 @@
 				<targetSelector href="" />
 			</SpellApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>2</askId>
 	<autoTargetSelector href="/Items/Talents/Class/Invisible/Ability_A2.TALENT" id="5A04CD4A-2668-42EF-836B-2110DADBC05D">

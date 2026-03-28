@@ -4,7 +4,7 @@
 	<BackLink DBID="/Items/Talents/Level4/G640_AttackSpeed.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level6/G642_Int_AtSpd.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level6/G643_Str_AtSpd.TALENT" Count="1" />
-	<name>activatedInKit</name>
+	<name>ActivatedInKit</name>
 	<var>
 		<compiledString>FRkAAAABAAAAHQAAAFJlZHNldDZfNF9Ub29sdGlwQ291bnRlcgBVi+xoAAAAAItFCIsQi00Ii4KIAQAA/9Bdww==</compiledString>
 		<returnType>float</returnType>

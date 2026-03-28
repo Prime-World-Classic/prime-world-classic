@@ -75,6 +75,7 @@
 												<applicators>
 													<Item href="/Items/Talents/Class/Artist/status_A2_heal.APLR" />
 													<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+													<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 												</applicators>
 												<dispatch href="/Items/Talents/Class/Artist/A2_Dispatch.DSCH" />
 											</Spell>
@@ -127,6 +128,7 @@
 												<applicators>
 													<Item href="/Items/Talents/Class/Artist/status_A2_heal.APLR" />
 													<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+													<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 												</applicators>
 												<dispatch href="/Items/Talents/Class/Artist/A2_Dispatch.DSCH" />
 											</Spell>
@@ -152,6 +154,7 @@
 												<applicators>
 													<Item href="/Items/Talents/Class/Artist/status_A2_heal.APLR" />
 													<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+													<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 												</applicators>
 												<dispatch href="/Items/Talents/Class/Artist/Ability_A2.TALENT" id="E9C24D3E-3269-4497-9257-A69DC9E5BF1D">
 													<DispatchImmediate>

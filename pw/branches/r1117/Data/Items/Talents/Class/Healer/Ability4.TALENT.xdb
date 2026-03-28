@@ -12,7 +12,7 @@
 	<BackLink DBID="/Test/Talents/TestSetHealer.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Healer/Ability4_2.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

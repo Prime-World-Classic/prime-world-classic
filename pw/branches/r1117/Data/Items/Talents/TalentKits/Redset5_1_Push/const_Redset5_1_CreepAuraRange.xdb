@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G585_Dex.TALENT" Count="1" />
 	<name>DamageHeroBuildingTime</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+		<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AoAAADrB8dF/A8AAADbRfyL5V3DAAAAAAAAAEA=</compiledString>
 		<returnType>float</returnType>
-		<sString>15</sString>
+		<sString>sender.vRedset5_1_Aura &gt;= 2 ? 10 : 15</sString>
 	</var>
 </UnitConstant>

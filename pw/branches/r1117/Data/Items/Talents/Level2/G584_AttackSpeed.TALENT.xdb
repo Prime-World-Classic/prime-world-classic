@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/GameLogic/AILogic.AILP" Count="2" />
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set5" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set5_kit1" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Crusader_A_Mighty.TALENTSET" Count="1" />
@@ -28,6 +28,8 @@
 	<BackLink DBID="/Test/Talents/RedSet7_4.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet8.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet8Add.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/tRedset5_1_Push.TALKIT" Count="1" />
+	<BackLink DBID="/Items/Talents/Inventor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -85,6 +87,8 @@
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_AddStat" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_AddDamageCreep" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_CreepAuraRange" />
+				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_SlowDuration" />
+				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_Dec_MoveSpeed" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

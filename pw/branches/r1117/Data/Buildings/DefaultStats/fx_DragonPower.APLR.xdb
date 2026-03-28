@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <FlagsApplicator>
-	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/aura_NearDragon.APLR" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/Dragon/aura_NearDragon_1.APLR" Count="2" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>216</behaviorFlags>
@@ -11,9 +10,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FRAAAAABAAAAGgAAAERyYWdvblBvd2VyQXVyYQBVi+xqAItFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9AzyTtFEA+VwYrBXcM=</compiledString>
+		<compiledString>FRAAAAABAAAAGwAAAERyYWdvblBvd2VyQXVyYQBVi+xRagCLRRBQaAAAAACLTQyLEYtNDIuCnAEAAP/QO0UQdCyLTQyLEYtNDItCUP/QhcB0EotNDIsRi00Mi0JQ/9CD+AF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3D</compiledString>
 		<returnType>bool</returnType>
-		<sString>receiver.applDragonPowerAura(GLOBAL) != pMisc</sString>
+		<sString>receiver.applDragonPowerAura(GLOBAL) != pMisc &amp;&amp; (rUnitKind == 0 || rUnitKind == 1)</sString>
 	</enabled>
 	<flag>0</flag>
 	<formulaName></formulaName>

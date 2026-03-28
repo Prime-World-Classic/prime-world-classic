@@ -17,6 +17,7 @@
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_GoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Test/Talents/Bomber/Test.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Plane.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/ThunderGod.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -80,6 +81,7 @@
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_activatedInKit" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_Active" />
+				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_MainTalent" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

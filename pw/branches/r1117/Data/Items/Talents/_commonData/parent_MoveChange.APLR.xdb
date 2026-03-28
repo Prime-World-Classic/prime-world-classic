@@ -24,6 +24,7 @@
 	<BackLink DBID="/Items/Talents/Level3/G777_MoveSpeed_Super.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level3/G784_MoveSpeed_afterRess.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level4/G044_Life-Silence.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G793_SeaSymbol.TALENT" Count="1" />
 	<applyTarget>AbilityOwner</applyTarget>
 	<caption>Add_MoveSpeed</caption>
 	<customApplyType>None</customApplyType>

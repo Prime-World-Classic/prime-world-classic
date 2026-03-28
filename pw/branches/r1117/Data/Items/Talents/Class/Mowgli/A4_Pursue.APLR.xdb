@@ -17,6 +17,7 @@
 			<applicators>
 				<Item href="/Items/Talents/Class/Mowgli/status_A4_Pursue.APLR" />
 				<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 			</applicators>
 			<dispatch href="/Items/Talents/Class/Mowgli/A4_Pursue.APLR" id="567C5CF7-E0F3-4ACB-880B-EF4DC6456B56">
 				<DispatchImmediate>

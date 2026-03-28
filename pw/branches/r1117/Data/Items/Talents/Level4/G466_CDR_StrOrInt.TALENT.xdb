@@ -173,9 +173,9 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FRIAAAABAAAAHgAAAENvb2xkb3duUmVkdWN0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<compiledString>FZAAAAAGAAAAlwAAALQAAADUAAAA+wAAABoBAAAsAQAAVG90YWxfQ29vbGRvd25SZWR1Y3Rpb24AQ29vbGRvd25SZWR1Y3Rpb24AAABNYXhfVG90YWxDb29sZG93blJlZHVjdGlvbgAAQ29vbGRvd25SZWR1Y3Rpb24AAABNYXhfVG90YWxDb29sZG93blJlZHVjdGlvbgAAVG90YWxfQ29vbGRvd25SZWR1Y3Rpb24AVYvsg+wkaAAAAACLRQiLEItNCIuCiAEAAP/Qi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ3V34/9DcRfiLTQxRi1UIUmgsAAAAi0UQixCLTRCLQlDdXfD/0Nxd8N/g9sQBdR+LTQxRi1UIUmhIAAAAi0UQixCLTRCLQlD/0N1d6Os4i00MUYtVCFJoXAAAAItFEIsQi00Qi0JQ/9BoeAAAAItNCIsRi00Ii4KIAQAA3V3g/9DcbeDdXejdRejZXdzZRdyL5V3D</compiledString>
 						<returnType>float</returnType>
-						<sString>cCooldownReduction</sString>
+						<sString>(sender.vTotal_CooldownReduction+cCooldownReduction)&lt;=cMax_TotalCooldownReduction? cCooldownReduction : (cMax_TotalCooldownReduction-sender.vTotal_CooldownReduction)</sString>
 					</addValue>
 					<multValue>
 						<compiledString></compiledString>

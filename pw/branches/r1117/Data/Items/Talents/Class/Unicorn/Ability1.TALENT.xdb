@@ -402,6 +402,7 @@
 													<targetSelector href="" />
 												</SpellApplicator>
 											</Item>
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 										</applicators>
 										<dispatch href="/Items/Talents/Class/Unicorn/Ability1.TALENT" id="C2116173-ACFE-4B54-99C2-0B0FAAD857C8">
 											<DispatchImmediate>

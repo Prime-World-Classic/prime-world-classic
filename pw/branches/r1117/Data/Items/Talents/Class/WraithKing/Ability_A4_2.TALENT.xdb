@@ -7,6 +7,7 @@
 	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A4u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level2/G567_CasterBase.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/WraithKing.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -164,6 +165,7 @@
 									<Spell>
 										<applicators>
 											<Item href="/Items/Talents/Class/WraithKing/status_A2.APLR" />
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 										</applicators>
 										<dispatch href="/Items/Talents/Class/WraithKing/Ability_A4_2.TALENT" id="8C841730-0518-44F5-8297-8879D333F84C">
 											<DispatchImmediate>

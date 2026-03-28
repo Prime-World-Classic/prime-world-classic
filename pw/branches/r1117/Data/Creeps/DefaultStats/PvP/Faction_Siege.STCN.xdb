@@ -24,9 +24,9 @@
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
 				<returnType>float</returnType>
-				<sString>0</sString>
+				<sString>10</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>Life</statId>
@@ -40,9 +40,9 @@
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 				<returnType>float</returnType>
-				<sString>0</sString>
+				<sString>1</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>Strength</statId>

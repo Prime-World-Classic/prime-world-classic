@@ -48,6 +48,7 @@
 					<Spell>
 						<applicators>
 							<Item href="/Items/Talents/Class/Warlord/status_A3_armor.APLR" />
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Warlord/Ability3.TALENT" id="2EDA294E-A220-4606-83C0-3F2A5D3F6DF6">
 							<DispatchImmediate>

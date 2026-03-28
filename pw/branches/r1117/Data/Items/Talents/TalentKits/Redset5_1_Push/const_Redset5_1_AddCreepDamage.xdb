@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G585_Dex.TALENT" Count="1" />
 	<name>Redset5_1_AddCreepDamage</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJItNCIsRi00Ii4IwAQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAIEEAADRCVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 		<returnType>float</returnType>
-		<sString>15</sString>
+		<sString>damageScale( max(sStrength, sIntellect), 10, 45)</sString>
 	</var>
 </UnitConstant>

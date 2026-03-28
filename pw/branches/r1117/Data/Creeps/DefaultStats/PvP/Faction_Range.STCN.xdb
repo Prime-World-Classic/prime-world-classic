@@ -9,16 +9,16 @@
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
 				<returnType>float</returnType>
-				<sString>8</sString>
+				<sString>10</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>Life</statId>
 			<value>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAqQw==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQw==</compiledString>
 				<returnType>float</returnType>
-				<sString>170</sString>
+				<sString>200</sString>
 			</value>
 		</Item>
 		<Item>
@@ -57,9 +57,9 @@
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
 				<returnType>float</returnType>
-				<sString>0</sString>
+				<sString>0.3</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>AttackSpeed</statId>

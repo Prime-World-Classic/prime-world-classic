@@ -4,6 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Plane/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/programm_G487_AoEDmg.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_Building.APLR" Count="5" />
 	<component href="/Effects/Debuffs/Bomb/_ApplyTRS.PRXY" />
 	<deathType>Anim</deathType>
 	<enableCondition href="" />

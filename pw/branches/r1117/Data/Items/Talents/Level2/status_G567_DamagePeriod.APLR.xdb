@@ -74,9 +74,9 @@
 													<cancelInvisibility>false</cancelInvisibility>
 													<caption>Урон</caption>
 													<damage>
-														<compiledString>FUAAAAAFAAAARwAAAF0AAABxAAAAiQAAAMIAAABHNTY3X0RhbWFnZVBlclRpY2sAAEc1ODFfQWN0aXZlAEc1ODFfQWRkRGFtYWdlAABHNTgxX1NhdmVkQ291bnQAVYvsg+wUaBQAAACLRQiLEItNCIuCiAEAAP/Q3B3kAAAA3+D2xEF1TItNDFGLVQhSaCAAAACLRRCLEItNEItCUP/QUdno2RwkaDAAAACLTQyLEYtNDIuCiAEAAN1d+P/QUdkcJOhDAAAAg8QI3H343V3w6wXZ7t1d8ItNDFGLVQhSaAAAAACLRRCLEItNEItCUP/Q3EXw2V3s2UXsi+VdwwAAgD8AAAAAAAAAAFWL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
+														<compiledString>FV4AAAAIAAAAZQAAAHsAAACPAAAApwAAANgAAADuAAAAAgEAACYBAABHNTY3X0RhbWFnZVBlclRpY2sAAEc1ODFfQWN0aXZlAEc1ODFfQWRkRGFtYWdlAABHNTgxX1NhdmVkQ291bnQARzU3MV9BY3RpdmUARzU3MV9IZWFsdGhEYW1hZ2UAVYvsg+wYaBQAAACLRQiLEItNCIuCiAEAAP/Q3B1PAQAA3+D2xEF1TItNDFGLVQhSaCAAAACLRRCLEItNEItCUP/QUdno2RwkaDAAAACLTQyLEYtNDIuCiAEAAN1d+P/QUdkcJOiQAAAAg8QI3H343V3w6wXZ7t1d8GhAAAAAi00IixGLTQiLgogBAAD/0NwdTwEAAN/g9sRBdR+LTQxRi1UIUmhMAAAAi0UQixCLTRCLQlD/0Nld7OsF2e7ZXeyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0NxF8NhF7Nld6NlF6IvlXcMAAAAAAACAPwAAAAAAAAAAVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 														<returnType>float</returnType>
-														<sString>cG567_DamagePerTick + (sender.vG581_Active &gt; 0 ? (cG581_AddDamage/max(receiver.vG581_SavedCount,1)) :0)</sString>
+														<sString>cG567_DamagePerTick + (sender.vG581_Active &gt; 0 ? (cG581_AddDamage/max(receiver.vG581_SavedCount,1)) :0)+ (sender.vG571_Active &gt; 0 ? cG571_HealthDamage : 0)</sString>
 													</damage>
 													<damageMode>4</damageMode>
 													<damageType>Energy</damageType>
@@ -102,7 +102,7 @@
 												<DamageApplicator>
 													<applyTarget>ApplicatorTarget</applyTarget>
 													<cancelInvisibility>false</cancelInvisibility>
-													<caption>Pure Урон</caption>
+													<caption>Pure Урон(отключен, встроен в основной аппликатор урона как маг урон)</caption>
 													<damage>
 														<compiledString>FRIAAAABAAAAHgAAAEc1NzFfSGVhbHRoRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 														<returnType>float</returnType>
@@ -111,9 +111,9 @@
 													<damageMode>4</damageMode>
 													<damageType>Pure</damageType>
 													<enabled>
-														<compiledString>FQwAAAACAAAAEQAAACcAAABHNTcxX0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+														<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 														<returnType>bool</returnType>
-														<sString>sender.vG571_Active &gt; 0 </sString>
+														<sString>false</sString>
 													</enabled>
 													<formulaName>G571_PureDamage</formulaName>
 													<LoggingEvent>-1</LoggingEvent>

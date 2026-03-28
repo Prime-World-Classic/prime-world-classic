@@ -233,6 +233,7 @@
 			</SummonApplicator>
 		</Item>
 		<Item href="/Items/Talents/Class/PinkGirl/PinkGirl_A0_Flag.APLR" />
+		<Item href="/Items/Talents/Class/PinkGirl/status_A0_PinkGirl.APLR" />
 	</applicators>
 	<askId>4</askId>
 	<autoTargetSelector href="" />
@@ -360,6 +361,11 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_BonusDamage" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Damage" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_StunDuration" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Evasion" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_StackDuration" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -368,9 +374,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACMQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACqQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>70</sString>
+		<sString>85</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

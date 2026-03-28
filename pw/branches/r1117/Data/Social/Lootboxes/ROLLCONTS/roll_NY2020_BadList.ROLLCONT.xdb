@@ -215,7 +215,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" id="C268CE61-3AD3-4AE1-84F4-11C3FADC309E">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>
@@ -567,7 +567,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" id="C7E47FD7-8F33-4A4F-B28D-C75158358E10">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+					<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

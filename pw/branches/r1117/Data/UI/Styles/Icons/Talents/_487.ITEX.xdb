@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level2/status_G487_MarkDmg.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus_Building.APLR" Count="1" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

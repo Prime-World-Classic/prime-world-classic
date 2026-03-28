@@ -210,7 +210,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_RedSet4.ROLLCONT" id="4E59BF3A-B4AC-4629-94DB-20373A339CC2">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+					<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

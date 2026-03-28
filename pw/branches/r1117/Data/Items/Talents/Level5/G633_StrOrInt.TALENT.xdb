@@ -39,6 +39,7 @@
 	<BackLink DBID="/Test/Talents/RedSet8.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet8Add.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Bomber/Test.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/ThunderGod.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -161,6 +162,17 @@
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_activatedInKit" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_Active" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction" />
+				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_MainTalent" />
+				<Item href="/Items/Talents/Level5/G633_StrOrInt.TALENT" id="29890C87-FDAC-4BA2-B595-8A856C103EC1">
+					<UnitConstant>
+						<name>CooldownMainTalent</name>
+						<var>
+							<compiledString>FTkAAAAFAAAAQAAAAFYAAABqAAAAfQAAAIgAAABSZWRzZXQ2XzJfVG9vbHRpcENvdW50ZXIAAAAAQ29vbGRvd25SZWR1Y3Rpb25fTWFpblRhbGVudABVi+yD7AxoAAAAAItFCIsQi00Ii4KIAQAA/9DcHaQAAADf4PbEAXUli00MUYtVCFJoHAAAAItFEIsQi00Qi0JQ/9DcLZwAAADdXfjrCd0FnAAAAN1d+N1F+Nld9NlF9IvlXcMAAAAAAABuQAAAAAAAAAhA</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vRedset6_2_TooltipCounter &gt;= 3? 240-cCooldownReduction_MainTalent :240</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -169,9 +181,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQw==</compiledString>
+		<compiledString>FRMAAAABAAAAHwAAAENvb2xkb3duTWFpblRhbGVudABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 		<returnType>float</returnType>
-		<sString>240</sString>
+		<sString>cCooldownMainTalent</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -324,9 +336,9 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString>FRkAAAACAAAAHgAAADQAAABSZWRzZXQ2XzJfVG9vbHRpcENvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdVgAAAN/g9sQFegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAhA</compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 					<returnType>bool</returnType>
-					<sString>sender.vRedset6_2_TooltipCounter &lt; 3</sString>
+					<sString>false</sString>
 				</enabled>
 				<flag>1024</flag>
 				<formulaName></formulaName>
@@ -338,9 +350,9 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>false</sString>
 				</startCondition>
 				<talents>
 					<Item href="/Items/Talents/Level5/G633_StrOrInt.TALENT" />

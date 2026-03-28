@@ -23,7 +23,7 @@
 	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
 	<aoeHeight>0</aoeHeight>
 	<aoeMaterial href="/Effects/UI/AOESelection/Corridor.MTRL" />
-	<aoePassabilityCheckMode>4</aoePassabilityCheckMode>
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
 	<aoeSize>
 		<compiledString>FQkAAAACAAAAFgAAACkAAABBMl9XaWR0aABVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDTcAAADZXfzZRfyL5V3DAAAAAAAA+D8=</compiledString>
 		<returnType>float</returnType>
@@ -1700,7 +1700,7 @@
 								<selectTarget>AbilityTarget</selectTarget>
 							</SelectApplicatorTarget>
 						</targetSelector>
-						<traceMode>4</traceMode>
+						<traceMode>0</traceMode>
 					</PointTargetSelector>
 				</targetSelector>
 			</SpellApplicator>

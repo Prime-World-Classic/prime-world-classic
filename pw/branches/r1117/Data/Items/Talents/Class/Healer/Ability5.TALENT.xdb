@@ -14,6 +14,7 @@
 	<BackLink DBID="/Test/Talents/Healer/Elite.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Healer/Epic.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Healer/Ability5_SUP.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

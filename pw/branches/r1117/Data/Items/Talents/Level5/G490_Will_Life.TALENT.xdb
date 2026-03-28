@@ -11,6 +11,7 @@
 	<BackLink DBID="/Test/Talents/RedSet2_1.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -91,16 +92,7 @@
 				</Item>
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxForm" />
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G490_CDReduction" />
-				<Item href="/Items/Talents/Level5/G490_Will_Life.TALENT" id="AE1312ED-F8E6-4825-A343-9C77F23F3650">
-					<UnitConstant>
-						<name>G490_MaxCount</name>
-						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
-							<returnType>float</returnType>
-							<sString>2.0f</sString>
-						</var>
-					</UnitConstant>
-				</Item>
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G490_MaxCount" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

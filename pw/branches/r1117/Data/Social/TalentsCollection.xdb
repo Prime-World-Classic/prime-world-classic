@@ -784,7 +784,7 @@
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level5/G560_EnemyAoeDmgDexStr.TALENT" />
@@ -1033,7 +1033,7 @@
 									<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level5/G490_Will_Life.TALENT" />
@@ -2783,7 +2783,7 @@
 									<talent href="/Items/Talents/Level3/G499_Int_Dex.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
@@ -3204,7 +3204,7 @@
 									<talent href="/Items/Talents/Level4/G568_CasterDamagePlus.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
@@ -4859,7 +4859,7 @@
 									<talent href="/Items/Talents/Level3/G512_Life.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level3/G439_Life_inc_int_str.TALENT" />
@@ -5917,7 +5917,7 @@
 									<talent href="/Items/Talents/Level3/G500_Str_Dex.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
@@ -6490,7 +6490,7 @@
 									<talent href="/Items/Talents/Level4/G568_CasterDamagePlus.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
@@ -6651,7 +6651,7 @@
 									<talent href="/Items/Talents/Level3/G499_Int_Dex.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />

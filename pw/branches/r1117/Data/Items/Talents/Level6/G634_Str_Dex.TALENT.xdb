@@ -85,6 +85,7 @@
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_activatedInKit" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction" />
 				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_Active" />
+				<Item href="/Items/Talents/TalentKits/Redset6_2_CDR/const_Redset6_2_CooldownReduction_MainTalent" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

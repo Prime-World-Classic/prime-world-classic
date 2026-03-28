@@ -1838,6 +1838,7 @@
 			</SpellApplicator>
 		</Item>
 		<Item href="/Items/Talents/Class/PinkGirl/PinkGirl_A0_Flag.APLR" />
+		<Item href="/Items/Talents/Class/PinkGirl/status_A0_PinkGirl.APLR" />
 	</applicators>
 	<askId>4</askId>
 	<autoTargetSelector href="" />
@@ -1993,6 +1994,11 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_BonusDamage" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Damage" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_StunDuration" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Evasion" />
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_StackDuration" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

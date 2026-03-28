@@ -8,7 +8,7 @@
 	<talents>
 		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" />
 		<Item href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
-		<Item href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+		<Item href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 		<Item href="/Items/Talents/Level5/G490_Will_Life.TALENT" />
 		<Item href="/Items/Talents/Level6/G491_StrOrInt.TALENT" />
 	</talents>

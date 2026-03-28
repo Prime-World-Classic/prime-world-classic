@@ -284,6 +284,7 @@
 									<Spell>
 										<applicators>
 											<Item href="/Items/Talents/Class/Banshee/appl_A4u_Heal.APLR" />
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 										</applicators>
 										<dispatch href="/Items/Talents/Class/Banshee/Ability_A4.TALENT" id="E10EE34F-A968-474A-BE5B-1D07403705BE">
 											<DispatchImmediate>
@@ -345,6 +346,7 @@
 									<Spell>
 										<applicators>
 											<Item href="/Items/Talents/Class/Banshee/appl_A4u_Heal.APLR" />
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 										</applicators>
 										<dispatch href="/Items/Talents/Class/Banshee/Ability_A4.TALENT" id="E846D09D-840B-410C-8EC6-274087BB1768">
 											<DispatchImmediate>

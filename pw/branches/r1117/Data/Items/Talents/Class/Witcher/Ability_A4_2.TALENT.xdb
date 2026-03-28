@@ -7,6 +7,7 @@
 	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A4u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/Talents/witcher/Ability4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -434,6 +435,7 @@
 												<unstackableWith href="" />
 											</StatusApplicator>
 										</Item>
+										<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 									</applicators>
 									<applyTarget>AbilityOwner</applyTarget>
 									<behaviorFlags>2</behaviorFlags>

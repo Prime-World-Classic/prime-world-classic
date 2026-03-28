@@ -97,6 +97,7 @@
 						</FlagsApplicator>
 					</Item>
 					<Item skip="1" />
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 				</applicators>
 				<behaviorFlags>144</behaviorFlags>
 				<description textref="/Items/Talents/Class/Healer/Ability4_2.TALENT_86272dec35d647e99986e03a4a23cb59_description.txt" />
@@ -178,6 +179,7 @@
 						</FlagsApplicator>
 					</Item>
 					<Item skip="1" />
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 				</applicators>
 				<applyTarget>AbilityOwner</applyTarget>
 				<behaviorFlags>144</behaviorFlags>

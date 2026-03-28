@@ -70,6 +70,7 @@
 	<BackLink DBID="/Test/Talents/WitchDoctor/Elite_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/WitchDoctor/Elite_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Faceless.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/WitchDoctor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -132,9 +133,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwzMz40AAAAA/</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA4EAAAAA/</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(7.1, 0.5)</sString>
+							<sString>refineScale(7, 0.5)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -147,6 +148,16 @@
 				<Item href="/Items/Talents/TalentKits/Vampiric6_CasterBoost/G302_Damage" />
 				<Item href="/Items/Talents/TalentKits/Vampiric6_CasterBoost/G308_StackCount" />
 				<Item href="/Items/Talents/TalentKits/Vampiric6_CasterBoost/G296_StackCount" />
+				<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="A27B4C7F-CD5C-4709-B114-391F5BB2D5DC">
+					<UnitConstant>
+						<name>AtSpdOrDex</name>
+						<var>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MDEAAAAA/</compiledString>
+							<returnType>float</returnType>
+							<sString>refineScale(2.2, 0.5)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -188,36 +199,6 @@
 	<name textref="/Items/Talents/Level3/G302_Life_Dexterity.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
-		<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="E786C980-5784-488E-AD30-C00AB941CF55">
-			<PermanentStatModApplicator>
-				<applyTarget>ApplicatorTarget</applyTarget>
-				<caption>+ Add_Life</caption>
-				<customApplyType>None</customApplyType>
-				<enabled>
-					<compiledString></compiledString>
-					<returnType>bool</returnType>
-					<sString>true</sString>
-				</enabled>
-				<formulaName></formulaName>
-				<LoggingEvent>-1</LoggingEvent>
-				<modifier>
-					<addValue>
-						<compiledString>FQkAAAABAAAAFQAAAEFkZF9MaWZlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
-						<returnType>float</returnType>
-						<sString>cAdd_Life</sString>
-					</addValue>
-					<multValue>
-						<compiledString></compiledString>
-						<returnType>float</returnType>
-						<sString>1.0f</sString>
-					</multValue>
-					<stat>Life</stat>
-					<topModifier>false</topModifier>
-					<variable></variable>
-				</modifier>
-				<providerName></providerName>
-			</PermanentStatModApplicator>
-		</Item>
 		<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="1778CF1F-55E7-4C65-B904-FC59C9C7B82F">
 			<PermanentStatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
@@ -262,9 +243,9 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<compiledString>FQ8AAAABAAAAGwAAAEFkZF9BdFNwZE9yRGV4AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 						<returnType>float</returnType>
-						<sString>cAdd_Stat</sString>
+						<sString>cAdd_AtSpdOrDex</sString>
 					</addValue>
 					<multValue>
 						<compiledString></compiledString>
@@ -292,6 +273,36 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
+						<compiledString>FQ8AAAABAAAAGwAAAEFkZF9BdFNwZE9yRGV4AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_AtSpdOrDex</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Dexterity</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="BC2DC4C6-3628-4B04-BA7D-D413F96DE33A">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
 						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 						<returnType>float</returnType>
 						<sString>cAdd_Stat</sString>
@@ -301,7 +312,37 @@
 						<returnType>float</returnType>
 						<sString>1.0f</sString>
 					</multValue>
-					<stat>Dexterity</stat>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="E91956DE-1606-4284-A8AE-A3EA26FDAD50">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
 					<topModifier>false</topModifier>
 					<variable></variable>
 				</modifier>

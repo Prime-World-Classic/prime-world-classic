@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G643_Str_AtSpd.TALENT" Count="1" />
 	<name>Duration</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+		<compiledString>FRwAAAAFAAAAKwAAAD4AAABLAAAAXQAAAHAAAABBY3RpdmF0ZWRJbktpdAAAQWRkRHVyYXRpb24AVYvsg+wMi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHYwAAADf4PbEBXoL3QWEAAAA3V346yOLRQxQi00IUWgQAAAAi1UQiwKLTRCLUFD/0twFhAAAAN1d+N1F+Nld9NlF9IvlXcMAAAAAAAAQQAAAAAAAAAhA</compiledString>
 		<returnType>float</returnType>
-		<sString>5</sString>
+		<sString>cActivatedInKit &lt; 3 ? 4  : 4+cAddDuration</sString>
 	</var>
 </UnitConstant>

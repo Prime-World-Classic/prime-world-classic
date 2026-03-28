@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <LightningEffect>
-	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4.TALENT" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Episode1/Talents/rockman/Ability4.TALENT" Count="1" />
 	<component href="/Heroes/Rockman/Ability4Link02.EFFT" id="E2B3D725-F7DC-4D3D-B697-49AE7F951199">
 		<DBLightningSceneComponent>

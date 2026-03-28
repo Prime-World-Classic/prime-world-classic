@@ -61,6 +61,17 @@
 				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Damage" />
 				<Item href="/Items/Talents/Class/PinkGirl/const_A0_BonusDamage" />
 				<Item href="/Items/Talents/Class/PinkGirl/const_A0_Evasion" />
+				<Item href="/Items/Talents/Class/PinkGirl/Ability_A0.TALENT" id="64C11FF6-19EC-4D22-A23F-4C9603EF63A5">
+					<UnitConstant>
+						<name>A0_MaxStacks</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>4.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/PinkGirl/const_A0_StackDuration" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -69,7 +80,7 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</cooldownTime>
@@ -102,7 +113,6 @@
 	<name textref="/Items/Talents/Class/PinkGirl/Ability_A0.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
-		<Item href="/Items/Talents/Class/PinkGirl/status_A0_PinkGirl.APLR" />
 		<Item href="/Items/Talents/Class/PinkGirl/_HeroIsHere.APLR" />
 	</passiveApplicators>
 	<persistentId>PinkGirl_A0</persistentId>

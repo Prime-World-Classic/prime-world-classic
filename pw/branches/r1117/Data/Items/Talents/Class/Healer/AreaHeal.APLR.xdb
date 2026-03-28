@@ -478,6 +478,7 @@
 						</spellIfFailed>
 					</SpellProbabilityApplicator>
 				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 			</applicators>
 			<dispatch href="/Items/Talents/Class/Healer/AreaHeal.APLR" id="AAD1D06D-A931-48F0-B08A-ED0FC29E6B7B">
 				<DispatchImmediate>

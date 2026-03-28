@@ -11,7 +11,6 @@
 	<BackLink DBID="/Test/Talents/Witcher/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A4_2u.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Witcher_Mighty.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>

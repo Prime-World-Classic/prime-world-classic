@@ -12,25 +12,25 @@
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACQQQ==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
 				<returnType>float</returnType>
-				<sString>18</sString>
+				<sString>20</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>Life</statId>
 			<value>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACHQw==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQw==</compiledString>
 				<returnType>float</returnType>
-				<sString>270</sString>
+				<sString>300</sString>
 			</value>
 		</Item>
 		<Item>
 			<calcIncrement>0</calcIncrement>
 			<calcValue>0</calcValue>
 			<increment>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
 				<returnType>float</returnType>
-				<sString>0.3</sString>
+				<sString>0.4</sString>
 			</increment>
 			<levelUpgrades />
 			<statId>Strength</statId>

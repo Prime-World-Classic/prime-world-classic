@@ -281,6 +281,7 @@
 										</startCondition>
 									</ProgramApplicator>
 								</Item>
+								<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 							</applicators>
 							<dispatch href="/Items/Talents/Class/Witcher/Ability_A2.TALENT" id="5D995F6E-9199-484D-9C28-AE510552CCB0">
 								<DispatchImmediate>

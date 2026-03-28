@@ -62,7 +62,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="64A22497-D52E-4075-902D-99CD9974C188">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Сила Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -109,7 +109,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="27943DC8-5BB8-4A92-A175-19C7059ECCE8">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Разум Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -156,7 +156,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="64F887DE-45EA-40CE-ABA0-446501DB9B45">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Хитрость Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -203,7 +203,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="488D3EB5-0F7B-4E09-9EB0-FF544C84183F">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Проворство Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -250,7 +250,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="554E2C7A-5304-40F8-9D0C-F0C0A6387153">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Стойкость Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -297,7 +297,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="A5D97798-D6DA-4E7E-943D-5F2B05B7A94D">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ Воля Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -344,7 +344,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="5197F452-0CC9-4E35-AAB1-C96A7F3B8A7D">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ EnergyDamageDecrease Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -391,7 +391,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" id="67EA6BB0-0FEA-44B9-B6C7-ABE323EFE865">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>216</behaviorFlags>
+				<behaviorFlags>0</behaviorFlags>
 				<caption>+ MaterialDamageDecrease Сет</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
@@ -437,7 +437,7 @@
 		</Item>
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
-	<behaviorFlags>136</behaviorFlags>
+	<behaviorFlags>2</behaviorFlags>
 	<caption>--- Статус "Баффы Сета"</caption>
 	<customCounter>
 		<compiledString>FRMAAAABAAAAFwAAAFN0YXR1c19BdXJhQnVmZlNldABVi+xoAAAAAItFDIsQi00Mi4KIAQAA/9BR2Rwk6AUAAACDxARdw7gBAAAAD6L3wgAAAAR0B/MPLEQkBMPpAAAAAFWL7IPsDNlFCNl9/A+3RfwNAAwAAIlF+Nlt+Ntd9Nlt/ItF9IvlXcM=</compiledString>
@@ -467,7 +467,7 @@
 		<returnType>bool</returnType>
 		<sString>true</sString>
 	</enabled>
-	<flags>0</flags>
+	<flags>13</flags>
 	<formulaName></formulaName>
 	<image href="/UI/Styles/Icons/Talents/_AuraSet.ITEX" />
 	<lifeTime>

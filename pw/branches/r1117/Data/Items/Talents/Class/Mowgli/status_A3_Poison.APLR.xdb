@@ -107,6 +107,7 @@
 											<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 										</HealApplicator>
 									</Item>
+									<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 								</applicators>
 								<dispatch href="/Items/Talents/Class/Mowgli/status_A3_Poison.APLR" id="7714B20B-7638-4FEA-87C0-D79CEC50200E">
 									<DispatchImmediate>

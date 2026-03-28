@@ -223,6 +223,7 @@
 																		<unstackableWith href="" />
 																	</StatusApplicator>
 																</Item>
+																<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 															</applicators>
 															<dispatch href="/Items/Talents/Class/Warlord/Ability2.TALENT" id="0D58C52A-7565-48D7-824C-D5158B64A512">
 																<DispatchImmediate>
@@ -364,6 +365,7 @@
 																		<useListAs>ListAsRule</useListAs>
 																	</FlagsApplicator>
 																</Item>
+																<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 															</applicators>
 															<dispatch href="/Items/Talents/Class/Warlord/Ability2.TALENT" id="2FFCDB9A-E871-43C2-A7C6-D5D7368D86D6">
 																<DispatchImmediate>

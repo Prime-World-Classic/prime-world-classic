@@ -99,7 +99,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

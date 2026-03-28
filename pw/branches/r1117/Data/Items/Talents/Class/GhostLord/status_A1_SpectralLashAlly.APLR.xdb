@@ -25,6 +25,7 @@
 				</startCondition>
 			</StatusApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>1</behaviorFlags>

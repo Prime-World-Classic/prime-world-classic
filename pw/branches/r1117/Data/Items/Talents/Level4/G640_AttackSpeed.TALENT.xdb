@@ -18,6 +18,7 @@
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_CollectionGoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_GoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_GoodList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Inventor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -83,6 +84,8 @@
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_DmgPercent" />
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_Duration" />
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_activatedInKit" />
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_CDreduction" />
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_Add_Duration" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

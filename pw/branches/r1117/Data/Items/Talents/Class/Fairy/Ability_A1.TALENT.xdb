@@ -225,9 +225,9 @@
 								<linkRange>14</linkRange>
 								<maxRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
 								<maxSpeed>
-									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
 									<returnType>float</returnType>
-									<sString>50</sString>
+									<sString>40</sString>
 								</maxSpeed>
 								<persistentApplicators>
 									<Item href="/Items/Talents/Class/Fairy/Ability_A1.TALENT" id="84A32117-A1B5-4595-BDDB-974F73394A93">
@@ -322,9 +322,9 @@
 								</persistentApplicators>
 								<size>3.3</size>
 								<speed>
-									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
 									<returnType>float</returnType>
-									<sString>25</sString>
+									<sString>15</sString>
 								</speed>
 							</DispatchCursor>
 						</dispatch>

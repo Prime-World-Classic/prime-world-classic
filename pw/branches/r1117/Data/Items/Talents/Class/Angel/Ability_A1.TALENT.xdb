@@ -16,6 +16,7 @@
 	<BackLink DBID="/Test/Talents/Angel/Epic_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Angel/Epic_Str.TALENTSET" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Angel/Ability_A5.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -199,6 +200,7 @@
 																					<applicators>
 																						<Item href="/Items/Talents/Class/Angel/A1_Heal.APLR" />
 																						<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+																						<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 																					</applicators>
 																					<dispatch href="" />
 																				</Spell>
@@ -410,6 +412,7 @@
 															<applicators>
 																<Item href="/Items/Talents/Class/Angel/A1_Heal.APLR" />
 																<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
+																<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 															</applicators>
 															<dispatch href="/Items/Talents/Class/Angel/Ability_A1.TALENT" id="46B933D5-4C19-464C-9D41-19D33742B276">
 																<DispatchImmediate>

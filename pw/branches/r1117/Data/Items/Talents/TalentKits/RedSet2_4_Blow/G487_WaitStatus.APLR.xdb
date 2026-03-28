@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" Count="1" />
 	<applicators>
 		<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus.APLR" id="3E825501-77BE-4E74-BB82-80EC1A947C3C">
 			<StatusApplicator parent="/Heroes/DefaultStatus/_SLOW_MOVE.APLR">

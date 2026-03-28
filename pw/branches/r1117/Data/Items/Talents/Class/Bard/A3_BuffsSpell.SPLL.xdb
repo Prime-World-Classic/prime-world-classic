@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Bard/Ability_A3.TALENT" Count="2" />
 	<applicators>
 		<Item href="/Items/Talents/Class/Bard/status_A3_Shield.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<dispatch href="/Items/Talents/Class/Bard/A3_BuffsSpell.SPLL" id="AE7F7DC3-CE60-46EF-9EC8-71543277D1C4">
 		<DispatchImmediate>

@@ -102,6 +102,7 @@
 									<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 								</HealApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Warlord/status_A4_banner.APLR" id="62C5EC52-2717-42C9-AAB2-E25D0470A93F">
 							<DispatchImmediate>

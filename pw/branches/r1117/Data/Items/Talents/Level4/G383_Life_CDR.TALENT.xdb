@@ -163,9 +163,9 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FRIAAAABAAAAQwAAAENvb2xkb3duUmVkdWN0aW9uAFWL7FFWi0UIixCLTQiLQkz/0Ivwi00IixGLTQiLgpABAAD/0DvwdR+LTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0Nld/OsF2e7ZXfzZRfxei+VdwwAAAAA=</compiledString>
+						<compiledString>FZAAAAAGAAAAvwAAANwAAAD8AAAAIwEAAEIBAABUAQAAVG90YWxfQ29vbGRvd25SZWR1Y3Rpb24AQ29vbGRvd25SZWR1Y3Rpb24AAABNYXhfVG90YWxDb29sZG93blJlZHVjdGlvbgAAQ29vbGRvd25SZWR1Y3Rpb24AAABNYXhfVG90YWxDb29sZG93blJlZHVjdGlvbgAAVG90YWxfQ29vbGRvd25SZWR1Y3Rpb24AVYvsg+wsVotFCIsQi00Ii0JM/9CL8ItNCIsRi00Ii4KQAQAA/9A78A+FuwAAAGgAAAAAi00IixGLTQiLgogBAAD/0ItNDFGLVQhSaBgAAACLRRCLEItNEItCUN1d+P/Q3EX4i00MUYtVCFJoLAAAAItFEIsQi00Qi0JQ3V3w/9DcXfDf4PbEAXUfi00MUYtVCFJoSAAAAItFEIsQi00Qi0JQ/9DdXejrOItNDFGLVQhSaFwAAACLRRCLEItNEItCUP/QaHgAAACLTQiLEYtNCIuCiAEAAN1d4P/Q3G3g3V3o3UXo3V3Y6wXZ7t1d2N1F2Nld1NlF1F6L5V3DAAAAAAAAAAA=</compiledString>
 						<returnType>float</returnType>
-						<sString>nt(cCooldownReduction, 0)</sString>
+						<sString>nt((sender.vTotal_CooldownReduction+cCooldownReduction)&lt;=cMax_TotalCooldownReduction? cCooldownReduction : (cMax_TotalCooldownReduction-sender.vTotal_CooldownReduction), 0)</sString>
 					</addValue>
 					<multValue>
 						<compiledString></compiledString>

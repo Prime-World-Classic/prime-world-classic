@@ -214,7 +214,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" id="B7DEBCA9-E090-41A2-BD4B-BBE3A4BA50E0">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>
@@ -566,7 +566,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" id="50E51110-A266-4ACD-A1A0-07007123652A">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
+					<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

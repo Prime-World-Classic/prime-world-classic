@@ -714,6 +714,7 @@
 				<unstackableWith href="" />
 			</StatusApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>2</askId>
 	<autoTargetSelector href="/Items/Talents/Class/Zealot/Ability_A2.TALENT" id="E58888CA-948C-4CE1-A289-BD6B70F7216B">

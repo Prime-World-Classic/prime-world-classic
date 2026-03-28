@@ -17,6 +17,7 @@
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_CollectionGoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_GoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_GoodList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -87,6 +88,7 @@
 				</Item>
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxForm" />
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_ResTimeInc" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_MaxCount" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -1816,6 +1816,8 @@
 	<BackLink DBID="/Effects/Shots/Rocket/_Bomber.PRXY" Count="3" />
 	<BackLink DBID="/Effects/Debuffs/Bomb/_Mined.PRXY" Count="6" />
 	<BackLink DBID="/Effects/Debuffs/Burn/_TrailBomber.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Shots/Harpoon/_TRS_HarpoonRedSet.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" Count="3" />
 	<generatedFileName>atlas_0</generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>NoMips</mipLevelUsage>

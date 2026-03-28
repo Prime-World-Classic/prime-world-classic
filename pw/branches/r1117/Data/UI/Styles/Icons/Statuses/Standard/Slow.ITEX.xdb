@@ -14,6 +14,7 @@
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Frogenglut/Ability4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus_Building.APLR" Count="1" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

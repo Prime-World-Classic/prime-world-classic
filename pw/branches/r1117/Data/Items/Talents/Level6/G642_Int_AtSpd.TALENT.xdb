@@ -108,6 +108,8 @@
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_DmgPercent" />
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_Duration" />
 				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_activatedInKit" />
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_CDreduction" />
+				<Item href="/Items/Talents/TalentKits/Redset6_4_AAPercentDmg/const_Redset6_4_Add_Duration" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

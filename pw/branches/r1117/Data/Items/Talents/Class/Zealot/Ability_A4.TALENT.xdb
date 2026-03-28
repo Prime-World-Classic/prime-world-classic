@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/Items/Talents/Zealot.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Zealot.TALENTSET" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Zealot/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Zealot/Ability_A4_2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Zealot/Ability_A4u.TALENT" Count="1" />
@@ -27,6 +27,7 @@
 	<aoeType>None</aoeType>
 	<applicators>
 		<Item href="/Items/Talents/Class/Zealot/status_A4_DamageReflected.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>4</askId>
 	<autoTargetSelector href="" />

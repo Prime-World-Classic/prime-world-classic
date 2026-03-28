@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G470_Str_Int.TALENT" Count="1" />
 	<name>G473_BaseCooldown</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAWQw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAC0Qg==</compiledString>
 		<returnType>float</returnType>
-		<sString>150</sString>
+		<sString>90</sString>
 	</var>
 </UnitConstant>

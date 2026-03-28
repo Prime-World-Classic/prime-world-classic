@@ -73,7 +73,7 @@
 			<vars>
 				<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="5C6E54B6-988F-42C1-A789-CDE60F28F62D">
 					<UnitConstant>
-						<name>Add_Intellect</name>
+						<name>Add_Stat</name>
 						<var>
 							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw2ZmJkDNzMw+</compiledString>
 							<returnType>float</returnType>
@@ -115,9 +115,9 @@
 					<UnitConstant>
 						<name>TECH_Add_IntellectCreepJustified</name>
 						<var>
-							<compiledString>FTYAAAADAAAARQAAAFcAAACEAAAATWF4SW50ZWxsZWN0AAAAAEcxOTBfSW5jcmVtZW50AABBZGRfSW50ZWxsZWN0Rm9yQ3JlZXAAVYvsg+wMi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9JoEAAAAItFCIsQi00Ii4KIAQAA3V34/9DcbfjZXfTZRfRR2Rwki00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ/9BR2Rwk6AcAAACDxAiL5V3DVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<compiledString>FTYAAAADAAAARQAAAFcAAACEAAAATWF4SW50ZWxsZWN0AAAAAEc1NjNfSW5jcmVtZW50AABBZGRfSW50ZWxsZWN0Rm9yQ3JlZXAAVYvsg+wMi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9JoEAAAAItFCIsQi00Ii4KIAQAA3V34/9DcbfjZXfTZRfRR2Rwki00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ/9BR2Rwk6AcAAACDxAiL5V3DVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>min( cAdd_IntellectForCreep, cMaxIntellect - sender.vG190_Increment )</sString>
+							<sString>min( cAdd_IntellectForCreep, cMaxIntellect - sender.vG563_Increment )</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -125,9 +125,9 @@
 					<UnitConstant>
 						<name>TECH_Add_IntellectHeroJustified</name>
 						<var>
-							<compiledString>FTUAAAADAAAARAAAAFYAAACDAAAATWF4SW50ZWxsZWN0AAAAAEcxOTBfSW5jcmVtZW50AABBZGRfSW50ZWxsZWN0Rm9ySGVybwBVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0mgQAAAAi0UIixCLTQiLgogBAADdXfj/0Nxt+Nld9NlF9FHZHCSLTQxRi1UIUmggAAAAi0UQixCLTRCLQlD/0FHZHCToBwAAAIPECIvlXcNVi+xR2UUI2UUM3tnf4PbEQXUI2UUI2V386wbZRQzZXfzZRfyL5V3D</compiledString>
+							<compiledString>FTUAAAADAAAARAAAAFYAAACDAAAATWF4SW50ZWxsZWN0AAAAAEc1NjNfSW5jcmVtZW50AABBZGRfSW50ZWxsZWN0Rm9ySGVybwBVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0mgQAAAAi0UIixCLTQiLgogBAADdXfj/0Nxt+Nld9NlF9FHZHCSLTQxRi1UIUmggAAAAi0UQixCLTRCLQlD/0FHZHCToBwAAAIPECIvlXcNVi+xR2UUI2UUM3tnf4PbEQXUI2UUI2V386wbZRQzZXfzZRfyL5V3D</compiledString>
 							<returnType>float</returnType>
-							<sString>min( cAdd_IntellectForHero, cMaxIntellect - sender.vG190_Increment )</sString>
+							<sString>min( cAdd_IntellectForHero, cMaxIntellect - sender.vG563_Increment )</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -148,6 +148,16 @@
 							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ6NkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAABBAACAPw==</compiledString>
 							<returnType>float</returnType>
 							<sString>refineScale(8, 1)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="5AD23A22-5326-4E61-B3FA-C71D96277003">
+					<UnitConstant>
+						<name>BonusSpellDamage</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>12</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -227,47 +237,17 @@
 								<EventProcessorUnitDieNearMe>
 									<applyTarget>ApplicatorTarget</applyTarget>
 									<checkSender>0</checkSender>
-									<killerFlags>9</killerFlags>
+									<killerFlags>11</killerFlags>
 									<range>
-										<compiledString></compiledString>
+										<compiledString>FQ0AAAABAAAAGQAAAFJhbmdlX0V4TG9uZwBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 										<returnType>float</returnType>
-										<sString>0.0f</sString>
+										<sString>cRange_ExLong</sString>
 									</range>
 									<senderMatchTarget>ApplicatorTarget</senderMatchTarget>
 									<spell href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="9A231A65-BDA2-45C7-86D3-971BE9ECB685">
 										<Spell>
 											<applicators>
-												<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="3517E26B-AC19-4495-A15D-73584D8787EC">
-													<PermanentStatModApplicator>
-														<applyTarget>ApplicatorTarget</applyTarget>
-														<caption>+Intellect</caption>
-														<customApplyType>None</customApplyType>
-														<enabled>
-															<compiledString>FR0AAAACAAAAJAAAAEEAAABHMTkwX0luY3JlbWVudAAATWF4SW50ZWxsZWN0AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBAAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
-															<returnType>bool</returnType>
-															<sString>sender.vG190_Increment &lt; cMaxIntellect</sString>
-														</enabled>
-														<formulaName></formulaName>
-														<LoggingEvent>-1</LoggingEvent>
-														<modifier>
-															<addValue>
-																<compiledString>FSEAAAABAAAALQAAAFRFQ0hfQWRkX0ludGVsbGVjdENyZWVwSnVzdGlmaWVkAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
-																<returnType>float</returnType>
-																<sString>cTECH_Add_IntellectCreepJustified</sString>
-															</addValue>
-															<multValue>
-																<compiledString></compiledString>
-																<returnType>float</returnType>
-																<sString>1.0f</sString>
-															</multValue>
-															<stat>Intellect</stat>
-															<topModifier>false</topModifier>
-															<variable></variable>
-														</modifier>
-														<providerName></providerName>
-													</PermanentStatModApplicator>
-												</Item>
-												<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="8735F11B-9FA1-4198-A5D8-176E50486BA4">
+												<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="DF3C2159-8DEE-44E5-ACF9-6986F36AC697">
 													<PermanentStatModApplicator>
 														<applyTarget>ApplicatorTarget</applyTarget>
 														<caption>G563_Increment creep</caption>
@@ -290,9 +270,69 @@
 																<returnType>float</returnType>
 																<sString>1.0f</sString>
 															</multValue>
-															<stat>Intellect</stat>
+															<stat>Strength</stat>
 															<topModifier>false</topModifier>
 															<variable>G563_Increment</variable>
+														</modifier>
+														<providerName></providerName>
+													</PermanentStatModApplicator>
+												</Item>
+												<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="B26F60E1-6E70-4FC2-9AF4-E5243874E5CE">
+													<PermanentStatModApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>+Strength</caption>
+														<customApplyType>None</customApplyType>
+														<enabled>
+															<compiledString>FR0AAAACAAAA5QAAAAIBAABHNTYzX0luY3JlbWVudAAATWF4SW50ZWxsZWN0AFWL7IPsIFZqD4tFCIsQi00Ii4IsAQAA/9APtvBqEItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAag+LVQiLAotNCIuQLAEAAP/SD7bwahCLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5C4AAAA/9KLRQiLEItNCIuCvAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdEVoAAAAAItFCIsQi00Ii4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXeT/0Nxd5N/g9sRBdQnHReABAAAA6wfHReAAAAAAikXgXovlXcM=</compiledString>
+															<returnType>bool</returnType>
+															<sString>((pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)) &amp;&amp; sender.vG563_Increment &lt; cMaxIntellect</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<modifier>
+															<addValue>
+																<compiledString>FSEAAAABAAAALQAAAFRFQ0hfQWRkX0ludGVsbGVjdENyZWVwSnVzdGlmaWVkAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+																<returnType>float</returnType>
+																<sString>cTECH_Add_IntellectCreepJustified</sString>
+															</addValue>
+															<multValue>
+																<compiledString></compiledString>
+																<returnType>float</returnType>
+																<sString>1.0f</sString>
+															</multValue>
+															<stat>Strength</stat>
+															<topModifier>false</topModifier>
+															<variable></variable>
+														</modifier>
+														<providerName></providerName>
+													</PermanentStatModApplicator>
+												</Item>
+												<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="088E0D49-AC16-44AB-9646-433DD685D29B">
+													<PermanentStatModApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>+Intellect</caption>
+														<customApplyType>None</customApplyType>
+														<enabled>
+															<compiledString>FR0AAAACAAAA5QAAAAIBAABHNTYzX0luY3JlbWVudAAATWF4SW50ZWxsZWN0AFWL7IPsIFZqD4tFCIsQi00Ii4IsAQAA/9APtvBqEItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAag+LVQiLAotNCIuQLAEAAP/SD7bwahCLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5C4AAAA/9KLRQiLEItNCIuCvAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdUVoAAAAAItFCIsQi00Ii4KIAQAA/9CLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXeT/0Nxd5N/g9sRBdQnHReABAAAA6wfHReAAAAAAikXgXovlXcM=</compiledString>
+															<returnType>bool</returnType>
+															<sString>(!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)) &amp;&amp; sender.vG563_Increment &lt; cMaxIntellect</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<modifier>
+															<addValue>
+																<compiledString>FSEAAAABAAAALQAAAFRFQ0hfQWRkX0ludGVsbGVjdENyZWVwSnVzdGlmaWVkAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+																<returnType>float</returnType>
+																<sString>cTECH_Add_IntellectCreepJustified</sString>
+															</addValue>
+															<multValue>
+																<compiledString></compiledString>
+																<returnType>float</returnType>
+																<sString>1.0f</sString>
+															</multValue>
+															<stat>Strength</stat>
+															<topModifier>false</topModifier>
+															<variable></variable>
 														</modifier>
 														<providerName></providerName>
 													</PermanentStatModApplicator>
@@ -336,23 +376,53 @@
 				<useAbilityOwnerMana>false</useAbilityOwnerMana>
 			</TriggerApplicator>
 		</Item>
-		<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="CCB29FC5-FEA1-4E06-9557-603606FCE14F">
+		<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="103F506C-EE21-43B6-8C14-1EBA34103247">
 			<PermanentStatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<caption>Intellect</caption>
-				<customApplyType>None</customApplyType>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FQ4AAAABAAAAGgAAAEFkZF9JbnRlbGxlY3QAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 						<returnType>float</returnType>
-						<sString>cAdd_Intellect</sString>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" id="B6388F6B-8BD0-4FB4-B7E7-9CC2C2589E9A">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
 					</addValue>
 					<multValue>
 						<compiledString></compiledString>
@@ -366,7 +436,7 @@
 				<providerName></providerName>
 			</PermanentStatModApplicator>
 		</Item>
-		<Item href="/Items/Talents/TalentKits/Redset4_4_Axes/status_ImproveAA_1.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset4_4_Axes/Axes_Creep_Spelldamage.APLR" />
 	</passiveApplicators>
 	<persistentId>G563</persistentId>
 	<prerequisiteTalents />

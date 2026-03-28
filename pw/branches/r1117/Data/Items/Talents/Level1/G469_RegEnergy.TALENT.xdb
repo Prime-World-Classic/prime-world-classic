@@ -92,6 +92,7 @@
 	<BackLink DBID="/Test/Talents/WitchDoctor/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -114,7 +115,7 @@
 	<askId>0</askId>
 	<autoTargetSelector href="" />
 	<budget>-1</budget>
-	<caption>G469: Пагубная энергия</caption>
+	<caption>G469: Пагубная регенерация</caption>
 	<castAllowRange>
 		<compiledString></compiledString>
 		<returnType>float</returnType>
@@ -133,6 +134,16 @@
 					<sString>sender.vG469_Active == 0</sString>
 				</condition>
 				<name>InForma</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level1/G469_RegEnergy.TALENT" id="E0E7574B-6FC7-4D6F-B3C9-D0A902526C7C">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQ0AAAACAAAAEgAAACgAAABNYW5hbGVzc0hlcm8AVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdSgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAPA/</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vManalessHero == 1</sString>
+				</condition>
+				<name>ManalessHero</name>
 			</ConditionFormula>
 		</Item>
 	</conditionFormulas>
@@ -154,9 +165,9 @@
 					<UnitConstant>
 						<name>G469_CooldownReduction</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>60</sString>
+							<sString>30</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -208,9 +219,9 @@
 				<caption>Add_EnergyRegAbs</caption>
 				<customApplyType>None</customApplyType>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQ0AAAACAAAAEgAAACgAAABNYW5hbGVzc0hlcm8AVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdSgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>sender.vManalessHero == 0</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<LoggingEvent>-1</LoggingEvent>
@@ -226,6 +237,36 @@
 						<sString>1.0f</sString>
 					</multValue>
 					<stat>EnergyRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G469_RegEnergy.TALENT" id="309CB8AA-5B22-4976-A2E4-D1DBBD0894CC">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_LifeRegAbs</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQ0AAAACAAAAEgAAACgAAABNYW5hbGVzc0hlcm8AVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdSgAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAPA/</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vManalessHero == 1</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FREAAAABAAAAHQAAAEFkZF9FbmVyZ3lSZWdBYnMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_EnergyRegAbs</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
 					<topModifier>false</topModifier>
 					<variable></variable>
 				</modifier>

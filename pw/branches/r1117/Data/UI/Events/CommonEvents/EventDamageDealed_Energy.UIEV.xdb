@@ -66,7 +66,7 @@
 	<BackLink DBID="/Heroes/Gunslinger/_.HROB" Count="2" />
 	<BackLink DBID="/Heroes/ManaWyrm/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Naga/A2u2Damage.APLR" Count="1" />
-	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="1" />
+	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="2" />
 	<BackLink DBID="/Heroes/PlagueDoctor/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Prince/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Trickster/_.HROB" Count="1" />
@@ -279,6 +279,7 @@
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Towers/GateB.TOWR" Count="2" />
 	<BackLink DBID="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrRange.APLR" Count="1" />
 	<signRecipients>EVENT_PARTICIPANTS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" id="FCDDC7F1-12E2-4611-8C2F-927182843C56">

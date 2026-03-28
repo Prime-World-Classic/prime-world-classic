@@ -99,6 +99,7 @@
 	<BackLink DBID="/Test/Talents/WitchDoctor/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witcher/Epic_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witcher/Epic_Str.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -161,9 +162,9 @@
 					<UnitConstant>
 						<name>Add_Life</name>
 						<var>
-							<compiledString>FQsAAAADAAAAFAAAAB4AAAA7AAAATGlmZUJ1ZGdldABVi+yD7AxR2QVgAAAA2RwkUdkFXAAAANkcJItFEIsQi00Qi0Js/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcMAAJBAmpmZPg==</compiledString>
+							<compiledString>FQsAAAADAAAAFAAAAB4AAAA7AAAATGlmZUJ1ZGdldABVi+yD7AxR2QVgAAAA2RwkUdkFXAAAANkcJItFEIsQi00Qi0Js/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcMAACBAmpmZPg==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(4.5,0.3)*cLifeBudget</sString>
+							<sString>refineScale(2.5,0.3)*cLifeBudget</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -171,9 +172,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAACEEzMzM/</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAKEEzMzM/</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(8.5, 0.7)</sString>
+							<sString>refineScale(10.5, 0.7)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

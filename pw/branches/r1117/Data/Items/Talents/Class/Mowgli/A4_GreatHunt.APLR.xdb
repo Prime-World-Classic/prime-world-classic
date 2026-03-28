@@ -38,6 +38,7 @@
 								<Spell>
 									<applicators>
 										<Item href="/Items/Talents/Class/Mowgli/status_A4_GreatHunt.APLR" />
+										<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 									</applicators>
 									<dispatch href="" />
 								</Spell>
@@ -96,6 +97,7 @@
 												<unstackableWith href="" />
 											</StatusApplicator>
 										</Item>
+										<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 									</applicators>
 									<dispatch href="" />
 								</Spell>

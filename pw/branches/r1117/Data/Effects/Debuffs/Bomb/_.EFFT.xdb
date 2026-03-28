@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectAttached>
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus_Building.APLR" Count="1" />
 	<attachFlags>0</attachFlags>
 	<attachType>Above</attachType>
 	<component href="/Effects/Debuffs/Bomb/_TRS.PRXY" />

@@ -97,6 +97,7 @@
 	<BackLink DBID="/Test/Talents/Witch/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/WitchDoctor/Epic_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/WitchDoctor/Epic_Str.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -347,6 +348,16 @@
 				<name>FormOverChargedCastle</name>
 			</ConditionFormula>
 		</Item>
+		<Item href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="5B09DEDA-F63C-4596-A9A4-C8AF944283CA">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQwAAAACAAAAEQAAACcAAABHNDcxX0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAA8D8=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vG471_Active == 1 </sString>
+				</condition>
+				<name>G471_Active</name>
+			</ConditionFormula>
+		</Item>
 	</conditionFormulas>
 	<conflictingTalents />
 	<constants href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="5D80B29C-330C-4CC6-8791-367B6468BF2A">
@@ -389,9 +400,9 @@
 					<UnitConstant>
 						<name>BaseDmgPerKill</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAcEEAAAxCVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>20</sString>
+							<sString>damageScale(max(sIntellect,sStrength), 15, 35)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -434,9 +445,9 @@
 					<UnitConstant>
 						<name>DeathCheckTime</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>1.5f</sString>
+							<sString>3.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -445,9 +456,9 @@
 					<UnitConstant>
 						<name>TotalBaseDamage</name>
 						<var>
-							<compiledString>FSsAAAADAAAAOgAAAEwAAABsAAAAQmFzZURhbWFnZQAARzQ3MV9BY3RpdmUARzQ3MV9BZGRCYXNlRGFtYWdlAFWL7IPsFItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaAwAAACLRQiLEItNCIuCiAEAAN1d+P/Qi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ3V3w/9DcTfDcRfjZXezZReyL5V3D</compiledString>
+							<compiledString>FQsAAAABAAAAFwAAAEJhc2VEYW1hZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>cBaseDamage + sender.vG471_Active* cG471_AddBaseDamage</sString>
+							<sString>cBaseDamage </sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -468,6 +479,27 @@
 							<compiledString>FQ0AAAABAAAAGQAAAEc0NzBfTWF4Rm9ybQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 							<returnType>float</returnType>
 							<sString>cG470_MaxForm</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="EBCA3120-2481-49B8-88AB-579D15BF46E2">
+					<UnitConstant>
+						<name>Add_SpellPierce</name>
+						<var>
+							<compiledString>FSsAAAAGAAAAMgAAAEgAAABcAAAAbwAAAIEAAACUAAAARzQ3Ml9BY3RpdmUARzQ3MF9LaWxsQ291bnQAAEc0NzBfS2lsbENvdW50AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0NwduAAAAN/g9sREeiWLTQxRi1UIUmgMAAAAi0UQixCLTRCLQlD/0NwNsAAAAN1d+Osji00MUYtVCFJoHAAAAItFEIsQi00Qi0JQ/9DcDagAAADdXfjdRfjZXfTZRfSL5V3DAAAA4E1igD8AAADAdJOIPwAAAAAAAPA/</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vG472_Active == 1 ?  (0.012f *  cG470_KillCount) : (0.008f *  cG470_KillCount) </sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset1_5_Nuke/const_G471_TT_Add_SpellPierce" />
+				<Item href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="21792A2F-F2CE-43D6-93B7-C34D17E66D64">
+					<UnitConstant>
+						<name>TT_Add_SpellPierceTotal</name>
+						<var>
+							<compiledString>FSsAAAAGAAAAMgAAAEgAAABcAAAAbwAAAIEAAACUAAAARzQ3Ml9BY3RpdmUARzQ3MF9LaWxsQ291bnQAAEc0NzBfS2lsbENvdW50AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0NwduAAAAN/g9sREeiWLTQxRi1UIUmgMAAAAi0UQixCLTRCLQlD/0NwNsAAAAN1d+Osji00MUYtVCFJoHAAAAItFEIsQi00Qi0JQ/9DcDagAAADdXfjdRfjZXfTZRfSL5V3DmpmZmZmZ6T8AAABAMzPzPwAAAAAAAPA/</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vG472_Active == 1?(1.2f *  cG470_KillCount) :(0.8*  cG470_KillCount)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -603,6 +635,53 @@
 				<providerName></providerName>
 			</PermanentStatModApplicator>
 		</Item>
+		<Item href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="AC6469D7-F7B9-4A25-B32F-4A9AC5AFFFB6">
+			<StatModApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>Add_SpellPierce</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQwAAAACAAAAEQAAACcAAABHNDcxX0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAA8D8=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vG471_Active == 1</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRAAAAABAAAAHAAAAEFkZF9TcGVsbFBpZXJjZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_SpellPierce</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>SpellPierce</variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>G470</persistentId>
 	<prerequisiteTalents />
@@ -611,7 +690,7 @@
 	<shortDescription textref="/Items/Talents/Level2/G470_Str_Int.TALENT_shortDescription.txt" />
 	<talentRollGroups>16</talentRollGroups>
 	<talentStats />
-	<targetType>536870915</targetType>
+	<targetType>536870923</targetType>
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>

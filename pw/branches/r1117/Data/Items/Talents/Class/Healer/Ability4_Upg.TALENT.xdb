@@ -10,7 +10,7 @@
 	<BackLink DBID="/Test/Talents/Healer/Epic.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/TestSetHealer.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Healer/Ability4_2u.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

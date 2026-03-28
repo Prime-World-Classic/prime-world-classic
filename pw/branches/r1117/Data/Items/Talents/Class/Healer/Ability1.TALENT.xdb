@@ -17,6 +17,7 @@
 	<BackLink DBID="/Test/Talents/Healer/Duel_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Healer/Elite.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Healer/Epic.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -165,16 +166,54 @@
 																<providerName></providerName>
 															</HealApplicator>
 														</Item>
+														<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 													</applicators>
-													<dispatch href="" />
+													<dispatch href="/Items/Talents/Class/Healer/Ability1.TALENT" id="F9FD05F0-13F9-49CC-B1BF-D763DDFF4D3F">
+														<DispatchImmediate>
+															<alwaysApply>false</alwaysApply>
+															<applyEffect>
+																<Item href="" />
+																<Item href="" />
+															</applyEffect>
+															<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+															<applyEffectOrientation>Default</applyEffectOrientation>
+															<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+															<dieAfterApply>true</dieAfterApply>
+															<dispatchEffect>
+																<Item href="" />
+																<Item href="" />
+															</dispatchEffect>
+															<flags>0</flags>
+															<instantApply>false</instantApply>
+														</DispatchImmediate>
+													</dispatch>
 												</Spell>
 											</Item>
 											<Item href="/Items/Talents/Class/Healer/Ability1.TALENT" id="CDDD06B0-FE3D-4C78-A982-EE5471EE295F">
 												<Spell>
 													<applicators>
 														<Item href="/Items/Talents/Class/Healer/A1HealSelf.APLR" />
+														<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 													</applicators>
-													<dispatch href="" />
+													<dispatch href="/Items/Talents/Class/Healer/Ability1.TALENT" id="0D733C7D-D722-4481-AD52-CF7998F4A985">
+														<DispatchImmediate>
+															<alwaysApply>false</alwaysApply>
+															<applyEffect>
+																<Item href="" />
+																<Item href="" />
+															</applyEffect>
+															<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+															<applyEffectOrientation>Default</applyEffectOrientation>
+															<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+															<dieAfterApply>true</dieAfterApply>
+															<dispatchEffect>
+																<Item href="" />
+																<Item href="" />
+															</dispatchEffect>
+															<flags>0</flags>
+															<instantApply>false</instantApply>
+														</DispatchImmediate>
+													</dispatch>
 												</Spell>
 											</Item>
 										</spells>
@@ -256,6 +295,7 @@
 																<providerName></providerName>
 															</VariableProxyApplicator>
 														</Item>
+														<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 													</applicators>
 													<dispatch href="" />
 												</Spell>
@@ -310,6 +350,7 @@
 																<providerName></providerName>
 															</VariableProxyApplicator>
 														</Item>
+														<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 													</applicators>
 													<dispatch href="" />
 												</Spell>

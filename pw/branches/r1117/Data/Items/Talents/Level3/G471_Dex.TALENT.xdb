@@ -16,6 +16,7 @@
 	<BackLink DBID="/Test/Talents/Invisible/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -76,6 +77,7 @@
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset1_5_Nuke/const_G471_AddBaseDamage" />
 				<Item href="/Items/Talents/TalentKits/Redset1_5_Nuke/const_G470_MaxForm" />
+				<Item href="/Items/Talents/TalentKits/Redset1_5_Nuke/const_G471_TT_Add_SpellPierce" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

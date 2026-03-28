@@ -50,7 +50,7 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Rifleman/Summon_Trap_SUP.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability2.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Rockman/Ability4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shadow/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shadow/spell_A1_arrow.SPLL" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shaman/Ability_A1.TALENT" Count="1" />
@@ -90,6 +90,10 @@
 	<BackLink DBID="/Items/Talents/Class/Frogenglut/Ability4.TALENT" Count="3" />
 	<BackLink DBID="/Items/Talents/Class/Rockman/Ability3.TALENT" Count="3" />
 	<BackLink DBID="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrRange.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus_Building.APLR" Count="3" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" Count="1" />
 	<applicators>
 		<Item href="/Heroes/DefaultStatus/_SLOW_MOVE.APLR" id="BD7263A6-11FD-4EAA-A701-C57196049889">
 			<StatModApplicator>

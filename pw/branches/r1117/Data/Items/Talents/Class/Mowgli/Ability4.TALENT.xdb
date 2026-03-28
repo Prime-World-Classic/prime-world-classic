@@ -71,6 +71,7 @@
 		<Item href="/Items/Talents/Class/Mowgli/A4_Pursue.APLR" />
 		<Item href="/Items/Talents/Class/Mowgli/RecastSupport.APLR" />
 		<Item href="/Heroes/DefaultStatus/QuicknessFlyoff.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>4</askId>
 	<autoTargetSelector href="" />

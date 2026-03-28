@@ -101,6 +101,7 @@
 						</spells>
 					</SpellSwitchApplicator>
 				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 			</applicators>
 			<dispatch href="/Items/Talents/Class/Fairy/A2_SpellPeriodically.APLR" id="75D90D85-9FD1-4036-8BB0-8F02A93B13A4">
 				<DispatchImmediate>

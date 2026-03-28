@@ -127,6 +127,7 @@
 									<providerName></providerName>
 								</VariableProxyApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Healer/status_A5_Buff.APLR" id="7CB295F7-E9CB-4C70-9F11-0852893D54B5">
 							<DispatchImmediate>

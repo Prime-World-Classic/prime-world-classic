@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level5/G796_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
+	<name>G796_Bonus_Stat</name>
+	<var>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCuAAAAP/QUdkcJItNCIsRi00Ii4K8AAAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAIEEAAPhBVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+		<returnType>float</returnType>
+		<sString>damageScale(max(sBaseIntellect,sBaseStrength), 10, 31)</sString>
+	</var>
+</UnitConstant>

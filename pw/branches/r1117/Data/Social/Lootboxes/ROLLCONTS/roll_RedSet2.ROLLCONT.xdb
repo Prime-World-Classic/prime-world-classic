@@ -106,7 +106,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_RedSet2.ROLLCONT" id="2B29C5F0-22E3-42B9-A676-F2280B3FEDB4">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level3/G489_Life_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

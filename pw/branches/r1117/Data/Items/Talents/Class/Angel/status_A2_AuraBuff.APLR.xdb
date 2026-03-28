@@ -221,6 +221,7 @@
 									<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 								</HealApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Angel/status_A2_AuraBuff.APLR" id="38512A6E-7561-4416-923C-2C780583E589">
 							<DispatchImmediate>

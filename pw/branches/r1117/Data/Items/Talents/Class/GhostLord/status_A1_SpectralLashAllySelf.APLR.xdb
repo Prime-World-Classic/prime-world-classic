@@ -51,6 +51,7 @@
 				<statModName></statModName>
 			</StatModApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<applyTarget>AbilityOwner</applyTarget>
 	<behaviorFlags>1</behaviorFlags>

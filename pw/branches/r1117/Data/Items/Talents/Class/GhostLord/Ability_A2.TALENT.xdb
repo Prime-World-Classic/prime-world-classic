@@ -189,6 +189,7 @@
 				</startCondition>
 			</ProgramApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 	</applicators>
 	<askId>2</askId>
 	<autoTargetSelector href="/Items/Talents/Class/GhostLord/Ability_A2.TALENT" id="3D7B75DA-104D-4344-B322-B15BF23EE5C6">

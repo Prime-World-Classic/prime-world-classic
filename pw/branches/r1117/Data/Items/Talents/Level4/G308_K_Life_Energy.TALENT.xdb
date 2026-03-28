@@ -16,6 +16,7 @@
 	<BackLink DBID="/Social/TalentsCollection" Count="4" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_OrangeSet1.ROLLCONT" Count="1" />
 	<BackLink DBID="/Items/Talents/Faceless.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/WitchDoctor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -103,9 +104,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MTEDNzEw+</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw2ZmpkAAACA/</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(3.2, 0.2)</sString>
+							<sString>refineScale(5.2, 0.625)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -152,9 +153,9 @@
 					<UnitConstant>
 						<name>Add_LifeRegAbs</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw2ZmBkDNzMw9</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MjD/NzMw9</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(2.1, 0.1)</sString>
+							<sString>refineScale(1.1, 0.1)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

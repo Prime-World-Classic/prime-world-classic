@@ -23,6 +23,7 @@
 				<applicators>
 					<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" />
 					<Item href="/Items/Talents/Class/Hunter/appl_A3_HealPeriod.APLR" />
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 				</applicators>
 				<dispatch href="" />
 			</Spell>
@@ -32,6 +33,7 @@
 				<applicators>
 					<Item href="/Heroes/DefaultStatus/_QUICKNESS_status.APLR" />
 					<Item href="/Items/Talents/Class/Hunter/appl_A3_HealPeriod.APLR" />
+					<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 				</applicators>
 				<dispatch href="" />
 			</Spell>

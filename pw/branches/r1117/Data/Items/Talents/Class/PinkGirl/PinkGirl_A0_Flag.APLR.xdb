@@ -22,9 +22,9 @@
 			<sString>1.0f</sString>
 		</addValue>
 		<multValue>
-			<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+			<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 			<returnType>float</returnType>
-			<sString>0.0f</sString>
+			<sString>1.0f</sString>
 		</multValue>
 		<stat>Life</stat>
 		<topModifier>false</topModifier>
