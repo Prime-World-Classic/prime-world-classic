@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PermanentStatModApplicator>
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G793_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G794_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G795_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G796_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G797_SeaSymbol.TALENT" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<caption>Счетчик улучшений</caption>
+	<customApplyType>None</customApplyType>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<modifier>
+		<addValue>
+			<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</addValue>
+		<multValue>
+			<compiledString></compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</multValue>
+		<stat>Life</stat>
+		<topModifier>false</topModifier>
+		<variable>SeaSymbolKitCounter</variable>
+	</modifier>
+	<providerName></providerName>
+</PermanentStatModApplicator>

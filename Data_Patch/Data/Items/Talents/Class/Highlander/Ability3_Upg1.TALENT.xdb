@@ -1,0 +1,824 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/SocialTest.ROOT" Count="1" />
+	<BackLink DBID="/Items/Talents/Highlander.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Highlander_Alternative.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Highlander_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Duel.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Elite_AspVamp.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Elite_StrLife.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Epic_AspVamp.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Epic_AspVamp_Ultimate2.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Highlander/Epic_StrLife.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G567_CasterBase.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators>
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="2E76A613-E6DE-4D0C-818C-B0D352A18249">
+			<ProgramApplicator>
+				<applicators>
+					<Item>
+						<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="6278568D-1C9B-48C8-BCC7-F6613606926B">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>нанести урон</caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="2D955415-A866-4478-88CC-D860159A3E86">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="99D61AD3-A69B-4773-9E09-03CD2D55E9B7">
+												<VariableProxyApplicator>
+													<applicators>
+														<Item>
+															<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="0EFBBA53-69C1-47C5-8464-9AD4DBC3E279">
+																<DamageApplicator>
+																	<applyTarget>PrevApplicatorTarget</applyTarget>
+																	<cancelInvisibility>false</cancelInvisibility>
+																	<caption>урон</caption>
+																	<damage>
+																		<compiledString>FQsAAAABAAAAFwAAAEEzdV9EYW1hZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+																		<returnType>float</returnType>
+																		<sString>cA3u_Damage</sString>
+																	</damage>
+																	<damageMode>4</damageMode>
+																	<damageType>Energy</damageType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<providerName></providerName>
+																	<timeLimiter>-1</timeLimiter>
+																	<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+																</DamageApplicator>
+															</applicator>
+															<variableNames>
+																<Item>damageDealed</Item>
+															</variableNames>
+														</Item>
+														<Item>
+															<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="345914EF-AFBB-4E54-B0CC-5D0507A27690">
+																<StatModApplicator>
+																	<applyTarget>AbilityOwner</applyTarget>
+																	<behaviorFlags>0</behaviorFlags>
+																	<caption>аккумулятор false</caption>
+																	<constraint>None</constraint>
+																	<dontUpdate>true</dontUpdate>
+																	<effect>
+																		<Item href="" />
+																		<Item href="" />
+																	</effect>
+																	<enabled>
+																		<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																		<returnType>bool</returnType>
+																		<sString>false</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<lifeTime>
+																		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
+																		<returnType>float</returnType>
+																		<sString>0.4f</sString>
+																	</lifeTime>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FQ0AAAABAAAAIgAAAGRhbWFnZURlYWxlZABVi+xRi0UQixCLTRCLQkj/0IlF/GgAAAAAi038ixGLTfyLQlT/0IvlXcM=</compiledString>
+																			<returnType>float</returnType>
+																			<sString>mObjectParent-&gt;GetVariable("damageDealed")</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>1.0f</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>DamageAccumulator</variable>
+																	</modifier>
+																	<providerName></providerName>
+																	<startCondition>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</startCondition>
+																	<statModName></statModName>
+																</StatModApplicator>
+															</applicator>
+															<variableNames />
+														</Item>
+														<Item>
+															<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="C211D399-D2E5-4F57-801D-CCAAD56BC896">
+																<PermanentStatModApplicator>
+																	<applyTarget>AbilityOwner</applyTarget>
+																	<caption>аккумулятор</caption>
+																	<customApplyType>None</customApplyType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FSsAAAADAAAASgAAAFwAAAB1AAAAZGFtYWdlRGVhbGVkAAAAAEFjY3VtdWxhdG9yTW9kaWZpZXJQZXJjZW50AFWL7IPsEItFEIsQi00Qi0JI/9CJRfyLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlD/0GgAAAAAi038ixGLTfyLQlTdXfT/0NxN9NwNgwAAANld8NlF8IvlXcN7FK5H4XqEPw==</compiledString>
+																			<returnType>float</returnType>
+																			<sString>mObjectParent-&gt;GetVariable("damageDealed")*cAccumulatorModifierPercent*0.01</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>1.0f</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>DamageAccumulator</variable>
+																	</modifier>
+																	<providerName></providerName>
+																</PermanentStatModApplicator>
+															</applicator>
+															<variableNames />
+														</Item>
+													</applicators>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<caption>делаем урон и аккумулируем его в переменную DamageAccumulator</caption>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+												</VariableProxyApplicator>
+											</Item>
+										</applicators>
+										<dispatch href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="6BB7473F-0EC2-4940-A4E3-BBD3E9201669">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="/Effects/Buffs/BalanceBlood/Enemy.EFFT" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>1</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>ApplicatorTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="2ADCFA20-FC19-42F3-9F93-493F67D00732">
+									<ConditionTargetSelector>
+										<condition>
+											<compiledString>FQUAAAABAAAADwAAAFdhcmQAVYvsagCLRRBQaAAAAACLTQyLEYtNDIuCnAEAAP/QM8k7RRAPlMGKwV3D</compiledString>
+											<returnType>bool</returnType>
+											<sString>receiver.applWard(GLOBAL) == pMisc</sString>
+										</condition>
+										<flags>0</flags>
+										<mode>Normal</mode>
+										<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="E16AB8DD-521D-4F09-9888-3D62096BA098">
+											<AreaTargetSelector>
+												<absolutePosition>
+													<x>0</x>
+													<y>0</y>
+												</absolutePosition>
+												<flags>0</flags>
+												<mode>Normal</mode>
+												<range>
+													<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+													<returnType>float</returnType>
+													<sString>cRange</sString>
+												</range>
+												<targetFilter>677183551</targetFilter>
+												<targetSelector href="" />
+											</AreaTargetSelector>
+										</targetSelector>
+									</ConditionTargetSelector>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>1</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="262D58B5-592D-4859-A6A7-A3F6B79957C8">
+							<FlagsApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<behaviorFlags>33</behaviorFlags>
+								<caption>проиграть Ability3</caption>
+								<consumables />
+								<effect>
+									<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="A0596DB7-ADBA-4EE8-B917-75B1555CC015">
+										<PlayAnimationEffect>
+											<animGraphNode>ability1</animGraphNode>
+											<deathType>Time</deathType>
+											<enableCondition href="" />
+											<goToOtherNodeOnStop>false</goToOtherNodeOnStop>
+											<lifeTime>0.5</lifeTime>
+											<marker></marker>
+											<markerReachTime>0</markerReachTime>
+											<returnAnimGraphNode></returnAnimGraphNode>
+										</PlayAnimationEffect>
+									</Item>
+									<Item href="" />
+								</effect>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<flag>1</flag>
+								<formulaName></formulaName>
+								<lifeTime>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.1f</sString>
+								</lifeTime>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<startCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</startCondition>
+								<talents />
+								<useListAs>ListAsRule</useListAs>
+							</FlagsApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="FBBD55B4-D867-4B30-8619-BD289ED1A1C3">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>полечить Друга с наименьшим хп</caption>
+								<enabled>
+									<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="E0360FC8-B99E-48C9-BB5F-EFBE5326F3B7">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="C44145C8-B6BA-4D18-A6B0-3C24C9AAFD02">
+												<VariableProxyApplicator>
+													<applicators>
+														<Item>
+															<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="1C4D3E81-192B-441A-A0A2-7ED6B8EB69D6">
+																<HealApplicator>
+																	<amount>
+																		<compiledString>FQkAAAABAAAAFQAAAEhlYWxzb3V6AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+																		<returnType>float</returnType>
+																		<sString>cHealsouz</sString>
+																	</amount>
+																	<applyTarget>ApplicatorTarget</applyTarget>
+																	<caption>полечить</caption>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<healTarget>Health</healTarget>
+																	<ignoreHealingMods>false</ignoreHealingMods>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<providerName></providerName>
+																	<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
+																</HealApplicator>
+															</applicator>
+															<variableNames>
+																<Item>amountRestored</Item>
+															</variableNames>
+														</Item>
+														<Item>
+															<applicator href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="D5E4ADDF-2708-4EAE-A1B7-16A360F92B5E">
+																<PermanentStatModApplicator>
+																	<applyTarget>AbilityOwner</applyTarget>
+																	<caption>отнять Накопленное хп</caption>
+																	<customApplyType>None</customApplyType>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<modifier>
+																		<addValue>
+																			<compiledString>FQ8AAAABAAAAJAAAAGFtb3VudFJlc3RvcmVkAFWL7FGLRRCLEItNEItCSP/QiUX8aAAAAACLTfyLEYtN/ItCVP/Q2eCL5V3D</compiledString>
+																			<returnType>float</returnType>
+																			<sString>-(mObjectParent-&gt;GetVariable("amountRestored"))</sString>
+																		</addValue>
+																		<multValue>
+																			<compiledString></compiledString>
+																			<returnType>float</returnType>
+																			<sString>1.0f</sString>
+																		</multValue>
+																		<stat>Life</stat>
+																		<topModifier>false</topModifier>
+																		<variable>DamageAccumulator</variable>
+																	</modifier>
+																	<providerName></providerName>
+																</PermanentStatModApplicator>
+															</applicator>
+															<variableNames />
+														</Item>
+													</applicators>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<caption>Полечить союзника и отнять Накопленное хп</caption>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+												</VariableProxyApplicator>
+											</Item>
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
+										</applicators>
+										<dispatch href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="C515DEA9-5A03-4813-B30D-DCCB175DD357">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="/Effects/Buffs/Balance/Ally.EFFT" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<instantApply>false</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>ApplicatorTarget</spellTarget>
+								<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="08518AFD-28A2-4D71-9F28-EC7D711EEDCD">
+									<CountingTargetSelector>
+										<enableSorting>true</enableSorting>
+										<flags>0</flags>
+										<heroesFirst>true</heroesFirst>
+										<mode>Normal</mode>
+										<order>Increasing</order>
+										<sortingValue>
+											<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLAv/Qi00MixGLTQyLQgzdXfj/0Nx9+Nld9NlF9IvlXcM=</compiledString>
+											<returnType>float</returnType>
+											<sString>rLife/rMaxLife</sString>
+										</sortingValue>
+										<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="8B5F766C-72A8-463B-A0CE-B54FCB88CDF4">
+											<ConditionTargetSelector>
+												<condition>
+													<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLQgz/0ItNDIsRi00MiwLdXfj/0Nxd+N/g9sQFeh2LTQyLEYtNDItCVP/QD7bIhcl0CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+													<returnType>bool</returnType>
+													<sString>rMaxLife&gt;rLife&amp;&amp; rIsHero</sString>
+												</condition>
+												<flags>0</flags>
+												<mode>Normal</mode>
+												<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="296270A0-BA49-496D-8D29-2BC454966617">
+													<AreaTargetSelector>
+														<absolutePosition>
+															<x>0</x>
+															<y>0</y>
+														</absolutePosition>
+														<flags>0</flags>
+														<mode>Normal</mode>
+														<range>
+															<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+															<returnType>float</returnType>
+															<sString>cRange</sString>
+														</range>
+														<targetFilter>272629763</targetFilter>
+														<targetSelector href="" />
+													</AreaTargetSelector>
+												</targetSelector>
+											</ConditionTargetSelector>
+										</targetSelector>
+										<targetsNumber>
+											<compiledString>FQAAAAAAAAAAVYvsuAEAAABdww==</compiledString>
+											<returnType>int</returnType>
+											<sString>1</sString>
+										</targetsNumber>
+									</CountingTargetSelector>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/GameLogic/GeneralApplicators/EndOfAbility.APLR" />
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>1</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+				</applicators>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>программа</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</ProgramApplicator>
+		</Item>
+	</applicators>
+	<askId>3</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>А3у. Презрение боли</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations>
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="F7D70699-648F-4591-B138-8E0A8B2CB12A">
+			<TargetCastLimitation>
+				<targetSelector href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="26A3E85C-8FC4-411A-821F-4323B98BDD23">
+					<AreaTargetSelector>
+						<absolutePosition>
+							<x>0</x>
+							<y>0</y>
+						</absolutePosition>
+						<flags>0</flags>
+						<mode>Normal</mode>
+						<range>
+							<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cRange</sString>
+						</range>
+						<targetFilter>681312319</targetFilter>
+						<targetSelector href="" />
+					</AreaTargetSelector>
+				</targetSelector>
+				<uiEvent href="/UI/Events/ErrorMessages/CastError_NoValidTargets.UIEV" />
+			</TargetCastLimitation>
+		</Item>
+	</castLimitations>
+	<commonDescription textref="" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="6D895CDB-1290-4F70-BCFF-7CDC3ADB68AB">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABIaWdobGFuZGVyX0EzAAAASGlnaGxhbmRlcl9BMwBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2Rfv32BvAg8ABi+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("Highlander_A3") == false</sString>
+				</condition>
+				<name>Highlander_A3</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="CA95F993-F054-4FB0-8D1D-338CC56330C4">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgsgAAAD/0ItNCIsRi00Ii4LMAAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseStamina &gt;= sBaseWill</sString>
+				</condition>
+				<name>Highlander_StrOrWill</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="A0115B9A-FBBD-4618-978F-F94FC9ADEC4D">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQ4AAAACAAAAGwAAAC4AAABBM3VTdGFja0NvdW50AFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twdUAAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>cA3uStackCount &gt; 0</sString>
+				</condition>
+				<name>Highlander_StackCount</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="5D1782CC-72C6-497E-ACDA-DDD4E97DD555">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Highlander/const_A3u_AddStamina" />
+				<Item href="/Items/Talents/Class/Highlander/const_A3u_MaxStaminaBuff" />
+				<Item href="/Items/Talents/Class/Highlander/const_A3uStackCount" />
+				<Item href="/Items/Talents/Class/Highlander/const_TT_A3uAddStamina" />
+				<Item href="/Items/Talents/Class/Highlander/const_A3u_LifePercent" />
+				<Item href="/Items/Talents/Class/Highlander/const_A3u_MaxStackCount" />
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="39AFD01B-1A89-44C3-A133-0E17CD1D7161">
+					<UnitConstant>
+						<name>A3u_Period</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="A29919BE-9736-4446-A8FA-AE24F179E4BD">
+					<UnitConstant>
+						<name>A3u_Duration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>4</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="5C1E7F79-43AF-49B8-9A85-3A5FF5F4B22D">
+					<UnitConstant>
+						<name>DamagePercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>4</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="02F2C73E-4B7E-48B6-9FD0-CF9D98EA575F">
+					<UnitConstant>
+						<name>A3u_Damage</name>
+						<var>
+							<compiledString>FQ4AAAACAAAAIwAAADAAAABEYW1hZ2VQZXJjZW50AFWL7IPsDItFCIsQi00Ii0IM/9DcDVEAAACLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcN7FK5H4XqEPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>sMaxLife*0.01*cDamagePercent</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="1F332102-BDC1-42D2-9F4F-DAE8177AD205">
+					<UnitConstant>
+						<name>Range</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>10</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="A4ACDD97-8DBB-4777-8636-116F9BE51B17">
+					<UnitConstant>
+						<name>Healsouz</name>
+						<var>
+							<compiledString>FRoAAAACAAAAUgAAAGgAAABNYXhIZWFsAERhbWFnZUFjY3VtdWxhdG9yAFWL7IPsDItFDIsQi00Mi0IM/9CLTQyLEYtNDIsC3V34/9DcbfjZXfTZRfRR2Rwki00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9BR2RwkaAgAAACLTQiLEYtNCIuCiAEAAP/QUdkcJOgSAAAAg8QE2Rwk6AcAAACDxAiL5V3DVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>min(min(sender.vDamageAccumulator,cMaxHeal),rMaxLife-rLife)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="3418D9AA-EE7E-436D-8545-AE2FC353E33C">
+					<UnitConstant>
+						<name>MaxHeal</name>
+						<var>
+							<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRQiLEItNCItCDP/Q3A0hAAAA2V382UX8i+Vdw5qZmZmZmbk/</compiledString>
+							<returnType>float</returnType>
+							<sString>sMaxLife*0.1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="901634E7-B1C0-445B-AEE8-44FB3390E3FC">
+					<UnitConstant>
+						<name>MaxHealPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>10</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="F675D4DA-F765-457B-8B78-BF3BB865271B">
+					<UnitConstant>
+						<name>DamageAccumulated</name>
+						<var>
+							<compiledString>FRIAAAABAAAAFgAAAERhbWFnZUFjY3VtdWxhdG9yAFWL7GgAAAAAi0UIixCLTQiLgogBAAD/0F3D</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vDamageAccumulator</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="08A3EBBB-B44B-4CB1-864A-52E6E969363E">
+					<UnitConstant>
+						<name>AccumulatorModifierPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+							<returnType>float</returnType>
+							<sString>50</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+		<returnType>float</returnType>
+		<sString>9</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="46669C95-69CF-4789-8CDD-883F1C06DFB1">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>11</flags>
+	<forceBonus>9</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Highlander/A3.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABSQw==</compiledString>
+		<returnType>float</returnType>
+		<sString>210</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>1</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>290</naftaCost>
+	<name textref="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/Class/Highlander/status_A3u1.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset7_11_MiniRefresher/trigger_G766_RefreshAndNotify.APLR" />
+		<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="C2107758-1892-4A0B-A0C0-CEB638069570">
+			<FlagsApplicator parent="/GameLogic/GeneralApplicators/ForbidTalentByCondition.APLR">
+				<caption>автозапрет таланта, если не выучена основа</caption>
+				<enabled>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABIaWdobGFuZGVyX0EzAAAASGlnaGxhbmRlcl9BMwBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2Rfv32BvAg8ABi+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>!tal("Highlander_A3")</sString>
+				</enabled>
+				<talents>
+					<Item href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" />
+				</talents>
+			</FlagsApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>Highlander_A3u</persistentId>
+	<prerequisiteTalents>
+		<Item href="/Items/Talents/Class/Highlander/Ability3.TALENT" />
+	</prerequisiteTalents>
+	<rarity>Class</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>0</targetType>
+	<type>Active</type>
+	<upgradeLevel>1</upgradeLevel>
+	<useRange>
+		<compiledString>FQYAAAABAAAAEgAAAFJhbmdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cRange</sString>
+	</useRange>
+	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A3u.TALENT" Count="1" />
+	<name>A3u_DmgDecrecreasePercent</name>
+	<var>
+		<compiledString>FSAAAAAIAAAAJwAAAEAAAAB4AAAAhAAAAI4AAADtAAAA+QAAAAMBAABQaW5rR2lybF9BM19TVVAAUGlua0dpcmxfQTNfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdHVR2QV0AQAA2RwkagFR2QVwAQAA2RwkUdkFbAEAANkcJGoAi1UIiwKLTQiLkDQBAAD/0lHZHCSLRQiLEItNCIuCMAEAAP/QUdkcJOjcAAAAg8QE2RwkagGLTRCLEYtNEItCYP/QUdkcJOiWAAAAg8QI2V3063NR2QVoAQAA2RwkagFR2QV0AQAA2RwkUdkFZAEAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCSLTQiLEYtNCIuCMAEAAP/QUdkcJOhnAAAAg8QE2RwkagGLTRCLEYtNEItCYP/QUdkcJOghAAAAg8QI2V302UX0i+VdwwAAcEEAAPBBAACgQQAANEIAACBCVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdw1WL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>tal("PinkGirl_A3_SUP") ? min(damageScale(max(sStrength, sIntellect), 20, 45), 40) : min(damageScale(max(sStrength, sIntellect), 15, 40), 30)
+
+</sString>
+	</var>
+</UnitConstant>

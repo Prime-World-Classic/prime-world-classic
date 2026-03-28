@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A0.TALENT" Count="1" />
+	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4_2.TALENT" Count="1" />
+	<name>A0_Stun_Duration</name>
+	<var>
+		<compiledString>FU8AAAAHAAAAVgAAAG8AAACmAAAAsQAAALkAAADPAAAA4gAAAFBpbmtHaXJsX0EwX1NVUABQaW5rR2lybF9BMF9TVVAAUGlua0dpcmxfQTBfU3RhY2tDb3VudAAAUGlua0dpcmxfQTBfU3RhY2tDb3VudABVi+yD7BRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQL2QUZAQAA2V306wnZBRUBAADZXfRoIAAAAItVCIsCi00Ii5CIAQAA/9LcHQ0BAADf4PbERHoH2ejZXfDrGGg4AAAAi0UIixCLTQiLgogBAAD/0Nld8NlF9NhN8Nld7NlF7IvlXcMAAIA/AAAAAAAAAADNzEw+MzOzPg==</compiledString>
+		<returnType>float</returnType>
+		<sString>(tal("PinkGirl_A0_SUP") ? 0.35f : 0.2f) * (sender.vPinkGirl_A0_StackCount == 0 ? 1 : sender.vPinkGirl_A0_StackCount)
+
+
+</sString>
+	</var>
+</UnitConstant>

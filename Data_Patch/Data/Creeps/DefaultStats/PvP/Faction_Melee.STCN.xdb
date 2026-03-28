@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatsContainer>
+	<BackLink DBID="/Creeps/A/Melee1/PvP.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/A/Melee2/PvP.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/A/Melee2/Tutorial.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee1/PvP.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee2/PVP.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee2/Tutorial.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/A/Melee2/PvP_ARAM.CREEP" Count="1" />
+	<stats>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+				<returnType>float</returnType>
+				<sString>20</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Life</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQw==</compiledString>
+				<returnType>float</returnType>
+				<sString>300</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
+				<returnType>float</returnType>
+				<sString>0.4</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Strength</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+				<returnType>float</returnType>
+				<sString>10</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Range</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzNzQA==</compiledString>
+				<returnType>float</returnType>
+				<sString>3.8</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>AttackSpeed</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
+				<returnType>float</returnType>
+				<sString>60</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>TeamNaftaForPresence</statId>
+			<value>
+				<compiledString>FREAAAACAAAAIAAAADMAAABJdmVudE5hZnRhT25seU1lAFWL7IPsCItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B1gAAAA3+D2xER6CcdF/CEAAADrB8dF/AAAAAC4IQAAACtF/IlF+NtF+IvlXcMAAAAAAADwPw==</compiledString>
+				<returnType>float</returnType>
+				<sString>33-(cIventNaftaOnlyMe == 1 ? 33 : 0)</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>NaftaForKill</statId>
+			<value>
+				<compiledString>FREAAAACAAAAIAAAADMAAABJdmVudE5hZnRhT25seU1lAFWL7IPsCItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B1eAAAA3+D2xER6CcdF/CEAAADrB8dF/AAAAACLRfyDwCSJRfjbRfiL5V3DAAAAAAAA8D8=</compiledString>
+				<returnType>float</returnType>
+				<sString>36+(cIventNaftaOnlyMe == 1 ? 33 : 0)</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+				<returnType>float</returnType>
+				<sString>1</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Will</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+				<returnType>float</returnType>
+				<sString>30</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+				<returnType>float</returnType>
+				<sString>1</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Stamina</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+				<returnType>float</returnType>
+				<sString>30</sString>
+			</value>
+		</Item>
+		<Item>
+			<calcIncrement>0</calcIncrement>
+			<calcValue>0</calcValue>
+			<increment>
+				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
+			</increment>
+			<levelUpgrades />
+			<statId>Dexterity</statId>
+			<value>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+				<returnType>float</returnType>
+				<sString>40</sString>
+			</value>
+		</Item>
+	</stats>
+</StatsContainer>

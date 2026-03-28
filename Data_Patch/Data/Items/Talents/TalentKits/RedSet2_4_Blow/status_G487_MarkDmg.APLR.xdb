@@ -1,0 +1,887 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" Count="2" />
+	<applicators>
+		<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="5F213F9E-7598-4D2F-9743-CF4EEDCAFDAB">
+			<ProgramApplicator>
+				<applicators>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus.APLR" />
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="93496B6A-B2D9-4C29-9E90-1064F3A1878B">
+							<FlagsApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<behaviorFlags>248</behaviorFlags>
+								<caption>FX взрыва</caption>
+								<consumables />
+								<effect>
+									<Item href="/Effects/Debuffs/Bomb/_Apply.EFFT" />
+									<Item href="" />
+								</effect>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<flag>0</flag>
+								<formulaName></formulaName>
+								<lifeTime>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.3</sString>
+								</lifeTime>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<startCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</startCondition>
+								<talents />
+								<useListAs>ListAsRule</useListAs>
+							</FlagsApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>1</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="6BE72EB7-2C9A-435B-A2ED-FC8C0DC37287">
+							<SpellSwitchApplicator>
+								<activeSpellIndex>
+									<compiledString>FS4AAAAGAAAAPQAAAFAAAABtAAAAgAAAAJ0AAACwAAAARzQ4N19NYXhDb3VudAAAAEc0ODdfTWF4Q291bnQAAABHNDg3X01heENvdW50AFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B3uAAAA3+D2xER6CcdF/AAAAADrc4tFDFCLTQhRaBAAAACLVRCLAotNEItQUP/S3B3mAAAA3+D2xER6CcdF+AEAAADrPYtFDFCLTQhRaCAAAACLVRCLAotNEItQUP/S3B3eAAAA3+D2xER6CcdF9AIAAADrB8dF9AMAAACLRfSJRfiLTfiJTfyLRfyL5V3DAAAAAAAACEAAAAAAAAAAQAAAAAAAAPA/</compiledString>
+									<returnType>int</returnType>
+									<sString>cG487_MaxCount== 1? 0 : (cG487_MaxCount== 2? 1 :cG487_MaxCount== 3? 2:3)</sString>
+								</activeSpellIndex>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption></caption>
+								<dontUseDispatches>false</dontUseDispatches>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spells>
+									<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="5CFCDD15-F25F-4AF2-B2A5-1419F852C949">
+										<Spell>
+											<applicators>
+												<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="97764439-CF15-4C98-878B-7C15866FA0EC">
+													<SpellApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>Распостраняем статусы</caption>
+														<enabled>
+															<compiledString>FRYAAAACAAAAHgAAADMAAABUYXJnZXQAAEFiaWxpdHlUYXJnZXQAVYvsg+wIVmgAAAAAi0UQixCLTRCLQkz/0IlF/GgIAAAAi00QixGLTRCLQkz/0IlF+ItN+IsRi034i4KYAQAA/9CL8ItN/IsRi038i4KYAQAA/9AzyTvGD5TBisFei+Vdww==</compiledString>
+															<returnType>bool</returnType>
+															<sString>appl.oTarget.WOID == appl.oAbilityTarget.WOID</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<providerName></providerName>
+														<spell href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="0C055AE9-C2E5-43DC-B338-C1FAC3755C49">
+															<Spell>
+																<applicators>
+																	<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" />
+																</applicators>
+																<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="611FEFDC-E034-4A41-A6F0-A2B9FB46D354">
+																	<DispatchImmediate>
+																		<alwaysApply>false</alwaysApply>
+																		<applyEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</applyEffect>
+																		<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																		<applyEffectOrientation>Default</applyEffectOrientation>
+																		<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																		<dieAfterApply>true</dieAfterApply>
+																		<dispatchEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</dispatchEffect>
+																		<flags>0</flags>
+																		<instantApply>true</instantApply>
+																	</DispatchImmediate>
+																</dispatch>
+															</Spell>
+														</spell>
+														<spellTarget>ApplicatorTarget</spellTarget>
+														<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="D95FCBD8-9659-4C9C-8B5F-2D89E214BE40">
+															<CountingTargetSelector>
+																<enableSorting>false</enableSorting>
+																<flags>0</flags>
+																<heroesFirst>true</heroesFirst>
+																<mode>Normal</mode>
+																<order>Decreasing</order>
+																<sortingValue>
+																	<compiledString></compiledString>
+																	<returnType>float</returnType>
+																	<sString>1</sString>
+																</sortingValue>
+																<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="DC5EC6EA-DB38-40FA-80FD-2D10C8C4FF62">
+																	<ConditionTargetSelector>
+																		<condition>
+																			<compiledString>FSAAAAACAAAAKwAAAEsAAABOZXV0cmFsU3RhdHVzAAAARzQ4N19NYXJrQW9FRE1HAFWL7FFqAItFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoAi00QUWgQAAAAi1UMiwKLTQyLkJwBAAD/0jtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+																			<returnType>bool</returnType>
+																			<sString>receiver.FindApplicator("NeutralStatus", pMisc, GLOBAL) == pMisc &amp;&amp; receiver.FindApplicator("G487_MarkAoEDMG", pMisc, GLOBAL) == pMisc</sString>
+																		</condition>
+																		<flags>0</flags>
+																		<mode>Normal</mode>
+																		<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="8A06CBEA-AB0E-4D05-88DC-33D010F6374F">
+																			<AreaTargetSelector>
+																				<absolutePosition>
+																					<x>0</x>
+																					<y>0</y>
+																				</absolutePosition>
+																				<flags>0</flags>
+																				<mode>Normal</mode>
+																				<range>
+																					<compiledString>FQoAAAABAAAAFgAAAEJsb3dSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																					<returnType>float</returnType>
+																					<sString>cBlowRange</sString>
+																				</range>
+																				<targetFilter>538705983</targetFilter>
+																				<targetSelector href="" />
+																			</AreaTargetSelector>
+																		</targetSelector>
+																	</ConditionTargetSelector>
+																</targetSelector>
+																<targetsNumber>
+																	<compiledString>FQAAAAAAAAAAVYvsuAEAAABdww==</compiledString>
+																	<returnType>int</returnType>
+																	<sString>1</sString>
+																</targetsNumber>
+															</CountingTargetSelector>
+														</targetSelector>
+													</SpellApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="7B0BB91C-8640-4D3A-8415-173EFE5A331D">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</Item>
+									<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="FA3D21FB-EC60-4EDF-85BD-FF68BD8BC8B2">
+										<Spell>
+											<applicators>
+												<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="969EB6CB-7A58-44E4-9028-62D98094A4C8">
+													<SpellApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>Распостраняем статусы</caption>
+														<enabled>
+															<compiledString>FRYAAAACAAAAHgAAADMAAABUYXJnZXQAAEFiaWxpdHlUYXJnZXQAVYvsg+wIVmgAAAAAi0UQixCLTRCLQkz/0IlF/GgIAAAAi00QixGLTRCLQkz/0IlF+ItN+IsRi034i4KYAQAA/9CL8ItN/IsRi038i4KYAQAA/9AzyTvGD5TBisFei+Vdww==</compiledString>
+															<returnType>bool</returnType>
+															<sString>appl.oTarget.WOID == appl.oAbilityTarget.WOID</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<providerName></providerName>
+														<spell href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="3E663627-B3E4-4A6D-9246-F3568DB71B61">
+															<Spell>
+																<applicators>
+																	<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" />
+																</applicators>
+																<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="E06476BD-EE09-462B-A88C-151051B50F5F">
+																	<DispatchImmediate>
+																		<alwaysApply>false</alwaysApply>
+																		<applyEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</applyEffect>
+																		<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																		<applyEffectOrientation>Default</applyEffectOrientation>
+																		<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																		<dieAfterApply>true</dieAfterApply>
+																		<dispatchEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</dispatchEffect>
+																		<flags>0</flags>
+																		<instantApply>true</instantApply>
+																	</DispatchImmediate>
+																</dispatch>
+															</Spell>
+														</spell>
+														<spellTarget>ApplicatorTarget</spellTarget>
+														<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="3580C85B-92E4-4227-9D3B-851450712412">
+															<CountingTargetSelector>
+																<enableSorting>false</enableSorting>
+																<flags>0</flags>
+																<heroesFirst>true</heroesFirst>
+																<mode>Normal</mode>
+																<order>Decreasing</order>
+																<sortingValue>
+																	<compiledString></compiledString>
+																	<returnType>float</returnType>
+																	<sString>1</sString>
+																</sortingValue>
+																<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="42BEDCE6-BF61-4A32-85DE-8CEA1B902B8A">
+																	<ConditionTargetSelector>
+																		<condition>
+																			<compiledString>FSAAAAACAAAAKwAAAEsAAABOZXV0cmFsU3RhdHVzAAAARzQ4N19NYXJrQW9FRE1HAFWL7FFqAItFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoAi00QUWgQAAAAi1UMiwKLTQyLkJwBAAD/0jtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+																			<returnType>bool</returnType>
+																			<sString>receiver.FindApplicator("NeutralStatus", pMisc, GLOBAL) == pMisc &amp;&amp; receiver.FindApplicator("G487_MarkAoEDMG", pMisc, GLOBAL) == pMisc</sString>
+																		</condition>
+																		<flags>0</flags>
+																		<mode>Normal</mode>
+																		<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="695C527A-1F96-4D6A-98FD-BD7DC7B22383">
+																			<AreaTargetSelector>
+																				<absolutePosition>
+																					<x>0</x>
+																					<y>0</y>
+																				</absolutePosition>
+																				<flags>0</flags>
+																				<mode>Normal</mode>
+																				<range>
+																					<compiledString>FQoAAAABAAAAFgAAAEJsb3dSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																					<returnType>float</returnType>
+																					<sString>cBlowRange</sString>
+																				</range>
+																				<targetFilter>538705983</targetFilter>
+																				<targetSelector href="" />
+																			</AreaTargetSelector>
+																		</targetSelector>
+																	</ConditionTargetSelector>
+																</targetSelector>
+																<targetsNumber>
+																	<compiledString>FQAAAAAAAAAAVYvsuAIAAABdww==</compiledString>
+																	<returnType>int</returnType>
+																	<sString>2</sString>
+																</targetsNumber>
+															</CountingTargetSelector>
+														</targetSelector>
+													</SpellApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="E21E680A-ECA7-4798-971A-C62ED52C3616">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</Item>
+									<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="5AA2D7DA-28B6-433C-B0C4-B53D8E12F919">
+										<Spell>
+											<applicators>
+												<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="969053D1-028F-451D-85C1-F28DCF3FFA57">
+													<SpellApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>Распостраняем статусы</caption>
+														<enabled>
+															<compiledString>FRYAAAACAAAAHgAAADMAAABUYXJnZXQAAEFiaWxpdHlUYXJnZXQAVYvsg+wIVmgAAAAAi0UQixCLTRCLQkz/0IlF/GgIAAAAi00QixGLTRCLQkz/0IlF+ItN+IsRi034i4KYAQAA/9CL8ItN/IsRi038i4KYAQAA/9AzyTvGD5TBisFei+Vdww==</compiledString>
+															<returnType>bool</returnType>
+															<sString>appl.oTarget.WOID == appl.oAbilityTarget.WOID</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<providerName></providerName>
+														<spell href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="4A0B0247-28DE-4BED-B5D7-AB36CF660C7E">
+															<Spell>
+																<applicators>
+																	<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" />
+																</applicators>
+																<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="625C38F3-7B52-4732-AF0B-56384B63B7C0">
+																	<DispatchImmediate>
+																		<alwaysApply>false</alwaysApply>
+																		<applyEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</applyEffect>
+																		<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																		<applyEffectOrientation>Default</applyEffectOrientation>
+																		<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																		<dieAfterApply>true</dieAfterApply>
+																		<dispatchEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</dispatchEffect>
+																		<flags>0</flags>
+																		<instantApply>true</instantApply>
+																	</DispatchImmediate>
+																</dispatch>
+															</Spell>
+														</spell>
+														<spellTarget>ApplicatorTarget</spellTarget>
+														<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="3D04D9DF-EDF0-4245-81C1-EF82B2A4BC68">
+															<CountingTargetSelector>
+																<enableSorting>false</enableSorting>
+																<flags>0</flags>
+																<heroesFirst>true</heroesFirst>
+																<mode>Normal</mode>
+																<order>Decreasing</order>
+																<sortingValue>
+																	<compiledString></compiledString>
+																	<returnType>float</returnType>
+																	<sString>1</sString>
+																</sortingValue>
+																<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="A52AEF56-C931-46D7-9F49-B212D3968E2A">
+																	<ConditionTargetSelector>
+																		<condition>
+																			<compiledString>FSAAAAACAAAAKwAAAEsAAABOZXV0cmFsU3RhdHVzAAAARzQ4N19NYXJrQW9FRE1HAFWL7FFqAItFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoAi00QUWgQAAAAi1UMiwKLTQyLkJwBAAD/0jtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+																			<returnType>bool</returnType>
+																			<sString>receiver.FindApplicator("NeutralStatus", pMisc, GLOBAL) == pMisc &amp;&amp; receiver.FindApplicator("G487_MarkAoEDMG", pMisc, GLOBAL) == pMisc</sString>
+																		</condition>
+																		<flags>0</flags>
+																		<mode>Normal</mode>
+																		<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="18395407-0FB6-4276-AF6D-4808BDEBCD75">
+																			<AreaTargetSelector>
+																				<absolutePosition>
+																					<x>0</x>
+																					<y>0</y>
+																				</absolutePosition>
+																				<flags>0</flags>
+																				<mode>Normal</mode>
+																				<range>
+																					<compiledString>FQoAAAABAAAAFgAAAEJsb3dSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																					<returnType>float</returnType>
+																					<sString>cBlowRange</sString>
+																				</range>
+																				<targetFilter>538705983</targetFilter>
+																				<targetSelector href="" />
+																			</AreaTargetSelector>
+																		</targetSelector>
+																	</ConditionTargetSelector>
+																</targetSelector>
+																<targetsNumber>
+																	<compiledString>FQAAAAAAAAAAVYvsuAMAAABdww==</compiledString>
+																	<returnType>int</returnType>
+																	<sString>3</sString>
+																</targetsNumber>
+															</CountingTargetSelector>
+														</targetSelector>
+													</SpellApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="140165EF-E691-403A-97DB-509137B99389">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</Item>
+									<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="2C4FB1A3-13B0-4826-B0D2-52E52D73D5CA">
+										<Spell>
+											<applicators>
+												<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="FE2E7CA5-E355-4FFC-9271-7FDA0CE67216">
+													<SpellApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>Распостраняем статусы</caption>
+														<enabled>
+															<compiledString>FRYAAAACAAAAHgAAADMAAABUYXJnZXQAAEFiaWxpdHlUYXJnZXQAVYvsg+wIVmgAAAAAi0UQixCLTRCLQkz/0IlF/GgIAAAAi00QixGLTRCLQkz/0IlF+ItN+IsRi034i4KYAQAA/9CL8ItN/IsRi038i4KYAQAA/9AzyTvGD5TBisFei+Vdww==</compiledString>
+															<returnType>bool</returnType>
+															<sString>appl.oTarget.WOID == appl.oAbilityTarget.WOID</sString>
+														</enabled>
+														<formulaName></formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<providerName></providerName>
+														<spell href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="2707168A-0C2E-4EB8-9391-4D5CD1B3ED87">
+															<Spell>
+																<applicators>
+																	<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg_After.APLR" />
+																</applicators>
+																<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="5D0CAF43-FD93-4637-9C14-C7397C21E163">
+																	<DispatchImmediate>
+																		<alwaysApply>false</alwaysApply>
+																		<applyEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</applyEffect>
+																		<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																		<applyEffectOrientation>Default</applyEffectOrientation>
+																		<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																		<dieAfterApply>true</dieAfterApply>
+																		<dispatchEffect>
+																			<Item href="" />
+																			<Item href="" />
+																		</dispatchEffect>
+																		<flags>0</flags>
+																		<instantApply>true</instantApply>
+																	</DispatchImmediate>
+																</dispatch>
+															</Spell>
+														</spell>
+														<spellTarget>ApplicatorTarget</spellTarget>
+														<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="B5CE24DB-6312-47D1-AAEA-10E0E3EBBD69">
+															<CountingTargetSelector>
+																<enableSorting>false</enableSorting>
+																<flags>0</flags>
+																<heroesFirst>true</heroesFirst>
+																<mode>Normal</mode>
+																<order>Decreasing</order>
+																<sortingValue>
+																	<compiledString></compiledString>
+																	<returnType>float</returnType>
+																	<sString>1</sString>
+																</sortingValue>
+																<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="A2726F00-BB02-4951-AE31-A24B670E407E">
+																	<ConditionTargetSelector>
+																		<condition>
+																			<compiledString>FSAAAAACAAAAKwAAAEsAAABOZXV0cmFsU3RhdHVzAAAARzQ4N19NYXJrQW9FRE1HAFWL7FFqAItFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRB1KWoAi00QUWgQAAAAi1UMiwKLTQyLkJwBAAD/0jtFEHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcM=</compiledString>
+																			<returnType>bool</returnType>
+																			<sString>receiver.FindApplicator("NeutralStatus", pMisc, GLOBAL) == pMisc &amp;&amp; receiver.FindApplicator("G487_MarkAoEDMG", pMisc, GLOBAL) == pMisc</sString>
+																		</condition>
+																		<flags>0</flags>
+																		<mode>Normal</mode>
+																		<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="B47C44FF-252F-4DAF-A5EA-D43A72FA7D25">
+																			<AreaTargetSelector>
+																				<absolutePosition>
+																					<x>0</x>
+																					<y>0</y>
+																				</absolutePosition>
+																				<flags>0</flags>
+																				<mode>Normal</mode>
+																				<range>
+																					<compiledString>FQoAAAABAAAAFgAAAEJsb3dSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																					<returnType>float</returnType>
+																					<sString>cBlowRange</sString>
+																				</range>
+																				<targetFilter>538705983</targetFilter>
+																				<targetSelector href="" />
+																			</AreaTargetSelector>
+																		</targetSelector>
+																	</ConditionTargetSelector>
+																</targetSelector>
+																<targetsNumber>
+																	<compiledString>FQAAAAAAAAAAVYvsuAQAAABdww==</compiledString>
+																	<returnType>int</returnType>
+																	<sString>4</sString>
+																</targetsNumber>
+															</CountingTargetSelector>
+														</targetSelector>
+													</SpellApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="BE020B40-F83F-443C-989D-512AC91D5062">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</Item>
+								</spells>
+							</SpellSwitchApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>1</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="BA200DE4-F6A7-4077-97D2-6E396736C232">
+							<FlagsApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<behaviorFlags>0</behaviorFlags>
+								<caption>Тех задержка</caption>
+								<consumables />
+								<effect>
+									<Item href="" />
+									<Item href="" />
+								</effect>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<flag>0</flag>
+								<formulaName></formulaName>
+								<lifeTime>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.2</sString>
+								</lifeTime>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<startCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</startCondition>
+								<talents />
+								<useListAs>ListAsRule</useListAs>
+							</FlagsApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="CA37E9F0-A394-47E0-AC65-E5BCF7DFD04E">
+							<SpellApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<caption>Урон</caption>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<formulaName></formulaName>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<spell href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="5C43180D-ACD8-4CB3-813E-F818B43777D7">
+									<Spell>
+										<applicators>
+											<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="719BDF9B-320D-40AD-AA42-07E0A7440870">
+												<DamageApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<cancelInvisibility>false</cancelInvisibility>
+													<caption>Урон</caption>
+													<damage>
+														<compiledString>FQcAAAABAAAAEwAAAERhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+														<returnType>float</returnType>
+														<sString>cDamage</sString>
+													</damage>
+													<damageMode>4</damageMode>
+													<damageType>Material</damageType>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<timeLimiter>-1</timeLimiter>
+													<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+												</DamageApplicator>
+											</Item>
+											<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="4E13C31B-6604-4CF4-AECD-513EF4CEBC84">
+												<DamageApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<cancelInvisibility>false</cancelInvisibility>
+													<caption>Урон</caption>
+													<damage>
+														<compiledString>FQwAAAACAAAAKAAAAEEAAABHNDkxX0RhbWFnZQBVi+yD7AyLRQyLEItNDItCDP/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V34/9DcTfjcNU8AAADZXfTZRfSL5V3DAAAAAAAAWUA=</compiledString>
+														<returnType>float</returnType>
+														<sString>rMaxLife * cG491_Damage / 100</sString>
+													</damage>
+													<damageMode>4</damageMode>
+													<damageType>Pure</damageType>
+													<enabled>
+														<compiledString>FQwAAAACAAAAEQAAACcAAABHNDkxX0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+														<returnType>bool</returnType>
+														<sString>sender.vG491_Active&gt;0</sString>
+													</enabled>
+													<formulaName></formulaName>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<timeLimiter>-1</timeLimiter>
+													<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed.UIEV" />
+												</DamageApplicator>
+											</Item>
+										</applicators>
+										<dispatch href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="98607314-5967-4D82-9737-A8BEF3AFB181">
+											<DispatchImmediate>
+												<alwaysApply>false</alwaysApply>
+												<applyEffect>
+													<Item href="" />
+													<Item href="" />
+												</applyEffect>
+												<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+												<applyEffectOrientation>Default</applyEffectOrientation>
+												<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+												<dieAfterApply>true</dieAfterApply>
+												<dispatchEffect>
+													<Item href="" />
+													<Item href="" />
+												</dispatchEffect>
+												<flags>0</flags>
+												<instantApply>true</instantApply>
+											</DispatchImmediate>
+										</dispatch>
+									</Spell>
+								</spell>
+								<spellTarget>ApplicatorTarget</spellTarget>
+								<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="6221EBC1-E3AB-40F6-A66F-04A4D1DEE1AE">
+									<ConditionTargetSelector>
+										<condition>
+											<compiledString>FQ4AAAABAAAAGAAAAE5ldXRyYWxTdGF0dXMAVYvsagCLRRBQaAAAAACLTQyLEYtNDIuCnAEAAP/QM8k7RRAPlMGKwV3D</compiledString>
+											<returnType>bool</returnType>
+											<sString>receiver.FindApplicator("NeutralStatus", pMisc, GLOBAL) == pMisc</sString>
+										</condition>
+										<flags>0</flags>
+										<mode>Normal</mode>
+										<targetSelector href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="A8206271-FED5-4827-AAE5-DB7667C30C65">
+											<AreaTargetSelector>
+												<absolutePosition>
+													<x>0</x>
+													<y>0</y>
+												</absolutePosition>
+												<flags>0</flags>
+												<mode>Normal</mode>
+												<range>
+													<compiledString>FQoAAAABAAAAFgAAAEJsb3dSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+													<returnType>float</returnType>
+													<sString>cBlowRange</sString>
+												</range>
+												<targetFilter>538705983</targetFilter>
+												<targetSelector href="" />
+											</AreaTargetSelector>
+										</targetSelector>
+									</ConditionTargetSelector>
+								</targetSelector>
+							</SpellApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>1</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+					<Item>
+						<applicator href="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR" id="BBD0064B-11E8-4CE2-8835-A4717D54C81F">
+							<FlagsApplicator>
+								<applyTarget>ApplicatorTarget</applyTarget>
+								<behaviorFlags>0</behaviorFlags>
+								<caption>Тех задержка</caption>
+								<consumables />
+								<effect>
+									<Item href="" />
+									<Item href="" />
+								</effect>
+								<enabled>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</enabled>
+								<flag>0</flag>
+								<formulaName></formulaName>
+								<lifeTime>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.1</sString>
+								</lifeTime>
+								<LoggingEvent>-1</LoggingEvent>
+								<providerName></providerName>
+								<startCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>true</sString>
+								</startCondition>
+								<talents />
+								<useListAs>ListAsRule</useListAs>
+							</FlagsApplicator>
+						</applicator>
+						<continueCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</continueCondition>
+						<continueEvents>2</continueEvents>
+						<delay>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</delay>
+						<stopCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>0</sString>
+						</stopCondition>
+						<stopEvents>0</stopEvents>
+					</Item>
+				</applicators>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>Программа таймер+взрыв</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+			</ProgramApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>219</behaviorFlags>
+	<caption>Метка на цели</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="" />
+	<dispellPriority>Medium</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName>G487_MarkAoEDMG</formulaName>
+	<image href="" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/TalentKits/RedSet2_4_Blow/status_G487_MarkDmg.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByChild</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

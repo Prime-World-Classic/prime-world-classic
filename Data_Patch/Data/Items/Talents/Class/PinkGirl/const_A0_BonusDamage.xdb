@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A0_SUP.TALENT" Count="1" />
+	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A0.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4_2.TALENT" Count="1" />
+	<name>A0_BonusDamage</name>
+	<var>
+		<compiledString>FS8AAAAEAAAANgAAAEwAAABfAAAAewAAAFBpbmtHaXJsX0EwX1N0YWNrQ291bnQAAFBpbmtHaXJsX0EwX1N0YWNrQ291bnQAVYvsg+wIaAAAAACLRQiLEItNCIuCiAEAAP/Q3B2VAAAA3+D2xER6B9no2V386xhoGAAAAItNCIsRi00Ii4KIAQAA/9DZXfzZRfzcDYkAAADZXfjZRfiL5V3DAAAAAAAACEAAAIA/AAAAAAAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>3.0f *(sender.vPinkGirl_A0_StackCount == 0 ? 1 : sender.vPinkGirl_A0_StackCount)</sString>
+	</var>
+</UnitConstant>
