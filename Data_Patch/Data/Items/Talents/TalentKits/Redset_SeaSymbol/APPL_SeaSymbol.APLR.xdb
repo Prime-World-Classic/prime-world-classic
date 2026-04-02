@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SpellApplicator>
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="3" />
+	<BackLink DBID="/Items/Talents/Class/Healer/Ability1.TALENT" Count="5" />
+	<BackLink DBID="/Items/Talents/Class/Healer/A4HealSpell.SPLL" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Healer/AreaHeal.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Healer/Ability5.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Healer/status_A5_Buff.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Healer/Ability4_2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Warlord/Ability2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Warlord/Ability3.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Warlord/status_A4_banner.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Invisible/Ability_A2.TALENT" Count="3" />
+	<BackLink DBID="/Items/Talents/Class/Invisible/status_A2_CoverSelf.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Invisible/status_A2_Cover.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Mowgli/status_A3_Poison.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Mowgli/Ability4.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Mowgli/A4_Pursue.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Mowgli/A4_GreatHunt.APLR" Count="2" />
+	<BackLink DBID="/Summons/Dispenser/status_A2_DispHeal.APLR" Count="4" />
+	<BackLink DBID="/Items/Talents/Class/Artist/status_A2_heal.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A2.TALENT" Count="3" />
+	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Unicorn/Ability1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Hunter/Ability2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Hunter/A3SpellSwitch.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A1_SpectralLashAlly.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A1_SpectralLashAllySelf.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bard/A2_FrendsBuffs.SPLL" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bard/A3_BuffsSpell.SPLL" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Fairy/A2_SpellPeriodically.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Fairy/status_A3_Symbiot.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A4_2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Crusader/status_A3_HealSelf.APLR" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Angel/Ability_A1.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Angel/status_A2_AuraBuff.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PlagueDoctor/Ability_A5.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Zealot/Ability_A2.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Zealot/status_A4_DamageReflected.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Zealot/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A4_2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Brewer/spell_SpreadHoney.SPLL" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A4.TALENT" Count="4" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<caption>Эффекты Символа Моря </caption>
+	<enabled>
+		<compiledString>FR8AAAAEAAAAJwAAAEAAAAB2AAAAjAAAAEc3OTIAAAAARzc5MgAAAABTZWFTeW1ib2xfbWFyawBVi+yD7AxWaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0UWgQAAAAi1UMiwKLTQyLkIgBAAD/0twd1QAAAN/g9sREei+LRQiLEItNCIuCkAEAAP/Qi/CLTQyLEYtNDIuCkAEAAP/QO/B1CcdF9AEAAADrB8dF9AAAAACKRfRei+VdwwAAAAAAAAAA</compiledString>
+		<returnType>bool</returnType>
+		<sString>tal("G792") &amp;&amp; receiver.vSeaSymbol_mark == 0 &amp;&amp; sFctn == rFctn</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<spell href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" id="2C5201DD-6140-46C8-8109-14B7A926E98A">
+		<Spell>
+			<applicators>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" id="CDFF2F71-BB11-414B-A25B-66541117C2DF">
+					<ProgramApplicator>
+						<applicators>
+							<Item>
+								<applicator href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" />
+								<continueCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>0</sString>
+								</continueCondition>
+								<continueEvents>1</continueEvents>
+								<delay>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>-1.0</sString>
+								</delay>
+								<stopCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>0</sString>
+								</stopCondition>
+								<stopEvents>0</stopEvents>
+							</Item>
+							<Item>
+								<applicator href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" id="0C27717A-1EB5-4E38-B5B7-7EC14103726D">
+									<StatModApplicator>
+										<applyTarget>ApplicatorTarget</applyTarget>
+										<behaviorFlags>0</behaviorFlags>
+										<caption>Помечаем тех кого похилили</caption>
+										<constraint>None</constraint>
+										<dontUpdate>false</dontUpdate>
+										<effect>
+											<Item href="" />
+											<Item href="" />
+										</effect>
+										<enabled>
+											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+											<returnType>bool</returnType>
+											<sString>true</sString>
+										</enabled>
+										<formulaName></formulaName>
+										<lifeTime>
+											<compiledString>FSEAAAAEAAAAKAAAAEEAAAB3AAAAlwAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAENvb2xkb3duAFWL7IPsEGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoCAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdDdoEAAAAItVCIsCi00Ii5CoAQAA/9KJRfSLRQxQi00IUWgYAAAAi1X0iwKLTfSLUFD/0tld8OsF2e7ZXfDZRfCL5V3DAAAAAA==</compiledString>
+											<returnType>float</returnType>
+											<sString>talconst("G792","Cooldown")</sString>
+										</lifeTime>
+										<LoggingEvent>-1</LoggingEvent>
+										<modifier>
+											<addValue>
+												<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+												<returnType>float</returnType>
+												<sString>1.0f</sString>
+											</addValue>
+											<multValue>
+												<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+												<returnType>float</returnType>
+												<sString>0.0f</sString>
+											</multValue>
+											<stat>Life</stat>
+											<topModifier>false</topModifier>
+											<variable>SeaSymbol_mark</variable>
+										</modifier>
+										<providerName></providerName>
+										<startCondition>
+											<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+											<returnType>bool</returnType>
+											<sString>true</sString>
+										</startCondition>
+										<statModName></statModName>
+									</StatModApplicator>
+								</applicator>
+								<continueCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>0</sString>
+								</continueCondition>
+								<continueEvents>1</continueEvents>
+								<delay>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>-1.0</sString>
+								</delay>
+								<stopCondition>
+									<compiledString></compiledString>
+									<returnType>bool</returnType>
+									<sString>0</sString>
+								</stopCondition>
+								<stopEvents>0</stopEvents>
+							</Item>
+						</applicators>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<behaviorFlags>0</behaviorFlags>
+						<caption></caption>
+						<effect>
+							<Item href="" />
+							<Item href="" />
+						</effect>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<lifeTime>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>-1.0</sString>
+						</lifeTime>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<startCondition>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</startCondition>
+					</ProgramApplicator>
+				</Item>
+			</applicators>
+			<dispatch href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" id="2BA032FE-394A-4C2E-B25D-6838586D8A67">
+				<DispatchImmediate>
+					<alwaysApply>false</alwaysApply>
+					<applyEffect>
+						<Item href="" />
+						<Item href="" />
+					</applyEffect>
+					<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+					<applyEffectOrientation>Default</applyEffectOrientation>
+					<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+					<dieAfterApply>true</dieAfterApply>
+					<dispatchEffect>
+						<Item href="" />
+						<Item href="" />
+					</dispatchEffect>
+					<flags>0</flags>
+					<instantApply>false</instantApply>
+				</DispatchImmediate>
+			</dispatch>
+		</Spell>
+	</spell>
+	<spellTarget>ApplicatorTarget</spellTarget>
+	<targetSelector href="" />
+</SpellApplicator>

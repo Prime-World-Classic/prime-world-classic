@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Heroes/PinkGirl/_.HROB" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A0.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4_2.TALENT" Count="1" />
+	<name>A0_Damage</name>
+	<var>
+		<compiledString>FS8AAAAFAAAANgAAAEwAAABfAAAAewAAAIUAAABQaW5rR2lybF9BMF9TdGFja0NvdW50AABQaW5rR2lybF9BMF9TdGFja0NvdW50AFWL7IPsCGgAAAAAi0UIixCLTQiLgogBAAD/0NwdygAAAN/g9sREegfZ6Nld/OsYaBgAAACLTQiLEYtNCIuCiAEAAP/Q2V38agFR2QXCAAAA2RwkUdkFvgAAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DYTfzZXfjZRfiL5V3DAAAUQgCAiEMAAIA/AAAAAAAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>damageScale(sIntellect, 37 , 273) * (sender.vPinkGirl_A0_StackCount == 0 ? 1 : sender.vPinkGirl_A0_StackCount)</sString>
+	</var>
+</UnitConstant>

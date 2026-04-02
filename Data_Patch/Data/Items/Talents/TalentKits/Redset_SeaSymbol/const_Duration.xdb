@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
+	<name>Duration</name>
+	<var>
+		<compiledString>FT0AAAAFAAAATAAAAF8AAABzAAAAjQAAALIAAABHNzk0X0FjdGl2ZQBEdXJhdGlvbkJhc2UAAAAAQWRkRHVyYXRpb25fRzc5NAAAAABEdXJhdGlvbkJhc2UAVYvsg+wUi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHdMAAADf4PbERHo/i0UMUItNCFFoDAAAAItVEIsCi00Qi1BQ/9KLRQxQi00IUWgcAAAAi1UQiwKLTRCLUFDdXfj/0txF+N1d8Osdi0UMUItNCFFoMAAAAItVEIsCi00Qi1BQ/9LdXfDdRfDZXezZReyL5V3DAAAAAAAA8D8=</compiledString>
+		<returnType>float</returnType>
+		<sString>cG794_Active == 1  ? cDurationBase +cAddDuration_G794 : cDurationBase</sString>
+	</var>
+</UnitConstant>

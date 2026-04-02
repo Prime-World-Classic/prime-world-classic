@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level1/G582_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G583_Life.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G584_AttackSpeed.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G585_Dex.TALENT" Count="1" />
+	<name>DamageHeroBuildingTime</name>
+	<var>
+		<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AoAAADrB8dF/A8AAADbRfyL5V3DAAAAAAAAAEA=</compiledString>
+		<returnType>float</returnType>
+		<sString>sender.vRedset5_1_Aura &gt;= 2 ? 10 : 15</sString>
+	</var>
+</UnitConstant>

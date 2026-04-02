@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FlagsApplicator>
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/Dragon/aura_NearDragon_1.APLR" Count="2" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>216</behaviorFlags>
+	<caption>FX_DragonPower</caption>
+	<consumables />
+	<effect>
+		<Item href="/Effects/Buffs/Increase/_Regeneration.EFFT" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FRAAAAABAAAAGwAAAERyYWdvblBvd2VyQXVyYQBVi+xRagCLRRBQaAAAAACLTQyLEYtNDIuCnAEAAP/QO0UQdCyLTQyLEYtNDItCUP/QhcB0EotNDIsRi00Mi0JQ/9CD+AF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3D</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.applDragonPowerAura(GLOBAL) != pMisc &amp;&amp; (rUnitKind == 0 || rUnitKind == 1)</sString>
+	</enabled>
+	<flag>0</flag>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<talents />
+	<useListAs>ListAsRule</useListAs>
+</FlagsApplicator>

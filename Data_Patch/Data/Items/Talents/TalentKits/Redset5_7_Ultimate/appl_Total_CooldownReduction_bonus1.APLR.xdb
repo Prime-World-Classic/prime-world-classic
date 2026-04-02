@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PermanentStatModApplicator parent="/Items/Talents/_commonData/Total_CDR.APLR">
+	<BackLink DBID="/Items/Talents/Level1/G613_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G614_Int_DexOrAtSpd.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G617_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G616_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G615_Str_DexOrAtSpd.TALENT" Count="1" />
+	<caption>Увеличиваем Total_CooldownReduction_bonus1</caption>
+	<enabled>
+		<compiledString>FRoAAAACAAAAHwAAADUAAABDb29sZG93bl9SZWRzZXQ1XzdDb3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVcAAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAADwPw==</compiledString>
+		<returnType>bool</returnType>
+		<sString>sender.vCooldown_Redset5_7Counter == 1</sString>
+	</enabled>
+	<modifier>
+		<addValue>
+			<compiledString>FZgAAAAGAAAAnwAAALwAAADcAAAAAwEAACIBAAA0AQAAVG90YWxfQ29vbGRvd25SZWR1Y3Rpb24AQ29vbGRvd25fYm9udXMxYWN0aXZlAAAATWF4X1RvdGFsQ29vbGRvd25SZWR1Y3Rpb24AAENvb2xkb3duX2JvbnVzMWFjdGl2ZQAAAE1heF9Ub3RhbENvb2xkb3duUmVkdWN0aW9uAABUb3RhbF9Db29sZG93blJlZHVjdGlvbgBVi+yD7CRoAAAAAItFCIsQi00Ii4KIAQAA/9CLTQxRi1UIUmgYAAAAi0UQixCLTRCLQlDdXfj/0NxF+ItNDFGLVQhSaDAAAACLRRCLEItNEItCUN1d8P/Q3F3w3+D2xAF1H4tNDFGLVQhSaEwAAACLRRCLEItNEItCUP/Q3V3o6ziLTQxRi1UIUmhkAAAAi0UQixCLTRCLQlD/0GiAAAAAi00IixGLTQiLgogBAADdXeD/0Nxt4N1d6N1F6Nld3NlF3IvlXcM=</compiledString>
+			<returnType>float</returnType>
+			<sString>(sender.vTotal_CooldownReduction+cCooldown_bonus1active)&lt;=cMax_TotalCooldownReduction? cCooldown_bonus1active : (cMax_TotalCooldownReduction-sender.vTotal_CooldownReduction)</sString>
+		</addValue>
+	</modifier>
+</PermanentStatModApplicator>

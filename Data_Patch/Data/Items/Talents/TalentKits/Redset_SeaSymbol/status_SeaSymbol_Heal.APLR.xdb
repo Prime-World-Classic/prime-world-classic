@@ -1,0 +1,437 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" Count="2" />
+	<applicators>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="A8BAB16C-E09B-4EA1-8185-8CA9C3CDB2FB">
+			<SpellPeriodicallyApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>периодический хил</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<period>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+					<returnType>float</returnType>
+					<sString>1</sString>
+				</period>
+				<providerName></providerName>
+				<scaleMode>ScaleIsCount</scaleMode>
+				<spell href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="5BDB43D0-61BC-406B-8753-66AEED6C6AD8">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="A8DD3F77-6E3F-46F1-BA5C-3983123F1716">
+								<HealApplicator>
+									<amount>
+										<compiledString>FSEAAAAEAAAAKAAAAEEAAAB3AAAAlwAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEhlYWxCYXNlAFWL7IPsEGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoCAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdDdoEAAAAItVCIsCi00Ii5CoAQAA/9KJRfSLRQxQi00IUWgYAAAAi1X0iwKLTfSLUFD/0tld8OsF2e7ZXfDZRfCL5V3DAAAAAA==</compiledString>
+										<returnType>float</returnType>
+										<sString>talconst("G792","HealBase")</sString>
+									</amount>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>лечение</caption>
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName>Heal</formulaName>
+									<healTarget>Health</healTarget>
+									<ignoreHealingMods>false</ignoreHealingMods>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+									<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
+								</HealApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="EB38D1C6-C65A-420D-BEA3-9CB2EFC6BBF2">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<startOffset>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+					<returnType>float</returnType>
+					<sString>0.5f</sString>
+				</startOffset>
+				<targetSelector href="" />
+			</SpellPeriodicallyApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="A81610D2-B495-4084-AB72-0A0A219494EC">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>bonus damage (G797)</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAAKwAAAEQAAAB6AAAAmgAAALoAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk3X0FjdGl2ZQBVi+yD7BRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXw3B3cAAAA3+D2xER6CcdF7AEAAADrB8dF7AAAAACKReyL5V3DAAAAAAAA8D8AAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G797_Active") ==1</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="E93B7FC9-5AAF-472F-881F-71B4B71F1BE0">
+					<EventProcessorOutgoingDamage>
+						<abilityFilter>
+							<abilitiesList />
+							<abilityCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</abilityCondition>
+							<abilityCostMode>Energy</abilityCostMode>
+							<exceptThis>false</exceptThis>
+							<flags>1610614015</flags>
+							<onlySingleTarget>false</onlySingleTarget>
+						</abilityFilter>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<damageTypeFilter>15</damageTypeFilter>
+						<modifiedDamage>
+							<compiledString>FSwAAAAGAAAAMwAAAEwAAACCAAAAogAAAL4AAADUAAAARGFtYWdlAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABCb251c0RhbWFnZQBVi+yD7BRoCAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBgAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoIAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3waAAAAACLRRCLEItNEItCVP/Q2UXw3DXwAAAA2ejewd7J2V3s2UXsi+VdwwAAAAAAAPA/AAAAAAAAWUAAAAAA</compiledString>
+							<returnType>float</returnType>
+							<sString>appl.vDamage *(1 + talconst("G792","BonusDamage")/100)</sString>
+						</modifiedDamage>
+						<spell href="" />
+					</EventProcessorOutgoingDamage>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="4D8DD0EC-0279-44D2-A33E-60B8A5EB717B">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_Strength (G796)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAALAAAAEUAAAB7AAAAmwAAALsAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk2X0FjdGl2ZQBVi+yD7ChWaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2gQAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaBgAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8NwdogEAAN/g9sRED4rJAAAAag+LRQyLEItNDIuCLAEAAP/QD7bwahCLTQyLEYtNDIuCLAEAAP/QD7bIO/F+DMdF7AEAAADpgAAAAGoPi1UMiwKLTQyLkCwBAAD/0g+28GoQi0UMixCLTQyLgiwBAAD/0A+2yDvxfQnHRegAAAAA60OLVQyLAotNDIuQuAAAAP/Si0UMixCLTQyLgrwAAADdXeD/0Nxd4N/g9sRBegnHRdwBAAAA6wfHRdwAAAAAi03ciU3oi1XoiVXsg33sAHQJx0XYAQAAAOsHx0XYAAAAAIpF2F6L5V3DAAAAAAAA8D8AAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G796_Active") ==1 &amp;&amp;(pSecond-&gt;IsRecommended(15) &gt; pSecond-&gt;IsRecommended(16) ? 1 : pSecond-&gt;IsRecommended(15) &lt; pSecond-&gt;IsRecommended(16) ? 0 : rBaseStrength&gt;=rBaseIntellect) </sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FSgAAAAEAAAALwAAAEgAAAB+AAAAngAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEc3OTZfQm9udXNfU3RhdABVi+yD7BBoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXwi+VdwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>talconst("G792","G796_Bonus_Stat")</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="2464D65A-BF90-4D5A-A1B1-FF7ACD99E375">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_Intellect (G796)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAALAAAAEUAAAB7AAAAmwAAALsAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk2X0FjdGl2ZQBVi+yD7ChWaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2gQAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaBgAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8NwdogEAAN/g9sRED4rJAAAAag+LRQyLEItNDIuCLAEAAP/QD7bwahCLTQyLEYtNDIuCLAEAAP/QD7bIO/F+DMdF7AEAAADpgAAAAGoPi1UMiwKLTQyLkCwBAAD/0g+28GoQi0UMixCLTQyLgiwBAAD/0A+2yDvxfQnHRegAAAAA60OLVQyLAotNDIuQuAAAAP/Si0UMixCLTQyLgrwAAADdXeD/0Nxd4N/g9sRBegnHRdwBAAAA6wfHRdwAAAAAi03ciU3oi1XoiVXsg33sAHUJx0XYAQAAAOsHx0XYAAAAAIpF2F6L5V3DAAAAAAAA8D8AAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G796_Active") ==1 &amp;&amp; !(pSecond-&gt;IsRecommended(15) &gt; pSecond-&gt;IsRecommended(16) ? 1 : pSecond-&gt;IsRecommended(15) &lt; pSecond-&gt;IsRecommended(16) ? 0 : rBaseStrength&gt;=rBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FSgAAAAEAAAALwAAAEgAAAB+AAAAngAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEc3OTZfQm9udXNfU3RhdABVi+yD7BBoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXwi+VdwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>talconst("G792","G796_Bonus_Stat")</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="B146C22F-0DFC-41A1-AD13-7E2023732E92">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_BonusMoveSpeed (G793)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAAKwAAAEQAAAB6AAAAmgAAALoAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzkzX0FjdGl2ZQBVi+yD7BRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXw3B3WAAAA3+D2xER7BsZF7wHrBMZF7wCKRe+L5V3DAAAAAAAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G793_Active")</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FSwAAAAEAAAAMwAAAEwAAACCAAAAogAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEc3OTNfQm9udXNNb3ZlU3BlZWQAVYvsg+wQaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2gQAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaBgAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8IvlXcMAAAAA</compiledString>
+						<returnType>float</returnType>
+						<sString>talconst("G792","G793_BonusMoveSpeed") </sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>MoveSpeed</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="681C5CFC-C5FB-46A0-9736-42972D97DC05">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_Will (G795)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAALAAAAEUAAAB7AAAAmwAAALsAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk1X0FjdGl2ZQBVi+yD7ChWaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2gQAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaBgAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8NwdogEAAN/g9sRED4rJAAAAahOLRQiLEItNCIuCLAEAAP/QD7bwahSLTQiLEYtNCIuCLAEAAP/QD7bIO/F+DMdF7AEAAADpgAAAAGoTi1UIiwKLTQiLkCwBAAD/0g+28GoUi0UIixCLTQiLgiwBAAD/0A+2yDvxfQnHRegAAAAA60OLVQiLAotNCIuQyAAAAP/Si0UIixCLTQiLgswAAADdXeD/0Nxd4N/g9sRBegnHRdwBAAAA6wfHRdwAAAAAi03ciU3oi1XoiVXsg33sAHUJx0XYAQAAAOsHx0XYAAAAAIpF2F6L5V3DAAAAAAAA8D8AAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G795_Active") == 1 &amp;&amp; !(pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseStamina&gt;=sBaseWill)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FSgAAAAEAAAALwAAAEgAAAB+AAAAngAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEc3OTVfQm9udXNfU3RhdABVi+yD7BBoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXwi+VdwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>talconst("G792","G795_Bonus_Stat") </sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Will</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" id="A4A88122-5874-4513-ACD2-0EB96BC51C5E">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_Stamina (G795)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FSQAAAAFAAAALAAAAEUAAAB7AAAAmwAAALsAAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABHNzk1X0FjdGl2ZQBVi+yD7ChWaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgIAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0N2gQAAAAi1UIiwKLTQiLkKgBAAD/0olF9ItFDFCLTQhRaBgAAACLVfSLAotN9ItQUP/S2V3w6wXZ7tld8NlF8NwdogEAAN/g9sRED4rJAAAAahOLRQiLEItNCIuCLAEAAP/QD7bwahSLTQiLEYtNCIuCLAEAAP/QD7bIO/F+DMdF7AEAAADpgAAAAGoTi1UIiwKLTQiLkCwBAAD/0g+28GoUi0UIixCLTQiLgiwBAAD/0A+2yDvxfQnHRegAAAAA60OLVQiLAotNCIuQyAAAAP/Si0UIixCLTQiLgswAAADdXeD/0Nxd4N/g9sRBegnHRdwBAAAA6wfHRdwAAAAAi03ciU3oi1XoiVXsg33sAHQJx0XYAQAAAOsHx0XYAAAAAIpF2F6L5V3DAAAAAAAA8D8AAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","G795_Active") == 1 &amp;&amp; (pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseStamina&gt;=sBaseWill)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FSgAAAAEAAAALwAAAEgAAAB+AAAAngAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEc3OTVfQm9udXNfU3RhdABVi+yD7BBoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3w2UXwi+VdwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>talconst("G792","G795_Bonus_Stat") </sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption>Статус Символ моря</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR_description.txt" />
+	<dispellPriority>Medium</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName></formulaName>
+	<image href="/UI/Styles/Icons/Talents/_792.ITEX" />
+	<lifeTime>
+		<compiledString>FSEAAAAEAAAAKAAAAEEAAAB3AAAAlwAAAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAER1cmF0aW9uAFWL7IPsEGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoCAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdDdoEAAAAItVCIsCi00Ii5CoAQAA/9KJRfSLRQxQi00IUWgYAAAAi1X0iwKLTfSLUFD/0tld8OsF2e7ZXfDZRfCL5V3DAAAAAA==</compiledString>
+		<returnType>float</returnType>
+		<sString>talconst("G792","Duration")</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>
