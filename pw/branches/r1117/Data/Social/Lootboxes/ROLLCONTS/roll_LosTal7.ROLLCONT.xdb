@@ -605,7 +605,7 @@
 								<Item>
 									<item href="/Social/Lootboxes/ROLLCONTS/roll_LosTal7.ROLLCONT" id="53C30236-F85E-4E08-96A4-C5D654A0CB00">
 										<TalentRollItem>
-											<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
+											<talent href="" />
 										</TalentRollItem>
 									</item>
 									<probability>1</probability>

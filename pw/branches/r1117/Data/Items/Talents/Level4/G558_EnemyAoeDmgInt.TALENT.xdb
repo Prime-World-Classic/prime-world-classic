@@ -1,11 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="2" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set4" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set4_kit3" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset4_3_Fire/Redset4_3_Fire.TALKIT" Count="1" />
-	<BackLink DBID="/Social/TalentsCollection" Count="3" />
+	<BackLink DBID="/Social/TalentsCollection" Count="6" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_LosTal7.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_RedSet4.ROLLCONT" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet4.TALENTSET" Count="1" />

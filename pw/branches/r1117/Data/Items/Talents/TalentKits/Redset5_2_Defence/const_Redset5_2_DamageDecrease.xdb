@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level5/G589_LifeStaOrWill.TALENT" Count="1" />
 	<name>DamageReductionPercent</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAIQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>10</sString>
+		<sString>8.5</sString>
 	</var>
 </UnitConstant>

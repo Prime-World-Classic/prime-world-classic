@@ -236,9 +236,9 @@
 					<UnitConstant>
 						<name>Add_LifeRegAbs</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MzD6amZk/</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MzD7NzIw/</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(0.4, 1.2)</sString>
+							<sString>refineScale(0.4, 1.1)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

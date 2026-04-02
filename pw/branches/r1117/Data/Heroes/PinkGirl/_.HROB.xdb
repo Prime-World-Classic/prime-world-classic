@@ -817,9 +817,11 @@
 							<UnitConstant>
 								<name>Stun_StartCondition</name>
 								<var>
-									<compiledString>FRcAAAADAAAANAAAAE4AAABkAAAAV2FyZAAAAABQaW5rR2lybFN0b3BBMABVi+xRi0UMixCLTQyLQlD/0IP4EXRLagCLTRBRaAAAAACLVQyLAotNDIuQnAEAAP/SO0UQdStoCAAAAItFCIsQi00Ii4KIAQAA/9DcHYYAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAANtF/IvlXcMAAAAAAAAAAA==</compiledString>
+									<compiledString>FRQAAAACAAAAMQAAAFEAAABXYXJkAAAAAFBpbmtHaXJsX0EwAFWL7FGLRQyLEItNDItCUP/Qg/gRdElqAItNEFFoAAAAAItVDIsCi00Mi5CcAQAA/9I7RRB1KWoBi0UQUGgIAAAAi00IixGLTQiLgpwBAAD/0DtFEHQJx0X8AQAAAOsHx0X8AAAAANtF/IvlXcM=</compiledString>
 									<returnType>float</returnType>
-									<sString>rUnitKind != 17 &amp;&amp; receiver.applWard(GLOBAL) == pMisc &amp;&amp; sender.vPinkGirlStopA0 &gt; 0</sString>
+									<sString>rUnitKind != 17 &amp;&amp; receiver.applWard(GLOBAL) == pMisc &amp;&amp; sender.applPinkGirl_A0(UNIT) != pMisc
+
+</sString>
 								</var>
 							</UnitConstant>
 						</Item>

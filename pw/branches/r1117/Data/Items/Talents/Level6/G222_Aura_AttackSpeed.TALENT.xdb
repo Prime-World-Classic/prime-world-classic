@@ -235,9 +235,9 @@
 					<UnitConstant>
 						<name>Add_AttackSpeed</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAYEEAAABA</compiledString>
+							<compiledString>FRYAAAAGAAAAMQAAADsAAABYAAAAbgAAAIEAAACLAAAARmxhZ3NTdW1tb25SZWR1Y2VTdGF0AFWL7IPsFItFDIsQi00Mi0JQ/9CD+AJ1UFHZBccAAADZHCRR2QXDAAAA2Rwki00QixGLTRCLQmz/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d+P/Q3A27AAAA2eje4dxN+N1d8OskUdkFxwAAANkcJFHZBa8AAADZHCSLTRCLEYtNEItCbP/Q3V3w3UXw2V3s2UXsi+VdwwAAYEEAAAAAAADwP3sUrkfheoQ/AABAQQAAAEA=</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(14, 2)</sString>
+							<sString>rUnitKind == 2 ?  refineScale(12, 2) * (1-cFlagsSummonReduceStat*0.01) : refineScale(14, 2)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -255,6 +255,16 @@
 				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraDexOrAts" />
 				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraStaOrWill" />
 				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraDamageDexterity" />
+				<Item href="/Items/Talents/Level6/G222_Aura_AttackSpeed.TALENT" id="69AF7A59-ABB7-4B68-859C-BAFD422CAE77">
+					<UnitConstant>
+						<name>FlagsSummonReduceStat</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>30.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -784,7 +784,7 @@
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level5/G560_EnemyAoeDmgDexStr.TALENT" />
@@ -3204,7 +3204,7 @@
 									<talent href="/Items/Talents/Level4/G568_CasterDamagePlus.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
+									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
@@ -6490,9 +6490,6 @@
 									<talent href="/Items/Talents/Level4/G568_CasterDamagePlus.TALENT" />
 								</Item>
 								<Item>
-									<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
-								</Item>
-								<Item>
 									<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
 								</Item>
 								<Item>
@@ -6724,6 +6721,9 @@
 								</Item>
 								<Item>
 									<talent href="/Items/Talents/Level3/G036_Int-Mana.TALENT" />
+								</Item>
+								<Item>
+									<talent href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
 								</Item>
 							</items>
 							<title textref="/Social/TalentsCollection_grouping_2_columns_columns_5_rows_rows_3_title.txt" />

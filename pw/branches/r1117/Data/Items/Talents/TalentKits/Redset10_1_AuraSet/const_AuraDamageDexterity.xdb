@@ -11,8 +11,8 @@
 	<BackLink DBID="/Items/Talents/Level3/G089_LifeRegen.TALENT" Count="1" />
 	<name>DamageDexterity</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>7</sString>
+		<sString>5</sString>
 	</var>
 </UnitConstant>

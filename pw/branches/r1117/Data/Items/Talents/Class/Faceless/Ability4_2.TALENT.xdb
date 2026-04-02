@@ -131,7 +131,7 @@
 				<caption></caption>
 				<consumables />
 				<effect>
-					<Item href="/Heroes/Faceless/FXDaggerA.EFFT" />
+					<Item href="/Heroes/Faceless/FXDaggerB.EFFT" />
 					<Item href="/Heroes/Faceless/FXDaggerB.EFFT" />
 				</effect>
 				<enabled>
@@ -164,7 +164,7 @@
 				<caption></caption>
 				<consumables />
 				<effect>
-					<Item href="/Heroes/Faceless/FXSword_A.EFFT" />
+					<Item href="/Heroes/Faceless/FXSword_B.EFFT" />
 					<Item href="/Heroes/Faceless/FXSword_B.EFFT" />
 				</effect>
 				<enabled>

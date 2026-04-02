@@ -211,9 +211,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FRkAAAACAAAAHgAAADQAAABBZGRfU3RyX1JlZHNldDVfN0NvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdVgAAAN/g9sQFegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAABA</compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vAdd_Str_Redset5_7Counter &lt; 2</sString>
+		<sString>false</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>
@@ -224,8 +224,8 @@
 	<LoggingEvent>-1</LoggingEvent>
 	<providerName></providerName>
 	<startCondition>
-		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
 		<returnType>bool</returnType>
-		<sString>true</sString>
+		<sString>false</sString>
 	</startCondition>
 </ProgramApplicator>

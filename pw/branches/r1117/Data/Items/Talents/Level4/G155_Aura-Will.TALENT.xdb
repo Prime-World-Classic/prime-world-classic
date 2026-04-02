@@ -234,9 +234,9 @@
 					<UnitConstant>
 						<name>Add_Will</name>
 						<var>
-							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ6NkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAOBAAACAPw==</compiledString>
+							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ6NkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAMBAAACAPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(7, 1)</sString>
+							<sString>refineScale(6, 1)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

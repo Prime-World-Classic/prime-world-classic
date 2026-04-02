@@ -5,9 +5,9 @@
 	<BackLink DBID="/Items/Talents/Level2/G584_AttackSpeed.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level2/G585_Dex.TALENT" Count="1" />
 	<condition>
-		<compiledString>FRYAAAACAAAAGwAAADEAAABSZWRzZXQ1XzFfU3RhdENvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdUwAAAN/g9sQBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAhA</compiledString>
+		<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAACEA=</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vRedset5_1_StatCounter &gt;= 3</sString>
+		<sString>sender.vRedset5_1_Aura &gt;= 3</sString>
 	</condition>
 	<name>Bonus3Active</name>
 </ConditionFormula>

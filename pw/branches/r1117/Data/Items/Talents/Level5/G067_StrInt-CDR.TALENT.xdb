@@ -51,6 +51,8 @@
 	<BackLink DBID="/Test/Talents/Witcher/Duel_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witcher/Duel_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/ThunderGod.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -122,9 +124,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FRgAAAACAAAAHQAAADMAAABUb3RhbF9Db29sZG93blJlZHVjdGlvbgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3A1BAAAA2V382UX8i+VdwwAAAKCZmek/</compiledString>
+							<compiledString>FRgAAAACAAAAHQAAADMAAABUb3RhbF9Db29sZG93blJlZHVjdGlvbgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3A1BAAAA2V382UX8i+VdwwAAAAAAAOA/</compiledString>
 							<returnType>float</returnType>
-							<sString>sender.vTotal_CooldownReduction * 0.8f</sString>
+							<sString>sender.vTotal_CooldownReduction * 0.5f</sString>
 						</var>
 					</UnitConstant>
 				</Item>

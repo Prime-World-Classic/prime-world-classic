@@ -150,7 +150,7 @@
 				<Item href="/Items/Talents/TalentKits/Vampiric6_CasterBoost/G296_StackCount" />
 				<Item href="/Items/Talents/Level3/G302_Life_Dexterity.TALENT" id="A27B4C7F-CD5C-4709-B114-391F5BB2D5DC">
 					<UnitConstant>
-						<name>AtSpdOrDex</name>
+						<name>Add_AtSpdOrDex</name>
 						<var>
 							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MDEAAAAA/</compiledString>
 							<returnType>float</returnType>

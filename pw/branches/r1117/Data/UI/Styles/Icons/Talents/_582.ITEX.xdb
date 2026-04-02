@@ -2,7 +2,7 @@
 <UITexture>
 	<BackLink DBID="/Items/Talents/Level1/G582_StrOrInt.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/status_redset5_1_CreepBuffStatus.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" Count="2" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

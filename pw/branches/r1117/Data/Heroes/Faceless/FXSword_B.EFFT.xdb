@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectAttached>
 	<BackLink DBID="/Heroes/Faceless/FXSword_B.EFFT" Count="5" />
-	<BackLink DBID="/Items/Talents/Class/Faceless/Ability4_2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Faceless/Ability4_2.TALENT" Count="2" />
 	<attachFlags>3</attachFlags>
 	<attachType>FXSword</attachType>
 	<component href="/Heroes/Faceless/FXSwordB.PRXY" />

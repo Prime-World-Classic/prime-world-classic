@@ -139,7 +139,7 @@
 	<power>100</power>
 	<providerName></providerName>
 	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
-	<stackCount>3</stackCount>
+	<stackCount>2</stackCount>
 	<startCondition>
 		<compiledString></compiledString>
 		<returnType>bool</returnType>

@@ -73,9 +73,9 @@
 					<UnitConstant>
 						<name>Add_Health</name>
 						<var>
-							<compiledString>FQsAAAADAAAAFAAAAB4AAAA7AAAATGlmZUJ1ZGdldABVi+yD7AxR2QVgAAAA2RwkUdkFXAAAANkcJItFEIsQi00Qi0Js/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcMAAKBAzczMPg==</compiledString>
+							<compiledString>FQsAAAADAAAAFAAAAB4AAAA7AAAATGlmZUJ1ZGdldABVi+yD7AxR2QVgAAAA2RwkUdkFXAAAANkcJItFEIsQi00Qi0Js/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcMzMzNAzczMPQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(5,0.4)*cLifeBudget</sString>
+							<sString>refineScale(2.8,0.1)*cLifeBudget</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -88,14 +88,24 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAoEDNzMw+</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA4EAAAEA/</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(5, 0.4)</sString>
+							<sString>refineScale(7, 0.75)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_SlowDuration" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_Dec_MoveSpeed" />
+				<Item href="/Items/Talents/Level3/G583_Life.TALENT" id="A0409C27-BEA6-4061-BB07-176F4BC7260E">
+					<UnitConstant>
+						<name>Slow_StartCondition</name>
+						<var>
+							<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAACEA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vRedset5_1_Aura &gt;=3</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

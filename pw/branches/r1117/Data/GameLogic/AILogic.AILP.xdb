@@ -4227,11 +4227,11 @@
 							<Item href="/Items/Talents/Level6/G556_PhantomDexLife.TALENT" />
 							<Item href="/Items/Talents/Level4/G578_PhantomAttSpd.TALENT" />
 							<Item href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
-							<Item href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
 							<Item href="/Items/Talents/Level5/G559_EnemyAoeDmgDexWil.TALENT" />
 							<Item href="/Items/Talents/Level5/G560_EnemyAoeDmgDexStr.TALENT" />
 							<Item href="/Items/Talents/Level6/G561_EnemyAoeDmgStrIntDex.TALENT" />
 							<Item href="/Items/Talents/Level6/G579_EnemyAoeDmgIntDex.TALENT" />
+							<Item href="/Items/Talents/Level4/G558_EnemyAoeDmgInt.TALENT" />
 						</talents>
 					</TalentPack>
 				</Item>

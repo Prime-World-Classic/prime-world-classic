@@ -4,8 +4,10 @@
 	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
 	<name>G793_BonusMoveSpeed</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+		<compiledString>FQAAAAADAAAABgAAABIAAAAcAAAAVYvsUdkFeQAAANkcJGoBUdkFeQAAANkcJFHZBXUAAADZHCRqAItFCIsQi00Ii4I0AQAA/9BR2Rwki00IixGLTQiLgjABAAD/0FHZHCToUwAAAIPEBNkcJGoBi00QixGLTRCLQmD/0FHZHCToDQAAAIPECF3DAACAQAAAIEFVi+xR2UUI2UUM3tnf4PbEQXUI2UUI2V386wbZRQzZXfzZRfyL5V3DVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 		<returnType>float</returnType>
-		<sString>10</sString>
+		<sString>min(damageScale(max(sStrength, sIntellect), 4, 10), 10)
+
+</sString>
 	</var>
 </UnitConstant>

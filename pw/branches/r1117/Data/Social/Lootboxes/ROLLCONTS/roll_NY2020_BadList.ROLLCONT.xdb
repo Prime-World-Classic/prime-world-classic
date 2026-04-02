@@ -567,7 +567,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_NY2020_BadList.ROLLCONT" id="C7E47FD7-8F33-4A4F-B28D-C75158358E10">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
+					<talent href="" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

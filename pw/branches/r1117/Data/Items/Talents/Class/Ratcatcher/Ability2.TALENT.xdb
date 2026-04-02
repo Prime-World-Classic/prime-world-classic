@@ -1181,6 +1181,26 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability2.TALENT" id="61BAE4D7-CD92-4740-BC1A-6669C7071816">
+					<UnitConstant>
+						<name>A2_CreepBuff_Dexterity</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLgjgBAAD/0F3D</compiledString>
+							<returnType>float</returnType>
+							<sString>sDexterity</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability2.TALENT" id="555D042F-709D-4BEE-9380-975978DB470D">
+					<UnitConstant>
+						<name>A2_CreepBuff_AttackSpeed</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLQhz/0F3D</compiledString>
+							<returnType>float</returnType>
+							<sString>sAttackSpeed</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

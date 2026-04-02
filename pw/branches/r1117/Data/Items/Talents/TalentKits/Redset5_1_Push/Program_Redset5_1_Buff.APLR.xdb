@@ -73,6 +73,39 @@
 								<spell href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="D04D6FE3-FA34-45BF-A2AE-BF341E1C68FD">
 									<Spell>
 										<applicators>
+											<Item href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="6CAEE705-3D18-4CDB-9357-677E32A58F3B">
+												<FlagsApplicator>
+													<applyTarget>ApplicatorTarget</applyTarget>
+													<behaviorFlags>0</behaviorFlags>
+													<caption>эффект удара</caption>
+													<consumables />
+													<effect>
+														<Item href="/Effects/Shots/Spear/_MagicHit_RedSetPush.EFFT" />
+														<Item href="" />
+													</effect>
+													<enabled>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</enabled>
+													<flag>0</flag>
+													<formulaName></formulaName>
+													<lifeTime>
+														<compiledString></compiledString>
+														<returnType>float</returnType>
+														<sString>-1.0</sString>
+													</lifeTime>
+													<LoggingEvent>-1</LoggingEvent>
+													<providerName></providerName>
+													<startCondition>
+														<compiledString></compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</startCondition>
+													<talents />
+													<useListAs>ListAsRule</useListAs>
+												</FlagsApplicator>
+											</Item>
 											<Item href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="699EE600-0371-4508-B83A-300A9556FF80">
 												<DamageApplicator>
 													<applyTarget>ApplicatorTarget</applyTarget>
@@ -98,6 +131,57 @@
 												</DamageApplicator>
 											</Item>
 											<Item href="/Heroes/DefaultStatus/_SLOW_MOVE.APLR" />
+											<Item href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="60CDA3C3-E0B4-4D52-BA66-461A8F29D22B">
+												<StatusApplicator>
+													<applicators />
+													<applyTarget>AbilityOwner</applyTarget>
+													<behaviorFlags>152</behaviorFlags>
+													<caption>Статус, о кд следующей атаки</caption>
+													<customCounter>
+														<compiledString></compiledString>
+														<returnType>int</returnType>
+														<sString>0</sString>
+													</customCounter>
+													<customProgress>
+														<compiledString></compiledString>
+														<returnType>float</returnType>
+														<sString>-1.0</sString>
+													</customProgress>
+													<description textref="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR_60cda3c3e0b44d52ba66461a8f29d22b_description.txt" />
+													<dispellPriority>NonDispellable</dispellPriority>
+													<effect>
+														<Item href="" />
+														<Item href="" />
+													</effect>
+													<enabled>
+														<compiledString>FQoAAAACAAAADwAAACUAAABSZWRzZXQ1XzEAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdRwAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAPA/</compiledString>
+														<returnType>bool</returnType>
+														<sString>sender.vRedset5_1 == 1</sString>
+													</enabled>
+													<flags>2</flags>
+													<formulaName></formulaName>
+													<image href="/UI/Styles/Icons/Talents/_582.ITEX" />
+													<lifeTime>
+														<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AoAAADrB8dF/A8AAADbRfyL5V3DAAAAAAAAAEA=</compiledString>
+														<returnType>float</returnType>
+														<sString>sender.vRedset5_1_Aura &gt;= 2 ? 10 : 15</sString>
+													</lifeTime>
+													<LoggingEvent>-1</LoggingEvent>
+													<name textref="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR_60cda3c3e0b44d52ba66461a8f29d22b_name.txt" />
+													<power>0</power>
+													<providerName></providerName>
+													<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+													<stackCount>0</stackCount>
+													<startCondition>
+														<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+														<returnType>bool</returnType>
+														<sString>true</sString>
+													</startCondition>
+													<statusPosition>0</statusPosition>
+													<stopBehaviour>StopByTime</stopBehaviour>
+													<unstackableWith href="" />
+												</StatusApplicator>
+											</Item>
 											<Item href="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" id="148C3AF5-5CAC-4075-911B-8428C3D4F12B">
 												<StatModApplicator>
 													<applyTarget>AbilityOwner</applyTarget>
@@ -270,9 +354,9 @@
 					<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
 					<stackCount>0</stackCount>
 					<startCondition>
-						<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vRedset5_1_Aura == 2</sString>
+						<sString>sender.vRedset5_1_Aura &gt;= 2</sString>
 					</startCondition>
 					<statusPosition>0</statusPosition>
 					<stopBehaviour>StopByTime</stopBehaviour>

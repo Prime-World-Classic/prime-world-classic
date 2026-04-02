@@ -89,6 +89,16 @@
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_CreepAuraRange" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_SlowDuration" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_Dec_MoveSpeed" />
+				<Item href="/Items/Talents/Level2/G584_AttackSpeed.TALENT" id="94BF26B0-2A83-4A97-A05C-D27E233B9A4A">
+					<UnitConstant>
+						<name>Slow_StartCondition</name>
+						<var>
+							<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAACEA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vRedset5_1_Aura &gt;=3</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
