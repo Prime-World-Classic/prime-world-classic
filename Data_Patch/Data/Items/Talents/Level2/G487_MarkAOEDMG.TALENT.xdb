@@ -145,6 +145,32 @@
 				</uiEvent>
 			</ConditionCastLimitation>
 		</Item>
+		<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="D0E66697-DD82-45CF-A358-A740E9636F03">
+			<ConditionCastLimitation>
+				<condition>
+					<compiledString>FRkAAAABAAAAIwAAAEc0ODdfTWFya0FvRURNR19CdWlsZGluZwBVi+xqAYtFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9A7RRAPlMBdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>(receiver.applG487_MarkAoEDMG_Building(UNIT) == pMisc) ? true :  false</sString>
+				</condition>
+				<uiEvent href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="B09AACD6-6708-494E-A214-66FA7EB52428">
+					<UIEvent>
+						<signRecipients>PLAYER_ONLY</signRecipients>
+						<UISigns>
+							<Item href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" id="C992316D-55C5-4752-9511-E11AA16058AE">
+								<UISignMessageToStatusLine>
+									<messages>
+										<Item textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_c992316d55c547529511e11aa16058ae_messages_0.txt" />
+										<Item textref="" />
+										<Item textref="" />
+									</messages>
+									<signRecipients>USE_FROM_PARENT</signRecipients>
+								</UISignMessageToStatusLine>
+							</Item>
+						</UISigns>
+					</UIEvent>
+				</uiEvent>
+			</ConditionCastLimitation>
+		</Item>
 	</castLimitations>
 	<commonDescription textref="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT_commonDescription.txt" />
 	<compiledDescriptionA textref="" />

@@ -8,8 +8,8 @@
 	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A4_2.TALENT" Count="1" />
 	<name>A0_Evasion</name>
 	<var>
-		<compiledString>FS8AAAAEAAAANgAAAEwAAABfAAAAewAAAFBpbmtHaXJsX0EwX1N0YWNrQ291bnQAAFBpbmtHaXJsX0EwX1N0YWNrQ291bnQAVYvsg+wIaAAAAACLRQiLEItNCIuCiAEAAP/Q3B2VAAAA3+D2xER6B9no2V386xhoGAAAAItNCIsRi00Ii4KIAQAA/9DZXfzZRfzcDYkAAADZXfjZRfiL5V3DAAAAAAAAFEAAAIA/AAAAAAAAAAA=</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>5 * (sender.vPinkGirl_A0_StackCount == 0 ? 1 : sender.vPinkGirl_A0_StackCount)</sString>
+		<sString>7</sString>
 	</var>
 </UnitConstant>

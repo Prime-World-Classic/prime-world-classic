@@ -31,6 +31,7 @@
 	<BackLink DBID="/Test/Talents/RedSet7_10.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_GoodList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/tRedset5_1_Push.TALKIT" Count="1" />
+	<BackLink DBID="/Items/Talents/Inventor.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -90,6 +91,16 @@
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_CreepAuraRange" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_SlowDuration" />
 				<Item href="/Items/Talents/TalentKits/Redset5_1_Push/const_Redset5_1_Dec_MoveSpeed" />
+				<Item href="/Items/Talents/Level2/G585_Dex.TALENT" id="F145DDEB-6D34-4364-AA1D-CDBE48D7B0D4">
+					<UnitConstant>
+						<name>Slow_StartCondition</name>
+						<var>
+							<compiledString>FQ8AAAACAAAAFAAAACoAAABSZWRzZXQ1XzFfQXVyYQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1MAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAACEA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vRedset5_1_Aura &gt;=3</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -165,9 +165,9 @@
 					<UnitConstant>
 						<name>G469_CooldownReduction</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+							<compiledString>FQwAAAACAAAAEQAAACcAAABHNDY5X0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xER6CcdF/B4AAADrB8dF/AAAAADbRfyL5V3DAAAAAAAA8D8=</compiledString>
 							<returnType>float</returnType>
-							<sString>30</sString>
+							<sString>sender.vG469_Active == 1 ? 30 : 0</sString>
 						</var>
 					</UnitConstant>
 				</Item>

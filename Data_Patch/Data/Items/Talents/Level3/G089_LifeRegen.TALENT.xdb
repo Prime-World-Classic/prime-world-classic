@@ -1,0 +1,603 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/SocialTest.ROOT" Count="1" />
+	<BackLink DBID="/Items/RerollShop/TalentsList_Rar3" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentLists/Str_Int_BV_CDR" Count="1" />
+	<BackLink DBID="/Social/TalentsCollection" Count="2" />
+	<BackLink DBID="/Test/Talents/TestSet4.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Bard/Duel_Int.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Mowgli/Duel_Int.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Mowgli/Duel_Str.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Rockman/Duel_Life.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Unicorn/Duel.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Warlord/Duel.TALENTSET" Count="1" />
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>G089: Регенерация</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Level3/G089_LifeRegen.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="1321645C-146E-4330-85A3-81B70F79AD6A">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseStrength&gt;=sBaseIntellect</sString>
+				</condition>
+				<name>StrOrInt</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="C550C5EA-CC04-4EDB-99BA-F493B7AD5623">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgsAAAAD/0ItNCIsRi00Ii4KMAAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseDexterity&gt;=sBaseAttackSpeed</sString>
+				</condition>
+				<name>DexOrAts</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="CA5254FA-580A-411E-9C22-652CBF887965">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgsgAAAD/0ItNCIsRi00Ii4LMAAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>sBaseStamina&gt;=sBaseWill</sString>
+				</condition>
+				<name>StaOrWill</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="F8045D35-1691-428C-B2B1-4511436C77EC">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgrgAAAD/0ItNDIsRi00Mi4K8AAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseStrength&gt;=rBaseIntellect</sString>
+				</condition>
+				<name>StrOrIntAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="36AAD270-C284-4A85-B181-5D658A3D3C6D">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgsAAAAD/0ItNDIsRi00Mi4KMAAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseDexterity&gt;=rBaseAttackSpeed</sString>
+				</condition>
+				<name>DexOrAtsAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="6E6F861A-D7AB-4B32-8BA7-59CF216E381E">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgsgAAAD/0ItNDIsRi00Mi4LMAAAA3V34/9DcXfjf4PbEQXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>rBaseStamina&gt;=rBaseWill</sString>
+				</condition>
+				<name>StaOrWillAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="9B551C62-041F-453E-9EE3-9502A19282FC">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSMAAAAEAAAAKAAAAD4AAABKAAAAYAAAAEF1cmFCdWZmU2V0X0NvdW50ZXIAU3RyT3JJbnRFbmFibGUAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdigAAAN/g9sQBdCtoFAAAAItNCIsRi00Ii4KIAQAA/9DcHYIAAADf4PbEQXQJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAAAAAAAAAAAAAABA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=2 || sender.vStrOrIntEnable&gt;0</sString>
+				</condition>
+				<name>StrOrIntEnable</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="D3DDB770-FF1D-4679-87EA-127038569C65">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSMAAAAEAAAAKAAAAD4AAABKAAAAYAAAAEF1cmFCdWZmU2V0X0NvdW50ZXIARGV4T3JBdHNFbmFibGUAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdigAAAN/g9sQBdCtoFAAAAItNCIsRi00Ii4KIAQAA/9DcHYIAAADf4PbEQXQJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAAAAAAAAAAAAAAhA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=3 || sender.vDexOrAtsEnable&gt;0</sString>
+				</condition>
+				<name>DexOrAtsEnable</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="CD77F43D-97FC-420C-B892-D3C2F224802C">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSQAAAAEAAAAKQAAAD8AAABLAAAAYQAAAEF1cmFCdWZmU2V0X0NvdW50ZXIAU3RhT3JXaWxsRW5hYmxlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHYsAAADf4PbEAXQraBQAAACLTQiLEYtNCIuCiAEAAP/Q3B2DAAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAAAAAAAAAAQQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=4 || sender.vStaOrWillEnable&gt;0</sString>
+				</condition>
+				<name>StaOrWillEnable</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="F35473AA-82D1-4FE5-93A9-73FFFF00B13E">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSkAAAAEAAAALgAAAEQAAABQAAAAZgAAAEF1cmFCdWZmU2V0X0NvdW50ZXIARGFtYWdlRGVjcmVhc2VFbmFibGUAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdkAAAAN/g9sQBdCtoFAAAAItNCIsRi00Ii4KIAQAA/9DcHYgAAADf4PbEQXQJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAAAAAAAAAAAAABhA</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=6 || sender.vDamageDecreaseEnable&gt;0</sString>
+				</condition>
+				<name>DamageDecreaseEnable</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="1A226CCB-5924-46C2-B9C5-DB1057BB74A6">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQ8AAAACAAAAFAAAACoAAABTdHJPckludEVuYWJsZQBVi+xRaAAAAACLRQyLEItNDIuCiAEAAP/Q3B1MAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vStrOrIntEnable&gt;0</sString>
+				</condition>
+				<name>StrOrIntEnableAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="964D195B-C044-40F7-98C8-90FF33BD1864">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQ8AAAACAAAAFAAAACoAAABEZXhPckF0c0VuYWJsZQBVi+xRaAAAAACLRQyLEItNDIuCiAEAAP/Q3B1MAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vDexOrAtsEnable&gt;0</sString>
+				</condition>
+				<name>DexOrAtsEnableAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="245E4958-0EAC-4A3F-8995-4D41A0208E6D">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRAAAAACAAAAFQAAACsAAABTdGFPcldpbGxFbmFibGUAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdTQAAAN/g9sRBdQnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vStaOrWillEnable&gt;0</sString>
+				</condition>
+				<name>StaOrWillEnableAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="7C41FFBC-16BF-4D51-A597-CAEA2B8E1E6E">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRUAAAACAAAAGgAAADAAAABEYW1hZ2VEZWNyZWFzZUVuYWJsZQBVi+xRaAAAAACLRQyLEItNDIuCiAEAAP/Q3B1SAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<returnType>bool</returnType>
+					<sString>receiver.vDamageDecreaseEnable&gt;0</sString>
+				</condition>
+				<name>DamageDecreaseEnableAlly</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="7AAE3E4E-CC29-40CC-A7FB-12436D8C8DA7">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=2</sString>
+				</condition>
+				<name>Bonus2Active</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="695BA986-3274-440E-B70A-662C4EFEB11E">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAIQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=3</sString>
+				</condition>
+				<name>Bonus3Active</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="F20796EE-3515-477F-8D7A-8BB8DAE7FBC4">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAQQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=4</sString>
+				</condition>
+				<name>Bonus4Active</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="621DEB1D-10D1-4931-B2F9-DC55C3600C9B">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAYQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=6</sString>
+				</condition>
+				<name>Bonus6Active</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="80512B5A-6EF4-45FD-846E-D998A01A97F1">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="3C40FD84-2724-44DA-B443-33B2AE68EBF3">
+					<UnitConstant>
+						<name>Add_LifeRegAbs</name>
+						<var>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MzD7NzIw/</compiledString>
+							<returnType>float</returnType>
+							<sString>refineScale(0.4, 1.1)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="9438110D-48D9-4C1D-ACC3-14BC0B1B3301">
+					<UnitConstant>
+						<name>TT_Add_LifeRegAbs</name>
+						<var>
+							<compiledString>FRsAAAACAAAAKgAAADwAAABBZGRfTGlmZVJlZ0FicwAAU3RhdHVzXzA4OQBVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0mgQAAAAi0UMixCLTQyLgogBAADdXfj/0NxN+Nld9NlF9IvlXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cAdd_LifeRegAbs * receiver.vStatus_089</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraStrOrInt" />
+				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraDexOrAts" />
+				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraStaOrWill" />
+				<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/const_AuraDamageDexterity" />
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Level3/G089_LifeRegen.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>0</flags>
+	<forceBonus>13</forceBonus>
+	<image href="/UI/Styles/Icons/Talents/_089.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>2</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>-1</naftaCost>
+	<name textref="/Items/Talents/Level3/G089_LifeRegen.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="652AA39C-36FF-45AD-A29B-16810038303A">
+			<AuraApplicator>
+				<applicators>
+					<Item href="/Items/Talents/Level3/status_089_LifeReg.APLR" />
+				</applicators>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Аура</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<range>
+					<compiledString>FQsAAAABAAAAFwAAAFJhbmdlX0xvbmcAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+					<returnType>float</returnType>
+					<sString>cRange_Long</sString>
+				</range>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<targets>1409286159</targets>
+				<targetSelector href="" />
+				<type>Ally</type>
+			</AuraApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/AuraBuffSet_Counter.APLR" />
+		<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="5D81BE41-7C23-4AF1-B7BC-4CC556980BCB">
+			<AuraApplicator>
+				<applicators>
+					<Item href="/Items/Talents/TalentKits/Redset10_1_AuraSet/status_AuraBuffSet.APLR" />
+					<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="6661008C-D2D6-4213-9EAE-637B84EBA7C1">
+						<StatModApplicator>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>216</behaviorFlags>
+							<caption>Союзник получает StrOrInt</caption>
+							<constraint>None</constraint>
+							<dontUpdate>false</dontUpdate>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAQA==</compiledString>
+								<returnType>bool</returnType>
+								<sString>sender.vAuraBuffSet_Counter&gt;=2</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<modifier>
+								<addValue>
+									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+									<returnType>float</returnType>
+									<sString>1</sString>
+								</addValue>
+								<multValue>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>1.0f</sString>
+								</multValue>
+								<stat>Life</stat>
+								<topModifier>false</topModifier>
+								<variable>StrOrIntEnable</variable>
+							</modifier>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<statModName></statModName>
+						</StatModApplicator>
+					</Item>
+					<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="7B7949D0-5FE7-4C1F-B8C0-C114948E9908">
+						<StatModApplicator>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>216</behaviorFlags>
+							<caption>Союзник получает DexOrAts</caption>
+							<constraint>None</constraint>
+							<dontUpdate>false</dontUpdate>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAIQA==</compiledString>
+								<returnType>bool</returnType>
+								<sString>sender.vAuraBuffSet_Counter&gt;=3</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<modifier>
+								<addValue>
+									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+									<returnType>float</returnType>
+									<sString>1</sString>
+								</addValue>
+								<multValue>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>1.0f</sString>
+								</multValue>
+								<stat>Life</stat>
+								<topModifier>false</topModifier>
+								<variable>DexOrAtsEnable</variable>
+							</modifier>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<statModName></statModName>
+						</StatModApplicator>
+					</Item>
+					<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="2F43E427-C4AE-48E0-B784-321F57164C32">
+						<StatModApplicator>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>216</behaviorFlags>
+							<caption>Союзник получает StaOrWill</caption>
+							<constraint>None</constraint>
+							<dontUpdate>false</dontUpdate>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAQQA==</compiledString>
+								<returnType>bool</returnType>
+								<sString>sender.vAuraBuffSet_Counter&gt;=4</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<modifier>
+								<addValue>
+									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+									<returnType>float</returnType>
+									<sString>1</sString>
+								</addValue>
+								<multValue>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>1.0f</sString>
+								</multValue>
+								<stat>Life</stat>
+								<topModifier>false</topModifier>
+								<variable>StaOrWillEnable</variable>
+							</modifier>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<statModName></statModName>
+						</StatModApplicator>
+					</Item>
+					<Item href="/Items/Talents/Level3/G089_LifeRegen.TALENT" id="822AFDBB-BE24-42AE-9081-AAD3F83031B2">
+						<StatModApplicator>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>216</behaviorFlags>
+							<caption>Союзник получает DamageDecrease</caption>
+							<constraint>None</constraint>
+							<dontUpdate>false</dontUpdate>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAYQA==</compiledString>
+								<returnType>bool</returnType>
+								<sString>sender.vAuraBuffSet_Counter&gt;=6</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<modifier>
+								<addValue>
+									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+									<returnType>float</returnType>
+									<sString>1</sString>
+								</addValue>
+								<multValue>
+									<compiledString></compiledString>
+									<returnType>float</returnType>
+									<sString>1.0f</sString>
+								</multValue>
+								<stat>Life</stat>
+								<topModifier>false</topModifier>
+								<variable>DamageDecreaseEnable</variable>
+							</modifier>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<statModName></statModName>
+						</StatModApplicator>
+					</Item>
+				</applicators>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>-- Аура (Сет)</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FRQAAAACAAAAGQAAAC8AAABBdXJhQnVmZlNldF9Db3VudGVyAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVEAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAuraBuffSet_Counter&gt;=2</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<range>
+					<compiledString>FQsAAAABAAAAFwAAAFJhbmdlX0xvbmcAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+					<returnType>float</returnType>
+					<sString>cRange_Long</sString>
+				</range>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<targets>1409286159</targets>
+				<targetSelector href="" />
+				<type>Ally</type>
+			</AuraApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>G089</persistentId>
+	<prerequisiteTalents />
+	<rarity>magnificent</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Level3/G089_LifeRegen.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats>
+		<Item>
+			<addValueName></addValueName>
+			<stat>LifeRegenerationAbsolute</stat>
+			<values>
+				<Item>4</Item>
+				<Item>4.3</Item>
+				<Item>4.6</Item>
+				<Item>4.9</Item>
+				<Item>5.2</Item>
+			</values>
+		</Item>
+	</talentStats>
+	<targetType>0</targetType>
+	<type>Simple</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>-1</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>
