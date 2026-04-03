@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
 	<name>G795_Bonus_Stat</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCuAAAAP/QUdkcJItNCIsRi00Ii4K8AAAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAIEEAAPhBVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+		<compiledString>FQAAAAACAAAACQAAAFwAAABVi+xRagFR2QV2AAAA2RwkUdno2RwkagCLRQiLEItNCIuCuAAAAP/QUdkcJItNCIsRi00Ii4K8AAAA/9BR2Rwk6DUAAACDxATZHCRqAItNEIsRi00Qi0Jg/9DcBWoAAADZXfzZRfyL5V3DAAAAAAAANEAAAIA/AACgQFWL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale(max(sBaseIntellect,sBaseStrength), 10, 31)</sString>
+		<sString>abilityScale(max(sBaseIntellect, sBaseStrength), 1,5)+20</sString>
 	</var>
 </UnitConstant>

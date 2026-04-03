@@ -1,0 +1,246 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentsSet>
+	<BackLink DBID="/Heroes/Witcher/_.HROB" Count="1" />
+	<levels>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A3.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G563_AxesEngReg.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G461_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G598_RegEnergy.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A0.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A1u1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G706_Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G623_SelfHeal.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A1u2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A4_2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G566_AxesStrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G766_MiniRefresher.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G477_AOE_DMG.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A4_2u.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G649_BlindStrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G702_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G079_Int-Dex.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G498_Blink.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Witcher/Ability_A2_SUP.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G651_Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G703_Dex.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G067_StrInt-CDR.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G490_Will_Life.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G501_StaOrWill_Dex.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G574_StatViaHighestStat.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G069_Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G481_AttackSpeed_StaOrWill.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G773_StrOrInt_Dex.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G491_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G728_StrOrInt.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+	</levels>
+</TalentsSet>

@@ -1,0 +1,246 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentsSet>
+	<BackLink DBID="/Heroes/Naga/_.HROB" Count="1" />
+	<levels>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability5.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G562_AxesBase.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G602_LifeDrain.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G461_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability0.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability4.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability3.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G567_CasterBase.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G462_Life.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G492_DMG.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability4_Upg1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability2_Upg1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G566_AxesStrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G687_Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G575_EnergyReg_MoveSpeed.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G752_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G587_StaOrWill.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability3_Upg1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G688_AtSpd.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G464_Life_StaOrWill.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G495_StaOrWill.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Naga/Ability_A1_SUP.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G588_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G589_LifeStaOrWill.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G763_Life_AttackSpeedOrDex.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G463_Life_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G691_Will.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G756_WillLife.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G733_Stamina.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G734_Will.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G764_WillOrSta.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G639_Will_DexOrAtSpd.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G574_StatViaHighestStat.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+	</levels>
+</TalentsSet>

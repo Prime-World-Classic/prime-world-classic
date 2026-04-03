@@ -1,0 +1,247 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentsSet>
+	<BackLink DBID="/Heroes/Healer/_.HROB" Count="1" />
+	<BackLink DBID="/Maps/PvE/Series/Episode1/heroes/ally/_.HROB" Count="2" />
+	<levels>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability5.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G537_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G613_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level1/G126_Int_Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability0.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability1_Upg2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability2.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability4.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G628_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level2/G510_FireWard.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>3</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability1_Upg1.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability3.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability4_Upg.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G100_Int_LifeReg.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level3/G089_LifeRegen.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>2</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G660_GuildAllyDispell_Red.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G649_BlindStrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G155_Aura-Will.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G631_Int.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level4/G514_Int_Life.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Class/Healer/Ability5_SUP.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G650_Int.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G656_ShieldAOE_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G795_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G796_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level5/G467_Life_StaOrWill.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+		<Item>
+			<talents>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G183_Aura-Str.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G184_Aura-Int.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G210_Aura_Dexterity.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G797_SeaSymbol.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G543_StrOrInt.TALENT" />
+				</Item>
+				<Item>
+					<aIPriority>0</aIPriority>
+					<refineRate>5</refineRate>
+					<status>normal</status>
+					<talent href="/Items/Talents/Level6/G491_StrOrInt.TALENT" />
+				</Item>
+			</talents>
+		</Item>
+	</levels>
+</TalentsSet>
