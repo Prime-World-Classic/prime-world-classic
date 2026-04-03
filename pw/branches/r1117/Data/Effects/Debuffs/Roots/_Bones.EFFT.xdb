@@ -15,5 +15,8 @@
 		<state name="freeze_S2">
 			<component href="/Effects/Debuffs/Roots/_Needle_S2TRS.PRXY" />
 		</state>
+		<state name="wendigo_S1">
+			<component href="/Effects/Debuffs/Roots/_Flower.PRXY" />
+		</state>
 	</__states>
 </BasicEffectAttached>

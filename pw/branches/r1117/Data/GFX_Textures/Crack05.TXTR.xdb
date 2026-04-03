@@ -10,6 +10,7 @@
 	<BackLink DBID="/Summons/Spear/_Gold.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Spear/_Light.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Spear/_Purple.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Shaman/S1/FXAbility4_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneComponent>
 	<BackLink DBID="/Effects/Debuffs/Birds/_Black.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_Blue.PRXY" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

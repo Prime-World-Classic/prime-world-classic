@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UITexture>
 	<BackLink DBID="/Heroes/Wendigo/_.HROB" Count="2" />
+	<BackLink DBID="/Heroes/Wendigo/S1/_A.HEROSKIN" Count="2" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

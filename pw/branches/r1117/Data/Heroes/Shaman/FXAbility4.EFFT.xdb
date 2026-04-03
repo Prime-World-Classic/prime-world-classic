@@ -12,4 +12,9 @@
 	<parentType>General</parentType>
 	<visibilityLimited>false</visibilityLimited>
 	<visibleTime>0</visibleTime>
+	<__states>
+		<state name="shaman_S1">
+			<component href="/Heroes/Shaman/S1/FXAbility4_RED.PRXY" />
+		</state>
+	</__states>
 </BasicEffectStandalone>

@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Shaman/Ability_A4_2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Shaman/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Shaman_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Shaman.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

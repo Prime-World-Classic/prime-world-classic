@@ -31,6 +31,7 @@
 	<BackLink DBID="/Heroes/Rockman/FXability3ATRS.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Rockman/S3/FXability3ATRS.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Shaman/FXAbility4.PRXY" Count="1" />
+	<BackLink DBID="/Heroes/Shaman/S1/FXAbility4_RED.PRXY" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

@@ -31,6 +31,7 @@
 	<BackLink DBID="/Effects/Debuffs/Barrier/_PrimeSwirlEnemy.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Barrier/_PrimeSwirl_S1.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Buffs/Sacrifice/_S1.PRXY" Count="2" />
+	<BackLink DBID="/Effects/General/Blink/_SmokeStart_Shaman_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

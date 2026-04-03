@@ -5,6 +5,7 @@
 	<BackLink DBID="/Effects/Debuffs/Bats/_Ally.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Bats/_Enemy.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Birds/_Ally.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_Ally2.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

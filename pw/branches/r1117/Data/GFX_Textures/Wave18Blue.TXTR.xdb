@@ -9,6 +9,7 @@
 	<BackLink DBID="/Effects/Debuffs/ShockWave/_SoundIn.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/ShockWave/_SoundInPurple.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_Purple_S4.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Shaman_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

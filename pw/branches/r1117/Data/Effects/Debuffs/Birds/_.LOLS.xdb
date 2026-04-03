@@ -3,6 +3,8 @@
 	<BackLink DBID="/Effects/Debuffs/Birds/_White.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Birds/_Black.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Birds/_Night.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_Blue.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_NightBlue.PRXY" Count="1" />
 	<locators>
 		<Item>
 			<flags>7</flags>

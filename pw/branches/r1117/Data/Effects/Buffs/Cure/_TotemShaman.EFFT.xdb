@@ -12,4 +12,9 @@
 	<parentType></parentType>
 	<visibilityLimited>false</visibilityLimited>
 	<visibleTime>0</visibleTime>
+	<__states>
+		<state name="shaman_S1">
+			<component href="/Effects/Buffs/Cure/_TotemShaman_RED_TRS.PRXY" />
+		</state>
+	</__states>
 </BasicEffectStandalone>

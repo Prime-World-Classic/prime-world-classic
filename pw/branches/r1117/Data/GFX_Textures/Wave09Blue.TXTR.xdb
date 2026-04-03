@@ -7,6 +7,7 @@
 	<BackLink DBID="/Effects/Debuffs/Explosion/_TimeSlowTotemEnemy.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/SoulTriumph/_Aim.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/Arrow/_PrimeFX.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_TimeSlowTotem_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

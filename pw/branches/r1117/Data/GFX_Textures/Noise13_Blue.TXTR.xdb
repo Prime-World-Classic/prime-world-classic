@@ -13,7 +13,7 @@
 	<BackLink DBID="/Effects/Debuffs/Freeze/_Wall_S2.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Freeze/_WallEnemy.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Meteor/_Fire.PRXY" Count="2" />
-	<BackLink DBID="/Effects/Debuffs/Web/_.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Debuffs/Web/_.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Web/_End.PRXY" Count="3" />
 	<BackLink DBID="/Effects/Shots/Arrow/_Area_SmallTrace01.TRSC" Count="1" />
 	<BackLink DBID="/Effects/Shots/Arrow/_Area_SmallTrace02.TRSC" Count="1" />

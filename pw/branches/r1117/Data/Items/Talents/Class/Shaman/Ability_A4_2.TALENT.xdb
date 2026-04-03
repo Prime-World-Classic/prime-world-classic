@@ -5,7 +5,6 @@
 	<BackLink DBID="/Items/Talents/Class/Shaman/Ability_A4u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Shaman_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Shaman.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

@@ -15,8 +15,8 @@
 	<visibilityLimited>false</visibilityLimited>
 	<visibleTime>0</visibleTime>
 	<__states>
-		<state name="zealot_S1">
-			<component href="/Effects/General/Blink/_DarkTRS.PRXY" />
+		<state name="shaman_S1">
+			<component href="/Effects/General/Blink/_PrimeShamanTRS_RED.PRXY" />
 		</state>
 	</__states>
 </BasicEffectStandalone>

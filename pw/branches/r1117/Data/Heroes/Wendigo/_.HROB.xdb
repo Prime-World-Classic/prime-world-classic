@@ -697,7 +697,9 @@
 		<Item href="/Heroes/Wendigo/_.SOBJ" />
 		<Item href="/Heroes/Wendigo/_.SOBJ" />
 	</heroSceneObjects>
-	<heroSkins />
+	<heroSkins>
+		<Item href="/Heroes/Wendigo/S1/_A.HEROSKIN" />
+	</heroSkins>
 	<id>wendigo</id>
 	<image href="" />
 	<interaction href="" />

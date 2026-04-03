@@ -15,6 +15,8 @@
 	<BackLink DBID="/Heroes/Shaman/_FXAbility1.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Grave/FXAlly.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Grave/FXEnemy.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/FXAllyFeather.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_TimeSlowTotem_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

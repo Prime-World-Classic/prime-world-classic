@@ -47,9 +47,9 @@
 									<caption>Teleport</caption>
 									<disappearEffect href="/Effects/General/Blink/_PrimeShaman.EFFT" />
 									<enabled>
-										<compiledString>FQ0AAAABAAAAEQAAAGFyY2hlcmVzc19TNwBVi+xoAAAAAItFCIsQi00Ii4LoAQAA/9APtsD32BvAg8ABXcM=</compiledString>
+										<compiledString>FQoAAAABAAAADgAAAHNoYW1hbl9TMQBVi+xoAAAAAItFCIsQi00Ii4LoAQAA/9APtsD32BvAg8ABXcM=</compiledString>
 										<returnType>bool</returnType>
-										<sString>!sender.IsSkinUsed( "archeress_S7" )</sString>
+										<sString>!sender.IsSkinUsed( "shaman_S1" )</sString>
 									</enabled>
 									<formulaName></formulaName>
 									<LoggingEvent>-1</LoggingEvent>
@@ -66,14 +66,14 @@
 							</Item>
 							<Item href="/Items/Talents/Class/Shaman/Ability_A2.TALENT" id="393628FC-E71B-4462-87B7-685BFFB55274">
 								<TeleportApplicator>
-									<appearEffect href="/Effects/General/Blink/_BlueSTD.EFFT" />
+									<appearEffect href="/Effects/General/Blink/_PrimeShaman_RED.EFFT" />
 									<applyTarget>AbilityOwner</applyTarget>
 									<caption>Teleport</caption>
-									<disappearEffect href="/Effects/Debuffs/Explosion/_GiftArchress.EFFT" />
+									<disappearEffect href="/Effects/General/Blink/_PrimeShaman_RED.EFFT" />
 									<enabled>
-										<compiledString>FQ0AAAABAAAAEQAAAGFyY2hlcmVzc19TNwBVi+xoAAAAAItFCIsQi00Ii4LoAQAA/9Bdww==</compiledString>
+										<compiledString>FQoAAAABAAAADgAAAHNoYW1hbl9TMQBVi+xoAAAAAItFCIsQi00Ii4LoAQAA/9Bdww==</compiledString>
 										<returnType>bool</returnType>
-										<sString>sender.IsSkinUsed( "archeress_S7" )</sString>
+										<sString>sender.IsSkinUsed( "shaman_S1" )</sString>
 									</enabled>
 									<formulaName></formulaName>
 									<LoggingEvent>-1</LoggingEvent>

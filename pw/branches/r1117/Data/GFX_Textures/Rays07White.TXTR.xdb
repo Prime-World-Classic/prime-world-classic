@@ -194,6 +194,7 @@
 	<BackLink DBID="/Terrain/BaseB/FishFX.PRXY" Count="1" />
 	<BackLink DBID="/Terrain/BaseB/FrogFX.PRXY" Count="1" />
 	<BackLink DBID="/Terrain/Signs/_03BFX.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_Ally2.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

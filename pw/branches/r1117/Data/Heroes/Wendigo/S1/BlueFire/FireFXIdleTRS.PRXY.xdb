@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent parent="/Heroes/WraithKing/FXIdle.PRXY">
+	<BackLink DBID="/Heroes/Wendigo/_FXIdle.EFFT" Count="1" />
+	<BackLink DBID="/Heroes/Wendigo/_.SOBJ" Count="1" />
+	<BackLink DBID="/Heroes/Wendigo/S1/_.SOBJ" Count="3" />
+	<attached>
+		<Item skip="1" />
+		<Item skip="1" />
+		<Item skip="1" />
+		<Item delete="1" />
+	</attached>
+	<caption>FXIdleFire</caption>
+	<groupFlags>4</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

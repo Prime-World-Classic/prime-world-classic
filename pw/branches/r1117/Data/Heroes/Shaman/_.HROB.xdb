@@ -967,7 +967,9 @@
 		<Item href="/Heroes/Shaman/_.SOBJ" />
 		<Item href="/Heroes/Shaman/_.SOBJ" />
 	</heroSceneObjects>
-	<heroSkins />
+	<heroSkins>
+		<Item href="/Heroes/Shaman/S1/_.HEROSKIN" />
+	</heroSkins>
 	<id>shaman</id>
 	<image href="" />
 	<interaction href="" />

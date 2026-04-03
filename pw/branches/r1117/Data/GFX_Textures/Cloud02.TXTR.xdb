@@ -6,6 +6,7 @@
 	<BackLink DBID="/Effects/Debuffs/Wall/_Ally.PRXY" Count="1" />
 	<BackLink DBID="/Effects/General/Blink/_SmokeStart.PRXY" Count="1" />
 	<BackLink DBID="/Effects/General/Blink/_SmokeEnd.PRXY" Count="1" />
+	<BackLink DBID="/Effects/General/Blink/_SmokeStart_Shaman_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

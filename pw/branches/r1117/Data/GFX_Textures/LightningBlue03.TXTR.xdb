@@ -11,6 +11,7 @@
 	<BackLink DBID="/Effects/Shots/Energy/_PurpleStarBall.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/Energy/_PurpleStarBig.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/Energy/_PurpleStarBigEnemy.PRXY" Count="1" />
+	<BackLink DBID="/Effects/General/Blink/_Prime_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

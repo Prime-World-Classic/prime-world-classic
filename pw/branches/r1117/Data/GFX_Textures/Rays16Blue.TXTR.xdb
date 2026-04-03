@@ -49,6 +49,7 @@
 	<BackLink DBID="/Effects/Shots/Spear/_LightHit.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Faceless/FXdeath.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Torch/FXA.PRXY" Count="1" />
+	<BackLink DBID="/Effects/General/Blink/_Prime_RED.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

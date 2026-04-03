@@ -10,4 +10,9 @@
 	<fadeOut>0.5</fadeOut>
 	<groupFlags>0</groupFlags>
 	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="wendigo_S1">
+			<component href="/Effects/Debuffs/Birds/_NightBlue.PRXY" />
+		</state>
+	</__states>
 </BasicEffectAttached>
