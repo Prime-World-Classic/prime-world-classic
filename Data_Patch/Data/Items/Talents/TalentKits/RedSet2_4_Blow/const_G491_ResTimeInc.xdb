@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G491_StrOrInt.TALENT" Count="1" />
 	<name>G491_Damage</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+		<compiledString>FQAAAAACAAAAPgAAAEkAAABVi+yD7AyLRQyLEItNDItCUP/Qg/gGdC+LTQyLEYtNDItCUP/Qg/gHdB2LTQyLEYtNDItCUP/Qg/gIdAvdBWUAAADdXfjrCd0FXQAAAN1d+N1F+Nld9NlF9IvlXcMAAAAAAAD4PwAAAAAAAAhA</compiledString>
 		<returnType>float</returnType>
-		<sString>4</sString>
+		<sString>(rUnitKind == 6 || rUnitKind == 7 || rUnitKind == 8) ? 1.5 : 3</sString>
 	</var>
 </UnitConstant>

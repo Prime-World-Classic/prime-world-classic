@@ -7,8 +7,8 @@
 	<BackLink DBID="/Items/Talents/Level5/G615_Str_DexOrAtSpd.TALENT" Count="1" />
 	<name>Cooldown_bonus2active</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>7</sString>
+		<sString>6</sString>
 	</var>
 </UnitConstant>

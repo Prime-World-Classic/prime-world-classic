@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level4/G586_Life.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G587_StaOrWill.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G588_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G589_LifeStaOrWill.TALENT" Count="1" />
+	<name>DamageReductionPercent</name>
+	<var>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAIQQ==</compiledString>
+		<returnType>float</returnType>
+		<sString>8.5</sString>
+	</var>
+</UnitConstant>

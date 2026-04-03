@@ -566,7 +566,7 @@
 		<Item>
 			<item href="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" id="50E51110-A266-4ACD-A1A0-07007123652A">
 				<TalentRollItem>
-					<talent href="/Items/Talents/Level3/G558_EnemyAoeDmgInt.TALENT" />
+					<talent href="" />
 				</TalentRollItem>
 			</item>
 			<probability>1</probability>

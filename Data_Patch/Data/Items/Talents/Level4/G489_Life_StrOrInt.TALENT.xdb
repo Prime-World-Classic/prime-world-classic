@@ -95,6 +95,9 @@
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G489_MaxCount" />
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxCountBuilding" />
 				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G487_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G488_MaxBlowCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G490_MaxCount" />
+				<Item href="/Items/Talents/TalentKits/RedSet2_4_Blow/const_G491_MaxCount" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -1285,7 +1285,7 @@
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
-				<formulaName></formulaName>
+				<formulaName>G487_MarkAoEDMG_Building</formulaName>
 				<lifeTime>
 					<compiledString></compiledString>
 					<returnType>float</returnType>
