@@ -509,11 +509,13 @@ std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int s
   skinMap[60].push_back("shadow");
   skinMap[60].push_back("shadow_S1");
   skinMap[61].push_back("wendigo");
+  skinMap[61].push_back("wendigo_S1");
   skinMap[62].push_back("trickster");
   skinMap[62].push_back("trickster_S1");
   skinMap[63].push_back("banshee");
   skinMap[63].push_back("banshee_S1");
   skinMap[64].push_back("shaman");
+  skinMap[64].push_back("shaman_S1");
   skinMap[65].push_back("bomber");
   skinMap[65].push_back("Bomber_S1");
 
