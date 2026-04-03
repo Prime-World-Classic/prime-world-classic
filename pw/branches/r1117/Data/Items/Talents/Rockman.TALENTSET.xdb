@@ -94,7 +94,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Rockman/Ability4_2.TALENT" />
+					<talent href="/Items/Talents/Class/Rockman/Ability4.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>2</aIPriority>
@@ -134,7 +134,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Rockman/Ability4_2u.TALENT" />
+					<talent href="/Items/Talents/Class/Rockman/Ability4Upg.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

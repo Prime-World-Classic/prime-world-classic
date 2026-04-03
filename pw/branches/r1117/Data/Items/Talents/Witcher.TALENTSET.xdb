@@ -54,7 +54,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G725_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level2/G706_Str.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>3</aIPriority>
@@ -66,13 +66,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G462_Life.TALENT" />
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G479_StrOrInt_AttackSpeed.TALENT" />
+					<talent href="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -94,7 +94,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Witcher/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/Witcher/Ability_A4_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>2</aIPriority>
@@ -112,7 +112,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G601_DexStrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level3/G488_StaOrWill.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -128,7 +128,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Witcher/Ability_A4u.TALENT" />
+					<talent href="/Items/Talents/Class/Witcher/Ability_A4_2u.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -146,13 +146,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G478_Str.TALENT" />
+					<talent href="/Items/Talents/Level4/G079_Int-Dex.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G632_Dex.TALENT" />
+					<talent href="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -186,13 +186,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G480_Vamp_AttackSpeed.TALENT" />
+					<talent href="/Items/Talents/Level5/G067_StrInt-CDR.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G633_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level5/G490_Will_Life.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -214,7 +214,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G653_Dex.TALENT" />
+					<talent href="/Items/Talents/Level6/G069_Str.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -232,7 +232,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G634_Str_Dex.TALENT" />
+					<talent href="/Items/Talents/Level6/G491_StrOrInt.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

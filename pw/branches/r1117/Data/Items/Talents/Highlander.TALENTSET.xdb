@@ -72,7 +72,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G526_Shield.TALENT" />
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -106,7 +106,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G477_AOE_DMG.TALENT" />
+					<talent href="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -146,7 +146,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G478_Str.TALENT" />
+					<talent href="/Items/Talents/Level4/G799_Harpoon_StrOrInt.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -186,7 +186,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G690_Stamina.TALENT" />
+					<talent href="/Items/Talents/Level5/G800_Harpoon_AtSpdOrDex.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -226,7 +226,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G741_DexOrAtSpd.TALENT" />
+					<talent href="/Items/Talents/Level6/G801_Harpoon_StrOrIntAtSpd.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

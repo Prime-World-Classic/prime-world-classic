@@ -66,7 +66,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G290_GuildGlyphSave.TALENT" />
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

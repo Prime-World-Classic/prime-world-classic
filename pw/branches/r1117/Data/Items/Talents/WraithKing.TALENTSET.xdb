@@ -72,7 +72,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G738_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -88,7 +88,7 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/WraithKing/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/WraithKing/Ability_A4_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -128,7 +128,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/WraithKing/Ability_A4u.TALENT" />
+					<talent href="/Items/Talents/Class/WraithKing/Ability_A4_2u.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

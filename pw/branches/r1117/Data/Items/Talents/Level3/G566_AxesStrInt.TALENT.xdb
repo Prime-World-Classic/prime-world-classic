@@ -38,6 +38,7 @@
 	<BackLink DBID="/Items/Talents/Rifleman.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Stalker.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/FallenAngel.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

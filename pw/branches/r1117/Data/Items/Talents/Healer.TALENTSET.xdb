@@ -61,13 +61,13 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Healer/Ability4_2.TALENT" />
+					<talent href="/Items/Talents/Class/Healer/Ability4.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G742_MoveSpeed_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -101,13 +101,13 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Healer/Ability4_2u.TALENT" />
+					<talent href="/Items/Talents/Class/Healer/Ability4_Upg.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G019_Aura-StaWill.TALENT" />
+					<talent href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -147,7 +147,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G156_Aura-Stamina.TALENT" />
+					<talent href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -187,13 +187,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G614_Int_DexOrAtSpd.TALENT" />
+					<talent href="/Items/Talents/Level5/G795_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G633_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level5/G796_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -227,7 +227,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G222_Aura_AttackSpeed.TALENT" />
+					<talent href="/Items/Talents/Level6/G797_SeaSymbol.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

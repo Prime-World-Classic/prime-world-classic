@@ -72,7 +72,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G526_Shield.TALENT" />
+					<talent href="/Items/Talents/Level2/G567_CasterBase.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -118,7 +118,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G458_StrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level3/G042_TrigHealonCast.TALENT" />
 				</Item>
 			</talents>
 		</Item>
@@ -238,7 +238,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G653_Dex.TALENT" />
+					<talent href="/Items/Talents/Level6/G571_CasterDexStaWill.TALENT" />
 				</Item>
 			</talents>
 		</Item>

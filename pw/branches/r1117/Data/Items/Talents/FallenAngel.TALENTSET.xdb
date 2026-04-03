@@ -140,7 +140,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G688_AtSpd.TALENT" />
+					<talent href="/Items/Talents/Level4/G557_EnemyAoeDmg.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -174,7 +174,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G699_AtSpd.TALENT" />
+					<talent href="/Items/Talents/Level5/G560_EnemyAoeDmgDexStr.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -186,7 +186,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G661_GuildHeroOff_Red.TALENT" />
+					<talent href="/Items/Talents/Level5/G559_EnemyAoeDmgDexWil.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -220,13 +220,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G652_AtSpd.TALENT" />
+					<talent href="/Items/Talents/Level6/G579_EnemyAoeDmgIntDex.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G713_Int_DexOrAtSpd.TALENT" />
+					<talent href="/Items/Talents/Level6/G561_EnemyAoeDmgStrIntDex.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

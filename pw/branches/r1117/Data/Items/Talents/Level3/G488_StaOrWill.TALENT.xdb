@@ -11,6 +11,7 @@
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_RedSet2.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_BadList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet2_1.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Witcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
