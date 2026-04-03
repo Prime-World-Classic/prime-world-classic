@@ -1,0 +1,2921 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneObject>
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Wendigo/S1/_.SOBJ" id="556DF9DD-F06B-4C8B-ADEC-89F1987ED93F">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability3.mayaAnim</mayaFileName>
+							<name>ability3</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability4.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability4.mayaAnim</mayaFileName>
+							<name>ability4</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability4.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability4_2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability4_2.mayaAnim</mayaFileName>
+							<name>ability4_2</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability4_2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability5_end.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability5_end.mayaAnim</mayaFileName>
+							<name>ability5_end</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability5_end.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability5_start.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability5_start.mayaAnim</mayaFileName>
+							<name>ability5_start</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability5_start.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/attack1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/attack1.mayaAnim</mayaFileName>
+							<name>attack1</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/attack1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/attack2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/attack2.mayaAnim</mayaFileName>
+							<name>attack2</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/attack2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/attack3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/attack3.mayaAnim</mayaFileName>
+							<name>attack3</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/attack3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/battleidle.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/battleidle.mayaAnim</mayaFileName>
+							<name>battleidle</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/battleidle.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/blocked.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/blocked.mayaAnim</mayaFileName>
+							<name>blocked</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/blocked.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/channeling.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/channeling.mayaAnim</mayaFileName>
+							<name>channeling</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/channeling.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/death.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/death.mayaAnim</mayaFileName>
+							<name>death</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/death.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/idle1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/idle1.mayaAnim</mayaFileName>
+							<name>idle1</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/idle1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/move1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/move1.mayaAnim</mayaFileName>
+							<name>move1</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/move1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/revive.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/revive.mayaAnim</mayaFileName>
+							<name>revive</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/revive.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/stun.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/stun.mayaAnim</mayaFileName>
+							<name>stun</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/stun.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/ability1.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/ability1.mayaAnim</mayaFileName>
+							<name>ability1</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/ability1.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/happy.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/happy.mayaAnim</mayaFileName>
+							<name>happy</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/happy.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/idle2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/idle2.mayaAnim</mayaFileName>
+							<name>idle2</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/idle2.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/idle3.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/idle3.mayaAnim</mayaFileName>
+							<name>idle3</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/idle3.ma</srcFileName>
+						</Item>
+						<Item>
+							<animationFileName>/Heroes/Wendigo/S1/move2.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Wendigo/S1/move2.mayaAnim</mayaFileName>
+							<name>move2</name>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/move2.ma</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="/Heroes/Wendigo/_.ANGR" />
+					<anims />
+					<attached>
+						<Item>
+							<attachFlags>3</attachFlags>
+							<component href="/Heroes/Werewolf/Traces.TGSC" />
+							<events href="/Heroes/Werewolf/Traces.EDEV" />
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Summon/_BlueTRS.PRXY" />
+							<events href="/Effects/General/Summon/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Unsummon/_TRS.PRXY" />
+							<events href="/Effects/General/Unsummon/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>19</attachFlags>
+							<component href="/Effects/General/Revival/_TRS.PRXY" />
+							<events href="/Effects/General/Revival/_.EDEV" />
+							<id></id>
+							<locatorName>Ground</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/Web/_.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>Horns</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>13</attachFlags>
+							<component href="/Heroes/Wendigo/S1/BlueFire/FireFXIdleTRS.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>Chest</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0.2</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>0.8</x>
+									<y>0.8</y>
+									<z>0.8</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="2CD925F2-C79A-46F0-9C14-EBCBA462E932">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="BABC1CF1-EA88-49DC-8367-8AF6E14E917B">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="4B192766-AB69-4751-B509-6DCD9C654C8C">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="F8CD3D3B-96A8-4A61-9126-17EB4561D5EC">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="7EA16E97-7250-4509-B0AD-65FA20A7B356">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="F822263C-9D08-49B8-B3EE-C756D85B92ED">
+											<AnimationSCEvent>
+												<animParam>0.2</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="71C3B8E9-D7E1-42D8-B2FD-41CB9940A869">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="8800FF08-15D2-4338-BEAC-A292DDA4BBE0">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="18F4722F-9546-48AB-920D-08E1B27BEA42">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="81045CE4-DDFB-41B6-B600-89325E5781F4">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="1FC5C716-7DA4-4691-962C-02568F407B5D">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="1AFBECD8-5980-4D94-BD34-5AB1FC5F2FE3">
+											<AnimationSCEvent>
+												<animParam>0.6</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="E028552B-45AE-4F66-BF70-1F9F8F15848C">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move1</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="21B63809-3B56-4DFE-8591-5318CF060D73">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="DF53435F-9C11-48EE-831B-8A52B7256AFD">
+											<AnimationSCEvent>
+												<animParam>0.8</animParam>
+												<name>move1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="5237041A-062B-4309-A54E-452B3A5049BD">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="C0E06DD2-FAD8-4BD0-A108-E9F3C655206C">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="029F4CAF-A7AA-44E7-844D-2655CA0AA07B">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="34F26502-EFEB-430E-8626-57DD863C4D64">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="B8BA935F-417D-40A4-92A8-19E71E01B631">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="64EA23C2-4A3E-44ED-9BF2-FD54638F8615">
+											<AnimationSCEvent>
+												<animParam>0.2</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="9B5BA4AD-1C64-46A8-B88F-4A1653F6AA27">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="B5F619B2-89AE-43DE-AB0F-DFFE8805BEBD">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="E790B1D6-8033-4A8E-B08C-364A7E713341">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="F5337134-12D8-4CBB-B9D4-78A2463FF923">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="3DC7E0BC-42E2-4F15-8583-A646509A9B48">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="8061016C-B09B-45FD-83D6-C027FB6F73B2">
+											<AnimationSCEvent>
+												<animParam>0.6</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="03954240-48A3-4812-A494-7D1680105A54">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move2</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="1005CA6B-511E-44CB-BF37-EDF0A4CD86C3">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="CCEF5AC3-FE98-44A8-BF7A-7921857B022D">
+											<AnimationSCEvent>
+												<animParam>0.8</animParam>
+												<name>move2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="F4319976-588C-4C9F-A51A-2C49025828E7">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="823235B5-A433-4CD5-9FC4-8A458701772D">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="A5B5150E-A8E8-41B1-BCCF-D25480A8CFAD">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="B8792D9E-57C8-4A72-BB1C-44CD208F3EAD">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="0575141A-E946-4BBB-82FD-70F9659E5914">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="F1795DAA-1BA5-46FF-AF91-0967E808F0AC">
+											<AnimationSCEvent>
+												<animParam>0.2</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="1235D411-D370-4967-BD86-E2AA5C491C37">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="9F448553-E560-402E-9C78-B38EEEF9574F">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="DBB14A32-D8B6-4F84-836B-99E243A63ABD">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="63B5CCBB-0A99-4E3B-8A6B-6D9FA82C92AA">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="C664D910-9D54-4F4C-B959-478F50789642">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="960C963B-CE9F-42A0-982C-ACCC195E4F8B">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="15682801-0AEA-4D85-926B-2FEF6A07BA9A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="34779D0A-B7FC-425B-AF6A-F7E6D5AFF6CE">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="5A62D6FD-72D0-4296-81E6-3455BDC1627B">
+											<AnimationSCEvent>
+												<animParam>0.6</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="86AB377E-7FF9-4C8E-AD7B-A23418A74135">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="D7296FB4-2DAE-4D6D-989D-643F3EC225B2">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="5AFE7268-5A4E-4C55-BB0E-D6F8CEA2A0B0">
+											<AnimationSCEvent>
+												<animParam>0.8</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="A3958CFC-9825-4E3F-972B-0E65D86FA3D8">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move3</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="F06E763E-3766-4208-B9B9-734C7383AA52">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="1E82C5A5-0E34-44FC-85DB-2DEA8CD82841">
+											<AnimationSCEvent>
+												<animParam>0.9</animParam>
+												<name>move3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="72F82EA0-75F1-46B7-A1B5-6AB873759917">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="27F6C102-9BC9-4192-BDFC-783F8B800AD7">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="2AAF10E4-CB74-4790-802C-0FDAFDD6A142">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="61FF288D-606F-4533-8529-88BA41289F47">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="CC457B18-C8B3-491E-8F02-4BC0AFFD5F04">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="9C123512-B37A-406E-A43B-62AEFDC58254">
+											<AnimationSCEvent>
+												<animParam>0.2</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="EE33383C-C19C-4792-92D2-37C003CD5B2A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="E41FC46A-A45E-4695-BD3C-8B9DE02AF14A">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="2524FB58-222C-4C57-84D9-49AC9AB6078A">
+											<AnimationSCEvent>
+												<animParam>0.3</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="2773CCB8-3467-4499-8960-11339656A895">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="D3D494C5-9BE9-4EED-ACDF-F06EE29D24EE">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="97CD96AC-4133-4AE9-842D-E331480FD2E2">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="ACF952AE-28B4-4B83-A3AE-8DC400125428">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="AF6731DD-2063-46E0-86AA-A01697C10DE9">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="308FE362-196B-43B6-AB30-B4EFF20A29B2">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="A22C4712-90B4-4FEC-80A8-521518F3134A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="9CF5D29B-A027-43DC-8943-BAA610C10EF4">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="6D319E10-4C90-47C3-AAD0-DC0C9DCEE590">
+											<AnimationSCEvent>
+												<animParam>0.6</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="B3BE1BB9-786B-4D7B-9706-C55BFCFBA2C7">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="0A2E9B68-056C-44AB-8134-0ACE39F9E829">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="3662A5EF-B3BC-4998-A4B4-B17A6260565C">
+											<AnimationSCEvent>
+												<animParam>0.8</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="0FEA0135-EB20-4181-BDD8-3553D4089926">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_move4</caption>
+									<desc>
+										<eventName>Move</eventName>
+										<groupName>Heroes/Highlander/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="E2555F87-7D93-49A9-8A55-5D8B3688D6CE">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="3AEEFF15-4B31-40D4-B2D5-AF71227D9AD0">
+											<AnimationSCEvent>
+												<animParam>0.9</animParam>
+												<name>move4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="CCEAD72A-4F79-46E1-B2C4-C6A76C3FF0C2">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack1</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="F8AF4A3B-7C61-465E-A3C3-74AE902CABB3">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="DB861789-030D-43C4-BDF0-D77AB91D1927">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="02DDA159-D8A7-4336-ACB1-B916070EF6BE">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack1</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="D7A1CE72-00D1-41C9-98CA-AE1A497D9D59">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="B9F24926-7EB3-4D34-B21C-94F519353003">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>attack1</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="5A5382CE-4847-4F8A-9392-3B0716A65128">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack2</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="3D5D8480-B1B6-40CE-BCE5-C030662C75CC">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="228100C4-3CB6-4CBE-94D8-17B1C6153DC8">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="E0696FE9-1154-46DE-8FD9-1F00B551898D">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack2</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="F8A2BAAE-7E62-4E95-B4FC-DA6B133F8E95">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="E57C973F-5FF6-42C0-A10D-D8AD7209C20B">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="E8532725-912A-4849-8854-5FE659BA7C91">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack2</caption>
+									<desc>
+										<eventName>Argh</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="C7C23DFA-3C9B-4763-A74F-80F62AC0E897">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="21AE87C9-5F09-40A1-B56A-0D053FC54D5C">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>attack2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="72E106B6-AB55-416C-AE1F-7830219C9B1A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack3</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="67D4656A-2B0A-4B80-8151-65C4F47DFAC2">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="3EE1F3B1-DCE3-437C-A1E6-E7E261B7580A">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="12846F44-814E-423C-AB7B-9565947B6072">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack3</caption>
+									<desc>
+										<eventName>Argh</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="7AB10ED2-F91B-4798-9759-C74320F21DC5">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="8F51C756-840A-476B-866C-85D7DF535442">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>attack3</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="7ED38684-6FE1-475C-89AE-B3290F8F62ED">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack4</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="B2C55774-737F-4B68-AAE4-5A27AC00BCD4">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="FDC4E3EB-3D17-4178-94BB-6D1150C679FD">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="990A1F53-B23C-4574-837E-A6874496C0D6">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack4</caption>
+									<desc>
+										<eventName>Argh</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="86B0C369-3073-4080-B4FD-E04648B1DFBA">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="ABF15426-B572-4F31-AAC3-78D14E7EE587">
+											<AnimationSCEvent>
+												<animParam>0.2</animParam>
+												<name>attack4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="FC53F383-E19B-4D5E-BFDD-AE5CDCC80F86">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack5</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="FD707090-4BE2-4F12-9E5F-DB75BB1A61A2">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="CE968F0D-762D-4B63-9695-1A2A40118F41">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>attack5</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="609927C0-D54F-43DA-8F22-01C47A6E3F88">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_attack5</caption>
+									<desc>
+										<eventName>Argh</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="805880F1-2BCB-4916-AFFA-33AE06300593">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="726CFF79-E2AD-45BE-889D-40A06BA7486E">
+											<AnimationSCEvent>
+												<animParam>0.5</animParam>
+												<name>attack5</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="4C460FDB-5FB2-41D5-8030-BBD9007C6735">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability2</caption>
+									<desc>
+										<eventName>ArghAbility</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="C351DF1F-D8A7-4892-AA4F-E50177E50E5D">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="53D6F747-C401-48C5-BC31-824D55DD6195">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="E115438A-82A8-4B91-B02D-D3D76D15962A">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>ability4</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="ECFA3E40-9B7B-4729-8022-F68B7F89EE52">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="1604A8BE-6075-46E9-B861-E58BE116D414">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="0ACBBB84-08CE-41D6-B5DE-CB2D695308DC">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>Attack</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="DEB4C732-295B-4050-94FC-CE72DC645B2B">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="31776C45-BFC8-4CD3-86C1-74A2E46BDBD9">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="EBEDEF22-82DE-463B-A856-20AD095FA69D">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>Argh</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="BC2A33FD-A79B-4FB4-B4B1-54333B18382E">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="03D19F59-9593-47D9-A836-F505EC56F119">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="B544BCA4-C831-417D-8FBC-DB5C08540270">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability2</caption>
+									<desc>
+										<eventName>Wooo</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="5E7A66E0-EC11-4EAE-A340-1509BB338CC7">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="A8D4F6A1-584F-4875-85E1-EAE84BBB74AE">
+											<AnimationSCEvent>
+												<animParam>0.4</animParam>
+												<name>ability2</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="D84A9AD5-6B80-40ED-93D8-94B4B450F871">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>Ult</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="5BC0471C-AE8E-4674-85D2-CD6F39870240">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="C748C29A-978C-4F4D-9901-8CE87728C7FE">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Heroes/Wendigo/S1/_.SOBJ" id="AF1DE67D-B72C-4184-9338-C953029A33BE">
+								<DBSoundSceneComponent>
+									<attached />
+									<caption>sound_ability4</caption>
+									<desc>
+										<eventName>ArghUlt</eventName>
+										<groupName>Heroes/Werewolf/Animation</groupName>
+										<projectName>PF</projectName>
+									</desc>
+									<groupFlags>0</groupFlags>
+									<locatorList href="" />
+									<orientation>Default</orientation>
+									<timeInterval>0</timeInterval>
+								</DBSoundSceneComponent>
+							</component>
+							<events href="/Heroes/Wendigo/S1/_.SOBJ" id="60061835-1976-44C9-A4D5-01882CCB7996">
+								<EnableDisableSCEvents>
+									<disableEvents />
+									<enableEvents>
+										<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="39D8166A-09BC-4253-9B64-534B7DF2825B">
+											<AnimationSCEvent>
+												<animParam>0</animParam>
+												<name>ability4</name>
+												<probability>100</probability>
+												<type>NodeParam</type>
+											</AnimationSCEvent>
+										</Item>
+									</enableEvents>
+									<order>EnableThenDisable</order>
+									<restartComponent>true</restartComponent>
+								</EnableDisableSCEvents>
+							</events>
+							<id></id>
+							<locatorName></locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</pos>
+								<rot>
+									<w>1</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0</z>
+								</rot>
+								<scale>
+									<x>1</x>
+									<y>1</y>
+									<z>1</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+					</attached>
+					<caption>WendigoA</caption>
+					<faceFXAnims />
+					<groupFlags>4</groupFlags>
+					<keys />
+					<locatorList href="/Heroes/Wendigo/_.LOLS" />
+					<mayaFileName>/Heroes/Wendigo/S1/_root.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>root</selection>
+					<skeletonFileName>/Heroes/Wendigo/S1/_root.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Wendigo/S1/_WendigoA.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Wendigo/S1/_.SOBJ" id="1471D3D0-4F7C-4FF4-9345-48ACDA478E24">
+									<BasicMaterial>
+										<caption>Wendigo_SkinA</caption>
+										<diffuseColor>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</diffuseColor>
+										<DiffuseMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/Heroes/Wendigo/S1/_.SOBJ" id="4D2C14E6-E619-40C3-9290-B313AD4A72C2">
+												<Texture>
+													<generatedFileName></generatedFileName>
+													<mipLevels>0</mipLevels>
+													<mipLevelUsage>AutoGenerate</mipLevelUsage>
+													<mipSharpenPasses></mipSharpenPasses>
+													<pixelFormat>DXT5</pixelFormat>
+													<size>
+														<height>2048</height>
+														<width>2048</width>
+													</size>
+													<srcFileName crc="0">/Heroes/Wendigo/S0/WendigoUV.tga</srcFileName>
+													<startMipLevel>0</startMipLevel>
+													<textureFileName>/Heroes/Wendigo/S1/WendigoUV.dds</textureFileName>
+													<textureType>Color</textureType>
+												</Texture>
+											</texture>
+										</DiffuseMap>
+										<emissive>0</emissive>
+										<EmissivePinValue>EmissiveOff</EmissivePinValue>
+										<ignoreRenderState>false</ignoreRenderState>
+										<lightingIntencity>1</lightingIntencity>
+										<LightingPinValue>LightingSH</LightingPinValue>
+										<NormalMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</NormalMap>
+										<outputAdd>
+											<A>0</A>
+											<B>0</B>
+											<G>0</G>
+											<R>0</R>
+										</outputAdd>
+										<outputMul>
+											<A>1</A>
+											<B>1</B>
+											<G>1</G>
+											<R>1</R>
+										</outputMul>
+										<ReflectionMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="" />
+										</ReflectionMap>
+										<reflectivity>1</reflectivity>
+										<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+										<renderFlags>2</renderFlags>
+										<renderState>
+											<alphaTest>On</alphaTest>
+											<alphaTestRef>127</alphaTestRef>
+											<blendMode>Off</blendMode>
+											<culling>On</culling>
+										</renderState>
+										<SpecularMap>
+											<Add>
+												<A>0</A>
+												<B>0</B>
+												<G>0</G>
+												<R>0</R>
+											</Add>
+											<Multiplier>
+												<A>1</A>
+												<B>1</B>
+												<G>1</G>
+												<R>1</R>
+											</Multiplier>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/Heroes/Wendigo/S1/Specular.TXTR" />
+										</SpecularMap>
+										<specularPower>0</specularPower>
+										<SubPriority>0</SubPriority>
+									</BasicMaterial>
+								</Item>
+							</materialsReferences>
+							<mayaFileName>/Heroes/Wendigo/S1/_WendigoA.mayaSkin</mayaFileName>
+							<selection>WendigoA</selection>
+							<skinPartName>WendigoA</skinPartName>
+							<srcFileName crc="0">/Heroes/Wendigo/S0/_.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Heroes/Wendigo/S0/_.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<collisionGeometry href="" />
+	<ignoreAttachesToNonDefaultLocators>false</ignoreAttachesToNonDefaultLocators>
+	<tracksList href="" />
+</DBSceneObject>
