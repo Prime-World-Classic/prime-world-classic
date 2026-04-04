@@ -64,9 +64,9 @@
 					<UnitConstant>
 						<name>Add_Dex</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACwQQ==</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAYEEAAABA</compiledString>
 							<returnType>float</returnType>
-							<sString>22.0f</sString>
+							<sString>refineScale(14, 2) </sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -74,9 +74,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABQQQ==</compiledString>
+							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ6NkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAABBBAACAPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>13.0f</sString>
+							<sString>refineScale(9, 1) </sString>
 						</var>
 					</UnitConstant>
 				</Item>

@@ -7,8 +7,8 @@
 	<BackLink DBID="/Items/Talents/Class/Demonolog/Ability3.TALENT" Count="1" />
 	<name>MasterStatConnected_AttackSpeed</name>
 	<var>
-		<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLQhz/0F3D</compiledString>
+		<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRQiLEItNCItCHP/Q3A0hAAAA2V382UX8i+Vdw83MzMzMzOw/</compiledString>
 		<returnType>float</returnType>
-		<sString>sAttackSpeed</sString>
+		<sString>sAttackSpeed*0.9</sString>
 	</var>
 </UnitConstant>

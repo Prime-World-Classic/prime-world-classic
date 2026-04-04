@@ -206,13 +206,13 @@
 			<talents>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>8</refineRate>
+					<refineRate>9</refineRate>
 					<status>normal</status>
 					<talent href="/Items/Talents/Level6/G210_Aura_Dexterity.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>5</refineRate>
+					<refineRate>9</refineRate>
 					<status>normal</status>
 					<talent href="/Items/Talents/Level6/G222_Aura_AttackSpeed.TALENT" />
 				</Item>
@@ -224,15 +224,15 @@
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>5</refineRate>
+					<refineRate>9</refineRate>
 					<status>normal</status>
 					<talent href="/Items/Talents/Level6/G183_Aura-Str.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>5</refineRate>
+					<refineRate>9</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level6/G540_Aura_Str.TALENT" />
+					<talent href="/Items/Talents/Level6/G184_Aura-Int.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

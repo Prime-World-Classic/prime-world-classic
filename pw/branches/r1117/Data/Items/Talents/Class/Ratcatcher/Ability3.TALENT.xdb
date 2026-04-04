@@ -14,6 +14,7 @@
 	<BackLink DBID="/Test/Talents/Ratcatcher/Elite_StrIntLife.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Ratcatcher/Epic_IntLife.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Ratcatcher/Epic_StrLife.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability3.TALENT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -264,6 +265,16 @@
 							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACGQgAA+kM=</compiledString>
 							<returnType>float</returnType>
 							<sString>damageScale(sIntellect, 67, 500)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability3.TALENT" id="A7293459-D43D-4556-9818-678A4241DFF6">
+					<UnitConstant>
+						<name>TotalAttackSpeed</name>
+						<var>
+							<compiledString>FUYAAAAEAAAATQAAAGYAAACGAAAAogAAAFBvd2VyT2ZNYW55Q291bnQAAAAAUmF0Y2F0Y2hlcl9BMAAAAFJhdGNhdGNoZXJfQTAAAABCb251c19BdHRhY2tTcGVlZABVi+yD7AxoFAAAAItFCIsQi00Ii4KoAQAA/9CFwHQ3aCQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i00MUYtVCFJoNAAAAItF/IsQi038i0JQ/9DZXfjrBdnu2V34aAAAAACLTQiLEYtNCIuCiAEAAP/Q2E342V302UX0i+VdwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vPowerOfManyCount * talconstNoCheck("Ratcatcher_A0","Bonus_AttackSpeed")</sString>
 						</var>
 					</UnitConstant>
 				</Item>

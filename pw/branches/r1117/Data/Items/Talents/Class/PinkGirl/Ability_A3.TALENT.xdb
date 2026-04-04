@@ -197,9 +197,9 @@
 					<UnitConstant>
 						<name>A3_Cooldown</name>
 						<var>
-							<compiledString>FSAAAAACAAAAJwAAAEAAAABQaW5rR2lybF9BM19TVVAAUGlua0dpcmxfQTNfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4QWDwQ+JTfTbRfSL5V3D</compiledString>
+							<compiledString>FSAAAAACAAAAJwAAAEAAAABQaW5rR2lybF9BM19TVVAAUGlua0dpcmxfQTNfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4QWDwRSJTfTbRfSL5V3D</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("PinkGirl_A3_SUP") ? 20 : 15</sString>
+							<sString>tal("PinkGirl_A3_SUP") ? 25 : 20</sString>
 						</var>
 					</UnitConstant>
 				</Item>

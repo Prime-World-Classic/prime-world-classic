@@ -511,6 +511,16 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="262C5142-258E-40C6-9BC2-4A12FD7942DF">
+					<UnitConstant>
+						<name>TotalAttackSpeed</name>
+						<var>
+							<compiledString>FUYAAAAEAAAATQAAAGYAAACGAAAAogAAAFBvd2VyT2ZNYW55Q291bnQAAAAAUmF0Y2F0Y2hlcl9BMAAAAFJhdGNhdGNoZXJfQTAAAABCb251c19BdHRhY2tTcGVlZABVi+yD7AxoFAAAAItFCIsQi00Ii4KoAQAA/9CFwHQ3aCQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i00MUYtVCFJoNAAAAItF/IsQi038i0JQ/9DZXfjrBdnu2V34aAAAAACLTQiLEYtNCIuCiAEAAP/Q2E342V302UX0i+VdwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vPowerOfManyCount * talconstNoCheck("Ratcatcher_A0","Bonus_AttackSpeed")</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="999075B0-83B8-4265-8F6D-5116894AA69B">
 					<UnitConstant>
 						<name>TotalLife</name>

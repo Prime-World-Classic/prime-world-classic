@@ -44,7 +44,7 @@
 	<power>0</power>
 	<providerName></providerName>
 	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
-	<stackCount>10</stackCount>
+	<stackCount>4</stackCount>
 	<startCondition>
 		<compiledString></compiledString>
 		<returnType>bool</returnType>

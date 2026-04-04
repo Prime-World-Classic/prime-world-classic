@@ -189,6 +189,53 @@
 				<statModName></statModName>
 			</StatModApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/Ratcatcher/status_A0_MasterPoM.APLR" id="F1F2460E-DD80-4C39-BE12-88755F8BAD82">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>-- Даем проворство за суммона</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FTIAAAADAAAAOQAAAFIAAAByAAAAUmF0Y2F0Y2hlcl9BMAAAAFJhdGNhdGNoZXJfQTAAAABCb251c19BdHRhY2tTcGVlZABVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQ3aBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i00MUYtVCFJoIAAAAItF/IsQi038i0JQ/9DZXfjrBdnu2V342UX4i+VdwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>talconstNoCheck("Ratcatcher_A0","Bonus_AttackSpeed") </sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>AttackSpeed</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
 		<Item href="/Items/Talents/Class/Ratcatcher/status_A0_MasterPoM.APLR" id="29285B17-3767-4177-BBF5-36755E4E3462">
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
@@ -321,7 +368,7 @@
 	<power>0</power>
 	<providerName></providerName>
 	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
-	<stackCount>10</stackCount>
+	<stackCount>4</stackCount>
 	<startCondition>
 		<compiledString></compiledString>
 		<returnType>bool</returnType>

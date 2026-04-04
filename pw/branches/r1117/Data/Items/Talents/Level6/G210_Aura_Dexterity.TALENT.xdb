@@ -233,9 +233,9 @@
 					<UnitConstant>
 						<name>Add_Dexterity</name>
 						<var>
-							<compiledString>FRYAAAAGAAAAMQAAADsAAABYAAAAbgAAAIEAAACLAAAARmxhZ3NTdW1tb25SZWR1Y2VTdGF0AFWL7IPsFItFDIsQi00Mi0JQ/9CD+AJ1UFHZBccAAADZHCRR2QXDAAAA2Rwki00QixGLTRCLQmz/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d+P/Q3A27AAAA2eje4dxN+N1d8OskUdkFxwAAANkcJFHZBa8AAADZHCSLTRCLEYtNEItCbP/Q3V3w3UXw2V3s2UXsi+VdwwAAYEEAAAAAAADwP3sUrkfheoQ/AABAQQAAAEA=</compiledString>
+							<compiledString>FRYAAAAGAAAAMQAAADsAAABYAAAAbgAAAIEAAACLAAAARmxhZ3NTdW1tb25SZWR1Y2VTdGF0AFWL7IPsFItFDIsQi00Mi0JQ/9CD+AJ1UFHZBcMAAADZHCRR2QW/AAAA2Rwki00QixGLTRCLQmz/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d+P/Q3A23AAAA2eje4dxN+N1d8OskUdkFwwAAANkcJFHZBb8AAADZHCSLTRCLEYtNEItCbP/Q3V3w3UXw2V3s2UXsi+VdwwAAAAAAAPA/exSuR+F6hD8AAEBBAAAAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>rUnitKind == 2 ?  refineScale(12, 2) * (1-cFlagsSummonReduceStat*0.01) : refineScale(14, 2)</sString>
+							<sString>rUnitKind == 2 ?  refineScale(12, 2) * (1-cFlagsSummonReduceStat*0.01) : refineScale(12, 2)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -243,9 +243,9 @@
 					<UnitConstant>
 						<name>TT_Add_Dexterity</name>
 						<var>
-							<compiledString>FRsAAAACAAAAKgAAADwAAABBZGRfRGV4dGVyaXR5AAAAU3RhdHVzXzIxMABVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0mgQAAAAi0UMixCLTQyLgogBAADdXfj/0NxN+Nld9NlF9IvlXcM=</compiledString>
+							<compiledString>FRIAAAABAAAAFgAAAEcyMTBfQWRkRGV4dGVyaXR5AFWL7GgAAAAAi0UMixCLTQyLgogBAAD/0F3D</compiledString>
 							<returnType>float</returnType>
-							<sString>cAdd_Dexterity * receiver.vStatus_210</sString>
+							<sString>receiver.vG210_AddDexterity</sString>
 						</var>
 					</UnitConstant>
 				</Item>
