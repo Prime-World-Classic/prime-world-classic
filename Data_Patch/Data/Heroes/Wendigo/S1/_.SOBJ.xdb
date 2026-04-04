@@ -6,12 +6,12 @@
 			<component href="/Heroes/Wendigo/S1/_.SOBJ" id="556DF9DD-F06B-4C8B-ADEC-89F1987ED93F">
 				<DBAnimatedSceneComponent>
 					<aabb>
-						<maxX>-666</maxX>
-						<maxY>-666</maxY>
-						<maxZ>-666</maxZ>
-						<minX>666</minX>
-						<minY>666</minY>
-						<minZ>666</minZ>
+						<maxX>1.5</maxX>
+						<maxY>1.5</maxY>
+						<maxZ>4</maxZ>
+						<minX>-1.5</minX>
+						<minY>-1.5</minY>
+						<minZ>0</minZ>
 					</aabb>
 					<additionalGraph href="" />
 					<animations>

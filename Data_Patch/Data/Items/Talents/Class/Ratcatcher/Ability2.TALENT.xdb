@@ -1109,6 +1109,16 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability2.TALENT" id="30DB1C71-2AE0-45FF-ACD6-E0B49A0AAEEA">
+					<UnitConstant>
+						<name>TotalAttackSpeed</name>
+						<var>
+							<compiledString>FUYAAAAEAAAATQAAAGYAAACGAAAAogAAAFBvd2VyT2ZNYW55Q291bnQAAAAAUmF0Y2F0Y2hlcl9BMAAAAFJhdGNhdGNoZXJfQTAAAABCb251c19BdHRhY2tTcGVlZABVi+yD7AxoFAAAAItFCIsQi00Ii4KoAQAA/9CFwHQ3aCQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i00MUYtVCFJoNAAAAItF/IsQi038i0JQ/9DZXfjrBdnu2V34aAAAAACLTQiLEYtNCIuCiAEAAP/Q2E342V302UX0i+VdwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.vPowerOfManyCount * talconstNoCheck("Ratcatcher_A0","Bonus_AttackSpeed")</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/Class/Ratcatcher/Ability2.TALENT" id="9381C9A0-6665-4F4A-964F-7838D4BFAC0A">
 					<UnitConstant>
 						<name>TotalLife</name>
@@ -1185,9 +1195,9 @@
 					<UnitConstant>
 						<name>A2_CreepBuff_Dexterity</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLgjgBAAD/0F3D</compiledString>
+							<compiledString>FQAAAAABAAAAFgAAAFWL7FGLRQiLEItNCIuCOAEAAP/Q3A0kAAAA2V382UX8i+Vdw83MzMzMzOw/</compiledString>
 							<returnType>float</returnType>
-							<sString>sDexterity</sString>
+							<sString>sDexterity*0.9</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1195,9 +1205,9 @@
 					<UnitConstant>
 						<name>A2_CreepBuff_AttackSpeed</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLQhz/0F3D</compiledString>
+							<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRQiLEItNCItCHP/Q3A0hAAAA2V382UX8i+Vdw83MzMzMzOw/</compiledString>
 							<returnType>float</returnType>
-							<sString>sAttackSpeed</sString>
+							<sString>sAttackSpeed*0.9</sString>
 						</var>
 					</UnitConstant>
 				</Item>

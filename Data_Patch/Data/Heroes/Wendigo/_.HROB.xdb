@@ -807,7 +807,7 @@
 	<nativeDefence>Material</nativeDefence>
 	<normalLevelling>0</normalLevelling>
 	<overtipBarsWidth>10</overtipBarsWidth>
-	<overtipVerticalOffset>1.5</overtipVerticalOffset>
+	<overtipVerticalOffset>3</overtipVerticalOffset>
 	<pathFindingSteps>10</pathFindingSteps>
 	<persistentId>wendigo</persistentId>
 	<recolor>
