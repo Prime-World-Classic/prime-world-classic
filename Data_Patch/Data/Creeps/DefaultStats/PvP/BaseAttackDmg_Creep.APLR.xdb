@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DamageApplicator>
+	<BackLink DBID="/Creeps/A/Melee1/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/A/Melee1/AttackAbility_Coop1_Dude.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/A/Melee2/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/A/Range/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee1/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee1/AttackAbility_Coop1_Dude.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee2/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee2/PvE_R10.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/B/Melee2/PvE1.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/B/Range/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/Normals/Normal10/AttackAbility.ATCK" Count="1" />
+	<BackLink DBID="/Creeps/Normals/Normal11/AttackAbility.ATCK" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<cancelInvisibility>false</cancelInvisibility>
+	<caption> - типовой урон крипов</caption>
+	<damage>
+		<compiledString>FREAAAABAAAAOAAAAENyZWVwQnVpbGRpbmdNb2QAVYvsg+wMi0UIixCLTQiLQlD/0IP4A3VEUdno2Rwki00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9BR2RwkagGLTQyLEYtNDItCWP/QD7bIUehrAAAAg8QM2V386wXZ6Nld/ItVCIsCi00Ii5AEAQAA/9JR2Rwk6GYAAACDxARQi0UIixCLTQiLggABAAD/0FHZHCToSQAAAIPEBFCLTRCLEYtNEItCXP/QiUX420X42E382V302UX0i+VdwwAAgD9Vi+xRD7ZFCIXAdAjZRQzZXfzrBtlFENld/NlF/IvlXcO4AQAAAA+i98IAAAAEdAfzDyxEJATD6QAAAABVi+yD7AzZRQjZffwPt0X8DQAMAACJRfjZbfjbXfTZbfyLRfSL5V3D</compiledString>
+		<returnType>float</returnType>
+		<sString>random ( f2l(sDamageMin), f2l(sDamageMax)) * (sUnitKind == 3 ? ut_bldg(cCreepBuildingMod, 1) : 1) </sString>
+	</damage>
+	<damageMode>3</damageMode>
+	<damageType>Native</damageType>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<timeLimiter>-1</timeLimiter>
+	<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+</DamageApplicator>
