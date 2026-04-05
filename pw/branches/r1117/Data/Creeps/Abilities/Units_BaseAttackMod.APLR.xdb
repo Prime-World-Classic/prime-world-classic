@@ -23,9 +23,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString></compiledString>
+		<compiledString>FQYAAAACAAAACwAAACEAAABJc1BldABVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1DAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
 		<returnType>bool</returnType>
-		<sString>true</sString>
+		<sString>sender.vIsPet == 0</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>

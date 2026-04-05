@@ -16,9 +16,9 @@
 	<cancelInvisibility>false</cancelInvisibility>
 	<caption> - типовой урон крипов</caption>
 	<damage>
-		<compiledString>FREAAAACAAAAOAAAAN0AAABDcmVlcEJ1aWxkaW5nTW9kAFWL7IPsGItFCIsQi00Ii0JQ/9CD+AN1RFHZ6NkcJItNDFGLVQhSaAAAAACLRRCLEItNEItCUP/QUdkcJGoBi00MixGLTQyLQlj/0A+2yFHo3wAAAIPEDNld/OsF2ejZXfyLVQiLAotNCIuQBAEAAP/SUdkcJOjaAAAAg8QEUItFCIsQi00Ii4IAAQAA/9BR2Rwk6L0AAACDxARQi00QixGLTRCLQlz/0IlF+NtF+NhN/FHZ7tkcJItNCIsRi00Ii4IQAQAA3V3w/9DcDQwBAADZXezZRexR2Rwk6CwAAACDxAjZ6N7B3E3w2V3o2UXoi+VdwwAAAAAAAPA/AAAAQOF6hD8AAAAAAACAP1WL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcNVi+xRD7ZFCIXAdAjZRQzZXfzrBtlFENld/NlF/IvlXcO4AQAAAA+i98IAAAAEdAfzDyxEJATD6QAAAABVi+yD7AzZRQjZffwPt0X8DQAMAACJRfjZbfjbXfTZbfyLRfSL5V3D</compiledString>
+		<compiledString>FREAAAABAAAAOAAAAENyZWVwQnVpbGRpbmdNb2QAVYvsg+wMi0UIixCLTQiLQlD/0IP4A3VEUdno2Rwki00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9BR2RwkagGLTQyLEYtNDItCWP/QD7bIUehrAAAAg8QM2V386wXZ6Nld/ItVCIsCi00Ii5AEAQAA/9JR2Rwk6GYAAACDxARQi0UIixCLTQiLggABAAD/0FHZHCToSQAAAIPEBFCLTRCLEYtNEItCXP/QiUX420X42E382V302UX0i+VdwwAAgD9Vi+xRD7ZFCIXAdAjZRQzZXfzrBtlFENld/NlF/IvlXcO4AQAAAA+i98IAAAAEdAfzDyxEJATD6QAAAABVi+yD7AzZRQjZffwPt0X8DQAMAACJRfjZbfjbXfTZbfyLRfSL5V3D</compiledString>
 		<returnType>float</returnType>
-		<sString>random ( f2l(sDamageMin), f2l(sDamageMax)) * (sUnitKind == 3 ? ut_bldg(cCreepBuildingMod, 1) : 1) * (1 + max(sCritChance*0.01f, 0))</sString>
+		<sString>random ( f2l(sDamageMin), f2l(sDamageMax)) * (sUnitKind == 3 ? ut_bldg(cCreepBuildingMod, 1) : 1) </sString>
 	</damage>
 	<damageMode>3</damageMode>
 	<damageType>Native</damageType>
