@@ -11,6 +11,7 @@
 	<BackLink DBID="/Test/Talents/Ratcatcher/Epic_StrLife.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4_2_Upg.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Ratcatcher_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Ratcatcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

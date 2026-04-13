@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G638_Stamina_DexOrAtSpd.TALENT" Count="1" />
 	<name>DmgPercent</name>
 	<var>
-		<compiledString>FQAAAAADAAAABgAAABIAAAAcAAAAVYvsUdkFfQAAANkcJGoBUdkFeQAAANkcJFHZBXUAAADZHCRqAItFCIsQi00Ii4LMAAAA/9BR2Rwki00IixGLTQiLgsgAAAD/0FHZHCToVwAAAIPEBNkcJGoBi00QixGLTRCLQmD/0FHZHCToEQAAAIPECF3DAAAgQgAAoEIAAMhCVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdw1WL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
+		<compiledString>FQAAAAADAAAABgAAABIAAAAcAAAAVYvsUdkFfQAAANkcJGoBUdkFeQAAANkcJFHZBXUAAADZHCRqAItFCIsQi00Ii4LMAAAA/9BR2Rwki00IixGLTQiLgsgAAAD/0FHZHCToVwAAAIPEBNkcJGoBi00QixGLTRCLQmD/0FHZHCToEQAAAIPECF3DAADIQQAAcEIAAMhCVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdw1WL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>min(damageScale(max(sBaseStamina,sBaseWill), 40, 80),100)</sString>
+		<sString>min(damageScale(max(sBaseStamina,sBaseWill), 25, 60),100)</sString>
 	</var>
 </UnitConstant>

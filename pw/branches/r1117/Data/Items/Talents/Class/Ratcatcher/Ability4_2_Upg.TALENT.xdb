@@ -5,7 +5,6 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4_2_Upg.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4_Upg.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Ratcatcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

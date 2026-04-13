@@ -45,6 +45,7 @@
 	<BackLink DBID="/Items/Talents/Class/Brewer/spell_SpreadHoney.SPLL" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A4.TALENT" Count="4" />
+	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A4_2.TALENT" Count="1" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<caption>Эффекты Символа Моря </caption>
 	<enabled>

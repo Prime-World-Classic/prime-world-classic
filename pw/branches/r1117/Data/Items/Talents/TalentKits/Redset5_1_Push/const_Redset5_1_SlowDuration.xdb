@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G585_Dex.TALENT" Count="1" />
 	<name>Slow_Duration</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzMzPw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.7</sString>
+		<sString>0.5</sString>
 	</var>
 </UnitConstant>

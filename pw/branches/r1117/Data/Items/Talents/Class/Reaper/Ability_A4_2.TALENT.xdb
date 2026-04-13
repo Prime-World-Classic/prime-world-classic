@@ -73,9 +73,9 @@
 					<UnitConstant>
 						<name>A4_2_Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwCAZUMAoNdEVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAOEMAgKxEVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(max(sIntellect,sStrength),153*1.5,1150*1.5) </sString>
+							<sString>damageScale(max(sIntellect,sStrength),184,1380) </sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -83,9 +83,9 @@
 					<UnitConstant>
 						<name>A4_2_Range</name>
 						<var>
-							<compiledString>FQsAAAACAAAAGAAAACsAAABSYW5nZV9Mb25nAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twFOQAAANld/NlF/IvlXcMAAAAAAAAUQA==</compiledString>
+							<compiledString>FQ0AAAACAAAAGgAAAC0AAABSYW5nZV9FeExvbmcAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3AU7AAAA2V382UX8i+VdwwAAAAAAAABA</compiledString>
 							<returnType>float</returnType>
-							<sString>cRange_Long + 5</sString>
+							<sString>cRange_ExLong + 2</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -681,9 +681,9 @@
 															<flags>0</flags>
 															<mode>Normal</mode>
 															<range>
-																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQg==</compiledString>
+																<compiledString>FQsAAAABAAAAFwAAAEE0XzJfUmFuZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
 																<returnType>float</returnType>
-																<sString>100</sString>
+																<sString>cA4_2_Range</sString>
 															</range>
 															<targetFilter>536870915</targetFilter>
 															<targetSelector href="/Items/Talents/Class/Reaper/Ability_A4_2.TALENT" id="E12D04C6-6553-4CAE-983A-BC763629DCD6">

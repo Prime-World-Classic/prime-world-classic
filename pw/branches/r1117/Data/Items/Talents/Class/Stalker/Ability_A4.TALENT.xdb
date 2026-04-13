@@ -47,9 +47,9 @@
 							<Item href="/Items/Talents/Class/Stalker/Ability_A4.TALENT" id="56ED6E3E-D62F-45BA-9D71-A18886FB4CF0">
 								<SpellSwitchApplicator>
 									<activeSpellIndex>
-										<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgkABAAD/0ItNDIsRi00Mi4JEAQAA3V34/9DcXfjf4PbEQXoJx0X0AAAAAOsHx0X0AQAAAItF9IvlXcM=</compiledString>
+										<compiledString>FQAAAAAAAAAAVYvsg+wMi0UMixCLTQyLgsgAAAD/0ItNDIsRi00Mi4LMAAAA3V34/9DcXfjf4PbEQXoJx0X0AAAAAOsHx0X0AQAAAItF9IvlXcM=</compiledString>
 										<returnType>int</returnType>
-										<sString>rStamina &gt;= rWill ? 0 : 1</sString>
+										<sString>rBaseStamina &gt;= rBaseWill ? 0 : 1</sString>
 									</activeSpellIndex>
 									<applyTarget>ApplicatorTarget</applyTarget>
 									<caption>Свич дебаффа</caption>

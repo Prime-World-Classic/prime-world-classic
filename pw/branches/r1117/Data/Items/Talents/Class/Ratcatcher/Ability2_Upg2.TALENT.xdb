@@ -94,9 +94,9 @@
 					<UnitConstant>
 						<name>A2_CreepBuff_Life_percent</name>
 						<var>
-							<compiledString>FSYAAAAEAAAALQAAAEYAAAB9AAAAiAAAAFJhdGNhdGNoZXJfQTJfU1VQAAAAUmF0Y2F0Y2hlcl9BMl9TVVAAVYvsg+wUaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgUAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0C90FpAAAAN1d8OsJ3QWcAAAA3V3w3UXw2V3s2UXsi+VdwwAAAAAAAOA/AAAAAAAA6D8=</compiledString>
+							<compiledString>FSYAAAAEAAAALQAAAEYAAAB9AAAAiAAAAFJhdGNhdGNoZXJfQTJfU1VQAAAAUmF0Y2F0Y2hlcl9BMl9TVVAAVYvsg+wUaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgUAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0C90FpAAAAN1d8OsJ3QWcAAAA3V3w3UXw2V3s2UXsi+Vdw5qZmZmZmdk/MzMzMzMz4z8=</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Ratcatcher_A2_SUP") ? 0.75 : 0.5</sString>
+							<sString>tal("Ratcatcher_A2_SUP") ? 0.6 : 0.4</sString>
 						</var>
 					</UnitConstant>
 				</Item>

@@ -126,9 +126,9 @@
 					<UnitConstant>
 						<name>Add_EnergyRegAbs</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw5qZGUDNzEw+</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw5qZWUDNzEw+</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(2.4, 0.2)</sString>
+							<sString>refineScale(3.4, 0.2)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

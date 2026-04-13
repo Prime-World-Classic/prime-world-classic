@@ -3,8 +3,8 @@
 	<BackLink DBID="/Buildings/DefaultStats/CheckCatKill.ABLT" Count="1" />
 	<name>CreepBuffHP</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>2.0f</sString>
+		<sString>1.5f</sString>
 	</var>
 </UnitConstant>

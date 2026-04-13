@@ -156,9 +156,9 @@
 					<UnitConstant>
 						<name>A3_CDReduceTT</name>
 						<var>
-							<compiledString>FR8AAAACAAAAJgAAAD8AAABTdGFsa2VyX0EyX1NVUAAAU3RhbGtlcl9BMl9TVVAAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk3799kbyYPhMoPBMolN9NtF9IvlXcM=</compiledString>
+							<compiledString>FR8AAAACAAAAJgAAAD8AAABTdGFsa2VyX0EyX1NVUAAAU3RhbGtlcl9BMl9TVVAAVYvsg+wMaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk3799kbyYPhHoPBMolN9NtF9IvlXcM=</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Stalker_A2_SUP")? 100 : 50</sString>
+							<sString>tal("Stalker_A2_SUP")? 80 : 50</sString>
 						</var>
 					</UnitConstant>
 				</Item>

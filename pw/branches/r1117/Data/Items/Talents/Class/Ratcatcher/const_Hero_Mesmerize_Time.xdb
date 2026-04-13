@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="1" />
 	<name>Hero_Mesmerize_Time</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>1.5</sString>
+		<sString>1.8</sString>
 	</var>
 </UnitConstant>
