@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
 	<name>HealBase</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAIEEAAFBCVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+		<compiledString>FRQAAAAEAAAAHwAAACkAAAB9AAAAkwAAAFNlYVN5bWJvbEtpdGNvdW50ZXIAVYvsg+wMagFR2QW8AAAA2RwkUdkFuAAAANkcJGoAi0UIixCLTQiLgjABAAD/0FHZHCSLTQiLEYtNCIuCNAEAAP/QUdkcJOhhAAAAg8QE2RwkagGLTRCLEYtNEItCYP/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V34/9DcDbAAAADZ6N7B3E342V302UX0i+VdwwAAAAAAAPA/mpmZmZmZuT8AACBBAABQQlWL7FHZRQjZRQze2d/g9sQFegjZRQjZXfzrBtlFDNld/NlF/IvlXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale(max(sIntellect,sStrength), 10, 52)</sString>
+		<sString>damageScale(max(sIntellect,sStrength), 10, 52)* (1+ cSeaSymbolKitcounter*0.10)</sString>
 	</var>
 </UnitConstant>
