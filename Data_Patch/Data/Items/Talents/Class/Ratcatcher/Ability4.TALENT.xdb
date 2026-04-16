@@ -14,6 +14,7 @@
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4_2_Upg.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Ratcatcher_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Ratcatcher.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -223,6 +224,30 @@
 									<spellTarget>ApplicatorTarget</spellTarget>
 									<targetSelector href="" />
 								</SpellApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="77D7CBBC-5FA9-4B84-80EC-822EDF3F9C8D">
+								<DamageApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<cancelInvisibility>false</cancelInvisibility>
+									<caption>Damage</caption>
+									<damage>
+										<compiledString>FQoAAAABAAAAFgAAAEE0X0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+										<returnType>float</returnType>
+										<sString>cA4_Damage</sString>
+									</damage>
+									<damageMode>0</damageMode>
+									<damageType>Energy</damageType>
+									<enabled>
+										<compiledString>FQAAAAAAAAAAVYvsUYtFDIsQi00Mi0JQ/9CFwHQbi00MixGLTQyLQlD/0IP4AXQJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcM=</compiledString>
+										<returnType>bool</returnType>
+										<sString>rUnitKind == 0 || rUnitKind == 1</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+									<timeLimiter>-1</timeLimiter>
+									<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+								</DamageApplicator>
 							</Item>
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="14096A25-4259-4794-AEBB-FC8DB6E06112">
@@ -552,6 +577,16 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="945A8E8C-0CCC-4936-B927-0A41C171CDD1">
+					<UnitConstant>
+						<name>A4_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAhkIAAPpDVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(max(sIntellect, sStrength), 67, 500)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -560,9 +595,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAWQw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADcQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>150</sString>
+		<sString>110</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -599,9 +634,9 @@
 	<isUltimateTalent>true</isUltimateTalent>
 	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
 	<manaCost>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACCQw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABcQw==</compiledString>
 		<returnType>float</returnType>
-		<sString>260</sString>
+		<sString>220</sString>
 	</manaCost>
 	<marker></marker>
 	<microAI href="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" id="181B2F42-E59D-4D11-8101-DEF0329BD41F">

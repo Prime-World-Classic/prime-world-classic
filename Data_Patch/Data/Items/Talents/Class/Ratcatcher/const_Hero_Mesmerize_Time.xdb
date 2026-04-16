@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4_Upg.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="1" />
+	<name>Hero_Mesmerize_Time</name>
+	<var>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>1.8</sString>
+	</var>
+</UnitConstant>

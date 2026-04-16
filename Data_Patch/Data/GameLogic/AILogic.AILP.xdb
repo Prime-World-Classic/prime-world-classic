@@ -1740,7 +1740,7 @@
 	<creepLevelCap>40</creepLevelCap>
 	<creepsLevelUpInfo>
 		<increment>1</increment>
-		<interval>40</interval>
+		<interval>45</interval>
 	</creepsLevelUpInfo>
 	<creepsWavesDelay>30</creepsWavesDelay>
 	<defaultTalentsSet href="" />

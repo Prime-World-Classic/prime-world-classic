@@ -8,8 +8,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G797_SeaSymbol.TALENT" Count="1" />
 	<name>Kit_Counter_Max</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>3</sString>
+		<sString>4</sString>
 	</var>
 </UnitConstant>
