@@ -16,7 +16,7 @@
 		<sString>true</sString>
 	</allowChase>
 	<alternativeTargets />
-	<aoeDisplayOnMinimap>true</aoeDisplayOnMinimap>
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
 	<aoeHeight>0</aoeHeight>
 	<aoeMaterial href="" />
 	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
@@ -811,9 +811,9 @@
 	<type>Passive</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQg==</compiledString>
+		<compiledString>FQsAAAABAAAAFwAAAEE0XzJfUmFuZ2UAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
 		<returnType>float</returnType>
-		<sString>100</sString>
+		<sString>cA4_2_Range</sString>
 	</useRange>
 	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
 	<variativeMaxTalentStats />
