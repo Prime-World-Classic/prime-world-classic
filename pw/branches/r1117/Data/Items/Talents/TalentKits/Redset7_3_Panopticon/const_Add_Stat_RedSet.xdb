@@ -7,8 +7,8 @@
 	<BackLink DBID="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" Count="1" />
 	<name>Add_Stat_RedSet</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+		<compiledString>FT4AAAAEAAAARQAAAFsAAABwAAAAhgAAAEFkZF9BbGxTdGF0c19SZWRzZXQ3XzNDb3VudGVyAAAAQWRkX0FsbFN0YXRzX1JlZHNldDdfM0NvdW50ZXIAVYvsg+wIaAAAAACLRQiLEItNCIuCiAEAAP/Q3B22AAAA3+D2xER6CcdF/AIAAADrOGggAAAAi00IixGLTQiLgogBAAD/0NwdrgAAAN/g9sREegnHRfgCAAAA6wfHRfgAAAAAi034iU3820X8i+VdwwAAAAAAABBAAAAAAAAAAEA=</compiledString>
 		<returnType>float</returnType>
-		<sString>2</sString>
+		<sString>sender.vAdd_AllStats_Redset7_3Counter == 2? 2 : (sender.vAdd_AllStats_Redset7_3Counter == 4) ? 2 : 0</sString>
 	</var>
 </UnitConstant>

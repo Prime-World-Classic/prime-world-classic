@@ -82,6 +82,28 @@
 												<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 											</HealApplicator>
 										</Item>
+										<Item href="/Glyphs/LifeRestorer.GLPH" id="577FB31C-7A10-410F-9085-385B73D33EA2">
+											<HealApplicator>
+												<amount>
+													<compiledString>FQsAAAABAAAAFwAAAEhlYWxFbmVyZ3kAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+													<returnType>float</returnType>
+													<sString>cHealEnergy</sString>
+												</amount>
+												<applyTarget>ApplicatorTarget</applyTarget>
+												<caption>лечение маны</caption>
+												<enabled>
+													<compiledString></compiledString>
+													<returnType>bool</returnType>
+													<sString>true</sString>
+												</enabled>
+												<formulaName></formulaName>
+												<healTarget>Energy</healTarget>
+												<ignoreHealingMods>false</ignoreHealingMods>
+												<LoggingEvent>-1</LoggingEvent>
+												<providerName></providerName>
+												<uiEvent href="/UI/Events/CommonEvents/EventEnergy.UIEV" />
+											</HealApplicator>
+										</Item>
 									</applicators>
 									<dispatch href="/Glyphs/LifeRestorer.GLPH" id="C5929E2E-ADDD-4CCB-804C-A9F6DD36CA9B">
 										<DispatchImmediate>
@@ -253,6 +275,16 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset7_7_Glyph/const_Redset7_7ExtraDuration" />
+				<Item href="/Glyphs/LifeRestorer.GLPH" id="BECF59D1-ABD9-4EB7-B457-49E8322ADAF3">
+					<UnitConstant>
+						<name>HealEnergy</name>
+						<var>
+							<compiledString>FQAAAAACAAAAEwAAABkAAABVi+xRi0UMixCLTQyLQhD/0NwNLwAAANwFJwAAANld/NlF/IvlXcMAAAAAAAAuQAAAAKCZmbk/</compiledString>
+							<returnType>float</returnType>
+							<sString>(rMaxEnergy * 0.10f + 15.0f)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

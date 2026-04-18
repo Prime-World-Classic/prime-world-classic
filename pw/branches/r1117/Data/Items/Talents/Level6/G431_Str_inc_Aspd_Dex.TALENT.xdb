@@ -90,6 +90,7 @@
 	<BackLink DBID="/Test/Talents/Werewolf/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Werewolf/Epic_Str_Ultimate2.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witch/Epic_Str.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Demonolog.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

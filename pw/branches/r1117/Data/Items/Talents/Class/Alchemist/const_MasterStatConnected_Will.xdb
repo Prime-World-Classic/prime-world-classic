@@ -5,8 +5,8 @@
 	<BackLink DBID="/Items/Talents/Class/Alchemist/Ability_A4_2.TALENT" Count="1" />
 	<name>MasterStatConnected_Will</name>
 	<var>
-		<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLgkQBAAD/0F3D</compiledString>
+		<compiledString>FQAAAAACAAAAGwAAACUAAABVi+yD7AyLRQiLEItNCIuCRAEAAP/QagFR2QVlAAAA2RwkUdkFYQAAANkcJGoAi00IixGLTQiLgjABAADdXfj/0FHZHCRqAYtNEIsRi00Qi0Jg/9DcRfjZXfTZRfSL5V3DAABwQQAAlkI=</compiledString>
 		<returnType>float</returnType>
-		<sString>sWill</sString>
+		<sString>sWill+damageScale( sStrength, 15 , 75)</sString>
 	</var>
 </UnitConstant>

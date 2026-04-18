@@ -578,6 +578,10 @@ void GameClientPW::OnPlayerInfoLoaded()
 
       info.exp = playerStartInfo.playerInfo.heroExp;
       info.force = force;
+		
+      info.raitingAcc = (int)(userData.currentRatingAcc);
+      info.winDeltaRaitingAcc = userData.victoryRatingAcc - userData.currentRatingAcc;
+      info.loseDeltaRaitingAcc = userData.lossRatingAcc - userData.currentRatingAcc;
 
       info.raiting = (int)( userData.currentRating );
       info.winDeltaRaiting = userData.victoryRating - userData.currentRating;
@@ -589,6 +593,7 @@ void GameClientPW::OnPlayerInfoLoaded()
       info.isPremium = playerStartInfo.playerInfo.hasPremium;
       info.partyId = playerStartInfo.playerInfo.partyId;
       info.basket = playerStartInfo.playerInfo.basket;
+      info.leagueIndex = userIdToMetaMap.find(userData.userId) == userIdToMetaMap.end() ? info.leagueIndex : userIdToMetaMap[userData.userId].leagueIdx;
 
       DevTrace("SetHeroInfo user = %d, force = %f, raiting = %f, deltaWin = %f, deltaLose = %f, partyId = %d, leagueIndex = %d, ownLeaguePlace = %d",
         playerStartInfo.userID, force, playerStartInfo.playerInfo.heroRating,

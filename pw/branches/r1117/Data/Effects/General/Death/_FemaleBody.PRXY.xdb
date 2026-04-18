@@ -82,6 +82,7 @@
 	<BackLink DBID="/Heroes/Witcher/S2/_.SOBJ" Count="1" />
 	<BackLink DBID="/Summons/Clone/_.SOBJ" Count="1" />
 	<BackLink DBID="/Summons/Clone/S1/_.SOBJ" Count="1" />
+	<BackLink DBID="/Heroes/Bomber/S1/_.SOBJ" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

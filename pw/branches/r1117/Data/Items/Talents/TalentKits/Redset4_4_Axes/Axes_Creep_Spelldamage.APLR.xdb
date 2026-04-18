@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TriggerApplicator>
+	<BackLink DBID="/Items/Talents/Level2/G563_AxesEngReg.TALENT" Count="2" />
+	<actionsCount>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</actionsCount>
+	<applyTarget>AbilityOwner</applyTarget>
+	<behaviorFlags>216</behaviorFlags>
+	<caption>+ spell damage</caption>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<playAck>false</playAck>
+	<processor href="/Items/Talents/TalentKits/Redset4_4_Axes/Axes_Creep_Spelldamage.APLR" id="DC37A293-6A64-4CFB-A07D-D80D5B9E0C04">
+		<EventProcessorOutgoingDamage>
+			<abilityFilter>
+				<abilitiesList />
+				<abilityCondition>
+					<compiledString>FRcAAAADAAAAHgAAAEQAAABrAAAAVGFyZ2V0AABUYXJnZXQAAFRhcmdldABVi+yD7BBoAAAAAItFEIsQi00Qi0JM/9CJRfyLTfyLEYtN/ItCUP/QhcB0V2gIAAAAi00QixGLTRCLQkz/0IlF+ItN+IsRi034i0JQ/9CD+AJ0MGgQAAAAi00QixGLTRCLQkz/0IlF9ItN9IsRi030i0JQ/9CD+A90CcdF8AEAAADrB8dF8AAAAACKRfCL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>pMisc-&gt;GetObject("Target")-&gt;GetUnitKind() != 0 &amp;&amp; pMisc-&gt;GetObject("Target")-&gt;GetUnitKind() != 2 &amp;&amp; pMisc-&gt;GetObject("Target")-&gt;GetUnitKind() != 15</sString>
+				</abilityCondition>
+				<abilityCostMode>Any</abilityCostMode>
+				<exceptThis>false</exceptThis>
+				<flags>1610614014</flags>
+				<onlySingleTarget>false</onlySingleTarget>
+			</abilityFilter>
+			<applyTarget>ApplicatorTarget</applyTarget>
+			<damageTypeFilter>15</damageTypeFilter>
+			<modifiedDamage>
+				<compiledString>FRkAAAADAAAAIAAAADoAAABQAAAARGFtYWdlAABCb251c1NwZWxsRGFtYWdlAFWL7IPsDGgAAAAAi0UQixCLTRCLQlT/0ItNDFGLVQhSaAgAAACLRRCLEItNEItCUN1d+P/Q3DVtAAAA2ejewdxN+Nld9NlF9IvlXcMAAAAAAADwPwAAAAAAAFlA</compiledString>
+				<returnType>float</returnType>
+				<sString>appl.vDamage * (1 + cBonusSpellDamage / 100)</sString>
+			</modifiedDamage>
+			<spell href="" />
+		</EventProcessorOutgoingDamage>
+	</processor>
+	<providerName></providerName>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<useAbilityCooldown>false</useAbilityCooldown>
+	<useAbilityOwnerMana>false</useAbilityOwnerMana>
+</TriggerApplicator>

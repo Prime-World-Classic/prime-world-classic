@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level4/G698_StrOrInt.TALENT" Count="1" />
 	<name>Add_CriticalMultiplier</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.4f</sString>
+		<sString>0.3f</sString>
 	</var>
 </UnitConstant>

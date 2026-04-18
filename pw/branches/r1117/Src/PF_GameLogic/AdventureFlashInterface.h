@@ -202,6 +202,7 @@ public:
   void UseSlot(int slot);
   void LockActionBar(bool lock);
   void TempUnlockActionBar(bool unlock);
+  void ShowPanel(bool show);
 
   void SetHeroDevelopmentParams(int prime, int zzGold);
 

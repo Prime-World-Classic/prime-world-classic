@@ -40,5 +40,7 @@
 		<Item href="/Maps/Multiplayer/ARAM/_.ADMPDSCR" />
 		<Item href="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" />
 		<Item href="/Maps/Multiplayer/Myth/Red.ADMPDSCR" />
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/_.ADMPDSCR" />
+		<Item href="/Maps/Multiplayer/DEFENSE/_.ADMPDSCR" />
 	</maps>
 </MapList>

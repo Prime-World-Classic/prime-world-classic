@@ -158,9 +158,9 @@
 							<LoggingEvent>-1</LoggingEvent>
 							<modifier>
 								<addValue>
-									<compiledString>FRsAAAABAAAAJwAAAEFkZF9NYXRlcmlhbERhbWFnZURlY3JlYXNlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+									<compiledString>FSEAAAABAAAALQAAAEFkZF9NYXRlcmlhbEVuZXJneURhbWFnZURlY3JlYXNlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 									<returnType>float</returnType>
-									<sString>cAdd_MaterialDamageDecrease</sString>
+									<sString>cAdd_MaterialEnergyDamageDecrease</sString>
 								</addValue>
 								<multValue>
 									<compiledString></compiledString>
@@ -173,9 +173,9 @@
 							</modifier>
 							<providerName></providerName>
 							<startCondition>
-								<compiledString>FRsAAAACAAAAKAAAADsAAABNYXRlcmFpbFJlc19TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHVcAAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
+								<compiledString>FSEAAAACAAAALgAAAEEAAABNYXRlcmFpbEVuZXJneVJlc19TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHV0AAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
 								<returnType>bool</returnType>
-								<sString>cMaterailRes_StartCondition</sString>
+								<sString>cMaterailEnergyRes_StartCondition</sString>
 							</startCondition>
 							<statModName></statModName>
 						</StatModApplicator>
@@ -205,9 +205,9 @@
 							<LoggingEvent>-1</LoggingEvent>
 							<modifier>
 								<addValue>
-									<compiledString>FRkAAAABAAAAJQAAAEFkZF9FbmVyZ3lEYW1hZ2VEZWNyZWFzZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+									<compiledString>FSEAAAABAAAALQAAAEFkZF9NYXRlcmlhbEVuZXJneURhbWFnZURlY3JlYXNlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 									<returnType>float</returnType>
-									<sString>cAdd_EnergyDamageDecrease</sString>
+									<sString>cAdd_MaterialEnergyDamageDecrease</sString>
 								</addValue>
 								<multValue>
 									<compiledString></compiledString>
@@ -220,12 +220,21 @@
 							</modifier>
 							<providerName></providerName>
 							<startCondition>
-								<compiledString>FRkAAAACAAAAJgAAADkAAABFbmVyZ3lSZXNfU3RhcnRDb25kaXRpb24AVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B1VAAAA3+D2xER7BsZF/wHrBMZF/wCKRf+L5V3DAAAAAAAAAAA=</compiledString>
+								<compiledString>FSEAAAACAAAALgAAAEEAAABNYXRlcmFpbEVuZXJneVJlc19TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHV0AAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
 								<returnType>bool</returnType>
-								<sString>cEnergyRes_StartCondition</sString>
+								<sString>cMaterailEnergyRes_StartCondition</sString>
 							</startCondition>
 							<statModName></statModName>
 						</StatModApplicator>
+					</Item>
+					<Item href="/Items/Talents/Level3/status_G351Shield.APLR" id="F7689733-485F-45DD-91F8-B6B7B276D10C">
+						<DispellApplicator parent="/GameLogic/GeneralApplicators/Dispell.APLR">
+							<enabled>
+								<compiledString>FQ8AAAACAAAAHAAAAC8AAABEaXNwZWxsX051bWJlcgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHUsAAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
+								<returnType>bool</returnType>
+								<sString>cDispell_Number</sString>
+							</enabled>
+						</DispellApplicator>
 					</Item>
 				</applicators>
 				<applyTarget>ApplicatorTarget</applyTarget>

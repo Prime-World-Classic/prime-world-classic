@@ -19,6 +19,7 @@
 	<BackLink DBID="/Items/Talents/Level4/G658_InvisibilityStrOrInt.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_7_Glyph/status_Invis.APLR" Count="1" />
 	<BackLink DBID="/Summons/Turret/_.SUMMONED" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G042_TrigHealonCast.TALENT" Count="2" />
 	<applicators>
 		<Item href="/GameLogic/GeneralApplicators/Invisibility.APLR" />
 		<Item href="/Heroes/DefaultStatus/_INVISIBILITY_status.APLR" id="B2FF5179-C5D6-4487-B779-F59FD4C0BA95">

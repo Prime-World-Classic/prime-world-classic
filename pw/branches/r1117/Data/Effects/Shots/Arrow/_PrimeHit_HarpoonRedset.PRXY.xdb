@@ -1,0 +1,434 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.EFFT" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="ED2BED1B-139B-414A-A72F-AA9EE41DE007">
+				<DBSoundSceneComponent>
+					<attached />
+					<caption>sound</caption>
+					<desc>
+						<eventName>ArrowHit</eventName>
+						<groupName>Hits</groupName>
+						<projectName>PF</projectName>
+					</desc>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<orientation>Default</orientation>
+					<timeInterval>0</timeInterval>
+				</DBSoundSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="C49432A4-02FE-45E5-90F8-D7FF77E4A56C">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>2</camoffset>
+					<caption>Flash_particle1</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Effects/Shots/Arrow/_PurpleHitFlash_particle1.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="0E98346B-51A6-4415-9089-37626F8D0B38">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0.5</B>
+									<G>0.6</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>0.3</B>
+									<G>1</G>
+									<R>0</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Effects/Shots/Arrow/_PurpleHitFlash_particle1.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>Flash_particle1</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Effects/Shots/Arrow/_PurpleHit.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/LensFlare04.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.6342773</x>
+								<y>0.4316406</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.6030273</x>
+								<y>0.3691406</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="CB287CBA-84C9-46A5-BE04-0B7AC4CB5320">
+				<TimeController>
+					<cycleCount>1</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0.03333</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="CE74FCD7-63BC-4209-AEB5-FBEB590EFCC5">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0.5</camoffset>
+					<caption>Glow_part</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Effects/Shots/Arrow/_PurpleHitGlow_part.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="B61A931D-EA87-4113-8739-0FC237CC2256">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0.3</B>
+									<G>0.7</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>0.5</A>
+									<B>0.5</B>
+									<G>1</G>
+									<R>0</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Effects/Shots/Arrow/_PurpleHitGlow_part.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>Glow_part</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Effects/Shots/Arrow/_PurpleHit.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/Glow01Purple.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.9208984</x>
+								<y>0.3046875</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.9052734</x>
+								<y>0.2734375</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="EFFCD60F-893A-4C05-A665-D1143843F087">
+				<TimeController>
+					<cycleCount>1</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="CD0AF51A-8BD7-4702-AE43-0A82C1EFF18D">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0.5</camoffset>
+					<caption>Sparks_particle1</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Effects/Shots/Arrow/_PurpleHitSparks_particle1.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="E0593381-B9F8-41ED-B9CF-B1B0390F7DE1">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>1</A>
+									<B>0.5</B>
+									<G>1</G>
+									<R>0</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Effects/Shots/Arrow/_PurpleHitSparks_particle1.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>Sparks_particle1</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Effects/Shots/Arrow/_PurpleHit.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/Spark04Magenta.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.2304688</x>
+								<y>0.08203125</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.2226563</x>
+								<y>0.06640625</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" id="7983D989-7A27-4DA6-8B10-FB2F7641D3ED">
+				<TimeController>
+					<cycleCount>1</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0.033333</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

@@ -64,6 +64,16 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability_A1_SUP.TALENT" id="00D630AC-7E3A-4B8D-BABD-DFF1D4300BA6">
+					<UnitConstant>
+						<name>Percent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>15</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

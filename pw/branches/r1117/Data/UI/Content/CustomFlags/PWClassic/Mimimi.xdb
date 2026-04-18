@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomFlag>
+	<BackLink DBID="/UI/Content/_.UIDT" Count="1" />
+	<bigIcon href="" />
+	<icon href="/UI/Styles/Icons/Flags/Custom/PWClassic/Mimimi.ITEX" />
+	<id>Mimimi</id>
+	<name textref="/UI/Content/CustomFlags/PWClassic/Mimimi_name.txt" />
+	<Price>1</Price>
+	<tooltip textref="/UI/Content/CustomFlags/PWClassic/Mimimi_tooltip.txt" />
+</CustomFlag>

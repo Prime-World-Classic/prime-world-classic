@@ -3,6 +3,7 @@
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<BackLink DBID="/Items/Talents/Mage_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Mage/Ability1_SUP.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Mage.TALENTSET" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

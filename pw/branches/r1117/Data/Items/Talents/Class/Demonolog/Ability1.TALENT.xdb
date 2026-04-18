@@ -573,9 +573,9 @@
 					<UnitConstant>
 						<name>A1u2_AddStrength</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAAAgQM3MmEE=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAAAgQM3M4EE=</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale(sIntellect, 2.5 , 19.1, false)</sString>
+							<sString>abilityScale(sIntellect, 2.5 , 28.1, false)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

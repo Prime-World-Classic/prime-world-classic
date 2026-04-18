@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<MainBuilding parent="/Buildings/B/Main/_Parent.MBLD">
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
+	<abilities>
+		<Item href="/Buildings/DefaultStats/_Tower_SeeInvis.ABLT" />
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/AbilityToReduceCD.ABLT" />
+		<Item skip="1" />
+		<Item skip="1" />
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="DDEF3C8E-0DCE-400B-AF36-BEF9194C08B0">
+			<Ability>
+				<activeCustomTrigger>true</activeCustomTrigger>
+				<allowChase>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</allowChase>
+				<alternativeTargets />
+				<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+				<aoeHeight>0</aoeHeight>
+				<aoeMaterial href="" />
+				<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+				<aoeSize>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</aoeSize>
+				<aoeType>None</aoeType>
+				<applicators />
+				<autoTargetSelector href="" />
+				<caption></caption>
+				<castAllowRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</castAllowRange>
+				<castLimitations />
+				<commonDescription textref="" />
+				<compiledDescriptionA textref="" />
+				<compiledDescriptionB textref="" />
+				<conditionFormulas />
+				<constants href="" />
+				<cooldownTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTime>
+				<cooldownTimeSecondState>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTimeSecondState>
+				<description textref="" />
+				<dispatch href="" />
+				<flags>1</flags>
+				<image href="" />
+				<imageSecondState href="" />
+				<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+				<manaCost>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</manaCost>
+				<marker></marker>
+				<microAI href="" />
+				<minUseRangeCorrection>0</minUseRangeCorrection>
+				<name textref="" />
+				<node></node>
+				<passiveApplicators>
+					<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="C9768170-859D-4C5D-BFC8-B859E515A762">
+						<TriggerApplicator>
+							<actionsCount>
+								<compiledString></compiledString>
+								<returnType>int</returnType>
+								<sString>0</sString>
+							</actionsCount>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>0</behaviorFlags>
+							<caption>Cчитаем продолжительность игры</caption>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</enabled>
+							<formulaName></formulaName>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<playAck>false</playAck>
+							<processor href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="B1FA0D89-B595-49E4-9400-67F27B5EC378">
+								<EventProcessorCondition>
+									<applyTarget>AbilityTarget</applyTarget>
+									<condition>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</condition>
+									<events>8192</events>
+									<onlyParent>false</onlyParent>
+									<spell href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="11FD8047-EB85-42B6-92B3-BC00F76C230A">
+										<Spell>
+											<applicators>
+												<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="27B91886-1C7F-482A-8828-7CFADD34A14B">
+													<PermanentStatModApplicator>
+														<applyTarget>ApplicatorTarget</applyTarget>
+														<caption>считаем продолжительность игры</caption>
+														<customApplyType>None</customApplyType>
+														<enabled>
+															<compiledString></compiledString>
+															<returnType>bool</returnType>
+															<sString>true</sString>
+														</enabled>
+														<formulaName>GameDurationAppl</formulaName>
+														<LoggingEvent>-1</LoggingEvent>
+														<modifier>
+															<addValue>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
+																<returnType>float</returnType>
+																<sString>0.1f</sString>
+															</addValue>
+															<multValue>
+																<compiledString></compiledString>
+																<returnType>float</returnType>
+																<sString>1.0f</sString>
+															</multValue>
+															<stat>Life</stat>
+															<topModifier>false</topModifier>
+															<variable>GameDuration</variable>
+														</modifier>
+														<providerName></providerName>
+													</PermanentStatModApplicator>
+												</Item>
+											</applicators>
+											<dispatch href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="AEDC4149-BB2C-456C-A3ED-4AB296AE37A8">
+												<DispatchImmediate>
+													<alwaysApply>false</alwaysApply>
+													<applyEffect>
+														<Item href="" />
+														<Item href="" />
+													</applyEffect>
+													<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+													<applyEffectOrientation>Default</applyEffectOrientation>
+													<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+													<dieAfterApply>true</dieAfterApply>
+													<dispatchEffect>
+														<Item href="" />
+														<Item href="" />
+													</dispatchEffect>
+													<flags>0</flags>
+													<instantApply>false</instantApply>
+												</DispatchImmediate>
+											</dispatch>
+										</Spell>
+									</spell>
+								</EventProcessorCondition>
+							</processor>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<useAbilityCooldown>false</useAbilityCooldown>
+							<useAbilityOwnerMana>false</useAbilityOwnerMana>
+						</TriggerApplicator>
+					</Item>
+				</passiveApplicators>
+				<requireLineOfSight>true</requireLineOfSight>
+				<shortDescription textref="" />
+				<targetType>136258047</targetType>
+				<type>Passive</type>
+				<useRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</useRange>
+				<useRangeMaterial href="" />
+				<warFogRemoveRadius>0</warFogRemoveRadius>
+				<warFogRemoveTime>0</warFogRemoveTime>
+			</Ability>
+		</Item>
+	</abilities>
+	<aoeRadius>20</aoeRadius>
+	<aoeUnitsCount>5</aoeUnitsCount>
+	<attackAbility href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="68BB9848-ECD4-4BE4-B67F-F087508183E4">
+		<BaseAttack parent="/Buildings/DefaultStats/DefaultMainAttack.ATCK">
+			<constants href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="D30B5751-47B9-4646-BDE1-7104704C9CBF">
+				<UnitConstantsContainer parent="/Buildings/DefaultStats/MainBuildingAttackConst.UCCN">
+					<vars>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="813D5884-98A1-43CB-B30C-121AE5D6A0F7">
+							<UnitConstant>
+								<name>LowDmgVsSolders</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.6f*2</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+					</vars>
+				</UnitConstantsContainer>
+			</constants>
+			<flags>1</flags>
+		</BaseAttack>
+	</attackAbility>
+	<maxAOEDelay>180</maxAOEDelay>
+	<minAOEDelay>180</minAOEDelay>
+	<stats href="/Maps/Multiplayer/ARAM_SNOW/Mains/_B.MBLD" id="61355459-E8AE-4C62-B6B9-95186E6FC466">
+		<StatsContainer parent="/Buildings/DefaultStats/Main_MidOnly.STCN">
+			<stats>
+				<Item>
+					<value>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DALiIRg==</compiledString>
+						<returnType>float</returnType>
+						<sString>25000*0.7</sString>
+					</value>
+				</Item>
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+				<Item skip="1" />
+			</stats>
+		</StatsContainer>
+	</stats>
+	<targetingParams href="/GameLogic/Main_TargetingParams.UNTP" />
+</MainBuilding>

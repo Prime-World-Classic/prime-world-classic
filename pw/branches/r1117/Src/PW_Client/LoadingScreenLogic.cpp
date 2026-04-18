@@ -25,6 +25,7 @@
 #include "PF_GameLogic/HeroSpawn.h"
 #include "PF_GameLogic/PFHero.h"
 #include "PF_GameLogic/AdventureScreen.h"
+#include "PF_GameLogic/WebLauncher.h"
 
 
 namespace 
@@ -329,7 +330,7 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
     }
 
 
-    loadingHeroes->AddUser(userId , botNickname, isMale, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip);
+    loadingHeroes->AddUser(userId , botNickname, isMale, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip, heroInfo.skinId, heroInfo.leagueIndex);
     recalcTeamForce(heroInfo);
     loadingHeroes->AddBot(userId);
     flashInterface->SetHeroLevel(userId, 1);
@@ -355,14 +356,34 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
     string flagIcon;
     wstring flagTooltip;
 
+    int webUserId = userId;
+    nstl::wstring nick = info.nickname.c_str() + 1;
+    nstl::string skinId = info.playerInfo.heroSkin;
+    if (g_usersData.find(nick) != g_usersData.end()) {
+      WebLauncherPostRequest::WebUserData& userData = g_usersData[nick];
+      NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( m_heroDb, NULL, heroInfo.heroId );
 
-    if(!info.playerInfo.flagId.empty())
+      int heroSkinId = userData.heroSkinID;
+      if(heroSkinId > 0){
+        skinId = GetSkinByHeroPersistentId(hero->persistentId.c_str(), heroSkinId - 1).c_str();
+      }
+      webUserId = userData.userId;
+    }
+
+    const nstl::string& flagId = (userIdToMetaMap.find(webUserId) == userIdToMetaMap.end()) 
+      ? info.playerInfo.flagId
+      : userIdToMetaMap[webUserId].flagId;
+    int leagueIdx = (userIdToMetaMap.find(webUserId) == userIdToMetaMap.end()) 
+      ? heroInfo.leagueIndex
+      : userIdToMetaMap[webUserId].leagueIdx;;
+
+    if(!flagId.empty())
     {
       bool founded = false;
 
       for (vector<NDb::CountryFlag>::const_iterator it = uiData->countryFlags.begin(); it != uiData->countryFlags.end(); ++it )
       {
-        if (it->id == info.playerInfo.flagId )
+        if (it->id == flagId )
         {
           flagIcon = it->icon->textureFileName;
           flagTooltip = it->tooltip.GetText();
@@ -373,7 +394,7 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
       {
         for (vector<NDb::Ptr<NDb::CustomFlag>>::const_iterator it = uiData->customFlags.begin(); it != uiData->customFlags.end(); ++it )
         {
-          if ((*it)->id == info.playerInfo.flagId )
+          if ((*it)->id == flagId )
           {
             flagIcon = (*it)->icon->textureFileName;
             flagTooltip = (*it)->tooltip.GetText();
@@ -385,7 +406,7 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
       {
         for (vector<NDb::Ptr<NDb::CustomFlag>>::const_iterator it = uiData->adminFlags.begin(); it != uiData->adminFlags.end(); ++it )
         {
-          if ((*it)->id == info.playerInfo.flagId )
+          if ((*it)->id == flagId )
           {
             flagIcon = (*it)->icon->textureFileName;
             flagTooltip = (*it)->tooltip.GetText();
@@ -404,7 +425,7 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
       (isTutorial && info.nickname.empty());
 
     const wstring& name = useHeroName ? GetHeroNameByPlayerInfo(info, advMapDescription) : info.nickname;
-    loadingHeroes->AddUser(info.userID, name, isMale, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip );
+    loadingHeroes->AddUser(info.userID, name, isMale, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip, skinId, leagueIdx);
     recalcTeamForce(heroInfo);
   }
 }
@@ -485,16 +506,17 @@ void LoadingScreenLogic::SetHeroInfo( int userId, const HeroInfo & heroInfo, con
 
 	flashInterface->SetHeroPremium(userId, heroInfo.isPremium, ConvertToFaction( heroInfo.originalTeam));
 
-  //если изменения рейтинга нету просто его не показываем
   if ( _clientSettings.showHeroRating )
   {
 
     const NDb::Rank & rank = rankCalculator->GetRank(heroInfo.raiting);
+	const NDb::Rank & rankAcc = rankCalculator->GetRank(heroInfo.raitingAcc);
     
     NDb::EFaction faction = ConvertToFaction(heroInfo.team);
       //heroInfo.team == lobby::ETeam::Team1? NDb::FACTION_FREEZE: NDb::FACTION_BURN;
 
     flashInterface->SetHeroRaiting(userId, heroInfo.raiting, heroInfo.winDeltaRaiting, heroInfo.loseDeltaRaiting, heroInfo.isNovice,  rankCalculator->GetRankIcon(faction, rank), rankCalculator->GetRankName(faction, rank));
+    flashInterface->SetHeroRaitingAcc(userId, heroInfo.raitingAcc, heroInfo.winDeltaRaitingAcc, heroInfo.loseDeltaRaitingAcc, heroInfo.isNovice,  rankCalculator->GetRankIcon(faction, rankAcc), rankCalculator->GetRankName(faction, rankAcc));
   }
 }
 

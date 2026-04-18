@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level2/G487_MarkAOEDMG.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G489_Life_StrOrInt.TALENT" Count="1" />
+	<name>G487_MaxCountBuilding</name>
+	<var>
+		<compiledString>FQ4AAAACAAAAGwAAAC4AAABHNDg3X01heENvdW50AFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twFPAAAANld/NlF/IvlXcMAAAAAAADwPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>cG487_MaxCount+1</sString>
+	</var>
+</UnitConstant>

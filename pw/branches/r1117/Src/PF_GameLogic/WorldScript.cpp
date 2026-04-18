@@ -228,11 +228,9 @@ PFAIContainer::PFAIContainer( PFWorld* pWorld, NCore::ITransceiver *pTransceiver
     lua_pushcfunction(L, luaopen_table);
     lua_pushstring(L, "");
     lua_call(L, 1, 0);
-#ifndef _SHIPPING
     lua_pushcfunction(L, luaopen_io);
     lua_pushstring(L, "");
     lua_call(L, 1, 0);
-#endif
   }
   scriptSerializer.Init( luaScript );
 }

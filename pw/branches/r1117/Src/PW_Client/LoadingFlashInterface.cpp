@@ -103,6 +103,11 @@ void LoadingFlashInterface::SetHeroRaiting( int heroId, int raiting, float delta
   CallMethod( "SetHeroRaiting", heroId, raiting, deltaWin, deltaLose, isNovice, rankIcon, rankName);
 }
 
+void LoadingFlashInterface::SetHeroRaitingAcc( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
+{
+  CallMethod( "SetHeroRaitingAcc", heroId, raiting, deltaWin, deltaLose, isNovice, rankIcon, rankName);
+}
+
 
 void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EFaction originalFraction )
 {

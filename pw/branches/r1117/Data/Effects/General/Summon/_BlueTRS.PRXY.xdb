@@ -392,6 +392,7 @@
 	<BackLink DBID="/Summons/Wolf/S2/_BUpgrade.SOBJ" Count="1" />
 	<BackLink DBID="/Creeps/Minions/Minion3/_Elite.SOBJ" Count="1" />
 	<BackLink DBID="/Creeps/Champions/Champion2/_Big.SOBJ" Count="1" />
+	<BackLink DBID="/Heroes/Bomber/S1/_.SOBJ" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

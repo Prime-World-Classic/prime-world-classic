@@ -464,7 +464,7 @@
 			<RefreshCooldownApplicator>
 				<allowCdIncrease>true</allowCdIncrease>
 				<applyTarget>AbilityOwner</applyTarget>
-				<caption>Увеличиваем КД</caption>
+				<caption>Увеличиваем КД (отключен)</caption>
 				<enabled>
 					<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgjQBAAD/0ItNCIsRi00Ii4IwAQAA3V34/9DcXfjf4PbEBXoJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
 					<returnType>bool</returnType>
@@ -476,9 +476,9 @@
 				<providerName></providerName>
 				<reduceByPercent>false</reduceByPercent>
 				<reductionAmount>
-					<compiledString>FR0AAAAGAAEAJAAAADoAAACGAAAAjAAAAKQAAACvAAAA0wEAAFRhbGVudHNDZE11bAAAAABUYWxlbnRzQ2RNdWwAVYvsg+wkaBAAAACLRQiLEItNCIuCiAEAAP/Q3B0EAQAA3+D2xEF1BsZF7wHrBMZF7wBR2e7ZHCSNTfhRi1UQiwKLTRCLUFj/0lCNRfBQi00IixGLTQiLgowBAAD/0FDo1AAAAIPECNw1+AAAANwl8AAAANld6NlF6FHZHCTobQAAAIPECNwN6AAAAFHZ6NkcJGgAAAAAi00IixGLTQiLgogBAADdXeD/0FHZHCQPtk3vUehgAAAAg8QM3E3g2V3c2UXci+VdwwAAgD8AAAAAAADwvwAAAGBmZiJAAAAAAAAABEAAAAAAAAAAAAAAAABVi+xR2UUI2UUM3tnf4PbEBXoI2UUI2V386wbZRQzZXfzZRfyL5V3DVYvsUQ+2RQiFwHQI2UUM2V386wbZRRDZXfzZRfyL5V3DVYvsg+wUi0UI2UAEi00M2GEE2V302UX0UdkcJItVCNkCi0UM2CDZXfDZRfBR2RwkjU346FcAAADZRfjYTfjZRfzYTfzewdld7NlF7FHZHCToBwAAAIPEBIvlXcNVi+xR2UUI2Rwk6AUAAACDxARdw1WL7FHZRQiD7AjdHCToBf7//4PECNld/NlF/IvlXcNVi+xRiU38i0X82UUI2RiLTfzZRQzZWQSLRfyL5V3CCAA=</compiledString>
+					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 					<returnType>float</returnType>
-					<sString>-1.0f * max((d(sPos, pMisc-&gt;GetTargetPos()) /2.5f) - 23/2.5f ,0.0f) * s( sender.vTalentsCdMul &gt; 0, sender.vTalentsCdMul, 1.0f) </sString>
+					<sString>0.0f</sString>
 				</reductionAmount>
 				<refreshThis>false</refreshThis>
 				<talents>
@@ -521,9 +521,9 @@
 					<UnitConstant>
 						<name>A2_Damage</name>
 						<var>
-							<compiledString>FQAAAAAFAAAAOAAAAEIAAAB4AAAAggAAALAAAABVi+yD7BSLRQiLEItNCIuCuAAAAP/Qi00IixGLTQiLgrwAAADdXfj/0Nxd+N/g9sRBekBqAVHZBdgAAADZHCRR2QXUAAAA2RwkagCLTQiLEYtNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d8OtEagFR2QXQAAAA2RwkUdkFzAAAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DcDcQAAADdXfDdRfDZXezZReyL5V3DzczMzMzM7D8AALRCAMAoRAAAfEIAAOxD</compiledString>
+							<compiledString>FQAAAAAFAAAAOAAAAEIAAAB4AAAAggAAALAAAABVi+yD7BSLRQiLEItNCIuCuAAAAP/Qi00IixGLTQiLgrwAAADdXfj/0Nxd+N/g9sRBekBqAVHZBdgAAADZHCRR2QXUAAAA2RwkagCLTQiLEYtNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d8OtEagFR2QXQAAAA2RwkUdkFzAAAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DcDcQAAADdXfDdRfDZXezZReyL5V3DzczMzMzM7D8AAL5CAAA0RAAAfEIAAOxD</compiledString>
 							<returnType>float</returnType>
-							<sString>(sBaseStrength&gt;=sBaseIntellect)? damageScale(sStrength, 63, 472) : (damageScale(sIntellect, 90, 675)*0.9)</sString>
+							<sString>(sBaseStrength&gt;=sBaseIntellect)? damageScale(sStrength, 63, 472) : (damageScale(sIntellect, 95, 720)*0.9)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -583,9 +583,9 @@
 					<UnitConstant>
 						<name>RangeIntOreStr</name>
 						<var>
-							<compiledString>FQ0AAAACAAAAQgAAAFQAAABSYW5nZV9FeExvbmcAVYvsg+wMi0UIixCLTQiLgjQBAAD/0ItNCIsRi00Ii4IwAQAA3V34/9DcXfjf4PbEBXoL2QVvAAAA2V306x2LTQxRi1UIUmgAAAAAi0UQixCLTRCLQlD/0Nld9NlF9IvlXcMAAMhC</compiledString>
+							<compiledString>FQ0AAAADAAAAWAAAAF4AAABwAAAAUmFuZ2VfRXhMb25nAFWL7IPsGItFCIsQi00Ii4I0AQAA/9CLTQiLEYtNCIuCMAEAAN1d+P/Q3F343+D2xAV6J4tNDIsRi00Mi4JgAQAA/9CJRfTbRfTcDZkAAADcBZEAAADdXezrHYtNDFGLVQhSaAAAAACLRRCLEItNEItCUP/Q3V3s3UXs2V3o2UXoi+VdwwAAAAAAAFlAAAAAAAAA4D8=</compiledString>
 							<returnType>float</returnType>
-							<sString>(sIntellect&gt;sStrength ? 100 : cRange_ExLong)</sString>
+							<sString>(sIntellect&gt;sStrength ? 100+0.5*rNaftaLevel : cRange_ExLong)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

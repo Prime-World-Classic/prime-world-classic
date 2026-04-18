@@ -1302,9 +1302,9 @@
 					<UnitConstant>
 						<name>ChannelTimeBase</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmZmPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>1</sString>
+							<sString>0.9</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1374,9 +1374,9 @@
 					<UnitConstant>
 						<name>Reduce</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>0.5</sString>
+							<sString>0.75</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1389,9 +1389,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsg+wMi0UIixCLTQiLgrgAAAD/0ItNCIsRi00Ii4K8AAAA3V34/9DcXfjf4PbEQXoJx0X0CgAAAOsHx0X0DwAAANtF9IvlXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>15</sString>
+		<sString>(sBaseStrength&gt;=sBaseIntellect)? 10 : 15 </sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

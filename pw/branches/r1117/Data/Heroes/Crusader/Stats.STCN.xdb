@@ -30,9 +30,9 @@
 			<levelUpgrades />
 			<statId>Energy</statId>
 			<value>
-				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAMAoRA==</compiledString>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIRA==</compiledString>
 				<returnType>float</returnType>
-				<sString>675</sString>
+				<sString>800</sString>
 			</value>
 		</Item>
 		<Item>

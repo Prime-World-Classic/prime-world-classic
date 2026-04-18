@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
 	<BackLink DBID="/Items/Talents/Level1/G321_HealForHeroKill.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G042_TrigHealonCast.TALENT" Count="3" />
 	<applicators />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>0</behaviorFlags>

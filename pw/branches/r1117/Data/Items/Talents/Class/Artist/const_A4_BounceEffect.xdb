@@ -5,8 +5,8 @@
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A1.TALENT" Count="1" />
 	<name>A4_BounceEffectPercent</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACqQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>80</sString>
+		<sString>85</sString>
 	</var>
 </UnitConstant>

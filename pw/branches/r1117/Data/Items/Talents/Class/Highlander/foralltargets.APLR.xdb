@@ -282,9 +282,33 @@
 												<damageMode>7</damageMode>
 												<damageType>Material</damageType>
 												<enabled>
-													<compiledString>FQAAAAAAAAAAVYvsVotFCIsQi00Ii4KQAQAA/9CL8ItNDIsRi00Mi4KQAQAA/9AzyTvwD5XBisFeXcM=</compiledString>
+													<compiledString>FSYAAAACAAAALQAAAEYAAABIaWdobGFuZGVyX0ExX1NVUAAAAEhpZ2hsYW5kZXJfQTFfU1VQAFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZF+/fYG8CDwAGL5V3D</compiledString>
 													<returnType>bool</returnType>
-													<sString>sFctn != rFctn</sString>
+													<sString>tal("Highlander_A1_SUP") == false</sString>
+												</enabled>
+												<formulaName></formulaName>
+												<LoggingEvent>-1</LoggingEvent>
+												<providerName></providerName>
+												<timeLimiter>-1</timeLimiter>
+												<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+											</DamageApplicator>
+										</Item>
+										<Item href="/Items/Talents/Class/Highlander/foralltargets.APLR" id="17C97B5C-872C-4AB4-9D02-C97850A0B218">
+											<DamageApplicator>
+												<applyTarget>ApplicatorTarget</applyTarget>
+												<cancelInvisibility>false</cancelInvisibility>
+												<caption>урон</caption>
+												<damage>
+													<compiledString>FQ0AAAABAAAAGQAAAEExRGFtYWdlQ3JpdABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+													<returnType>float</returnType>
+													<sString>cA1DamageCrit</sString>
+												</damage>
+												<damageMode>15</damageMode>
+												<damageType>Material</damageType>
+												<enabled>
+													<compiledString>FSYAAAACAAAALQAAAEYAAABIaWdobGFuZGVyX0ExX1NVUAAAAEhpZ2hsYW5kZXJfQTFfU1VQAFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAikX7i+Vdww==</compiledString>
+													<returnType>bool</returnType>
+													<sString>tal("Highlander_A1_SUP")</sString>
 												</enabled>
 												<formulaName></formulaName>
 												<LoggingEvent>-1</LoggingEvent>

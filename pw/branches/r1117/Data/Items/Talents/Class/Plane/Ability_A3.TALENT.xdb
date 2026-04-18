@@ -1016,9 +1016,9 @@
 					<UnitConstant>
 						<name>A3_SUP_Duration</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>5</sString>
+							<sString>2</sString>
 						</var>
 					</UnitConstant>
 				</Item>

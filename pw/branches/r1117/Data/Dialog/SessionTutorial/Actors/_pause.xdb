@@ -7,6 +7,7 @@
 	<BackLink DBID="/Dialog/SessionTutorial/Mission1/TM1_D07_3" Count="1" />
 	<BackLink DBID="/Dialog/SessionTutorial/Mission1/TM1_D15" Count="2" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Tutorial/dialogsListTutorial.DIALOGS" Count="29" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM/Dialog" Count="4" />
 	<description></description>
 	<icon href="" />
 	<name textref="" />

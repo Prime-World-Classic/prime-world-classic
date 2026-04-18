@@ -1,0 +1,241 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/Redset_SeaSymbol.TALKIT" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>G794: Морское сокровище</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Level4/G794_SeaSymbol.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="4A399F2A-B279-4AAE-BCBD-2DC974E0BC27">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAIQAAADQAAABTZWFTeW1ib2xLaXRjb3VudGVyAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twdUAAAAN/g9sREewbGRf8B6wTGRf8AikX/i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>cSeaSymbolKitcounter</sString>
+				</condition>
+				<name>activatedInKit</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="35BFE6C2-40E5-49A8-95A7-465DDFD5B79B">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQwAAAACAAAAGQAAACwAAABHNzk0X0FjdGl2ZQBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHU4AAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAADwPw==</compiledString>
+					<returnType>bool</returnType>
+					<sString>cG794_Active == 1</sString>
+				</condition>
+				<name>G794_Active</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="718DBCB8-0286-4DD4-BFC2-4E3FED27CFDC">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSQAAAACAAAAMwAAAE0AAABTZWFTeW1ib2xLaXRjb3VudGVyAEtpdF9Db3VudGVyX01heABVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0otFDFCLTQhRaBQAAACLVRCLAotNEItQUN1d+P/S3F343+D2xAV6CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>cSeaSymbolKitcounter&gt;cKit_Counter_Max</sString>
+				</condition>
+				<name>FormOverChargedSession</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="5255084C-182C-40C0-9F60-A8BE5A4127D1">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_Kit_Counter" />
+				<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="CE9C91C4-1DCB-4262-8BCA-ED152A694196">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ6NkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAFBBAACAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>refineScale(13, 1)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_AddDuration_G794" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_G794_active" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_Kit_Counter_Max" />
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Level4/G794_SeaSymbol.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>0</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Talents/_794.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>3</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>-1</naftaCost>
+	<name textref="/Items/Talents/Level4/G794_SeaSymbol.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="24D35298-F17A-4EEB-94F3-C8B3364BF151">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="78A8A6D2-FB7A-4762-B303-834840FD9946">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/appl_SeaSymbol_kitCounter.APLR" />
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" id="0F0518DC-1A0C-434A-B594-915648C25694">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>G794_Active</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FVQAAAAIAAAAWwAAAHQAAACqAAAAygAAAOYAAAD/AAAANQEAAFUBAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABTZWFTeW1ib2xLaXRjb3VudGVyAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEtpdF9Db3VudGVyX01heABVi+yD7CRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3waCwAAACLRQiLEItNCIuCqAEAAP/QhcB0Kmg0AAAAi00IixGLTQiLgqgBAAD/0IlF7ItN7IsRi03si0IE/9CIRevrBMZF6wAPtk3rhcl0N2g8AAAAi1UIiwKLTQiLkKgBAAD/0olF5ItFDFCLTQhRaEQAAACLVeSLAotN5ItQUP/S2V3g6wXZ7tld4NlF8NlF4N7Z3+D2xAF1CcdF3AEAAADrB8dF3AAAAACKRdyL5V3DAAAAAA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","SeaSymbolKitcounter") &lt;= talconst("G792","Kit_Counter_Max")</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>G794_active</variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>G794</persistentId>
+	<prerequisiteTalents />
+	<rarity>outstanding</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>16</talentRollGroups>
+	<talentStats />
+	<targetType>0</targetType>
+	<type>Passive</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

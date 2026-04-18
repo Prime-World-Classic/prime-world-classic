@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/Items/Talents/Mage.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Mage/Ability2_SUP.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Mage_Mighty.TALENTSET" Count="1" />
 	<activationConditions />

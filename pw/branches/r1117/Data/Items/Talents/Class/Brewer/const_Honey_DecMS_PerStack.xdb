@@ -8,8 +8,8 @@
 	<BackLink DBID="/Items/Talents/Class/Brewer/Ability_A2.TALENT" Count="1" />
 	<name>Dec_MoveSpeed_PerStack</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+		<compiledString>FQAAAAACAAAANQAAAEAAAABVi+yD7AyLRQiLEItNCIuCuAAAAP/Qi00IixGLTQiLgrwAAADdXfj/0Nxd+N/g9sRBegvZBVIAAADZXfTrCdkFTgAAANld9NlF9IvlXcMAACBBAADgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>10.0f</sString>
+		<sString>(sBaseStrength&gt;=sBaseIntellect)? 7.0f : 10.0f</sString>
 	</var>
 </UnitConstant>

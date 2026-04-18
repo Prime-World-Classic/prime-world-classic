@@ -16,6 +16,7 @@
 	<BackLink DBID="/Items/Talents/Level3/Status_G515_New_Haste.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A1_SpectralLashAlly.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A1.TALENT" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_Aram_Haste_status.APLR" Count="1" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

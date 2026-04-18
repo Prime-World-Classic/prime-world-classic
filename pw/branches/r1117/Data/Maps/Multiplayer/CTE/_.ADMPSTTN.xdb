@@ -192,7 +192,7 @@
 		<naftaForKill>-1</naftaForKill>
 		<naftaSpecForKill>-1</naftaSpecForKill>
 		<neutralKillExperienceModifier href="/Maps/Multiplayer/CTE/ExpMod.KLEM" />
-		<startPrimePerTeam>2000</startPrimePerTeam>
+		<startPrimePerTeam>2800</startPrimePerTeam>
 		<teamNaftaForPresence>-1</teamNaftaForPresence>
 	</primeSettings>
 	<questsCollection href="" />

@@ -166,9 +166,9 @@
 					<UnitConstant>
 						<name>Add_Will</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAwEAAAAA/</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(6, 0.5)</sString>
+							<sString>9</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -176,9 +176,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAIEEzMzM/</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACQQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(10, 0.7)</sString>
+							<sString>18</sString>
 						</var>
 					</UnitConstant>
 				</Item>

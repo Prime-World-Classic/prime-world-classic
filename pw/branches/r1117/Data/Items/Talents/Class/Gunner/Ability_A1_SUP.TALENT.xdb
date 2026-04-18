@@ -56,6 +56,16 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Gunner/const_A1_SUP_Damage" />
+				<Item href="/Items/Talents/Class/Gunner/Ability_A1_SUP.TALENT" id="58B2D1D9-D991-4661-AA55-F88ABBE062CC">
+					<UnitConstant>
+						<name>cdCanonir</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+							<returnType>float</returnType>
+							<sString>50</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

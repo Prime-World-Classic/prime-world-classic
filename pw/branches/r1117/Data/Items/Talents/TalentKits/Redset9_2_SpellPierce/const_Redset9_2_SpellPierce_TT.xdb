@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G705_Int_Dex.TALENT" Count="1" />
 	<name>Add_SpellPierce_TT</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABQQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>13.0f</sString>
+		<sString>10.0f</sString>
 	</var>
 </UnitConstant>

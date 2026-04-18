@@ -2,6 +2,7 @@
 <SimpleObject>
 	<BackLink DBID="/Maps/Multiplayer/MOBA/NewYear/_.ADMP" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/_.ADMP" Count="5" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
 	<collision>
 		<x1>0</x1>
 		<x2>0</x2>

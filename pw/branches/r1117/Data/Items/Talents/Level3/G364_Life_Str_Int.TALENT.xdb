@@ -13,6 +13,7 @@
 	<BackLink DBID="/Test/Talents/OrangeSet3.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/SnowQueen/Epic_IntLife.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/SnowQueen/Epic_IntLife_Ult2.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -75,9 +76,9 @@
 					<UnitConstant>
 						<name>Add_Life</name>
 						<var>
-							<compiledString>FQsAAAADAAAAFAAAAB4AAAA7AAAATGlmZUJ1ZGdldABVi+yD7AxR2QVgAAAA2RwkUdkFXAAAANkcJItFEIsQi00Qi0Js/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NxN+Nld9NlF9IvlXcPNzIxACtejPg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAWQw==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(4.4,0.32)*cLifeBudget</sString>
+							<sString>150</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -85,9 +86,19 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MjECamZk+</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(4.4, 0.3)</sString>
+							<sString>6</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level3/G364_Life_Str_Int.TALENT" id="C335671B-B428-4FB3-85B1-EA4C532B4E7F">
+					<UnitConstant>
+						<name>Add_ManaReg</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>3</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -249,6 +260,36 @@
 						<sString>1.0f</sString>
 					</multValue>
 					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level3/G364_Life_Str_Int.TALENT" id="6496771D-0704-4DA3-A5BF-3326D9EF67A3">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_ManaReg</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQwAAAABAAAAGAAAAEFkZF9NYW5hUmVnAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_ManaReg</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>EnergyRegenerationAbsolute</stat>
 					<topModifier>false</topModifier>
 					<variable></variable>
 				</modifier>

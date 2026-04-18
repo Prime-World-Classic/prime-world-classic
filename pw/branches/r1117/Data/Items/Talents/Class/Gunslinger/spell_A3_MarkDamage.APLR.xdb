@@ -20,9 +20,9 @@
 						<cancelInvisibility>false</cancelInvisibility>
 						<caption>Наносим урон, если цель ушла в варфог</caption>
 						<damage>
-							<compiledString>FQ8AAAABAAAAGwAAAEEzX01hcmtfRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<compiledString>FUkAAAAEAAAAUAAAAGkAAACnAAAAywAAAEEzX01hcmtfRGFtYWdlAABHdW5zbGluZ2VyX0EzX1NVUAAAAEd1bnNsaW5nZXJfQTNfU1VQAAAAVFRfQTNfRGFtYWdlX1NVUABVi+yD7BBoEAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaCQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQfi1UMUotFCFBoOAAAAItNEIsRi00Qi0JQ/9DZXfTrBdnu2V30i00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9DYRfTZXfDZRfCL5V3DAAAAAA==</compiledString>
 							<returnType>float</returnType>
-							<sString>cA3_Mark_Damage</sString>
+							<sString>cA3_Mark_Damage + (tal("Gunslinger_A3_SUP") ? cTT_A3_Damage_SUP :0)</sString>
 						</damage>
 						<damageMode>0</damageMode>
 						<damageType>Energy</damageType>

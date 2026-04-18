@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomFlag>
+	<BackLink DBID="/UI/Content/_.UIDT" Count="1" />
+	<bigIcon href="" />
+	<icon href="/UI/Styles/Icons/Flags/Custom/PWClassic/golden_dragon.ITEX" />
+	<id>golden_dragon</id>
+	<name textref="/UI/Content/CustomFlags/PWClassic/golden_dragon_name.txt" />
+	<Price>1</Price>
+	<tooltip textref="/UI/Content/CustomFlags/PWClassic/golden_dragon_tooltip.txt" />
+</CustomFlag>

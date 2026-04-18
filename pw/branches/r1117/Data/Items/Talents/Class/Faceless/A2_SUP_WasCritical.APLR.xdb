@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability1.TALENT" Count="7" />
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability3.TALENT" Count="1" />
 	<BackLink DBID="/Heroes/Faceless/_.HROB" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<applyTarget>AbilityOwner</applyTarget>
 	<behaviorFlags>216</behaviorFlags>
 	<caption>A2_SUP: я критовал</caption>

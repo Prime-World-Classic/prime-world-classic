@@ -14,6 +14,7 @@
 	<BackLink DBID="/Maps/Test/Duel/_.ADMP" Count="2" />
 	<BackLink DBID="/Maps/Tutorial/_.ADMP" Count="30" />
 	<BackLink DBID="/Maps/Multiplayer/MidOnly/Aram/_.ADMP" Count="27" />
+	<BackLink DBID="/Maps/Multiplayer/DEFENSE/_.ADMP" Count="2" />
 	<collision>
 		<x1>0</x1>
 		<x2>0</x2>

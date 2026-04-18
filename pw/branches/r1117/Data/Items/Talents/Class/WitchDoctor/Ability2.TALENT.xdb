@@ -1309,9 +1309,9 @@
 	<type>Switchable</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
-		<compiledString>FQAAAAAEAAAARQAAAEsAAABmAAAAbAAAAFWL7IPsFItFCIsQi00Ii4I0AQAA/9CLTQiLEYtNCIuCMAEAAN1d+P/Q3F343+D2xEF6IYtNCIsRi00Ii4I0AQAA/9DcNYgAAADcBYAAAADdXfDrH4tNCIsRi00Ii4IwAQAA/9DcNYgAAADcBYAAAADdXfDdRfDZXezZReyL5V3DAAAAAAAAFEAAAAAAAABJQA==</compiledString>
+		<compiledString>FQAAAAAEAAAARQAAAEsAAABmAAAAbAAAAFWL7IPsFItFCIsQi00Ii4I0AQAA/9CLTQiLEYtNCIuCMAEAAN1d+P/Q3F343+D2xEF6IYtNCIsRi00Ii4I0AQAA/9DcNYgAAADcBYAAAADdXfDrH4tNCIsRi00Ii4IwAQAA/9DcNYgAAADcBYAAAADdXfDdRfDZXezZReyL5V3DAAAAAAAAEEAAAAAAAABJQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>sIntellect&gt;=sStrength ? 5+(sIntellect/50) : 5+(sStrength/50)</sString>
+		<sString>sIntellect&gt;=sStrength ? 4+(sIntellect/50) : 4+(sStrength/50)</sString>
 	</useRange>
 	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
 	<variativeMaxTalentStats />

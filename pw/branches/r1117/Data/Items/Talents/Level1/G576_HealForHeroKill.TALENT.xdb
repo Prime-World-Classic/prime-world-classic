@@ -13,6 +13,7 @@
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season9_Mediocre.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_NY2020_MediocreList.ROLLCONT" Count="1" />
 	<BackLink DBID="/Social/Lootboxes/ROLLCONTS/roll_Season13_MediocreList.ROLLCONT" Count="1" />
+	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -52,17 +53,27 @@
 	<constants href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="BE2DF0E4-96FB-46C5-B452-3B89D93BCAF6">
 		<UnitConstantsContainer>
 			<vars>
-				<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="11107E47-1AF0-4A53-B190-2354E7A6A9D0">
+				<Item href="/Items/Talents/TalentKits/Redset7_3_Panopticon/const_Add_Stat_RedSet" />
+				<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="557C0C16-5EC5-423C-B17D-F4BD3C0B4FAC">
 					<UnitConstant>
 						<name>HealAmount</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwCAu0MAANJB</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQw==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(375, 26.25)</sString>
+							<sString>240</sString>
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/TalentKits/Redset7_3_Panopticon/const_Add_Stat_RedSet" />
+				<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="C94AF326-4AA9-4FA9-8424-90C64AFFA28F">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>1.6</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -104,7 +115,188 @@
 	<name textref="/Items/Talents/Level1/G576_HealForHeroKill.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
-		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="2A7BF737-1110-451A-B0F4-30EFE4462445">
+		<Item href="/Items/Talents/TalentKits/Redset7_3_Panopticon/program_Program_Redset7_3_AllStats.APLR" />
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="9FBD9FD7-F8A4-4461-8CF3-EF8660BC319E">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="74AD19B7-C7F8-48A3-B933-3ABE6A072A8E">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="C40AE1B5-59F4-4764-8602-0B86A05C9902">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_AttackSpeed</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>AttackSpeed</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="7BE326CF-1C6A-47C7-84DC-67179A1CE569">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Dexterity</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Dexterity</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="58865328-8EF3-4C12-B99E-A0A1CFDC0738">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Stamina</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="616C2E24-9431-43E2-AACD-9A0A6027855E">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Will</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Will</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="7D41AC86-3710-429B-A42C-39ACC4ED77D5">
 			<TriggerApplicator>
 				<actionsCount>
 					<compiledString></compiledString>
@@ -131,7 +323,7 @@
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<playAck>false</playAck>
-				<processor href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="4D0E5C36-4E08-4A9F-929A-68404213127B">
+				<processor href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="2C01095A-7DF1-48A7-9507-40815B525FB2">
 					<EventProcessorCondition>
 						<applyTarget>ApplicatorTarget</applyTarget>
 						<condition>
@@ -141,18 +333,18 @@
 						</condition>
 						<events>1073741824</events>
 						<onlyParent>false</onlyParent>
-						<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="0C57D48D-246D-43F5-A3DD-8CAF0AFBC527">
+						<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="8C2D5210-7BDE-4668-9634-96F4AC759A5F">
 							<Spell>
 								<applicators>
 									<Item href="/GameLogic/GeneralApplicators/Heal.APLR" />
-									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="EDDC21B8-763B-4525-9C5D-AF8FEF974712">
+									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="6C0182B7-8DBE-4E60-A535-56641F688B71">
 										<FlagsApplicator>
 											<applyTarget>ApplicatorTarget</applyTarget>
 											<behaviorFlags>32</behaviorFlags>
 											<caption>FX регенерации</caption>
 											<consumables />
 											<effect>
-												<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="B64E0BC8-3B77-4E2B-8732-A6B353A05C7E">
+												<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="4869F440-AF75-4A2C-8156-48703047DADC">
 													<EffectList>
 														<deathType>Manual</deathType>
 														<effects>
@@ -189,7 +381,7 @@
 										</FlagsApplicator>
 									</Item>
 								</applicators>
-								<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="0F30BD95-5143-4E05-A47B-A0DE347BF91B">
+								<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="98B2828C-3E23-4DE4-BE8B-A145BC0EA229">
 									<DispatchImmediate>
 										<alwaysApply>false</alwaysApply>
 										<applyEffect>
@@ -222,7 +414,7 @@
 				<useAbilityOwnerMana>false</useAbilityOwnerMana>
 			</TriggerApplicator>
 		</Item>
-		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="8CA2E1C3-8C99-4205-B450-2E13AE8D5F93">
+		<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="4A29F8DD-4829-4F40-BB8E-8BBF5CC24241">
 			<TriggerApplicator>
 				<actionsCount>
 					<compiledString></compiledString>
@@ -249,7 +441,7 @@
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<playAck>false</playAck>
-				<processor href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="A3A0496B-FD64-4845-B5D2-E9DF8DAC6AB1">
+				<processor href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="921B3B15-367D-4386-A4CD-9C7D303D82B8">
 					<EventProcessorCondition>
 						<applyTarget>ApplicatorTarget</applyTarget>
 						<condition>
@@ -259,10 +451,10 @@
 						</condition>
 						<events>1073741824</events>
 						<onlyParent>false</onlyParent>
-						<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="F1FE5C3F-72A6-4296-A3DB-0F6F0EFB4686">
+						<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="CABD1063-26EF-4636-A9E9-E7577E13E9D3">
 							<Spell>
 								<applicators>
-									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="2C49B927-61A4-4B43-BD39-CFFCF0ADCE8A">
+									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="2DA42AB2-8666-437E-B5F7-6F566FA1A815">
 										<SpellApplicator>
 											<applyTarget>ApplicatorTarget</applyTarget>
 											<caption>Есть кошка: спелл в саммона с хилами</caption>
@@ -274,10 +466,10 @@
 											<formulaName></formulaName>
 											<LoggingEvent>-1</LoggingEvent>
 											<providerName></providerName>
-											<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="B85AB399-0A70-4D99-A16C-45FAC8E9CB8D">
+											<spell href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="6847E922-FBBA-4658-9F70-107D22184E40">
 												<Spell>
 													<applicators>
-														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="5408EFFA-FC44-4319-A2EA-903A985EECAA">
+														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="ADA23D2D-5BA4-4746-81EC-890A0A873136">
 															<PermanentStatModApplicator>
 																<applyTarget>AbilityOwner</applyTarget>
 																<caption>Запоминаем нехватку Здоровья у кошки</caption>
@@ -302,24 +494,24 @@
 																	</multValue>
 																	<stat>Life</stat>
 																	<topModifier>false</topModifier>
-																	<variable>G576_ThisHealPantherLifeLack</variable>
+																	<variable>G321_ThisHealPantherLifeLack</variable>
 																</modifier>
 																<providerName></providerName>
 															</PermanentStatModApplicator>
 														</Item>
-														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="FA1BE8BA-56BC-4751-9A01-4E5F9CDCD7EB">
+														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="B1A81019-D834-4C0E-B81A-655FB183087B">
 															<HealApplicator>
 																<amount>
-																	<compiledString>FSkAAAACAAAANQAAAEsAAABIZWFsQW1vdW50AABHNTc2X1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SUdkcJGgMAAAAi0UIixCLTQiLgogBAAD/0FHZHCToBQAAAIPECF3DVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+																	<compiledString>FSkAAAACAAAANQAAAEsAAABIZWFsQW1vdW50AABHMzIxX1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SUdkcJGgMAAAAi0UIixCLTQiLgogBAAD/0FHZHCToBQAAAIPECF3DVYvsUdlFCNlFDN7Z3+D2xEF1CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 																	<returnType>float</returnType>
-																	<sString>min(sender.vG576_ThisHealPantherLifeLack, cHealAmount)</sString>
+																	<sString>min(sender.vG321_ThisHealPantherLifeLack, cHealAmount)</sString>
 																</amount>
 																<applyTarget>ApplicatorTarget</applyTarget>
 																<caption>Есть кошка: хил в саммона</caption>
 																<enabled>
-																	<compiledString>FR0AAAACAAAAIgAAADgAAABHNTc2X1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVoAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
+																	<compiledString>FR0AAAACAAAAIgAAADgAAABHMzIxX1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVoAAADf4PbEQXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAAA==</compiledString>
 																	<returnType>bool</returnType>
-																	<sString>sender.vG576_ThisHealPantherLifeLack &gt; 0</sString>
+																	<sString>sender.vG321_ThisHealPantherLifeLack &gt; 0</sString>
 																</enabled>
 																<formulaName></formulaName>
 																<healTarget>Health</healTarget>
@@ -329,19 +521,19 @@
 																<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 															</HealApplicator>
 														</Item>
-														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="4943524A-68BD-4D96-9904-2D344D4D296B">
+														<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="0AB3C2F7-30A3-463E-88B6-2B32FCCB1C72">
 															<HealApplicator>
 																<amount>
-																	<compiledString>FSkAAAACAAAAOAAAAEoAAABIZWFsQW1vdW50AABHNTc2X1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaAwAAACLRQiLEItNCIuCiAEAAN1d+P/Q3G342V302UX0UdkcJFHZ7tkcJOgLAAAAg8QIi+VdwwAAAABVi+xR2UUI2UUM3tnf4PbEBXoI2UUI2V386wbZRQzZXfzZRfyL5V3D</compiledString>
+																	<compiledString>FSkAAAACAAAAOAAAAEoAAABIZWFsQW1vdW50AABHMzIxX1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaAwAAACLRQiLEItNCIuCiAEAAN1d+P/Q3G342V302UX0UdkcJFHZ7tkcJOgLAAAAg8QIi+VdwwAAAABVi+xR2UUI2UUM3tnf4PbEBXoI2UUI2V386wbZRQzZXfzZRfyL5V3D</compiledString>
 																	<returnType>float</returnType>
-																	<sString>max(0, cHealAmount - sender.vG576_ThisHealPantherLifeLack)</sString>
+																	<sString>max(0, cHealAmount - sender.vG321_ThisHealPantherLifeLack)</sString>
 																</amount>
 																<applyTarget>AbilityOwner</applyTarget>
 																<caption>Есть кошка: хил в героя</caption>
 																<enabled>
-																	<compiledString>FSsAAAACAAAAMgAAAE8AAABHNTc2X1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAAAAAEhlYWxBbW91bnQAVYvsg+wMaAAAAACLRQiLEItNCIuCiAEAAP/Qi00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ3V34/9DcXfjf4PbEQXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
+																	<compiledString>FSsAAAACAAAAMgAAAE8AAABHMzIxX1RoaXNIZWFsUGFudGhlckxpZmVMYWNrAAAAAEhlYWxBbW91bnQAVYvsg+wMaAAAAACLRQiLEItNCIuCiAEAAP/Qi00MUYtVCFJoIAAAAItFEIsQi00Qi0JQ3V34/9DcXfjf4PbEQXUJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcM=</compiledString>
 																	<returnType>bool</returnType>
-																	<sString>sender.vG576_ThisHealPantherLifeLack &lt; cHealAmount</sString>
+																	<sString>sender.vG321_ThisHealPantherLifeLack &lt; cHealAmount</sString>
 																</enabled>
 																<formulaName></formulaName>
 																<healTarget>Health</healTarget>
@@ -352,7 +544,7 @@
 															</HealApplicator>
 														</Item>
 													</applicators>
-													<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="B29FE966-AF1B-4344-BC40-980E2B499AF0">
+													<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="DB8780B9-8EC0-4BE3-9421-A07B3FAA986D">
 														<DispatchImmediate>
 															<alwaysApply>false</alwaysApply>
 															<applyEffect>
@@ -374,21 +566,21 @@
 												</Spell>
 											</spell>
 											<spellTarget>ApplicatorTarget</spellTarget>
-											<targetSelector href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="1E3EA3C8-FF9C-43F9-8B14-07C94E3E4C7F">
+											<targetSelector href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="58BE8798-8A40-4DFD-857F-197DF2679A7C">
 												<RelativeUnitTargetSelector>
 													<relation>AlphaSummon</relation>
 												</RelativeUnitTargetSelector>
 											</targetSelector>
 										</SpellApplicator>
 									</Item>
-									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="02F42702-B61C-41C2-B50B-A9867B677316">
+									<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="F385F81C-E623-4797-BAFD-542B0C98899A">
 										<FlagsApplicator>
 											<applyTarget>AbilityOwner</applyTarget>
 											<behaviorFlags>32</behaviorFlags>
 											<caption>FX регенерации</caption>
 											<consumables />
 											<effect>
-												<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="F7889FA3-9797-4EF2-B72E-2FEA6D3C9E4D">
+												<Item href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="23BFCEBA-158F-444A-A5B7-3026C0A3AD98">
 													<EffectList>
 														<deathType>Manual</deathType>
 														<effects>
@@ -425,7 +617,7 @@
 										</FlagsApplicator>
 									</Item>
 								</applicators>
-								<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="7FA24041-3FA9-4AC2-B681-703E780A2CA6">
+								<dispatch href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" id="40B177D0-5EC2-4F2E-A0F5-73BFF4A68335">
 									<DispatchImmediate>
 										<alwaysApply>false</alwaysApply>
 										<applyEffect>
@@ -459,7 +651,6 @@
 			</TriggerApplicator>
 		</Item>
 		<Item href="/Items/Talents/Level1/status_G576_Debuff.APLR" />
-		<Item href="/Items/Talents/TalentKits/Redset7_3_Panopticon/program_Program_Redset7_3_AllStats.APLR" />
 	</passiveApplicators>
 	<persistentId>G576</persistentId>
 	<prerequisiteTalents />

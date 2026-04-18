@@ -1,0 +1,20 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UITexture>
+	<BackLink DBID="/UI/Content/CustomFlags/PWClassic/tester_yellow" Count="2" />
+	<generatedFileName></generatedFileName>
+	<importOnlyShape>false</importOnlyShape>
+	<mipLevels>0</mipLevels>
+	<mipLevelUsage>AutoGenerate</mipLevelUsage>
+	<mipSharpenPasses></mipSharpenPasses>
+	<pixelFormat>RGBA</pixelFormat>
+	<shapeAlphaThreshold>0</shapeAlphaThreshold>
+	<shapeFileName>/UI/Styles/Icons/Flags/Custom/PWClassic/tester_yellow.shp</shapeFileName>
+	<size>
+		<height>65</height>
+		<width>65</width>
+	</size>
+	<srcFileName crc="0">/UI/Styles/Icons/Flags/Custom/PWClassic/tester_yellow.png</srcFileName>
+	<startMipLevel>0</startMipLevel>
+	<textureFileName>/UI/Styles/Icons/Flags/Custom/PWClassic/tester_yellow.dds</textureFileName>
+	<textureType>Color</textureType>
+</UITexture>

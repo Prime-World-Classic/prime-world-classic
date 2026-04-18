@@ -38,9 +38,9 @@
 			<UnitConstant>
 				<name>Tower_AttackSpeed</name>
 				<var>
-					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmYmPw==</compiledString>
 					<returnType>float</returnType>
-					<sString>0.5f</sString>
+					<sString>0.65f</sString>
 				</var>
 			</UnitConstant>
 		</Item>

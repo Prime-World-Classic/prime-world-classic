@@ -185,9 +185,9 @@
 	<constants href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="DF1BD723-A3FD-440D-B17F-A547E0D352FF">
 		<UnitConstantsContainer>
 			<vars>
-				<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="653012E0-7462-4637-84AC-77510DB162E8">
+				<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="4E672561-9CDD-483A-A6CE-CECFD9854007">
 					<UnitConstant>
-						<name>Add_Strength</name>
+						<name>Add_Stat</name>
 						<var>
 							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwzMzs0DNzMw+</compiledString>
 							<returnType>float</returnType>
@@ -337,23 +337,53 @@
 	<name textref="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
-		<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="78DDDFB4-A4F3-4977-A21B-4EC0F18AF8D0">
+		<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="EC65E52E-92D2-4594-B0AB-5B69AFD34D35">
 			<PermanentStatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<caption>Add_Strength</caption>
-				<customApplyType>None</customApplyType>
+				<caption>StrOrInt</caption>
+				<customApplyType>Maximize</customApplyType>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FQ0AAAABAAAAGQAAAEFkZF9TdHJlbmd0aABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 						<returnType>float</returnType>
-						<sString>cAdd_Strength</sString>
+						<sString>1</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>G782_StaOrWill</variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="363D238F-F95F-4D3F-9E10-655621E4B204">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
 					</addValue>
 					<multValue>
 						<compiledString></compiledString>
@@ -361,6 +391,36 @@
 						<sString>1.0f</sString>
 					</multValue>
 					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G336_StrAspd_TelBlock.TALENT" id="B2A4E394-5918-414C-8C4F-1E3BE904BCE8">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
 					<topModifier>false</topModifier>
 					<variable></variable>
 				</modifier>

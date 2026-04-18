@@ -1,6 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<AdvMapSettings parent="/Maps/Multiplayer/Myth/_.ADMPSTTN">
-	<BackLink DBID="/Maps/Multiplayer/Myth/Red.ADMPDSCR" Count="1" />
-	<minRequiredHeroForce>180</minRequiredHeroForce>
-	<scriptFileName>/Maps/Multiplayer/Myth/Bootstrap_Red.lua</scriptFileName>
-</AdvMapSettings>

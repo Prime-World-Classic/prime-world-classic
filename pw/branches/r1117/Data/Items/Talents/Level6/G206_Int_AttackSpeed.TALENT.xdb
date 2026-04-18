@@ -54,9 +54,9 @@
 					<UnitConstant>
 						<name>Add_Intellect</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAAEGamRk/</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(8, 0.6)</sString>
+							<sString>16</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -64,9 +64,9 @@
 					<UnitConstant>
 						<name>Add_AttackSpeed</name>
 						<var>
-							<compiledString>FQAAAAAEAAEACQAAABMAAAApAAAAQQAAAIEAAABVi+yD7AhR2QVbAAAA2RwkUdkFVwAAANkcJItFEIsQi00Qi0Js/9DcDU8AAADZXfzZRfxR2Rwk6CMAAACDxATcNU8AAADZXfjZRfiL5V3DAAAAAAAAJEAAADBBAABAP1WL7FHZRQjZHCToBQAAAIPEBF3DVYvsUdlFCIPsCN0cJOhv////g8QI2V382UX8i+Vdww==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>floor(refineScale(11, 0.75)*10)/10</sString>
+							<sString>20</sString>
 						</var>
 					</UnitConstant>
 				</Item>

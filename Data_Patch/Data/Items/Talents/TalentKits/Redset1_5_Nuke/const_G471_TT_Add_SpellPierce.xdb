@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level2/G470_Str_Int.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Level3/G471_Dex.TALENT" Count="1" />
+	<name>TT_Add_SpellPierce</name>
+	<var>
+		<compiledString>FQwAAAAEAAAAEQAAACcAAAA0AAAAPwAAAEc0NzJfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHVUAAADf4PbERHoL2QVRAAAA2V386wnZBU0AAADZXfzZRfyL5V3DzcxMP5qZmT8AAAAAAADwPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>sender.vG472_Active == 1? 1.2f : 0.8f</sString>
+	</var>
+</UnitConstant>

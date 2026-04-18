@@ -9,13 +9,9 @@
 				<Item skip="1" />
 				<Item skip="1" />
 				<Item skip="1" />
-				<Item href="/Maps/Multiplayer/ARAM/Shops/_B.SHOP" id="FD3E5567-57E8-43B4-8959-30EC9F242EC5">
-					<Consumable parent="/Items/Consumables/LittleTSightPotion.ARCT">
-						<naftaCost>1000</naftaCost>
-					</Consumable>
-				</Item>
-				<Item href="/Items/Consumables/EyeOfSeeingCheap.ARCT" />
-				<Item href="/Items/Consumables/EyeOfSeeingCheapest.ARCT" />
+				<Item href="/Items/Consumables/EyeOfSeeing_ARAM.ARCT" />
+				<Item delete="1" />
+				<Item delete="1" />
 				<Item delete="1" />
 				<Item delete="1" />
 			</items>

@@ -49,6 +49,7 @@
 	<BackLink DBID="/Items/Talents/Freeze.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Stalker.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -92,9 +93,9 @@
 					<UnitConstant>
 						<name>Add_EnergyRegAbs</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw83MLEDNzMw+</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw5qZWUDNzMw+</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(2.7, 0.4)</sString>
+							<sString>refineScale(3.4, 0.4)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

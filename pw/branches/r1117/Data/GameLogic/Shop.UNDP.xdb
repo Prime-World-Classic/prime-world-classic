@@ -3,9 +3,9 @@
 	<BackLink DBID="/Buildings/A/Shop/_Parent.SHOP" Count="1" />
 	<BackLink DBID="/Buildings/B/Shop/_Parent.SHOP" Count="1" />
 	<BackLink DBID="/Buildings/N/Shop/_Parent.SHOP" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_A.SHOP" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_B.SHOP" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_N.SHOP" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_A.SHOP" Count="2" />
+	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_B.SHOP" Count="2" />
+	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_N.SHOP" Count="2" />
 	<BackLink DBID="/Maps/Multiplayer/MidOnly/Shops/_A.SHOP" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MidOnly/Shops/_B.SHOP" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Shops/_A.SHOP" Count="1" />

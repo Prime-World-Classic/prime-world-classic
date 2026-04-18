@@ -114,9 +114,9 @@
 												<cancelInvisibility>false</cancelInvisibility>
 												<caption>отнимаем хп</caption>
 												<damage>
-													<compiledString>FRgAAAADAAAAJwAAAEEAAACDAAAAQWRkTGlmZQBBZGRMaWZlAEFkZExpZmUAVYvsg+wsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9KLRQxQi00IUWgIAAAAi1UQiwKLTRCLUFDdXfj/0otFDIsQi00Mi0IM3V3w/9CLTQyLEYtNDIsC3V3o/9DcbejcTfCLTQxRi1UIUmgQAAAAi0UQixCLTRCLQlDdXeD/0ItNDIsRi00Mi0IM3V3Y/9DcRdjcfeDcbfjZXdTZRdSL5V3D</compiledString>
+													<compiledString>FTAAAAAHAAAASwAAAGgAAACqAAAA7wAAAAQBAAAeAQAAYAEAAEFkZExpZmUAQWRkTGlmZQBBZGRMaWZlAEFkZExpZmUAQWRkTGlmZQBBZGRMaWZlAFWL7IPsZItFDIsQi00MiwL/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d+P/Qi00MUYtVCFJoCAAAAItFEIsQi00Qi0JQ3V3w/9CLTQyLEYtNDItCDN1d6P/Qi00MixGLTQyLAt1d4P/Q3G3g3E3oi00MUYtVCFJoEAAAAItFEIsQi00Qi0JQ3V3Y/9CLTQyLEYtNDItCDN1d0P/Q3EXQ3H3Y3G3w3F343+D2xEF1GotNDIsRi00MiwL/0NwlnQEAAN1dyOmVAAAAi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ/9CLTQxRi1UIUmggAAAAi0UQixCLTRCLQlDdXcD/0ItNDIsRi00Mi0IM3V24/9CLTQyLEYtNDIsC3V2w/9DcbbDcTbiLTQxRi1UIUmgoAAAAi0UQixCLTRCLQlDdXaj/0ItNDIsRi00Mi0IM3V2g/9DcRaDcfajcbcDdXcjdRcjZXZzZRZyL5V3DAAAAAAAA8D8=</compiledString>
 													<returnType>float</returnType>
-													<sString>cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))</sString>
+													<sString>(rLife &lt; cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))) ? rLife - 1 : cAddLife - (cAddLife*(rMaxLife - rLife)/(cAddLife + rMaxLife))</sString>
 												</damage>
 												<damageMode>0</damageMode>
 												<damageType>Pure</damageType>

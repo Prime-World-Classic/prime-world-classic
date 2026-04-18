@@ -56,7 +56,22 @@
 		</Item>
 	</conditionFormulas>
 	<conflictingTalents />
-	<constants href="" />
+	<constants href="/Items/Talents/Class/Rockman/Ability1Upg.TALENT" id="1C6C0139-7AE0-45F2-9009-50373D2BE798">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Rockman/Ability1Upg.TALENT" id="ACA207A2-2B9A-4C1E-B5E4-9ADE7B44E93B">
+					<UnitConstant>
+						<name>Add_LifeRegAbs</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADAQAAAoEE=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale (sStrength, 6, 20)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
 	<consumptionBonus>
 		<constant>0</constant>
 		<percent>0</percent>
@@ -74,7 +89,7 @@
 	<description textref="/Items/Talents/Class/Rockman/Ability1Upg.TALENT_description.txt" />
 	<devPoints>1</devPoints>
 	<dispatch href="" />
-	<flags>1</flags>
+	<flags>5</flags>
 	<forceBonus>9</forceBonus>
 	<image href="/UI/Styles/Icons/Heroes/Rockman/A1.ITEX" />
 	<imageSecondState href="" />
@@ -94,7 +109,55 @@
 	<naftaCost>290</naftaCost>
 	<name textref="/Items/Talents/Class/Rockman/Ability1Upg.TALENT_name.txt" />
 	<node></node>
-	<passiveApplicators />
+	<passiveApplicators>
+		<Item href="/Items/Talents/Class/Rockman/Ability1Upg.TALENT" id="5AAB318F-8994-4A68-9B97-EA9BDBC899F3">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>Add_LifeRegAbs</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQ8AAAABAAAAGwAAAEFkZF9MaWZlUmVnQWJzAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_LifeRegAbs</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</passiveApplicators>
 	<persistentId>Rockman_A1_Upg</persistentId>
 	<prerequisiteTalents>
 		<Item href="/Items/Talents/Class/Rockman/Ability1.TALENT" />

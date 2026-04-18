@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Fluffy/Ability_A0.TALENT" Count="1" />
 	<name>A4_A4_2_SUP_Inc_Heal</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>20.0f</sString>
+		<sString>25.0f</sString>
 	</var>
 </UnitConstant>

@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentKit>
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<caption>SeaSymbol</caption>
+	<kitCapacity>0</kitCapacity>
+	<name textref="/Items/Talents/TalentKits/Redset_SeaSymbol/Redset_SeaSymbol.TALKIT_name.txt" />
+	<special href="" />
+	<talents>
+		<Item href="/Items/Talents/Level2/G792_SeaSymbol.TALENT" />
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" />
+		<Item href="/Items/Talents/Level4/G794_SeaSymbol.TALENT" />
+		<Item href="/Items/Talents/Level5/G795_SeaSymbol.TALENT" />
+		<Item href="/Items/Talents/Level5/G796_SeaSymbol.TALENT" />
+		<Item href="/Items/Talents/Level6/G797_SeaSymbol.TALENT" />
+	</talents>
+</TalentKit>

@@ -395,9 +395,9 @@
 																				<cancelInvisibility>false</cancelInvisibility>
 																				<caption>урон</caption>
 																				<damage>
-																					<compiledString>FQwAAAABAAAAGAAAAEE0XzJfRGFtYWdlAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+																					<compiledString>FTcAAAAEAAAAPwAAAFgAAAC5AAAA6gAAAEE0XzJfRGFtYWdlAEFydGlzdF9BNF8ydQAAAABBcnRpc3RfQTRfMnUAAAAAVGVyckRhbWFnZQBVi+yD7BRWaAwAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgcAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0T4tVCIsCi00Ii1BM/9KL8ItFCIsQi00Ii4KQAQAA/9A78HUfi00MUYtVCFJoLAAAAItFEIsQi00Qi0JQ/9DZXfTrBdno2V302UX02V3w6wXZ7tld8ItNDFGLVQhSaAAAAACLRRCLEItNEItCUP/Q2EXw2V3s2UXsXovlXcMAAAAAAACAPw==</compiledString>
 																					<returnType>float</returnType>
-																					<sString>cA4_2_Damage</sString>
+																					<sString>cA4_2_Damage + (tal("Artist_A4_2u") ? nt(cTerrDamage, 1):0)</sString>
 																				</damage>
 																				<damageMode>4</damageMode>
 																				<damageType>Energy</damageType>
@@ -701,9 +701,9 @@
 					<UnitConstant>
 						<name>A4_2_BaseDamage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAsEIAACVEVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAvkIAAC9EVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale( max(sIntellect, sStrength), 88, 660)</sString>
+							<sString>damageScale( max(sIntellect, sStrength), 95, 700)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -756,6 +756,16 @@
 							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 							<returnType>float</returnType>
 							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Artist/Ability_A4_2.TALENT" id="7FB8AF03-EDAE-4C92-BFC4-1891A3CE554A">
+					<UnitConstant>
+						<name>TerrDamage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAQEIAAK9DVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength), 48, 350)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

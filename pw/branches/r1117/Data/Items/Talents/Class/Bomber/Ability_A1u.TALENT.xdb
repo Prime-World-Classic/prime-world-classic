@@ -376,7 +376,6 @@
 				</talents>
 			</FlagsApplicator>
 		</Item>
-		<Item href="/Items/Talents/TalentKits/Redset7_11_MiniRefresher/trigger_G766_RefreshAndNotify.APLR" />
 	</passiveApplicators>
 	<persistentId>Bomber_A1u</persistentId>
 	<prerequisiteTalents>

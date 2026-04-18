@@ -1016,9 +1016,9 @@
 					<UnitConstant>
 						<name>A1_StackCooldown</name>
 						<var>
-							<compiledString>FeQAAAARAAAA6wAAAAQBAAA6AQAAUwEAAIoBAACUAQAArQEAAOQBAADvAQAA/QEAABMCAAAfAgAAOAIAAEQCAABdAgAAaQIAAIICAABQbGFndWVEb2N0b3JfQTFfU1VQAFBsYWd1ZURvY3Rvcl9BMV9TVVAAUGxhZ3VlRG9jdG9yX0ExdQAAAABQbGFndWVEb2N0b3JfQTF1AAAAAFBsYWd1ZURvY3Rvcl9BMXUAAAAAUGxhZ3VlRG9jdG9yX0ExdQAAAABUb3RhbF9Db29sZG93blJlZHVjdGlvbgBHbHlwaFJlZnJlc2hlcl9DRFJfQW1vdW50AAAAU2lnbk9mQ29weV9DRFJfQW1vdW50AAAAVG90YWxfQ29vbGRvd25VbHRpbWF0ZVJlZHVjdGlvbgBVi+yD7DxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXRaaCgAAACLVQiLAotNCIuQqAEAAP/ShcB0Kmg8AAAAi0UIixCLTQiLgqgBAAD/0IlF9ItN9IsRi030i0IE/9CIRfPrBMZF8wAPtk3zhcl0C9kFrwIAANld7OtpaFAAAACLVQiLAotNCIuQqAEAAP/ShcB0KmhkAAAAi0UIixCLTQiLgqgBAAD/0IlF6ItN6IsRi03oi0IE/9CIRefrBMZF5wAPtk3nhcl0C9kFqwIAANld4OsJ2QWnAgAA2V3g2UXg2V3saHgAAACLVQiLAotNCIuQiAEAAP/S3DWfAgAA2eje4dhN7GiQAAAAi0UIixCLTQiLgogBAADdXdj/0Nw1nwIAANno3uHcTdhorAAAAItNCIsRi00Ii4KIAQAA3V3Q/9DcNZ8CAADZ6N7h3E3QaMQAAACLTQiLEYtNCIuCiAEAAN1dyP/Q3DWfAgAA2eje4dxNyNldxNlFxIvlXcMAAAAAAADwPwAAAAAAAFlAAAAgQQAAwEAAAOBA</compiledString>
+							<compiledString>FeQAAAARAAAA6wAAAAQBAAA6AQAAUwEAAIoBAACUAQAArQEAAOQBAADvAQAA/QEAABMCAAAfAgAAOAIAAEQCAABdAgAAaQIAAIICAABQbGFndWVEb2N0b3JfQTFfU1VQAFBsYWd1ZURvY3Rvcl9BMV9TVVAAUGxhZ3VlRG9jdG9yX0ExdQAAAABQbGFndWVEb2N0b3JfQTF1AAAAAFBsYWd1ZURvY3Rvcl9BMXUAAAAAUGxhZ3VlRG9jdG9yX0ExdQAAAABUb3RhbF9Db29sZG93blJlZHVjdGlvbgBHbHlwaFJlZnJlc2hlcl9DRFJfQW1vdW50AAAAU2lnbk9mQ29weV9DRFJfQW1vdW50AAAAVG90YWxfQ29vbGRvd25VbHRpbWF0ZVJlZHVjdGlvbgBVi+yD7DxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBQAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXRaaCgAAACLVQiLAotNCIuQqAEAAP/ShcB0Kmg8AAAAi0UIixCLTQiLgqgBAAD/0IlF9ItN9IsRi030i0IE/9CIRfPrBMZF8wAPtk3zhcl0C9kFrwIAANld7OtpaFAAAACLVQiLAotNCIuQqAEAAP/ShcB0KmhkAAAAi0UIixCLTQiLgqgBAAD/0IlF6ItN6IsRi03oi0IE/9CIRefrBMZF5wAPtk3nhcl0C9kFqwIAANld4OsJ2QWnAgAA2V3g2UXg2V3saHgAAACLVQiLAotNCIuQiAEAAP/S3DWfAgAA2eje4dhN7GiQAAAAi0UIixCLTQiLgogBAADdXdj/0Nw1nwIAANno3uHcTdhorAAAAItNCIsRi00Ii4KIAQAA3V3Q/9DcNZ8CAADZ6N7h3E3QaMQAAACLTQiLEYtNCIuCiAEAAN1dyP/Q3DWfAgAA2eje4dxNyNldxNlFxIvlXcMAAAAAAADwPwAAAAAAAFlAAAAwQQAA4EAAAABB</compiledString>
 							<returnType>float</returnType>
-							<sString>((tal("PlagueDoctor_A1_SUP") &amp;&amp; tal("PlagueDoctor_A1u"))  ? 7 : (tal("PlagueDoctor_A1u") ? 6.0f : 10.0f)) * (1 - sender.vTotal_CooldownReduction/100) * (1 - sender.vGlyphRefresher_CDR_Amount/100) * (1 - sender.vSignOfCopy_CDR_Amount/100) * (1 - sender.vTotal_CooldownUltimateReduction/100)</sString>
+							<sString>((tal("PlagueDoctor_A1_SUP") &amp;&amp; tal("PlagueDoctor_A1u"))  ? 8 : (tal("PlagueDoctor_A1u") ? 7.0f : 11.0f)) * (1 - sender.vTotal_CooldownReduction/100) * (1 - sender.vGlyphRefresher_CDR_Amount/100) * (1 - sender.vSignOfCopy_CDR_Amount/100) * (1 - sender.vTotal_CooldownUltimateReduction/100)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1079,9 +1079,9 @@
 	<isUltimateTalent>false</isUltimateTalent>
 	<isUnitFreeAfterCast>false</isUnitFreeAfterCast>
 	<manaCost>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACCQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>50</sString>
+		<sString>65</sString>
 	</manaCost>
 	<marker>doCast1</marker>
 	<microAI href="/Items/Talents/Class/PlagueDoctor/Ability_A1.TALENT" id="FE16FEBF-5B6A-494A-BBB7-42425BB854FD">

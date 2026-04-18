@@ -249,6 +249,11 @@ void AdventureFlashInterface::LockActionBar( bool lock )
   CallMethod( "LockActionBar", lock );
 }
 
+void AdventureFlashInterface::ShowPanel( bool show )
+{
+  CallMethod( "ShowPanel", show );
+}
+
 void AdventureFlashInterface::TempUnlockActionBar( bool unlock )
 {
    CallMethod( "TempUnlockActionBar", unlock );

@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Marine/Ability_A2_SUP.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Marine_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/Items/Talents/Marine.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -58,9 +59,9 @@
 					<UnitConstant>
 						<name>A3_SUP_AddStamina</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAABAQAAAoEE=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAACAQAAABEI=</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale(sStrength, 3, 20)</sString>
+							<sString>abilityScale(sStrength, 4, 33)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

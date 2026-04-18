@@ -47,9 +47,9 @@
 					<UnitConstant>
 						<name>HealAmount</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAr0NmZtJB</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAsEMAAIBB</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(350, 26.3)</sString>
+							<sString>refineScale(352, 16)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

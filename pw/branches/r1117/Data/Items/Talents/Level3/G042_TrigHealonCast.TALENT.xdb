@@ -43,7 +43,6 @@
 	<BackLink DBID="/Test/Talents/SnowQueen/Elite_StrInt.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witcher/Elite_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witcher/Elite_Str.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -105,9 +104,9 @@
 					<UnitConstant>
 						<name>Add_Stat</name>
 						<var>
-							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ7tkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAKBAAAAAAA==</compiledString>
+							<compiledString>FQAAAAABAAAADAAAAFWL7FHZ7tkcJFHZBSIAAADZHCSLRRCLEItNEItCbP/QXcMAAOBAAAAAAA==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(5, 0)</sString>
+							<sString>refineScale(7, 0)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -119,9 +118,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>0</sString>
+		<sString>2</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -274,7 +273,7 @@
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
-				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityCooldown>true</useAbilityCooldown>
 				<useAbilityOwnerMana>false</useAbilityOwnerMana>
 			</TriggerApplicator>
 		</Item>
@@ -400,9 +399,16 @@
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
-				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityCooldown>true</useAbilityCooldown>
 				<useAbilityOwnerMana>false</useAbilityOwnerMana>
 			</TriggerApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level3/G042_TrigHealonCast.TALENT" id="1602B2E7-6181-47B4-AFC0-8A9EFA7A16DE">
+			<StatusApplicator parent="/Items/Talents/Level1/status_G321_Debuff.APLR">
+				<description textref="/Items/Talents/Level3/G042_TrigHealonCast.TALENT_1602b2e7618147b4afc08a9efa7a16de_description.txt" />
+				<image href="/UI/Styles/Icons/Talents/_042.ITEX" />
+				<name textref="/Items/Talents/Level3/G042_TrigHealonCast.TALENT_1602b2e7618147b4afc08a9efa7a16de_name.txt" />
+			</StatusApplicator>
 		</Item>
 		<Item href="/Items/Talents/Level3/G042_TrigHealonCast.TALENT" id="A30E0690-6898-4DEA-91A8-171009EE36D9">
 			<PermanentStatModApplicator>

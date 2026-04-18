@@ -12,6 +12,7 @@
 	<BackLink DBID="/Maps/Multiplayer/PFmap/Mod2/_.ADMP" Count="26" />
 	<BackLink DBID="/Maps/Tutorial/_.ADMP" Count="13" />
 	<BackLink DBID="/Maps/Multiplayer/MidOnly/Aram/_.ADMP" Count="13" />
+	<BackLink DBID="/Maps/Multiplayer/DEFENSE/_.ADMP" Count="3" />
 	<collision>
 		<x1>0</x1>
 		<x2>0</x2>

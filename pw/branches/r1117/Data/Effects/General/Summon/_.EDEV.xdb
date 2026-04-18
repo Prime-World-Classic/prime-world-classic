@@ -409,6 +409,7 @@
 	<BackLink DBID="/Summons/Wolf/S2/_BUpgrade.SOBJ" Count="1" />
 	<BackLink DBID="/Creeps/Minions/Minion3/_Elite.SOBJ" Count="1" />
 	<BackLink DBID="/Creeps/Champions/Champion2/_Big.SOBJ" Count="1" />
+	<BackLink DBID="/Heroes/Bomber/S1/_.SOBJ" Count="1" />
 	<disableEvents />
 	<enableEvents>
 		<Item href="/Effects/General/Summon/_.EDEV" id="7338C5BB-80BC-4047-A5A0-42AF805FE8AC">

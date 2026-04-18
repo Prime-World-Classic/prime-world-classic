@@ -4,9 +4,9 @@
 	<BackLink DBID="/Maps/Multiplayer/ARAM/_N.LTEN" Count="1" />
 	<AmbientColor>
 		<A>1</A>
-		<B>0.4117647</B>
-		<G>0.2117647</G>
-		<R>0.2117647</R>
+		<B>0.5490196</B>
+		<G>0.282353</G>
+		<R>0.282353</R>
 	</AmbientColor>
 	<biasSlope>4</biasSlope>
 	<depthBias>0.001</depthBias>

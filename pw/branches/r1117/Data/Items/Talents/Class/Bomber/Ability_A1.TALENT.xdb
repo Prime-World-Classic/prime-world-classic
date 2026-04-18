@@ -87,6 +87,26 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" id="9028364E-C69C-4133-AFE0-24DE8DEC32D1">
+					<UnitConstant>
+						<name>A1_CD</name>
+						<var>
+							<compiledString>FQoAAAADAAAANgAAAEgAAABbAAAAQTFfQ0RfQWRkAFWL7IPsDFaLRQiLEItNCItCTP/Qi/CLTQiLEYtNCIuCkAEAAP/QO/B1C90FcAAAAN1d+Osji00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9DcBXAAAADdXfjdRfjZXfTZRfRei+VdwwAAAAAAACBA</compiledString>
+							<returnType>float</returnType>
+							<sString>nt(8,8 + cA1_CD_Add)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" id="6F719DDC-F1D9-4CF9-8BA6-765BBF03A236">
+					<UnitConstant>
+						<name>A1_CD_Add</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -95,9 +115,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+		<compiledString>FQYAAAABAAAAEgAAAEExX0NEAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 		<returnType>float</returnType>
-		<sString>9.0f</sString>
+		<sString>cA1_CD</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

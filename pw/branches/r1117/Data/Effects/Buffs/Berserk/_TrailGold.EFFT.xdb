@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectAttached>
-	<BackLink DBID="/Items/Talents/Level5/status_56_Strength_Lifesteal.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/status_56_Strength_Lifesteal.APLR" Count="2" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_12_SuperMove/status_G780_G781_Buff.APLR" Count="1" />
 	<attachFlags>3</attachFlags>
 	<attachType>Body</attachType>

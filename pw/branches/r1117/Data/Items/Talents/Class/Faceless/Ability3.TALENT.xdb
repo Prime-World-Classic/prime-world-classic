@@ -132,9 +132,9 @@
 																		<cancelInvisibility>true</cancelInvisibility>
 																		<caption>урон</caption>
 																		<damage>
-																			<compiledString>FTkAAAAEAAAAQAAAAFkAAACPAAAArwAAAEZhY2VsZXNzX0EzdTEAAABGYWNlbGVzc19BM3UxAAAARmFjZWxlc3NfQTN1MQAAAEEzRGFtYWdlAFWL7IPsEGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdDdoIAAAAItVCIsCi00Ii5CoAQAA/9KJRfSLRQxQi00IUWgwAAAAi1X0iwKLTfSLUFD/0tld8OsF2e7ZXfDZRfCL5V3DAAAAAA==</compiledString>
+																			<compiledString>FVAAAAAFAAAAWAAAAHEAAACnAAAAxwAAAA4BAABGYWNlbGVzc19BM3UxAAAARmFjZWxlc3NfQTN1MQAAAEZhY2VsZXNzX0EzdTEAAABBM0RhbWFnZQAAAABSb2RuYXlhWmVtbHlhRGFtYWdlAFWL7IPsGFZoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aCAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoMAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3wi0UIixCLTQiLQkz/0Ivwi00IixGLTQiLgpABAAD/0DvwdR+LTQxRi1UIUmg8AAAAi0UQixCLTRCLQlD/0Nld7OsF2ejZXezZRfDYRezZXejZRehei+VdwwAAgD8AAAAA</compiledString>
 																			<returnType>float</returnType>
-																			<sString>talconst("Faceless_A3u1","A3Damage")</sString>
+																			<sString>talconst("Faceless_A3u1","A3Damage") + nt(cRodnayaZemlyaDamage, 1) </sString>
 																		</damage>
 																		<damageMode>12</damageMode>
 																		<damageType>Energy</damageType>
@@ -638,6 +638,16 @@
 							<compiledString>FQoAAAACAAAAFwAAACoAAABBM0NkTWNNdWwAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3A04AAAA2V382UX8i+VdwwAAAAAAAFlA</compiledString>
 							<returnType>float</returnType>
 							<sString>cA3CdMcMul * 100</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Faceless/Ability3.TALENT" id="B4EA03A4-0961-4EDE-A066-E2D97A43FCE8">
+					<UnitConstant>
+						<name>RodnayaZemlyaDamage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABAQQAAsEI=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( sIntellect, 12, 88)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

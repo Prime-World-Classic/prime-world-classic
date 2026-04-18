@@ -36,7 +36,7 @@
 				<y>10</y>
 				<z>30</z>
 			</OutMin>
-			<SharpCoef>0.05</SharpCoef>
+			<SharpCoef>0.15</SharpCoef>
 			<SharpPixelSize>1</SharpPixelSize>
 		</Item>
 		<Item>
@@ -72,21 +72,21 @@
 				<y>10</y>
 				<z>0</z>
 			</OutMin>
-			<SharpCoef>0.02</SharpCoef>
+			<SharpCoef>0.15</SharpCoef>
 			<SharpPixelSize>1</SharpPixelSize>
 		</Item>
 		<Item>
 			<Color>
 				<A>255</A>
-				<B>205</B>
-				<G>255</G>
+				<B>255</B>
+				<G>205</G>
 				<R>200</R>
 			</Color>
 			<ColorCastCoef>0.2</ColorCastCoef>
 			<Gamma>
-				<x>0.06</x>
+				<x>-0.06</x>
 				<y>0</y>
-				<z>-0.06</z>
+				<z>0.06</z>
 			</Gamma>
 			<InMax>
 				<x>240</x>
@@ -108,7 +108,7 @@
 				<y>5</y>
 				<z>0</z>
 			</OutMin>
-			<SharpCoef>0.02</SharpCoef>
+			<SharpCoef>0.15</SharpCoef>
 			<SharpPixelSize>1</SharpPixelSize>
 		</Item>
 	</fullScreenFXParams>

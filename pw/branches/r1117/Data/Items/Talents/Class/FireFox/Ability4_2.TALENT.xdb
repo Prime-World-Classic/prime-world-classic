@@ -301,9 +301,9 @@
 					<UnitConstant>
 						<name>A4_2_TerrainStuck</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>1</sString>
+							<sString>2</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -327,9 +327,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAC0Qg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>90</sString>
+		<sString>80</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

@@ -9,7 +9,7 @@
 	<BackLink DBID="/Test/Talents/MagicGirl/Epic_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/MagicGirl/Epic_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/MagicGirl/Ability_A3.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/MagicGirl/status_A3_FlyMode.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/MagicGirl/status_A3_FlyMode.APLR" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

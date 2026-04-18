@@ -2,6 +2,7 @@
 <BasicEffectStandalone>
 	<BackLink DBID="/Items/Temp/FireworkSmall.ARCT" Count="1" />
 	<BackLink DBID="/Maps/PvE/Series/Coop1/_.DICT" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
 	<component href="/Effects/General/Firework/_Small.PRXY" />
 	<deathType>Anim</deathType>
 	<enableCondition href="" />

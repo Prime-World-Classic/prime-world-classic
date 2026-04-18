@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Class/Vampire/Ability_A4_2.TALENT" Count="1" />
 	<name>A4_Delay</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpkZPw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.6</sString>
+		<sString>0.2</sString>
 	</var>
 </UnitConstant>

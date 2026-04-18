@@ -8,7 +8,7 @@ IS_FINAL = false
 SHOW_QUEST = false
 LIMIT_SCORE = 150
 PRICE_HERO = 50
-
+-- by ifst
 function Init()
 	
 	HideUI()

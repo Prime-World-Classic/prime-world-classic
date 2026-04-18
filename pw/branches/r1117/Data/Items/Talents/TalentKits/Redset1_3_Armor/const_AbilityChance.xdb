@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level5/G463_Life_StrOrInt.TALENT" Count="1" />
 	<name>AbilityChance</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAC0Qg==</compiledString>
 		<returnType>float</returnType>
-		<sString>100</sString>
+		<sString>90</sString>
 	</var>
 </UnitConstant>

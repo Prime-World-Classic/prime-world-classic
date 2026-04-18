@@ -422,6 +422,16 @@
 				</Item>
 				<Item href="/Items/Talents/Class/MagicGirl/const_A1_SUP_Damage" />
 				<Item href="/Items/Talents/Class/MagicGirl/const_A1_SUP_CDR" />
+				<Item href="/Items/Talents/Class/MagicGirl/Ability_A1.TALENT" id="BB614A16-ED6E-40D3-9728-0203759FB0E5">
+					<UnitConstant>
+						<name>A1u_DamageNight</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAADEIAAEhDVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( max(sIntellect, sStrength),35, 200)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

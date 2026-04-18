@@ -3,7 +3,7 @@
 	<BackLink DBID="/UI/Content/_.UIDT" Count="1" />
 	<bigIcon href="" />
 	<icon href="/UI/Styles/Icons/Flags/Custom/no_rak.ITEX" />
-	<id>no lobster</id>
+	<id>no_lobster</id>
 	<name textref="/UI/Content/CustomFlags/no_lobster_name.txt" />
 	<Price>29</Price>
 	<tooltip textref="/UI/Content/CustomFlags/no_lobster_tooltip.txt" />

@@ -256,9 +256,9 @@
 		<Item href="/Items/Talents/Class/Gunslinger/status_A3_Mark.APLR" id="A8E02256-AAFC-4312-B9B6-FF7D3AE66649">
 			<StatusApplicator parent="/Heroes/DefaultStatus/_SLOW_MOVE.APLR">
 				<enabled>
-					<compiledString>FUYAAAAGAAAATQAAAGMAAABvAAAAhQAAAJEAAACqAAAASW1tdW5lMkNvbnRyb2wAAEFsbG93Q29udHJvbAAAAABHdW5zbGluZ2VyX0EzX1NVUAAAAEd1bnNsaW5nZXJfQTNfU1VQAFWL7IPsDGgAAAAAi0UMixCLTQyLgogBAAD/0Nwd/gAAAN/g9sREeyJoEAAAAItNDIsRi00Mi4KIAQAA/9DcHfYAAADf4PbERHpYaCAAAACLTQiLEYtNCIuCqAEAAP/QhcB0Kmg0AAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0CcdF9AEAAADrB8dF9AAAAACKRfSL5V3DAAAAAAAA8D8AAAAAAAAAAA==</compiledString>
+					<compiledString>FR0AAAAEAAAAIgAAADgAAABEAAAAWgAAAEltbXVuZTJDb250cm9sAABBbGxvd0NvbnRyb2wAVYvsUWgAAAAAi0UMixCLTQyLgogBAAD/0NwdhAAAAN/g9sREeytoEAAAAItNDIsRi00Mi4KIAQAA/9DcHXwAAADf4PbERHsJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAADwPwAAAAAAAAAA</compiledString>
 					<returnType>bool</returnType>
-					<sString>(receiver.vImmune2Control == 0 || receiver.vAllowControl == 1) &amp;&amp; tal("Gunslinger_A3_SUP")</sString>
+					<sString>(receiver.vImmune2Control == 0 || receiver.vAllowControl == 1)</sString>
 				</enabled>
 			</StatusApplicator>
 		</Item>

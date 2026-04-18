@@ -37,7 +37,7 @@
 		<returnType>float</returnType>
 		<sString>0</sString>
 	</aoeSize>
-	<aoeType>None</aoeType>
+	<aoeType>UnattachedSector</aoeType>
 	<applicators>
 		<Item href="/Items/Talents/Class/Rifleman/Ability_A1.TALENT" id="04259BE6-00D8-432D-A9EB-99D94D1752EB">
 			<SetAdvancedSummonTargetApplicator>
@@ -269,9 +269,9 @@
 					<UnitConstant>
 						<name>A1_LifeRegTT</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzMzPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>1.0f</sString>
+							<sString>0.7f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -283,9 +283,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.4</sString>
+		<sString>0.1</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

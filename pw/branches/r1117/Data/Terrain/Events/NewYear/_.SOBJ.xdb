@@ -163,7 +163,14 @@
 			<timeController href="" />
 		</Item>
 	</attached>
-	<collisionGeometry href="" />
+	<collisionGeometry href="/Terrain/Events/NewYear/_.SOBJ" id="0ED858E7-E34F-42F7-BC8A-AFEF5347E682">
+		<CollisionGeometry>
+			<fileName>/Terrain/Events/NewYear/_.coll</fileName>
+			<mayaFileName>/Terrain/Events/NewYear/_.mayaColl</mayaFileName>
+			<selection></selection>
+			<srcFileName crc="0">/Terrain/Events/NewYear/_.mb</srcFileName>
+		</CollisionGeometry>
+	</collisionGeometry>
 	<ignoreAttachesToNonDefaultLocators>false</ignoreAttachesToNonDefaultLocators>
 	<tracksList href="" />
 </DBSceneObject>

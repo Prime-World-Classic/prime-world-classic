@@ -17,6 +17,7 @@
 	<image href="/UI/Styles/Icons/Maps/MidOnly.ITEX" />
 	<loadingBackgroundImages>
 		<back href="/UI/Styles/LoadingBack/ARAM.ITEX" />
+		<logo href="" />
 	</loadingBackgroundImages>
 	<map href="/Maps/Multiplayer/ARAM/_.ADMP" />
 	<mapSettings href="/Maps/Multiplayer/ARAM/_.ADMPSTTN" />

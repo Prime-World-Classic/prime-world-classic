@@ -279,9 +279,9 @@
 					<UnitConstant>
 						<name>G415_Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAANEMAACBB</compiledString>
+							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA8EIAACBB</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(180, 10)</sString>
+							<sString>refineScale(120, 10)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

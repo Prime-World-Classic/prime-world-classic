@@ -9,10 +9,12 @@ from logging.handlers import TimedRotatingFileHandler
 import logging
 import sys
 import time
+import os
 
 
 from requests import session
 from transliterate import translit
+import atexit
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -43,17 +45,39 @@ lastTimeCheck = dt.now()
 activeSessionTokens = {}
 
 webSessions = {}
+webSessionLocks = {}
+
+def exit_handler():
+    global webSessions
+    with open('web_sessions.json', 'w', encoding='utf-8') as rf:
+        json.dump(webSessions, rf)
+
+def start():
+    global webSessions
+    global webSessionLocks
+    
+    if os.path.exists('web_sessions.json'):
+        with open('web_sessions.json', 'r') as f:
+            webSessions = json.load(f)
+            for sessionToken in list(webSessions.keys()):
+                webSessionLocks[sessionToken] = {'lock': threading.Lock()}
+
+
+    atexit.register(exit_handler)
 
 app = Flask(__name__)
 
-def killOldSessions(sessionDict):
+def killOldSessions(sessionDict, sessionDictLocks):
     for oldSessionToken in list(sessionDict.keys()):
         oldSession = sessionDict[oldSessionToken]
         targetTimeDifferenceToKill = timeToKillPublicSession
         if oldSessionToken == 'Tester00Tester00Tester00Tester00':
             targetTimeDifferenceToKill = timeToKillTestSession
-        if (dt.now() - oldSession['timestamp']).total_seconds() > targetTimeDifferenceToKill:
+        sessionTime = dt.fromisoformat(oldSession['timestamp'])
+        if (dt.now() - sessionTime).total_seconds() > targetTimeDifferenceToKill:
+            logger.info('Removed old session      ' + str(json.dumps(sessionDict[oldSessionToken])))
             del sessionDict[oldSessionToken] # remove old sessions
+            del sessionDictLocks[oldSessionToken]
             
             
 def sendSessionFinishData(data):
@@ -88,7 +112,7 @@ def sendSessionPlayersData(data):
     
 @app.route('/api', methods=['POST'])
 def api():
-    print(request.data)
+    #print(request.data)
     logger.info(request.data)
     #reqData = request.data.decode(encoding='cp1251', errors='ignore')
     reqData = request.data.decode(encoding='utf-8', errors='ignore')
@@ -103,7 +127,7 @@ def api():
 
         # Register session (from web-launcher)
         if method == 'registerSession':
-            killOldSessions(webSessions)
+            killOldSessions(webSessions, webSessionLocks)
 
             key = reqJson['key']
             if key != api_key:
@@ -124,41 +148,52 @@ def api():
                 }
                 return jsonify(response)
 
-            webSessions[data['sessionToken']] = {'players': {}, 'spectators': {}, 'lock': threading.Lock(), 'timestamp': dt.now(), 'gameName': '', 'gameStarted': False, 'gameFinished': False, 'gameCreated': False, 'playerInfoSend': False }
-
-            mapId = 'Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb';
-            if 'mapId' in data:
-                mapId = data['mapId']
-            webSessions[data['sessionToken']]['mapId'] = mapId
-            
-            # generate player keys, fill player data
-            for player in data['players']:
-                if 'id' not in player:
-                    response = {
-                        'error': 'Invalid player detected (no id) in session ' + data['sessionToken']
-                    }
-                    return jsonify(response)
-                
-                #player['nickname'] = translit(player['nickname'], 'ru', reversed=True).replace("'", "")
-                m = hashlib.sha256((str(player['id']) + data['sessionToken'] + api_key).encode('utf-8'))
-                webSessions[data['sessionToken']]['players'][m.hexdigest()] = player
-                logger.info(m.hexdigest())
-                
-            for spectator in data['spectators']:
-                if 'id' not in spectator:
-                    response = {
-                        'error': 'Invalid spectator detected (no id) in session ' + data['sessionToken']
-                    }
-                    return jsonify(response)
-                
-                m = hashlib.sha256((str(spectator['id']) + data['sessionToken'] + api_key).encode('utf-8'))
-                webSessions[data['sessionToken']]['spectators'][m.hexdigest()] = spectator
-                logger.info(m.hexdigest())
-
-            response = {
-                'error': ''
+            webSessions[data['sessionToken']] = {
+                'players': {}, 
+                'spectators': {},
+                'timestamp': dt.now().isoformat(), 
+                'gameName': '', 
+                'gameStarted': False, 
+                'gameFinished': False, 
+                'gameCreated': False, 
+                'playerInfoSend': False 
             }
-            return jsonify(response)
+            webSessionLocks[data['sessionToken']] = {'lock': threading.Lock()}
+            with webSessionLocks[data['sessionToken']]['lock']:
+                mapId = 'Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb';
+                if 'mapId' in data:
+                    mapId = data['mapId']
+                webSessions[data['sessionToken']]['mapId'] = mapId
+                
+                # generate player keys, fill player data
+                for player in data['players']:
+                    if 'id' not in player:
+                        response = {
+                            'error': 'Invalid player detected (no id) in session ' + data['sessionToken']
+                        }
+                        return jsonify(response)
+                    
+                    #player['nickname'] = translit(player['nickname'], 'ru', reversed=True).replace("'", "")
+                    m = hashlib.sha256((str(player['id']) + data['sessionToken'] + api_key).encode('utf-8'))
+                    webSessions[data['sessionToken']]['players'][m.hexdigest()] = player
+                    logger.info(m.hexdigest())
+                    
+                for spectator in data.get('spectators', []):
+                    if 'id' not in spectator:
+                        response = {
+                            'error': 'Invalid spectator detected (no id) in session ' + data['sessionToken']
+                        }
+                        return jsonify(response)
+                    
+                    m = hashlib.sha256((str(spectator['id']) + data['sessionToken'] + api_key).encode('utf-8'))
+                    webSessions[data['sessionToken']]['spectators'][m.hexdigest()] = spectator
+                    logger.info(m.hexdigest())
+
+                response = {
+                    'error': ''
+                }
+                logger.info('Current sessions: ' + str(json.dumps(webSessions)))
+                return jsonify(response)
             
         if method == 'createWebSession':
             if 'sessionToken' not in data or 'apiKey' not in data or 'create' not in data:
@@ -185,7 +220,7 @@ def api():
                 logger.info('Response!!!      ' + method + ': ' + str(json.dumps(response)))
                 return jsonify(response)
                 
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 if data['create']:
                     if webSessions[sessionToken]['gameStarted']:
                         response = {
@@ -249,9 +284,8 @@ def api():
                 return jsonify(response)
 
             # critical section for specific session!
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 method = ''
-                tryRotten = False
                 if not webSessions[sessionToken]['gameName']:
                     webSessions[sessionToken]['gameName'] = webSessions[sessionToken]['players'][playerKey]['nickname']
                     method = 'create'
@@ -261,12 +295,13 @@ def api():
                     else:
                         method = 'connect'
                         tryRotten = True
-                     
-                # Test rotten sessions
-                if tryRotten:
+                
+                # Test rotten sessions only for pre-game connects.
+                if method == 'connect':
                     rotSession = webSessions[sessionToken]
                     targetTimeDifferenceToKill = timeToKillRottenSession
-                    if (dt.now() - rotSession['timestamp']).total_seconds() > targetTimeDifferenceToKill:
+                    sessionTime = dt.fromisoformat(rotSession['timestamp'])
+                    if (dt.now() - sessionTime).total_seconds() > targetTimeDifferenceToKill:
                         rotKillerData = {"sessionToken":sessionToken,"win":0,"afk":[]}
                         sendSessionFinishData(rotKillerData)
                         response = {
@@ -274,7 +309,6 @@ def api():
                         }
                         logger.info('Response!!!      ' + str(json.dumps(response)))
                         return jsonify(response)
-                    
                 gameName = ''
                 if webSessions[sessionToken]['gameCreated']:
                     gameName = webSessions[sessionToken]['gameName']
@@ -299,7 +333,7 @@ def api():
                 return jsonify(response)
             sessionToken = data['sessionToken']
 
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 webSessions[sessionToken]['gameStarted'] = True
                 response = {
                     'error': '',
@@ -320,8 +354,9 @@ def api():
             
             if sessionToken not in webSessions:
                 # synchronizer restarted, just send results
-                webSessions[sessionToken] = {'players': {}, 'lock': threading.Lock(), 'timestamp': dt.now(), 'gameName': '', 'gameStarted': False, 'gameFinished': True, 'gameCreated': False, 'playerInfoSend': True }
-                with webSessions[sessionToken]['lock']:
+                webSessions[sessionToken] = {'players': {}, 'spectators': {}, 'timestamp': dt.now().isoformat(), 'gameName': '', 'gameStarted': False, 'gameFinished': True, 'gameCreated': False, 'playerInfoSend': True }
+                webSessionLocks[sessionToken] = { 'lock': threading.Lock() }
+                with webSessionLocks[sessionToken]['lock']:
                     sendSessionFinishData(data)
                     response = {
                         'error': '',
@@ -329,7 +364,7 @@ def api():
                     logger.info('Response!!!      ' + str(json.dumps(response)))
                     return jsonify(response)
 
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 if webSessions[sessionToken]['gameFinished']:
                     response = {
                         'error': 'Game finished'
@@ -358,7 +393,7 @@ def api():
                 }
                 return jsonify(response)
                 
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 if webSessions[sessionToken]['playerInfoSend']:
                     response = {
                         'error': '',
@@ -382,7 +417,7 @@ def api():
                 return jsonify(response)
             sessionToken = data['sessionToken']
 
-            with webSessions[sessionToken]['lock']:
+            with webSessionLocks[sessionToken]['lock']:
                 if webSessions[sessionToken]['gameStarted']:
                     response = {
                         'error': 'reconnect',
@@ -411,7 +446,7 @@ def api():
                 return jsonify(response)
             sessionToken = data['sessionToken']
             if sessionToken in webSessions:
-                with webSessions[sessionToken]['lock']:
+                with webSessionLocks[sessionToken]['lock']:
                     webSessions[sessionToken]['gameCreated'] = True
                     webSession = webSessions[sessionToken]
                     
@@ -430,7 +465,7 @@ def api():
             response = {
                 'error': '',
                 'data': True
-            }
+            }            
             return jsonify(response)
 
 

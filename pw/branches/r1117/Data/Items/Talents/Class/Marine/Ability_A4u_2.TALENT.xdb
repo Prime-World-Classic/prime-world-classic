@@ -7,6 +7,7 @@
 	<BackLink DBID="/Test/Talents/TestSetNewUltimates1.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Marine/Epic_AspdStr_Ultimate2.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Marine_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Marine.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -65,6 +66,16 @@
 							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 							<returnType>float</returnType>
 							<sString>3</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Marine/Ability_A4u_2.TALENT" id="8DDBA4AB-0CF5-440F-A2AE-4FC8628EE577">
+					<UnitConstant>
+						<name>A4u_2_Health</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACgQgAAFkQ=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(sStrength,80, 600)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

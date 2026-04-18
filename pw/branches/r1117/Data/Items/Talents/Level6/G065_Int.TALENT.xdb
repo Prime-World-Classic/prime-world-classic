@@ -102,9 +102,9 @@
 					<UnitConstant>
 						<name>Add_Intellect</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAmEEzM7M/</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQg==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(19, 1.4)</sString>
+							<sString>36</sString>
 						</var>
 					</UnitConstant>
 				</Item>

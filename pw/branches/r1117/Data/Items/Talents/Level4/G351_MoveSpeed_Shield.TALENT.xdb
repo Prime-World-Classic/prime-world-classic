@@ -136,32 +136,12 @@
 				<name>StrAndInt</name>
 			</ConditionFormula>
 		</Item>
-		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="64CD17B8-5C1F-4D35-B08C-1ABC2FD6D5B6">
-			<ConditionFormula>
-				<condition>
-					<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEczNjZfQWN0aXZlAEczNjVfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXQraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
-					<returnType>bool</returnType>
-					<sString>(sender.vG366_Active &gt; 0)||(sender.vG365_Active &gt; 0)</sString>
-				</condition>
-				<name>EnergyOrMaterial</name>
-			</ConditionFormula>
-		</Item>
-		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="5CA7D996-357D-481C-B346-6F8BAC69A116">
-			<ConditionFormula>
-				<condition>
-					<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEczNjZfQWN0aXZlAEczNjVfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXUraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
-					<returnType>bool</returnType>
-					<sString>(sender.vG366_Active &gt; 0)&amp;&amp;(sender.vG365_Active &gt; 0)</sString>
-				</condition>
-				<name>EnergyAndMaterial</name>
-			</ConditionFormula>
-		</Item>
 		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="BB96881D-3A8C-4D06-BA1F-213B9437A27C">
 			<ConditionFormula>
 				<condition>
-					<compiledString>FTAAAAAIAAAANQAAAEsAAABXAAAAbQAAAHkAAACPAAAAmwAAALEAAABHMzYyX0FjdGl2ZQBHMzYzX0FjdGl2ZQBHMzY2X0FjdGl2ZQBHMzY1X0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B3TAAAA3+D2xEF0b2gMAAAAi00IixGLTQiLgogBAAD/0Nwd0wAAAN/g9sRBdE1oGAAAAItNCIsRi00Ii4KIAQAA/9DcHdMAAADf4PbEQXQraCQAAACLTQiLEYtNCIuCiAEAAP/Q3B3TAAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
+					<compiledString>FRgAAAAEAAAAHQAAADMAAAA/AAAAVQAAAEczNjJfQWN0aXZlAEczNjNfQWN0aXZlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHXcAAADf4PbEQXQraAwAAACLTQiLEYtNCIuCiAEAAP/Q3B13AAAA3+D2xEF0CcdF/AAAAADrB8dF/AEAAACKRfyL5V3DAAAAAAAAAAA=</compiledString>
 					<returnType>bool</returnType>
-					<sString>(sender.vG362_Active &gt; 0)||(sender.vG363_Active &gt; 0)||(sender.vG366_Active &gt; 0)||(sender.vG365_Active &gt; 0)</sString>
+					<sString>(sender.vG362_Active &gt; 0)||(sender.vG363_Active &gt; 0)</sString>
 				</condition>
 				<name>StrOrIntOrEnergyOrMaterial</name>
 			</ConditionFormula>
@@ -196,9 +176,9 @@
 					<UnitConstant>
 						<name>DamageCapacity</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAAekMAAPBB</compiledString>
+							<compiledString>FQAAAAAAAAAAVYvsUYtFCIsQi00Ii4JgAQAA/9BrwBYF0AAAAIlF/NtF/IvlXcM=</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(250, 30)</sString>
+							<sString>208+(800/36)*sNaftaLevel</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -235,7 +215,7 @@
 				<Item href="/Items/Talents/TalentSet3/const_G351_MaxForm" />
 				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="7B067E69-37CA-474D-85C7-DC074085C8D2">
 					<UnitConstant>
-						<name>MaterailRes_StartCondition</name>
+						<name>MaterailEnergyRes_StartCondition</name>
 						<var>
 							<compiledString>FQwAAAACAAAAEQAAACcAAABHMzY1X0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAAAAA=</compiledString>
 							<returnType>float</returnType>
@@ -243,16 +223,7 @@
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="07F45B17-1BE7-4FE9-AAA4-7C3824FFC0CE">
-					<UnitConstant>
-						<name>EnergyRes_StartCondition</name>
-						<var>
-							<compiledString>FQwAAAACAAAAEQAAACcAAABHMzY2X0FjdGl2ZQBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1JAAAA3+D2xEF1CcdF/AEAAADrB8dF/AAAAADbRfyL5V3DAAAAAAAAAAA=</compiledString>
-							<returnType>float</returnType>
-							<sString>sender.vG366_Active &gt; 0</sString>
-						</var>
-					</UnitConstant>
-				</Item>
+				<Item href="/Items/Talents/TalentSet3/const_G351_Add_EnergyDamageDecrease" />
 				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="08012F43-03B0-43EA-BAE2-F0F147201B56">
 					<UnitConstant>
 						<name>AddIntellect_StartCondition</name>
@@ -287,8 +258,6 @@
 				<Item href="/Items/Talents/TalentSet3/const_G351_Haste_Percent" />
 				<Item href="/Items/Talents/TalentSet3/const_G351_Add_Strength" />
 				<Item href="/Items/Talents/TalentSet3/const_G351_Add_Intellect" />
-				<Item href="/Items/Talents/TalentSet3/const_G351_Add_EnergyDamageDecrease" />
-				<Item href="/Items/Talents/TalentSet3/const_G351_Add_MaterialDamageDecrease" />
 				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="028F2341-8F10-4E86-953C-DEC103F152B0">
 					<UnitConstant>
 						<name>TECH_FormCapacity</name>
@@ -296,6 +265,36 @@
 							<compiledString>FQ0AAAABAAAAGQAAAEczNTFfTWF4Rm9ybQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 							<returnType>float</returnType>
 							<sString>cG351_MaxForm</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="293BE6D3-8D5C-4CB1-9BB8-C529910E2360">
+					<UnitConstant>
+						<name>Add_Stat</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADgQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>7</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="2819E32D-A8B4-40A2-BEE3-C3B391D290FE">
+					<UnitConstant>
+						<name>Dispell_Number</name>
+						<var>
+							<compiledString>FRkAAAADAAAAHgAAADQAAABIAAAARzM2Nl9BY3RpdmUARGlzcGVsU2luZ2xlAFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcHW4AAADf4PbEQXUfi00MUYtVCFJoDAAAAItFEIsQi00Qi0JQ/9DZXfzrBdnu2V382UX8i+VdwwAAAAAAAAAAAAAAAA==</compiledString>
+							<returnType>float</returnType>
+							<sString>(sender.vG366_Active &gt; 0 ? cDispelSingle : 0)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="658A5808-42FA-4435-A2E4-9A059B92A327">
+					<UnitConstant>
+						<name>DispelSingle</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>20</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -307,9 +306,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADcQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>110</sString>
+		<sString>120</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -360,6 +359,126 @@
 	<passiveApplicators>
 		<Item href="/Items/Talents/_commonData/parent_MoveChange.APLR" />
 		<Item href="/Items/Talents/_commonData/AddedMoveSpeed.APLR" />
+		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="3FC10D03-4F8D-4931-84FA-D38AC9993955">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>StrOrInt</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>G782_StaOrWill</variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="CC955B3A-20DF-4749-AE15-BFA9A031089A">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Strength</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/IpF/F6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Strength</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="75ED2CBF-65CB-4561-86F9-1359A7385660">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Intellect</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsg+wUVmoPi0UIixCLTQiLgiwBAAD/0A+28GoQi00IixGLTQiLgiwBAAD/0A+2yDvxfgzHRfwBAAAA6YAAAABqD4tVCIsCi00Ii5AsAQAA/9IPtvBqEItFCIsQi00Ii4IsAQAA/9APtsg78X0Jx0X4AAAAAOtDi1UIiwKLTQiLkLgAAAD/0otFCIsQi00Ii4K8AAAA3V3w/9DcXfDf4PbEQXoJx0XsAQAAAOsHx0XsAAAAAItN7IlN+ItV+IlV/DPAg338AA+UwF6L5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>!(pFirst-&gt;IsRecommended(15) &gt; pFirst-&gt;IsRecommended(16) ? 1 : pFirst-&gt;IsRecommended(15) &lt; pFirst-&gt;IsRecommended(16) ? 0 : sBaseStrength&gt;=sBaseIntellect)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Intellect</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G351_MoveSpeed_Shield.TALENT" id="1A18DF34-3466-436D-A440-0F32A9ECF38C">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Stamina</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQkAAAABAAAAFQAAAEFkZF9TdGF0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<returnType>float</returnType>
+						<sString>cAdd_Stat</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>G351</persistentId>
 	<prerequisiteTalents />

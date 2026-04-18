@@ -51569,7 +51569,7 @@
 	</objects>
 	<ObjectsLayerFileName>/Maps/Multiplayer/Tournament/_.objectheight</ObjectsLayerFileName>
 	<pointLights />
-	<postEffect href="/Maps/Multiplayer/Tournament/PostEffect.PFXP" />
+	<postEffect href="" />
 	<scriptAreas />
 	<soundEnvironment href="/Audio/soundEnvironment" />
 	<terrain href="/Maps/Multiplayer/Tournament/_.TERN" />

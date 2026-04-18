@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <AdvMap>
-	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPDSCR" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Test_PVP_1x1.ADMPDSCR" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Test_PVP_2x2.ADMPDSCR" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Mod1/_.ADMPDSCR" Count="1" />
@@ -21,11 +20,11 @@
 	</bakedLighting>
 	<cameraSettings href="/Maps/Multiplayer/ARAM/Camera/aram" />
 	<dayNightSettings>
-		<dayDuration>7200</dayDuration>
+		<dayDuration>1</dayDuration>
 		<hideDayNightWidget>true</hideDayNightWidget>
 		<initialState>Night</initialState>
 		<initialStateFraction>0</initialStateFraction>
-		<nightDuration>600</nightDuration>
+		<nightDuration>7200</nightDuration>
 		<nightSpecularReduction>0.4</nightSpecularReduction>
 		<transitionDuration>0.5</transitionDuration>
 		<transitionThreshold>0.75</transitionThreshold>
@@ -8712,12 +8711,12 @@
 			<offset>
 				<rotationX>-0.04828143</rotationX>
 				<rotationY>-0.1810773</rotationY>
-				<rotationZ>129.3394</rotationZ>
+				<rotationZ>130</rotationZ>
 				<scaleX>1</scaleX>
 				<scaleY>1</scaleY>
 				<scaleZ>1</scaleZ>
-				<translateX>19.09932</translateX>
-				<translateY>96.8838</translateY>
+				<translateX>21.95385</translateX>
+				<translateY>100.2871</translateY>
 				<translateZ>0</translateZ>
 			</offset>
 			<player>None</player>

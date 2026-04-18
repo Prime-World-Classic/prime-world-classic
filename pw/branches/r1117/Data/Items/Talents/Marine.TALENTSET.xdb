@@ -100,7 +100,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Marine/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/Marine/Ability_A4_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -128,7 +128,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Marine/Ability_A4u.TALENT" />
+					<talent href="/Items/Talents/Class/Marine/Ability_A4u_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

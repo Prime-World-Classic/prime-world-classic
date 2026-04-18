@@ -1,0 +1,322 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Effects/Debuffs/Roots/_Bones.EFFT" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Debuffs/Roots/_Flower.PRXY" id="996D0353-043B-4F75-AC36-BC4A745140A4">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Effects/Debuffs/Roots/_Flower_autoClip.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Effects/Debuffs/Roots/_Flower_autoClip.mayaAnim</mayaFileName>
+							<name>_Flower_autoClip</name>
+							<srcFileName crc="0">/Effects/Debuffs/Roots/_Flower_autoClip.ma</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="" />
+					<anims />
+					<attached />
+					<caption>TrapFlower</caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="" />
+					<mayaFileName>/Effects/Debuffs/Roots/_Flowerjoint1.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>joint1</selection>
+					<skeletonFileName>/Effects/Debuffs/Roots/_Flowerjoint1.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Effects/Debuffs/Roots/_FlowerTrapFlower.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Effects/Debuffs/Roots/TrapFlower.MTRL" />
+							</materialsReferences>
+							<mayaFileName>/Effects/Debuffs/Roots/_FlowerTrapFlower.mayaSkin</mayaFileName>
+							<selection>TrapFlower</selection>
+							<skinPartName>TrapFlower</skinPartName>
+							<srcFileName crc="0">/Effects/Debuffs/Roots/_Flower.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Effects/Debuffs/Roots/_Flower.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos Animated="True">
+					<Tracks>
+						<Item>
+							<Item>
+								<Key>0</Key>
+								<Value>0</Value>
+							</Item>
+							<Item>
+								<Key>0.3407322</Key>
+								<Value>0</Value>
+							</Item>
+						</Item>
+						<Item>
+							<Item>
+								<Key>0</Key>
+								<Value>0</Value>
+							</Item>
+							<Item>
+								<Key>0.3407322</Key>
+								<Value>0</Value>
+							</Item>
+						</Item>
+						<Item>
+							<Item>
+								<Key>0</Key>
+								<Value>-1.498531</Value>
+							</Item>
+							<Item>
+								<Key>0.03409609</Key>
+								<Value>-1.322446</Value>
+							</Item>
+							<Item>
+								<Key>0.07070936</Key>
+								<Value>-1.159575</Value>
+							</Item>
+							<Item>
+								<Key>0.1050343</Key>
+								<Value>-1.002969</Value>
+							</Item>
+							<Item>
+								<Key>0.1324943</Key>
+								<Value>-0.8839473</Value>
+							</Item>
+							<Item>
+								<Key>0.1645309</Key>
+								<Value>-0.7586617</Value>
+							</Item>
+							<Item>
+								<Key>0.1988558</Key>
+								<Value>-0.6145836</Value>
+							</Item>
+							<Item>
+								<Key>0.2354691</Key>
+								<Value>-0.464241</Value>
+							</Item>
+							<Item>
+								<Key>0.2652174</Key>
+								<Value>-0.3138986</Value>
+							</Item>
+							<Item>
+								<Key>0.2926773</Key>
+								<Value>-0.1948774</Value>
+							</Item>
+							<Item>
+								<Key>0.3155606</Key>
+								<Value>-0.09464908</Value>
+							</Item>
+							<Item>
+								<Key>0.3407322</Key>
+								<Value>0</Value>
+							</Item>
+						</Item>
+					</Tracks>
+					<Type>Clamp</Type>
+					<Values>
+						<Item>
+							<Key>0</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-1.498531</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.03409609</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-1.322446</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.07070936</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-1.159575</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.1050343</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-1.002969</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.1324943</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.8839473</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.1645309</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.7586617</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.1988558</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.6145836</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.2354691</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.464241</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.2652174</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.3138986</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.2926773</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.1948774</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.3155606</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>-0.09464908</z>
+							</Value>
+						</Item>
+						<Item>
+							<Key>0.3407322</Key>
+							<Value>
+								<x>0</x>
+								<y>0</y>
+								<z>0</z>
+							</Value>
+						</Item>
+					</Values>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>0.9</x>
+					<y>0.9</y>
+					<z>0.9</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Debuffs/Roots/_FlowerEffect.PRXY" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>0.8</x>
+					<y>0.8</y>
+					<z>0.8</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Debuffs/Roots/_Flower.PRXY" id="27EEE2E4-F0D2-4057-8AD8-09A0A86B29AB">
+				<DBSoundSceneComponent>
+					<attached />
+					<caption>sound</caption>
+					<desc>
+						<eventName>Wendigo_Bones</eventName>
+						<groupName>Heroes/Wendigo/Animation</groupName>
+						<projectName>PF</projectName>
+					</desc>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<orientation>Default</orientation>
+					<timeInterval>0</timeInterval>
+				</DBSoundSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

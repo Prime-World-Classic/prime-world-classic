@@ -4,6 +4,7 @@
 	<BackLink DBID="/Maps/Tutorial/_.ADMP" Count="8" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/_.ADMP" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MidOnly/Aram/_.ADMP" Count="3" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
 	<collision>
 		<x1>0</x1>
 		<x2>0</x2>

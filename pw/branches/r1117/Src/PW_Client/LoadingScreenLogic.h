@@ -72,7 +72,7 @@ class LoadingHeroes;
 struct HeroInfo
 {
   HeroInfo(): isProcessed(false), exp(0), isBot(false), force(0),
-    raiting(0), winDeltaRaiting(0), loseDeltaRaiting(0), isNovice(false), isPremium(false), heroId(0), partyId(0),
+    raiting(0), winDeltaRaiting(0), loseDeltaRaiting(0), raitingAcc(0), winDeltaRaitingAcc(0), loseDeltaRaitingAcc(0), isNovice(false), isPremium(false), heroId(0), partyId(0),
     isAnimatedAvatar(true), leagueIndex(0), ownLeaguePlace(0) {}
   bool isProcessed;
   bool isBot;
@@ -81,6 +81,9 @@ struct HeroInfo
   int raiting;
   float winDeltaRaiting;
   float loseDeltaRaiting;
+  int raitingAcc;
+  float winDeltaRaitingAcc;
+  float loseDeltaRaitingAcc;
   bool isNovice;
 	bool isPremium;
 	uint partyId;

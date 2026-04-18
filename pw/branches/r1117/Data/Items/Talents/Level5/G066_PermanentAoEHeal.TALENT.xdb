@@ -48,9 +48,10 @@
 					<UnitConstant>
 						<name>Heal_Amount</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA8EEAAABA</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADwQQAAAkM=</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(30, 2)</sString>
+							<sString>damageScale(sIntellect, 30, 130)
+</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -58,9 +59,9 @@
 					<UnitConstant>
 						<name>Interval</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>6</sString>
+							<sString>5</sString>
 						</var>
 					</UnitConstant>
 				</Item>

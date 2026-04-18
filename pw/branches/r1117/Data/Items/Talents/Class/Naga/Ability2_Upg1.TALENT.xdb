@@ -66,9 +66,9 @@
 					<UnitConstant>
 						<name>A2_DexChange</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCRAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DmpnZPzMzS0E=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAFHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCQAEAAP/QUdkcJItNCIsRi00Ii4JEAQAA/9BR2Rwk6B8AAACDxATZHCRqAItNEIsRi00Qi0Jg/9Bdw5qZ2T8zM0tBVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale( sWill, 1.7, 12.7, false)</sString>
+							<sString>abilityScale (max(sWill,sStamina), 1.7, 12.7, false)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

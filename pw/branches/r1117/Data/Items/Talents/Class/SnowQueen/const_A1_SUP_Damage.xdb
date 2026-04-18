@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/SnowQueen/Ability_A1_SUP.TALENT" Count="1" />
 	<name>A1_SUP_Damage</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACSQgCACEQ=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACSQgBABEQ=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale( sIntellect, 73, 546 )</sString>
+		<sString>damageScale( sIntellect, 73, 529 )</sString>
 	</var>
 </UnitConstant>

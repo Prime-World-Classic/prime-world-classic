@@ -15,6 +15,6 @@
 	</size>
 	<srcFileName crc="0">/UI/Styles/Icons/Heroes/Ent/Face_S1.png</srcFileName>
 	<startMipLevel>0</startMipLevel>
-	<textureFileName>/UI/Styles/Icons/Heroes/Ent/Face_S1.dds</textureFileName>
+	<textureFileName>/UI/Styles/Icons/Heroes/Ent/_Face_S1.dds</textureFileName>
 	<textureType>Color</textureType>
 </UITexture>

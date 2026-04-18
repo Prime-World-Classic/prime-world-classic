@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Consumable>
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="1" />
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="1" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="3" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="5" />
 	<BackLink DBID="/GameLogic/Scoring.SCTB" Count="1" />
 	<BackLink DBID="/Items/Consumables/AdvanceTeleportScroll.ARCT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level4/status_G336_TelBlock.APLR" Count="1" />

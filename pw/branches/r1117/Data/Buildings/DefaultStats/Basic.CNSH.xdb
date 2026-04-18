@@ -18,6 +18,9 @@
 		<Item href="/Items/Consumables/EyeOfSeeing.ARCT" />
 		<Item href="/Items/Consumables/EyeOfSeeingCheap.ARCT" />
 		<Item href="/Items/Consumables/EyeOfSeeingCheapest.ARCT" />
+		<Item href="/Items/Temp/FireworkHeart.ARCT" />
+		<Item href="/Items/Temp/FireworkSmall.ARCT" />
+		<Item href="/Items/Consumables/Snowball.ARCT" />
 	</items>
 	<secretShop>false</secretShop>
 </ConsumablesShop>

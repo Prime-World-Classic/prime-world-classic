@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A1u.TALENT" Count="1" />
 	<name>A1_PeriodicDamage</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADwQAAAYEI=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAAQQAAcEI=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale(  sIntellect, 7.5, 56)</sString>
+		<sString>damageScale(  sIntellect, 8, 60)</sString>
 	</var>
 </UnitConstant>

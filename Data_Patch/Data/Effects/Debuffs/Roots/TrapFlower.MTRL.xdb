@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicFXMaterial>
+	<caption>TrapFlower_Material_002</caption>
+	<DiffuseAdd>
+		<A>0</A>
+		<B>0</B>
+		<G>0</G>
+		<R>0</R>
+	</DiffuseAdd>
+	<DiffuseMap>
+		<samplerState>
+			<addressU>Wrap</addressU>
+			<addressV>Wrap</addressV>
+			<addressW>Wrap</addressW>
+			<magFilter>Linear</magFilter>
+			<minFilter>Linear</minFilter>
+			<mipFilter>Linear</mipFilter>
+		</samplerState>
+		<texture href="/Effects/Debuffs/Roots/TrapFlower.MTRL" id="3138FA66-D393-48A5-ACCA-ED3BD19280FA">
+			<Texture>
+				<generatedFileName></generatedFileName>
+				<mipLevels>0</mipLevels>
+				<mipLevelUsage>AutoGenerate</mipLevelUsage>
+				<mipSharpenPasses></mipSharpenPasses>
+				<pixelFormat>DXT5</pixelFormat>
+				<size>
+					<height>512</height>
+					<width>512</width>
+				</size>
+				<srcFileName crc="0">/Effects/Debuffs/Roots/TrupSmall.tga</srcFileName>
+				<startMipLevel>0</startMipLevel>
+				<textureFileName>/Effects/Debuffs/Roots/TrupSmall.dds</textureFileName>
+				<textureType>Color</textureType>
+			</Texture>
+		</texture>
+	</DiffuseMap>
+	<DiffuseMul>
+		<A>1</A>
+		<B>1</B>
+		<G>1</G>
+		<R>1</R>
+	</DiffuseMul>
+	<distortion>1</distortion>
+	<DistortionPinValue>DistortNone</DistortionPinValue>
+	<emissive>0</emissive>
+	<ignoreRenderState>false</ignoreRenderState>
+	<MultiplyVertexColorPinValue>None</MultiplyVertexColorPinValue>
+	<opacity>1</opacity>
+	<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+	<renderState>
+		<alphaTest>On</alphaTest>
+		<alphaTestRef>127</alphaTestRef>
+		<blendMode>Off</blendMode>
+		<culling>On</culling>
+	</renderState>
+	<SkeletalMeshPinValue>None</SkeletalMeshPinValue>
+	<SubPriority>0</SubPriority>
+	<uOffset>0</uOffset>
+	<vOffset>0</vOffset>
+</BasicFXMaterial>

@@ -7,5 +7,5 @@
 		<returnType>bool</returnType>
 		<sString>sender.vG365_Active &gt; 0</sString>
 	</condition>
-	<name>G365_MaterailRes_StartCondition</name>
+	<name>G365_MaterailEnergyRes_StartCondition</name>
 </ConditionFormula>

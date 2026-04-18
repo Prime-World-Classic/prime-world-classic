@@ -23,7 +23,7 @@ namespace NGameX
   {
     NI_VERIFY(IsValid(ourHero) && IsValid(flashInterface), "ivalid ctor params", return);
     heroInfos.reserve(10);
-    ///тут передается фракция только для того чтобы себя впихнуть первым в статистику с нужной стороны
+    ///пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     flashInterface->SetOurHeroIdententity(ourHero->GetPlayerId(), ourHero->GetFaction(), ourHero->GetBaseAttackDamageType(), ourHero->GetLeagueIndex(), ourHero->GetOwnLeaguePlace(), ourHero->GetLeaguePlaces());
 
     if (uiData)

@@ -1,11 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UnitConstant>
-	<BackLink DBID="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level6/G325_IntAspd.TALENT" Count="1" />
 	<name>G325_Add_Ressurect_Reduction</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJItNCIsRi00Ii4IwAQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAFkMAAHpEVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 		<returnType>float</returnType>
-		<sString>10</sString>
+		<sString>damageScale( max(sStrength, sIntellect), 150, 1000)</sString>
 	</var>
 </UnitConstant>

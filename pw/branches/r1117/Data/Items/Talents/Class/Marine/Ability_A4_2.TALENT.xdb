@@ -10,6 +10,7 @@
 	<BackLink DBID="/Test/Talents/TestSetNewUltimates1.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Marine/Epic_AspdStr_Ultimate2.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Marine_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Marine.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -140,6 +141,53 @@
 									<talents />
 									<useListAs>ListAsRule</useListAs>
 								</FlagsApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Marine/Ability_A4_2.TALENT" id="B86D2261-A9D8-4A67-A183-B67015E642C1">
+								<StatModApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<behaviorFlags>0</behaviorFlags>
+									<caption>Health</caption>
+									<constraint>None</constraint>
+									<dontUpdate>false</dontUpdate>
+									<effect>
+										<Item href="" />
+										<Item href="" />
+									</effect>
+									<enabled>
+										<compiledString>FR0AAAACAAAAJAAAAD0AAABNYXJpbmVfQTR1XzIAAAAATWFyaW5lX0E0dV8yAFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAikX7i+Vdww==</compiledString>
+										<returnType>bool</returnType>
+										<sString>tal("Marine_A4u_2")</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<lifeTime>
+										<compiledString></compiledString>
+										<returnType>float</returnType>
+										<sString>-1.0</sString>
+									</lifeTime>
+									<LoggingEvent>-1</LoggingEvent>
+									<modifier>
+										<addValue>
+											<compiledString>FQ0AAAABAAAAGQAAAEE0dV8yX0hlYWx0aABVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+											<returnType>float</returnType>
+											<sString>cA4u_2_Health</sString>
+										</addValue>
+										<multValue>
+											<compiledString></compiledString>
+											<returnType>float</returnType>
+											<sString>1.0f</sString>
+										</multValue>
+										<stat>Life</stat>
+										<topModifier>false</topModifier>
+										<variable></variable>
+									</modifier>
+									<providerName></providerName>
+									<startCondition>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</startCondition>
+									<statModName></statModName>
+								</StatModApplicator>
 							</Item>
 						</applicators>
 						<dispatch href="/Items/Talents/Class/Marine/Ability_A4_2.TALENT" id="ACBCC0CB-1229-41A9-8C33-0FAFB862C36A">
@@ -352,6 +400,16 @@
 							<compiledString>FTUAAAAEAAAAQgAAAFoAAAB0AAAArgAAAEE0X0RhbWFnZUNhcAAAAABTdHVuX0R1cmF0aW9uAAAAU3RhdHVzU3R1bgAAZHVyYXRpb24AVYvsg+wcagCLRRBQaCAAAACLTQyLEYtNDIuCnAEAAP/QiUX8aCwAAACLTfyLEYtN/ItCVP/Qi00MUYtVCFJoEAAAAItFEIsQi00Qi0JQ3V30/9DcZfTZXfDZRfBR2Rwki00MixGLTQyLgqwBAAD/0ItNDFGLVQhSaAAAAACLRRCLEItNEItCUN1d6P/Q3GXo2V3k2UXki+Vdww==</compiledString>
 							<returnType>float</returnType>
 							<sString>cA4_DamageCap - receiver.GetDamageTaken(cStun_Duration - receiver.applStatusStun(GLOBAL).GetVariable("duration"))</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Marine/Ability_A4_2.TALENT" id="92EAC8A7-D7AC-4FC3-9DAD-9AA1421ADF9C">
+					<UnitConstant>
+						<name>A4u_2_Health</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACgQgAAFkQ=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(sStrength,80, 600)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

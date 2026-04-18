@@ -413,9 +413,9 @@
 					<UnitConstant>
 						<name>CritChanceBonus</name>
 						<var>
-							<compiledString>FTAAAAAEAAAANwAAAE0AAAB5AAAAkgAAAEEwU3RhY2tDb3VudAAAAABBZGRfQ3JpdENoYW5jZV9SZWRzZXQ5XzFDb3VudGVyAFWL7IPsEGgQAAAAi0UIixCLTQiLgogBAAD/0NwdrgAAAN/g9sREegnHRfwEAAAA6wfHRfwAAAAAi00IixGLTQiLgmwBAAD/0GgAAAAAi00IixGLTQiLgogBAADdXfT/0NwNpgAAANxt9Npl/Nld8NlF8IvlXcMAAAAAAAAUQAAAAAAAAABA</compiledString>
+							<compiledString>FSEAAAABAAAAJQAAAENyaXRDaGFuY2VCb251c1BlcmNlbnRfRm9yQTRLaWxsAFWL7GgAAAAAi0UIixCLTQiLgogBAAD/0F3D</compiledString>
 							<returnType>float</returnType>
-							<sString>sCritChanceBonus - sender.vA0StackCount * 5 - (sender.vAdd_CritChance_Redset9_1Counter == 2 ? 4 :0)</sString>
+							<sString>sender.vCritChanceBonusPercent_ForA4Kill</sString>
 						</var>
 					</UnitConstant>
 				</Item>

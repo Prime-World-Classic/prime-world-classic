@@ -23,6 +23,9 @@ namespace
   static const SVector NO_TARGET = SVector(-1, -1);
   static bool lockActionBar = false;
   REGISTER_VAR( "lock_actionbar", lockActionBar, STORAGE_USER );
+  
+  static bool showPanel = false;
+  REGISTER_VAR( "show_panel", showPanel, STORAGE_USER );
 }
 
 
@@ -60,6 +63,7 @@ targetingPortal(false)
   flashWnd->AddFSListner(ConvertToString(PortalClick), this);
   flashWnd->AddFSListner(ConvertToString(PortalTooltip), this);
   flashWnd->AddFSListner(ConvertToString(ActionBarLock), this);
+  flashWnd->AddFSListner(ConvertToString(ActionBarShowPanel), this);
 
   
   
@@ -71,6 +75,7 @@ targetingPortal(false)
   slotActivated.resize( talentsCount, false);
 
   _flashInterface->LockActionBar(lockActionBar);
+  _flashInterface->ShowPanel(showPanel);
 }
 
 
@@ -87,6 +92,7 @@ ActionBarController::~ActionBarController()
   flashWnd->RemoveFSListner(ConvertToString(PortalClick));
   flashWnd->RemoveFSListner(ConvertToString(PortalTooltip));
   flashWnd->RemoveFSListner(ConvertToString(ActionBarLock));
+  flashWnd->RemoveFSListner(ConvertToString(ActionBarShowPanel));
 
 
 }
@@ -290,6 +296,15 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
       sscanf_s(args,"%d", &lock);
       lockActionBar = lock;
       flashInterface->LockActionBar(lockActionBar);
+      return;
+    }
+    
+    case ActionBarShowPanel:
+    {
+      int show;
+      sscanf_s(args,"%d", &show);
+      showPanel = show;
+      flashInterface->ShowPanel(showPanel);
       return;
     }
   }

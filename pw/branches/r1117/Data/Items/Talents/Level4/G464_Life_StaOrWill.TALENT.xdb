@@ -101,7 +101,16 @@
 				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_Bonus3" />
 				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_Bonus4" />
 				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_Bonus2_TT" />
-				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_Bonus3_TT" />
+				<Item href="/Items/Talents/Level4/G464_Life_StaOrWill.TALENT" id="DB8B777E-18EC-4571-A884-D4DD0923DC0A">
+					<UnitConstant>
+						<name>Redset1_3_Armor_Bonus3_TT</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>8</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_Bonus4_TT" />
 				<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/const_Redset1_3_Armor_SlowCondition" />
 			</vars>
@@ -266,6 +275,66 @@
 			</PermanentStatModApplicator>
 		</Item>
 		<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/Programm_Redset1_3_Armor.APLR" />
+		<Item href="/Items/Talents/Level4/G464_Life_StaOrWill.TALENT" id="F2EE5306-0B5E-48A8-853F-77312C0B26A8">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Will_3bonus</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FRsAAAACAAAAIwAAADkAAABBZGRfQXJtb3JfUmVkc2V0MV8zQ291bnRlcgBVi+yD7BhWaAAAAACLRQiLEItNCIuCiAEAAP/Q3B0gAQAA3+D2xEQPiskAAABqE4tNCIsRi00Ii4IsAQAA/9APtvBqFItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAahOLVQiLAotNCIuQLAEAAP/SD7bwahSLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5DIAAAA/9KLRQiLEItNCIuCzAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdQnHRegBAAAA6wfHRegAAAAAikXoXovlXcMAAAAAAAAIQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAdd_Armor_Redset1_3Counter == 3 &amp;&amp; !(pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseStamina&gt;=sBaseWill)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRcAAAABAAAAIwAAAFJlZHNldDFfM19Bcm1vcl9Cb251czMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cRedset1_3_Armor_Bonus3</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Will</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level4/G464_Life_StaOrWill.TALENT" id="CDFC3790-A10A-4C85-A647-D95F4EF33F17">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Stamina_3bonus</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FRsAAAACAAAAIwAAADkAAABBZGRfQXJtb3JfUmVkc2V0MV8zQ291bnRlcgBVi+yD7BhWaAAAAACLRQiLEItNCIuCiAEAAP/Q3B0gAQAA3+D2xEQPiskAAABqE4tNCIsRi00Ii4IsAQAA/9APtvBqFItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAahOLVQiLAotNCIuQLAEAAP/SD7bwahSLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5DMAAAA/9KLRQiLEItNCIuCyAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdQnHRegBAAAA6wfHRegAAAAAikXoXovlXcMAAAAAAAAIQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAdd_Armor_Redset1_3Counter == 3 &amp;&amp; !(pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseWill&gt;=sBaseStamina)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRcAAAABAAAAIwAAAFJlZHNldDFfM19Bcm1vcl9Cb251czMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cRedset1_3_Armor_Bonus3</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>G464</persistentId>
 	<prerequisiteTalents />

@@ -6,7 +6,7 @@
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
 				<behaviorFlags>0</behaviorFlags>
-				<caption> - даем силу на время</caption>
+				<caption> - даем стойкость на время</caption>
 				<constraint>None</constraint>
 				<dontUpdate>false</dontUpdate>
 				<effect>
@@ -36,7 +36,54 @@
 						<returnType>float</returnType>
 						<sString>1.0f</sString>
 					</multValue>
-					<stat>Strength</stat>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level5/status_56_Strength_Lifesteal.APLR" id="DF36C9E5-F682-41B6-9C84-DE5D296C109E">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption> - даем волю на время</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="/Effects/Buffs/Berserk/_TrailGold.EFFT" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQsAAAABAAAAFwAAAFRlbXBfUG93ZXIAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cTemp_Power</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Will</stat>
 					<topModifier>false</topModifier>
 					<variable></variable>
 				</modifier>
@@ -52,7 +99,7 @@
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>2</behaviorFlags>
-	<caption> - Статус, дает силу</caption>
+	<caption> - Статус, дает стойкость</caption>
 	<customCounter>
 		<compiledString></compiledString>
 		<returnType>int</returnType>

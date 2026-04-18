@@ -3,6 +3,7 @@
 	<BackLink DBID="/Heroes/Faceless/_.HROB" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability1.TALENT" Count="7" />
 	<BackLink DBID="/Items/Talents/Class/Faceless/Ability3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<applicators>
 		<Item>
 			<applicator href="/Items/Talents/Class/Faceless/A2CritHealing.APLR" id="3F4C3C8C-97FB-4B53-B040-48D59032CC15">
