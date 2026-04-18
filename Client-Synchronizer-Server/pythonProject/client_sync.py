@@ -47,6 +47,26 @@ activeSessionTokens = {}
 webSessions = {}
 webSessionLocks = {}
 
+def ensureSessionDefaults(session):
+    if 'players' not in session or not isinstance(session['players'], dict):
+        session['players'] = {}
+    if 'spectators' not in session or not isinstance(session['spectators'], dict):
+        session['spectators'] = {}
+    if 'timestamp' not in session or not isinstance(session['timestamp'], str):
+        session['timestamp'] = dt.now().isoformat()
+    if 'gameName' not in session:
+        session['gameName'] = ''
+    if 'gameStarted' not in session:
+        session['gameStarted'] = False
+    if 'gameFinished' not in session:
+        session['gameFinished'] = False
+    if 'gameCreated' not in session:
+        session['gameCreated'] = False
+    if 'playerInfoSend' not in session:
+        session['playerInfoSend'] = False
+    if 'mapId' not in session:
+        session['mapId'] = 'Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb'
+
 def exit_handler():
     global webSessions
     with open('web_sessions.json', 'w', encoding='utf-8') as rf:
@@ -60,6 +80,7 @@ def start():
         with open('web_sessions.json', 'r') as f:
             webSessions = json.load(f)
             for sessionToken in list(webSessions.keys()):
+                ensureSessionDefaults(webSessions[sessionToken])
                 webSessionLocks[sessionToken] = {'lock': threading.Lock()}
 
 
@@ -70,10 +91,18 @@ app = Flask(__name__)
 def killOldSessions(sessionDict, sessionDictLocks):
     for oldSessionToken in list(sessionDict.keys()):
         oldSession = sessionDict[oldSessionToken]
+        ensureSessionDefaults(oldSession)
         targetTimeDifferenceToKill = timeToKillPublicSession
         if oldSessionToken == 'Tester00Tester00Tester00Tester00':
             targetTimeDifferenceToKill = timeToKillTestSession
-        sessionTime = dt.fromisoformat(oldSession['timestamp'])
+        try:
+            sessionTime = dt.fromisoformat(oldSession['timestamp'])
+        except:
+            logger.info('Removed session with invalid timestamp      ' + str(json.dumps(sessionDict[oldSessionToken])))
+            del sessionDict[oldSessionToken]
+            if oldSessionToken in sessionDictLocks:
+                del sessionDictLocks[oldSessionToken]
+            continue
         if (dt.now() - sessionTime).total_seconds() > targetTimeDifferenceToKill:
             logger.info('Removed old session      ' + str(json.dumps(sessionDict[oldSessionToken])))
             del sessionDict[oldSessionToken] # remove old sessions
@@ -221,6 +250,7 @@ def api():
                 return jsonify(response)
                 
             with webSessionLocks[sessionToken]['lock']:
+                ensureSessionDefaults(webSessions[sessionToken])
                 if data['create']:
                     if webSessions[sessionToken]['gameStarted']:
                         response = {
@@ -238,7 +268,8 @@ def api():
                 response = {
                     'error': '',
                     'usersData': list(webSessions[sessionToken]['players'].values()),
-                    'mapId': mapId
+                    'mapId': mapId,
+                    'spectators': list(webSessions[sessionToken]['spectators'].keys())
                 }
                 logger.info('Response!!!      ' + method + ': ' + str(json.dumps(response)))
                 return jsonify(response)
@@ -264,6 +295,10 @@ def api():
                 sendSessionFinishData(rotKillerData)
                 logger.info('Response!!!      ' + str(json.dumps(response)))
                 return jsonify(response)
+            if sessionToken not in webSessionLocks:
+                webSessionLocks[sessionToken] = {'lock': threading.Lock()}
+
+            ensureSessionDefaults(webSessions[sessionToken])
                
             if playerKey in webSessions[sessionToken]['spectators']:
                 response = {
@@ -333,7 +368,14 @@ def api():
                 return jsonify(response)
             sessionToken = data['sessionToken']
 
+            if sessionToken not in webSessions or sessionToken not in webSessionLocks:
+                response = {
+                    'error': 'Session token was not found in active sessions'
+                }
+                return jsonify(response)
+
             with webSessionLocks[sessionToken]['lock']:
+                ensureSessionDefaults(webSessions[sessionToken])
                 webSessions[sessionToken]['gameStarted'] = True
                 response = {
                     'error': '',
@@ -365,6 +407,7 @@ def api():
                     return jsonify(response)
 
             with webSessionLocks[sessionToken]['lock']:
+                ensureSessionDefaults(webSessions[sessionToken])
                 if webSessions[sessionToken]['gameFinished']:
                     response = {
                         'error': 'Game finished'
@@ -394,6 +437,7 @@ def api():
                 return jsonify(response)
                 
             with webSessionLocks[sessionToken]['lock']:
+                ensureSessionDefaults(webSessions[sessionToken])
                 if webSessions[sessionToken]['playerInfoSend']:
                     response = {
                         'error': '',
@@ -417,7 +461,14 @@ def api():
                 return jsonify(response)
             sessionToken = data['sessionToken']
 
+            if sessionToken not in webSessions or sessionToken not in webSessionLocks:
+                response = {
+                    'error': 'Invalid session id'
+                }
+                return jsonify(response)
+
             with webSessionLocks[sessionToken]['lock']:
+                ensureSessionDefaults(webSessions[sessionToken])
                 if webSessions[sessionToken]['gameStarted']:
                     response = {
                         'error': 'reconnect',
@@ -445,8 +496,9 @@ def api():
                 }
                 return jsonify(response)
             sessionToken = data['sessionToken']
-            if sessionToken in webSessions:
+            if sessionToken in webSessions and sessionToken in webSessionLocks:
                 with webSessionLocks[sessionToken]['lock']:
+                    ensureSessionDefaults(webSessions[sessionToken])
                     webSessions[sessionToken]['gameCreated'] = True
                     webSession = webSessions[sessionToken]
                     
