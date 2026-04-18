@@ -4,6 +4,7 @@
 
 #include "../Scene/SceneComponent.h"
 #include "../Scene/AnimatedSceneComponent.h"
+#include "../Scene/SceneObjectCreation.h"
 #include "../Scene/SceneObjectUtils.h"
 #include "../Scene/Scene.h"
 #include "BasicEffect.h"
@@ -23,6 +24,23 @@ extern NDebug::DebugVar<unsigned int> g_traceCount;
 namespace
 {
 	float s_uncontrolledEffectMaxDyingTime = 15.0f;
+
+  class LocatorInfoFunc : public NScene::IParseLocatorFunc
+  {
+  public:
+    LocatorInfoFunc( nstl::vector<PF_Core::LocatorInfo> &locators_ ) : locators(locators_) {}
+
+    virtual void operator()( NDb::Locator const &locator, NScene::SceneComponent *pSC )
+    {
+      PF_Core::LocatorInfo info;
+      info.locator = locator;
+      info.pSC = pSC;
+      locators.push_back( info );
+    }
+
+  private:
+    nstl::vector<PF_Core::LocatorInfo> &locators;
+  };
 
   bool IsLocatorNameDefault( string locatorName )
   {

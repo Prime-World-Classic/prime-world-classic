@@ -11,16 +11,22 @@
 #include "PFTargetSelector.h"
 #include "../Core/Scheduler.h"
 #include "PF_Core/ScaleColorEffect.h"
+#ifndef VISUAL_CUTTED
 #include "PF_Core/TraceGenSceneComponent.h"
+#include "AdventureScreen.h"
+#endif
 #include "PFEffectSwitcher.h"
 #include "PFNeutralCreep.h"
-#include "AdventureScreen.h"
+#include "IAdventureScreen.h"
+#include "GameLogicStatisticsTypes.h"
+#include "DBSessionRoots.h"
+#include "System/FixedString.h"
 #include "PFTalent.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "PFApplMod.h"
@@ -29,7 +35,9 @@
 #include "PFPredefinedUnitVariables.h"
 #include "PFTriggerApplicator.h"
 
+#ifndef VISUAL_CUTTED
 #include "ClientVisibilityHelper.h"
+#endif
 
 #include "libdb/ClonedPtr.h"
 
@@ -273,7 +281,10 @@ bool PFApplPermanentStatMod::Start()
       StatisticService::RPC::SessionEventInfo params;
       params.strParam2.assign( NStr::StrFmtW(L"x=%d, y=%d", (int)pReceiver->GetPosition().AsVec2D().x, (int)pReceiver->GetPosition().AsVec2D().y ) );
 
-      NGameX::AdventureScreen::Instance()->LogWorldSessionEvent( (SessionEventType::EventType)GetDB().LoggingEvent, params );
+      if ( NGameX::IAdventureScreen* screen = GetWorld()->GetIAdventureScreen() )
+      {
+        screen->LogWorldSessionEvent( (SessionEventType::EventType)GetDB().LoggingEvent, params );
+      }
     }
 	}
 
@@ -1857,6 +1868,10 @@ void PFApplInvisibility::DoSwitchEffects(const bool visibleForPlayer) const
 
 void PFApplInvisibility::UpdateVisibility(const bool resetPartialVisibility /*= false*/)
 {
+#ifdef VISUAL_CUTTED
+  (void)resetPartialVisibility;
+  return;
+#else
   using namespace NGameX;
 
   const ClientVisibilityFlags currentVisibilityFlags(ClientVisibilityHelper::GetFlags(pReceiver));
@@ -1870,6 +1885,7 @@ void PFApplInvisibility::UpdateVisibility(const bool resetPartialVisibility /*= 
 
   if (changed || resetPartialVisibility)
     ApplyPartialVisibility(ClientVisibilityHelper::IsPartialVisibilityApplicable(visibilityFlags), resetPartialVisibility);
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1953,8 +1969,8 @@ bool PFApplMarker::Start()
 {
   string markerName( GetApplicatorName() );
 
-  char buf[8];
-  _itoa_s( GetAbilityOwner()->GetObjectId(), buf, 8, 36 ); // 8 is because radix 36 gives up to 7 digits for 2^32
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%x", GetAbilityOwner()->GetObjectId());
 
   markerName.append( buf );
 
@@ -2010,8 +2026,8 @@ void PFApplMarker::Reset()
   if (IsValid(pReceiver) && !pReceiver->IsObjectDead())
   {
 	  string markerName( GetApplicatorName() );
-	  char buf[8];
-	  _itoa_s( GetAbilityOwner()->GetObjectId(), buf, 8, 36 );
+	  char buf[16];
+	  snprintf(buf, sizeof(buf), "%x", GetAbilityOwner()->GetObjectId());
 	  markerName.append( buf );
 	  pStat = pReceiver->SearchVariableVWM( markerName.c_str() );
   }

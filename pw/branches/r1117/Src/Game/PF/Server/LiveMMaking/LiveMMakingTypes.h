@@ -3,7 +3,9 @@
 
 #include "Server/LobbyPvx/CommonTypes.h"
 // Dirty hack! Fix!
-#if defined( NV_LINUX_PLATFORM )
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+#include "PF_GameLogic/DBAdvMap.h"
+#elif defined( NV_LINUX_PLATFORM )
 #include "Server/Db/DBServer.auto.h"
 #endif
 

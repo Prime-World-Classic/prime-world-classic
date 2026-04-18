@@ -38,10 +38,9 @@ public:
 };
 
 #define SINGLETON4DLL_DEF(BASE) \
-	BASE * Singleton4DLL< BASE >::Get() { return instance; } \
-	void Singleton4DLL< BASE >::Set(BASE *instance_) { instance = instance_; } \
-	BASE * Singleton4DLL< BASE >::instance = 0;
+	template <> BASE * Singleton4DLL< BASE >::Get() { return instance; } \
+	template <> void Singleton4DLL< BASE >::Set(BASE *instance_) { instance = instance_; } \
+	template <> BASE * Singleton4DLL< BASE >::instance = 0;
 
 
 #endif
-

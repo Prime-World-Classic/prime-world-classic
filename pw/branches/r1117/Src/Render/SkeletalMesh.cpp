@@ -1,5 +1,165 @@
 #include "stdafx.h"
 #include "SkeletalMesh.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+DECLARE_INSTANCE_COUNTER(SkeletalMesh);
+
+void SkeletalMesh::Update(bool bNeedBlenderUpdate)
+{
+  (void)bNeedBlenderUpdate;
+}
+
+void SkeletalMesh::RenderToQueue(BatchQueue& queue)
+{
+  (void)queue;
+}
+
+void SkeletalMesh::PrepareRendererAfterMaterial(unsigned int slotNumber) const
+{
+  (void)slotNumber;
+}
+
+SkeletalMesh::SkeletalMesh()
+  : pSkeletonWrapper(0)
+  , pSkeletalAnimationBlender(0)
+  , lightsFlags(0)
+  , needLightingSH(false)
+{
+  Identity(&worldMatrix);
+  localAABB.Init2Empty();
+  worldAABB.center.Set(0.0f, 0.0f, 0.0f);
+  worldAABB.halfSize.Set(0.5f, 0.5f, 0.5f);
+}
+
+void SkeletalMesh::Initialize(const Matrix43& _worldMatrix, const nstl::string& skeletonFileName)
+{
+  (void)skeletonFileName;
+  worldMatrix = _worldMatrix;
+}
+
+void SkeletalMesh::AddSkinPart(const NDb::SkinPartBase* pDBSkinPartResource, unsigned int* pPartIndexes, unsigned int* pPartsCount)
+{
+  (void)pDBSkinPartResource;
+  (void)pPartIndexes;
+  if (pPartsCount)
+  {
+    *pPartsCount = 0;
+  }
+}
+
+void SkeletalMesh::RemoveSkinPart(unsigned int partsCount, const unsigned int* pPartIndexes)
+{
+  (void)partsCount;
+  (void)pPartIndexes;
+}
+
+void SkeletalMesh::SetEnableSkinPart(unsigned int partsCount, const unsigned int* pPartIndexes, bool val)
+{
+  (void)partsCount;
+  (void)pPartIndexes;
+  (void)val;
+}
+
+void SkeletalMesh::UpdateReindexMap()
+{
+}
+
+bool SkeletalMesh::FillOBB(CVec3 (&_vertices)[8]) const
+{
+  if (localAABB.IsEmpty())
+  {
+    return false;
+  }
+
+  RenderComponent::FillOBB(localAABB, worldMatrix, &_vertices[0]);
+  return true;
+}
+
+void SkeletalMesh::SetAnimationBlender(SkeletalAnimationBlender* pSampler)
+{
+  pSkeletalAnimationBlender = pSampler;
+}
+
+void SkeletalMesh::SetWorldMatrix(const Matrix43& transform)
+{
+  worldMatrix = transform;
+}
+
+void SkeletalMesh::SetMaterial(int slotNumber, BaseMaterial* _pMaterial)
+{
+  if (slotNumber < 0 || slotNumber >= (int)maxSlotsCount)
+  {
+    return;
+  }
+
+  elementSlots[slotNumber].SetMaterial(_pMaterial);
+}
+
+BaseMaterial* SkeletalMesh::GetMaterial(int slotNumber)
+{
+  if (slotNumber < 0 || slotNumber >= (int)maxSlotsCount)
+  {
+    return 0;
+  }
+
+  return elementSlots[slotNumber].GetMaterial();
+}
+
+SkeletalMesh::~SkeletalMesh()
+{
+  pSkeletonWrapper = 0;
+  pSkeletalAnimationBlender = 0;
+}
+
+void SkeletalMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
+{
+  (void)proc;
+}
+
+void SkeletalMeshElement::Initialize(BaseMaterial* pMaterial, MeshGeometry const* meshGeom, int index)
+{
+  pMaterialInstance = pMaterial;
+  pMeshGeom = meshGeom;
+  primitiveIndex = index;
+  matrixIndex = 0;
+  isEnabled = true;
+}
+
+SkeletalMeshElement::~SkeletalMeshElement()
+{
+}
+
+void SkeletalMeshElement::Destroy()
+{
+  pMaterialInstance = 0;
+  pMeshGeom = 0;
+  primitiveIndex = 0;
+  matrixIndex = 0;
+}
+
+void SkeletalMeshElement::SetMaterial(BaseMaterial* _pMaterial)
+{
+  pMaterialInstance = _pMaterial;
+}
+
+Primitive const* SkeletalMeshElement::GetPrimitive() const
+{
+  return 0;
+}
+
+StaticVector<unsigned short> const* SkeletalMeshElement::GetFragmentReindex() const
+{
+  return 0;
+}
+
+} // namespace Render
+
+#else
+
 #include "batch.h"
 #include "ConvexVolume.h"
 #include "../MeshConverter/SkeletalAnimationHeader.h"
@@ -8,6 +168,7 @@
 #include "renderresourcemanager.h"
 #include "SkeletonWrapper.h"
 #include "GlobalMasks.h"
+#include "NullRenderSignal.h"
 
 static NDebug::DebugVar<int> render_Skel_Update( "Skel_Update", "PerfCnt", true );
 static NDebug::DebugVar<int> render_Skel_Render( "Skel_Render", "PerfCnt", true );
@@ -360,3 +521,5 @@ namespace Render
   }
 
 };
+
+#endif

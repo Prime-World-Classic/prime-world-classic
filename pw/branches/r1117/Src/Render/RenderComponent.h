@@ -16,11 +16,11 @@
 																								static void* operator new(size_t size, void* ptr); \
                                                 static void operator delete(void* ptr, void* pMem);
 
-#define DECLARE_INSTANCE_COUNTER(className)	uint className##::##className##InstanceCounter = 0; \
-																						void* className##::operator new(size_t size) { ++className##InstanceCounter; return Aligned_MAlloc(sizeof(className), 16); } \
+#define DECLARE_INSTANCE_COUNTER(className)	uint className::className##InstanceCounter = 0; \
+																						void* className::operator new(size_t size) { ++className##InstanceCounter; return Aligned_MAlloc(sizeof(className), 16); } \
 																						void className::operator delete(void* ptr)	{ --className##InstanceCounter; Aligned_Free(ptr); } \
-                                            void* className##::operator new(size_t size, void* ptr) { return ptr; } \
-                                            void className##::operator delete(void* ptr, void* pMem) { ((className*)ptr)->~className(); }
+                                            void* className::operator new(size_t size, void* ptr) { return ptr; } \
+                                            void className::operator delete(void* ptr, void* pMem) { ((className*)ptr)->~className(); }
 																								
 #define SET_INSTANCE_COUNTER(className) ;// NDebug::SetDebugVar( #className, string(NStr::StrFmt("%d x %db = %d bytes", className##::GetInstanceCounter(), sizeof(className), sizeof(className)*className##::GetInstanceCounter())), false );
 
@@ -31,12 +31,17 @@ namespace NDb
 																							
 namespace Render
 {
+#if defined(NV_LINUX_PLATFORM)
+  #define RENDER_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define RENDER_ALIGN16 __declspec(align(16))
+#endif
 
 class RenderComponent;
 class BatchQueue;
 class BaseMaterial;
 
-__declspec(align(16))
+RENDER_ALIGN16
 class RenderComponent : public NonCopyable
 {
 protected:
@@ -78,5 +83,7 @@ _interface IMaterialProcessor
 {
   virtual void operator()(BaseMaterial &material) = 0;
 };
+
+#undef RENDER_ALIGN16
 
 }

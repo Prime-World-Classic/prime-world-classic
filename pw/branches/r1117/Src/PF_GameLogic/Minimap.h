@@ -1,5 +1,89 @@
 #pragma once
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+#include "PFAICommon.h"
+
+namespace NDb
+{
+  struct DBMinimap;
+  struct MinimapImages;
+  struct Texture;
+}
+
+namespace UI
+{
+  class FlashContainer2;
+}
+
+namespace NWorld
+{
+  class PFBaseUnit;
+  class PFBaseHero;
+  class PFLogicObject;
+}
+
+namespace NGameX
+{
+  class AdventureFlashInterface;
+
+  class Minimap
+    : public CObjectBase
+    , public DI::SelfProvider<Minimap>
+  {
+    OBJECT_BASIC_METHODS( Minimap );
+
+    enum
+    {
+      DefaultUnitIcon = 0x80000DEF
+    };
+
+  public :
+    Minimap();
+    Minimap( UI::FlashContainer2 * _flashWnd, AdventureFlashInterface * _flashInterface );
+    ~Minimap();
+
+    void SetSpectatorMode(const bool value);
+
+    void InitAndSetImages( const NDb::DBMinimap * _minimapData, const NDb::MinimapImages * _images );
+
+    void SetWorldSize( const CVec2 & worldSize );
+    void SetMinimapRotation( float angle );
+    void SetLocalHero(const NWorld::PFBaseHero* const _hero);
+    void SetCameraPosition( const CVec3 & newPos );
+    void SetOver( bool over );
+    bool IsOver();
+
+    void SetCursorPosition( float x, float y );
+    const CVec2& GetCursotPosition();
+
+    bool BeginUpdate( float deltaTime );
+    void AddObject( int unitType, int faction, const CVec3 & pos, int icon );
+    void AddObject( const NWorld::PFBaseUnit* const unit, const int icon = DefaultUnitIcon, const CVec3& offset = VNULL3);
+    void AddObject( const NWorld::PFLogicObject* const logicObject, const int icon, const CVec3& offset = VNULL3);
+    int  AddHeroIcon( const NDb::Texture * icon );
+    bool EndUpdate();
+
+    void Ui2World( float x, float y, CVec3 & result ) const;
+    void World2Ui( const CVec3 & world, CVec2 & result ) const;
+
+    void AddSignal( const CVec3 & worldPos, int faction);
+    void AddSignal( const CVec3 & worldPos, int faction, float lifeTime );
+
+    void Render();
+    void OnRenderModeChange();
+
+    void SetMinimapEffect( int index, int effect );
+    void UpdateMinimapEffect( int index, const CVec3& pos );
+    int  AddMinimapEffect( int effect );
+
+    void SetTargetZoneDisplay(const bool value);
+    void SetTargetZoneRange(const float value);
+  };
+}
+
+#else
+
 #include "Render/dipdescriptor.h"
 #include "Render/DxIntrusivePtr.h"
 #include "Render/dxutils.h"
@@ -287,3 +371,5 @@ namespace NGameX
   };
 
 } //namespace NGameX
+
+#endif

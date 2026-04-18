@@ -1,7 +1,10 @@
 #include "stdafx.h"
 
+#include "DBSessionRoots.h"
+#include "DBVisualRoots.h"
 #include "PFHero.h"
 #include "PFMaleHero.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientHero.h"

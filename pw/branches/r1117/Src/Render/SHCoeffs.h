@@ -1,5 +1,21 @@
 #pragma once
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "../System/Basic.h"
+#include "../System/Color.h"
+#include "../System/Geom.h"
+
+namespace Render
+{
+
+class Texture2D;
+class TextureCube;
+typedef CObj<Texture2D> Texture2DRef;
+typedef CObj<TextureCube> TextureCubeRef;
+
+}
+#else
 #include "../Render/TextureManager.h"
+#endif
 namespace Render
 {
 

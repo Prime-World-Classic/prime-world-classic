@@ -9,6 +9,8 @@
 #include "DiAnGr.h"
 #include "Camera.h"
 
+BASIC_REGISTER_CLASS( NScene::SceneComponent );
+
 namespace NScene
 {
 

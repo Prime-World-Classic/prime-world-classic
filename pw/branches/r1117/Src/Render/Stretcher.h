@@ -1,6 +1,6 @@
 #pragma once
 
-#include "DeviceLost.h"
+#include "texture.h"
 
 namespace Render
 {

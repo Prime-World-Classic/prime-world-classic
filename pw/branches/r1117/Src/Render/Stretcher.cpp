@@ -1,7 +1,63 @@
 #include "StdAfx.h"
-#include "ImmediateRenderer.h"
 #include "Stretcher.h"
-#include "..\System\Math\ieeehalfprecision.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+static const int NumTablePixels = 128;
+
+float Lanczos2(float _arg)
+{
+  const float x = fabsf(_arg);
+  if(x < 2.f) {
+    const float pi_x = PI * x;
+    if(x > 1.e-4f)
+      return 2.f * (sinf(pi_x) / pi_x) * (sinf(.5f * pi_x) / pi_x);
+    else
+      return 1.f;
+  }
+  else
+    return 0.f;
+}
+
+
+bool StretcherTwoPass::SetTableTex()
+{
+  return false;
+}
+
+
+StretcherTwoPass::StretcherTwoPass(Func func) : pTable(new CVec4[2 * NumTablePixels])
+{
+  if (pTable)
+  {
+    CVec4* const pData = Get(pTable);
+    for (int i = 0; i < NumTablePixels; ++i)
+    {
+      CVec4& entry = pData[i];
+      float x = float(i) / NumTablePixels;
+      entry.Set(func(x - 2.f), func(x - 1.f), func(x), func(x + 1.f));
+      float sum = entry.x + entry.y + entry.z + entry.w;
+      entry /= sum;
+    }
+  }
+}
+
+
+HRESULT StretcherTwoPass::Stretch(const Texture2DRef& _src, const CTRect<int>* _srcRect,
+                                  const Texture2DRef& _dest, const Texture2DRef& _scratch)
+{
+  return S_OK;
+}
+
+} // namespace Render
+
+#else
+
+#include "ImmediateRenderer.h"
+#include "../System/Math/ieeehalfprecision.h"
 
 namespace Render
 {
@@ -119,3 +175,5 @@ HRESULT StretcherTwoPass::Stretch(const Texture2DRef& _src, const CTRect<int> *_
 }
 
 }; // namespace PF_Render
+
+#endif

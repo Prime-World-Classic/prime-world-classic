@@ -1,8 +1,13 @@
 #ifndef _SYNC_PROCESSOR_STATE_H_
 #define _SYNC_PROCESSOR_STATE_H_
 
+#if defined( NI_PLATF_LINUX )
+static const DWORD LOGIC_PROCESSOR_STATE = 0;
+static const DWORD UI_PROCESSOR_STATE = 0;
+#else
 static const DWORD LOGIC_PROCESSOR_STATE = _EM_INVALID | _EM_ZERODIVIDE | _EM_OVERFLOW | _EM_UNDERFLOW | _EM_INEXACT | _EM_DENORMAL | _PC_24	| _RC_NEAR;
 static const DWORD UI_PROCESSOR_STATE = _EM_INVALID | _EM_ZERODIVIDE | _EM_OVERFLOW | _EM_UNDERFLOW | _EM_INEXACT | _EM_DENORMAL | _PC_64	| _RC_NEAR;
+#endif
 
 void SyncProcessorState();
 unsigned int GetProcessorState();

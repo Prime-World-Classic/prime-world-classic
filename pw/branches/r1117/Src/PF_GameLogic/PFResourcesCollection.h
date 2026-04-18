@@ -106,7 +106,7 @@ namespace NWorld
 
 		  //OutputDebugStringA();
 		//AddResourcePersistanceID(resources[i]->persistentId.c_str());
-          nstl::map<uint, H>::iterator it = hashedRes.find(id);
+          typename nstl::map<uint, H>::iterator it = hashedRes.find(id);
           NI_ASSERT(it == hashedRes.end(), NStr::StrFmt( "Dublicate collected resource found \"%s\" in \"%s\"", resources[i]->persistentId.c_str(), GetFormattedDbId( resources[i]->GetDBID())));
           hashedRes[id] = resources[i];
         }

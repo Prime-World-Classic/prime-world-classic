@@ -1,5 +1,5 @@
 #pragma once
-#include "System\Crc32Calculator.h"
+#include "System/Crc32Calculator.h"
 
 _interface IPointerHolder;
 namespace NCore

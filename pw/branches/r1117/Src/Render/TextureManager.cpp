@@ -1,3 +1,342 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "stdafx.h"
+#include "../System/Color.h"
+#include "TextureManager.h"
+#include "DBRenderResources.h"
+#include "../System/nhash_map.h"
+
+namespace Render
+{
+
+namespace
+{
+
+struct Texture2DPoolEntry
+{
+  Texture2DRef texture;
+  void* poolId;
+
+  Texture2DPoolEntry()
+    : poolId(0)
+  {
+  }
+
+  Texture2DPoolEntry(Texture2DRef const& texture_, void* poolId_)
+    : texture(texture_)
+    , poolId(poolId_)
+  {
+  }
+};
+
+struct TextureCubePoolEntry
+{
+  TextureCubeRef texture;
+  void* poolId;
+
+  TextureCubePoolEntry()
+    : poolId(0)
+  {
+  }
+
+  TextureCubePoolEntry(TextureCubeRef const& texture_, void* poolId_)
+    : texture(texture_)
+    , poolId(poolId_)
+  {
+  }
+};
+
+typedef nstl::hash_map<nstl::string, Texture2DPoolEntry> Texture2DPool;
+typedef nstl::hash_map<nstl::string, TextureCubePoolEntry> TextureCubePool;
+
+Texture2DPool g_texture2DPool;
+TextureCubePool g_textureCubePool;
+DefaultTextures g_defaultTextures;
+bool g_showMipMap = false;
+
+D3DFORMAT ToD3DFormat(ERenderFormat format)
+{
+  switch (format)
+  {
+    case FORMAT_R32F: return D3DFMT_R32F;
+    case FORMAT_G32R32F: return D3DFMT_G32R32F;
+    case FORMAT_R16F: return D3DFMT_R16F;
+    case FORMAT_A8R8G8B8: return D3DFMT_A8R8G8B8;
+    case FORMAT_X8R8G8B8: return D3DFMT_X8R8G8B8;
+    case FORMAT_A8: return D3DFMT_A8;
+    case FORMAT_L8: return D3DFMT_L8;
+    case FORMAT_A16B16G16R16F: return D3DFMT_A16B16G16R16F;
+    case FORMAT_A32B32G32R32F: return D3DFMT_A32B32G32R32F;
+    case FORMAT_L16: return D3DFMT_L16;
+    case FORMAT_R5G6B5: return D3DFMT_R5G6B5;
+    case FORMAT_D24S8: return D3DFMT_D24S8;
+    default: return D3DFMT_UNKNOWN;
+  }
+}
+
+D3DSURFACE_DESC MakeTextureDesc(unsigned int width, unsigned int height, DWORD usage, D3DPOOL pool, D3DFORMAT format)
+{
+  D3DSURFACE_DESC desc;
+  desc.Format = format;
+  desc.Type = D3DRTYPE_TEXTURE;
+  desc.Usage = usage;
+  desc.Pool = pool;
+  desc.MultiSampleType = D3DMULTISAMPLE_NONE;
+  desc.MultiSampleQuality = 0;
+  desc.Width = width ? width : 1;
+  desc.Height = height ? height : 1;
+  return desc;
+}
+
+D3DSURFACE_DESC MakeSurfaceDesc(unsigned int width, unsigned int height, DWORD usage, D3DFORMAT format)
+{
+  D3DSURFACE_DESC desc;
+  desc.Format = format;
+  desc.Type = D3DRTYPE_SURFACE;
+  desc.Usage = usage;
+  desc.Pool = D3DPOOL_DEFAULT;
+  desc.MultiSampleType = D3DMULTISAMPLE_NONE;
+  desc.MultiSampleQuality = 0;
+  desc.Width = width ? width : 1;
+  desc.Height = height ? height : 1;
+  return desc;
+}
+
+Texture2DRef CreatePlaceholderTexture2D(unsigned int width, unsigned int height, DWORD usage, D3DPOOL pool, D3DFORMAT format)
+{
+  return Create<Texture2D>(MakeTextureDesc(width, height, usage, pool, format));
+}
+
+TextureCubeRef CreatePlaceholderCubeTexture()
+{
+  return Create<TextureCube>(static_cast<IDirect3DCubeTexture9*>(0));
+}
+
+void EnsureDefaultTexturesInitialized()
+{
+  if (!g_defaultTextures.pEmptyTexture.GetPtr() || !g_defaultTextures.pTexture.GetPtr() || !g_defaultTextures.pWhiteTexture.GetPtr())
+    g_defaultTextures.Init();
+}
+
+nstl::string NormalizeTexturePath(nstl::string const& filename)
+{
+  if (filename.empty())
+    return nstl::string();
+  if (filename[0] == '/' || filename[0] == '\\')
+    return filename;
+  return '/' + filename;
+}
+
+Texture2DRef GetOrCreateTexture2D(nstl::string const& filename, void* poolId, bool forceReload)
+{
+  const nstl::string normalized = NormalizeTexturePath(filename);
+  Texture2DPool::iterator it = g_texture2DPool.find(normalized);
+  if (it != g_texture2DPool.end() && !forceReload)
+  {
+    if (poolId)
+      it->second.poolId = poolId;
+    return it->second.texture;
+  }
+
+  Texture2DRef texture = CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+  g_texture2DPool[normalized] = Texture2DPoolEntry(texture, poolId);
+  return texture;
+}
+
+TextureCubeRef GetOrCreateTextureCube(nstl::string const& filename, void* poolId)
+{
+  const nstl::string normalized = NormalizeTexturePath(filename);
+  TextureCubePool::iterator it = g_textureCubePool.find(normalized);
+  if (it != g_textureCubePool.end())
+  {
+    if (poolId)
+      it->second.poolId = poolId;
+    return it->second.texture;
+  }
+
+  TextureCubeRef texture = CreatePlaceholderCubeTexture();
+  g_textureCubePool[normalized] = TextureCubePoolEntry(texture, poolId);
+  return texture;
+}
+
+} // namespace
+
+void TickTextureManager()
+{
+}
+
+DefaultTextures& GetDefaultTextures()
+{
+  EnsureDefaultTexturesInitialized();
+  return g_defaultTextures;
+}
+
+const Texture2DRef& GetDefaultTexture2D()
+{
+  return GetDefaultTextures().pTexture;
+}
+
+const Texture2DRef& GetEmptyTexture2D()
+{
+  return GetDefaultTextures().pEmptyTexture;
+}
+
+const Texture2DRef& GetWhiteTexture2D()
+{
+  return GetDefaultTextures().pWhiteTexture;
+}
+
+Texture2DRef CreateARGBTextureFromFileInMemory(const char* pData, int sizeInFile, UINT skipMipLevels)
+{
+  (void)pData;
+  (void)sizeInFile;
+  (void)skipMipLevels;
+  return CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+}
+
+Texture2DRef CreateTextureFromFileInMemory(const char* pData, int sizeInFile, UINT skipMipLevels)
+{
+  (void)pData;
+  (void)sizeInFile;
+  (void)skipMipLevels;
+  return CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+}
+
+Texture2DRef Create2DTextureFromArray2D(const CArray2D<Render::Color>& src)
+{
+  if (src.IsEmpty())
+    return GetDefaultTexture2D();
+  return CreatePlaceholderTexture2D(src.GetSizeX(), src.GetSizeY(), 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+}
+
+Texture2DRef CreateTexture2D(unsigned int width, unsigned int height, unsigned int level, PoolType poolType, ERenderFormat formatType)
+{
+  (void)level;
+  DWORD usage = 0;
+  D3DPOOL pool = D3DPOOL_MANAGED;
+  GetD3DPoolAndUsagesParamaters(usage, pool, poolType);
+  return CreatePlaceholderTexture2D(width, height, usage, pool, ToD3DFormat(formatType));
+}
+
+Texture2DRef CreateRenderTexture2D(unsigned int width, unsigned int height, ERenderFormat formatType, bool autoMipmaps)
+{
+  const DWORD usage = D3DUSAGE_RENDERTARGET | (autoMipmaps ? D3DUSAGE_AUTOGENMIPMAP : 0);
+  return CreatePlaceholderTexture2D(width, height, usage, D3DPOOL_DEFAULT, ToD3DFormat(formatType));
+}
+
+TextureCubeRef CreateRenderCubeTexture(unsigned int edgeLen, ERenderFormat formatType)
+{
+  (void)edgeLen;
+  (void)formatType;
+  return CreatePlaceholderCubeTexture();
+}
+
+TextureCubeRef LoadCubeTextureFromFileIntoPoolRef(const nstl::string& filename, bool canBeVisualDegrade, void* poolId)
+{
+  (void)canBeVisualDegrade;
+  return GetOrCreateTextureCube(filename, poolId);
+}
+
+TextureCubeRef LoadCubeTextureFromFileRef(const nstl::string& filename)
+{
+  return LoadCubeTextureFromFileIntoPoolRef(filename, false, 0);
+}
+
+Texture2DRef Load2DTextureFromFile(const nstl::string& filename, bool bForceReload)
+{
+  return GetOrCreateTexture2D(filename, 0, bForceReload);
+}
+
+Texture2DRef LoadTexture2DIntoPool(const NDb::Texture& txt, bool canBeVisualDegrade, void* poolId)
+{
+  (void)canBeVisualDegrade;
+  if (txt.textureFileName.size() > 0)
+    return GetOrCreateTexture2D(txt.textureFileName, poolId, false);
+  return GetWhiteTexture2D();
+}
+
+Texture2DRef LoadTexture2D(const NDb::Texture& txt)
+{
+  return LoadTexture2DIntoPool(txt, false, 0);
+}
+
+RenderSurfaceRef CreateDepthStencilSurface(unsigned int width, unsigned int height)
+{
+  return Create<RenderSurface>(MakeSurfaceDesc(width, height, D3DUSAGE_DEPTHSTENCIL, D3DFMT_D24S8));
+}
+
+void OnTextureDestruction(Texture* tex)
+{
+  (void)tex;
+}
+
+void Reset2DTextureFromFile(const nstl::string& filename)
+{
+  Load2DTextureFromFile(filename, true);
+}
+
+void UnloadAllTextures()
+{
+  g_texture2DPool.clear();
+  g_textureCubePool.clear();
+}
+
+void ReloadTextures(bool bModifiedOnly)
+{
+  (void)bModifiedOnly;
+}
+
+void ShowMipmapsWithReload(bool show)
+{
+  g_showMipMap = show;
+}
+
+void UnloadTexturePool(void* poolId)
+{
+  if (!poolId)
+    return;
+
+  for (Texture2DPool::iterator it = g_texture2DPool.begin(); it != g_texture2DPool.end(); )
+  {
+    Texture2DPool::iterator current = it++;
+    if (current->second.poolId == poolId)
+      g_texture2DPool.erase(current);
+  }
+
+  for (TextureCubePool::iterator it = g_textureCubePool.begin(); it != g_textureCubePool.end(); )
+  {
+    TextureCubePool::iterator current = it++;
+    if (current->second.poolId == poolId)
+      g_textureCubePool.erase(current);
+  }
+}
+
+void ForAllTextures(TextureProc& p)
+{
+  for (Texture2DPool::iterator it = g_texture2DPool.begin(); it != g_texture2DPool.end(); ++it)
+    p(it->first, TextureRef(it->second.texture.GetPtr()));
+
+  for (TextureCubePool::iterator it = g_textureCubePool.begin(); it != g_textureCubePool.end(); ++it)
+    p(it->first, TextureRef(it->second.texture.GetPtr()));
+}
+
+void DefaultTextures::Init()
+{
+  pEmptyTexture = Create<Texture2D>(static_cast<IDirect3DTexture9*>(0));
+  pTexture = CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+  pWhiteTexture = CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+}
+
+void DefaultTextures::Term()
+{
+  pWhiteTexture = 0;
+  pTexture = 0;
+  pEmptyTexture = 0;
+}
+
+} // namespace Render
+
+#else
 #include "stdafx.h"
 #include "renderflagsconverter.h"
 #include "renderer.h"
@@ -761,3 +1100,5 @@ void PoolMT::UnloadTexturePool( void * poolId )
 
 REGISTER_DEV_CMD( reloadtextures, Render::ReloadTexturesCmd );
 REGISTER_DEV_CMD( dump_textures, Render::DumpTexturePool );
+
+#endif

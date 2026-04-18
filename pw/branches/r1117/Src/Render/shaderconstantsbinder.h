@@ -2,6 +2,8 @@
 
 namespace Render
 {
+	struct ShaderConstantTable;
+
 	namespace ShaderConstantsBinder
 	{
 		///

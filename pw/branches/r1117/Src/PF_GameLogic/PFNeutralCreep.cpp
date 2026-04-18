@@ -3,12 +3,13 @@
 #include "PFNeutralCreep.h"
 #include "PFCommonCreep.h"
 #include "AdventureScreen.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
 #include "PFClientObjectHelpers.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace

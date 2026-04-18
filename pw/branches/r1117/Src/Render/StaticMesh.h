@@ -2,8 +2,11 @@
 
 #include "RenderComponent.h"
 #include "MeshResource.h"
-#include "MaterialSpec.h"
 #include "VertexColorStream.h"
+#include "dxutils.h"
+#if !defined(PW_LINUX_NULL_RENDER)
+#include "LightsManager.h"
+#endif
 
 #include "renderresourcemanager.h"
 #include "MaterialResourceInterface.h"
@@ -23,9 +26,17 @@ namespace Render
 {
 
 struct SceneConstants;
+#if !defined(PW_LINUX_NULL_RENDER)
+class LightsData;
+#endif
 
-__declspec(align(16))
-class StaticMeshBase : public RenderComponent
+#if defined(NV_LINUX_PLATFORM)
+  #define STATIC_MESH_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define STATIC_MESH_ALIGN16 __declspec(align(16))
+#endif
+
+class STATIC_MESH_ALIGN16 StaticMeshBase : public RenderComponent
 {
 protected:
 	Matrix43  worldMatrix;
@@ -46,8 +57,7 @@ public:
   virtual void AddGeometryCRC(Crc32Checksum &crc) {}
 };
 
-__declspec(align(16))
-class StaticMesh : public StaticMeshBase
+class STATIC_MESH_ALIGN16 StaticMesh : public StaticMeshBase
 {
 	REPLACE_DEFAULT_NEW_DELETE(StaticMesh);
 	
@@ -65,7 +75,9 @@ protected:
 	int                          materialsCount;
 	AutoPtr<MeshVertexColors>    pVertexColors;
   
+#if !defined(PW_LINUX_NULL_RENDER)
   LightsData lightsData;
+#endif
   unsigned long lightsFlags;
 	
   mutable DeviceLostWrapper<OcclusionQueries> queries;
@@ -116,5 +128,7 @@ public:
 
   virtual void AddGeometryCRC(Crc32Checksum &crc);
 };
+
+#undef STATIC_MESH_ALIGN16
 
 }//namespace Render

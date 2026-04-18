@@ -8,15 +8,8 @@
 #include "../System/Spline.h"
 #include "../System/BitData.h"
 #include "../Terrain/TerrainElementManager.h"
+#include "../Terrain/TerrainGeometryManager.h"
 #include "RoadGeometryBuilder.h"
-
-namespace Terrain
-{
-  namespace EModification
-  {
-    enum Enum;
-  }
-}
 
 namespace Terrain
 {

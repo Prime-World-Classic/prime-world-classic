@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include <float.h>
 #include "aabb.h"
+#include "DBRenderResources.h"
 
 namespace Render
 {

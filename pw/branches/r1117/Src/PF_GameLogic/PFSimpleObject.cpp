@@ -3,13 +3,14 @@
 #include "PFSimpleObject.h"
 #include "TileMap.h"
 #include "WarFog.h"
+#include "../Scene/DBScene.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFSimpleObjectClient.h"
 #include "PFClientMultistateObject.h"
 #else
 #include "PFLogicObject.h"
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 #include "System/InlineProfiler.h"
 

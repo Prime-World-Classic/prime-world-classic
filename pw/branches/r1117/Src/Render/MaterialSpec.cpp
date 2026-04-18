@@ -3,6 +3,16 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "MaterialSpec.h"
+
+namespace Render
+{
+}
+
+#else
+
 #include "../Render/GlobalMasks.h"
 #include "MaterialSpec.h"
 #include "../libdb/AnimatedWrapper.h"
@@ -126,3 +136,4 @@ static struct SRegister_MaterialRegistrations
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "MaterialSpec.inl"
 
+#endif

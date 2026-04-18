@@ -28,7 +28,7 @@
 #include "PFClientSummoned.h"
 #include "PFClientApplicators.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "PFImpulsiveBuffs.h"
@@ -42,6 +42,7 @@
 #include "IAdventureScreen.h"
 #include "SessionEventType.h"
 #include "System/StarForce/StarForce.h"
+#include "Sound/EventScene.h"
 
 #include "PlayerBehaviourTracking.h"
 
@@ -897,7 +898,7 @@ void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTar
 //////////////////////////////////////////////////////////////////////////
 bool  PFBaseHero::OnDispatchApply(PFDispatch const &dispatch)
 {
-  const CPtr<PFBaseUnit> pSender = dispatch.GetSender();
+  const CPtr<PFBaseUnit> pSender = dispatch.GetSender().GetPtr();
   if ( IsTargetValid(pSender) && pSender->GetFaction() != GetFaction() )
   {
 

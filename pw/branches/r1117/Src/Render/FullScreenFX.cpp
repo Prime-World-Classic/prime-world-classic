@@ -1,6 +1,45 @@
 #include "stdafx.h"
 #include "FullScreenFX.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render {
+
+static FullScreenFX::Params g_defaultParams;
+
+FullScreenFX::Params::Params()
+{
+  InMin  = CVec4(0.f, 0.f, 0.f, 0.f);
+  InMax  = CVec4(1.f, 1.f, 1.f, 0.f);
+  OutMin = CVec4(0.f, 0.f, 0.f, 0.f);
+  OutMax = CVec4(1.f, 1.f, 1.f, 0.f);
+  Gamma  = CVec4(0.f, 0.f, 0.f, 0.f);
+
+  Color = CVec4(1.f, 1.f, 1.f, 1.f);
+  ColorCastCoef = 0.f;
+
+  SharpPixelSize = 0.0027f;
+  SharpCoef = 0.f;
+}
+
+FullScreenFX::FullScreenFX() : pBloom(new Bloom)
+{
+}
+
+FullScreenFX::~FullScreenFX()
+{
+}
+
+void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pTexture, TextureVtx *pCoeffTexture,
+                         bool doColorCorrect, bool doSharp, float colorSaturation, Texture2D *pDepthTexture, Params const *params,
+                         const CVec4& satColor, bool useSatColor)
+{
+}
+
+} // namespace Render
+
+#else
+
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
 #include "Filter.h"
@@ -321,5 +360,7 @@ void FullScreenFX::Apply(const SceneConstants &viewSceneConsts, Texture2D *pText
 }
 
 } // namespace Render
+
+#endif
 
 // end of FullScreenFX.cpp

@@ -6,6 +6,7 @@
 #include "../System/nhash_map.h"
 #include "../System/ScopedArray.h"
 #include "../System/Geom.h"
+#include "../Sound/DBSound.h"
 
 class AmbienceMap
 {

@@ -10,7 +10,6 @@
 #include "PFWorld.h"
 #include "PFAIWorld.h"
 #include "../System/ScopedArray.h"
-#include "../Terrain/TerrainLayerManager.h"
 
 namespace NGameX { class PFClientNatureMap; }
 namespace Terrain { class NatureMap; }

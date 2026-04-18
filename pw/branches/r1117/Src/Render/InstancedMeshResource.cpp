@@ -3,9 +3,27 @@
 #include "../System/InlineProfiler.h"
 
 #include "../MeshConverter/MeshHeader.h"
+#include "NullRenderSignal.h"
+#include "renderer.h"
 #include "smartrenderer.h"
 #include "InstancedMeshResource.h"
 #include <MemoryLib/UserMessage.h>
+
+#if defined(PW_LINUX_NULL_RENDER)
+#include "DBRender.h"
+
+namespace Render
+{
+
+struct RuntimePins
+{
+  NDb::RenderModePin RenderModeValue;
+};
+
+RuntimePins& GetRuntimePins();
+
+} // namespace Render
+#endif
 
 static bool s_newShadows = false;
 REGISTER_DEV_VAR("shadowNew", s_newShadows, STORAGE_NONE)
@@ -44,12 +62,11 @@ void InstancedPrimitive::SetupConstants(int startConstant) const
 {
   if(s_newShadows && GetRuntimePins().RenderModeValue == NDb::RENDERMODEPIN_RENDERTOSHADOW)
   {
-    Matrix43* const pMatrices = (Matrix43*)_malloca( numInstances * sizeof(Matrix43) );
+    nstl::vector<Matrix43> matrices(numInstances);
     for(int i = 0; i < numInstances; ++i)
-      pMatrices[i] = pInstanceData[i].worldMatrix;
+      matrices[i] = pInstanceData[i].worldMatrix;
 
-    GetRenderer()->SetVertexShaderConstants(startConstant, numInstances * sizeof(Matrix43) / 16, pMatrices);
-    _freea( pMatrices );
+    GetRenderer()->SetVertexShaderConstants(startConstant, numInstances * sizeof(Matrix43) / 16, matrices.empty() ? 0 : &matrices[0]);
   }
   else
 	  GetRenderer()->SetVertexShaderConstants(startConstant, numInstances * sizeof(InstanceInfo) / 16, Get(pInstanceData));
@@ -177,6 +194,14 @@ InstancedMeshGeometry::~InstancedMeshGeometry()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void InstancedMeshGeometry::CreateBuffersHWI(char const *pVtxData, unsigned int const *pIdxData, UINT originalVBSize)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  (void)pVtxData;
+  (void)pIdxData;
+  (void)originalVBSize;
+  pVB = 0;
+  pIB = 0;
+  return;
+#else
 	// Create & fill vertex buffer
 	for(int i = 0; i < 40 && 0 == (pVB = CreateVB(originalVBSize, RENDER_POOL_MANAGED)); ++i)
     Sleep(200);
@@ -200,6 +225,7 @@ void InstancedMeshGeometry::CreateBuffersHWI(char const *pVtxData, unsigned int 
       pIB->Unlock();
 		}
 	}
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

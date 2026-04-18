@@ -3,7 +3,7 @@
 //??#include "AIClasses.h"
 //??#include "../DebugTools/DebugInfoManager.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-enum EPathRestriction; // declared in CommonPathFinder.h
+enum EPathRestriction : int; // declared in CommonPathFinder.h
 
 namespace NWorld
 {

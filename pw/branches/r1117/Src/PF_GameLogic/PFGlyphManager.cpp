@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "PFGlyphManager.h"
 
+#include "DBSessionRoots.h"
 #include "PFWorld.h"
 #include "PFGlyph.h"
 #include "PFClientObjectHelpers.h"

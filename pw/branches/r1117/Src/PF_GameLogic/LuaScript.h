@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LuaValueSettable.h"
+#include "Scripts/Script.h"
 
 struct luaValueSetter
 {
@@ -54,6 +55,7 @@ class PFScript : public NScript::Script
 public:
   PFScript() : NScript::Script(true), pPFAIContainer(0), isLoaded(false) {}
   PFScript(PFAIContainer * _pPFAIContainer) : NScript::Script(true), pPFAIContainer(_pPFAIContainer), isLoaded(false) {}
+  using NScript::Script::GetState;
 
   void SetAIContainer(PFAIContainer * _pPFAIContainer) { pPFAIContainer = _pPFAIContainer; }
   PFAIContainer* GetAIContainer() const { return pPFAIContainer; }

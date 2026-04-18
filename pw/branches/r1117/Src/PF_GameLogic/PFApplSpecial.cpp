@@ -5,6 +5,7 @@
 #include "PFApplicatorHistoryAnalysis.h"
 #include "PFBaseUnit.h"
 #include "PFBaseUnitStates.h"
+#include "PFBuildings.h"
 #include "PFDispatch.h"
 #include "PFDispatchFactory.h"
 #include "PFLogicDebug.h"
@@ -23,13 +24,14 @@
 #include "HeroActions.h"
 #include "../PF_Core/GhostEffect.h"
 #include "SessionEventType.h"
+#include "GameLogicStatisticsTypes.h"
 #include "DayNightController.h"
 
 #ifndef VISUAL_CUTTED
 #include "AdventureScreen.h"
 #include "PFClientApplicators.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld
@@ -1315,7 +1317,14 @@ bool PFApplSetTimescale::Start()
     return true;
 
   float scale = Clamp(GetDB().desiredTimescale, 0.5f, 1.5f);
+#ifdef VISUAL_CUTTED
+  if ( NGameX::IAdventureScreen* screen = GetWorld()->GetIAdventureScreen() )
+  {
+    screen->SendGameCommand(CreateCmdSetTimescale(scale), true);
+  }
+#else
   NGameX::AdventureScreen::Instance()->SendGameCommand(CreateCmdSetTimescale(scale), true);
+#endif
 
   return true; // done
 }
@@ -1344,4 +1353,3 @@ REGISTER_WORLD_OBJECT_NM(PFApplPickupChanneling         , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplInvalidAbilityTarget     , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplDayNightTransition       , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplSetTimescale		          , NWorld);
-

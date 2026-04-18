@@ -1,7 +1,9 @@
 #include "stdafx.h"
 
+#include "DBScene.h"
 #include "SceneObjectsPool.h"
 #include "SceneObjectCreation.h"
+#include "../Render/DxResourcesControl.h"
 #include "../System/InlineProfiler.h"
 
 

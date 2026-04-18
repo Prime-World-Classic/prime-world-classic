@@ -1,11 +1,20 @@
 #pragma once
 
 #include "../Render/RenderComponent.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+namespace Render
+{
+  class BatchQueue;
+  struct SceneConstants;
+  class ConvexVolume;
+}
+#else
 #include "../Render/sceneconstants.h"
 #include "../Render/batch.h"
 #include "../Render/omnilight.h"
 #include "../Render/ConvexVolume.h"
 #include "../Render/visitmarker.h"
+#endif
 #include "../Scene/VoxelGridObj.h"
 #include "DBScene.h"
 #include "../System/SimpleSignalST.h"

@@ -518,6 +518,8 @@ diINLINE DiBool DiIsFinite(DiFloat rValue)
 
 #ifdef __MWERKS__
   DIRETURN(isfinite(rValue));
+#elif defined(NV_LINUX_PLATFORM)
+  DIRETURN(std::isfinite(rValue));
 #else
   DIRETURN(_finite(rValue));
 #endif __MWERKS__
@@ -541,6 +543,10 @@ diINLINE DiBool DiIsFinite(DiFloat rValue)
 #define diFPU_ROUND_MODE_TRUNCATE   3<<10
 diINLINE DiInt32 DiF2L(DiFloat rValue)
 {
+#if defined(NV_LINUX_PLATFORM)
+  DIFUNCTION("DiF2L");
+  DIRETURN(static_cast<DiInt32>(rValue));
+#else
   DiInt16 nOldMode, nNewMode;
   DiInt32 nRet;
 
@@ -566,6 +572,7 @@ diINLINE DiInt32 DiF2L(DiFloat rValue)
   }
 
   DIRETURN(nRet);
+#endif
 } // end of DiF2L
 
 // *******************************************************************

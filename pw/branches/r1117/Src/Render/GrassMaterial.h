@@ -1,8 +1,53 @@
 //generated file
 #pragma once
+#if defined(PW_LINUX_NULL_RENDER)
+#include "IMaterial.h"
+#include "DBRender.h"
+
+namespace Render
+{
+	namespace Materials
+	{
+		class GrassMaterial : public IMaterial
+		{
+		public:
+			GrassMaterial() = default;
+			static Materials::GrassMaterial* CreateMaterialInstance( const NDb::GrassMaterial* pGrassMaterial )
+			{
+				GrassMaterial* pMaterialInstance = new GrassMaterial();
+				pMaterialInstance->FillMaterial( pGrassMaterial, 0, false );
+				return pMaterialInstance;
+			}
+			virtual void PrepareRenderer() override {}
+			virtual ~GrassMaterial() { }
+
+
+			bool IsBlendEnabled() const
+			{
+				return false;
+			}
+
+			bool IsShadowCaster() const
+			{
+				return false;
+			}
+
+			DWORD GetTypeID() const
+			{
+				return 0x1056F3C0;
+			}
+			virtual void FillMaterial( const NDb::Material* pDbMaterial, void* texturePoolId, bool savePointer = true ) override
+			{
+				Material::FillMaterial( pDbMaterial, texturePoolId, savePointer );
+			}
+		};
+	}//namespace Materials
+}//namespace Render
+
+#else
+
 #include "IMaterial.h"
 #include "MaterialResourceInterface.h"
-
 
 namespace Render
 {
@@ -95,3 +140,5 @@ namespace Render
 
 	}//namespace Materials
 }//namespace Render
+
+#endif

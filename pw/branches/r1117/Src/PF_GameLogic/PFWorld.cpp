@@ -11,7 +11,9 @@
 #include "PFAIContainer.h"
 #include "PFStatistics.h"
 #include "PFDispatchStrike1.h"
+#ifndef VISUAL_CUTTED
 #include "PFPureClientCritter.h"
+#endif
 #include "../System/SyncProcessorState.h"
 #include "../System/InlineProfiler.h"
 #include "PFBaseMovingUnit.h"
@@ -19,8 +21,8 @@
 #include "PFLogicDebug.h"
 #include "PFGameLogicDebugVisual.h"
 #include "DBTalent.h"
+#include "DBSessionRoots.h"
 
-#include "Terrain/Terrain.h"
 #include "Core/WorldCommand.h"
 #include "Core/Transceiver.h"
 #include "Core/CoreFSM.h"
@@ -51,7 +53,9 @@
 
 #include "PF_Core/EffectsPool.h"
 
+#include "LuaScript.h"
 #include "Scripts/FuncCallMacroses.h"
+#include "Render/DxResourcesControl.h"
 
 //pathfinding
 
@@ -65,19 +69,66 @@
 #include "PFDebug.h"
 #include "PFLogicConst.h"
 
-#ifndef VISUAL_CUTTED
+#if defined(PW_LINUX_DB_BOOTSTRAP) || !defined(VISUAL_CUTTED)
 #include "../Client/MainTimer.h"
 #endif
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+namespace Peered
+{
+  enum Status
+  {
+    Connecting                          = 0,
+    Ready                               = 1,
+    Active                              = 2,
+    Away                                = 3,
+    DisconnectedByClient                = 4,
+    DisconnectedByServer                = 5,
+    ConnectionTimedOut                  = 6,
+    DisconnectedByCheatAttempt          = 7,
+    DisconnectedByClientIntentionally   = 8,
+    ConnectionTimedOutOnReconnect       = 9,
+    DisconnectedByAsync                 = 10,
+    RefusedToReconnect                  = 11,
+  };
+
+  inline bool IsDisconnectedStatus( int status )
+  {
+    switch ( status )
+    {
+    case DisconnectedByClient:
+    case DisconnectedByClientIntentionally:
+    case DisconnectedByServer:
+    case DisconnectedByCheatAttempt:
+    case ConnectionTimedOut:
+    case ConnectionTimedOutOnReconnect:
+    case DisconnectedByAsync:
+    case RefusedToReconnect:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  inline bool IsPlayingStatus( int status )
+  {
+    return status == Active || status == Away;
+  }
+}
+#else
 #include "HybridServer/Peered.h"
+#endif
 
 #include "MapLoadingUtility.hpp"
 
 #include "PlayerBehaviourTracking.h"
 #include "PFWorldProtection.h"
 #include "DayNightController.h"
+#include "../Terrain/GridConstants.h"
 
+#ifdef _SHIPPING
 #include "PFClientVisibilityMap.h"
+#endif
 #include <curl/curl.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -162,10 +213,10 @@ public:
 //=================================================================================================================
 template<class T, bool checkTrees = false> class ObjectsLoader : public ObjectsLoaderBase<checkTrees>
 {
-  virtual PF_Core::WorldObjectBase* CreateObject(const NDb::AdvMapObject &_obj) { return new T(pWorld, _obj); }
+  virtual PF_Core::WorldObjectBase* CreateObject(const NDb::AdvMapObject &_obj) { return new T(this->pWorld, _obj); }
 
 public:
-  ObjectsLoader(PFWorld* _pWorld) : ObjectsLoaderBase(_pWorld) {}
+  ObjectsLoader(PFWorld* _pWorld) : ObjectsLoaderBase<checkTrees>(_pWorld) {}
 };
 
 template<class T>
@@ -593,13 +644,13 @@ void PFWorld::LoadPrecachedResources(const NDb::AdvMapDescription * advMapDescri
   
   for( int i = 0; i < selfAuraEffects.size(); i++ )
   {
-    CObj<PF_Core::BasicEffect> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( selfAuraEffects[i] );
+    CObj<PF_Core::BasicEffectAttached> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( selfAuraEffects[i] );
     pEffect->DieImmediate();
     pEffect->DieImmediate();
   }
   for( int i = 0; i < auraEffects.size(); i++ )
   {
-    CObj<PF_Core::BasicEffect> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( auraEffects[i] );
+    CObj<PF_Core::BasicEffectAttached> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( auraEffects[i] );
     pEffect->DieImmediate();
     pEffect->DieImmediate();
   }

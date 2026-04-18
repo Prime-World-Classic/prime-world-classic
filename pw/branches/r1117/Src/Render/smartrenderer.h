@@ -1,5 +1,116 @@
 #pragma once
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/ported/types.h"
+#include "../System/DefaultTypes.h"
+#include "../System/nstring.h"
+#include "texture.h"
+
+struct IUnknown;
+
+namespace Render
+{
+class VertexFormatDescriptor;
+struct VertexStreamDescriptor;
+class IVertexFormatDeclaration;
+class RenderTarget;
+struct DipDescriptor;
+
+template <class VBREF>
+struct VertexStreamT
+{
+  VBREF pVertexBuffer;
+  unsigned int offset;
+  unsigned int stride;
+
+  void Set(const VBREF &pVB, unsigned int stride_, unsigned int offset_ = 0)
+  {
+    pVertexBuffer = pVB;
+    stride = stride_;
+    offset = offset_;
+  }
+};
+
+typedef VertexStreamT<DXVertexBufferRef> VertexStream;
+
+namespace SmartRenderer
+{
+void GetTriangleAndDipCount(unsigned int& triangles, unsigned int& dips);
+void ResetTriangleAndDipCount();
+void OnFrameStart();
+
+void AddRect(float l, float t, float r, float b, int R, int G, int B);
+void AddLine(float sx, float sy, float ex, float ey, int R, int G, int B, float width = 1.0f);
+void RenderDeferred2D();
+
+void Init();
+void NullThePointers();
+bool IsResourceBound(const IUnknown* const ptr);
+
+const DXVertexDeclarationRef& GetVertexFormatDeclaration(const VertexFormatDescriptor& descr);
+
+void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset = 0);
+void BindVertexBuffer(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset = 0);
+void BindInstanceVB(unsigned int offset = 0);
+void UnBindVertexBufferRaw(UINT streamNumber);
+void UnBindVertexBuffer(UINT streamNumber);
+void EnableHardwareInstancing(UINT _numInstances, UINT _lastGeomStream = 0, UINT _instanceStream = UINT_MAX);
+void DisableHardwareInstancing();
+bool InstancingEnabled();
+void SetFVF(DWORD _fvf);
+void DrawIndexedPrimitive(const DipDescriptor& _descr);
+void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+void DrawPrimitive(const DipDescriptor& descr);
+void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride);
+
+template <class VBREF>
+void BindVertexStream(unsigned int streamNumber, const VertexStreamT<VBREF> &vs)
+{
+  BindVertexBuffer(streamNumber, Get(vs.pVertexBuffer), vs.stride, vs.offset);
+}
+
+void BindIndexBuffer(IDirect3DIndexBuffer9* buffer);
+
+void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl);
+void BindVertexDeclaration(DXVertexDeclarationRef const &pDecl);
+void BindVertexShader(IDirect3DVertexShader9 *shader);
+void BindPixelShader(IDirect3DPixelShader9 *shader);
+void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtect = false);
+void UnBindTexture(unsigned int samplerIndex);
+void UnBindTexture(const Texture* texture);
+
+void BindRenderTarget(const Texture2DRef& pColorTexture);
+void BindRenderTarget(const Texture2DRef& pColorTexture, const RenderSurfaceRef& pDepthSurface);
+void BindRenderTargetDefault();
+void SetDefaultRenderTarget(const DXSurfaceRef &pRT0, const DXSurfaceRef &pDepth);
+void SetDefaultRenderTarget(const DXSurfaceRef &pRT0, const DXSurfaceRef &pRT1, const DXSurfaceRef &pDepth);
+void BindRenderTargetColor(unsigned int renderTargetIndex, IDirect3DSurface9* pColorSurface);
+void BindRenderTargetDepth(IDirect3DSurface9* pDepthStencilSurface);
+
+void SetMainViewport(int x, int y, int width, int height);
+void GetMainViewport(int& x, int& y, int& width, int& height);
+void ResetMainViewport();
+void FixViewport();
+void SetUseMainViewport(bool _useViewport);
+bool UseMainViewport();
+
+void Release();
+
+IDirect3DSurface9* GetRenderTarget(unsigned int renderTargetIndex);
+IDirect3DSurface9* GetRenderTargetDepth();
+int GetRenderTargetWidth();
+int GetRenderTargetHeight();
+
+void DumpScreenshot(const nstl::string& filename, bool keepAlpha);
+int GetScreenshotCount();
+byte* DumpScreenshotToMemory(int width, int height);
+
+} // namespace SmartRenderer
+} // namespace Render
+
+#else
+
 #include "DxIntrusivePtr.h"
 #include "texture.h"
 #include "dxutils.h"
@@ -173,3 +284,5 @@ byte* DumpScreenshotToMemory( int width, int height );
 
 } // namespace SmartRenderer
 } // namespace Render
+
+#endif

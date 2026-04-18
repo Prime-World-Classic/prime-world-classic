@@ -272,28 +272,28 @@ protected:
     void CreateClientObject()
     {
       if (!isDead && pWorld->CanCreateClients())
-        pClientObject = new T(WorldObjectRef(this));
+        pClientObject = new T(CPtr<WorldObjectBase>(this));
     }
 
     template <class T, class PAR> 
     void CreateClientObject(const PAR &par)
     {
       if (!isDead && pWorld->CanCreateClients())
-        pClientObject = new T(WorldObjectRef(this), par);
+        pClientObject = new T(CPtr<WorldObjectBase>(this), par);
     }
 
     template <class T, class PAR1, class PAR2> 
     void CreateClientObject(const PAR1 &par1, const PAR2 &par2)
     {
       if (!isDead && pWorld->CanCreateClients())
-        pClientObject = new T(WorldObjectRef(this), par1, par2);
+        pClientObject = new T(CPtr<WorldObjectBase>(this), par1, par2);
     }
 
     template <class T, class PAR1, class PAR2, class PAR3> 
     void CreateClientObject(const PAR1 &par1, const PAR2 &par2, const PAR3 &par3)
     {
       if (!isDead && pWorld->CanCreateClients())
-        pClientObject = new T(WorldObjectRef(this), par1, par2, par3);
+        pClientObject = new T(CPtr<WorldObjectBase>(this), par1, par2, par3);
     }
 
     virtual void OnDestroyContents() 

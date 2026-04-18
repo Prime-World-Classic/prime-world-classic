@@ -1,10 +1,16 @@
 #pragma once
 
+#include "../../Data/GameLogic/FormulaPars.h"
 #include "../System/NameMap.h"
 #include "PFWorldObjectBase.h"
 
 
 class DiAnimGraph;
+
+namespace NDb
+{
+  struct ConsumableGroup;
+}
 
 namespace NNameMap
 {
@@ -25,7 +31,7 @@ namespace EAbilityState
 namespace NWorld
 {
 
-enum ELookKind
+enum ELookKind : int
 {
   DontLook,
   Turn,
@@ -39,6 +45,7 @@ class PFAbilityConstantsMap;
 class Target;
 class AbilityTarget;
 class PFAbilityData;
+class PFConsumable;
 class PFSingleTargetSelector;
 class PFTalent;
 class PFBaseMaleHero;

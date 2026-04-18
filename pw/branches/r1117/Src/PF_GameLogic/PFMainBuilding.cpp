@@ -3,13 +3,29 @@
 
 #include "PFAIWorld.h"
 #include "PFBaseAttackData.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientBuilding.h"
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#endif
 #include "PFStatistics.h"
 
 #include <System/hwbreak.h>
 
 namespace 
 {
+  #ifdef VISUAL_CUTTED
+  const nstl::string& MainBuildingClientNodeName()
+  {
+    return NGameX::ClientStubEmptyNodeName();
+  }
+  #else
+  const char* MainBuildingClientNodeName()
+  {
+    return BADNODENAME;
+  }
+  #endif
+
   struct UnitCounter
   {
     int count;
@@ -92,7 +108,7 @@ PFMainBuilding::~PFMainBuilding()
 void PFMainBuilding::Reset()
 {
 	PFBattleBuilding::Reset();
-	NGameX::PFClientLogicObject::CreatePars cp( GetWorld()->GetScene(), BADNODENAME, dbObjectCopy );
+	NGameX::PFClientLogicObject::CreatePars cp( GetWorld()->GetScene(), MainBuildingClientNodeName(), dbObjectCopy );
 	CreateClientObject<NGameX::PFClientMainBuilding>( cp, GetWorld()->GetScene(), pDesc.GetPtr() );
 }
 
@@ -254,7 +270,7 @@ PFMainBuilding::PFMainBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObjec
   pDesc = dynamic_cast<NDb::MainBuilding const*>(dbObject.gameObject.GetPtr());
   NI_VERIFY( pDesc, "Invalid game object for the building", return; );
 
-  NGameX::PFClientLogicObject::CreatePars cp( pWorld->GetScene(), BADNODENAME, dbObject );
+  NGameX::PFClientLogicObject::CreatePars cp( pWorld->GetScene(), MainBuildingClientNodeName(), dbObject );
 
   CreateClientObject<NGameX::PFClientMainBuilding>( cp, pWorld->GetScene(), pDesc.GetPtr() );
 

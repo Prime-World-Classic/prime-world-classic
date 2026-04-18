@@ -1,8 +1,8 @@
 #include "StdAfx.h"
-#include <Render\batch.h>
+#include "../Render/batch.h"
 #include "TerrainTextureCache.h"
-#include <System\BitData.h>
-#include <Terrain\TerrainElement.h>
+#include "../System/BitData.h"
+#include "TerrainElement.h"
 
 DEFINE_DEV_VAR(s_debugCache, false, "debug_TexCache", STORAGE_NONE)
 DEFINE_DEV_VAR(s_insideOnly, false, "gfx_CacheInsideOnly", STORAGE_NONE);
@@ -68,7 +68,9 @@ public:
     ClearTags();
     cacheAABB.Init2Empty();
 
+#if !defined(PW_LINUX_NULL_RENDER)
     GetDevice()->EvictManagedResources();
+#endif
 
     D3DSURFACE_DESC desc = { D3DFMT_A8R8G8B8, D3DRTYPE_SURFACE,
                              D3DUSAGE_RENDERTARGET | 0, // D3DUSAGE_RENDERTARGET | D3DUSAGE_AUTOGENMIPMAP

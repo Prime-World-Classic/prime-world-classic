@@ -1,4 +1,5 @@
 #pragma once
+
 // Automatically generated file, don't change it manually!
 
 #include "../libdb/Db.h"

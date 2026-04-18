@@ -5,15 +5,17 @@
 #include "PFAbilityData.h"
 #include "PFAIWorld.h"
 #include "PFAdvMapObject.h"
+#include "DBSessionRoots.h"
 #include "PFGlyphManager.h"
 #include "PFAIContainer.h"
 
 #include "WarFog.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientChest.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "../System/RandomGen.h"

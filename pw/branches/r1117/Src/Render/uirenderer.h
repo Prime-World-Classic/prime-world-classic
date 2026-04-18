@@ -1,7 +1,16 @@
 #pragma once
 
 #include "texture.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "dxutils.h"
+#else
 #include "DxIntrusivePtr.h"
+#endif
+
+namespace NDb
+{
+  struct BaseUIMaterial;
+}
 
 namespace Render
 {

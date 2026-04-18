@@ -12,6 +12,8 @@
 namespace NDb
 {
 	struct TerrainElement;
+  struct TerrainElementInstance;
+  struct TerrainGeometry;
 }
 
 namespace NScene

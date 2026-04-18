@@ -1,6 +1,30 @@
 #include "stdafx.h"
 
 #include "shadercompiler.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+DXPixelShaderRef CompilePixelShaderFromFile(const char* filename, const ShaderDefinesTable& definesTable)
+{
+  (void)filename;
+  (void)definesTable;
+  return DXPixelShaderRef();
+}
+
+DXVertexShaderRef CompileVertexShaderFromFile(const char* filename, const ShaderDefinesTable& definesTable)
+{
+  (void)filename;
+  (void)definesTable;
+  return DXVertexShaderRef();
+}
+
+} // namespace Render
+
+#else
+
 #include "DxResourcesControl.h"
 #include "../System/InlineProfiler.h"
 
@@ -262,3 +286,5 @@ DXVertexShaderRef CompileVertexShaderFromFile(const char* filename, const Shader
 
 }
 }; // namespace Render
+
+#endif

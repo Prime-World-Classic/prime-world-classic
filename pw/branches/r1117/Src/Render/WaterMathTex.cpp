@@ -1,5 +1,39 @@
 #include "stdafx.h"
 #include "WaterMathTex.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+namespace Water
+{
+
+ScrollTexture::ScrollTexture(int nNumMipmaps, Render::ERenderFormat format)
+  : rotationMatrices()
+  , layersA(0.0f, 0.0f, 0.0f)
+  , layersVelocities(0.0f, 0.0f, 0.0f)
+  , texDuDv(0.0f, 0.0f)
+  , heightCoeff(0.0f)
+  , curTime(0.0f)
+{
+  (void)nNumMipmaps;
+  (void)format;
+}
+
+void ScrollTexture::InitLayersParams()
+{
+}
+
+void ScrollTexture::Update(float time)
+{
+  curTime = time;
+}
+
+} // namespace Water
+} // namespace Render
+
+#else
+
 #include "GlobalMasks.h"
 #include "ImmediateRenderer.h"
 #include "smartrenderer.h"
@@ -85,3 +119,5 @@ REGISTER_VAR( "layerAmplitude3", g_layerAmplitude3, STORAGE_NONE );
 REGISTER_VAR( "layerVelocity1",  g_layerVelocity1, STORAGE_NONE );
 REGISTER_VAR( "layerVelocity2",  g_layerVelocity2, STORAGE_NONE );
 REGISTER_VAR( "layerVelocity3",  g_layerVelocity3, STORAGE_NONE );
+
+#endif

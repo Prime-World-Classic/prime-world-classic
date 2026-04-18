@@ -15,7 +15,6 @@
 
 #include "PFStatistics.h"
 #include "System/StarForce/StarForce.h"
-#include "PFClientVisibilityMap.h"
 
 #include "SmartChatAntiSpam.h"
 

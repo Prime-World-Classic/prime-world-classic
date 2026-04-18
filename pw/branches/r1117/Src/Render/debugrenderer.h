@@ -238,5 +238,9 @@ namespace Render
 
   void LogMarker(const char *_text);
   void RenderSequenceMarker(const char *_text);
+#if defined(PW_LINUX_NULL_RENDER)
+  inline void RenderSequenceMarker(int _priority) { (void)_priority; }
+#else
   inline void RenderSequenceMarker(NDb::MaterialPriority _priority) { RenderSequenceMarker( EnumToString(_priority) ); }
+#endif
 }; 

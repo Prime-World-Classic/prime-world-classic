@@ -1,8 +1,53 @@
 //generated file
 #pragma once
+#if defined(PW_LINUX_NULL_RENDER)
+#include "IMaterial.h"
+#include "DBRender.h"
+
+namespace Render
+{
+	namespace Materials
+	{
+		class DebugMaterial : public IMaterial
+		{
+		public:
+			DebugMaterial() = default;
+			static Materials::DebugMaterial* CreateMaterialInstance( const NDb::DebugMaterial* pDebugMaterial )
+			{
+				DebugMaterial* pMaterialInstance = new DebugMaterial();
+				pMaterialInstance->FillMaterial( pDebugMaterial, 0, false );
+				return pMaterialInstance;
+			}
+			virtual void PrepareRenderer() override {}
+			virtual ~DebugMaterial() { }
+
+
+			bool IsBlendEnabled() const
+			{
+				return false;
+			}
+
+			bool IsShadowCaster() const
+			{
+				return false;
+			}
+
+			DWORD GetTypeID() const
+			{
+				return 0x4A55D341;
+			}
+			virtual void FillMaterial( const NDb::Material* pDbMaterial, void* texturePoolId, bool savePointer = true ) override
+			{
+				Material::FillMaterial( pDbMaterial, texturePoolId, savePointer );
+			}
+		};
+	}//namespace Materials
+}//namespace Render
+
+#else
+
 #include "IMaterial.h"
 #include "MaterialResourceInterface.h"
-
 
 namespace Render
 {
@@ -58,3 +103,5 @@ namespace Render
 
 	}//namespace Materials
 }//namespace Render
+
+#endif

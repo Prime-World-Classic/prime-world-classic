@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DBScene.h"
 #include "../libdb/Animated.h"
 #include "../libdb/AnimatedAlgorithms.h"
 #include "../libdb/AnimatedWrapper.h"

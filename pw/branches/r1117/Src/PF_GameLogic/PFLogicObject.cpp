@@ -7,7 +7,7 @@
 #ifndef VISUAL_CUTTED
 #include "PFClientLogicObject.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld

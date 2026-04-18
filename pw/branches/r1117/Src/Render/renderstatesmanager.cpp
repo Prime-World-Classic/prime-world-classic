@@ -1,7 +1,10 @@
 #include "stdafx.h"
 
-#include "renderflagsconverter.h"
 #include "renderstatesmanager.h"
+
+#if !defined(PW_LINUX_NULL_RENDER)
+
+#include "renderflagsconverter.h"
 #include "../System/BitData.h"
 #include "GlobalMasks.h"
 #include "IConfigManager.h"
@@ -545,3 +548,5 @@ void RenderStatesManager::DumpStates()
 }
 
 }; // namespace Render
+
+#endif

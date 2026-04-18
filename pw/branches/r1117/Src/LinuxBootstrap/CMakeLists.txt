@@ -1,0 +1,663 @@
+cmake_minimum_required(VERSION 3.10)
+
+project(PrimeWorldLinuxBootstrap LANGUAGES CXX)
+
+file(
+  GLOB PRIMEWORLD_LINUX_DB_SOURCES
+  CONFIGURE_DEPENDS
+  ../PF_GameLogic/DB*.cpp
+  ../PF_GameLogic/Db*.cpp
+  ../Render/DB*.cpp
+  ../Scene/DB*.cpp
+  ../UI/DB*.cpp
+  ../Sound/DB*.cpp
+  ../Terrain/DB*.cpp
+  ../PF_Core/DB*.cpp
+)
+
+list(
+  REMOVE_ITEM
+  PRIMEWORLD_LINUX_DB_SOURCES
+  "${CMAKE_CURRENT_SOURCE_DIR}/../PF_GameLogic/DBUIRoot.cpp"
+)
+
+set(
+  PRIMEWORLD_LINUX_LIBDB_SOURCES
+  ../libdb/Checksum.cpp
+  ../libdb/DB.cpp
+  ../libdb/DbResourceCache.cpp
+  ../libdb/DbResourceCacheDump.cpp
+  ../libdb/DbTypesRegistrator.cpp
+  ../libdb/dbid.cpp
+  ../libdb/LightXML.cpp
+  ../libdb/LightXMLUtils.cpp
+  ../libdb/Placement.cpp
+  ../libdb/XMLReader.cpp
+  ../libdb/XmlChunkSaver.cpp
+  ../libdb/XmlUtils.cpp
+)
+
+set(
+  PRIMEWORLD_LINUX_JSONCPP_SOURCES
+  ../../Vendor/JsonCpp/src/lib_json/json_reader.cpp
+  ../../Vendor/JsonCpp/src/lib_json/json_value.cpp
+  ../../Vendor/JsonCpp/src/lib_json/json_writer.cpp
+)
+
+add_executable(
+  PrimeWorldLinuxBootstrap
+  main.cpp
+  ../System/MainFrame_linux.cpp
+  ../System/HPTimer.cpp
+  ../System/HPTimer_linux.cpp
+)
+
+add_executable(
+  PrimeWorldLinuxClient
+  ../PW_Client/Game.cpp
+  pfadvmap_bootstrap.cpp
+  ../Game/PF/Server/LobbyPvx/CommonTypes.cpp
+  ../PF_GameLogic/MapDescriptionLoader.cpp
+  ../System/Basic.cpp
+  ../System/ChunklessSaver.cpp
+  ../System/CmdLineLite.cpp
+  ../System/Commands.cpp
+  ../System/ConfigFiles.cpp
+  ../System/DebugVar.cpp
+  ../System/MainFrame_linux.cpp
+  ../System/HPTimer.cpp
+  ../System/HPTimer_linux.cpp
+  ../System/MultiReaderLockLinux.cpp
+  ../System/ObjectFactory.cpp
+  ../System/Pointers/BaseObjectMT.cpp
+  ../System/Pointers/BaseObjectST.cpp
+  ../System/Pointers/BasicType.cpp
+  ../System/ProfileManager.cpp
+  ../System/SpinLock.cpp
+  ../System/StrConvert.cpp
+  ../System/StrFormatter.cpp
+  ../System/Stream.cpp
+  ../System/StrProc.cpp
+  ../System/ImageDDS.cpp
+  ../System/ImageInternal.cpp
+  ../System/ImageUnpackDXT.cpp
+  ../System/StrUtils_linux.cpp
+  ../System/TimeUtils_linux.cpp
+  ../System/ntree.cpp
+  ../System/FileSystem/FilePath.cpp
+  ../System/FileSystem/FileSystem.cpp
+  ../System/FileSystem/FileSystemChangesProcessor.cpp
+  ../System/FileSystem/FileStream.cpp
+  ../System/FileSystem/FileUtils.cpp
+  ../System/FileSystem/FileUtils_linux.cpp
+  ../System/FileSystem/CombinerFileSystem.cpp
+  ../System/FileSystem/WinFileSystem.cpp
+  ../NivalInput/Binds.cpp
+  ../NivalInput/ControlsSet.cpp
+  ../NivalInput/InputCommandInstance.cpp
+  ../NivalInput/InputConsoleCommands.cpp
+  ../NivalInput/InputEvent.cpp
+  ../NivalInput/Section.cpp
+  ../Server/RPC/RpcDataFactory.cpp
+  ${PRIMEWORLD_LINUX_DB_SOURCES}
+  ${PRIMEWORLD_LINUX_LIBDB_SOURCES}
+  ${PRIMEWORLD_LINUX_JSONCPP_SOURCES}
+  runtime_stubs.cpp
+)
+
+add_library(
+  PrimeWorldLinuxGameplayProbe
+  OBJECT
+  ../PF_GameLogic/PFAbilityDataNamemaps.cpp
+  ../PF_GameLogic/PFAbilityData.cpp
+  ../PF_GameLogic/PFAbilityInstance.cpp
+  ../PF_GameLogic/PFAIController.cpp
+  ../PF_GameLogic/PFAIStates.cpp
+  ../PF_GameLogic/PFAIHelper.cpp
+  ../PF_GameLogic/PFAITargetSelectors.cpp
+  ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFApplAura.cpp
+  ../PF_GameLogic/PFApplBounce.cpp
+  ../PF_GameLogic/PFApplBuff.cpp
+  ../PF_GameLogic/PFApplChainLightning.cpp
+  ../PF_GameLogic/PFApplChannelling.cpp
+  ../PF_GameLogic/PFApplDelegateDamage.cpp
+  ../PF_GameLogic/PFApplFx.cpp
+  ../PF_GameLogic/PFApplHelper.cpp
+  ../PF_GameLogic/PFApplInstant.cpp
+  ../PF_GameLogic/PFApplMove.cpp
+  ../PF_GameLogic/PFApplMod.cpp
+  ../PF_GameLogic/PFApplSpecial.cpp
+  ../PF_GameLogic/PFApplSummon.cpp
+  ../PF_GameLogic/PFApplUtils.cpp
+  ../PF_GameLogic/PFApplicator.cpp
+  ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
+  ../PF_GameLogic/PFBaseAttackData.cpp
+  ../PF_GameLogic/PFBaseAIController.cpp
+  ../PF_GameLogic/PFBaseUnitAppl.cpp
+  ../PF_GameLogic/PFBaseUnitEvent.cpp
+  ../PF_GameLogic/PFBaseUnitStates.cpp
+  ../PF_GameLogic/PFBaseMovingUnit.cpp
+  ../PF_GameLogic/PFBaseSpawner.cpp
+  ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBattleBuilding.cpp
+  ../PF_GameLogic/PFCastLimitations.cpp
+  ../PF_GameLogic/PFBehaviour.cpp
+  ../PF_GameLogic/PFBuildings.cpp
+  ../PF_GameLogic/PFChest.cpp
+  ../PF_GameLogic/PFCommonCreep.cpp
+  ../PF_GameLogic/PFConsumable.cpp
+  ../PF_GameLogic/PFCreature.cpp
+  ../PF_GameLogic/PFCreep.cpp
+  ../PF_GameLogic/PFDeadBody.cpp
+  ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/ForceCalc.cpp
+  ../PF_GameLogic/PFFlagpole.cpp
+  ../PF_GameLogic/PFGlyph.cpp
+  ../PF_GameLogic/PFGlyphManager.cpp
+  ../PF_GameLogic/PFHero.cpp
+  ../PF_GameLogic/PFHeroesFactory.cpp
+  ../PF_GameLogic/PFLogicObject.cpp
+  ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMaleHero.cpp
+  ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFPet.cpp
+  ../PF_GameLogic/PFPickupable.cpp
+  ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PFRoadFlagpole.cpp
+  ../PF_GameLogic/PFScriptedFlagpole.cpp
+  ../PF_GameLogic/PFSimpleObject.cpp
+  ../PF_GameLogic/PFWorld.cpp
+  ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFStatistics.cpp
+  ../PF_GameLogic/PFTargetSelector.cpp
+  ../PF_GameLogic/PFTree.cpp
+  ../PF_GameLogic/PFTower.cpp
+  ../PF_GameLogic/PFUnitAbilities.cpp
+  ../PF_GameLogic/PFPredefinedUnitVariables.cpp
+  ../PF_GameLogic/PFWorldNatureMap.cpp
+)
+
+add_library(
+  PrimeWorldLinuxRenderProbe
+  OBJECT
+  ../Render/AOERenderer.cpp
+  ../Render/RenderInterface.cpp
+  ../Render/ConfigManager.cpp
+  ../Render/DBRender.cpp
+  ../Render/DBRenderResources.cpp
+  ../Render/DXManager.cpp
+  ../Render/DxResourcesControl.cpp
+  ../Render/DeviceLost.cpp
+  ../Render/ImmediateRenderer.cpp
+  ../Render/LightsManager.cpp
+  ../Render/MaterialResourceInterface.cpp
+  ../Render/Material.cpp
+  ../Render/MaterialSpec.cpp
+  ../Render/mesh.cpp
+  ../Render/multishader.cpp
+  ../Render/OcclusionQueries.cpp
+  ../Render/RenderComponent.cpp
+  ../Render/TextureManager.cpp
+  ../Render/aabb.cpp
+  ../Render/batch.cpp
+  ../Render/BoundingPrimitives.cpp
+  ../Render/Blur.cpp
+  ../Render/Bloom.cpp
+  ../Render/CleanGeometry.cpp
+  ../Render/ConvexVolume.cpp
+  ../Render/ConstantProtection.cpp
+  ../Render/configdatabase.cpp
+  ../Render/DebugMaterial.cpp
+  ../Render/debugmesh.cpp
+  ../Render/debugrenderer.cpp
+  ../Render/debugstaticmesh.cpp
+  ../Render/dxutils.cpp
+  ../Render/facefxsystem.cpp
+  ../Render/FlashRenderer.cpp
+  ../Render/FrustumCuller.cpp
+  ../Render/FullScreenFX.cpp
+  ../Render/fxresource.cpp
+  ../Render/GrassMaterial.cpp
+  ../Render/primitive.cpp
+  ../Render/renderflagsconverter.cpp
+  ../Render/renderstatesmanager.cpp
+  ../Render/renderresourcemanager.cpp
+  ../Render/rendersurface.cpp
+  ../Render/ParticleFX.cpp
+  ../Render/renderer.cpp
+  ../Render/sampler.cpp
+  ../Render/ReadDDS.cpp
+  ../Render/SHCoeffs.cpp
+  ../Render/ShadowManager.cpp
+  ../Render/ShadowMap.cpp
+  ../Render/SkeletalAnimationBlender.cpp
+  ../Render/SkeletalAnimationSampler.cpp
+  ../Render/StaticMesh.cpp
+  ../Render/Stretcher.cpp
+  ../Render/SkeletalMesh.cpp
+  ../Render/dipdescriptor.cpp
+  ../Render/rendermode.cpp
+  ../Render/skeletonanimation.cpp
+  ../Render/SkeletonWrapper.cpp
+  ../Render/InstancedMesh.cpp
+  ../Render/InstancedMeshResource.cpp
+  ../Render/UITextureAtlasItem.cpp
+  ../Render/UITextureCache.cpp
+  ../Render/WaterManager.cpp
+  ../Render/WaterConvexes.cpp
+  ../Render/WaterMathTex.cpp
+  ../Render/WaterMesh.cpp
+  ../Render/VertexColorStream.cpp
+  ../Render/shaderconstantsbinder.cpp
+  ../Render/smartrenderer.cpp
+  ../Render/sceneconstants.cpp
+  ../Render/shaderdefinestable.cpp
+  ../Render/shadercompiler.cpp
+  ../Render/texture.cpp
+  ../Render/uirenderer.cpp
+  ../Render/vertexformatdescriptor.cpp
+  ../Scene/AmbienceMap.cpp
+  ../Scene/Camera.cpp
+  ../Scene/CameraControllersContainer.cpp
+  ../Scene/CameraInputModifier.cpp
+  ../Scene/AnimSequencer.cpp
+  ../Scene/AnimGraphApplicator.cpp
+  ../Scene/AnimGraphBlender.cpp
+  ../Scene/AnimGraphController.cpp
+  ../Scene/Animators.cpp
+  ../Scene/AnimatedSceneComponent.cpp
+  ../Scene/AnimatedSplitSceneComponent.cpp
+  ../Scene/AttacherSceneComponent.cpp
+  ../Scene/BitMap.cpp
+  ../Scene/CollisionHull.cpp
+  ../Scene/CollisionMap.cpp
+  ../Scene/CollisionGeometry.cpp
+  ../Scene/CollisionGeometryManager.cpp
+  ../Scene/DBSceneBase.cpp
+  ../Scene/DBScene.cpp
+  ../Scene/DiAnGrAPI.cpp
+  ../Scene/DiAnGrCl.cpp
+  ../Scene/DiAnGrNLinker.cpp
+  ../Scene/DiAnGrSStorage.cpp
+  ../Scene/DiAnGrUp.cpp
+  ../Scene/DiAnGrUtils.cpp
+  ../Scene/DiGraph.cpp
+  ../Scene/EditorSceneObject.cpp
+  ../Scene/FreeCameraController.cpp
+  ../Scene/GeometryBuilders.cpp
+  ../Scene/GeometryTracer.cpp
+  ../Scene/HeightsController.cpp
+  ../Scene/LandPlacementMutator.cpp
+  ../Scene/LightingScene.cpp
+  ../Scene/LightningFX.cpp
+  ../Scene/LightningSceneComponent.cpp
+  ../Scene/ParticleSceneComponent.cpp
+  ../Scene/RoadGeometryBuilder.cpp
+  ../Scene/RoadSceneObject.cpp
+  ../Scene/Scene.cpp
+  ../Scene/SceneComponent.cpp
+  ../Scene/SceneObjectCreation.cpp
+  ../Scene/SceneObject.cpp
+  ../Scene/SceneObjectUtils.cpp
+  ../Scene/SceneUtils.cpp
+  ../Scene/SceneObjectsPool.cpp
+  ../Scene/SceneObjectTrack.cpp
+  ../Scene/ScenePassabilityMask.cpp
+  ../Scene/SHGrid.cpp
+  ../Scene/SHGridCalculator.cpp
+  ../Scene/SoundItem.cpp
+  ../Scene/SoundSceneComponent.cpp
+  ../Scene/StaticSceneComponent.cpp
+  ../Scene/TerrainGrid.cpp
+  ../Scene/TimeController.cpp
+  ../Scene/TimeMutator.cpp
+  ../Scene/TraceFX.cpp
+  ../Scene/TraceFXGeo.cpp
+  ../Scene/TraceSceneComponent.cpp
+  ../Scene/VertexColorManager.cpp
+  ../Scene/WaterSceneComponent.cpp
+  ../Terrain/DBTerrain.cpp
+  ../Terrain/GrassLayersManager.cpp
+  ../Terrain/GrassRegion.cpp
+  ../Terrain/GrassRenderManager.cpp
+  ../Terrain/BezierSurface.cpp
+  ../Terrain/NatureMap.cpp
+  ../Terrain/NatureAttackSpace.cpp
+  ../Terrain/NatureMapVisual.cpp
+  ../Terrain/RoadPrimitive.cpp
+  ../Terrain/SpeedGrass.cpp
+  ../Terrain/Terrain.cpp
+  ../Terrain/TerrainCollision.cpp
+  ../Terrain/TerrainElement.cpp
+  ../Terrain/TerrainGeometryManager.cpp
+  ../Terrain/TerrainHeightManager.cpp
+  ../Terrain/TerrainLayerManager.cpp
+  ../Terrain/TerrainMaterialCache.cpp
+  ../Terrain/TerrainTextureCache.cpp
+  ../Terrain/TerrainElementManager.cpp
+)
+
+target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
+target_compile_options(PrimeWorldLinuxClient PRIVATE -fpermissive)
+target_compile_options(PrimeWorldLinuxGameplayProbe PRIVATE -fpermissive)
+target_compile_options(PrimeWorldLinuxRenderProbe PRIVATE -fpermissive)
+
+target_include_directories(
+  PrimeWorldLinuxBootstrap
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+)
+
+target_include_directories(
+  PrimeWorldLinuxClient
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxGameplayProbe
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxRenderProbe
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+find_package(X11 REQUIRED)
+find_package(PNG REQUIRED)
+find_package(ZLIB REQUIRED)
+
+target_link_libraries(
+  PrimeWorldLinuxBootstrap
+  PRIVATE
+    X11::X11
+)
+
+target_link_libraries(
+  PrimeWorldLinuxClient
+  PRIVATE
+    X11::X11
+    ZLIB::ZLIB
+    ${PNG_LIBRARIES}
+)
+
+target_include_directories(
+  PrimeWorldLinuxClient
+  PRIVATE
+    ${PNG_INCLUDE_DIRS}
+)
+
+set_source_files_properties(
+  ${PRIMEWORLD_LINUX_DB_SOURCES}
+  pfadvmap_bootstrap.cpp
+  ../PF_GameLogic/PFAbilityDataNamemaps.cpp
+  ../PF_GameLogic/PFAbilityData.cpp
+  ../PF_GameLogic/PFAbilityInstance.cpp
+  ../PF_GameLogic/PFAIController.cpp
+  ../PF_GameLogic/PFAIStates.cpp
+  ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/PFAIHelper.cpp
+  ../PF_GameLogic/PFAITargetSelectors.cpp
+  ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFApplAura.cpp
+  ../PF_GameLogic/PFApplBounce.cpp
+  ../PF_GameLogic/PFApplBuff.cpp
+  ../PF_GameLogic/PFApplChainLightning.cpp
+  ../PF_GameLogic/PFApplChannelling.cpp
+  ../PF_GameLogic/PFApplDelegateDamage.cpp
+  ../PF_GameLogic/PFApplFx.cpp
+  ../PF_GameLogic/PFApplHelper.cpp
+  ../PF_GameLogic/PFApplInstant.cpp
+  ../PF_GameLogic/PFApplMove.cpp
+  ../PF_GameLogic/PFApplMod.cpp
+  ../PF_GameLogic/PFApplSpecial.cpp
+  ../PF_GameLogic/PFApplSummon.cpp
+  ../PF_GameLogic/PFApplUtils.cpp
+  ../PF_GameLogic/PFApplicator.cpp
+  ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
+  ../PF_GameLogic/PFBaseAttackData.cpp
+  ../PF_GameLogic/PFBaseAIController.cpp
+  ../PF_GameLogic/PFBaseUnitAppl.cpp
+  ../PF_GameLogic/PFBaseUnitEvent.cpp
+  ../PF_GameLogic/PFBaseUnitStates.cpp
+  ../PF_GameLogic/PFBaseMovingUnit.cpp
+  ../PF_GameLogic/PFBaseSpawner.cpp
+  ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBattleBuilding.cpp
+  ../PF_GameLogic/PFCastLimitations.cpp
+  ../PF_GameLogic/PFBehaviour.cpp
+  ../PF_GameLogic/PFBuildings.cpp
+  ../PF_GameLogic/PFChest.cpp
+  ../PF_GameLogic/PFCommonCreep.cpp
+  ../PF_GameLogic/PFConsumable.cpp
+  ../PF_GameLogic/PFCreature.cpp
+  ../PF_GameLogic/PFCreep.cpp
+  ../PF_GameLogic/PFDeadBody.cpp
+  ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/ForceCalc.cpp
+  ../PF_GameLogic/PFFlagpole.cpp
+  ../PF_GameLogic/PFGlyph.cpp
+  ../PF_GameLogic/PFGlyphManager.cpp
+  ../PF_GameLogic/PFHero.cpp
+  ../PF_GameLogic/PFHeroesFactory.cpp
+  ../PF_GameLogic/PFLogicObject.cpp
+  ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/MapDescriptionLoader.cpp
+  ../PF_GameLogic/PFMaleHero.cpp
+  ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFPet.cpp
+  ../PF_GameLogic/PFPickupable.cpp
+  ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PFRoadFlagpole.cpp
+  ../PF_GameLogic/PFScriptedFlagpole.cpp
+  ../PF_GameLogic/PFSimpleObject.cpp
+  ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFStatistics.cpp
+  ../PF_GameLogic/PFTargetSelector.cpp
+  ../PF_GameLogic/PFTree.cpp
+  ../PF_GameLogic/PFTower.cpp
+  ../PF_GameLogic/PFUnitAbilities.cpp
+  ../PF_GameLogic/PFPredefinedUnitVariables.cpp
+  ../PF_GameLogic/PFWorld.cpp
+  ../PF_GameLogic/PFWorldNatureMap.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP"
+)
+
+set_source_files_properties(
+  runtime_stubs.cpp
+  ../Render/AOERenderer.cpp
+  ../Render/RenderInterface.cpp
+  ../Render/ConfigManager.cpp
+  ../Render/DBRender.cpp
+  ../Render/DBRenderResources.cpp
+  ../Render/DXManager.cpp
+  ../Render/DxResourcesControl.cpp
+  ../Render/DeviceLost.cpp
+  ../Render/ImmediateRenderer.cpp
+  ../Render/LightsManager.cpp
+  ../Render/MaterialResourceInterface.cpp
+  ../Render/Material.cpp
+  ../Render/MaterialSpec.cpp
+  ../Render/mesh.cpp
+  ../Render/multishader.cpp
+  ../Render/OcclusionQueries.cpp
+  ../Render/RenderComponent.cpp
+  ../Render/TextureManager.cpp
+  ../Render/aabb.cpp
+  ../Render/batch.cpp
+  ../Render/BoundingPrimitives.cpp
+  ../Render/Blur.cpp
+  ../Render/Bloom.cpp
+  ../Render/CleanGeometry.cpp
+  ../Render/ConvexVolume.cpp
+  ../Render/ConstantProtection.cpp
+  ../Render/configdatabase.cpp
+  ../Render/DebugMaterial.cpp
+  ../Render/debugmesh.cpp
+  ../Render/debugrenderer.cpp
+  ../Render/debugstaticmesh.cpp
+  ../Render/dxutils.cpp
+  ../Render/facefxsystem.cpp
+  ../Render/FlashRenderer.cpp
+  ../Render/FrustumCuller.cpp
+  ../Render/FullScreenFX.cpp
+  ../Render/fxresource.cpp
+  ../Render/GrassMaterial.cpp
+  ../Render/primitive.cpp
+  ../Render/renderflagsconverter.cpp
+  ../Render/renderstatesmanager.cpp
+  ../Render/renderresourcemanager.cpp
+  ../Render/rendersurface.cpp
+  ../Render/ParticleFX.cpp
+  ../Render/renderer.cpp
+  ../Render/sampler.cpp
+  ../Render/ReadDDS.cpp
+  ../Render/SHCoeffs.cpp
+  ../Render/ShadowManager.cpp
+  ../Render/ShadowMap.cpp
+  ../Render/SkeletalAnimationBlender.cpp
+  ../Render/SkeletalAnimationSampler.cpp
+  ../Render/StaticMesh.cpp
+  ../Render/Stretcher.cpp
+  ../Render/SkeletalMesh.cpp
+  ../Render/dipdescriptor.cpp
+  ../Render/rendermode.cpp
+  ../Render/skeletonanimation.cpp
+  ../Render/SkeletonWrapper.cpp
+  ../Render/InstancedMesh.cpp
+  ../Render/InstancedMeshResource.cpp
+  ../Render/UITextureAtlasItem.cpp
+  ../Render/UITextureCache.cpp
+  ../Render/WaterManager.cpp
+  ../Render/WaterConvexes.cpp
+  ../Render/WaterMathTex.cpp
+  ../Render/WaterMesh.cpp
+  ../Render/VertexColorStream.cpp
+  ../Render/shaderconstantsbinder.cpp
+  ../Render/smartrenderer.cpp
+  ../Render/sceneconstants.cpp
+  ../Render/shaderdefinestable.cpp
+  ../Render/shadercompiler.cpp
+  ../Render/texture.cpp
+  ../Render/uirenderer.cpp
+  ../Render/vertexformatdescriptor.cpp
+  ../Scene/AmbienceMap.cpp
+  ../Scene/Camera.cpp
+  ../Scene/CameraControllersContainer.cpp
+  ../Scene/CameraInputModifier.cpp
+  ../Scene/AnimSequencer.cpp
+  ../Scene/AnimGraphApplicator.cpp
+  ../Scene/AnimGraphBlender.cpp
+  ../Scene/AnimGraphController.cpp
+  ../Scene/Animators.cpp
+  ../Scene/AnimatedSceneComponent.cpp
+  ../Scene/AnimatedSplitSceneComponent.cpp
+  ../Scene/AttacherSceneComponent.cpp
+  ../Scene/BitMap.cpp
+  ../Scene/CollisionHull.cpp
+  ../Scene/CollisionMap.cpp
+  ../Scene/CollisionGeometry.cpp
+  ../Scene/CollisionGeometryManager.cpp
+  ../Scene/DBSceneBase.cpp
+  ../Scene/DBScene.cpp
+  ../Scene/DiAnGrAPI.cpp
+  ../Scene/DiAnGrCl.cpp
+  ../Scene/DiAnGrNLinker.cpp
+  ../Scene/DiAnGrSStorage.cpp
+  ../Scene/DiAnGrUp.cpp
+  ../Scene/DiAnGrUtils.cpp
+  ../Scene/DiGraph.cpp
+  ../Scene/EditorSceneObject.cpp
+  ../Scene/FreeCameraController.cpp
+  ../Scene/GeometryBuilders.cpp
+  ../Scene/GeometryTracer.cpp
+  ../Scene/HeightsController.cpp
+  ../Scene/LandPlacementMutator.cpp
+  ../Scene/LightingScene.cpp
+  ../Scene/LightningFX.cpp
+  ../Scene/LightningSceneComponent.cpp
+  ../Scene/ParticleSceneComponent.cpp
+  ../Scene/RoadGeometryBuilder.cpp
+  ../Scene/RoadSceneObject.cpp
+  ../Scene/Scene.cpp
+  ../Scene/SceneComponent.cpp
+  ../Scene/SceneObjectCreation.cpp
+  ../Scene/SceneObject.cpp
+  ../Scene/SceneObjectUtils.cpp
+  ../Scene/SceneUtils.cpp
+  ../Scene/SceneObjectsPool.cpp
+  ../Scene/SceneObjectTrack.cpp
+  ../Scene/ScenePassabilityMask.cpp
+  ../Scene/SHGrid.cpp
+  ../Scene/SHGridCalculator.cpp
+  ../Scene/SoundItem.cpp
+  ../Scene/SoundSceneComponent.cpp
+  ../Scene/StaticSceneComponent.cpp
+  ../Scene/TerrainGrid.cpp
+  ../Scene/TimeController.cpp
+  ../Scene/TimeMutator.cpp
+  ../Scene/TraceFX.cpp
+  ../Scene/TraceFXGeo.cpp
+  ../Scene/TraceSceneComponent.cpp
+  ../Scene/VertexColorManager.cpp
+  ../Scene/WaterSceneComponent.cpp
+  ../Terrain/DBTerrain.cpp
+  ../Terrain/GrassLayersManager.cpp
+  ../Terrain/GrassRegion.cpp
+  ../Terrain/GrassRenderManager.cpp
+  ../Terrain/NatureMap.cpp
+  ../Terrain/RoadPrimitive.cpp
+  ../Terrain/SpeedGrass.cpp
+  ../Terrain/TerrainHeightManager.cpp
+  ../Terrain/TerrainLayerManager.cpp
+  ../Terrain/TerrainMaterialCache.cpp
+  ../Terrain/TerrainTextureCache.cpp
+  ../Terrain/TerrainElementManager.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP"
+)
+
+set_source_files_properties(
+  ../Terrain/BezierSurface.cpp
+  ../Terrain/NatureAttackSpace.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP"
+)
+
+set_source_files_properties(
+  ../Terrain/NatureMapVisual.cpp
+  ../Terrain/Terrain.cpp
+  ../Terrain/TerrainCollision.cpp
+  ../Terrain/TerrainElement.cpp
+  ../Terrain/TerrainGeometryManager.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_TERRAIN_RUNTIME_PROBE"
+)

@@ -2,10 +2,10 @@
 
 #include "PathTools.h"
 #include "PFBaseUnit.h"
-#include "System\StarForce\HiddenVars.h"
+#include "System/StarForce/HiddenVars.h"
 
 class CCommonStaticPath;
-enum EPathRestriction;
+enum EPathRestriction : int;
 namespace NGameX { class PFClientBaseMovingUnit; }
 
 namespace NWorld

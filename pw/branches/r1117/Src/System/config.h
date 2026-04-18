@@ -45,6 +45,7 @@
 #endif
 
 #include "types.h"
+#include "platform_types.h"
 
 #if defined( NV_LINUX_PLATFORM )
 
@@ -58,4 +59,3 @@
 #endif
 
 #endif // __CONFIG_H_INCLUDED__280426__
-

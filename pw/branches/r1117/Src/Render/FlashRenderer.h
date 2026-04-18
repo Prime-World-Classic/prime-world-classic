@@ -10,6 +10,79 @@ namespace Render
 
 class BaseMaterial;
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+class FlashRenderer : public IFlashRenderer, public BaseObjectST
+{
+  NI_DECLARE_REFCOUNT_CLASS_2( FlashRenderer, IFlashRenderer, BaseObjectST );
+
+public:
+  FlashRenderer();
+  ~FlashRenderer();
+
+  virtual bool Initialize();
+  virtual void Release();
+
+  virtual void StartFrame();
+  virtual void BeginQueue();
+  virtual void EndQueue();
+
+  virtual void BreakQueue();
+
+  virtual void Render( int _firstElement, int _lastElement, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy );
+
+  virtual void SetResolutionCoefs( float x, float y, float widthScale, float heightScale );
+
+  virtual void SetMatrix( const flash::SWF_MATRIX& _m );
+  virtual void SetColorTransform( const flash::SWF_CXFORMWITHALPHA& cx );
+  virtual void SetBlendMode( EFlashBlendMode::Enum blendMode );
+
+  virtual void SetFillStyleBitmap( IBitmapInfo* bi, const flash::SWF_MATRIX& m, EBitmapWrapMode::Enum wm, bool primary );
+
+  virtual void SetLineWidth( float width );
+  virtual void SetLineColor( const flash::SWF_RGBA& color );
+
+  virtual IBitmapInfo* CreateBitmap( int width, int height );
+  virtual IBitmapInfo* CreateBitmapFromTexture( const Texture2DRef& _texture );
+  virtual IBitmapInfo* CreateBitmapInfoRgba( image::rgba* im, bool repeatable );
+  virtual IBitmapInfo* CreateBitmapFromFile( const nstl::string& filename );
+  virtual IBitmapInfo* CreateGradientBitmap( const flash::SWF_GRADIENT& gradient );
+
+  virtual void BeginDisplay(
+    int viewport_x0, int viewport_y0,
+    int viewport_width, int viewport_height,
+    float x0, float x1, float y0, float y1,
+    bool useScissorRect );
+  virtual void EndDisplay();
+
+  virtual void DrawBitmap( IBitmapInfo* bi, float width, float height, int uniqueID, bool smoothing );
+  virtual void DrawBitmapScale9Grid( IBitmapInfo* bi, float width, float height, const flash::SWF_RECT& scale9Grid, float aspectX, float aspectY, int uniqueID, bool smoothing );
+  virtual void DrawTriangleList( ShapeVertex* vertices, int count, int uniqueID );
+  virtual void DrawLineStrip( const nstl::vector<CVec2>& coords, int uniqueID );
+
+  virtual void SetMorph( float rate );
+
+  virtual void SetScale9Grid( const CVec4& constX, const CVec4& constY, const CVec4& trans );
+  virtual void ResetScale9Grid();
+
+  virtual void BeginSubmitMask();
+  virtual void EndSubmitMask();
+  virtual void BeginUnSubmitMask();
+  virtual void DisableMask();
+
+  virtual void BeginColorMatrix( const SHMatrix& _colorMatrix, const CVec4& _addColor );
+  virtual void EndColorMatrix();
+
+  virtual void RenderText( int _partID );
+  virtual void RenderTextBevel( bool withBevel, const flash::SWF_RGBA& color, Texture* fontTexture );
+
+  virtual void ClearCaches();
+
+  virtual void DebugNextBatch();
+};
+
+#else
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class FlashRenderer : public IFlashRenderer, public BaseObjectST
 {
@@ -302,6 +375,8 @@ private:
 
   ColorMatrixStack colorMatrixStack;
 };
+
+#endif
 
 } // namespace Render
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

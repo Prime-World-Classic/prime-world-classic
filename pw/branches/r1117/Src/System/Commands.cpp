@@ -53,6 +53,7 @@ const wstring &GetAlias( const string &szAliasName )
 class CRecordInfo
 {
 	NGlobal::VariantValue defValue;
+  NGlobal::VariantValue localValue;
 	NGlobal::TCmdHandler pCmdHandler;
   NGlobal::TCmdHandlerEx pCmdHandlerEx;
   CObj<NGlobal::IVariable> pVariable;
@@ -66,7 +67,7 @@ public:
   CRecordInfo( NGlobal::TCmdHandlerEx _pCmd ) : pCmdHandlerEx( _pCmd ), pCmdHandler( 0 ), pContextCmdFunctor( 0 ), storage( STORAGE_NONE ) {}
   CRecordInfo( NGlobal::IContextFunctor* _pContextCmdFunctor ) : pCmdHandler( 0 ), pCmdHandlerEx(0), pContextCmdFunctor( _pContextCmdFunctor ), storage( STORAGE_NONE ) {}
 	CRecordInfo( CObj<NGlobal::IVariable> pVariable, const EStorageClass _storage )
-		: defValue( pVariable->Get() ), pCmdHandler(0), pVariable(pVariable),  pContextCmdFunctor( 0 ), pCmdHandlerEx(0)
+		: defValue( pVariable->Get() ), localValue( defValue ), pCmdHandler(0), pVariable(pVariable),  pContextCmdFunctor( 0 ), pCmdHandlerEx(0)
 	{
 		if ( _storage == STORAGE_DONT_CARE && defStorage == STORAGE_DONT_CARE )
 			storage = STORAGE_NONE;
@@ -75,23 +76,42 @@ public:
 		else
 			storage = _storage;
 	}
+  CRecordInfo( const NGlobal::VariantValue& value, const EStorageClass _storage )
+    : defValue( value ), localValue( value ), pCmdHandler(0), pCmdHandlerEx(0), pContextCmdFunctor( 0 ), storage( STORAGE_NONE )
+  {
+    if ( _storage == STORAGE_DONT_CARE && defStorage == STORAGE_DONT_CARE )
+      storage = STORAGE_NONE;
+    else if ( _storage == STORAGE_DONT_CARE )
+      storage = defStorage;
+    else
+      storage = _storage;
+  }
 
 	const NGlobal::VariantValue GetValue() const 
 	{ 
-	  NI_ASSERT( pVariable != 0, "Commands initialization error" );
-	  return pVariable->Get(); 
+	  if ( pVariable != 0 )
+	    return pVariable->Get();
+
+    return localValue;
 	}
 	
 	void SetValue( const NGlobal::VariantValue &_value )
 	{
-		NI_ASSERT( pVariable != 0, "Commands initialization error" );
-		pVariable->Set(_value);
+    if ( pVariable != 0 )
+    {
+      pVariable->Set(_value);
+      return;
+    }
+
+    localValue = _value;
 	}
 	
 	bool VerifyValue( const NGlobal::VariantValue &_value ) const
 	{
-	  NI_ASSERT( pVariable != 0, "Commands initialization error" );
-		return pVariable->VerifyValue(_value);
+    if ( pVariable != 0 )
+		  return pVariable->VerifyValue(_value);
+
+    return true;
 	}
 	
 	void Reset()
@@ -101,8 +121,8 @@ public:
 	
 	void Apply()
 	{
-    NI_ASSERT( pVariable != 0, "Commands initialization error" );
-    pVariable->Apply();
+    if ( pVariable != 0 )
+      pVariable->Apply();
 	}
  
   bool CanExecuteContextCmd() const { return pContextCmdFunctor; }
@@ -373,11 +393,9 @@ void SetVar( const string &szID, const VariantValue &value, const EStorageClass 
 	if ( pos == GetRecords().end() )
 	{
     systemLog( NLogg::LEVEL_MESSAGE ) << "Value '" << szID << "' is not registered";
-    
-    if ( !RegisterVar( szID, new DummyVariable(value), newStorage ) )
-		  return;
 
-		pos = GetRecords().find( szID );
+    GetRecords()[szID] = CRecordInfo( value, newStorage );
+    pos = GetRecords().find( szID );
 	}
 
   if( !pos->second.VerifyValue(value) )
@@ -635,14 +653,28 @@ static wchar_t ** _BuildCommandLine(int *numArgs)
   for (i = 0; i < NGlobal::g_commandLineArgc; i++)
   {
     l = strlen(NGlobal::g_commandLineArgv[i]);
-    argList[i] = (wchar_t*)malloc( l + 2);
-    for (j = 9; j < l ; j++)
+    argList[i] = (wchar_t*)malloc( ( l + 1 ) * sizeof(wchar_t) );
+    if ( mbstowcs( argList[i], NGlobal::g_commandLineArgv[i], l + 1 ) != static_cast<size_t>( -1 ) )
     {
-      argList[i][j] = (wchar_t)NGlobal::g_commandLineArgv[i][j];
+      continue;
     }
+
+    for (j = 0; j < l ; j++)
+      argList[i][j] = static_cast<unsigned char>(NGlobal::g_commandLineArgv[i][j]);
     argList[i][j] = 0;
   }
   return argList;
+}
+
+static void _FreeBuiltCommandLine( wchar_t **argsList, int numArgs )
+{
+  if ( !argsList )
+    return;
+
+  for ( int i = 0; i < numArgs; ++i )
+    free( argsList[i] );
+
+  free( argsList );
 }
 
 #endif
@@ -730,7 +762,7 @@ static bool CommandLine( const char * /*name*/ , const vector<wstring> &params )
 #ifdef WIN32	
 	LocalFree(argsList);
 #else
-  free(argsList);
+  _FreeBuiltCommandLine(argsList, nArgs);
 #endif	
 
   for ( int i = 0; i < commands.size(); ++i )

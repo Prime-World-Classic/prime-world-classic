@@ -1293,7 +1293,7 @@ bool PFPointTargetSelector::FindTarget(const RequestParams &pars, Target &target
   if ( !pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid() )
     return false;
     
-  const CPtr<PFLogicObject> pOwner = pars.pOwner;
+  const CPtr<PFBaseUnit> pOwner = pars.pOwner;
   
   Target requestedTarget;
   if ( pTargetSelector )

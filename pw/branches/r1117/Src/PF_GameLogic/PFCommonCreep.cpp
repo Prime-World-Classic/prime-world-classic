@@ -10,13 +10,14 @@
 #include "PFBaseUnitStates.h"
 #include "PFAIWorld.h"
 #include "../System/InlineProfiler.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
 #include "PFClientObjectHelpers.h"
 #include "PF_Core/EffectsPool.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #define GET_AI_PARAM(param) GetWorld()->GetAIWorld()->GetAIParameters().param
@@ -112,7 +113,7 @@ void PFCreepSpawner::SetCreepsPower(CreepsPower power)
 int FloatSign(float val)
 {
   double one = 1.0;
-  double res =_copysign( one, val );
+  double res = copysign( one, val );
   return (int)res;
 }
 

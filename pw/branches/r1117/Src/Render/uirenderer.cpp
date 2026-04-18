@@ -1,5 +1,242 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "uirenderer.h"
+
+namespace Render
+{
+
+namespace
+{
+
+class NullUIRenderer : public IUIRenderer
+{
+public:
+  NullUIRenderer()
+    : resolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f)
+    , forbidSaturation(false)
+  {
+  }
+
+  virtual bool Initialize() { return true; }
+  virtual void Release() {}
+
+  virtual void StartFrame() {}
+
+  virtual void PushCrop(const UIRect& cropRect) { (void)cropRect; }
+  virtual void PushNoCrop() {}
+  virtual void PopCrop() {}
+
+  virtual void AddQuad(UIQuad& quad, Render::BaseMaterial* renderMaterial, const SMaterialParams& params)
+  {
+    (void)quad;
+    (void)renderMaterial;
+    (void)params;
+  }
+
+  virtual void BeginFlashParts(int startFlashElement) { (void)startFlashElement; }
+  virtual void EndFlashParts(int lastFlashElement) { (void)lastFlashElement; }
+
+  virtual void BeginText() {}
+  virtual void AddTextQuad(UIQuad& quad, const SMaterialParams& params)
+  {
+    (void)quad;
+    (void)params;
+  }
+  virtual void EndText(Render::BaseMaterial* renderMaterial) { (void)renderMaterial; }
+
+  virtual void SetViewMatrices(const SHMatrix& view, const SHMatrix& projection)
+  {
+    (void)view;
+    (void)projection;
+  }
+
+  virtual void SetWorldMatrix(const SHMatrix& world, ETransformMode::Enum transformMode, const CVec3& pivot, float depthBias)
+  {
+    (void)world;
+    (void)transformMode;
+    (void)pivot;
+    (void)depthBias;
+  }
+
+  virtual void ResetWorldMatrix() {}
+
+  virtual void GetBillboardMatrix(SHMatrix* pCombined, const SHMatrix& world, ETransformMode::Enum transformMode, const CVec3& pivot, float depthBias)
+  {
+    (void)transformMode;
+    (void)pivot;
+    (void)depthBias;
+    if (pCombined)
+      *pCombined = world;
+  }
+
+  virtual void GetRay(CVec3* pOrigin, CVec3* pDir, int sx, int sy)
+  {
+    (void)sx;
+    (void)sy;
+    if (pOrigin)
+      *pOrigin = CVec3(0.0f, 0.0f, 0.0f);
+    if (pDir)
+      *pDir = CVec3(0.0f, 0.0f, 1.0f);
+  }
+
+  virtual float CalcDepth(const CVec3& point)
+  {
+    return point.z;
+  }
+
+  virtual void SetResolutionCoefs(const float x, const float y, const float widthScale, const float heightScale)
+  {
+    resolutionCoefs.Set(x, y, widthScale, heightScale);
+  }
+
+  virtual const CVec4& GetResolutionCoefs() const
+  {
+    return resolutionCoefs;
+  }
+
+  virtual void SetFontTextureSize(const int width, const int height)
+  {
+    (void)width;
+    (void)height;
+  }
+
+  virtual void BeginQueue() {}
+  virtual void EndQueue() {}
+
+  virtual void Render(ERenderWhat::Enum what, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy)
+  {
+    (void)what;
+    (void)pMainRT0;
+    (void)pMainRT0Copy;
+  }
+
+  virtual void PrepareRender() {}
+  virtual void PrepareRenderFromFlash() {}
+  virtual void RenderPart(int partID, ERenderWhat::Enum what, bool alphaTest)
+  {
+    (void)partID;
+    (void)what;
+    (void)alphaTest;
+  }
+
+  virtual BaseMaterial* GetPartMaterial(int partID, ERenderWhat::Enum what)
+  {
+    (void)partID;
+    (void)what;
+    return 0;
+  }
+
+  virtual void SetSaturation(float val, const CVec4& color, bool saturate)
+  {
+    (void)val;
+    (void)color;
+    (void)saturate;
+  }
+
+  virtual bool ForbidSaturation(bool forbid)
+  {
+    const bool previous = forbidSaturation;
+    forbidSaturation = forbid;
+    return previous;
+  }
+
+  virtual IFlashRenderer* GetFlashRenderer()
+  {
+    return 0;
+  }
+
+  virtual IUITextureCache* GetTextureCache()
+  {
+    return 0;
+  }
+
+private:
+  CVec4 resolutionCoefs;
+  bool forbidSaturation;
+};
+
+} // namespace
+
+IUIRenderer* GetUIRenderer()
+{
+  static NullUIRenderer uiRenderer;
+  return &uiRenderer;
+}
+
+UIRenderMaterial::UIRenderMaterial()
+  : renderMaterial(0)
+  , texturePoolId(0)
+{
+}
+
+UIRenderMaterial::UIRenderMaterial(const UIRenderMaterial& other)
+  : renderMaterial(0)
+  , texturePoolId(0)
+{
+  SetDBMaterial(other.dbMaterial, other.texturePoolId);
+}
+
+UIRenderMaterial& UIRenderMaterial::operator=(const UIRenderMaterial& other)
+{
+  SetDBMaterial(other.dbMaterial, other.texturePoolId);
+  return *this;
+}
+
+UIRenderMaterial::UIRenderMaterial(const NDb::BaseUIMaterial* material)
+  : renderMaterial(0)
+  , texturePoolId(0)
+{
+  SetDBMaterial(material, 0);
+}
+
+UIRenderMaterial::UIRenderMaterial(const NDb::BaseUIMaterial* material, void* texturePool)
+  : renderMaterial(0)
+  , texturePoolId(0)
+{
+  SetDBMaterial(material, texturePool);
+}
+
+UIRenderMaterial::~UIRenderMaterial()
+{
+}
+
+void UIRenderMaterial::Release()
+{
+  renderMaterial = 0;
+  dbMaterial = 0;
+  texturePoolId = 0;
+}
+
+void UIRenderMaterial::CreateDefaultMaterial()
+{
+  renderMaterial = 0;
+  texturePoolId = 0;
+}
+
+void UIRenderMaterial::SetDBMaterial(const NDb::BaseUIMaterial* material, void* texturePool, bool forceReload)
+{
+  (void)forceReload;
+  dbMaterial = material;
+  renderMaterial = 0;
+  texturePoolId = texturePool;
+}
+
+Render::BaseMaterial* UIRenderMaterial::GetRenderMaterial()
+{
+  return renderMaterial;
+}
+
+const NDb::BaseUIMaterial* UIRenderMaterial::GetDBMaterial() const
+{
+  return dbMaterial;
+}
+
+} // namespace Render
+
+#else
+
 #include "uirenderer.hpp"
 
 #include "FlashRendererInterface.h"
@@ -960,3 +1197,5 @@ const NDb::BaseUIMaterial* UIRenderMaterial::GetDBMaterial() const
 
 
 } // namespace Render
+
+#endif

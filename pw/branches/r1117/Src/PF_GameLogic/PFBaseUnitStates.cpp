@@ -19,12 +19,17 @@
 #include "WarFog.h"
 
 #include "DBGameLogic.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientBaseMovingUnit.h"
+#include "PFClientCreature.h"
+#include "AdventureScreen.h"  // For TempDebugTrace. Remove, when unneeded
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#define TempDebugTrace(msg) do {} while (false)
+#endif
 
 #include "RegionPointChecker.h"
 #include "PFMinigamePlace.h"
-#include "PFClientCreature.h"
-#include "AdventureScreen.h"  // For TempDebugTrace. Remove, when unneeded
 
 namespace
 {
@@ -680,7 +685,7 @@ namespace NWorld
         bool pushCombatState = true;
         if ( canMove )
         {
-          PFBaseUnit* target = strongTarget ? pTarget : pOwner->GetCurrentTarget();
+          PFBaseUnit* target = strongTarget ? pTarget : pOwner->GetCurrentTarget().GetPtr();
 
           if ( PFBuilding* building = dynamic_cast<PFBuilding*>( target ) )
           {

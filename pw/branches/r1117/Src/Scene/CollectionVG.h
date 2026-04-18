@@ -209,7 +209,29 @@ public:
     */
     template <class Processor> bool process(Processor &p, Render::AABB const &bbox)
     {
-      VoxelGridObj::ProcessByBBoxProc<Processor> bbp(bbox, p);
+      struct ProcessByBBoxProcLocal
+      {
+        Render::AABB const &bbox;
+        Processor &proc;
+
+        ProcessByBBoxProcLocal(Render::AABB const &bbox_, Processor &proc_)
+          : bbox(bbox_)
+          , proc(proc_)
+        {
+        }
+
+        typename VGObj::RenderGroups getRenderGroup() const { return proc.getRenderGroup(); }
+
+        void operator()(VGObj &obj)
+        {
+          const Render::AABB &objBbox = obj.GetWorldAABB();
+          if (bbox.IsIntersectedBy(objBbox))
+          {
+            proc(obj);
+          }
+        }
+      } bbp(bbox, p);
+
       return m_objects.process(bbp);
     }
 
@@ -228,7 +250,28 @@ public:
     */
     template <class Processor> bool process(Processor &p, Render::ConvexVolume const &frustum)
     {
-      VoxelGridObj::ProcessByFrustumProc<Processor> fp(frustum, p);
+      struct ProcessByFrustumProcLocal
+      {
+        Render::ConvexVolume const &frustum;
+        Processor &proc;
+
+        ProcessByFrustumProcLocal(Render::ConvexVolume const &frustum_, Processor &proc_)
+          : frustum(frustum_)
+          , proc(proc_)
+        {
+        }
+
+        typename VGObj::RenderGroups getRenderGroup() const { return proc.getRenderGroup(); }
+
+        void operator()(VGObj &obj)
+        {
+          if (frustum.IntersectBox(obj.GetWorldAABB()))
+          {
+            proc(obj);
+          }
+        }
+      } fp(frustum, p);
+
       return m_objects.process(fp);
     }
 
@@ -406,7 +449,23 @@ public:
   ~CollectionVG()
   {
     // remove all objects from collection
-    VoxelGridObj::SetVoxelGridProc p(NULL);
+    struct SetVoxelGridProcLocal
+    {
+      CollectionVGBase *grid;
+
+      explicit SetVoxelGridProcLocal(CollectionVGBase *grid_)
+        : grid(grid_)
+      {
+      }
+
+      typename VGObj::RenderGroups getRenderGroup() const { return VGObj::NUM_GROUPS; }
+
+      void operator()(VGObj &obj)
+      {
+        obj.setVoxelGrid(grid);
+      }
+    } p(NULL);
+
     process(p);
   }
 
@@ -505,7 +564,7 @@ public:
       ++m_processId;
     }
 
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     for (int i = 0; i < m_voxels.size(); ++i)
     {
@@ -546,11 +605,11 @@ public:
 
     // user processor is wrapped into "unique" processor that prevents multiple processing
     // of the same object
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     // "unique" processor wrapped into "objects in voxel" processor that processes
     // all objects in voxel whose bbox intersects given bbox
-    VoxelProcessObjectsProc< VGObj::ProcessUniqueProc<Processor> > pop(m_voxels, up, bbox);
+    VoxelProcessObjectsProc<typename VGObj::template ProcessUniqueProc<Processor> > pop(m_voxels, up, bbox);
     
     return m_grid.process(pop, bbox);
   }
@@ -582,11 +641,11 @@ public:
 
     // user processor is wrapped into "unique" processor that prevents multiple processing
     // of the same object
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     // "unique" processor wrapped into "objects in voxel" processor that processes
     // all objects in voxel whose bbox intersects given frustum
-    VoxelProcessObjectsProc< VGObj::ProcessUniqueProc<Processor> > pop(m_voxels, up, frustum);
+    VoxelProcessObjectsProc<typename VGObj::template ProcessUniqueProc<Processor> > pop(m_voxels, up, frustum);
     
     return m_grid.process(pop, frustum);
   }

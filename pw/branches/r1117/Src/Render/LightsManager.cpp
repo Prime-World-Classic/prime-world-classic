@@ -1,4 +1,110 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "LightsManager.h"
+#include "GlobalMasks.h"
+
+namespace Render
+{
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void LightsData::Initialize()
+{
+}
+
+void LightsData::Terminate()
+{
+  elements.clear();
+}
+
+UINT LightsData::Fill(AABB const& aabb)
+{
+  LightsManager* lightsManager = GetLightsManager();
+  if (!lightsManager)
+  {
+    elements.clear();
+    return 0;
+  }
+
+  // collect lights affecting this object
+  PointLightsCollector clf(lightsManager->GetLightsDataFilterFlags());
+
+  lightsManager->ForLightsAffectingBBox( aabb, clf );
+
+  // fill array with attenuations
+  typedef pair<Render::PointLight const *, float> LightInfo;
+  vector<LightInfo> sorted(clf.lights.size());
+  for (int i = 0, n = sorted.size(); i < n; i++)
+  {
+    Render::PointLight const* pLight = clf.lights[i];
+    CVec3 vDistance = pLight->GetLocation() - aabb.center;
+    float radius = Max(aabb.halfSize.x, Max(aabb.halfSize.y, aabb.halfSize.z));
+    float distance = Max(0.0f, vDistance.Length() - radius);
+
+    sorted[i].first = pLight;
+    sorted[i].second = pLight->GetAttenuation(distance);
+  }
+
+  // sort by attenuation
+  struct {
+    bool operator()(LightInfo const& a, LightInfo const& b) {
+      return a.second > b.second;
+    }
+  } lightIsCloser;
+  nstl::sort(sorted.begin(), sorted.end(), lightIsCloser); // this must be slow, use insertion sort [2/25/2010 smirnov]
+
+  // copy light parameters
+  UINT lightsCount = Min(sorted.size(), POINTLIGHTSCOUNT);
+  vector<Element>(lightsCount).swap(elements);
+  for (UINT i = 0; i < lightsCount; i++)
+  {
+    PointLight const* pLight = sorted[i].first;
+    float range = pLight->GetRange();
+
+    Element& data = elements[i];
+    data.pos = pLight->GetLocation();
+    data.factor = (pLight->m_attenuationType == NDb::ATTENUATION_NONE || range <= 0) ? 0.0f : 1.0f / (range * range);
+    data.color = pLight->m_diffuseColor * pLight->m_diffuseIntensity;
+  }
+  return lightsCount;
+}
+
+void LightsData::Setup() const
+{
+  Renderer* renderer = GetRenderer();
+  if (!renderer || elements.empty())
+    return;
+
+  // ensure there will be no problems with shader constants
+  NI_STATIC_ASSERT(sizeof(Element) == 2 * sizeof(CVec4), LIGHT_DATA_SIZE_MISMATCH);
+  NI_STATIC_ASSERT(sizeof(CVec4) == 4 * sizeof(float), CVEC4_SIZE_IS_STRANGE);
+
+  renderer->SetPixelShaderConstants(POINTLIGHTSDATA, 2 * elements.size(), &elements[0]);
+
+  int k = 0;
+  UINT regIdx = POINTLIGHTFACTOR;
+  const int pointLightsCount = min(POINTLIGHTSCOUNT, elements.size());
+  for(int i = 0; i < POINTLIGHTSCOUNT; i += 4)
+  {
+    CVec4 factors;
+    int numElements = min(4, pointLightsCount - i);
+    for(int j = 0; j < numElements; ++j)
+      factors[j] = elements[k++].factor;
+
+    renderer->SetPixelShaderConstantsVector4(regIdx++, factors);
+  }
+}
+
+} // namespace Render
+
+// end of LightsManager.cpp
+
+#else
+
 #include "LightsManager.h"
 #include "GlobalMasks.h"
 
@@ -177,3 +283,5 @@ void LightsManager::UpdateLight(Render::PointLight *light)
 } // namespace Render
 
 // end of LightsManager.cpp
+
+#endif

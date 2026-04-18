@@ -7,6 +7,7 @@
 #include "StaticSceneComponent.h"
 
 #include "../System/InlineProfiler.h"
+#include "../Render/NullRenderSignal.h"
 
 
 namespace NScene
@@ -227,13 +228,19 @@ bool StaticSceneComponent::LoadVertexColors(NScene::MeshVertexColorsManager &man
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool StaticSceneComponent::BakedLightingUsed()
 {
-#ifdef _USE_DB
+#if defined(PW_LINUX_NULL_RENDER)
+  if (!pDBObject.IsEmpty())
+  {
+    NDb::LightingPin light = (NDb::LightingPin)(-1);
+    return CheckMaterials(pDBObject.GetPtr(), &light) && NDb::LIGHTINGPIN_LIGHTINGBAKED == light;
+  }
+#elif defined(_USE_DB)
   NDb::Ptr<NDb::DBStaticSceneComponent> pDBSC = NDb::Get<NDb::DBStaticSceneComponent>( GetDBID() );
   if( !pDBSC.IsEmpty() ) {
     NDb::LightingPin light = (NDb::LightingPin)(-1);
     return CheckMaterials(pDBSC.GetRawResourcePtr(), &light) && NDb::LIGHTINGPIN_LIGHTINGBAKED == light;
   }
-#else // _USE_DB
+#else
   if(pStaticMesh) {
     struct CheckBakedLighting : Render::IMaterialProcessor 
     {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "PFLogicObject.h"
+#include "DBAdvMap.h"
 
 namespace NGameX { class PFClientSimpleObject; class PFClientMultiStateObject; }
 

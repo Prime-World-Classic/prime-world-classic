@@ -1,6 +1,21 @@
 #ifndef __EXPREPORT_H__633124997137656250
 #define __EXPREPORT_H__633124997137656250
 
+#if defined( NV_LINUX_PLATFORM )
+
+namespace NBSU
+{
+
+class SystemReport
+{
+public:
+  bool dumpSystemInfo( bool = true ) { return false; }
+};
+
+}
+
+#else
+
 /*
  *  CVS Revision:$Id: expreport.h,v 1.9 2007/06/01 17:02:56 earnol Exp $
  *
@@ -287,5 +302,6 @@ private:
 
 }
 
-#endif //__EXPREPORT_H__633124997137656250
+#endif
 
+#endif //__EXPREPORT_H__633124997137656250

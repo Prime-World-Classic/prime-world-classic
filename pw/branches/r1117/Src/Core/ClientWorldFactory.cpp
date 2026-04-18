@@ -2,7 +2,7 @@
 
 #include "StdAfx.h"
 #include "ClientWorldFactory.h"
-#include "..\System\StrProc.h"
+#include "../System/StrProc.h"
 
 namespace NClientFactory
 {

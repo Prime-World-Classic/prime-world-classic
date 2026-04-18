@@ -3,6 +3,202 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../Render/Material.h"
+
+namespace Render
+{
+
+struct RuntimePins
+{
+  NDb::CachingPin CachingPinValue;
+  NDb::DecalModePin DecalModeValue;
+  NDb::BoolPin DoDepthOutValue;
+  NDb::BoolPin DualDepthPinValue;
+  NDb::BooleanPin InstancingValue;
+  NDb::BoolPin NewParticlesValue;
+  NDb::RenderModePin RenderModeValue;
+  NDb::ShaderQualityPin ShaderQualityValue;
+
+  RuntimePins()
+    : CachingPinValue((NDb::CachingPin)0)
+    , DecalModeValue((NDb::DecalModePin)0)
+    , DoDepthOutValue((NDb::BoolPin)0)
+    , DualDepthPinValue((NDb::BoolPin)0)
+    , InstancingValue((NDb::BooleanPin)0)
+    , NewParticlesValue((NDb::BoolPin)0)
+    , RenderModeValue(NDb::RENDERMODEPIN_RENDERNORMAL)
+    , ShaderQualityValue((NDb::ShaderQualityPin)0)
+  {
+  }
+};
+
+inline RuntimePins& GetRuntimePins()
+{
+  static RuntimePins pins;
+  return pins;
+}
+
+class BaseMaterial : public Render::Material
+{
+protected:
+  BaseMaterial( int priority = 0, int flags = 0, int shaderIndex = -1 )
+    : Render::Material( priority, flags, shaderIndex )
+    , debugPinValue((NDb::BooleanPin)0)
+    , terrainUVSetPinValue((NDb::TerrainUVSetPin)0)
+    , textureFitPinValue((NDb::BooleanPin)0)
+    , textureCountPinValue((NDb::TextureCountPin)0)
+  {
+  }
+
+public:
+  virtual const Render::Sampler* GetBorderMap() const { return &borderMap; }
+  virtual Render::Sampler* GetBorderMap() { return &borderMap; }
+  virtual Render::Sampler* GetDiffuseMap() { return 0; }
+  virtual const Render::Sampler* GetDiffuseMap() const { return 0; }
+  virtual Render::Sampler* GetDiffuseMapBurned() { return &diffuseMapBurned; }
+  virtual const Render::Sampler* GetDiffuseMapBurned() const { return &diffuseMapBurned; }
+  virtual Render::Sampler* GetDiffuseMapFrozen() { return &diffuseMapFrozen; }
+  virtual const Render::Sampler* GetDiffuseMapFrozen() const { return &diffuseMapFrozen; }
+  virtual const NDb::BooleanPin GetDebugPinValue() const { return debugPinValue; }
+
+  virtual float GetAnimLength() const
+  {
+    return 0.0f;
+  }
+
+  virtual const NDb::OpacityAndEmissiveModePin GetOpacityModePin() const
+  {
+    return (NDb::OpacityAndEmissiveModePin)0;
+  }
+
+  virtual const NDb::OrientTypePin GetOrientTypePin() const
+  {
+    return (NDb::OrientTypePin)0;
+  }
+
+  virtual const Render::Sampler* GetRoadMap() const { return &roadMap; }
+  virtual Render::Sampler* GetRoadMap() { return &roadMap; }
+  virtual const NDb::TerrainUVSetPin GetTerrainUVSetPin() const { return terrainUVSetPinValue; }
+
+  virtual const NDb::BooleanPin GetTextureFitPinValue() const
+  {
+    return textureFitPinValue;
+  }
+  virtual const NDb::TextureCountPin GetTextureCountPin() const { return textureCountPinValue; }
+
+  virtual void ModifyOpacity( float opacity )
+  {
+    (void)opacity;
+  }
+
+  virtual void ModifyBlendMode( NDb::BlendMode blendMode, bool isSetDefaultBlendMode )
+  {
+    (void)blendMode;
+    (void)isSetDefaultBlendMode;
+  }
+
+  virtual void ModifyColor( const Render::HDRColor& mul, const Render::HDRColor& add )
+  {
+    (void)mul;
+    (void)add;
+  }
+
+  virtual void SetDebugPinValue( const NDb::BooleanPin value )
+  {
+    debugPinValue = value;
+  }
+
+  virtual void SetOrientTypePin( const NDb::OrientTypePin value )
+  {
+    (void)value;
+  }
+
+  virtual void SetStartTime( float startTime )
+  {
+    (void)startTime;
+  }
+
+  virtual void SetTerrainUVSetPin( const NDb::TerrainUVSetPin value )
+  {
+    terrainUVSetPinValue = value;
+  }
+
+  virtual void SetTextureFitPinValue( const NDb::BooleanPin value )
+  {
+    textureFitPinValue = value;
+  }
+
+  virtual void SetTextureCountPin( const NDb::TextureCountPin value )
+  {
+    textureCountPinValue = value;
+  }
+
+  virtual void SetSpecialTransparency( bool on )
+  {
+    (void)on;
+  }
+
+protected:
+  Render::Sampler borderMap;
+  Render::Sampler diffuseMapBurned;
+  Render::Sampler diffuseMapFrozen;
+  Render::Sampler roadMap;
+  NDb::BooleanPin debugPinValue;
+  NDb::TerrainUVSetPin terrainUVSetPinValue;
+  NDb::BooleanPin textureFitPinValue;
+  NDb::TextureCountPin textureCountPinValue;
+};
+
+class ParticleFXMaterial : public BaseMaterial
+{
+public:
+  enum { typeId = NDb::ParticleFXMaterial::typeId };
+
+  ParticleFXMaterial()
+    : BaseMaterial( NDb::MATERIALPRIORITY_TRANSPARENT, 0, -1 )
+    , opacity(1.0f)
+    , distortion(0.0f)
+    , uvSpeed(0.0f, 0.0f)
+    , isBlendModeOverrided(0)
+    , scale(1.0f)
+    , OpacityAndEmissiveModePinValue(NDb::OPACITYANDEMISSIVEMODEPIN_BLENDOPACITY)
+    , OrientTypePinValue((NDb::OrientTypePin)0)
+    , DistortionPinValue((NDb::BooleanPin)0)
+  {
+  }
+
+  virtual Render::Sampler* GetDiffuseMap() { return &DiffuseMap; }
+  virtual const Render::Sampler* GetDiffuseMap() const { return &DiffuseMap; }
+  virtual const NDb::OpacityAndEmissiveModePin GetOpacityModePin() const { return OpacityAndEmissiveModePinValue; }
+  virtual const NDb::OrientTypePin GetOrientTypePin() const { return OrientTypePinValue; }
+  virtual void ModifyOpacity( float opacity_ ) { opacity = opacity_; }
+  virtual void SetOrientTypePin( const NDb::OrientTypePin value ) { OrientTypePinValue = value; }
+
+  const float GetScale() const { return scale; }
+
+  static RenderState CorrectRS(const RenderState& src)
+  {
+    return src;
+  }
+
+  RenderState renderState;
+  Render::Sampler DiffuseMap;
+  float opacity;
+  float distortion;
+  CVec2 uvSpeed;
+  int isBlendModeOverrided;
+  float scale;
+  NDb::OpacityAndEmissiveModePin OpacityAndEmissiveModePinValue;
+  NDb::OrientTypePin OrientTypePinValue;
+  NDb::BooleanPin DistortionPinValue;
+};
+
+} // namespace Render
+
+#else
+
 #include "../Render/renderer.h"
 #include "../Render/GlobalMasks.h"
 #include "../Render/Material.h"
@@ -4335,3 +4531,5 @@ public:
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }; // namespace Render
+
+#endif

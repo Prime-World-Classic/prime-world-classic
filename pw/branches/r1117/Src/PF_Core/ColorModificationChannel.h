@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../System/Ring.h"
+#include "../Render/DBRender.h"
 
 namespace PF_Core
 {

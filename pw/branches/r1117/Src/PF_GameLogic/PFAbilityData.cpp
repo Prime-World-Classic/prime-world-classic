@@ -242,7 +242,9 @@ CObj<PFAbilityInstance> PFAbilityData::ApplyToTarget( Target const& target )
   NDb::CastLimitation const* castLimitation = CheckCastLimitations( target );
   if ( castLimitation )
   {
+#if !defined(VISUAL_CUTTED)
     NGameX::ProcessUnitEvent( castLimitation->uiEvent, pOwner );
+#endif
 
     // Application failed
     return CObj<PFAbilityInstance>(0);
@@ -851,6 +853,10 @@ NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& ta
  
 ::DiAnimGraph* PFAbilityData::GetAG( NScene::SceneObject* so ) const
 {
+#if defined(VISUAL_CUTTED)
+  (void)so;
+  return 0;
+#else
 	if ( so->GetRootComponent() )
 		if ( NScene::AnimatedSceneComponent* asc = dynamic_cast<NScene::AnimatedSceneComponent*>(so->GetRootComponent()) )
 			if ( asc->GetMainAnimGraph()->GetDBFileName() != "none" )
@@ -884,10 +890,14 @@ NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& ta
 		return finder.ag;
 
 	return 0;
+#endif
 }
 
 float PFAbilityData::GetAttackTimeOffset() const
 {
+#if defined(VISUAL_CUTTED)
+  return 0.0f;
+#else
 	nstl::string nodeName = GetDBDesc()->node;
 	nstl::string markerName  = GetDBDesc()->marker;
 	float attackTimeOffset = 0.0f;
@@ -915,10 +925,17 @@ float PFAbilityData::GetAttackTimeOffset() const
 		delete pSO;
 
 	return attackTimeOffset;
+#endif
 }
 
 float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::string &nodeName, const nstl::string &markerName ) const
 {
+#if defined(VISUAL_CUTTED)
+  (void)pSO;
+  (void)nodeName;
+  (void)markerName;
+  return 0.0f;
+#else
 	::DiAnimGraph* pAG = GetAG( pSO );
 	if ( !pAG )
 	{
@@ -987,10 +1004,15 @@ float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::strin
 	virtPar /= node->GetSpeed();
 
 	return virtPar;
+#endif
 }
 
 NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const
 {
+#if defined(VISUAL_CUTTED)
+  needDelete = false;
+  return GetOwner()->GetClientSceneObject();
+#else
 	needDelete = false;
 	NScene::SceneObject* pSO = GetOwner()->GetClientSceneObject();
 
@@ -1012,6 +1034,7 @@ NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const
 		needDelete = true;
 	}
 	return pSO;
+#endif
 }
 
 bool PFAbilityData::IsInstaCast() const
@@ -1128,8 +1151,12 @@ float PFAbilityData::GetTerrainPart(int faction) const
 
 int PFAbilityData::GetTerrianTypeUnderCursor() const
 {
+#if defined(VISUAL_CUTTED)
+  return 0;
+#else
   CVec3 posOnTerra = NGameX::AdventureScreen::Instance()->GetCurrentCursorPosOnTerrain();
   return GetWorld()->GetNatureMap()->GetNatureInPoint(posOnTerra.X(), posOnTerra.Y());
+#endif
 }
 
 int PFAbilityData::GetNatureTypeInPos(CVec2 pos) const

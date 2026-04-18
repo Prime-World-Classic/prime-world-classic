@@ -1,5 +1,65 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "DxResourcesControl.h"
+
+namespace
+{
+
+string& NullDXPoolName()
+{
+  static string pool("default");
+  return pool;
+}
+
+} // namespace
+
+string const& GetCurrentDXPool()
+{
+  return NullDXPoolName();
+}
+
+void PushDXPool(char const* pool)
+{
+  (void)pool;
+}
+
+void PopDXPool(char const* pool)
+{
+  (void)pool;
+}
+
+#ifdef DX_RESOURCE_CONTROL
+
+void RegisterDXPtr(IDirect3DResource9* ptr)
+{
+  (void)ptr;
+}
+
+void RegisterDXPtr(IUnknown* ptr, DXPtrType type)
+{
+  (void)ptr;
+  (void)type;
+}
+
+void UnregisterDXPtr(IUnknown* ptr)
+{
+  (void)ptr;
+}
+
+void DumpDXResourcesLeaks()
+{
+}
+
+void DumpDXResourcesInDefaultPool()
+{
+}
+
+#endif
+
+#else
+
 #include "System/FixedVector.h"
 #include "System/nvector.h"
 #include "System/nhash_map.h"
@@ -732,3 +792,5 @@ void DumpDXResourcesInDefaultPool()
 #endif // DX_RESOURCE_CONTROL
 
 REGISTER_DEV_CMD( dump_resource_memory, DumpResourceMemory );
+
+#endif

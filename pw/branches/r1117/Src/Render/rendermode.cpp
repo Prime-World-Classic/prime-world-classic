@@ -1,6 +1,158 @@
 #include "stdafx.h"
 
 #include "rendermode.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include <X11/Xlib.h>
+
+namespace Render
+{
+static RenderMode g_renderMode;
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const unsigned int RenderMode::WIDTH_DEFAULT = 1024;
+const unsigned int RenderMode::HEIGHT_DEFAULT = 768;
+const unsigned int RenderMode::REFRESH_RATE_DEFAULT = 0;
+
+static NDebug::StringDebugVar s_ScreenResolution("ScreenResolution", "");
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+RenderMode::RenderMode()
+  : multiSampleType(MULTISAMPLE_NONE)
+  , multiSampleQuality(0)
+  , isFullScreen(true)
+  , isBorderless(false)
+  , width(WIDTH_DEFAULT)
+  , height(HEIGHT_DEFAULT)
+  , width3D(WIDTH_DEFAULT)
+  , height3D(HEIGHT_DEFAULT)
+  , windowedWidth(WIDTH_DEFAULT)
+  , windowedHeight(HEIGHT_DEFAULT)
+  , fullscreenWidth(WIDTH_DEFAULT)
+  , fullscreenHeight(HEIGHT_DEFAULT)
+  , refreshRate(REFRESH_RATE_DEFAULT)
+  , vsyncCount(0)
+{
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class ResolutionVariable : public NGlobal::IVariable, public CObjectBase
+{
+  OBJECT_BASIC_METHODS(ResolutionVariable);
+public:
+  ResolutionVariable() {}
+
+  virtual NGlobal::VariantValue Get()
+  {
+    return NGlobal::VariantValue(NStr::StrFmtW(L"%dx%d", g_renderMode.width, g_renderMode.height));
+  }
+
+  virtual void Set(const NGlobal::VariantValue& val)
+  {
+    wstring str(val.Get<wstring>());
+    vector<wstring> res;
+    NStr::ToLower(&str);
+    NStr::SplitString(str, &res, 'x');
+
+    if (res.size() == 2)
+    {
+      g_renderMode.width = g_renderMode.windowedWidth = NStr::ToInt(res[0]);
+      g_renderMode.height = g_renderMode.windowedHeight = NStr::ToInt(res[1]);
+      s_ScreenResolution.SetValue("%dx%d", g_renderMode.width, g_renderMode.height);
+      return;
+    }
+
+    DebugTrace("Could not parse screen resolution settings, using defaults");
+    GetDesktopResolution(g_renderMode.fullscreenWidth, g_renderMode.fullscreenHeight);
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+template <class T>
+class InverseVariable : public NGlobal::IVariable, public CObjectBase
+{
+  OBJECT_BASIC_METHODS(InverseVariable);
+
+public:
+  InverseVariable() : pVar(0) {}
+  InverseVariable(T* pVar) : pVar(pVar) {}
+  virtual NGlobal::VariantValue Get() { NI_ASSERT(pVar != 0, ""); return NGlobal::VariantValue(!*pVar); }
+  virtual void Set(const NGlobal::VariantValue& val) { NI_ASSERT(pVar != 0, ""); *pVar = !val.Get<T>(); }
+
+private:
+  T* pVar;
+};
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GetDesktopResolution(unsigned int& width, unsigned int& height)
+{
+  Display* display = XOpenDisplay(0);
+  if (display)
+  {
+    const int screen = DefaultScreen(display);
+    width = static_cast<unsigned int>(DisplayWidth(display, screen));
+    height = static_cast<unsigned int>(DisplayHeight(display, screen));
+    XCloseDisplay(display);
+    return;
+  }
+
+  width = RenderMode::WIDTH_DEFAULT;
+  height = RenderMode::HEIGHT_DEFAULT;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+REGISTER_VAR("gfx_fullscreen", g_renderMode.isFullScreen, STORAGE_USER)
+REGISTER_VAR("gfx_borderless", g_renderMode.isBorderless, STORAGE_USER)
+REGISTER_VAR_INTERFACE("gfx_resolution", new ResolutionVariable(), STORAGE_USER)
+REGISTER_VAR_INTERFACE("gfx_windowed_mode", new InverseVariable<bool>(&g_renderMode.isFullScreen), STORAGE_NONE)
+REGISTER_VAR("gfx_vsync", g_renderMode.vsyncCount, STORAGE_USER)
+REGISTER_VAR("gfx_refreshrate", g_renderMode.refreshRate, STORAGE_USER)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GetResolution(unsigned int& width, unsigned int& height)
+{
+  width = g_renderMode.width;
+  height = g_renderMode.height;
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SetResolution(unsigned int width, unsigned int height)
+{
+  g_renderMode.width = width;
+  g_renderMode.height = height;
+  g_renderMode.windowedWidth = width;
+  g_renderMode.windowedHeight = height;
+  g_renderMode.refreshRate = RenderMode::REFRESH_RATE_DEFAULT;
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void GetRenderModeFromConfig(RenderMode& renderMode)
+{
+  if (g_renderMode.isFullScreen)
+  {
+    g_renderMode.isBorderless = true;
+
+    g_renderMode.width = g_renderMode.width3D = g_renderMode.fullscreenWidth;
+    g_renderMode.height = g_renderMode.height3D = g_renderMode.fullscreenHeight;
+  }
+  else
+  {
+    g_renderMode.isBorderless = false;
+
+    g_renderMode.width = g_renderMode.width3D = g_renderMode.windowedWidth;
+    g_renderMode.height = g_renderMode.height3D = g_renderMode.windowedHeight;
+  }
+
+  renderMode = g_renderMode;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+}
+
+#else
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 namespace Render
@@ -105,14 +257,14 @@ void GetDesktopResolution( unsigned int &width, unsigned int &height )
     
     if( Compatibility::IsRunnedUnderWine() )
     { 
-      //Под Wine методы: EnumDisplaySettings, IDirect3D9::GetAdapterDisplayMode, GetDeviceCaps, 
-      //GetMonitorInfo, GetWindowRect(GetDesktopWindow()) возвращают высоту монитора меньше
-      //реальной на высоту стандартной полоски меню. 
-      //Полноэкранный режим с такими настройками выглядит плохо: видно полоску меню и 
-      //панель Dock. Поскольку найти функцию, которая вернёт настоящий размер мне не удалось,
-      //я решил просто увеличивать высоту на размер полоски меню. Поскольку перед тем, как применить
-      //разрешение осуществляется поиск максимально близкого из тех, которые поддерживает монитор, 
-      //такой подход не должен ничего сломать.
+      //РџРѕРґ Wine РјРµС‚РѕРґС‹: EnumDisplaySettings, IDirect3D9::GetAdapterDisplayMode, GetDeviceCaps, 
+      //GetMonitorInfo, GetWindowRect(GetDesktopWindow()) РІРѕР·РІСЂР°С‰Р°СЋС‚ РІС‹СЃРѕС‚Сѓ РјРѕРЅРёС‚РѕСЂР° РјРµРЅСЊС€Рµ
+      //СЂРµР°Р»СЊРЅРѕР№ РЅР° РІС‹СЃРѕС‚Сѓ СЃС‚Р°РЅРґР°СЂС‚РЅРѕР№ РїРѕР»РѕСЃРєРё РјРµРЅСЋ. 
+      //РџРѕР»РЅРѕСЌРєСЂР°РЅРЅС‹Р№ СЂРµР¶РёРј СЃ С‚Р°РєРёРјРё РЅР°СЃС‚СЂРѕР№РєР°РјРё РІС‹РіР»СЏРґРёС‚ РїР»РѕС…Рѕ: РІРёРґРЅРѕ РїРѕР»РѕСЃРєСѓ РјРµРЅСЋ Рё 
+      //РїР°РЅРµР»СЊ Dock. РџРѕСЃРєРѕР»СЊРєСѓ РЅР°Р№С‚Рё С„СѓРЅРєС†РёСЋ, РєРѕС‚РѕСЂР°СЏ РІРµСЂРЅС‘С‚ РЅР°СЃС‚РѕСЏС‰РёР№ СЂР°Р·РјРµСЂ РјРЅРµ РЅРµ СѓРґР°Р»РѕСЃСЊ,
+      //СЏ СЂРµС€РёР» РїСЂРѕСЃС‚Рѕ СѓРІРµР»РёС‡РёРІР°С‚СЊ РІС‹СЃРѕС‚Сѓ РЅР° СЂР°Р·РјРµСЂ РїРѕР»РѕСЃРєРё РјРµРЅСЋ. РџРѕСЃРєРѕР»СЊРєСѓ РїРµСЂРµРґ С‚РµРј, РєР°Рє РїСЂРёРјРµРЅРёС‚СЊ
+      //СЂР°Р·СЂРµС€РµРЅРёРµ РѕСЃСѓС‰РµСЃС‚РІР»СЏРµС‚СЃСЏ РїРѕРёСЃРє РјР°РєСЃРёРјР°Р»СЊРЅРѕ Р±Р»РёР·РєРѕРіРѕ РёР· С‚РµС…, РєРѕС‚РѕСЂС‹Рµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚ РјРѕРЅРёС‚РѕСЂ, 
+      //С‚Р°РєРѕР№ РїРѕРґС…РѕРґ РЅРµ РґРѕР»Р¶РµРЅ РЅРёС‡РµРіРѕ СЃР»РѕРјР°С‚СЊ.
       height += 22; 
     }
   }
@@ -173,3 +325,5 @@ void GetRenderModeFromConfig(RenderMode &renderMode)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
+
+#endif

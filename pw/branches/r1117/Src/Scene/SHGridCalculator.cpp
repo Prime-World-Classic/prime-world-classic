@@ -1,5 +1,54 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "SHGridCalculator.h"
+
+namespace NScene
+{
+
+void SHGridCalculator::RecalculateSceneSH(SHGrid& grid, LightingScene& lightingScene, Render::AABB const* region)
+{
+  (void)lightingScene;
+  grid.InitGrid(grid.properties.dynObjLightingGridResX, grid.properties.dynObjLightingGridResY);
+
+  int xMin, xMax, yMin, yMax;
+  CalculateRegionBounds(grid, region, xMin, xMax, yMin, yMax);
+  (void)xMin;
+  (void)xMax;
+  (void)yMin;
+  (void)yMax;
+}
+
+void SHGridCalculator::CalculateRegionBounds(SHGrid const& grid, Render::AABB const* region, int& xMin, int& xMax, int& yMin, int& yMax)
+{
+  if (!region)
+  {
+    xMin = 0;
+    yMin = 0;
+    xMax = grid.nodesD.GetSizeX() - 1;
+    yMax = grid.nodesD.GetSizeY() - 1;
+    return;
+  }
+
+  CVec3 min = region->center - region->halfSize;
+  CVec3 max = region->center + region->halfSize;
+
+  xMin = floor(min.x / grid.cellSizeX);
+  yMin = floor(min.y / grid.cellSizeY);
+  xMax = ceil(max.x / grid.cellSizeX);
+  yMax = ceil(max.y / grid.cellSizeY);
+
+  xMin = Clamp(xMin, 0, grid.nodesD.GetSizeX() - 1);
+  yMin = Clamp(yMin, 0, grid.nodesD.GetSizeY() - 1);
+  xMax = Clamp(xMax, 0, grid.nodesD.GetSizeX() - 1);
+  yMax = Clamp(yMax, 0, grid.nodesD.GetSizeY() - 1);
+}
+
+} // namespace NScene
+
+#else
+
 // #include "../PF_GameLogic/PFWorld.h"
 // #include "../Render/TextureManager.h"
 #include "../Render/dipdescriptor.h"
@@ -278,3 +327,5 @@ void SHGridCalculator::CalculateRegionBounds(SHGrid const &grid, Render::AABB co
 }
 
 }
+
+#endif

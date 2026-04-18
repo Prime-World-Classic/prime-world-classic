@@ -1,3 +1,37 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/systemStdAfx.h"
+#include "DXManager.h"
+
+namespace Render
+{
+
+DXManager::DXManager()
+{
+}
+
+void DXManager::Clear()
+{
+}
+
+void DXManager::Manage()
+{
+}
+
+void DXManager::AddGeometry(const GeometryBuffers& _arg)
+{
+  (void)_arg;
+}
+
+void DXManager::AddTextures(const BaseMaterial* _pMaterial)
+{
+  (void)_pMaterial;
+}
+
+}
+
+#else
+
 #include "stdafx.h"
 #include "DXManager.h"
 
@@ -220,3 +254,5 @@ void DXManager::AddTextures(const BaseMaterial* _pMaterial)
 }
 
 }
+
+#endif

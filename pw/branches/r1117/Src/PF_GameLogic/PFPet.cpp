@@ -1,12 +1,15 @@
 #include "stdafx.h"
 
+#include "DBSessionRoots.h"
+#include "DBVisualRoots.h"
 #include "PFPet.h"
 #include "PFHero.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld

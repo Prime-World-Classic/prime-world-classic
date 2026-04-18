@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../UI/Flash/GameSWFIntegration/SwfTypes.h"
+#include "texture.h"
 
 namespace image
 {

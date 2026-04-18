@@ -46,15 +46,25 @@ namespace
       return pAbility;
     }
 
+    const IUnitFormulaPars* AsUnitFormulaPars() const
+    {
+      return static_cast<const IUnitFormulaPars*>(this);
+    }
+
+    const IMiscFormulaPars* AsMiscFormulaPars() const
+    {
+      return static_cast<const IMiscFormulaPars*>(this);
+    }
+
   private:
 
 #define GET_EXT__PARAM( Name )                                                                        \
     {                                                                                                 \
       ParamsMap::const_iterator iExternalPrm = externalParams.find( #Name );                          \
-      return ( iExternalPrm != externalParams.end() ) ? iExternalPrm->second : pOwner->Get##Name##(); \
+      return ( iExternalPrm != externalParams.end() ) ? iExternalPrm->second : pOwner->Get##Name(); \
     }   
 
-#define GET_UNIT_PARAM( Name ) { return pOwner->Get##Name##(); }
+#define GET_UNIT_PARAM( Name ) { return pOwner->Get##Name(); }
 
     virtual float GetLife()      const { GET_EXT__PARAM( Life      ); }
     virtual float GetEnergy()    const { GET_EXT__PARAM( Energy    ); }
@@ -217,7 +227,7 @@ namespace
 #define GET_EXT__PARAM( Name )                                                                    \
     {                                                                                               \
     ParamsMap::const_iterator iExternalPrm = externalParams.find(#Name);                          \
-    return (iExternalPrm != externalParams.end()) ? iExternalPrm->second : pAbility->Get##Name##(); \
+    return (iExternalPrm != externalParams.end()) ? iExternalPrm->second : pAbility->Get##Name(); \
     }   
 
     virtual int   GetRank               ()const { GET_EXT__PARAM(Rank              ); }
@@ -294,11 +304,13 @@ namespace
 
     virtual float GetFloat() const
     {
+      const IUnitFormulaPars* const unitFormulaPars = context.AsUnitFormulaPars();
+      const IMiscFormulaPars* const miscFormulaPars = context.AsMiscFormulaPars();
       float value;
       if (context.GetAbility()->IsSecondState())
-        value = formulaSecondState( &context, &context, &context, 0.0f );
+        value = formulaSecondState( unitFormulaPars, unitFormulaPars, miscFormulaPars, 0.0f );
       else
-        value = formula( &context, &context, &context, 0.0f );
+        value = formula( unitFormulaPars, unitFormulaPars, miscFormulaPars, 0.0f );
       return !useAbilityMods ? value : context.GetAbility()->GetModifiedValue(value, modId);
     }
 
@@ -324,7 +336,7 @@ namespace
 
     virtual bool GetBool() const
     {
-      return formula( &context, &context, &context, 0.0f );
+      return formula( context.AsUnitFormulaPars(), context.AsUnitFormulaPars(), context.AsMiscFormulaPars(), 0.0f );
     }
 
     virtual NNameMap::VariantType::Enum GetType() const { return NNameMap::VariantType::Bool; }

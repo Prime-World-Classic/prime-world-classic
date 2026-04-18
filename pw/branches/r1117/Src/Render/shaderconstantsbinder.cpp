@@ -1,3 +1,28 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/systemStdAfx.h"
+#include "shaderconstantsbinder.h"
+
+namespace Render
+{
+namespace ShaderConstantsBinder
+{
+
+void BindPixelShaderConstants( ShaderConstantTable& table)
+{
+  (void)table;
+}
+
+void BindVertexShaderConstants( ShaderConstantTable& table)
+{
+  (void)table;
+}
+
+}; // namespace ShaderConstantsBinder
+}; // namespace Render
+
+#else
+
 #include "stdafx.h"
 
 #pragma once
@@ -25,3 +50,5 @@ void BindVertexShaderConstants( ShaderConstantTable& table)
 }
 }; // namespace ShaderConstantsBinder
 }; // namespace Render
+
+#endif

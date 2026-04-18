@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "MapDescriptionLoader.h"
 
 #include "DBAdvMap.h"
@@ -32,4 +32,3 @@ bool MapDescriptionLoader::IsStatisticsEnabled() const
 
 }
 NI_DEFINE_REFCOUNT( NWorld::MapDescriptionLoader );
-

@@ -1,3 +1,116 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "stdafx.h"
+#include "WaterMesh.h"
+#include "WaterManager.h"
+
+SINGLETON4DLL_DEF(Render::WaterManager)
+
+namespace Render
+{
+
+void WaterLevel::PushWaterBatches( BatchQueue& queue )
+{
+  ListElement* pLE = pHead;
+  while ( pLE )
+  {
+    pLE->pWaterMesh->RenderToQueuePostponed( queue );
+    pLE = pLE->pNext;
+  }
+}
+
+void WaterLevel::BuildMatricesForReflection( SceneConstants* _pOutConsts, const SceneConstants& _inConsts, float _levelShift ) const
+{
+  (void)_levelShift;
+
+  if ( _pOutConsts )
+  {
+    *_pOutConsts = _inConsts;
+  }
+}
+
+WaterManager::WaterManager( const CreateParams& pars )
+  : isReflectionRendering(false)
+  , isRefractionEnabled(false)
+  , animationSpeedFactor(1.0f)
+  , hnTexture( 4, Render::FORMAT_A8R8G8B8 )
+  , pDummyMaterial(0)
+{
+  (void)pars;
+  listElements.reserve(20);
+}
+
+void WaterManager::SetAnimationSpeedFactor( float factor )
+{
+  Get()->animationSpeedFactor = factor;
+}
+
+void WaterManager::SetReflectedColors( const HDRColor& _color0, const HDRColor& _color1 )
+{
+  (void)_color0;
+  (void)_color1;
+}
+
+void WaterManager::StartRenderingToReflectionTexture( bool _clearColor )
+{
+  (void)_clearColor;
+}
+
+void WaterManager::ShowWaterTexture( int index )
+{
+  (void)index;
+}
+
+void WaterManager::SetupTextureMatrix( const Render::Texture2D& _texture )
+{
+  (void)_texture;
+}
+
+void WaterManager::StartWaterSurfaceRendering( const SHMatrix& reflViewProj, const SHMatrix& refrViewProj, const Render::SceneConstants& sceneConsts, Render::Texture2DRef const& pMainDepth )
+{
+  (void)reflViewProj;
+  (void)refrViewProj;
+  (void)sceneConsts;
+  (void)pMainDepth;
+}
+
+void WaterManager::StopWaterSurfaceRendering()
+{
+}
+
+void WaterManager::Update( float time )
+{
+  hnTexture.Update( time );
+}
+
+void WaterManager::AddWaterMesh( WaterMesh& mesh )
+{
+  const float level = mesh.GetLevel();
+
+  WaterLevel::ListElement& listElem = listElements.push_back();
+  listElem.pWaterMesh = &mesh;
+
+  for ( TWaterLevelVector::iterator it = waterLevels.begin(); it != waterLevels.end(); ++it )
+  {
+    if ( fabsf( it->level - level ) < 0.1f )
+    {
+      listElem.pNext = it->pHead;
+      it->pHead = &listElem;
+      return;
+    }
+  }
+
+  NI_ASSERT( waterLevels.size() < g_numWaterLevels, "Try add excess water mesh" );
+  WaterLevel& newLevel = waterLevels.push_back();
+  newLevel.pHead = &listElem;
+  newLevel.level = level;
+  listElem.pNext = 0;
+}
+
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 #include "WaterMesh.h"
 #include "WaterManager.h"
@@ -299,3 +412,5 @@ void WaterManager::AddWaterMesh(WaterMesh &mesh)
 }
 
 }
+
+#endif

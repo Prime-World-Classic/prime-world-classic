@@ -2,6 +2,52 @@
 #ifndef _DEVICELOST_H_
 #define _DEVICELOST_H_
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/CreateHelper.h"
+#include "dxutils.h"
+
+namespace Render {
+
+struct DeviceLostHandlerLoadable : DeviceLostHandler
+{
+  class LoaderCS : NonCopyable
+  {
+  public:
+    explicit LoaderCS(volatile bool& loadFinished_)
+      : loadFinished(loadFinished_)
+    {
+      loadFinished = false;
+    }
+
+    ~LoaderCS()
+    {
+      loadFinished = true;
+    }
+
+  private:
+    volatile bool& loadFinished;
+  };
+
+protected:
+  explicit DeviceLostHandlerLoadable(HandlerPriority p = HANDLERPRIORITY_NORMAL)
+    : DeviceLostHandler(p)
+    , loadFinished(true)
+  {
+  }
+
+  volatile bool loadFinished;
+};
+
+typedef char (&DLH_tag)[2];
+DLH_tag ClassSelectorFunction(DeviceLostHandler*);
+
+} // namespace Render
+
+template<class T> struct CreateHelper<sizeof(Render::DLH_tag), T> : CreateHelpersHelper< Render::DeviceLostWrapper<T> > {};
+
+#else
+
 #include "../System/noncopyable.h"
 
 #ifdef _DEBUG
@@ -130,5 +176,7 @@ private:
 } // namespace Render
 
 template<class T> struct CreateHelper<sizeof(Render::DLH_tag), T> : CreateHelpersHelper< Render::DeviceLostWrapper<T> > {};
+
+#endif
 
 #endif /* _DEVICELOST_H_ */

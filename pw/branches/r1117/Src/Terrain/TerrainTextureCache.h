@@ -2,6 +2,8 @@
 
 namespace Render {
   class BatchQueue;
+  class Texture2D;
+  struct AABB;
 }
 
 namespace Terrain {

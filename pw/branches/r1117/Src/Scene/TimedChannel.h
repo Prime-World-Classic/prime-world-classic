@@ -58,7 +58,7 @@ public:
 
 	void Purge( Time t )
 	{
-		list<Value>::iterator it = data.begin();
+		typename list<Value>::iterator it = data.begin();
 		for ( ; it != data.end(); ++it )
 		{
 			if ( it->startTime > t )
@@ -78,7 +78,7 @@ public:
 
 	void Insert( const Value &value )
 	{
-		list<Value>::iterator it = data.begin();
+		typename list<Value>::iterator it = data.begin();
 		for ( ; it != data.end() && it->startTime <= value.startTime; ++it )
 			;
 		data.insert( it, value );
@@ -114,7 +114,7 @@ public:
 		if ( data.empty() )
 			return ANIM_START_TIME;
 
-		list<Value>::const_iterator it = data.end();
+		typename list<Value>::const_iterator it = data.end();
 		do 
 		{
 			--it;
@@ -144,7 +144,7 @@ public:
 
 	void Insert( const Value &value )
 	{
-		list<Value>::iterator it = data.begin();
+		typename list<Value>::iterator it = data.begin();
 		for ( ; it != data.end() && it->startTime <= value.startTime; ++it )
 			;
 		data.insert( it, value );

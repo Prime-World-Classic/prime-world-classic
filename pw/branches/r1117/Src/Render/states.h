@@ -1,5 +1,7 @@
 #pragma once
 
+#include "DBRender.h"
+
 namespace Render
 {
 
@@ -84,7 +86,7 @@ public:
   static const SamplerState& PRESET_WRAP_MIP_BILINEAR();
   static const SamplerState& PRESET_WRAP_TRILINEAR();
 
-  static bool SamplerState::IsTriLinearDisabled();
+  static bool IsTriLinearDisabled();
 
 	SamplerState() : bitmask(0) {}
   explicit SamplerState(DWORD _bitmask) : bitmask(_bitmask) {}
@@ -128,6 +130,7 @@ public:
     addressU  = UINT_MAX;
     addressV  = UINT_MAX;
     alwaysFailCompare = UINT_MAX;
+    return *this;
   }
 
   const DWORD GetBitmask() const { return bitmask; }

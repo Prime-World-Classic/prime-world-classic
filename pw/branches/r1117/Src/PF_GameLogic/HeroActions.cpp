@@ -27,9 +27,9 @@
 #include "MarkersController.h"
 #include "AdventureScreenEvents.h"
 #include "PFClientHero.h"
-#include "Core\CoreFSM.h"
+#include "Core/CoreFSM.h"
 #else
-#include "game\pf\Audit\ClientStubs.h"
+#include "Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "TargetSelectorHelper.hpp"

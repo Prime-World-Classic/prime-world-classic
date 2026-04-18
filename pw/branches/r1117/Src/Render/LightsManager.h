@@ -2,6 +2,39 @@
 #ifndef LIGHTSMANAGER_H_INCLUDED
 #define LIGHTSMANAGER_H_INCLUDED
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "renderer.h"
+
+namespace Render
+{
+
+class LightsData
+{
+private:
+#pragma pack(push,1)
+  struct Element
+  {
+    CVec3 pos;
+    float factor;
+    HDRColor color;
+  };
+#pragma pack(pop)
+
+  vector<Element> elements;
+
+public:
+  void Initialize();
+  void Terminate();
+
+  UINT Fill(AABB const& aabb);
+  void Setup() const;
+};
+
+} // namespace Render
+
+#else
+
 #include "aabb.h"
 #include "light.h"
 #include "../System/AutoPtr.h"
@@ -69,5 +102,7 @@ private:
 };
 
 } // namespace Render
+
+#endif
 
 #endif // LIGHTSMANAGER_H_INCLUDED

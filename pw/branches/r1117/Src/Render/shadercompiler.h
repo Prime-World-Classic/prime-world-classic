@@ -1,6 +1,10 @@
 #pragma once
 
+#if defined(PW_LINUX_NULL_RENDER)
+#include "dxutils.h"
+#else
 #include "DxIntrusivePtr.h"
+#endif
 #include "shaderdefinestable.h"
 
 namespace Render

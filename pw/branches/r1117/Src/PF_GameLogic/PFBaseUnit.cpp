@@ -29,7 +29,7 @@
 #ifndef VISUAL_CUTTED
 #include "PFClientCreature.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "PFBuildings.h"
@@ -38,7 +38,6 @@
 #include "Scripts/lua.hpp"
 #include "LuaScript.h"
 
-#include "PFClientVisibilityMap.h"
 
 
 #define GameLogicLogger ( NLogg::StreamBuffer( GetGameLogicLog(), NLogg::SEntryInfo( NLogg::LEVEL_MESSAGE, "", 1 ) ) )
@@ -73,7 +72,7 @@ namespace
 
     virtual bool GetBool() const
     {
-      return formula( unit, unit, 0, 0.0f );
+      return formula( unit.GetPtr(), unit.GetPtr(), 0, false );
     }
 
     virtual NNameMap::VariantType::Enum GetType() const { return NNameMap::VariantType::Bool; }
@@ -475,7 +474,7 @@ const NDb::UnitTargetingParameters& PFBaseUnit::GetTargetingParams() const
 
 const NDb::UnitTargetingParameters* PFBaseUnit::GetTargetingParamsPtr() const
 {
-  const NDb::UnitTargetingParameters* params = unitTargetingParams ? unitTargetingParams : dbUnitDesc->targetingParams.GetPtr();
+  const NDb::UnitTargetingParameters* params = unitTargetingParams ? unitTargetingParams.GetPtr() : dbUnitDesc->targetingParams.GetPtr();
   if ( params == NULL )
   {
     NI_ASSERT(GetWorld() && GetWorld()->GetAIWorld(), "Invalid world");
@@ -529,8 +528,10 @@ void PFBaseUnit::Initialize(InitData const& data)
   // precache
   if ( pImage )
   {
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
     CObj<Render::Texture> texture = pImage->Load();
     texture = 0;
+#endif
   }
 
 #ifndef _SHIPPING

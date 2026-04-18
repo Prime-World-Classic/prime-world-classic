@@ -43,7 +43,7 @@ public:
   {
     if (m_processes.size() > 0)
     {
-      List::iterator &next = m_processes[m_processes.size() - 1];
+      typename List::iterator &next = m_processes[m_processes.size() - 1];
       if (*next == el)
       {
         ++next;
@@ -73,7 +73,7 @@ public:
     NI_ASSERT(m_processes.size() < NESTED_PROCESS_MAX_DEPTH, "Max depth of nested process calls exceeded");
 
     List& curList = m_lists[group];
-    List::iterator &next = m_processes.push_back();
+    typename List::iterator &next = m_processes.push_back();
     //List::iterator const end = curList.end();
     for(next = curList.begin(); next != curList.end();) {
       Element *el = *(next++);

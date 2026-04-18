@@ -1,6 +1,7 @@
 #pragma once
 
 #include "IUpdateable.h"
+#include "ColorModificationChannel.h"
 
 #define CLIENT_OBJECT_WORLD( className, worldClassName )                                    \
 	public:																																										\
@@ -25,9 +26,7 @@ namespace Render
 namespace PF_Core
 {
   class WorldObjectBase;
-  class ColorModificationChannel;
 	class BasicEffectAttached;
-  enum  ColorModificationPriority;
 
   class PureClientObjectBase : public IUpdateable
   {

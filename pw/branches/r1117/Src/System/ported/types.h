@@ -15,7 +15,9 @@
 	typedef nival::uint_t	UINT;
 	typedef nival::uint64_t	UINT64;
 
-	typedef nival::int64_t	__int64;
+	#if !defined( __int64 )
+		typedef nival::int64_t	__int64;
+	#endif
 
 	typedef char			TCHAR;
 
@@ -33,6 +35,10 @@
 	#define __forceinline	inline
 	#define TRUE			1
 	#define FALSE			0
+
+	#if !defined( MAKELONG )
+		#define MAKELONG(low, high) ((DWORD)((WORD)(low) | ((DWORD)((WORD)(high)) << 16)))
+	#endif
 
 	#if !defined( _cdecl )
 		#define _cdecl
@@ -70,4 +76,3 @@
 
 #endif // defined( NV_LINUX_PLATFORM )
 #endif // __TYPES_H_INCLUDED__618004__
-

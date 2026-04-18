@@ -1,3 +1,154 @@
+#include "dxutils.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+void SetErrorMessage(HRESULT hr, const nstl::wstring &msg)
+{
+  (void)hr;
+  (void)msg;
+}
+
+void ShowErrorMessageAndTerminate(HRESULT hr)
+{
+  (void)hr;
+}
+
+int D3DFormatNumBits(D3DFORMAT format)
+{
+  (void)format;
+  return 0;
+}
+
+void GetD3DPoolAndUsagesParamaters(DWORD& usage, D3DPOOL& pool, PoolType poolType)
+{
+  usage = 0;
+  switch (poolType)
+  {
+    case RENDER_POOL_MANAGED:
+      pool = D3DPOOL_MANAGED;
+      break;
+    case RENDER_POOL_SYSMEM:
+    case RENDER_POOL_SYSMEM_DYNAMIC:
+      pool = D3DPOOL_SYSTEMMEM;
+      break;
+    case RENDER_POOL_DEFAULT:
+    case RENDER_POOL_DYNAMIC:
+    case RENDER_POOL_TEX_DYNAMIC:
+    default:
+      pool = D3DPOOL_DEFAULT;
+      break;
+  }
+}
+
+DXVertexBufferRef CreateVB(int size, PoolType type, void const *pData)
+{
+  (void)type;
+  IDirect3DVertexBuffer9* buffer = new IDirect3DVertexBuffer9();
+  if (size > 0)
+    buffer->storage.resize(size);
+  if (pData && size > 0)
+    memcpy(&buffer->storage[0], pData, size);
+  return buffer;
+}
+
+void* LockVB(IDirect3DVertexBuffer9 *pBuff, unsigned int flags, int size)
+{
+  (void)flags;
+  if (!pBuff)
+    return 0;
+  if (size > 0 && static_cast<int>(pBuff->storage.size()) < size)
+    pBuff->storage.resize(size);
+  return pBuff->storage.empty() ? 0 : &pBuff->storage[0];
+}
+
+void FillVB(IDirect3DVertexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags)
+{
+  (void)pBuff;
+  (void)size;
+  (void)pData;
+  (void)lockFlags;
+}
+
+DXIndexBufferRef CreateIB(int size, PoolType poolType, UINT const *pData)
+{
+  (void)poolType;
+  IDirect3DIndexBuffer9* buffer = new IDirect3DIndexBuffer9();
+  if (size > 0)
+    buffer->storage.resize(size);
+  if (pData && size > 0)
+    memcpy(&buffer->storage[0], pData, size);
+  return buffer;
+}
+
+DXIndexBufferRef CreateIB16(int size, PoolType poolType, WORD const *pData)
+{
+  (void)poolType;
+  IDirect3DIndexBuffer9* buffer = new IDirect3DIndexBuffer9();
+  buffer->format = D3DFMT_INDEX16;
+  if (size > 0)
+    buffer->storage.resize(size);
+  if (pData && size > 0)
+    memcpy(&buffer->storage[0], pData, size);
+  return buffer;
+}
+
+unsigned int* LockIB(IDirect3DIndexBuffer9 *pBuff, unsigned int flags, int size)
+{
+  (void)flags;
+  if (!pBuff)
+    return 0;
+  if (size > 0 && static_cast<int>(pBuff->storage.size()) < size)
+    pBuff->storage.resize(size);
+  return pBuff->storage.empty() ? 0 : reinterpret_cast<unsigned int*>(&pBuff->storage[0]);
+}
+
+void FillIB(IDirect3DIndexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags)
+{
+  (void)pBuff;
+  (void)size;
+  (void)pData;
+  (void)lockFlags;
+}
+
+} // namespace Render
+
+bool Render::DXVertexBufferDynamicRef::Resize(int _size, bool nullOnLostDevice)
+{
+  (void)nullOnLostDevice;
+  pDXBuffer = 0;
+  size = _size > 0 ? static_cast<UINT>(_size) : 0;
+  return false;
+}
+
+void Render::DXVertexBufferDynamicRef::OnDeviceReset()
+{
+  pDXBuffer = 0;
+}
+
+template<UINT elemSize>
+bool Render::DXIndexBufferDynamicRef_<elemSize>::Resize(int _size)
+{
+  pDXBuffer = 0;
+  size = _size > 0 ? static_cast<UINT>(_size) : 0;
+  return false;
+}
+
+template<UINT elemSize>
+void Render::DXIndexBufferDynamicRef_<elemSize>::OnDeviceReset()
+{
+  pDXBuffer = 0;
+}
+
+template bool Render::DXIndexBufferDynamicRef_<32>::Resize(int _size);
+template bool Render::DXIndexBufferDynamicRef_<16>::Resize(int _size);
+template void Render::DXIndexBufferDynamicRef_<32>::OnDeviceReset();
+template void Render::DXIndexBufferDynamicRef_<16>::OnDeviceReset();
+
+#else
+
 #include "stdafx.h"
 #include "renderer.h"
 #include "DxResourcesControl.h"
@@ -470,3 +621,5 @@ void DXIndexBufferDynamicRef_<16>::OnDeviceReset()
 
   pDXBuffer.Attach( Render::CreateIBInternal<WORD>(size, Render::RENDER_POOL_DYNAMIC) );
 }
+
+#endif

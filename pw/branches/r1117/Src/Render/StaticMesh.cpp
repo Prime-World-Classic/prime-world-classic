@@ -1,9 +1,135 @@
 #include "stdafx.h"
-#include "light.h"
 #include "StaticMesh.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+DECLARE_INSTANCE_COUNTER(StaticMesh);
+
+StaticMesh::StaticMesh()
+  : pMeshGeom(0)
+  , materialsCount(0)
+  , lightsFlags(0)
+{
+  Identity(&worldMatrix);
+}
+
+StaticMesh::~StaticMesh()
+{
+}
+
+void StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::StaticMesh* pDBMeshResource)
+{
+  worldMatrix = _worldMatrix;
+  pMeshGeom = 0;
+  materialsCount = 0;
+  if (pDBMeshResource)
+  {
+    localAABB.Set(pDBMeshResource->aabb);
+  }
+}
+
+bool StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::DBStaticSceneComponent* pDBMeshResource, bool appendColorStream)
+{
+  (void)appendColorStream;
+  worldMatrix = _worldMatrix;
+  pMeshGeom = 0;
+  materialsCount = 0;
+  if (pDBMeshResource)
+  {
+    localAABB.Set(pDBMeshResource->aabb);
+  }
+  return true;
+}
+
+void StaticMesh::Initialize(const Matrix43& _worldMatrix, const MeshGeometry* geom, vector<Render::BaseMaterial*> materials)
+{
+  (void)materials;
+  worldMatrix = _worldMatrix;
+  pMeshGeom = geom;
+  materialsCount = 0;
+}
+
+void StaticMesh::PrepareRendererAfterMaterial(unsigned int elementNumber) const
+{
+  (void)elementNumber;
+}
+
+void StaticMeshBase::SetWorldMatrix(const Matrix43& transform)
+{
+  worldMatrix = transform;
+}
+
+void StaticMeshBase::SetWorldMatrix(const SHMatrix& transform)
+{
+  worldMatrix.Set(transform);
+}
+
+void StaticMesh::RenderToQueue(BatchQueue& queue)
+{
+  (void)queue;
+}
+
+OcclusionQueries* StaticMesh::GetQueries() const
+{
+  return 0;
+}
+
+bool StaticMesh::FillOBB(CVec3 (&_vertices)[8]) const
+{
+  (void)_vertices;
+  return false;
+}
+
+void StaticMesh::SetQueryTriBound(UINT _bound)
+{
+  (void)_bound;
+}
+
+void StaticMesh::SetMaterial(int nElementIdx, BaseMaterial* _pMaterial)
+{
+  (void)nElementIdx;
+  (void)_pMaterial;
+}
+
+void StaticMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
+{
+  (void)proc;
+}
+
+void StaticMesh::SetVertexColors(AutoPtr<MeshVertexColors> pColors, bool fake)
+{
+  (void)pColors;
+  (void)fake;
+}
+
+void StaticMesh::CalculateLighting(SceneConstants const& sceneConst)
+{
+  (void)sceneConst;
+}
+
+void StaticMesh::CalculateLightingEx(SceneConstants const& sceneConst, NDb::ELightEnvironment const selector)
+{
+  (void)sceneConst;
+  (void)selector;
+}
+
+void StaticMesh::AddGeometryCRC(Crc32Checksum& crc)
+{
+  (void)crc;
+}
+
+} // namespace Render
+
+#else
+
+#include "light.h"
 #include "batch.h"
 #include "ConvexVolume.h"
 #include "GlobalMasks.h"
+#include "NullRenderSignal.h"
 #include "SHCoeffs.h"
 #include "sceneconstants.h"
 
@@ -518,3 +644,5 @@ void StaticMesh::AddGeometryCRC(Crc32Checksum &crc)
 }
 
 }; // namespace Render
+
+#endif

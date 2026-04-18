@@ -64,10 +64,10 @@ namespace NScene
       void                  ApplyObject(NDb::GameObject   *obj);
       
       CellType             *GetMapResult()                  { return Get(m_mapResult);              }
-      CellType              GetCellResult(int x, int y)     { Get(m_mapResult)[x + y *  m_width];   }
-      CellType              GetCellUser(int x, int y)       { Get(m_mapUser)[x + y *  m_width];     }
-      CellType              GetCellObjects(int x, int y)    { Get(m_mapObjects)[x + y *  m_width];  }
-      CellType              GetCellHeights(int x, int y)    { Get(m_mapHeights)[x + y *  m_width];  }
+      CellType              GetCellResult(int x, int y)     { return Get(m_mapResult)[x + y * m_width];  }
+      CellType              GetCellUser(int x, int y)       { return Get(m_mapUser)[x + y * m_width];    }
+      CellType              GetCellObjects(int x, int y)    { return Get(m_mapObjects)[x + y * m_width]; }
+      CellType              GetCellHeights(int x, int y)    { return Get(m_mapHeights)[x + y * m_width]; }
       
       void                  SetCellUser(int x, int y, CellType val);
       void                  SetCellObjects(int x, int y, CellType val);

@@ -170,7 +170,7 @@ public:
   virtual bool GetRemainingLifeTime(float &time) const { return false; }
 
   const CObj<PFAbilityInstance>& GetAbility() const { return pAbility; }
-  const PFAbilityData* GetAbilityData() const { return pUpgraderAbilityData ? pUpgraderAbilityData : ( pAbility ? pAbility->GetData() : 0 ); }
+  const PFAbilityData* GetAbilityData() const { return pUpgraderAbilityData ? pUpgraderAbilityData.GetPtr() : ( pAbility ? pAbility->GetData() : 0 ); }
 
   void AddFlags(int f) { flags |= f; }
   int  GetFlags() const { return flags; }

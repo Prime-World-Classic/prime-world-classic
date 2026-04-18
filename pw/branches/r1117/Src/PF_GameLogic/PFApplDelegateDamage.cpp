@@ -124,7 +124,7 @@ void PFApplDelegateDamage::DelegateDamage( const PFBaseUnitDamageEvent* pEvent, 
     PFBaseUnit* pDelegateUnit = delegateTargets[i];
 
     bool senderIsOriginal = ( pDelegateUnit->GetFaction() == pReceiver->GetFaction() );
-    CPtr<PFBaseUnit> pDamageSender = senderIsOriginal ? pOriginalDesc->pSender : pOwner.GetPtr();
+    CPtr<PFBaseUnit> pDamageSender = senderIsOriginal ? pOriginalDesc->pSender : CPtr<PFBaseUnit>(pOwner.GetPtr());
     CObj<PFAbilityInstance> const& pDamageAbility = senderIsOriginal ? pOriginalDealerApplicator->GetAbility() : pAbility;
 
     Target const delegateTarget( pDelegateUnit );

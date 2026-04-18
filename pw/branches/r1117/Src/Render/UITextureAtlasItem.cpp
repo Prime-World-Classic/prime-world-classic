@@ -3,6 +3,7 @@
 #include "../UI/Flash/GameSWFIntegration/Image.h"
 
 #include "UITextureAtlasItem.h"
+#include "TextureManager.h"
 
 namespace Render
 {
@@ -91,4 +92,3 @@ bool UITextureAtlasItem::PlaceImage( unsigned char* data, int width, int height,
 }
 
 } // namespace Render
-

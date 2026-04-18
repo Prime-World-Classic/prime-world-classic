@@ -9,13 +9,17 @@
 #include "PFClientCreep.h"
 #include "PFClientSummoned.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
+#ifndef VISUAL_CUTTED
 #include "PFClientApplicators.h"
+#endif
 #include "DBAbility.h"
+#include "DBSessionRoots.h"
 
 #include "PFApplSummon.h"
+#include "../Scene/DiAnGr.h"
 #include "../System/PlaneGeometry.h"
 #include "../System/InlineProfiler.h"
 

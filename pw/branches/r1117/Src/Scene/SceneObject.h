@@ -3,6 +3,9 @@
 #include "Scene.h"
 #include "SceneObjectsPool.h"
 #include "RenderableScene.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "../Render/batch.h"
+#endif
 #include "../Render/SHCoeffs.h"
 #include "../System/Ring.h"
 
@@ -14,6 +17,11 @@ namespace NDb { struct Locator; }
 
 namespace NScene
 {
+#if defined(NV_LINUX_PLATFORM)
+  #define SCENE_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define SCENE_ALIGN16 __declspec(align(16))
+#endif
 
 class LightingScene;
 
@@ -52,7 +60,7 @@ protected:
 	CPtr<IScene> pScene;
 };
 
-__declspec(align(16))
+SCENE_ALIGN16
 class SceneObject : public SceneObjectBase
 {
 protected:
@@ -351,5 +359,7 @@ void SceneObject::ForAllLocators(Func &func) const
     func( *l );
   }
 }
+
+#undef SCENE_ALIGN16
 
 }

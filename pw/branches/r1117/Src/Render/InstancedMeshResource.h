@@ -1,8 +1,14 @@
 #pragma once
 
 #include "../System/Ring.h"
+#include "../System/Singleton4DLL.h"
 #include "SHCoeffs.h"
+#include "renderableprimitive.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "GlobalMasks.h"
+#else
 #include "batch.h"
+#endif
 //#include "DxIntrusivePtr.h"
 //#include "dxutils.h"
 
@@ -10,6 +16,23 @@ struct H6GeometryFileHeader;
 
 namespace Render
 {
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+class BatchQueue
+{
+public:
+  enum Index
+  {
+    INDEX_MAIN = 0,
+    INDEX_SECONDARY,
+    INDEX_COUNT,
+  };
+
+  int GetIndex() const;
+};
+
+#endif
 
 class InstancedMeshGeometry;
 class InstancedPrimManager;

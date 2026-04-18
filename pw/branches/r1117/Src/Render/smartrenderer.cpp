@@ -1,5 +1,350 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "smartrenderer.h"
+
+namespace
+{
+  unsigned int g_triangleCount = 0;
+  unsigned int g_dipCount = 0;
+  bool g_useViewport = false;
+  bool g_instancingEnabled = false;
+  int g_viewportX = 0;
+  int g_viewportY = 0;
+  int g_viewportWidth = 1;
+  int g_viewportHeight = 1;
+  IDirect3DSurface9* g_renderTargets[8] = {};
+  IDirect3DSurface9* g_depthSurface = 0;
+  IDirect3DSurface9* g_defaultRT0 = 0;
+  IDirect3DSurface9* g_defaultRT1 = 0;
+  IDirect3DSurface9* g_defaultDepth = 0;
+}
+
+namespace Render
+{
+namespace SmartRenderer
+{
+
+void GetTriangleAndDipCount(unsigned int& triangles, unsigned int& dips)
+{
+  triangles = g_triangleCount;
+  dips = g_dipCount;
+}
+
+void ResetTriangleAndDipCount()
+{
+  g_triangleCount = 0;
+  g_dipCount = 0;
+}
+
+void OnFrameStart()
+{
+}
+
+void AddRect(float l, float t, float r, float b, int R, int G, int B)
+{
+  (void)l;
+  (void)t;
+  (void)r;
+  (void)b;
+  (void)R;
+  (void)G;
+  (void)B;
+}
+
+void AddLine(float sx, float sy, float ex, float ey, int R, int G, int B, float width)
+{
+  (void)sx;
+  (void)sy;
+  (void)ex;
+  (void)ey;
+  (void)R;
+  (void)G;
+  (void)B;
+  (void)width;
+}
+
+void RenderDeferred2D()
+{
+}
+
+void Init()
+{
+}
+
+void NullThePointers()
+{
+  for (unsigned int i = 0; i < sizeof(g_renderTargets) / sizeof(g_renderTargets[0]); ++i)
+    g_renderTargets[i] = 0;
+  g_depthSurface = 0;
+  g_defaultRT0 = 0;
+  g_defaultRT1 = 0;
+  g_defaultDepth = 0;
+}
+
+bool IsResourceBound(const IUnknown* const ptr)
+{
+  (void)ptr;
+  return false;
+}
+
+const DXVertexDeclarationRef& GetVertexFormatDeclaration(const VertexFormatDescriptor& descr)
+{
+  (void)descr;
+  static DXVertexDeclarationRef s_nullDeclaration = 0;
+  return s_nullDeclaration;
+}
+
+void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
+{
+  (void)streamNumber;
+  (void)buffer;
+  (void)stride;
+  (void)offset;
+}
+
+void BindVertexBuffer(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
+{
+  BindVertexBufferRaw(streamNumber, buffer, stride, offset);
+}
+
+void BindInstanceVB(unsigned int offset)
+{
+  (void)offset;
+}
+
+void UnBindVertexBufferRaw(UINT streamNumber)
+{
+  (void)streamNumber;
+}
+
+void UnBindVertexBuffer(UINT streamNumber)
+{
+  (void)streamNumber;
+}
+
+void EnableHardwareInstancing(UINT _numInstances, UINT _lastGeomStream, UINT _instanceStream)
+{
+  (void)_numInstances;
+  (void)_lastGeomStream;
+  (void)_instanceStream;
+  g_instancingEnabled = true;
+}
+
+void DisableHardwareInstancing()
+{
+  g_instancingEnabled = false;
+}
+
+bool InstancingEnabled()
+{
+  return g_instancingEnabled;
+}
+
+void SetFVF(DWORD _fvf)
+{
+  (void)_fvf;
+}
+
+void DrawIndexedPrimitive(const DipDescriptor& _descr)
+{
+  (void)_descr;
+}
+
+void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
+{
+  (void)_descr;
+  (void)pIndexData;
+  (void)pVertexStreamZeroData;
+  (void)VertexStreamZeroStride;
+}
+
+void DrawPrimitive(const DipDescriptor& descr)
+{
+  (void)descr;
+}
+
+void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
+{
+  (void)_descr;
+  (void)pVertexStreamZeroData;
+  (void)VertexStreamZeroStride;
+}
+
+void BindIndexBuffer(IDirect3DIndexBuffer9* buffer)
+{
+  (void)buffer;
+}
+
+void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
+{
+  (void)pDecl;
+}
+
+void BindVertexDeclaration(DXVertexDeclarationRef const &pDecl)
+{
+  (void)pDecl;
+}
+
+void BindVertexShader(IDirect3DVertexShader9 *shader)
+{
+  (void)shader;
+}
+
+void BindPixelShader(IDirect3DPixelShader9 *shader)
+{
+  (void)shader;
+}
+
+void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtect)
+{
+  (void)samplerIndex;
+  (void)texture;
+  (void)bProtect;
+}
+
+void UnBindTexture(unsigned int samplerIndex)
+{
+  (void)samplerIndex;
+}
+
+void UnBindTexture(const Texture* texture)
+{
+  (void)texture;
+}
+
+void BindRenderTarget(const Texture2DRef& pColorTexture)
+{
+  (void)pColorTexture;
+  g_renderTargets[0] = 0;
+}
+
+void BindRenderTarget(const Texture2DRef& pColorTexture, const RenderSurfaceRef& pDepthSurface)
+{
+  (void)pColorTexture;
+  (void)pDepthSurface;
+  g_renderTargets[0] = 0;
+  g_depthSurface = 0;
+}
+
+void BindRenderTargetDefault()
+{
+  g_renderTargets[0] = g_defaultRT0;
+  g_renderTargets[1] = g_defaultRT1;
+  g_depthSurface = g_defaultDepth;
+}
+
+void SetDefaultRenderTarget(const DXSurfaceRef &pRT0, const DXSurfaceRef &pDepth)
+{
+  g_defaultRT0 = pRT0;
+  g_defaultRT1 = 0;
+  g_defaultDepth = pDepth;
+}
+
+void SetDefaultRenderTarget(const DXSurfaceRef &pRT0, const DXSurfaceRef &pRT1, const DXSurfaceRef &pDepth)
+{
+  g_defaultRT0 = pRT0;
+  g_defaultRT1 = pRT1;
+  g_defaultDepth = pDepth;
+}
+
+void BindRenderTargetColor(unsigned int renderTargetIndex, IDirect3DSurface9* pColorSurface)
+{
+  if (renderTargetIndex < sizeof(g_renderTargets) / sizeof(g_renderTargets[0]))
+    g_renderTargets[renderTargetIndex] = pColorSurface;
+}
+
+void BindRenderTargetDepth(IDirect3DSurface9* pDepthStencilSurface)
+{
+  g_depthSurface = pDepthStencilSurface;
+}
+
+void SetMainViewport(int x, int y, int width, int height)
+{
+  g_viewportX = x;
+  g_viewportY = y;
+  g_viewportWidth = width;
+  g_viewportHeight = height;
+  g_useViewport = true;
+}
+
+void GetMainViewport(int& x, int& y, int& width, int& height)
+{
+  x = g_viewportX;
+  y = g_viewportY;
+  width = g_viewportWidth;
+  height = g_viewportHeight;
+}
+
+void ResetMainViewport()
+{
+}
+
+void FixViewport()
+{
+}
+
+void SetUseMainViewport(bool _useViewport)
+{
+  g_useViewport = _useViewport;
+}
+
+bool UseMainViewport()
+{
+  return g_useViewport;
+}
+
+void Release()
+{
+  NullThePointers();
+}
+
+IDirect3DSurface9* GetRenderTarget(unsigned int renderTargetIndex)
+{
+  if (renderTargetIndex < sizeof(g_renderTargets) / sizeof(g_renderTargets[0]))
+    return g_renderTargets[renderTargetIndex];
+  return 0;
+}
+
+IDirect3DSurface9* GetRenderTargetDepth()
+{
+  return g_depthSurface;
+}
+
+int GetRenderTargetWidth()
+{
+  return g_viewportWidth;
+}
+
+int GetRenderTargetHeight()
+{
+  return g_viewportHeight;
+}
+
+void DumpScreenshot(const nstl::string& filename, bool keepAlpha)
+{
+  (void)filename;
+  (void)keepAlpha;
+}
+
+int GetScreenshotCount()
+{
+  return 0;
+}
+
+byte* DumpScreenshotToMemory(int width, int height)
+{
+  (void)width;
+  (void)height;
+  return 0;
+}
+
+} // namespace SmartRenderer
+} // namespace Render
+
+#else
+
 #include "smartrenderer.h"
 
 #include "shadercompiler.h"
@@ -954,3 +1299,5 @@ bool UseMainViewport()
 
 }; // namespace SmartRenderer
 }; // namespace Render
+
+#endif

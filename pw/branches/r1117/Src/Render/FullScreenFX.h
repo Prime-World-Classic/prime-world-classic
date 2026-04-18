@@ -1,6 +1,7 @@
 #pragma once
 
 #include "texture.h"
+#include "DBRenderResources.h"
 #include "SceneConstants.h"
 #include "Bloom.h"
 

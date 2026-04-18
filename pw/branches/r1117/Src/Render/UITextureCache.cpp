@@ -4,6 +4,7 @@
 
 #include "UITextureCache.h"
 #include "UITextureAtlasItem.h"
+#include "TextureManager.h"
 
 namespace
 {
@@ -301,4 +302,3 @@ Texture2DRef UITextureCache::CreateRadialGradient( const flash::SWF_GRADIENT& gr
 
 
 } // namespace Render
-

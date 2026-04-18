@@ -56,7 +56,7 @@ namespace Render
 		const unsigned int* pParentIndicies = pSkeletonData->GetData()->parentsIDs.at(0);
 		const Matrix43* pBindMatricies = pSkeletonData->GetData()->invertedBindPoseBones.at(0);
 
-		__declspec(align(16)) Matrix43 worldMatrix(_worldMatrix);
+		alignas(16) Matrix43 worldMatrix(_worldMatrix);
 
 		SEEMatrixMultiply( &pBoneWorldMatrix[0], &worldMatrix, &pSampledMatrix[0] );
 

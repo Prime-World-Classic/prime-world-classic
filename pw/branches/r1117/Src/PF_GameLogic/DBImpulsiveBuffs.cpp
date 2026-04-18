@@ -39,9 +39,11 @@ REGISTER_DBRESOURCE( EvtAttackedByUnits );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #ifndef SERVER_DB
 #include "PFImpulsiveEvents.h"
 #endif // #ifndef SERVER_DB
+#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
 
 namespace NDb
 {
@@ -416,7 +418,12 @@ void ImpulsiveEvent::Assign( const ImpulsiveEvent& _impulsiveEvent )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* ImpulsiveEvent::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::ImpulsiveEvent* )(0);
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -469,7 +476,12 @@ void EvtComplexEvent::Assign( const EvtComplexEvent& _evtComplexEvent )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtComplexEvent::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtComplexEvent( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -518,7 +530,12 @@ void EvtCondition::Assign( const EvtCondition& _evtCondition )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtCondition::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtCondition( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -564,7 +581,12 @@ void EvtDead::Assign( const EvtDead& _evtDead )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtDead::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtDead( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -626,7 +648,12 @@ void EvtEnemyDanger::Assign( const EvtEnemyDanger& _evtEnemyDanger )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtEnemyDanger::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtEnemyDanger( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -692,7 +719,12 @@ void EvtEnemyFlees::Assign( const EvtEnemyFlees& _evtEnemyFlees )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtEnemyFlees::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtEnemyFlees( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -750,7 +782,12 @@ void EvtEnteringBattleLine::Assign( const EvtEnteringBattleLine& _evtEnteringBat
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtEnteringBattleLine::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtEnteringBattleLine( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -808,7 +845,12 @@ void EvtHeroTotalNaftaCondition::Assign( const EvtHeroTotalNaftaCondition& _evtH
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtHeroTotalNaftaCondition::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtHeroTotalNaftaCondition( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -854,7 +896,12 @@ void EvtInMinigame::Assign( const EvtInMinigame& _evtInMinigame )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtInMinigame::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtInMinigame( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -903,7 +950,12 @@ void EvtInverseEvent::Assign( const EvtInverseEvent& _evtInverseEvent )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtInverseEvent::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtInverseEvent( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -953,7 +1005,12 @@ void EvtMinEnergy::Assign( const EvtMinEnergy& _evtMinEnergy )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtMinEnergy::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtMinEnergy( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1003,7 +1060,12 @@ void EvtMinHealth::Assign( const EvtMinHealth& _evtMinHealth )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtMinHealth::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtMinHealth( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1056,7 +1118,12 @@ void EvtNegativeEffects::Assign( const EvtNegativeEffects& _evtNegativeEffects )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtNegativeEffects::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtNegativeEffects( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1102,7 +1169,12 @@ void EvtPriestessGainMaxLevel::Assign( const EvtPriestessGainMaxLevel& _evtPries
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtPriestessGainMaxLevel::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtPriestessGainMaxLevel( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1148,7 +1220,12 @@ void EvtSpellLowMana::Assign( const EvtSpellLowMana& _evtSpellLowMana )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtSpellLowMana::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtSpellLowMana( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1202,7 +1279,12 @@ void EvtTargetInRange::Assign( const EvtTargetInRange& _evtTargetInRange )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtTargetInRange::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtTargetInRange( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1279,7 +1361,12 @@ void EvtUnitsInRange::Assign( const EvtUnitsInRange& _evtUnitsInRange )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtUnitsInRange::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtUnitsInRange( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1341,7 +1428,12 @@ void EvtUnitsInRangeWithProperHealth::Assign( const EvtUnitsInRangeWithProperHea
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtUnitsInRangeWithProperHealth::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtUnitsInRangeWithProperHealth( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1407,7 +1499,12 @@ void EvtUsedImpulsiveBuff::Assign( const EvtUsedImpulsiveBuff& _evtUsedImpulsive
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtUsedImpulsiveBuff::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtUsedImpulsiveBuff( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1561,7 +1658,12 @@ void EvtAttackedByUnits::Assign( const EvtAttackedByUnits& _evtAttackedByUnits )
 #ifndef SERVER_DB
 NWorld::ImpulsiveEvent* EvtAttackedByUnits::Create( class NWorld::ImpulsiveBuffsManager* _buffsManager ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::EvtAttackedByUnits( *this, _buffsManager );
+#endif
 }
 #endif // #ifndef SERVER_DB
 }; // namespace NDb

@@ -4,7 +4,7 @@
 #include "PFPlayer.h"
 #include "PFApplMod.h"
 #include "InventoryInterface.h"
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
 
 namespace NDb
 {
@@ -17,7 +17,7 @@ namespace NDb
   
 namespace NGameX { class PFBaseClientHero;}
 
-namespace SessionEventType {enum EventType;}
+namespace SessionEventType { enum EventType : int; }
 
 namespace EHeroState
 {
@@ -38,7 +38,7 @@ class PFTalentsSet;
 class PFHeroStatistics;
 class PFGlyph;
 
-namespace ETalentActivation { enum Enum; }
+namespace ETalentActivation { enum Enum : int; }
 
 struct CloneParams
 {
@@ -562,7 +562,13 @@ protected:
 
   ZONSERIALIZE
 public:
-  ZEND int operator&( IBinSaver &f ) { f.Add(1,(PFCreature*)this); f.Add(2,&activatedWhileLastDeathtime); f.Add(3,&consumables); f.Add(4,&respawnDelay); f.Add(5,&advanceRespawnDelay); f.Add(6,&forbidRespawn); f.Add(7,&resurrectParams); f.Add(8,&redeemCost); f.Add(9,&redeemCostRecalculateDelay); f.Add(10,&experience); f.Add(11,&spawnPos); f.Add(12,&pPlayer); f.Add(13,&isClone); f.Add(14,&giveWorldGoldOffset); f.Add(15,&distanceRun); f.Add(16,&pDbHero); f.Add(17,&isolated); f.Add(18,&ripTime); f.Add(19,&inTeamId); f.Add(20,&rgConsumablesAbilities); f.Add(21,&clones); f.Add(22,&cloneCounter); f.Add(23,&rgAbilitiesModifiers); f.Add(24,&abilityModsActualizationTime); f.Add(25,&pMount); f.Add(26,&pStatistics); f.Add(27,&pProfile); f.Add(28,&fountainPos); f.Add(29,&canControlMount); f.Add(30,&force); f.Add(31,&raiting); f.Add(32,&originalFaction); f.Add(33,&takeModDmg); f.Add(34,&takeTypeUnit); f.Add(35,&heroSkinId); f.Add(36,&playerGender); f.Add(37,&scriptControlledProgressValue); f.Add(38,&partyId); f.Add(39,&heroState); f.Add(40,&isAnimatedAvatar); f.Add(41,&leagueIndex); f.Add(42,&ownLeaguePlace); f.Add(43,&leaguePlaces); OnSerialize( f ); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(1,(PFCreature*)this); f.Add(2,&activatedWhileLastDeathtime); f.Add(3,&consumables); f.Add(4,&respawnDelay); f.Add(5,&advanceRespawnDelay); f.Add(6,&forbidRespawn); f.Add(7,&resurrectParams); f.Add(8,&redeemCost); f.Add(9,&redeemCostRecalculateDelay); f.Add(10,&experience); f.Add(11,&spawnPos); f.Add(12,&pPlayer); f.Add(13,&isClone); f.Add(14,&giveWorldGoldOffset); f.Add(15,&distanceRun); f.Add(16,&pDbHero); f.Add(17,&isolated); f.Add(18,&ripTime); f.Add(19,&inTeamId); f.Add(20,&rgConsumablesAbilities); f.Add(21,&clones); f.Add(22,&cloneCounter);
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  (void)&rgAbilitiesModifiers;
+#else
+  f.Add(23,&rgAbilitiesModifiers);
+#endif
+  f.Add(24,&abilityModsActualizationTime); f.Add(25,&pMount); f.Add(26,&pStatistics); f.Add(27,&pProfile); f.Add(28,&fountainPos); f.Add(29,&canControlMount); f.Add(30,&force); f.Add(31,&raiting); f.Add(32,&originalFaction); f.Add(33,&takeModDmg); f.Add(34,&takeTypeUnit); f.Add(35,&heroSkinId); f.Add(36,&playerGender); f.Add(37,&scriptControlledProgressValue); f.Add(38,&partyId); f.Add(39,&heroState); f.Add(40,&isAnimatedAvatar); f.Add(41,&leagueIndex); f.Add(42,&ownLeaguePlace); f.Add(43,&leaguePlaces); OnSerialize( f ); return 0; }
   
 private:
   void OnSerialize(IBinSaver& f);

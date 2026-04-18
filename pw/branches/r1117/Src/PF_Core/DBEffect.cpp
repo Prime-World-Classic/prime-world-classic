@@ -45,6 +45,7 @@ REGISTER_DBRESOURCE( TraceGenSceneComponent );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #ifndef VISUAL_CUTTED
 #include "AnimatedTexture.h"
 #include "CameraShakeSceneComponent.h"
@@ -60,6 +61,7 @@ REGISTER_DBRESOURCE( TraceGenSceneComponent );
 #include "SpringSceneComponent.h"
 #include "TraceGenSceneComponent.h"
 #endif // #ifndef VISUAL_CUTTED
+#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
 
 namespace NDb
 {
@@ -782,7 +784,12 @@ void CameraShakeSceneComponent::Assign( const CameraShakeSceneComponent& _camera
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> CameraShakeSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<PF_Core::CameraShakeSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1103,7 +1110,12 @@ void EffectGenSceneComponent::Assign( const EffectGenSceneComponent& _effectGenS
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> EffectGenSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<PF_Core::EffectGenSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1499,7 +1511,12 @@ void ParticleSceneComponentWithEffect::Assign( const ParticleSceneComponentWithE
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> ParticleSceneComponentWithEffect::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<PF_Core::ParticleSceneComponentWithEffect>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1775,7 +1792,12 @@ void SpringSceneComponent::Assign( const SpringSceneComponent& _springSceneCompo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> SpringSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<PF_Core::SpringSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1992,7 +2014,12 @@ void TraceGenSceneComponent::Assign( const TraceGenSceneComponent& _traceGenScen
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> TraceGenSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<PF_Core::TraceGenSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 }; // namespace NDb

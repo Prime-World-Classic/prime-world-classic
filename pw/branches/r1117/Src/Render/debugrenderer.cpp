@@ -1,11 +1,81 @@
 #include "stdafx.h"
 
+#include "aabb.h"
+#include "debugrenderer.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+void WireframeEnable(bool /*enable*/, WireframeGroup /*groupIndex*/) {}
+void LogMarker(const char* /*_text*/) {}
+void RenderSequenceMarker(const char* /*_text*/) {}
+
+namespace DebugRenderer
+{
+
+void SetMatrix(const SHMatrix& /*view*/, const SHMatrix& /*proj*/) {}
+
+bool Initialize()
+{
+  return true;
+}
+
+void PushBuffer(DebugRenderBuffer /*buf*/) {}
+void PopBuffer() {}
+
+void DrawLine2D(int /*x1*/, int /*y1*/, int /*x2*/, int /*y2*/, Render::Color /*color1*/, Render::Color /*color2*/) {}
+void DrawLine3D(const CVec3& /*p1*/, const CVec3& /*p2*/, Render::Color /*color1*/, Render::Color /*color2*/, bool /*zTest*/) {}
+
+void DrawPoint2D(const int /*x*/, const int /*y*/, float /*size*/, Render::Color /*color*/) {}
+void DrawPoint3D(const CVec3& /*p*/, float /*size*/, Render::Color /*color*/, bool /*zTest*/) {}
+
+void DrawAABB(const struct AABB& /*aabb*/, Render::Color /*color*/, bool /*zTest*/) {}
+
+void DrawBox3D(const Placement& /*pl*/, float /*size*/, Render::Color /*color*/, bool /*zTest*/) {}
+void DrawBox3D(const Matrix43& /*mtx*/, float /*size*/, Render::Color /*color*/, bool /*zTest*/) {}
+void DrawCross3D(const Matrix43& /*mtx*/, float /*sizePos*/, float /*sizeNeg*/, const CrossColorTable& /*colors*/, bool /*zTest*/) {}
+void DrawCross3D(const Matrix43& /*mtx*/, float /*sizePos*/, float /*sizeNeg*/, Render::Color /*color*/, bool /*zTest*/) {}
+
+void DrawCircle3D(CVec3 const& /*center*/, float /*radius*/, int /*numSegments*/, Render::Color /*color*/, bool /*zTest*/) {}
+
+void Draw2D() {}
+void Draw3D() {}
+void ClearBuffer(DebugRenderBuffer /*buf*/) {}
+
+void ProjectPoint(CVec2* pRes, const CVec3& /*point*/, int /*screenW*/, int /*screenH*/)
+{
+  if (pRes)
+  {
+    pRes->x = 0.0f;
+    pRes->y = 0.0f;
+  }
+}
+
+void DrawTriangle3D(const CVec3& /*p1*/, const CVec3& /*p2*/, const CVec3& /*p3*/, Render::Color /*color*/, bool /*zTest*/) {}
+void DrawCustomMesh(const void* /*points*/, int /*stride*/, const int* /*indices*/, int /*indCount*/, Render::Color /*color*/, bool /*zTest*/) {}
+
+void DrawText(const char* /*text*/, const CVec2& /*uiCoords*/, int /*size*/, const Render::Color& /*color*/, ETextHAlign /*hAlign*/, ETextVAlign /*vAlign*/) {}
+void DrawText(const wchar_t* /*text*/, const CVec2& /*uiCoords*/, int /*size*/, const Render::Color& /*color*/, ETextHAlign /*hAlign*/, ETextVAlign /*vAlign*/) {}
+void DrawText3D(const char* /*text*/, const CVec3& /*pos*/, int /*size*/, const Render::Color& /*color*/) {}
+void DrawText3D(const wchar_t* /*text*/, const CVec3& /*pos*/, int /*size*/, const Render::Color& /*color*/) {}
+
+void ImplementationSet3DProjection(const SHMatrix& /*projectionMatrix*/) {}
+void ImplementationProcessDebugText(IDebugTextProcessor* /*processor*/) {}
+
+void Release() {}
+
+} // namespace DebugRenderer
+
+} // namespace Render
+
+#else
+
 #include "../System/Singleton.h"
 #include "../System/FastMath.h"
 #include "../System/InlineProfiler.h"
 
-#include "aabb.h"
-#include "debugrenderer.h"
 #include "smartrenderer.h"
 #include "renderresourcemanager.h"
 #include "shadercompiler.h"
@@ -1285,3 +1355,5 @@ void RenderSequenceMarker(const char *_text)
 } //namespace Render
 
 REGISTER_DEV_VAR( "showgrid", drawGrid, STORAGE_NONE );
+
+#endif

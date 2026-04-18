@@ -2,6 +2,17 @@
 // Automatically generated file, don't change it manually!
 #include "stdafx.h"
 #include "DebugMaterial.h"
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+	namespace Materials
+	{
+	}
+}
+
+#else
+
 #include "renderresourcemanager.h"
 
 namespace Render
@@ -24,11 +35,15 @@ namespace Render
 
 		void DebugMaterial::PrepareRenderer( NDb::Techniques techniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			#include "DebugMaterial.inl"
 			SetRenderStates( techniqueID );
 			BindSamplers( techniqueID );
 			BindShaders( techniqueID );
 			return;
+#endif
 		}
 
 		void DebugMaterial::BindSamplers( NDb::Techniques currentTechniqueID )
@@ -37,16 +52,23 @@ namespace Render
 
 		void DebugMaterial::BindShaders( NDb::Techniques currentTechniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			switch ( currentTechniqueID )
 			{
 				case NDb::TECHNIQUES_MAINPASS:
 					RenderResourceManager::GetMultiShader( 7 )->GetShaderPairByIndex( GetShaderIndex() ).Bind();
 					break;
 			}
+#endif
 		}
 
 		void DebugMaterial::SetRenderStates( NDb::Techniques currentTechniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			switch ( currentTechniqueID )
 			{
 				case NDb::TECHNIQUES_MAINPASS:
@@ -57,8 +79,11 @@ namespace Render
 				default:
 					NI_ALWAYS_ASSERT( "wrong technique" );
 			}
+#endif
 		}
 
 
 	}//namespace Materials
 }//namespace Render
+
+#endif

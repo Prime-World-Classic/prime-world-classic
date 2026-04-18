@@ -790,14 +790,14 @@ private:
 
   template <class T> friend class DiAnGrNamesIDLinker;
 
-  friend static void NScene::_printDebugStatus(DiAnimGraph *animGraph, float dt);
+  friend void NScene::_printDebugStatus(DiAnimGraph *animGraph, float dt);
   friend DiInt32 _resetGraphSpeedCallback(DiAnGrCallbackParams const &cpParams);
   
   // Editor functions
   friend DiVoid GetPlayingNodeG(DiBool& bNode, DiUInt32& nFirstNode, DiUInt32& nSecondNode);
   friend DiInt32 EnterCallbackFunction(const DiAnGrCallbackParams& params);
   friend DiInt32 LeaveCallbackFunction(const DiAnGrCallbackParams& params);
-  friend static LRESULT OnSetGraphToEngine(HWND hwnd);
+  friend LRESULT OnSetGraphToEngine(HWND hwnd);
   friend DiAnimGraph *convertDocToGraph();
   friend DiInt32 _wholeGraph2UpdateCallback(DiAnGrCallbackParams const &cpParams);
 };

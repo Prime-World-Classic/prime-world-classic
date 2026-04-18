@@ -3,7 +3,7 @@
 //corresponding file in cs Tools\GMTools\StatisticService\RPC\SessionEventType.cs 
 namespace SessionEventType
 {
-  enum EventType
+  enum EventType : int
   {
     EventBase = 0,
     FirstEvent = 0,

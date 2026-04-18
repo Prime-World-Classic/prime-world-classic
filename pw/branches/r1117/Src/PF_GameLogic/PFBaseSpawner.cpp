@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "PFBaseSpawner.h"
 #include "PFAIContainer.h"
 
@@ -218,4 +218,3 @@ int PFBaseSpawner::GetMaxCreepsLevel() const
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFBaseSpawner,   NWorld);
-

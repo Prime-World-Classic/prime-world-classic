@@ -87,6 +87,7 @@ bool LoadImageDDS( CArray2D<DWORD> *pResult, Stream *pStream )
 			pStream->Read( buffer, nCompSize );
 			UnpackDXT( nDxt, hdr.dwWidth, hdr.dwHeight, buffer, pResult );
 			delete []buffer;
+			return !pResult->IsEmpty();
 		}
 		else
 			return false;

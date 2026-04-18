@@ -10,7 +10,7 @@
 #include "AdventureScreen.h"
 #include "../Terrain/NatureMap.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld
@@ -274,5 +274,4 @@ int PFWorldNatureMap::operator&( IBinSaver &f )
 } // namespace
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFWorldNatureMap, NWorld)
-
 

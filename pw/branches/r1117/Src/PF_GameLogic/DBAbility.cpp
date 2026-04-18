@@ -191,6 +191,7 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "PFAdvancedSummon.h"
 #include "PFAITargetSelectors.h"
 #include "PFApplAura.h"
@@ -214,6 +215,7 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 #include "PFMicroAI.h"
 #include "PFTargetSelector.h"
 #include "PFTriggerApplicator.h"
+#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
 
 namespace NDb
 {
@@ -3904,7 +3906,12 @@ void BaseApplicator::Assign( const BaseApplicator& _baseApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* BaseApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFBaseApplicator* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BuffApplicator::BuffApplicator() :
@@ -3966,7 +3973,12 @@ void BuffApplicator::Assign( const BuffApplicator& _buffApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* BuffApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFBaseApplicator* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AbilityUpgradeApplicator::AbilityUpgradeApplicator() :
@@ -4041,7 +4053,12 @@ void AbilityUpgradeApplicator::Assign( const AbilityUpgradeApplicator& _abilityU
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AbilityUpgradeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAbilityUpgrade>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AbilityUpgradeTechApplicator::AbilityUpgradeTechApplicator() :
@@ -4096,7 +4113,12 @@ void AbilityUpgradeTechApplicator::Assign( const AbilityUpgradeTechApplicator& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AbilityUpgradeTechApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplTechAbilityUpgrade>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AbsorbShieldApplicator::AbsorbShieldApplicator()
@@ -4150,7 +4172,12 @@ void AbsorbShieldApplicator::Assign( const AbsorbShieldApplicator& _absorbShield
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AbsorbShieldApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFAbsorbShieldApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AddApplicatorDuration::AddApplicatorDuration() :
@@ -4210,7 +4237,12 @@ void AddApplicatorDuration::Assign( const AddApplicatorDuration& _addApplicatorD
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AddApplicatorDuration::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAddApplicatorDuration>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AddNaftaApplicator::AddNaftaApplicator() :
@@ -4264,7 +4296,12 @@ void AddNaftaApplicator::Assign( const AddNaftaApplicator& _addNaftaApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AddNaftaApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFAddNaftaApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AlternativeActivity::AlternativeActivity() :
@@ -4409,7 +4446,12 @@ void ApplicatorNameOverrider::Assign( const ApplicatorNameOverrider& _applicator
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ApplicatorNameOverrider::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFBaseApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TargetSelector::TargetSelector()
@@ -4449,7 +4491,12 @@ void TargetSelector::Assign( const TargetSelector& _targetSelector )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* TargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFTargetSelector* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ApplicatorsList::ApplicatorsList()
@@ -4540,7 +4587,12 @@ void MultipleTargetSelector::Assign( const MultipleTargetSelector& _multipleTarg
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* MultipleTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFTargetSelector* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MultipleTargetSelectorFiltered::MultipleTargetSelectorFiltered() :
@@ -4588,7 +4640,12 @@ void MultipleTargetSelectorFiltered::Assign( const MultipleTargetSelectorFiltere
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* MultipleTargetSelectorFiltered::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFTargetSelector* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AttackTargetApplicator::AttackTargetApplicator() :
@@ -4655,7 +4712,12 @@ void AttackTargetApplicator::Assign( const AttackTargetApplicator& _attackTarget
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AttackTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAttackTarget>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AttractApplicator::AttractApplicator() :
@@ -4706,7 +4768,12 @@ void AttractApplicator::Assign( const AttractApplicator& _attractApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AttractApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAttract>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AuraApplicator::AuraApplicator() :
@@ -4774,7 +4841,12 @@ void AuraApplicator::Assign( const AuraApplicator& _auraApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AuraApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAura>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AbilityEndApplicator::AbilityEndApplicator() :
@@ -4825,7 +4897,12 @@ void AbilityEndApplicator::Assign( const AbilityEndApplicator& _abilityEndApplic
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AbilityEndApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAbilityEnd>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Ability::Ability() :
@@ -5034,7 +5111,12 @@ void MicroAI::Assign( const MicroAI& _microAI )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFMicroAI* MicroAI::Create( NWorld::PFMicroAICreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFMicroAI* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BetweenUnitsTargetSelector::BetweenUnitsTargetSelector() :
@@ -5091,7 +5173,12 @@ void BetweenUnitsTargetSelector::Assign( const BetweenUnitsTargetSelector& _betw
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* BetweenUnitsTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFBetweenUnitsTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BounceApplicator::BounceApplicator() :
@@ -5167,7 +5254,12 @@ void BounceApplicator::Assign( const BounceApplicator& _bounceApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* BounceApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplBounce>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AbilityModApplicator::AbilityModApplicator() :
@@ -5242,7 +5334,12 @@ void AbilityModApplicator::Assign( const AbilityModApplicator& _abilityModApplic
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* AbilityModApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAbilityMod>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CapsuleTargetSelector::CapsuleTargetSelector() :
@@ -5312,7 +5409,12 @@ void CapsuleTargetSelector::Assign( const CapsuleTargetSelector& _capsuleTargetS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* CapsuleTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFCapsuleTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CastLimitation::CastLimitation()
@@ -5355,7 +5457,11 @@ void CastLimitation::Assign( const CastLimitation& _castLimitation )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const NWorld::PFAbilityData* CastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
 	return ( const NWorld::PFAbilityData* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChainLightningApplicator::ChainLightningApplicator() :
@@ -5432,7 +5538,12 @@ void ChainLightningApplicator::Assign( const ChainLightningApplicator& _chainLig
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChainLightningApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChainLightning>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChangeAnimationApplicator::ChangeAnimationApplicator() :
@@ -5501,7 +5612,12 @@ void ChangeAnimationApplicator::Assign( const ChangeAnimationApplicator& _change
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChangeAnimationApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimation>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChangeAnimSetApplicator::ChangeAnimSetApplicator()
@@ -5555,7 +5671,12 @@ void ChangeAnimSetApplicator::Assign( const ChangeAnimSetApplicator& _changeAnim
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChangeAnimSetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimSet>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChangeBaseAttackApplicator::ChangeBaseAttackApplicator() :
@@ -5613,7 +5734,12 @@ void ChangeBaseAttackApplicator::Assign( const ChangeBaseAttackApplicator& _chan
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChangeBaseAttackApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChangeBaseAttack>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChangeHeroStateApplicator::ChangeHeroStateApplicator()
@@ -5664,7 +5790,12 @@ void ChangeHeroStateApplicator::Assign( const ChangeHeroStateApplicator& _change
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChangeHeroStateApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChangeHeroState>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChangeStateApplicator::ChangeStateApplicator()
@@ -5714,7 +5845,12 @@ void ChangeStateApplicator::Assign( const ChangeStateApplicator& _changeStateApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChangeStateApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChangeState>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ChannellingApplicator::ChannellingApplicator() :
@@ -5810,7 +5946,12 @@ void ChannellingApplicator::Assign( const ChannellingApplicator& _channellingApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ChannellingApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplChannelling>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CheckConditionTargetSelector::CheckConditionTargetSelector()
@@ -5863,7 +6004,12 @@ void CheckConditionTargetSelector::Assign( const CheckConditionTargetSelector& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* CheckConditionTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFCheckConditionTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CloneHeroApplicator::CloneHeroApplicator() :
@@ -5943,7 +6089,12 @@ void CloneHeroApplicator::Assign( const CloneHeroApplicator& _cloneHeroApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* CloneHeroApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplCloneHero>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SingleTargetSelector::SingleTargetSelector()
@@ -5985,7 +6136,12 @@ void SingleTargetSelector::Assign( const SingleTargetSelector& _singleTargetSele
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* SingleTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFTargetSelector* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ConditionCastLimitation::ConditionCastLimitation()
@@ -6031,7 +6187,11 @@ void ConditionCastLimitation::Assign( const ConditionCastLimitation& _conditionC
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const NWorld::PFAbilityData* ConditionCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
 	return NWorld::CheckConditionLimitation( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ConditionFormula::ConditionFormula()
@@ -6122,7 +6282,12 @@ void ConditionTargetSelector::Assign( const ConditionTargetSelector& _conditionT
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ConditionTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFConditionTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ConvertTargetToLand::ConvertTargetToLand() :
@@ -6171,7 +6336,12 @@ void ConvertTargetToLand::Assign( const ConvertTargetToLand& _convertTargetToLan
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ConvertTargetToLand::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFConvertTargetToLand( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CountingTargetSelector::CountingTargetSelector() :
@@ -6236,7 +6406,12 @@ void CountingTargetSelector::Assign( const CountingTargetSelector& _countingTarg
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* CountingTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFCountingTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CreateGlyphApplicator::CreateGlyphApplicator() :
@@ -6308,7 +6483,12 @@ void CreateGlyphApplicator::Assign( const CreateGlyphApplicator& _createGlyphApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* CreateGlyphApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplCreateGlyph>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CreepBehaviourChangeApplicator::CreepBehaviourChangeApplicator() :
@@ -6372,7 +6552,12 @@ void CreepBehaviourChangeApplicator::Assign( const CreepBehaviourChangeApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* CreepBehaviourChangeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplCreepBehaviourChange>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DamageApplicator::DamageApplicator() :
@@ -6441,7 +6626,12 @@ void DamageApplicator::Assign( const DamageApplicator& _damageApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DamageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDamage>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DamageReflectApplicator::DamageReflectApplicator() :
@@ -6496,7 +6686,12 @@ void DamageReflectApplicator::Assign( const DamageReflectApplicator& _damageRefl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DamageReflectApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDamageReflect>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DamagingLinksTargetSelector::DamagingLinksTargetSelector()
@@ -6553,7 +6748,12 @@ void DamagingLinksTargetSelector::Assign( const DamagingLinksTargetSelector& _da
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* DamagingLinksTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFDamagingLinksTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DayNightTransitionApplicator::DayNightTransitionApplicator() :
@@ -6608,7 +6808,12 @@ void DayNightTransitionApplicator::Assign( const DayNightTransitionApplicator& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DayNightTransitionApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDayNightTransition>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DealedDamageConverterApplicator::DealedDamageConverterApplicator() :
@@ -6667,7 +6872,12 @@ void DealedDamageConverterApplicator::Assign( const DealedDamageConverterApplica
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DealedDamageConverterApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDealedDamageConverter>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DefaultFormulas::DefaultFormulas()
@@ -6761,7 +6971,12 @@ void DelayTargetSelector::Assign( const DelayTargetSelector& _delayTargetSelecto
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* DelayTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFDelayTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DelegateDamageApplicator::DelegateDamageApplicator() :
@@ -6843,7 +7058,12 @@ void DelegateDamageApplicator::Assign( const DelegateDamageApplicator& _delegate
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DelegateDamageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDelegateDamage>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Dispatch::Dispatch() :
@@ -6917,7 +7137,12 @@ void Dispatch::Assign( const Dispatch& _dispatch )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* Dispatch::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFDispatch* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchContinuous::DispatchContinuous()
@@ -6970,7 +7195,12 @@ void DispatchContinuous::Assign( const DispatchContinuous& _dispatchContinuous )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchContinuous::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchContinuous>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchByTime::DispatchByTime() :
@@ -7028,7 +7258,12 @@ void DispatchByTime::Assign( const DispatchByTime& _dispatchByTime )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchByTime::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchByTime>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchCursor::DispatchCursor() :
@@ -7114,7 +7349,12 @@ void DispatchCursor::Assign( const DispatchCursor& _dispatchCursor )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchCursor::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchCursor>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchImmediate::DispatchImmediate() :
@@ -7168,7 +7408,12 @@ void DispatchImmediate::Assign( const DispatchImmediate& _dispatchImmediate )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchImmediate::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchImmediate>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchLinear::DispatchLinear() :
@@ -7271,7 +7516,12 @@ void DispatchLinear::Assign( const DispatchLinear& _dispatchLinear )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchLinear::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchUniformLinearMove>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchLinearWithLink::DispatchLinearWithLink()
@@ -7338,7 +7588,12 @@ void DispatchLinearWithLink::Assign( const DispatchLinearWithLink& _dispatchLine
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchLinearWithLink::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchWithLink>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispatchRockmanMace::DispatchRockmanMace() :
@@ -7407,7 +7662,12 @@ void DispatchRockmanMace::Assign( const DispatchRockmanMace& _dispatchRockmanMac
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFDispatch* DispatchRockmanMace::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::FCreateDispatch<NWorld::PFDispatchRockmanMace>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispellApplicator::DispellApplicator()
@@ -7460,7 +7720,12 @@ void DispellApplicator::Assign( const DispellApplicator& _dispellApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DispellApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDispell>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DispellCastLimitation::DispellCastLimitation()
@@ -7503,7 +7768,11 @@ void DispellCastLimitation::Assign( const DispellCastLimitation& _dispellCastLim
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const NWorld::PFAbilityData* DispellCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
 	return NWorld::CheckDispellLimitation( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 DropTreeApplicator::DropTreeApplicator()
@@ -7550,7 +7819,12 @@ void DropTreeApplicator::Assign( const DropTreeApplicator& _dropTreeApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* DropTreeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplDropTree>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorBase::EventProcessorBase() :
@@ -7597,7 +7871,12 @@ void EventProcessorBase::Assign( const EventProcessorBase& _eventProcessorBase )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorBase::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFEventProcessorBase* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorApplicatorApplied::EventProcessorApplicatorApplied() :
@@ -7666,7 +7945,12 @@ void EventProcessorApplicatorApplied::Assign( const EventProcessorApplicatorAppl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorApplicatorApplied::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorApplicatorApplied( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorAbilityManacostTransformer::EventProcessorAbilityManacostTransformer()
@@ -7718,7 +8002,12 @@ void EventProcessorAbilityManacostTransformer::Assign( const EventProcessorAbili
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorAbilityManacostTransformer::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorAbilityManacostTransformer( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorCancelDispatch::EventProcessorCancelDispatch() :
@@ -7778,7 +8067,12 @@ void EventProcessorCancelDispatch::Assign( const EventProcessorCancelDispatch& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorCancelDispatch::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorCancelDispatch( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorCondition::EventProcessorCondition() :
@@ -7833,7 +8127,12 @@ void EventProcessorCondition::Assign( const EventProcessorCondition& _eventProce
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorCondition::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorCondition( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorDamageTransformer::EventProcessorDamageTransformer() :
@@ -7919,7 +8218,12 @@ void EventProcessorDamageTransformer::Assign( const EventProcessorDamageTransfor
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorDamageTransformer::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorDamageTransformer( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorGroup::EventProcessorGroup()
@@ -7966,7 +8270,12 @@ void EventProcessorGroup::Assign( const EventProcessorGroup& _eventProcessorGrou
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorGroup::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorGroup( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorIncomingDamage::EventProcessorIncomingDamage() :
@@ -8017,7 +8326,12 @@ void EventProcessorIncomingDamage::Assign( const EventProcessorIncomingDamage& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorIncomingDamage::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorIncomingDamage( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorLastHit::EventProcessorLastHit()
@@ -8061,7 +8375,12 @@ void EventProcessorLastHit::Assign( const EventProcessorLastHit& _eventProcessor
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorLastHit::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorLastHit( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorOnConsumableObtained::EventProcessorOnConsumableObtained() :
@@ -8112,7 +8431,12 @@ void EventProcessorOnConsumableObtained::Assign( const EventProcessorOnConsumabl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorOnConsumableObtained::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorOnConsumableObtained( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorOnDeath::EventProcessorOnDeath() :
@@ -8171,7 +8495,12 @@ void EventProcessorOnDeath::Assign( const EventProcessorOnDeath& _eventProcessor
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorOnDeath::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorOnDeath( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorOnTarget::EventProcessorOnTarget()
@@ -8221,7 +8550,12 @@ void EventProcessorOnTarget::Assign( const EventProcessorOnTarget& _eventProcess
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorOnTarget::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorOnTarget( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorOnUseAbilityForceStrike::EventProcessorOnUseAbilityForceStrike()
@@ -8276,7 +8610,12 @@ void EventProcessorOnUseAbilityForceStrike::Assign( const EventProcessorOnUseAbi
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorOnUseAbilityForceStrike::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorOnUseAbilityForceStrike( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorOutgoingDamage::EventProcessorOutgoingDamage() :
@@ -8335,7 +8674,12 @@ void EventProcessorOutgoingDamage::Assign( const EventProcessorOutgoingDamage& _
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorOutgoingDamage::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorOutgoingDamage( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorPickupGlyph::EventProcessorPickupGlyph()
@@ -8387,7 +8731,12 @@ void EventProcessorPickupGlyph::Assign( const EventProcessorPickupGlyph& _eventP
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorPickupGlyph::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorPickupGlyph( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EventProcessorUnitDieNearMe::EventProcessorUnitDieNearMe() :
@@ -8450,7 +8799,12 @@ void EventProcessorUnitDieNearMe::Assign( const EventProcessorUnitDieNearMe& _ev
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFEventProcessorBase* EventProcessorUnitDieNearMe::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFEventProcessorUnitDieNearMe( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EyeApplicator::EyeApplicator() :
@@ -8516,7 +8870,12 @@ void EyeApplicator::Assign( const EyeApplicator& _eyeApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* EyeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplEye>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FilterTargetSelector::FilterTargetSelector()
@@ -8566,7 +8925,12 @@ void FilterTargetSelector::Assign( const FilterTargetSelector& _filterTargetSele
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* FilterTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFFilterTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FirstTargetSelector::FirstTargetSelector() :
@@ -8615,7 +8979,12 @@ void FirstTargetSelector::Assign( const FirstTargetSelector& _firstTargetSelecto
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* FirstTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFFirstTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FixToCenterTargetSelector::FixToCenterTargetSelector()
@@ -8663,7 +9032,12 @@ void FixToCenterTargetSelector::Assign( const FixToCenterTargetSelector& _fixToC
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* FixToCenterTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFFixToCenterTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FlagsApplicator::FlagsApplicator() :
@@ -8728,7 +9102,12 @@ void FlagsApplicator::Assign( const FlagsApplicator& _flagsApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* FlagsApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplFlags>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FlyApplicator::FlyApplicator() :
@@ -8816,7 +9195,12 @@ void FlyApplicator::Assign( const FlyApplicator& _flyApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* FlyApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplFly>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ForAllTargetsApplicator::ForAllTargetsApplicator() :
@@ -8885,7 +9269,12 @@ void ForAllTargetsApplicator::Assign( const ForAllTargetsApplicator& _forAllTarg
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ForAllTargetsApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplForAllTargets>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FountainTargetSelector::FountainTargetSelector()
@@ -8927,7 +9316,12 @@ void FountainTargetSelector::Assign( const FountainTargetSelector& _fountainTarg
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* FountainTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFFountainTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 FXApplicator::FXApplicator() :
@@ -8985,7 +9379,12 @@ void FXApplicator::Assign( const FXApplicator& _fXApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* FXApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplFX>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 GhostMoveApplicator::GhostMoveApplicator() :
@@ -9044,7 +9443,12 @@ void GhostMoveApplicator::Assign( const GhostMoveApplicator& _ghostMoveApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* GhostMoveApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplGhostMove>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 GiveConsumable::GiveConsumable()
@@ -9097,7 +9501,12 @@ void GiveConsumable::Assign( const GiveConsumable& _giveConsumable )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* GiveConsumable::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplGiveConsumable>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 HealApplicator::HealApplicator() :
@@ -9158,7 +9567,12 @@ void HealApplicator::Assign( const HealApplicator& _healApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* HealApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplHeal>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 HeroEnumerator::HeroEnumerator()
@@ -9203,7 +9617,12 @@ void HeroEnumerator::Assign( const HeroEnumerator& _heroEnumerator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* HeroEnumerator::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFHeroEnumerator( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 HighlanderA1TargetSelector::HighlanderA1TargetSelector()
@@ -9254,7 +9673,12 @@ void HighlanderA1TargetSelector::Assign( const HighlanderA1TargetSelector& _high
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* HighlanderA1TargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFHighlanderA1TargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 InvalidAbilityTargetApplicator::InvalidAbilityTargetApplicator()
@@ -9305,7 +9729,12 @@ void InvalidAbilityTargetApplicator::Assign( const InvalidAbilityTargetApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* InvalidAbilityTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplInvalidAbilityTarget>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 InvisibilityApplicator::InvisibilityApplicator() :
@@ -9366,7 +9795,12 @@ void InvisibilityApplicator::Assign( const InvisibilityApplicator& _invisibility
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* InvisibilityApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplInvisibility>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 KickAwayApplicator::KickAwayApplicator() :
@@ -9417,7 +9851,12 @@ void KickAwayApplicator::Assign( const KickAwayApplicator& _kickAwayApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* KickAwayApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplKickAway>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 KillApplicator::KillApplicator() :
@@ -9472,7 +9911,12 @@ void KillApplicator::Assign( const KillApplicator& _killApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* KillApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplKill>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ListOfTargetSelectors::ListOfTargetSelectors()
@@ -9519,7 +9963,12 @@ void ListOfTargetSelectors::Assign( const ListOfTargetSelectors& _listOfTargetSe
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ListOfTargetSelectors::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFListOfTargetSelectors( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 LockTilesApplicator::LockTilesApplicator() :
@@ -9581,7 +10030,12 @@ void LockTilesApplicator::Assign( const LockTilesApplicator& _lockTilesApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* LockTilesApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplLockTiles>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MainBuildingTargetSelector::MainBuildingTargetSelector()
@@ -9623,7 +10077,12 @@ void MainBuildingTargetSelector::Assign( const MainBuildingTargetSelector& _main
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* MainBuildingTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFMainBuildingTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MarkerApplicator::MarkerApplicator()
@@ -9680,7 +10139,12 @@ void MarkerApplicator::Assign( const MarkerApplicator& _markerApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* MarkerApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplMarker>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MaximizingTargetSelector::MaximizingTargetSelector() :
@@ -9738,7 +10202,12 @@ void MaximizingTargetSelector::Assign( const MaximizingTargetSelector& _maximizi
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* MaximizingTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFMaximizingTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BasicMicroAI::BasicMicroAI() :
@@ -9787,7 +10256,12 @@ void BasicMicroAI::Assign( const BasicMicroAI& _basicMicroAI )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFMicroAI* BasicMicroAI::Create( NWorld::PFMicroAICreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateMicroAI<NWorld::PFBasicMicroAI>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ModifyTerrainApplicator::ModifyTerrainApplicator()
@@ -9843,7 +10317,12 @@ void ModifyTerrainApplicator::Assign( const ModifyTerrainApplicator& _modifyTerr
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ModifyTerrainApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplModifyTerrain>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MountApplicator::MountApplicator() :
@@ -9902,7 +10381,12 @@ void MountApplicator::Assign( const MountApplicator& _mountApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* MountApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplMount>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MovementControlApplicator::MovementControlApplicator()
@@ -9953,7 +10437,12 @@ void MovementControlApplicator::Assign( const MovementControlApplicator& _moveme
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* MovementControlApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplMovementControl>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MoveToApplicator::MoveToApplicator() :
@@ -10032,7 +10521,12 @@ void MoveToApplicator::Assign( const MoveToApplicator& _moveToApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* MoveToApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplMoveTo>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ApplicatorRecipientsTargetSelector::ApplicatorRecipientsTargetSelector()
@@ -10079,7 +10573,12 @@ void ApplicatorRecipientsTargetSelector::Assign( const ApplicatorRecipientsTarge
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ApplicatorRecipientsTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFApplicatorRecipientsTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AreaTargetSelector::AreaTargetSelector()
@@ -10133,7 +10632,12 @@ void AreaTargetSelector::Assign( const AreaTargetSelector& _areaTargetSelector )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* AreaTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFAreaTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MultipleTargetSelectorMicroAI::MultipleTargetSelectorMicroAI() :
@@ -10191,7 +10695,12 @@ void MultipleTargetSelectorMicroAI::Assign( const MultipleTargetSelectorMicroAI&
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFMicroAI* MultipleTargetSelectorMicroAI::Create( NWorld::PFMicroAICreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateMicroAI<NWorld::PFMultipleTargetSelectorMicroAI>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NaftaTransferApplicator::NaftaTransferApplicator() :
@@ -10254,7 +10763,12 @@ void NaftaTransferApplicator::Assign( const NaftaTransferApplicator& _naftaTrans
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* NaftaTransferApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplNaftaTransfer>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NearestInAreaTargetSelector::NearestInAreaTargetSelector()
@@ -10302,7 +10816,12 @@ void NearestInAreaTargetSelector::Assign( const NearestInAreaTargetSelector& _ne
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* NearestInAreaTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFNearestInAreaTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NearestTargetSelector::NearestTargetSelector()
@@ -10347,7 +10866,12 @@ void NearestTargetSelector::Assign( const NearestTargetSelector& _nearestTargetS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* NearestTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFNearestTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NotTargetOfSameAbilitySelector::NotTargetOfSameAbilitySelector()
@@ -10400,7 +10924,12 @@ void NotTargetOfSameAbilitySelector::Assign( const NotTargetOfSameAbilitySelecto
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* NotTargetOfSameAbilitySelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFNotTargetOfSameAbilitySelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 OnDamageApplicator::OnDamageApplicator() :
@@ -10462,7 +10991,12 @@ void OnDamageApplicator::Assign( const OnDamageApplicator& _onDamageApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* OnDamageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplOnDamage>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PermanentStatModApplicator::PermanentStatModApplicator()
@@ -10516,7 +11050,12 @@ void PermanentStatModApplicator::Assign( const PermanentStatModApplicator& _perm
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* PermanentStatModApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplPermanentStatMod>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PickupChannelingApplicator::PickupChannelingApplicator()
@@ -10580,7 +11119,12 @@ void PickupChannelingApplicator::Assign( const PickupChannelingApplicator& _pick
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* PickupChannelingApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplPickupChanneling>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PointTargetSelector::PointTargetSelector() :
@@ -10647,7 +11191,12 @@ void PointTargetSelector::Assign( const PointTargetSelector& _pointTargetSelecto
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* PointTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFPointTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PositionCastLimitation::PositionCastLimitation()
@@ -10693,7 +11242,11 @@ void PositionCastLimitation::Assign( const PositionCastLimitation& _positionCast
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const NWorld::PFAbilityData* PositionCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
 	return NWorld::CheckPositionLimitation( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ProgramApplicator::ProgramApplicator()
@@ -10747,7 +11300,12 @@ void ProgramApplicator::Assign( const ProgramApplicator& _programApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ProgramApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplProgram>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 RaiseFlagApplicator::RaiseFlagApplicator()
@@ -10811,7 +11369,12 @@ void RaiseFlagApplicator::Assign( const RaiseFlagApplicator& _raiseFlagApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* RaiseFlagApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplRaiseFlag>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 RefreshCooldownApplicator::RefreshCooldownApplicator() :
@@ -10884,7 +11447,12 @@ void RefreshCooldownApplicator::Assign( const RefreshCooldownApplicator& _refres
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* RefreshCooldownApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplRefreshCooldown>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 RelativeUnitTargetSelector::RelativeUnitTargetSelector() :
@@ -10930,7 +11498,12 @@ void RelativeUnitTargetSelector::Assign( const RelativeUnitTargetSelector& _rela
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* RelativeUnitTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFRelativeUnitTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ResurrectApplicator::ResurrectApplicator() :
@@ -10985,7 +11558,12 @@ void ResurrectApplicator::Assign( const ResurrectApplicator& _resurrectApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ResurrectApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFResurrectApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ScaleControlApplicator::ScaleControlApplicator()
@@ -11042,7 +11620,12 @@ void ScaleControlApplicator::Assign( const ScaleControlApplicator& _scaleControl
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ScaleControlApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplScaleControl>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SceneObjectChangeApplicator::SceneObjectChangeApplicator()
@@ -11099,7 +11682,12 @@ void SceneObjectChangeApplicator::Assign( const SceneObjectChangeApplicator& _sc
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SceneObjectChangeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSceneObjectChange>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SectorTargetSelector::SectorTargetSelector() :
@@ -11167,7 +11755,12 @@ void SectorTargetSelector::Assign( const SectorTargetSelector& _sectorTargetSele
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* SectorTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFSectorTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SelectApplicatorTarget::SelectApplicatorTarget() :
@@ -11224,7 +11817,12 @@ void SelectApplicatorTarget::Assign( const SelectApplicatorTarget& _selectApplic
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* SelectApplicatorTarget::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFSelectApplicatorTarget( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SetAdvancedSummonTargetApplicator::SetAdvancedSummonTargetApplicator()
@@ -11271,7 +11869,12 @@ void SetAdvancedSummonTargetApplicator::Assign( const SetAdvancedSummonTargetApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SetAdvancedSummonTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplAdvancedSummonSetTarget>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SetTimescaleApplicator::SetTimescaleApplicator() :
@@ -11322,7 +11925,12 @@ void SetTimescaleApplicator::Assign( const SetTimescaleApplicator& _setTimescale
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SetTimescaleApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSetTimescale>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ShiftApplicator::ShiftApplicator() :
@@ -11376,7 +11984,12 @@ void ShiftApplicator::Assign( const ShiftApplicator& _shiftApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ShiftApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplShift>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ShopTargetSelector::ShopTargetSelector() :
@@ -11422,7 +12035,12 @@ void ShopTargetSelector::Assign( const ShopTargetSelector& _shopTargetSelector )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ShopTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFShopTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ComparingTargetSelector::ComparingTargetSelector()
@@ -11473,7 +12091,12 @@ void ComparingTargetSelector::Assign( const ComparingTargetSelector& _comparingT
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* ComparingTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFComparingTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 BaseAttack::BaseAttack() :
@@ -11612,7 +12235,12 @@ void SpellApplicator::Assign( const SpellApplicator& _spellApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SpellApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSpell>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SpellPeriodicallyApplicator::SpellPeriodicallyApplicator() :
@@ -11679,7 +12307,12 @@ void SpellPeriodicallyApplicator::Assign( const SpellPeriodicallyApplicator& _sp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SpellPeriodicallyApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSpellPeriodically>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SpellPeriodicallyVisualApplicator::SpellPeriodicallyVisualApplicator()
@@ -11738,7 +12371,12 @@ void SpellPeriodicallyVisualApplicator::Assign( const SpellPeriodicallyVisualApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SpellPeriodicallyVisualApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSpellPeriodicallyVisual>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SpellProbabilityApplicator::SpellProbabilityApplicator()
@@ -11794,7 +12432,12 @@ void SpellProbabilityApplicator::Assign( const SpellProbabilityApplicator& _spel
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SpellProbabilityApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSpellProbability>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SpellSwitchApplicator::SpellSwitchApplicator() :
@@ -11851,7 +12494,12 @@ void SpellSwitchApplicator::Assign( const SpellSwitchApplicator& _spellSwitchApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SpellSwitchApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSpellSwitch>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 StatModApplicator::StatModApplicator() :
@@ -11920,7 +12568,12 @@ void StatModApplicator::Assign( const StatModApplicator& _statModApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* StatModApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplStatMod>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 StatusApplicator::StatusApplicator() :
@@ -12020,7 +12673,12 @@ void StatusApplicator::Assign( const StatusApplicator& _statusApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* StatusApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplStatus>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SummonApplicator::SummonApplicator() :
@@ -12121,7 +12779,12 @@ void SummonApplicator::Assign( const SummonApplicator& _summonApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SummonApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplSummon>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SummonBehaviourBase::SummonBehaviourBase()
@@ -12161,7 +12824,12 @@ void SummonBehaviourBase::Assign( const SummonBehaviourBase& _summonBehaviourBas
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourBase::Create() const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( NWorld::PFSummonBehaviourDataBase* )(0);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SummonBehaviourCommon::SummonBehaviourCommon() :
@@ -12227,7 +12895,12 @@ void SummonBehaviourCommon::Assign( const SummonBehaviourCommon& _summonBehaviou
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourCommon::Create() const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFSummonBehaviourDataCommon( *this );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SummonBehaviourAdvanced::SummonBehaviourAdvanced()
@@ -12288,7 +12961,12 @@ void SummonBehaviourAdvanced::Assign( const SummonBehaviourAdvanced& _summonBeha
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourAdvanced::Create() const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFSummonBehaviourDataAdvanced( *this );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SummonEnumerator::SummonEnumerator() :
@@ -12336,7 +13014,12 @@ void SummonEnumerator::Assign( const SummonEnumerator& _summonEnumerator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* SummonEnumerator::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFSummonEnumerator( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TargetCastLimitation::TargetCastLimitation()
@@ -12382,7 +13065,11 @@ void TargetCastLimitation::Assign( const TargetCastLimitation& _targetCastLimita
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const NWorld::PFAbilityData* TargetCastLimitation::Check( NWorld::CastLimitationsCheckParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
 	return NWorld::CheckTargetLimitation( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TargetsCounterApplicator::TargetsCounterApplicator()
@@ -12436,7 +13123,12 @@ void TargetsCounterApplicator::Assign( const TargetsCounterApplicator& _targetsC
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* TargetsCounterApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplTargetsCounter>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 AttackersTargetSelector::AttackersTargetSelector() :
@@ -12491,7 +13183,12 @@ void AttackersTargetSelector::Assign( const AttackersTargetSelector& _attackersT
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* AttackersTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFAttackersTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TargetSelectorMicroAI::TargetSelectorMicroAI()
@@ -12538,7 +13235,12 @@ void TargetSelectorMicroAI::Assign( const TargetSelectorMicroAI& _targetSelector
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFMicroAI* TargetSelectorMicroAI::Create( NWorld::PFMicroAICreateParams const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateMicroAI<NWorld::PFTargetSelectorMicroAI>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TauntApplicator::TauntApplicator() :
@@ -12597,7 +13299,12 @@ void TauntApplicator::Assign( const TauntApplicator& _tauntApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* TauntApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplTaunt>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TeleportApplicator::TeleportApplicator() :
@@ -12665,7 +13372,12 @@ void TeleportApplicator::Assign( const TeleportApplicator& _teleportApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* TeleportApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplTeleport>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ThrowApplicator::ThrowApplicator() :
@@ -12781,7 +13493,12 @@ void ThrowApplicator::Assign( const ThrowApplicator& _throwApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ThrowApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplThrow>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TriggerApplicator::TriggerApplicator() :
@@ -12850,7 +13567,12 @@ void TriggerApplicator::Assign( const TriggerApplicator& _triggerApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* TriggerApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFTriggerApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UIMessageApplicator::UIMessageApplicator()
@@ -12906,7 +13628,12 @@ void UIMessageApplicator::Assign( const UIMessageApplicator& _uIMessageApplicato
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* UIMessageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFUIMessageApplicator>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UnitConstant::UnitConstant()
@@ -13030,7 +13757,12 @@ void UnitEnumerator::Assign( const UnitEnumerator& _unitEnumerator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* UnitEnumerator::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFUnitEnumerator( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UnitPlaceCorrector::UnitPlaceCorrector() :
@@ -13095,7 +13827,12 @@ void UnitPlaceCorrector::Assign( const UnitPlaceCorrector& _unitPlaceCorrector )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* UnitPlaceCorrector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFUnitPlaceCorrector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UnitShiftTarget::UnitShiftTarget()
@@ -13140,7 +13877,12 @@ void UnitShiftTarget::Assign( const UnitShiftTarget& _unitShiftTarget )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* UnitShiftTarget::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFUnitShiftTarget( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ValueApplicator::ValueApplicator()
@@ -13194,7 +13936,12 @@ void ValueApplicator::Assign( const ValueApplicator& _valueApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* ValueApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplValue>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 VariableProxyApplicator::VariableProxyApplicator()
@@ -13244,7 +13991,12 @@ void VariableProxyApplicator::Assign( const VariableProxyApplicator& _variablePr
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* VariableProxyApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplVariableProxy>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 VictoryApplicator::VictoryApplicator() :
@@ -13299,7 +14051,12 @@ void VictoryApplicator::Assign( const VictoryApplicator& _victoryApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* VictoryApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplVictory>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WaitForSpellApplicator::WaitForSpellApplicator() :
@@ -13367,7 +14124,12 @@ void WaitForSpellApplicator::Assign( const WaitForSpellApplicator& _waitForSpell
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* WaitForSpellApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplWaitForSpell>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WallTargetSelector::WallTargetSelector()
@@ -13424,7 +14186,12 @@ void WallTargetSelector::Assign( const WallTargetSelector& _wallTargetSelector )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* WallTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFWallTargetSelector( *this, world );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WatchApplicator::WatchApplicator() :
@@ -13495,7 +14262,12 @@ void WatchApplicator::Assign( const WatchApplicator& _watchApplicator )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* WatchApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NWorld::CreateApplicator<NWorld::PFApplWatch>( *this, cp );
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 WeightTargetSelector::WeightTargetSelector()
@@ -13540,6 +14312,11 @@ void WeightTargetSelector::Assign( const WeightTargetSelector& _weightTargetSele
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFTargetSelector* WeightTargetSelector::Create( NWorld::PFWorld* world ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return new NWorld::PFWeightTargetSelector( *this, world );
+#endif
 }
 }; // namespace NDb

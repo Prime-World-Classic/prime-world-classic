@@ -1,3 +1,96 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "rendersurface.h"
+
+namespace Render
+{
+
+RenderSurface::~RenderSurface()
+{
+}
+
+RenderSurface::RenderSurface()
+  : DeviceLostHandler(HANDLERPRIORITY_NORMAL)
+  , pSurface(0)
+  , desc()
+{
+}
+
+RenderSurface::RenderSurface(IDirect3DSurface9* pSurface_)
+  : DeviceLostHandler(HANDLERPRIORITY_NORMAL)
+  , pSurface(pSurface_)
+  , desc()
+{
+}
+
+RenderSurface::RenderSurface(D3DSURFACE_DESC const& desc_)
+  : DeviceLostHandler(HANDLERPRIORITY_NORMAL)
+  , pSurface(0)
+  , desc(desc_)
+{
+  CreateInternal();
+}
+
+void RenderSurface::Init(D3DSURFACE_DESC const& desc_)
+{
+  desc = desc_;
+  CreateInternal();
+}
+
+void RenderSurface::CreateInternal()
+{
+  pSurface = 0;
+}
+
+LockedRect RenderSurface::LockRect(const Rect& rect, ERenderLockType lockType)
+{
+  RECT d3drect;
+  d3drect.left = rect.left;
+  d3drect.top = rect.top;
+  d3drect.right = rect.right;
+  d3drect.bottom = rect.bottom;
+
+  return LockRectInternal(&d3drect, lockType);
+}
+
+LockedRect RenderSurface::Lock(ERenderLockType lockType)
+{
+  return LockRectInternal(0, lockType);
+}
+
+void RenderSurface::Unlock()
+{
+}
+
+void RenderSurface::StretchTo(IDirect3DSurface9 *other, bool bLinear)
+{
+  (void)other;
+  (void)bLinear;
+}
+
+LockedRect RenderSurface::LockRectInternal(RECT* rect, ERenderLockType lockType)
+{
+  (void)rect;
+  (void)lockType;
+  return LockedRect();
+}
+
+void RenderSurface::OnDeviceLost()
+{
+  if (desc.Pool == D3DPOOL_DEFAULT)
+    pSurface = 0;
+}
+
+void RenderSurface::OnDeviceReset()
+{
+  if (desc.Type == D3DRTYPE_SURFACE && desc.Pool == D3DPOOL_DEFAULT)
+    CreateInternal();
+}
+
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 
 #include "rendersurface.h"
@@ -144,3 +237,5 @@ void RenderSurface::OnDeviceReset()
 }
 
 } // namespace Render
+
+#endif

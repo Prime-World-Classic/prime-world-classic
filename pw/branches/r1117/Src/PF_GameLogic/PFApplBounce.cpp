@@ -11,7 +11,7 @@
 #include "PFClientApplicators.h"
 #include "PF_Core/EffectsPool.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld

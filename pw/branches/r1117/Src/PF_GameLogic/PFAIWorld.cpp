@@ -24,6 +24,7 @@
 #include "PFScriptedFlagpole.h"
 
 #include "PFStatistics.h"
+#include "DBSessionRoots.h"
 
 #include "PFGlyphManager.h"
 
@@ -39,6 +40,7 @@
 
 #include "Sound/EventScene.h"
 #include "UI/Root.h"
+#include "UI/DBUI.h"
 
 #include "PFAIContainer.h"
 #include "Scripts/FuncCallMacroses.h"
@@ -821,8 +823,10 @@ namespace
 {
   static inline CPtr<PFBaseHero> GetLocalHero()
   {
+#if !defined(VISUAL_CUTTED)
     if (NGameX::AdventureScreen* const advScreen = NGameX::AdventureScreen::Instance())
       return advScreen->GetHero();
+#endif
     return CPtr<PFBaseHero>();
   }
 }

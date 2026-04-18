@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../Render/TextureManager.h"
+#include "../Render/renderer.h"
+
 template <typename TEXEL> class ArrayInVRAM
 {
 public:
@@ -61,4 +64,3 @@ template <typename TEXEL> TEXEL const* ArrayInVRAM<TEXEL>::Fetch()
 	NI_ASSERT(rect.pitch == int( width * sizeof(TEXEL) ), NStr::StrFmt("pitch %d, width %d", rect.pitch, width));
 	return pLocked;
 }
-

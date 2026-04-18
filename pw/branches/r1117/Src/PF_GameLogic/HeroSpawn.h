@@ -18,6 +18,11 @@ namespace NScene
   _interface IScene;
 }
 
+namespace NDb
+{
+  struct HeroesDB;
+}
+
 
 class LoadingProgress;
 

@@ -5,7 +5,9 @@
 #include "PFAIWorld.h"
 #include "PFTalent.h"
 #include "DBTalent.h"
+#include "DBSessionRoots.h"
 #include "HeroSpawn.h"
+#include <cfloat>
 
 namespace NWorld
 {
@@ -172,7 +174,7 @@ namespace Force
     , humanPlayersOnly(_humanPlayersOnly)
   {
     findMinimum = _forceParameters->teamForceCalcMethod == NDb::TEAMFORCECALCMETHOD_MINIMUM;
-    force = findMinimum ? MAX_FLOAT : 0.0f;
+    force = findMinimum ? FLT_MAX : 0.0f;
   }
 
   void MapStatsCoeffCalculator::operator()(PFBaseHero const& hero)

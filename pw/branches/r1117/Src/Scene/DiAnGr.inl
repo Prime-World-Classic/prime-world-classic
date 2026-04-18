@@ -140,12 +140,13 @@ struct DiAnGrNodesMap
 
   DiAnGrNodesMap(DiTChar *_name)
   {
-    strcpy_s(cpNodeName, DIANGR_MAX_SEQ_NAME, _name);
+    strncpy(cpNodeName, _name, DIANGR_MAX_SEQ_NAME - 1);
+    cpNodeName[DIANGR_MAX_SEQ_NAME - 1] = 0;
   }
 
   DiAnGrNodesMap()
   {
-    strcpy_s(cpNodeName, DIANGR_MAX_SEQ_NAME, "");
+    cpNodeName[0] = 0;
   }
 };
 

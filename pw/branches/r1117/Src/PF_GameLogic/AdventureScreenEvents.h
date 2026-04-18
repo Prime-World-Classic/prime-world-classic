@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../Render/texture.h"
 #include "../System/NameMap.h"
 #include "../System/TypeList.h"
 

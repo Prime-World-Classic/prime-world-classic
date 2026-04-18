@@ -5,6 +5,7 @@
 #include "PFAchievement.h"
 #include "PFAIWorld.h"
 #include "PFCommonCreep.h"
+#include "DBSessionRoots.h"
 #include "PFFactionStatistics.h"
 #include "PFHero.h"
 #include "PFTalent.h"
@@ -278,7 +279,11 @@ const wstring& CustomEventNameMap::GetAssistanstsNames() const
     }
   
     wchar_t buf[128] = {};
+#if defined( NV_LINUX_PLATFORM ) || defined( __linux__ )
+    swprintf(buf, sizeof(buf) / sizeof(buf[0]), L"Assistants: %ls.", assistantsNames.c_str());
+#else
     _snwprintf_s(buf, 128, L"Assistants: %s.", assistantsNames.c_str());
+#endif
     assistantsNames = wstring(buf);
     return assistantsNames;      
   }

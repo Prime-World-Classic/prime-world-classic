@@ -2,7 +2,11 @@
 #include "PFBaseMovingUnit.h"
 #include "PFMaleHero.h"
 #include "PFAbilityInstance.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientApplicators.h"
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#endif
 #include "PFLogicDebug.h"
 #include "PFBaseUnitStates.h"
 #include "PFHeroStates.h"
@@ -14,7 +18,9 @@
 #include "PFTargetSelector.h"
 #include "TileMap.h"
 #include "../PF_Core/EffectsPool.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientCreature.h"
+#endif
 #include "PFTalent.h"
 #include "PFStatistics.h"
 
@@ -571,12 +577,14 @@ namespace NWorld
             // of some speed modifiers etc
 
             pTargetUnit->SetMoveFlags( MOVE_FLAG_OVERRIDE_SPEED );
+#ifndef VISUAL_CUTTED
             NGameX::PFClientCreature *pClientUnit = pTargetUnit->ClientObject();
             if ( pClientUnit && DB.surfaceSpeedFromAG )
             {
               originalSpeed = pClientUnit->GetCurAnimSetSurfSpeed();
               pClientUnit->SetCurAnimSetSurfSpeed( pClientUnit->GetSurfaceSpeedCurrentNode() );
             }
+#endif
           }
         }
       }
@@ -1015,6 +1023,7 @@ namespace NWorld
   {
     PFBaseApplicator::Reset();
 
+#ifndef VISUAL_CUTTED
     if (bStarted)
     {
       NGameX::PFClientCreature *pClientUnit = pTargetUnit->ClientObject();
@@ -1024,10 +1033,12 @@ namespace NWorld
         pClientUnit->StartFlying();
       }
     }
+#endif
   }
 
   void PFApplFly::ReplaceAnimations()
   {
+#ifndef VISUAL_CUTTED
     const NDb::FlyApplicator& DB = GetDB();
     CPtr<PFCreature> pCreature = pTargetUnit;
 
@@ -1058,10 +1069,12 @@ namespace NWorld
         }
       }
     }
+#endif
   }
 
   void PFApplFly::RollbackAnimations()
   {
+#ifndef VISUAL_CUTTED
     const NDb::FlyApplicator &DB = GetDB();
     CPtr<PFCreature> pCreature = pTargetUnit;
 
@@ -1086,6 +1099,7 @@ namespace NWorld
       }
       pCreature->ClientObject()->SetAnimState( NDb::ANIMSTATES_IDLE );
     }
+#endif
   }
 
   bool PFApplFly::Step( float dtInSeconds )

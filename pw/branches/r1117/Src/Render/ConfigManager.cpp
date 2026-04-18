@@ -1,15 +1,120 @@
 #include "StdAfx.h"
 #include "ConfigManager.h"
-#include "ConfigDatabase.h"
 
 
 static bool s_readableDepth = true;
 static bool s_stencilEnable = true;
 
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+class ConfigManagerImpl : public ConfigManager, public IConfigManager
+{
+public:
+  ConfigManagerImpl()
+    : caps(0)
+  {
+    ZeroMemory(perfLevels, sizeof(perfLevels));
+    sysInfo.MaxVertexShaderConst = 256;
+    sysInfo.IsNullRef = true;
+  }
+
+  virtual HRESULT CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats = true)
+  {
+    (void)_pDevice;
+    (void)_checkFormats;
+    return S_OK;
+  }
+
+  virtual void SetPerfomanceLevel(ResourceType _type, UINT _level)
+  {
+    perfLevels[_type] = _level;
+  }
+
+  virtual void GetVidMem(HMONITOR _hMonitor, UINT* _pAvailableVidMem, UINT* _pAdapterRAM)
+  {
+    (void)_hMonitor;
+    if (_pAvailableVidMem)
+      *_pAvailableVidMem = 0;
+    if (_pAdapterRAM)
+      *_pAdapterRAM = 0;
+  }
+
+  virtual DWORD GetAllFeatures() const { return caps; }
+  virtual const IConfigManager::SysInfo& GetSysInfo() const { return sysInfo; }
+  virtual UINT GetPerfomanceLevel(ResourceType _type) const { return perfLevels[_type]; }
+
+  virtual UINT FindAcceptableTechnique(const TechniqueDesc **_pDesc, UINT numDesc) const
+  {
+    for (UINT i = 0; i < numDesc; ++i)
+    {
+      const TechniqueDesc& desc = *(_pDesc[i]);
+      if (desc.flags == (desc.flags & caps))
+        return i;
+    }
+
+    return numDesc;
+  }
+
+  virtual bool StencilSupported(ERenderFormat _depthFormat) const
+  {
+    return s_stencilEnable && _depthFormat != FORMAT_DF24 && _depthFormat != FORMAT_DF16;
+  }
+
+  virtual ERenderFormat GetDepthFormatPreffered() const
+  {
+    return FORMAT_D24S8;
+  }
+
+  virtual bool CheckFeatureSupport(DWORD _features) const
+  {
+    return (_features & caps) != 0;
+  }
+
+  virtual bool CheckFeatureSupportExact(DWORD _features) const
+  {
+    return _features == (_features & caps);
+  }
+
+  virtual bool ReadableDepthEnabled() const
+  {
+    return false;
+  }
+
+  virtual const ConfigParams& GetConfigParams() const
+  {
+    return configParams;
+  }
+
+private:
+  DWORD caps;
+  UINT perfLevels[NUM_RESOURCE_TYPES];
+  ConfigParams configParams;
+  IConfigManager::SysInfo sysInfo;
+};
+
+ConfigManager* GetConfigManager()
+{
+  static ConfigManagerImpl manager;
+  return &manager;
+}
+
+const IConfigManager* GetIConfigManager()
+{
+  return static_cast<ConfigManagerImpl*>(GetConfigManager());
+}
+
+} // namespace Render
+
+#else
+
+#include "ConfigDatabase.h"
+
 HRESULT GetVideoMemoryViaDirectDraw(HMONITOR hMonitor, DWORD* pdwAvailableVidMem); // returns total video memory minus driver-reserved memory.
 HRESULT GetVideoMemoryViaWMI(HMONITOR hMonitor, DWORD* pdwAdapterRam);
-
 
 namespace Render
 {
@@ -293,3 +398,5 @@ REGISTER_VAR("readableDepthEnable", s_readableDepth, STORAGE_NONE);
 REGISTER_DEV_VAR("stencilEnable", s_stencilEnable, STORAGE_NONE);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#endif

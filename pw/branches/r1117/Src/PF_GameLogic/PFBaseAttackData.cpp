@@ -6,8 +6,10 @@
 
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
+#ifndef VISUAL_CUTTED
 #include "../Scene/AnimatedSceneComponent.h"
 #include "../Scene/SceneObjectCreation.h"
+#endif
 
 
 namespace NWorld
@@ -202,6 +204,10 @@ float PFBaseAttackData::GetSpeed() const
 
 float PFBaseAttackData::GetAttackNodeDuration( NScene::SceneObject* pSO ) const
 {
+#if defined(VISUAL_CUTTED)
+  (void)pSO;
+  return 0.0f;
+#else
 	float duration = 0.0f;
 	nstl::string nodeName = "attack";
 	::DiAnimGraph* pAG = GetAG( pSO );
@@ -259,6 +265,7 @@ float PFBaseAttackData::GetAttackNodeDuration( NScene::SceneObject* pSO ) const
 	}
 
 	return duration;
+#endif
 }
 
 bool PFBaseAttackData::IsMelee() const

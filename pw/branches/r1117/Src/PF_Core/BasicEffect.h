@@ -2,7 +2,6 @@
 
 #include "../System/RandomGen.h"
 #include "../Scene/SceneObject.h"
-#include "../Scene/SceneObjectCreation.h"
 
 #include "ObjectsPool.h"
 #include "ClientObject.h"
@@ -219,23 +218,6 @@ struct LocatorInfo
 {
   NDb::Locator locator;
   NScene::SceneComponent *pSC;
-};
-
-class LocatorInfoFunc : public NScene::IParseLocatorFunc
-{
-public:
-	LocatorInfoFunc( nstl::vector<LocatorInfo> &locators ) : locators(locators) {}
-
-  void operator()( NDb::Locator const &locator, NScene::SceneComponent *pSC )
-	{
-    LocatorInfo info;
-    info.locator = locator;
-    info.pSC = pSC;
-    locators.push_back( info );
-	}
-
-protected:
-	nstl::vector<LocatorInfo> &locators;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

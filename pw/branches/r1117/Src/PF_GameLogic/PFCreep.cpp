@@ -3,12 +3,14 @@
 #include "PFCreep.h"
 #include "PFAbilityData.h"
 #include "PFAIWorld.h"
+#include "DBSessionRoots.h"
 #include "../System/InlineProfiler.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientCreep.h"
 #else
-#include "../game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld
@@ -216,4 +218,3 @@ NDb::EUnitType PFBaseCreep::GetUnitTypeByCreepType( NDb::ECreepType creepType )
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFBaseCreep, NWorld)
-

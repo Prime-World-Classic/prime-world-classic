@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "CleanGeometry.h"
-#include <Render\renderflagsconverter.h>
+#include "renderflagsconverter.h"
+#include "vertexformatdescriptor.h"
 #include <System/InlineProfiler.h>
 
 namespace Render {
@@ -135,7 +136,7 @@ UINT RemoveDuplicateTriangles(INDEX* _pIndices, UINT _numIndices)
 
   NI_VERIFY(0 == _numIndices % 3, "Wrong index buffer", _numIndices = (_numIndices / 3) * 3);
 
-  OTriangle::Set tris;
+  typename OTriangle::Set tris;
   INDEX *pLast = _pIndices;
   const INDEX * const pEnd = _pIndices + _numIndices;
   for(const INDEX *pCurr = pLast; pCurr != pEnd; pCurr += 3)

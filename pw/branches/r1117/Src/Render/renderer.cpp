@@ -1,4 +1,184 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "renderer.h"
+
+namespace Render
+{
+
+Renderer* Renderer::s_pInstance = 0;
+
+Renderer* Renderer::Get()
+{
+  return s_pInstance;
+}
+
+const RenderMode& Renderer::GetCurrentRenderMode()
+{
+  return realRenderMode;
+}
+
+Renderer::Renderer(unsigned int _hWnd)
+  : bDeviceLost(true)
+  , bResetDevice(false)
+  , bTripleBufferUsed(false)
+  , isRunningUnderPerfHUD(false)
+  , hWnd(reinterpret_cast<HWND>(static_cast<uintptr_t>(_hWnd)))
+  , swapEffect(D3DSWAPEFFECT_COPY)
+  , pDeviceDepthSurface(0)
+  , pDeviceColorSurface(0)
+{
+  caps.pixelShaderVersion = 0.0f;
+  caps.vertexShaderVersion = 0.0f;
+  caps.bSupportSM30 = false;
+}
+
+Renderer::~Renderer()
+{
+  pDeviceDepthSurface = 0;
+  pDeviceColorSurface = 0;
+}
+
+int Renderer::GetModesCount() const
+{
+  return 0;
+}
+
+void Renderer::GetMode(int /*index*/, unsigned int &width, unsigned int &height, unsigned int &refreshRate) const
+{
+  width = RenderMode::WIDTH_DEFAULT;
+  height = RenderMode::HEIGHT_DEFAULT;
+  refreshRate = RenderMode::REFRESH_RATE_DEFAULT;
+}
+
+bool Renderer::Start(const RenderMode& _renderMode)
+{
+  UpdateRealRenderMode(_renderMode);
+  bDeviceLost = false;
+  return true;
+}
+
+void Renderer::Stop()
+{
+  bDeviceLost = true;
+}
+
+DXVertexShaderRef Renderer::CreateVertexShader(unsigned char const* data)
+{
+  (void)data;
+  return 0;
+}
+
+DXPixelShaderRef Renderer::CreatePixelShader(unsigned char const* data)
+{
+  (void)data;
+  return 0;
+}
+
+DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexFormatDescriptor& descr)
+{
+  (void)descr;
+  return 0;
+}
+
+void Renderer::SetClipPlane(bool bEnable, CVec4 *pPlane)
+{
+  (void)bEnable;
+  (void)pPlane;
+}
+
+void Renderer::SetPixelShaderConstants(unsigned int startRegisterIndex, unsigned int registersCount, const void* data)
+{
+  (void)startRegisterIndex;
+  (void)registersCount;
+  (void)data;
+}
+
+void Renderer::SetVertexShaderConstants(unsigned int startRegisterIndex, unsigned int registersCount, const void* data)
+{
+  (void)startRegisterIndex;
+  (void)registersCount;
+  (void)data;
+}
+
+void Renderer::BeginScene()
+{
+}
+
+void Renderer::EndScene()
+{
+}
+
+void Renderer::Present()
+{
+}
+
+void Renderer::Present(HWND hWnd_, const Rect* sourceRect_, const Rect* destRect_)
+{
+  (void)hWnd_;
+  (void)sourceRect_;
+  (void)destRect_;
+}
+
+void Renderer::ClearDepthStencil()
+{
+}
+
+void Renderer::Clear(Color color)
+{
+  (void)color;
+}
+
+void Renderer::ClearColorOnly(Color color)
+{
+  (void)color;
+}
+
+bool Renderer::GetRenderTargetData(IDirect3DSurface9* pSrc, IDirect3DSurface9* pDst)
+{
+  (void)pSrc;
+  (void)pDst;
+  return false;
+}
+
+void Renderer::StretchSurface(const DXSurfaceRef &pSrc, const DXSurfaceRef &pDst, bool bLinear)
+{
+  (void)pSrc;
+  (void)pDst;
+  (void)bLinear;
+}
+
+void Renderer::ApplyNewParams(const RenderMode &_renderMode)
+{
+  UpdateRealRenderMode(_renderMode);
+  bDeviceLost = false;
+}
+
+bool Renderer::NeedToFilterResolutionFromUser(unsigned int width, unsigned int height) const
+{
+  (void)width;
+  (void)height;
+  return false;
+}
+
+void Renderer::CorrectRenderMode(RenderMode &_renderMode) const
+{
+  (void)_renderMode;
+}
+
+void Renderer::InvalidateResources()
+{
+}
+
+void Renderer::UpdateRealRenderMode(const RenderMode &configRenderMode)
+{
+  realRenderMode = configRenderMode;
+}
+
+} // namespace Render
+
+#else
 #include "Vendor/DirectX/Include/DxErr.h"
 
 #include "System/AssertDumper.h"
@@ -924,3 +1104,5 @@ void Renderer::ApplyNewParams( const RenderMode &_renderMode )
 } // namespace Render
 
 REGISTER_DEV_VAR( "forceSM20Usage", forceSM20Usage, STORAGE_GLOBAL );
+
+#endif

@@ -7,7 +7,13 @@ namespace NDb
 
 namespace Render
 {
-	__declspec(align(16))
+#if defined(NV_LINUX_PLATFORM)
+  #define RENDER_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define RENDER_ALIGN16 __declspec(align(16))
+#endif
+
+	RENDER_ALIGN16
 	struct AABB
 	{
 		CVec3 center;
@@ -60,10 +66,12 @@ namespace Render
     return !operator==(_lhs, _rhs);
   }
 
-  class IAABB
-  {
+	class IAABB
+	{
   public:
 		virtual const Render::AABB &GetWorldAABB() const = 0;
-  };
+	};
+
+#undef RENDER_ALIGN16
 
 } //namespace Render

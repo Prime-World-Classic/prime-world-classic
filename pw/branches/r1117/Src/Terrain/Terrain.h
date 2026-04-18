@@ -1,5 +1,190 @@
 #pragma once
 
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_TERRAIN_RUNTIME_PROBE)
+
+#include "GridConstants.h"
+#include "NatureMap.h"
+#include "TerrainTextureCache.h"
+#include "../System/2DArray.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "TerrainElement.h"
+#include "TerrainElementManager.h"
+#include "TerrainGeometryManager.h"
+#endif
+
+namespace NScene
+{
+  class LightingScene;
+}
+
+namespace Terrain
+{
+#if !defined(PW_LINUX_NULL_RENDER)
+  typedef long TerrainElementId;
+  static const TerrainElementId TERRAINELEMENTID_BAD = -1;
+
+  enum
+  {
+    INVALID_GEOMETRY = 0x0001,
+    INVALID_LIGHTING = 0x0002,
+    INVALID_MASKS = 0x0004
+  };
+
+  struct TerrainElementInfo
+  {
+    TerrainElementId id;
+
+    TerrainElementInfo()
+      : id(TERRAINELEMENTID_BAD)
+    {
+    }
+  };
+
+  class BootstrapTerrainElementManager
+  {
+  public:
+    template <class FUNCTOR> void ForAllElementInfos(FUNCTOR& /*func*/) {}
+    template <class FUNCTOR> void ForAllElementInfosAABB(FUNCTOR& /*func*/, Render::AABB const& /*bounds*/) {}
+  };
+
+  class BootstrapTerrainGeometryManager
+  {
+  public:
+    void SetLightingScene(NScene::LightingScene* /*lightingScene*/) {}
+    void InvalidateElement(TerrainElementId /*id*/, int /*flags*/) {}
+  };
+#endif
+
+  class BootstrapTerrainHeightGrid
+  {
+  public:
+    int GetSizeX() const { return 0; }
+    int GetSizeY() const { return 0; }
+  };
+
+  class BootstrapTerrainHeightManager
+  {
+    BootstrapTerrainHeightGrid heights;
+    CArray2D<float> heightsAsFloat;
+
+  public:
+    BootstrapTerrainHeightGrid const& GetHeights() const { return heights; }
+    CArray2D<float> const& GetHeightsAsFloat() const { return heightsAsFloat; }
+    unsigned int GetHeightsVersion() const { return 0; }
+  };
+
+  class BootstrapNatureMap : public NatureMap
+  {
+  public:
+    BootstrapNatureMap()
+      : NatureMap(false)
+    {
+    }
+
+  protected:
+    virtual bool OnLoadAtRuntime(Stream* pStream, int fraction, bool fromRecconect)
+    {
+      (void)pStream;
+      (void)fraction;
+      (void)fromRecconect;
+      return false;
+    }
+
+    virtual bool OnSaveAtRuntime(Stream* pStream, bool fromRecconect) const
+    {
+      (void)pStream;
+      (void)fromRecconect;
+      return false;
+    }
+  };
+
+  class Terrain : public CObjectBase
+  {
+    OBJECT_BASIC_METHODS(Terrain);
+
+  private:
+    BootstrapNatureMap natureMap;
+    GridConstants gridConstants;
+    BootstrapTerrainHeightManager heightManager;
+    bool editable;
+#if defined(PW_LINUX_NULL_RENDER)
+    TerrainElementManager elemManager;
+    TerrainGeometryManager geometryManager;
+#else
+    BootstrapTerrainElementManager elemManager;
+    BootstrapTerrainGeometryManager geometryManager;
+#endif
+
+    Terrain()
+      : natureMap()
+      , gridConstants()
+      , heightManager()
+      , editable(false)
+      , elemManager()
+      , geometryManager()
+    {
+    }
+
+  public:
+    explicit Terrain(bool editable_)
+      : natureMap()
+      , gridConstants()
+      , heightManager()
+      , editable(editable_)
+      , elemManager()
+      , geometryManager()
+    {
+    }
+
+    virtual ~Terrain() {}
+
+    NatureMap& GetNatureMap() { return natureMap; }
+    GridConstants const& GetGridConstants() const { return gridConstants; }
+    BootstrapTerrainHeightManager const& GetHeightManager() const { return heightManager; }
+    uint GetHeightsCounter() const { return heightManager.GetHeightsVersion(); }
+    bool IsEditable() const { return editable; }
+    TerrainTextureCache* GetTextureCache() const { return 0; }
+
+    bool GetHeight(float x, float y, float* height, CVec3* normal = NULL ) const
+    {
+      (void)x;
+      (void)y;
+      if (height)
+        *height = 0.0f;
+      if (normal)
+        *normal = CVec3(0.0f, 0.0f, 1.0f);
+      return false;
+    }
+#if defined(PW_LINUX_NULL_RENDER)
+    TerrainElementManager& GetElementManager() { return elemManager; }
+    TerrainGeometryManager& GetGeometryManager() { return geometryManager; }
+    TerrainElementId AddTerrainElement(const NDb::TerrainElementInstance& descriptor, const string& fileName) { return geometryManager.AddTerrainElement(descriptor, fileName); }
+    bool DeleteTerrainElement(TerrainElementId id) { return geometryManager.DeleteTerrainElement(id); }
+#else
+    BootstrapTerrainElementManager& GetElementManager() { return elemManager; }
+    BootstrapTerrainGeometryManager& GetGeometryManager() { return geometryManager; }
+    TerrainElementId AddTerrainElement(const NDb::TerrainElementInstance& /*descriptor*/, const string& /*fileName*/) { return TERRAINELEMENTID_BAD; }
+    bool DeleteTerrainElement(TerrainElementId /*id*/) { return false; }
+#endif
+
+    template <class FUNCTOR> void ForAllElements(FUNCTOR& func) { elemManager.ForAllElements(func); }
+
+    void LoadTerrain(const NDb::Terrain* pDBTerrain) { (void)pDBTerrain; }
+    void CreateTerrain(const NDb::Terrain* pDBTerrain) { (void)pDBTerrain; }
+    void Update() {}
+
+    bool IntersectWithGrid( CVec2* pPoint, const CVec2& dir ) const
+    {
+      (void)pPoint;
+      (void)dir;
+      return false;
+    }
+  };
+}
+
+#else
+
+#include "GridConstants.h"
 #include "TerrainElement.h"
 #include "TerrainElementManager.h"
 #include "TerrainLayerManager.h"
@@ -12,36 +197,13 @@
 #include "NatureMapVisual.h"
 #include "TerrainTextureCache.h"
 
+#include "../Render/batch.h"
 #include "../Scene/RenderableScene.h"
 #include "../Render/ShadowReceiverVolume.h"
 
 namespace Terrain
 {
 //	static const float TERRAIN_TILE_SIZE = 2.5f; // smirnov [2008/12/4]: use GridConstants.metersPerTile instead
-
-	struct GridConstants
-	{
-		// pair of ints
-		struct int2 { int x, y; };
-
-		// if the constants were filled
-		bool valid;
-
-		// given values
-		float metersPerElement;
-		int2 sizeInElements;
-		int tilesPerElement;
-		int texelsPerElement;
-
-		// derived values
-		float metersPerTile;
-		float metersPerTexel;
-		int2 sizeInTiles;
-		int2 sizeInTexels;
-		CVec3 worldSize;
-
-		GridConstants() { memset(this, 0, sizeof(*this)); }
-	};
 
   class Terrain : public CObjectBase, public Render::IShadowReceiverVolume
 	{
@@ -202,3 +364,5 @@ namespace Terrain
     void Initialize( const NDb::Terrain* pDBTerrain );
 	};
 };
+
+#endif

@@ -118,6 +118,7 @@
 
 	#include <fcntl.h>
 	#include <errno.h>
+	#include <stdio.h>
 	#include <sys/mman.h>
 
 	namespace filesystem {
@@ -164,9 +165,13 @@
 			if ( bAutoMap )
 				MapFile();
 
-		} else
-			DebugTrace( "Failed to open file %s with error %d.", fileName.c_str(), errno );
-	}
+			} else {
+				const bool shouldReport =
+					errno != ENOENT || _access != FILEACCESS_READ || _open != FILEOPEN_OPEN_EXISTING;
+				if ( shouldReport )
+					fprintf( stderr, "Failed to open file %s with error %d.\n", fileName.c_str(), errno );
+			}
+		}
 
 	void FileStream::MapFile()
 	{
@@ -247,4 +252,3 @@
 	REGISTER_SAVELOAD_CLASS( FileStream );
 
 #endif
-

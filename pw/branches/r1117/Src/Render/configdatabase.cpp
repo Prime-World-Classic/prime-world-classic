@@ -4,10 +4,14 @@
 // Implementation of configuration database object.
 //
 // Copyright (c) Microsoft Corporation. All rights reserved.
-// P.S.: Я к этому мусору отношения не имею. Не виноватый я. Аслан.
+// P.S.: Гџ ГЄ ГЅГІГ®Г¬Гі Г¬ГіГ±Г®Г°Гі Г®ГІГ­Г®ГёГҐГ­ГЁГї Г­ГҐ ГЁГ¬ГҐГѕ. ГЌГҐ ГўГЁГ­Г®ГўГ ГІГ»Г© Гї. ГЂГ±Г«Г Г­.
 //--------------------------------------------------------------------------------------
 #include "StdAfx.h"
-#include <tchar.h>
+#if defined(PW_LINUX_NULL_RENDER)
+  #include "../System/tchar_compat.h"
+#else
+  #include <tchar.h>
+#endif
 //#include "dxut.h"
 #pragma warning(disable: 4995)
 //#include <windows.h>

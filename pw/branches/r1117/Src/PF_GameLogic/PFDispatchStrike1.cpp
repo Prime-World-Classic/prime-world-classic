@@ -12,7 +12,7 @@
 #include "PFClientApplicators.h"
 #include "PFClientBaseUnit.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #define DISPATCH_APPROACH_RANGE 0.5f

@@ -1,3 +1,12 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "stdafx.h"
+#include "ShadowManager.h"
+
+SINGLETON4DLL_DEF(Render::ShadowManager)
+
+#else
+
 #include "stdafx.h"
 #include "ShadowManager.h"
 #include "batch.h"
@@ -1247,3 +1256,4 @@ namespace Render
   REGISTER_CMD( shadowMode, setShadowMode );
 };
 
+#endif

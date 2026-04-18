@@ -1,7 +1,85 @@
 #pragma once
 
-#include <d3d9.h>
 #include "DeviceLost.h"
+
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+namespace Render
+{
+
+struct OcclusionQuery
+{
+  enum
+  {
+    UNUSED,
+    ISSUEDBEGIN,
+    ISSUEDEND,
+  } state;
+
+  OcclusionQuery(void)
+    : state(UNUSED)
+  {
+  }
+};
+
+class OcclusionQueriesBank
+{
+public:
+  enum CameraID
+  {
+    CID_MAIN,
+    CID_SHADOW,
+    CID_WATER,
+  } cameraID;
+
+  OcclusionQueriesBank(void)
+    : cameraID(CID_MAIN)
+  {
+  }
+
+  ~OcclusionQueriesBank(void)
+  {
+  }
+
+  int BeginNextQuery() { return 0; }
+  int EndNextQuery() { return 0; }
+  int GetLatestResults() { return -1; }
+
+  static void OnFrameStart() {}
+};
+
+class OcclusionQueries : public DeviceLostHandler
+{
+  OcclusionQueriesBank bank;
+
+protected:
+  OcclusionQueries() {}
+
+public:
+  OcclusionQueriesBank& Get() { return bank; }
+  void Clear() {}
+
+  virtual void OnDeviceLost() {}
+  virtual void OnDeviceReset() {}
+
+  enum UseMode
+  {
+    QUM_NONE = 0,
+    QUM_CHECK = 1,
+    QUM_ISSUE = QUM_CHECK<<1,
+    QUM_CHECK_AND_ISSUE = QUM_CHECK | QUM_ISSUE
+  };
+
+  static void SetUseMode(UseMode) {}
+  static UseMode GetUseMode() { return QUM_NONE; }
+  static void SetCurrentCameraID(OcclusionQueriesBank::CameraID) {}
+};
+
+}
+
+#else
+
+#include <d3d9.h>
 #include "DxIntrusivePtr.h"
 
 namespace Render
@@ -81,3 +159,5 @@ public:
 };
 
 };
+
+#endif

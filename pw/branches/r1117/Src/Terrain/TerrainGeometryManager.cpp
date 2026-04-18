@@ -13,6 +13,7 @@
 #include "TerrainLayerManager.h"
 #include "../MeshConverter/MeshHeader.h"
 #include "../Render/MeshResource.h"
+#include "../Render/SceneConstants.h"
 #include "../Render/renderresourcemanager.h"
 #include "../System/lerp.h"
 #include "../System/Geom.h"

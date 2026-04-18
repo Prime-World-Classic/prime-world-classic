@@ -1,7 +1,203 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "texture.h"
+
+namespace Render
+{
+
+Texture::Texture()
+  : pDXTexture(0)
+{
+}
+
+Texture::Texture(IDirect3DBaseTexture9 *pTex)
+  : pDXTexture(pTex)
+{
+}
+
+Texture::~Texture()
+{
+  OnTextureDestruction(this);
+}
+
+unsigned int Texture::GetMipSubLevelsCount() const
+{
+  return 0;
+}
+
+void Texture::GenerateMipSubLevels()
+{
+  GenerateMipSubLevels_();
+}
+
+void Texture::GenerateMipSubLevels_()
+{
+}
+
+void Texture::SetTexture(IDirect3DBaseTexture9 *_tex)
+{
+  pDXTexture = _tex;
+}
+
+Texture2D::Texture2D()
+  : DeviceLostHandler(HANDLERPRIORITY_NORMAL)
+  , levels(0)
+  , desc()
+{
+}
+
+Texture2D::Texture2D(IDirect3DTexture9 *pTex, HandlerPriority deviceLostHandlerPriority)
+  : TextureTyped(pTex)
+  , DeviceLostHandler(deviceLostHandlerPriority)
+  , levels(0)
+  , desc()
+{
+}
+
+Texture2D::Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHandlerPriority)
+  : TextureTyped(0)
+  , DeviceLostHandler(deviceLostHandlerPriority)
+  , levels(1)
+  , desc(desc_)
+{
+  CreateInternal();
+}
+
+void Texture2D::CreateInternal()
+{
+  Texture::SetTexture(static_cast<IDirect3DBaseTexture9*>(0));
+}
+
+LockedRect Texture2D::LockRect(unsigned int level, unsigned int left, unsigned int right, unsigned int top, unsigned int bottom, ERenderLockType lockType)
+{
+  (void)level;
+  (void)left;
+  (void)right;
+  (void)top;
+  (void)bottom;
+  (void)lockType;
+  return LockedRect();
+}
+
+LockedRect Texture2D::LockRect(unsigned int level, RECT *pRect, ERenderLockType lockType)
+{
+  (void)level;
+  (void)pRect;
+  (void)lockType;
+  return LockedRect();
+}
+
+LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
+{
+  (void)level;
+  (void)lockType;
+  return LockedRect();
+}
+
+void Texture2D::UnlockRect(unsigned int level)
+{
+  (void)level;
+}
+
+DXSurfaceRef Texture2D::GetSurface(unsigned int level) const
+{
+  (void)level;
+  return 0;
+}
+
+void Texture2D::GenerateMipSubLevels_()
+{
+}
+
+bool Texture2D::Update(Texture2D* pTex)
+{
+  (void)pTex;
+  return false;
+}
+
+void Texture2D::OnDeviceLost()
+{
+  if (desc.Pool == D3DPOOL_DEFAULT)
+    Texture::SetTexture(static_cast<IDirect3DBaseTexture9*>(0));
+}
+
+void Texture2D::OnDeviceReset()
+{
+  if (desc.Type == D3DRTYPE_SURFACE && desc.Pool == D3DPOOL_DEFAULT)
+    CreateInternal();
+}
+
+void Texture2D::SetTexture(Texture2D const& theOther)
+{
+  pDXTexture = theOther.pDXTexture;
+  desc = theOther.desc;
+  levels = theOther.levels;
+}
+
+TextureVtx::TextureVtx(const Sizes& _sizes, bool _preferR2VB)
+  : pixelSize(8)
+  , sampler(UINT_MAX)
+  , stream(UINT_MAX)
+  , sizes(_sizes)
+{
+  (void)_preferR2VB;
+  desc = D3DSURFACE_DESC();
+  desc.Format = D3DFMT_A16B16G16R16F;
+  desc.Type = D3DRTYPE_SURFACE;
+  desc.Usage = D3DUSAGE_RENDERTARGET;
+  desc.Pool = D3DPOOL_DEFAULT;
+  desc.MultiSampleType = D3DMULTISAMPLE_NONE;
+  desc.MultiSampleQuality = 0;
+  levels = 1;
+  OnDeviceReset();
+}
+
+void TextureVtx::Bind(unsigned int _sampler, unsigned int _stream)
+{
+  sampler = _sampler;
+  stream = _stream;
+}
+
+void TextureVtx::UnBind()
+{
+  sampler = UINT_MAX;
+  stream = UINT_MAX;
+}
+
+void TextureVtx::OnDeviceReset()
+{
+  if (UsingR2VB())
+  {
+    desc.Width = sizes.r2vb.cx;
+    desc.Height = sizes.r2vb.cy;
+  }
+  else
+  {
+    desc.Width = sizes.vtx.cx;
+    desc.Height = sizes.vtx.cy;
+  }
+
+  CreateInternal();
+}
+
+TextureCube::TextureCube(IDirect3DCubeTexture9 *pTex)
+  : TextureTyped(pTex)
+{
+}
+
+void TextureCube::SetTexture(TextureCube const& theOther)
+{
+  pDXTexture = theOther.pDXTexture;
+}
+
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 
 #include "renderflagsconverter.h"
-#include "Texture.h"
+#include "texture.h"
 #include "renderresourcemanager.h"
 #include "IConfigManager.h"
 #include "ImmediateRenderer.h"
@@ -364,3 +560,5 @@ void TextureCube::SetTexture( TextureCube const& theOther )
 }
 
 }; // namespace Render
+
+#endif

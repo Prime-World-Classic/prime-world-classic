@@ -3,9 +3,14 @@
 
 #include "stdafx.h"
 #include "AnimGraphController.h"
+#include "../System/ported/cwfn.h"
 
 namespace NScene
 {
+
+DiInt32 LoopNodeCallbackFunction(const DiAnGrCallbackParams& params);
+DiInt32 EndNodeCallbackFunction(const DiAnGrCallbackParams& params);
+DiInt32 EndNodeCallbackFunction1(const DiAnGrCallbackParams& params);
 
 int GetCurrentNodeIdx(AnimGraphController *ctrl)
 {
@@ -31,7 +36,7 @@ void UnregisterCallbacksForLoopedNode( AnimGraphController *ctrl, int nodeIdx )
   DiAnimNode* mainanimnode = ctrl->m_graph->GetNodeData( nodeIdx );
   if ( mainanimnode->IsSwitcher() )
   {
-    //Dispatcher - надо сделать unregister всем sub нодам
+    //Dispatcher - РЅР°РґРѕ СЃРґРµР»Р°С‚СЊ unregister РІСЃРµРј sub РЅРѕРґР°Рј
     class UnRegistrator : public INeiFunctor
     {
       AnimGraphController* ctrl;
@@ -59,8 +64,8 @@ void UnregisterCallbacksForLoopedNode( AnimGraphController *ctrl, int nodeIdx )
 
 float CalcRegTime( AnimGraphController *ctrl, float nodeLength )
 {
-  // Найти место и поставить callback, который сработает через ctrl->loopTime времени в секундах
-  // Если нода меньше длинной, чем этот loopTime, то проиграть ноду numLoopCycle раз а потом вызвать callback
+  // РќР°Р№С‚Рё РјРµСЃС‚Рѕ Рё РїРѕСЃС‚Р°РІРёС‚СЊ callback, РєРѕС‚РѕСЂС‹Р№ СЃСЂР°Р±РѕС‚Р°РµС‚ С‡РµСЂРµР· ctrl->loopTime РІСЂРµРјРµРЅРё РІ СЃРµРєСѓРЅРґР°С…
+  // Р•СЃР»Рё РЅРѕРґР° РјРµРЅСЊС€Рµ РґР»РёРЅРЅРѕР№, С‡РµРј СЌС‚РѕС‚ loopTime, С‚Рѕ РїСЂРѕРёРіСЂР°С‚СЊ РЅРѕРґСѓ numLoopCycle СЂР°Р· Р° РїРѕС‚РѕРј РІС‹Р·РІР°С‚СЊ callback
   NI_ASSERT( nodeLength != 0.0f, "Bad node length" );
   float regTime = 0.0f;
   if ( ctrl->loopTime <= nodeLength )
@@ -300,7 +305,7 @@ void AnimGraphController::SetNodeInfo( int nodeIdx, const NDb::AnGrMacronode& no
   DiAnimNode *node = m_graph->GetNodeData(nodeIdx);
   NI_VERIFY(node != NULL, "Node not found", return; );
 
-  strcpy_s(m_graph->GetRuntimeNamesTable()[nodeIdx].cpNodeName, nodeInfo.nodeName.c_str());
+  strcpy_s(m_graph->GetRuntimeNamesTable()[nodeIdx].cpNodeName, DIANGR_MAX_SEQ_NAME, nodeInfo.nodeName.c_str());
   node->SetDefNextNode(m_graph->GetNodeIDByNameSlowQuite(nodeInfo.nextNode.c_str()));
   node->SetSurfSpeed(DiVec2(nodeInfo.surfSpeedX, nodeInfo.surfSpeedY));
   node->SetStartPar(DIANGR_DEFAULT_NODE_START_PAR);
@@ -374,7 +379,7 @@ void AnimGraphController::SetFlTransactionsInfo( int fromNodeIdx, int toNodeIdx,
   ftrans->SetToParam(partInfo.toParam.value);
 }
 
-// перезагрузить AG из базы данных
+// РїРµСЂРµР·Р°РіСЂСѓР·РёС‚СЊ AG РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С…
 void AnimGraphController::ReloadAG()
 {
   // ask IVN!
@@ -387,7 +392,7 @@ void AnimGraphController::ReloadAG()
   RegisterPlayNodesCallbacks();
 }
 
-// проиграть node's в указанном порядке
+// РїСЂРѕРёРіСЂР°С‚СЊ node's РІ СѓРєР°Р·Р°РЅРЅРѕРј РїРѕСЂСЏРґРєРµ
 void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loopTime ) 
 {
   NI_VERIFY( nodeIndices.size() > 0, "Empty set of nodes!", return; );
@@ -399,7 +404,7 @@ void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loop
     numLoopCycle = -1;
   }
 
-  // loopTime только для цепочек нод
+  // loopTime С‚РѕР»СЊРєРѕ РґР»СЏ С†РµРїРѕС‡РµРє РЅРѕРґ
   if ( nodeIndices.size() > 1 )
     loopTime = _loopTime;
   else
@@ -490,24 +495,24 @@ void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loop
   m_graph->Restart( m_nodesToPlay[0], true );
 }
 
-// установить глобальную скорость проигрывания анимаций
+// СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РіР»РѕР±Р°Р»СЊРЅСѓСЋ СЃРєРѕСЂРѕСЃС‚СЊ РїСЂРѕРёРіСЂС‹РІР°РЅРёСЏ Р°РЅРёРјР°С†РёР№
 void AnimGraphController::SetGlobalSpeed( float speed ) 
 {
   m_graph->SetGraphSpeedCoeff(speed);
 }
 
-// установить анимацию из node в "позицию" float. НЕ ЗАБУДЬТЕ ResetVirtualParameter перед следующим вызовом!
+// СѓСЃС‚Р°РЅРѕРІРёС‚СЊ Р°РЅРёРјР°С†РёСЋ РёР· node РІ "РїРѕР·РёС†РёСЋ" float. РќР• Р—РђР‘РЈР”Р¬РўР• ResetVirtualParameter РїРµСЂРµРґ СЃР»РµРґСѓСЋС‰РёРј РІС‹Р·РѕРІРѕРј!
 void AnimGraphController::SetVirtualParameter( int nodeIdx, float value )
 {
   m_graph->SliderPauseAtNodeAtVParEDITORONLY(nodeIdx, value);
 }
 
-void AnimGraphController::ResetVirtualParameter() // вернуться к нормальному воспроизведению AG
+void AnimGraphController::ResetVirtualParameter() // РІРµСЂРЅСѓС‚СЊСЃСЏ Рє РЅРѕСЂРјР°Р»СЊРЅРѕРјСѓ РІРѕСЃРїСЂРѕРёР·РІРµРґРµРЅРёСЋ AG
 {
   m_graph->SliderContinueEDITORONLY();
 }
 
-// пишет -1, если не в ноде/не в транзакции
+// РїРёС€РµС‚ -1, РµСЃР»Рё РЅРµ РІ РЅРѕРґРµ/РЅРµ РІ С‚СЂР°РЅР·Р°РєС†РёРё
 void AnimGraphController::GetActiveEntity( int* pNodeIdx, int* pFromNodeIdx, int* pToNodeIdx, bool isGetDispatcher ) const
 {
   NI_VERIFY(pNodeIdx != NULL && pFromNodeIdx != NULL && pToNodeIdx != NULL, "invalid ptrs", return ; );

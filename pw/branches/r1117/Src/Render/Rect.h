@@ -11,10 +11,14 @@ namespace Render
 			: left(_left), right(_right), top(_top), bottom(_bottom)
 		{}
 
-    operator const RECT&() const // It is less safe to copy RECT to Rect, hence const qualifier
+    operator RECT() const // It is less safe to copy RECT to Rect, hence const qualifier
     {
-      NI_STATIC_ASSERT( sizeof( Rect ) == sizeof( RECT ), SizeOfRect_Differ_From_SizeOfRECT );
-      return reinterpret_cast<const RECT&>(*this);
+      RECT rect;
+      rect.left = static_cast<long>(left);
+      rect.top = static_cast<long>(top);
+      rect.right = static_cast<long>(right);
+      rect.bottom = static_cast<long>(bottom);
+      return rect;
     }
 	};
 };

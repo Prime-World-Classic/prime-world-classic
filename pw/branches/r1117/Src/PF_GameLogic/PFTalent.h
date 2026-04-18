@@ -20,7 +20,7 @@ public:
 
 namespace ETalentActivation
 {
-  enum Enum
+  enum Enum : int
   {
     Ok,
     Denied,

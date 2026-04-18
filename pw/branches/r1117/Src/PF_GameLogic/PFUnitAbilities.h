@@ -24,7 +24,7 @@ private:
 
   typedef vector<AbilityData> TAbilities;
 
-  ZDATA()
+  ZDATA
   bool                useAbilitiesMicroAI;
   TAbilities          abilities;
   float               globalCooldownTime;

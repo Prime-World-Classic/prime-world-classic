@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "SceneObjectTrack.h"
+#include "DBScene.h"
 
 namespace NScene
 {

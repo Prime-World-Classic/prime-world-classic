@@ -3,6 +3,7 @@
 #include "../System/Noncopyable.h"
 #include "../System/Geom.h"
 #include "GlobalMasks.h"
+#include "dipdescriptor.h"
 #include "material.h"
 
 #define ONLINE_SHADERS_PATH "Shaders/OnlineShaders/"

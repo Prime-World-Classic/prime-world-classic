@@ -1,6 +1,7 @@
 #pragma once
 
 #include "texture.h"
+#include "aabb.h"
 #include "SHCoeffs.h"
 
 namespace Render

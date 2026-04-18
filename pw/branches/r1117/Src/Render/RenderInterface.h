@@ -1,8 +1,19 @@
 #pragma once
 
 #include "rendermode.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "../System/config.h"
+#include "../System/Geom.h"
+#include "../System/Color.h"
+namespace Render
+{
+  class BatchQueue;
+  _interface IDebugRender;
+}
+#else
 #include "batch.h"
 #include "debugrenderer.h"
+#endif
 
 class IRenderableScene;
 

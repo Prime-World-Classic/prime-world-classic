@@ -84,20 +84,32 @@ namespace Terrain {
 
 	template <class FUNCTOR> void TerrainElementManager::ForAllElements(FUNCTOR& func)
 	{
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)func;
+#else
 		for (TerrainElementList::const_iterator it = elemList.begin(); it != elemList.end(); ++it)
 			if (it->pElement)
 				func(*it->pElement);
+#endif
 	}
 
 	template <class FUNCTOR> void TerrainElementManager::ForAllElementInfos(FUNCTOR& func)
 	{
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)func;
+#else
 		for (TerrainElementList::const_iterator it = elemList.begin(); it != elemList.end(); ++it)
 			if (it->pElement)
 				func(*it);
+#endif
 	}
 
 	template <class FUNCTOR> void TerrainElementManager::ForAllElementInfosAABB(FUNCTOR& func, Render::AABB const& bounds)
 	{
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)func;
+    (void)bounds;
+#else
     CVec2 lb(bounds.center.AsVec2D() - bounds.halfSize.AsVec2D()), rt(bounds.center.AsVec2D() + bounds.halfSize.AsVec2D());
     SVector lbGridCoords(ProjectOnGrid(lb.x, lb.y)), rtGridCoords(ProjectOnGrid(rt.x, rt.y));
 
@@ -117,6 +129,7 @@ namespace Terrain {
     //for (TerrainElementList::const_iterator it = elemList.begin(); it != elemList.end(); ++it)
 		//	if (it->pElement && bounds.IsIntersectedBy(it->pElement->GetWorldAABB())) // smirnov [2008/11/28]: need to speedup this
 		//		func(*it);
+#endif
 	}
 #endif
 

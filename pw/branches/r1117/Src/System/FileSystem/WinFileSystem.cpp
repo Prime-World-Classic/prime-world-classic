@@ -13,9 +13,17 @@
 
 #include <System/ported/cwfn.h>
 
+#if defined( NV_LINUX_PLATFORM )
+  #undef NI_PROFILE_FUNCTION
+  #define NI_PROFILE_FUNCTION
+#endif
+
 
 static bool s_map_files = true;
+
+#if !defined( NV_LINUX_PLATFORM )
 REGISTER_DEV_VAR( "fs_map_files", s_map_files, STORAGE_NONE );
+#endif
 
 
 #if defined( NV_WIN_PLATFORM )
@@ -229,10 +237,14 @@ Stream* WinFileSystem::OpenFile( const string &fileName, EFileAccess access, EFi
 
   Stream * stream = 0;
 
+#if defined( NV_LINUX_PLATFORM )
+  stream = new FileStream( NFile::Combine( fileSystemRoot, fileName ), access, options );
+#else
   if ( s_map_files )
     stream = new FileStream( NFile::Combine( fileSystemRoot, fileName ), access, options );
   else
     stream = new StdLibFileStream( NFile::Combine( fileSystemRoot, fileName ), access, options );
+#endif
 
 	if ( stream == 0 || !stream->IsOk() )
 	{

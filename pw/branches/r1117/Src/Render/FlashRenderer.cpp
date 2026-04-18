@@ -1,5 +1,308 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "FlashRenderer.h"
+
+namespace Render
+{
+
+namespace
+{
+
+class NullBitmapInfo : public IBitmapInfo, public BaseObjectST
+{
+  NI_DECLARE_REFCOUNT_CLASS_2( NullBitmapInfo, IBitmapInfo, BaseObjectST );
+
+public:
+  NullBitmapInfo()
+    : width(0)
+    , height(0)
+    , uv1(0.0f, 0.0f)
+    , uv2(1.0f, 1.0f)
+  {
+  }
+
+  NullBitmapInfo( int bitmapWidth, int bitmapHeight )
+    : width(bitmapWidth)
+    , height(bitmapHeight)
+    , uv1(0.0f, 0.0f)
+    , uv2(1.0f, 1.0f)
+  {
+  }
+
+  NullBitmapInfo( const Texture2DRef& texture )
+    : width(0)
+    , height(0)
+    , uv1(0.0f, 0.0f)
+    , uv2(1.0f, 1.0f)
+  {
+    (void)texture;
+  }
+
+  virtual int GetWidth() const { return width; }
+  virtual int GetHeight() const { return height; }
+  virtual const CVec2& GetUV1() const { return uv1; }
+  virtual const CVec2& GetUV2() const { return uv2; }
+
+  virtual IBitmapInfo* Clone()
+  {
+    return new NullBitmapInfo( width, height );
+  }
+
+  virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& matrix, int x1, int y1, int x2, int y2 )
+  {
+    (void)source;
+    (void)matrix;
+    (void)x1;
+    (void)y1;
+    (void)x2;
+    (void)y2;
+  }
+
+private:
+  int width;
+  int height;
+  CVec2 uv1;
+  CVec2 uv2;
+};
+
+} // namespace
+
+FlashRenderer::FlashRenderer()
+{
+}
+
+FlashRenderer::~FlashRenderer()
+{
+}
+
+bool FlashRenderer::Initialize()
+{
+  return true;
+}
+
+void FlashRenderer::Release()
+{
+}
+
+void FlashRenderer::StartFrame()
+{
+}
+
+void FlashRenderer::BeginQueue()
+{
+}
+
+void FlashRenderer::EndQueue()
+{
+}
+
+void FlashRenderer::BreakQueue()
+{
+}
+
+void FlashRenderer::Render( int firstElement, int lastElement, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy )
+{
+  (void)firstElement;
+  (void)lastElement;
+  (void)pMainRT0;
+  (void)pMainRT0Copy;
+}
+
+void FlashRenderer::SetResolutionCoefs( float x, float y, float widthScale, float heightScale )
+{
+  (void)x;
+  (void)y;
+  (void)widthScale;
+  (void)heightScale;
+}
+
+void FlashRenderer::SetMatrix( const flash::SWF_MATRIX& matrix )
+{
+  (void)matrix;
+}
+
+void FlashRenderer::SetColorTransform( const flash::SWF_CXFORMWITHALPHA& cx )
+{
+  (void)cx;
+}
+
+void FlashRenderer::SetBlendMode( EFlashBlendMode::Enum blendMode )
+{
+  (void)blendMode;
+}
+
+void FlashRenderer::SetFillStyleBitmap( IBitmapInfo* bitmapInfo, const flash::SWF_MATRIX& matrix, EBitmapWrapMode::Enum wrapMode, bool primary )
+{
+  (void)bitmapInfo;
+  (void)matrix;
+  (void)wrapMode;
+  (void)primary;
+}
+
+void FlashRenderer::SetLineWidth( float width )
+{
+  (void)width;
+}
+
+void FlashRenderer::SetLineColor( const flash::SWF_RGBA& color )
+{
+  (void)color;
+}
+
+IBitmapInfo* FlashRenderer::CreateBitmap( int width, int height )
+{
+  return new NullBitmapInfo( width, height );
+}
+
+IBitmapInfo* FlashRenderer::CreateBitmapFromTexture( const Texture2DRef& texture )
+{
+  return new NullBitmapInfo( texture );
+}
+
+IBitmapInfo* FlashRenderer::CreateBitmapInfoRgba( image::rgba* im, bool repeatable )
+{
+  (void)im;
+  (void)repeatable;
+  return new NullBitmapInfo();
+}
+
+IBitmapInfo* FlashRenderer::CreateBitmapFromFile( const nstl::string& filename )
+{
+  (void)filename;
+  return new NullBitmapInfo();
+}
+
+IBitmapInfo* FlashRenderer::CreateGradientBitmap( const flash::SWF_GRADIENT& gradient )
+{
+  (void)gradient;
+  return new NullBitmapInfo( 1, 1 );
+}
+
+void FlashRenderer::BeginDisplay(
+  int viewport_x0, int viewport_y0,
+  int viewport_width, int viewport_height,
+  float x0, float x1, float y0, float y1,
+  bool useScissorRect )
+{
+  (void)viewport_x0;
+  (void)viewport_y0;
+  (void)viewport_width;
+  (void)viewport_height;
+  (void)x0;
+  (void)x1;
+  (void)y0;
+  (void)y1;
+  (void)useScissorRect;
+}
+
+void FlashRenderer::EndDisplay()
+{
+}
+
+void FlashRenderer::DrawBitmap( IBitmapInfo* bitmapInfo, float width, float height, int uniqueID, bool smoothing )
+{
+  (void)bitmapInfo;
+  (void)width;
+  (void)height;
+  (void)uniqueID;
+  (void)smoothing;
+}
+
+void FlashRenderer::DrawBitmapScale9Grid( IBitmapInfo* bitmapInfo, float width, float height, const flash::SWF_RECT& scale9Grid, float aspectX, float aspectY, int uniqueID, bool smoothing )
+{
+  (void)bitmapInfo;
+  (void)width;
+  (void)height;
+  (void)scale9Grid;
+  (void)aspectX;
+  (void)aspectY;
+  (void)uniqueID;
+  (void)smoothing;
+}
+
+void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniqueID )
+{
+  (void)vertices;
+  (void)count;
+  (void)uniqueID;
+}
+
+void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int uniqueID )
+{
+  (void)coords;
+  (void)uniqueID;
+}
+
+void FlashRenderer::SetMorph( float rate )
+{
+  (void)rate;
+}
+
+void FlashRenderer::SetScale9Grid( const CVec4& constX, const CVec4& constY, const CVec4& trans )
+{
+  (void)constX;
+  (void)constY;
+  (void)trans;
+}
+
+void FlashRenderer::ResetScale9Grid()
+{
+}
+
+void FlashRenderer::BeginSubmitMask()
+{
+}
+
+void FlashRenderer::EndSubmitMask()
+{
+}
+
+void FlashRenderer::BeginUnSubmitMask()
+{
+}
+
+void FlashRenderer::DisableMask()
+{
+}
+
+void FlashRenderer::BeginColorMatrix( const SHMatrix& colorMatrix, const CVec4& addColor )
+{
+  (void)colorMatrix;
+  (void)addColor;
+}
+
+void FlashRenderer::EndColorMatrix()
+{
+}
+
+void FlashRenderer::RenderText( int partID )
+{
+  (void)partID;
+}
+
+void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& color, Texture* fontTexture )
+{
+  (void)withBevel;
+  (void)color;
+  (void)fontTexture;
+}
+
+void FlashRenderer::ClearCaches()
+{
+}
+
+void FlashRenderer::DebugNextBatch()
+{
+}
+
+} // namespace Render
+
+NI_DEFINE_REFCOUNT( Render::IBitmapInfo );
+
+#else
+
 #include "../UI/Flash/GameSWFIntegration/Image.h"
 
 #include "batch.h"
@@ -1562,3 +1865,4 @@ void FlashRenderer::NextBatch()
 
 NI_DEFINE_REFCOUNT( Render::IBitmapInfo );
 
+#endif

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dxutils.h"
+
 namespace Render
 {
 

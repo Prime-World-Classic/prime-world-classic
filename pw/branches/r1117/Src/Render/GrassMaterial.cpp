@@ -2,6 +2,17 @@
 // Automatically generated file, don't change it manually!
 #include "stdafx.h"
 #include "GrassMaterial.h"
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+	namespace Materials
+	{
+	}
+}
+
+#else
+
 #include "renderresourcemanager.h"
 
 namespace Render
@@ -27,25 +38,36 @@ namespace Render
 
 		void GrassMaterial::PrepareRenderer( NDb::Techniques techniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			#include "GrassMaterial.inl"
 			SetRenderStates( techniqueID );
 			BindSamplers( techniqueID );
 			BindShaders( techniqueID );
 			return;
+#endif
 		}
 
 		void GrassMaterial::BindSamplers( NDb::Techniques currentTechniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			if( IsFrozenDiffuseMapPresent() )
 				FrozenDiffuseMap.Bind();
 			if( IsNormalDiffuseMapPresent() )
 				NormalDiffuseMap.Bind();
 			if( IsBurnedDiffuseMapPresent() )
 				BurnedDiffuseMap.Bind();
+#endif
 		}
 
 		void GrassMaterial::BindShaders( NDb::Techniques currentTechniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			switch ( currentTechniqueID )
 			{
 				case NDb::TECHNIQUES_SHADOWPASS:
@@ -55,10 +77,14 @@ namespace Render
 					RenderResourceManager::GetMultiShader( 9 )->GetShaderPairByIndex( GetShaderIndex() ).Bind();
 					break;
 			}
+#endif
 		}
 
 		void GrassMaterial::SetRenderStates( NDb::Techniques currentTechniqueID )
 		{
+#if defined(PW_LINUX_NULL_RENDER)
+			return;
+#else
 			switch ( currentTechniqueID )
 			{
 				case NDb::TECHNIQUES_SHADOWPASS:
@@ -74,8 +100,11 @@ namespace Render
 				default:
 					NI_ALWAYS_ASSERT( "wrong technique" );
 			}
+#endif
 		}
 
 
 	}//namespace Materials
 }//namespace Render
+
+#endif

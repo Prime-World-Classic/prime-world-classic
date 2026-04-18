@@ -3,6 +3,7 @@
 #define _NATUREATTACKSPACE_H_
 
 #include "../System/BilinearSolver.h"
+#include "DBTerrain.h"
 
 namespace Terrain {
 

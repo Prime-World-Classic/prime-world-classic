@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "NatureAttackSpace.h"
 #include "NatureMap.h"
+#include <cstring>
 #include "../System/lerp.h"
 #include "../Render/debugrenderer.h"
 
@@ -108,7 +109,7 @@ bool NatureAttackSpace::Create(const NDb::DBNatureMap& dbNatureMap, CVec3& world
 
   // tessellate 
   int length = nodesCount;
-  ZeroMemory(Get(pNodes), length * sizeof(CVec2));
+  std::memset(Get(pNodes), 0, length * sizeof(CVec2));
   bool ok = true;
   ok = ok && TessellateBase(dbNatureMap.baseA, dbNatureMap.baseAOffset, GetNode(0, 0));
   ok = ok && TessellateByAngle(&roadBottom, GetNode(0, 1), GetNode(1, 1));
@@ -118,7 +119,7 @@ bool NatureAttackSpace::Create(const NDb::DBNatureMap& dbNatureMap, CVec3& world
   NI_VERIFY(ok, "Road tessellation failed", false);
 
   length = quadsCount;
-  ZeroMemory(Get(pSolvers), length * sizeof(BilinearSolver2D));
+  std::memset(Get(pSolvers), 0, length * sizeof(BilinearSolver2D));
   for (int quad = 0; quad < length; quad++)
   {
     int row = quad / quadsPitch, col = quad % quadsPitch;

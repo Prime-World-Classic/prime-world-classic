@@ -4,6 +4,11 @@
 #include "../System/Transform.h"
 #include "../System/Spline.h"
 
+#if defined(__linux__)
+#include <alloca.h>
+#define _alloca alloca
+#endif
+
 #include "../Render/renderer.h"
 #include "../Render/renderstates.h"
 #include "../Render/renderstatesmanager.h"

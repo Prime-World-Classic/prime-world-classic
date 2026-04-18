@@ -13,6 +13,7 @@
 #include "../Render/GlobalMasks.h"
 #include "../Render/ImmediateRenderer.h"
 #include "../Render/WaterManager.h"
+#include "../Render/DxResourcesControl.h"
 #include "../Render/NullRenderSignal.h"
 #include "../Render/ConfigManager.h"
 #include <System/InlineProfiler.h>

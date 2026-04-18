@@ -1,3 +1,240 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "stdafx.h"
+#include "renderresourcemanager.h"
+#include "../System/nhash_map.h"
+
+namespace Render
+{
+namespace
+{
+
+typedef nstl::hash_map<int, int> TMultiShaderTypeIdPool;
+
+TMultiShaderTypeIdPool& GetMultiShaderTypeIdPool()
+{
+  static TMultiShaderTypeIdPool pool;
+  return pool;
+}
+
+int& GetShaderIndexCounter()
+{
+  static int shaderIndex = 0;
+  return shaderIndex;
+}
+
+bool& GetSecondaryThreadFlag()
+{
+  static bool isSecondaryThread = false;
+  return isSecondaryThread;
+}
+
+} // namespace
+
+namespace RenderResourceManager
+{
+
+void Init()
+{
+}
+
+void Release()
+{
+  GetMultiShaderTypeIdPool().clear();
+  GetSecondaryThreadFlag() = false;
+}
+
+SkeletonDataWrapper* LoadSkeletonData(const nstl::string& filename)
+{
+  (void)filename;
+  return 0;
+}
+
+const PFXBinaryFileWrapper* LoadPFXData(const nstl::string& filename)
+{
+  (void)filename;
+  return 0;
+}
+
+const MeshGeometry* LoadStaticMeshGeometry(const nstl::string& filename, bool appendColorStream)
+{
+  (void)filename;
+  (void)appendColorStream;
+  return 0;
+}
+
+const MeshGeometry* LoadSkeletalMeshGeometry(const nstl::string& filename)
+{
+  (void)filename;
+  return 0;
+}
+
+InstancedMeshGeometry* LoadInstancedMeshGeometry(const nstl::string& filename)
+{
+  (void)filename;
+  return 0;
+}
+
+MeshGeometry* LoadMeshGeometry(const char* pData, bool bSkeletalMesh, bool appendColorStream)
+{
+  (void)pData;
+  (void)bSkeletalMesh;
+  (void)appendColorStream;
+  return 0;
+}
+
+void SaveMeshGeometry(MeshGeometry const* pGeometry, Stream* pStream)
+{
+  (void)pGeometry;
+  (void)pStream;
+}
+
+const SkeletalAnimationDataWrapper* LoadSkeletalAnimation(const nstl::string& filename)
+{
+  (void)filename;
+  return 0;
+}
+
+Render::Materials::MultiShader* GetMultiShader(int index)
+{
+  (void)index;
+  return 0;
+}
+
+void SetTypeId(const string& typeName, const int typeId)
+{
+  (void)typeName;
+  GetMultiShaderTypeIdPool()[typeId] = GetShaderIndexCounter();
+  ++GetShaderIndexCounter();
+}
+
+int GetShaderIndexByTypeId(const int typeId)
+{
+  TMultiShaderTypeIdPool::iterator it = GetMultiShaderTypeIdPool().find(typeId);
+  if (it != GetMultiShaderTypeIdPool().end())
+    return it->second;
+  return -1;
+}
+
+const MeshGeometry* GetDefaultStaticMeshGeometry()
+{
+  return 0;
+}
+
+const MeshGeometry* GetDefaultSkeletalMeshGeometry()
+{
+  return 0;
+}
+
+bool GetTerrainElementGeometryRawData(Stream* pStream, TerrainElementGeometryRaw* pRawData)
+{
+  (void)pStream;
+  (void)pRawData;
+  return false;
+}
+
+bool CreateTerrainElementRawData(Stream* pStream, TerrainElementGeometryRaw* pRawData)
+{
+  (void)pStream;
+  (void)pRawData;
+  return false;
+}
+
+bool CheckTerrainElementGeometryRawDataVersion(const TerrainElementGeometryRaw& geometry)
+{
+  (void)geometry;
+  return false;
+}
+
+void CopyElementGeometry(TerrainElementGeometryRaw* pRawData, bool consolidate)
+{
+  (void)pRawData;
+  (void)consolidate;
+}
+
+bool CreateTerrainFragmentGeometry(Primitive* pGeometry, const TerrainElementGeometryRaw& source)
+{
+  (void)pGeometry;
+  (void)source;
+  return false;
+}
+
+void ConvertTerrainElementGeometry(TerrainElementGeometryRaw& data)
+{
+  (void)data;
+}
+
+void DeferredReloadShaders()
+{
+}
+
+void ReloadShaders()
+{
+}
+
+void ReloadTextures()
+{
+}
+
+void ReloadGeometry(bool bModifiedOnly)
+{
+  (void)bModifiedOnly;
+}
+
+void ReloadSkeletons(bool bModifiedOnly)
+{
+  (void)bModifiedOnly;
+}
+
+void ReloadPFXNew(bool bModifiedOnly)
+{
+  (void)bModifiedOnly;
+}
+
+void ReloadAnims(bool bModifiedOnly)
+{
+  (void)bModifiedOnly;
+}
+
+void MarkAsDirtyGeometry(const nstl::string& filename)
+{
+  (void)filename;
+}
+
+void MarkAsDirtyPFX(const nstl::string& filename)
+{
+  (void)filename;
+}
+
+void MarkAsDirtySkeletonData(const nstl::string& filename)
+{
+  (void)filename;
+}
+
+void MarkAsDirtySkeletonAnim(const nstl::string& filename)
+{
+  (void)filename;
+}
+
+void FrameTick()
+{
+}
+
+void MarkAsSecondaryThread()
+{
+  GetSecondaryThreadFlag() = true;
+}
+
+bool IsSecondaryThread()
+{
+  return GetSecondaryThreadFlag();
+}
+
+} // RenderResourceManager
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 #define TOOLSET_IS_PRESENT
 #include "renderresourcemanager.h"
@@ -1382,3 +1619,5 @@ REGISTER_DEV_CMD( reloadgeometry, Render::RenderResourceManager::ReloadGeometryC
 REGISTER_DEV_CMD( reloadskeleton, Render::RenderResourceManager::ReloadSkeletonCmd );
 REGISTER_DEV_CMD( reloadpfx,      Render::RenderResourceManager::ReloadPFXCmd );
 REGISTER_DEV_CMD( reloadanim,     Render::RenderResourceManager::ReloadAnimCmd );
+
+#endif

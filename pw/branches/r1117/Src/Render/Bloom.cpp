@@ -1,6 +1,40 @@
 #include "stdafx.h"
 #include "Bloom.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render {
+
+Bloom::Bloom() : curIdx(0), exposure(0.0f), sigma(0.0f)
+{
+}
+
+Bloom::~Bloom()
+{
+}
+
+void Bloom::InitKernels()
+{
+}
+
+bool Bloom::Prepare(Texture2DRef const& pTexture)
+{
+  return false;
+}
+
+Texture2D* Bloom::GetBlendSource()
+{
+  return 0;
+}
+
+void Bloom::MakePass(char const* pShaderName)
+{
+}
+
+} // namespace Render
+
+#else
+
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
 #include "Filter.h"
@@ -109,3 +143,5 @@ REGISTER_VAR( "bloom_sigma", g_bloomSigma, STORAGE_NONE );
 REGISTER_VAR( "bloomSimple", s_bloomSimple, STORAGE_NONE );
 
 // end of Bloom.cpp
+
+#endif

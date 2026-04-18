@@ -8,11 +8,12 @@
 #include "PFAIWorld.h"
 #include "PFHero.h"
 #include "TileMap.h"
+#include "../Scene/DiAnGr.h"
 
 #ifndef VISUAL_CUTTED
 #include "PFClientChest.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld

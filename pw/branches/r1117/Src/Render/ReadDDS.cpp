@@ -2,6 +2,35 @@
 // Functions for loading a DDS texture without using D3DX
 // Partially based on DDSWithoutD3DX D3D SDK sample.
 //--------------------------------------------------------------------------------------
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/systemStdAfx.h"
+#include "dxutils.h"
+#include "ReadDDS.h"
+
+#ifndef E_INVALIDARG
+#define E_INVALIDARG ((HRESULT)0x80070057L)
+#endif
+
+namespace Render {
+
+HRESULT CreateTextureFromDDSFileInMemory(const char *_data, UINT _dataSize, UINT _skipMipLevels, PDIRECT3DBASETEXTURE9* _ppTex)
+{
+  (void)_data;
+  (void)_dataSize;
+  (void)_skipMipLevels;
+
+  if (!_ppTex)
+    return E_INVALIDARG;
+
+  *_ppTex = 0;
+  return E_FAIL;
+}
+
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 #include "DDS.h"
 #include "ReadDDS.h"
@@ -470,3 +499,5 @@ HRESULT CreateTextureFromDDSFileInMemory(const char *_data, UINT _dataSize, UINT
 }
 
 } // namespace Render
+
+#endif

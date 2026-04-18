@@ -47,6 +47,9 @@ public:
   // Конструктор создаёт поток, который будет ожидать поступления задач
   AsyncInvoker(): needStop(false), m_task()
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    taskQueued = false;
+#else
     hCanStartTaskEvent = CreateEvent( 0, FALSE, FALSE, 0 );
     NI_ASSERT( hCanStartTaskEvent != NULL, "" );
     
@@ -57,11 +60,13 @@ public:
     NI_ASSERT( hTaskMutex != NULL, "" );
      
     Thread::Resume();
+#endif
   }
   
   // Деструктор ожидает окончания выполнения задач и завершает поток
   ~AsyncInvoker()
   {
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
     NI_VERIFY_NO_RET( WaitObject(hTaskMutex), "" );  
     needStop = true;  
     NI_VERIFY_NO_RET( SetEvent(hCanStartTaskEvent), "" );
@@ -71,6 +76,7 @@ public:
     NI_VERIFY_NO_RET( CloseHandle(hCanStartTaskEvent), "" );
     NI_VERIFY_NO_RET( CloseHandle(hTaskCompleateEvent), "" );
     NI_VERIFY_NO_RET( CloseHandle(hTaskMutex), "" );
+#endif
   }
  
   // Запустить выполнение задачи task. Задача будет выполнена в отдельном потоке. 
@@ -79,6 +85,11 @@ public:
   // Для ожидания выполнения задачи предназначены EndInvoke() и Sync() 
   STARFORCE_FORCE_INLINE void BeginInvoke( const TaskT &task )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    Sync();
+    m_task = task;
+    taskQueued = true;
+#else
     NI_VERIFY_NO_RET( WaitObject(hTaskMutex), "" ); 
      
     // Уже есть задача, которая планируется к выполнения но ещё не выполнена
@@ -100,6 +111,7 @@ public:
     NI_VERIFY_NO_RET( ResetEvent(hTaskCompleateEvent), "" );
     
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
+#endif
   }
   
   // Дождаться выполнения задачи и вернуть её результат.
@@ -111,6 +123,16 @@ public:
   // должно соответствовать количеству вызовов BeginInvoke(), SyncInvoke() и FakeInvoke()
   STARFORCE_FORCE_INLINE ResultT EndInvoke()
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    if ( taskQueued )
+    {
+      ResultStorage::Call(m_task);
+      taskQueued = false;
+    }
+
+    ResultStorage resultCopy(*this);
+    return resultCopy.Result();
+#else
     HANDLE rgSyncObjects[] = { hTaskCompleateEvent, hTaskMutex };
 
     NI_VERIFY_NO_RET( WaitObjects(rgSyncObjects), "" );
@@ -122,6 +144,7 @@ public:
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
   
     return resultCopy.Result();
+#endif
   }
     
   // Выполнить задачу в вызывающем потоке.
@@ -129,6 +152,11 @@ public:
   // поток. Для получения результата выполнения задачи также нужно вызвать EndInvoke()
   STARFORCE_FORCE_INLINE void SyncInvoke( const TaskT &task )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    m_task = task;
+    taskQueued = true;
+    Sync();
+#else
     NI_VERIFY_NO_RET( WaitObject(hTaskMutex), "" ); 
     
     // Уже есть задача, которая планируется к выполнения но ещё не выполнена
@@ -143,6 +171,7 @@ public:
         
     NI_VERIFY_NO_RET( SetEvent(hTaskCompleateEvent), "" );
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
+#endif
   }
   
   // Сымитировать выполнение задачи с результатом result.
@@ -162,6 +191,10 @@ public:
   // поток, см. также Sync()
   STARFORCE_FORCE_INLINE void FakeInvoke( const ResultStorage &result = ResultStorage() )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    taskQueued = false;
+    static_cast<ResultStorage &>(*this) = result;
+#else
     NI_VERIFY_NO_RET( WaitObject(hTaskMutex), "" ); 
     
     // Уже есть задача, которая планируется к выполнения но ещё не выполнена
@@ -174,6 +207,7 @@ public:
     static_cast<ResultStorage &>(*this) = result;   
     NI_VERIFY_NO_RET( SetEvent(hTaskCompleateEvent), "" );
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
+#endif
   }
   
   // Дождаться выполнения задачи, если она существует, а если нет - 
@@ -183,6 +217,13 @@ public:
   // где и сколько раз он вызван.  
   STARFORCE_FORCE_INLINE void Sync()
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    if ( taskQueued )
+    {
+      ResultStorage::Call(m_task);
+      taskQueued = false;
+    }
+#else
     NI_VERIFY_NO_RET( WaitObject(hTaskMutex), "" ); 
     
     // Мы захватили мьютекс и значит задача в данный момент не выполняется и  
@@ -199,12 +240,16 @@ public:
     } 
 
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
+#endif
   }
   
   // Выполняется ли задача в данный момент и, главное, возможно ли добавить новую задачу без
   // ожидания в вызывающем потоке
   STARFORCE_FORCE_INLINE bool IsBusy() const
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    return taskQueued;
+#else
     if( !CheckObject(hTaskMutex) )
     {
       //Сейчас мьютекс занят, значит задача выполняется
@@ -227,40 +272,63 @@ public:
     NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
     
     return isBusyResult;
+#endif
   }
     
   //Установить приоритет потока
   void SetPriority( int priority )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)priority;
+#else
     Thread::SetPriority(priority);  
+#endif
   }
   
 private:
   // Подождать один объект
   STARFORCE_FORCE_INLINE static bool WaitObject( HANDLE hObj )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)hObj;
+    return true;
+#else
     return WaitForSingleObject(hObj, INFINITE) == WAIT_OBJECT_0;
+#endif
   }  
   
   // Подождать несколько объектов
   template< size_t N >
   STARFORCE_FORCE_INLINE static bool WaitObjects( HANDLE (&arr)[N] )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)arr;
+    return true;
+#else
     return WaitForMultipleObjects(N, arr, TRUE, INFINITE) == WAIT_OBJECT_0;
+#endif
   } 
   
   // Проверить текущее состояние объекта, сохранив, при этом, 
   // все побочные эффекты успешного ожидания
   STARFORCE_FORCE_INLINE static bool CheckObject( HANDLE hObj )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    (void)hObj;
+    return false;
+#else
     const DWORD res = WaitForSingleObject(hObj, 0);
     NI_ASSERT( res == WAIT_OBJECT_0 || res == WAIT_TIMEOUT, "" );
     return res == WAIT_OBJECT_0;
+#endif
   }       
 
   //Рабочая функция потока
   STARFORCE_EXPORT virtual unsigned Work()
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    return 0;
+#else
     HANDLE rgSyncObjects[] = { hCanStartTaskEvent, hTaskMutex };
     
     for(;;)
@@ -278,12 +346,16 @@ private:
       NI_VERIFY_NO_RET( SetEvent(hTaskCompleateEvent), "" );
       NI_VERIFY_NO_RET( ReleaseMutex(hTaskMutex), "" );
     }
+#endif
   }
 
 private:
   //Копия задачи, для использования во внутреннем потоке
   TaskT m_task; 
   
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  bool taskQueued;
+#else
   //Мьютекс защищающий внутренние данные
   HANDLE hTaskMutex; 
   
@@ -294,6 +366,7 @@ private:
   //Понадобилось для предотвращения такой ситуации, когда между вызовами BeginInvoke() и EndInvoke() 
   //проходим слишком мало времени и рабочий поток не успевает захватить hTaskMutex
   HANDLE hTaskCompleateEvent;
+#endif
   
   //Флаг заставляющий рабочий поток завершится
   bool needStop; 

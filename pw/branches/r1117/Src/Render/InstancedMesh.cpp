@@ -1,7 +1,37 @@
 #include "stdafx.h"
+#include "InstancedMesh.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+DECLARE_INSTANCE_COUNTER(InstancedMesh);
+
+void InstancedMesh::Initialize(const NDb::DBStaticSceneComponent* pDBMeshResource)
+{
+  (void)pDBMeshResource;
+  Identity(&worldMatrix);
+  pMaterial = 0;
+  pGeometry = 0;
+}
+
+void InstancedMesh::RenderToQueue(Render::BatchQueue& q)
+{
+  (void)q;
+}
+
+void InstancedMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
+{
+  (void)proc;
+}
+
+}
+
+#else
+
 #include "InstancedMeshResource.h"
 #include "MaterialSpec.h"
-#include "InstancedMesh.h"
 
 namespace Render
 {
@@ -57,3 +87,5 @@ void InstancedMesh::ForAllMaterials(Render::IMaterialProcessor &proc)
 }
 
 }
+
+#endif

@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef VISUAL_CUTTED
+
+#include "../Game/PF/Audit/ClientStubs.h"
+
+#else
+
 #include "../Scene/SceneObject.h"
 #include "../Scene/CollisionHull.h"
 #include "PFClientLogicObject.h"
@@ -97,3 +103,4 @@ protected:
 
 }
 
+#endif

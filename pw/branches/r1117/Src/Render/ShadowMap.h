@@ -1,5 +1,9 @@
 #pragma once
 
+#include "../System/Geom.h"
+#include "DBRender.h"
+#include "texture.h"
+
 namespace Render
 {
   class ShadowMap

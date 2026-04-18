@@ -1,5 +1,7 @@
 #pragma once
 
+#include "DBStats.h"
+#include "SessionEventType.h"
 
 namespace NCore 
 { 
@@ -9,12 +11,6 @@ class WorldCommandQueue;
 namespace NDb
 {
   class DbResource;
-  enum EErrorMessageType;
-}
-
-namespace SessionEventType
-{
-  enum EventType;
 }
   
 namespace NWorld
@@ -24,12 +20,6 @@ namespace NWorld
   class PFBuilding;
   class PFBaseUnit;
   class PFPlayer;
-}
-
-namespace NDb
-{
-  enum EFaction;
-	enum ERoute;
 }
 
 namespace StatisticService

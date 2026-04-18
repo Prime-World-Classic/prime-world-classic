@@ -1,6 +1,28 @@
 #include "stdafx.h"
 #include "Blur.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+Blur9::Blur9(unsigned texWidth, unsigned texHeight)
+{
+  Init(texWidth, texHeight);
+}
+
+void Blur9::Init(unsigned texWidth, unsigned texHeight)
+{
+}
+
+void Blur9::Apply(Render::Texture2DRef const& pSrc, Render::Texture2DRef const& pDst, char const* pShaderName)
+{
+}
+
+} // namespace Render
+
+#else
+
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
 #include "Filter.h"
@@ -40,7 +62,9 @@ void Blur9::Apply(Render::Texture2DRef const& pSrc, Render::Texture2DRef const& 
   // execute shader
  SmartRenderer::BindRenderTarget(pDst);
  GetImmRenderer()->RenderScreenQuad(ImmRenderer::Params(pShaderName ? pShaderName : "Convolve9", pSrc));
- SmartRenderer::BindRenderTargetDefault();
+SmartRenderer::BindRenderTargetDefault();
 }
 
 } // namespace Render
+
+#endif

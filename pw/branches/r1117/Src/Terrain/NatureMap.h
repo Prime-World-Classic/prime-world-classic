@@ -4,6 +4,7 @@
 
 #include "../Render/aabb.h"
 #include "../System/PlaneGeometry.h"
+#include "DBTerrain.h"
 #include "NatureAttackSpace.h"
 
 namespace Terrain

@@ -402,15 +402,17 @@ vector<CObj<SceneComponent>> ParseEffect( const NDb::Effect* pVisual, const Plac
 		for ( int effIdx = 0; effIdx < pVisual->effects.size(); effIdx++ )
 		{
 			NI_ALWAYS_ASSERT("Code supposed to be OBSOLETE is called!");
-			CObj<SceneComponent> toadd = CreateStatic( pVisual, effIdx, offset );
-			if ( toadd )
+			CObj<StaticSceneComponent> staticToAdd = CreateStatic( pVisual, effIdx, offset );
+			if ( staticToAdd )
 			{
+				CObj<SceneComponent> toadd( staticToAdd.GetPtr() );
 				rootComponents.push_back( toadd );
 				toattach = toadd;
 			}
-			toadd = CreateAnimated( pVisual, effIdx, offset );
-			if ( toadd )
+			CObj<AnimatedSceneComponent> animatedToAdd = CreateAnimated( pVisual, effIdx, offset );
+			if ( animatedToAdd )
 			{
+				CObj<SceneComponent> toadd( animatedToAdd.GetPtr() );
 				rootComponents.push_back( toadd );
 				toattach = toadd;
 			}
@@ -420,9 +422,10 @@ vector<CObj<SceneComponent>> ParseEffect( const NDb::Effect* pVisual, const Plac
 // 				rootComponents.push_back( toadd );
 // 				toattach = toadd;
 // 			}
-			toadd = CreateSound( pVisual, effIdx, offset );
-			if ( toadd )
+			CObj<SoundSceneComponent> soundToAdd = CreateSound( pVisual, effIdx, offset );
+			if ( soundToAdd )
 			{
+				CObj<SceneComponent> toadd( soundToAdd.GetPtr() );
 				rootComponents.push_back( toadd );
 				toattach = toadd;
 			}
@@ -606,5 +609,3 @@ CollisionHull* MakeSmallCollisionHullForObject( SceneObject &so, const NDb::Coll
 }
 
 }
-
-

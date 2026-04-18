@@ -1,3 +1,9 @@
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+#include "OcclusionQueries.h"
+
+#else
+
 #include "StdAfx.h"
 #include "OcclusionQueries.h"
 
@@ -159,3 +165,5 @@ OcclusionQueries::UseMode OcclusionQueries::GetUseMode() { return s_useMode; }
 
 void OcclusionQueries::SetCurrentCameraID(OcclusionQueriesBank::CameraID _id) { currentCamera = _id; }
 };
+
+#endif

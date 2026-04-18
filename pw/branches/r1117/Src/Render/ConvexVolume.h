@@ -1,14 +1,20 @@
 #pragma once
 
 #include "../System/fixedvector.h"
-#include "../MemoryLib/NewDelete.h"
+#include "../MemoryLib/newdelete.h"
 
 namespace Render
 {
+#if defined(NV_LINUX_PLATFORM)
+  #define RENDER_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define RENDER_ALIGN16 __declspec(align(16))
+#endif
+
 	struct AABB;
   struct SceneConstants;
 
-	__declspec(align(16))
+	RENDER_ALIGN16
 	struct FPlane
 	{
 		float X, Y, Z, W;
@@ -24,7 +30,7 @@ namespace Render
     void Normalize(); // Normalize CVec3(X, Y, Z)
   };
 
-	__declspec(align(16))
+	RENDER_ALIGN16
 	class ConvexVolume
 	{
 		enum
@@ -38,9 +44,9 @@ namespace Render
 			PLANE_COUNT,
 		};
 
-		__declspec(align(16)) FixedVector<FPlane, 12> planes;
-		__declspec(align(16)) FixedVector<FPlane, 12> permutedPlanes;
-		__declspec(align(16)) SHMatrix viewProjection;
+		RENDER_ALIGN16 FixedVector<FPlane, 12> planes;
+		RENDER_ALIGN16 FixedVector<FPlane, 12> permutedPlanes;
+		RENDER_ALIGN16 SHMatrix viewProjection;
 
 		void BuildPlanes(const SHMatrix& ViewProjectionMatrix);
 		void BuildNearAndFarPlanes( const SHMatrix& ViewProjectionMatrix );
@@ -69,4 +75,6 @@ namespace Render
 
 	// $BVS$ Test function! To be removed!
 	//void TestConvexVolume();
+
+#undef RENDER_ALIGN16
 };

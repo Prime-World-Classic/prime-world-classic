@@ -5,11 +5,11 @@
 
 namespace Render
 {
-	/// Класс описания формата вершины
+	/// ГЉГ«Г Г±Г± Г®ГЇГЁГ±Г Г­ГЁГї ГґГ®Г°Г¬Г ГІГ  ГўГҐГ°ГёГЁГ­Г»
 	class VertexFormatDescriptor
 	{
 	public:
-		/// Конструктор
+		/// ГЉГ®Г­Г±ГІГ°ГіГЄГІГ®Г°
 		VertexFormatDescriptor();
 
 		bool operator == (const VertexFormatDescriptor& other) const 
@@ -28,25 +28,27 @@ namespace Render
 		bool operator != (const VertexFormatDescriptor& other) const { return !operator == (other); }
 
 
-		/// Добавление описания элемента вершины
+		/// Г„Г®ГЎГ ГўГ«ГҐГ­ГЁГҐ Г®ГЇГЁГ±Г Г­ГЁГї ГЅГ«ГҐГ¬ГҐГ­ГІГ  ГўГҐГ°ГёГЁГ­Г»
 		void AddVertexElement(const VertexElementDescriptor& descr);
 		void AssignVertexElements(const VertexElementDescriptor& descr, int count );
-		/// Получение описания элемента вершины
+		/// ГЏГ®Г«ГіГ·ГҐГ­ГЁГҐ Г®ГЇГЁГ±Г Г­ГЁГї ГЅГ«ГҐГ¬ГҐГ­ГІГ  ГўГҐГ°ГёГЁГ­Г»
 		const VertexElementDescriptor& GetVertexElement(unsigned int index) const;
-		/// Получение количества элементов вершины
+		/// ГЏГ®Г«ГіГ·ГҐГ­ГЁГҐ ГЄГ®Г«ГЁГ·ГҐГ±ГІГўГ  ГЅГ«ГҐГ¬ГҐГ­ГІГ®Гў ГўГҐГ°ГёГЁГ­Г»
 		unsigned int GetVertexElementsCount() const;
 		///
 		int FindMaxUsageIndex(EVertexElementUsage usage) const;
 	private:
-		/// Описания элементов вершин
+		/// ГЋГЇГЁГ±Г Г­ГЁГї ГЅГ«ГҐГ¬ГҐГ­ГІГ®Гў ГўГҐГ°ГёГЁГ­
 		nstl::vector<VertexElementDescriptor> vertexElementDescriptors;
 	};
 }; // namespace Render
 
-template<> struct hash<Render::VertexFormatDescriptor> 
+namespace nstl
 {
-	size_t operator() (const Render::VertexFormatDescriptor& descr) const 
-	{ 
+template<> struct hash<Render::VertexFormatDescriptor>
+{
+	size_t operator() (const Render::VertexFormatDescriptor& descr) const
+	{
 		size_t res = 0;
 
 		unsigned int vertexElementsCount = descr.GetVertexElementsCount();
@@ -60,6 +62,7 @@ template<> struct hash<Render::VertexFormatDescriptor>
 			res += descr.GetVertexElement(i).usageIndex;
 		}
 
-		return res; 
+		return res;
 	}
 };
+}

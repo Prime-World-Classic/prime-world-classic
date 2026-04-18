@@ -31,6 +31,12 @@ namespace NGlobal
   const wstring DEFAULT_COMMAND_CONTEXT = L"global";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+class VariantValue;
+
+template<class ToType>
+bool IsConvertible( const VariantValue &from );
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class VariantValue
 {
   //this is so called non cached VARIANT. It has cheap Set with expensive Get with type miss. It tuned not for conversion but for storage.
@@ -157,14 +163,17 @@ public:
   {
     return GetImpl<typename RetValConvert<T>::ResultType>();
   }
-    
+
   template<class ToType>
-  friend bool IsConvertible( const VariantValue &from )
-  {
-    const VariantValue valForTypeId( ( ToType() ) );
-    return IsConvertibleImpl( valForTypeId.type, from );
-  }
+  friend bool IsConvertible( const VariantValue &from );
 };
+
+template<class ToType>
+inline bool IsConvertible( const VariantValue &from )
+{
+  const VariantValue valForTypeId( ( ToType() ) );
+  return VariantValue::IsConvertibleImpl( valForTypeId.type, from );
+}
 
 template<>
 struct VariantValue::RetValConvert< wstring >
@@ -465,4 +474,3 @@ namespace { static struct BOOST_JOIN(StaticConstructorImpl, __LINE__) {     \
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif
-

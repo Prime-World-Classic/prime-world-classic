@@ -3,10 +3,16 @@
 
 #include "LuaValueSettable.h"
 
+namespace NDb
+{
+struct AlternativeTarget;
+}
+
 namespace NWorld
 {
 class PFBaseUnit;
 class PFLogicObject;
+class PFWorld;
 
 template<typename TUnit>
 bool IsUnitValid( const TUnit * pUnit )

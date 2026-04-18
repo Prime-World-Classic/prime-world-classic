@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "sampler.h"
+#include "renderer.h"
 #include "smartrenderer.h"
 #include "renderresourcemanager.h"
 #include "GlobalMasks.h"

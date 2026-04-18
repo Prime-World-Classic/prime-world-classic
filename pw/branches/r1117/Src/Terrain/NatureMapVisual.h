@@ -3,8 +3,12 @@
 #define _NATUREMAPVISUAL_H_
 
 #include "NatureMap.h"
+#include "../Render/DeviceLost.h"
 #include "../Render/MaterialSpec.h"
 #include "../Render/Blur.h"
+#include "../Render/dipdescriptor.h"
+#include "../Render/dxutils.h"
+#include "../Render/vertexformatdescriptor.h"
 
 namespace Terrain {
 
@@ -94,7 +98,11 @@ private:
 
   vector<Primitive> primitives;
   DXVertexBufferRef pVertexBuffer;
+#if defined(PW_LINUX_NULL_RENDER)
+  Render::DeviceLostWrapper<Render::DXIndexBufferDynamicRef> pIndexBuffer;
+#else
   DXIndexBufferDynamicRef::Wrapped pIndexBuffer;
+#endif
   Render::DipDescriptor dipDescriptor;
   DXVertexDeclarationRef pVertexFormat;
   ScopedPtr<Render::BaseMaterial> pMaterial;

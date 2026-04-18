@@ -1,6 +1,8 @@
 #ifndef STATISTICSSTREAK_H_INCLUDED
 #define STATISTICSSTREAK_H_INCLUDED
 
+#include <climits>
+
 namespace Statistics
 {
 
@@ -17,7 +19,7 @@ namespace EStreakCounterMode
   enum Enum
   {
     Continuous = 0, WithGaps,
-    Force32Bit = MAXUINT
+    Force32Bit = UINT_MAX
   };
 };
 

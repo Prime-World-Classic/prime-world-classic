@@ -1,4 +1,11 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "batch_linux_null.cpp"
+
+#else
+
 #include <algorithm>
 #include "renderer.h"
 #include "batch.h"
@@ -1012,3 +1019,4 @@ int  BatchQueue::GetMaterialSwitchCounter() { return s_materialSwitchCounter; }
 
 }
 
+#endif

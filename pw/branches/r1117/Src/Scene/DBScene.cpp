@@ -44,6 +44,7 @@ REGISTER_DBRESOURCE( TimeController );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #ifndef VISUAL_CUTTED
 #include "AnimatedSceneComponent.h"
 #include "LightningSceneComponent.h"
@@ -54,6 +55,7 @@ REGISTER_DBRESOURCE( TimeController );
 #include "TraceSceneComponent.h"
 #include "WaterSceneComponent.h"
 #endif // #ifndef VISUAL_CUTTED
+#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
 
 namespace NDb
 {
@@ -717,7 +719,12 @@ void DBSceneComponentBase::Assign( const DBSceneComponentBase& _dBSceneComponent
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSceneComponentBase::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return ( CObj<NScene::SceneComponent> )(0);
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -773,7 +780,12 @@ void DBSceneComponent::Assign( const DBSceneComponent& _dBSceneComponent )
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::SceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -862,7 +874,12 @@ void DBAnimatedSceneComponent::Assign( const DBAnimatedSceneComponent& _dBAnimat
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBAnimatedSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateAnimatedSceneComponent( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -932,7 +949,12 @@ void DBLightningSceneComponent::Assign( const DBLightningSceneComponent& _dBLigh
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBLightningSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::LightningSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1067,7 +1089,12 @@ void DBParticleSceneComponent::Assign( const DBParticleSceneComponent& _dBPartic
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBParticleSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::ParticleSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1124,7 +1151,12 @@ void DBSoundSceneComponent::Assign( const DBSoundSceneComponent& _dBSoundSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSoundSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::SoundSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1189,7 +1221,12 @@ void DBStaticSceneComponent::Assign( const DBStaticSceneComponent& _dBStaticScen
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBStaticSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::StaticSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1280,7 +1317,12 @@ void DBTraceSceneComponent::Assign( const DBTraceSceneComponent& _dBTraceSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBTraceSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::TraceSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1428,7 +1470,12 @@ void DBWaterSceneComponent::Assign( const DBWaterSceneComponent& _dBWaterSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBWaterSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	return 0;
+#else
+
 	return NScene::CreateSceneComponent<NScene::WaterSceneComponent>( *this, creator, pAttached, transform );
+#endif
 }
 #endif // #ifndef VISUAL_CUTTED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

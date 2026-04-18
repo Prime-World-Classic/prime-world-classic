@@ -8,8 +8,40 @@
 #ifndef DATAEXECUTOR_H_
 #define DATAEXECUTOR_H_
 
+#ifdef PW_LINUX_DB_BOOTSTRAP
+
+class FormulaBuilder;
+
+class DataExecutor
+{
+public:
+  DataExecutor(unsigned char, unsigned char const *, unsigned int) {}
+  DataExecutor(unsigned char, char const *) {}
+  ~DataExecutor() {}
+
+  bool IsValid() const { return false; }
+  static int GetLastExecutionStatus() { return 0; }
+
+  template <typename T>
+  T ExecuteFree(...) const
+  {
+    return T();
+  }
+
+  void Execute(char const, char const *, ...) const {}
+  void ExecuteV(char const, unsigned int, ...) const {}
+
+  template <typename T>
+  T Execute(void const *, void const *, void const *) const
+  {
+    return T();
+  }
+};
+
+#else
+
 #include "ExecutionMemoryManager.h"
-#include "StarForce\StarForce.h"
+#include "StarForce/StarForce.h"
 
 #ifndef DIM
   #define DIM(a) (sizeof(a)/sizeof(*a))
@@ -138,5 +170,7 @@ public:
   }
   friend FormulaBuilder;
 };
+
+#endif
 
 #endif /* DATAEXECUTOR_H_ */

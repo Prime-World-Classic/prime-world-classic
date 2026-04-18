@@ -5,6 +5,8 @@
 
 namespace Render
 {
+  const Texture2DRef& GetWhiteTexture2D();
+
   class WaterMesh : public StaticMesh
   {
     REPLACE_DEFAULT_NEW_DELETE(WaterMesh);

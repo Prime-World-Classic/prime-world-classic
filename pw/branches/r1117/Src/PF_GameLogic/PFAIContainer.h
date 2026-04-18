@@ -3,6 +3,7 @@
 #ifndef _SHIPPING
 #include "PFDebug.h"
 #endif
+#include "DBAdvMap.h"
 #include "PFWorldObjectBase.h"
 #include "LuaScript.h"
 #include "Scripts/lua.hpp"
@@ -15,6 +16,7 @@ namespace NCore
 
 namespace PF_Core
 {
+  class BasicEffect;
   class BasicEffectStandalone;
 }
 

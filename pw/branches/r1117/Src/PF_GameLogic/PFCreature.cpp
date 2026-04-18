@@ -10,10 +10,14 @@
 #ifndef VISUAL_CUTTED
 #include "PFClientCreature.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "ClientVisibilityHelper_linuxbootstrap.h"
+#else
 #include "ClientVisibilityHelper.h"
+#endif
 
 namespace NWorld
 {

@@ -2,6 +2,11 @@
 
 #include "../System/Singleton4DLL.h"
 
+namespace NDb
+{
+  struct DBSceneObject;
+}
+
 namespace NScene
 {
 

@@ -5,6 +5,11 @@
 #include "../System/fixedvector.h"
 
 struct GeometryReindex;
+namespace NDb
+{
+  struct TerrainMaterial;
+}
+
 namespace Render
 {
 

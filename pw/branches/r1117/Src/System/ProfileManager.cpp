@@ -67,6 +67,15 @@ static wstring g_currentPlayer;
 
 #else
 
+	static string GetLinuxHomeDir()
+	{
+		const char* home = getenv( "HOME" );
+		if ( home && home[0] )
+			return home;
+
+		return NFile::GetBaseDir();
+	}
+
 	static const string & GetCommonAppdataFolder()
 	{
 		static string app_folder;
@@ -74,7 +83,7 @@ static wstring g_currentPlayer;
 		if ( app_folder.empty() ) {
 
 			// g_productName - not changing from version to version ( GM, patch, addon )
-			app_folder = NFile::Combine( "/usr/games", g_productName );
+			app_folder = NFile::Combine( NFile::Combine( GetLinuxHomeDir(), ".local/share" ), g_productName );
 			NFile::AppendSlash( &app_folder );
 
 		}
@@ -89,7 +98,7 @@ static wstring g_currentPlayer;
 		if ( user_folder.empty() ) {
 
 			// g_productName - not changing from version to version ( GM, patch, addon )
-			user_folder = NFile::Combine( "~/games", g_productName );
+			user_folder = NFile::Combine( NFile::Combine( GetLinuxHomeDir(), ".local/share" ), g_productName );
 			NFile::AppendSlash( &user_folder );
 
 		}
@@ -110,7 +119,7 @@ static const string &GetPlayerFolder()
 static const string &GetSaveFolder()
 {
 	static string saveFolder;
-	saveFolder = NFile::Combine( GetPlayerFolder(), "Saves\\" );
+	saveFolder = NFile::Combine( GetPlayerFolder(), "Saves" );
 	return saveFolder;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,9 +127,9 @@ static const string &GetScreenshotsFolder()
 {
   static string shotsFolder;
 #ifdef _SHIPPING
-  shotsFolder = NFile::Combine( GetUserFolder(), "Screenshots\\" );
+  shotsFolder = NFile::Combine( GetUserFolder(), "Screenshots" );
 #else
-  shotsFolder = NFile::Combine( NFile::GetBinDir(), "screenshots\\" );
+  shotsFolder = NFile::Combine( NFile::GetBinDir(), "screenshots" );
 #endif
 
   return shotsFolder;
@@ -141,9 +150,9 @@ const string& GetRootLogsFolder()
 {
   static string sFolder;
 #ifdef _SHIPPING
-  sFolder = NFile::Combine( GetUserFolder(), "Session\\Logs\\" );
+  sFolder = NFile::Combine( GetUserFolder(), "Session/Logs" );
 #else
-  sFolder = NFile::Combine( NFile::GetBinDir(), "logs\\" );
+  sFolder = NFile::Combine( NFile::GetBinDir(), "logs" );
 #endif
   return sFolder;
 }
@@ -152,7 +161,7 @@ static const string &GetReplaysFolder()
 {
   static string replaysFolder;
 #ifdef _SHIPPING
-  replaysFolder = NFile::Combine( GetUserFolder(), "Replays\\" );
+  replaysFolder = NFile::Combine( GetUserFolder(), "Replays" );
 #else
   replaysFolder = GetLogsFolder();
 #endif
@@ -162,7 +171,7 @@ static const string &GetReplaysFolder()
 void Init( const string &productName )
 {
 	g_productName = productName;
-	g_commonFolder = NFile::Combine( NFile::GetBaseDir(), "Profiles\\" );
+	g_commonFolder = NFile::Combine( NFile::GetBaseDir(), "Profiles" );
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static wstring GetPlayerName( const string &dirName )
@@ -348,4 +357,3 @@ string GetFullFilePath( const string &fileName, const EProfileFolder folder )
 	return NFile::Combine( GetFullFolderPath( folder ), fileName );
 }
 }
-

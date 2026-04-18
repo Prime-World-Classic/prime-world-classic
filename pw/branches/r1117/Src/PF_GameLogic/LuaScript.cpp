@@ -44,7 +44,7 @@
 #include "PFClientVisibilityMap.h"
 #include "PFConsumable.h"
 #include "Render/AOERenderer.h"
-#include "..\PF_Core\EffectsPool.h"
+#include "../PF_Core/EffectsPool.h"
 #include "PFClientHero.h"
 #include "ObjectsInfo2d.h"
 

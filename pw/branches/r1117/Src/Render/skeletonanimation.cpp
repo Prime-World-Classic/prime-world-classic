@@ -36,19 +36,19 @@ void SkeletonAnimation::LoadBonesKeys( BoneKeys& keys, unsigned char* data, unsi
 void SkeletonAnimation::LoadFromFile( const nstl::string& filename )
 {
 	FILE* stream = 0;
-	if(fopen_s(&stream, filename.c_str(), "rb"))
+	if ( fopen_s(&stream, filename.c_str(), "rb") != 0 || !stream )
 	{
-		NI_ALWAYS_ASSERT("can't fine such file");
-	};
+		NI_ALWAYS_ASSERT("can't find such file");
+		return;
+	}
 
 	fseek(stream, 0, SEEK_END);
-
-	fpos_t pos;
-	fgetpos(stream, &pos);
+	const long fileSize = ftell(stream);
+	NI_VERIFY( fileSize > 0, "Invalid skeletal animation file size", fclose(stream); return; );
 
 	fseek(stream, 0, SEEK_SET);
 
-	unsigned int size = pos;
+	const unsigned int size = static_cast<unsigned int>(fileSize);
 	unsigned char* data = new unsigned char [size];
 	fread( reinterpret_cast<void*>(data), size, 1, stream );
 

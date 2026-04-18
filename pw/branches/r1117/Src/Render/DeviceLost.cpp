@@ -1,3 +1,13 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../System/systemStdAfx.h"
+#include "DeviceLost.h"
+
+namespace Render {
+} // namespace Render
+
+#else
+
 #include "stdafx.h"
 #include "DeviceLost.h"
 #include "smartrenderer.h"
@@ -192,3 +202,5 @@ void DeviceDeleteHandler::NotifyDeviceDelete()
 } // namespace Render
 
 // end of DeviceLost.cpp
+
+#endif

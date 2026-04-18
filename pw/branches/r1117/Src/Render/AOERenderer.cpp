@@ -427,7 +427,9 @@ void AOERenderer::Render()
     AreaChannel& channel = channels[i];
     if (channel.enabled && channel.pMaterial)
     {
+#if !defined(PW_LINUX_NULL_RENDER)
       channel.pMaterial->SetCustomizedGeometryPin(channel.type != AREA_DISK ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE);
+#endif
       channel.pMaterial->PrepareRenderer();
       GetStatesManager()->SetStateDirect(D3DRS_ZENABLE, 0);
       GetStatesManager()->SetStateDirect(D3DRS_ZWRITEENABLE, 0);

@@ -11,8 +11,11 @@ namespace Render
 struct SHShaderConstants;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-__declspec(align(16))
-struct Batch
+#if defined(NV_LINUX_PLATFORM)
+struct __attribute__((aligned(16))) Batch
+#else
+__declspec(align(16)) struct Batch
+#endif
 {
 	const RenderComponent      *pOwner;
 	unsigned int                elementNumber;

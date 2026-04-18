@@ -432,8 +432,8 @@ public:
   //We can construct from const raw pointers
   ConstPtr( const T * _pObject ) : TBase( const_cast<T *>( _pObject ) ) {}
   ConstPtr( const ConstPtr & smartPtr ) : TBase( const_cast<T *>( smartPtr.GetPtr() ) ) {}
-  ConstPtr & operator = ( const T *_pObject ) { SetPtr( const_cast<T *>( _pObject ) ); return *this; }
-  ConstPtr & operator = ( const ConstPtr & smartPtr ) { SetPtr( const_cast<T *>( smartPtr.GetPtr() ) ); return *this; }
+  ConstPtr & operator = ( const T *_pObject ) { this->SetPtr( const_cast<T *>( _pObject ) ); return *this; }
+  ConstPtr & operator = ( const ConstPtr & smartPtr ) { this->SetPtr( const_cast<T *>( smartPtr.GetPtr() ) ); return *this; }
 
   //We'll mask non-constant access methods and operators
   const T * GetPtr() const { return TBase::GetPtr(); }

@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "DialogController.h"
-#include "..\Sound\EventScene.h"
+#include "../Sound/EventScene.h"
 #include "AdventureFlashInterface.h"
 #include "AdventureScreen.h"
 #include "PFAIContainer.h"

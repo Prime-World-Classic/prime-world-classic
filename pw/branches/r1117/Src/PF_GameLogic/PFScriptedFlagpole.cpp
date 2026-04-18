@@ -3,7 +3,11 @@
 
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientFlagpole.h"
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#endif
 #include "PFScriptedFlagpole.h"
 #include "PFTargetSelector.h"
 #include "PFWorldNatureMap.h"
@@ -11,7 +15,9 @@
 #include "SessionEventType.h"
 #include "PFStatistics.h"
 #include "PFMaleHero.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientHero.h"
+#endif
 
 namespace NWorld
 {
@@ -250,7 +256,7 @@ namespace NWorld
 
       PFScriptedFlagpole const *pFlagpole = dynamic_cast<PFScriptedFlagpole const*>(pOwner.GetPtr());
       char buffer[256];
-      sprintf_s(buffer, "%s/%d", pFlagpole->group.c_str(), pFlagpole->indexInGroup );
+      snprintf(buffer, sizeof(buffer), "%s/%d", pFlagpole->group.c_str(), pFlagpole->indexInGroup );
       pRender->DrawText3D(buffer, pFlagpole->GetPosition(), 14, Render::Color(255, 255, 128));
       return false;
     }
@@ -266,5 +272,3 @@ namespace NWorld
 }
 
 REGISTER_WORLD_OBJECT_NM(PFScriptedFlagpole, NWorld);
-
-

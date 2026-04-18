@@ -1,5 +1,7 @@
 #pragma once
 
+#include "texture.h"
+
 namespace Render
 {
 

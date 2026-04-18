@@ -1,6 +1,8 @@
 #pragma once
 
+#include "DBAdvMap.h"
 #include "DBGameLogic.h"
+#include "DBUnit.h"
 #include "PFWorldObjectBase.h"
 
 namespace NWorld

@@ -2,6 +2,8 @@
 #define BSUTIL_H_
 
 #include "StackWalk.h"
+
+struct EXCEPTION_POINTERS;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NBSU
 {
@@ -35,6 +37,27 @@ typedef list<SIgnoresEntry> TIgnoresList;
 typedef void  (*ExceptionCallback)(void);
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined( NV_LINUX_PLATFORM )
+
+inline bool IsIgnore( const char *, int ) { return false; }
+inline void AddIgnore( const char *, const char *, int ) {}
+inline void RemoveIgnore( const char *, int ) {}
+inline void SetIgnoreAll( bool ) {}
+inline const TIgnoresList &GetIgnoresList()
+{
+  static const TIgnoresList ignores;
+  return ignores;
+}
+inline void WriteAssertLogFile( const struct tm&, const char *, const vector<SCallStackEntry>&, bool ) {}
+inline void WriteExceptionLogFile( const struct tm&, const EXCEPTION_POINTERS*, const vector<SCallStackEntry>&, string * = 0 ) {}
+inline HINSTANCE GetBSUInstance() { return 0; }
+inline void SetBSUWindow( HWND ) {}
+inline HWND GetBSUWindow() { return 0; }
+inline void InitUnhandledExceptionHandler() {}
+inline void SetExceptionCallback( ExceptionCallback ) {}
+
+#else
+
 bool IsIgnore( const char *pszFileName, int nLineNumber );
 void AddIgnore( const char *pszFunctionName, const char *pszFileName, int nLineNumber );
 void RemoveIgnore( const char *pszFileName, int nLineNumber );
@@ -50,6 +73,8 @@ HWND GetBSUWindow();
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void InitUnhandledExceptionHandler();
 void SetExceptionCallback(ExceptionCallback callb);
+
+#endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

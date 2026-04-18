@@ -24,7 +24,7 @@
 #include "PFClientHero.h"
 #include "PFClientApplicators.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "PFImpulsiveBuffs.h"

@@ -1,5 +1,11 @@
 #pragma once
 
+#include "../System/ported/types.h"
+#include "../System/nstring.h"
+#include "../System/nvector.h"
+#include "dxutils.h"
+#include "renderformat.h"
+
 namespace Render
 {
   typedef pair<string, string> StringPair;

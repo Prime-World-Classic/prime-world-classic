@@ -4,6 +4,7 @@
 
 #include "Renderer.h"
 #include "texture.h"
+#include "TextureManager.h"
 #include "RenderResourceManager.h"
 #include "MultiShader.h"
 #include "Material.h"
@@ -21,10 +22,14 @@ static struct SRegister_MaterialHelper
 {
   SRegister_MaterialHelper() 
   {
-    void *p = &GetMaterials(); 
+    void *p = &GetMaterials();
+#if defined(_MSC_VER) && !defined(PW_LINUX_NULL_RENDER)
     __asm {
       mov eax, p
     }
+#else
+    (void)p;
+#endif
   }
 } materialVarRegistrar;
 
@@ -638,7 +643,7 @@ bool MaterialManager::ResetSortIDs(const char*, const vector<wstring>&)
 
 UINT MaterialManager::GetShadersID(const Material *_pMat)
 {
-  static const UINT shaderIdBits = 22; // Волюнтаризм чистой воды
+  static const UINT shaderIdBits = 22; // Г‚Г®Г«ГѕГ­ГІГ Г°ГЁГ§Г¬ Г·ГЁГ±ГІГ®Г© ГўГ®Г¤Г»
   static const UINT shaderIdMask = (1 << shaderIdBits) - 1;
 
   const int  idMulti = _pMat->GetResourceManagerShaderIndex();

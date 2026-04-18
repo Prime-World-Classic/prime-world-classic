@@ -1,7 +1,7 @@
 #ifndef USERMESSAGE_H_966BE042_7D59_435D
 #define USERMESSAGE_H_966BE042_7D59_435D
 
-#include <Windows.h>
+#include "../System/ported/types.h"
 
 namespace UserMessage
 {

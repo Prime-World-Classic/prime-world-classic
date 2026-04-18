@@ -3,6 +3,7 @@
 #define _TRACEEFFECT_H_
 
 #include "TraceFXGeo.h"
+#include "DBScene.h"
 #include "../System/ScopedPtr.h"
 #include "../Render/RenderComponent.h"
 

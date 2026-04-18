@@ -3,6 +3,32 @@
 #include "renderableprimitive.h"
 #include "MaterialSpec.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+  class DXManager : public DeviceLostHandler
+  {
+  public:
+    DXManager();
+
+    virtual void OnDeviceLost() { Clear(); }
+    virtual void OnDeviceReset() {}
+
+    void OnNextFrame() {}
+    void Clear();
+
+    void Manage();
+
+    void AddGeometry(const GeometryBuffers& _arg);
+    void AddTextures(const BaseMaterial* _pMaterial);
+  };
+
+}
+
+#else
+
 #ifndef _SHIPPING
   #define COUNT_ACTIVE_MANAGED_POOL_RESOURCES
   //#define PRELOAD_MANAGED_POOL_RESOURCES
@@ -82,3 +108,5 @@ namespace Render
   };
 
 }
+
+#endif

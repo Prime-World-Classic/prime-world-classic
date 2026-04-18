@@ -7,14 +7,25 @@
 #include <System/InlineProfiler.h>
 #include <System/ported/cwfn.h>
 
+#if defined( NV_LINUX_PLATFORM )
+  #undef NI_PROFILE_FUNCTION
+  #define NI_PROFILE_FUNCTION
+#endif
 
 namespace
 {
 
+#if defined( NV_LINUX_PLATFORM )
+static int openedFileCount = 0;
+#else
 static NDebug::DebugVar<int> openedFileCount( "Opened File Count", "FileSystem" );
+#endif
 
 static bool s_detect_multiopen = false;
+
+#if !defined( NV_LINUX_PLATFORM )
 REGISTER_DEV_VAR( "fs_detect_multiopen", s_detect_multiopen, STORAGE_NONE );
+#endif
 
 }
 
@@ -276,7 +287,11 @@ Stream * CombinerFileSystem::OpenFile( const string &fileName, EFileAccess acces
     for ( TDebugMonitors::iterator it = debugMonitors.begin(); it != debugMonitors.end(); ++it )
       (*it)->OnOpenFile( fileName, finishTime - startTime, stream ? stream->GetSize() : 0 );
 
+#if defined( NV_LINUX_PLATFORM )
+    ++openedFileCount;
+#else
     openedFileCount.AddValue( 1 );
+#endif
   }
 
   if ( s_detect_multiopen )
@@ -319,7 +334,11 @@ IFileWatcher* CombinerFileSystem::CreateFileWatcher( const string& path )
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int CombinerFileSystem::GetOpenedFileCount()
 {
+#if defined( NV_LINUX_PLATFORM )
+  return openedFileCount;
+#else
   return openedFileCount.GetValue();
+#endif
 }
 
 

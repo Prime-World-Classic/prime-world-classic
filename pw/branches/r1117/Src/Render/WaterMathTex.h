@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../System/noncopyable.h"
+#include "renderformat.h"
+#include "texture.h"
 
 namespace Render
 {

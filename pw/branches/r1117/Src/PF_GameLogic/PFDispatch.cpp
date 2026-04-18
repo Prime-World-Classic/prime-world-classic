@@ -11,7 +11,7 @@
 #ifndef VISUAL_CUTTED
 #include "PFClientDispatch.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 #include "WarFog.h"
@@ -189,8 +189,9 @@ bool PFDispatch::Step(float dtInSeconds)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )
 {
+  IUnitFormulaPars * const pOriginalTarget = originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender.GetPtr();
   return par( pSender
-    , originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender
+    , pOriginalTarget
     , IsValid( pParentApplicator ) ? (IMiscFormulaPars*)pParentApplicator.GetPtr() : (IMiscFormulaPars*)pAbility->GetData()
     , defaultValue ); 
 }

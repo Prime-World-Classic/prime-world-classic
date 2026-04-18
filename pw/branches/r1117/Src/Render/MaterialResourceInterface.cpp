@@ -1,5 +1,16 @@
 // Automatically generated file, don't change it manually!
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "MaterialResourceInterface.h"
+
+namespace NDb
+{
+}
+
+#else
+
 #include "../libdb/Checksum.h"
 #include "../libdb/XmlSaver.h"
 #include "../Scripts/lua.hpp"
@@ -97,3 +108,5 @@ bool VertexDisplacementMaterial::GetVariantValue( NScript::VariantValue & value,
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 }; // namespace NDb
+
+#endif

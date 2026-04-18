@@ -2,7 +2,11 @@
 
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientFlagpole.h"
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#endif
 #include "PFRoadFlagpole.h"
 #include "PFTargetSelector.h"
 #include "PFWorldNatureMap.h"
@@ -10,7 +14,9 @@
 #include "SessionEventType.h"
 #include "PFStatistics.h"
 #include "PFMaleHero.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientHero.h"
+#endif
 
 
 
@@ -373,7 +379,7 @@ namespace NWorld
       {
         PFRoadFlagpole const *pFlagpole = dynamic_cast<PFRoadFlagpole const*>(pOwner.GetPtr());
         char buffer[256];
-        sprintf_s(buffer, "%d/%d", (int)pFlagpole->natureRoad, pFlagpole->natureSegment );
+        snprintf(buffer, sizeof(buffer), "%d/%d", (int)pFlagpole->natureRoad, pFlagpole->natureSegment );
         pRender->DrawText3D(buffer, pFlagpole->GetPosition(), 14, Render::Color(255, 255, 255));
       }
       return false;

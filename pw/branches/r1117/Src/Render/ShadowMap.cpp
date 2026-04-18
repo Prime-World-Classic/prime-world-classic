@@ -1,5 +1,69 @@
 #include "StdAfx.h"
 #include "ShadowMap.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+ShadowMap::ShadowMap(void)
+{
+}
+
+ShadowMap::~ShadowMap(void)
+{
+}
+
+void ShadowMap::PreRender(void)
+{
+}
+
+bool ShadowMap::PostRender(void)
+{
+  return false;
+}
+
+bool ShadowMap::Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex)
+{
+  (void)_viewToLightSpace;
+  (void)_constants;
+  (void)_depthTex;
+  return false;
+}
+
+namespace
+{
+
+class NullShadowMap : public ShadowMap
+{
+public:
+  virtual bool Init(unsigned int _width, unsigned int _height, float _depthBias, float _biasSlope)
+  {
+    (void)_width;
+    (void)_height;
+    (void)_depthBias;
+    (void)_biasSlope;
+    return true;
+  }
+
+  virtual bool Apply(const SHMatrix& _viewToLightSpace, CVec4 (&_constants)[4], const Texture2DRef& _depthTex)
+  {
+    return ShadowMap::Apply(_viewToLightSpace, _constants, _depthTex);
+  }
+};
+
+} // namespace
+
+ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
+{
+  (void)_shadowMode;
+  return new NullShadowMap();
+}
+
+} // namespace Render
+
+#else
+
 #include "ImmediateRenderer.h"
 #include "smartrenderer.h"
 #include "IConfigManager.h"
@@ -214,7 +278,7 @@ bool ShadowMapPCF_DS::Init(unsigned int _width, unsigned int _height, float _dep
   //set special texture matrix for shadow mapping
   const float fOffsetX = 0.5f + (0.5f / (float)_width);
   const float fOffsetY = 0.5f + (0.5f / (float)_height);
-  const float range = 1; // Наследие прошлых времён. В DX8 надо было ставить 2^(bit depth)
+  const float range = 1; // ГЌГ Г±Г«ГҐГ¤ГЁГҐ ГЇГ°Г®ГёГ«Г»Гµ ГўГ°ГҐГ¬ВёГ­. Г‚ DX8 Г­Г Г¤Г® ГЎГ»Г«Г® Г±ГІГ ГўГЁГІГј 2^(bit depth)
   const float fBias    = 0.0f;
   //float fBias    = -0.001f * range;
   texScaleBiasMatrix.Set( 0.5f,  0.0f,  0.0f, fOffsetX,
@@ -338,7 +402,7 @@ bool ShadowMapPCF_DF::Init(unsigned int _width, unsigned int _height, float _dep
   //set special texture matrix for shadow mapping
   const float fOffsetX = 0.5f + (0.5f / (float)_width);
   const float fOffsetY = 0.5f + (0.5f / (float)_height);
-  const float range = 1; // Наследие прошлых времён. В DX8 надо было ставить 2^(bit depth)
+  const float range = 1; // ГЌГ Г±Г«ГҐГ¤ГЁГҐ ГЇГ°Г®ГёГ«Г»Гµ ГўГ°ГҐГ¬ВёГ­. Г‚ DX8 Г­Г Г¤Г® ГЎГ»Г«Г® Г±ГІГ ГўГЁГІГј 2^(bit depth)
   const float fBias    = 0.0f;
   //float fBias    = -0.001f * range;
   texScaleBiasMatrix.Set( 0.5f,  0.0f,  0.0f, fOffsetX,
@@ -778,3 +842,5 @@ ShadowMap* CreateShadowMap(NDb::ShadowMode _shadowMode)
 }
 
 };  //namespace Render
+
+#endif

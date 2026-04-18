@@ -1,5 +1,5 @@
 #pragma once
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
 
 
 namespace NDb

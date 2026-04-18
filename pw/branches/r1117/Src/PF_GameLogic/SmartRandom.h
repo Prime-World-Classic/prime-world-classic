@@ -5,6 +5,8 @@ namespace NRandom
   class RandomGenerator;
 }
 
+struct IUnitFormulaPars;
+
 namespace NWorld
 {
 

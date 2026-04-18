@@ -1,5 +1,7 @@
 #pragma once
 
+#include "MemoryLib/newdelete.h"
+
 class DummyAllocator
 {
 	unsigned int currentSize;

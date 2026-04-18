@@ -6,6 +6,7 @@
 #include "../System/Spline.h"
 #include "../Terrain/TerrainElementManager.h"
 #include "../MeshConverter/MeshHeader.h"
+#include "DBSceneBase.h"
 #include <Terrain/RoadGeometryVertex.h>
 
 namespace Render {

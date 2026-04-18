@@ -6,6 +6,8 @@
 
 #include "VendorFOURCC.h"
 
+#if !defined(PW_LINUX_NULL_RENDER)
 #include "DxIntrusivePtr.h"
+#endif
 #include "dxutils.h"
 #include "renderer.h"

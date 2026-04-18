@@ -10,7 +10,7 @@
 #include "PFClientCreature.h"
 #include "../PF_Core/EffectsPool.h"
 #else
-#include "../Game/pf/Audit/ClientStubs.h"
+#include "../Game/PF/Audit/ClientStubs.h"
 #endif
 
 namespace NWorld
@@ -42,6 +42,7 @@ bool PFDeadBody::Step(float dt)
 {
   NI_PROFILE_FUNCTION
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   if ( playOnUnitDieEffect && onUnitDieEffect && IsValid(unitBody) )
   {
     float deadTime = unitBody->GetTimeDead();
@@ -67,6 +68,7 @@ bool PFDeadBody::Step(float dt)
       unitBody = NULL;
     }
   }
+#endif
 
   lifeTime -= dt;
   if ( lifeTime < 0 )

@@ -1,6 +1,24 @@
 #include "stdafx.h"
 #include "facefxsystem.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+namespace FaceFXSystem
+{
+void Init()
+{
+}
+
+void Release()
+{
+}
+}; // namespace FaceFX
+}; // namespace Render
+
+#else
+
 #include "../Vendor/FaceFX/include/FxSDK.h"
 #include "../Vendor/FaceFX/include/FxActor.h"
 #include "../Vendor/FaceFX/include/FxActorInstance.h"
@@ -41,3 +59,5 @@ void Release()
 }
 }; // namespace FaceFX
 }; // namespace Render
+
+#endif

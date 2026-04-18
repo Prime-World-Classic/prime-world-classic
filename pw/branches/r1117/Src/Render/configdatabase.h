@@ -11,6 +11,10 @@
 
 //#include <d3d9.h>
 
+#if defined(PW_LINUX_NULL_RENDER)
+  #include "dxutils.h"
+#endif
+
 typedef pair <string, string>    StringPair;
 
 

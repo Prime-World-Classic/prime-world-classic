@@ -1,5 +1,5 @@
 # CMake compatibility issues: don't modify this, please!
-CMAKE_MINIMUM_REQUIRED( VERSION 2.6 )
+CMAKE_MINIMUM_REQUIRED( VERSION 3.10 )
 MARK_AS_ADVANCED(CMAKE_BACKWARDS_COMPATIBILITY)
 # allow more human readable "if then else" constructs
 SET( CMAKE_ALLOW_LOOSE_LOOP_CONSTRUCTS TRUE )
@@ -40,6 +40,22 @@ macro( process_dyn_lib DLIB_PATH )
 endmacro()
 
 project(PrimeWorld)
+
+if(UNIX)
+  set(PRIMEWORLD_BUILD_LINUX_BOOTSTRAP_DEFAULT ON)
+else()
+  set(PRIMEWORLD_BUILD_LINUX_BOOTSTRAP_DEFAULT OFF)
+endif()
+
+option(
+  PRIMEWORLD_BUILD_LINUX_BOOTSTRAP
+  "Build the native Linux bootstrap target instead of the legacy Windows client target"
+  ${PRIMEWORLD_BUILD_LINUX_BOOTSTRAP_DEFAULT}
+)
+
+if(UNIX AND PRIMEWORLD_BUILD_LINUX_BOOTSTRAP)
+  add_subdirectory(LinuxBootstrap)
+else()
 
 # project version
 SET( ${PROJECT_NAME}_MAJOR_VERSION 0 )
@@ -205,16 +221,17 @@ list_remove_regexp( ALL_SRCS ".+/FilePileCompilerApp\\.cpp$" )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/HybridServer/PeeredTypes.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/HybridServer/LPeered.auto.cpp )
 
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Lobby/CommonTypes.cpp )
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/LobbyPvx/CommonTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsCommonTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsClientTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsDebugTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsServerTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/SpecialStatisticTypes.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp )
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Lobby/RLobbyIEntrance.auto.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp )
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/LPerfCounterProviderIntf.auto.cpp )
-
-
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/../Tools/GMTools/StatisticService/RPC/RStatisticWriter.auto.cpp )
-set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/../Tools/GMTools/StatisticClient/Data.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/LPerfCounterProviderIface.auto.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/RPerfCounterProviderIface.auto.cpp )
 
 
 
@@ -307,3 +324,4 @@ process_dyn_lib( ${VENDOR}/Terabit/lib/TProactor )
 process_dyn_lib( ${VENDOR}/Terabit/lib/TProactord )
 process_dyn_lib( ${VENDOR}/OpenSSL/ssleay32 )
 process_dyn_lib( ${VENDOR}/OpenSSL/libeay32 )
+endif()

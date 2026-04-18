@@ -1,13 +1,23 @@
 #pragma once
 
 #include "RenderComponent.h"
-#include "MaterialSpec.h"
 #include "../System/staticvector.h"
 #include "MeshResource.h"
+
+#if !defined(PW_LINUX_NULL_RENDER)
+#include "MaterialSpec.h"
+#include "LightsManager.h"
+#else
+namespace NDb
+{
+  struct SkinPartBase;
+}
+#endif
 
 namespace Render
 {
 	class Primitive;
+  class BaseMaterial;
 
 	class SkeletalMeshElement 
 	{
@@ -59,7 +69,11 @@ namespace Render
 	class SkeletalMesh : public RenderComponent
 	{
 		REPLACE_DEFAULT_NEW_DELETE(SkeletalMesh);
+#if defined(PW_LINUX_NULL_RENDER)
+    static const unsigned int maxBoneCountPerFragment = 0;
+#else
 		static const unsigned int maxBoneCountPerFragment = MAX_BONES;
+#endif
 		static const unsigned int maxSlotsCount = 16;
 		static const unsigned int maxMaxFragmentCountPerSkinPart = 4;
 		Matrix43 worldMatrix;
@@ -71,7 +85,9 @@ namespace Render
 
     AABB localAABB;
     AABB worldAABB;
+#if !defined(PW_LINUX_NULL_RENDER)
     LightsData lightsData;
+#endif
     unsigned long lightsFlags;
 
     mutable DeviceLostWrapper<OcclusionQueries> queries;

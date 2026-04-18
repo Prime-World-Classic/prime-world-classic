@@ -1,3 +1,70 @@
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "stdafx.h"
+#include "WaterMesh.h"
+
+#define _USE_MATH_DEFINES
+#include <math.h>
+
+namespace Render
+{
+
+  void WaterMesh::Initialize( const Matrix43& worldMatrix_, const NDb::DBWaterSceneComponent* pDBComponent, const NDb::DBWaterInfo* pParams )
+  {
+    StaticMesh::Initialize( worldMatrix_, pDBComponent );
+
+    pGradients = 0;
+    pCaustics = 0;
+    level = localAABB.center.z;
+    tiling = 0.0f;
+    shininess = 0.0f;
+    ripplesFactor = 0.0f;
+    ripplesHeight = 0.0f;
+    refraction = 0.0f;
+    causticsTiling = 0.0f;
+    causticsIntensity = 0.0f;
+    scaleH0 = 0.0f;
+    scaleZ0 = 0.0f;
+    scaleH0refl = 0.0f;
+    speed = VNULL2;
+
+    if ( pParams )
+    {
+      tiling = 0.05f * pParams->tiling;
+      shininess = pParams->shininess;
+      ripplesFactor = pParams->ripples > 0.0f ? 1.0f / pParams->ripples : 0.0f;
+      ripplesHeight = pParams->ripplesHeight;
+      refraction = pParams->refraction > 0.0f ? 1.0f / pParams->refraction : 0.0f;
+      causticsTiling = 0.05f * pParams->causticsTiling;
+      causticsIntensity = pParams->causticsIntensity;
+      scaleH0 = pParams->depth > 0.0f ? 1.0f / pParams->depth : 1e38f;
+      scaleZ0 = pParams->distance > 0.0f ? -(float)M_LN2 / pParams->distance : -1e38f;
+      scaleH0refl = pParams->depthReflect > 0.0f ? 1.0f / pParams->depthReflect : 1e38f;
+      speed = pParams->speed;
+    }
+
+    if ( pDBComponent )
+      convexes.Create( pDBComponent->aabb );
+  }
+
+  void WaterMesh::RenderToQueue( BatchQueue& queue )
+  {
+    (void)queue;
+  }
+
+  void WaterMesh::RenderToQueuePostponed( BatchQueue& queue )
+  {
+    (void)queue;
+  }
+
+  void WaterMesh::PrepareRendererAfterMaterial( unsigned int elementNumber ) const
+  {
+    (void)elementNumber;
+  }
+}
+
+#else
+
 #include "stdafx.h"
 #include "batch.h"
 #include "WaterMesh.h"
@@ -90,3 +157,5 @@ namespace Render
     GetStatesManager()->SetSampler(5, Render::SamplerState::PRESET_WRAP_BILINEAR(), pCaustics);
   }
 };
+
+#endif

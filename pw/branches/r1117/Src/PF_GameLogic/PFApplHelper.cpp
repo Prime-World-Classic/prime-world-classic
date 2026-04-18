@@ -7,7 +7,7 @@
 #include "PFDispatchStrike1.h"
 #include "PFTargetSelector.h"
 #ifndef VISUAL_CUTTED
-#include "PF_Core\ControlledStatusEffect.h"
+#include "PF_Core/ControlledStatusEffect.h"
 #include "PFClientDispatch.h"
 #endif
 

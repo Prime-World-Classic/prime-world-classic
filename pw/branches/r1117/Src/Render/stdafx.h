@@ -2,9 +2,11 @@
 
 #include "../System/systemStdAfx.h"
 #include "../libdb/libdbStdAfx.h"
+
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "specific.h"
 
-#include "Vendor\DirectX\Include\DxErr.h"
+#include "Vendor\\DirectX\\Include\\DxErr.h"
 #include "NullRenderSignal.h"
 
 #define NI_DX_THROW( hr, user_text ) NI_ASSERT_TRACE( hr == D3D_OK, NStr::StrFmt("%s; Failed code: 0x%08X, error: %s description: %s", user_text, hr, DXGetErrorStringA(hr), DXGetErrorDescriptionA(hr)) );
@@ -13,3 +15,10 @@
   const char* msg = NStr::StrFmt("%s; Failed code: 0x%08X, error: %s description: %s", user_text, hr, DXGetErrorStringA(hr), DXGetErrorDescriptionA(hr)); \
   DebugTrace(msg); ShowErrorMessageAndTerminate(hr); \
 } } while(0)
+#else
+#include "../PF_GameLogic/StringExecutorBootstrap.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "../System/ported/cwfn.h"
+#include "NullRenderSignal.h"
+#endif
+#endif

@@ -1,5 +1,11 @@
 #pragma once
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "../Scene/Render/ShadowManager.h"
+
+#else
+
 #include "System/Singleton4DLL.h"
 #include "sceneconstants.h"
 #include "System/GeomMisc.h"
@@ -25,8 +31,8 @@ namespace Render
     float biasSlope;
 
 		D3DXMATRIX m_world2LightProj;
-		D3DXMATRIX m_world2Light; /// видовая матрица трансформации источника света
-		D3DXMATRIX m_light2World; /// инверсированная видовая матрица трансформации источника света
+		D3DXMATRIX m_world2Light; /// ГўГЁГ¤Г®ГўГ Гї Г¬Г ГІГ°ГЁГ¶Г  ГІГ°Г Г­Г±ГґГ®Г°Г¬Г Г¶ГЁГЁ ГЁГ±ГІГ®Г·Г­ГЁГЄГ  Г±ГўГҐГІГ 
+		D3DXMATRIX m_light2World; /// ГЁГ­ГўГҐГ°Г±ГЁГ°Г®ГўГ Г­Г­Г Гї ГўГЁГ¤Г®ГўГ Гї Г¬Г ГІГ°ГЁГ¶Г  ГІГ°Г Г­Г±ГґГ®Г°Г¬Г Г¶ГЁГЁ ГЁГ±ГІГ®Г·Г­ГЁГЄГ  Г±ГўГҐГІГ 
 		D3DXMATRIX m_light2LightProj;
 		D3DXVECTOR3 m_lightDirWS;
 		D3DXMATRIX m_world2View, m_view2Proj;
@@ -128,3 +134,5 @@ namespace Render
 	};
 
 };//namespace Render
+
+#endif

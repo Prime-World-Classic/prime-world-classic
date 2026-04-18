@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef VISUAL_CUTTED
+
+#include "../Game/PF/Audit/ClientStubs.h"
+
+#else
+
 #include "../Scene/SceneObject.h"
 #include "../Scene/SceneObjectUtils.h"
 #include "../Scene/CollisionHull.h"
@@ -178,3 +184,5 @@ inline bool PFClientLogicObject::DoCheckVisible(const bool value) const
 }
 
 }
+
+#endif

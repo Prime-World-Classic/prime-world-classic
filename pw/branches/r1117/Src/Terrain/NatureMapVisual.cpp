@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "NatureMapVisual.h"
 #include "../Render/debugrenderer.h"
+#include "../Render/TextureManager.h"
+#include "../Render/renderer.h"
 #include "../Render/smartrenderer.h"
 #include "../Render/batch.h"
 #include "../Render/GlobalMasks.h"
@@ -19,6 +21,18 @@ static NDebug::PerformanceDebugVar profile_Changed("NMV::OnNatureChanged", "Terr
 
 namespace {
   DECLARE_NULL_RENDER_FLAG
+
+#if defined(PW_LINUX_NULL_RENDER)
+  inline IDirect3DIndexBuffer9* GetNatureMapIndexBuffer(const Render::DeviceLostWrapper<Render::DXIndexBufferDynamicRef>& buffer)
+  {
+    return Render::Get(static_cast<const Render::DXIndexBufferDynamicRef&>(buffer));
+  }
+#else
+  inline IDirect3DIndexBuffer9* GetNatureMapIndexBuffer(const DXIndexBufferDynamicRef::Wrapped& buffer)
+  {
+    return ::Get(buffer);
+  }
+#endif
 
   struct NatureMapVertex
   {
@@ -206,7 +220,7 @@ bool NatureMapVisual::CreateRenderStructures()
 
   // create index buffer
   pIndexBuffer.Resize( GetNumIndices() * sizeof(unsigned) );
-  NI_VERIFY(Get(pIndexBuffer), "Unable to create index buffer", return false);
+  NI_VERIFY(GetNatureMapIndexBuffer(pIndexBuffer), "Unable to create index buffer", return false);
 
   // create vertex format declaration
   Render::VertexFormatDescriptor formatDescriptor;
@@ -272,9 +286,9 @@ void NatureMapVisual::FillRenderBuffers()
     pVertexBuffer->Unlock();
   }
 
-  if( ::Get(pIndexBuffer) )
+  if( GetNatureMapIndexBuffer(pIndexBuffer) )
   {
-    unsigned* pIndices = Render::LockIB(Get(pIndexBuffer), D3DLOCK_DISCARD);
+    unsigned* pIndices = Render::LockIB(GetNatureMapIndexBuffer(pIndexBuffer), D3DLOCK_DISCARD);
     unsigned indices[Primitive::INDICES_PER_ELEMENT] = { 0, 5, 4, 0, 4, 1, 1, 4, 3, 1, 3, 2 };
     for(unsigned i = 0, vOffset = 0, iOffset = 0; i != Primitive::NUM_HEXES_SUPPORTED;
         ++i, vOffset += numHexVertices, iOffset += Primitive::INDICES_PER_ELEMENT)
@@ -366,7 +380,7 @@ bool NatureMapVisual::OnRender()
 
       Render::SmartRenderer::BindRenderTarget(natureMap);
       Render::SmartRenderer::BindVertexDeclaration(pVertexFormat);
-      Render::SmartRenderer::BindIndexBuffer(pIndexBuffer);
+      Render::SmartRenderer::BindIndexBuffer(GetNatureMapIndexBuffer(pIndexBuffer));
       Render::SmartRenderer::BindVertexBuffer(0, Get(pVertexBuffer), sizeof(NatureMapVertex));
 
       doBloor = true;

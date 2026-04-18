@@ -4,6 +4,12 @@
 #include "../System/staticstring.h"
 #include "../System/staticvector.h"
 
+#if defined(NV_LINUX_PLATFORM)
+  #define MESH_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define MESH_ALIGN16 __declspec(align(16))
+#endif
+
 namespace Signs
 {
 	static const unsigned statSIGN = 0x54415458;
@@ -165,7 +171,7 @@ struct MayaVertexStrideNew
 };
 
 
-__declspec(align(16)) struct H6SkeletalMeshVertexStride
+struct MESH_ALIGN16 H6SkeletalMeshVertexStride
 {
 	CVec3 position;
 	CVec3 tangent;
@@ -176,6 +182,8 @@ __declspec(align(16)) struct H6SkeletalMeshVertexStride
 	float weights[8];
 	unsigned char indices[8];
 };
+
+#undef MESH_ALIGN16
 
 
 

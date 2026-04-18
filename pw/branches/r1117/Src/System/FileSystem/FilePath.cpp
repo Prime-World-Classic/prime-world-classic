@@ -449,6 +449,7 @@ int CFilePath::operator&( IBinSaver &saver )
 
 void SetModuleCurrentDir()
 {
+#if defined( NV_WIN_PLATFORM )
     TCHAR szFileName[MAX_PATH];
     GetModuleFileName( NULL, szFileName, MAX_PATH );
 
@@ -457,6 +458,22 @@ void SetModuleCurrentDir()
     std::string szDirName = path.substr(0, n);
 
     SetCurrentDirectory(szDirName.c_str());
+#elif defined( NV_LINUX_PLATFORM )
+    char szFileName[PATH_MAX] = {0};
+    const ssize_t size = readlink("/proc/self/exe", szFileName, sizeof(szFileName) - 1);
+    if ( size <= 0 )
+      return;
+
+    szFileName[size] = 0;
+
+    std::string path(szFileName);
+    std::string::size_type n = path.rfind(NFile::FILE_SEPARATOR);
+    if ( n == std::string::npos )
+      return;
+
+    std::string szDirName = path.substr(0, n);
+    SetCurDiskDirectory(szDirName.c_str());
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

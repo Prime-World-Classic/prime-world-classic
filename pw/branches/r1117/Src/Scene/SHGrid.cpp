@@ -4,6 +4,7 @@
 #include "../Render/dipdescriptor.h"
 #include "../Render/GlobalMasks.h"
 #include "../Render/MaterialSpec.h"
+#include "../Render/renderresourcemanager.h"
 
 #include "Scene.hpp"
 

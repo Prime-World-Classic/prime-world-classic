@@ -1,6 +1,129 @@
 #include "stdafx.h"
 #include "ImmediateRenderer.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+ImmRenderer* ImmRenderer::s_pInstance = NULL;
+
+namespace
+{
+
+DXPixelShaderRef const& GetNullPixelShader()
+{
+  static DXPixelShaderRef shader;
+  return shader;
+}
+
+DXVertexShaderRef const& GetNullVertexShader()
+{
+  static DXVertexShaderRef shader;
+  return shader;
+}
+
+} // anonymous namespace
+
+void ImmRenderer::BasicParams::BindMaterial(const CTRect<float>* rect /*= NULL*/) const
+{
+  (void)rect;
+}
+
+void ImmRenderer::Params::BindMaterial(const CTRect<float>* rect /*= NULL*/) const
+{
+  ImmRenderer::BasicParams::BindMaterial(rect);
+}
+
+void ImmRenderer::ParamsVP::SetUV()
+{
+  uvRect.Set(0.0f, 0.0f, 1.0f, 1.0f);
+}
+
+void ImmRenderer::MaterialParams::BindMaterial(const CTRect<float>* rect) const
+{
+  ImmRenderer::BasicParams::BindMaterial(rect);
+}
+
+void ImmRenderer::Init()
+{
+  NI_ASSERT(s_pInstance == NULL, "ImmRenderer already inited");
+  s_pInstance = new ImmRenderer();
+}
+
+void ImmRenderer::Term()
+{
+  SAFE_DELETE(s_pInstance);
+}
+
+ImmRenderer* ImmRenderer::Get()
+{
+  return s_pInstance;
+}
+
+ImmRenderer::ImmRenderer()
+{
+}
+
+ImmRenderer::~ImmRenderer()
+{
+}
+
+void ImmRenderer::RenderScreenQuad(const CTPoint<float> poly[4], const BasicParams& params)
+{
+  (void)poly;
+  params.BindMaterial();
+}
+
+void ImmRenderer::RenderScreenQuad(CTRect<float> const& rect, BasicParams const& params)
+{
+  params.BindMaterial(&rect);
+}
+
+void ImmRenderer::RenderScreenQuad(CTRect<float> const& rect, BasicParams const& params, DXVertexDeclarationRef const& _pVDecl)
+{
+  (void)_pVDecl;
+  params.BindMaterial(&rect);
+}
+
+void ImmRenderer::RenderScreenQuad(CTRect<int> const& rect, BasicParams const& params)
+{
+  (void)rect;
+  params.BindMaterial();
+}
+
+void ImmRenderer::RenderScreenQuad(BasicParams const& params)
+{
+  params.BindMaterial();
+}
+
+void ImmRenderer::RenderScreenQuad(BasicParams const& params, DXVertexDeclarationRef const& _pVDecl)
+{
+  (void)_pVDecl;
+  params.BindMaterial();
+}
+
+DXPixelShaderRef const& ImmRenderer::GetPShader(char const* pName)
+{
+  (void)pName;
+  return GetNullPixelShader();
+}
+
+DXVertexShaderRef const& ImmRenderer::GetVShader(char const* pName)
+{
+  (void)pName;
+  return GetNullVertexShader();
+}
+
+void ImmRenderer::ReloadShaders()
+{
+  shaderPCache.clear();
+  shaderVCache.clear();
+}
+
+} // namespace Render
+
+#else
 
 #include "primitive.h"
 #include "renderresourcemanager.h"
@@ -280,3 +403,5 @@ void ImmRenderer::ReloadShaders()
 }
 
 }; // namespace Render
+
+#endif

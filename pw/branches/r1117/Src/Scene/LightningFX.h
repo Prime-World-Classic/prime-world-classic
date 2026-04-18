@@ -3,6 +3,7 @@
 #define _LIGHTNINGFX_H_
 
 #include "../System/ScopedPtr.h"
+#include "DBScene.h"
 #include "../Render/primitive.h"
 #include "../Render/RenderComponent.h"
 

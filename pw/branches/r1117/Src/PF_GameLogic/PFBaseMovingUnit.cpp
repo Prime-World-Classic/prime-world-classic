@@ -18,12 +18,16 @@
 
 #if defined(VISUAL_CUTTED)
 #include "../Game/PF/Audit/ClientStubs.h"
-#endif
-
+#else
 #include "PFClientBaseMovingUnit.h"
 #include "PFClientCreature.h"
+#endif
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "ClientVisibilityHelper_linuxbootstrap.h"
+#else
 #include "ClientVisibilityHelper.h"
+#endif
 
 namespace
 {
@@ -2297,6 +2301,7 @@ bool PFBaseMovingUnit::TeleportTo( const CVec2& target, bool instantMove /* = tr
     NotifyDispatchesOnTargetTeleport();
   }
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   if (NGameX::AdventureScreen * adventureScreen = NGameX::AdventureScreen::Instance())
   {
     if ( adventureScreen->IsObservingObject( this ) )
@@ -2304,6 +2309,7 @@ bool PFBaseMovingUnit::TeleportTo( const CVec2& target, bool instantMove /* = tr
       adventureScreen->MoveCameraTo( this, false );
     }
   }
+#endif
 
 	return result;
 }

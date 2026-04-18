@@ -2,7 +2,11 @@
 
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientFlagpole.h"
+#else
+#include "../Game/PF/Audit/ClientStubs.h"
+#endif
 #include "PFFlagpole.h"
 #include "PFTargetSelector.h"
 #include "PFWorldNatureMap.h"
@@ -10,7 +14,9 @@
 #include "SessionEventType.h"
 #include "PFStatistics.h"
 #include "PFMaleHero.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientHero.h"
+#endif
 
 
 namespace NWorld

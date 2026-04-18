@@ -1,5 +1,20 @@
 #include "stdafx.h"
 #include "mesh.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace Render
+{
+
+void Mesh::LoadFromFile( const nstl::string& file )
+{
+  (void)file;
+}
+
+}; // namespace Render
+
+#else
+
 #include "renderresourcemanager.h"
 
 #include "smartrenderer.h"
@@ -17,7 +32,7 @@ struct StaticMeshFileHeader
 };
 
 /*
-// вер, инд
+// РІРµСЂ, РёРЅРґ
 struct StaticMeshVertex
 {
 	float posX;
@@ -296,3 +311,5 @@ void Mesh::LoadFromFile(const nstl::string& file)
 
 }
 }; // namespace Render
+
+#endif

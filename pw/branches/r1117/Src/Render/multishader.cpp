@@ -1,10 +1,12 @@
 #include "stdafx.h"
 #include "multishader.h"
 #include "ImmediateRenderer.h"
+#include "renderer.h"
 
 #include "System/InlineProfiler.h"
 #include "System/FileSystem/FileStream.h"
 #include "System/FileSystem/FileSystem.h"
+#include "MemoryLib/newdelete.h"
 #include "shadercompiler.h"
 
 NDebug::PerformanceDebugVar render_TranslationTime( "ShaderTransTime", "RenderOffline", 100, 100, false );
@@ -38,7 +40,7 @@ namespace Render
 		bool MultiShader::OpenFile(  )
 		{
 			char buf[256];
-			sprintf_s( buf, "%s.shd%s", fileName.c_str(), GetRenderer()->GetCaps().bSupportSM30 ? "" : "2" );
+			snprintf( buf, sizeof(buf), "%s.shd%s", fileName.c_str(), GetRenderer()->GetCaps().bSupportSM30 ? "" : "2" );
 
 			CObj<Stream> pShaderFileStream = RootFileSystem::OpenFile( buf, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
 			NI_VERIFY( pShaderFileStream && pShaderFileStream->IsOk(), NStr::StrFmt( "Cannot open obj file: %s", buf), pairs.resize(1); return false; );
@@ -120,4 +122,3 @@ namespace Render
 		}
 	};
 };
-
