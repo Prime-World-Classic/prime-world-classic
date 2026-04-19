@@ -2,8 +2,11 @@
 #include "LoadingStatusHandler.h"
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "Network/LoginTypes.h"
-#include "Game/PF/Client/LobbyPvx/LobbyClientBase.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PF_GameLogic/StringExecutorBootstrap.h"
+#else
 #include "PF_GameLogic/StringExecutor.h"
+#endif
 #include "PF_GameLogic/DBStats.h"
 #include "LoadingFlashInterface.h"
 

@@ -34,6 +34,12 @@
 #include "PF_GameLogic/DBVisualRoots.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#define PW_LINUX_DB_BOOTSTRAP 1
+#include "LoadingFlashInterface.h"
+#include "LoadingHeroes.h"
+#include "LoadingScreenLogic.h"
+#include "LoadingStatusHandler.h"
+#undef PW_LINUX_DB_BOOTSTRAP
 #include "UI/DBUI.h"
 #include "libdb/Db.h"
 #include "Version.h"
@@ -720,8 +726,12 @@ struct LinuxLoadingUiState
   size_t currentLocaleIndex;
   size_t enemyLocaleIndex;
   size_t modeIndex;
+  size_t runtimeEventIndex;
   size_t changeCount;
   std::string source;
+  std::string runtimeEvent;
+  std::string runtimeStatusKey;
+  std::string runtimeStatusText;
 
   LinuxLoadingUiState()
     : statusIndex(0),
@@ -729,11 +739,101 @@ struct LinuxLoadingUiState
       currentLocaleIndex(0),
       enemyLocaleIndex(0),
       modeIndex(0),
+      runtimeEventIndex(0),
       changeCount(0),
       source("default")
   {
   }
 };
+
+enum LinuxLoadingRuntimeEventKind
+{
+  LINUX_LOADING_RUNTIME_LOGIN,
+  LINUX_LOADING_RUNTIME_GAMESTAT,
+  LINUX_LOADING_RUNTIME_LOBBY,
+  LINUX_LOADING_RUNTIME_INGAME,
+  LINUX_LOADING_RUNTIME_REPLAY
+};
+
+struct LinuxLoadingRuntimeEvent
+{
+  LinuxLoadingRuntimeEventKind kind;
+  int code;
+  const char* label;
+};
+
+struct LinuxLoadingRuntimeDriver
+{
+  bool ready;
+  Strong<NGameX::LoadingStatusHandler> handler;
+  Strong<Game::LoadingFlashInterface> flashInterface;
+  std::vector<LinuxLoadingRuntimeEvent> events;
+  std::vector<std::string> samples;
+  std::vector<std::string> warnings;
+
+  LinuxLoadingRuntimeDriver()
+    : ready(false)
+  {
+  }
+};
+
+struct LinuxLoadingRuntimeHeroEntry
+{
+  int slotId;
+  int team;
+  bool human;
+  bool leftGame;
+  bool hasPremium;
+  float progress;
+  int heroLevel;
+  int force;
+  int leagueIndex;
+  std::string playerName;
+  std::string heroTitle;
+  std::string iconPath;
+  std::string classIcon;
+
+  LinuxLoadingRuntimeHeroEntry()
+    : slotId(-1),
+      team(0),
+      human(false),
+      leftGame(false),
+      hasPremium(false),
+      progress(0.0f),
+      heroLevel(0),
+      force(0),
+      leagueIndex(0)
+  {
+  }
+};
+
+struct LinuxLoadingHeroesRuntimePreview
+{
+  bool ready;
+  bool spectatorMode;
+  int ourHeroId;
+  size_t humanCount;
+  size_t botCount;
+  size_t disconnectedCount;
+  std::vector<LinuxLoadingRuntimeHeroEntry> heroes;
+  std::vector<std::string> samples;
+  std::vector<std::string> warnings;
+
+  LinuxLoadingHeroesRuntimePreview()
+    : ready(false),
+      spectatorMode(false),
+      ourHeroId(-1),
+      humanCount(0),
+      botCount(0),
+      disconnectedCount(0)
+  {
+  }
+};
+
+std::string ToStdString(const nstl::string& value);
+NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource();
+template <typename T>
+void AppendSampleValue(std::vector<std::string>* samples, const T& value, size_t limit);
 
 struct LinuxLoadingArtwork
 {
@@ -4308,6 +4408,132 @@ void InitializeLoadingUiState(
   }
 }
 
+void DispatchLoadingRuntimeEvent(
+  NGameX::LoadingStatusHandler* handler,
+  const LinuxLoadingRuntimeEvent& event
+)
+{
+  if (!handler)
+  {
+    return;
+  }
+
+  switch (event.kind)
+  {
+    case LINUX_LOADING_RUNTIME_LOGIN:
+      handler->OnLoginStatus(static_cast<Login::ELoginResult::Enum>(event.code));
+      break;
+
+    case LINUX_LOADING_RUNTIME_GAMESTAT:
+      handler->OnGameStatStatus(static_cast<Game::EGameStatStatus::Enum>(event.code));
+      break;
+
+    case LINUX_LOADING_RUNTIME_LOBBY:
+      handler->OnLobbyStatus(static_cast<lobby::EClientStatus::Enum>(event.code));
+      break;
+
+    case LINUX_LOADING_RUNTIME_INGAME:
+      handler->OnLobbyInGameStatus(static_cast<lobby::EOperationResult::Enum>(event.code));
+      break;
+
+    case LINUX_LOADING_RUNTIME_REPLAY:
+      handler->OnReplayStatus(static_cast<Game::EReplayStatus::Enum>(event.code));
+      break;
+  }
+}
+
+void SyncLoadingRuntimeState(
+  const LinuxLoadingUiPreview& preview,
+  LinuxLoadingRuntimeDriver* driver,
+  LinuxLoadingUiState* state,
+  size_t eventIndex,
+  const char* source
+)
+{
+  if (!driver || !driver->ready || !state || driver->events.empty())
+  {
+    return;
+  }
+
+  if (eventIndex >= driver->events.size())
+  {
+    eventIndex %= driver->events.size();
+  }
+
+  state->runtimeEventIndex = eventIndex;
+  const LinuxLoadingRuntimeEvent& event = driver->events[eventIndex];
+  DispatchLoadingRuntimeEvent(driver->handler, event);
+
+  state->runtimeEvent = event.label ? event.label : "";
+  state->runtimeStatusKey = ToStdString(driver->handler->GetLastStatusId());
+  state->runtimeStatusText = SanitizeLocalizedText(
+    ToStdString(NStr::ToMBCS(driver->flashInterface->GetLoadingStatusText())));
+  state->source = source ? source : "runtime";
+
+  if (!state->runtimeStatusKey.empty())
+  {
+    const size_t runtimeStatusIndex = FindLoadingStatusIndex(preview, state->runtimeStatusKey.c_str());
+    if (runtimeStatusIndex != static_cast<size_t>(-1))
+    {
+      state->statusIndex = runtimeStatusIndex;
+      if (runtimeStatusIndex < preview.statuses.size() && !preview.statuses[runtimeStatusIndex].text.empty())
+      {
+        state->runtimeStatusText = preview.statuses[runtimeStatusIndex].text;
+      }
+    }
+  }
+}
+
+void InitializeLoadingRuntimeDriver(
+  const LinuxLoadingUiPreview& preview,
+  LinuxLoadingRuntimeDriver* driver,
+  LinuxLoadingUiState* state
+)
+{
+  if (!driver || !state)
+  {
+    return;
+  }
+
+  *driver = LinuxLoadingRuntimeDriver();
+
+  NDb::Ptr<NDb::DBUIData> uiData = ResolveLoadingUiDataResource();
+  if (!uiData)
+  {
+    driver->warnings.push_back("Loading runtime skipped because UI/Content/_.UIDT.xdb was not resolved");
+    return;
+  }
+
+  driver->flashInterface = new Game::LoadingFlashInterface(0, "LinuxBootstrapLoading");
+  driver->handler = new NGameX::LoadingStatusHandler(uiData);
+  driver->handler->SetFlashInterface(driver->flashInterface);
+
+  static const LinuxLoadingRuntimeEvent kRuntimeEvents[] =
+  {
+    { LINUX_LOADING_RUNTIME_LOGIN, Login::ELoginResult::NoResult, "login: connecting" },
+    { LINUX_LOADING_RUNTIME_LOGIN, Login::ELoginResult::NoConnection, "login: no connection" },
+    { LINUX_LOADING_RUNTIME_LOGIN, Login::ELoginResult::AccessDenied, "login: access denied" },
+    { LINUX_LOADING_RUNTIME_GAMESTAT, Game::EGameStatStatus::Waiting, "gamestat: waiting" },
+    { LINUX_LOADING_RUNTIME_GAMESTAT, Game::EGameStatStatus::Failed, "gamestat: failed" },
+    { LINUX_LOADING_RUNTIME_LOBBY, lobby::EClientStatus::WaitingEntrance, "lobby: connecting" },
+    { LINUX_LOADING_RUNTIME_LOBBY, lobby::EClientStatus::RequestingServerInstance, "lobby: waiting server" },
+    { LINUX_LOADING_RUNTIME_LOBBY, lobby::EClientStatus::Connected, "lobby: connected" },
+    { LINUX_LOADING_RUNTIME_INGAME, lobby::EOperationResult::InProgress, "ingame: entering" },
+    { LINUX_LOADING_RUNTIME_INGAME, lobby::EOperationResult::Ok, "ingame: ready" },
+    { LINUX_LOADING_RUNTIME_INGAME, lobby::EOperationResult::RevisionDiffers, "ingame: wrong revision" },
+    { LINUX_LOADING_RUNTIME_REPLAY, Game::EReplayStatus::WrongVersion, "replay: wrong version" }
+  };
+
+  driver->events.assign(kRuntimeEvents, kRuntimeEvents + ARRAY_SIZE(kRuntimeEvents));
+  for (size_t i = 0; i < driver->events.size(); ++i)
+  {
+    driver->samples.push_back(driver->events[i].label ? driver->events[i].label : "<unnamed>");
+  }
+
+  driver->ready = true;
+  SyncLoadingRuntimeState(preview, driver, state, 0, "runtime-default");
+}
+
 std::string NormalizeMapSelector(std::string value)
 {
   value = TrimAscii(value);
@@ -4987,6 +5213,21 @@ int ConvertCoreTeamToDisplayTeam(NCore::ETeam::Enum team)
   }
 }
 
+NCore::ETeam::Enum ConvertDisplayTeamToCoreTeam(int team)
+{
+  switch (team)
+  {
+    case 1:
+      return NCore::ETeam::Team1;
+
+    case 2:
+      return NCore::ETeam::Team2;
+
+    default:
+      return static_cast<NCore::ETeam::Enum>(0);
+  }
+}
+
 int ConvertDbTeamToDisplayTeam(NDb::ETeamID team)
 {
   switch (team)
@@ -5030,6 +5271,190 @@ wstring BuildLinuxPreviewNickname(const LinuxSessionPreview& sessionPreview, boo
   }
 
   return NStr::StrFmtW(L"Bot %lu", static_cast<unsigned long>(botIndex + 1));
+}
+
+const LinuxEngineMapStartSlot* FindEngineMapStartSlotByUserId(
+  const LinuxEngineMapStartPreview& preview,
+  int userId
+)
+{
+  for (size_t i = 0; i < preview.slots.size(); ++i)
+  {
+    if (preview.slots[i].filled && preview.slots[i].userId == userId)
+    {
+      return &preview.slots[i];
+    }
+  }
+
+  return 0;
+}
+
+void ProbeLoadingHeroesRuntimePreview(
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxEngineMapStartPreview& engineMapStartPreview,
+  LinuxLoadingHeroesRuntimePreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  *preview = LinuxLoadingHeroesRuntimePreview();
+
+  if (!engineMapStartPreview.ready || engineMapStartPreview.slots.empty())
+  {
+    preview->warnings.push_back("Loading heroes runtime skipped because engine map start preview is unavailable");
+    return;
+  }
+
+  NDb::Ptr<NDb::SessionRoot> sessionRoot = NDb::SessionRoot::GetRoot();
+  if (!IsValid(sessionRoot) || !IsValid(sessionRoot->logicRoot) || !IsValid(sessionRoot->logicRoot->heroes))
+  {
+    preview->warnings.push_back("Loading heroes runtime skipped because SessionRoot heroes DB is unavailable");
+    return;
+  }
+
+  NDb::Ptr<NDb::AdvMapDescription> advMapDescription;
+  if (!selectedMapPreview.descriptor.empty())
+  {
+    advMapDescription = NDb::Get<NDb::AdvMapDescription>(NDb::DBID(selectedMapPreview.descriptor.c_str()));
+  }
+
+  Strong<Game::LoadingFlashInterface> flashInterface = new Game::LoadingFlashInterface(0, "LinuxBootstrapLoadingHeroes");
+  Strong<Game::LoadingHeroes> loadingHeroes = new Game::LoadingHeroes(flashInterface, sessionRoot->logicRoot->heroes);
+  std::map<int, const LinuxEngineMapStartSlot*> runtimeSlots;
+  if (IsValid(advMapDescription))
+  {
+    loadingHeroes->SetMapDescription(advMapDescription);
+  }
+  else
+  {
+    preview->warnings.push_back("Loading heroes runtime could not resolve selected map descriptor");
+  }
+
+  bool ourHeroAssigned = false;
+  size_t botIndex = 0;
+  for (size_t i = 0; i < engineMapStartPreview.slots.size(); ++i)
+  {
+    const LinuxEngineMapStartSlot& slot = engineMapStartPreview.slots[i];
+    if (!slot.filled)
+    {
+      continue;
+    }
+
+    const int runtimeUserId =
+      slot.userId != -1 ? slot.userId :
+      (slot.playerId != -1 ? slot.playerId : -1000 - static_cast<int>(i));
+    const NCore::ETeam::Enum team = ConvertDisplayTeamToCoreTeam(slot.team);
+    const NCore::ETeam::Enum originalTeam = ConvertDisplayTeamToCoreTeam(slot.originalTeam ? slot.originalTeam : slot.team);
+
+    if (slot.human && !ourHeroAssigned)
+    {
+      loadingHeroes->SetOurUserId(runtimeUserId, team, originalTeam);
+      ourHeroAssigned = true;
+    }
+
+    runtimeSlots[runtimeUserId] = &slot;
+
+    Game::HeroInfo heroInfo;
+    const string heroSkin(slot.heroSkin.c_str());
+    heroInfo.isBot = !slot.human;
+    heroInfo.partyId = 0;
+    heroInfo.team = team;
+    heroInfo.originalTeam = originalTeam;
+    heroInfo.skinId = heroSkin;
+    heroInfo.heroId = slot.heroChecksum;
+    heroInfo.userId = runtimeUserId;
+    heroInfo.isAnimatedAvatar = true;
+
+    wstring playerName =
+      !slot.nickname.empty() ?
+        NStr::ToUnicode(string(slot.nickname.c_str())) :
+        BuildLinuxPreviewNickname(sessionPreview, slot.human, botIndex);
+    string flagIcon;
+    wstring flagTooltip;
+    loadingHeroes->AddUser(
+      runtimeUserId,
+      playerName,
+      true,
+      team,
+      originalTeam,
+      heroInfo,
+      flagIcon,
+      flagTooltip,
+      heroSkin,
+      0);
+
+    if (!slot.human)
+    {
+      loadingHeroes->AddBot(runtimeUserId);
+      ++botIndex;
+    }
+
+    const float progress = slot.human ? 0.35f : std::min(0.95f, 0.45f + 0.08f * static_cast<float>(botIndex));
+    loadingHeroes->SetPlayerProgress(runtimeUserId, progress);
+  }
+
+  preview->ourHeroId = flashInterface->GetOurHeroId();
+  preview->spectatorMode = flashInterface->IsSpectatorMode();
+
+  const vector<Game::LoadingFlashHeroState>& capturedHeroes = flashInterface->GetHeroes();
+  for (size_t i = 0; i < capturedHeroes.size(); ++i)
+  {
+    const Game::LoadingFlashHeroState& captured = capturedHeroes[i];
+    LinuxLoadingRuntimeHeroEntry entry;
+    entry.slotId = captured.slotId;
+    entry.progress = captured.loadProgress / 100.0f;
+    entry.leftGame = captured.isLeftGame;
+    entry.hasPremium = captured.hasPremium;
+    entry.heroLevel = captured.heroLevel;
+    entry.force = captured.force;
+    entry.leagueIndex = captured.leagueIndex;
+    entry.playerName = ToStdString(NStr::ToMBCS(captured.playerName));
+    entry.iconPath = ToStdString(captured.iconPath);
+    entry.classIcon = ToStdString(captured.classIcon);
+
+    std::map<int, const LinuxEngineMapStartSlot*>::const_iterator runtimeSlot = runtimeSlots.find(captured.slotId);
+    if (runtimeSlot != runtimeSlots.end() && runtimeSlot->second)
+    {
+      entry.team = runtimeSlot->second->team;
+      entry.human = runtimeSlot->second->human;
+      entry.heroTitle = runtimeSlot->second->heroTitle;
+    }
+
+    if (entry.human)
+    {
+      ++preview->humanCount;
+    }
+    else
+    {
+      ++preview->botCount;
+    }
+    if (entry.leftGame)
+    {
+      ++preview->disconnectedCount;
+    }
+
+    preview->heroes.push_back(entry);
+
+    std::string sample =
+      (entry.playerName.empty() ? std::string("<anon>") : entry.playerName) + " / " +
+      (entry.heroTitle.empty() ? std::string("<hero unresolved>") : entry.heroTitle) + " / " +
+      NStr::StrFmt("%d%%", static_cast<int>(entry.progress * 100.0f + 0.5f));
+    if (entry.leftGame)
+    {
+      sample += " / left";
+    }
+    AppendSampleValue(&preview->samples, sample, 6);
+  }
+
+  preview->ready = !preview->heroes.empty();
+  if (!preview->ready)
+  {
+    preview->warnings.push_back("Loading heroes runtime produced no hero slots");
+  }
 }
 
 const char* DescribeArtworkMode(int mode)
@@ -8425,6 +8850,27 @@ void ProbeLoadingUiPreview(
   }
 }
 
+NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource()
+{
+  static const char* kUiDataCandidates[] =
+  {
+    "/UI/Content/_.UIDT",
+    "UI/Content/_.UIDT",
+    "UI/Content/_.UIDT.xdb"
+  };
+
+  for (size_t i = 0; i < ARRAY_SIZE(kUiDataCandidates); ++i)
+  {
+    NDb::Ptr<NDb::DBUIData> uiData = NDb::Get<NDb::DBUIData>(NDb::DBID(kUiDataCandidates[i]));
+    if (uiData)
+    {
+      return uiData;
+    }
+  }
+
+  return NDb::Ptr<NDb::DBUIData>();
+}
+
 void ProbeSessionRootPreview(
   const LinuxRootFileSystemPreview& rootFileSystemPreview,
   LinuxSessionRootPreview* preview
@@ -9636,6 +10082,7 @@ void StepWrappedSelection(const std::vector<T>& items, size_t* index, int delta)
 void UpdateLoadingUiState(
   const LinuxInputState& inputState,
   const LinuxLoadingUiPreview& preview,
+  LinuxLoadingRuntimeDriver* runtimeDriver,
   LinuxLoadingUiState* state
 )
 {
@@ -9657,7 +10104,13 @@ void UpdateLoadingUiState(
     {
       case XK_s:
       case XK_S:
-        if (!preview.statuses.empty())
+        if (runtimeDriver && runtimeDriver->ready && !runtimeDriver->events.empty())
+        {
+          const size_t nextEventIndex = (state->runtimeEventIndex + 1) % runtimeDriver->events.size();
+          SyncLoadingRuntimeState(preview, runtimeDriver, state, nextEventIndex, "keyboard-runtime-status");
+          changed = true;
+        }
+        else if (!preview.statuses.empty())
         {
           StepWrappedSelection(preview.statuses, &state->statusIndex, 1);
           state->source = "keyboard-status";
@@ -9987,6 +10440,8 @@ std::vector<std::string> BuildOverlayLines(
   const LinuxContentProbe& contentProbe,
   const LinuxLoadingScreenPreview& loadingPreview,
   const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
+  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
   const LinuxLoadingUiState& loadingUiState,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
@@ -10771,6 +11226,32 @@ std::vector<std::string> BuildOverlayLines(
         TruncateForOverlay(JoinPreviewSamples(loadingUiPreview.statusSamples), 84));
     }
 
+    if (!loadingRuntimeDriver.samples.empty())
+    {
+      lines.push_back("Loading runtime samples: " +
+        TruncateForOverlay(JoinPreviewSamples(loadingRuntimeDriver.samples), 84));
+    }
+
+    if (loadingHeroesRuntimePreview.ready)
+    {
+      snprintf(
+        buffer,
+        sizeof(buffer),
+        "Loading runtime heroes: count=%lu humans=%lu bots=%lu disconnected=%lu",
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.heroes.size()),
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.humanCount),
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.botCount),
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount)
+      );
+      lines.push_back(buffer);
+    }
+
+    if (!loadingHeroesRuntimePreview.samples.empty())
+    {
+      lines.push_back("Loading hero samples: " +
+        TruncateForOverlay(JoinPreviewSamples(loadingHeroesRuntimePreview.samples), 84));
+    }
+
     if (!loadingUiPreview.localeSamples.empty())
     {
       lines.push_back("Loading locales: " +
@@ -10789,6 +11270,17 @@ std::vector<std::string> BuildOverlayLines(
       lines.push_back(
         "Loading status: " + status.key + " -> " +
         TruncateForOverlay(status.text.empty() ? "<empty>" : status.text, 84)
+      );
+    }
+
+    if (!loadingUiState.runtimeEvent.empty())
+    {
+      lines.push_back(
+        "Loading runtime: " + loadingUiState.runtimeEvent + " -> " +
+        TruncateForOverlay(
+          loadingUiState.runtimeStatusText.empty() ? "<empty>" : loadingUiState.runtimeStatusText,
+          84
+        )
       );
     }
 
@@ -10834,6 +11326,16 @@ std::vector<std::string> BuildOverlayLines(
     }
 
     lines.push_back("Loading controls: S status | T tip | L current locale | E enemy locale | M mode");
+  }
+
+  for (size_t i = 0; i < loadingRuntimeDriver.warnings.size(); ++i)
+  {
+    lines.push_back("Loading runtime warning: " + loadingRuntimeDriver.warnings[i]);
+  }
+
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.warnings.size(); ++i)
+  {
+    lines.push_back("Loading heroes warning: " + loadingHeroesRuntimePreview.warnings[i]);
   }
 
   for (size_t i = 0; i < loadingUiPreview.warnings.size(); ++i)
@@ -11269,6 +11771,8 @@ void DrawWindowOverlay(
   const LinuxContentProbe& contentProbe,
   const LinuxLoadingScreenPreview& loadingPreview,
   const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
+  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
   const LinuxLoadingUiState& loadingUiState,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
@@ -11307,6 +11811,8 @@ void DrawWindowOverlay(
     contentProbe,
     loadingPreview,
     loadingUiPreview,
+    loadingRuntimeDriver,
+    loadingHeroesRuntimePreview,
     loadingUiState,
     mapCatalog,
     mapBrowserState,
@@ -11448,6 +11954,8 @@ void WriteStartupLog(
   const LinuxContentProbe& contentProbe,
   const LinuxLoadingScreenPreview& loadingPreview,
   const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
+  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
   const LinuxLoadingUiState& loadingUiState,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
@@ -11602,8 +12110,22 @@ void WriteStartupLog(
   logFile << "  loadingUiSampleTip=" << (loadingUiPreview.sampleTip.empty() ? "<none>" : loadingUiPreview.sampleTip) << "\n";
   logFile << "  loadingUiPremiumTooltip="
           << (loadingUiPreview.premiumTooltip.empty() ? "<none>" : loadingUiPreview.premiumTooltip) << "\n";
+  logFile << "  loadingRuntimeReady=" << (loadingRuntimeDriver.ready ? "yes" : "no") << "\n";
+  logFile << "  loadingHeroesRuntimeReady=" << (loadingHeroesRuntimePreview.ready ? "yes" : "no") << "\n";
+  logFile << "  loadingHeroesRuntimeCount=" << loadingHeroesRuntimePreview.heroes.size() << "\n";
+  logFile << "  loadingHeroesRuntimeHumanCount=" << loadingHeroesRuntimePreview.humanCount << "\n";
+  logFile << "  loadingHeroesRuntimeBotCount=" << loadingHeroesRuntimePreview.botCount << "\n";
+  logFile << "  loadingHeroesRuntimeDisconnectedCount=" << loadingHeroesRuntimePreview.disconnectedCount << "\n";
+  logFile << "  loadingHeroesRuntimeOurHeroId=" << loadingHeroesRuntimePreview.ourHeroId << "\n";
   logFile << "  loadingUiStateSource=" << loadingUiState.source << "\n";
   logFile << "  loadingUiStateChanges=" << loadingUiState.changeCount << "\n";
+  logFile << "  loadingUiRuntimeEventIndex=" << loadingUiState.runtimeEventIndex << "\n";
+  logFile << "  loadingUiRuntimeEvent="
+          << (loadingUiState.runtimeEvent.empty() ? "<none>" : loadingUiState.runtimeEvent) << "\n";
+  logFile << "  loadingUiRuntimeStatusKey="
+          << (loadingUiState.runtimeStatusKey.empty() ? "<none>" : loadingUiState.runtimeStatusKey) << "\n";
+  logFile << "  loadingUiRuntimeStatusText="
+          << (loadingUiState.runtimeStatusText.empty() ? "<empty>" : loadingUiState.runtimeStatusText) << "\n";
   if (!loadingUiPreview.statuses.empty() && loadingUiState.statusIndex < loadingUiPreview.statuses.size())
   {
     logFile << "  loadingUiActiveStatusKey=" << loadingUiPreview.statuses[loadingUiState.statusIndex].key << "\n";
@@ -11614,6 +12136,26 @@ void WriteStartupLog(
   if (!loadingUiPreview.tips.empty() && loadingUiState.tipIndex < loadingUiPreview.tips.size())
   {
     logFile << "  loadingUiActiveTip=" << loadingUiPreview.tips[loadingUiState.tipIndex] << "\n";
+  }
+  for (size_t i = 0; i < loadingRuntimeDriver.samples.size(); ++i)
+  {
+    logFile << "  loadingRuntimeSample[" << i << "]=" << loadingRuntimeDriver.samples[i] << "\n";
+  }
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.samples.size(); ++i)
+  {
+    logFile << "  loadingHeroesRuntimeSample[" << i << "]=" << loadingHeroesRuntimePreview.samples[i] << "\n";
+  }
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.heroes.size(); ++i)
+  {
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].slotId=" << loadingHeroesRuntimePreview.heroes[i].slotId << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].team=" << loadingHeroesRuntimePreview.heroes[i].team << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].human=" << (loadingHeroesRuntimePreview.heroes[i].human ? "yes" : "no") << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].leftGame=" << (loadingHeroesRuntimePreview.heroes[i].leftGame ? "yes" : "no") << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].progress=" << loadingHeroesRuntimePreview.heroes[i].progress << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].playerName="
+            << (loadingHeroesRuntimePreview.heroes[i].playerName.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].playerName) << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].heroTitle="
+            << (loadingHeroesRuntimePreview.heroes[i].heroTitle.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].heroTitle) << "\n";
   }
   if (!loadingUiPreview.locales.empty() && loadingUiState.currentLocaleIndex < loadingUiPreview.locales.size())
   {
@@ -12186,6 +12728,10 @@ void WriteStartupLog(
   {
     logFile << "  loadingUiWarning=" << loadingUiPreview.warnings[i] << "\n";
   }
+  for (size_t i = 0; i < loadingRuntimeDriver.warnings.size(); ++i)
+  {
+    logFile << "  loadingRuntimeWarning=" << loadingRuntimeDriver.warnings[i] << "\n";
+  }
 
   for (size_t i = 0; i < mapCatalog.featuredEntries.size(); ++i)
   {
@@ -12317,6 +12863,10 @@ void WriteStartupLog(
   for (size_t i = 0; i < engineMapStartPreview.warnings.size(); ++i)
   {
     logFile << "  engineStartWarning=" << engineMapStartPreview.warnings[i] << "\n";
+  }
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.warnings.size(); ++i)
+  {
+    logFile << "  loadingHeroesRuntimeWarning=" << loadingHeroesRuntimePreview.warnings[i] << "\n";
   }
 }
 
@@ -12499,6 +13049,8 @@ int main(int argc, char** argv)
   ProbeLoadingUiPreview(rootFileSystemPreview, &loadingUiPreview);
   LinuxLoadingUiState loadingUiState;
   InitializeLoadingUiState(contentProbe, loadingUiPreview, &loadingUiState);
+  LinuxLoadingRuntimeDriver loadingRuntimeDriver;
+  InitializeLoadingRuntimeDriver(loadingUiPreview, &loadingRuntimeDriver, &loadingUiState);
   LinuxLoadingArtwork loadingArtwork;
   LoadLoadingScreenArtwork(contentProbe, &loadingPreview, &loadingArtwork);
   LinuxMapCatalog mapCatalog;
@@ -12536,6 +13088,13 @@ int main(int argc, char** argv)
     mapBrowserState,
     localMatchPreview,
     &engineMapStartPreview
+  );
+  LinuxLoadingHeroesRuntimePreview loadingHeroesRuntimePreview;
+  ProbeLoadingHeroesRuntimePreview(
+    sessionPreview,
+    selectedMapPreview,
+    engineMapStartPreview,
+    &loadingHeroesRuntimePreview
   );
 
   char appName[256] = {0};
@@ -12592,6 +13151,8 @@ int main(int argc, char** argv)
     contentProbe,
     loadingPreview,
     loadingUiPreview,
+    loadingRuntimeDriver,
+    loadingHeroesRuntimePreview,
     loadingUiState,
     mapCatalog,
     mapBrowserState,
@@ -12701,6 +13262,14 @@ int main(int argc, char** argv)
   {
     fprintf(stdout, "Loading status samples: %s\n", JoinPreviewSamples(loadingUiPreview.statusSamples).c_str());
   }
+  if (!loadingRuntimeDriver.samples.empty())
+  {
+    fprintf(stdout, "Loading runtime samples: %s\n", JoinPreviewSamples(loadingRuntimeDriver.samples).c_str());
+  }
+  if (!loadingHeroesRuntimePreview.samples.empty())
+  {
+    fprintf(stdout, "Loading hero samples: %s\n", JoinPreviewSamples(loadingHeroesRuntimePreview.samples).c_str());
+  }
   if (!loadingUiPreview.localeSamples.empty())
   {
     fprintf(stdout, "Loading locale samples: %s\n", JoinPreviewSamples(loadingUiPreview.localeSamples).c_str());
@@ -12732,6 +13301,20 @@ int main(int argc, char** argv)
       loadingUiPreview.statuses[loadingUiState.statusIndex].text.empty() ?
         "<empty>" : loadingUiPreview.statuses[loadingUiState.statusIndex].text.c_str());
   }
+  if (!loadingUiState.runtimeEvent.empty())
+  {
+    fprintf(stdout, "Loading runtime active: %s -> %s\n",
+      loadingUiState.runtimeEvent.c_str(),
+      loadingUiState.runtimeStatusText.empty() ? "<empty>" : loadingUiState.runtimeStatusText.c_str());
+  }
+  if (loadingHeroesRuntimePreview.ready)
+  {
+    fprintf(stdout, "Loading runtime heroes: %lu total, %lu humans, %lu bots, %lu disconnected\n",
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.heroes.size()),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.humanCount),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.botCount),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount));
+  }
   if (!loadingUiPreview.tips.empty() && loadingUiState.tipIndex < loadingUiPreview.tips.size())
   {
     fprintf(stdout, "Loading tip active: %s\n", loadingUiPreview.tips[loadingUiState.tipIndex].c_str());
@@ -12760,6 +13343,14 @@ int main(int argc, char** argv)
   if (!loadingUiPreview.premiumTooltip.empty())
   {
     fprintf(stdout, "Loading premium tooltip: %s\n", loadingUiPreview.premiumTooltip.c_str());
+  }
+  for (size_t i = 0; i < loadingRuntimeDriver.warnings.size(); ++i)
+  {
+    fprintf(stdout, "Loading runtime warning: %s\n", loadingRuntimeDriver.warnings[i].c_str());
+  }
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.warnings.size(); ++i)
+  {
+    fprintf(stdout, "Loading heroes warning: %s\n", loadingHeroesRuntimePreview.warnings[i].c_str());
   }
   for (size_t i = 0; i < loadingUiPreview.warnings.size(); ++i)
   {
@@ -13018,7 +13609,7 @@ int main(int argc, char** argv)
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;
     UpdateArtworkSelectionState(inputState, &artworkState);
     UpdateMapBrowserState(inputState, mapCatalog, &mapBrowserState);
-    UpdateLoadingUiState(inputState, loadingUiPreview, &loadingUiState);
+    UpdateLoadingUiState(inputState, loadingUiPreview, &loadingRuntimeDriver, &loadingUiState);
     bool localMatchChanged = UpdateLocalMatchPreviewState(
       inputState,
       heroCatalog,
@@ -13065,6 +13656,12 @@ int main(int argc, char** argv)
         localMatchPreview,
         &engineMapStartPreview
       );
+      ProbeLoadingHeroesRuntimePreview(
+        sessionPreview,
+        selectedMapPreview,
+        engineMapStartPreview,
+        &loadingHeroesRuntimePreview
+      );
     }
 
     if (previousSelectedIndex != mapBrowserState.selectedIndex ||
@@ -13105,6 +13702,8 @@ int main(int argc, char** argv)
       contentProbe,
       loadingPreview,
       loadingUiPreview,
+      loadingRuntimeDriver,
+      loadingHeroesRuntimePreview,
       loadingUiState,
       mapCatalog,
       mapBrowserState,

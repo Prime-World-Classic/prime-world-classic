@@ -1,7 +1,7 @@
 #ifndef REMOTESESSIONDEBUGVARS_H_INCLUDED
 #define REMOTESESSIONDEBUGVARS_H_INCLUDED
 
-#include "server/lobbypvx/commontypes.h"
+#include "Server/LobbyPvx/CommonTypes.h"
 
 namespace StatisticService
 {

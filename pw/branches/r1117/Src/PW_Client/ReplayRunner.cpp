@@ -2,6 +2,125 @@
 
 #include "ReplayRunner.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+namespace Game
+{
+  const float ReplayRunner::rForcedStepTime = 0.025f;
+
+  ReplayRunner::ReplayRunner( const string& _replayFileName,
+                              NWorld::IMapCollection * _mapCollection )
+    : LoadingScreen( "", "", true, false )
+    , replayFileName( _replayFileName )
+    , mapCollection( _mapCollection )
+    , rSkipTime( 0.0f )
+  {
+    NGlobal::RegisterContextCmd( "replay_skip_time", this, &ReplayRunner::SkipTime );
+  }
+
+  ReplayRunner::~ReplayRunner()
+  {
+  }
+
+  ReplayRunnerLoader::ReplayRunnerLoader( NWorld::ReplayTransceiver* _transceiver,
+                                          LocalCmdScheduler* _scheduler,
+                                          NCore::MapStartInfo& _mapInfo,
+                                          ReplayRunner* runner )
+    : state( ReplayRunnerLoader::S_FINISHED )
+    , mapInfo( _mapInfo )
+    , advScreen( 0 )
+    , scheduler( _scheduler )
+    , replayRunner( runner )
+  {
+    transceiver = _transceiver;
+  }
+
+  bool ReplayRunner::Init( UI::User * uiUser )
+  {
+    LoadingScreen::Init( uiUser );
+    return true;
+  }
+
+  bool ReplayRunner::StartReplay()
+  {
+    return false;
+  }
+
+  void ReplayRunner::CreateAdvScreeen( int, int, const NCore::ClientSettings & )
+  {
+  }
+
+  int ReplayRunner::GetPlayer( int )
+  {
+    return -1;
+  }
+
+  int ReplayRunner::PickAnyPlayer()
+  {
+    return -1;
+  }
+
+  void ReplayRunner::ForcedStep( float )
+  {
+  }
+
+  void ReplayRunner::RunningState()
+  {
+  }
+
+  void ReplayRunner::Step( bool bAppActive )
+  {
+    LoadingScreen::Step( bAppActive );
+  }
+
+  bool ReplayRunner::SkipTime( const char *, const vector<wstring> &args )
+  {
+    const string sSkip = !args.empty() ? NStr::ToMBCS( args[0] ) : "0";
+    rSkipTime += NStr::ToFloat( sSkip );
+    return true;
+  }
+
+  void ReplayRunner::StopAsyncMapLoadingJob()
+  {
+    if ( loader )
+      loader->StopAsyncMapLoadingJob();
+  }
+
+  void ReplayRunnerLoader::OnCombatScreenStarted( NCore::IWorldBase *, const NGameX::ReplayInfo & )
+  {
+  }
+
+  int ReplayRunnerLoader::Poll( float )
+  {
+    return -1;
+  }
+
+  void ReplayRunnerLoader::LaunchReplay()
+  {
+    state = ReplayRunnerLoader::S_FINISHED;
+  }
+
+  void ReplayRunnerLoader::OnVictory( const StatisticService::RPC::SessionClientResults &, const NGameX::ReplayInfo & )
+  {
+    state = ReplayRunnerLoader::S_FINISHED;
+  }
+
+  void ReplayRunnerLoader::SetTimeScale( float )
+  {
+  }
+
+  void ReplayRunnerLoader::LeaveGame()
+  {
+    state = ReplayRunnerLoader::S_FINISHED;
+  }
+
+  void ReplayRunnerLoader::StopAsyncMapLoadingJob()
+  {
+  }
+}
+
+#else
+
 #include "Core/CoreFSM.h"
 #include "PF_GameLogic/PFAdvMap.h"
 #include "PF_GameLogic/MapStartup.h"
@@ -421,3 +540,5 @@ namespace Game
   }
 
 } //namespace Game
+
+#endif

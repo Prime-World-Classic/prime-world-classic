@@ -19,6 +19,10 @@
 		typedef nival::int64_t	__int64;
 	#endif
 
+	#if !defined( __time32_t )
+		typedef nival::int32_t	__time32_t;
+	#endif
+
 	typedef char			TCHAR;
 
 	typedef nival::str_t	LPSTR;

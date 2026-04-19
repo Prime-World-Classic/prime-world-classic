@@ -4,7 +4,6 @@
 #include "Core/CoreFSM.h"
 #include "SelectGameModeLogic.h"
 #include "PF_GameLogic/GameMaps.h"
-#include "NewLobbyClientPW.h"
 
 #include "System/InlineProfiler.h"
 #include "../PF_GameLogic/WebLauncher.h"
@@ -135,6 +134,11 @@ static const char* heroes [] = {
 "bomber"
 };
 
+static size_t GetHeroCount()
+{
+  return sizeof(heroes) / sizeof(heroes[0]);
+}
+
 void SelectGameModeScreen::Step( bool bAppActive )
 {
   StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
@@ -164,12 +168,16 @@ void SelectGameModeScreen::Step( bool bAppActive )
 
   // 3. Select hero
   if (locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby && g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Joined) {
-    int heroId = std::min(std::max((size_t)(g_playerHeroId - 1), 0u), _countof(heroes) - 1u);
+    const size_t heroCount = GetHeroCount();
+    const size_t heroIndex = std::min(std::max(g_playerHeroId - 1, 0), static_cast<int>(heroCount - 1));
+    int heroId = static_cast<int>(heroIndex);
     locked->ChangeCustomGameSettings(lobby::ETeam::Enum(g_playerTeamId), lobby::ETeam::Enum(g_playerTeamId), heroes[heroId]);
     g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_HeroSelected;
   }
   if ((locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby || g_localGameRun) && g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebJoined) {
-    int heroId = std::min(std::max((size_t)(g_playerHeroId - 1), 0u), _countof(heroes) - 1u);
+    const size_t heroCount = GetHeroCount();
+    const size_t heroIndex = std::min(std::max(g_playerHeroId - 1, 0), static_cast<int>(heroCount - 1));
+    int heroId = static_cast<int>(heroIndex);
     locked->ChangeCustomGameSettings(lobby::ETeam::Enum(g_playerTeamId), lobby::ETeam::Enum(g_playerTeamId), heroes[heroId]);
     locked->SetDeveloperParty(g_playerPartyId);
     g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebHeroSelected;

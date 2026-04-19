@@ -1,6 +1,7 @@
 #ifndef LOADINGSCREENLOGIC_H_INCLUDED
 #define LOADINGSCREENLOGIC_H_INCLUDED
 
+#include "Core/GameTypes.h"
 #include "../UI/FSCommandListner.h"
 
 #include "UI/ScreenLogicBase.h"
@@ -11,17 +12,8 @@ class LoadingProgress;
 
 namespace NCore
 {
-  namespace ETeam
-  {
-    enum Enum;
-  }
-
   struct PlayerStartInfo;
   struct ClientSettings;
-  namespace EBasket
-  {
-    enum Enum;
-  }
 }
 
 namespace NDb
@@ -32,7 +24,6 @@ namespace NDb
   struct AdvMapDescription;
   struct AdvMapSettings;
   struct AdvMapModeDescription;
-  enum EMapType;
 }
 
 

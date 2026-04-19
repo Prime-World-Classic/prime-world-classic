@@ -6,6 +6,108 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-------------------------------------------------------------------------------------
 #include "stdafx.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "CpuTopology.h"
+
+#include <unistd.h>
+
+class ICpuTopology
+{
+public:
+    virtual             ~ICpuTopology() {}
+    virtual BOOL        IsDefaultImpl() const                   = 0;
+    virtual DWORD       NumberOfProcessCores() const            = 0;
+    virtual DWORD       NumberOfSystemCores() const             = 0;
+    virtual DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const = 0;
+};
+
+namespace
+{
+
+static DWORD GetOnlineCoreCount()
+{
+    const long onlineCores = sysconf( _SC_NPROCESSORS_ONLN );
+    if ( onlineCores > 0 )
+        return static_cast<DWORD>( onlineCores );
+
+    return 1;
+}
+
+class LinuxBootstrapImpl : public ICpuTopology
+{
+public:
+    virtual BOOL IsDefaultImpl() const
+    {
+        return TRUE;
+    }
+
+    virtual DWORD NumberOfProcessCores() const
+    {
+        return GetOnlineCoreCount();
+    }
+
+    virtual DWORD NumberOfSystemCores() const
+    {
+        return GetOnlineCoreCount();
+    }
+
+    virtual DWORD_PTR CoreAffinityMask( DWORD coreIdx ) const
+    {
+        const DWORD maxBits = static_cast<DWORD>( sizeof( DWORD_PTR ) * 8 );
+        if ( coreIdx >= maxBits )
+            return 0;
+
+        return static_cast<DWORD_PTR>( 1 ) << coreIdx;
+    }
+};
+
+}
+
+CpuTopology::CpuTopology( BOOL bForceCpuid ) : m_pImpl( NULL )
+{
+    ForceCpuid( bForceCpuid );
+}
+
+CpuTopology::~CpuTopology()
+{
+    Destroy_();
+}
+
+BOOL CpuTopology::IsDefaultImpl() const
+{
+    return m_pImpl->IsDefaultImpl();
+}
+
+DWORD CpuTopology::NumberOfProcessCores() const
+{
+    return m_pImpl->NumberOfProcessCores();
+}
+
+DWORD CpuTopology::NumberOfSystemCores() const
+{
+    return m_pImpl->NumberOfSystemCores();
+}
+
+DWORD_PTR CpuTopology::CoreAffinityMask( DWORD coreIdx ) const
+{
+    return m_pImpl->CoreAffinityMask( coreIdx );
+}
+
+void CpuTopology::ForceCpuid( BOOL bForce )
+{
+    (void)bForce;
+
+    Destroy_();
+    m_pImpl = new LinuxBootstrapImpl();
+}
+
+void CpuTopology::Destroy_()
+{
+    delete m_pImpl;
+    m_pImpl = NULL;
+}
+
+#else
 #include <intrin.h>
 #include "CpuTopology.h"
 
@@ -973,3 +1075,5 @@ void CpuTopology::Destroy_()
     delete m_pImpl;
     m_pImpl = NULL;
 }
+
+#endif

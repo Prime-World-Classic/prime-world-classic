@@ -41,6 +41,7 @@ namespace Game
 
 class LoadingScreen;
 class LocalCmdScheduler;
+class ReplayRunner;
 
 namespace ELocalGameState
 {

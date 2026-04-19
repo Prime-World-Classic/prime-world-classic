@@ -1,17 +1,11 @@
 #pragma once
 
 #include "Client/ScreenUILogicBase.h"
+#include "Server/LobbyPvx/CommonTypes.h"
 
 namespace NGameX
 {
   class SelectGameModeScreen;
-}
-
-namespace lobby
-{
-  struct SDevGameInfo;
-
-  namespace EOperationResult { enum Enum; }
 }
 
 

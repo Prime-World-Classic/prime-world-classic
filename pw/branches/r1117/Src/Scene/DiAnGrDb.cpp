@@ -25,10 +25,44 @@
 // all code is available ONLY in debug mode with DIANGR_SCREEN_DEBUG_GENERAL
 #include "stdafx.h"
 
-#include <string.h>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
 #include "../Render/debugrenderer.h"
 
 #include "DiAnGr.h"
+
+#if !defined(_MSC_VER)
+namespace
+{
+  template <size_t N, typename... Args>
+  int sprintf_s(char (&buffer)[N], const char *format, Args... args)
+  {
+    return std::snprintf(buffer, N, format, args...);
+  }
+
+  template <typename... Args>
+  int sprintf_s(char *buffer, size_t bufferSize, const char *format, Args... args)
+  {
+    return std::snprintf(buffer, bufferSize, format, args...);
+  }
+
+  inline int vsnprintf_s(char *buffer, size_t bufferSize, size_t, const char *format, va_list args)
+  {
+    return std::vsnprintf(buffer, bufferSize, format, args);
+  }
+
+  template <size_t N>
+  int strcat_s(char (&buffer)[N], const char *source)
+  {
+    const size_t currentLength = std::strlen(buffer);
+    if (currentLength >= N)
+      return -1;
+
+    return std::snprintf(buffer + currentLength, N - currentLength, "%s", source);
+  }
+}
+#endif
 
 
 namespace 
@@ -618,7 +652,7 @@ DiVoid DiAnimGraph::DebugUpdateNodesInfo(DiAnimGraph *agpGraph)
   // print info about sequence
   anpDbSeqNames     = agpGraph->DebugGetDbSeqTables();
   npNumSeqs         = agpGraph->DebugGetDbNumSeqsInTables();
-  if (anpDbSeqNames != NULL && npNumSeqs > 0)
+  if (anpDbSeqNames != NULL && npNumSeqs != NULL)
   {
     for (nJ = 0; nJ < nNumSubNodes; nJ++)
     {

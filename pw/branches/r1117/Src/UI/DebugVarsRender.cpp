@@ -9,6 +9,10 @@
 #include "Resolution.h"
 #include "SkinStyles.h"
 
+#include <cerrno>
+#include <cstdio>
+#include <cwchar>
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
 {
@@ -22,6 +26,38 @@ const int DEBUG_VAR_NAME_MAX_LENGTH = 24;
 const int SCREEN_NAME_MAX_LENGTH = 16;
 static const string debugVarFontStyle = "DebugVar";
 static bool initialized = false;
+
+int DebugSwprintf( wchar_t * buffer, size_t count, const wchar_t * format, ... )
+{
+  va_list args;
+  va_start( args, format );
+#if defined(__linux__)
+  const int result = vswprintf( buffer, count, format, args );
+#else
+  const int result = vswprintf_s( buffer, count, format, args );
+#endif
+  va_end( args );
+  return result;
+}
+
+int DebugFOpen( FILE ** file, const char * filename, const char * mode )
+{
+#if defined(__linux__)
+  *file = fopen( filename, mode );
+  return *file ? 0 : errno;
+#else
+  return fopen_s( file, filename, mode );
+#endif
+}
+
+int DebugWcsICmp( const wchar_t * lhs, const wchar_t * rhs )
+{
+#if defined(__linux__)
+  return wcscasecmp( lhs, rhs );
+#else
+  return _wcsicmp( lhs, rhs );
+#endif
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Render::UIRenderMaterial& GetDebugVarBackgroundMaterial()
@@ -87,7 +123,7 @@ public:
     static wchar_t value[128];
     GetVar().FormatValue( value, sizeof( value ) / sizeof( wchar_t ) );
     static wchar_t buffer[128];
-    int length  = swprintf_s( buffer, L"%s: %s", GetName(), value );
+    int length  = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%s: %s", GetName(), value );
     UI::IFontStyle * style = UI::GetFontRenderer()->GetFontStyle( UI::SkinStyles::GetFontStyle( debugVarFontStyle ) );
     if ( style )
       style->DrawString( buffer, length, 2, extoffset, GetVar().IsWarning() ? debugVarWarning : debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
@@ -151,10 +187,10 @@ public:
     int curX = 2;
     int curY = (extoffset+graphHeight) / textScale;
 
-    int length = swprintf_s( buffer, L"Max: %f", maxx );
+    int length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"Max: %f", maxx );
     if ( style )
       style->DrawString( buffer, length, curX, extoffset, debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
-    length = swprintf_s( buffer, L"Min: %f", minx );
+    length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"Min: %f", minx );
     if ( style )
 		  style->DrawString( buffer, length, curX, extoffset+(height-GetFontSize()), debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
 
@@ -164,41 +200,41 @@ public:
 
     if ( isTime )
     {
-      length = swprintf_s( buffer, L"%f", plotter->TimeLimit()/4 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%f", plotter->TimeLimit()/4 );
     }
     else
     {
-      length = swprintf_s( buffer, L"%d", plotter->Count()/4 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%d", plotter->Count()/4 );
     }
     if ( style )
       style->DrawString( buffer, length, curX + (screenRes.x-100)/4, extoffset + (height-GetFontSize()), debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
     if ( isTime )
     {
-      length = swprintf_s( buffer, L"%f", plotter->TimeLimit()/2 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%f", plotter->TimeLimit()/2 );
     }
     else
     {
-      length = swprintf_s( buffer, L"%d", plotter->Count()/2 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%d", plotter->Count()/2 );
     }
     if ( style )
       style->DrawString( buffer, length, curX + (screenRes.x-100)/2, extoffset+(height-GetFontSize()), debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
     if ( isTime )
     {
-      length = swprintf_s( buffer, L"%f", 3*plotter->TimeLimit()/4 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%f", 3*plotter->TimeLimit()/4 );
     }
     else
     {
-      length = swprintf_s( buffer, L"%d", 3*plotter->Count()/4 );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%d", 3*plotter->Count()/4 );
     }
     if ( style )
       style->DrawString( buffer, length, curX + 3*(screenRes.x-100)/4, extoffset+(height-GetFontSize()), debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
     if ( isTime )
     {
-      length = swprintf_s( buffer, L"%f", plotter->TimeLimit() );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%f", plotter->TimeLimit() );
     }
     else
     {
-      length = swprintf_s( buffer, L"%d", plotter->Count() );
+      length = DebugSwprintf( buffer, ARRAY_SIZE( buffer ), L"%d", plotter->Count() );
     }
     if ( style )
       style->DrawString( buffer, length, curX + (screenRes.x-100), extoffset+(height-GetFontSize()), debugVarNormal, UI::GetFontRenderer()->GetNoCropRect() );
@@ -608,7 +644,7 @@ void __stdcall LogEnabler( const wchar_t* screen, const wchar_t* _varName, const
   if ( file == 0 )
     systemLog( NLogg::LEVEL_MESSAGE ) << "\"" << varName << "\"" << endl;
   else
-    fprintf_s( file, "\"%ls\"\n", varName.c_str() );
+    fprintf( file, "\"%ls\"\n", varName.c_str() );
 }
 
 static bool ListAllDebugVars( const char *name, const vector<wstring> &params )
@@ -621,7 +657,7 @@ static bool ListAllDebugVars( const char *name, const vector<wstring> &params )
   }
   FILE* file = 0;
   if ( params[0] != L"con" )
-    fopen_s( &file, NStr::ToMBCS( params[0]).c_str(), "w" );
+    DebugFOpen( &file, NStr::ToMBCS( params[0]).c_str(), "w" );
 
   ProcessAllDebugVars( LogEnabler, (void*)file );
 
@@ -636,7 +672,7 @@ static bool ListAllDebugVars( const char *name, const vector<wstring> &params )
 bool ToggleVarsCommand( const char *name, const vector<wstring> &params )
 {
   bool forward = true;
-  if ( !params.empty() && !_wcsicmp( params[0].c_str(), L"back" ) )
+  if ( !params.empty() && !DebugWcsICmp( params[0].c_str(), L"back" ) )
     forward = false;
 
   if ( forward )

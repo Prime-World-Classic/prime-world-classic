@@ -160,7 +160,11 @@ DiAnimGraph::~DiAnimGraph()
   }
   
   ResetSpeedAndUnregCallbackAfterReachMarker(true);
-	Clear( markersData );
+	while (!markersData.empty())
+  {
+    SpeedUserData *marker = markersData.first();
+    markersData.remove(marker);
+  }
 
 #ifdef DIANGR_SCREEN_DEBUG_GENERAL
   // Unregister Graph

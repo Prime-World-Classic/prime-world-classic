@@ -150,7 +150,7 @@ struct LuaTypeInfoWrapperFor##Class                                        \
 #define END_LUA_TYPEINFO(Class)                                                                                                         \
   NULL                                                                                                                                  \
   } ;                                                                                                                                   \
-  Lua::LuaTypeInfo LuaTypeInfoWrapperFor##Class::typeInfo("Native_"###Class, pBase, entries, sizeof(entries) / sizeof(entries[0]) - 1); \
+  Lua::LuaTypeInfo LuaTypeInfoWrapperFor##Class::typeInfo("Native_" #Class, pBase, entries, sizeof(entries) / sizeof(entries[0]) - 1); \
   Lua::LuaTypeInfo const* Class::GetLuaTypeInfo() { return &LuaTypeInfoWrapperFor##Class::typeInfo; }
 
 // служебный макрос дл€ вывода сообщени€ об ошибке в LUA_METHOD_IMPL/LUA_METHOD_IMPL_RV

@@ -5,7 +5,11 @@
 #include "../UI/ImageLabel.h"
 #include "../UI/FlashContainer2.h"
 #include "PF_GameLogic/DBSessionRoots.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PF_GameLogic/StringExecutorBootstrap.h"
+#else
 #include "PF_GameLogic/StringExecutor.h"
+#endif
 #include "PF_GameLogic/DBUnit.h"
 #include "PF_GameLogic/DBAdvMap.h"
 #include "PF_GameLogic/DBGameLogic.h"
@@ -533,7 +537,11 @@ void LoadingScreenLogic::OnFSCommand( UI::FlashContainer2* _wnd, const char* lis
         return;
 
       int show, index;
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+      std::sscanf( args, "%d %d", &show, &index );
+#else
       sscanf_s(args,"%d %d",&show, &index);
+#endif
 
       if (!show)
       {

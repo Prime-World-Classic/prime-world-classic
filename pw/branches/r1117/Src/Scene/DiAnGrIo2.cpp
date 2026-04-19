@@ -12,10 +12,15 @@
 // includes
 #include "stdafx.h"
 
-#include <string.h>
+#include <cstdio>
+#include <cstring>
 
 #include "DiAnGrUtils.h"
 #include "DiAnGr.h"
+
+#if !defined(_MSC_VER)
+#define sprintf_s(buffer, size, ...) std::snprintf(buffer, size, __VA_ARGS__)
+#endif
 
 #pragma warning (disable : 4996)
 

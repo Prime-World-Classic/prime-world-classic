@@ -6,7 +6,10 @@
 #include "../Render/DBRenderResources.h"
 
 #include "../Render/StaticMesh.h"
-#include "../Render/Color.h"
+#include "../Render/material.h"
+#include "../Render/MaterialSpec.h"
+#include "../Render/submesh.h"
+#include "../System/Color.h"
 
 using namespace Render;
 
@@ -17,8 +20,16 @@ namespace NScene
 struct SimpleVertexStride
 {
 	float X, Y, Z;
-	Color color;
+	unsigned int color;
 };
+
+static unsigned int PackColor( const Render::Color& color )
+{
+  return static_cast<unsigned int>(color.B)
+    | (static_cast<unsigned int>(color.G) << 8)
+    | (static_cast<unsigned int>(color.R) << 16)
+    | (static_cast<unsigned int>(color.A) << 24);
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
 bool MakeModelFromAIGeometryInstances( Render::StaticModel *pRes,	const AIGeometry *pGeom, const vector<SGeometryInstanceDef> &instances, bool isPreprocessedGeom, bool alphaTest )
@@ -138,17 +149,20 @@ bool MakeModelFromAIGeometryInstances( Render::StaticModel *pRes,	const AIGeomet
 bool MakeModelFromAIGeometryInstances( Render::StaticMesh *pRes,	const AIGeometry *pGeom, const vector<SGeometryInstanceDef> &instances, bool isPreprocessedGeom, bool alphaBlend )
 {
 	Render::MeshGeometry* geom = new Render::MeshGeometry;
-	Render::Primitive* primitive = new Render::Primitive;
-	Render::RenderResourceManager::PushPrimitiveToPoolDeprecated(primitive);
+	Render::SubMesh* primitive = static_cast<Render::SubMesh*>( geom->primitives.push_back(new Render::SubMesh()) );
 	NI_STATIC_ASSERT( sizeof(SimpleVertexStride) == 16, stride_wrong_size );
-	
+
+	geom->materialCount = 1;
+	geom->fragmentCount = 1;
+	geom->materialID[0] = 0;
+
 	const int instancePoints = pGeom->points.size();
 	const int totalPoints = pGeom->points.size() * instances.size();
 	const int totalTris = pGeom->mesh.size() * instances.size();
 	const int vbsize = sizeof(SimpleVertexStride) * totalPoints;
 
-	IVertexBuffer* vertexBuffer = RenderResourceManager::CreateVertexBuffer( vbsize, RENDER_POOL_MANAGED );
-	SimpleVertexStride* vbLockData = reinterpret_cast<SimpleVertexStride*> ( vertexBuffer->Lock( 0, vbsize, LOCK_DEFAULT ) );
+	DXVertexBufferRef vertexBuffer = Render::CreateVB( vbsize, Render::RENDER_POOL_MANAGED );
+	SimpleVertexStride* vbLockData = Render::LockVB<SimpleVertexStride>( Get(vertexBuffer), LOCK_DEFAULT, vbsize );
 
 	int ivertex = 0;
 	for ( int inst = 0; inst < instances.size(); ++inst )
@@ -159,15 +173,15 @@ bool MakeModelFromAIGeometryInstances( Render::StaticMesh *pRes,	const AIGeometr
 			vbLockData[ivertex].X = pGeom->points[i].x + def.pos.x;
 			vbLockData[ivertex].Y = pGeom->points[i].y + def.pos.y;
 			vbLockData[ivertex].Z = pGeom->points[i].z + def.pos.z;
-			vbLockData[ivertex].color = def.color;
+			vbLockData[ivertex].color = PackColor(def.color);
 			++ivertex;
 		}
 	}
 	vertexBuffer->Unlock();
 
 	const int ibsize = 3 * sizeof(unsigned __int32) * totalTris;
-	IIndexBuffer* indexBuffer = RenderResourceManager::CreateIndexBuffer( ibsize, RENDER_POOL_MANAGED );
-	unsigned __int32* ibLockData = reinterpret_cast<unsigned __int32*>(indexBuffer->Lock( 0, ibsize, LOCK_DEFAULT ));
+	DXIndexBufferRef indexBuffer = Render::CreateIB( ibsize, Render::RENDER_POOL_MANAGED );
+	unsigned __int32* ibLockData = Render::LockIB( Get(indexBuffer), LOCK_DEFAULT, ibsize );
 
 	int iindex = 0;
 	for ( int inst = 0; inst < instances.size(); ++inst )
@@ -207,27 +221,31 @@ bool MakeModelFromAIGeometryInstances( Render::StaticMesh *pRes,	const AIGeometr
 
 	indexBuffer->Unlock();
 	primitive->SetIndexBuffer(indexBuffer);
-	primitive->AddVertexBuffer(vertexBuffer);
+	primitive->AddVertexBuffer(vertexBuffer, sizeof(SimpleVertexStride));
 	Render::DipDescriptor dipDescr;
 	VertexFormatDescriptor formatDescriptor;
 	formatDescriptor.AddVertexElement( VertexElementDescriptor(0, 0,	VERTEXELEMENTTYPE_FLOAT3, VERETEXELEMENTUSAGE_POSITION, 0) );
 	formatDescriptor.AddVertexElement( VertexElementDescriptor(0, 12, VERTEXELEMENTTYPE_D3DCOLOR, VERETEXELEMENTUSAGE_COLOR, 0) );
-	dipDescr.vertexDescriptor = VertexStreamDescriptor(0, 16) ;
-	dipDescr.pVertexFormatDeclaration = SmartRenderer::GetVertexFormatDeclaration(formatDescriptor);
+	primitive->SetVertexDeclaration( SmartRenderer::GetVertexFormatDeclaration(formatDescriptor) );
 	dipDescr.primitiveType = RENDERPRIMITIVE_TRIANGLELIST;
 	dipDescr.baseVertexIndex = 0;
+	dipDescr.minIndex = 0;
 	dipDescr.startIndex = 0;
 	dipDescr.numVertices = totalPoints;
 	dipDescr.primitiveCount = totalTris;
+	geom->triangleCount = totalTris;
 	primitive->SetDipDescriptor(dipDescr);
-	geom->primitives.push_back( primitive );
 
-	NDb::Ptr<NDb::MaterialType> pDBMat = NDb::Get<NDb::MaterialType>( NDb::DBID( alphaBlend ? "AIGeomTranspMaterial.xdb" : "AIGeomSolidMaterial.xdb" ) );
+	NDb::Ptr<NDb::AIGeometryMaterialType> pDBMat = NDb::Get<NDb::AIGeometryMaterialType>( NDb::DBID( alphaBlend ? "AIGeomTranspMaterial.xdb" : "AIGeomSolidMaterial.xdb" ) );
 	NI_VERIFY( IsValid(pDBMat), "Cannot load material for AIGeometry", return false ); 
-	Render::Materials::IMaterial* pMat = Render::Materials::CreateMaterialInstance( pDBMat );
+	Render::BaseMaterial* pMat = static_cast<Render::BaseMaterial*>( Render::CreateRenderMaterial( pDBMat ) );
 	NI_VERIFY( pMat, "Cannot init material for AIGeometry", return false ); 
+#if !defined(PW_LINUX_NULL_RENDER)
+	pMat->SetSkeletalMeshPin( NDb::BOOLEANPIN_NONE );
+	pMat->SetMultiplyVertexColorPin( NDb::BOOLEANPIN_PRESENT );
+#endif
 
-	vector<Render::Materials::IMaterial*> materials;
+	vector<Render::BaseMaterial*> materials;
 	materials.push_back( pMat );
 
 	Matrix43 m;

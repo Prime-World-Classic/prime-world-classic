@@ -1,6 +1,88 @@
 #include "stdafx.h"
 #include "ReplayTransceiver.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+namespace NWorld
+{
+
+ReplayStorage2::ReplayStorage2( NCore::ReplayBufferMode, const char *, NWorld::IMapCollection *, NGameX::LoadingStatusHandler * )
+{
+}
+
+void ReplayStorage2::SetLoadingStatus( Game::EReplayStatus::Enum )
+{
+}
+
+ReplayTransceiver::ReplayTransceiver( NCore::IReplayStorage* _replay, int _stepLength )
+  : replay( _replay )
+  , time( 0.0f )
+  , useServerReplay( false )
+  , stepLength( _stepLength )
+  , stepLengthInSeconds( _stepLength / 1000.0f )
+  , replayMsgTimer( 0.0f )
+  , isPaused( false )
+{
+}
+
+void ReplayTransceiver::OnDestroyContent()
+{
+}
+
+void ReplayTransceiver::Step( float )
+{
+}
+
+int ReplayTransceiver::GetWorldStep() const
+{
+  return 0;
+}
+
+void ReplayTransceiver::SetWorld( NCore::IWorldBase * _world )
+{
+  world = _world;
+  ptrHolder = 0;
+}
+
+void ReplayTransceiver::SetTimeScale( float )
+{
+}
+
+bool ReplayTransceiver::SetTimeScale( const char *, const vector<wstring> & )
+{
+  return true;
+}
+
+bool ReplayTransceiver::ReplaySpeedInc( const char *, const vector<wstring> & )
+{
+  return true;
+}
+
+bool ReplayTransceiver::ReplaySpeedDec( const char *, const vector<wstring> & )
+{
+  return true;
+}
+
+bool ReplayTransceiver::ReplaySpeedRst( const char *, const vector<wstring> & )
+{
+  return true;
+}
+
+bool ReplayTransceiver::ReplayPause( const char *, const vector<wstring> & )
+{
+  return true;
+}
+
+void ReplayTransceiver::StepReplayMessage( float )
+{
+}
+
+} //namespace NWorld
+
+NI_DEFINE_REFCOUNT( NWorld::ReplayTransceiver );
+
+#else
+
 #include "Core/Replay.h"
 #include "Core/WorldBase.h"
 #include "Core/WorldCommand.h"
@@ -420,3 +502,5 @@ REGISTER_VAR( "replay_speed_inc_limit", g_replaySpeedIncLimit, STORAGE_NONE );
 REGISTER_VAR( "replay_speed_dec_limit", g_replaySpeedDecLimit, STORAGE_NONE );
 
 NI_DEFINE_REFCOUNT( NWorld::ReplayTransceiver );
+
+#endif

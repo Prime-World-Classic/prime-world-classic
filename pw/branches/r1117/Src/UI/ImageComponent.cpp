@@ -6,6 +6,7 @@
 #include "SkinStyles.h"
 
 #include "../Render/Renderer.h"
+#include "../Render/DxResourcesControl.h"
 #include "../Render/TextureManager.h"
 #include "../Render/UIRenderer.h"
 #include "../Render/MaterialSpec.h"
@@ -91,7 +92,9 @@ void ImageComponent::SetImageTexture(const Render::Texture2DRef& _pTexture)
   {
     material.CreateDefaultMaterial();
     material.GetRenderMaterial()->ModifyColor( Render::HDRColor(1,1,1,1), Render::HDRColor(1,1,1,1) );
+#if !defined(PW_LINUX_NULL_RENDER)
     material.GetRenderMaterial()->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
+#endif
   }
 
   material.GetRenderMaterial()->GetDiffuseMap()->SetTexture( _pTexture );

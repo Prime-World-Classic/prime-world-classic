@@ -1,17 +1,10 @@
 #pragma once
 
-
-namespace NCore
-{
-  namespace ETeam
-  {
-    enum Enum;
-  }
-}
+#include "Core/GameTypes.h"
+#include "PF_GameLogic/DBStats.h"
 
 namespace NDb
 {
-  enum EFaction;
   struct HeroesDB;
   struct AdvMapDescription;
 }
@@ -43,7 +36,7 @@ public:
   void DisconnectUser( int userId );
   void ReconnectUser( int userId );
   void SetShowAllHeroes( bool show = true ) { showAllHeros = show; }
-  void SetMapDescription( const NDb::AdvMapDescription* _advMapDescription ) {_advMapDescription = advMapDescription;}
+  void SetMapDescription( const NDb::AdvMapDescription* _advMapDescription ) { advMapDescription = _advMapDescription; }
 
 private:
   NDb::Ptr<NDb::HeroesDB>   heroDb;

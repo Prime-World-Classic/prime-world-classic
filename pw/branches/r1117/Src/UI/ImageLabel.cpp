@@ -2,6 +2,7 @@
 
 #include "../Scripts/lua.hpp"
 #include "ImageLabel.h"
+#include "RegisterControlCompat.h"
 #include "SkinStyles.h"
 #include "System/NameMap.h"
 #include "System/InlineProfiler.h"

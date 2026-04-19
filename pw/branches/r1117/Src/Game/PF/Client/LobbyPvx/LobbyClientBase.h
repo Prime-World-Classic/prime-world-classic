@@ -27,6 +27,7 @@ namespace lobby
 
 class RIEntrance;
 class RIServerInstance;
+class LobbyUserProxy;
 
 
 

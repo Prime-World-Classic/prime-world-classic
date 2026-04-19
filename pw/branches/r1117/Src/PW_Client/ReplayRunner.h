@@ -7,13 +7,13 @@
 #include "PF_GameLogic/GameMaps.h"
 #include "System/JobThread.h"
 #include "LoadingScreen.h"
-#include "LocalGameContext.h"
 
 namespace NWorld
 {
   class ReplayTransceiver;
   class PFResourcesCollection;
   class MapLoadingJob;
+  class MapDescriptionLoader;
 }
 
 
@@ -28,6 +28,7 @@ namespace Game
 
 class LoadingScreen;
 class LocalCmdScheduler;
+class ReplayRunner;
 
 class ReplayRunnerLoader : public NGameX::IGameControl, public BaseObjectMT
 {

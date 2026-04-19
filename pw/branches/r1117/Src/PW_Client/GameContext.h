@@ -1,10 +1,11 @@
 #ifndef GAMECONTEXT_H_FCE1B85D_782F_401F
 #define GAMECONTEXT_H_FCE1B85D_782F_401F
 
-#include "IGameContext.h"
-#include "Network/ClientTransportSystemIntf.h"
+#include "GameStatStatus.h"
 #include "NewLobbyGameClientPW.h"
 #include "NewLobbyClientPW.h"
+#include "IGameContext.h"
+#include "Network/ClientTransportSystemIntf.h"
 #include "System/NiTimer.h"
 #include "ReplayRunner.h"
 
@@ -56,11 +57,6 @@ class LoadingScreen;
 namespace EContextStatus
 {
   enum Enum { Ready, Error, WaitingLogin, WaitingStatistics, WaitingLobbyClient, InGame, Cleanup };
-}
-
-namespace EGameStatStatus
-{
-  enum Enum;
 }
 
 class GameContext : public BaseObjectMT, public IGameContext, public lobby::IClientNotify, public rpc::IGateKeeperCallback

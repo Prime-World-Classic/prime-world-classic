@@ -3,8 +3,12 @@
 
 #include "../Client/DefaultScreenBase.h"
 #include "../Client/ScreenUILogicBase.h"
-
-
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(NEW_LOBBYCLIENTBASE_H_INCLUDED)
+#include "Game/PF/Client/LobbyPvx/LobbyClientStatusCompat.h"
+#else
+#include "Client/LobbyPvx/LobbyClientBase.h"
+#endif
+#include "HybridServer/Peered.h"
 
 namespace rpc
 {
@@ -15,19 +19,6 @@ namespace rpc
 namespace UI
 {
   class ImageLabel;
-}
-
-
-
-namespace Peered
-{
-  namespace EDisconnectReason { enum Enum; }
-}
-
-
-namespace lobby
-{
-  namespace EClientError { enum Enum; }
 }
 
 namespace Game

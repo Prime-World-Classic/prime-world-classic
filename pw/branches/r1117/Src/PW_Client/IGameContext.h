@@ -4,7 +4,11 @@
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "Network/LoginTypes.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(NEW_LOBBYCLIENTBASE_H_INCLUDED)
+#include "Game/PF/Client/LobbyPvx/LobbyClientStatusCompat.h"
+#else
 #include "../PF/Client/LobbyPvx/LobbyClientBase.h"
+#endif
 
 
 namespace StatisticService

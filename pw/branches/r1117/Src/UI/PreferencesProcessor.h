@@ -1,16 +1,14 @@
 #ifndef PREFERENCESPROCESSOR_H_10FB1B03
 #define PREFERENCESPROCESSOR_H_10FB1B03
+#include "DBPreferences.h"
 #include "System/Pointers/BaseObjectST.h"
 #include "FlashInterface.h"
 #include "FSCommandListner.h"
+#include <cstdio>
 
-
-namespace NDb
-{
-  struct PrefVariable;
-  struct PreferencesPreset;
-  struct NameValue;
-}
+#if defined(__linux__)
+#define sscanf_s sscanf
+#endif
 
 namespace UI
 {

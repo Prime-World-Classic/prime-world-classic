@@ -1,6 +1,6 @@
 #pragma once
 
-namespace NDb   { enum EChatChannel;}
+#include "DBStats.h"
 
 namespace NGameX
 {
@@ -36,5 +36,3 @@ namespace NGameX
     virtual void SmartChatAddCancel(const unsigned id, const string& key) = 0;
   };
 }
-
-

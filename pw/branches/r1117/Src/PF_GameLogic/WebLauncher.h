@@ -1,5 +1,19 @@
 #pragma once
 #include <vector>
+
+#if defined(__linux__) || defined(PW_LINUX_NULL_RENDER)
+#include <map>
+#include <string>
+#include <set>
+#include <json/json.h>
+#include "../System/StrProc.h"
+#include "../System/ported/types.h"
+
+typedef void* HINTERNET;
+
+inline void OutputDebugStringA(const char*) {}
+inline void OutputDebugStringW(const wchar_t*) {}
+#else
 #include <Windows.h>
 #include <Wininet.h>
 #include <map>
@@ -7,6 +21,7 @@
 #include <set>
 #include <json/json.h>
 #include "../PW_Game/server_ip.h"
+#endif
 
 
 class WebLauncherPostRequest
@@ -98,7 +113,7 @@ public:
   };
 
   WebLoginResponse GetSessionData(const char* token, const char* apiKey = "");
-  std::string WebLauncherPostRequest::SendPostRequest(const std::string& jsonData);
+  std::string SendPostRequest(const std::string& jsonData);
   std::string CreateDebugSession();
 };
 typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
@@ -106,12 +121,22 @@ typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersData
 extern std::string GetSkinByHeroPersistentId(const std::string& heroId, int someValue);
 
 static std::string WideCharToMultiByteString(const wchar_t* wideCharString) {
+#if defined(__linux__) || defined(PW_LINUX_NULL_RENDER)
+  if (!wideCharString) {
+    return std::string();
+  }
+  return std::string(NStr::ToMBCS(nstl::wstring(wideCharString)).c_str());
+#else
   int size_needed = WideCharToMultiByte(CP_UTF8, 0, wideCharString, -1, NULL, 0, NULL, NULL);
   std::string result(size_needed, 0);
   WideCharToMultiByte(CP_UTF8, 0, wideCharString, -1, &result[0], size_needed, NULL, NULL);
   return result;
+#endif
 }
 static std::wstring Fix1251EncodingW(std::string utf8String) {
+#if defined(__linux__) || defined(PW_LINUX_NULL_RENDER)
+  return std::wstring(NStr::ToUnicode(nstl::string(utf8String.c_str())).c_str());
+#else
   int utf8Length = static_cast<int>(utf8String.length());
   int wideCharLength = MultiByteToWideChar(CP_UTF8, 0, utf8String.c_str(), utf8Length, NULL, 0);
 
@@ -119,9 +144,13 @@ static std::wstring Fix1251EncodingW(std::string utf8String) {
   wideCharString.resize(wideCharLength);
   MultiByteToWideChar(CP_UTF8, 0, utf8String.c_str(), utf8Length, &wideCharString[0], wideCharLength);
   return wideCharString;
+#endif
 }
 static std::string Fix1251Encoding(std::string utf8String)
 {
+#if defined(__linux__) || defined(PW_LINUX_NULL_RENDER)
+  return WideCharToMultiByteString(Fix1251EncodingW(utf8String).c_str());
+#else
   std::wstring wideCharString = Fix1251EncodingW(utf8String);
 
   int win1251Length = WideCharToMultiByte(1251, 0, &wideCharString[0], -1, NULL, 0, NULL, NULL);
@@ -130,6 +159,7 @@ static std::string Fix1251Encoding(std::string utf8String)
   WideCharToMultiByte(1251, 0, &wideCharString[0], -1, &win1251String[0], win1251Length, NULL, NULL);
 
   return win1251String;
+#endif
 }
 
 static Json::Value ParseJson(const char* json) {

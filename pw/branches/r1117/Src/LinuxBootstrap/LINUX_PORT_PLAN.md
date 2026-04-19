@@ -1,6 +1,6 @@
 # Linux Native Port Plan
 
-Updated: 2026-04-18
+Updated: 2026-04-20
 
 ## Goal
 
@@ -17,11 +17,17 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - `PrimeWorldLinuxClient` builds successfully.
 - `PrimeWorldLinuxGameplayProbe` builds successfully.
+- `PrimeWorldLinuxClientRuntimeProbe` builds successfully.
 - `PrimeWorldLinuxRenderProbe` builds successfully.
 - The native Linux client shell runs, opens a native window, mounts real game content, loads config, input, localization, session data, DB roots, and real map/hero/loading assets.
+- `PrimeWorldLinuxClient` now exercises a narrow real client-runtime seam in the executable itself: `PW_Client/LoadingFlashInterface.cpp` and `PW_Client/LoadingStatusHandler.cpp` are linked into the Linux client target, and the Linux `Game.cpp` shell now drives loading-status events through the real runtime handler instead of only using duplicated shell-side status mapping.
+- `PrimeWorldLinuxClient` now also links `PW_Client/LoadingHeroes.cpp` directly into the Linux executable. The bootstrap `LoadingFlashInterface` now captures the real loading-lineup state produced by `LoadingHeroes`, so the Linux shell can log and display runtime hero slots, player names, hero titles, and loading progress instead of only the loading-status text path.
 - The maintained Linux gameplay probe currently compiles 70 gameplay `.cpp` files.
-- The maintained Linux render probe now compiles 155 render/scene/terrain `.cpp` files, including the real render-runtime path pieces `batch.cpp`, `DXManager.cpp`, `OcclusionQueries.cpp`, `DBRender.cpp`, `DBRenderResources.cpp`, `shaderdefinestable.cpp`, `DeviceLost.cpp`, `ReadDDS.cpp`, `SHCoeffs.cpp`, `VertexColorStream.cpp`, `shaderconstantsbinder.cpp`, `Blur.cpp`, `Bloom.cpp`, `ConstantProtection.cpp`, `FullScreenFX.cpp`, `AOERenderer.cpp`, `WaterConvexes.cpp`, `CleanGeometry.cpp`, `fxresource.cpp`, `skeletonanimation.cpp`, `SkeletalAnimationBlender.cpp`, `SkeletalAnimationSampler.cpp`, `SkeletonWrapper.cpp`, `Stretcher.cpp`, `dipdescriptor.cpp`, `rendermode.cpp`, `DebugMaterial.cpp`, `GrassMaterial.cpp`, `MaterialResourceInterface.cpp`, `facefxsystem.cpp`, and the newly maintained animation-graph / terrain-runtime/core slice on top of the earlier null-render mesh, scene, UI, and utility work.
-- Recent additions to the maintained render probe are the animation-graph/time-control slice (`AnimGraphApplicator.cpp`, `AnimGraphBlender.cpp`, `AnimGraphController.cpp`, `Animators.cpp`, `BitMap.cpp`, `HeightsController.cpp`, `TimeMutator.cpp`), the next scene/terrain runtime slice (`CollisionHull.cpp`, `DBSceneBase.cpp`, `DiAnGrAPI.cpp`, `DiAnGrCl.cpp`, `DiAnGrNLinker.cpp`, `DiAnGrSStorage.cpp`, `DiAnGrUp.cpp`, `DiAnGrUtils.cpp`, `DiGraph.cpp`, `LandPlacementMutator.cpp`, `DBTerrain.cpp`, `GrassLayersManager.cpp`, `GrassRegion.cpp`, `GrassRenderManager.cpp`, `NatureMap.cpp`, `SpeedGrass.cpp`, `TerrainElementManager.cpp`), the terrain cache/runtime layer (`TerrainHeightManager.cpp`, `TerrainLayerManager.cpp`, `TerrainMaterialCache.cpp`, `TerrainTextureCache.cpp`), and now the remaining maintained terrain core (`NatureMapVisual.cpp`, `Terrain.cpp`, `TerrainCollision.cpp`, `TerrainElement.cpp`, `TerrainGeometryManager.cpp`, `BezierSurface.cpp`, `NatureAttackSpace.cpp`). Those files now build in the maintained Linux render probe instead of only passing ad-hoc syntax checks.
+- The maintained Linux client runtime probe currently compiles 44 client/runtime/UI `.cpp` files: `Client/DefaultScreenBase.cpp`, `Client/ScreenCommands.cpp`, `Client/MainLoop.cpp`, `PW_Client/CpuTopology.cpp`, `PW_Client/DebugVarsSender.cpp`, `PW_Client/GameContext.cpp`, `PW_Client/GameStatistics.cpp`, `PW_Client/GameStatisticsWrapper.cpp`, `PW_Client/LoadingFlashInterface.cpp`, `PW_Client/LoadingHeroes.cpp`, `PW_Client/LobbyConnection.cpp`, `PW_Client/LocalCmdScheduler.cpp`, `PW_Client/LoadingScreen.cpp`, `PW_Client/LoadingScreenLogic.cpp`, `PW_Client/LoadingStatusHandler.cpp`, `PW_Client/LocalGameContext.cpp`, `PW_Client/NewLobbyClientPW.cpp`, `PW_Client/NewLobbyGameClientPW.cpp`, `PW_Client/NetworkStatusScreen.cpp`, `PW_Client/ReplayRunner.cpp`, `PW_Client/ReplayTransceiver.cpp`, `PW_Client/SelectGameModeLogic.cpp`, `PW_Client/SelectGameModeScreen.cpp`, `PW_Client/SelectHeroScreen.cpp`, `PW_Client/SelectHeroScreenLogic.cpp`, `UI/DebugVarsRender.cpp`, `UI/FrameTimeRender.cpp`, `UI/ImageComponent.cpp`, `UI/ImageLabel.cpp`, `UI/LuaEventResult.cpp`, `UI/NameMappedWindow.cpp`, `UI/PreferencesProcessor.cpp`, `UI/Resolution.cpp`, `UI/Root.cpp`, `UI/ScreenLogicBase.cpp`, `UI/SkinStyles.cpp`, `UI/Scripts.cpp`, `UI/TextComponent.cpp`, `UI/TextComponentBasic.cpp`, `UI/TextMarkupLexems.cpp`, `UI/TextMarkupParser.cpp`, `UI/User.cpp`, `UI/View.cpp`, and `UI/WindowPointJob.cpp`.
+- The maintained Linux render probe now compiles 165 render/scene/terrain `.cpp` files, including the real render-runtime path pieces `batch.cpp`, `DXManager.cpp`, `OcclusionQueries.cpp`, `DBRender.cpp`, `DBRenderResources.cpp`, `shaderdefinestable.cpp`, `DeviceLost.cpp`, `ReadDDS.cpp`, `SHCoeffs.cpp`, `VertexColorStream.cpp`, `shaderconstantsbinder.cpp`, `Blur.cpp`, `Bloom.cpp`, `ConstantProtection.cpp`, `FullScreenFX.cpp`, `AOERenderer.cpp`, `WaterConvexes.cpp`, `CleanGeometry.cpp`, `fxresource.cpp`, `skeletonanimation.cpp`, `SkeletalAnimationBlender.cpp`, `SkeletalAnimationSampler.cpp`, `SkeletonWrapper.cpp`, `Stretcher.cpp`, `dipdescriptor.cpp`, `rendermode.cpp`, `DebugMaterial.cpp`, `GrassMaterial.cpp`, `MaterialResourceInterface.cpp`, `facefxsystem.cpp`, `ModelLoader.cpp`, `TimeCtrlSceneComponent.cpp`, and the now-maintained full `DiAnGr` / terrain-runtime/core slice on top of the earlier null-render mesh, scene, UI, and utility work.
+- Recent additions to the maintained client runtime probe now cover the deeper lobby/runtime slice and the first real client screen/UI layer. Linux bootstrap now keeps `GameContext.cpp` inside the maintained runtime target by cutting the transport/ACE initialization path behind `PW_LINUX_DB_BOOTSTRAP`, sharing `EGameStatStatus` through `GameStatStatus.h`, adding a Linux `__time32_t` alias in `System/ported/types.h`, fixing the lobby status include-order seam around `LobbyClientBase.h`, and providing the missing `LobbyUserProxy` / `Peered` declarations for the bootstrap path. On top of that, the lobby layer itself is no longer outside the maintained target: `PW_Game/server_ip.h` now exists in the repo, `Shared/WebRequests.h` has a Linux bootstrap stub path, `LobbyConnection.cpp` has a Linux dummy castle-link path instead of pulling WinSock, `NewLobbyClientPW.cpp` was converted to UTF-8 and now uses `StringExecutorBootstrap.h`, `NewLobbyGameClientPW.cpp` no longer drags the generated `HybridServer/RPeered.auto.h` wrapper into the bootstrap path, `DebugVarsSender.cpp` and `LocalCmdScheduler.cpp` are maintained, and `CpuTopology.cpp` now has a Linux bootstrap implementation instead of depending on `<intrin.h>`. The maintained target now also includes `Client/DefaultScreenBase.cpp`, `PW_Client/SelectGameModeScreen.cpp`, `PW_Client/SelectHeroScreen.cpp`, and the bootstrap-safe UI stack around `UI/Root.cpp`, `UI/User.cpp`, `UI/ImageComponent.cpp`, `UI/ImageLabel.cpp`, `UI/NameMappedWindow.cpp`, `UI/PreferencesProcessor.cpp`, `UI/ScreenLogicBase.cpp`, `UI/SkinStyles.cpp`, `UI/TextComponent.cpp`, `UI/TextComponentBasic.cpp`, `UI/TextMarkupLexems.cpp`, `UI/TextMarkupParser.cpp`, `UI/View.cpp`, and `UI/WindowPointJob.cpp`. The Flash/font/vendor and non-UTF8 legacy UI files remain intentionally outside the maintained probe for now.
+- The Linux executable no longer tried to link the entire `PrimeWorldLinuxClientRuntimeProbe` object library. That experiment was intentionally backed out because it exploded into unrelated transport/UI/link dependencies. Instead, the executable now links only the narrow runtime pieces it needs for the first real runtime seam: `PW_Client/LoadingFlashInterface.cpp` and `PW_Client/LoadingStatusHandler.cpp`. The Linux `Game.cpp` shell now builds a bootstrap-safe `LoadingFlashInterface`, dispatches real loading events through `LoadingStatusHandler`, records the real runtime status key, and resolves the displayed localized status text through the already-loaded `DBUIData` preview table.
+- Recent additions to the maintained render probe are the animation-graph/time-control slice (`AnimGraphApplicator.cpp`, `AnimGraphBlender.cpp`, `AnimGraphController.cpp`, `Animators.cpp`, `BitMap.cpp`, `HeightsController.cpp`, `TimeMutator.cpp`), the next scene/terrain runtime slice (`CollisionHull.cpp`, `DBSceneBase.cpp`, `DiAnGrAPI.cpp`, `DiAnGrCl.cpp`, `DiAnGrNLinker.cpp`, `DiAnGrSStorage.cpp`, `DiAnGrUp.cpp`, `DiAnGrUtils.cpp`, `DiGraph.cpp`, `LandPlacementMutator.cpp`, `DBTerrain.cpp`, `GrassLayersManager.cpp`, `GrassRegion.cpp`, `GrassRenderManager.cpp`, `NatureMap.cpp`, `SpeedGrass.cpp`, `TerrainElementManager.cpp`), the terrain cache/runtime layer (`TerrainHeightManager.cpp`, `TerrainLayerManager.cpp`, `TerrainMaterialCache.cpp`, `TerrainTextureCache.cpp`), the remaining maintained terrain core (`NatureMapVisual.cpp`, `Terrain.cpp`, `TerrainCollision.cpp`, `TerrainElement.cpp`, `TerrainGeometryManager.cpp`, `BezierSurface.cpp`, `NatureAttackSpace.cpp`), and now the rest of the legacy animation-graph core (`DiAnGr.cpp`, `DiAnGrDb.cpp`, `DiAnGrEditor.cpp`, `DiAnGrExtPars.cpp`, `DiAnGrExtParsAd.cpp`, `DiAnGrG.cpp`, `DiAnGrIo2.cpp`, `DiAnGrMarker.cpp`). Those files now build in the maintained Linux render probe instead of only passing ad-hoc syntax checks.
 - Standalone Linux null-render syntax probes for `AnimatedSplitSceneComponent.cpp`, `AttacherSceneComponent.cpp`, `Camera.cpp`, `CameraControllersContainer.cpp`, `CameraInputModifier.cpp`, and `FreeCameraController.cpp` are now green or superseded by maintained render-probe builds.
 - Latest verified runtime command:
 
@@ -32,7 +38,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Latest verified runtime log:
 
 ```text
- /home/vitaly/p/Prime-World/pw/branches/r1117/Bin/logs/2026.04.18-09.02.15/linux-client-shell.log
+/home/vitaly/p/Prime-World/pw/branches/r1117/Bin/logs/2026.04.19-21.45.38/linux-client-shell.log
 ```
 
 ## What Is Already Done
@@ -53,6 +59,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 ### Gameplay portability groundwork
 
 - A maintained Linux gameplay compile target exists: `PrimeWorldLinuxGameplayProbe`.
+- A maintained Linux client runtime compile target exists: `PrimeWorldLinuxClientRuntimeProbe`.
 - A maintained Linux render compile target exists: `PrimeWorldLinuxRenderProbe`.
 - It now covers a broad slice of `PF_GameLogic`, including world, AI, applicators, statistics, base unit state, target selectors, buildings, glyphs, towers, and related gameplay objects.
 - The Linux gameplay probe now also compiles the heavier ability timing/attack slice in `PFAbilityData.cpp` and `PFBaseAttackData.cpp` by cutting visual-only scene animation paths behind `VISUAL_CUTTED`.
@@ -77,6 +84,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - The Linux render probe now also compiles the generated render DB glue slice: `DBRender.cpp`, `DBRenderResources.cpp`, and `shaderdefinestable.cpp`. That moves the maintained Linux path through the real render enum/resource registration layer instead of treating it as an offline-only generated dependency.
 - The Linux render probe now also compiles the stale generated material/runtime slice `DebugMaterial.cpp`, `GrassMaterial.cpp`, and `MaterialResourceInterface.cpp` through Linux null-render/bootstrap-safe wrappers. On Linux, those files no longer try to instantiate the obsolete generated material API; they stay inert while the maintained probe keeps the current Windows-generated path intact under the existing `#else` branches.
 - The Linux render probe now also compiles `facefxsystem.cpp` through a Linux bootstrap no-op path. That keeps the maintained render slice honest for this repo state, where the FaceFX vendor SDK headers are not present.
+- `Scene/ModelLoader.cpp` is now inside the maintained Linux render probe. The Linux path no longer depends on the stale primitive/material API there: it now uses the current `CreateVB` / `CreateIB` helpers, current `SubMesh` / `Primitive` setup, current `CreateRenderMaterial` path, and 32-bit packed vertex colors so the legacy AIGeometry loader compiles correctly on 64-bit Linux.
+- `Scene/TimeCtrlSceneComponent.cpp` is now also inside the maintained Linux render probe through a Linux null-render/bootstrap stub. The Windows code path is unchanged, but the Linux probe no longer treats this excluded legacy component as an unresolved scene portability hole.
 - The Linux render probe now also compiles the shader/runtime utility slice `DeviceLost.cpp`, `ReadDDS.cpp`, `SHCoeffs.cpp`, `VertexColorStream.cpp`, and `shaderconstantsbinder.cpp` through Linux null-render/bootstrap-safe translation-unit branches.
 - The Linux render probe now also compiles the first screen-space post-processing slice `Blur.cpp`, `Bloom.cpp`, `ConstantProtection.cpp`, and `FullScreenFX.cpp` through Linux null-render branches. That moves the maintained slice beyond pure renderer infrastructure and into real screen-space runtime code.
 - The Linux render probe now also compiles `AOERenderer.cpp` and `WaterConvexes.cpp`. `AOERenderer.cpp` now gates one Windows-only material specialization call on the Linux null-render path, and `WaterConvexes.cpp` builds unchanged as a real water geometry utility translation unit.
@@ -101,6 +110,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - `Render/debugRenderer.h` was added as a case-safe alias for the legacy lowercase include used by deeper scene/runtime files.
 - `PrimeWorldLinuxClient` linkability now depends on `runtime_stubs.cpp` being compiled under the Linux null-render/bootstrap defines, where it now provides the narrow `CastToObjectBaseImpl<NScene::SceneComponent>` and `CastToObjectBaseImpl<Render::Texture>` specializations plus bootstrap-safe `LoadTexture2D` and `LoadTexture2DIntoPool` stubs needed by the generated render DB/resource layer without dragging the full Windows renderer path into the Linux client target.
 - Several Windows-path, case-sensitivity, GCC, and DB/bootstrap blockers were already removed.
+- The Linux client/runtime slice is now well past shell-only code. `MainLoop.cpp`, `GameContext.cpp`, `GameStatistics.cpp`, `GameStatisticsWrapper.cpp`, `LoadingFlashInterface.cpp`, `LoadingHeroes.cpp`, `LoadingScreen.cpp`, `LoadingScreenLogic.cpp`, `LoadingStatusHandler.cpp`, `LocalGameContext.cpp`, `NetworkStatusScreen.cpp`, `ReplayRunner.cpp`, `ReplayTransceiver.cpp`, `SelectGameModeLogic.cpp`, `SelectGameModeScreen.cpp`, `SelectHeroScreen.cpp`, and `SelectHeroScreenLogic.cpp` all compile under `PW_LINUX_NULL_RENDER`, `PW_LINUX_DB_BOOTSTRAP`, and `VISUAL_CUTTED`, and are maintained by the `PrimeWorldLinuxClientRuntimeProbe` target instead of ad-hoc compiler invocations.
 
 ## What Is Not Done Yet
 
@@ -164,28 +174,48 @@ The real renderer/backend path is still centered on Direct3D 9 and Windows-speci
 
 Scene and client runtime code still pull render-side types too early. The Linux path needs a cleaner seam between gameplay/runtime code and scene/render code.
 
+### Current client runtime frontier
+
+The maintained client runtime probe is now past the earlier UI/status/replay wall, past the deeper lobby layer, past the remaining lightweight runtime helpers (`CpuTopology.cpp`, `DebugVarsSender.cpp`, `LocalCmdScheduler.cpp`), and into the real client screen implementation layer through `Client/DefaultScreenBase.cpp`, `PW_Client/SelectGameModeScreen.cpp`, `PW_Client/SelectHeroScreen.cpp`, and the wider UI class stack. Replay is still intentionally stubbed on Linux bootstrap, but it is no longer a compile blocker.
+
+The next meaningful client-runtime work is no longer those old lobby blockers, and it is no longer only the loading-status seam either. The executable now exercises a real runtime status path through `LoadingStatusHandler` and a bootstrap `LoadingFlashInterface`, with localized runtime text resolving correctly in the Linux shell (`login: connecting -> Подключение`), and it also exercises the real `LoadingHeroes` lineup path so the shell captures runtime hero slots, resolved hero titles, and load percentages (`Linux Player / Кара / 35%`, `Bot 1 / Катана / 53%`, hero-slot counts). The non-maintained client files left in `PW_Client/` are:
+
+- `PW_Client/FullScreenTest.cpp`, which is a Windows-only test utility and still stops at `windows.h`
+- `PW_Client/RegistryToolbox.cpp`, which is still tied to Win32 registry types through `RegistryStorage.h`
+- `PW_Client/Game.cpp`, which is already part of the Linux client executable, but is still the next real integration seam because moving toward a playable client now means pushing the Linux path deeper into the actual game loop instead of only widening the maintained bootstrap/runtime slice
+
+For first playable Linux work, `FullScreenTest.cpp` and `RegistryToolbox.cpp` are not on the critical path. The next practical frontier is deeper `Game.cpp` runtime integration on top of the maintained lobby/runtime slice.
+
+The intentionally unmaintained UI/runtime files are now mostly the Flash/font/vendor and encoding-heavy seam rather than basic runtime code:
+
+- `UI/ActionContext.cpp`, which still depends on the stale missing `UIBase.h`
+- `UI/FlashContainer2.cpp`, `UI/FlashFontsRender.cpp`, and `UI/FlashInterface.cpp`, which still pull the Tamarin/Flash vendor path and `windows.h`
+- `UI/FontRender.cpp` and `UI/FontStyle.cpp`, which still require the FreeType toolchain (`ft2build.h`) that is not wired into this Linux bootstrap path
+- `UI/Window.cpp` and `UI/TextMarkup.cpp`, which are still non-UTF8 legacy sources and should stay out until they are worth converting rather than patching around
+
 ### Current gameplay frontier
 
 The maintained gameplay probe is now past the old include/case-sensitivity wall and also past the previous heavy ability timing slice. The next frontier is no longer `PFAbilityData.cpp` or `PFBaseAttackData.cpp`, but the render-facing gameplay/client runtime seam, especially units that still depend on the real client render path and scene-side rendering infrastructure.
 
 ### Current render frontier
 
-The maintained render probe is now past the old mesh implementation wall, the first core scene-object layer, the camera/runtime control slice above full-scene orchestration, the scene DB/object utility slice above that, the render/runtime utility layer around config, immediate rendering, DX resource bookkeeping, the batch-adjacent bounding-volume slice, the generated render DB/resource layer, the first screen-space post-processing slice, and the first AOE/water utility slice.
+The maintained render probe is now past the old mesh implementation wall, the first core scene-object layer, the camera/runtime control slice above full-scene orchestration, the scene DB/object utility slice above that, the render/runtime utility layer around config, immediate rendering, DX resource bookkeeping, the batch-adjacent bounding-volume slice, the generated render DB/resource layer, the first screen-space post-processing slice, the first AOE/water utility slice, the remaining non-test scene slice, and a broader shadow/water/runtime layer than the older roadmap reflected.
 
-The next deeper practical blockers are no longer the material/light/runtime seam, `SHGrid.cpp`, the basic render-foundation slice, the first bounding-volume seam, the generated render DB glue, the first screen-space effects slice, the first AOE/water utility slice, or the previous terrain runtime/cache seam. Those slices are now in the maintained render probe, so the next frontier is the remaining legacy `DiAnGr` core plus the stale/retired scene-loader edge cases that still sit outside the maintained null-render surface.
+The next deeper practical blockers are no longer `DiAnGr`, `ModelLoader.cpp`, `TimeCtrlSceneComponent.cpp`, or basic scene compile coverage. The next frontier is replacing the current null-render/bootstrap maintenance surface with real Linux renderer/runtime integration so the client can move beyond the shell and into the actual client loop.
 
 Current exact blockers:
 
 - The generated material/runtime slice (`Render/DebugMaterial.cpp`, `Render/GrassMaterial.cpp`, `Render/MaterialResourceInterface.cpp`) is no longer outside the maintained probe. On Linux it now stays behind null-render/bootstrap-safe wrappers because the generated API in those files has drifted from the current DB/material surface.
 - `Render/facefxsystem.cpp` is also now inside the maintained probe. The Linux path uses a no-op bootstrap implementation because this repository does not ship the FaceFX SDK headers (`FxSDK.h`, `FxActor.h`, `FxActorInstance.h`), so the next work should not assume those vendor headers exist locally.
-- `Render/mesh.cpp` is still a legacy render portability blocker identified by standalone Linux probing, but it is clearly outside the maintained render path. The Linux path stops immediately because `mesh.h` includes a nonexistent `submesh.h`, and the file still uses the older `SubMesh`/legacy `DipDescriptor` API rather than the current `MeshGeometry` path, so this remains a compatibility or retirement decision, not just a case-fix.
+- `Render/mesh.cpp` is no longer outside the maintained probe. It now builds on Linux through the current compatibility layer, so it is no longer an active compile blocker even though it remains legacy render code.
 - Outside the probe, the remaining obvious Windows-only render helpers are `Render/VidMemViaDDraw.cpp` and `Render/VidMemViaWMI.cpp`. Those are not meaningful Linux runtime wins; they should stay deprioritized behind the real renderer/runtime path unless a build-system reason forces them earlier.
 - `Render/batch_linux_null.cpp` is now legacy scaffolding rather than the active seam. The maintained render probe already compiles the real `batch.cpp`, so future work should prioritize the remaining real runtime files still outside the probe instead of extending the older null batch shim.
-- `Scene/DiAnGr.cpp` and the remaining deeper `Scene/DiAnGr*.cpp` core files are now the legacy animation-graph seam. The maintained probe is already through `DiAnGrAPI.cpp`, `DiAnGrCl.cpp`, `DiAnGrNLinker.cpp`, `DiAnGrSStorage.cpp`, `DiAnGrUp.cpp`, `DiAnGrUtils.cpp`, and `DiGraph.cpp`, so the remaining failures are now inside the heavier `DiMath` / `DiAnGr` core rather than at top-level render includes.
-- `Scene/ModelLoader.cpp` is blocked immediately by a missing `AIGeometry.h` include, which looks like either a stale include path or a retired dependency rather than a Linux renderer problem.
+- `Scene/DiAnGr.cpp`, `Scene/DiAnGrDb.cpp`, `Scene/DiAnGrEditor.cpp`, `Scene/DiAnGrExtPars.cpp`, `Scene/DiAnGrExtParsAd.cpp`, `Scene/DiAnGrG.cpp`, `Scene/DiAnGrIo2.cpp`, and `Scene/DiAnGrMarker.cpp` are no longer outside the maintained probe. The Linux path now has the missing `DiMath` include alias, safe non-MSVC `strcpy_s` / `sprintf_s` compatibility shims, direct DB type visibility for `DiAnGrExtPars`, and a manual marker-ring teardown in `DiAnGrG.cpp` that avoids `ring::Clear()` ambiguity for refcounted ring elements.
+- `Scene/ModelLoader.cpp` is no longer an active blocker. The local `AIGeometry.h` compatibility definition remains in-tree, but the loader now builds through the current mesh/material/runtime API and is maintained as part of the render probe.
+- The next scene/runtime frontier is no longer `DiAnGr`, `ModelLoader.cpp`, or `TimeCtrlSceneComponent.cpp`. The maintained probe now covers every non-test, non-`stdafx`, non-deprecated scene translation unit. The remaining work is no longer scene compile coverage; it is moving from the null-render/bootstrap path toward real client runtime integration and a real Linux renderer backend.
 - `Terrain/TerrainMaterialCache.cpp`, `Terrain/TerrainHeightManager.cpp`, `Terrain/TerrainLayerManager.cpp`, `Terrain/TerrainTextureCache.cpp`, `Terrain/NatureMapVisual.cpp`, `Terrain/TerrainElement.cpp`, `Terrain/Terrain.cpp`, `Terrain/TerrainCollision.cpp`, `Terrain/TerrainGeometryManager.cpp`, `Terrain/BezierSurface.cpp`, and `Terrain/NatureAttackSpace.cpp` are no longer outside the maintained probe. The render-probe-specific `PW_LINUX_TERRAIN_RUNTIME_PROBE` split in `Terrain.h` now lets the real terrain runtime compile on Linux while gameplay bootstrap keeps the lightweight terrain surface.
 - `Terrain/UberElement.cpp` is still outside the maintained probe, but it is explicitly deprecated in-tree (`#error "This file was deprecated 28.05.2008"`) and depends on missing retired headers (`DummyElement.h`), so it should stay out unless some content unexpectedly revives it.
-- `Scene/TimeCtrlSceneComponent.cpp` is still stale legacy code with major DB/runtime API drift, but it is excluded from the normal source list and is not on the critical path right now.
+- `Scene/TimeCtrlSceneComponent.cpp` still targets removed DB/runtime APIs on Windows, which is why it remains excluded from the normal source list. For Linux maintenance it now has a probe-only null-render stub, so it is no longer an open portability blocker.
 
 ## Current Effort Estimate
 
@@ -201,6 +231,12 @@ Build the gameplay portability slice:
 
 ```bash
 cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxGameplayProbe -j4
+```
+
+Build the client runtime portability slice:
+
+```bash
+cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClientRuntimeProbe -j4
 ```
 
 Build the native Linux client shell:

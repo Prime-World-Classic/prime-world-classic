@@ -55,6 +55,9 @@ add_executable(
 add_executable(
   PrimeWorldLinuxClient
   ../PW_Client/Game.cpp
+  ../PW_Client/LoadingFlashInterface.cpp
+  ../PW_Client/LoadingHeroes.cpp
+  ../PW_Client/LoadingStatusHandler.cpp
   pfadvmap_bootstrap.cpp
   ../Game/PF/Server/LobbyPvx/CommonTypes.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
@@ -181,6 +184,55 @@ add_library(
 )
 
 add_library(
+  PrimeWorldLinuxClientRuntimeProbe
+  OBJECT
+  ../Client/DefaultScreenBase.cpp
+  ../Client/ScreenCommands.cpp
+  ../Client/MainLoop.cpp
+  ../PW_Client/CpuTopology.cpp
+  ../PW_Client/DebugVarsSender.cpp
+  ../PW_Client/GameContext.cpp
+  ../PW_Client/GameStatistics.cpp
+  ../PW_Client/GameStatisticsWrapper.cpp
+  ../PW_Client/LoadingFlashInterface.cpp
+  ../PW_Client/LoadingHeroes.cpp
+  ../PW_Client/LobbyConnection.cpp
+  ../PW_Client/LocalCmdScheduler.cpp
+  ../PW_Client/LoadingScreen.cpp
+  ../PW_Client/LoadingScreenLogic.cpp
+  ../PW_Client/LoadingStatusHandler.cpp
+  ../PW_Client/LocalGameContext.cpp
+  ../PW_Client/NewLobbyClientPW.cpp
+  ../PW_Client/NewLobbyGameClientPW.cpp
+  ../PW_Client/NetworkStatusScreen.cpp
+  ../PW_Client/ReplayRunner.cpp
+  ../PW_Client/ReplayTransceiver.cpp
+  ../PW_Client/SelectGameModeLogic.cpp
+  ../PW_Client/SelectGameModeScreen.cpp
+  ../PW_Client/SelectHeroScreen.cpp
+  ../PW_Client/SelectHeroScreenLogic.cpp
+  ../UI/DebugVarsRender.cpp
+  ../UI/FrameTimeRender.cpp
+  ../UI/ImageComponent.cpp
+  ../UI/ImageLabel.cpp
+  ../UI/LuaEventResult.cpp
+  ../UI/NameMappedWindow.cpp
+  ../UI/PreferencesProcessor.cpp
+  ../UI/Resolution.cpp
+  ../UI/Root.cpp
+  ../UI/ScreenLogicBase.cpp
+  ../UI/SkinStyles.cpp
+  ../UI/Scripts.cpp
+  ../UI/TextComponent.cpp
+  ../UI/TextComponentBasic.cpp
+  ../UI/TextMarkupLexems.cpp
+  ../UI/TextMarkupParser.cpp
+  ../UI/User.cpp
+  ../UI/View.cpp
+  ../UI/WindowPointJob.cpp
+)
+
+add_library(
   PrimeWorldLinuxRenderProbe
   OBJECT
   ../Render/AOERenderer.cpp
@@ -278,8 +330,16 @@ add_library(
   ../Scene/CollisionGeometryManager.cpp
   ../Scene/DBSceneBase.cpp
   ../Scene/DBScene.cpp
+  ../Scene/DiAnGr.cpp
   ../Scene/DiAnGrAPI.cpp
+  ../Scene/DiAnGrDb.cpp
+  ../Scene/DiAnGrEditor.cpp
   ../Scene/DiAnGrCl.cpp
+  ../Scene/DiAnGrExtPars.cpp
+  ../Scene/DiAnGrExtParsAd.cpp
+  ../Scene/DiAnGrG.cpp
+  ../Scene/DiAnGrIo2.cpp
+  ../Scene/DiAnGrMarker.cpp
   ../Scene/DiAnGrNLinker.cpp
   ../Scene/DiAnGrSStorage.cpp
   ../Scene/DiAnGrUp.cpp
@@ -294,6 +354,7 @@ add_library(
   ../Scene/LightingScene.cpp
   ../Scene/LightningFX.cpp
   ../Scene/LightningSceneComponent.cpp
+  ../Scene/ModelLoader.cpp
   ../Scene/ParticleSceneComponent.cpp
   ../Scene/RoadGeometryBuilder.cpp
   ../Scene/RoadSceneObject.cpp
@@ -313,6 +374,7 @@ add_library(
   ../Scene/StaticSceneComponent.cpp
   ../Scene/TerrainGrid.cpp
   ../Scene/TimeController.cpp
+  ../Scene/TimeCtrlSceneComponent.cpp
   ../Scene/TimeMutator.cpp
   ../Scene/TraceFX.cpp
   ../Scene/TraceFXGeo.cpp
@@ -343,9 +405,11 @@ add_library(
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxClientRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
 target_compile_options(PrimeWorldLinuxClient PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxGameplayProbe PRIVATE -fpermissive)
+target_compile_options(PrimeWorldLinuxClientRuntimeProbe PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxRenderProbe PRIVATE -fpermissive)
 
 target_include_directories(
@@ -374,6 +438,18 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
     ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxClientRuntimeProbe
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
 )
@@ -492,6 +568,55 @@ set_source_files_properties(
 )
 
 set_source_files_properties(
+  ../Client/DefaultScreenBase.cpp
+  ../Client/ScreenCommands.cpp
+  ../Client/MainLoop.cpp
+  ../PW_Client/CpuTopology.cpp
+  ../PW_Client/DebugVarsSender.cpp
+  ../PW_Client/GameContext.cpp
+  ../PW_Client/GameStatistics.cpp
+  ../PW_Client/GameStatisticsWrapper.cpp
+  ../PW_Client/LoadingFlashInterface.cpp
+  ../PW_Client/LoadingHeroes.cpp
+  ../PW_Client/LobbyConnection.cpp
+  ../PW_Client/LocalCmdScheduler.cpp
+  ../PW_Client/LoadingScreen.cpp
+  ../PW_Client/LoadingScreenLogic.cpp
+  ../PW_Client/LoadingStatusHandler.cpp
+  ../PW_Client/LocalGameContext.cpp
+  ../PW_Client/NewLobbyClientPW.cpp
+  ../PW_Client/NewLobbyGameClientPW.cpp
+  ../PW_Client/NetworkStatusScreen.cpp
+  ../PW_Client/ReplayRunner.cpp
+  ../PW_Client/ReplayTransceiver.cpp
+  ../PW_Client/SelectGameModeLogic.cpp
+  ../PW_Client/SelectGameModeScreen.cpp
+  ../PW_Client/SelectHeroScreen.cpp
+  ../PW_Client/SelectHeroScreenLogic.cpp
+  ../UI/DebugVarsRender.cpp
+  ../UI/FrameTimeRender.cpp
+  ../UI/ImageComponent.cpp
+  ../UI/ImageLabel.cpp
+  ../UI/LuaEventResult.cpp
+  ../UI/NameMappedWindow.cpp
+  ../UI/PreferencesProcessor.cpp
+  ../UI/Resolution.cpp
+  ../UI/Root.cpp
+  ../UI/ScreenLogicBase.cpp
+  ../UI/SkinStyles.cpp
+  ../UI/Scripts.cpp
+  ../UI/TextComponent.cpp
+  ../UI/TextComponentBasic.cpp
+  ../UI/TextMarkupLexems.cpp
+  ../UI/TextMarkupParser.cpp
+  ../UI/User.cpp
+  ../UI/View.cpp
+  ../UI/WindowPointJob.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_NULL_RENDER"
+)
+
+set_source_files_properties(
   runtime_stubs.cpp
   ../Render/AOERenderer.cpp
   ../Render/RenderInterface.cpp
@@ -588,8 +713,16 @@ set_source_files_properties(
   ../Scene/CollisionGeometryManager.cpp
   ../Scene/DBSceneBase.cpp
   ../Scene/DBScene.cpp
+  ../Scene/DiAnGr.cpp
   ../Scene/DiAnGrAPI.cpp
+  ../Scene/DiAnGrDb.cpp
+  ../Scene/DiAnGrEditor.cpp
   ../Scene/DiAnGrCl.cpp
+  ../Scene/DiAnGrExtPars.cpp
+  ../Scene/DiAnGrExtParsAd.cpp
+  ../Scene/DiAnGrG.cpp
+  ../Scene/DiAnGrIo2.cpp
+  ../Scene/DiAnGrMarker.cpp
   ../Scene/DiAnGrNLinker.cpp
   ../Scene/DiAnGrSStorage.cpp
   ../Scene/DiAnGrUp.cpp
@@ -604,6 +737,7 @@ set_source_files_properties(
   ../Scene/LightingScene.cpp
   ../Scene/LightningFX.cpp
   ../Scene/LightningSceneComponent.cpp
+  ../Scene/ModelLoader.cpp
   ../Scene/ParticleSceneComponent.cpp
   ../Scene/RoadGeometryBuilder.cpp
   ../Scene/RoadSceneObject.cpp
@@ -623,6 +757,7 @@ set_source_files_properties(
   ../Scene/StaticSceneComponent.cpp
   ../Scene/TerrainGrid.cpp
   ../Scene/TimeController.cpp
+  ../Scene/TimeCtrlSceneComponent.cpp
   ../Scene/TimeMutator.cpp
   ../Scene/TraceFX.cpp
   ../Scene/TraceFXGeo.cpp

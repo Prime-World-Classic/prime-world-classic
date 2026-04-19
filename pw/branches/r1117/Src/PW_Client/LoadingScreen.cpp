@@ -3,7 +3,11 @@
 
 #include "System/LoadingProgress.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "../PF_GameLogic/StringExecutorBootstrap.h"
+#else
 #include "../PF_GameLogic/StringExecutor.h"
+#endif
 #include "../PF_GameLogic/DBAdvMap.h"
 #include "../PF_GameLogic/DBServer.h"
 #include "../PF_GameLogic/IgnoreListStorage.h"

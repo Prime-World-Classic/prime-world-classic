@@ -3,11 +3,11 @@
 #include "UI/Button.h"
 #include "UI/RadioPanel.h"
 
+#include "NewLobbyClientPW.h"
 #include "SelectHeroScreen.h"
 #include "Render/TextureManager.h"
 
 #include "SelectHeroScreenLogic.h"
-#include "NewLobbyClientPW.h"
 #include "Client/ScreenCommands.h"
 
 extern string g_devLogin;
@@ -103,13 +103,12 @@ void SelectHeroScreenLogic::UpdateTimer(int playerCount)
   UI::ImageLabel * pDesc = UI::GetChildChecked < UI::ImageLabel > ( pBaseWindow, "Text_Timer", true );
   if ( pDesc )
   {
-	wchar_t buff[256];
-  swprintf_s(buff, L"%sPlayers connected: %d</style>", playerCount == 10 ? L"<style:green>" : L"<style:money>", playerCount);
+    wchar_t buff[256];
+    swprintf(buff, sizeof(buff) / sizeof(buff[0]), L"%lsPlayers connected: %d</style>", playerCount == 10 ? L"<style:green>" : L"<style:money>", playerCount);
 
-	pDesc->SetCaptionTextW ( buff );
+    pDesc->SetCaptionTextW ( buff );
   }
 
 }
 
 }//end of namespace
-

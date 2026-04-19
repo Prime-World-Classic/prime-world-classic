@@ -5,7 +5,11 @@
 #include "Client/MainTimer.h"
 
 #include "HybridServer/Peered.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "Game/PF/Client/LobbyPvx/LobbyClientStatusCompat.h"
+#else
 #include "Client/LobbyPvx/LobbyClientBase.h"
+#endif
 #include "RPC/Interfaces.h"
 #include "System/MainFrame.h"
 

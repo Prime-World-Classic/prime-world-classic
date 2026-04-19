@@ -1,5 +1,6 @@
 #pragma once
 
+#include "LuaCommon.h"
 #include "LuaValues.h"
 #include "lua.hpp"
 

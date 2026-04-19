@@ -3,7 +3,6 @@
 #include "LocalGameContext.h"
 
 #include "PF_GameLogic/MapCollection.h"
-#include "PF_GameLogic/StringExecutor.h"
 #include "PF_GameLogic/AdventureScreen.h"
 #include "PF_GameLogic/DbSessionRoots.h"
 #include "PF_GameLogic/DbHeroesList.h"
@@ -28,6 +27,7 @@
 #include "PF_GameLogic/IgnoreListStorage.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
 #include "Version.h"
+#include "System/get_tick_count.h"
 
 static bool g_enableReplayLocalGame = false;
 extern string g_devLogin;
@@ -226,7 +226,7 @@ int LocalGameContext::Poll( float dt )
       }
       else
       {
-        Sleep( 50 );
+        threading::Sleep( 50 );
         float pro = mapLoadingJob->GetProgress()->GetTotalProgress();
         if ( loadingScreeen )
           loadingScreeen->SetPlayerProgress( clientId, Clamp( pro, 0.f, 1.f ) );

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DBUI.h"
 #include "../Render/texture.h"
 #include "TextMarkupCommon.h"
 #include "Defines.h"

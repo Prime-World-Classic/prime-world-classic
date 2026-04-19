@@ -1,6 +1,226 @@
 #include "StdAfx.h"
 #include "LoadingFlashInterface.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+namespace
+{
+Game::LoadingFlashHeroState* FindLoadingFlashHeroState(vector<Game::LoadingFlashHeroState>* heroes, int slotId)
+{
+  if (!heroes)
+  {
+    return 0;
+  }
+
+  for (size_t i = 0; i < heroes->size(); ++i)
+  {
+    if ((*heroes)[i].slotId == slotId)
+    {
+      return &(*heroes)[i];
+    }
+  }
+
+  heroes->push_back(Game::LoadingFlashHeroState());
+  heroes->back().slotId = slotId;
+  return &heroes->back();
+}
+}
+
+namespace Game
+{
+
+LoadingFlashInterface::LoadingFlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className )
+  : preloading(false),
+    spectatorMode(false),
+    ourHeroId(-1),
+    ourFaction(NDb::FACTION_NEUTRAL),
+    leftFaction(NDb::FACTION_NEUTRAL),
+    rightFaction(NDb::FACTION_NEUTRAL)
+{
+}
+
+void LoadingFlashInterface::SetHeroIdentity( int heroID, NDb::EFaction faction, const wstring& heroName, const char * iconPath, int heroLevel, bool isMale, const char * classIcon, uint partyId, string & flagIcon, wstring & flagTooltip, bool isAnimatedAvatar, int leagueIndex )
+{
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroID);
+  if (!state)
+  {
+    return;
+  }
+
+  state->faction = faction;
+  state->playerName = heroName;
+  state->iconPath = iconPath ? iconPath : "";
+  state->heroLevel = heroLevel;
+  state->isMale = isMale;
+  state->classIcon = classIcon ? classIcon : "";
+  state->partyId = partyId;
+  state->flagIcon = flagIcon;
+  state->flagTooltip = flagTooltip;
+  state->isAnimatedAvatar = isAnimatedAvatar;
+  state->leagueIndex = leagueIndex;
+}
+
+void LoadingFlashInterface::SetHeroLoadProgress( int heroId, float loadProgress, bool isLeftGame )
+{
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (!state)
+  {
+    return;
+  }
+
+  state->loadProgress = loadProgress;
+  state->isLeftGame = isLeftGame;
+}
+
+void LoadingFlashInterface::SetOurHeroId( int heroID, NDb::EFaction faction )
+{
+  ourHeroId = heroID;
+  ourFaction = faction;
+}
+
+void LoadingFlashInterface::SetHeroLevel( int heroId, int level )
+{
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (state)
+  {
+    state->heroLevel = level;
+  }
+}
+
+void LoadingFlashInterface::SetPlayersFaction( NDb::EFaction leftFaction, NDb::EFaction rightFaction )
+{
+  this->leftFaction = leftFaction;
+  this->rightFaction = rightFaction;
+}
+
+void LoadingFlashInterface::SetMapBack( const char* back, const char* logo )
+{
+  mapBackground = back ? back : "";
+  mapLogo = logo ? logo : "";
+}
+
+void LoadingFlashInterface::SetForceColorTable( const vector<int> & forceTable,const vector<uint> & colorTable )
+{
+}
+
+void LoadingFlashInterface::SetTeamForce(const wstring & forceLeft,const wstring & forceRight)
+{
+}
+
+void LoadingFlashInterface::SetHeroForce( int heroId, int force )
+{
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (state)
+  {
+    state->force = force;
+  }
+}
+
+void LoadingFlashInterface::SetHeroRaiting( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
+{
+}
+
+void LoadingFlashInterface::SetHeroRaitingAcc( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
+{
+}
+
+void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EFaction originalFraction )
+{
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (state)
+  {
+    state->hasPremium = hasPremium;
+    state->originalFaction = originalFraction;
+  }
+}
+
+void LoadingFlashInterface::AddModeDescription( const char * modeImage, int id )
+{
+}
+
+void LoadingFlashInterface::SetLoadingStatusText( const wstring & statusText )
+{
+  loadingStatusText = statusText;
+}
+
+void LoadingFlashInterface::SetLocales( const char* imageLeft,const wstring & toolTipLeft, const char* imageRight, const wstring & toolTipRight )
+{
+}
+
+void LoadingFlashInterface::SetLoadingState( bool isPreloading )
+{
+  preloading = isPreloading;
+}
+
+void LoadingFlashInterface::SetTip( const wstring & tip )
+{
+  tipText = tip;
+}
+
+void LoadingFlashInterface::SwitchToSpectatorMode()
+{
+  spectatorMode = true;
+}
+
+void LoadingFlashInterface::AddChannel( NDb::EChatChannel channel, const wstring & channelName, uint channelColor, bool showChannelName, bool showPlayerName, bool canWrite2Channel )
+{
+}
+
+void LoadingFlashInterface::AddChannelShortCut( NDb::EChatChannel channel, const wstring & shortcut )
+{
+}
+
+void LoadingFlashInterface::AddMessage( NDb::EChatChannel channel, const wstring & playerName, const wstring & message )
+{
+}
+
+void LoadingFlashInterface::AddMessage(NDb::EChatChannel channel, const wstring & playerName, const wstring & message, const int playerId)
+{
+}
+
+void LoadingFlashInterface::SetDefaultChannel( NDb::EChatChannel channelID )
+{
+}
+
+void LoadingFlashInterface::SetChatVisible( bool visible )
+{
+}
+
+void LoadingFlashInterface::SetChatOff( bool isChatOff )
+{
+}
+
+void LoadingFlashInterface::SetPlayerIcon(const int playerId, const string& path)
+{
+}
+
+void LoadingFlashInterface::SetPlayerHeroId(const int playerId, const int heroId, const int teamId)
+{
+}
+
+void LoadingFlashInterface::IgnoreUser( const int playerId )
+{
+}
+
+void LoadingFlashInterface::RemoveIgnore( const int playerId )
+{
+}
+
+void LoadingFlashInterface::OpenCloseChat()
+{
+}
+
+void LoadingFlashInterface::OpenChanel(int channelID)
+{
+}
+
+void LoadingFlashInterface::OnEscape()
+{
+}
+
+}
+
+#else
 
 #define FLASH_INTERFACE_ENTER_FUNCTION(_funcName) \
   CallMethod( _funcName
@@ -239,12 +459,8 @@ void LoadingFlashInterface::OnEscape()
   CALL_FUNCTION;
 }
 
-
-
-
-
 }
 
+#endif
 
 NI_DEFINE_REFCOUNT( Game::LoadingFlashInterface );
-

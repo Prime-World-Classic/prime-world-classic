@@ -6,6 +6,72 @@
 namespace NScene
 {
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+void TimeCtrlSceneComponent::OnAfterAttached()
+{
+}
+
+void TimeCtrlSceneComponent::Update( UpdatePars &pars, const Placement& parentPos, float timeDiff )
+{
+  float timeDelta = 0.0f;
+  if ( !UpdateBasics( pars, parentPos, timeDiff, timeDelta ) )
+  {
+    return;
+  }
+
+  if ( activeState == ST_INACTIVE )
+  {
+    return;
+  }
+
+  lastUpdateLocalTime = curLocalTime;
+  curLocalTime += timeDelta;
+  PassUpdate2Children( pars, worldPlacement, timeDelta );
+}
+
+void TimeCtrlSceneComponent::Activate()
+{
+  if ( activeState != ST_INACTIVE )
+  {
+    return;
+  }
+
+  activationTime = timeController.GetTime();
+  lastUpdateLocalTime = 0.0f;
+  curLocalTime = 0.0f;
+  numLoops = 0;
+  numLoopsToPlay = -1;
+  activeState = ST_PLAY;
+}
+
+void TimeCtrlSceneComponent::Deactivate()
+{
+  if ( activeState == ST_INACTIVE )
+  {
+    return;
+  }
+
+  activeState = ST_INACTIVE;
+
+  if ( onDeactivateCB )
+  {
+    onDeactivateCB( *this, pUserData );
+  }
+}
+
+bool TimeCtrlSceneComponent::SetupTriggeredAction( NDb::EAnimEventType /*evt*/, char const * /*name*/, float /*param*/, Action /*act*/ )
+{
+  return false;
+}
+
+DiAnimGraph *TimeCtrlSceneComponent::GetAnimGraph()
+{
+  return 0;
+}
+
+#else
+
 namespace
 {
 
@@ -39,7 +105,7 @@ void TimeCtrlSceneComponent::OnAfterAttached()
   }
 }
 
-void TimeCtrlSceneComponent::Update( IScene *pScene, const Placement& parentPos, Render::AABB &objectAABB, float timeDiff )
+void TimeCtrlSceneComponent::Update( UpdatePars &pars, const Placement& parentPos, float timeDiff )
 {
   if (duration < 0.f)
   {
@@ -51,7 +117,7 @@ void TimeCtrlSceneComponent::Update( IScene *pScene, const Placement& parentPos,
   lastUpdateLocalTime = curLocalTime;
 
 	float timeDelta;
-	UpdateBasics( parentPos, timeDiff, timeDelta );
+	UpdateBasics( pars, parentPos, timeDiff, timeDelta );
 
   if (activeState != ST_INACTIVE)
   {
@@ -109,12 +175,12 @@ void TimeCtrlSceneComponent::Update( IScene *pScene, const Placement& parentPos,
       timeDiffNew += duration;
       NI_ASSERT(timeDiffNew > 0.0f, "Logic failed in TimeCtrlComp!");
     }
-    child->Update( pScene, worldPlacement, objectAABB, timeDiffNew );
+    child->Update( pars, worldPlacement, timeDiffNew );
 
 	  SceneComponent* it = child->GetBrother();
 	  while (it && it != GetChild() )
 	  {
-		  it->Update( pScene, worldPlacement, objectAABB, timeDiffNew );
+		  it->Update( pars, worldPlacement, timeDiffNew );
 		  it = it->GetBrother();
 	  }
   }
@@ -236,5 +302,7 @@ DiAnimGraph *TimeCtrlSceneComponent::GetAnimGraph()
   
   return asc->GetAnimGraph();
 }
+
+#endif
 
 } // namespace NScene

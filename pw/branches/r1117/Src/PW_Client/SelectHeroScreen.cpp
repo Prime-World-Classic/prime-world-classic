@@ -2,12 +2,13 @@
 #include "SelectHeroScreen.h"
 
 #include "Core/CoreFSM.h"
-#include "PW_Client/GameContext.h"
 #include "SelectHeroScreenLogic.h"
 #include "Client/MainTimer.h"
 #include "System/InlineProfiler.h"
 #include "../PF_GameLogic/WebLauncher.h"
+#if !defined(__linux__)
 #include "../PW_Game/server_ip.h"
+#endif
 
 extern string g_devLogin;
 extern WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;

@@ -13,8 +13,26 @@
 
 #include "stdafx.h"
 
+#include <cstdio>
+#include <cstring>
+
 #include "DiAnGr.h"
-#include "../system/SystemLog.h"
+#include "../System/SystemLog.h"
+
+#if !defined(_MSC_VER)
+namespace
+{
+  inline int strcpy_s(char *destination, size_t destinationSize, const char *source)
+  {
+    if (destination == NULL || source == NULL || destinationSize == 0)
+      return -1;
+
+    return std::snprintf(destination, destinationSize, "%s", source);
+  }
+}
+#endif
+
+DiInt32 _resetGraphSpeedCallback(DiAnGrCallbackParams const &cpParams);
 
 ///eugbelNSCENE///namespace NScene {
 
@@ -2858,4 +2876,3 @@ DiBool DiAnimNode::TestForDispatcher( DiUInt32 dispatcherID, DiUInt32 nodeID )
   gpGraph->ForAllNeighbours(dispatcherID, &t);
   return t.GetRes();
 }
-

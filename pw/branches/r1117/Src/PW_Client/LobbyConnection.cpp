@@ -1,14 +1,42 @@
 #include "stdafx.h"
 #include "LobbyConnection.h"
+
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+class DummyCaslteLink : public ICastle, public BaseObjectST
+{
+  NI_DECLARE_REFCOUNT_CLASS_2( DummyCaslteLink, ICastle, BaseObjectST );
+
+public:
+  DummyCaslteLink() {}
+
+  virtual void Update( float seconds ) {}
+  virtual void StartRender() {}
+  virtual void ReturnToCastle() {}
+  virtual void QuitGame() {}
+};
+
+Strong<ICastle> CreateCastleLink( int port, const char* castleCmdLine, HINSTANCE _instance, HWND _sessionWnd )
+{
+  return new DummyCaslteLink();
+}
+
+Strong<ICastle> CreateDummyCastleLink()
+{
+  return new DummyCaslteLink();
+}
+
+#else
+
 #include <winsock2.h>
 #include "System\StarForce\StarForce.h"
 #include <Tlhelp32.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//Раньше этот класс был написан при помощи boost::asio, но выяснилось, что
-//конструктор boost::asio::io_service падает при запуске под Wine на движке WS8WineCXG10.1.1.
-//С обычным wine-1.3.32 всё в порядке. Определение BOOST_ASIO_DISABLE_IOCP не помогает.
+//Р Р°РЅСЊС€Рµ СЌС‚РѕС‚ РєР»Р°СЃСЃ Р±С‹Р» РЅР°РїРёСЃР°РЅ РїСЂРё РїРѕРјРѕС‰Рё boost::asio, РЅРѕ РІС‹СЏСЃРЅРёР»РѕСЃСЊ, С‡С‚Рѕ
+//РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ boost::asio::io_service РїР°РґР°РµС‚ РїСЂРё Р·Р°РїСѓСЃРєРµ РїРѕРґ Wine РЅР° РґРІРёР¶РєРµ WS8WineCXG10.1.1.
+//РЎ РѕР±С‹С‡РЅС‹Рј wine-1.3.32 РІСЃС‘ РІ РїРѕСЂСЏРґРєРµ. РћРїСЂРµРґРµР»РµРЅРёРµ BOOST_ASIO_DISABLE_IOCP РЅРµ РїРѕРјРѕРіР°РµС‚.
 class CastleConnection: public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_1( CastleConnection, BaseObjectST )  
@@ -344,3 +372,5 @@ Strong<ICastle> CreateDummyCastleLink()
 {
   return new DummyCaslteLink();
 }
+
+#endif

@@ -6,6 +6,7 @@
 #include "ReplayRunner.h"
 
 #include "Network/Initializer.h"
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "Network/TransportInitializer.h"
 #include "Network/ClientTransportConfig.h"
 #pragma warning(push)
@@ -14,6 +15,10 @@
 #include "Network/ClientTransportSystem3.h"
 #pragma warning(pop)
 #include "Network/FreePortsFinder.h"
+#include "Network/RdpClientTransport/RdpClientTransport.h"
+#else
+#include "Network/ClientTransportConfig.h"
+#endif
 #include "Network/StreamAllocator.h"
 
 
@@ -22,13 +27,16 @@
 #include "Client/WasserzeichenScreen.h"
 
 #include "Game/PF/Client/GameChatClient/GameChatClient.h"
-#include "Network/RdpClientTransport/RdpClientTransport.h"
 
 #include "PF_GameLogic/MapCollection.h"
 #include "PF_GameLogic/DbSessionRoots.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PF_GameLogic/StringExecutorBootstrap.h"
+#else
 #include "PF_GameLogic/StringExecutor.h"
+#endif
 #include "PF_GameLogic/DBAdvMap.h"
 
 #include "DebugVarsSender.h"
@@ -134,6 +142,10 @@ void GameContext::Init()
   networkDriver = Network::Initialize();
   networkDriver->SetStreamAllocator( new Network::StreamAllocator );
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  MessageTrace( "Linux bootstrap transport init skipped" );
+  clientTransportSystem = 0;
+#else
   Login::ClientVersion ver(VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, VERSION_REVISION);
 
   ni_udp::NetAddr loginSvcAddr;
@@ -153,6 +165,7 @@ void GameContext::Init()
     MessageTrace( "TCP transport login address: %s", loginAdr );
     clientTransportSystem = new Transport::ClientTransportSystem3( networkDriver, Transport::GetGlobalMessageFactory(), ver );
   }
+#endif
 }
 
 

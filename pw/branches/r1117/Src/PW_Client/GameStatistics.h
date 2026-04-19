@@ -6,6 +6,7 @@
 #include "Server/Statistic/StatisticsCommonTypes.h"
 #include "Server/Statistic/StatisticsClientTypes.h"
 #include "Server/Statistic/StatisticsDebugTypes.h"
+#include <climits>
 
 
 namespace StatisticService
@@ -183,8 +184,8 @@ struct PingStatisticsContainer : NonCopyable
 
     void Reset()
     {
-      pingMin = _I32_MAX;
-      pingMax = _I32_MIN;
+      pingMin = INT_MAX;
+      pingMax = INT_MIN;
       pingCnt = 0;
       pingAvg = 0;
     }
@@ -205,7 +206,7 @@ struct PingStatisticsContainer : NonCopyable
 
     int GetMin()
     {
-      if (pingMin != _I32_MAX)
+      if (pingMin != INT_MAX)
       {
         return pingMin;
       }
@@ -217,7 +218,7 @@ struct PingStatisticsContainer : NonCopyable
 
     int GetMax()
     {
-      if (pingMax != _I32_MIN)
+      if (pingMax != INT_MIN)
       {
         return pingMax;
       }

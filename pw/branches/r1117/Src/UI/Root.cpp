@@ -2,13 +2,16 @@
 
 #include "Root.h"
 
+#include "DBUI.h"
 #include "Cursor.h"
 #include "FontRender.h"
 #include "SkinStyles.h"
 #include "Scripts.h"
 #include "DebugVarsRender.h"
 
+#include "Render/DxResourcesControl.h"
 #include "Render/UIRenderer.h"
+#include "Render/NullRenderSignal.h"
 #include "Flash/GameSWFIntegration/FlashPlayer.h"
 #include "Render/FlashRendererInterface.h"
 #include "Render/Material.h"
@@ -71,8 +74,12 @@ struct UIMaterialPreloader : public NDb::IResourcesProcessor
 
     if ( dbTexture )
     {
+#if defined(VISUAL_CUTTED)
+      return true;
+#else
       CObj<Render::Texture> texture = dbTexture->Load();
       texture = 0;
+#endif
     }
 
     const NDb::UIImageLabelLayout* dbImageLayout = dynamic_cast<const NDb::UIImageLabelLayout *>( pResource ); 

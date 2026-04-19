@@ -2,6 +2,7 @@
 #define LOBBYSESSIONRUNNERPW_H_INCLUDED
 
 #include "Client/LobbyPvx/LobbyGameClient.h"
+#include "HybridServer/Peered.h"
 #include "LoadingScreenLogic.h"
 #include "PF_GameLogic/GameControl.h"
 #include "PF_GameLogic/ReplayInfo.h"
@@ -46,11 +47,6 @@ namespace Chat
   class ChatClient;
 }
 
-
-namespace Peered
-{
-  namespace EDisconnectReason { enum Enum; }
-}
 
 namespace gamechat
 {

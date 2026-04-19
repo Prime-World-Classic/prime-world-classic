@@ -1,39 +1,22 @@
 #pragma once
 
-namespace Login
-{
-  namespace ELoginResult
-  {
-    enum Enum;
-  }
-}
+#include "GameStatStatus.h"
+#include "Network/LoginTypes.h"
+#include "Game/PF/Server/LobbyPvx/CommonTypes.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(NEW_LOBBYCLIENTBASE_H_INCLUDED)
+#include "Game/PF/Client/LobbyPvx/LobbyClientStatusCompat.h"
+#else
+#include "Game/PF/Client/LobbyPvx/LobbyClientBase.h"
+#endif
 
 namespace NDb
 {
   struct DBUIData;
 }
 
-namespace lobby
-{
-  namespace EClientStatus { enum Enum; }
-  namespace EOperationResult { enum Enum; }
-}
-
 namespace Game
 {
   class LoadingFlashInterface;
-
-  namespace EGameStatStatus
-  {
-    enum Enum
-    {
-      None,
-      Waiting,
-      Ready,
-      Failed,
-      Disabled
-    };
-  }
 
   namespace EReplayStatus
   {
@@ -61,6 +44,8 @@ public:
   void OnLobbyStatus( lobby::EClientStatus::Enum lobbyStatus );
   void OnLobbyInGameStatus( lobby::EOperationResult::Enum inGameStatus );
   void OnReplayStatus( Game::EReplayStatus::Enum replayStatus );
+  const string& GetLastStatusId() const { return lastStatus; }
+  const string& GetPendingStatusId() const { return pendingStatus; }
 
 private:
   void SetStatusText( const char * textId );

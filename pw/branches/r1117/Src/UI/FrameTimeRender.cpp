@@ -11,6 +11,9 @@
 #include "SkinStyles.h"
 #include "Version.h"
 
+#include <cstdio>
+#include <ctime>
+
 
 namespace NDebug
 {
@@ -72,12 +75,22 @@ void ShowTime()
   const Render::Color drawColor( 255, 255, 128, 255 );
   const int screenWidth = UI::GetUIScreenResolution().x;
 
-  __time32_t timeLocal = _time32(0);
+  time_t timeLocal = 0;
+#if defined(__linux__)
+  timeLocal = time( 0 );
+#else
+  timeLocal = _time32( 0 );
+#endif
   if (timeLocal > 0)
   {
-    __time32_t timeToDraw = timeLocal - srv2ClientTimeDelta;
+    time_t timeToDraw = timeLocal - srv2ClientTimeDelta;
     struct tm serverTime;
+#if defined(__linux__)
+    if ( !gmtime_r( &timeToDraw, &serverTime ) )
+      return;
+#else
     _gmtime32_s(&serverTime, &timeToDraw);
+#endif
 
     DrawStringLAligned( NStr::StrFmtW( L"%02d:%02d", serverTime.tm_hour, serverTime.tm_min ), screenWidth/2-20, 5, "herobars", drawColor );
   }
@@ -104,7 +117,7 @@ void ShowFPS()
       if ( g_showInfoGraph )
       {
         char buf[64];
-        _snprintf( buf, 63, "CRC: %S", buff );
+        snprintf( buf, 63, "CRC: %S", buff );
         debugDisplay::AddText( "__pos2", debugDisplay::Align( -1, -1 ), buf );
       }
       else
@@ -153,7 +166,7 @@ void SetFrameTime( float frameTime )
     countShortPeriod = 0;
 
     char buf[64];
-    _snprintf( buf, 63, "FPS: %d", (int)FPSshortPeriod.GetValue(), (int)FPSMINlongPeriod, (int)FPSMAXlongPeriod );
+    snprintf( buf, 63, "FPS: %d", (int)FPSshortPeriod.GetValue(), (int)FPSMINlongPeriod, (int)FPSMAXlongPeriod );
 
     debugDisplay::AddText( "__pos1", debugDisplay::Align( -1, -1 ), buf, FPSshortPeriod.IsWarning() ? debugDisplay::Color::Red : debugDisplay::Color::White, true );
   }
@@ -177,7 +190,7 @@ void SetFrameTime( float frameTime )
     debugDisplay::Align align( +1, -1 );
 
     char buf[64];
-    _snprintf( buf, 63, "FPS: %d", (int)FPSlongPeriod, (int)FPSMINlongPeriod, (int)FPSMAXlongPeriod );
+    snprintf( buf, 63, "FPS: %d", (int)FPSlongPeriod, (int)FPSMINlongPeriod, (int)FPSMAXlongPeriod );
 
     debugDisplay::AddText( "__pos1", debugDisplay::Align( -1, -1 ), buf, FPSshortPeriod.IsWarning() ? debugDisplay::Color::Red : debugDisplay::Color::White, true );
   }

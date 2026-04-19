@@ -3,7 +3,11 @@
 #include "NewLobbyGameClientPW.h"
 #include "NewLobbyClientPW.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PF_GameLogic/StringExecutorBootstrap.h"
+#else
 #include "PF_GameLogic/StringExecutor.h"
+#endif
 #include "PF_GameLogic/AdventureScreen.h"
 #include "PF_GameLogic/ChatController.h"
 #include "PF_GameLogic/SmartChatController.h"
@@ -15,12 +19,15 @@
 #include "PF_GameLogic/PFTalent.h"
 #include "PF_GameLogic/PFMaleHero.h"
 #include "PF_GameLogic/PFHero.h"
+#include "PF_GameLogic/DBSessionRoots.h"
 
 #include "System/LoadingProgress.h"
 #include "System/FileSystem/FileActivitySimpleMonitor.h"
 #include "Client/LobbyPvx/HybridServerNodeImpl.h"
 #include "Client/ScreenCommands.h"
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "HybridServer/RPeered.auto.h"
+#endif
 #include "HybridServer/PeeredTypes.h"
 
 #include "LoadingScreen.h"
@@ -165,7 +172,7 @@ int GameClientPW::Poll( float transceiverDeltaTime )
       }
       else
       {
-        Sleep( 50 ); //Let da loadin tred do da woak
+        threading::Sleep( 50 ); //Let da loadin tred do da woak
         float pro = mapLoadingJob->GetProgress()->GetTotalProgress();
         SetMapLoadingProgress( Clamp( (int)( pro * 100.0f ), 0, 100 ) );
 
