@@ -32,6 +32,8 @@ namespace NIniFiles
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void GetINIString(string * dest, LPCTSTR pszDir, LPCTSTR pszFile, LPCTSTR pszSection, LPCTSTR pszName)
 {
+#ifdef _WIN32
+
   if (dest && pszFile && pszSection && pszName)
   {
     TCHAR szBuffer[1024] = "";
@@ -45,11 +47,16 @@ void GetINIString(string * dest, LPCTSTR pszDir, LPCTSTR pszFile, LPCTSTR pszSec
     *dest = szBuffer;
     FindAndReplace( *dest, string("\\n"), string("\n") );
   }
+#else
+  if (dest) *dest = "";
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void GetINIString(wstring * dest, LPCWSTR pszDir, LPCWSTR pszFile, LPCWSTR pszSection, LPCWSTR pszName)
 {
+#ifdef _WIN32
+
   if (dest && pszSection && pszName)
   {
     WCHAR szBuffer[1024] = L"";
@@ -63,6 +70,9 @@ void GetINIString(wstring * dest, LPCWSTR pszDir, LPCWSTR pszFile, LPCWSTR pszSe
     *dest = szBuffer;
     FindAndReplace( *dest, wstring(L"\\n"), wstring(L"\n") );
   }
+#else
+  if (dest) *dest = L"";
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,9 +86,14 @@ string GetINIString(LPCTSTR pszDir, LPCTSTR pszFile, LPCTSTR pszSection, LPCTSTR
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 wstring GetINIString(LPCWSTR pszDir, LPCWSTR pszFile, LPCWSTR pszSection, LPCWSTR pszName)
 {
+#ifdef _WIN32
+
   wstring sResult;
   GetINIString(&sResult, pszDir, pszFile, pszSection, pszName);
   return sResult;
+#else
+  return L"";
+#endif
 }
 
 } // namespace NIniFiles

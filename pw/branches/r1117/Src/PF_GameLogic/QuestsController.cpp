@@ -5,7 +5,7 @@
 #include "AdventureScreen.h"
 #include "Minimap.h"
 #include "FlashFSCommands.h"
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 
 
 namespace NGameX

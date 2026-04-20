@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Vendor/DirectX/Include/d3d9.h"
-#include "Vendor/DirectX/Include/d3dx9.h"
+#include "d3d9.h"
+#include "d3dx9.h"
 
 #include "DxIntrusivePtr.h"
 #include "DeviceLost.h"

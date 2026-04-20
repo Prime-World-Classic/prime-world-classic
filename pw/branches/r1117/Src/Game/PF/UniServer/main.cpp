@@ -43,8 +43,8 @@
 #include "RelayBalancer/RelayBalancerNaming.h"
 
 #include "UserManager/UserManagerSvc/UserManagerSvc.h"
-#include "UserManagerSvc/UserManagerNaming.h"
-#include "UserManagerSvc/Types.h"
+#include "Server/UserManager/UserManagerSvc/UserManagerNaming.h"
+#include "Server/UserManager/UserManagerSvc/Types.h"
 
 #include <System/LogFileName.h>
 #include "System/FileSystem/FileUtils.h"

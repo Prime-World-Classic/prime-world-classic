@@ -2,9 +2,9 @@
 #include <windows.h>
 #include <stdio.h>
 
-#include <Vendor/DirectX/Include/d3d9.h>
-#include <Vendor/DirectX/Include/d3dx9.h>
-#include <Vendor/DirectX/Include/DxErr.h>
+#include <d3d9.h>
+#include <d3dx9.h>
+#include <DxErr.h>
 #include <time.h>
 
 static bool doExit = false;

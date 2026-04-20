@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "SplineCameraController.h"
-#include "Scene\Camera.h"
-#include "System\lerp.h"
+#include "Scene/Camera.h"
+#include "System/lerp.h"
 
 
 namespace PF_Core

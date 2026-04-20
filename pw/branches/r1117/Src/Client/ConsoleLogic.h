@@ -1,3 +1,4 @@
+#undef DrawText
 #pragma once
 
 #include "../UI/ScreenLogicBase.h"
@@ -30,6 +31,7 @@ public:
 	void AutoComplete( wstring cmd );
 
 	void Show( bool show );
+#undef DrawText
 
   void DrawText();
 

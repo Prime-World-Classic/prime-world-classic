@@ -1,7 +1,16 @@
 #pragma once
+
 #include <vector>
+#ifdef _WIN32
 #include <Windows.h>
 #include <Wininet.h>
+#else
+typedef void* HINTERNET;
+// typedef unsigned long DWORD;
+#ifndef CP_UTF8
+#define CP_UTF8 65001
+#endif
+#endif
 #include <map>
 #include <string>
 #include <set>
@@ -98,7 +107,7 @@ public:
   };
 
   WebLoginResponse GetSessionData(const char* token, const char* apiKey = "");
-  std::string WebLauncherPostRequest::SendPostRequest(const std::string& jsonData);
+  std::string SendPostRequest(const std::string& jsonData);
   std::string CreateDebugSession();
 };
 typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
@@ -106,12 +115,17 @@ typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersData
 extern std::string GetSkinByHeroPersistentId(const std::string& heroId, int someValue);
 
 static std::string WideCharToMultiByteString(const wchar_t* wideCharString) {
+#ifdef _WIN32
   int size_needed = WideCharToMultiByte(CP_UTF8, 0, wideCharString, -1, NULL, 0, NULL, NULL);
   std::string result(size_needed, 0);
   WideCharToMultiByte(CP_UTF8, 0, wideCharString, -1, &result[0], size_needed, NULL, NULL);
   return result;
+#else
+  return std::string();
+#endif
 }
 static std::wstring Fix1251EncodingW(std::string utf8String) {
+#ifdef _WIN32
   int utf8Length = static_cast<int>(utf8String.length());
   int wideCharLength = MultiByteToWideChar(CP_UTF8, 0, utf8String.c_str(), utf8Length, NULL, 0);
 
@@ -119,9 +133,13 @@ static std::wstring Fix1251EncodingW(std::string utf8String) {
   wideCharString.resize(wideCharLength);
   MultiByteToWideChar(CP_UTF8, 0, utf8String.c_str(), utf8Length, &wideCharString[0], wideCharLength);
   return wideCharString;
+#else
+  return std::wstring();
+#endif
 }
 static std::string Fix1251Encoding(std::string utf8String)
 {
+#ifdef _WIN32
   std::wstring wideCharString = Fix1251EncodingW(utf8String);
 
   int win1251Length = WideCharToMultiByte(1251, 0, &wideCharString[0], -1, NULL, 0, NULL, NULL);
@@ -130,6 +148,9 @@ static std::string Fix1251Encoding(std::string utf8String)
   WideCharToMultiByte(1251, 0, &wideCharString[0], -1, &win1251String[0], win1251Length, NULL, NULL);
 
   return win1251String;
+#else
+  return utf8String;
+#endif
 }
 
 static Json::Value ParseJson(const char* json) {

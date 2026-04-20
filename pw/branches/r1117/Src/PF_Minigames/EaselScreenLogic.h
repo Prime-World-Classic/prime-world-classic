@@ -16,10 +16,7 @@ namespace Render
   class BaseMaterial;
 }
 
-namespace NDb
-{
-  enum EBoostType;
-}
+#include "DBEasel.h"
 
 namespace PF_Minigames
 {

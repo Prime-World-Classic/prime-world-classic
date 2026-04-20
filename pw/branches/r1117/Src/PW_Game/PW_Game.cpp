@@ -1,3 +1,5 @@
+#include "System/Win32_linux.h"
+#ifdef _WIN32
 #include <windows.h>
 #include <shlwapi.h>
 #include <crtdbg.h>
@@ -109,3 +111,6 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, char * lpCm
     
   return 0;
 }
+#else
+int main() { return 0; }
+#endif

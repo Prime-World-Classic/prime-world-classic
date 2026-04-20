@@ -64,7 +64,6 @@ inline bool Normalize( CVec2 *pVec ) { return Normalize(pVec->x, pVec->y); }
 inline const CVec2 operator^( const CVec2 &a, const CVec2 &b ) { CVec2 vRes( a ); vRes ^= b; return vRes; }
 inline const CVec2 CProduct( const CVec2 &a, const CVec2 &b ) { CVec2 vRes( a ); vRes.CProduct( b ); return vRes; }
 
-struct D3DXVECTOR3;
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 3D vector
@@ -125,8 +124,10 @@ public:
   { 
       return ni_math::isFiniteNumber(x) != 0 && ni_math::isFiniteNumber(y) != 0 && ni_math::isFiniteNumber(z) != 0; 
   }
+#if defined(_WIN32) || defined(NV_LINUX_PLATFORM) || defined(NI_PLATF_LINUX)
   operator D3DXVECTOR3& () { return reinterpret_cast<D3DXVECTOR3&>(*this); }
   operator const D3DXVECTOR3& () const { return reinterpret_cast<const D3DXVECTOR3&>(*this); }
+#endif
 
   static const CVec3& Zero() { static const CVec3 zero(0,0,0); return zero; }
   static const CVec3& Huge() { const float huge = 1.e16f; static const CVec3 vHuge(huge,huge,huge); return vHuge; }
@@ -136,11 +137,13 @@ public:
   float Z() const { return z; }
 };
 
+#if defined(_WIN32) || defined(NV_LINUX_PLATFORM) || defined(NI_PLATF_LINUX)
 __forceinline D3DXVECTOR3* AsD3D(CVec3* _src)             { return (D3DXVECTOR3*)(_src); }
 __forceinline const D3DXVECTOR3* AsD3D(const CVec3* _src) { return (D3DXVECTOR3*)(_src); }
 
 __forceinline D3DXVECTOR3* AsD3D(vector<CVec3>& _src) { return &static_cast<D3DXVECTOR3&>(_src[0]); }
 __forceinline const D3DXVECTOR3* AsD3D(const vector<const CVec3>& _src) { return &static_cast<const D3DXVECTOR3&>(_src[0]); }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const CVec3 VNULL3 = CVec3( 0, 0, 0 );

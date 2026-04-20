@@ -493,7 +493,7 @@ void PFApplAbilityUpgrade::Enable()
 {
   if ( GetDB().flags & NDb::ABILITYUPGRADEMODE_CHANGEICON )
   {
-    //TODO: Поменять иконку на глиф NUM_TASK
+    //TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ NUM_TASK
   }
 
   if ( IsValid(pReceiver) )
@@ -506,7 +506,7 @@ void PFApplAbilityUpgrade::Disable()
 {
   if ( GetDB().flags & NDb::ABILITYUPGRADEMODE_CHANGEICON )
   {
-    //TODO: Поменять иконку на обычный талант NUM_TASK
+    //TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ NUM_TASK
   }
 
   if ( IsValid(pReceiver) )
@@ -1953,10 +1953,21 @@ bool PFApplMarker::Start()
 {
   string markerName( GetApplicatorName() );
 
-  char buf[8];
+  char buf[16];
+#ifdef NI_PLATF_LINUX
+  unsigned int val = GetAbilityOwner()->GetObjectId();
+  char* p = buf + 15;
+  *p = 0;
+  do {
+    *--p = "0123456789abcdefghijklmnopqrstuvwxyz"[val % 36];
+    val /= 36;
+  } while (val > 0);
+  markerName.append( p );
+#else
   _itoa_s( GetAbilityOwner()->GetObjectId(), buf, 8, 36 ); // 8 is because radix 36 gives up to 7 digits for 2^32
 
   markerName.append( buf );
+#endif
 
   pStat = pReceiver->GetVariableVWM( markerName.c_str() );
 
@@ -2010,9 +2021,20 @@ void PFApplMarker::Reset()
   if (IsValid(pReceiver) && !pReceiver->IsObjectDead())
   {
 	  string markerName( GetApplicatorName() );
-	  char buf[8];
+	  char buf[16];
+#ifdef NI_PLATF_LINUX
+      unsigned int val = GetAbilityOwner()->GetObjectId();
+      char* p = buf + 15;
+      *p = 0;
+      do {
+        *--p = "0123456789abcdefghijklmnopqrstuvwxyz"[val % 36];
+        val /= 36;
+      } while (val > 0);
+      markerName.append( p );
+#else
 	  _itoa_s( GetAbilityOwner()->GetObjectId(), buf, 8, 36 );
 	  markerName.append( buf );
+#endif
 	  pStat = pReceiver->SearchVariableVWM( markerName.c_str() );
   }
 }

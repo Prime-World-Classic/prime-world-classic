@@ -16,6 +16,9 @@
 #include "SHGrid.h"
 
 #define BAKED_FILE_VERSION 0x01
+#ifndef MAKELONG
+#define MAKELONG(a, b) ((int)(((short)(a)) | ((int)((short)(b))) << 16))
+#endif
 #define BAKED_FILE_SIGN  MAKELONG('HS', BAKED_FILE_VERSION)
 
 namespace

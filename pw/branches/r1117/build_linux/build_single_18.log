@@ -1,0 +1,1044 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:21,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/stdafx.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/ReplayInfo.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.h:11,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGrUtils.h:198:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  198 | #endif _DIANGRUTILS_H_
+      |        ^~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/stdafx.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/LiveMMaking/LiveMMakingTypes.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/PeeredTypes.h:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/Peered.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.h:6:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/../PF_GameLogic/DBStats.h:1672:9: error: ‘ExecutableFloatString’ does not name a type
+ 1672 |         ExecutableFloatString value;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/../PF_GameLogic/DBStats.h:1673:9: error: ‘ExecutableFloatString’ does not name a type
+ 1673 |         ExecutableFloatString increment;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/../PF_GameLogic/DBStats.h:3153:17: error: ‘ExecutableFloatString’ was not declared in this scope
+ 3153 |         vector< ExecutableFloatString > derivativeStats;
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/../PF_GameLogic/DBStats.h:3153:39: error: template argument 1 is invalid
+ 3153 |         vector< ExecutableFloatString > derivativeStats;
+      |                                       ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1881:9: error: ‘ExecutableFloatString’ does not name a type
+ 1881 |         ExecutableFloatString delay;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1882:9: error: ‘ExecutableBoolString’ does not name a type
+ 1882 |         ExecutableBoolString continueCondition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1883:9: error: ‘ExecutableBoolString’ does not name a type
+ 1883 |         ExecutableBoolString stopCondition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1913:9: error: ‘ExecutableFloatString’ does not name a type
+ 1913 |         ExecutableFloatString addValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1914:9: error: ‘ExecutableFloatString’ does not name a type
+ 1914 |         ExecutableFloatString multValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1928:9: error: ‘ExecutableFloatString’ does not name a type
+ 1928 |         ExecutableFloatString life;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1929:9: error: ‘ExecutableFloatString’ does not name a type
+ 1929 |         ExecutableFloatString energy;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1943:9: error: ‘ExecutableFloatString’ does not name a type
+ 1943 |         ExecutableFloatString lashRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:1963:9: error: ‘ExecutableBoolString’ does not name a type
+ 1963 |         ExecutableBoolString abilityCondition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2005:9: error: ‘ExecutableBoolString’ does not name a type
+ 2005 |         ExecutableBoolString enabled;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2037:9: error: ‘ExecutableFloatString’ does not name a type
+ 2037 |         ExecutableFloatString lifeTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2039:9: error: ‘ExecutableBoolString’ does not name a type
+ 2039 |         ExecutableBoolString startCondition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2071:9: error: ‘ExecutableIntString’ does not name a type
+ 2071 |         ExecutableIntString applyCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2130:9: error: ‘ExecutableFloatString’ does not name a type
+ 2130 |         ExecutableFloatString damageToAbsorb;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2158:9: error: ‘ExecutableFloatString’ does not name a type
+ 2158 |         ExecutableFloatString durationToAdd;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2189:9: error: ‘ExecutableFloatString’ does not name a type
+ 2189 |         ExecutableFloatString nafta;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2216:9: error: ‘ExecutableFloatString’ does not name a type
+ 2216 |         ExecutableFloatString useRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2470:9: error: ‘ExecutableFloatString’ does not name a type
+ 2470 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2539:9: error: ‘ExecutableFloatString’ does not name a type
+ 2539 |         ExecutableFloatString aoeSize;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2546:9: error: ‘ExecutableFloatString’ does not name a type
+ 2546 |         ExecutableFloatString cooldownTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2547:9: error: ‘ExecutableFloatString’ does not name a type
+ 2547 |         ExecutableFloatString cooldownTimeSecondState;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2548:9: error: ‘ExecutableFloatString’ does not name a type
+ 2548 |         ExecutableFloatString manaCost;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2550:9: error: ‘ExecutableFloatString’ does not name a type
+ 2550 |         ExecutableFloatString useRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2552:9: error: ‘ExecutableFloatString’ does not name a type
+ 2552 |         ExecutableFloatString castAllowRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2553:9: error: ‘ExecutableBoolString’ does not name a type
+ 2553 |         ExecutableBoolString allowChase;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2619:9: error: ‘ExecutableIntString’ does not name a type
+ 2619 |         ExecutableIntString maxTargets;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2621:9: error: ‘ExecutableFloatString’ does not name a type
+ 2621 |         ExecutableFloatString minDistBetweenTargets;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2651:9: error: ‘ExecutableIntString’ does not name a type
+ 2651 |         ExecutableIntString targetsNumber;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2652:9: error: ‘ExecutableFloatString’ does not name a type
+ 2652 |         ExecutableFloatString bounceDelay;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2683:9: error: ‘ExecutableFloatString’ does not name a type
+ 2683 |         ExecutableFloatString addValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2684:9: error: ‘ExecutableFloatString’ does not name a type
+ 2684 |         ExecutableFloatString multValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2720:9: error: ‘ExecutableFloatString’ does not name a type
+ 2720 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2721:9: error: ‘ExecutableFloatString’ does not name a type
+ 2721 |         ExecutableFloatString rangeFromOwner;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2777:9: error: ‘ExecutableIntString’ does not name a type
+ 2777 |         ExecutableIntString numJumps;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2781:9: error: ‘ExecutableFloatString’ does not name a type
+ 2781 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2783:9: error: ‘ExecutableIntString’ does not name a type
+ 2783 |         ExecutableIntString effectIndex;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2785:9: error: ‘ExecutableBoolString’ does not name a type
+ 2785 |         ExecutableBoolString jumpOnEvade;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2968:9: error: ‘ExecutableFloatString’ does not name a type
+ 2968 |         ExecutableFloatString scaleWhenInterrupted;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2998:9: error: ‘ExecutableBoolString’ does not name a type
+ 2998 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:2999:9: error: ‘ExecutableIntString’ does not name a type
+ 2999 |         ExecutableIntString minTargetsNumber;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3028:9: error: ‘ExecutableFloatString’ does not name a type
+ 3028 |         ExecutableFloatString lifeTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3029:9: error: ‘ExecutableFloatString’ does not name a type
+ 3029 |         ExecutableFloatString followRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3032:9: error: ‘ExecutableIntString’ does not name a type
+ 3032 |         ExecutableIntString maxCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3035:9: error: ‘ExecutableFloatString’ does not name a type
+ 3035 |         ExecutableFloatString takeModDmg;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3091:9: error: ‘ExecutableBoolString’ does not name a type
+ 3091 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3118:9: error: ‘ExecutableBoolString’ does not name a type
+ 3118 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3145:9: error: ‘ExecutableBoolString’ does not name a type
+ 3145 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3203:9: error: ‘ExecutableIntString’ does not name a type
+ 3203 |         ExecutableIntString targetsNumber;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3206:9: error: ‘ExecutableFloatString’ does not name a type
+ 3206 |         ExecutableFloatString sortingValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3300:9: error: ‘ExecutableFloatString’ does not name a type
+ 3300 |         ExecutableFloatString damage;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3363:9: error: ‘ExecutableFloatString’ does not name a type
+ 3363 |         ExecutableFloatString moveRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3364:9: error: ‘ExecutableFloatString’ does not name a type
+ 3364 |         ExecutableFloatString minRangeFromLinkEnds;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3365:9: error: ‘ExecutableFloatString’ does not name a type
+ 3365 |         ExecutableFloatString maxRangeFromLinkEnds;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3452:17: error: ‘ExecutableFloatString’ was not declared in this scope
+ 3452 |         vector< ExecutableFloatString > floatFormulas;
+      |                 ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3452:39: error: template argument 1 is invalid
+ 3452 |         vector< ExecutableFloatString > floatFormulas;
+      |                                       ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3453:17: error: ‘ExecutableBoolString’ was not declared in this scope
+ 3453 |         vector< ExecutableBoolString > boolFormulas;
+      |                 ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3453:38: error: template argument 1 is invalid
+ 3453 |         vector< ExecutableBoolString > boolFormulas;
+      |                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3454:17: error: ‘ExecutableIntString’ was not declared in this scope
+ 3454 |         vector< ExecutableIntString > intFormulas;
+      |                 ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3454:37: error: template argument 1 is invalid
+ 3454 |         vector< ExecutableIntString > intFormulas;
+      |                                     ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3481:9: error: ‘ExecutableFloatString’ does not name a type
+ 3481 |         ExecutableFloatString delay;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3509:9: error: ‘ExecutableFloatString’ does not name a type
+ 3509 |         ExecutableFloatString damageToDelegate;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3510:9: error: ‘ExecutableFloatString’ does not name a type
+ 3510 |         ExecutableFloatString damageToApply;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3511:9: error: ‘ExecutableFloatString’ does not name a type
+ 3511 |         ExecutableFloatString totalDamage;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3517:9: error: ‘ExecutableBoolString’ does not name a type
+ 3517 |         ExecutableBoolString stopCondition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3607:9: error: ‘ExecutableFloatString’ does not name a type
+ 3607 |         ExecutableFloatString lifeTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3636:9: error: ‘ExecutableFloatString’ does not name a type
+ 3636 |         ExecutableFloatString speed;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3637:9: error: ‘ExecutableFloatString’ does not name a type
+ 3637 |         ExecutableFloatString maxSpeed;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3640:9: error: ‘ExecutableFloatString’ does not name a type
+ 3640 |         ExecutableFloatString lifeTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3797:9: error: ‘ExecutableIntString’ does not name a type
+ 3797 |         ExecutableIntString maxEffectsToDispell;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3910:9: error: ‘ExecutableFloatString’ does not name a type
+ 3910 |         ExecutableFloatString newLifetime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:3999:9: error: ‘ExecutableBoolString’ does not name a type
+ 3999 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4030:9: error: ‘ExecutableFloatString’ does not name a type
+ 4030 |         ExecutableFloatString add;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4031:9: error: ‘ExecutableFloatString’ does not name a type
+ 4031 |         ExecutableFloatString mul;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4178:9: error: ‘ExecutableFloatString’ does not name a type
+ 4178 |         ExecutableFloatString castSpellDelay;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4210:9: error: ‘ExecutableFloatString’ does not name a type
+ 4210 |         ExecutableFloatString minTargets;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4269:9: error: ‘ExecutableFloatString’ does not name a type
+ 4269 |         ExecutableFloatString modifiedDamage;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4325:9: error: ‘ExecutableFloatString’ does not name a type
+ 4325 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4357:9: error: ‘ExecutableFloatString’ does not name a type
+ 4357 |         ExecutableFloatString visRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4661:9: error: ‘ExecutableIntString’ does not name a type
+ 4661 |         ExecutableIntString amount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4689:9: error: ‘ExecutableFloatString’ does not name a type
+ 4689 |         ExecutableFloatString amount;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4747:9: error: ‘ExecutableFloatString’ does not name a type
+ 4747 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4748:9: error: ‘ExecutableFloatString’ does not name a type
+ 4748 |         ExecutableFloatString targetCount;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4803:9: error: ‘ExecutableFloatString’ does not name a type
+ 4803 |         ExecutableFloatString fadeIn;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4975:9: error: ‘ExecutableFloatString’ does not name a type
+ 4975 |         ExecutableFloatString addValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:4976:9: error: ‘ExecutableFloatString’ does not name a type
+ 4976 |         ExecutableFloatString multValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5005:9: error: ‘ExecutableFloatString’ does not name a type
+ 5005 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5006:9: error: ‘ExecutableFloatString’ does not name a type
+ 5006 |         ExecutableFloatString searchRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5008:9: error: ‘ExecutableIntString’ does not name a type
+ 5008 |         ExecutableIntString minTargetsNumber;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5034:9: error: ‘ExecutableBoolString’ does not name a type
+ 5034 |         ExecutableBoolString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5063:9: error: ‘ExecutableFloatString’ does not name a type
+ 5063 |         ExecutableFloatString durationTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5064:9: error: ‘ExecutableIntString’ does not name a type
+ 5064 |         ExecutableIntString faction;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5065:9: error: ‘ExecutableFloatString’ does not name a type
+ 5065 |         ExecutableFloatString modifRadius;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5149:9: error: ‘ExecutableFloatString’ does not name a type
+ 5149 |         ExecutableFloatString moveRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5150:9: error: ‘ExecutableFloatString’ does not name a type
+ 5150 |         ExecutableFloatString moveSpeed;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5153:9: error: ‘ExecutableBoolString’ does not name a type
+ 5153 |         ExecutableBoolString isMoveDirect;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5212:9: error: ‘ExecutableFloatString’ does not name a type
+ 5212 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5241:9: error: ‘ExecutableBoolString’ does not name a type
+ 5241 |         ExecutableBoolString unitFilter;
+      |         ^~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5272:9: error: ‘ExecutableFloatString’ does not name a type
+ 5272 |         ExecutableFloatString amount;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5273:9: error: ‘ExecutableFloatString’ does not name a type
+ 5273 |         ExecutableFloatString multiplier;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5274:9: error: ‘ExecutableFloatString’ does not name a type
+ 5274 |         ExecutableFloatString addition;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5303:9: error: ‘ExecutableFloatString’ does not name a type
+ 5303 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5361:9: error: ‘ExecutableFloatString’ does not name a type
+ 5361 |         ExecutableFloatString minDistBetweenTargets;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5476:9: error: ‘ExecutableFloatString’ does not name a type
+ 5476 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5508:9: error: ‘ExecutableBooleanString’ does not name a type
+ 5508 |         ExecutableBooleanString condition;
+      |         ^~~~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5593:9: error: ‘ExecutableFloatString’ does not name a type
+ 5593 |         ExecutableFloatString reductionAmount;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5682:9: error: ‘ExecutableFloatString’ does not name a type
+ 5682 |         ExecutableFloatString desiredScale;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5683:9: error: ‘ExecutableFloatString’ does not name a type
+ 5683 |         ExecutableFloatString changeSpeed;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5712:9: error: ‘ExecutableIntString’ does not name a type
+ 5712 |         ExecutableIntString sceneObjectIndex;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5742:9: error: ‘ExecutableFloatString’ does not name a type
+ 5742 |         ExecutableFloatString range;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5917:9: error: ‘ExecutableFloatString’ does not name a type
+ 5917 |         ExecutableFloatString referenceValue;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:5918:9: error: ‘ExecutableFloatString’ does not name a type
+ 5918 |         ExecutableFloatString valueToCompare;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6002:9: error: ‘ExecutableFloatString’ does not name a type
+ 6002 |         ExecutableFloatString period;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6003:9: error: ‘ExecutableFloatString’ does not name a type
+ 6003 |         ExecutableFloatString startOffset;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6034:9: error: ‘ExecutableFloatString’ does not name a type
+ 6034 |         ExecutableFloatString attackTimeOffset;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6062:9: error: ‘ExecutableFloatString’ does not name a type
+ 6062 |         ExecutableFloatString probability;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6092:9: error: ‘ExecutableIntString’ does not name a type
+ 6092 |         ExecutableIntString activeSpellIndex;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6163:9: error: ‘ExecutableIntString’ does not name a type
+ 6163 |         ExecutableIntString customCounter;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6164:9: error: ‘ExecutableFloatString’ does not name a type
+ 6164 |         ExecutableFloatString customProgress;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6196:9: error: ‘ExecutableIntString’ does not name a type
+ 6196 |         ExecutableIntString summonedUnitIndex;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6197:9: error: ‘ExecutableIntString’ does not name a type
+ 6197 |         ExecutableIntString summonedUnitsCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6201:9: error: ‘ExecutableFloatString’ does not name a type
+ 6201 |         ExecutableFloatString lifeTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6205:9: error: ‘ExecutableFloatString’ does not name a type
+ 6205 |         ExecutableFloatString takeModDmg;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6208:9: error: ‘ExecutableFloatString’ does not name a type
+ 6208 |         ExecutableFloatString unsummonSortCriterion;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6264:9: error: ‘ExecutableIntString’ does not name a type
+ 6264 |         ExecutableIntString maxCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6265:9: error: ‘ExecutableIntString’ does not name a type
+ 6265 |         ExecutableIntString maxThisCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6267:9: error: ‘ExecutableFloatString’ does not name a type
+ 6267 |         ExecutableFloatString lashRange;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6411:9: error: ‘ExecutableFloatString’ does not name a type
+ 6411 |         ExecutableFloatString damageDealTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6496:9: error: ‘ExecutableFloatString’ does not name a type
+ 6496 |         ExecutableFloatString maxDistance;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6534:9: error: ‘ExecutableFloatString’ does not name a type
+ 6534 |         ExecutableFloatString moveSpeed;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6535:9: error: ‘ExecutableFloatString’ does not name a type
+ 6535 |         ExecutableFloatString flipTime;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6574:9: error: ‘ExecutableIntString’ does not name a type
+ 6574 |         ExecutableIntString actionsCount;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6607:9: error: ‘ExecutableFloatString’ does not name a type
+ 6607 |         ExecutableFloatString value;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6635:9: error: ‘ExecutableFloatString’ does not name a type
+ 6635 |         ExecutableFloatString var;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6747:9: error: ‘ExecutableFloatString’ does not name a type
+ 6747 |         ExecutableFloatString distance;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6775:9: error: ‘ExecutableFloatString’ does not name a type
+ 6775 |         ExecutableFloatString value;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6894:9: error: ‘ExecutableFloatString’ does not name a type
+ 6894 |         ExecutableFloatString length;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBAbility.h:6895:9: error: ‘ExecutableFloatString’ does not name a type
+ 6895 |         ExecutableFloatString width;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:9:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBGameLogic.h:385:9: error: ‘ExecutableFloatString’ does not name a type
+  385 |         ExecutableFloatString damageModifier;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBGameLogic.h:582:9: error: ‘ExecutableFloatString’ does not name a type
+  582 |         ExecutableFloatString energyDamageReduction;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBGameLogic.h:583:9: error: ‘ExecutableFloatString’ does not name a type
+  583 |         ExecutableFloatString physicalDamageReduction;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_GameLogic/DBGameLogic.h:1137:9: error: ‘ExecutableFloatString’ does not name a type
+ 1137 |         ExecutableFloatString customWeight;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:679:9: error: ‘ExecutableFloatString’ does not name a type
+  679 |         ExecutableFloatString naftaForKill;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:680:9: error: ‘ExecutableFloatString’ does not name a type
+  680 |         ExecutableFloatString naftaForAssist;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:681:9: error: ‘ExecutableFloatString’ does not name a type
+  681 |         ExecutableFloatString naftaSpecForKill;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/DBAdvMap.h:682:9: error: ‘ExecutableFloatString’ does not name a type
+  682 |         ExecutableFloatString teamNaftaForPresence;
+      |         ^~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:7:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h: In member function ‘void PF_Core::WorldObjectBase::CreateClientObject()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:275:31: error: there are no arguments to ‘WorldObjectRef’ that depend on a template parameter, so a declaration of ‘WorldObjectRef’ must be available [-Wtemplate-body]
+  275 |         pClientObject = new T(WorldObjectRef(this));
+      |                               ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:275:31: note: (if you use ‘-fpermissive’, G++ will accept your code, but allowing the use of an undeclared name is deprecated)
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h: In member function ‘void PF_Core::WorldObjectBase::CreateClientObject(const PAR&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:282:31: error: there are no arguments to ‘WorldObjectRef’ that depend on a template parameter, so a declaration of ‘WorldObjectRef’ must be available [-Wtemplate-body]
+  282 |         pClientObject = new T(WorldObjectRef(this), par);
+      |                               ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h: In member function ‘void PF_Core::WorldObjectBase::CreateClientObject(const PAR1&, const PAR2&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:289:31: error: there are no arguments to ‘WorldObjectRef’ that depend on a template parameter, so a declaration of ‘WorldObjectRef’ must be available [-Wtemplate-body]
+  289 |         pClientObject = new T(WorldObjectRef(this), par1, par2);
+      |                               ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h: In member function ‘void PF_Core::WorldObjectBase::CreateClientObject(const PAR1&, const PAR2&, const PAR3&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:296:31: error: there are no arguments to ‘WorldObjectRef’ that depend on a template parameter, so a declaration of ‘WorldObjectRef’ must be available [-Wtemplate-body]
+  296 |         pClientObject = new T(WorldObjectRef(this), par1, par2, par3);
+      |                               ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:360:1: error: ‘ectId’ does not name a type
+  360 | ectId ) );
+      | ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:361:7: error: expected declaration before ‘}’ token
+  361 |       }
+      |       ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:362:5: error: expected declaration before ‘}’ token
+  362 |     }
+      |     ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:364:5: error: ‘friend’ used outside of class
+  364 |     friend World;
+      |     ^~~~~~
+      |     ------
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:364:12: error: ‘World’ does not name a type
+  364 |     friend World;
+      |            ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:365:3: error: expected declaration before ‘}’ token
+  365 |   };
+      |   ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:367:16: error: ‘WorldObjectBase’ was not declared in this scope; did you mean ‘PF_Core::WorldObjectBase’?
+  367 |   typedef CPtr<WorldObjectBase> WorldObjectRef;
+      |                ^~~~~~~~~~~~~~~
+      |                PF_Core::WorldObjectBase
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:164:9: note: ‘PF_Core::WorldObjectBase’ declared here
+  164 |   class WorldObjectBase : public CObjectBase
+      |         ^~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:367:31: error: template argument 1 is invalid
+  367 |   typedef CPtr<WorldObjectBase> WorldObjectRef;
+      |                               ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../PF_Core/WorldObject.h:369:1: error: expected declaration before ‘}’ token
+  369 | } // namespace PF_Core
+      | ^
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/sampler.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/material.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/renderstatesmanager.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/renderer.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:11:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h: In member function ‘Render::SamplerState& Render::SamplerState::CreateMask()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:125:17: warning: conversion from ‘unsigned int’ to ‘unsigned char:3’ changes value from ‘4294967295’ to ‘7’ [-Woverflow]
+  125 |     minFilter = UINT_MAX;
+      |                 ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:126:17: warning: conversion from ‘unsigned int’ to ‘unsigned char:1’ changes value from ‘4294967295’ to ‘1’ [-Woverflow]
+  126 |     magFilter = UINT_MAX;
+      |                 ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:127:17: warning: conversion from ‘unsigned int’ to ‘unsigned char:2’ changes value from ‘4294967295’ to ‘3’ [-Woverflow]
+  127 |     mipFilter = UINT_MAX;
+      |                 ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:128:17: warning: conversion from ‘unsigned int’ to ‘unsigned char:2’ changes value from ‘4294967295’ to ‘3’ [-Woverflow]
+  128 |     addressU  = UINT_MAX;
+      |                 ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:129:17: warning: conversion from ‘unsigned int’ to ‘unsigned char:2’ changes value from ‘4294967295’ to ‘3’ [-Woverflow]
+  129 |     addressV  = UINT_MAX;
+      |                 ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:130:25: warning: conversion from ‘unsigned int’ to ‘unsigned char:1’ changes value from ‘4294967295’ to ‘1’ [-Woverflow]
+  130 |     alwaysFailCompare = UINT_MAX;
+      |                         ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/states.h:168:3: warning: converting ‘Render::SamplerState2’ to a base class ‘Render::SamplerState’ will never use a type conversion operator [-Wclass-conversion]
+  168 |   operator SamplerState()
+      |   ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/LightsManager.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/renderer.h:16:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/AABB.h:11:16: warning: attribute ignored in declaration of ‘struct Render::AABB’ [-Wattributes]
+   11 |         struct AABB
+      |                ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/AABB.h:11:16: note: attribute for ‘struct Render::AABB’ must follow the ‘struct’ keyword
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/../Scene/VoxelGrid.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/../Scene/CollectionVG.h:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/../Scene/VoxelGridObj.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/light.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Render/LightsManager.h:6:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Render/ConvexVolume.h:12:16: warning: attribute ignored in declaration of ‘struct Render::FPlane’ [-Wattributes]
+   12 |         struct FPlane
+      |                ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Render/ConvexVolume.h:12:16: note: attribute for ‘struct Render::FPlane’ must follow the ‘struct’ keyword
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Render/ConvexVolume.h:28:15: warning: attribute ignored in declaration of ‘class Render::ConvexVolume’ [-Wattributes]
+   28 |         class ConvexVolume
+      |               ^~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Render/ConvexVolume.h:28:15: note: attribute for ‘class Render::ConvexVolume’ must follow the ‘class’ keyword
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/SceneComponent.h:8,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/SceneObject.h:2,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:19:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/RenderComponent.h:40:7: warning: attribute ignored in declaration of ‘class Render::RenderComponent’ [-Wattributes]
+   40 | class RenderComponent : public NonCopyable
+      |       ^~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/RenderComponent.h:40:7: note: attribute for ‘class Render::RenderComponent’ must follow the ‘class’ keyword
+In file included from /usr/include/locale.h:28,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/clocale:47,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++locale.h:41,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/localefwd.h:42,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/string:47,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ported/cwfn.h:13,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/RPC/Types.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/RPC/Interfaces.h:12,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/RPC/RPC.h:21,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/Peered.h:3:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::AIGeometryMaterialType::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:208:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::AIGeometryMaterialType’ is conditionally-supported [-Winvalid-offsetof]
+  208 |         virtual int SignificantPartLength() const { return offsetof( AIGeometryMaterialType, renderState ) - offsetof( AIGeometryMaterialType, renderState ) + sizeof( renderState ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:208:120: warning: ‘offsetof’ within non-standard-layout type ‘Render::AIGeometryMaterialType’ is conditionally-supported [-Winvalid-offsetof]
+  208 |         virtual int SignificantPartLength() const { return offsetof( AIGeometryMaterialType, renderState ) - offsetof( AIGeometryMaterialType, renderState ) + sizeof( renderState ); }
+      |                                                                                                                        ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::AOEMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:307:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::AOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  307 |         virtual int SignificantPartLength() const { return offsetof( AOEMaterial, aspectRatio ) - offsetof( AOEMaterial, renderState ) + sizeof( aspectRatio ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:307:109: warning: ‘offsetof’ within non-standard-layout type ‘Render::AOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  307 |         virtual int SignificantPartLength() const { return offsetof( AOEMaterial, aspectRatio ) - offsetof( AOEMaterial, renderState ) + sizeof( aspectRatio ); }
+      |                                                                                                             ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::AOEMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:341:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::AOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  341 |     samplersOffsets[0] = offsetof( AOEMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::BasicFXMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:453:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  453 |         virtual int SignificantPartLength() const { return offsetof( BasicFXMaterial, vOffset ) - offsetof( BasicFXMaterial, renderState ) + sizeof( vOffset ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:453:109: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  453 |         virtual int SignificantPartLength() const { return offsetof( BasicFXMaterial, vOffset ) - offsetof( BasicFXMaterial, renderState ) + sizeof( vOffset ); }
+      |                                                                                                             ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::BasicFXMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:507:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  507 |     samplersOffsets[0] = offsetof( BasicFXMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::BasicMaskMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:595:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaskMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  595 |         virtual int SignificantPartLength() const { return offsetof( BasicMaskMaterial, isBlendModeOverrided ) - offsetof( BasicMaskMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:595:124: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaskMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  595 |         virtual int SignificantPartLength() const { return offsetof( BasicMaskMaterial, isBlendModeOverrided ) - offsetof( BasicMaskMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                                                                            ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::BasicMaskMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:628:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaskMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  628 |     samplersOffsets[0] = offsetof( BasicMaskMaterial, Diffuse );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:629:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaskMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  629 |     samplersOffsets[1] = offsetof( BasicMaskMaterial, Mask );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::BasicMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:743:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  743 |         virtual int SignificantPartLength() const { return offsetof( BasicMaterial, specialTransparency ) - offsetof( BasicMaterial, renderState ) + sizeof( specialTransparency ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:743:119: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  743 |         virtual int SignificantPartLength() const { return offsetof( BasicMaterial, specialTransparency ) - offsetof( BasicMaterial, renderState ) + sizeof( specialTransparency ); }
+      |                                                                                                                       ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::BasicMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:784:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  784 |     samplersOffsets[0] = offsetof( BasicMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:785:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  785 |     samplersOffsets[1] = offsetof( BasicMaterial, NormalMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:786:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  786 |     samplersOffsets[2] = offsetof( BasicMaterial, SpecularMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:787:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::BasicMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  787 |     samplersOffsets[3] = offsetof( BasicMaterial, ReflectionMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::DecalMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:976:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  976 |         virtual int SignificantPartLength() const { return offsetof( DecalMaterial, isBlendModeOverrided ) - offsetof( DecalMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:976:120: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalMaterial’ is conditionally-supported [-Winvalid-offsetof]
+  976 |         virtual int SignificantPartLength() const { return offsetof( DecalMaterial, isBlendModeOverrided ) - offsetof( DecalMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                                                                        ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::DecalMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1020:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1020 |     samplersOffsets[0] = offsetof( DecalMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::DecalTerrainMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1140:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalTerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1140 |         virtual int SignificantPartLength() const { return offsetof( DecalTerrainMaterial, isBlendModeOverrided ) - offsetof( DecalTerrainMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1140:127: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalTerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1140 |         virtual int SignificantPartLength() const { return offsetof( DecalTerrainMaterial, isBlendModeOverrided ) - offsetof( DecalTerrainMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                                                                               ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::DecalTerrainMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1185:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalTerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1185 |     samplersOffsets[0] = offsetof( DecalTerrainMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1186:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DecalTerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1186 |     samplersOffsets[1] = offsetof( DecalTerrainMaterial, MaskMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::DropMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1364:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1364 |         virtual int SignificantPartLength() const { return offsetof( DropMaterial, vOffset2 ) - offsetof( DropMaterial, renderState ) + sizeof( vOffset2 ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1364:107: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1364 |         virtual int SignificantPartLength() const { return offsetof( DropMaterial, vOffset2 ) - offsetof( DropMaterial, renderState ) + sizeof( vOffset2 ); }
+      |                                                                                                           ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::DropMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1419:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1419 |     samplersOffsets[0] = offsetof( DropMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1420:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1420 |     samplersOffsets[1] = offsetof( DropMaterial, NormalMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1421:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1421 |     samplersOffsets[2] = offsetof( DropMaterial, SpecularMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1422:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::DropMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1422 |     samplersOffsets[3] = offsetof( DropMaterial, ReflectionMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::FullScreenMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1516:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::FullScreenMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1516 |         virtual int SignificantPartLength() const { return offsetof( FullScreenMaterial, BloomMap ) - offsetof( FullScreenMaterial, renderState ) + sizeof( BloomMap ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1516:113: warning: ‘offsetof’ within non-standard-layout type ‘Render::FullScreenMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1516 |         virtual int SignificantPartLength() const { return offsetof( FullScreenMaterial, BloomMap ) - offsetof( FullScreenMaterial, renderState ) + sizeof( BloomMap ); }
+      |                                                                                                                 ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::FullScreenMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1566:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::FullScreenMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1566 |     samplersOffsets[0] = offsetof( FullScreenMaterial, DepthMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1567:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::FullScreenMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1567 |     samplersOffsets[1] = offsetof( FullScreenMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1568:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::FullScreenMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1568 |     samplersOffsets[2] = offsetof( FullScreenMaterial, BloomMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::GrassMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1639:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::GrassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1639 |         virtual int SignificantPartLength() const { return offsetof( GrassMaterial, elasticity ) - offsetof( GrassMaterial, renderState ) + sizeof( elasticity ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1639:110: warning: ‘offsetof’ within non-standard-layout type ‘Render::GrassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1639 |         virtual int SignificantPartLength() const { return offsetof( GrassMaterial, elasticity ) - offsetof( GrassMaterial, renderState ) + sizeof( elasticity ); }
+      |                                                                                                              ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::GrassMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1673:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::GrassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1673 |     samplersOffsets[0] = offsetof( GrassMaterial, FrozenDiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1674:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::GrassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1674 |     samplersOffsets[1] = offsetof( GrassMaterial, NormalDiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1675:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::GrassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1675 |     samplersOffsets[2] = offsetof( GrassMaterial, BurnedDiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::HeightfogMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1760:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::HeightfogMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1760 |         virtual int SignificantPartLength() const { return offsetof( HeightfogMaterial, halfFadeDistance ) - offsetof( HeightfogMaterial, renderState ) + sizeof( halfFadeDistance ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1760:120: warning: ‘offsetof’ within non-standard-layout type ‘Render::HeightfogMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1760 |         virtual int SignificantPartLength() const { return offsetof( HeightfogMaterial, halfFadeDistance ) - offsetof( HeightfogMaterial, renderState ) + sizeof( halfFadeDistance ); }
+      |                                                                                                                        ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::HeightfogMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1792:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::HeightfogMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1792 |     samplersOffsets[0] = offsetof( HeightfogMaterial, noiseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::LightningMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1849:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::LightningMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1849 |         virtual int SignificantPartLength() const { return offsetof( LightningMaterial, DiffuseMap ) - offsetof( LightningMaterial, renderState ) + sizeof( DiffuseMap ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1849:114: warning: ‘offsetof’ within non-standard-layout type ‘Render::LightningMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1849 |         virtual int SignificantPartLength() const { return offsetof( LightningMaterial, DiffuseMap ) - offsetof( LightningMaterial, renderState ) + sizeof( DiffuseMap ); }
+      |                                                                                                                  ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::LightningMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:1881:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::LightningMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 1881 |     samplersOffsets[0] = offsetof( LightningMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::PaintMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2042:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2042 |         virtual int SignificantPartLength() const { return offsetof( PaintMaterial, isBlendModeOverrided ) - offsetof( PaintMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2042:120: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2042 |         virtual int SignificantPartLength() const { return offsetof( PaintMaterial, isBlendModeOverrided ) - offsetof( PaintMaterial, renderState ) + sizeof( isBlendModeOverrided ); }
+      |                                                                                                                        ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::PaintMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2082:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2082 |     samplersOffsets[0] = offsetof( PaintMaterial, Draft );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2083:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2083 |     samplersOffsets[1] = offsetof( PaintMaterial, Background );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2084:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2084 |     samplersOffsets[2] = offsetof( PaintMaterial, BaseBackground );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2085:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2085 |     samplersOffsets[3] = offsetof( PaintMaterial, Complete );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2086:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::PaintMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2086 |     samplersOffsets[4] = offsetof( PaintMaterial, Mask );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::ParticleFXMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2165:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::ParticleFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2165 |         virtual int SignificantPartLength() const { return offsetof( ParticleFXMaterial, scale ) - offsetof( ParticleFXMaterial, renderState ) + sizeof( scale ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2165:110: warning: ‘offsetof’ within non-standard-layout type ‘Render::ParticleFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2165 |         virtual int SignificantPartLength() const { return offsetof( ParticleFXMaterial, scale ) - offsetof( ParticleFXMaterial, renderState ) + sizeof( scale ); }
+      |                                                                                                              ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::ParticleFXMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2203:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::ParticleFXMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2203 |     samplersOffsets[0] = offsetof( ParticleFXMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::RoadMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2267:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::RoadMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2267 |         virtual int SignificantPartLength() const { return offsetof( RoadMaterial, BorderMap ) - offsetof( RoadMaterial, renderState ) + sizeof( BorderMap ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2267:108: warning: ‘offsetof’ within non-standard-layout type ‘Render::RoadMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2267 |         virtual int SignificantPartLength() const { return offsetof( RoadMaterial, BorderMap ) - offsetof( RoadMaterial, renderState ) + sizeof( BorderMap ); }
+      |                                                                                                            ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::RoadMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2308:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::RoadMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2308 |     samplersOffsets[0] = offsetof( RoadMaterial, RoadMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2309:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::RoadMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2309 |     samplersOffsets[1] = offsetof( RoadMaterial, BorderMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::ShadowMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2369:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::ShadowMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2369 |         virtual int SignificantPartLength() const { return offsetof( ShadowMaterial, DiffuseMap ) - offsetof( ShadowMaterial, renderState ) + sizeof( DiffuseMap ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2369:111: warning: ‘offsetof’ within non-standard-layout type ‘Render::ShadowMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2369 |         virtual int SignificantPartLength() const { return offsetof( ShadowMaterial, DiffuseMap ) - offsetof( ShadowMaterial, renderState ) + sizeof( DiffuseMap ); }
+      |                                                                                                               ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::ShadowMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2405:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::ShadowMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2405 |     samplersOffsets[0] = offsetof( ShadowMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::SilhouetteMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2462:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::SilhouetteMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2462 |         virtual int SignificantPartLength() const { return offsetof( SilhouetteMaterial, renderState ) - offsetof( SilhouetteMaterial, renderState ) + sizeof( renderState ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2462:116: warning: ‘offsetof’ within non-standard-layout type ‘Render::SilhouetteMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2462 |         virtual int SignificantPartLength() const { return offsetof( SilhouetteMaterial, renderState ) - offsetof( SilhouetteMaterial, renderState ) + sizeof( renderState ); }
+      |                                                                                                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::SkyMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2586:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::SkyMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2586 |         virtual int SignificantPartLength() const { return offsetof( SkyMaterial, vOffset2 ) - offsetof( SkyMaterial, renderState ) + sizeof( vOffset2 ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2586:106: warning: ‘offsetof’ within non-standard-layout type ‘Render::SkyMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2586 |         virtual int SignificantPartLength() const { return offsetof( SkyMaterial, vOffset2 ) - offsetof( SkyMaterial, renderState ) + sizeof( vOffset2 ); }
+      |                                                                                                          ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::SkyMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2634:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::SkyMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2634 |     samplersOffsets[0] = offsetof( SkyMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::TerrainAOEMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2717:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainAOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2717 |         virtual int SignificantPartLength() const { return offsetof( TerrainAOEMaterial, uvOffset ) - offsetof( TerrainAOEMaterial, renderState ) + sizeof( uvOffset ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2717:113: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainAOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2717 |         virtual int SignificantPartLength() const { return offsetof( TerrainAOEMaterial, uvOffset ) - offsetof( TerrainAOEMaterial, renderState ) + sizeof( uvOffset ); }
+      |                                                                                                                 ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::TerrainAOEMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2749:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainAOEMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2749 |     samplersOffsets[0] = offsetof( TerrainAOEMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::TerrainHeightBuilderMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2973:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainHeightBuilderMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2973 |         virtual int SignificantPartLength() const { return offsetof( TerrainHeightBuilderMaterial, renderState ) - offsetof( TerrainHeightBuilderMaterial, renderState ) + sizeof( renderState ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:2973:126: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainHeightBuilderMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 2973 |         virtual int SignificantPartLength() const { return offsetof( TerrainHeightBuilderMaterial, renderState ) - offsetof( TerrainHeightBuilderMaterial, renderState ) + sizeof( renderState ); }
+      |                                                                                                                              ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::TerrainMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3102:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3102 |         virtual int SignificantPartLength() const { return offsetof( TerrainMaterial, grassRect ) - offsetof( TerrainMaterial, A_DiffuseMap ) + sizeof( grassRect ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3102:111: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3102 |         virtual int SignificantPartLength() const { return offsetof( TerrainMaterial, grassRect ) - offsetof( TerrainMaterial, A_DiffuseMap ) + sizeof( grassRect ); }
+      |                                                                                                               ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::TerrainMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3150:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3150 |     samplersOffsets[0] = offsetof( TerrainMaterial, A_DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3151:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3151 |     samplersOffsets[1] = offsetof( TerrainMaterial, N_DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3152:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3152 |     samplersOffsets[2] = offsetof( TerrainMaterial, B_DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3153:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3153 |     samplersOffsets[3] = offsetof( TerrainMaterial, FrozenNormalMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3154:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3154 |     samplersOffsets[4] = offsetof( TerrainMaterial, NormalNormalMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3155:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3155 |     samplersOffsets[5] = offsetof( TerrainMaterial, BurnedNormalMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3156:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3156 |     samplersOffsets[6] = offsetof( TerrainMaterial, FrozenSpecularMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3157:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3157 |     samplersOffsets[7] = offsetof( TerrainMaterial, NormalSpecularMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3158:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3158 |     samplersOffsets[8] = offsetof( TerrainMaterial, BurnedSpecularMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3159:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TerrainMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3159 |     samplersOffsets[9] = offsetof( TerrainMaterial, DarkMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::TestTownMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3225:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::TestTownMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3225 |         virtual int SignificantPartLength() const { return offsetof( TestTownMaterial, outputAdd ) - offsetof( TestTownMaterial, RenderState ) + sizeof( outputAdd ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3225:112: warning: ‘offsetof’ within non-standard-layout type ‘Render::TestTownMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3225 |         virtual int SignificantPartLength() const { return offsetof( TestTownMaterial, outputAdd ) - offsetof( TestTownMaterial, RenderState ) + sizeof( outputAdd ); }
+      |                                                                                                                ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::TestTownMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3261:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TestTownMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3261 |     samplersOffsets[0] = offsetof( TestTownMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::TraceMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3343:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::TraceMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3343 |         virtual int SignificantPartLength() const { return offsetof( TraceMaterial, vOffset ) - offsetof( TraceMaterial, renderState ) + sizeof( vOffset ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3343:107: warning: ‘offsetof’ within non-standard-layout type ‘Render::TraceMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3343 |         virtual int SignificantPartLength() const { return offsetof( TraceMaterial, vOffset ) - offsetof( TraceMaterial, renderState ) + sizeof( vOffset ); }
+      |                                                                                                           ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::TraceMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3389:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::TraceMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3389 |     samplersOffsets[0] = offsetof( TraceMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::UIBaseMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3511:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIBaseMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3511 |         virtual int SignificantPartLength() const { return offsetof( UIBaseMaterial, colorStripe1000 ) - offsetof( UIBaseMaterial, DiffuseMap ) + sizeof( colorStripe1000 ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3511:116: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIBaseMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3511 |         virtual int SignificantPartLength() const { return offsetof( UIBaseMaterial, colorStripe1000 ) - offsetof( UIBaseMaterial, DiffuseMap ) + sizeof( colorStripe1000 ); }
+      |                                                                                                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::UIBaseMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3558:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIBaseMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3558 |     samplersOffsets[0] = offsetof( UIBaseMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3559:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIBaseMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3559 |     samplersOffsets[1] = offsetof( UIBaseMaterial, MaskMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::UIButtonMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3652:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3652 |         virtual int SignificantPartLength() const { return offsetof( UIButtonMaterial, ScreenOpacity ) - offsetof( UIButtonMaterial, BackgroundMap ) + sizeof( ScreenOpacity ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3652:116: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3652 |         virtual int SignificantPartLength() const { return offsetof( UIButtonMaterial, ScreenOpacity ) - offsetof( UIButtonMaterial, BackgroundMap ) + sizeof( ScreenOpacity ); }
+      |                                                                                                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::UIButtonMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3718:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3718 |     samplersOffsets[0] = offsetof( UIButtonMaterial, BackgroundMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3719:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3719 |     samplersOffsets[1] = offsetof( UIButtonMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3720:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3720 |     samplersOffsets[2] = offsetof( UIButtonMaterial, WaitForActMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3721:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3721 |     samplersOffsets[3] = offsetof( UIButtonMaterial, LackOfManaMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3722:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3722 |     samplersOffsets[4] = offsetof( UIButtonMaterial, PressedMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3723:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3723 |     samplersOffsets[5] = offsetof( UIButtonMaterial, HighlightMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3724:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIButtonMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3724 |     samplersOffsets[6] = offsetof( UIButtonMaterial, ScreenMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::UIFlashMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3803:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFlashMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3803 |         virtual int SignificantPartLength() const { return offsetof( UIFlashMaterial, CXFormAdd ) - offsetof( UIFlashMaterial, DiffuseMap ) + sizeof( CXFormAdd ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3803:111: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFlashMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3803 |         virtual int SignificantPartLength() const { return offsetof( UIFlashMaterial, CXFormAdd ) - offsetof( UIFlashMaterial, DiffuseMap ) + sizeof( CXFormAdd ); }
+      |                                                                                                               ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::UIFlashMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3855:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFlashMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3855 |     samplersOffsets[0] = offsetof( UIFlashMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3856:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFlashMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3856 |     samplersOffsets[1] = offsetof( UIFlashMaterial, DiffuseMap2 );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::UIFontMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3924:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFontMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3924 |         virtual int SignificantPartLength() const { return offsetof( UIFontMaterial, SecondaryColor ) - offsetof( UIFontMaterial, DiffuseMap ) + sizeof( SecondaryColor ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3924:115: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFontMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3924 |         virtual int SignificantPartLength() const { return offsetof( UIFontMaterial, SecondaryColor ) - offsetof( UIFontMaterial, DiffuseMap ) + sizeof( SecondaryColor ); }
+      |                                                                                                                   ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::UIFontMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:3962:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIFontMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 3962 |     samplersOffsets[0] = offsetof( UIFontMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In member function ‘virtual int Render::UIGlassMaterial::SignificantPartLength() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4035:70: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4035 |         virtual int SignificantPartLength() const { return offsetof( UIGlassMaterial, ScreenOpacity ) - offsetof( UIGlassMaterial, BackgroundMap ) + sizeof( ScreenOpacity ); }
+      |                                                                      ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4035:115: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4035 |         virtual int SignificantPartLength() const { return offsetof( UIGlassMaterial, ScreenOpacity ) - offsetof( UIGlassMaterial, BackgroundMap ) + sizeof( ScreenOpacity ); }
+      |                                                                                                                   ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h: In static member function ‘static void Render::UIGlassMaterial::InitSamplersOffsets()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4078:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4078 |     samplersOffsets[0] = offsetof( UIGlassMaterial, BackgroundMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4079:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4079 |     samplersOffsets[1] = offsetof( UIGlassMaterial, DiffuseMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4080:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4080 |     samplersOffsets[2] = offsetof( UIGlassMaterial, OverlayMap );
+      |                                    ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/MaterialSpec.h:4081:36: warning: ‘offsetof’ within non-standard-layout type ‘Render::UIGlassMaterial’ is conditionally-supported [-Winvalid-offsetof]
+ 4081 |     samplersOffsets[3] = offsetof( UIGlassMaterial, ScreenMap );
+      |                                    ^
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/RenderableScene.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/SceneObject.h:5:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/batch.h: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/batch.h:15:8: warning: attribute ignored in declaration of ‘struct Render::Batch’ [-Wattributes]
+   15 | struct Batch
+      |        ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/batch.h:15:8: note: attribute for ‘struct Render::Batch’ must follow the ‘struct’ keyword
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/../Render/batch.h:79:8: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   79 |   std::auto_ptr<class DXManager>  resourceManager;
+      |        ^~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/SceneObject.h:56:7: warning: attribute ignored in declaration of ‘class NScene::SceneObject’ [-Wattributes]
+   56 | class SceneObject : public SceneObjectBase
+      |       ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/SceneObject.h:56:7: note: attribute for ‘class NScene::SceneObject’ must follow the ‘class’ keyword
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp: In destructor ‘virtual NCore::GameClientReconnect::~GameClientReconnect()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp:130:19: warning: deleting ‘void*’ is undefined [-Wdelete-incomplete]
+  130 |     delete [] it->memory;
+      |               ~~~~^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp: In member function ‘bool NCore::GameClientReconnect::GetWorldData(Stream&, int&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp:173:21: warning: deleting ‘void*’ is undefined [-Wdelete-incomplete]
+  173 |       delete [] it->memory;
+      |                 ~~~~^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp: In member function ‘void NCore::ServerNode::DumpLags() const’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp:827:19: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+  827 |     HANDLE hLog = (HANDLE)NFile::CreateFileWithDir( logFileName.c_str() );
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:541: CMakeFiles/PrimeWorld.dir/Game/PF/Client/LobbyPvx/HybridServerNodeImpl.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

@@ -14,16 +14,16 @@ public:
 	DBLinker (typename T::CreateParams const &cp) : T(cp)
 	{
 		// Try to cast applicator
-		NI_ASSERT(dynamic_cast<T_DB const*>(GetDBBase().GetPtr()) != 0, "Invalid DB applicator");
+		NI_ASSERT(dynamic_cast<T_DB const*>(this->GetDBBase().GetPtr()) != 0, "Invalid DB applicator");
 	}
 
 	DBLinker (typename T::CreateParams const &cp, PFWorld* world) : T(cp, world)
 	{
 		// Try to cast applicator
-		NI_ASSERT(dynamic_cast<T_DB const*>(GetDBBase().GetPtr()) != 0, "Invalid DB applicator");
+		NI_ASSERT(dynamic_cast<T_DB const*>(this->GetDBBase().GetPtr()) != 0, "Invalid DB applicator");
 	}
 
-	T_DB const &GetDB() const { return *static_cast<T_DB const*>(GetDBBase().GetPtr()); }
+	T_DB const &GetDB() const { return *static_cast<T_DB const*>(this->GetDBBase().GetPtr()); }
 
 	typedef DBLinker<T, T_DB> Base;
 	ZDATA_(T)

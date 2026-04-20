@@ -2,6 +2,7 @@
 
 #include "LuxDef.h"
 #include "LuxBoard.h"
+#include "EaselDef.h"
 
 #include "../PF_Core/WorldObject.h"
 

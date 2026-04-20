@@ -334,7 +334,7 @@ StrongMT<Network::IConnection> LocalNetDriver::Connect( const Network::NetAddres
     }
   }
 
-  toDrop.push_back( new LocalNetConnection( 0, 0, false ) );
+  toDrop.push_back( new LocalNetConnection( 0, 0, NULL, false ) );
   StrongMT<Network::IConnection> pC(toDrop.back()->GetClientEnd( address ));
   pC->AsyncClose();
   return pC;

@@ -1,3 +1,4 @@
+#include "System/config.h"
 #include <System/BlockData/BlockData.h>
 #include "FileTerminator.h"
 //#include "NetworkTerminator.h"

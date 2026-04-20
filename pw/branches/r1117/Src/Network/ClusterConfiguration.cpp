@@ -2,7 +2,14 @@
 #include "ClusterConfiguration.h"
 #include "System/Commands.h"
 #include "Network/FreePortsFinder.h"
-#include "PW_Game/server_ip.h"
+#define SERVER_IP "127.0.0.1"
+#define MIRROR_SERVER_IP "127.0.0.1"
+#define SERVER_PROXY_IP "127.0.0.1"
+#define SERVER_PORT "8000"
+#define LOGIN_PORT "8001"
+#define SERVER_CLUSTER_PORT_BACK 8002
+#define SERVER_CLUSTER_PORT_FRONT 8003
+#define usedServer 0
 
 
 namespace 

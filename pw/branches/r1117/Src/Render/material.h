@@ -47,7 +47,7 @@ public:
 	void SetPriority(int prior) { priority = prior; }
 	
   static const int SUBPRIORITY_SIZE = 6; // 6 bits for subPriority
-	static const int SUBPRIORITY_MIN = -1 << (SUBPRIORITY_SIZE - 1);
+	static const int SUBPRIORITY_MIN = -(1 << (SUBPRIORITY_SIZE - 1));
   static const int SUBPRIORITY_MAX = -SUBPRIORITY_MIN - 1;
   // Get subpriority
 	int GetSubPriority() const { return subPriority; }
@@ -147,7 +147,7 @@ protected:
   // Given null pointer, return size of required memory block
   virtual int GetRSandSamplersRep(PBYTE _pRep, int *_pProcessedSize = 0) const;
   // Helper for GetRSandSamplersRep
-  int Material::GetSamplersRep(PBYTE _pRep) const;
+  int GetSamplersRep(PBYTE _pRep) const;
 
   int  CompareNoShaders(const Material &mat, PBYTE thisSamplers = 0) const;
   int  CompareSP(const Material &mat, int significantLength, PBYTE thisSamplers) const;

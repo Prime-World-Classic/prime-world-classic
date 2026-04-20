@@ -30,6 +30,9 @@ namespace NGlobal
 
   const wstring DEFAULT_COMMAND_CONTEXT = L"global";
 
+class VariantValue;
+  template<class ToType> bool IsConvertible( const VariantValue &from );
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class VariantValue
 {
@@ -159,12 +162,15 @@ public:
   }
     
   template<class ToType>
-  friend bool IsConvertible( const VariantValue &from )
-  {
-    const VariantValue valForTypeId( ( ToType() ) );
-    return IsConvertibleImpl( valForTypeId.type, from );
-  }
+  friend bool IsConvertible( const VariantValue &from );
 };
+
+template<class ToType>
+inline bool IsConvertible( const VariantValue &from )
+{
+  const VariantValue valForTypeId( ( ToType() ) );
+  return VariantValue::IsConvertibleImpl( valForTypeId.type, from );
+}
 
 template<>
 struct VariantValue::RetValConvert< wstring >

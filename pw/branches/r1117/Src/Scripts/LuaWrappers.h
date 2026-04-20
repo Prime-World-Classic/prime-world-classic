@@ -2,7 +2,7 @@
 
 #include "LuaValues.h"
 
-#ifndef  LUA_NATIVE
+#ifndef LUA_NATIVE
 # define LUA_NATIVE
 #endif
 
@@ -789,145 +789,145 @@ namespace Lua
   };
   
   template<class RV>
-  typename Wrapper0<RV> make_wrapper(RV(*)())
+  Wrapper0<RV> make_wrapper(RV(*)())
   {
     return Wrapper0<RV>();
   }
 
   template<class RV, class ARG1>
-  typename Wrapper1<RV, ARG1> make_wrapper(RV(*)(ARG1))
+  Wrapper1<RV, ARG1> make_wrapper(RV(*)(ARG1))
   {
     return Wrapper1<RV, ARG1>();
   }
 
   template<class RV, class ARG1, class ARG2>
-  typename Wrapper2<RV, ARG1, ARG2> make_wrapper(RV(*)(ARG1, ARG2))
+  Wrapper2<RV, ARG1, ARG2> make_wrapper(RV(*)(ARG1, ARG2))
   {
     return Wrapper2<RV, ARG1, ARG2>();
   }
 
   template<class RV, class ARG1, class ARG2, class ARG3>
-  typename Wrapper3<RV, ARG1, ARG2, ARG3> make_wrapper(RV(*)(ARG1, ARG2, ARG3))
+  Wrapper3<RV, ARG1, ARG2, ARG3> make_wrapper(RV(*)(ARG1, ARG2, ARG3))
   {
     return Wrapper3<RV, ARG1, ARG2, ARG3>();
   }
 
   template<class RV, class ARG1, class ARG2, class ARG3, class ARG4>
-  typename Wrapper4<RV, ARG1, ARG2, ARG3, ARG4> make_wrapper(RV(*)(ARG1, ARG2, ARG3, ARG4))
+  Wrapper4<RV, ARG1, ARG2, ARG3, ARG4> make_wrapper(RV(*)(ARG1, ARG2, ARG3, ARG4))
   {
     return Wrapper4<RV, ARG1, ARG2, ARG3, ARG4>();
   }
 
   template<class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5>
-  typename Wrapper5<RV, ARG1, ARG2, ARG3, ARG4, ARG5> make_wrapper(RV(*)(ARG1, ARG2, ARG3, ARG4, ARG5))
+  Wrapper5<RV, ARG1, ARG2, ARG3, ARG4, ARG5> make_wrapper(RV(*)(ARG1, ARG2, ARG3, ARG4, ARG5))
   {
     return Wrapper5<RV, ARG1, ARG2, ARG3, ARG4, ARG5>();
   }
 
   template<class T, class RV>
-  typename MemberWrapper0<RV, T>  make_member_wrapper(RV(T::*)())
+  MemberWrapper0<RV, T>  make_member_wrapper(RV(T::*)())
   {
     return MemberWrapper0<RV, T>();
   }
 
   template<class T, class RV, class ARG1>
-  typename MemberWrapper1<RV, T, ARG1>  make_member_wrapper(RV(T::*)(ARG1))
+  MemberWrapper1<RV, T, ARG1>  make_member_wrapper(RV(T::*)(ARG1))
   {
     return MemberWrapper1<RV, T, ARG1>();
   }
 
   template<class T, class RV, class ARG1, class ARG2>
-  typename MemberWrapper2<RV, T, ARG1, ARG2>  make_member_wrapper(RV(T::*)(ARG1, ARG2))
+  MemberWrapper2<RV, T, ARG1, ARG2>  make_member_wrapper(RV(T::*)(ARG1, ARG2))
   {
     return MemberWrapper2<RV, T, ARG1, ARG2>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3>
-  typename MemberWrapper3<RV, T, ARG1, ARG2, ARG3>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3))
+  MemberWrapper3<RV, T, ARG1, ARG2, ARG3>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3))
   {
     return MemberWrapper3<RV, T, ARG1, ARG2, ARG3>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4>
-  typename MemberWrapper4<RV, T, ARG1, ARG2, ARG3, ARG4>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4))
+  MemberWrapper4<RV, T, ARG1, ARG2, ARG3, ARG4>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4))
   {
     return MemberWrapper4<RV, T, ARG1, ARG2, ARG3, ARG4>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5>
-  typename MemberWrapper5<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5))
+  MemberWrapper5<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5))
   {
     return MemberWrapper5<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6>
-  typename MemberWrapper6<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6))
+  MemberWrapper6<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6))
   {
     return MemberWrapper6<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6, class ARG7>
-  typename MemberWrapper7<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7))
+  MemberWrapper7<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7))
   {
     return MemberWrapper7<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6, class ARG7, class ARG8>
-  typename MemberWrapper8<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8))
+  MemberWrapper8<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8))
   {
     return MemberWrapper8<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>();
   }
   
   template<class T, class RV>
-  typename MemberWrapper0_const<RV, T>  make_member_wrapper(RV(T::*)() const)
+  MemberWrapper0_const<RV, T>  make_member_wrapper(RV(T::*)() const)
   {
     return MemberWrapper0_const<RV, T>();
   }
 
   template<class T, class RV, class ARG1>
-  typename MemberWrapper1_const<RV, T, ARG1>  make_member_wrapper(RV(T::*)(ARG1) const)
+  MemberWrapper1_const<RV, T, ARG1>  make_member_wrapper(RV(T::*)(ARG1) const)
   {
     return MemberWrapper1_const<RV, T, ARG1>();
   }
 
   template<class T, class RV, class ARG1, class ARG2>
-  typename MemberWrapper2_const<RV, T, ARG1, ARG2>  make_member_wrapper(RV(T::*)(ARG1, ARG2) const)
+  MemberWrapper2_const<RV, T, ARG1, ARG2>  make_member_wrapper(RV(T::*)(ARG1, ARG2) const)
   {
     return MemberWrapper2_const<RV, T, ARG1, ARG2>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3>
-  typename MemberWrapper3_const<RV, T, ARG1, ARG2, ARG3>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3) const)
+  MemberWrapper3_const<RV, T, ARG1, ARG2, ARG3>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3) const)
   {
     return MemberWrapper3_const<RV, T, ARG1, ARG2, ARG3>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4>
-  typename MemberWrapper4_const<RV, T, ARG1, ARG2, ARG3, ARG4>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4) const)
+  MemberWrapper4_const<RV, T, ARG1, ARG2, ARG3, ARG4>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4) const)
   {
     return MemberWrapper4_const<RV, T, ARG1, ARG2, ARG3, ARG4>();
   }
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5>
-  typename MemberWrapper5_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5) const)
+  MemberWrapper5_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5) const)
   {
     return MemberWrapper5_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5>();
   } 
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6>
-  typename MemberWrapper6_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const)
+  MemberWrapper6_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6) const)
   {
     return MemberWrapper6_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6>();
   } 
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6, class ARG7>
-  typename MemberWrapper7_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const)
+  MemberWrapper7_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7) const)
   {
     return MemberWrapper7_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7>();
   } 
 
   template<class T, class RV, class ARG1, class ARG2, class ARG3, class ARG4, class ARG5, class ARG6, class ARG7, class ARG8>
-  typename MemberWrapper8_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const)
+  MemberWrapper8_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>  make_member_wrapper(RV(T::*)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8) const)
   {
     return MemberWrapper8_const<RV, T, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8>();
   } 

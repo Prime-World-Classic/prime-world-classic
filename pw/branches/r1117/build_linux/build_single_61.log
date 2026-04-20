@@ -1,0 +1,177 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/LoginClient.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginClient.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/LoginContext.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginContext.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+[  1%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/LoginData.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginData.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+[  1%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/LoginServerBase.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerBase.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+[  1%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/LoginServerSync.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.h:15:5: error: ‘ILoginProcessor’ has not been declared; did you mean ‘IAsyncLoginProcessor’?
+   15 |     ILoginProcessor* _processor, ::SSL_CTX* secureContext, Login::ClientVersion const & clientVer = Login::ClientVersion());
+      |     ^~~~~~~~~~~~~~~
+      |     IAsyncLoginProcessor
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.h:22:9: error: ‘ILoginProcessor’ does not name a type; did you mean ‘IAsyncLoginProcessor’?
+   22 |         ILoginProcessor* processor;
+      |         ^~~~~~~~~~~~~~~
+      |         IAsyncLoginProcessor
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:9:3: error: ‘ILoginProcessor’ has not been declared; did you mean ‘IAsyncLoginProcessor’?
+    9 |   ILoginProcessor* _processor, ::SSL_CTX* _secureContext, Login::ClientVersion const & _clientVer)
+      |   ^~~~~~~~~~~~~~~
+      |   IAsyncLoginProcessor
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp: In constructor ‘Login::LoginServerSync::LoginServerSync(Network::INetworkDriver*, const Network::NetAddress&, int*, SSL_CTX*, const Login::ClientVersion&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:10:83: error: no matching function for call to ‘Login::LoginServerBase::LoginServerBase(Network::INetworkDriver*&, const Network::NetAddress&, int, SSL_CTX*&, const Login::ClientVersion&)’
+   10 |   : LoginServerBase( _pDriver, _loginServerAddress, 0, _secureContext, _clientVer )
+      |                                                                                   ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:10:83: note: there is 1 candidate
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.h:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerBase.h:24:3: note: candidate 1: ‘Login::LoginServerBase::LoginServerBase(const Transport::ServiceParams&, const Transport::CustomServiceParams&, const Network::NetAddress&)’
+   24 |   LoginServerBase( const Transport::ServiceParams & _svcParams, const Transport::CustomServiceParams & _customParams, const Network::NetAddress& _loginServerAddress );
+      |   ^~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerBase.h:24:3: note: candidate expects 3 arguments, 5 provided
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:12:3: error: ‘processor’ was not declared in this scope; did you mean ‘_processor’?
+   12 |   processor = _processor;
+      |   ^~~~~~~~~
+      |   _processor
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:13:3: error: ‘Start’ was not declared in this scope
+   13 |   Start(); // ��������� thread
+      |   ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp: In member function ‘virtual bool Login::LoginServerSync::ProcessNewContext(StrongMT<Login::SLoginContext>&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:22:22: error: ‘processor’ was not declared in this scope
+   22 |   resp.loginResult = processor->CheckLogin( req.login, req.password, context->connection, &resp );
+      |                      ^~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp: In member function ‘virtual void Login::LoginServerSync::OnNewLoginSuccess(Login::LoginResultMessage&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/LoginServerSync.cpp:31:3: error: ‘processor’ was not declared in this scope
+   31 |   processor->NewClientLoggedIn( resp.userId, resp.sessionId );
+      |   ^~~~~~~~~
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:1045: CMakeFiles/PrimeWorld.dir/Network/LoginServerSync.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

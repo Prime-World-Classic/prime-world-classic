@@ -30,18 +30,18 @@ class IfaceRequesterCallback : public IBaseInterfaceMT
   NI_DECLARE_CLASS_1(IfaceRequesterCallback, IBaseInterfaceMT);
 
 public:
-  virtual void onChangeState(rpc::IfaceRequesterState::Enum st, StrongMT<rpc::IfaceRequester<T> > const & ifacereq) = 0;
+  virtual void onChangeState(IfaceRequesterState::Enum st, StrongMT<IfaceRequester<T> > const & ifacereq) = 0;
 };
 
 template<typename T>
-class IfaceRequester : public rpc::IGateKeeperCallback, public BaseObjectMT
+class IfaceRequester : public IGateKeeperCallback, public BaseObjectMT
 {
-  NI_DECLARE_REFCOUNT_CLASS_2(IfaceRequester, rpc::IGateKeeperCallback, BaseObjectMT);
+  NI_DECLARE_REFCOUNT_CLASS_2(IfaceRequester, IGateKeeperCallback, BaseObjectMT);
 
-  StrongMT<rpc::GateKeeperBase> gk;
+  StrongMT<GateKeeperBase> gk;
   Transport::TServiceId svcid_;
   nstl::string ifacename_;
-  StrongMT<rpc::Node> rpcNode;
+  StrongMT<Node> rpcNode;
   StrongMT<T> iface_;
   IfaceRequesterState::Enum st;
   NLogg::CChannelLogger* logstrm;
@@ -113,7 +113,7 @@ private:
   }
 
 public:
-  int init( rpc::GateKeeperBase * _gk, Transport::TServiceId const & _svcid,
+  int init( GateKeeperBase * _gk, Transport::TServiceId const & _svcid,
     char const * _ifacename = 0, NLogg::CChannelLogger* _logstrm = &::GetSystemLog(), char const * _chnlName = 0,
     IfaceRequesterCallback<T> * _stcb = 0, NHPTimer::FTime _retryTimeout = 2.0, NHPTimer::FTime _queryIfaceTimeout = 20.0)
   {

@@ -2,6 +2,7 @@
 
 #include "LuxDef.h"
 
+#include "EaselDef.h"
 #include "EaselNotifications.h"
 
 #include "../PF_Core/WorldObject.h"
@@ -54,7 +55,7 @@ enum LuxBoardState
 class LuxGameLogic;
 _interface IPriestessProxy;
 
-namespace EEaselKeyboardEvents { enum Enum; }
+#include "EaselDef.h"
 
 class ILuxBoard : public IObjectBase
 {

@@ -10,7 +10,7 @@
 #include "PFHeroStatistics.h"
 #include "SessionEventType.h"
 #include "PFTalent.h"
-#include "../system/Crc32Checksum.h"
+#include "../System/Crc32Checksum.h"
 #include "GameLogicStatisticsTypes.h"
 
 namespace NWorld

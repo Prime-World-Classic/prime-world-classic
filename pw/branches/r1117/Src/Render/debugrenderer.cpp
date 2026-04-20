@@ -4,7 +4,7 @@
 #include "../System/FastMath.h"
 #include "../System/InlineProfiler.h"
 
-#include "aabb.h"
+#include "AABB.h"
 #include "debugrenderer.h"
 #include "smartrenderer.h"
 #include "renderresourcemanager.h"

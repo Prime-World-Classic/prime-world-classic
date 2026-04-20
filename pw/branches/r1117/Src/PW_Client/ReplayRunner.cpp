@@ -358,7 +358,7 @@ namespace Game
       }
       else
       {
-        Sleep( 50 );
+        threading::Sleep( 50 );
 
         // We don't have OurUserId set. Update non-bots here explicitly.
         float percent = mapLoadingJob->GetProgress()->GetTotalProgress();

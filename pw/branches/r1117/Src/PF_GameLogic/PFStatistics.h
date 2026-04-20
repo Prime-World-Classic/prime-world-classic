@@ -17,7 +17,7 @@ class FirstEventChecker
   bool wasEvent;
   bool firstTime;
 public:
-  FirstEventChecker::FirstEventChecker () : wasEvent(0), firstTime(0) {}
+  FirstEventChecker () : wasEvent(0), firstTime(0) {}
 
   inline void Reset() { firstTime = false; }
 

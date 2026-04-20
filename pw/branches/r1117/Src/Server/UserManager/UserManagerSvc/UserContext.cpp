@@ -1,5 +1,5 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/UserContext.h"
+#include "stdafx.h"
+#include "UserContext.h"
 
 NI_DEFINE_REFCOUNT(UserManager::UserContext);
 

@@ -13,8 +13,8 @@
 #include "UI/ProgressBar.h"
 #include "UI/HealthBar.h"
 
-#include "ui/DebugDraw.h"
-#include "Render/DebugRenderer.h"
+#include "../UI/DebugDraw.h"
+#include "Render/debugrenderer.h"
 
 #include "System/InlineProfiler.h"
 
@@ -552,9 +552,9 @@ template <class T, const bool = boost::is_base_of<NWorld::PFBaseHero, T>::value>
 struct ObjectNameMap
   : public NonCopyable
 {
-  // NOTE: необходимость подмены типов обусловлена особенностями NameMap'а для PFBaseHero.
-  // а именно, в нем нет submap'а под именем unit, который нужен для получения левела.
-  // тем не менее, эту проблему определенно следует решать другим способом.
+  // NOTE: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ NameMap'пїЅ пїЅпїЅпїЅ PFBaseHero.
+  // пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ submap'пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ unit, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.
+  // пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 
   typedef NWorld::PFBaseUnit ObjectType;
 
@@ -633,9 +633,9 @@ void ObjectsInfo2dLogic::UpdateOvertipTextImpl( SOvertip & overtip, const T * ob
 
   const ObjectNameMap<T> nameMap(object);
 
-  //Поскольку nameMap не постоянно привязан к контролу, данные в 
-  //окне пропадают после того как контролл решает их обновить. 
-  //Поэтому здесь, в качестве костыля, напрямую устанавливается текст 
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ nameMap пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 
+  //пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. 
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 
 
   PrecompiledTooltip pctt;
 
@@ -713,7 +713,7 @@ void ObjectsInfo2dLogic::GetWindowFromPool( const WindowsPool::key_type &key, Wi
   NI_PROFILE_BLOCK("Tooltip window create");
   
   char szNamBuffer[32] = "";
-  sprintf_s( szNamBuffer, "%d", ++idCounter );
+  sprintf( szNamBuffer, "%d", ++idCounter );
 
   window.caps = 0U;
   window.wndMain = pBaseWindow->CreateChild( szNamBuffer, "tooltip", 0, 0, 0, 0, NDb::UIELEMENTHALIGN_LEFT, NDb::UIELEMENTVALIGN_TOP );
@@ -832,7 +832,7 @@ void ObjectsInfo2dLogic::SetupOvertip( SOvertip & overtip, const SOvertipCustomE
 
 		const NDb::BaseHero* const dbHero = hero->GetDbHero();
 
-		// NUM_TASK Дополнительные проверки на наличие uniqueResource
+		// NUM_TASK пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ uniqueResource
 		NI_VERIFY(!!dbHero, "Invalid DB hero!", return);
 
 		if (dbHero->uniqueResource != NULL && !dbHero->uniqueResource.IsEmpty())
@@ -851,7 +851,7 @@ void ObjectsInfo2dLogic::SetupOvertip( SOvertip & overtip, const SOvertipCustomE
       }
       else
       {
-        // TODO: вернуть оригинальный материал?
+        // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
       }
     }
   };
@@ -859,7 +859,7 @@ void ObjectsInfo2dLogic::SetupOvertip( SOvertip & overtip, const SOvertipCustomE
   NI_PROFILE_FUNCTION;
 
   //Main tooltip window
-  // TODO: избавиться от двойной проверки. NeedUpdateCustomEnergy() вызывается уровнем выше.
+  // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. NeedUpdateCustomEnergy() пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
   if (overtip.NeedWindow() || overtip.NeedUpdateCustomEnergy(customEnergy))
   {
     AddWindowToPool(overtip);

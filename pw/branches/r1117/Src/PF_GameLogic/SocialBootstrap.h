@@ -1,6 +1,7 @@
 #pragma once
 
-#include <Vendor/JsonCpp/include/json/json.h>
+#include "../../Vendor/JsonCpp/include/json/json.h"
+
 
 namespace NGameX
 {

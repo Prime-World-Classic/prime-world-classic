@@ -45,7 +45,7 @@ void LoadingHeroes::AddUser( int userId, const wstring & playerName,
   char * iconPath = "";
 	char * classIcon = "";
 
-  // Пытаемся ипользовать heroId из PlayerInfo. http://SITE
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ heroId пїЅпїЅ PlayerInfo. http://SITE
   
   //int newHeroId = heroInfo.heroId != 0 ? heroInfo.heroId : Crc32Checksum().AddString(heroId).Get();
   NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( heroDb, advMapDescription,  heroInfo.heroId);
@@ -57,15 +57,15 @@ void LoadingHeroes::AddUser( int userId, const wstring & playerName,
     NDb::EFaction faction = ConvertToFaction(imageTeam);
 
     const NDb::Texture* avatarImage = NWorld::PFBaseHero::GetUiAvatarImage( hero, faction, skinId );
-    iconPath =  (avatarImage) ? avatarImage->textureFileName.c_str() : "";
+    iconPath =  (char*)((avatarImage) ? avatarImage->textureFileName.c_str() : "");
 
     if ( imageTeam == NCore::ETeam::Team1 )
     {
-      classIcon = hero->minimapIconA ? hero->minimapIconA->textureFileName.c_str(): "";
+      classIcon = (char*)(hero->minimapIconA ? hero->minimapIconA->textureFileName.c_str(): "");
     }
     else if ( imageTeam == NCore::ETeam::Team2 )
     {
-      classIcon = hero->minimapIconB ? hero->minimapIconB->textureFileName.c_str(): "";
+      classIcon = (char*)(hero->minimapIconB ? hero->minimapIconB->textureFileName.c_str(): "");
     }
   }
 

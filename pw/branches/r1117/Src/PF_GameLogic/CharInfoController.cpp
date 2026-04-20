@@ -491,7 +491,7 @@ wstring CharInfoController::CalculateBaseTooltip( NDb::EStat baseID ) const
       {
         const NDb::Ptr<NDb::HeroResource>& uniqueResource = pHero->GetDbHero()->uniqueResource;
 
-        precompiledTooltip.Init(pHero, uniqueResource->tooltip.GetText());
+        precompiledTooltip.Init(pHero.GetPtr(), uniqueResource->tooltip.GetText());
 
         break;
       }
@@ -503,7 +503,7 @@ wstring CharInfoController::CalculateBaseTooltip( NDb::EStat baseID ) const
 
       NI_VERIFY( ( baseID >= 0 ) && ( baseID < baseStatTooltips.size() ), "wrong id from flash", return text );
 
-      precompiledTooltip.Init( pUnit, baseStatTooltips[baseID].GetText() );
+      precompiledTooltip.Init( pUnit.GetPtr(), baseStatTooltips[baseID].GetText() );
     }
   }
 
@@ -520,7 +520,7 @@ wstring CharInfoController::CalculateDerivativeTooltip( NDb::EDerivativeStat der
   NI_VERIFY( ( derivativeID >= 0 ) && ( derivativeID < derivativeStatTooltips.size() ), "wrong id from flash", return text );
 
   PrecompiledTooltip precompiledTooltip;
-  precompiledTooltip.Init( pUnit, derivativeStatTooltips[derivativeID].GetText() );
+  precompiledTooltip.Init( pUnit.GetPtr(), derivativeStatTooltips[derivativeID].GetText() );
 
   precompiledTooltip.MakeText( text );
   return text;
@@ -583,7 +583,7 @@ void CharInfoController::OnFSCommand( UI::FlashContainer2* wnd, const char* list
   }
   int show = 0;  
   int statId = 0;  
-  sscanf_s( args, "%d %d", &show, &statId );
+  sscanf( args, "%d %d", &show, &statId );
 
   if ( !show )
   {
@@ -606,7 +606,7 @@ void CharInfoController::OnFSCommand( UI::FlashContainer2* wnd, const char* list
     int column = 0;
     int raw = 0;
 
-    sscanf_s( args, "%d %d %d", &show, &column, &raw );
+    sscanf( args, "%d %d %d", &show, &column, &raw );
 
     if ( isUnitVisible )
     {

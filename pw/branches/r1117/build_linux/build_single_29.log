@@ -1,0 +1,53 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Client/LobbyPvx/LobbyClientBase.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/stdafx.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/LobbyClientBase.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/LobbyClientBase.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/LobbyClientBase.h:206:1: error: ‘OBBYCLIENTBASE_H_INCLUDED’ does not name a type; did you mean ‘NEW_LOBBYCLIENTBASE_H_INCLUDED’?
+  206 | OBBYCLIENTBASE_H_INCLUDED
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~
+      | NEW_LOBBYCLIENTBASE_H_INCLUDED
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Client/LobbyPvx/LobbyClientBase.cpp:4:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystemIntf.h:35:172: error: ‘Login::LoginType’ has not been declared
+   35 |     virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
+      |                                                                                                                                                                            ^~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystemIntf.h:35:188: error: expected ‘,’ or ‘...’ before ‘_loginType’
+   35 |     virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
+      |                                                                                                                                                                                            ^~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystemIntf.h:37:20: error: ‘ELoginResult’ in namespace ‘Login’ does not name a type; did you mean ‘LoginResultData’?
+   37 |     virtual Login::ELoginResult::Enum GetLoginResult() const = 0;
+      |                    ^~~~~~~~~~~~
+      |                    LoginResultData
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystemIntf.h:35:183: error: default argument missing for parameter 5 of ‘virtual void Transport::IClientTransportSystem::Login(const Network::NetAddress&, const nstl::string&, const nstl::string&, const nstl::string&, int)’
+   35 |     virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
+      |                                                                                                                                                                     ~~~~~~~~~~~~~~~~~~^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystemIntf.h:35:150: note: ...following parameter 4 which has a default argument
+   35 |     virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
+      |                                                                                                                                  ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:569: CMakeFiles/PrimeWorld.dir/Game/PF/Client/LobbyPvx/LobbyClientBase.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

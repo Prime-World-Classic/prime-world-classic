@@ -2,11 +2,11 @@
 #include "ChatController.h"
 #include "IFlashChat.h"
 #include "FlashFSCommands.h"
-#include "ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 #include "DBStats.h"
 #include "IgnoreListController.h"
 #include "FlashFSCommands.h"
-#include "Tools/Censor/CensorDll.h"
+#include "../../Tools/Censor/CensorDll.h"
 #include "IChatMessageHook.h"
 #include <cwctype>
 
@@ -321,7 +321,7 @@ void ChatUiController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
         break;
 
       int isChatActivated;
-      sscanf_s(args,"%d", &isChatActivated);
+      sscanf(args,"%d", &isChatActivated);
 
       bindsController->SetEnabled(BindsController::Chat,!isChatActivated);
 
@@ -336,7 +336,7 @@ void ChatUiController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
 
       int channelID;
 
-      swscanf_s(p0, L"%d", &channelID);
+      swscanf(p0, L"%d", &channelID);
 
       wstring message(p1);
 

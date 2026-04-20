@@ -208,7 +208,7 @@ bool LuxChainGenerator::Generate( LuxBallChain* newChain, const NDb::DBEaselChai
 
   ChooseColorsForUsage( stats );
 
-  NI_VERIFY(paintColors > 0, "LuxChainGenerator: there is no available colors to paint", return false);
+  NI_VERIFY(numBallColors > 0, "LuxChainGenerator: there is no available colors to paint", return false);
 
   GenerateOneColorChunks( _params );
   RearrangeColorsInChain( _params );

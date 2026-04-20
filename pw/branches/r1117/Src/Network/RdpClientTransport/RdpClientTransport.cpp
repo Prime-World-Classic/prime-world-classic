@@ -42,7 +42,7 @@ private:
     while ( isRunning )
     {
       owner->ParallelPoll();
-      Sleep( 100 );
+      threading::Sleep( 100 );
     }
   }
 };

@@ -516,11 +516,11 @@ diINLINE DiBool DiIsFinite(DiFloat rValue)
   DIFUNCTION("DiIsFinite");
   
 
-#ifdef __MWERKS__
-  DIRETURN(isfinite(rValue));
+#if defined(__MWERKS__) || defined(NI_PLATF_LINUX)
+  DIRETURN(std::isfinite(rValue));
 #else
   DIRETURN(_finite(rValue));
-#endif __MWERKS__
+#endif
 
   DIRETURN(TRUE);
 } // end of DiIsFinite
@@ -547,6 +547,7 @@ diINLINE DiInt32 DiF2L(DiFloat rValue)
   DIFUNCTION("DiF2L");
   
 
+#ifndef NI_PLATF_LINUX
   __asm
   {
     // flag setting
@@ -564,6 +565,9 @@ diINLINE DiInt32 DiF2L(DiFloat rValue)
     // back old flag
     fldcw   WORD PTR nOldMode
   }
+#else
+  nRet = static_cast<DiInt32>(rValue);
+#endif
 
   DIRETURN(nRet);
 } // end of DiF2L

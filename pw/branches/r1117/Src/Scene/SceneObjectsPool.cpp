@@ -81,7 +81,7 @@ void SceneObjectsPool::Reserve( IScene* pScene, NDb::Ptr<NDb::DBSceneObject> con
 
   for ( int i = 0; i < amount; ++i )
   {
-    const DWORD dwDBHash = reinterpret_cast<const DWORD>( pDBObj.GetPtr() );
+    const DWORD dwDBHash = (DWORD)(size_t)( pDBObj.GetPtr() );
     AutoPtr<SceneObject> ptr = CreateSceneObject( pScene, *pDBObj.GetPtr(), nodeName );
     ptr->dwDBHash = dwDBHash;
     pool->pool.push_back( Release(ptr) );
@@ -104,7 +104,7 @@ SceneObjectRef SceneObjectsPool::Retrieve( IScene* pScene, NDb::Ptr<NDb::DBScene
   if ( pool->pool.empty() )
   {
     NI_PROFILE_HEAVY_BLOCK( "CreateSceneObject" );
-    const DWORD dwDBHash = reinterpret_cast<const DWORD>( pDBObj.GetPtr() );
+    const DWORD dwDBHash = (DWORD)(size_t)( pDBObj.GetPtr() );
     AutoPtr<SceneObject> ptr = CreateSceneObject( pScene, *pDBObj.GetPtr(), nodeName );
     ptr->dwDBHash = dwDBHash;
     pool->pool.push_back( Release(ptr) );
@@ -121,7 +121,7 @@ SceneObjectRef SceneObjectsPool::Retrieve( IScene* pScene, NDb::Ptr<NDb::DBScene
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SceneObjectsPool::ObjectsPool* SceneObjectsPool::GetPool(NDb::Ptr<NDb::DBSceneObject> const& pDBObj)
 {
-  const DWORD dwDBHash = reinterpret_cast<const DWORD>( pDBObj.GetPtr() );
+  const DWORD dwDBHash = (DWORD)(size_t)( pDBObj.GetPtr() );
   NI_ASSERT(dwDBHash != 0xffffffff, "Bad DBID hash!");
   PoolsMap::iterator it = poolsMap.find(dwDBHash);
   return (it == poolsMap.end()) ? (poolsMap[dwDBHash] = new ObjectsPool(pDBObj) ) : (it->second);

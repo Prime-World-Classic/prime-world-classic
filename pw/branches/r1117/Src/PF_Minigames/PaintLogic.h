@@ -7,7 +7,6 @@
 
 namespace NDb
 {
-  enum EColor;
   struct DBFragment;
   struct DBPainterPoint;
   struct EPaintStatistics;

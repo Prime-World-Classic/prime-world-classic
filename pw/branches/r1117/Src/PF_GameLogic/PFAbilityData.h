@@ -1,4 +1,5 @@
 #pragma once
+#include "../../Data/GameLogic/FormulaPars.h"
 
 #include "../System/NameMap.h"
 #include "PFWorldObjectBase.h"
@@ -25,7 +26,7 @@ namespace EAbilityState
 namespace NWorld
 {
 
-enum ELookKind
+enum ELookKind : int
 {
   DontLook,
   Turn,
@@ -33,6 +34,7 @@ enum ELookKind
 };
 
 class PFWorld;
+class PFConsumable;
 class PFBaseUnit;
 class PFAbilityInstance;
 class PFAbilityConstantsMap;

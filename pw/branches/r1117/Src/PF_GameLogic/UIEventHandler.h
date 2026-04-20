@@ -1,12 +1,6 @@
 #pragma once
 
-namespace UI
-{
-  namespace EMButton
-  {
-    enum Enum;
-  }
-}
+#include "../UI/Defines.h"
 
 namespace NWorld
 {

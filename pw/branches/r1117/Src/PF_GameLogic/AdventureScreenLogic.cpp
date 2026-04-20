@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "System/Win32_linux.h"
 #include <algorithm>
 
 #include "PFImpulsiveBuffs.h"
@@ -274,7 +275,7 @@ void AdventurepreferencesProcessor::Cancel()
 {
   PreferencesProcessor::Cancel();
 
-  //так как при закрытии окна настроек без сохранения/подтверждения сбрасываются только настройки графики, то остальные изменнения тоже должны сохранятся в файл 
+  //пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ 
   if(!NGameX::AdventureScreen::Instance()->IsInReplayMode())
   {
     NGlobal::SaveConfig( NProfile::GetFullFilePath( "user.cfg", NProfile::FOLDER_USER ), STORAGE_USER );
@@ -289,10 +290,10 @@ void AdventurepreferencesProcessor::ApplyShortcuts()
 {
   PreferencesProcessor::ApplyShortcuts();
 
-  //так как при закрытии окна настроек без сохранения/подтверждения сбрасываются только настройки графики, то остальные изменнения тоже должны сохранятся в файл 
+  //пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ 
   if(!NGameX::AdventureScreen::Instance()->IsInReplayMode())
   {
-    // отправка изменённых биндов в интерфейс
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     AdventureScreenLogic* advLogic = dynamic_cast<AdventureScreenLogic*>(AdventureScreen::Instance()->GetLogic());
     Input::Binds* binds = Input::BindsManager::Instance()->GetBinds();
 
@@ -334,7 +335,7 @@ void AdventureScreenLogic::SetOwner( NGameX::AdventureScreen * owner, const NDb:
   socialConnection = _socialConnection;
   playerStartInfos = _playersInfo;
   m_flyTexts = new UIFlyTexts();
-  m_flyTexts->Init(User());
+  m_flyTexts->Init(GetUser());
 
   CollectPartyInfos();
 
@@ -504,9 +505,11 @@ void AdventureScreenLogic::SetHero(NWorld::PFBaseHero const *pHero)
     const PlayerData & playerData = playersData->GetPlayerData(pHero->GetPlayerId());
     heroExp = playerData.GetHeroExperience();
     heroRating = 1100;
+#ifndef NI_PLATF_LINUX
     if (userIdToNicknameMap.find(pHero->GetPlayerId()) != userIdToNicknameMap.end()) {
       heroRating = (int)g_usersData[userIdToNicknameMap[pHero->GetPlayerId()].nickname].currentRating; //playerData.GetHeroRating();
     }
+#endif
   }
 
   awardsController = new AwardsController(flashWnd, m_owner->GetWorld()->GetAIWorld()->GetAIParameters(),  uiData, generalTooltip, flashInterface, m_owner->GetWorld()->GetResourcesCollection(), pHero->GetOriginalFaction(), heroExp, heroRating, rankCalculator, playersData );
@@ -524,7 +527,7 @@ void AdventureScreenLogic::OnMapLoaded( const NDb::AdvMapDescription * advMapDes
   mapType = advMapDescription->mapType;
 	fwodVisualInfo = advMapDescription->FirstWinVisualInfo;
 
-  //кастомные обработчики карт
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
   if ( flashInterface )
   {
     if ( mapType == NDb::MAPTYPE_CTE )
@@ -1154,8 +1157,8 @@ bool AdventureScreenLogic::ProcessUIEvent(const Input::Event& event)
 
 void AdventureScreenLogic::ConfigurePlaySameTeamFeature(const NDb::AdvMapDescription* const advMapDescription, const bool available, const bool enabled)
 {
-  // available: может ли локальный игрок принимать решение
-  // enabled: доступна ли фича
+  // available: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  // enabled: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if (!enabled)
   {
@@ -1176,7 +1179,7 @@ void AdventureScreenLogic::HandlePlaySameTeamDecision(const NWorld::PFPlayer* co
   NI_VERIFY(!!localPlayer, "Invalid local player!", return);
   NI_VERIFY(!!player, "Invalid player!", return);
 
-  // не показывать решения команды соперников
+  // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (localPlayer->GetTeamID() != player->GetTeamID())
     return;
 
@@ -1473,7 +1476,7 @@ bool TalentsAward ( const char *name, const vector<wstring> &params )
       int maxTalents = IsValid(resCollection) ? resCollection->GetTalents().size() : 25;
       int rnd = NRandom::Random(1,maxTalents);
       char buff[8];
-      sprintf_s( buff, "G%03d", rnd );
+      sprintf( buff, "G%03d", rnd );
       if (IsValid(IsValid(resCollection) ? resCollection->FindTalentById(buff) : NULL))
         awardData.persistentId = buff;
       else 
@@ -1485,7 +1488,7 @@ bool TalentsAward ( const char *name, const vector<wstring> &params )
     else if (mode == INC)
     {
       char buff[8];
-      sprintf_s( buff, "G%03d", startFrom + i );
+      sprintf( buff, "G%03d", startFrom + i );
       if (IsValid(IsValid(resCollection) ? resCollection->FindTalentById(buff) : NULL))
         awardData.persistentId = buff;
       else 
@@ -1569,7 +1572,7 @@ bool ChoosePartyAgain(const char *name, const vector<wstring> &params)
   if (mainPartId == 0)
       return false; 
   
-  nstl::vector<__int64> auids;
+  nstl::vector<long long> auids;
   for(int i = 0; i< world->GetPlayersCount(); ++i)
   {
     NWorld::PFPlayer* p = world->GetPlayer( i );

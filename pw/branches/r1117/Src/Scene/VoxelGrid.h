@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../Render/ConvexVolume.h"
+#include "Render/ConvexVolume.h"
+#include "../Render/AABB.h"
 
 namespace NScene
 {
@@ -98,7 +99,7 @@ public:
     }
 
     vx = (int)floor((dx + m_bbox.halfSize.x) / m_voxelSizeX);
-    vy = (int)floor((dz + m_bbox.halfSize.y) / m_voxelSizeZ);
+    vz = (int)floor((dz + m_bbox.halfSize.y) / m_voxelSizeZ);
 
     if (vx >= m_nVoxelsX)
     {

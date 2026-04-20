@@ -17,11 +17,11 @@
 #include "LuxBoost.h"
 
 
-#include "../ui/Window.h"
-#include "../ui/ImageLabel.h"
-#include "../ui/Button.h"
+#include "../UI/Window.h"
+#include "../UI/ImageLabel.h"
+#include "../UI/Button.h"
 
-#include "../Render/materialspec.h"
+#include "../Render/MaterialSpec.h"
 
 
 namespace PF_Minigames
@@ -171,7 +171,7 @@ void EaselScreenLogicLobby::ExitGame()
   if ( IsValid( easelMinigame ) )
     easelMinigame->OnExitImmediate();
 
-  //Мы пока не убиваем экран изела, т.к. в нем лежит камера, она должна доинтерполироваться
+  //пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ.пїЅ. пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   MinigameLobbyScreenLogic::ExitLobby();
 }
 
@@ -217,7 +217,7 @@ void EaselScreenLogicLobby::OnRegenerateClicked()
   if( !IsCanBuyBoostsRegen() )
     return;
 
-  // метод должен вызываться у EaselMinigame (для транспорта по сети)
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ EaselMinigame (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ)
   if ( easelMinigame->RegenerateBoosts( true, currentLevel - 1 ) )
     UpdateBoostsImages();
 }

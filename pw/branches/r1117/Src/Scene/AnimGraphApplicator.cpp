@@ -235,7 +235,7 @@ void AnimGraphApplicator::BlendBoneAnimationsHeavy(Matrix43* out, int nJointNumb
   MixInfo localMix;
   int nAnimToBlend = mixInfo.size();
   //just do  localMix = mixInfo; fast
-  *((MixInfoItem **)&localMix + 0) = (MixInfoItem *)_alloca(sizeof(MixInfoItem) * nAnimToBlend);// _M_start;
+  *((MixInfoItem **)&localMix + 0) = (MixInfoItem *)alloca(sizeof(MixInfoItem) * nAnimToBlend);// _M_start;
   *((MixInfoItem **)&localMix + 1) = *((MixInfoItem **)&localMix + 0) + nAnimToBlend; //_M_finish;
   *((MixInfoItem **)&localMix + 2) = *((MixInfoItem **)&localMix + 1);//_M_end_of_storage;
   memcpy(*((MixInfoItem **)&localMix + 0), (MixInfoItem *)mixInfo.begin(), sizeof(MixInfoItem) * nAnimToBlend);

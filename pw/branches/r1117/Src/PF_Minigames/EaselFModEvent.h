@@ -1,8 +1,9 @@
 #pragma once
 
+#include "DBEasel.h"
+
 namespace NDb
 {
-  enum   EEaselSoundType;
   struct DBEaselSoundsData;
 }
 

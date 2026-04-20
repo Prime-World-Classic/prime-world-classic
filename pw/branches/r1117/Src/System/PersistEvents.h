@@ -32,7 +32,11 @@ struct EventId
 };
 
 
+#ifdef _WIN32
 typedef unsigned __int64 TAuxParam;
+#else
+typedef unsigned long long TAuxParam;
+#endif
 
 struct Event
 {

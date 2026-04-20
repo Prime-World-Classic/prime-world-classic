@@ -1,5 +1,5 @@
 #pragma once
-#include <ChatTypes.h>
+#include "Server/Chat/ChatTypes.h"
 #include <ChatSvc/ChatContext.h>
 
 namespace chat

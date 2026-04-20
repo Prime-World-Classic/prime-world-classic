@@ -1,5 +1,12 @@
 #pragma once
 
+#ifdef NI_PLATF_LINUX
+#include <stdlib.h>
+#include <malloc.h>
+#define Aligned_MAlloc(size, align) memalign(align, size)
+#define Aligned_Free(ptr) free(ptr)
+#endif
+
 class DummyAllocator
 {
 	unsigned int currentSize;

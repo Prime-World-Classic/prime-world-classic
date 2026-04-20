@@ -1,8 +1,9 @@
 #pragma once
 
-#include "../Render/aabb.h"
+#include "AABB.h"
 #include "../Client/Overtips.h"
 #include "../Scene/SceneObject.h"
+#include "../UI/Window.h"
 
 namespace NScene
 {
@@ -73,7 +74,7 @@ public:
   //////////////////////////////////////////////////////////////////////////
 
   virtual void SetVisible( bool _visible );
-  virtual void OverrideVisible( bool _visible ); //FXIME: Подпорка чото бы например спрятать всю миниигру, не конфликтуая с SetVisible()
+  virtual void OverrideVisible( bool _visible ); //FXIME: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ SetVisible()
 	virtual bool IsVisible();
 
   virtual void Update( float deltaTime, bool gameOnPause );
@@ -86,7 +87,7 @@ public:
   virtual bool NeedHighlight() const { return false; }
   virtual const Render::HDRColor& GetHighlightColor() const;
 
-  //FIXME: нужен ли этот функционал для всех миниигр или только для клиники?
+  //FIXME: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
   //TODO: iA: move these to Clinic-specific client object
   void CreateOvertip( Overtips::IManager * pOvertips, const NDb::UIObjectOvertips * pDesc );
   void RemoveOvertip();
@@ -121,10 +122,10 @@ protected:
 
 	CPtr<NScene::CollisionHull> collisionHull;
 
-  //TODO: проблема в том, что  мы не можем вернуть AABB от scene obejct, так как он "гуляет" вместе с анимацией
-  //И за этой же анимацией начинают "гулять" и овертипы над объектом
-  //Поэтому приходится конструировать какой-то свой бокс с фиксированным размером
-  //Так как при этом все методы Get - константные, отсюда и mutable
+  //TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅ  пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ AABB пїЅпїЅ scene obejct, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ" пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ Get - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ mutable
 	mutable Render::AABB tmpAABB;
   CVec3 tmpAABBCenterOffset;
   mutable SHMatrix tmpWorldMatrix;
@@ -133,7 +134,7 @@ protected:
   bool commonSenseVisibility;
   bool overridenVisibility;
 
-  //FIXME: переместить этот код, а так же CreateOvertip() в некий объект ClinicClientObject
+  //FIXME: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅ пїЅпїЅ CreateOvertip() пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ ClinicClientObject
   //TODO: iA: move these to Clinic-specific client object
   template <class TUIElem>
   void CheckControlOut(Weak<TUIElem> * pControlPtr, UI::Window * pParent, const char * controlName)

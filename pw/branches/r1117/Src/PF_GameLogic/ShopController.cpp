@@ -52,7 +52,7 @@ ShopController::~ShopController()
 void ShopController::SetShop( NWorld::PFShop * _shop )
 {
 
-  if (!IsValid(_shop) || !_shop->IsHeroNear(hero) || shop == _shop )
+  if (!IsValid(_shop) || !_shop->IsHeroNear(hero.GetPtr()) || shop == _shop )
     return;
 
   shop = _shop;
@@ -82,7 +82,7 @@ void ShopController::Update( int mouseX, int mouseY )
   if (!IsValid(shop) || !IsValid(hero) || !IsValid(flashInterface))
     return;
 
-  if (!shop->IsHeroNear(hero))
+  if (!shop->IsHeroNear(hero.GetPtr()))
   {
     shop = 0;
     flashInterface->ShowShop(false);
@@ -91,7 +91,7 @@ void ShopController::Update( int mouseX, int mouseY )
 
   for (int i = 0 ; i < shop->GetNumConsumables(); i++)
   {
-    ShopItemState::EShopItemState itemState = shop->CanBuyConsumable(hero, i)? ShopItemState::CanBuy : ShopItemState::NotEnoughPrime;
+    ShopItemState::EShopItemState itemState = shop->CanBuyConsumable(hero.GetPtr(), i)? ShopItemState::CanBuy : ShopItemState::NotEnoughPrime;
 
     if (itemState!=itemStates[i])
     {

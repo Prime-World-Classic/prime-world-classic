@@ -16,6 +16,7 @@ typedef const char *(WINAPI *TGetVersionProc)(void);
 
 void Init()
 { 
+#ifdef WIN32
   //http://wiki.winehq.org/DeveloperFaq#head-96551a33b168826cd805c2f62c4ea705ac02f350
   HMODULE hDll = LoadLibrary( TEXT( "ntdll.dll") );
   
@@ -28,6 +29,10 @@ void Init()
   g_isCrossOverWine = getVersion != 0 ? strstr( (*getVersion)(), "CXG" ) != NULL : false; 
   
   FreeLibrary( hDll );
+#else
+  g_isRunnedUnderWine = false;
+  g_isCrossOverWine = false;
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

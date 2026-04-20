@@ -10,7 +10,12 @@ TinyFileWriteStream::TinyFileWriteStream( const string & fileName, int flags /*=
   else
     mode = "w";
 
+#ifdef _WIN32
   if ( fopen_s(&hFile, fileName.c_str(), mode) != 0 )
+#else
+  hFile = fopen(fileName.c_str(), mode);
+  if ( hFile == NULL )
+#endif
   {
     DebugTrace( "Failed to open file %s", fileName.c_str() );
     SetBroken( true );

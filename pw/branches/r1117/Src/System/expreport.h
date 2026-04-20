@@ -20,6 +20,7 @@
 // includes
 // engine
 // standard
+#ifdef _WIN32
 #include <atlbase.h>
 #include "Vendor/wtl/include/atlapp.h"
 #include "Vendor/wtl/include/atlmisc.h"
@@ -37,12 +38,15 @@
 //
 #define CHECKHR(x) {HRESULT hr = x; if (FAILED(hr)) goto CleanUp;}
 #define SAFERELEASE(p) {if (p) {(p)->Release(); p = NULL;}}
+#else
+#include "nvector.h"
+#endif
 
 // *******************************************************************
 // classes 
 namespace NBSU
 {
-
+#ifdef _WIN32
 
   // *******************************************************************
   // classes 
@@ -285,6 +289,7 @@ private:
 // *******************************************************************
 // functions 
 
+#endif // _WIN32
 }
 
 #endif //__EXPREPORT_H__633124997137656250

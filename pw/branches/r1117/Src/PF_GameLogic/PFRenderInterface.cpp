@@ -2,12 +2,12 @@
 
 #include "System/2Darray.h"
 #include "System/meminfo.h"
-#include "System/fixedstring.h"
+#include "System/fixedString.h"
 #include "System/InlineProfiler.h"
 
 #include "Scene/Scene.h"
 #include "Terrain/Terrain.h"
-#include <Terrain\TerrainTextureCache.h>
+#include <Terrain/TerrainTextureCache.h>
 
 #include "Render/ImmediateRenderer.h"
 #include "Render/renderresourcemanager.h"
@@ -22,7 +22,7 @@
 #include "Render/GlobalMasks.h"
 
 #include "Render/texture.h"
-#include "Render/RenderSurface.h"
+#include "Render/rendersurface.h"
 #include "Render/InstancedMeshResource.h"
 #include "Render/FrustumCuller.h"
 
@@ -328,14 +328,14 @@ struct ProcessBatchesFuncWithGather : public ProcessBatchesFunc<withDebug>
 {
 public:
   ProcessBatchesFuncWithGather(BatchQueue &_batchQueue, const SceneConstants &_sceneConsts, vector<RenderableSceneObj*> &_renderableObjects, IDebugRender* _debugRender)
-    : ProcessBatchesFunc(_batchQueue, _sceneConsts, _debugRender), renderableObjects(_renderableObjects)
+    : ProcessBatchesFunc<withDebug>(_batchQueue, _sceneConsts, _debugRender), renderableObjects(_renderableObjects)
   {
     renderableObjects.clear();
   }
 
   virtual void operator()(RenderableSceneObj &obj)
   {
-    ProcessBatchesFunc::operator()(obj);
+    ProcessBatchesFunc<withDebug>::operator()(obj);
     renderableObjects.push_back(&obj);
   }
 
@@ -429,7 +429,7 @@ void Interface::CreateDepthTextures(UINT _width, UINT _height, UINT _copy_width,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline DXSurfaceRef Interface::GetDepthSurface()
 {
-  return s_readableDepth && !s_useRESZ ? pMainDepth->GetSurface(0) : Render::GetRenderer()->GetDepthStencilSurface();  
+  return DXSurfaceRef(s_readableDepth && !s_useRESZ ? ::Get(pMainDepth->GetSurface(0)) : ::Get(Render::GetRenderer()->GetDepthStencilSurface()));  
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -581,7 +581,7 @@ bool Interface::RenderDecalMask( const BatchQueue &queue, NDb::MaterialPriority 
   statesManager.SetStateDirect(D3DRS_SEPARATEALPHABLENDENABLE, 0);
   statesManager.SetStencilState(STENCILSTATE_CHECKBITS, STENCILBIT_DECALRECEIVER);
 
-  statesManager.SetSampler(2, SamplerState::PRESET_CLAMP_POINT(), pDepthTex ? pDepthTex : pMainRT1);
+  statesManager.SetSampler(2, SamplerState::PRESET_CLAMP_POINT(), pDepthTex ? pDepthTex : pMainRT1.GetPtr());
 
   NDb::DecalModePin &decalModeValue = GetRuntimePins().DecalModeValue;
 
@@ -674,7 +674,7 @@ void Interface::RenderDecals( const BatchQueue &queue, NDb::MaterialPriority pri
   statesManager.SetStateDirect(D3DRS_SEPARATEALPHABLENDENABLE, 0);
   statesManager.SetStencilState(STENCILSTATE_CHECKBITS, STENCILBIT_DECALRECEIVER);
 
-  statesManager.SetSampler(2, SamplerState::PRESET_CLAMP_POINT(), pDepthTex ? pDepthTex : pMainRT1);
+  statesManager.SetSampler(2, SamplerState::PRESET_CLAMP_POINT(), pDepthTex ? pDepthTex : pMainRT1.GetPtr());
 
   NDb::DecalModePin &decalModeValue = GetRuntimePins().DecalModeValue;
 
@@ -801,7 +801,7 @@ void Interface::RenderMainPassOpaque( const BatchQueue &queue )
   NI_ASSERT(!(s_useRESZ && dualDepthCopy), "dualDepthCopy and useRESZ couldn't be true at once");
 
   // Copy depth buffer for terrain decals (and water decals, if stencil support is absent) rendering.
-  Render::Texture2D* const pDepthTex = s_useRESZ ? pMainDepth :
+  Render::Texture2D* const pDepthTex = s_useRESZ ? pMainDepth.GetPtr() :
                                        dualDepthCopy ? pMainRT1Copy.GetPtr() : pMainRT1.GetPtr();
   if(copyDepth) {
     const bool hasTerrainDecals = !queue.IsEmpty(NDb::MATERIALPRIORITY_TERRAINDECALS) || !queue.IsEmpty(NDb::MATERIALPRIORITY_TERRAINDOMINATIONDECALS);
@@ -1158,7 +1158,7 @@ void Interface::CopyDepthRESZ()
   statesManager.SetStateDirect(D3DRS_ZENABLE, FALSE);
   statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, 0);
   statesManager.SetStateDirect( D3DRS_POINTSIZE, (DWORD&)(pointSizeOne) );
-  SmartRenderer::DrawPrimitiveUP( desc, vDummyPoint, sizeof(D3DXVECTOR3) );
+  SmartRenderer::DrawPrimitiveUP( desc, &vDummyPoint, sizeof(D3DXVECTOR3) );
   statesManager.SetStateDirect(D3DRS_COLORWRITEENABLE, 0x0F);
   statesManager.SetStateDirect(D3DRS_ZENABLE, TRUE);
   // Trigger the depth buffer resolve; after this call texture sampler 0
@@ -1674,7 +1674,7 @@ void Interface::SetDefaultStates()
 
   IDirect3DDevice9* const pDevice = GetDevice();
   // GetStatesManagerOld()->SetMipMapBias( miplodbias );
-  //CRAP{ Перенести в SamplerState
+  //CRAP{ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ SamplerState
   for(size_t samplerIdx = 0; samplerIdx < 16; ++samplerIdx)
   {
     pDevice->SetSamplerState(samplerIdx, D3DSAMP_MIPMAPLODBIAS, (DWORD&)miplodbias);

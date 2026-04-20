@@ -6,17 +6,15 @@ namespace NCore
 class WorldCommandQueue;
 }
 
+#include "DBStats.h"
+
 namespace NDb
 {
   class DbResource;
-  enum EErrorMessageType;
 }
 
-namespace SessionEventType
-{
-  enum EventType;
-}
-  
+#include "SessionEventType.h"
+
 namespace NWorld
 {
   class PFBaseHero;
@@ -26,11 +24,7 @@ namespace NWorld
   class PFPlayer;
 }
 
-namespace NDb
-{
-  enum EFaction;
-	enum ERoute;
-}
+// removed namespace NDb { enum EFaction; enum ERoute; }
 
 namespace StatisticService
 {

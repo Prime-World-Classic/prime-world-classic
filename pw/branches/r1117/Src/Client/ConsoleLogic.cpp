@@ -1,3 +1,4 @@
+#undef DrawText
 #include "stdafx.h"
 #include "ConsoleLogic.h"
 
@@ -285,6 +286,7 @@ void ConsoleLogic::Show( bool show )
 }
 
 
+#undef DrawText
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void ConsoleLogic::DrawText()
 {

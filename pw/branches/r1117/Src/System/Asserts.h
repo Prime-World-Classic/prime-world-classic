@@ -103,10 +103,16 @@ struct StaticAssert;
 template<>
 struct StaticAssert<true> {};
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define NI_STATIC_ASSERT( expr, msg )	\
-{	\
-    StaticAssert<((expr) != 0)> ERROR_##msg; (void)ERROR_##msg;	\
+#ifndef NI_STATIC_ASSERT
+#ifdef NI_PLATF_LINUX
+#define NI_STATIC_ASSERT( expr, msg )
+#else
+#define NI_STATIC_ASSERT( expr, msg )  \
+{      \
+    StaticAssert<((expr) != 0)> ERROR_##msg; (void)ERROR_##msg;        \
 } 
+#endif
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <class TOut, class TPtr>

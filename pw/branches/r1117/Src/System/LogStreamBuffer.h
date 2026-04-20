@@ -10,23 +10,15 @@
 
 namespace NLogg
 {
+class CChannelLogger;
+struct SEntryInfo;
 
 class StreamBuffer : public text::PrintfFormatterStaticBuffer<4096>
 {
 public:
-  StreamBuffer( CChannelLogger & _logger, const SEntryInfo & _info ) :
-  logger( _logger ),
-  entryInfo( _info ),
-  textStart( Buffer().c_str() )
-  {
-    WriteHeader( logger.HeaderFormat() );
-    textStart = Buffer().c_str() + Buffer().Length();
-  }
+  StreamBuffer( CChannelLogger & _logger, const SEntryInfo & _info );
 
-  ~StreamBuffer() {
-    Push( "\r\n" );
-    logger.Log( entryInfo, Buffer().c_str(), textStart );
-  }
+  ~StreamBuffer();
 
   NLogg::CChannelLogger & GetLog() { return logger; }
 

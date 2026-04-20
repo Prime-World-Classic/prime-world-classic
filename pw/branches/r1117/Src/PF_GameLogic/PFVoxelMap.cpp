@@ -2,6 +2,7 @@
 
 #include "TileMap.h"
 #include "PFVoxelMap.h"
+#include "PFAIWorld.h"
 
 #include "../System/InlineProfiler.h"
 
@@ -48,6 +49,11 @@ PFVoxelMap::PFVoxelMap( )
 , widthF(0.0f)
 , heightF(0.0f)
 {
+}
+
+float PFVoxelMap::GetMaxUnitRadius() const
+{
+  return 0.5f * GetWorld()->GetAIWorld()->GetMaxObjectSize();
 }
 
 //////////////////////////////////////////////////////////////////////////

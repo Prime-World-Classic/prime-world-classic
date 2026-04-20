@@ -98,9 +98,9 @@ void DumpScreenshots()
 {
 	if (s_screenshotFire)
 	{
-	  //Поддержка D3DXSaveSurfaceToFile появилась в wine 1.5.6
-	  //(коммит ec70b67b8d908d1ee11708d18a75774cb9a9bdf8). Пока мы не перейдём на 
-	  //эту, или более позднюю версию, скриншоты можно отключить
+	  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ D3DXSaveSurfaceToFile пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ wine 1.5.6
+	  //(пїЅпїЅпїЅпїЅпїЅпїЅ ec70b67b8d908d1ee11708d18a75774cb9a9bdf8). пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 
+	  //пїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if( !Compatibility::IsRunnedUnderWine() )  
       Render::SmartRenderer::DumpScreenshot(s_screenshotName, s_screenshotAsIs);
       
@@ -155,7 +155,7 @@ static bool CommandScreenshot( const char *name, const vector<wstring>& params )
     tm tim;
     GetOsUtcTime(&tim);
     static char buffer[MAX_PATH];
-    sprintf_s(buffer, "%s-%04d.%02d.%02d-%02d.%02d.%02d.%s", NDebug::GetProductName()
+    snprintf(buffer, MAX_PATH, "%s-%04d.%02d.%02d-%02d.%02d.%02d.%s", NDebug::GetProductName()
       , tim.tm_year, tim.tm_mon, tim.tm_mday
       , tim.tm_hour, tim.tm_min, tim.tm_sec, screenshotExt.c_str());
     s_screenshotName = buffer;

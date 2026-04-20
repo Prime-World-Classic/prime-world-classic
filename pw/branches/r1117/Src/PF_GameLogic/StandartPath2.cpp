@@ -7,24 +7,24 @@
 
 #include "../System/Bresenham.h"
 #include "../System/InlineProfiler.h"
-#include "CommonpathFinder.h"
+#include "CommonPathFinder.h"
 
 namespace
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// максимальное количество точек, на которое будет смотреться вперед (в функции PeekPoint)
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ PeekPoint)
 static const int MAX_LOOK_FORWARD_POINTS = 20;
-// максимальная длина короткого пути в тайлах
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 static const int MAX_PATH_TILES_COUNT = 64;
 #define INDEX(n)  ((n) % MAX_PATH_TILES_COUNT)
-// а вообще путь будет строиться именно на столько тайлов
+// пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 static const int SMALL_PATH_TILES_COUNT = MAX_PATH_TILES_COUNT/4;
-// стандартный сдвиг точек на статическом пути
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 static const int STATIC_PATH_SHIFT = 20;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static const int DIST_SCALE = 10;
-// p.s. максимальное количество тайлов, которое можно записать - MAX_PATH_TILES_COUNT - ( 2 x MAX_LOOK_FORWARD_POINTS )
-// рабочий буфер для CopyPath()
+// p.s. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - MAX_PATH_TILES_COUNT - ( 2 x MAX_LOOK_FORWARD_POINTS )
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ CopyPath()
 static vector<SVector> pathBuffer( MAX_PATH_TILES_COUNT );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define INVALID_TILE SVector( -1, -1 )
@@ -44,7 +44,7 @@ static int Distance(const SVector &p1, const SVector &p2)
 		return dy * DIST_SCALE + dx * int(0.41 * DIST_SCALE);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// возвращает true, если vPoint ближе к vEndPoint1, чем к vEndPoint2
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ true, пїЅпїЅпїЅпїЅ vPoint пїЅпїЅпїЅпїЅпїЅ пїЅ vEndPoint1, пїЅпїЅпїЅ пїЅ vEndPoint2
 inline const bool CompareDistance( const SVector &vEndPoint1, const SVector &vEndPoint2, const SVector &vPoint )
 {
 	return Distance( vEndPoint1, vPoint ) < Distance( vEndPoint2, vPoint );
@@ -118,25 +118,25 @@ void CStandartPath2::SetFinishTile( const SVector &_vFinishTile )
 	vFinishPoint = pMap->GetPointByTile( vFinishTile );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// вызывается только из CalculatePath()
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ CalculatePath()
 void CStandartPath2::CopyPath( const int nLength )
 {
 	if ( nLength <= 0 )
 		return;
 
 	pathFinder->GetTiles( &(pathBuffer[0]), nLength );
-	// проверка: последний тайл в текущем состоянии буфера может совпадать с первым сайлом
-	// копируемого пути - тогда убираем этот последний тайл (чтобы исключить дублирующиеся тайлы)
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
 	if ( (nLastPathTile > 0) && (pathBuffer[0] == pathTiles[nLastPathTile - 1]) )
 		nLastPathTile = INDEX(nLastPathTile - 1);
 	const int nCopyTiles = Min( nLength, MAX_PATH_TILES_COUNT - nLastPathTile );
-	// кольцевой буфер
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	memcpy( &(pathTiles[0]) + nLastPathTile, &(pathBuffer[0]), sizeof(SVector) * Min( nLength, MAX_PATH_TILES_COUNT - nLastPathTile ) );
 	if ( nLength > nCopyTiles )
 		memcpy( &(pathTiles[0]), &(pathBuffer[0]) + nCopyTiles, sizeof(SVector) * ( nLength - nCopyTiles ) );
 	nLastPathTile = INDEX(nLastPathTile + nLength);
 	Smooth();
-	// чтоб можно было спрашивать
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	pathTiles[nLastPathTile] = pathBuffer[nLength-1];
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -188,29 +188,29 @@ bool CStandartPath2::TryUpdatePath(const CVec2 &target)
 	return true;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// bShift всегда true и vLastKnownGoodTile==INVALID_TILE кроме случая вызова из RecalcPath()
-// Функция ищет путь по pStaticPath на STATIC_PATH_SHIFT тайлов вперёд. Строит (по-новой, с 
-// учётом коллизий?) короткий путь и запоминает его. pStaticPath не меняется.
+// bShift пїЅпїЅпїЅпїЅпїЅпїЅ true пїЅ vLastKnownGoodTile==INVALID_TILE пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ RecalcPath()
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ pStaticPath пїЅпїЅ STATIC_PATH_SHIFT пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ-пїЅпїЅпїЅпїЅпїЅ, пїЅ 
+// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ?) пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ. pStaticPath пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLastKnownGoodTile, IPathValidator *pValidator, int numSteps )
 {
   NI_PROFILE_FUNCTION
   
-	// нечего считать, пора заканчивать
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	if ( pathTiles[nLastPathTile] == vFinishTile )
 		return false;
 
 	const int nPrevStaticPathTile = nCurStaticPathTile;
-	// выбираем точку на текущем статическом пути (сдвигаемся сразу на STATIC_PATH_SHIFT тайлов вперёд)
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ STATIC_PATH_SHIFT пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
 	if ( bShift )
 		nCurStaticPathTile = Min( nCurStaticPathTile + STATIC_PATH_SHIFT, pStaticPath->GetLength()-1 ); // original: -2
 
-	// проверяем текущий тайл по пути
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
 	SVector vNextTile;
 	bool tileValid = false;
-	// если непроходимый - ищем ближайший проходимый тайл впереди или сзади по пути
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
 	for ( int nShift = 0; nShift < STATIC_PATH_SHIFT; nShift++ )
 	{
-		// ... впереди
+		// ... пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if ( nCurStaticPathTile + nShift >= pStaticPath->GetLength() )
 			break;
 		vNextTile = pStaticPath->GetTile( nCurStaticPathTile + nShift );
@@ -223,10 +223,10 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
 	}
 	if (!tileValid)
 	{
-		// точно такой же цикл, но в обратную сторону
+		// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		for ( int nShift = 0; nShift < STATIC_PATH_SHIFT; nShift++ )
 		{
-			// ... сзади
+			// ... пїЅпїЅпїЅпїЅпїЅ
 			if ( nCurStaticPathTile - nShift <= nPrevStaticPathTile )
 				break;
 			vNextTile = pStaticPath->GetTile( nCurStaticPathTile - nShift );
@@ -238,12 +238,12 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
 			}
 		}
 	}
-	// если не нашли подходящий тайл со смещением на расстоянии STATIC_PATH_SHIFT - берём
-	// тайл без смещения (все проверенные тайлы неправильные, мы берём "ближайший")
+	// пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ STATIC_PATH_SHIFT - пїЅпїЅпїЅпїЅ
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")
 	if ( !tileValid )
 		vNextTile = pStaticPath->GetTile( nCurStaticPathTile );
 
-	// а вот теперь считаем маленький путь, конечный тайл - vNextTile, его индекс - nCurStaticPathTile
+	// пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ - vNextTile, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - nCurStaticPathTile
 	//DebugTrace( ">>>> CalculatePath: %d x %d - %d x %d (valid: %d x %d) for unit %d (%d & %d)", pathTiles[nLastPathTile].x, pathTiles[nLastPathTile].y, vNextTile.x, vNextTile.y, vLastKnownGoodTile.x, vLastKnownGoodTile.y, nUnitID, nBoundTileRadius );
 	const SVector &startTile = pathTiles[nLastPathTile];
 	const SVector &endTile   = vNextTile;
@@ -261,7 +261,7 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
   if ( IsValid(pFoundStaticPath) && pStaticPath->GetFinishTile() == pFoundStaticPath->GetFinishTile() && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile())
     return false;
 
-  //попробуем разрешить коллизию просто явным образом
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if ( !IsValid(pFoundStaticPath ) || (mDistance( pStaticPath->GetFinishTile(), pFoundStaticPath->GetFinishTile() ) > 2 && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile()) )
   {
     MapModeChanger mode(MAP_MODE_ALL_STATICS, pMap);
@@ -276,27 +276,27 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
   if ( !IsValid(pFoundStaticPath ) || (mDistance( pStaticPath->GetFinishTile(), pFoundStaticPath->GetFinishTile() ) > 2 && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile()) )
     return false;
 
-	// проверяем длину пути через pValidator
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ pValidator
 	if ( pValidator)
 	{
-		// возможно, обходной путь
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		int newPathLen = pFoundStaticPath->GetLength();
 		if ( !pValidator->CheckPath( remainingLength, newPathLen ) )
-			return false; // не прошло проверку -- не меняем путь
+			return false; // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ -- пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	}
 
-	// если этот путь не слишком длинный - копируем его
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 	remainingLength = pFoundStaticPath->GetLength();
 	if ( remainingLength <= SMALL_PATH_TILES_COUNT )
 	{
 		CopyPath( remainingLength );
-		// если это был последний шаг - корректируем конечную точку
+		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		if ( nCurStaticPathTile >= pStaticPath->GetLength()-2 )
 			SetFinishTile( pathTiles[nLastPathTile] );
 	}
 	else
 	{
-		// подбираем nCurStaticPathTile и тайл на пути, чтобы они были максимально близки
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ nCurStaticPathTile пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 		int nLength = Min( remainingLength-1, MAX_PATH_TILES_COUNT - 2*MAX_LOOK_FORWARD_POINTS );
 		bool bCloseToFinish = false;
 		do
@@ -307,7 +307,7 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
 		} while( nLength > SMALL_PATH_TILES_COUNT && !bCloseToFinish );
 		CopyPath( nLength );
 
-		// попалась точка, которая ближе к финишу, чем к желаемой
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if ( bCloseToFinish )
 		{
 			int nBestStaticPathTile = nCurStaticPathTile;
@@ -323,7 +323,7 @@ const bool CStandartPath2::CalculatePath( const bool bShift, const SVector &vLas
 			}
 			nCurStaticPathTile = nBestStaticPathTile;
 		}
-		// это был последний шаг - корректируем конечную точку
+		// пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		if ( nCurStaticPathTile == pStaticPath->GetLength()-2 )
 			SetFinishTile( pFoundStaticPath->GetFinishTile() );
 	}
@@ -334,15 +334,15 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
 {
   NI_PROFILE_FUNCTION
   
-	// нечего считать, пора заканчивать
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	if ( pathTiles[nLastPathTile] == vFinishTile )
 		return false;
 
-	// выбираем точку на текущем статическом пути (сдвигаемся сразу на STATIC_PATH_SHIFT тайлов вперёд)
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ STATIC_PATH_SHIFT пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ)
 	if ( bShift )
 		nCurStaticPathTile = Min( nCurStaticPathTile + STATIC_PATH_SHIFT, pStaticPath->GetLength()-1 ); // original: -2
 
-	// а вот теперь считаем маленький путь, конечный тайл - vNextTile, его индекс - nCurStaticPathTile
+	// пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ - vNextTile, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - nCurStaticPathTile
 	const SVector &startTile = pathTiles[nLastPathTile];
   const SVector &endTile   =  vDest;
 
@@ -353,7 +353,7 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
     IsValidTile( vLastKnownGoodTile ) ? vLastKnownGoodTile : pathTiles[nLastPathTile], pointChecking, -1, numSteps ) )
     pFoundStaticPath = new CCommonStaticPath(GetWorld(), pathFinder->GetCurrentPath(), pathFinder->GetPathLength());
 	
-  //попробуем разрешить коллизию просто явным образом
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if ( !IsValid(pFoundStaticPath ) || (mDistance( pStaticPath->GetFinishTile(), pFoundStaticPath->GetFinishTile() ) > 2 && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile()) )
   {
     MapModeChanger mode(MAP_MODE_ALL_STATICS, pMap);
@@ -366,28 +366,28 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
   if ( !IsValid(pFoundStaticPath ) || (mDistance( pStaticPath->GetFinishTile(), pFoundStaticPath->GetFinishTile() ) > 2 && pFoundStaticPath->GetStartTile() == pFoundStaticPath->GetFinishTile()) )
     return false;
 
-	// проверяем длину пути через pValidator
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ pValidator
 	if ( pValidator)
 	{
-		// возможно, обходной путь
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 		int newPathLen = pFoundStaticPath->GetLength();
 		if ( !pValidator->CheckPath( remainingLength, newPathLen ) )
-			return false; // не прошло проверку -- не меняем путь
+			return false; // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ -- пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	}
 
-	// если этот путь не слишком длинный - копируем его
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 	remainingLength = pFoundStaticPath->GetLength();
 	if ( remainingLength <= SMALL_PATH_TILES_COUNT )
 	{
 		CopyPath( remainingLength );
-		// если это был последний шаг - корректируем конечную точку
+		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		//if ( nCurStaticPathTile >= pStaticPath->GetLength()-2 )
     if (pStaticPath->GetFinishTile() == pathTiles[nLastPathTile])
 			SetFinishTile( pathTiles[nLastPathTile] );
 	}
 	else
 	{
-		// подбираем nCurStaticPathTile и тайл на пути, чтобы они были максимально близки
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ nCurStaticPathTile пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 		int nLength = Min( remainingLength-1, MAX_PATH_TILES_COUNT - 2*MAX_LOOK_FORWARD_POINTS );
 		bool bCloseToFinish = false;
 		do
@@ -399,7 +399,7 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
 		} while( nLength > SMALL_PATH_TILES_COUNT && !bCloseToFinish );
 		CopyPath( nLength );
 
-		// попалась точка, которая ближе к финишу, чем к желаемой
+		// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if ( bCloseToFinish )
 		{
 			int nBestStaticPathTile = nCurStaticPathTile;
@@ -415,7 +415,7 @@ const bool CStandartPath2::CalculateShortPath( const SVector &vDest, const bool 
 			}
 			nCurStaticPathTile = nBestStaticPathTile;
 		}
-		// это был последний шаг - корректируем конечную точку
+		// пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 		if ( nCurStaticPathTile == pStaticPath->GetLength()-2 )
 			SetFinishTile( pFoundStaticPath->GetFinishTile() );
 	}
@@ -437,21 +437,21 @@ bool CStandartPath2::CanPeek( const int _nShift ) const
 	return true;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Проверка точки, отстоящей от "курсора" на _nShift тайлов вперёд
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ _nShift пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 const CVec2 CStandartPath2::PeekPoint( const int _nShift ) const
 {
 	if ( IsFinished() )
 		return vFinishPoint;
 
-	// первые тайлы берутся из списка insTiles
+	// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ insTiles
 	if ( nCurInsTile + _nShift < insTiles.size() )
 		return pMap->GetPointByTile( insTiles[nCurInsTile+_nShift] );
 
-	// остальные берутся из pathTiles
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ pathTiles
 	int nShift = nCurInsTile + _nShift - insTiles.size();
 	NI_VERIFY( nShift <= MAX_LOOK_FORWARD_POINTS, "Cannot predict point. Shift too far", nShift = MAX_LOOK_FORWARD_POINTS );
 
-	// проверка на конец пути
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	const int nLastPathTile2 = ( nCurPathTile < nLastPathTile ) ? nLastPathTile : nLastPathTile + MAX_PATH_TILES_COUNT;
 	if ( nCurPathTile + nShift > nLastPathTile2 )
 		return vFinishPoint;
@@ -460,10 +460,10 @@ const CVec2 CStandartPath2::PeekPoint( const int _nShift ) const
 	return pMap->GetPointByTile( pathTiles[nTile] );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Смещение "курсора" на _nShift тайлов вперёд
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ _nShift пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 void CStandartPath2::Shift( const int _nShift, int numSteps )
 {
-	if ( IsFinished() )		// путь пройден?
+	if ( IsFinished() )		// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ?
 		return;
 	if ( nCurInsTile + _nShift < insTiles.size() )
 	{

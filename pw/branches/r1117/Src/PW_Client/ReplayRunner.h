@@ -28,6 +28,7 @@ namespace Game
 
 class LoadingScreen;
 class LocalCmdScheduler;
+class ReplayRunner;
 
 class ReplayRunnerLoader : public NGameX::IGameControl, public BaseObjectMT
 {

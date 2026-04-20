@@ -3,7 +3,7 @@
 #include "../System/staticarray.h"
 #include "../System/noncopyable.h"
 #include "../System/Stream.h"
-#include "../Render/aabb.h"
+#include "AABB.h"
 #include "../Render/light.h"
 #include "BezierSurface.h"
 #include "../Render/MeshResource.h"

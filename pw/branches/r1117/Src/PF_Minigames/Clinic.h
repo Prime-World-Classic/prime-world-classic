@@ -342,9 +342,9 @@ inline _T* Clinic::CreateClientObject(  MinigameWorldObject* _worldObject, const
 
   newObject->SetClinic( this );
 
-	NScene::SceneObject* sceneObject = newObject->Init( _worldObject, GetScene(), _DBSceneObject, _placement, collidable );
+	NScene::SceneObject* sceneObject = newObject->Init( _worldObject, (NScene::IScene*)0, _DBSceneObject, _placement, collidable );
 
-  int _objectID = IsValid( _worldObject ) ?  _worldObject->GetObjectID() :	--nextDecorID;
+  int _objectID = (_worldObject != 0) ?  _worldObject->GetObjectID() :	--nextDecorID;
 
 	sceneObject->SetOwnerID( _objectID );
 	InsertMinigameSceneObject( sceneObject );

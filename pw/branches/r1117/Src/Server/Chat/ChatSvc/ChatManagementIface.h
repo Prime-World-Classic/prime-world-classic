@@ -4,7 +4,7 @@
 #include <Network/TransportTypes.h>
 #include <Network/LoginData.h>
 #include <ClusterTypes/ClusterTypes.h>
-#include <ChatTypes.h>
+#include "Server/Chat/ChatTypes.h"
 
 namespace chat
 {

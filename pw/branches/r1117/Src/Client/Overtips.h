@@ -1,7 +1,7 @@
 #ifndef OVERTIPS_H_INCLUDED
 #define OVERTIPS_H_INCLUDED
 
-#include "../Render/aabb.h"
+#include "AABB.h"
 
 namespace NScene
 {

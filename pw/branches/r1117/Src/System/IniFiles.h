@@ -1,6 +1,11 @@
 #ifndef _INI_FILES_H_
 #define _INI_FILES_H_
 
+#ifndef _WIN32
+typedef const char* LPCTSTR;
+typedef const wchar_t* LPCWSTR;
+#endif
+
 namespace NIniFiles
 {
 

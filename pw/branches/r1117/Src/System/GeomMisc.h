@@ -114,7 +114,7 @@ private:
 	CBresenham3& operator=(const CBresenham3&);
 };
 template <class TFunctional>
-	void MakeLine3( int x1, int y1, int z1, int x2, int y2, int z3, TFunctional &func )
+	void MakeLine3( int x1, int y1, int z1, int x2, int y2, int z2, TFunctional &func )
 {
 	CBresenham3 line( x1, y1, z1, x2, y2, z2 );
 	// first point
@@ -127,7 +127,7 @@ template <class TFunctional>
 	}
 }
 template <class TFunctional>
-	void ScanLine3( int x1, int y1, int z1, int x2, int y2, int z3, TFunctional &func )
+	void ScanLine3( int x1, int y1, int z1, int x2, int y2, int z2, TFunctional &func )
 {
 	CBresenham3 line( x1, y1, z1, x2, y2, z2 );
 	// first point
@@ -280,7 +280,7 @@ void BresenhamEllipse( int nCenterX, int nCenterY, int nXRadius, float fY2XRatio
 template <class TFunctional>
 void BresenhamFilledEllipse( int nCenterX, int nCenterY, int nRadius, float fY2XRatio, TFunctional &func )
 {
-	int x = 0, y = nXRadius;
+	int x = 0, y = nRadius;
 	int d = 3 - 2*y;
 	//
 	do
@@ -318,8 +318,8 @@ void BresenhamFilledEllipse( int nCenterX, int nCenterY, int nRadius, float fY2X
 	{
 		func( index, nCenterY );
 	}
-	func( nCenterX, nCenterY - nXRadius * fY2XRatio );
-	func( nCenterX, nCenterY + nXRadius * fY2XRatio );
+	func( nCenterX, nCenterY - nRadius * fY2XRatio );
+	func( nCenterX, nCenterY + nRadius * fY2XRatio );
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

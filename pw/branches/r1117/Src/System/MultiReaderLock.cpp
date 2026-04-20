@@ -5,6 +5,7 @@
 namespace threading
 {
 
+#ifdef WIN32
 class MultiReaderLock::MultiReaderLockImpl
 { 
 public: 
@@ -63,6 +64,44 @@ private:
   mutable long              readers;
   mutable HANDLE            noReaders;
 };
+#else
+class MultiReaderLock::MultiReaderLockImpl
+{ 
+public: 
+  MultiReaderLockImpl()
+  {
+    pthread_rwlock_init(&rwlock, NULL);
+  }
+
+  ~MultiReaderLockImpl() throw()
+  {
+    pthread_rwlock_destroy(&rwlock);
+  }
+
+  void LockForRead() const
+  {
+    pthread_rwlock_rdlock(&rwlock);
+  }
+
+  void UnlockAfterRead() const
+  {
+    pthread_rwlock_unlock(&rwlock);
+  }
+
+  void LockForWrite() const
+  {
+    pthread_rwlock_wrlock(&rwlock);
+  }
+
+  void UnlockAfterWrite() const
+  {
+    pthread_rwlock_unlock(&rwlock);
+  }
+
+private:
+  mutable pthread_rwlock_t rwlock;
+};
+#endif
 
 
 MultiReaderLock::MultiReaderLock() : impl_( new MultiReaderLockImpl )

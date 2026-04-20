@@ -140,12 +140,20 @@ struct DiAnGrNodesMap
 
   DiAnGrNodesMap(DiTChar *_name)
   {
+#ifndef NI_PLATF_LINUX
     strcpy_s(cpNodeName, DIANGR_MAX_SEQ_NAME, _name);
+#else
+    strncpy(cpNodeName, _name, DIANGR_MAX_SEQ_NAME);
+#endif
   }
 
   DiAnGrNodesMap()
   {
+#ifndef NI_PLATF_LINUX
     strcpy_s(cpNodeName, DIANGR_MAX_SEQ_NAME, "");
+#else
+    strncpy(cpNodeName, "", DIANGR_MAX_SEQ_NAME);
+#endif
   }
 };
 

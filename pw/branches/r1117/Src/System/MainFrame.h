@@ -8,6 +8,11 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #include "HPTimer.h"
+#include "nstring.h"
+#include "nvector.h"
+#ifndef _interface
+#define _interface struct
+#endif
 //
 namespace NMainFrame
 {
@@ -70,7 +75,7 @@ void SetCursor( HCURSOR _hCursor );
 void ShowCursor( bool bShow );
 HCURSOR GetCurrentCursor();
 void EnableCursorManagement( bool bEnable );
-bool UpdateCursorRectInt( const char* name, const vector<wstring> &paramsSet );
+bool UpdateCursorRectInt( const char* name, const nstl::vector<nstl::wstring> &paramsSet );
 void ResizeWindow( unsigned long width, unsigned long height, bool isFullScreen, bool isBorderless );
 
 void DumpWindowStyle( DWORD dwStyle );

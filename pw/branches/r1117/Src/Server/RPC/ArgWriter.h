@@ -43,7 +43,7 @@ struct MethodCodeCalculator
 
   template <typename T> void Push() 
   { 
-    Add(rpc::ParamTypes(typename rpc::GetTypeT<T>::type)); 
+    Add(rpc::ParamTypes(rpc::GetTypeT<T>::type)); 
   }
 
   MethodCodeCalculator& Add(rpc::ParamTypes code)

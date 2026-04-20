@@ -14,10 +14,10 @@ class GetGuildEmblemJob : public threading::IThreadJob, public BaseObjectMT
   nstl::vector<byte> data;
   GuildEmblem* guildEmblem;
   nstl::string logoUrl;
-  unsigned __int64 guildAuid;
+  uint64_t guildAuid;
 
 public:
-  GetGuildEmblemJob( GuildEmblem* guildEmblem, const nstl::string& logoUrl, unsigned __int64 guildAuid ) 
+  GetGuildEmblemJob( GuildEmblem* guildEmblem, const nstl::string& logoUrl, uint64_t guildAuid ) 
   : guildEmblem(guildEmblem), logoUrl(logoUrl), guildAuid(guildAuid) {}
 
   virtual void Work( volatile bool& isRunning )
@@ -57,7 +57,7 @@ GuildEmblem::GuildEmblem()
   curl_global_init(CURL_GLOBAL_ALL);
 }
 
-void GuildEmblem::StartDownload( unsigned __int64 guildAuid, uint id, const nstl::string& url )
+void GuildEmblem::StartDownload( uint64_t guildAuid, uint id, const nstl::string& url )
 {
   if ( guildAuid > 0 && !url.empty() )
     downloadJobs.push_back( new threading::JobThread( new GetGuildEmblemJob( this, url, guildAuid ), "GetGuildEmblemJob", 10000 ) );
@@ -78,13 +78,13 @@ bool GuildEmblem::IsDownloaded()
   return downloadJobs.empty();
 }
 
-void GuildEmblem::SetData( unsigned __int64 guildAuid, const nstl::vector<byte>& _data )
+void GuildEmblem::SetData( uint64_t guildAuid, const nstl::vector<byte>& _data )
 {
   threading::MutexLock lock( mutex );
   data[guildAuid] = _data;
 }
 
-bool GuildEmblem::GetData( unsigned __int64 guildAuid, nstl::vector<byte>& _data )
+bool GuildEmblem::GetData( uint64_t guildAuid, nstl::vector<byte>& _data )
 {
   if ( data.find( guildAuid ) != data.end() )
   {

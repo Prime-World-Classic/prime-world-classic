@@ -54,8 +54,8 @@ extern DiUInt32 *_npSqrtTab2to4;
 diINLINE DiFloat DiSqrtTabl(DiFloat rNum)
 {
   DiFloat   *rpNum = &rNum;
-  register  DiUInt32 nMantissa;
-  register  DiUInt32 nExponent;
+  DiUInt32 nMantissa;
+  DiUInt32 nExponent;
   DiFloat   rX;
   DiUInt32  *npX = (DiUInt32 *)&rX;
 

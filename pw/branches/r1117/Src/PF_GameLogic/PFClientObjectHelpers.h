@@ -4,7 +4,7 @@ namespace NDb
 {
   struct AdvMapObject;
   struct Node;
-  enum   EOrientation;
+  enum   EOrientation : int;
 }
 
 namespace NScene

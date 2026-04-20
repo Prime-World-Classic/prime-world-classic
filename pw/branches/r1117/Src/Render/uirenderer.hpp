@@ -170,7 +170,7 @@ private:
   bool CropQuadInternal( UIQuad & quad, const UIRect & cropRect );
   unsigned int AddQuadInternal( const UIQuad& _quad, const Color& _color );
   void RenderPart( const SRenderPart & part, bool alphaTest );
-  RenderQueue& UIRenderer::GetQueue();
+  RenderQueue& GetQueue();
 
   Render::Color SaturateColor( const Render::Color& _color );
 

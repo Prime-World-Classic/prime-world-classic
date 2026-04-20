@@ -8,7 +8,11 @@
 #include "AdventureScreenLogic.h"
 #include "../System/FileSystem/FilePath.h"
 #include "../System/FileSystem/FileUtils.h"
+#ifdef _WIN32
 #include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "HttpStuff.h"
 #include "SocialBootstrap.h"
@@ -173,7 +177,7 @@ bool SocialConnection::CreateComplaint(__int64 toauid, int category, const nstl:
   return true;
 }
 
-bool SocialConnection::ChoosePartyAgain(const nstl::vector<__int64>& auids, const unsigned __int64 sessionId, const unsigned __int64 timeLeft, const bool agreed)
+bool SocialConnection::ChoosePartyAgain(const nstl::vector<long long>& auids, const uint64_t sessionId, const uint64_t timeLeft, const bool agreed)
 {
   Json::Value allies(Json::arrayValue);
 
@@ -186,7 +190,7 @@ bool SocialConnection::ChoosePartyAgain(const nstl::vector<__int64>& auids, cons
 
   json["agreed"] = (agreed ? 1U : 0U);
   json["allies_keys"] = allies;
-  json["lock_end_time"] = timeLeft;
+  json["lock_end_time"] = (Json::Value::UInt64)timeLeft;
 
   const std::string json_text(Json::FastWriter().write(json));
 
@@ -209,7 +213,7 @@ bool SocialConnection::ChoosePartyAgain(const nstl::vector<__int64>& auids, cons
   return true;
 }
 
-void SocialConnection::parseAuids(const nstl::vector<__int64>& auids, std::string& res )
+void SocialConnection::parseAuids(const nstl::vector<long long>& auids, std::string& res )
 {
   std::ostringstream ss;
 
@@ -228,7 +232,7 @@ void SocialConnection::parseAuids(const nstl::vector<__int64>& auids, std::strin
 
 }
 
-bool SocialConnection::SendTeam(__int64 auid, const nstl::vector<__int64>& team_auids)
+bool SocialConnection::SendTeam(__int64 auid, const nstl::vector<long long>& team_auids)
 {
 
   Http::HttpRequest request(serverName);
@@ -266,6 +270,7 @@ void SocialConnection::Step()
     }
     string screenshotName = NFile::Combine(path, screenshotFileName);
 
+    #ifdef _WIN32
     IDirect3DDevice9* pDevice = Render::GetDevice();
     IDirect3DSurface9* pBB, *pDest;
     
@@ -289,6 +294,9 @@ void SocialConnection::Step()
       }
       pBB->Release();
     }
+#else
+    // TODO: implement for Linux
+#endif
   }
   else if (g_shareState == EShareState::WAIT_SCREENSHOT)
   {
@@ -311,7 +319,15 @@ void SocialConnection::Step()
 
           __int64 auidInt = advLogic->GetPlayerAuid();
           char auidBuff[65];
+#ifdef _WIN32
+          #ifdef _WIN32
           _i64toa(auidInt, auidBuff, 10);
+#else
+          snprintf(auidBuff, sizeof(auidBuff), "%lld", (long long)auidInt);
+#endif
+#else
+          snprintf(auidBuff, sizeof(auidBuff), "%lld", (long long)auidInt);
+#endif
           string auid(auidBuff);
           string salt = shareUrl;
           string hashStr = auid+salt;

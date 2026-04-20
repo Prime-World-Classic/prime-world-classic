@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#ifdef _WIN32
 
 #pragma warning (disable : 4996)
 #include "System/StrProc.h"
@@ -19,8 +20,8 @@
 #include "System/DebugTraceDumper.h"
 #include "System/EditBoxDumper.h"
 #include "System/CrashRptWrapper.h"
-#include "system/BSUtil.h" //TODO: Remove this header (NUM_TASK)
-#include "system/expreport.h"
+#include "System/BSUtil.h" //TODO: Remove this header (NUM_TASK)
+#include "System/expreport.h"
 #include "System/meminfo.h"
 #include "Render/renderer.h"
 #include "System/TextFileDumper.h"
@@ -62,7 +63,9 @@
 #include "System/LogFileName.h"
 #include "ApplicationResources.h"
 #include "Version.h"
+#ifdef _WIN32
 #include "commctrl.h"
+#endif
 
 #include "PF_GameLogic/PFGameLogicLog.h"
 
@@ -86,7 +89,9 @@
 #include "../System/HPTimer.h"
 #include "../Client/MainTimer.h"
 
+#ifdef _WIN32
 #include <Tlhelp32.h>
+#endif
 #include "System/StdOutDumper.h"
 #include "LobbyConnection.h"
 
@@ -735,6 +740,7 @@ std::string GetDirectoryFromPath(const std::string& fullPath) {
     return "";
 }
 
+#ifdef _WIN32
 #include <windows.h>
 #include <TlHelp32.h>
 
@@ -762,6 +768,9 @@ int count = 0;
                 count++;
             }
         } while (Process32Next(hProcessSnap, &pe32));
+#else
+int NumProcessRunning(const char* processName) { return 0; }
+#endif
     }
 
     CloseHandle(hProcessSnap);
@@ -1810,3 +1819,10 @@ static bool SetMallocThreadMask( const char * name, const vector<wstring> & _par
 
 REGISTER_CMD( debug_crash_now, DebugCrashNow );
 REGISTER_CMD( malloc_mask, SetMallocThreadMask )
+#else
+#include <stdlib.h>
+extern "C" {
+void StartPWApplication(void* hWnd) {}
+void StartPWPlugin(void* hWnd, int width, int height, bool fullscreen, const char* sessionLogin) {}
+}
+#endif

@@ -33,7 +33,7 @@
 #define REMOTE
 
 using namespace MulticallPerformanceTest;
-#include <System/InlineProfiler3\InlineProfiler3Control.h>
+#include <System/InlineProfiler3/InlineProfiler3Control.h>
 #include <System/InlineProfiler3/Profiler3UI.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

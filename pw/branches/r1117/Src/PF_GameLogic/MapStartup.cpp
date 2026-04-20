@@ -95,7 +95,7 @@ bool MapLoadingJob::DoTheJob()
 
   MAP_LOADING_SCOPE(world->GetMapLoadingController());
 
-  // сильная ссылка не даст уничтожить ресурсы, пока карта грузится
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   const CObj<PFResourcesCollection> worldResourcesCollection(world->GetResourcesCollection());
 
   SetupCamera();
@@ -172,7 +172,7 @@ void MapLoadingJob::SetupCamera()
         break;
       }
     }
-    else if ( !_stricmp( cameras[i]->name.c_str(), s_camera_override.c_str() ) )
+    else if ( !strcasecmp( cameras[i]->name.c_str(), s_camera_override.c_str() ) )
     {
       camSettings = cameras[i];
       break;

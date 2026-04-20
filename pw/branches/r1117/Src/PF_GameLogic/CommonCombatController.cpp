@@ -2,7 +2,7 @@
 
 #include "CommonCombatController.h"
 #include "AdventureFlashInterface.h"
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 #include "UIEventHandler.h"
 #include "FlashFSCommands.h"
 

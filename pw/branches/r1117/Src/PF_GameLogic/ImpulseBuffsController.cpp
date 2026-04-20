@@ -15,7 +15,7 @@
 #include "FlashFSCommands.h"
 
 #include "../UI/Cursor.h"
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 #include "../UI/ImageLabel.h"
 
 namespace NGameX
@@ -186,7 +186,7 @@ void ImpulseBuffsController::OnFSCommand( UI::FlashContainer2* _wnd, const char*
 		{
 			//DebugTrace("fscommand::ImpulseBuffToolTip");
 			int show;
-			sscanf_s(args,"%d",&show);
+			sscanf(args,"%d",&show);
       tooltip->SetText(tooltipText);
 			tooltip->Show(show);
 			break;

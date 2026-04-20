@@ -43,8 +43,8 @@ void SkeletonAnimation::LoadFromFile( const nstl::string& filename )
 
 	fseek(stream, 0, SEEK_END);
 
-	fpos_t pos;
-	fgetpos(stream, &pos);
+	long pos;
+	fseek(stream, 0, SEEK_END); pos = ftell(stream);
 
 	fseek(stream, 0, SEEK_SET);
 

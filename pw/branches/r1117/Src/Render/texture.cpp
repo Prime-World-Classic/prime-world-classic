@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "renderflagsconverter.h"
-#include "Texture.h"
+#include "texture.h"
 #include "renderresourcemanager.h"
 #include "IConfigManager.h"
 #include "ImmediateRenderer.h"
@@ -77,7 +77,7 @@ void Texture2D::CreateInternal()
 #ifdef TEXTURE_RETRY_CREATE
       if( SUCCEEDED(hr) )
         break;
-      Sleep(50); // Give memory manager a chance to free some memory. 50 - arbitrary value
+      threading::Sleep(50); // Give memory manager a chance to free some memory. 50 - arbitrary value
     }
 #endif
     if( FAILED(hr) ) {

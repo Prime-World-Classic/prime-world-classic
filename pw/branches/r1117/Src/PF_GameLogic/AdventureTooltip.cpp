@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "AdventureTooltip.h"
 #include <UI/ImageLabel.h>
-#include "../ui/Cursor.h"
-#include "../ui/Resolution.h"
+#include "../UI/Cursor.h"
+#include "../UI/Resolution.h"
 
 namespace NGameX
 {

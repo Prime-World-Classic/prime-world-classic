@@ -83,7 +83,7 @@ void FinalStatisticsController::OnFSCommand( UI::FlashContainer2* _wnd, const ch
 
   int show, index;
 
-  sscanf_s(args,"%d %d",&show, &index);
+  sscanf(args,"%d %d",&show, &index);
 
   switch (ConvertToFSCommand(listenerID))
   {
@@ -111,7 +111,7 @@ void FinalStatisticsController::OnFSCommand( UI::FlashContainer2* _wnd, const ch
     {
       unsigned agreed;
 
-      const int argsRead = sscanf_s(args, "%u", &agreed);
+      const int argsRead = sscanf(args, "%u", &agreed);
 
       if (argsRead < 1)
         agreed = 0U;

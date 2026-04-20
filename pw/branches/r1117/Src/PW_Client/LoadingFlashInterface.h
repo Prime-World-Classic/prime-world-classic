@@ -3,10 +3,7 @@
 #include "../UI/FlashInterface.h"
 #include "../PF_GameLogic/IFlashChat.h"
 
-namespace NDb
-{
-  enum EFaction;
-}
+#include "PF_GameLogic/DBStats.h"
 
 
 namespace Game

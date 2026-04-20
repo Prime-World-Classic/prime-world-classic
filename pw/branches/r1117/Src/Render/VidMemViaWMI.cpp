@@ -1,3 +1,4 @@
+#ifdef _WIN32
 //----------------------------------------------------------------------------
 // File: VidMemViaWMI.cpp
 //
@@ -157,3 +158,4 @@ HRESULT GetVideoMemoryViaWMI( HMONITOR hMonitor, DWORD* pdwAdapterRam )
         return E_FAIL;
 }
 
+#endif

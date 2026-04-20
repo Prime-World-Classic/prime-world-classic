@@ -13,8 +13,6 @@ namespace Transport
 
 namespace threading
 {
-class Event;
-class Mutex;
 }// threading
 
 namespace rpc 

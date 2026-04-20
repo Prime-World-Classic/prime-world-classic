@@ -18,6 +18,9 @@ REGISTER_DEV_VAR("no_texture_loads", g_disableTextureLoads, STORAGE_NONE);
 
 namespace Render
 {
+void GetDefaultTexture(Texture2DRef &pTex) { pTex = GetDefaultTexture2D(); }
+void GetDefaultTexture(TextureCubeRef &pTex) { pTex = TextureCubeRef(); }
+
 
 namespace RenderResourceManager
 {
@@ -367,8 +370,8 @@ CObj<T> LoadTextureFromFile( const nstl::string& _filename, void * poolId, unsig
 	return pTexture;
 }
 
-void GetDefaultTexture(Texture2DRef &pTex) { pTex = GetDefaultTexture2D(); }
-void GetDefaultTexture(TextureCubeRef &pTex) { pTex = TextureCubeRef(); }
+
+
 
 struct CReloadTextures
 {

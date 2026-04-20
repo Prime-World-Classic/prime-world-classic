@@ -8,7 +8,7 @@
 
 #include "RelaySvc/RelaySvcNaming.h"
 #include "Relay/RelayBalancer/RelayBalancerRunner.h"
-#include "RelayBalancer/RelayBalancerNaming.h"
+#include "Server/Relay/RelayBalancer/RelayBalancerNaming.h"
 #include "UserManager/UserManagerSvc/UserManagerRunner.h"
 #include "UserManager/UserManagerSvc/UserManagerNaming.h"
 #include "Server/NetworkAIO/tests/multicast.server/MulticastTestRunner.h"

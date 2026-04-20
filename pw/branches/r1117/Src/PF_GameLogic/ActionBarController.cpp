@@ -1,4 +1,5 @@
 #include "StdAfx.h"
+#include "System/Win32_linux.h"
 #include "ActionBarController.h"
 
 #include "PFMaleHero.h"
@@ -260,7 +261,7 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
     {
       int column, raw;
 
-      sscanf_s(args,"%d %d %d", &show, &column, &raw);
+      sscanf(args,"%d %d %d", &show, &column, &raw);
 
       if (show)
         ShowTalentTooltip(column, raw);
@@ -270,7 +271,7 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
   case ItemActionToolTip:
     {
       int index;
-      sscanf_s(args,"%d %d",&show, &index);
+      sscanf(args,"%d %d",&show, &index);
       if (show)
         ShowItemTooltip(index);
       break;
@@ -278,7 +279,7 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
 
   case PortalTooltip:
     {
-      sscanf_s(args,"%d",&show);
+      sscanf(args,"%d",&show);
       if (show)
         ShowPortalTooltip();
       break;
@@ -293,7 +294,7 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
   case ActionBarLock:
     {
       int lock;
-      sscanf_s(args,"%d", &lock);
+      sscanf(args,"%d", &lock);
       lockActionBar = lock;
       flashInterface->LockActionBar(lockActionBar);
       return;
@@ -302,14 +303,18 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
     case ActionBarShowPanel:
     {
       int show;
-      sscanf_s(args,"%d", &show);
+#ifndef NI_PLATF_LINUX
+      sscanf(args,"%d", &show);
+#else
+      sscanf(args,"%d", &show);
+#endif
       showPanel = show;
       flashInterface->ShowPanel(showPanel);
       return;
     }
   }
 
-  //NOTE: этот код отрабатывает только в случае тултипов тк в последних двух случаях стоит return
+  //NOTE: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ return
   tooltip->Show(show);
   if (!show)
     eventHandler->TargetZoneTooltip(0);

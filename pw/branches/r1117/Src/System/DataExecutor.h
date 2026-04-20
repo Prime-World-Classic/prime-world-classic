@@ -9,7 +9,7 @@
 #define DATAEXECUTOR_H_
 
 #include "ExecutionMemoryManager.h"
-#include "StarForce\StarForce.h"
+#include "StarForce/StarForce.h"
 
 #ifndef DIM
   #define DIM(a) (sizeof(a)/sizeof(*a))
@@ -19,9 +19,7 @@
 
 class FormulaBuilder;
 
-class DataExecutor
-{
-  //template black magic to have something like isFloat
+namespace DataExecutorTraits {
   template<typename _Tp, _Tp __v> struct integral_constant
   {
     static const _Tp                      value = __v;
@@ -34,6 +32,10 @@ class DataExecutor
   template<> struct is_float<float>: public true_type { };
   template<typename _Tp> struct is_bool: public false_type { };
   template<> struct is_bool<bool>: public true_type { };
+}
+
+class DataExecutor
+{
 
 #pragma pack(push, 1)
 #pragma warning(push)
@@ -82,12 +84,14 @@ public:
   template <typename T>  
   T __cdecl ExecuteFree(...) const
   {
+#ifndef NI_PLATF_LINUX
     //compiler is the way too silly to get the big idea following asm, but it force it to always generate prologue
     __asm
     {
       xchg ebp,esp
       xchg ebp,esp
     }
+#endif
     ExecuteFreeStackless();
     //will never reach this spot
     return T(0.0f);
@@ -103,16 +107,18 @@ public:
   T Execute(void const *pFirst, void const *pSecond, void const *pMisc) const
   {
     NI_VERIFY(pBinaryCode != NULL, "Formula not allocated!", return (T)0;);
+#ifndef NI_PLATF_LINUX
     __try
+#endif
     {
       #ifndef USE_FREE_EXECUTOR
-      if(is_float<T>::value)
+      if(DataExecutorTraits::is_float<T>::value)
       {                      
         float retVal = 0;
         ExecuteV('F', 12, &retVal, pFirst, pSecond, pMisc);
         return T(retVal);
       }
-      else if(is_bool<T>::value)
+      else if(DataExecutorTraits::is_bool<T>::value)
       {
         unsigned int retVal = 0;
         // we are too smart to use  Execute('I', "PPP", &retVal, pFirst, pSecond, pMisc); so calculate stack in mind ^_^
@@ -130,11 +136,13 @@ public:
       return ExecuteFree<T>(pFirst, pSecond, pMisc); //change to this line if max speed is needed
       #endif
     }
+#ifndef NI_PLATF_LINUX
     __except(EXCEPTION_EXECUTE_HANDLER) 
     {
       NI_ALWAYS_ASSERT("Compiled code could not be executed correctly. Please check your code or passed parameters.");
       return (T)0; 
     }
+#endif
   }
   friend FormulaBuilder;
 };

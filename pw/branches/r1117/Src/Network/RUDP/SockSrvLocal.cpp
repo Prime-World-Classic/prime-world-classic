@@ -289,7 +289,7 @@ void LocalSocket::Post( LocalDatagram * _dg )
 void LocalSocket::StatReport()
 {
   queLenSum += queue.size();
-  maxQueLen = Max( maxQueLen, queue.size() );
+  maxQueLen = Max<size_t>( maxQueLen, queue.size() );
   ++statSamplesCount;
 
   if ( clock->Now() < lastStatReport + 5.0 )

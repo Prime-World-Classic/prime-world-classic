@@ -3,7 +3,6 @@
 #include "Server/RdpTransport/RdpTransportUtils.h"
 #include "Network/PacketDispatcher.h"
 #include "RdpClientChannel.h"
-#include "PW_Game/server_ip.h"
 
 static float operationTimeout = 30.0f;
 REGISTER_VAR( "login_timeout", operationTimeout, STORAGE_NONE );
@@ -228,14 +227,14 @@ void LoginClient::OnSvcReqReply( const newLogin::ServiceReqReply  & _reply )
 
 
   if (portSize) {
-  const char* whiteIp = SERVER_IP_ARRAY[usedServer];
+  const char* whiteIp = "127.0.0.1";
   char newAddress[64];
-    ZeroMemory(newAddress, sizeof(newAddress));
+    memset(newAddress, 0, sizeof(newAddress));
   memcpy((void*)newAddress, whiteIp, strlen(whiteIp) + 1);
   memcpy((void*)(newAddress + strlen(whiteIp)), (void*)port, portSize + 1);
     _reply.externalAddress = newAddress;
   } else {
-    string newAddress = SERVER_IP_ARRAY[usedServer];
+    string newAddress = "127.0.0.1";
     newAddress += ':';
     newAddress += _reply.externalAddress;
   _reply.externalAddress = newAddress;

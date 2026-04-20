@@ -20,7 +20,7 @@ public:
 
 namespace ETalentActivation
 {
-  enum Enum
+  enum Enum : int
   {
     Ok,
     Denied,
@@ -194,7 +194,7 @@ public:
 
   void CalculateForce(ITalentCalculator& calculator);
 
-  static float PFTalentsSet::PreloadTalentsSetAndCalcForce(const NDb::AILogicParameters* pAIParams, const NDb::BaseHero* pDBHero, 
+  static float PreloadTalentsSetAndCalcForce(const NDb::AILogicParameters* pAIParams, const NDb::BaseHero* pDBHero, 
                                                             bool usePlayerInfoTalentSet, const NWorld::PFResourcesCollection* collection,
                                                             const NCore::PlayerInfo& playerInfo, PFTalentsSet::SetInfo& info);
   
@@ -253,3 +253,4 @@ inline PFTalentsSet::SlotInfo::SlotInfo( NDb::ETalentSlotStatus _status/* = NDb:
 }
 
 } //namespace NWorld
+ //namespace NWorld

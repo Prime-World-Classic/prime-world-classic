@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vendor/DirectX/Include/d3d9types.h"
+#include "d3d9types.h"
 #include "renderprimitivetype.h"
 #include "vertexelementtype.h"
 #include "vertexelementusage.h"

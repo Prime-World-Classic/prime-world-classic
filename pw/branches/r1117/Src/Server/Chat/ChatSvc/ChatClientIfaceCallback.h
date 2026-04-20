@@ -1,6 +1,6 @@
 #pragma once
 #include <RPC/RPC.h>
-#include <ChatTypes.h>
+#include "Chat/ChatTypes.h"
 
 namespace chat
 {

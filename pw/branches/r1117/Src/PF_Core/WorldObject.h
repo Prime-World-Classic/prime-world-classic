@@ -160,6 +160,9 @@ namespace PF_Core
     FORCE_CHEAT_ID = -4,
   };
 
+  class WorldObjectBase;
+  typedef CPtr<WorldObjectBase> WorldObjectRef;
+
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   class WorldObjectBase : public CObjectBase
   {

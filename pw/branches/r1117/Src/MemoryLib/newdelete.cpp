@@ -8,7 +8,17 @@
 
 #include "System/nvector.h"
 #include "System/nhash_map.h"
+#ifndef NI_PLATF_LINUX
 #include "Vendor/DTW/inc/dbghelp.h"
+#else
+#define InitializeCriticalSection(x)
+#define EnterCriticalSection(x)
+#define LeaveCriticalSection(x)
+#define DeleteCriticalSection(x)
+#define OutputDebugString(x)
+#define IsDebuggerPresent() false
+#define __debugbreak() __builtin_trap()
+#endif
 
 // malloc implementation: 1 - CRT, 2 - nedmalloc
 #ifndef NI_MALLOC_IMPL
@@ -94,7 +104,11 @@ const char *StrFmt( const char *pszFormat, ... )
   static char charBuff[1024] = { '\0' };
   va_list va;
   va_start( va, pszFormat );
+#ifndef NI_PLATF_LINUX
   _vsnprintf_s( charBuff, 1024 - 1, pszFormat, va );
+#else
+  vsnprintf( charBuff, 1024 - 1, pszFormat, va );
+#endif
   va_end( va );
   return charBuff;
 }
@@ -114,7 +128,9 @@ inline static void InitializeAndEnterCritical()
     InitializeCriticalSection( &g_block );
   }
 
+#ifndef NI_PLATF_LINUX
   EnterCriticalSection( &g_block );
+#endif
 }
 
 
@@ -144,7 +160,9 @@ void RegisterMalloc( size_t size, void *p )
   {
     LeaveCriticalSection( &g_block );
     g_allocs = ::new nstl::hash_map<void*, AllocInfo>;
-    EnterCriticalSection( &g_block );
+  #ifndef NI_PLATF_LINUX
+  EnterCriticalSection( &g_block );
+#endif
   }
 
   nstl::hash_map<void*, AllocInfo>::const_iterator pos = g_allocs->find( p );
@@ -199,7 +217,9 @@ void RegisterFree( void *p )
   if ( p == 0 )
     return;
 
+#ifndef NI_PLATF_LINUX
   EnterCriticalSection( &g_block );
+#endif
 
   if ( g_isInternal )
   {
@@ -246,7 +266,9 @@ void RegisterFree( void *p )
         __debugbreak();
     }
 
-    EnterCriticalSection( &g_block );
+  #ifndef NI_PLATF_LINUX
+  EnterCriticalSection( &g_block );
+#endif
   }
 #endif // #if MAX_STACK_SIZE >= 0
   g_isInternal = false;
@@ -298,10 +320,12 @@ long GetMallocsUnfree()
   return g_unfreeMaloc;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifndef NI_PLATF_LINUX
 long GetMallocsTotal()
 {
   return g_totalMaloc;
 }
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 long GetMallocsSize()
 {
@@ -554,7 +578,11 @@ void Free(void* p)
       NI_FREE( p );
   }
   else
+#ifndef NI_PLATF_LINUX
     __debugbreak(); //double free bug
+#else
+    __builtin_trap();
+#endif
 }
 
 void* __cdecl Realloc( void* p, size_t size )
@@ -585,10 +613,12 @@ void ForcedDeleteHack( void *p )
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(_WIN64)
   enum { MALLOC_STD_ALIGN = 8 };
-#elif defined(_WIN64)
-   enum { MALLOC_STD_ALIGN = 16 };
+#elif defined(_WIN64) || defined(__x86_64__)
+  enum { MALLOC_STD_ALIGN = 16 };
+#else
+  enum { MALLOC_STD_ALIGN = 8 };
 #endif
 
 struct DebugHeader
@@ -602,15 +632,15 @@ void* NEWDEL_CCDECL operator new( size_t count )
   #ifndef ALLOC_DATA_DEBUG_INIT
     return MAlloc<false>(count, 0);
   #else
-    //На LittleEndian архитектурах, для всех типов, достаточно одного байта для определения 
-    //изменения младших разрядов справа от выделенной памяти
-    //Кроме того, для char, не надо отдельно заботится о выравнивании
-    //При проверки затирания памяти слева от запрошенной памяти становится острой проблема выравнивания.
-    //Дело в том, что malloc обеспечивает выравнивание памяти по 8/16 байтовой границе в 32/64
-    //разрядных системах (http://msdn.microsoft.com/en-us/library/ycsb6wwf(v=VS.100).aspx)
-    //и тратить на такую проверку дополнительно 8-16 байт на каждую аллокацию достаточно расточительно,
-    //но кроме того nedalloc::nedblksize возвращает размер >= запрошенному и для того чтобы гарантированно отловить 
-    //выход за границы хранить размер всё же придётся, тогда и проверку слева можно осуществить
+    //пїЅпїЅ LittleEndian пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ char, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+    //пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅ malloc пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 8/16 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 32/64
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (http://msdn.microsoft.com/en-us/library/ycsb6wwf(v=VS.100).aspx)
+    //пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 8-16 пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+    //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ nedalloc::nedblksize пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ >= пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     
     const size_t allocSize = sizeof(DebugHeader) + count + sizeof(unsigned char);
     void * const pRes = MAlloc<false>(allocSize, 0);
@@ -839,18 +869,3 @@ bool RemoveMemoryCallback( TCommonMemoryCallback callback, bool forAllocs )
 
 
 } //namespace ni_detail
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef DO_NOT_USE_DLLMAIN
-BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved )
-{
-  if((DLL_PROCESS_DETACH == fdwReason) && g_blockInitialized)
-  {
-    g_blockInitialized = false;
-    DeleteCriticalSection(&g_block);
-  }
-  return TRUE;
-}
-#endif
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

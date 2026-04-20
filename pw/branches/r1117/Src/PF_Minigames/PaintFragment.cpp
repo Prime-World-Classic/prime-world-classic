@@ -110,7 +110,7 @@ int CPaintFragment::GetRemainCapacity( NDb::EColor color ) const
 CPainterPoint* CPaintFragment::GetPoint( int point )
 {
   if ( point >= GetNumPoints() )
-    return false;
+    return NULL;
 
   return fragmentPoints[point];
 }

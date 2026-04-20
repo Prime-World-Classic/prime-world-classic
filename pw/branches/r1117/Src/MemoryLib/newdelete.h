@@ -7,21 +7,22 @@
 
 #define _INC_NEW
 #include <malloc.h>
+#include <new>
 
 // comment this define to use CRT new (directly mapped to HeapAlloc), very usefull when diagnose memory vie detour or umdh.exe
 #define CHECK_MEMORY_LEAKS
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Инициализация выделяемой и освобождаемой памяти определёнными значениями в отладочных целях
+//          
 //
-//  Помогает найти:
-//    В placement new: неинициализированные переменные
-//    В обычном new / delete: неинициализированные переменные, выход за границы (слева и справа), 
-//    доступ к памяти после освобождения, повторный вызов delete или вызов delete по произвольному
-//    указателю
+//   :
+//     placement new:  
+//      new / delete:  ,    (  ), 
+//        ,   delete   delete  
+//    
 //
-//  По умолчанию выключена (т.к. лагает). Для включения нужно определить  ALLOC_DATA_DEBUG_INIT в 
-//  newdelete.h (заменить "&& 0" на "&& 1" )
+//     (.. ).      ALLOC_DATA_DEBUG_INIT  
+//  newdelete.h ( "&& 0"  "&& 1" )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if !defined(_SHIPPING) && 0
   #define ALLOC_DATA_DEBUG_INIT
@@ -33,13 +34,12 @@
 #define NEWDEL_CCDECL    __cdecl
 #define NEWDEL_RETARG    _Ret_bytecap_(_Size)
 #else
-#define NEWDEL_CCDECL    __attribute__ ((cdecl))
-//In last GCC version alloc_size is "known"...
-//#define NEWDEL_RETARG    __attribute__ ((alloc_size(1)))
+#define NEWDEL_CCDECL    
 #define NEWDEL_RETARG
 #endif  
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef WIN32
 #ifdef CHECK_MEMORY_LEAKS
 void* NEWDEL_CCDECL operator new( size_t size );
 void NEWDEL_CCDECL operator delete( void *p );
@@ -53,13 +53,15 @@ NEWDEL_RETARG void* NEWDEL_CCDECL operator new[](size_t size, const char *, int 
 NEWDEL_RETARG void* NEWDEL_CCDECL operator new[](size_t size, int , const char *, int );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif // #ifdef CHECK_MEMORY_LEAKS
+#endif // WIN32
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #ifdef WIN32
 #ifndef ALLOC_DATA_DEBUG_INIT
   inline void* NEWDEL_CCDECL operator new(size_t, void *p) { return (p); }
 #else
-  //Если убрать static в объявлении, то данный вариант подлинкуется к ATL и там упадёт 
-  //А всё потому, что стандарт не разрешает переопределение placement new
+  //  static  ,      ATL    
+  //  ,      placement new
   inline static void* NEWDEL_CCDECL operator new(size_t size, void *p) 
   { 
     memset(p, 0xCD, size);
@@ -83,10 +85,12 @@ extern const nothrow_t nothrow;	// constant for placement new tag
 }
 #endif // WIN32
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef WIN32
 void* NEWDEL_CCDECL operator new(size_t size, const std::nothrow_t&);
 void* NEWDEL_CCDECL operator new[](size_t size, const std::nothrow_t&);
 void NEWDEL_CCDECL operator delete(void * p, const std::nothrow_t&);
 void NEWDEL_CCDECL operator delete[](void * p, const std::nothrow_t&);
+#endif // WIN32
 #endif //#ifndef __NOTHROW_T_DEFINED
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void* Aligned_MAlloc(size_t size, size_t alignment);

@@ -1,4 +1,8 @@
-#pragma once
+#ifdef _WIN32
+#include <windows.h>
+#else
+typedef long LPARAM;
+#endif
 
 struct SCallStackEntry;
 namespace NBSU

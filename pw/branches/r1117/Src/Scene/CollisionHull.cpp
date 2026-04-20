@@ -8,7 +8,7 @@
 #include "CollisionVolumeNode.h"
 #include "CollisionHull.h"
 #include "../Render/debugrenderer.h"
-#include "../Render/aabb.h"
+#include "AABB.h"
 #include "SceneObject.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NScene

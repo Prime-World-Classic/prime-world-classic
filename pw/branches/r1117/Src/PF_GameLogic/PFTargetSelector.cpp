@@ -20,7 +20,7 @@ namespace
 
 namespace
 {
-  // @angle в градусах!
+  // @angle пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
   inline void RotateVector(CVec2& v, const float angle)
   {
     struct Local
@@ -544,14 +544,14 @@ void PFSectorTargetSelector::OnForAllTargets(ITargetAction &action, const Reques
 
         const float distToTarget = fabs( vectorToTarget );
 
-        // Цель дальше своего размера
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if ( distToTarget > halfSize )
         {
           const float invertDist = 1.0f / distToTarget;
 
           const float angle = acosf( dir.Dot( vectorToTarget ) * invertDist ) - asinf( halfSize * invertDist );
 
-          // Край цели оказывается за сектором
+          // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
           if ( angle > refAngle )
             return;
         }
@@ -1293,7 +1293,7 @@ bool PFPointTargetSelector::FindTarget(const RequestParams &pars, Target &target
   if ( !pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid() )
     return false;
     
-  const CPtr<PFLogicObject> pOwner = pars.pOwner;
+  const CPtr<PFLogicObject> pOwner = pars.pOwner.GetPtr();
   
   Target requestedTarget;
   if ( pTargetSelector )
@@ -1506,7 +1506,7 @@ bool PFPointTargetSelector::FindTarget(const RequestParams &pars, Target &target
           direction.z = 0.0f;
           Normalize(&direction);
 
-          // Ищем позицию в пределах карты по направлению
+          // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
           for (int i = 0; i < range; i++)
           {
             CVec3 tempPos = targetPos + direction * (range - i);

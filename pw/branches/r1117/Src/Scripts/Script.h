@@ -99,8 +99,10 @@ Script *GetScript( lua_State *pLuaState );
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /** helper function to resolve context of Lua property access and checking parameters */
+/*
 template<class LuaObject>
 LuaObject *dispatchLuaCall( lua_State *pLuaState, int index )
 {
 return ( dynamic_cast<LuaObject*>( NScript::DispatchLuaCallInternal( pLuaState, index ) ) );
 }
+*/

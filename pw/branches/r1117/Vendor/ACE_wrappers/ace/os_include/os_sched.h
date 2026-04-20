@@ -36,7 +36,7 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-#if !defined (__cpu_set_t_defined) || !defined (ACE_HAS_CPU_SET_T)
+#if (!defined (__cpu_set_t_defined) || !defined (ACE_HAS_CPU_SET_T)) && !defined(__linux__)
 #if defined (ACE_HAS_CPUSET_T)
    typedef cpuset_t cpu_set_t;
 #else

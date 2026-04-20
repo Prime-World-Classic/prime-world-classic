@@ -3,7 +3,7 @@
 #include "MessageScreenLogic.h"
 #include "../UI/Root.h"
 #include "../UI/ScreenLogicBase.h"
-#include "../ui/Window.h"
+#include "../UI/Window.h"
 #include "../Scripts/Script.h"
 
 

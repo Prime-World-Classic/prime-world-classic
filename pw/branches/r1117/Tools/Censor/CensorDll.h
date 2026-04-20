@@ -1,11 +1,14 @@
 #ifndef CENSORDLL_H_994965EC_C76C_4ED9_8
 #define CENSORDLL_H_994965EC_C76C_4ED9_8
 
-//#define CENSORDLL_API 
+#ifdef NI_PLATF_LINUX
+#define CENSORDLL_API 
+#else
 #ifdef CENSORLIB_EXPORT
 #define CENSORDLL_API __declspec(dllexport)
 #else
 #define CENSORDLL_API __declspec(dllimport)
+#endif
 #endif
 
 #include <string>

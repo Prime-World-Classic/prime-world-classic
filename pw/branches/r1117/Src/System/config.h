@@ -48,6 +48,8 @@
 
 #if defined( NV_LINUX_PLATFORM )
 
+	#include "Win32_linux.h"
+
 	// TODO: Need to remove after porting MemoryLib
 
 	inline long GetMallocsTotal()

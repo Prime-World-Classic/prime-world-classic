@@ -1,5 +1,5 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/UserEnvInfo.h"
+#include "stdafx.h"
+#include "UserEnvInfo.h"
 
 namespace UserManager
 {

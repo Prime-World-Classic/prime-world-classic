@@ -7,6 +7,7 @@
 #include "NewLobbyClientPW.h"
 #include "System/NiTimer.h"
 #include "ReplayRunner.h"
+#include "LoadingStatusHandler.h"
 
 
 namespace Network

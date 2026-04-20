@@ -1,8 +1,14 @@
 #include "stdafx.h"
+
+
+#ifdef _WIN32
+#ifdef _WIN32
 #include "LobbyConnection.h"
 #include <winsock2.h>
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
+#ifdef _WIN32
 #include <Tlhelp32.h>
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -344,3 +350,28 @@ Strong<ICastle> CreateDummyCastleLink()
 {
   return new DummyCaslteLink();
 }
+
+#else
+
+namespace Game {
+  LobbyConnection::LobbyConnection( const nstl::string& _address, int _port ) {}
+  LobbyConnection::~LobbyConnection() {}
+  bool LobbyConnection::Connect() { return false; }
+  void LobbyConnection::Disconnect() {}
+  bool LobbyConnection::IsConnected() const { return false; }
+  void LobbyConnection::Step() {}
+  void LobbyConnection::Send( const void* _pData, int _length ) {}
+  int LobbyConnection::Receive( void* _pData, int _length ) { return 0; }
+  void LobbyConnection::SetNonBlocking( bool _nonBlocking ) {}
+  void LobbyConnection::LaunchSync(const char* sessionLogin) {}
+}
+
+#endif
+
+#else
+#include "LobbyConnection.h"
+
+Strong<ICastle> CreateCastleLink( int port, const char* castleCmdLine, HINSTANCE _instance, HWND _sessionWnd ) { return NULL; }
+Strong<ICastle> CreateDummyCastleLink() { return NULL; }
+
+#endif

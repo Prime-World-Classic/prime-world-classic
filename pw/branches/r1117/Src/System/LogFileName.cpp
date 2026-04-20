@@ -18,11 +18,15 @@ static char g_logDir[MAX_PATH] = {0};
 
 void SetProductNameAndVersion( const string& workDir, const char* productName, const char* productLine, int major, int minor, int build, int revision )
 {
-  std::sprintf( g_productName, "%s-%s-%d.%d.%02d.%04d", productName, productLine, major, minor, build, revision );
+  sprintf( g_productName, "%s-%s-%d.%d.%02d.%04d", productName, productLine, major, minor, build, revision );
+#ifdef WIN32
   MultiByteToWideChar( CP_ACP, 0, g_productName, -1, g_productNameW, sizeof( g_productNameW ) / sizeof( g_productNameW[0] ) );
+#else
+  mbstowcs(g_productNameW, g_productName, sizeof( g_productNameW ) / sizeof( g_productNameW[0] ) );
+#endif
   string dirWithoutSlash = workDir;
   NFile::RemoveSlash( &dirWithoutSlash );
-  std::sprintf( g_workDir, "%s", dirWithoutSlash.c_str() );
+  sprintf( g_workDir, "%s", dirWithoutSlash.c_str() );
 }
 
 
@@ -58,12 +62,12 @@ nstl::string GenerateDebugFileName( const struct tm  &tim, const char* suffix, c
   if (useFolder)
   {
     const char* folder = _folder ? _folder : GetDebugLogDir();
-    std::sprintf( fileName, "%s/%s-%04d.%02d.%02d-%02d.%02d.%02d-%s.%s", folder, g_productName
+    sprintf( fileName, "%s/%s-%04d.%02d.%02d-%02d.%02d.%02d-%s.%s", folder, g_productName
       , tim.tm_year, tim.tm_mon, tim.tm_mday, tim.tm_hour, tim.tm_min, tim.tm_sec, suffix, extension );
   }
   else
   {
-    std::sprintf( fileName, "%s-%04d.%02d.%02d-%02d.%02d.%02d-%s.%s", g_productName
+    sprintf( fileName, "%s-%04d.%02d.%02d-%02d.%02d.%02d-%s.%s", g_productName
       , tim.tm_year, tim.tm_mon, tim.tm_mday, tim.tm_hour, tim.tm_min, tim.tm_sec, suffix, extension );
   }
 
@@ -76,7 +80,7 @@ nstl::string GenerateDebugFileNameWoTimestamp( const char * suffix, const char *
 {
   const char* folder = _folder ? _folder : GetDebugLogDir();
 	char fileName[MAX_PATH];
-  std::sprintf( fileName, "%s/%s-%s.%s", folder, g_productName, suffix, extension);
+  sprintf( fileName, "%s/%s-%s.%s", folder, g_productName, suffix, extension);
 
 	return fileName;
 }
@@ -89,7 +93,7 @@ const char* GetDebugLogDir()
     return g_logDir;
 
   static char logDir[MAX_PATH];
-  std::sprintf( logDir, "%s/logs/", GetWorkDir());
+  sprintf( logDir, "%s/logs/", GetWorkDir());
 
   return logDir;
 }

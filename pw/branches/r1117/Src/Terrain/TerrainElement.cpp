@@ -7,7 +7,7 @@
 #include "TerrainElement.h"
 #include "Terrain.h"
 #include "../Render/GlobalMasks.h"
-#include <Scene\SceneComponent.h>
+#include <Scene/SceneComponent.h>
 
 #ifdef _DEBUG
 #define TERRAIN_DEBUG_ENABLE

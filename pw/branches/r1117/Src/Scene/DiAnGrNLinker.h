@@ -6,8 +6,7 @@
 ///eugbelNSCENE///namespace NScene {
 
 
-// Forward declaration
-class DiAnimGraph;
+#include "DiAnGr.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // This class is used t link nodes' names in user's AnimGraph with IDs of these names in the graph.
@@ -17,14 +16,13 @@ class DiAnGrNamesIDLinker
 {
 public:
   // structure to link nodes' names of AnimGraph with their IDs
-  template <class T>
   struct ID2NameLink
   {
     T      enumID;
     string name;
   };
 
-  DiAnGrNamesIDLinker(DiAnimGraph const* animGraph, const ID2NameLink<T> *links, int count, int max);
+  DiAnGrNamesIDLinker(DiAnimGraph const* animGraph, const ID2NameLink *links, int count, int max);
   DiAnGrNamesIDLinker(DiAnimGraph const* animGraph, int max);
 
   ~DiAnGrNamesIDLinker();
@@ -38,7 +36,7 @@ private:
 
 
 template <class T>
-DiAnGrNamesIDLinker<T>::DiAnGrNamesIDLinker(DiAnimGraph const* animGraph, const ID2NameLink<T> *links, int count, int max)
+DiAnGrNamesIDLinker<T>::DiAnGrNamesIDLinker(DiAnimGraph const* animGraph, const ID2NameLink *links, int count, int max)
   : graphIDs(NULL)
   , animGraph(animGraph)
 {

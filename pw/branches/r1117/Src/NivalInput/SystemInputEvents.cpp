@@ -6,6 +6,10 @@
 
 #include "../System/MainFrame.h"
 
+#ifdef NI_PLATF_LINUX
+#define GET_WHEEL_DELTA_WPARAM(wParam)  ((short)((wParam >> 16) & 0xFFFF))
+#endif
+
 namespace Input
 {
 

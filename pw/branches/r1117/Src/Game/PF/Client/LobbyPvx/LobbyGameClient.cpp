@@ -32,13 +32,13 @@
 
 static const float PROGRESS_SEND_INTERVAL = 0.33f;
 
-static float g_fHybridPingPeriod = 5.0; // по умолчанию - будем запрашивать пинг раз в столько секунд
+static float g_fHybridPingPeriod = 5.0; // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 REGISTER_VAR( "hybrid_ping_period", g_fHybridPingPeriod, STORAGE_NONE);
 
-static float g_fHybridPingThreshold = 0.4f; // если пинг (в секундах) больше этого значения, будем ругацца (т.е. ставить флаг warning в DebugVar "hybrid_ping_value")
+static float g_fHybridPingThreshold = 0.4f; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ.пїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ warning пїЅ DebugVar "hybrid_ping_value")
 REGISTER_VAR( "hybrid_ping_threshold", g_fHybridPingThreshold, STORAGE_NONE);
 
-static float g_fHybridPingRequestTimeout = 20.0; // !=0: запрашивать пинг только после завершения предыдущего запроса, или по истечению указ. таймаута после пред. запроса
+static float g_fHybridPingRequestTimeout = 20.0; // !=0: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 REGISTER_VAR( "hybrid_ping_timeout", g_fHybridPingRequestTimeout, STORAGE_NONE);
 
 static float g_fUpdatePingStatisticsPeriod = 5.0; // Update ping statistics once in 5 seconds by default
@@ -80,7 +80,7 @@ private:
 };
 
 
-static WorldStepIntDebugVar g_fHybridPingValue( "hybrid_ping_value" ); // сюда складываем последнее полученное значение ping
+static WorldStepIntDebugVar g_fHybridPingValue( "hybrid_ping_value" ); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ping
 
 
 namespace lobby
@@ -411,9 +411,9 @@ int GameClient::Poll( float transceiverDeltaTime )
 
       SendMyProgressIfNeeded();
 
-      //FIXME: здесь мы делаем предположение, что время загрузки карты является достаточным
-      //для установки соединения с гибридным сервером. Впрочем, при ложном срабатывании
-      //игра продолжит функционировать, просто появится окно об отвалившемся сервере
+      //FIXME: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+      //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+      //пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
       if ( !hybridStarted && hybridServerNode->IsStarted() )
       {
@@ -439,7 +439,7 @@ int GameClient::Poll( float transceiverDeltaTime )
       UpdateNoDataStatistics(transceiver->GetNextStep(), transceiver->GetNoData());
       UpdatePingStatistics();
   
-      // раз в указанное кол-во секунд запрашиваем пинг (transit_time rpc-запроса до гибрид-сервера и обратно)
+      // пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (transit_time rpc-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
       RequestHybridPing();
 
       if ( hybridServerNode->GracefullDisconnectReason() != Peered::EDisconnectReason::None )
@@ -713,8 +713,8 @@ void GameClient::UpdatePingStatistics()
 
           struct tm startTime;
           struct tm endTime;
-          localtime_s(&startTime, &rpcPing.startTime);
-          localtime_s(&endTime, &rpcPing.finishTime);
+          localtime_s(&startTime, (const time_t*)&rpcPing.startTime);
+          localtime_s(&endTime, (const time_t*)&rpcPing.finishTime);
           DebugTrace( "GameClient: Ping statistics: start:%02d:%02d:%02d, end:%02d:%02d:%02d",
             startTime.tm_hour, startTime.tm_min, startTime.tm_sec, endTime.tm_hour, endTime.tm_min, endTime.tm_sec );
 
@@ -770,7 +770,7 @@ void GameClient::OnHybridPing( Peered::SHybridPongResult& time_step, int context
     else
       debugDisplay::SetNewGraphInfo( "gping", debugDisplay::GraphInfo( 32, 100, debugDisplay::Color::Green, warn ? debugDisplay::Color::Red : debugDisplay::Color::Green, false ) );
 
-    timeLastUnansweredPing = 0; // на пред.запрос ответили, можно начинать следующий запрос
+    timeLastUnansweredPing = 0; // пїЅпїЅ пїЅпїЅпїЅпїЅ.пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     //DebugTrace("OnHybridPing: prev %0.4f, now %0.4f, ping=%0.4f, step=%d, isWarning=%d", time_step.pingTime, now, ping, time_step.worldStep, (ping > g_fHybridPingThreshold) );
   }
 }
@@ -780,10 +780,10 @@ void GameClient::OnHybridPing( Peered::SHybridPongResult& time_step, int context
 void GameClient::RequestHybridPing()
 {
   if( g_fHybridPingPeriod > 0 )
-  {// раз в указанное кол-во секунд запрашиваем пинг (transit_time rpc-запроса до гибрид-сервера и обратно)
+  {// пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (transit_time rpc-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
     NHPTimer::FTime tm = NHPTimer::GetScalarTime();
     if ( ( tm - timeLastPingRequest > g_fHybridPingPeriod )
-         && (timeLastUnansweredPing == 0 || tm - timeLastUnansweredPing > g_fHybridPingRequestTimeout) ) // UnansweredPing сбрасывается в 0, когда получаем ответ
+         && (timeLastUnansweredPing == 0 || tm - timeLastUnansweredPing > g_fHybridPingRequestTimeout) ) // UnansweredPing пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 0, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     {
       if ( client->GameServer() )
       {

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "AdventureScreen.h"
+#include "PFClientVisibilityMap.h"
+
 namespace NGameX
 {
 

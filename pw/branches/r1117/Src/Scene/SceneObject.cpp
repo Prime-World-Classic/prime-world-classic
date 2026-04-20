@@ -4,7 +4,7 @@
 
 #include "SceneObjectCreation.h"
 
-#include "../Render/DebugRenderer.h"
+#include "Render/debugrenderer.h"
 #include "LightingScene.h"
 #include "SceneObjectUtils.h"
 

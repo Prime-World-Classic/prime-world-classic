@@ -1,12 +1,12 @@
 #pragma once
 #include <Network/TransportTypes.h>
 #include <RPC/IfaceRequester.h>
-#include "RelayBalancer/RelayAllocationContext.h"
+#include "RelayAllocationContext.h"
 #include <Network/Address.h>
 #include <Coordinator/ServiceRole.h>
-#include "RelayBalancer/RRelayBalancerClientNotifyIface.auto.h"
-#include "RelayBalancer/RelayBalancerUserContext.h"
-#include "RelayBalancer/IRelayCCUCounter.h"
+#include "RRelayBalancerClientNotifyIface.auto.h"
+#include "RelayBalancerUserContext.h"
+#include "IRelayCCUCounter.h"
 
 namespace Relay
 {

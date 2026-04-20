@@ -49,7 +49,7 @@ void MinimapController::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
     {
       int mouseIn = 0;
       float x, y;
-      sscanf_s(args,"%d %f %f", &mouseIn, &x, &y);
+      sscanf(args,"%d %f %f", &mouseIn, &x, &y);
       eventHandler->MinimapOver(mouseIn, x, y);
 
       break;
@@ -58,7 +58,7 @@ void MinimapController::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
     {
       int isLeft; 
       float x, y;
-      sscanf_s(args,"%d %f %f", &isLeft, &x, &y);
+      sscanf(args,"%d %f %f", &isLeft, &x, &y);
       const UI::EMButton::Enum action = isLeft? UI::EMButton::Left: UI::EMButton::Right;
       eventHandler->MinimapActionBegin(action, x, y);
 
@@ -68,7 +68,7 @@ void MinimapController::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
     {
       int isLeft; 
       float x, y;
-      sscanf_s(args,"%d %f %f", &isLeft, &x, &y);
+      sscanf(args,"%d %f %f", &isLeft, &x, &y);
       const UI::EMButton::Enum action = isLeft? UI::EMButton::Left: UI::EMButton::Right;
       eventHandler->MinimapActionEnd(action, x, y);
       break;
@@ -81,14 +81,14 @@ void MinimapController::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
   case MinimapActionMove:
     {
       float x, y;
-      sscanf_s(args,"%f %f", &x, &y);
+      sscanf(args,"%f %f", &x, &y);
       eventHandler->MinimapActionMove(x, y);
       break;
     }
   case CameraMouseClick:
     {
       int lock;
-      sscanf_s(args,"%d", &lock);
+      sscanf(args,"%d", &lock);
       lockCamera = lock;
       eventHandler->LockCamera(lockCamera );
       break;

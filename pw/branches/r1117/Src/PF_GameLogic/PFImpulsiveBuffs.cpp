@@ -7,10 +7,10 @@
 #include "PFHero.h"
 #include "PFTower.h"
 
-#include "System\nalgoritm.h"
+#include "System/nalgoritm.h"
 #include "Client/LobbyPvx/ClientAccountingGadget.h"
 
-#include "..\Core\WorldCommand.h"
+#include "../Core/WorldCommand.h"
 
 #include "../System/InlineProfiler.h"
 

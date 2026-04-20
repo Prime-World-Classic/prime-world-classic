@@ -3,6 +3,7 @@
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
 FileWriteBufferedStream::FileWriteBufferedStream()
 : file(INVALID_HANDLE_VALUE)
 , buffer(0)
@@ -203,3 +204,27 @@ void FileWriteBufferedStream::Flush()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 REGISTER_SAVELOAD_CLASS( FileWriteBufferedStream );
+
+#else
+
+FileWriteBufferedStream::FileWriteBufferedStream() : file(-1), buffer(NULL), size(0), position(0), creationMode(0) {}
+FileWriteBufferedStream::FileWriteBufferedStream(const string & _fileName) : file(-1), buffer(NULL), size(0), position(0), creationMode(0) {}
+FileWriteBufferedStream::FileWriteBufferedStream(const string & _fileName, const int _bufferSize, const int _fileSize) : file(-1), buffer(NULL), size(0), position(0), creationMode(0) {}
+FileWriteBufferedStream::~FileWriteBufferedStream() {}
+
+void FileWriteBufferedStream::InitInternal() {}
+void FileWriteBufferedStream::OpenInternal(const string & _fileName) {}
+void FileWriteBufferedStream::SetSizeInternal( const int _size ) {}
+char * FileWriteBufferedStream::AllocateBuffer( const int _size ) { return NULL; }
+void FileWriteBufferedStream::FreeBuffer( char ** buffer ) {}
+int FileWriteBufferedStream::ReadInternal( void *pData, const int length ) { return 0; }
+int FileWriteBufferedStream::WriteInternal( const void *pData, const int length ) { return 0; }
+void FileWriteBufferedStream::Open(const string & _fileName) {}
+void FileWriteBufferedStream::Close() {}
+void FileWriteBufferedStream::SetFileSize(const int _fileSize) {}
+void FileWriteBufferedStream::SetFilePosition(long posLow, long posHigh, unsigned long moveFrom) {}
+void FileWriteBufferedStream::SetEndOfFile() {}
+void FileWriteBufferedStream::ReserveBuffer( const int _bufferSize ) {}
+void FileWriteBufferedStream::Flush() {}
+
+#endif

@@ -1,7 +1,6 @@
 #include "stdafx.h"
 #include "LoginClient.h"
 #include "Network/Network.h"
-#include "../PW_Game/server_ip.h"
 
 
 namespace Login
@@ -90,7 +89,7 @@ static Network::NetAddress ReplaceIpWithServerIp(Network::NetAddress& frontendAd
   const char* port = std::find(frontendAddress.begin(),frontendAddress.end(), ':');
   int portSize = strlen(port);
 
-  const char* whiteIp = SERVER_IP_ARRAY[usedServer];
+  const char* whiteIp = "127.0.0.1";
   char newAddress[64];
 
   memcpy((void*)newAddress, whiteIp, strlen(whiteIp) + 1);

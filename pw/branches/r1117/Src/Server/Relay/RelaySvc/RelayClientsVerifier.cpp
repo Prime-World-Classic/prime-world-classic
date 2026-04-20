@@ -1,8 +1,8 @@
 #include "stdafx.h"
 #include "RelayClientsVerifier.h"
-#include "RelaySvc/RelaySvcNaming.h"
-#include "RelayBalancer/RRelayBalancerClientNotifyIface.auto.h"
-#include "rpc/GateKeeper.h"
+#include "RelaySvcNaming.h"
+#include "Server/Relay/RelayBalancer/RRelayBalancerClientNotifyIface.auto.h"
+#include "RPC/GateKeeper.h"
 
 namespace Relay
 {

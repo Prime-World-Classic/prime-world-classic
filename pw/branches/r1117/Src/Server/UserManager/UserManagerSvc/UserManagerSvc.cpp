@@ -1,12 +1,12 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/UserManagerSvc.h"
-#include "UserManagerSvc/LUserManagerIface.auto.h"
-#include "UserManagerSvc/LUserNotificationIface.auto.h"
-#include "UserManagerSvc/UserManagerCfg.h"
-#include "UserManagerSvc/UserManagerNaming.h"
+#include "stdafx.h"
+#include "UserManagerSvc.h"
+#include "LUserManagerIface.auto.h"
+#include "LUserNotificationIface.auto.h"
+#include "UserManagerCfg.h"
+#include "UserManagerNaming.h"
 #include "Coordinator/Interface.h"
-#include "RelayBalancer/RelayBalancerNaming.h"
-#include "RelayBalancer/LRelayBalancerIface.auto.h"
+#include "Server/Relay/RelayBalancer/RelayBalancerNaming.h"
+#include "Server/Relay/RelayBalancer/LRelayBalancerIface.auto.h"
 
 namespace UserManager
 {

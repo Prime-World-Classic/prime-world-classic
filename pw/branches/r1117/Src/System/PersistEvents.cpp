@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "PersistEvents.h"
-#include "system/math/md4.h"
-#include "system/filesystem/fileutils.h"
+#include "System/Math/MD4.h"
+#include "System/FileSystem/FileUtils.h"
 
 namespace persistentEvents
 {
@@ -141,7 +141,7 @@ void Events::CollectEventsImpl( vector<Event> & buffer, EEvent::Enum ignoreEvent
         if ( ( ignoreEventType == EEvent::None ) || ( ignoreEventType != (EEvent::Enum)code ) ) {
           evt.code = (EEvent::Enum)code;
           string checkKey = EventKey( evt );
-          if ( stricmp( checkKey.c_str(), key ) == 0 )
+          if ( strcasecmp( checkKey.c_str(), key ) == 0 )
             buffer.push_back( evt );
           else
           {
@@ -170,8 +170,10 @@ void Events::EraseEvents( const vector<Event> & events )
 void Events::EraseEvent( const Event & event )
 {
   string filename = GenerateFilename( event.id );
-  SetFileAttributes( filename.c_str(), FILE_ATTRIBUTE_NORMAL );
-  DeleteFileA( filename.c_str() );
+  #ifdef _WIN32
+SetFileAttributes( filename.c_str(), FILE_ATTRIBUTE_NORMAL );
+#endif
+  remove( filename.c_str() );
 }
 
 
@@ -210,8 +212,8 @@ string Events::EventKey( const Event & event )
 
 unsigned Events::GetTimestamp()
 {
-  __time32_t ts = 0;
-  _time32( &ts );
+  time_t ts = 0;
+  time( &ts );
   return ts;
 }
 

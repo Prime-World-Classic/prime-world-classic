@@ -14,7 +14,6 @@ typedef DWORD thread_id_t;
 
 #elif defined( NV_LINUX_PLATFORM )
 
-#define INFINITE 0xFFFFFFFF 
 typedef pthread_t thread_id_t;
 
 #endif
@@ -36,7 +35,7 @@ public:
   unsigned int Suspend(); //Use of this function is NOT recommended!
   bool Wait( unsigned int timeout = INFINITE ); // wait thread to finish timeout milliseconds,  returns true if thread is finished
   bool Finished() { return Wait( 0 ); } // returns true if thread is finished
-  void      Terminate( unsigned int exitCode ); //Насильственное завершение
+  void      Terminate( unsigned int exitCode ); // 
   void      SetPriority( int priority );
   HANDLE    Handle() const { return externalHandle; }
   unsigned int Id() const { return threadID; }
@@ -68,31 +67,25 @@ private:
     handler -> id_ = ::pthread_self();
     handler -> Work();
 
-    NI_VERIFY_NO_RET( ::pthread_mutex_lock( &(handler -> finish_) ) == 0, "Cannot lock mutex" );
-    NI_VERIFY_NO_RET( ::pthread_cond_broadcast( &(handler -> wait_) ) == 0, "Cannot signal condition" );
-    NI_VERIFY_NO_RET( ::pthread_mutex_unlock( &(handler -> finish_) ) == 0, "Cannot unlock mutex" );
+    ::pthread_mutex_lock( &(handler -> finish_) );
+    ::pthread_cond_broadcast( &(handler -> wait_) );
+    ::pthread_mutex_unlock( &(handler -> finish_) );
 
     return 0;
   }
 
 public:
 
-  // FIX: INFINITE is a predefined constant
-  enum { NV_INFINITE = -1U };
-
-public:
-
   Thread( unsigned stack_size = 0 ): isRunning( true ), id_( -1 )
   {
-    //m_thread = new nival::ts_object_t< thread_wrapper_t >( this );
-    NI_VERIFY_NO_RET( ::pthread_mutex_init( &finish_, 0 ) == 0, "Cannot init mutex" );
-    NI_VERIFY_NO_RET( ::pthread_cond_init( &wait_, 0 ) == 0, "Cannot init cond" );
+    ::pthread_mutex_init( &finish_, 0 );
+    ::pthread_cond_init( &wait_, 0 );
   }
 
   virtual ~Thread()
   {
-    NI_VERIFY_NO_RET( ::pthread_mutex_destroy( &finish_ ) == 0, "Cannot destroy mutex" );
-    NI_VERIFY_NO_RET( ::pthread_cond_destroy( &wait_ ) == 0, "Cannot destroy cond" );
+    ::pthread_mutex_destroy( &finish_ );
+    ::pthread_cond_destroy( &wait_ );
   }
 
   // Starts the thread after construction
@@ -104,56 +97,49 @@ public:
   // Doesn't work in linux
   unsigned int Suspend()
   {
-    // TODO: Needs to log the call of Suspend()
     return 0;
   }
 
   // Waits thread to finish timeout milliseconds, returns true if thread is finished
-  bool Wait( unsigned int timeout = NV_INFINITE )
+  bool Wait( unsigned int timeout = -1U )
   {
-    if ( timeout == NV_INFINITE )
+    if ( timeout == -1U )
     {
       return ( ::pthread_join( th_, 0 ) == 0 );
     }
 
     struct timespec ts = { 0 };
-    NI_VERIFY_NO_RET( ::clock_gettime( CLOCK_REALTIME, &ts ) == 0, "Cannot get real time" );
+    ::clock_gettime( CLOCK_REALTIME, &ts );
     ts.tv_sec += timeout / 1000;
-    ts.tv_nsec += ( timeout % 1000 ) * 1000;
-    NI_VERIFY_NO_RET( ::pthread_mutex_lock( &finish_ ) == 0, "Cannot lock mutex" );
+    ts.tv_nsec += ( timeout % 1000 ) * 1000000;
+    if (ts.tv_nsec >= 1000000000) {
+      ts.tv_sec++;
+      ts.tv_nsec -= 1000000000;
+    }
+    ::pthread_mutex_lock( &finish_ );
     const int r = ::pthread_cond_timedwait( &wait_, &finish_, &ts );
-    NI_VERIFY_NO_RET( ::pthread_mutex_unlock( &finish_ ) == 0, "Cannot unlock mutex" );
+    ::pthread_mutex_unlock( &finish_ );
     return ( r == 0 );
   }
 
   // Returns true if thread is finished
   bool Finished() const
   {
-    //return !m_thread.get() || m_thread->is_finished();
     return !isRunning;
   }
 
   // Doesn't work in linux
   void Terminate( unsigned int )
   {
-    NI_VERIFY_NO_RET( ::pthread_cancel( th_ ) == 0, "Cannot cancel thread" );
+    ::pthread_cancel( th_ );
   }
   
-  unsigned int Id() const { return id_; }
+  unsigned int Id() const { return (unsigned int)id_; }
 
   // Doesn't work in linux
   void SetPriority( int priority )
   {
-    // TODO: Needs to log the call of SetPriority()
   }
-
-  /*
-  thread_id_t Id() const
-  {
-    //return static_cast< nival::thread_t * >( m_thread.get() );
-    return 0;
-  }
-  */
 
   void Stop( bool waitForStop = false, int timeoutInMs = 1000 )
   {
@@ -162,7 +148,6 @@ public:
     if( waitForStop )
     {
       bool stopped = Wait( timeoutInMs );
-      NI_ASSERT( stopped, "Thread termination timed out!" );
       if( !stopped )
         Terminate( 0 ); 
     }
@@ -179,7 +164,6 @@ protected:
 
 private:
 
-  //nival::ptr_t< thread_wrapper_t > m_thread;
   pthread_t th_;
   pthread_mutex_t finish_;
   pthread_cond_t wait_;

@@ -10,6 +10,8 @@
 #ifndef _DIANGRUTILS_H_
 #define _DIANGRUTILS_H_
 
+#include "../System/systemStdAfx.h"
+#include "../System/Win32_linux.h"
 #include "../System/Asserts.h"
 #include "../System/SystemLog.h"
 
@@ -53,7 +55,7 @@ typedef unsigned long int         DiColor;
 //////////////////////////////////////////////////////////////////////////
 /// Some macroses from DiEngine
 //////////////////////////////////////////////////////////////////////////
-#include "..\System\Asserts.h"
+#include "../System/Asserts.h"
 #define diINLINE inline static
 
 #define DI_NEW(type) new type

@@ -297,7 +297,7 @@ void WorldChecker::SaveToFile( Stream & st ) const
   NI_PROFILE_FUNCTION
 
   FILE* f;
-  fopen_s( &f, "world.bin", "wb" );
+  (f = fopen("world.bin", "wb" )) != NULL;
   fwrite( st.GetBuffer() , 1 , st.GetPosition() , f );
   fclose( f );
 }
@@ -308,7 +308,7 @@ void WorldChecker::LoadFromFile( Stream & st )
   st.Seek(0, SEEKORIGIN_BEGIN);
 
   FILE* f;
-  fopen_s( &f, "world.bin", "rb" );
+  (f = fopen("world.bin", "rb" )) != NULL;
   int readSize = fread( (void*)st.GetBuffer(), 1, st.GetSize(), f );
   fclose(f);
 
@@ -346,7 +346,7 @@ void SaveCompressThreadJob::Work( volatile bool & isRunning )
   if ( saveToFile )
   {
     FILE* f;
-    fopen_s( &f, "world.bin", "wb" );
+    (f = fopen("world.bin", "wb" )) != NULL;
     fwrite( destStream->GetBuffer() , 1 , destStream->GetPosition() , f );
     fclose( f );
   }

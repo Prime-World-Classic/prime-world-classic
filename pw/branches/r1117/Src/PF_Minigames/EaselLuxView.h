@@ -5,10 +5,7 @@
 #include "RollCoordsConverter.h"
 #include "ViewBallCoordsConverter.h"
 
-namespace NDb
-{
-  enum EColor;
-}
+#include "DBEasel.h"
 
 namespace PF_Minigames
 {

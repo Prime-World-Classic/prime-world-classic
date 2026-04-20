@@ -15,7 +15,7 @@ namespace Transport
   {
     NI_DECLARE_REFCOUNT_CLASS_2( ClientTransportSystem2, IClientTransportSystem, BaseObjectMT );
   public:
-    ClientTransportSystem2::ClientTransportSystem2(Network::INetworkDriver* _pNetDriver, 
+    ClientTransportSystem2(Network::INetworkDriver* _pNetDriver, 
       Transport::MessageFactory* _pFactory, 
       Login::ClientVersion const & version);
     ClientTransportSystem2( Network::INetworkDriver* _pNetDriver, Transport::MessageFactory* _pFactory, 

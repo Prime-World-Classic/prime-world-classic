@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "AdventureScreen.h"
 #include "PFWorld.h"
-#include "PF_Core\World.hpp"
+#include "PF_Core/World.hpp"
 #include "PFHero.h"
 #include "HeroActions.h"
 
@@ -65,7 +65,7 @@ bool MakeLag( const char *name, const vector<wstring> &params )
 
   seconds *= 1000.0f;
 
-  Sleep( seconds );
+  threading::Sleep( seconds );
 
   return true;
 }

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ServerAppBase/NivalService.h"
-#include "RelayBalancer/RelayBalancerImpl.h"
-#include "RelayBalancer/RelayBalancerSettings.h"
+#include "RelayBalancerImpl.h"
+#include "RelayBalancerSettings.h"
 
 namespace Relay
 {

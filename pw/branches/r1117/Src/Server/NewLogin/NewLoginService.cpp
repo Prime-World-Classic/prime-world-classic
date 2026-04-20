@@ -12,7 +12,7 @@
 #include "ClientControl/LClientControlRemote.auto.h"
 #include "RdpTransport/LRdpFrontendAgentRemote.auto.h"
 #include "RdpTransport/RdpTransportUtils.h"
-#include "rpc/IfaceRequester.h"
+#include <RPC/IfaceRequester.h>
 #include "System/InlineProfiler.h"
 
 
@@ -61,8 +61,8 @@ public:
   virtual StrongMT<clientCtl::IInterface> GetClientControl() const
   {
     threading::MutexLock lock( mutex );
-
-    if ( StrongMT<clientCtl::IInterface> ptr = remote->iface() )
+    StrongMT<clientCtl::IInterface> ptr( remote->iface().Get() );
+    if ( ptr )
       if ( ptr->GetStatus() == rpc::Connected )
         return ptr;
     return 0;

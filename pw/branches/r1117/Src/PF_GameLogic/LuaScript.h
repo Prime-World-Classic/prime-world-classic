@@ -1,5 +1,9 @@
 #pragma once
 
+extern "C" {
+#include "../Scripts/lua/lua.h"
+}
+
 #include "LuaValueSettable.h"
 
 struct luaValueSetter

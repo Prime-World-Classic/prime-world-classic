@@ -141,7 +141,7 @@ public:
   virtual int GetWorldStep() const = 0;
   virtual int GetBufferLimit() const = 0;
 
-  virtual ~ITransceiver() = 0 {};
+  virtual ~ITransceiver() {};
 }; //ITransceiver
 
 } //namespace NCore

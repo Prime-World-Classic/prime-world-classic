@@ -1,17 +1,22 @@
 #include "stdafx.h"
+#ifdef _WIN32
 
-#include "System/FixedVector.h"
+#include "System/fixedvector.h"
 #include "System/nvector.h"
 #include "System/nhash_map.h"
 // #include "../System/StackWalk.h"
 #include "System/FileSystem/FileUtils.h"
 #include "System/LogFileName.h"
 
+#ifdef _WIN32
 #include "Vendor/DTW/inc/dbghelp.h"
+#endif
 // 
-// #include "Vendor/DirectX/Include/d3d9.h"
-// #include "Vendor/DirectX/Include/d3dx9.h"
+// #include "d3d9.h"
+// #include "d3dx9.h"
+#ifdef _WIN32
 #include "../MemoryLib/SymAccess.h"
+#endif
 #include "dxutils.h"
 #include "DxResourcesControl.h"
 #include "smartrenderer.h"
@@ -732,3 +737,12 @@ void DumpDXResourcesInDefaultPool()
 #endif // DX_RESOURCE_CONTROL
 
 REGISTER_DEV_CMD( dump_resource_memory, DumpResourceMemory );
+
+
+#else // _WIN32
+#include "DxResourcesControl.h"
+static string s_dummyPool;
+string const &GetCurrentDXPool() { return s_dummyPool; }
+void PushDXPool(char const *pool) {}
+void PopDXPool(char const *pool) {}
+#endif // _WIN32

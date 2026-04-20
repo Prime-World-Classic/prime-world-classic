@@ -10,7 +10,7 @@
 #include "Version.h"
 #include "UI/FrameTimeRender.h"
 #include "../PF_GameLogic/WebLauncher.h"
-#include "../PW_Game/server_ip.h"
+#include "Server/RPC/LocalEntityFactory.h"
 
 extern string g_devLogin;
 extern string g_sessionToken;
@@ -223,7 +223,7 @@ void ClientBase::OnEntrance()
   NI_VERIFY( entrance, "", SetError( EClientError::PrematureDisconnect ); return );
   NI_VERIFY( entrance->iface(), "", SetError( EClientError::PrematureDisconnect ); return );
 
-  entrance->iface()->RequestServerInstance( RemotePtr<RILobbyUser>( lobbyUserProxy ), VERSION_REVISION, this, &ClientBase::OnGetServerInstance );
+  entrance->iface()->RequestServerInstance( RemotePtr<RILobbyUser>( lobbyUserProxy.Get() ), VERSION_REVISION, this, &ClientBase::OnGetServerInstance );
 
   ChangeStatus( EClientStatus::RequestingServerInstance );
   EnableStatusTimeout();
@@ -431,12 +431,12 @@ void ClientBase::StartSession( TGameId _sessionId, const SGameParameters & _para
   }
 
   gameMembersReadiness.clear();
+serverTimestamp = (time_t)timestamp32;
 
-  serverTimestamp = (__time32_t)timestamp32;
-  if (serverTimestamp > 0)
-  {
-    __time32_t localTimestamp;
-    _time32( &localTimestamp );
+if ( serverTimestamp )
+{
+  time_t localTimestamp;
+  time( &localTimestamp );
     if (localTimestamp > 0)
       timeDelta = localTimestamp - serverTimestamp;
   }

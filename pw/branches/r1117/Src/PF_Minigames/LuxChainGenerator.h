@@ -8,7 +8,6 @@
 namespace NDb
 {
   struct EPaintStatistics;
-  enum EColor;
 }
 
 namespace PF_Minigames

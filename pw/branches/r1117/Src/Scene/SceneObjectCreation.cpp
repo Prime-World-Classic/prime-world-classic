@@ -402,13 +402,13 @@ vector<CObj<SceneComponent>> ParseEffect( const NDb::Effect* pVisual, const Plac
 		for ( int effIdx = 0; effIdx < pVisual->effects.size(); effIdx++ )
 		{
 			NI_ALWAYS_ASSERT("Code supposed to be OBSOLETE is called!");
-			CObj<SceneComponent> toadd = CreateStatic( pVisual, effIdx, offset );
+			CObj<SceneComponent> toadd( CreateStatic( pVisual, effIdx, offset ).GetPtr() );
 			if ( toadd )
 			{
 				rootComponents.push_back( toadd );
 				toattach = toadd;
 			}
-			toadd = CreateAnimated( pVisual, effIdx, offset );
+			toadd = CreateAnimated( pVisual, effIdx, offset ).GetPtr();
 			if ( toadd )
 			{
 				rootComponents.push_back( toadd );

@@ -1,4 +1,5 @@
 #pragma once
+#include "StringExecutor.h"
 // Automatically generated file, don't change it manually!
 
 #include "../libdb/Db.h"

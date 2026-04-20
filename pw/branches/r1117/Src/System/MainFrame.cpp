@@ -1,5 +1,7 @@
 #include "StdAfx.h"
 #include "MainFrame.h"
+
+#ifdef _WIN32
 #include "Thread.h"
 #include "FileSystem/FileUtils.h"
 #include "FileSystem/FilePath.h"
@@ -997,3 +999,37 @@ static bool ToggleCursorClip(const char *name, const nstl::vector<nstl::wstring>
 
 REGISTER_CMD( toggle_cursor_clip, ToggleCursorClip );
 
+
+#else
+
+namespace NMainFrame {
+  bool GetMessage( SWindowsMsg *pRes ) { return false; }
+  bool IsAppActive() { return true; }
+  bool IsAppNotMinimized() { return true; }
+  bool IsExit() { return false; }
+  void Exit() { exit(0); }
+  void Exit( const nstl::string& exitCode ) { exit(0); }
+  void SetExitCode( const nstl::string& exitCode ) {}
+  const nstl::string& GetExitCode() { static nstl::string empty; return empty; }
+  HWND GetWnd() { return NULL; }
+  void SetWnd(HWND _hwnd) {}
+  HINSTANCE GetInstance() { return NULL; }
+  void PumpMessages() {}
+  bool InitApplication( HINSTANCE hInstance, const char *pszAppName, const char *pszWndName, LPCWSTR nIcon, bool fullscreen, int width, int height, HWND hUseWindow ) { return true; }
+  void ShutdownApplication() {}
+  void SetCursor( HCURSOR _hCursor ) {}
+  void ShowCursor( bool bShow ) {}
+  HCURSOR GetCurrentCursor() { return NULL; }
+  void EnableCursorManagement( bool bEnable ) {}
+  bool UpdateCursorRectInt( const char* name, const nstl::vector<nstl::wstring> &paramsSet ) { return true; }
+  void ResizeWindow( unsigned long width, unsigned long height, bool isFullScreen, bool isBorderless ) {}
+  void DumpWindowStyle( DWORD dwStyle ) {}
+  void DumpExWindowStyle( DWORD dwStyle ) {}
+  void ApplyNewParams( unsigned long width, unsigned long height, bool isFullScreen, bool isBorderless ) {}
+  void SetActualClipCursorRect() {}
+  void SetCloseHandler( ICloseApplicationHandler* handler ) {}
+}
+
+void SetStepCallback( void (*_stepFunc)() ) {}
+
+#endif

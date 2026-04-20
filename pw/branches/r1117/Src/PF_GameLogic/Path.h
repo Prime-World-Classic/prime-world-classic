@@ -3,7 +3,7 @@
 //??#include "AIClasses.h"
 //??#include "../DebugTools/DebugInfoManager.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-enum EPathRestriction; // declared in CommonPathFinder.h
+enum EPathRestriction : int; // declared in CommonPathFinder.h
 
 namespace NWorld
 {
@@ -13,35 +13,35 @@ class PFBaseMovingUnit;
 
 _interface IPathValidator
 {
-	// проверка пути; если вернёт false - путь проверку не прошёл
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ; пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ false - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	virtual bool CheckPath( int prevPathLen, int newPathLen ) = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//! путь юнита
+//! пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 _interface IPath
 {
 	virtual bool IsFinished() const = 0;
 
 	virtual bool CanPeek( int nShift ) const = 0;
-	// Проверка точки, отстоящей от "курсора" на nShift тайлов вперёд
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ nShift пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	virtual const CVec2 PeekPoint( const int nShift ) const = 0;
-	// Смещение "курсора" на _nShift тайлов вперёд
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ _nShift пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	virtual void Shift( const int nShift, int numSteps ) = 0;
 
 	virtual const CVec2& GetFinishPoint() const = 0;
 	virtual const CVec2& GetStartPoint() const = 0;
 
-	//! восстановить путь из новой точки ( vPoint )
+	//! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ( vPoint )
 	virtual void RecoverPath( const CVec2 &vPoint, const SVector &vLastKnownGoodTile, int numSteps ) = 0;
-	//! пересчитать путь из новой точки ( vPoint )
+	//! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ( vPoint )
 	virtual bool RecalcPath( const CVec2 &vPoint, const SVector &vLastKnownGoodTile, IPathValidator *pValidator, int numSteps ) = 0;
-	//! добавить тайлы в начало пути
+	//! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	virtual void InsertTiles( const list<SVector> &tiles ) = 0;
-	//! можно ли проехать весь путь задом
+	//! пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 //	virtual const bool CanGoBackward( const NWorld::PFBaseMovingUnit *pUnit ) const = 0;
 	virtual const bool ShouldCheckTurn() const = 0;
-	//! можно ли для этого пути построить сложный разворот
+	//! пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	virtual const bool CanBuildComplexTurn() const = 0;
 //??	virtual void MarkPath( const int nID, const NDebugInfo::EColor color ) const = 0;
 };

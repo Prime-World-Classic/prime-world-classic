@@ -115,22 +115,22 @@ public:
 		#pragma optimize("", off)
 	#endif
 
-	void _cdecl SetValue(const T &value)
+	void SetValue(const T &value)
 	{
 		ThreadBuffer<T>* currentPointer = this->GetPointer();
 		if (currentPointer == NULL)
 		{
-      ThreadBuffer<T> *pNewBuf = new ThreadBuffer<T>(new T(value));
+	ThreadBuffer<T> *pNewBuf = new ThreadBuffer<T>(new T(value));
 			this->SetPointer(pNewBuf);
 		}
 		else
 		{
-      T* pP = currentPointer->data;
+	T* pP = currentPointer->data;
 			*pP = value;
 		}
 	}
 
-	T& _cdecl GetValue(void)
+	T& GetValue(void)
 	{
 		ThreadBuffer<T>* currentPointer = this->GetPointer();
 		if (currentPointer == NULL)

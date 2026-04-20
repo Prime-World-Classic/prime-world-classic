@@ -1,6 +1,6 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/PartialReconnectSettings.h"
-#include "UserManagerSvc/UserManagerCfg.h"
+#include "stdafx.h"
+#include "PartialReconnectSettings.h"
+#include "UserManagerCfg.h"
 
 namespace UserManager
 {

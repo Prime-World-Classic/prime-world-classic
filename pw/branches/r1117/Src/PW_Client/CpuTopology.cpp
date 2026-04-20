@@ -6,8 +6,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //-------------------------------------------------------------------------------------
 #include "stdafx.h"
-#include <intrin.h>
 #include "CpuTopology.h"
+
+#ifdef _WIN32
+#include <intrin.h>
 
 #pragma intrinsic(__cpuidex)
 
@@ -27,7 +29,7 @@ public:
     virtual BOOL        IsDefaultImpl() const                   = 0;
     virtual DWORD       NumberOfProcessCores() const            = 0;
     virtual DWORD       NumberOfSystemCores() const             = 0;
-    virtual DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const = 0;
+    virtual size_t   CoreAffinityMask( DWORD coreIdx ) const = 0;
 };
 
 
@@ -74,12 +76,12 @@ public:
     //-----------------------------------------------------------------------------
     // DefaultImpl::CoreAffinityMask
     //-----------------------------------------------------------------------------
-    /*virtual*/ DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const
+    /*virtual*/ size_t   CoreAffinityMask( DWORD coreIdx ) const
     {
-        DWORD_PTR coreAffinity = 0;
+        size_t coreAffinity = 0;
         if( 1 == coreIdx )
         {
-            DWORD_PTR dwSystemAffinity;
+            size_t dwSystemAffinity;
             GetProcessAffinityMask( GetCurrentProcess(), &coreAffinity, &dwSystemAffinity );
         }
         return coreAffinity;
@@ -142,7 +144,7 @@ public:
     //-----------------------------------------------------------------------------
     /*virtual*/ DWORD       NumberOfProcessCores() const
     {
-        DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+        size_t dwProcessAffinity, dwSystemAffinity;
         GetProcessAffinityMask( GetCurrentProcess(), &dwProcessAffinity, &dwSystemAffinity );
 
         DWORD nCores = 0;
@@ -178,9 +180,9 @@ public:
     // Desc: Gets an affinity mask that corresponds to the requested processor
     //       core.
     //-----------------------------------------------------------------------------
-    /*virtual*/ DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const
+    /*virtual*/ size_t   CoreAffinityMask( DWORD coreIdx ) const
     {
-        DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+        size_t dwProcessAffinity, dwSystemAffinity;
         GetProcessAffinityMask( GetCurrentProcess(), &dwProcessAffinity, &dwSystemAffinity );
 
         for( DWORD i = 0; i < m_nItems; ++i )
@@ -579,7 +581,7 @@ public:
 
     enum
     {
-        MaxLogicalProcessors = sizeof( DWORD_PTR ) * 8
+        MaxLogicalProcessors = sizeof( size_t ) * 8
     };
 
     //-----------------------------------------------------------------------------
@@ -647,7 +649,7 @@ public:
                                 // be able to decode the APIC.
                                 m_apicExtractor.SetPackageTopology( nLogProcsPerPkg, nCoresPerPkg );
 
-                                DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+                                size_t dwProcessAffinity, dwSystemAffinity;
                                 HANDLE hProcess = GetCurrentProcess();
                                 HANDLE hThread = GetCurrentThread();
                                 GetProcessAffinityMask( hProcess, &dwProcessAffinity, &dwSystemAffinity );
@@ -668,8 +670,8 @@ public:
                                     }
 
                                     // Call cpuid on each active logical processor in the system affinity.
-                                    DWORD_PTR dwPrevThreadAffinity = 0;
-                                    for( DWORD_PTR dwThreadAffinity = 1;
+                                    size_t dwPrevThreadAffinity = 0;
+                                    for( size_t dwThreadAffinity = 1;
                                          dwThreadAffinity && dwThreadAffinity <= dwSystemAffinity;
                                          dwThreadAffinity <<= 1 )
                                     {
@@ -722,7 +724,7 @@ public:
     //-----------------------------------------------------------------------------
     /*virtual*/ DWORD       NumberOfProcessCores() const
     {
-        DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+        size_t dwProcessAffinity, dwSystemAffinity;
         GetProcessAffinityMask( GetCurrentProcess(), &dwProcessAffinity, &dwSystemAffinity );
 
         BYTE pkgCoreIds[MaxLogicalProcessors] = { 0 };
@@ -730,7 +732,7 @@ public:
 
         for( DWORD i = 0; i < m_nItems; ++i )
         {
-            if( dwProcessAffinity & ( ( DWORD_PTR )1 << i ) )
+            if( dwProcessAffinity & ( ( size_t )1 << i ) )
             {
                 AddUniquePkgCoreId_( i, pkgCoreIds, nPkgCoreIds );
             }
@@ -759,7 +761,7 @@ public:
     //       coreIdx must be less than the total number of processor cores
     //       recognized by the operating system (NumberOfSystemCores()).
     //-----------------------------------------------------------------------------
-    /*virtual*/ DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const
+    /*virtual*/ size_t   CoreAffinityMask( DWORD coreIdx ) const
     {
         BYTE pkgCoreIds[MaxLogicalProcessors] = { 0 };
         DWORD nPkgCoreIds = 0;
@@ -768,17 +770,17 @@ public:
             AddUniquePkgCoreId_( i, pkgCoreIds, nPkgCoreIds );
         }
 
-        DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+        size_t dwProcessAffinity, dwSystemAffinity;
         GetProcessAffinityMask( GetCurrentProcess(), &dwProcessAffinity, &dwSystemAffinity );
 
-        DWORD_PTR coreAffinity = 0;
+        size_t coreAffinity = 0;
         if( coreIdx < nPkgCoreIds )
         {
             for( DWORD i = 0; i < m_nItems; ++i )
             {
                 if( m_apicExtractor.PackageCoreId( m_apicIds[i] ) == pkgCoreIds[coreIdx] )
                 {
-                    coreAffinity |= ( dwProcessAffinity & ( ( DWORD_PTR )1 << i ) );
+                    coreAffinity |= ( dwProcessAffinity & ( ( size_t )1 << i ) );
                 }
             }
         }
@@ -801,7 +803,7 @@ public:
 
         if( bSupported )
         {
-            DWORD_PTR dwProcessAffinity, dwSystemAffinity;
+            size_t dwProcessAffinity, dwSystemAffinity;
             HANDLE hProcess = GetCurrentProcess();
 
             // Query process affinity mask
@@ -824,7 +826,7 @@ public:
                 {
                     // Attempt to set the thread affinity 
                     HANDLE hThread = GetCurrentThread();
-                    DWORD_PTR dwThreadAffinity = SetThreadAffinityMask( hThread, dwProcessAffinity );
+                    size_t dwThreadAffinity = SetThreadAffinityMask( hThread, dwProcessAffinity );
                     if( dwThreadAffinity )
                     {
                         // Restore the previous thread affinity
@@ -925,7 +927,7 @@ DWORD CpuTopology::NumberOfSystemCores() const
 // Name: CpuTopology::CoreAffinityMask
 // Desc: Gets an affinity mask that corresponds to the requested processor core.
 //-------------------------------------------------------------------------------------
-DWORD_PTR CpuTopology::CoreAffinityMask( DWORD coreIdx ) const
+size_t CpuTopology::CoreAffinityMask( DWORD coreIdx ) const
 {
     return m_pImpl->CoreAffinityMask( coreIdx );
 }
@@ -973,3 +975,15 @@ void CpuTopology::Destroy_()
     delete m_pImpl;
     m_pImpl = NULL;
 }
+#else // _WIN32
+
+CpuTopology::CpuTopology( BOOL bForceCpuid ) : m_pImpl(NULL) {}
+CpuTopology::~CpuTopology() {}
+BOOL CpuTopology::IsDefaultImpl() const { return TRUE; }
+DWORD CpuTopology::NumberOfProcessCores() const { return 1; }
+DWORD CpuTopology::NumberOfSystemCores() const { return 1; }
+size_t CpuTopology::CoreAffinityMask( DWORD coreIdx ) const { return 1; }
+void CpuTopology::ForceCpuid( BOOL bForce ) {}
+void CpuTopology::Destroy_() {}
+
+#endif // _WIN32

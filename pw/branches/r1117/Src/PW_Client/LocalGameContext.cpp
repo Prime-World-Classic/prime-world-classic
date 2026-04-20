@@ -5,8 +5,8 @@
 #include "PF_GameLogic/MapCollection.h"
 #include "PF_GameLogic/StringExecutor.h"
 #include "PF_GameLogic/AdventureScreen.h"
-#include "PF_GameLogic/DbSessionRoots.h"
-#include "PF_GameLogic/DbHeroesList.h"
+#include "PF_GameLogic/DBSessionRoots.h"
+#include "PF_GameLogic/DBHeroesList.h"
 #include "PF_GameLogic/MapStartup.h"
 #include "PF_GameLogic/AsyncMapStartup.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
@@ -226,7 +226,7 @@ int LocalGameContext::Poll( float dt )
       }
       else
       {
-        Sleep( 50 );
+        threading::Sleep( 50 );
         float pro = mapLoadingJob->GetProgress()->GetTotalProgress();
         if ( loadingScreeen )
           loadingScreeen->SetPlayerProgress( clientId, Clamp( pro, 0.f, 1.f ) );

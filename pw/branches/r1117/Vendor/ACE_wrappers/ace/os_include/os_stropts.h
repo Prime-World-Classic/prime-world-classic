@@ -54,8 +54,14 @@
 #  endif /* AIX */
 #endif /* ACE_HAS_STREAMS */
 
-#if !defined (ACE_LACKS_STROPTS_H)
+#if !defined (ACE_LACKS_STROPTS_H) && !defined(__linux__)
 #  include /**/ <stropts.h>
+#elif defined(__linux__)
+struct strbuf {
+  int maxlen;
+  int len;
+  char *buf;
+};
 #endif /* !ACE_LACKS_STROPTS_H */
 
 // This is sorta counter intuitive, but this is how it was done in OS.h

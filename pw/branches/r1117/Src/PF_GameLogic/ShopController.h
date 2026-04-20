@@ -14,10 +14,7 @@ namespace UI
   class ImageLabel;
 }
 
-namespace ShopItemState
-{
-  enum EShopItemState;
-}
+#include "AdventureFlashInterface.h"
 
 namespace NGameX
 {

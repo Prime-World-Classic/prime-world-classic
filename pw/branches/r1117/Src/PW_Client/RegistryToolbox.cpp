@@ -1,5 +1,6 @@
-
 #include "stdafx.h"
+
+#ifdef _WIN32
 #include "RegistryToolbox.h"
 #include "Version.h"
 
@@ -111,3 +112,13 @@ void RegisterReplayFileExtentionAssociation()
   rea->Update(appRunPath.c_str(), appIconPath.c_str());
 
 }
+
+#else
+#include "RegistryToolbox.h"
+
+namespace Game {
+  bool GetRegString( HKEY root, const char* path, const char* valueName, nstl::string &retStr ) { return false; }
+  void GetRegString( HKEY root, const char* path, const char* valueName, const char* defaultValue, nstl::string &retStr ) { retStr = defaultValue; }
+}
+
+#endif

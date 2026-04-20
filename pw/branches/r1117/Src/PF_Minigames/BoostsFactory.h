@@ -2,11 +2,6 @@
 
 #include "DBEasel.h"
 
-namespace NDb
-{
-  enum EBoostType;
-}
-
 namespace PF_Minigames
 {
 

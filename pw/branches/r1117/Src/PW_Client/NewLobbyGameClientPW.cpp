@@ -165,7 +165,7 @@ int GameClientPW::Poll( float transceiverDeltaTime )
       }
       else
       {
-        Sleep( 50 ); //Let da loadin tred do da woak
+        threading::Sleep( 50 ); //Let da loadin tred do da woak
         float pro = mapLoadingJob->GetProgress()->GetTotalProgress();
         SetMapLoadingProgress( Clamp( (int)( pro * 100.0f ), 0, 100 ) );
 

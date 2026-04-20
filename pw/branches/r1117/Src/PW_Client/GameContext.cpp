@@ -25,7 +25,7 @@
 #include "Network/RdpClientTransport/RdpClientTransport.h"
 
 #include "PF_GameLogic/MapCollection.h"
-#include "PF_GameLogic/DbSessionRoots.h"
+#include "PF_GameLogic/DBSessionRoots.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
 
 #include "PF_GameLogic/StringExecutor.h"

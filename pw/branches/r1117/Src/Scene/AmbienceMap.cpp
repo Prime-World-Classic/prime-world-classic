@@ -3,7 +3,7 @@
 
 #include "../Render/TextureManager.h"
 #include "../System/DebugVar.h"
-#include "dxerr.h"
+#include "DxErr.h"
 
 #include "../Render/dipdescriptor.h"
 #include "../Render/ImmediateRenderer.h"

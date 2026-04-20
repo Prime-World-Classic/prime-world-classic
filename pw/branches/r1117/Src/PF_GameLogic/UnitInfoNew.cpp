@@ -106,7 +106,7 @@ void HeroInfoNew::Update()
     heroParams.manaRegen = hero->GetEnergyRegenTotal();
   }
 
-  heroParams.isVisible = ClientVisibilityHelper::IsVisibleForPlayer(hero);
+  heroParams.isVisible = ClientVisibilityHelper::IsVisibleForPlayer((const NWorld::PFBaseUnit*)hero.GetPtr());
   heroParams.isPickable = !hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK);
   heroParams.timeToRessurect = hero->GetRespawnDelay();
   heroParams.channgeling = hero->GetChannellingProgress();

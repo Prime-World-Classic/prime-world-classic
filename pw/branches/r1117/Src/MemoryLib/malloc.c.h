@@ -686,7 +686,9 @@ MAX_RELEASE_CHECK_RATE   default: 4095 unless not HAVE_MMAP
   system version and #define HAVE_USR_INCLUDE_MALLOC_H.
 */
 
-/* #define HAVE_USR_INCLUDE_MALLOC_H */
+#if defined(NI_PLATF_LINUX) || defined(__linux__)
+#define HAVE_USR_INCLUDE_MALLOC_H
+#endif
 
 #ifdef HAVE_USR_INCLUDE_MALLOC_H
 #include "/usr/include/malloc.h"
@@ -1286,6 +1288,7 @@ int mspace_mallopt(int, int);
 #endif /* LACKS_STDLIB_H */
 #ifdef DEBUG
 #if ABORT_ON_ASSERT_FAILURE
+#undef assert
 #define assert(x) if(!(x)) ABORT
 #else /* ABORT_ON_ASSERT_FAILURE */
 #include <assert.h>

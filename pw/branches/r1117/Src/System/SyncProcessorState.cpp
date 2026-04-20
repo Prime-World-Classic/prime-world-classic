@@ -2,8 +2,12 @@
 
 #include "SyncProcessorState.h"
 #include <float.h>
+#ifdef _WIN32
 #include <psapi.h>
+#endif
+#ifdef _WIN32
 #include <tlhelp32.h>
+#endif
 
 
 void SyncProcessorState()
@@ -14,13 +18,19 @@ void SyncProcessorState()
 
 unsigned int GetProcessorState()
 {
+#ifdef _WIN32
   return _control87( 0, 0 );
+#else
+  return 0;
+#endif
 }
 
 
 void SetProcessorState( unsigned int newState, unsigned int mask /*= 0xffffffff*/ )
 {
+#ifdef _WIN32
   _control87( newState, mask );
+#endif
 }
 
 bool IsProcessorStateForLogic()
@@ -38,6 +48,7 @@ namespace utils
 
 bool GetMemoryStatus( size_t & virtualSize )
 {
+#ifdef _WIN32
   PROCESS_MEMORY_COUNTERS pmc;
   ZeroMemory( &pmc, sizeof( pmc ) );
   pmc.cb = sizeof( pmc );
@@ -46,6 +57,10 @@ bool GetMemoryStatus( size_t & virtualSize )
 
   virtualSize = (size_t)pmc.PagefileUsage;
   return true;
+#else
+  virtualSize = 0;
+  return false;
+#endif
 }
 
 
@@ -53,6 +68,7 @@ bool GetMemoryStatus( size_t & virtualSize )
 
 int GetThreadCount()
 {
+#ifdef _WIN32
   DWORD pid = GetCurrentProcessId();
 
   HANDLE snapshot = CreateToolhelp32Snapshot( TH32CS_SNAPALL, 0 );
@@ -71,6 +87,9 @@ int GetThreadCount()
   CloseHandle( snapshot );
 
   return ret ? entry.cntThreads : -1;
+#else
+  return 1;
+#endif
 }
 
 } //namespace utils

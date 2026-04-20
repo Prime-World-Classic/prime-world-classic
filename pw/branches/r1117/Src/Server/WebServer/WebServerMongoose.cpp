@@ -226,7 +226,7 @@ void MongooseServer::ProcessRequest( mg_connection * conn, const mg_request_info
         }
         else {
           NI_PROFILE_HEAVY_BLOCK( "Sleep" );
-          Sleep( 1 );
+          threading::Sleep( 1 );
         }
       }
     }

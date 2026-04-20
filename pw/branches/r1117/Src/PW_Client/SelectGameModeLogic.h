@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Client/ScreenUILogicBase.h"
+#include "Game/PF/Client/LobbyPvx/LobbyClientBase.h"
 
 namespace NGameX
 {
@@ -10,8 +11,6 @@ namespace NGameX
 namespace lobby
 {
   struct SDevGameInfo;
-
-  namespace EOperationResult { enum Enum; }
 }
 
 

@@ -444,7 +444,7 @@ namespace NWorld
 
     PFDispatch const* pDispatch = pDispatchEvent->GetDispatch();
     bool bIsAlly = (pDispatch->GetSender()->GetFaction()==pOwner->GetReceiver()->GetFaction());
-    const CPtr<PFBaseUnit> pEventSender = pDispatchEvent->GetDispatch()->GetSender();
+    const CPtr<PFBaseUnit> pEventSender = pDispatchEvent->GetDispatch()->GetSender().GetPtr();
 
     PFAbilityData const* pAbilityData = pDispatch->GetAbility()->GetData();
 
@@ -756,7 +756,7 @@ namespace NWorld
       {
         DummyFormulaPars dummy( pOwner, pBuffApplicator->GetLifetime() );
         const float newLifetime = db.newLifetime( pOwner->GetAbilityOwner(), pOwner->GetReceiver(), &dummy );
-        pBuffApplicator->SetLifetime( newLifetime ); // что с дочерними аппликаторами, если они вдруг используют lifetime?
+        pBuffApplicator->SetLifetime( newLifetime ); // пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ lifetime?
         pBuffApplicator->SetDuration( pBuffApplicator->GetModifiedDuration( newLifetime ) );
       }
       else
@@ -921,7 +921,7 @@ namespace NWorld
       NI_ASSERT(pControlledApplicator, "Applicator name in EventProcessorOnUseAbilityForceStrike must be an SpellPeriodicallyVisualApplicator!");
       if (pControlledApplicator)
       {
-        // HACK!!! Мы не можем сделать иначе, потому что внутри страйка нужен неконстантный this :(
+        // HACK!!! пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ this :(
         const_cast<PFApplSpellPeriodicallyVisual*>(pControlledApplicator)->DoStrike();
       }
     }

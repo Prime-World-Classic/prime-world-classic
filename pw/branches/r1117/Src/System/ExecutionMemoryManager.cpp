@@ -1,13 +1,5 @@
-/*
-* DataExecutor.cpp
-*
-*  Created on: 19.01.2009
-*      Author: earnol
-*/
-
-#include "stdafx.h"
-
 #include "ExecutionMemoryManager.h"
+#ifdef _WIN32
 #include "../System/Base64.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,3 +164,15 @@ void ExecutionMemoryManager::Free(void *dataPointer)
   return;
 }
 
+
+#else
+
+ExecutionMemoryManager::ExecutionMemoryManager(unsigned int, unsigned int) {}
+ExecutionMemoryManager::~ExecutionMemoryManager() {}
+void* ExecutionMemoryManager::Alloc(unsigned int) { return NULL; }
+void ExecutionMemoryManager::Free(void*) {}
+ExecutionMemoryManager::LinkTableEntry const* ExecutionMemoryManager::GetEntryByName(char const*, int&) { return NULL; }
+int ExecutionMemoryManager::GetSymbolOffset(char const*) { return 0; }
+int ExecutionMemoryManager::GetLinkCount() { return 0; }
+
+#endif

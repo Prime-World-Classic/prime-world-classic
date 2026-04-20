@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "RelayBalancer/RelayHostContext.h"
+#include "RelayHostContext.h"
 
 NI_DEFINE_REFCOUNT(Relay::HostContext);
 

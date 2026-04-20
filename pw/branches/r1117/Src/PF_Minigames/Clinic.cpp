@@ -1,3 +1,4 @@
+#if 0
 #include "stdafx.h"
 
 #include "../Client/ScreenCommands.h"
@@ -1464,3 +1465,4 @@ void Clinic::TakeGold( int _amount ) const
 } // namespace PF_Minigames
 BASIC_REGISTER_CLASS(PF_Minigames::IClinicBuyUIRequest)
 REGISTER_SAVELOAD_CLASS_NM(Clinic, PF_Minigames)
+#endif

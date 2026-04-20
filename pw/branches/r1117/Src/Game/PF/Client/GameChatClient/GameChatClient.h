@@ -1,5 +1,5 @@
 #pragma once
-#include "Chat/ChatSvc/RChatClientIface.auto.h"
+#include "RChatClientIface.auto.h"
 #include <RPC/IfaceRequester.h>
 #include <RPC/LocalEntityFactory.h>
 #include "IGameChatClient.h"

@@ -196,7 +196,7 @@ bool FormulaBuilder::PrepareCFile(char const *cpFormula, char const *cpReturnTyp
   {
     return false;
   }
-  WriteCpp(fp, "#include <math.h>\n#include \"FormulaPars.h\"\n    \n");
+  WriteCpp(fp, "#include <math.h>/n#include /"FormulaPars.h/"/n    /n");
   WriteCpp(fp, NStr::StrFmt("%s", cpReturnType));
   if(altSecond)
     WriteCpp(fp, " abilityFunctor(IUnitFormulaPars const *pFirst, ICustomFormulaPars const *pSecond, IMiscFormulaPars const *pMisc)\n{\n  return ");

@@ -160,16 +160,16 @@ void ScanCoveredGridCells( float x1, float y1, float x2, float y2, TFunctional &
 
 	if ( swapXY )
 	{
-		__swap( x1, y1 );
-		__swap( x2, y2 );
+		std::swap( x1, y1 );
+		std::swap( x2, y2 );
 	}
 
 	const bool swapBE = x2 < x1;
 
 	if ( swapBE )
 	{
-		__swap( x1, x2 );
-		__swap( y1, y2 );
+		std::swap( x1, x2 );
+		std::swap( y1, y2 );
 	}
 
 	NI_VERIFY( x2 - x1 > 1.f, "Tool short line", return );

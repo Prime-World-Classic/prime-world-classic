@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../System/noncopyable.h"
-#include "aabb.h"
+#include "AABB.h"
 #include "OcclusionQueries.h"
 
 // 
@@ -16,11 +16,11 @@
 																								static void* operator new(size_t size, void* ptr); \
                                                 static void operator delete(void* ptr, void* pMem);
 
-#define DECLARE_INSTANCE_COUNTER(className)	uint className##::##className##InstanceCounter = 0; \
-																						void* className##::operator new(size_t size) { ++className##InstanceCounter; return Aligned_MAlloc(sizeof(className), 16); } \
-																						void className::operator delete(void* ptr)	{ --className##InstanceCounter; Aligned_Free(ptr); } \
-                                            void* className##::operator new(size_t size, void* ptr) { return ptr; } \
-                                            void className##::operator delete(void* ptr, void* pMem) { ((className*)ptr)->~className(); }
+#define DECLARE_INSTANCE_COUNTER(className)     uint className::className##InstanceCounter = 0; \
+                                                                                                                                                                                void* className::operator new(size_t size) { ++className::className##InstanceCounter; return Aligned_MAlloc(sizeof(className), 16); } \
+                                                                                                                                                                                void className::operator delete(void* ptr)      { --className::className##InstanceCounter; Aligned_Free(ptr); } \
+                                            void* className::operator new(size_t size, void* ptr) { return ptr; } \
+                                            void className::operator delete(void* ptr, void* pMem) { ((className*)ptr)->~className(); }
 																								
 #define SET_INSTANCE_COUNTER(className) ;// NDebug::SetDebugVar( #className, string(NStr::StrFmt("%d x %db = %d bytes", className##::GetInstanceCounter(), sizeof(className), sizeof(className)*className##::GetInstanceCounter())), false );
 

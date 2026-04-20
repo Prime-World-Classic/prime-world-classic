@@ -1,3 +1,4 @@
+#ifdef _WIN32
 //----------------------------------------------------------------------------
 // File: VidMemViaDDraw.cpp
 //
@@ -168,3 +169,4 @@ HRESULT GetDeviceIDFromHMonitor( HMONITOR hm, WCHAR* strDeviceID, int cchDeviceI
 
     return E_FAIL;
 }
+#endif

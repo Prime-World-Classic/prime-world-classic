@@ -2,16 +2,16 @@
 
 #include <RPC/GateKeeper.h>
 #include <Coordinator/ServiceRole.h>
-#include "RelayBalancer/RelayBalancerIface.h"
-#include "RelayBalancer/RelayAllocationContextFactory.h"
-#include "RelayBalancer/RelayAllocationCompletedNotify.h"
-#include "RelayBalancer/RelayBalancerClientNotifyIface.h"
-#include "RelayBalancer/RelaySvcContextNotity.h"
-#include "UserManagerSvc/RUserManagerIface.auto.h"
-#include "RelayBalancer/RelayHostContext.h"
+#include "RelayBalancerIface.h"
+#include "RelayAllocationContextFactory.h"
+#include "RelayAllocationCompletedNotify.h"
+#include "RelayBalancerClientNotifyIface.h"
+#include "RelaySvcContextNotity.h"
+#include "Server/UserManager/UserManagerSvc/RUserManagerIface.auto.h"
+#include "RelayHostContext.h"
 #include <Coordinator/ServiceAppearanceNotifierIface.h>
 #include <Coordinator/RServiceAppearanceNotifierIface.auto.h>
-#include "RelayBalancer/RelayBalancerSettings.h"
+#include "RelayBalancerSettings.h"
 
 namespace Relay
 {
@@ -104,8 +104,8 @@ namespace Relay
     StrongMT<Transport::IAddressTranslator> addrResolver;
     UsersT users_;
     StrongMT<rpc::IfaceRequester<UserManager::RIUserManager> > userMngrIface_;
-    SvcContextListT registeredSvcCtxs;  //  список контекстов которые уже имеем
-    SvcContextListT initSvcCtxs;  //  список контекстов находящихся в процессе инициализации, при переходе в OPENED удаляются из списка
+    SvcContextListT registeredSvcCtxs;  //  пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+    SvcContextListT initSvcCtxs;  //  пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ OPENED пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     StrongMT<rpc::IfaceRequester<Coordinator::RIServiceAppearancePublisher> > svcPublisherIface_;
     Coordinator::SubcriberIdT subscriberId_;

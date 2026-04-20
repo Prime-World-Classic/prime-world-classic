@@ -50,11 +50,20 @@ public:
   virtual void Format( IBuffer * buffer, const SFormatSpecs & specs ) const
   {
     char buf[48] = "";
+#ifndef NI_PLATF_LINUX
     _snprintf( buf, 47, "(%d.%d.%d.%d:%u %u:%u)", 
       (unsigned)descr.remote.sin_addr.s_net, (unsigned)descr.remote.sin_addr.s_host, 
       (unsigned)descr.remote.sin_addr.s_lh, (unsigned)descr.remote.sin_addr.s_impno, 
       (unsigned)descr.remote.Port(),
       descr.localMux, descr.remoteMux );
+#else
+    unsigned int addr = ntohl(descr.remote.sin_addr.s_addr);
+    snprintf( buf, 47, "(%u.%u.%u.%u:%u %u:%u)", 
+      (addr >> 24) & 0xFF, (addr >> 16) & 0xFF, 
+      (addr >> 8) & 0xFF, addr & 0xFF, 
+      (unsigned)descr.remote.Port(),
+      descr.localMux, descr.remoteMux );
+#endif
     buf[47] = 0;
 
     FormatString( buffer, buf, specs );

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Render/aabb.h"
+#include "AABB.h"
 
 #include "CollectionList.h"
 #include "VoxelGrid.h"
@@ -209,7 +209,7 @@ public:
     */
     template <class Processor> bool process(Processor &p, Render::AABB const &bbox)
     {
-      VoxelGridObj::ProcessByBBoxProc<Processor> bbp(bbox, p);
+      typename VGObj::template ProcessByBBoxProc<Processor> bbp(bbox, p);
       return m_objects.process(bbp);
     }
 
@@ -228,7 +228,7 @@ public:
     */
     template <class Processor> bool process(Processor &p, Render::ConvexVolume const &frustum)
     {
-      VoxelGridObj::ProcessByFrustumProc<Processor> fp(frustum, p);
+      typename VGObj::template ProcessByFrustumProc<Processor> fp(frustum, p);
       return m_objects.process(fp);
     }
 
@@ -406,7 +406,7 @@ public:
   ~CollectionVG()
   {
     // remove all objects from collection
-    VoxelGridObj::SetVoxelGridProc p(NULL);
+    typename VGObj::SetVoxelGridProc p(NULL);
     process(p);
   }
 
@@ -505,7 +505,7 @@ public:
       ++m_processId;
     }
 
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     for (int i = 0; i < m_voxels.size(); ++i)
     {
@@ -546,11 +546,12 @@ public:
 
     // user processor is wrapped into "unique" processor that prevents multiple processing
     // of the same object
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     // "unique" processor wrapped into "objects in voxel" processor that processes
     // all objects in voxel whose bbox intersects given bbox
-    VoxelProcessObjectsProc< VGObj::ProcessUniqueProc<Processor> > pop(m_voxels, up, bbox);
+    typedef typename VGObj::template ProcessUniqueProc<Processor> TUniqueProc;
+    VoxelProcessObjectsProc< TUniqueProc > pop(m_voxels, up, bbox);
     
     return m_grid.process(pop, bbox);
   }
@@ -582,11 +583,12 @@ public:
 
     // user processor is wrapped into "unique" processor that prevents multiple processing
     // of the same object
-    VGObj::ProcessUniqueProc<Processor> up(m_processId, p);
+    typename VGObj::template ProcessUniqueProc<Processor> up(m_processId, p);
     
     // "unique" processor wrapped into "objects in voxel" processor that processes
     // all objects in voxel whose bbox intersects given frustum
-    VoxelProcessObjectsProc< VGObj::ProcessUniqueProc<Processor> > pop(m_voxels, up, frustum);
+    typedef typename VGObj::template ProcessUniqueProc<Processor> TUniqueProc;
+    VoxelProcessObjectsProc< TUniqueProc > pop(m_voxels, up, frustum);
     
     return m_grid.process(pop, frustum);
   }

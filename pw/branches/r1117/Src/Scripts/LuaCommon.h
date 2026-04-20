@@ -76,11 +76,23 @@ namespace Lua
 } // namespace Lua
 
 #ifndef _SHIPPING
+#ifndef LUA_NATIVE
 # define LUA_NATIVE                       Lua::LuaNativeGuard luaNativeGuard;
+#endif
+#ifndef LUA_SCRIPT
 # define LUA_SCRIPT                       Lua::LuaScriptGuard luaScriptGuard;
+#endif
+#ifndef LUA_STACK_CHECKER
 # define LUA_STACK_CHECKER(state, offset) Lua::StackChecker luaStackCheckerInstance(state, offset);
+#endif
 #else
-# define LUA_NATIVE                      
-# define LUA_SCRIPT                      
+#ifndef LUA_NATIVE
+# define LUA_NATIVE
+#endif
+#ifndef LUA_SCRIPT
+# define LUA_SCRIPT
+#endif
+#ifndef LUA_STACK_CHECKER
 # define LUA_STACK_CHECKER(state, offset)
+#endif
 #endif

@@ -13,6 +13,7 @@ namespace flash
   struct SWF_GRADIENT;
 }
 
+namespace nstl {
 template<> struct hash<flash::SWF_GRADIENT>
 {
   size_t operator()(const flash::SWF_GRADIENT& _gradient ) const 
@@ -34,6 +35,7 @@ template<> struct hash<flash::SWF_GRADIENT>
     return __h;
   }
 };
+}
 
 namespace Render
 {

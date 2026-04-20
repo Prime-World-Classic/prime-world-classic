@@ -13,7 +13,12 @@
 #include "../libdb/XmlChunkSaver.h"
 #include "../libdb/XMLReader.h"
 
+#ifdef _WIN32
 typedef __int32 (__stdcall * CompileCallType)(char const *, char *, int , char const *) ;
+#else
+#include <stdint.h>
+typedef int32_t (* CompileCallType)(char const *, char *, int , char const *) ;
+#endif
 ScopedPtr<IDefaultFormulaStorage> ExecutableString::formulaCache;
 
 ExecutableString::ExecutableString()

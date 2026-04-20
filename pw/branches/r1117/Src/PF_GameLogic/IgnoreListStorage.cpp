@@ -100,7 +100,7 @@ namespace
 
       TLines lines;
 
-      NStr::SplitString(szBuffer.c_str() + 1, &lines, L"\r\n"); // пропускаем один wchar_t с BOM
+      NStr::SplitString(szBuffer.c_str() + 1, &lines, L"\r\n"); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ wchar_t пїЅ BOM
 
       TLines::const_iterator it = lines.begin();
       TLines::const_iterator it_end = lines.end();
@@ -115,7 +115,7 @@ namespace
         if (line1.empty() || line2.empty())
           continue;
 
-        const TUserId auid = _wtoi64(line1.c_str());
+        const TUserId auid = wcstoll(line1.c_str(), NULL, 10);
 
         if (!auid)
           continue;
@@ -482,7 +482,7 @@ namespace NGameX
     if (!listener)
       return;
 
-    // TODO: не добавлять listener'а, если он уже зарегистрирован
+    // TODO: пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ listener'пїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     listeners.push_back(listener);
   }
@@ -503,7 +503,7 @@ namespace NGameX
 
     for (TListeners::iterator it_listener = listeners.begin(); it_listener != listeners.end(); ++it_listener)
     {
-      if (const TListenerPtr listener = (*it_listener))
+      if (IIgnoreListListener* listener = (*it_listener).Get())
       {
         listener->OnUserAddedToIgnoreList(auid);
       }
@@ -526,7 +526,7 @@ namespace NGameX
 
     for (TListeners::iterator it_listener = listeners.begin(); it_listener != listeners.end(); ++it_listener)
     {
-      if (const TListenerPtr listener = (*it_listener))
+      if (IIgnoreListListener* listener = (*it_listener).Get())
       {
         listener->OnUserRemovedFromIgnoreList(auid);
       }

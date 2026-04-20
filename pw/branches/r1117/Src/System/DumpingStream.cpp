@@ -29,7 +29,11 @@ DumpingStream& DumpingStream::operator = ( const DumpingStream& other )
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void DumpingStream::InitMembers()
 {
-  pData = (StreamHeader *)VirtualAlloc( 0, WinFileUnbuffered::GetPageSize(), MEM_COMMIT, PAGE_READWRITE );                 
+  #ifdef _WIN32
+  pData = (StreamHeader *)VirtualAlloc( 0, WinFileUnbuffered::GetPageSize(), MEM_COMMIT, PAGE_READWRITE );
+#else
+  pData = (StreamHeader *)malloc(WinFileUnbuffered::GetPageSize());
+#endif                 
   isDumpingStarted = false;
   completionData.Reset(); 
   pData->nHeaderSize = WinFileUnbuffered::GetPageSize();
@@ -111,7 +115,11 @@ DumpingStream::~DumpingStream()
   Close();
   if(pData != NULL)
   {
+    #ifdef _WIN32
     VirtualFree(pData, 0, MEM_RELEASE);
+#else
+    free(pData);
+#endif
     pData = NULL;
   }
 }

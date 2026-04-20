@@ -19,16 +19,11 @@ namespace UI
 
 
 
-namespace Peered
-{
-  namespace EDisconnectReason { enum Enum; }
-}
+#include "HybridServer/Peered.h"
+#include "Game/PF/Client/LobbyPvx/LobbyClientBase.h"
 
-
-namespace lobby
-{
-  namespace EClientError { enum Enum; }
-}
+namespace Peered {}
+namespace lobby {}
 
 namespace Game
 {

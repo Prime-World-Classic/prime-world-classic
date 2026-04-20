@@ -25,6 +25,8 @@ namespace
     ParamsMap externalParams;
 
   public:
+    AbilityVariantContext* GetSelf() { return this; }
+    const AbilityVariantContext* GetSelf() const { return this; }
     AbilityVariantContext( PFAbilityData const* pAbility, NGameX::PrecompiledTooltipVariantParameters const* pPrms )
       : pAbility(pAbility)
       , pOwner( pAbility->GetOwner() )
@@ -48,13 +50,13 @@ namespace
 
   private:
 
-#define GET_EXT__PARAM( Name )                                                                        \
-    {                                                                                                 \
-      ParamsMap::const_iterator iExternalPrm = externalParams.find( #Name );                          \
-      return ( iExternalPrm != externalParams.end() ) ? iExternalPrm->second : pOwner->Get##Name##(); \
+#define GET_EXT__PARAM( Name )                                                                    \
+    {                                                                                               \
+    ParamsMap::const_iterator iExternalPrm = externalParams.find(#Name);                          \
+    return ( iExternalPrm != externalParams.end() ) ? iExternalPrm->second : pOwner->Get##Name(); \
     }   
 
-#define GET_UNIT_PARAM( Name ) { return pOwner->Get##Name##(); }
+#define GET_UNIT_PARAM( Name ) { return pOwner->Get##Name(); }
 
     virtual float GetLife()      const { GET_EXT__PARAM( Life      ); }
     virtual float GetEnergy()    const { GET_EXT__PARAM( Energy    ); }
@@ -217,7 +219,7 @@ namespace
 #define GET_EXT__PARAM( Name )                                                                    \
     {                                                                                               \
     ParamsMap::const_iterator iExternalPrm = externalParams.find(#Name);                          \
-    return (iExternalPrm != externalParams.end()) ? iExternalPrm->second : pAbility->Get##Name##(); \
+    return (iExternalPrm != externalParams.end()) ? iExternalPrm->second : pAbility->Get##Name(); \
     }   
 
     virtual int   GetRank               ()const { GET_EXT__PARAM(Rank              ); }
@@ -296,9 +298,9 @@ namespace
     {
       float value;
       if (context.GetAbility()->IsSecondState())
-        value = formulaSecondState( &context, &context, &context, 0.0f );
+        value = formulaSecondState( context.GetSelf(), context.GetSelf(), context.GetSelf(), 0.0f );
       else
-        value = formula( &context, &context, &context, 0.0f );
+        value = formula( context.GetSelf(), context.GetSelf(), context.GetSelf(), 0.0f );
       return !useAbilityMods ? value : context.GetAbility()->GetModifiedValue(value, modId);
     }
 
@@ -324,7 +326,7 @@ namespace
 
     virtual bool GetBool() const
     {
-      return formula( &context, &context, &context, 0.0f );
+      return formula( context.GetSelf(), context.GetSelf(), context.GetSelf(), 0.0f );
     }
 
     virtual NNameMap::VariantType::Enum GetType() const { return NNameMap::VariantType::Bool; }
@@ -444,5 +446,4 @@ NDb::UnitConstant const* PFAbilityConstantsMap::Get(const char *name) const
   return NULL;
 }
 
-
-} //namespace NWorld
+} //namespace NWorldspace NWorld

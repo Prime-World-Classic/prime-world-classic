@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "RelayBalancer/RelayAllocationContext.h"
-#include "RelayBalancer/RelayAllocationContextFactory.h"
+#include "RelayAllocationContext.h"
+#include "RelayAllocationContextFactory.h"
 
 NI_DEFINE_REFCOUNT(Relay::AllocationContextFactory);
 

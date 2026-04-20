@@ -39,7 +39,7 @@ class PointersHolder : public BaseObjectMT
   template<class T> 
   void clear( T& container )
   {
-    for ( T::iterator it = container.begin(); it != container.end(); it++ )
+    for ( typename T::iterator it = container.begin(); it != container.end(); it++ )
     {
       it->second = 0;
     }

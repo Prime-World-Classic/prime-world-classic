@@ -5,7 +5,7 @@
 
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
-#include "rect.h"
+#include "Rect.h"
 #include "ShadowManager.h"
 #include "texture.h"
 #include "WaterMesh.h"
@@ -27,7 +27,7 @@ Interface::Interface(HWND hwnd)
 	: pScene(0)
   , disableWarFog(false)
 {
-	unsigned int nWnd = (unsigned int)( hwnd ? hwnd : NMainFrame::GetWnd() );
+	unsigned int nWnd = (unsigned int)(uintptr_t)( hwnd ? hwnd : NMainFrame::GetWnd() );
 	Renderer::Init(nWnd);
 
 	s_pSelf = this;

@@ -38,6 +38,7 @@ namespace NCore
 
 namespace Game
 {
+class ReplayRunner;
 
 class LoadingScreen;
 class LocalCmdScheduler;

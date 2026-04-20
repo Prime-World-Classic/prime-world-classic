@@ -432,7 +432,7 @@ void SceneComponent::Traverse( Traverser& traverser ) const
 		{
 			it->Traverse( traverser );
 			it = it->GetBrother();
-		} while ( it && it != itFront )
+		} while ( it && it != itFront );
 	}
 }
 

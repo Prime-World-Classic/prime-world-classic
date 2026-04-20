@@ -4,8 +4,8 @@
 #include "Server/ServerAppBase/ServerCfg.h"
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "Coordinator/CoordinatorServerNaming.h"
-#include "UserManagerSvc/UserManagerNaming.h"
-#include "UserManagerSvc/LUserManagerIface.auto.h"
+#include "Server/UserManager/UserManagerSvc/UserManagerNaming.h"
+#include "Server/UserManager/UserManagerSvc/LUserManagerIface.auto.h"
 #include "Network/RSessionKeyRegisterIface.auto.h"
 #include "Network/ClusterConfiguration.h"
 

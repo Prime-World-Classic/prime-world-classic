@@ -3,7 +3,7 @@
 #include "../UI/FSCommandListner.h"
 #include "System/StarForce/HiddenVars.h"
 
-namespace ActionBarSlotState  {  enum EActionBarSlotState; }
+#include "AdventureFlashInterface.h"
 
 namespace UI                  
 {  

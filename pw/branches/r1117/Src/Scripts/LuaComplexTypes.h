@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LuaValues.h"
+#include "LuaCommon.h"
 #include "lua.hpp"
 
 namespace NScript
@@ -116,7 +117,7 @@ namespace Lua
     static int put( lua_State *L, const TMapType & value )
     {
       lua_createtable( L, 0, value.size() );
-      for( TMapType::iterator it = value.begin(); it != value.end(); ++it )
+      for( typename TMapType::iterator it = value.begin(); it != value.end(); ++it )
       {
         lua_values<TKey>::put( L, it->first );
         lua_values<TValue>::put( L, it->second );

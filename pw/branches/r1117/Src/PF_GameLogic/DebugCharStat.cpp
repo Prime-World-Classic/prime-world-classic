@@ -1,6 +1,6 @@
 #include "StdAfx.h"
 #include "DebugCharStat.h"
-#include "../ui/Window.h"
+#include "../UI/Window.h"
 #include "../UI/ImageLabel.h"
 #include "PFBaseUnit.h"
 

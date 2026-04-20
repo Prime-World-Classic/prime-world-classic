@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "BuffsController.h"
 
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 
 #include "PFApplMod.h"
 #include "PFBaseUnit.h"
@@ -309,7 +309,7 @@ void BuffsController::Update( int mouseX, int mouseY )
 void BuffsController::OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID, const char* args, const wchar_t * argsW  )
 {
   int show, index;
-  sscanf_s(args,"%d %d",&show, &index);
+  sscanf(args,"%d %d",&show, &index);
 
   if (index>=buffStatuses.size() || index<0)
     return;

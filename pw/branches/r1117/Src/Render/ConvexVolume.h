@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../System/fixedvector.h"
-#include "../MemoryLib/NewDelete.h"
+#include "MemoryLib/newdelete.h"
 
 namespace Render
 {

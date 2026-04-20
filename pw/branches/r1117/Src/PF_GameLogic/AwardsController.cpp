@@ -115,7 +115,7 @@ void AwardsController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
   }
 
   int show, index;
-  sscanf_s(args,"%d %d",&show, &index);
+  sscanf(args,"%d %d",&show, &index);
 
   if (index <0 || index>=awards.size())
   {
@@ -285,7 +285,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 		int filteredIndex = -1;
 		for(int j = 0; j<filteredAwards.size(); j++)
 		{
-			//сравниваем по картинке
+			//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 			if (resourceAwards[i].image == filteredAwards[j].image)
 			{
 				filteredIndex = j;
@@ -293,7 +293,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 			}
 		}
 		
-		//не нашли уже такой элемент
+		//пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		if (filteredIndex == -1)
 		{
 			filteredAwards.push_back(resourceAwards[i]);
@@ -301,7 +301,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 		}
 
 		
-		//Нашли уже нужный. надо теперь сложить две награды
+		//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 		Award & finalAward = filteredAwards[filteredIndex];
 		Award & curAward = resourceAwards[i];
 
@@ -310,7 +310,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 	}
 
 
-	//теперь уже добавляем полную сумму
+	//пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	for(int i = 0; i<filteredAwards.size(); i++)
 		awards.push_back(filteredAwards[i]);
 

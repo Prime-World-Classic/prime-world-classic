@@ -1,3 +1,4 @@
+#include "Win32_linux.h"
 #ifndef _SYNC_PROCESSOR_STATE_H_
 #define _SYNC_PROCESSOR_STATE_H_
 

@@ -207,7 +207,7 @@ public:
   void SetChildrenShift( LinearCoord dx, LinearCoord dy );
   const Point & GetChildrenShift() const { return childrenShift; }
   bool Is3D() const { return mode3d != E3DWindowMode::Nope; }
-  //align обозначает точку на окне (в долях окна), которой оно будет "прикреплено" к точке в 3D
+  //align пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ), пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ 3D
   void SetWorldPosition( const SHMatrix & position, const CVec2 & worldSize, const CVec2 & align = CVec2(0.5f, 0.5f), float _depthBias = 0.0f, E3DWindowMode::Enum mode = E3DWindowMode::World );
   void Stop3D();
 
@@ -348,7 +348,7 @@ protected:
   virtual void OnInitAfterChildrenCreated();
   virtual void OnEnable( bool _enable ) {}
   virtual void OnShow( bool _show ) {}
-  virtual bool OnMouseMove( const Point & mouse ); //Внимание! Если окно возвращает false из OnMouseMove(), то оно не получит OnMouseOver()
+  virtual bool OnMouseMove( const Point & mouse ); //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ false пїЅпїЅ OnMouseMove(), пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ OnMouseOver()
   virtual void OnMouseOver( bool over, const Point & mouse );
   virtual bool OnMouseDown( EMButton::Enum mbutton, const Point & point );
   virtual bool OnMouseUp( EMButton::Enum mbutton );
@@ -361,7 +361,7 @@ protected:
   virtual bool OnBind( const string & bind, float fDelta, bool *pResult ) { return false; }
   virtual bool OnActivationBind( const string & commandName ) { return false; }
   virtual void OnTimeTrigger() {}
-  virtual void OnScreenFocus( bool focus ) {} //Вызывается только для базового окна экрана
+  virtual void OnScreenFocus( bool focus ) {} //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   virtual void OnAction( EMButton::Enum mbutton ) {}
 
   virtual bool OnStartDrag( const char * id ) { return true; }
@@ -521,7 +521,25 @@ static TResult *GetChildChecked( Window * parent, const char * name, bool recurs
 
 } //namespace UI
 
+template<class TWnd>
+TWnd * UI::ScreenLogicBase::GetUISubWindow( UI::Window * parent, const char * name, bool recursive, bool doAssert ) {
+  if ( !parent )
+    return 0;
+  UI::Window * wnd = recursive ? parent->FindChild( name ) : parent->GetChild( name );
+  if ( !wnd ) {
+    if ( doAssert )
+      NI_ALWAYS_ASSERT( NStr::StrFmt( "UI layout '%s' not found in resource '%s'", name, parent->GetWindowLayoutDBID().GetFileName().c_str() ) );
+    return 0;
+  }
+  TWnd * result = dynamic_cast<TWnd *>( wnd );
+  NI_ASSERT( result, NStr::StrFmt( "UI layout '%s' from resource '%s' has invalid type", name, parent->GetWindowLayoutDBID().GetFileName().c_str() ) );
+  return result;
+}
 
+template<class TWnd>
+TWnd * UI::ScreenLogicBase::GetUIWindow( const char * name, bool recursive, bool doAssert ) {
+  return GetUISubWindow<TWnd>( pBaseWindow, name, recursive, doAssert );
+}
 
 
 #define REGISTER_CONTROLTYPE( layoutType, controlType ) \

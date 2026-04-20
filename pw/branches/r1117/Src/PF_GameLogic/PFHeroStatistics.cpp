@@ -16,7 +16,7 @@ namespace
 
   struct Initer
   {
-    Initer::Initer( CPtr<NWorld::PFBaseHero> hero, CPtr<NWorld::PFStatistics> stat ) { pHero = hero; pStat = stat; }
+    Initer( CPtr<NWorld::PFBaseHero> hero, CPtr<NWorld::PFStatistics> stat ) { pHero = hero; pStat = stat; }
     void operator()(CObj<NWorld::PFAchievBase> const& p) const { p->Init(pHero, pStat); }
 
     CPtr<NWorld::PFBaseHero> pHero;
@@ -556,7 +556,7 @@ void PFHeroStatistics::NotifyTeleport()
   history.back().teleport = true;
 }
 
-// Очки которые "показываются по табу".
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ".
 int PFHeroStatistics::GetGrandScore() const
 {
   int grandScore = score;

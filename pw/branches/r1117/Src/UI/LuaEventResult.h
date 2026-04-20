@@ -29,7 +29,7 @@ namespace Lua
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Lua-bind for this type
-template<> struct Lua::lua_values< UI::EEventResult::Enum >
+template<> struct lua_values< UI::EEventResult::Enum >
 {
   static UI::EEventResult::Enum get( lua_State * L, int idx );
 

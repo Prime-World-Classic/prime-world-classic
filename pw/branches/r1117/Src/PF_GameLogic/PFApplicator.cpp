@@ -259,9 +259,9 @@ int PFBaseApplicator::MakeSpellTargetFactionFlags(NDb::ESpellTarget spellTarget)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PFBaseApplicator::PFBaseApplicator(PFApplCreatePars const &cp)
-: PFWorldObjectBase( (cp.pAbility ? cp.pAbility->GetWorld() : (IsValid(cp.pWorld) ? cp.pWorld : 0)) , 0 )
+: PFWorldObjectBase( (cp.pAbility ? cp.pAbility->GetWorld() : (IsValid(cp.pWorld) ? cp.pWorld.GetPtr() : 0)) , 0 )
 , pAbility(cp.pAbility)
-, pOwner( cp.pAbility ? cp.pAbility->GetOwner() : (IsValid(cp.pOwner) ? cp.pOwner : 0) )
+, pOwner( cp.pAbility ? cp.pAbility->GetOwner().GetPtr() : (IsValid(cp.pOwner) ? cp.pOwner.GetPtr() : 0) )
 , pParent(cp.pParent), target(cp.target), pDBAppl(cp.pDBAppl), pDispatch(cp.pDispatch)
 , flags(FLAG_ENABLED)
 , bPassive(cp.bPassive)

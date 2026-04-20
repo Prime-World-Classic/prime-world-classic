@@ -1,17 +1,17 @@
-#ifndef NEW_LOBBYCLIENTBASE_H_INCLUDED
-#define NEW_LOBBYCLIENTBASE_H_INCLUDED
+#pragma once
+#pragma once
 
 #include "RPC/RPC.h"
 #include "RPC/GateKeeper.h"
 #include "LobbyClientInterface.h"
 #include "ClientAccountingGadget.h"
 #include <RPC/IfaceRequester.h>
+#include <RPC/LocalEntityFactory.h>
 
 
 namespace rpc
 {
   class GateKeeperClient;
-  struct LocalEntityFactory;
   class Node;
 }
 
@@ -27,6 +27,7 @@ namespace lobby
 
 class RIEntrance;
 class RIServerInstance;
+class LobbyUserProxy;
 
 
 
@@ -107,7 +108,7 @@ public:
 
   timer::Time               Now() const { return now; }
 
-  __time32_t                ServerTimestamp() const { return serverTimestamp; }
+  time_t                ServerTimestamp() const { return serverTimestamp; }
 
   void SetNotify( IClientNotify * _notify ) { notify = _notify; } //TODO: implement multiple callbacks
 
@@ -180,7 +181,7 @@ private:
   TGameLineUp                     gameLineUp;
   TReadyPlayers                   gameMembersReadiness;
 
-  __time32_t                      serverTimestamp;
+  time_t                      serverTimestamp;
   int                             timeDelta;
 
   StrongMT<rpc::IfaceRequester<Peered::RIGameServer>> gameServerRequester; //RDP transport mode mode
@@ -201,4 +202,3 @@ private:
 
 } //namespace lobby
 
-#endif //NEW_LOBBYCLIENTBASE_H_INCLUDED

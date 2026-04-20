@@ -5,7 +5,7 @@
 #include "DXManager.h"
 
 #include "../System/InlineProfiler.h"
-#include "SmartRenderer.h"
+#include "smartrenderer.h"
 #include "DXHelpers.h"
 #include "ParticleFX.h"
 

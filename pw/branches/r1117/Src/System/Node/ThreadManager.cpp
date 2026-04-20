@@ -167,7 +167,7 @@ namespace node {
 
                     if ( m_DelayedEvents.empty() == false ) {
 
-                        CDelayedEventsList::iterator iEnd = m_DelayedEvents.upper_bound( GetTickCount() );
+                        CDelayedEventsList::iterator iEnd = m_DelayedEvents.upper_bound( 0 );
                         if ( m_DelayedEvents.begin() != iEnd ) {
 
                             for ( CDelayedEventsList::iterator iEvent = m_DelayedEvents.begin(); iEnd != iEvent; ++iEvent ) {
@@ -300,7 +300,7 @@ namespace node {
             pNode->m_cpEvent = pEvent;
             pNode->m_cpSender = pSender;
             pNode->m_cpReceiver = pReceiver;
-            pNode->m_nDeliveryTime = GetTickCount() + nDelay;
+            pNode->m_nDeliveryTime = 0 + nDelay;
             pNode->m_nPeriod = nPeriod;
 
             m_EventsDelay.Push( pNode );
@@ -320,7 +320,7 @@ namespace node {
             pNode->m_cpEvent = pEvent;
             pNode->m_cpSender = pSender;
             pNode->m_cpReceiver = pReceiver;
-            pNode->m_nDeliveryTime = GetTickCount() + nDelay;
+            pNode->m_nDeliveryTime = 0 + nDelay;
             pNode->m_nPeriod = nPeriod;
 
             InsertDelayedEvent( pNode );

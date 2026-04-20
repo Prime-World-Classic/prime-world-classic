@@ -1,6 +1,6 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/UserManagerImpl.h"
-#include "UserManagerSvc/UserManagerCfg.h"
+#include "stdafx.h"
+#include "UserManagerImpl.h"
+#include "UserManagerCfg.h"
 #include "ServerAppBase/PerfCounters.h"
 
 

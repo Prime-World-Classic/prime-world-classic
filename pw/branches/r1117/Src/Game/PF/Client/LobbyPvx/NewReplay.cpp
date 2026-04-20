@@ -65,6 +65,7 @@ namespace
     return false;
   }
 	
+#ifdef WIN32
 	// Convert an ASCII string to a Unicode String
 	std::wstring utf8_decode(const std::string &str)
 	{	
@@ -86,6 +87,7 @@ namespace
 		WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &res[0], sz, 0, 0);
 		return res;
 	}
+#endif
 	
 	// Get current date/time, format 
 	const std::string currentDateTime() 
@@ -184,11 +186,18 @@ void ReplayWriter::WriteStartGame(Peered::TSessionId serverId, int step)
   {
     std::ofstream infoFileWriter;
     std::string infoFileNameStr(informationFileName.c_str());
+#ifdef WIN32
     std::wstring convertedToUtf8InfoFileName = utf8_decode(infoFileNameStr);
     infoFileWriter.open(convertedToUtf8InfoFileName.c_str(), std::ios_base::app | std::ios_base::out);
 
     const std::string replayFilePathEnc(replayFilePath.c_str()); 
     infoFileWriter << utf8_encode(utf8_decode(replayFilePathEnc));
+#else
+    infoFileWriter.open(infoFileNameStr.c_str(), std::ios_base::app | std::ios_base::out);
+
+    const std::string replayFilePathEnc(replayFilePath.c_str()); 
+    infoFileWriter << replayFilePathEnc;
+#endif
 
     infoFileWriter.close();
     MessageTrace( "replay_writer.WriteStartGameInfo: writed replayFilePath %s", replayFilePath);
@@ -258,8 +267,12 @@ void ReplayWriter::WriteStartGameInfo(const NGameX::ReplayInfo & _replayInfo)
   //infoFile - CheckIsExist
 
   const std::string infoFileNameStr(informationFileName.c_str());
+#ifdef WIN32
   const std::wstring convertedToUtf8InfoFileName = utf8_decode(infoFileNameStr);
   std::ifstream infoFileReader(convertedToUtf8InfoFileName.c_str());
+#else
+  std::ifstream infoFileReader(infoFileNameStr.c_str());
+#endif
   bool isExist = false;
   if (infoFileReader.is_open())
     isExist = infoFileReader.peek() != -1;
@@ -267,7 +280,11 @@ void ReplayWriter::WriteStartGameInfo(const NGameX::ReplayInfo & _replayInfo)
 
   MessageTrace( "replay_writer.WriteStartGameInfo: reader closed... start writer");
   std::ofstream infoFileWriter;
+#ifdef WIN32
   infoFileWriter.open(convertedToUtf8InfoFileName.c_str(), std::ios_base::app | std::ios_base::out);
+#else
+  infoFileWriter.open(infoFileNameStr.c_str(), std::ios_base::app | std::ios_base::out);
+#endif
   
   //set utf8 if file is not exist
   if (!isExist)
@@ -294,7 +311,11 @@ void ReplayWriter::WriteStartGameInfo(const NGameX::ReplayInfo & _replayInfo)
   if (headerWritten)
   {
     const std::string replayFilePathEnc(replayFilePath.c_str()); 
+#ifdef WIN32
     infoFileWriter << utf8_encode(utf8_decode(replayFilePathEnc));
+#else
+    infoFileWriter << replayFilePathEnc;
+#endif
   }
     
 
@@ -330,13 +351,19 @@ void ReplayWriter::WriteSessionInfoToFile(const StatisticService::RPC::SessionCl
   MessageTrace( "replay_writer.WriteSessionInfoToFile: start");
 
   const std::string infoFileNameStr(informationFileName.c_str());
+#ifdef WIN32
   const std::wstring convertedToUtf8InfoFileName = utf8_decode(infoFileNameStr);
+#endif
 
   //append win info to last line
   const std::string win_info = (_replayInfo.isWon ? "1" : "0");
   MessageTrace( "replay_writer.WriteSessionInfoToFile: start appending");
   std::ofstream infoFile;
+#ifdef WIN32
   infoFile.open(convertedToUtf8InfoFileName.c_str(), std::ios_base::app | std::ios_base::out);
+#else
+  infoFile.open(infoFileNameStr.c_str(), std::ios_base::app | std::ios_base::out);
+#endif
   
   const std::string statsStr = NStr::StrFmt("%d,%d,%d", _replayInfo.kills, _replayInfo.assists, _replayInfo.deaths);
   

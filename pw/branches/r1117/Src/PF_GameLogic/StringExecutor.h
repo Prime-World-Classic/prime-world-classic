@@ -8,6 +8,9 @@
 #ifndef STRINGEXECUTOR_H_
 #define STRINGEXECUTOR_H_
 
+struct IXmlSaver;
+#define STRINGEXECUTOR_H_
+
 #include "FormulaExecutor.h"
 #include "../Scripts/Script.h"
 #include "DefaultFormulaStorage.h"

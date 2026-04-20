@@ -35,7 +35,7 @@ class SocialConnection : public BaseObjectST, public ISocialConnection
 
   void GenerateRequest(Http::HttpRequest& request);
   void SendRequest(const Http::HttpRequest& request, const nstl::string& data = nstl::string());
-  void parseAuids(const nstl::vector<__int64>& auids, std::string& res );
+  void parseAuids(const nstl::vector<long long>& auids, std::string& res );
 
 public:
   explicit SocialConnection(const SocialBootstrap::Session& ss);
@@ -45,8 +45,8 @@ public:
   virtual bool AddFriend( __int64 auid );
   virtual bool CreateComplaint( __int64 toauid, int category, const nstl::wstring& text, const nstl::wstring& _logs, int kills, int deaths, int assists, 
                                        int points, int prime, int leave, int distance, int afks );
-  virtual bool ChoosePartyAgain(const nstl::vector<__int64>& auids, const unsigned __int64 sessionId, const unsigned __int64 timeLeft, const bool agreed);
-  virtual bool SendTeam(__int64 auid, const nstl::vector<__int64>& team_auids);
+  virtual bool ChoosePartyAgain(const nstl::vector<long long>& auids, const uint64_t sessionId, const uint64_t timeLeft, const bool agreed);
+  virtual bool SendTeam(__int64 auid, const nstl::vector<long long>& team_auids);
   virtual void Step();
   virtual void Share();
   virtual void Share( int _x, int _y, int _width, int _height );
@@ -64,8 +64,8 @@ public:
   virtual bool AddFriend( __int64 auid ) { return true; }
   virtual bool CreateComplaint( __int64 toauid, int category, const nstl::wstring& text, const nstl::wstring& _logs, int kills, int deaths, int assists, 
                                        int points, int prime, int leave, int distance, int afks ) { return true; }
-  virtual bool ChoosePartyAgain(const nstl::vector<__int64>&, const unsigned __int64, const unsigned __int64, const bool) { return true; }
-  virtual bool SendTeam(__int64 auid, const nstl::vector<__int64>& team_auids){return true;};
+  virtual bool ChoosePartyAgain(const nstl::vector<long long>&, const uint64_t, const uint64_t, const bool) { return true; }
+  virtual bool SendTeam(__int64 auid, const nstl::vector<long long>& team_auids){return true;};
 
   virtual void OnProtectionError() {}
 };

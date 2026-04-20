@@ -7,6 +7,10 @@
 namespace NScene
 {
 
+DiInt32 LoopNodeCallbackFunction(const DiAnGrCallbackParams& params);
+DiInt32 EndNodeCallbackFunction(const DiAnGrCallbackParams& params);
+DiInt32 EndNodeCallbackFunction1(const DiAnGrCallbackParams& params);
+
 int GetCurrentNodeIdx(AnimGraphController *ctrl)
 {
   int nodeIdx(-1), fromIdx(-1), toIdx(-1);
@@ -31,7 +35,7 @@ void UnregisterCallbacksForLoopedNode( AnimGraphController *ctrl, int nodeIdx )
   DiAnimNode* mainanimnode = ctrl->m_graph->GetNodeData( nodeIdx );
   if ( mainanimnode->IsSwitcher() )
   {
-    //Dispatcher - надо сделать unregister всем sub нодам
+    //Dispatcher - пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ unregister пїЅпїЅпїЅпїЅ sub пїЅпїЅпїЅпїЅпїЅ
     class UnRegistrator : public INeiFunctor
     {
       AnimGraphController* ctrl;
@@ -59,8 +63,8 @@ void UnregisterCallbacksForLoopedNode( AnimGraphController *ctrl, int nodeIdx )
 
 float CalcRegTime( AnimGraphController *ctrl, float nodeLength )
 {
-  // Найти место и поставить callback, который сработает через ctrl->loopTime времени в секундах
-  // Если нода меньше длинной, чем этот loopTime, то проиграть ноду numLoopCycle раз а потом вызвать callback
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ callback, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ctrl->loopTime пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ loopTime, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ numLoopCycle пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ callback
   NI_ASSERT( nodeLength != 0.0f, "Bad node length" );
   float regTime = 0.0f;
   if ( ctrl->loopTime <= nodeLength )
@@ -374,7 +378,7 @@ void AnimGraphController::SetFlTransactionsInfo( int fromNodeIdx, int toNodeIdx,
   ftrans->SetToParam(partInfo.toParam.value);
 }
 
-// перезагрузить AG из базы данных
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ AG пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 void AnimGraphController::ReloadAG()
 {
   // ask IVN!
@@ -387,7 +391,7 @@ void AnimGraphController::ReloadAG()
   RegisterPlayNodesCallbacks();
 }
 
-// проиграть node's в указанном порядке
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ node's пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loopTime ) 
 {
   NI_VERIFY( nodeIndices.size() > 0, "Empty set of nodes!", return; );
@@ -399,7 +403,7 @@ void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loop
     numLoopCycle = -1;
   }
 
-  // loopTime только для цепочек нод
+  // loopTime пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
   if ( nodeIndices.size() > 1 )
     loopTime = _loopTime;
   else
@@ -490,24 +494,24 @@ void AnimGraphController::PlayNodes( const vector<int> &nodeIndices, float _loop
   m_graph->Restart( m_nodesToPlay[0], true );
 }
 
-// установить глобальную скорость проигрывания анимаций
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void AnimGraphController::SetGlobalSpeed( float speed ) 
 {
   m_graph->SetGraphSpeedCoeff(speed);
 }
 
-// установить анимацию из node в "позицию" float. НЕ ЗАБУДЬТЕ ResetVirtualParameter перед следующим вызовом!
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ node пїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" float. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ResetVirtualParameter пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ!
 void AnimGraphController::SetVirtualParameter( int nodeIdx, float value )
 {
   m_graph->SliderPauseAtNodeAtVParEDITORONLY(nodeIdx, value);
 }
 
-void AnimGraphController::ResetVirtualParameter() // вернуться к нормальному воспроизведению AG
+void AnimGraphController::ResetVirtualParameter() // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ AG
 {
   m_graph->SliderContinueEDITORONLY();
 }
 
-// пишет -1, если не в ноде/не в транзакции
+// пїЅпїЅпїЅпїЅпїЅ -1, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ/пїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void AnimGraphController::GetActiveEntity( int* pNodeIdx, int* pFromNodeIdx, int* pToNodeIdx, bool isGetDispatcher ) const
 {
   NI_VERIFY(pNodeIdx != NULL && pFromNodeIdx != NULL && pToNodeIdx != NULL, "invalid ptrs", return ; );

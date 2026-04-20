@@ -4,6 +4,7 @@
 // 
 
 #include "LuaValues.h"
+#include "LuaCommon.h"
 
 namespace Lua
 {
@@ -297,24 +298,24 @@ namespace Lua
     { 
       // Special case for table itself
       val = lua_values<T>::get(pLuaState, -1);
-      lua_pop(L, 1); // Drop the table 
+      lua_pop(pLuaState, 1); // Drop the table 
       return true;
     }
 
     lua_values<const char*>::put(pLuaState, name); // Key
     
-    NI_ASSERT(lua_istable(L, -2), "Table required!");
-    lua_gettable(L, -2);
+    NI_ASSERT(lua_istable(pLuaState, -2), "Table required!");
+    lua_gettable(pLuaState, -2);
     
-    if(!!lua_isnil(L, -1))
+    if(!!lua_isnil(pLuaState, -1))
     {
-      lua_pop(L, 2);// Drop the table and the value
+      lua_pop(pLuaState, 2);// Drop the table and the value
       return false;
     }
 
-    val = lua_values<T>::get(L, -1);
+    val = lua_values<T>::get(pLuaState, -1);
 
-    lua_pop(L, 2);// Drop the table and the value
+    lua_pop(pLuaState, 2);// Drop the table and the value
 
     return true;
   }

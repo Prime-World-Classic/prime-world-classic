@@ -945,7 +945,9 @@ struct VertexBufferLock
 
   ~VertexBufferLock()
   {
+#ifndef NI_PLATF_LINUX
     vb->Unlock();
+#endif
   }
 
   operator T*()
@@ -1206,9 +1208,9 @@ int  Minimap::AddHeroIcon( const NDb::Texture * icon )
   if (!icon)
     return -1;
 
-  //Во время реконнека идентификатор возвращаемый из данной функции никак не освобождается
-  //и, что хуже, непонятно как вытаскивать текстуру после того, как она оказалась в IUITextureCache
-  //или освобождать весь IUITextureCache, поэтому будем просто возвращать старый идентификатор
+  //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ IUITextureCache
+  //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ IUITextureCache, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   for (int i = 0; i < heroIcons.size(); ++i)
   {
     HeroIconDesc const& desc = heroIcons[i];
@@ -1235,6 +1237,7 @@ void Minimap::_RenderMinimap()
   NGameX::AdventureScreen     *screen = NGameX::AdventureScreen::Instance();
   NWorld::PFWorld             *world  = screen->GetWorld();
 
+#ifndef NI_PLATF_LINUX
   Render::RenderStatesManager& rsManager = *Render::GetStatesManager();
 
   rsManager.SetState(m_renderState);
@@ -1264,7 +1267,7 @@ void Minimap::_RenderMinimap()
   rsManager.SetStateDirect( D3DRS_SRCBLENDALPHA, D3DBLEND_ZERO );
   rsManager.SetStateDirect( D3DRS_DESTBLENDALPHA, D3DBLEND_ONE );
 
-  // пока варфог еще полностью не сформирован, не будем рисовать объекты миникарты (иконки, камеру и тп)
+  // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ)
   if (world->GetStepNumber() < NGameX::VisibilityMapClient::GetStepCountDelay())
   {
     /* placeholder */
@@ -1294,6 +1297,7 @@ void Minimap::_RenderMinimap()
   }
 
   rsManager.SetStateDirect( D3DRS_SEPARATEALPHABLENDENABLE, FALSE );
+#endif
 }
 
 
@@ -1307,6 +1311,7 @@ void Minimap::_RenderNatureMap()
   NGameX::PFClientNatureMap   *natMapClient = (NGameX::PFClientNatureMap*)natMap->ClientObject();
   NGameX::VisibilityMapClient *visMapClient = screen->GetClientVisibilityMap();
 
+#ifndef NI_PLATF_LINUX
   Render::RenderStatesManager &rsManager = *Render::GetStatesManager();
   rsManager.SetState( Render::RenderState::NoBlendNoTest() );
   rsManager.SetStateDirect( D3DRS_ZENABLE, 0 );
@@ -1316,7 +1321,7 @@ void Minimap::_RenderNatureMap()
   rsManager.SetSampler( 1, m_natureSampler, m_natureTextureB );
   rsManager.SetSampler( 2, m_natureSampler, m_natureTextureN );
   rsManager.SetSampler( 3, m_natureSampler, natMapClient->GetTexture() );
-  // пока варфог еще полностью не сформирован, используем исходную текстуру, на которой по началу вся карта под варфогом
+  // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (world->GetStepNumber() < NGameX::VisibilityMapClient::GetStepCountDelay())
     rsManager.SetSampler( 4, m_natureSampler, visMapClient->GetTextureSrc() );
   else  
@@ -1326,6 +1331,7 @@ void Minimap::_RenderNatureMap()
   Render::GetRenderer()->SetPixelShaderConstantsFloat( PSHADER_LOCALCONST0, visMapClient->GetMiniMapAlphaScale() );
 
   Render::GetImmRenderer()->RenderScreenQuad( m_natureMapPolygon, Render::ImmRenderer::Params( "NatureMap" ) );
+#endif
 }
 
 

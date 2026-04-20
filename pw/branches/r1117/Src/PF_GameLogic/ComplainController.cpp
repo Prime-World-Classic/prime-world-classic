@@ -9,7 +9,7 @@
 #include "ChatController.h"
 #include "DBStats.h"
 
-// NOTE: hardcode. полагаемся на то, что оператор настроит список жалоб правильно. см. NUM_TASK
+// NOTE: hardcode. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅ. NUM_TASK
 #define BAD_BEHAVIOUR_REPORT_ITEM_ID 1
 #define INSULT_REPORT_ITEM_ID 2
 
@@ -99,7 +99,7 @@ namespace NGameX
 
         if (AdventureScreen* const advScreen = AdventureScreen::Instance())
         {
-          // NOTE: const_cast обусловлен стремлением к чистому интерфейсу этой обертки
+          // NOTE: const_cast пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
           const CPtr<NWorld::PFPlayer> player_ptr(const_cast<NWorld::PFPlayer*>(player));
 
           advScreen->AddToComplList(player_ptr);
@@ -134,8 +134,8 @@ namespace NGameX
         int playerId;
         int reportItemId;
 
-        swscanf_s(p0, L"%d", &playerId);
-        swscanf_s(p1, L"%d", &reportItemId);
+        swscanf(p0, L"%d", &playerId);
+        swscanf(p1, L"%d", &reportItemId);
 
         const int playerUserId = Local::FindPlayerUserId(playerStartInfos, playerId);
 
@@ -198,7 +198,7 @@ namespace NGameX
         if (!IsValid(bindsContoller))
           return;
         int isReportOpened;
-        sscanf_s(args,"%d", &isReportOpened);
+        sscanf(args,"%d", &isReportOpened);
 
         bindsContoller ->SetEnabled(BindsController::ReportWindow,!isReportOpened);
       }

@@ -62,7 +62,9 @@
 #include <iconv.h>
 #include <typeinfo>
 
-typedef long LONG;
+#ifndef _NV_LONG_DEFINED_UNIQUE_
+// typedef long LONG; // Handled in Win32_linux.h
+#endif
 
 #ifndef ASSERT
 #define ASSERT(a)
@@ -236,5 +238,7 @@ using namespace nstl;
 #define BOOST_JOIN( X, Y ) BOOST_DO_JOIN( X, Y )
 #define BOOST_DO_JOIN( X, Y ) BOOST_DO_JOIN2(X,Y)
 #define BOOST_DO_JOIN2( X, Y ) X##Y
+
+#include "System/SyncPrimitives.h"
 
 #endif // SYSTEM_STD_AFX_H__

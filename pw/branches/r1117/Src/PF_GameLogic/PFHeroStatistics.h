@@ -3,7 +3,7 @@
 
 #include "PFMinigameCommon.h"
 #include "PFStatisticsStuff.h"
-#include "System\StarForce\HiddenVars.h"
+#include "System/StarForce/HiddenVars.h"
 
 namespace NGameX
 {

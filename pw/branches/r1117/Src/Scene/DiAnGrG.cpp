@@ -16,7 +16,7 @@
 #include <stdio.h>
 
 #include "DiAnGr.h"
-#include "DiMath.h"
+#include "dimath.h"
 #include "DiAnGrAPI.h"
 
 
@@ -1759,7 +1759,7 @@ DiBool  DiAnimGraph::Restart( DiUInt32 nStartNodeID, bool needCallbacks )
 		//DebugTrace( "Restart: %f %s \n", NHPTimer::GetScalarTime(), GetNodeNameByID(nStartNodeID) );
   //}
 
-  // При рестарте AG вызываем callback'и на OnNodeLeave NUM_TASK
+  // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ AG пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ callback'пїЅ пїЅпїЅ OnNodeLeave NUM_TASK
   if ( needCallbacks && GetCurNodeUnsafe() < GetNumNodes() )
   {
     ForceLeaveNodeCallbacks( GetCurNode() );

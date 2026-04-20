@@ -6,13 +6,14 @@ int usedServer = 0;
 #pragma comment(lib, "wininet.lib")
 
 
-WebPostRequest::WebPostRequest(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags)
+#ifdef _WIN32
+WebPostRequest::WebPostRequest(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, unsigned long flags)
 {
   Init(serverUrl, objectName, serverPort, flags);
 }
 
 
-void WebPostRequest::Init(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags)
+void WebPostRequest::Init(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, unsigned long flags)
 {
   const std::wstring apiUrl = serverUrl;
 
@@ -51,8 +52,8 @@ std::string WebPostRequest::SendPostRequest(const std::string& jsonData) {
   // Set headers and data for the POST request
   const char* headers = "Content-Type: application/json\r\n";
   const char* postData = jsonData.c_str();
-  DWORD postDataLen = jsonData.length();
-  DWORD headersDataLen = strlen(headers);
+  unsigned long postDataLen = jsonData.length();
+  unsigned long headersDataLen = strlen(headers);
 
   // Send the HTTP request
   BOOL bRequestSent = HttpSendRequestA(hRequest, headers, headersDataLen, (LPVOID)postData, postDataLen);
@@ -65,7 +66,7 @@ std::string WebPostRequest::SendPostRequest(const std::string& jsonData) {
 
   // Read the response
   char buffer[4096];
-  DWORD bytesRead = 0;
+  unsigned long bytesRead = 0;
   std::string responseStream;
 
   while (InternetReadFile(hRequest, buffer, sizeof(buffer) - 1, &bytesRead) && bytesRead > 0) {
@@ -77,6 +78,21 @@ std::string WebPostRequest::SendPostRequest(const std::string& jsonData) {
 
   return responseStream;
 }
+#else
+WebPostRequest::WebPostRequest(const wchar_t*, const wchar_t*, int, unsigned long) {}
+void WebPostRequest::Init(const wchar_t*, const wchar_t*, int, unsigned long) {}
+WebPostRequest::~WebPostRequest() {}
+std::string WebPostRequest::SendPostRequest(const std::string& jsonData) { return ""; }
+#ifndef _WIN32
+#define _snprintf_s(buf, size, fmt, ...) snprintf(buf, size, fmt, __VA_ARGS__)
+#define _countof(a) (sizeof(a)/sizeof(*(a)))
+#define SERVER_IP_W L"127.0.0.1"
+#define SYNCHRONIZER_PORT 34980
+#define API_KEY ""
+#endif
+
+
+#endif
 
 std::string GetSessionData(const char* token, bool registerSession) {
   WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);

@@ -1026,7 +1026,7 @@ bool PFApplVictory::Start()
   {
     struct MBFinder
     {
-      MBFinder::MBFinder( NDb::EFaction faction_ ) : faction(faction_), mainBuilding(0) {}
+      MBFinder( NDb::EFaction faction_ ) : faction(faction_), mainBuilding(0) {}
       void operator()( PFLogicObject &object )
       {
         if ( object.GetUnitType() == NDb::UNITTYPE_MAINBUILDING && object.GetFaction() == faction )

@@ -1,4 +1,5 @@
 #pragma once
+#include "../../Data/GameLogic/FormulaPars.h"
 
 namespace NRandom
 {

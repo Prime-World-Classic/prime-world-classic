@@ -63,7 +63,7 @@ public:
 		fp16_value.Sign = fp32_value.Sign;
 
 		fp16_value.Exponent = __int32(fp32_value.Exponent) - 127 + 15;
-		fp16_value.Mantissa = unsigned short(fp32_value.Mantissa >> 13);
+		fp16_value.Mantissa =  (unsigned short) (fp32_value.Mantissa >> 13);
 	}
 
 	Float16& operator=(const float _float32_value)
@@ -87,7 +87,7 @@ public:
 		fp16_value.Sign = fp32_value.Sign;
 
 		fp16_value.Exponent = __int32(fp32_value.Exponent) - 127 + 15;
-		fp16_value.Mantissa = unsigned short(fp32_value.Mantissa >> 13);
+		fp16_value.Mantissa =  (unsigned short) (fp32_value.Mantissa >> 13);
 		
 		
 		return *this;

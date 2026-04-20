@@ -1,12 +1,8 @@
 #pragma once
 
-namespace Login
-{
-  namespace ELoginResult
-  {
-    enum Enum;
-  }
-}
+#include "HybridServer/Peered.h"
+#include "Game/PF/Client/LobbyPvx/LobbyClientBase.h"
+#include "Network/LoginTypes.h"
 
 namespace NDb
 {
@@ -15,8 +11,6 @@ namespace NDb
 
 namespace lobby
 {
-  namespace EClientStatus { enum Enum; }
-  namespace EOperationResult { enum Enum; }
 }
 
 namespace Game

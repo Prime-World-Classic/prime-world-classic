@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "./World.hpp"
-#include "../Core/MessagesInGame.h"
+//#include "../Core/MessagesInGame.h"
 #include "../System/UpdateProcessor.h"
 
 namespace PF_Core

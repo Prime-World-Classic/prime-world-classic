@@ -26,7 +26,7 @@ public:
     BOOL        IsDefaultImpl() const;
     DWORD       NumberOfProcessCores() const;
     DWORD       NumberOfSystemCores() const;
-    DWORD_PTR   CoreAffinityMask( DWORD coreIdx ) const;
+    size_t   CoreAffinityMask( DWORD coreIdx ) const;
 
     void        ForceCpuid( BOOL bForce );
 private:

@@ -1,0 +1,39 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/ClusterConfiguration.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/stdafx.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClusterConfiguration.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClusterConfiguration.cpp: In function ‘const nstl::string& Network::GetCoordinatorAddress()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClusterConfiguration.cpp:46:36: error: ‘usedServer’ was not declared in this scope
+   46 |   return *(serverAddrs_coordinator[usedServer]);
+      |                                    ^~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClusterConfiguration.cpp: In function ‘const nstl::string& Network::GetLoginServerAddress()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClusterConfiguration.cpp:51:30: error: ‘usedServer’ was not declared in this scope
+   51 |   return *(serverAddrs_login[usedServer]);
+      |                              ^~~~~~~~~~
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:807: CMakeFiles/PrimeWorld.dir/Network/ClusterConfiguration.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

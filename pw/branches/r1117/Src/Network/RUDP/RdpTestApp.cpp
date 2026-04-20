@@ -13,7 +13,9 @@
 #include "System/CrashRptWrapper.h"
 #include "System/InlineProfiler.h"
 #ifdef NI_ENABLE_INLINE_PROFILER
+#ifndef NI_PLATF_LINUX
 #include <conio.h>
+#endif
 #include "System/InlineProfiler3/Profiler3UI.h"
 #include "System/InlineProfiler3/InlineProfiler3Control.h"
 #endif //NI_ENABLE_INLINE_PROFILER
@@ -311,7 +313,9 @@ int main( int argc, const char **argv )
 #ifdef NI_ENABLE_INLINE_PROFILER
   if ( profilerOn ) {
     MessageTrace( "Press any key to continue..." );
+#ifndef NI_PLATF_LINUX
     _getch();
+#endif
   }
 #endif //NI_ENABLE_INLINE_PROFILER
 
@@ -322,6 +326,10 @@ int main( int argc, const char **argv )
   GetSystemLog().ClearAllDumpers();
 
   CrashRptWrapper::UninstallFromProcess();
+
+  return 0;
+}
+nstallFromProcess();
 
   return 0;
 }

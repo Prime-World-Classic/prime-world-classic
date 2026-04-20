@@ -3,9 +3,9 @@
 
 extern "C"
 {
-#include <Vendor/MD4/global.h>
-#include <Vendor/MD4/md4.h>
-#include <Vendor/MD4/md5.h>
+#include "../../Vendor/MD4/global.h"
+#include "../../Vendor/MD4/md4.h"
+#include "../../Vendor/MD4/md5.h"
 }
 
 #include <System/DefaultTypes.h>

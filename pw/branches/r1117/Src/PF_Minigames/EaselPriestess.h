@@ -2,18 +2,14 @@
 
 #include "../PF_GameLogic/NaftaInfoProvider.h"
 #include "../PF_Core/WorldObject.h"
+#include "../PF_GameLogic/DBMinigamesTypes.h"
+#include "../PF_GameLogic/PFMinigameCommon.h"
 
 namespace NDb
 {
-  enum EBidonType;
   struct Consumable;
   struct GameObject;
 }
-
-namespace EMinigameLevelStatus
-{
-  enum Enum;
-};
 
 namespace PF_Minigames
 {
@@ -96,7 +92,7 @@ public:
 
   virtual int GetNaftaAmount() {return GetGold();}
 
-private:             //TODO перенести переменные в EaselRemote 
+private:             //TODO пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ EaselRemote 
   ZDATA
   ZNOPARENT(IPriestessProxy)
   int easelLevel;
@@ -111,9 +107,9 @@ public:
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Хитросплетенная подпорка для обхода проблемы влияния сессии на L/R-миниигру
-//Метод вызывается из Remote Easel, что бы сообщить Local EaselPriestess о восстановлении
-//возможности использовать буст про подвиги
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ L/R-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ Remote Easel, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Local EaselPriestess пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 _interface IRemoteToLocalLink : public IObjectBase
 {
 public:

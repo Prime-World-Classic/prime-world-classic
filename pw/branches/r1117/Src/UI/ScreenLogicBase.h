@@ -2,6 +2,7 @@
 
 #include "Defines.h"
 
+
 #include "Scripts/ScriptMacroses.h"
 
 #include "Scripts/LuaSubclass.h"
@@ -42,7 +43,7 @@ public:
   ~ScreenLogicBase();
 
   void SetUser( User * _user ) { user = _user; }
-  User * User() const { NI_ASSERT( user, "" ); return user; }
+  User * GetUser() const { NI_ASSERT( user, "" ); return user; }
   bool LoadScreenLayout( const string & screenId );
   bool ProcessMessage( const Input::Event & event );
   void StepWindows( float deltaTime );
@@ -51,13 +52,13 @@ public:
 
   void OnScreenFocus( bool focus );
 
-  //@iA@TODO: Возможно, понадобится событие на потерю capture
+  //@iA@TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ capture
   void CaptureMouse( Window * window );
   void ReleaseMouse();
 
   //virtual methods
   virtual void    Step( float deltaTime ) {}
-  virtual void    RenderWindows(); //@iA@TODO: сделать эту функцию НЕвирутальной
+  virtual void    RenderWindows(); //@iA@TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
   virtual bool    HasKeyboardFocus( const Window * window ) const;
   virtual void    SetKeyboardFocus( Window * window );
@@ -96,24 +97,10 @@ public:
   Window * ImplFindDropTarget( const Point & mouseCoords, const char * id, Window * dragTarget );
 
   template<class TWnd>
-  TWnd * GetUISubWindow( Window * parent, const char * name, bool recursive = true, bool doAssert = true ) {
-    if ( !parent )
-      return 0;
-    Window * wnd = recursive ? parent->FindChild( name ) : parent->GetChild( name );
-    if ( !wnd ) {
-      if ( doAssert )
-        NI_ALWAYS_ASSERT( NStr::StrFmt( "UI layout '%s' not found in resource '%s'", name, parent->GetWindowLayoutDBID().GetFileName().c_str() ) );
-      return 0;
-    }
-    TWnd * result = dynamic_cast<TWnd *>( wnd );
-    NI_ASSERT( result, NStr::StrFmt( "UI layout '%s' from resource '%s' has invalid type", name, parent->GetWindowLayoutDBID().GetFileName().c_str() ) );
-    return result;
-  }
+  TWnd * GetUISubWindow( Window * parent, const char * name, bool recursive = true, bool doAssert = true );
 
   template<class TWnd>
-  TWnd * GetUIWindow( const char * name, bool recursive = true, bool doAssert = true ) {
-    return GetUISubWindow<TWnd>( pBaseWindow, name, recursive, doAssert );
-  }
+  TWnd * GetUIWindow( const char * name, bool recursive = true, bool doAssert = true );
 
   // Messages handling
 private:

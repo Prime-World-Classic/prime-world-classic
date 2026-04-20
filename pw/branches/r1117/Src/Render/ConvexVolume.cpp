@@ -8,7 +8,7 @@
 static __m128 SSE_SIGN_MASK;
 static float __mask;
 
-#include "aabb.h"
+#include "AABB.h"
 
 static float s_Displace = 0.0f;
 REGISTER_DEV_VAR("frustumDisplace", s_Displace, STORAGE_NONE)

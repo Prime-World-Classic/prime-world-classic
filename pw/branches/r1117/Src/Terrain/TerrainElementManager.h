@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef VISUAL_CUTTED
-#include "../Render/aabb.h"
+#include "AABB.h"
 #endif
 
 namespace Render

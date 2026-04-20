@@ -1,8 +1,8 @@
 #pragma once
 #include <Network/Address.h>
-#include "RelayBalancer/IRelayCCUCounter.h"
-#include "RelayBalancer/RelaySvcContext.h"
-#include "RelayBalancer/RelayBalancerSettings.h"
+#include "IRelayCCUCounter.h"
+#include "RelaySvcContext.h"
+#include "RelayBalancerSettings.h"
 #include "Coordinator/ServiceRole.h"
 
 namespace Relay

@@ -647,13 +647,12 @@ private:
 #if defined(NI_PLATF_LINUX)
 
 #define seDECLARE_RING_CLASS_BASE(cls, field, ringCls, refPolicy) \
-template <typename A> struct ring ## _ ## ringCls ## _; \
-typedef ::ring::Ring<cls, ring ## _ ## ringCls ## _<int>, refPolicy > ringCls; \
-template <typename A> struct ring ## _ ## ringCls ## _ { \
+struct ring ## _ ## ringCls ## _; \
+typedef ::ring::Ring<cls, ring ## _ ## ringCls ## _, refPolicy> ringCls; \
+struct ring ## _ ## ringCls ## _ { \
 	static typename ringCls::Part& part(cls * obj) { return obj->field; } \
-	static cls * obj(typename ringCls::Part const * _part_) { \
-	typename ringCls::Part cls::* field##_offset = &cls::field;\
-	return reinterpret_cast<cls*>(reinterpret_cast<unsigned char *>(const_cast<typename ringCls::Part *>(_part_)) - *(unsigned char **)(&(field##_offset))/*offsetof(cls, field)*/); \
+	static cls * obj(typename ringCls::Part const * part) { \
+	return reinterpret_cast<cls*>((unsigned char*)(part) - offsetof(cls, field)); \
 	} \
 };
 
@@ -677,8 +676,8 @@ template <typename A> struct ring ## _ ## ringCls ## _ { \
 struct ring ## _ ## ringCls ## _; \
 typedef ::ring::Ring<cls, ring ## _ ## ringCls ## _, refPolicy> ringCls; \
 struct ring ## _ ## ringCls ## _ { \
-	static ringCls::Part& part(cls * obj) { return obj->field; } \
-	static cls * obj(ringCls::Part const * part) { \
+	static typename ringCls::Part& part(cls * obj) { return obj->field; } \
+	static cls * obj(typename ringCls::Part const * part) { \
 	return reinterpret_cast<cls*>((unsigned char*)(part) - offsetof(cls, field)); \
 	} \
 };
@@ -935,7 +934,7 @@ void Clear(T &r)
   {
     if (it.IsValid())
     {
-      typename T::Element *p = &(*it);
+      typename T::Element *p = it.operator->();
       ++it;
       T::remove(p);
     }
@@ -956,7 +955,7 @@ void ForAll(T &r, F &f)
   {
     if (it.IsValid())
     {
-      typename T::Element *p = &(*it);
+      typename T::Element *p = it.operator->();
       itPrev = it;
       ++it;
       f(p);

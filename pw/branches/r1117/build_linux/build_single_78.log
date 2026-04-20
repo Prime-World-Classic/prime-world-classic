@@ -1,0 +1,230 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/RUDP/SockSrvLocal.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/stdafx.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvLocal.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/RUDP/SockSrvWinsockAsync.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/stdafx.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.h:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:35:10: error: ‘SOCKET’ does not name a type
+   35 |   static SOCKET CreateSocket( const NetAddr & _bindAddr, const Options & _options );
+      |          ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:37:20: error: expected ‘)’ before ‘_s’
+   37 |   UdpSocket( SOCKET _s, const NetAddr & _bindAddr );
+      |            ~       ^~~
+      |                    )
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:44:3: error: ‘SOCKET’ does not name a type
+   44 |   SOCKET AccessHandle() const { return sock; }
+      |   ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:50:3: error: ‘SOCKET’ does not name a type
+   50 |   SOCKET                        sock;
+      |   ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.h:35:69: error: ‘SOCKET’ has not been declared
+   35 |   AsyncUdpSocket( ISocketCallback * _cb, const NetAddr & _bindAddr, SOCKET _s, TAuxData _auxData ) :
+      |                                                                     ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.h: In constructor ‘ni_udp::AsyncUdpSocket::AsyncUdpSocket(ni_udp::ISocketCallback*, const ni_udp::NetAddr&, int, ni_udp::TAuxData)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.h:38:21: error: no matching function for call to ‘ni_udp::UdpSocket::UdpSocket(int&, const ni_udp::NetAddr&)’
+   38 |   auxData( _auxData )
+      |                     ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.h:38:21: note: there is 1 candidate
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:9:7: note: candidate 1: ‘ni_udp::UdpSocket::UdpSocket()’
+    9 | class UdpSocket : public BaseObjectMT
+      |       ^~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/UdpSocket.h:9:7: note: candidate expects 0 arguments, 2 provided
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:126:20: error: ‘SOCKET’ was not declared in this scope
+  126 |   typedef std::map<SOCKET, WeakMT<AsyncUdpSocket>>  Sockets;
+      |                    ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:126:49: error: template argument 1 is invalid
+  126 |   typedef std::map<SOCKET, WeakMT<AsyncUdpSocket>>  Sockets;
+      |                                                 ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:126:49: error: template argument 3 is invalid
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:126:49: error: template argument 4 is invalid
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp: In member function ‘void ni_udp::AsyncUdpSocketServerWorker::AddSocket(ni_udp::AsyncUdpSocket*)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:23:17: error: ‘class ni_udp::AsyncUdpSocket’ has no member named ‘AccessHandle’
+   23 |     sockets[_s->AccessHandle()] = _s;
+      |                 ^~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nlist.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:72:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp: In member function ‘virtual void ni_udp::AsyncUdpSocketServerWorker::Work(volatile bool&)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:47:28: error: request for member ‘size’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   47 |         NI_VERIFY( sockets.size() <= FD_SETSIZE, "", continue );
+      |                            ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Asserts.h:37:72: note: in definition of macro ‘NI_VERIFY’
+   37 | #define NI_VERIFY( expr, user_text, statement ) { const bool bCheck = (expr); if ( !bCheck ) { statement; } }
+      |                                                                        ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:33: error: qualified-id in declaration before ‘it’
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                 ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:33: error: expected ‘;’ before ‘it’
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:33: error: ‘it’ was not declared in this scope; did you mean ‘int’?
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                 ^~
+      |                                 int
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:46: error: request for member ‘begin’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                              ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:69: error: request for member ‘end’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                                                     ^~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:74: error: expected ‘)’ before ‘;’ token
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                                                          ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:13: note: to match this ‘(’
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |             ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:49:76: error: expected primary-expression before ‘)’ token
+   49 |         for ( Sockets::iterator it = sockets.begin(); it != sockets.end(); )
+      |                                                                            ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:55:11: error: ‘else’ without a previous ‘if’
+   55 |           else
+      |           ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:56:13: error: ‘it’ was not declared in this scope; did you mean ‘int’?
+   56 |             it = sockets.erase( it );
+      |             ^~
+      |             int
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:56:26: error: request for member ‘erase’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   56 |             it = sockets.erase( it );
+      |                          ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:59:21: error: ‘struct fd_set’ has no member named ‘fd_count’
+   59 |       if ( !readfds.fd_count )
+      |                     ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:62:9: error: ‘Sleep’ was not declared in this scope; did you mean ‘threading::Sleep’?
+   62 |         Sleep( 10 );
+      |         ^~~~~
+      |         threading::Sleep
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:4:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Thread.h:178:6: note: ‘threading::Sleep’ declared here
+  178 | void Sleep( unsigned int milliseconds );
+      |      ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:66:7: error: ‘TIMEVAL’ was not declared in this scope
+   66 |       TIMEVAL tmv;
+      |       ^~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:67:16: error: ‘tmv’ was not declared in this scope; did you mean ‘tm’?
+   67 |       memset( &tmv, 0, sizeof( tmv ) );
+      |                ^~~
+      |                tm
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:70:25: error: ‘SOCKET_ERROR’ was not declared in this scope; did you mean ‘SO_ERROR’?
+   70 |       if ( selResult == SOCKET_ERROR )
+      |                         ^~~~~~~~~~~~
+      |                         SO_ERROR
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:72:47: error: ‘WSAGetLastError’ was not declared in this scope; did you mean ‘GetLastError’?
+   72 |         ErrorTrace( "Select failed. code=%s", WSAGetLastError() );
+      |                                               ^~~~~~~~~~~~~~~
+      |                                               GetLastError
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:82:43: error: ‘struct fd_set’ has no member named ‘fd_count’
+   82 |         for ( unsigned i = 0; i < readfds.fd_count; ++i )
+      |                                           ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:84:11: error: ‘SOCKET’ was not declared in this scope
+   84 |           SOCKET s = readfds.fd_array[i];
+      |           ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:86:29: error: qualified-id in declaration before ‘it’
+   86 |           Sockets::iterator it = sockets.find( s );
+      |                             ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:87:22: error: ‘it’ was not declared in this scope; did you mean ‘int’?
+   87 |           NI_VERIFY( it != sockets.end(), "Selected unknown socket", continue );
+      |                      ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Asserts.h:37:72: note: in definition of macro ‘NI_VERIFY’
+   37 | #define NI_VERIFY( expr, user_text, statement ) { const bool bCheck = (expr); if ( !bCheck ) { statement; } }
+      |                                                                        ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:87:36: error: request for member ‘end’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   87 |           NI_VERIFY( it != sockets.end(), "Selected unknown socket", continue );
+      |                                    ^~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Asserts.h:37:72: note: in definition of macro ‘NI_VERIFY’
+   37 | #define NI_VERIFY( expr, user_text, statement ) { const bool bCheck = (expr); if ( !bCheck ) { statement; } }
+      |                                                                        ^~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:88:45: error: ‘it’ was not declared in this scope; did you mean ‘int’?
+   88 |           StrongMT<AsyncUdpSocket> locked = it->second.Lock();
+      |                                             ^~
+      |                                             int
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:91:71: error: ‘s’ was not declared in this scope
+   91 |             WarningTrace( "Got datagram for deleted socket. sock=%d", s );
+      |                                                                       ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:92:21: error: request for member ‘erase’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+   92 |             sockets.erase( it );
+      |                     ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:99:80: error: ‘s’ was not declared in this scope
+   99 |             WarningTrace( "Got datagram for socket without callback. sock=%d", s );
+      |                                                                                ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:100:21: error: request for member ‘erase’ in ‘((ni_udp::AsyncUdpSocketServerWorker*)this)->ni_udp::AsyncUdpSocketServerWorker::sockets’, which is of non-class type ‘ni_udp::AsyncUdpSocketServerWorker::Sockets’ {aka ‘int’}
+  100 |             sockets.erase( it );
+      |                     ^~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:109:37: error: ‘s’ was not declared in this scope
+  109 |           int recvRes = ::recvfrom( s, buf, BufSz, 0, &from, &fromLen );
+      |                                     ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:110:49: error: ‘SOCKET_ERROR’ was not declared in this scope; did you mean ‘SO_ERROR’?
+  110 |           if ( ( recvRes != 0 ) && ( recvRes != SOCKET_ERROR ) && ( fromLen == sizeof( sockaddr_in ) ) )
+      |                                                 ^~~~~~~~~~~~
+      |                                                 SO_ERROR
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:117:24: error: ‘WSAGetLastError’ was not declared in this scope; did you mean ‘GetLastError’?
+  117 |             int code = WSAGetLastError();
+      |                        ^~~~~~~~~~~~~~~
+      |                        GetLastError
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:118:26: error: ‘WSAECONNRESET’ was not declared in this scope
+  118 |             if ( code != WSAECONNRESET ) //WSAECONNRESET means that previous sendto resulted in "ICMP Port Unreachable"
+      |                          ^~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp: In member function ‘virtual StrongMT<ni_udp::ISocket> ni_udp::AsyncUdpSocketServer::Open(ni_udp::ISocketCallback*, const ni_udp::NetAddr&, ni_udp::TAuxData)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:150:3: error: ‘SOCKET’ was not declared in this scope
+  150 |   SOCKET s = UdpSocket::CreateSocket( _bindAddr, UdpSocket::Options( 0 ) );
+      |   ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:151:8: error: ‘s’ was not declared in this scope
+  151 |   if ( s == INVALID_SOCKET )
+      |        ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:151:13: error: ‘INVALID_SOCKET’ was not declared in this scope
+  151 |   if ( s == INVALID_SOCKET )
+      |             ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/RUDP/SockSrvWinsockAsync.cpp:154:63: error: ‘s’ was not declared in this scope
+  154 |   AsyncUdpSocket * sock = new AsyncUdpSocket( _cb, _bindAddr, s, _auxData );
+      |                                                               ^
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:1353: CMakeFiles/PrimeWorld.dir/Network/RUDP/SockSrvWinsockAsync.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

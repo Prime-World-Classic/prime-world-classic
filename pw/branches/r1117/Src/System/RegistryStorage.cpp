@@ -1,5 +1,5 @@
-#include "stdafx.h"
 #include "RegistryStorage.h"
+#ifdef _WIN32
 #include <shlwapi.h>
 
 namespace registry {
@@ -174,3 +174,23 @@ void Storage::CloseKey(PHKEY key)
 
 
 } //namespace registry
+
+#else
+
+namespace registry {
+  Storage::Storage(const nstl::string& company, const nstl::string& app) {}
+  Storage::~Storage() {}
+
+  void Storage::Write(const nstl::string& key, int val) {}
+  void Storage::Write(const nstl::string& key, const nstl::string& val) {}
+  void Storage::Write(const nstl::string& key, const void* val, int len) {}
+
+  int Storage::Read(const nstl::string& key, int def) { return def; }
+  nstl::string Storage::Read(const nstl::string& key, const nstl::string& def) { return def; }
+  void Storage::Read(const nstl::string& key, void* val, int len) {}
+
+  void Storage::OpenKey(HKEY root, const nstl::string& path, PHKEY key) {}
+  void Storage::CloseKey(PHKEY key) {}
+}
+
+#endif

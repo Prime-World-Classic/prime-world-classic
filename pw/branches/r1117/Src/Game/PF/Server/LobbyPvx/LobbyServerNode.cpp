@@ -20,7 +20,7 @@
 #include "SessionHybridLink.h"
 #include "LobbySocialProxy.h"
 #include "LobbyServerLoginWrapper.h"
-#include "UserManagerSvc/LUserNotificationIface.auto.h"
+#include "Server/UserManager/UserManagerSvc/LUserNotificationIface.auto.h"
 #include "Server/GameChatController/GameChatController.h"
 #include "Server/LobbySocial/ISocialLobbyPvxAck.h"
 #include "Server/LobbySocial/LISocialLobbyPvxSvc.auto.h"

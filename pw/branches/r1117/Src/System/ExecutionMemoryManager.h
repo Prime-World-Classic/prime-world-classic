@@ -23,7 +23,7 @@ public:
     unsigned int  arg;         //push argument
     unsigned char instr_ret;   //ret code
     JumpAbsoluteFar(): instr_push(0x68), arg(0), instr_ret(0xC3) {}
-    JumpAbsoluteFar(void const *addr): instr_push(0x68), arg((unsigned int)addr), instr_ret(0xC3) {}
+    JumpAbsoluteFar(void const *addr): instr_push(0x68), arg((unsigned int)(size_t)addr), instr_ret(0xC3) {}
   };
 #pragma pack(pop)
 private:

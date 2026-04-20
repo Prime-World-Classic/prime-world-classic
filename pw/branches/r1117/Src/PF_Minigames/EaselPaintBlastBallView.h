@@ -5,10 +5,11 @@
 #include "LuxBall.h"
 #include "EaselLuxLerp.h"
 
+#include "DBEasel.h"
+
 namespace NDb
 {
 	struct DBSceneObject;
-  enum EColor;
 }
 
 namespace PF_Core

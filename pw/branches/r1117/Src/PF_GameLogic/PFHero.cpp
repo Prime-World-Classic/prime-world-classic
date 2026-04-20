@@ -75,7 +75,7 @@ namespace
           faction = pHero->GetFaction();
       }
 
-      void FountainFinder::operator()(const NWorld::PFLogicObject & object)
+      void operator()(const NWorld::PFLogicObject & object)
       {
         if (object.GetUnitType() == NDb::UNITTYPE_BUILDING && object.GetFaction() == faction)
         {
@@ -897,7 +897,7 @@ void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTar
 //////////////////////////////////////////////////////////////////////////
 bool  PFBaseHero::OnDispatchApply(PFDispatch const &dispatch)
 {
-  const CPtr<PFBaseUnit> pSender = dispatch.GetSender();
+  const CPtr<PFBaseUnit> pSender = dispatch.GetSender().GetPtr();
   if ( IsTargetValid(pSender) && pSender->GetFaction() != GetFaction() )
   {
 

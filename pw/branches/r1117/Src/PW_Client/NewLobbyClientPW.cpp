@@ -128,7 +128,7 @@ void ClientPW::UpdateCustomLobbyPlayers( const set<int> & hilitePlayers )
   {
     ETeam::Enum team = i ? ETeam::Team2 : ETeam::Team1;
 
-    lines.push_back( i ? L"Команда Адорнийцев:" : L"Команда Доктов:" );
+    lines.push_back( i ? L"Team:" : L"Team:" );
     linesIds.push_back( -1 );
     for ( int j = 0; j < GameLineup().size(); ++j )
     {

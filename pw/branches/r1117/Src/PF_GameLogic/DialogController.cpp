@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "DialogController.h"
-#include "..\Sound\EventScene.h"
+#include "../Sound/EventScene.h"
 #include "AdventureFlashInterface.h"
 #include "AdventureScreen.h"
 #include "PFAIContainer.h"
@@ -125,7 +125,7 @@ void DialogController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
     if ( IsValid( pLuaScript ) )
     {
       int bubbleIndex;
-      sscanf_s( args, "%d", &bubbleIndex );
+      sscanf( args, "%d", &bubbleIndex );
       CALL_LUA_FUNCTION_ARG1( pLuaScript, "OnBubbleNextButtonClick", false, bubbleIndex );
     }
     break;
@@ -136,7 +136,7 @@ void DialogController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
 
   case MessageBoxButtonClick:
     int buttonIndex;
-    sscanf_s( args, "%d", &buttonIndex );
+    sscanf( args, "%d", &buttonIndex );
     NI_VERIFY( buttonIndex != MESSAGEBOX_NORESULT, "Message box button index should not be zero", buttonIndex = 1 );
     messageBoxResult = buttonIndex;
     break;
@@ -148,7 +148,7 @@ void DialogController::OnFSCommand( UI::FlashContainer2* _wnd, const char* liste
     if ( IsValid( pLuaScript ) )
     {
       char buf[128] = "0";
-      sscanf_s( args, "%s", &buf, 128);
+      sscanf( args, "%s", buf );
       CALL_LUA_FUNCTION_ARG1( pLuaScript, "OnHintDialogClose", false, buf );
     }
     break;

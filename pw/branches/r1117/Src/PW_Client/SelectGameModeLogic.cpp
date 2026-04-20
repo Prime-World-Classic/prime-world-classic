@@ -4,7 +4,7 @@
 
 #include "SelectGameModeScreen.h"
 #include "UI/EditBox.h"
-#include "Server/LobbyPvx/Commontypes.h"
+#include "Server/LobbyPvx/CommonTypes.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "Scripts/NameMap.h"
 #include "NewLobbyClientPW.h"

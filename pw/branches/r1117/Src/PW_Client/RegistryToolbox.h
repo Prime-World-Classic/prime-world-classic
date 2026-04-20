@@ -1,4 +1,7 @@
 #pragma once
+#ifndef _WIN32
+typedef void* HKEY;
+#endif
 #ifndef REGISTRY_TOOLBOX_H
 #define REGISTRY_TOOLBOX_H
 

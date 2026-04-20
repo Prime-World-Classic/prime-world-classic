@@ -4,9 +4,9 @@
 #include "System/AssertDumper.h"
 #include "System/InlineProfiler.h"
 #include "System/CrashRptWrapper.h"
-#include "RenderStatesManager.h"
+#include "renderstatesmanager.h"
 #include "renderflagsconverter.h"
-#include "RenderResourceManager.h"
+#include "renderresourcemanager.h"
 
 #include "vertexformatdescriptor.h"
 #include "texture.h"
@@ -368,21 +368,28 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
     CrashRptWrapper::AddTagToReport( "InstalledVideoMemory", NStr::StrFmt("%u/%u MB", availableVidMem, adapterRAM) );
     CrashRptWrapper::AddTagToReport( "DisplayDriver",        adapId.Driver );
     CrashRptWrapper::AddTagToReport( "DisplayDescription",   adapId.Description );
+#ifdef _WIN32
     CrashRptWrapper::AddTagToReport( "DisplayDriverVersion", NStr::StrFmt( "%u.%u.%u.%u",
       (unsigned)HIWORD( adapId.DriverVersion.HighPart ), (unsigned)LOWORD( adapId.DriverVersion.HighPart ),
       (unsigned)HIWORD( adapId.DriverVersion.LowPart ), (unsigned)LOWORD( adapId.DriverVersion.LowPart ) ) );
+#endif
   }
 #endif
 
   // Before creating device, test if we support given resolution and bit depth
+#ifdef _WIN32
   if(pp.Windowed == FALSE)
   {
     DWORD mode = 0, maxw = 0, maxh = 0;
+#ifdef _WIN32
     DEVMODE devmode;
+#endif
 
     while(true)
     {
+#ifdef _WIN32
       if(EnumDisplaySettings(NULL, mode++, &devmode) == FALSE)
+#endif
       {
         systemLog(NLogg::LEVEL_MESSAGE) << " Res-check indicates that requested resolution isn't supported:" << endl;
         systemLog(NLogg::LEVEL_MESSAGE) << pp.BackBufferWidth << "x" << pp.BackBufferHeight << "x32" << endl;      
@@ -408,6 +415,7 @@ bool Renderer::CreateDevice(D3DPRESENT_PARAMETERS& pp)
       }
     }
   }
+#endif
 
   // Try to create chosen device
   HRESULT hr = pD3D->CreateDevice(s_adapterToUse, DeviceType, (HWND)hWnd, dwCreateFlags,	&pp, &pDevice);
@@ -698,7 +706,7 @@ void Renderer::Synchronize()
 
         // Здесь можно что-нибудь сделать
 
-        Sleep(1);
+        threading::Sleep(1);
       }
 
       bResetDevice = (queryResult == S_FALSE);

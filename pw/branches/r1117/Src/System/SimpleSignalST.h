@@ -61,7 +61,7 @@ public:
   ProxySignalST(): pVar(0) {}
   ProxySignalST(T *_pVar): pVar(_pVar) {}
   virtual NGlobal::VariantValue Get() { NI_ASSERT(pVar != 0, ""); return NGlobal::VariantValue( pVar->Get() ); }
-  virtual void Set(const NGlobal::VariantValue &val) { NI_ASSERT(pVar != 0, ""); T::Signal( val.Get<T::ValueType>() ); }
+  virtual void Set(const NGlobal::VariantValue &val) { NI_ASSERT(pVar != 0, ""); T::Signal( val.Get<typename T::ValueType>() ); }
   virtual void Apply() {}
 
 private:

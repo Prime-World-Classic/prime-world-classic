@@ -20,6 +20,7 @@
 #include "SmartChatAntiSpam.h"
 
 #include "DI/DI.hpp"
+#include "SessionEventType.h"
 
 
 #define TempDebugTrace(msg) \
@@ -452,7 +453,7 @@ struct GSClientSettings
     void CheckForAbilityForExecute( const NWorld::PFAbilityData * pAbilityData, const CVec3 & pos, const NWorld::PFBaseHero * pHero, const bool bFromMinimap );
     bool InvulnerableFlagpoleReaction( NWorld::PFFlagpole* pFlagpole, NDb::EFaction faction );
 
-    bool AdventureScreen::CastLimitationsHandler( const NWorld::PFAbilityData* pAbilityData, const NWorld::PFBaseUnit* pOwner, const NWorld::Target& target ) const;
+    bool CastLimitationsHandler( const NWorld::PFAbilityData* pAbilityData, const NWorld::PFBaseUnit* pOwner, const NWorld::Target& target ) const;
 
     struct UnitAttitude
     {
@@ -621,8 +622,8 @@ struct GSClientSettings
 
     void SetLobbyCallback( IGameControl * _gameControl );
 
-    //Функция должна зваться сразу после создания объекта; в этой функции проводятся операции, которые нельзя поместить в дефолтный конструктор
-    //Почему не сделать НЕдефолтный конструктор - только потому, что тогда придется копипастить список инициализации на полстраницы
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ; пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    //пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     void Construct( NGameX::ChatUiController * _chatController, NGameX::SmartChatController * _smartChatController, IgnoreListStorage* _ignoreListStorage, bool _isSpectator, bool _isTutorial );
     
     void PrecacheResources();

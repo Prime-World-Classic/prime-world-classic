@@ -86,21 +86,21 @@ bool RegisterCmd(const string &szID, CheatCallback pHandler, bool notifyStatisti
 REGISTER_DEV_CMD(command, NGameX::CheatCommandProxy);       \
 static struct SRegisterGheatCommand_##command               \
 {                                                           \
-  SRegisterGheatCommand_##command##()                       \
+  SRegisterGheatCommand_##command()                         \
   {                                                         \
     RegisterCmd( #command, callback, true );                      \
   }                                                         \
-} registerCheatCommand_##command##;
+} registerCheatCommand_##command;
 
 #define REGISTER_DEVCHEAT_CMD(command, callback)            \
 REGISTER_DEV_CMD(command, NGameX::CheatCommandProxy);       \
 static struct SRegisterGheatCommand_##command               \
 {                                                           \
-  SRegisterGheatCommand_##command##()                       \
+  SRegisterGheatCommand_##command()                         \
   {                                                         \
     RegisterCmd( #command, callback, false );               \
   }                                                         \
-} registerCheatCommand_##command##;
+} registerCheatCommand_##command;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -971,7 +971,7 @@ static bool SetSkin( const char *name, const vector<wstring> &params, const Chea
     string flagIcon;
     wstring flagTooltip;
 
-    // TODO: добавить параметр включения/выключения анимированного портрета
+    // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     AdventureScreenLogic* advLogic = dynamic_cast<AdventureScreenLogic*>(AdventureScreen::Instance()->GetLogic());
     NI_ASSERT( advLogic, "Can't acquire adventure screen logic" );
     advLogic->GetFlashInterface()->SetHeroIdentity(
@@ -1639,7 +1639,7 @@ static bool DebugKillMBuildings(const char *name, const vector<wstring> &params,
 
   struct MBFinder
   {
-    MBFinder::MBFinder( ): mainBuilding(0) {}
+    MBFinder( ): mainBuilding(0) {}
     void operator()( NWorld::PFLogicObject &object )
     {
       if ( object.GetUnitType() == NDb::UNITTYPE_MAINBUILDING )

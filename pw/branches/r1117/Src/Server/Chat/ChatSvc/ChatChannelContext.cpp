@@ -2,7 +2,7 @@
 #include "ChatSvc/ChatChannelContext.h"
 #include "ChatSvc/ChatUserContext.h"
 #include "ChatSvc/ChatChannelHistory.h"
-#include "ChatSvc/ChatClientIfaceCallback.h"
+#include "Server/Chat/ChatSvc/ChatClientIfaceCallback.h"
 
 NI_DEFINE_REFCOUNT(chat::ChannelContext);
 

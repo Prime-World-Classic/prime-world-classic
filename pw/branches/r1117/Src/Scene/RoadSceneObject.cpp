@@ -1,8 +1,8 @@
 #include "StdAfx.h"
 #include "RoadSceneObject.h"
 #include "../Render/MeshResource.h"
-#include <Terrain\RoadPrimitive.h>
-#include "../Render/debugRenderer.h"
+#include <Terrain/RoadPrimitive.h>
+#include "../Render/debugrenderer.h"
 #include "../Render/renderresourcemanager.h"
 #include "../Terrain/Terrain.h"
 
@@ -17,6 +17,9 @@ namespace
 #endif
 
 #define BAKED_FILE_VERSION 0x03
+#ifndef MAKELONG
+#define MAKELONG(a, b) ((int)(((short)(a)) | ((int)((short)(b))) << 16))
+#endif
 #define BAKED_FILE_SIGN  MAKELONG('DR', BAKED_FILE_VERSION)
 
 namespace NScene

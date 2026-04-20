@@ -1,0 +1,256 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/Network/ClientTransportSystem2.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h:7,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:77,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/transport/stdafx.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:22:14: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+   22 |   const std::auto_ptr< MultiReaderLockImpl > impl_;
+      |              ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/memory:80,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MultiReaderLock.h:3:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:162:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ncircular_buffer.h:293:15: warning: ‘template<class _Category, class _Tp, class _Distance, class _Pointer, class _Reference> struct std::iterator’ is deprecated [-Wdeprecated-declarations]
+  293 | : public std::iterator<std::random_access_iterator_tag,
+      |               ^~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h:65,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h:43,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath:3913,
+                 from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h:36,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h:51,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h:4:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h:129:34: note: declared here
+  129 |     struct _GLIBCXX17_DEPRECATED iterator
+      |                                  ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/Types.h:4,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/ProtocolHandler.h:2,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/transport/TLProtocolHandlerFactory.h:2,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.h:121:34: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+  121 |   explicit ACE_Strong_Bound_Ptr (auto_ptr<X> p);
+      |                                  ^~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.h:222:15: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+  222 |   void reset (auto_ptr<X> p);
+      |               ^~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_Thread.h:32,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Guard_T.h:26,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.h:384:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/os_include/os_sched.h:47:6: error: conflicting declaration ‘typedef struct cpu_set_t cpu_set_t’
+   47 |    } cpu_set_t;
+      |      ^~~~~~~~~
+In file included from /usr/include/sched.h:44,
+                 from /usr/include/pthread.h:22,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h:8:
+/usr/include/bits/cpu-set.h:42:3: note: previous declaration as ‘typedef struct cpu_set_t cpu_set_t’
+   42 | } cpu_set_t;
+      |   ^~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:154:58: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+  154 | ACE_Strong_Bound_Ptr<X, ACE_LOCK>::ACE_Strong_Bound_Ptr (auto_ptr<X> p)
+      |                                                          ^~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:309:43: warning: ‘template<class> class std::auto_ptr’ is deprecated: use 'std::unique_ptr' instead [-Wdeprecated-declarations]
+  309 | ACE_Strong_Bound_Ptr<X, ACE_LOCK>::reset (auto_ptr<X> p)
+      |                                           ^~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:58:28: note: declared here
+   58 |   template<typename> class auto_ptr;
+      |                            ^~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.h:18:5: error: extra qualification ‘Transport::ClientTransportSystem2::’ on member ‘ClientTransportSystem2’ [-fpermissive]
+   18 |     ClientTransportSystem2::ClientTransportSystem2(Network::INetworkDriver* _pNetDriver,
+      |     ^~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/TProactor/Double_List_T.h:27,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/app/IOTerabit/Protocol.h:23,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/app/IOTerabit/ProtocolFactory_T.h:22,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/BaseProtocolFactory.h:2,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/Driver.h:2,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:5:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/TProactor/Single_List_T.h:97:38: warning: ‘template<class _Arg, class _Result> struct std::unary_function’ is deprecated [-Wdeprecated-declarations]
+   97 | class LinkS_Functor_T :  public std::unary_function < X, LinkS_T <X> >
+      |                                      ^~~~~~~~~~~~~~
+In file included from /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/unique_ptr.h:37:
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_function.h:120:12: note: declared here
+  120 |     struct unary_function
+      |            ^~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/TProactor/Double_List_T.h:98:38: warning: ‘template<class _Arg, class _Result> struct std::unary_function’ is deprecated [-Wdeprecated-declarations]
+   98 | class LinkD_Functor_T :  public std::unary_function < X, LinkD_T <X> >
+      |                                      ^~~~~~~~~~~~~~
+/usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_function.h:120:12: note: declared here
+  120 |     struct unary_function
+      |            ^~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_sys_socket.h:30,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/ACE.inl:8,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/ACE.h:828,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/String_Base.cpp:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/String_Base.h:603,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/SString.h:23,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/app/IOTerabit/Protocol.h:25:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:76:1: error: expected class-name before ‘{’ token
+   76 | {
+      | ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:83:22: error: expected ‘)’ before ‘&’ token
+   83 |   ACE_Str_Buf (strbuf &);
+      |               ~      ^~
+      |                      )
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:166:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl: In constructor ‘ACE_Str_Buf::ACE_Str_Buf(void*, int, int)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:23:9: error: ‘class ACE_Str_Buf’ has no member named ‘maxlen’
+   23 |   this->maxlen = max;
+      |         ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:24:9: error: ‘class ACE_Str_Buf’ has no member named ‘len’
+   24 |   this->len = l;
+      |         ^~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:25:9: error: ‘class ACE_Str_Buf’ has no member named ‘buf’
+   25 |   this->buf = (char *) b;
+      |         ^~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:29:1: error: no declaration matches ‘ACE_Str_Buf::ACE_Str_Buf(strbuf&)’
+   29 | ACE_Str_Buf::ACE_Str_Buf (strbuf &sb)
+      | ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:75:18: note: candidates are: ‘constexpr ACE_Str_Buf::ACE_Str_Buf(ACE_Str_Buf&&)’
+   75 | class ACE_Export ACE_Str_Buf : public strbuf
+      |                  ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:75:18: note:                 ‘constexpr ACE_Str_Buf::ACE_Str_Buf(const ACE_Str_Buf&)’
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:21:1: note:                 ‘ACE_Str_Buf::ACE_Str_Buf(void*, int, int)’
+   21 | ACE_Str_Buf::ACE_Str_Buf (void *b, int l, int max)
+      | ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:75:18: note: ‘class ACE_Str_Buf’ defined here
+   75 | class ACE_Export ACE_Str_Buf : public strbuf
+      |                  ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl: In function ‘int ACE_OS::putmsg(ACE_HANDLE, const strbuf*, const strbuf*, int)’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:159:43: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  159 |       result =  ACE_OS::write (handle, ctl->buf, ctl->len);
+      |                                           ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:159:53: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  159 |       result =  ACE_OS::write (handle, ctl->buf, ctl->len);
+      |                                                     ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:164:43: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  164 |       result = ACE_OS::write (handle, data->buf, data->len);
+      |                                           ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:164:54: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  164 |       result = ACE_OS::write (handle, data->buf, data->len);
+      |                                                      ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_Thread.h:36:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:171:37: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  171 |       ACE_NEW_RETURN (buf, char [ctl->len + data->len], -1);
+      |                                     ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_Memory.h:189:37: note: in definition of macro ‘ACE_NEW_RETURN’
+  189 |    do { POINTER = new (ACE_nothrow) CONSTRUCTOR; \
+      |                                     ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:171:49: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  171 |       ACE_NEW_RETURN (buf, char [ctl->len + data->len], -1);
+      |                                                 ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_Memory.h:189:37: note: in definition of macro ‘ACE_NEW_RETURN’
+  189 |    do { POINTER = new (ACE_nothrow) CONSTRUCTOR; \
+      |                                     ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:172:31: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  172 |       ACE_OS::memcpy (buf, ctl->buf, ctl->len);
+      |                               ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:172:41: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  172 |       ACE_OS::memcpy (buf, ctl->buf, ctl->len);
+      |                                         ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:173:32: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  173 |       ACE_OS::memcpy (buf + ctl->len, data->buf, data->len);
+      |                                ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:173:43: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  173 |       ACE_OS::memcpy (buf + ctl->len, data->buf, data->len);
+      |                                           ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:173:54: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  173 |       ACE_OS::memcpy (buf + ctl->len, data->buf, data->len);
+      |                                                      ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:174:47: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  174 |       result = ACE_OS::write (handle, buf, ctl->len + data->len);
+      |                                               ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.inl:174:59: error: invalid use of incomplete type ‘const struct ACE_OS::strbuf’
+  174 |       result = ACE_OS::write (handle, buf, ctl->len + data->len);
+      |                                                           ^~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/OS_NS_stropts.h:92:22: note: forward declaration of ‘struct ACE_OS::strbuf’
+   92 |               struct strbuf *ctl,
+      |                      ^~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/Channel.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/naio/Driver.h:4:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/app/IOTerabit/TcpChannel.h: At global scope:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/Terabit/app/IOTerabit/TcpChannel.h:64:55: warning: conversion from ‘size_t’ {aka ‘long unsigned int’} to ‘unsigned int’ changes value from ‘18446744073709551615’ to ‘4294967295’ [-Woverflow]
+   64 |                        unsigned int  max_cache_size = (size_t) -1);
+      |                                                       ^~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp: In member function ‘void Transport::ClientTransportSystem2::SetupTransport()’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:113:7: error: ‘SYSTEM_INFO’ was not declared in this scope; did you mean ‘SEM_INFO’?
+  113 |       SYSTEM_INFO si;
+      |       ^~~~~~~~~~~
+      |       SEM_INFO
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:114:9: error: ‘::GetSystemInfo’ has not been declared; did you mean ‘GetSystemLog’?
+  114 |       ::GetSystemInfo(&si);
+      |         ^~~~~~~~~~~~~
+      |         GetSystemLog
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Network/ClientTransportSystem2.cpp:114:24: error: ‘si’ was not declared in this scope; did you mean ‘sin’?
+  114 |       ::GetSystemInfo(&si);
+      |                        ^~
+      |                        sin
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl: In instantiation of ‘ACE_Strong_Bound_Ptr<X, ACE_LOCK>::~ACE_Strong_Bound_Ptr() [with X = TransportLayer::MessageBlockFactory; ACE_LOCK = ACE_Thread_Mutex]’:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/transport/TLProtocolHandlerFactory.h:27:83:   required from here
+   27 |               TL::MessageBlockFactorySP const & spmbf = TL::MessageBlockFactorySP());
+      |                                                                                   ^
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:188:5: warning: possible problem detected in invocation of ‘operator delete’ [-Wdelete-incomplete]
+  188 |     delete this->ptr_;
+      |     ^~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:188:18: warning: invalid use of incomplete type ‘class TransportLayer::MessageBlockFactory’
+  188 |     delete this->ptr_;
+      |            ~~~~~~^~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/transport/TLProtocolHandlerFactory.h:5:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/NetworkAIO/transport/TLTypes.h:93:9: note: forward declaration of ‘class TransportLayer::MessageBlockFactory’
+   93 |   class MessageBlockFactory;
+      |         ^~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/ACE_wrappers/ace/Bound_Ptr.inl:188:5: note: neither the destructor nor the class-specific ‘operator delete’ will be called, even if they are declared when the class is defined
+  188 |     delete this->ptr_;
+      |     ^~~~~~~~~~~~~~~~~
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:765: CMakeFiles/PrimeWorld.dir/Network/ClientTransportSystem2.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

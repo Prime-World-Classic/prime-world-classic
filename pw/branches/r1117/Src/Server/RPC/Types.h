@@ -23,6 +23,14 @@ namespace crt
 namespace rpc
 { 
 
+enum IdType
+{
+  OriginalType,
+  RemoteType,
+  GeneratedType,
+  BaseRemoteType,
+};
+
 struct MemoryBlock
 {
   MemoryBlock():memory(0), size(0) {}

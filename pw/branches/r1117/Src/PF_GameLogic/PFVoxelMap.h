@@ -2,7 +2,7 @@
 
 #include "../System/noncopyable.h"
 #include "PFLogicObject.h"
-#include "System/InlineProfiler.h"
+#include "../System/InlineProfiler.h"
 
 
 namespace NWorld
@@ -26,7 +26,7 @@ public:
   {
     if ( !nextPointers.empty() )
     {
-      for ( TCurrentNextPointers::iterator it = nextPointers.begin(); it != nextPointers.end(); ++it )
+      for ( typename TCurrentNextPointers::iterator it = nextPointers.begin(); it != nextPointers.end(); ++it )
       {
         if ( e == *it )
         {
@@ -133,7 +133,7 @@ private:
       // for all elements in ring
       for (ring::Range<PFLogicObject::LORing> r(ring); r; ++r)
       {
-        TSel::Obj *pObj = TSel::Cast(&(*r));
+        typename TSel::Obj *pObj = TSel::Cast(&(*r));
         NI_VERIFY(pObj != NULL, "Failed logic in Voxel map! (1)", continue;);
         if (p(*pObj))
           func(*pObj);
@@ -162,14 +162,14 @@ private:
       {
         PFLogicObject::LORing const &ring = TSel::Select(GetVoxel(i, j));
 
-        TSel::Obj *const pObjLast = TSel::Cast(ring.last());
-        for (TSel::Obj *pObj = TSel::Cast(ring.first()); pObj != pObjLast;)
+        typename TSel::Obj *const pObjLast = TSel::Cast(ring.last());
+        for (typename TSel::Obj *pObj = TSel::Cast(ring.first()); pObj != pObjLast;)
         {
           //next prep
           NI_VERIFY(pObj != NULL, "Failed logic in Voxel map! (2)", break;);
-          TSel::Obj *pNext = TSel::Cast(PFLogicObject::LORing::next(pObj));
+          typename TSel::Obj *pNext = TSel::Cast(PFLogicObject::LORing::next(pObj));
           if ( pNext == 0 )
-            pNext = static_cast<TSel::Obj*>(ringElemRemovalHandler.GetTopNext());
+            pNext = static_cast<typename TSel::Obj*>(ringElemRemovalHandler.GetTopNext());
           if (IsPointInRange(pObj->GetPosition(), range) && p(*pObj))
           {
             ringElemRemovalHandler.PushNext( pNext );
@@ -231,10 +231,12 @@ public:
     DummyPredicate p;
     ForAllUnitsInRange(vPos, dist, func, p);
   }
+  float GetMaxUnitRadius() const;
+
   template <typename TFunc>
   void ForAllUnitsInRangeConsiderSize( const CVec3& vPos, float dist, TFunc& func) const
   {
-    const float maxUnitRadius = 0.5f * GetWorld()->GetAIWorld()->GetMaxObjectSize();
+    const float maxUnitRadius = GetMaxUnitRadius();
 
     struct IsUnitParticallyIncluded: public DummyPredicate
     {

@@ -4,7 +4,7 @@
 #include "PFPlayer.h"
 #include "PFApplMod.h"
 #include "InventoryInterface.h"
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
 
 namespace NDb
 {
@@ -17,7 +17,7 @@ namespace NDb
   
 namespace NGameX { class PFBaseClientHero;}
 
-namespace SessionEventType {enum EventType;}
+#include "SessionEventType.h"
 
 namespace EHeroState
 {
@@ -38,7 +38,7 @@ class PFTalentsSet;
 class PFHeroStatistics;
 class PFGlyph;
 
-namespace ETalentActivation { enum Enum; }
+namespace ETalentActivation { enum Enum : int; }
 
 struct CloneParams
 {

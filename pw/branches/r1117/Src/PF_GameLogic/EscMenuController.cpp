@@ -5,7 +5,7 @@
 #include "UIEventHandler.h"
 #include "FlashFSCommands.h"
 
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 #include "GameMenuInterfaces.h"
 
 namespace NGameX
@@ -56,7 +56,7 @@ void EscMenuController::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
   case DisableHotkeys:
     {
       int disable;
-      sscanf_s(args,"%d",&disable);
+      sscanf(args,"%d",&disable);
       eventHandler->DisableHotkeys(disable);
       break;
     }

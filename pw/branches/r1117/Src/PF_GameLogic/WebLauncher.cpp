@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "WebLauncher.h"
+
+#ifdef _WIN32
 #include <iostream>
 #include <map>
 
@@ -792,3 +794,8 @@ std::string WebLauncherPostRequest::CreateDebugSession()
 
   return res;
 }
+
+#else
+#include <vector>
+namespace NGameX { void WebLauncherPostRequest(const char*, const std::vector<int>&, int) {} void WebLauncherPostRequest(const char*, const char*, int) {} void StartWebLauncher() {} }
+#endif

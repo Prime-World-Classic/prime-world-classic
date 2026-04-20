@@ -3,7 +3,7 @@
 
 #include "../Client/ScreenCommands.h"
 //#include "../PF_GameLogic/GameMenuScreen.h"
-#include "../Render/materialspec.h"
+#include "../Render/MaterialSpec.h"
 
 #include "Minigames.h"
 #include "MinigamesMain.h"
@@ -257,7 +257,7 @@ void EaselScreenLogic::OnRMouseDown()
 
 void EaselScreenLogic::InitInGameBoostButtonsContainer()
 {
-  // получить бусты от данных
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   if( !IsValid( easelMinigame ) )
     return;
 

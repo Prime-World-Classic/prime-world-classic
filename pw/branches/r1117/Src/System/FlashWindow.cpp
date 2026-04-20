@@ -8,6 +8,7 @@ namespace NMainFrame
 
 bool FlashCurrentWindow()
 {
+#ifdef WIN32
 	HWND hwnd = NMainFrame::GetWnd();
 	if ( !IsWindow(hwnd) )
 		return false;
@@ -19,6 +20,9 @@ bool FlashCurrentWindow()
 	info.dwTimeout = 0;//1 * 1000;
 	FlashWindowEx( &info );
 	return true;
+#else
+	return false;
+#endif
 }
 
 }

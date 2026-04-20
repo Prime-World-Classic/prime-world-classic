@@ -639,9 +639,9 @@ namespace NWorld
    
     if ( !GetCurrentState() )
     {
-      // Проверяем здесь в т.ч. на союзников в качестве цели, потому что стейт может пихаться через EnqueueState (например аппликатор таунта герою).
-      // Надо быть готовым к тому, что к следующему степу цель может оказаться союзной,
-      // а мы не хотим атаковать союзника (только если не указываем явно, например, в аппликаторе AttackTarget).
+      // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ.пїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ EnqueueState (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ).
+      // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+      // пїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ AttackTarget).
       if ( !pOwner->CanAttackTarget( pTarget ) || ( !allowAllies && pOwner->GetFaction() == pTarget->GetFaction() ) )
       {
         pOwner->Stop( false );
@@ -680,7 +680,7 @@ namespace NWorld
         bool pushCombatState = true;
         if ( canMove )
         {
-          PFBaseUnit* target = strongTarget ? pTarget : pOwner->GetCurrentTarget();
+          PFBaseUnit* target = strongTarget ? pTarget : pOwner->GetCurrentTarget().GetPtr();
 
           if ( PFBuilding* building = dynamic_cast<PFBuilding*>( target ) )
           {
@@ -690,7 +690,7 @@ namespace NWorld
             const int tileAttackRange = pOwner->GetWorld()->GetTileMap()->GetLenghtInTiles(pOwner->GetAttackRange());
             IPointChecking* const pointChecking = new RegionPointChecker(pWorld, building->GetOccupiedTiles(), tileAttackRange);
 
-            // NOTE: специальный случай
+            // NOTE: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             const bool combatMove =
               pOwner->GetUnitType() == NDb::UNITTYPE_SIEGECREEP ||
               pOwner->GetUnitType() == NDb::UNITTYPE_FACTIONCHAMPION;

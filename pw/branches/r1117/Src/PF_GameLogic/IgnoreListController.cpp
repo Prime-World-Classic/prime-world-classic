@@ -5,7 +5,7 @@
 
 #include "AdventureFlashInterface.h"
 #include "FlashFSCommands.h"
-#include "ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 #include "Client/GameChatClient/IGameChatClient.h"
 
 #include "DBStats.h"

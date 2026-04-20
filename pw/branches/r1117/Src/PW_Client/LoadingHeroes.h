@@ -1,17 +1,11 @@
 #pragma once
 
 
-namespace NCore
-{
-  namespace ETeam
-  {
-    enum Enum;
-  }
-}
+#include "Core/GameTypes.h"
+#include "PF_GameLogic/DBStats.h"
 
 namespace NDb
 {
-  enum EFaction;
   struct HeroesDB;
   struct AdvMapDescription;
 }

@@ -151,9 +151,9 @@ Transport::MessageBase * Channel::ReceiveMsg()
 
   FixedMemoryStream strm( msg->Data(), msg->Size() );
   int msgtype = -1;
-  if ( Transport::ReadMessageType( &strm, msgtype ) )
+  if ( Transport::ReadMessageType( &(static_cast<Stream&>(strm)), msgtype ) )
   {
-    Transport::UnpackResult::Enum unpackrc = Transport::UnpackMessage( msgtype, commonCtx.msgFactory, &strm, 65536, tmsg );
+    Transport::UnpackResult::Enum unpackrc = Transport::UnpackMessage( msgtype, commonCtx.msgFactory, &(static_cast<Stream&>(strm)), 65536, tmsg );
     if (unpackrc < 0)
     {
       ErrorTrace( "RdpChannel: Deserialization error. rc=%d msgtype=%d tgt=%s", (int)unpackrc, msgtype, transportAddress.target.c_str() );
@@ -460,7 +460,7 @@ size_t Channel::NivalSerialize( void * buffer, size_t bufSize, Transport::Messag
 
   int msgType = tmsg->GetTypeId();
   strm.Write( (void*)&msgType, sizeof( int ) );
-  ChunklessSaver saver( &strm, 0, false );
+  ChunklessSaver saver( &(static_cast<Stream&>(strm)), 0, false );
   (*tmsg) & saver;
   return (size_t)strm.GetPosition();
 }

@@ -13,16 +13,16 @@ class GuildEmblem : public BaseObjectST
   NI_DECLARE_REFCOUNT_CLASS_1( GuildEmblem, BaseObjectST );
 
   nstl::vector<StrongMT<threading::JobThread>> downloadJobs;
-  nstl::map<unsigned __int64, nstl::vector<byte>> data;
+  nstl::map<uint64_t, nstl::vector<byte>> data;
   threading::Mutex mutex;
 
 public:
   GuildEmblem();
 
-  void StartDownload( unsigned __int64 guildAuid, uint id, const nstl::string& url );
+  void StartDownload( uint64_t guildAuid, uint id, const nstl::string& url );
   bool IsDownloaded();
-  void SetData( unsigned __int64 guildAuid, const nstl::vector<byte>& _data );
-  bool GetData( unsigned __int64 guildAuid, nstl::vector<byte>& _data );
+  void SetData( uint64_t guildAuid, const nstl::vector<byte>& _data );
+  bool GetData( uint64_t guildAuid, nstl::vector<byte>& _data );
 };
 
 }

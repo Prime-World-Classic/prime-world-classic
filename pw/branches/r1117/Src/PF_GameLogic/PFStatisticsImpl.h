@@ -16,9 +16,9 @@ namespace StatisticsStuff
 // of course, we assume that there are no duplicates neither in v1 nor in v2 (i.e. both v1 and v2 are "sets").
 template <typename T> void Minus_(vector<T> &v1, vector<T> const &v2)
 {
-  for (vector<T>::const_iterator it2 = v2.begin(), end2 = v2.end(); it2 != end2; ++it2)
+  for (typename vector<T>::const_iterator it2 = v2.begin(), end2 = v2.end(); it2 != end2; ++it2)
   {
-    vector<T>::iterator it1 = find(v1.begin(), v1.end(), *it2);
+    typename vector<T>::iterator it1 = find(v1.begin(), v1.end(), *it2);
     if (it1 != v1.end())
     {
       v1.erase(it1);      
@@ -32,11 +32,11 @@ template <typename T> void Minus_(vector<T> &v1, vector<T> const &v2)
 // we assume that intersection of v1 and v2 is empty
 template <typename T> void Unite_(vector<T> const &v1, vector<T> const &v2, vector<T> &v3)
 {
-  for (vector<T>::const_iterator it1 = v1.begin(), end1 = v1.end(); it1 != end1; ++it1)
+  for (typename vector<T>::const_iterator it1 = v1.begin(), end1 = v1.end(); it1 != end1; ++it1)
   {
     v3.push_back(*it1);
   }
-  for (vector<T>::const_iterator it2 = v2.begin(), end2 = v2.end(); it2 != end2; ++it2)
+  for (typename vector<T>::const_iterator it2 = v2.begin(), end2 = v2.end(); it2 != end2; ++it2)
   {
     v3.push_back(*it2);
   }

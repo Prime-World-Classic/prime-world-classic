@@ -1,9 +1,9 @@
 #include "stdafx.h"
-#include "RelayBalancer/RelaySvcContext.h"
-#include "RelaySvc/RelaySvcNaming.h"
+#include "RelaySvcContext.h"
+#include "Server/Relay/RelaySvc/RelaySvcNaming.h"
 #include "Network/AddressTranslator.h"
-#include "RelayBalancer/RelaySvcContextNotity.h"
-#include "RelayBalancer/RelayBalancerUserContext.h"
+#include "RelaySvcContextNotity.h"
+#include "RelayBalancerUserContext.h"
 
 NI_DEFINE_REFCOUNT(Relay::SvcContext);
 

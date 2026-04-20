@@ -13,7 +13,7 @@
 #include "BaseChannel.h"
 #include "ClientAcceptor.h"
 #include "RelayServer2Cfg.h"
-#include "RelaySvc/IOThreadPool.h"
+#include "IOThreadPool.h"
 #include "RelayClientsVerifier.h"
 #include "GameSvcTrafficTrackerFactory.h"
 

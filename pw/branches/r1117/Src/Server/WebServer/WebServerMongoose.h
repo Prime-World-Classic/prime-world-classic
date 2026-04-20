@@ -2,14 +2,7 @@
 #define WEBSERVERMONGOOSE_H_INCLUDED
 
 #include "WebServer.h"
-
-extern "C"
-{
-  struct mg_context;
-  struct mg_connection;
-  struct mg_request_info;
-  enum mg_event;
-}
+#include <mongoose.h>
 
 namespace webServer
 {

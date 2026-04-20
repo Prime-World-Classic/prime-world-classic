@@ -15,8 +15,8 @@
 #include "UnitNameMap.h"
 #include "PrecompiledTooltips.h"
 
-#include "../ui/FlashContainer2.h"
-#include "../ui/ImageLabel.h"
+#include "../UI/FlashContainer2.h"
+#include "../UI/ImageLabel.h"
 //#include "../UI/Cursor.h"
 
 namespace
@@ -158,7 +158,7 @@ void InventoryController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
   case InventoryItemClicked:
     {
       int index;
-      sscanf_s(args,"%d", &index);
+      sscanf(args,"%d", &index);
 
       if (!IsValid(eventHandler))
         return;
@@ -172,7 +172,7 @@ void InventoryController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
   case InventoryItemToolTip:
     {
       int show, index;
-      sscanf_s(args,"%d %d",&show, &index);
+      sscanf(args,"%d %d",&show, &index);
       ShowConsumableDesc(index, show);
       break;
     }

@@ -1,7 +1,7 @@
 #include "StdAfx.h"
 #include "CharInfoContainer.h"
 
-#include "../ui/FlashContainer2.h"
+#include "../UI/FlashContainer2.h"
 
 #include "CharInfoController.h"
 #include "FlashFSCommands.h"
@@ -108,7 +108,7 @@ void CharInfoContainer::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
   {
   case FillCharStatForUnit:
     {
-      sscanf_s( args, "%d %d", &isHero, &heroId );
+      sscanf( args, "%d %d", &isHero, &heroId );
 
       if( currentCharInfoController && currentCharInfoController->IsStatsActive() )
       {
@@ -135,7 +135,7 @@ void CharInfoContainer::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
     }
   case OpenTalentsForUnit:
     {
-      sscanf_s( args, "%d %d", &isHero, &heroId );
+      sscanf( args, "%d %d", &isHero, &heroId );
 
       if ( isHero == 0 )
       {
@@ -159,7 +159,7 @@ void CharInfoContainer::OnFSCommand( UI::FlashContainer2* _wnd, const char* list
 
   case StartSpectate:
     {
-      sscanf_s( args, "%d", &heroId );
+      sscanf( args, "%d", &heroId );
 
       if (eventHandler)
         eventHandler->StartSpectateById(heroId);

@@ -5,13 +5,13 @@
 #include "IEntityMap.h"
 #include "Transaction.h"
 #include "Types.h"
+#include "RpcMultiPacketPipe.h"
 
 
 namespace rpc 
 {
 
 class Transaction;
-class MultiPacketPipe;
 
 class Args : NonCopyable
 {
@@ -310,7 +310,7 @@ public:
   { 
     if (transaction)
     {
-      transaction->GetArgs().SetPipe(multiPipe);
+      transaction->GetArgs().SetPipe(multiPipe.Get());
       return transaction->GetArgs().Push(value);
     }
     return false;
@@ -320,7 +320,7 @@ public:
   { 
     if (transaction)
     {
-      transaction->GetArgs().SetPipe(multiPipe);
+      transaction->GetArgs().SetPipe(multiPipe.Get());
       return transaction->GetArgs().Push( value ); 
     }
     return false;
@@ -339,7 +339,7 @@ public:
   { 
     if (transaction)
     {
-      transaction->GetArgs().SetPipe(multiPipe);
+      transaction->GetArgs().SetPipe(multiPipe.Get());
       if ( SUPERSUBCLASS( rpc::Data, T ) ) 
         return transaction->GetArgs().Push( value ); 
       else 

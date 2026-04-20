@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../Render/GlobalMasks.h"
-#include "../Render/FullscreenFX.h"
+#include "../Render/FullScreenFX.h"
 #include "../PF_Core/DBEffect.h"
 
 namespace PF_Render

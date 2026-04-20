@@ -2,7 +2,7 @@
 #include "HeroActions.h"
 
 #include "PFBaseUnitStates.h"
-#include "PFBuildings.h"//для доступа к позиции здания
+#include "PFBuildings.h"//пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 #include "PFMinigamePlace.h"
 
 #include "Minimap.h"
@@ -27,9 +27,9 @@
 #include "MarkersController.h"
 #include "AdventureScreenEvents.h"
 #include "PFClientHero.h"
-#include "Core\CoreFSM.h"
+#include "Core/CoreFSM.h"
 #else
-#include "game\pf\Audit\ClientStubs.h"
+#include "game/pf/Audit/ClientStubs.h"
 #endif
 
 #include "TargetSelectorHelper.hpp"
@@ -133,15 +133,15 @@ namespace NWorld
   DEFINE_1_PARAM_CMD_CHECK( 0x2C6BBB40, CmdHold,             CPtr<PFBaseHero>, pHero );
   DEFINE_3_PARAM_CMD_CHECK( 0xB76AAC0,  CmdRaiseFlag,        CPtr<PFBaseHero>, pHero, CPtr<PFFlagpole>, pFlagpole, bool, issuedByScript);
 
-  DEFINE_3_PARAM_CMD_CHECK( 0xF5CC401,  CmdUseConsumable,    CPtr<PFBaseMaleHero>, pHero, INT32, slot, AbilityTarget, target);
-  DEFINE_3_PARAM_CMD_CHECK( 0xB695200,  CmdActivateTalent,   CPtr<PFBaseMaleHero>, pHero, INT32, level, INT32, slot);
-  DEFINE_5_PARAM_CMD_CHECK( 0xB695201,  CmdUseTalent,        CPtr<PFBaseMaleHero>, pHero, INT32, level, INT32, slot, AbilityTarget, target, bool, issuedByScript );
+  DEFINE_3_PARAM_CMD_CHECK( 0xF5CC401,  CmdUseConsumable,    CPtr<PFBaseMaleHero>, pHero, int32_t, slot, AbilityTarget, target);
+  DEFINE_3_PARAM_CMD_CHECK( 0xB695200,  CmdActivateTalent,   CPtr<PFBaseMaleHero>, pHero, int32_t, level, int32_t, slot);
+  DEFINE_5_PARAM_CMD_CHECK( 0xB695201,  CmdUseTalent,        CPtr<PFBaseMaleHero>, pHero, int32_t, level, int32_t, slot, AbilityTarget, target, bool, issuedByScript );
   DEFINE_3_PARAM_CMD_CHECK( 0x6294CD01, CmdUsePortal,        CPtr<PFBaseMaleHero>, pHero, AbilityTarget, target, bool, issuedByScript );
 
   DEFINE_2_PARAM_CMD_CHECK( 0xA05CCB40, CmdPickupObject,   CPtr<PFBaseHero>, pHero, CPtr<PFPickupableObjectBase>, pPickupable);
   DEFINE_5_PARAM_CMD_CHECK( 0xB622CC0,  CmdMinimapSignal,  CPtr<PFBaseHero>, pHero, CPtr<PFBaseUnit>, pSelected, Target, target, NDb::EFaction, faction, bool, issuedByScript);
 
-  DEFINE_2_PARAM_CMD_CHECK( 0x9D62D440, CmdInitMinigame,   CPtr<PFEaselPlayer>, easelPlayer, INT32, objId );
+  DEFINE_2_PARAM_CMD_CHECK( 0x9D62D440, CmdInitMinigame,   CPtr<PFEaselPlayer>, easelPlayer, int32_t, objId );
 
   //DEFINE_2_PARAM_CMD_CHECK( 0xF659340,  CmdDenyBuilding,   CPtr<PFBaseHero>, pHero, CPtr<PFBuilding>, pBuilding );
   //DEFINE_2_PARAM_CMD_CHECK( 0x2C6614C0, CmdEmote,          CPtr<PFBaseHero>, pHero, NDb::EEmotion, emotion );
@@ -331,7 +331,7 @@ namespace NWorld
     }
   }
 
-  NCore::WorldCommand* CreateCmdUseConsumable( PFBaseMaleHero* pHero, INT32 slot, Target const & target )
+  NCore::WorldCommand* CreateCmdUseConsumable( PFBaseMaleHero* pHero, int32_t slot, Target const & target )
   {
     NI_VERIFY(NULL != pHero, "Hero object must exist!", return 0; );
     return new CmdUseConsumable( pHero, slot, target );
@@ -350,7 +350,7 @@ namespace NWorld
       pHero->EnqueueState( new PFHeroUseConsumableState( pHero, slot, target ), true );
   }
 
-  NCore::WorldCommand* CreateCmdPickupObject( PFBaseHero* pHero, INT32 objId )
+  NCore::WorldCommand* CreateCmdPickupObject( PFBaseHero* pHero, int32_t objId )
   {
     if( NULL == pHero)
     {
@@ -462,7 +462,7 @@ namespace NWorld
     return new CmdRaiseFlag( pHero, pFlagpole, issuedByScript );
   }
 
-  NCore::WorldCommand* CreateCmdInitMinigame( PFEaselPlayer* easelPlayer, INT32 objId )
+  NCore::WorldCommand* CreateCmdInitMinigame( PFEaselPlayer* easelPlayer, int32_t objId )
   {
     if( NULL == easelPlayer )
     {
@@ -559,14 +559,14 @@ namespace NWorld
       pHero->ActivateTalent(level, slot);
   }
 
-  NCore::WorldCommand* CreateCmdActivateTalent( PFBaseMaleHero *pHero, INT32 level, INT32 slot )
+  NCore::WorldCommand* CreateCmdActivateTalent( PFBaseMaleHero *pHero, int32_t level, int32_t slot )
   {
     NI_VERIFY(NULL != pHero, "Hero object must exist!", return 0; );
 
     return new CmdActivateTalent( pHero, level, slot );
   }
 
-  NCore::WorldCommand* CreateCmdUseTalent( PFBaseMaleHero *pHero, INT32 level, INT32 slot, Target const & target, bool issuedByScript )
+  NCore::WorldCommand* CreateCmdUseTalent( PFBaseMaleHero *pHero, int32_t level, int32_t slot, Target const & target, bool issuedByScript )
   {
     TempDebugTrace(NStr::StrFmt("CreateCmdUseTalent() level=%d, slot=%d", level, slot));
     NI_VERIFY(NULL != pHero, "Hero object must exist!", return 0; );

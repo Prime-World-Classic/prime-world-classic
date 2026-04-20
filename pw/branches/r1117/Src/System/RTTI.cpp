@@ -172,7 +172,7 @@ namespace NRTTI
       string sMangled = DecorateTypeName(pClassName);
       size_t nSize = strlen(sMangled.c_str()) + 1;
       ::Reset(mangledSearchName, new char[nSize]);
-      strcpy_s(Get(mangledSearchName), nSize, sMangled.c_str());
+      strncpy(Get(mangledSearchName), sMangled.c_str(), nSize);
     }
   }
   bool ParentChecker::Act(RTTIBaseClassDescriptor *pDesc)

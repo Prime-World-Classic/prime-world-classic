@@ -14,7 +14,7 @@ namespace NScene
 
 const int s_standardAnimationFPSInMaya = 30; // 30 frames per second. Ivn said to have this constant here
 
-enum AgNode;
+enum AgNode : int;
 
 class AnimatedSceneComponent : public SceneComponent
 {

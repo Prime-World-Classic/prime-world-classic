@@ -1,11 +1,11 @@
 #pragma once
 #include <Network/TransportTypes.h>
 #include "UserEnvInfo.h"
-#include "UserManagerSvc/RUserManagerIface.auto.h"
-#include "RelayBalancer/RelayBalancerIface.h"
-#include "UserManagerSvc/IUserRegister.h"
-#include "UserManagerSvc/IPrepareUserEnvNotify.h"
-#include "UserManagerSvc/PartialReconnectSettings.h"
+#include "RUserManagerIface.auto.h"
+#include "Server/Relay/RelayBalancer/RelayBalancerIface.h"
+#include "IUserRegister.h"
+#include "IPrepareUserEnvNotify.h"
+#include "PartialReconnectSettings.h"
 
 namespace UserManager
 {

@@ -103,7 +103,7 @@ int VPrintf(char *sOut, size_t sizeOut, const char *sFormat, va_list vlArgs)
   // Safe write to string
   if(sizeOut > 0)
   {
-    nNumWrittenChars = std::vsnprintf( sOut, sizeOut - 1, sFormat, vlArgs );
+    nNumWrittenChars = vsnprintf( sOut, sizeOut - 1, sFormat, vlArgs );
     // vsnprintf
 
     // Check if _vsnprintf write correctly
@@ -132,7 +132,9 @@ void GenerateUUID( char *dest, size_t sizeOut )
 
 	GUID guid;
 	CoCreateGuid( &guid );
-	GUID2String( guid, dest );
+	nstl::string tmp;
+	GUID2String( &tmp, guid );
+	strncpy(dest, tmp.c_str(), sizeOut);
 }
 
 void SysLog( const char *logString )

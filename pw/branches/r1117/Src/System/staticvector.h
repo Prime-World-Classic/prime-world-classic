@@ -1,14 +1,15 @@
 #ifndef _STATICVECTOR_H_
 #define _STATICVECTOR_H_
 
+#include <stdint.h>
 #include "dummyallocator.h"
 
 // in-game allowed only constant methods
 template< typename T > 
 class StaticVector
 {
-	unsigned __int32 count;
-	unsigned __int32 offset;
+	uint32_t count;
+	uint32_t offset;
 
 #ifndef TOOLSET_IS_PRESENT
 	StaticVector();
@@ -92,7 +93,7 @@ public:
 		//NI_ASSERT( offset == 0, "static vector already resized" );
 		//const T* pBody = new(_allocator, 16) T[_size];
 		const T* pBody = reinterpret_cast<const T*>(pAllocator->Allocate( _size * sizeof(T), 16 ));
-		offset = unsigned int ( (unsigned char*)pBody - (unsigned char*)this );
+		offset = (unsigned int) ( (unsigned char*)pBody - (unsigned char*)this );
 	}
 #endif//#ifdef TOOLSET_IS_PRESENT
 //////////////////////////////////////////////////////////////////////////

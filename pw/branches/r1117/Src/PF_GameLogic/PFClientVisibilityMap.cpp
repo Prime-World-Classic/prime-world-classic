@@ -276,7 +276,7 @@ void VisibilityMapClient::OnStep()
   }
 #endif
 
-  // проскипаем первый степ, чтобы не обнулилась исходная текстура по не заполненному варфогу (т.к. она нужна для миникарты)
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅ.пїЅ. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
   if (world->GetStepNumber() < 2) 
     return;
 
@@ -383,8 +383,8 @@ void VisibilityMapClient::FillTexture(Render::Texture2DRef const& pTexture, Fill
     (stage == FS_END) ||
     (controller->GetMode() == EVisMapMode::Everything);
 
-  // заливаем все варфогом сразу после создания текстур, т.к. реальный варфог еще не готов (объекты не сразу открывают собой его)
-  // заливка нужна, чтобы интерфейсу было что отображать уже на самом первом апдейте.
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ.пїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ)
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
   if (stage == FS_INIT) 
   {
     const bool isDualLayer = (m_warfogParams->warFogType == NDb::WARFOGTYPE_DUALLAYER);
@@ -398,7 +398,7 @@ void VisibilityMapClient::FillTexture(Render::Texture2DRef const& pTexture, Fill
   }
   else if (everything)
   {
-    // TODO: представление меняет данные!
+    // TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ!
     if(stage == FS_END)
       fogOfWar->MakeAllVisible();
 
@@ -708,60 +708,60 @@ namespace Detail
     return false;
   }
 
+  template <typename T, unsigned N>
+  struct Impl;
+
+  template <>
+  struct Impl<byte, 2U>
+  {
+    static inline void Combine(const int x, const int y, const vector< const CArray2D<byte>* >& src, CArray2D<byte>& dst)
+    {
+      dst.Set(x, y,
+        src[0]->GetUnsafe(x, y) |
+        src[1]->GetUnsafe(x, y));
+    }
+  };
+
+  template <>
+  struct Impl<byte, 3U>
+  {
+    static inline void Combine(const int x, const int y, const vector< const CArray2D<byte>* >& src, CArray2D<byte>& dst)
+    {
+      dst.Set(x, y,
+        src[0]->GetUnsafe(x, y) |
+        src[1]->GetUnsafe(x, y) |
+        src[2]->GetUnsafe(x, y));
+    }
+  };
+
+  template <>
+  struct Impl<bool, 2U>
+  {
+    static inline void Combine(const int x, const int y, const vector< const CArray2D<bool>* >& src, CArray2D<bool>& dst)
+    {
+      dst.Set(x, y,
+        src[0]->GetUnsafe(x, y) ||
+        src[1]->GetUnsafe(x, y));
+    }
+  };
+
+  template <>
+  struct Impl<bool, 3U>
+  {
+    static inline void Combine(const int x, const int y, const vector< const CArray2D<bool>* >& src, CArray2D<bool>& dst)
+    {
+      dst.Set(x, y,
+        src[0]->GetUnsafe(x, y) ||
+        src[1]->GetUnsafe(x, y) ||
+        src[2]->GetUnsafe(x, y));
+    }
+  };
+
   template <unsigned N>
   struct Combiner
   {
     template <typename T>
     struct ValueCombiner;
-
-    template <typename T, unsigned N>
-    struct Impl;
-
-    template <>
-    struct Impl<byte, 2U>
-    {
-      static inline void Combine(const int x, const int y, const vector< const CArray2D<byte>* >& src, CArray2D<byte>& dst)
-      {
-        dst.Set(x, y,
-          src[0]->GetUnsafe(x, y) |
-          src[1]->GetUnsafe(x, y));
-      }
-    };
-
-    template <>
-    struct Impl<byte, 3U>
-    {
-      static inline void Combine(const int x, const int y, const vector< const CArray2D<byte>* >& src, CArray2D<byte>& dst)
-      {
-        dst.Set(x, y,
-          src[0]->GetUnsafe(x, y) |
-          src[1]->GetUnsafe(x, y) |
-          src[2]->GetUnsafe(x, y));
-      }
-    };
-
-    template <>
-    struct Impl<bool, 2U>
-    {
-      static inline void Combine(const int x, const int y, const vector< const CArray2D<bool>* >& src, CArray2D<bool>& dst)
-      {
-        dst.Set(x, y,
-          src[0]->GetUnsafe(x, y) ||
-          src[1]->GetUnsafe(x, y));
-      }
-    };
-
-    template <>
-    struct Impl<bool, 3U>
-    {
-      static inline void Combine(const int x, const int y, const vector< const CArray2D<bool>* >& src, CArray2D<bool>& dst)
-      {
-        dst.Set(x, y,
-          src[0]->GetUnsafe(x, y) ||
-          src[1]->GetUnsafe(x, y) ||
-          src[2]->GetUnsafe(x, y));
-      }
-    };
 
     template <typename T>
     inline void operator()(const vector< const CArray2D<T>* >& src, CArray2D<T>& dst) const

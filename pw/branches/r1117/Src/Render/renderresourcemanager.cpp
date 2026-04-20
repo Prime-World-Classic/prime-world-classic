@@ -13,7 +13,7 @@
 #include "smartrenderer.h"
 #include "../System/memorypool.h"
 #include "multishader.h"
-#include "materialspec.h"
+#include "MaterialSpec.h"
 
 #include "../System/2Darray.h"
 #include "../System/InlineProfiler.h"
@@ -464,6 +464,7 @@ static MeshGeometry* LoadMeshGeometryFromFile( const nstl::string& fileName, boo
 
 class BasicPoolFinder
 {
+protected:
   typedef nstl::hash_map<nstl::string, bool> DirtySet; // Is it optimal to use map here?
   typedef nstl::hash_map<nstl::string, PoolObjectWrapper> GeometryPool;
 
@@ -637,7 +638,7 @@ public:
     //VTuneResumer vtRes( g_Profile_ResourceLoading );
     NDebug::PerformanceDebugVarGuard render_LoadTimeGuard( render_LoadTime, false );
 
-    MeshGeometry* pMeshGeometry = Find(filename);
+    MeshGeometry* pMeshGeometry = this->Find(filename);
     if(pMeshGeometry) {
       if(pMeshGeometry->colorStreamAppended != appendColorStream)
       {
@@ -664,7 +665,7 @@ public:
     //VTuneResumer vtRes( g_Profile_ResourceLoading );
     NDebug::PerformanceDebugVarGuard render_LoadTimeGuard( render_LoadTime, false );
 
-    MeshGeometry* pMeshGeometry = Find(filename);
+    MeshGeometry* pMeshGeometry = this->Find(filename);
     if(!pMeshGeometry ) {
       pMeshGeometry = LoadMeshGeometryFromFile(filename, true, false);
       if(!pMeshGeometry )
@@ -698,7 +699,7 @@ public:
     //VTuneResumer vtRes( g_Profile_ResourceLoading );
     NDebug::PerformanceDebugVarGuard render_LoadTimeGuard( render_LoadTime, false );
 
-    InstancedMeshGeometry* pMeshGeometry = Find(filename);
+    InstancedMeshGeometry* pMeshGeometry = this->Find(filename);
     if(!pMeshGeometry ) {
       pMeshGeometry = LoadInstancedMeshGeometryFromFile(filename);
       if(pMeshGeometry)
@@ -746,14 +747,14 @@ public:
     //VTuneResumer vtRes( g_Profile_ResourceLoading );
     NDebug::PerformanceDebugVarGuard render_LoadTimeGuard( render_LoadTime, false );
 
-    _Data* result = Find(filename);
+    _Data* result = this->Find(filename);
     if(!result) {
       int currentSize = counter.GetValue();
-      const _Data::value_type* pData = reinterpret_cast<const _Data::value_type*>( InPlaceLoad(filename, &currentSize) );
+      const typename _Data::value_type* pData = reinterpret_cast<const typename _Data::value_type*>( InPlaceLoad(filename, &currentSize) );
       counter.SetValue( currentSize );
 
       result = new _Data(pData);
-      result = MarkAsLoaded(result, filename);
+      result = this->MarkAsLoaded(result, filename);
     }
     return result;
   }

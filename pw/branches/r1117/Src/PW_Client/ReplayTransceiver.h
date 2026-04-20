@@ -2,12 +2,9 @@
 
 #include "Core/Scheduler.h"
 #include "Core/Replay.h"
+#include "LoadingStatusHandler.h"
 
-
-namespace Game
-{
-  namespace EReplayStatus { enum Enum; }
-}
+namespace Game {}
 
 namespace NGameX
 {

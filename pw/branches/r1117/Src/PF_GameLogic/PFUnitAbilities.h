@@ -24,12 +24,12 @@ private:
 
   typedef vector<AbilityData> TAbilities;
 
-  ZDATA()
-  bool                useAbilitiesMicroAI;
+  ZDATA
   TAbilities          abilities;
   float               globalCooldownTime;
   float               globalActionsCooldown;
   float               channellingProgress;
+  bool                useAbilitiesMicroAI;
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(2,&useAbilitiesMicroAI); f.Add(3,&abilities); f.Add(4,&globalCooldownTime); f.Add(5,&globalActionsCooldown); f.Add(6,&channellingProgress); return 0; }
 

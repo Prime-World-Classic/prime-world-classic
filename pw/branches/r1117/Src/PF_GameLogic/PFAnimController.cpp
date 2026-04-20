@@ -11,9 +11,9 @@
 namespace 
 {
 
-static const float MAX_ANIM_DURATION_IN_GAME = 10.0f; // Максимальная длина анимации в игре
-static const int MAX_COMMANDS_IN_QUEUE_ASSERT = 100; // Ассертить, если накопилось столько команд для AG
-static int s_ag_commands_check_size = 99; // Количество команд, после которого начинаются попытки чистки очереди команд
+static const float MAX_ANIM_DURATION_IN_GAME = 10.0f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ
+static const int MAX_COMMANDS_IN_QUEUE_ASSERT = 100; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ AG
+static int s_ag_commands_check_size = 99; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
 DiAnimGraph* FindAnimGraph( NScene::SceneComponent* pRoot )
 {
@@ -478,8 +478,8 @@ bool PFAnimController::RegisterAnimEventInternal(AnimEventParams const& params, 
     break;
   }
   
-  return pGraph ? pGraph->RegisterCallback(DIANGR_NODE, nodeId, AnimEventDispatcher, flags, 
-    static_cast<void*>( &(pAnimSet->animEvents.back()) ), params.fValue ) : false;
+  return pGraph ? (pGraph->RegisterCallback(DIANGR_NODE, nodeId, AnimEventDispatcher, flags, 
+    static_cast<void*>( &(pAnimSet->animEvents.back()) ), params.fValue ) != NULL) : false;
 }
 
 void  PFAnimController::Cleanup()

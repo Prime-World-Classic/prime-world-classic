@@ -6,7 +6,7 @@
 namespace NWorld
 {
 
-enum ELookKind;
+enum ELookKind : int;
 
 class PFAbilityData;
 

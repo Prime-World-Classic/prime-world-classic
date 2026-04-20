@@ -1,13 +1,5 @@
-/*
-* DataExecutor.cpp
-*
-*  Created on: 19.01.2009
-*      Author: earnol
-*/
-
-#include "stdafx.h"
-
 #include "DataExecutor.h"
+#ifdef _WIN32
 #include "ExecutionMemoryManager.h"
 #include "../System/Base64.h"
 #include "../System/nvector.h"
@@ -317,3 +309,21 @@ retIMM:
 }
 #pragma warning(pop) 
 
+
+#else
+ScopedPtr<ExecutionMemoryManager> DataExecutor::memoryManager;
+int DataExecutor::nLastExecutionStatus = 0;
+
+void DataExecutor::fixDirectRelocs(unsigned int const nBase, unsigned int const nShift, unsigned int const *npOffsetTable, unsigned int nTableSize) {}
+void DataExecutor::fixDirectRelocs(unsigned int const nBase, unsigned int const *npOffsetTable, unsigned int nTableSize) {}
+void DataExecutor::initClass(unsigned char expectedVersion, unsigned char const *dataBuffer, unsigned int nBufferSize) {}
+bool DataExecutor::CheckFPUStack() { return true; }
+void __cdecl DataExecutor::ExecuteFreeStackless() const {}
+
+DataExecutor::DataExecutor(unsigned char expectedVersion, unsigned char const *dataBuffer, unsigned int nBufferSize) : pBinaryCode(NULL), nEntryPointOffset(0) {}
+DataExecutor::DataExecutor(unsigned char expectedVersion, char const *cpBase64String) : pBinaryCode(NULL), nEntryPointOffset(0) {}
+DataExecutor::~DataExecutor() {}
+int DataExecutor::GetLastExecutionStatus() { return 0; }
+void DataExecutor::Execute(char const retType, char const *argsType, ...) const {}
+void DataExecutor::ExecuteV(char const retType, unsigned int const stackSize, ...) const {}
+#endif

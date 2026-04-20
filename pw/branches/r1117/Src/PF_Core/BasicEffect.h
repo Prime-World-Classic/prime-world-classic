@@ -7,11 +7,7 @@
 #include "ObjectsPool.h"
 #include "ClientObject.h"
 #include "DBEffect.h"
-
-namespace NDb
-{
-  enum EFaction;
-}
+#include "../PF_GameLogic/DBStats.h"
 
 namespace NScene 
 { 
@@ -167,7 +163,7 @@ public:
 		NI_ASSERT(dynamic_cast<DB_EFFECT const*>(pDBObj.GetPtr()) != 0, "Invalid DB applicator");
 	}
 
-	DB_EFFECT const &GetDBEffect() const { return *static_cast<DB_EFFECT const*>(pDBObj.GetPtr()); }
+	DB_EFFECT const &GetDBEffect() const { return *static_cast<DB_EFFECT const*>(this->pDBObj.GetPtr()); }
 
 	typedef EffectDBLinker<DB_EFFECT, EFFECT> EffectBase;
 	typedef DB_EFFECT DBType;

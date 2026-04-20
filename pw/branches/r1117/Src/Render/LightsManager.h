@@ -2,7 +2,7 @@
 #ifndef LIGHTSMANAGER_H_INCLUDED
 #define LIGHTSMANAGER_H_INCLUDED
 
-#include "aabb.h"
+#include "AABB.h"
 #include "light.h"
 #include "../System/AutoPtr.h"
 #include "../System/nvector.h"

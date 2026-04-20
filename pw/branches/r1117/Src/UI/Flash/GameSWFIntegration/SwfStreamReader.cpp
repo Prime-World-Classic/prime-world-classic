@@ -2,7 +2,7 @@
 
 #include "SwfStreamReader.h"
 
-#include <System\Math\ieeehalfprecision.h>
+#include <System/Math/ieeehalfprecision.h>
 #include "FlashMovie.h"
 
 namespace flash

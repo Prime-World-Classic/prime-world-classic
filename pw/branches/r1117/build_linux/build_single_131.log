@@ -1,0 +1,17 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/PF_GameLogic/AdventureScreen.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:21,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/stdafx.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGrUtils.h:200:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  200 | #endif _DIANGRUTILS_H_
+      |        ^~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/PFRenderInterface.h:9,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:5:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/PFPostFXParams.h:4:10: fatal error: ../Render/FullscreenFX.h: No such file or directory
+    4 | #include "../Render/FullscreenFX.h"
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:2221: CMakeFiles/PrimeWorld.dir/PF_GameLogic/AdventureScreen.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

@@ -86,7 +86,7 @@ namespace NWorld
 
   bool MapLoader::IsThreaded()
   {
-    return !!NGlobal::GetVar("threaded_loading", 1L).GetInt64();
+    return !!NGlobal::GetVar("threaded_loading", 1).GetInt64();
   }
 
   threading::JobThread* MapLoader::CreateMapLoadingThread(MapLoadingJob* const job)

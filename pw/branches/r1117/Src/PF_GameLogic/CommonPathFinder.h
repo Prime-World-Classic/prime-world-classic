@@ -1,6 +1,6 @@
 #pragma once
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#include "../System/2DArray.h"
+#include "../System/2Darray.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CLine;
@@ -37,7 +37,7 @@ class CCommonPathFinder: public CObjectBase
 	int              nLength, nStart;
 
 	int              minDistance, minPointNum;
-	// нашли точку
+	// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	bool             bFinished;
 	int              nCyclePoints;
 
@@ -69,7 +69,7 @@ private:
 	
 	void EraseCycles();
 	void AnalyzePoint( const SVector &point, const int num );
-	// если юнит сейчас на непроходимом тайле, то можно длина пути от pointFrom то lastKnownGoodTile, а потом искать путь
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ pointFrom пїЅпїЅ lastKnownGoodTile, пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 	const int GetAdditionalPathLength( const SVector &pointFrom );
 
 	bool CalculatePath( int numSteps );

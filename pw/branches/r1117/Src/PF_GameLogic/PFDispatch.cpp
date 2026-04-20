@@ -190,7 +190,7 @@ bool PFDispatch::Step(float dtInSeconds)
 float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )
 {
   return par( pSender
-    , originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender
+    , originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender.GetPtr()
     , IsValid( pParentApplicator ) ? (IMiscFormulaPars*)pParentApplicator.GetPtr() : (IMiscFormulaPars*)pAbility->GetData()
     , defaultValue ); 
 }

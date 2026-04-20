@@ -1,6 +1,6 @@
 #pragma warning( disable : 4996)
 #include "stdafx.h"
-#include "RelaySvc/IOThreadPool.h"
+#include "IOThreadPool.h"
 #include "System/ThreadNames.h"
 
 namespace Relay

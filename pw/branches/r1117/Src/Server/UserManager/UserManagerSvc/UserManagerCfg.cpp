@@ -1,5 +1,5 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/UserManagerCfg.h"
+#include "stdafx.h"
+#include "UserManagerCfg.h"
 
 static unsigned int s_userShadowLifetime = 60;
 REGISTER_VAR( "usermgr_user_shadow_lifetime", s_userShadowLifetime, STORAGE_GLOBAL);

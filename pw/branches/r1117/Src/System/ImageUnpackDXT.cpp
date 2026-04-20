@@ -168,7 +168,7 @@ inline void DecodeColorBlock( DWORD *pImPos, SDXTColBlock *pColorBlock, int widt
 		// width * 4 bytes per pixel per line
 		// each j dxtc row is 4 lines of pixels
 
-		// pImPos = (DWORD*)((DWORD)pBase + i*16 + (r+j*4) * hdr.dwWidth * 4 );
+		// pImPos = (DWORD*)((size_t)pBase + i*16 + (r+j*4) * hdr.dwWidth * 4 );
 
 		// n steps through pixels
 		for ( n = 0; n < 4; ++n )
@@ -392,7 +392,7 @@ void DecompressDXT1( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 	for( j = 0; j < yblocks; ++j )
 	{
 		// 8 bytes per block
-		pBlock = (SDXTColBlock*) ( (DWORD)pCompBytes + j * xblocks * 8 );
+		pBlock = (SDXTColBlock*) ( (size_t)pCompBytes + j * xblocks * 8 );
 
 
 		for( i=0; i < xblocks; i++, pBlock++ )
@@ -405,7 +405,7 @@ void DecompressDXT1( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 			// now decode the color block into the bitmap bits
 			// inline func:
 
-			pImPos = (DWORD*)((DWORD)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
+			pImPos = (DWORD*)((size_t)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
 
 
 			DecodeColorBlock( pImPos, pBlock, hdr.dwWidth, (DWORD*)&col_0, (DWORD*)&col_1,
@@ -446,7 +446,7 @@ void DecompressDXT3( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 		// 8 bytes per block
 		// 1 block for alpha, 1 block for color
 
-		pBlock = (SDXTColBlock*) ( (DWORD)pCompBytes + j * xblocks * 16 );
+		pBlock = (SDXTColBlock*) ( (size_t)pCompBytes + j * xblocks * 16 );
 
 		for ( i = 0; i < xblocks; i++, pBlock++ )
 		{
@@ -464,7 +464,7 @@ void DecompressDXT3( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 			// Decode the color block into the bitmap bits
 			// inline func:
 
-			pImPos = (DWORD*)((DWORD)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
+			pImPos = (DWORD*)((size_t)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
 
 
 			DecodeColorBlock( pImPos, pBlock, hdr.dwWidth, (DWORD*)&col_0, (DWORD*)&col_1,
@@ -516,7 +516,7 @@ void DecompressDXT5( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 		// 8 bytes per block
 		// 1 block for alpha, 1 block for color
 
-		pBlock = (SDXTColBlock*) ( (DWORD)pCompBytes + j * xblocks * 16 );
+		pBlock = (SDXTColBlock*) ( (size_t)pCompBytes + j * xblocks * 16 );
 
 		for ( i = 0; i < xblocks; i++, pBlock++ )
 		{
@@ -537,7 +537,7 @@ void DecompressDXT5( DWORD *pRes, const SDDSHeader &hdr, const BYTE *pCompBytes 
 			// Decode the color block into the bitmap bits
 			// inline func:
 
-			pImPos = (DWORD*)((DWORD)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
+			pImPos = (DWORD*)((size_t)pBase + i*16 + (j*4) * hdr.dwWidth * 4 );
 
 
 			DecodeColorBlock( pImPos, pBlock, hdr.dwWidth, (DWORD*)&col_0, (DWORD*)&col_1,

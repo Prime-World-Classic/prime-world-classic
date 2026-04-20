@@ -48,9 +48,9 @@ public:
   typedef GenScatterHierarchy<H, Unit> LeftBase;
   typedef GenScatterHierarchy<T, Unit> RightBase;
 
-  template <typename T> struct Rebind
+  template <typename U> struct Rebind
   {
-    typedef Unit<T> Result;
+    typedef Unit<U> Result;
   };
 };
 template <class Atomic, template <class> class Unit>
@@ -60,9 +60,9 @@ class GenScatterHierarchy : public Unit<Atomic>
 public:
   typedef Unit<Atomic> LeftBase;
 
-  template <typename T> struct Rebind
+  template <typename U> struct Rebind
   {
-    typedef Unit<T> Result;
+    typedef Unit<U> Result;
   };
 };
 
@@ -71,9 +71,9 @@ class GenScatterHierarchy<NMeta::NullType, Unit> : public virtual UnitNameMap
 {
   NAMEMAP_DECLARE;
 
-  template <typename T> struct Rebind
+  template <typename U> struct Rebind
   {
-    typedef Unit<T> Result;
+    typedef Unit<U> Result;
   };
 };
 

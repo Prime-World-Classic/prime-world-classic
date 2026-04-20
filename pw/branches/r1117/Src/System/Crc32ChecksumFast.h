@@ -59,13 +59,13 @@ public:
       case 0:    return;
     }
     
-    //Использование register действительно ускоряет выполнение, но только если 
+    //Использование действительно ускоряет выполнение, но только если 
     //данных достаточно много, поэтому используем данную оптимизацию, 
     //только если размер данных больше определенной величины
-    register Word crc0 = crc[0];
-    register Word crc1 = crc[1];
-    register Word crc2 = crc[2];
-    register Word crc3 = crc[3];
+    Word crc0 = crc[0];
+    Word crc1 = crc[1];
+    Word crc2 = crc[2];
+    Word crc3 = crc[3];
     
     const Word lengthAligned = length & ~Word(3);  // length - length % 4
     const Byte * const pEnd = pBuffer + lengthAligned;
@@ -197,7 +197,7 @@ private:
 public:
   __forceinline static Word CalcForSmallLength( const Byte *pBuffer, Word length )
   {
-    register Word result = ~Word(0);
+    Word result = ~Word(0);
     const Byte * const pEnd = pBuffer + length;
 
     do 

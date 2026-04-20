@@ -288,7 +288,7 @@ bool FlashRenderer::Initialize()
 
   const float bevelConst = 0.17421356f;
 
-#define BIAS_BEVEL( val ) unsigned char( ( (val + 1.f) / 2.f ) * 255.f );
+#define BIAS_BEVEL( val ) (unsigned char)( ( (val + 1.f) / 2.f ) * 255.f )
 
   data[ 0 * 4 + 0 ] = BIAS_BEVEL( bevelConst );
   data[ 0 * 4 + 1 ] = BIAS_BEVEL( 0.f );

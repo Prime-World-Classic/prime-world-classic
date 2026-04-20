@@ -20,7 +20,7 @@ class PFBaseCreep : public PFCreature
     ZEND int operator&( IBinSaver &f ) { f.Add(2,&timeLevelUpInterval); f.Add(3,&timeLevelUpIncrement); return 0; }
 
     bool ShouldGainLevels() const { return ( ( timeLevelUpInterval > 0.0f ) && ( timeLevelUpIncrement > 0 ) ); }
-    const LevelUpInfo( float _timeLevelUpInterval = 0.0f, int _timeLevelUpIncrement = 0 ) 
+    LevelUpInfo( float _timeLevelUpInterval = 0.0f, int _timeLevelUpIncrement = 0 ) 
       : timeLevelUpInterval( _timeLevelUpInterval ), timeLevelUpIncrement( _timeLevelUpIncrement ) { }
   };
 

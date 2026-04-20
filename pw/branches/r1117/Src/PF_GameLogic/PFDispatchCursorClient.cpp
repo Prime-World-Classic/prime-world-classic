@@ -187,7 +187,7 @@ bool PFDispatchCursorClient::GetStartPos( CVec3& result, Matrix43& matrix ) cons
   if( NULL == pWorldObject )
     return false;
 
-  CPtr<NWorld::PFBaseUnit> const pSender = pWorldObject->GetSender();
+  CPtr<NWorld::PFBaseUnit> const pSender = pWorldObject->GetSender().GetPtr();
   if( !IsValid( pSender ) )
     return false;
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "StringExecutor.h"
 // Automatically generated file, don't change it manually!
 
 #include "../libdb/Db.h"
@@ -340,7 +341,7 @@ public:
 	Ptr< Texture > image;
 	EMapType mapType;
 	Ptr< AdvMapDescription > mapWithBots;
-	PartyMode PartyMode;
+	enum PartyMode PartyMode;
 	bool acceptNeeded;
 	CTextRef description;
 	Ptr< AdvMap > map;

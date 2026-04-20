@@ -3,6 +3,14 @@
 
 #include "UdpAddr.h"
 
+#ifdef NI_PLATF_LINUX
+#include <unistd.h>
+#include <errno.h>
+typedef int SOCKET;
+#define INVALID_SOCKET (-1)
+#define SOCKET_ERROR (-1)
+#endif
+
 namespace ni_udp
 {
 

@@ -1,0 +1,10 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/PF_GameLogic/HttpStuff.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/HttpStuff.cpp:2:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/HttpStuff.h:11:10: fatal error: json/json.h: No such file or directory
+   11 | #include <json/json.h>
+      |          ^~~~~~~~~~~~~
+compilation terminated.
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:3229: CMakeFiles/PrimeWorld.dir/PF_GameLogic/HttpStuff.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

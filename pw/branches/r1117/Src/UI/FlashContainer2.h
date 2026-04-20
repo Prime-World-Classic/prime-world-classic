@@ -5,10 +5,11 @@
 #include "NameMappedWindow.h"
 #include "IStageFocusHandler.h"
 
+#include <stdint.h>
 namespace avmplus
 {
   class ScriptObject;
-  typedef __int32	int32_t;
+  typedef int32_t	int32_t;
   typedef int32_t Atom;
 }
 

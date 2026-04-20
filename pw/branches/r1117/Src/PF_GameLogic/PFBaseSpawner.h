@@ -40,7 +40,7 @@ class PFBaseSpawner: public PFWorldObjectBase
     ZEND int operator&( IBinSaver &f ) { f.Add(2,&timeLevelUpInterval); f.Add(3,&timeLevelUpIncrement); f.Add(4,&spawnLevelUpInterval); f.Add(5,&spawnLevelUpIncrement); return 0; }
 
     bool ShouldGainLevels() const { return ( ( timeLevelUpInterval > 0.0f ) && ( timeLevelUpIncrement > 0 ) ); }
-    const LevelUpInfo( float _timeLevelUpInterval = 0.0f, int _timeLevelUpIncrement = 0, int _spawnLevelUpInterval = 0, int _spawnLevelUpIncrement = 0 ) 
+    LevelUpInfo( float _timeLevelUpInterval = 0.0f, int _timeLevelUpIncrement = 0, int _spawnLevelUpInterval = 0, int _spawnLevelUpIncrement = 0 ) 
       : timeLevelUpInterval( _timeLevelUpInterval ), timeLevelUpIncrement( _timeLevelUpIncrement ), spawnLevelUpInterval(_spawnLevelUpInterval), spawnLevelUpIncrement(_spawnLevelUpIncrement) { }
   };
 

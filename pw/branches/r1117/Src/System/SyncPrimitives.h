@@ -8,16 +8,88 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <time.h>
-#endif // #if defined( NV_LINUX_PLATFORM )
 
-#include "Asserts.h"
+struct LinuxManualEvent_Internal
+{
+private:
+  mutable pthread_mutex_t m_mutex;
+  mutable pthread_cond_t  m_cond;
+  mutable bool            m_manualReset;
+  mutable bool            m_state;
 
-// do not use this in DLL - it is not compatible with LoadLibrary() under XP.
-#define THREAD_LS __declspec(thread)
+public:
+  enum { NV_INFINITE = -1U };
+
+  LinuxManualEvent_Internal( bool manualReset = false, bool initialState = false, const char * name = NULL )
+    : m_manualReset(manualReset), m_state(initialState)
+  {
+    pthread_mutex_init(&m_mutex, NULL);
+    pthread_cond_init(&m_cond, NULL);
+  }
+
+  ~LinuxManualEvent_Internal()
+  {
+    pthread_cond_destroy(&m_cond);
+    pthread_mutex_destroy(&m_mutex);
+  }
+
+  void Reset()
+  {
+    pthread_mutex_lock(&m_mutex);
+    m_state = false;
+    pthread_mutex_unlock(&m_mutex);
+  }
+
+  void Set()
+  {
+    pthread_mutex_lock(&m_mutex);
+    m_state = true;
+    if (m_manualReset)
+      pthread_cond_broadcast(&m_cond);
+    else
+      pthread_cond_signal(&m_cond);
+    pthread_mutex_unlock(&m_mutex);
+  }
+
+  bool Wait( unsigned time = NV_INFINITE ) const
+  {
+    pthread_mutex_lock(&m_mutex);
+    bool success = true;
+    if (!m_state)
+    {
+      if (time == NV_INFINITE)
+      {
+        while (!m_state)
+          pthread_cond_wait(&m_cond, &m_mutex);
+      }
+      else
+      {
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += time / 1000;
+        ts.tv_nsec += (time % 1000) * 1000000;
+        if (ts.tv_nsec >= 1000000000)
+        {
+          ts.tv_sec++;
+          ts.tv_nsec -= 1000000000;
+        }
+        while (!m_state && success)
+        {
+          if (pthread_cond_timedwait(&m_cond, &m_mutex, &ts) != 0)
+            success = false;
+        }
+      }
+    }
+    if (success && !m_manualReset)
+      m_state = false;
+    pthread_mutex_unlock(&m_mutex);
+    return success;
+  }
+};
+#endif
 
 namespace threading
 {
-
 
 #if defined( NV_WIN_PLATFORM )
 
@@ -28,49 +100,59 @@ class Mutex : public NonCopyable
 public:
 
   Mutex()               { InitializeCriticalSection( &section ); }
-  explicit Mutex( int spinCount ) { InitializeCriticalSectionAndSpinCount( &section, (DWORD)spinCount ); }
+  explicit Mutex( int ) { InitializeCriticalSection( &section ); }
+  ~Mutex()              { DeleteCriticalSection( &section ); }
 
-  void Lock() const     { EnterCriticalSection(&section); }
+  void Lock() const     { EnterCriticalSection( &section ); }
+  void Unlock() const   { LeaveCriticalSection( &section ); }
 
-  bool TryLock() const  { return (0 != TryEnterCriticalSection( &section ) ); }
+  bool TryLock() const  { return TryEnterCriticalSection( &section ) != 0; }
 
-  void Unlock() const   { LeaveCriticalSection(&section); }
-
-  ~Mutex()              { DeleteCriticalSection(&section); }
 };
-
-
 
 
 class Semaphore : public NonCopyable
 {
-  mutable HANDLE sema;
+  HANDLE handle;
 public:
 
-  Semaphore(unsigned int nMaxCount = 1)           { sema = CreateSemaphore( NULL, 0, nMaxCount, NULL); }
+  Semaphore( unsigned int initialCount ) : handle( 0 )
+  {
+    handle = CreateSemaphoreA( 0, initialCount, 0x7FFFFFFF, 0 );
+  }
 
-  void Signal(unsigned int nCount = 1) const      { ReleaseSemaphore(sema, nCount, NULL); }
+  ~Semaphore()
+  {
+    if ( handle )
+      CloseHandle( handle );
+  }
 
-  bool Wait(unsigned int nTime = INFINITE) const  { return WAIT_OBJECT_0 == WaitForSingleObject(sema, nTime); }
-  void Reset()                             const  { while(WAIT_OBJECT_0 == WaitForSingleObject(sema, 0)) {;} }
+  void Signal() { ReleaseSemaphore( handle, 1, 0 ); }
 
-  ~Semaphore()                                    { CloseHandle(sema); }
+  bool Wait( unsigned int nTime = INFINITE ) const
+  {
+    return ( WaitForSingleObject( handle, (DWORD)nTime ) == WAIT_OBJECT_0 );
+  }
+
+  void Reset() { while ( Wait( 0 ) ) {} }
+
 };
 
 
-
-
-
-class Event : public NonCopyable
+class WaitEvent_Win : public NonCopyable
 {
+private:
+
   HANDLE handle;
+
 public:
-  Event( bool manualReset = false, bool initialState = false, const char * name = 0 ) : handle( 0 )
+
+  WaitEvent_Win( bool manualReset = false, bool initialState = false, const char * name = NULL ) : handle( 0 )
   {
     handle = CreateEventA( 0, manualReset ? TRUE : FALSE, initialState ? TRUE : FALSE, name );
   }
 
-  ~Event()
+  ~WaitEvent_Win()
   {
     if ( handle )
       CloseHandle( handle );
@@ -80,164 +162,111 @@ public:
 
   void Set() { SetEvent( handle ); }
 
-  bool Wait( unsigned time = INFINITE ) const
+  enum { NV_INFINITE = -1U };
+
+  bool Wait( unsigned time = NV_INFINITE ) const
   {
     return ( WaitForSingleObject( handle, (DWORD)time ) == WAIT_OBJECT_0 );
   }
 
   HANDLE GetHandle() const { return handle; }
+
 };
 
+typedef WaitEvent_Win Event;
+typedef WaitEvent_Win LinuxManualEvent_Internal;
 
 #elif defined( NV_LINUX_PLATFORM )
 
 
-class Event : public NonCopyable
-{
-private:
-
-  //HANDLE handle;
-
-public:
-
-  Event( bool manualReset = false, bool initialState = false, const char * name = NULL ) // : handle( 0 )
-  {
-    //handle = CreateEventA( 0, manualReset ? TRUE : FALSE, initialState ? TRUE : FALSE, name );
-  }
-
-  ~Event()
-  {
-    /*if ( handle )
-      CloseHandle( handle );*/
-  }
-
-  void Reset() { /*ResetEvent( handle );*/ }
-
-  void Set() { /*SetEvent( handle );*/ }
-
-  enum { NV_INFINITE = -1U };
-
-  bool Wait( unsigned time = NV_INFINITE ) const
-  {
-    return 1; //( WaitForSingleObject( handle, (DWORD)time ) == WAIT_OBJECT_0 );
-  }
-
-  //HANDLE GetHandle() const { return handle; }
-
-};
-
 class Mutex : public NonCopyable
 {
-
   mutable pthread_mutex_t m_mutex;
-  pthread_mutexattr_t m_attr;
-
+  mutable pthread_mutexattr_t m_attr;
 public:
 
   Mutex()
   {
-    NI_VERIFY_NO_RET( ::pthread_mutexattr_init( &m_attr ) == 0, "Cannot init mutex attr" );
-    NI_VERIFY_NO_RET( ::pthread_mutexattr_settype( &m_attr, PTHREAD_MUTEX_RECURSIVE_NP ) == 0, "Cannot set mutex type" );
-    NI_VERIFY_NO_RET( ::pthread_mutex_init( &m_mutex, &m_attr ) == 0, "Cannot init mutex" );
+    ::pthread_mutexattr_init( &m_attr );
+    ::pthread_mutexattr_settype( &m_attr, PTHREAD_MUTEX_RECURSIVE );
+    ::pthread_mutex_init( &m_mutex, &m_attr );
   }
 
-  // Mutex spin count is not implemented in Linux
-  explicit Mutex( int /*spinCount*/ )
+  explicit Mutex( int )
   {
-    NI_VERIFY_NO_RET( ::pthread_mutexattr_init( &m_attr ) == 0, "Cannot init mutex attr" );
-    NI_VERIFY_NO_RET( ::pthread_mutexattr_settype( &m_attr, PTHREAD_MUTEX_RECURSIVE_NP ) == 0, "Cannot set mutex type" );
-    NI_VERIFY_NO_RET( ::pthread_mutex_init( &m_mutex, &m_attr ) == 0, "Cannot init mutex" );
-  }
-
-  void Lock() const
-  {
-    NI_VERIFY_NO_RET( ::pthread_mutex_lock( &m_mutex ) == 0, "Cannot lock mutex" );
-  }
-
-  bool TryLock() const
-  {
-    return ( 0 == ::pthread_mutex_trylock( &m_mutex ) );
-  }
-
-  void Unlock() const
-  {
-    NI_VERIFY_NO_RET( pthread_mutex_unlock( &m_mutex ) == 0, "Cannot unlock mutex" );
+    ::pthread_mutexattr_init( &m_attr );
+    ::pthread_mutexattr_settype( &m_attr, PTHREAD_MUTEX_RECURSIVE );
+    ::pthread_mutex_init( &m_mutex, &m_attr );
   }
 
   ~Mutex()
   {
-    NI_VERIFY_NO_RET( pthread_mutex_destroy( &m_mutex ) == 0, "Cannot destroy mutex" );
-    NI_VERIFY_NO_RET( pthread_mutexattr_destroy( &m_attr ) == 0, "Cannot destroy mutex attr" );
+    ::pthread_mutex_destroy( &m_mutex );
+    ::pthread_mutexattr_destroy( &m_attr );
+  }
+
+  void Lock() const
+  {
+    ::pthread_mutex_lock( &m_mutex );
+  }
+
+  void Unlock() const
+  {
+    ::pthread_mutex_unlock( &m_mutex );
+  }
+
+  bool TryLock() const
+  {
+    return ::pthread_mutex_trylock( &m_mutex ) == 0;
   }
 
 };
 
+
 class Semaphore : public NonCopyable
 {
-private:
-
   mutable sem_t m_semaphore;
-
 public:
 
-  enum {
-
-    INFINITE = -1U
-
-  };
-
-  Semaphore( unsigned int nMaxCount = 1 )
+  Semaphore( unsigned int initialCount )
   {
-    NI_VERIFY(
-      sem_init( &m_semaphore, 0, 0 ) == 0,
-      "Cannot initialize semaphore by sem_init()",
-      return
-    );
+    sem_init( &m_semaphore, 0, initialCount );
   }
 
-  void Signal( unsigned int nCount = 1 ) const
+  void Signal()
   {
-    while ( nCount-- )
-      NI_VERIFY(
-        sem_post( &m_semaphore ) == 0,
-        "Cannot signal semaphore by sem_post()",
-        return
-      );
+    sem_post( &m_semaphore );
   }
 
-  bool Wait( unsigned int nTime = INFINITE ) const
+  void Signal( int count )
   {
-    if (INFINITE == nTime) {
+    for( int i = 0; i < count; ++i )
+      sem_post( &m_semaphore );
+  }
 
-      NI_VERIFY(
-        sem_wait( &m_semaphore ) == 0,
-        "Something wrong in sem_wait()",
-        return false
-      );
-
-      return true;
-
+  bool Wait( unsigned int nTime = -1U ) const
+  {
+    if ( nTime == -1U )
+    {
+      return sem_wait( &m_semaphore ) == 0;
     }
 
-    timespec current_time;
-
-    NI_VERIFY(
-      clock_gettime( CLOCK_REALTIME, &current_time ) != -1,
-      "Cannot get current time by clock_gettime()",
-      return false
-    );
-
-    current_time.tv_nsec += ( nTime % 1000 ) * 1000000;
-    if (current_time.tv_nsec >= 1000000000) {
-
-      ++current_time.tv_sec;
-      current_time.tv_nsec -= 1000000000;
-
+    if ( nTime == 0 )
+    {
+      return sem_trywait( &m_semaphore ) == 0;
     }
 
-    current_time.tv_sec += nTime / 1000;
+    struct timespec ts;
+    clock_gettime( CLOCK_REALTIME, &ts );
+    ts.tv_sec += nTime / 1000;
+    ts.tv_nsec += ( nTime % 1000 ) * 1000000;
+    if ( ts.tv_nsec >= 1000000000 )
+    {
+      ++ts.tv_sec;
+      ts.tv_nsec -= 1000000000;
+    }
 
-    return sem_timedwait( &m_semaphore, &current_time ) == 0;
+    return sem_timedwait( &m_semaphore, &ts ) == 0;
   }
 
   void Reset() const
@@ -248,20 +277,21 @@ public:
   ~Semaphore()
   {
     sem_destroy( &m_semaphore );
-    //m_semaphore = NULL;
   }
 
 };
 
+typedef ::LinuxManualEvent_Internal Event;
+
 #endif  // #elif defined( NV_LINUX_PLATFORM )
 
 
-class MutexLock : public NonCopyable
+struct MutexLock : public NonCopyable
 {
-  const Mutex * mutex;
+  const ::threading::Mutex * mutex;
 
 public:
-  MutexLock( const Mutex & _mutex ) : mutex( &_mutex ) { mutex->Lock(); }
+  MutexLock( const ::threading::Mutex & _mutex ) : mutex( &_mutex ) { mutex->Lock(); }
 
   ~MutexLock() { mutex->Unlock(); }
 };
@@ -269,18 +299,18 @@ public:
 
 
 
-class MutexUnlock : public NonCopyable
+struct MutexUnlock : public NonCopyable
 {
-  const Mutex * mutex;
+  const ::threading::Mutex * mutex;
 
 public:
-  MutexUnlock( const Mutex & _mutex ) : mutex( &_mutex ) {}
+  MutexUnlock( const ::threading::Mutex & _mutex ) : mutex( &_mutex ) {}
 
   ~MutexUnlock() { mutex->Unlock(); }
 };
 
 
 
-}; //namespace threading
+} //namespace threading
 
 #endif //SYNCPRIMITIVES_H_INCLUDED

@@ -75,7 +75,7 @@ inline bool isinbounds( float x, float left, float right )
 	return left <= x && x <= right;
 }
 
-#ifndef round
+#if !defined(round) && !defined(NI_PLATF_LINUX)
 __forceinline float round( float fVal )
 {
   if (fVal >= 0.0f)
@@ -115,34 +115,43 @@ inline float SwitchByBool(bool bVal, float trueVal, float falseVal)
 
 inline int f2l_nosse(float f)
 {
+#ifndef NI_PLATF_LINUX
   unsigned short int cwOld;
   unsigned short int cwNew;
   int nI;
    __asm
   {
-    fld         dword ptr[f]            // загрузка значения float
-    fnstcw      word ptr[cwOld]         // сохранение FPUCW
+    fld         dword ptr[f]            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ float
+    fnstcw      word ptr[cwOld]         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ FPUCW
     movzx       eax, word ptr[cwOld]
-    or          eax, 0x0c00             // установка режима округления в сторону нуля (truncate)
+    or          eax, 0x0c00             // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (truncate)
     mov         dword ptr[cwNew], eax
-    fldcw       word ptr[cwNew]         // загрузка нового значения FPUCW
-    fistp       dword ptr[nI]           // сохранение значения int
-    fldcw       word ptr[cwOld]         // восстановление FPUCW
+    fldcw       word ptr[cwNew]         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ FPUCW
+    fistp       dword ptr[nI]           // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ int
+    fldcw       word ptr[cwOld]         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ FPUCW
   }
   return nI;
+#else
+  return static_cast<int>(f);
+#endif
 }
 
 inline int f2l_sse3(float f)
 {
+#ifndef NI_PLATF_LINUX
   int nI;
   __asm
   {
-    fld         dword ptr[f] // загрузка значения float
-    fisttp      dword ptr[nI] // сохранение значения int в режиме truncate
+    fld         dword ptr[f] // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ float
+    fisttp      dword ptr[nI] // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ int пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ truncate
   }
   return nI;
+#else
+  return static_cast<int>(f);
+#endif
 }
 
+#ifndef NI_PLATF_LINUX
 inline __declspec(naked) int f2l(float f)
 {
   __asm
@@ -160,6 +169,12 @@ noSSE:
     jmp f2l_nosse
   }
 }
+#else
+inline int f2l(float f)
+{
+  return static_cast<int>(f);
+}
+#endif
 
 enum EAbilityScaleMode
 {

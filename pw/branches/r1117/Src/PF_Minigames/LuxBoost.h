@@ -4,12 +4,7 @@
 #include "../PF_Core/WorldObject.h"
 #include "LuxDef.h"
 
-namespace NDb
-{
-  enum EBoostType;
-  enum EBoostUsage;
-  enum EColor;
-}
+#include "DBEasel.h"
 
 namespace PF_Minigames
 {

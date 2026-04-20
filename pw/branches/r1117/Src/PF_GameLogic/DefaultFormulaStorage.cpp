@@ -57,7 +57,7 @@ FormulaExecutor *DefaultFormulaStorage::ConstructFormulaCached(char const *cpStr
 
 template <typename T> void DefaultFormulaStorage::StoreVectorToCache(vector<T> const & vec)
 {
-  for(vector<T>::const_iterator it = vec.begin(); it != vec.end(); it++)
+  for(typename vector<T>::const_iterator it = vec.begin(); it != vec.end(); it++)
   {
     NI_DATA_VERIFY(it->compiledString.length() > 0, "Compiled string is empty!", continue;);
     NI_DATA_VERIFY(altHash.find(it->sString.c_str()) == altHash.end(), "Already exists in cache!", continue;);

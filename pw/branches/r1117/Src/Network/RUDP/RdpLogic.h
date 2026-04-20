@@ -12,13 +12,10 @@
 #include <vector>
 
 
+#include "RdpProto.h"
+
 namespace ni_udp
 {
-
-namespace proto
-{
-  namespace EPktType { enum Enum; }
-}
 
 
 class RdpOptionsObject;

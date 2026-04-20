@@ -1,5 +1,5 @@
 /**
-  @TODO: убрать ifdef, заменить на кроссплатформенные функции (готовые, если есть или сделать).
+  @TODO: пїЅпїЅпїЅпїЅпїЅпїЅ ifdef, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ).
  */
 
 #include "stdafx.h"
@@ -39,7 +39,7 @@ void StreamBuffer::WriteHeader( unsigned headerFormat )
                                             entryInfo.channel ? "[" : "", entryInfo.channel ? entryInfo.channel : "", entryInfo.channel ? "]" : "",
                                             MessageLevelToString( entryInfo.level ) );
 #elif defined( NV_LINUX_PLATFORM )
-    snprintf( buf, sizeof( buf ), "(%04u) %02u:%02u:%02u.%03u %s%s%s %s: ", ::pthread_self(),
+    snprintf( buf, sizeof( buf ), "(%04u) %02u:%02u:%02u.%03u %s%s%s %s: ", (unsigned int)::pthread_self(),
                                             entryInfo.time.wHour, entryInfo.time.wMinute, entryInfo.time.wSecond, entryInfo.time.wMilliseconds,
                                             entryInfo.channel ? "[" : "", entryInfo.channel ? entryInfo.channel : "", entryInfo.channel ? "]" : "",
                                             MessageLevelToString( entryInfo.level ) );
@@ -54,7 +54,7 @@ void StreamBuffer::WriteHeader( unsigned headerFormat )
 #if defined( NV_WIN_PLATFORM )
     sprintf_s( buf, "(%04u) ", ::GetCurrentThreadId() );
 #elif defined( NV_LINUX_PLATFORM )
-    snprintf( buf, sizeof( buf ), "(%04u) ", ::pthread_self() );
+    snprintf( buf, sizeof( buf ), "(%04u) ", (unsigned int)::pthread_self() );
 #endif
     Push( buf );
   }

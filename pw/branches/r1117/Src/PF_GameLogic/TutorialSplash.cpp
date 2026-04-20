@@ -11,6 +11,7 @@ namespace
 
 REGISTER_VAR("tutorial_splash_image", s_tutorial_splash_image, STORAGE_NONE);
 
+#ifdef _WIN32
 namespace
 {
 #pragma pack(push, 1)
@@ -379,8 +380,11 @@ namespace
 
 NI_DEFINE_REFCOUNT(SplashJob);
 
+#endif
+
 namespace NGameX
 {
+#ifdef _WIN32
   TutorialSplash::TutorialSplash()
     : thread(CreateSplashJobThread())
   {
@@ -395,4 +399,8 @@ namespace NGameX
       thread->Wait();
     }
   }
+#else
+  TutorialSplash::TutorialSplash() : thread(NULL) {}
+  TutorialSplash::~TutorialSplash() {}
+#endif
 }

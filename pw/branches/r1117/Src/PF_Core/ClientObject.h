@@ -22,12 +22,12 @@ namespace Render
 	class HDRColor;
 }
 
+#include "ColorModificationChannel.h"
+
 namespace PF_Core
 {
   class WorldObjectBase;
-  class ColorModificationChannel;
 	class BasicEffectAttached;
-  enum  ColorModificationPriority;
 
   class PureClientObjectBase : public IUpdateable
   {

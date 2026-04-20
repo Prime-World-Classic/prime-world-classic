@@ -155,7 +155,7 @@ namespace SocialBootstrap
         return false;
       }
 
-      ::Sleep(1000);
+      threading::Sleep(1000);
 
       DevTrace("logout: done");
     }
@@ -218,7 +218,7 @@ namespace SocialBootstrap
 
     for (int attempt = 0; !ok && attempt < 60; ++attempt)
     {
-      ::Sleep(1000);
+      threading::Sleep(1000);
 
       HttpRequest request(serverLocation);
 
@@ -335,7 +335,7 @@ namespace SocialBootstrap
     using namespace Http;
 
     {
-      ::Sleep(1000);
+      threading::Sleep(1000);
 
       HttpRequest request(ss.GetServerLocation());
 
@@ -372,7 +372,7 @@ namespace SocialBootstrap
 
     for (int attempt = 0; attempt < 60; ++attempt)
     {
-      ::Sleep(1000);
+      threading::Sleep(1000);
 
       HttpRequest request(ss.GetServerLocation());
 

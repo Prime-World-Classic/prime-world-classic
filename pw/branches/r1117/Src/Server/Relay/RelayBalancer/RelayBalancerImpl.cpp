@@ -1,14 +1,14 @@
 #include "stdafx.h"
-#include "RelayBalancer/RelayBalancerImpl.h"
-#include "RelayBalancer/RelaySvcContext.h"
-#include "RelayBalancer/RelayAllocationContext.h"
-#include "RelayBalancer/RRelayBalancerIface.auto.h"
-#include "UserManager/UserManagerSvc/RUserManagerIface.auto.h"
-#include "UserManager/UserManagerSvc/UserManagerNaming.h"
+#include "RelayBalancerImpl.h"
+#include "RelaySvcContext.h"
+#include "RelayAllocationContext.h"
+#include "RRelayBalancerIface.auto.h"
+#include "Server/UserManager/UserManagerSvc/RUserManagerIface.auto.h"
+#include "Server/UserManager/UserManagerSvc/UserManagerNaming.h"
 #include <Coordinator/CoordinatorServerNaming.h>
-#include "RelaySvc/RelaySvcNaming.h"
-#include "RelayBalancer/RelayBalancerSettings.h"
-#include "RelayBalancer/RelayBalancerGameContext.h"
+#include "Server/Relay/RelaySvc/RelaySvcNaming.h"
+#include "RelayBalancerSettings.h"
+#include "RelayBalancerGameContext.h"
 
 NI_DEFINE_REFCOUNT(Relay::BalancerImpl);
 
@@ -716,8 +716,8 @@ namespace Relay
       StrongMT<HostContext> const & ctx = *hit;
       if (!currentctx->load())
       {
-        //  т.к. не можем грузить текущий хост, 
-        //  то выбираем контекст как отправную точку, и переходим к сравнению со следующим по списку
+        //  пїЅ.пїЅ. пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, 
+        //  пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         currentctx = ctx;
         foundit = hit;
         continue;
@@ -740,10 +740,10 @@ namespace Relay
           int restSoftCapacity = userSoftLimit - candidateHostCcu;
 
           //-------------------------------------------------------------------------------------------------------------
-          //  1.  Если обе машины не достигли softlimit'а - 
-          //  выбираем с наибольшим кол-вом оставшихся свободных слотов до достижения softlimit'а машины
-          //  2.  Если у одной машины softlimit не превышен, а у другой превышен - выбираем ту, у которой не превышен
-          //  3.  Если softlimit превышен у обоих, то выбираем выбираем хост с наибольшим кол-вом оставшихся свободных слотов до hardlimit'а
+          //  1.  пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ softlimit'пїЅ - 
+          //  пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ softlimit'пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+          //  2.  пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ softlimit пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+          //  3.  пїЅпїЅпїЅпїЅ softlimit пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ hardlimit'пїЅ
           //-------------------------------------------------------------------------------------------------------------
           if (currentRestSoftCapacity > 0 && restSoftCapacity > 0 && restSoftCapacity > currentRestSoftCapacity)
             change = true;
@@ -752,7 +752,7 @@ namespace Relay
             change = true;
           else
           if (currentRestSoftCapacity <= 0 && restSoftCapacity <= 0)
-          { //  softlimit у обоих хостов превышен
+          { //  softlimit пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
             int currentUserHardLimit = currentctx->onlineSvcCount()*ulimit.hardlimit();
             if (currentctx->hardUserLimit() && currentUserHardLimit > (int)currentctx->hardUserLimit())

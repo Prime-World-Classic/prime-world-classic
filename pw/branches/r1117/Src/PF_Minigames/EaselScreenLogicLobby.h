@@ -7,10 +7,7 @@ namespace UI
   class Button;
 }
 
-namespace NDb
-{
-  enum EBoostType;
-}
+#include "DBEasel.h"
 
 namespace PF_Minigames
 {

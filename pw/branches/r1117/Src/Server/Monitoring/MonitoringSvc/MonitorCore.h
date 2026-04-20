@@ -1,5 +1,5 @@
 #pragma once
-#include <rpc/GateKeeper.h>
+#include <RPC/GateKeeper.h>
 #include "PerfCounterProvider/RPerfCounterProviderIface.auto.h"
 #include "MonitoringSvc/MonitoringSet.h"
 #include "MonitoringSvc/ProviderCtx.h"

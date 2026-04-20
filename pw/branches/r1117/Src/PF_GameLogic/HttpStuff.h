@@ -2,8 +2,12 @@
 
 #include "System/JobThread.h"
 
+#ifdef NI_PLATF_LINUX
+#include <curl/curl.h>
+#else
 #include <Vendor/libcurl/include/curl/curl.h>
-#include <Vendor/JsonCpp/include/json/json.h>
+#endif
+#include "../../Vendor/JsonCpp/include/json/json.h"
 
 #include <sstream>
 

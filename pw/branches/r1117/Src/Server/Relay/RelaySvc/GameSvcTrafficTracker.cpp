@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "GameSvcTrafficTracker.h"
-#include <rpc/RPC.h>
+#include <RPC/RPC.h>
 
 namespace Relay
 {

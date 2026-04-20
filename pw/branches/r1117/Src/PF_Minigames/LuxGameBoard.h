@@ -3,6 +3,7 @@
 #include "../PF_Core/WorldObject.h"
 
 #include "LuxBoard.h"
+#include "EaselDef.h"
 
 namespace NDb
 {

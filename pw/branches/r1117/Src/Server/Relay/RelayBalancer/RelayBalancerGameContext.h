@@ -1,7 +1,7 @@
 #pragma once
 #include <Network/TransportTypes.h>
 #include <ClusterTypes/ClusterTypes.h>
-#include "RelayBalancer/RelayBalancerGameUserGroup.h"
+#include "RelayBalancerGameUserGroup.h"
 
 namespace Relay
 {

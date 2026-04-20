@@ -1,6 +1,6 @@
 #pragma once
 
-namespace NDb   { enum EChatChannel;}
+#include "PF_GameLogic/DBStats.h"
 
 namespace NGameX
 {

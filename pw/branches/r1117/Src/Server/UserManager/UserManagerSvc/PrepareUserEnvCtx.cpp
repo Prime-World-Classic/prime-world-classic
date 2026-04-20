@@ -1,6 +1,6 @@
-#include "UserManagerSvc/stdafx.h"
-#include "UserManagerSvc/PrepareUserEnvCtx.h"
-#include "UserManagerSvc/UserManagerCfg.h"
+#include "stdafx.h"
+#include "PrepareUserEnvCtx.h"
+#include "UserManagerCfg.h"
 
 NI_DEFINE_REFCOUNT(UserManager::PrepareUserEnvCtx);
 

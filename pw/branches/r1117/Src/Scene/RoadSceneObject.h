@@ -10,13 +10,7 @@
 #include "../Terrain/TerrainElementManager.h"
 #include "RoadGeometryBuilder.h"
 
-namespace Terrain
-{
-  namespace EModification
-  {
-    enum Enum;
-  }
-}
+#include "../Terrain/TerrainGeometryManager.h"
 
 namespace Terrain
 {

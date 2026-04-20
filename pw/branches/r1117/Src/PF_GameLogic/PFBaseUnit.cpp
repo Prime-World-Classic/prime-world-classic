@@ -73,7 +73,7 @@ namespace
 
     virtual bool GetBool() const
     {
-      return formula( unit, unit, 0, 0.0f );
+      return formula( unit.GetPtr(), unit.GetPtr(), 0, 0.0f );
     }
 
     virtual NNameMap::VariantType::Enum GetType() const { return NNameMap::VariantType::Bool; }
@@ -420,7 +420,7 @@ int PFBaseUnit::RemoveSummons( const int unsummonCount, const NDb::SummonType ty
 void PFBaseUnit::OnDestroyContents()
 {
   DestroyAbilities();
-  CleanupHistoryApplicators(); // Чиним асинк NUM_TASK
+  CleanupHistoryApplicators(); // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ NUM_TASK
   PFLogicObject::OnDestroyContents();
 }
 
@@ -475,7 +475,7 @@ const NDb::UnitTargetingParameters& PFBaseUnit::GetTargetingParams() const
 
 const NDb::UnitTargetingParameters* PFBaseUnit::GetTargetingParamsPtr() const
 {
-  const NDb::UnitTargetingParameters* params = unitTargetingParams ? unitTargetingParams : dbUnitDesc->targetingParams.GetPtr();
+  const NDb::UnitTargetingParameters* params = unitTargetingParams ? unitTargetingParams.GetPtr() : dbUnitDesc->targetingParams.GetPtr();
   if ( params == NULL )
   {
     NI_ASSERT(GetWorld() && GetWorld()->GetAIWorld(), "Invalid world");
@@ -1047,15 +1047,15 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
   // Targeting by Master
   if ( IsUnitValid(pMaster) )
   {
-    // NUM_TASK не проверяем дистанцию до мастера, если саммон спущен с поводка
+    // NUM_TASK пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if (!Local::IsUnleashedSummon(this))
     {
       const float distanceToMasterThreshold2 = fabs2(GetChaseRange() + GetAttackRange());
       const float distanceToMaster2 = fabs2(GetPosition() - pMaster->GetPosition());
 
       // Check distance to Master
-      // NOTE: благодаря этой проверке возможно избежать реальной оценки. например, цель, которая не должна быть атакована вообще,
-      // может просто стать целью с очень низким приоритетом и будет атакована, если рядом нет ничего более интересного.
+      // NOTE: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ,
+      // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
       if ( distanceToMaster2 > distanceToMasterThreshold2 )
         return 0.f; // too far away from master
     }
@@ -1121,7 +1121,7 @@ float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>& pTarget, const NDb::Un
     const AttackData* const pAttackData = Local::GetLastAttackData(pTargetNew);
     const CPtr<PFBaseUnit>& pTargetOfTarget = Local::GetAttackedUnit(pAttackData);
 
-    // TODO: IsLikeHero() может вернуть true только для alpha-summon'ов. Условие избыточно.
+    // TODO: IsLikeHero() пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ true пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ alpha-summon'пїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
     const bool isLikeHero =
       pTargetOfTarget->IsTrueHero() ||
       pTargetOfTarget->IsLikeHero() ||
@@ -1333,8 +1333,8 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget( float range, bool checkScreams, int tar
   NI_ASSERT( GetWorld() && GetWorld()->GetAIWorld(), "Invalid world" );
   PFAIWorld* pAIWorld = GetWorld()->GetAIWorld();
 
-  // Радиус поиска увеличен на макс. размер юнита для того, чтобы учесть размеры юнитов при вычислении дистанции между ними.
-  // А при проверке целей, из результатов поиска отсекаются те, до которых слишком далеко (IsInAttackRange)
+  // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
+  // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (IsInAttackRange)
   float searchRadius = range + ( GetObjectSize() + pAIWorld->GetMaxObjectSize() ) * 0.5f;
   
   TargetFinder targetFinder( *this, GetTargetingParams(), range );
@@ -2188,7 +2188,7 @@ float PFBaseUnit::OnDamage(const DamageDesc &desc)
   NI_VERIFY(0 <= desc.damageType && desc.damageType < NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf(),
 		"Invalid damage type", return 0.f);
 
-  // Тут не должно приходить нативного дамага! Если он пришёл, ругаемся верифаем и хаком подставляем правильный тип..
+  // пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ..
   NI_VERIFY( desc.damageType != NDb::APPLICATORDAMAGETYPE_NATIVE, "Wrong damage type: NATIVE (internal PFBaseUnit::OnDamage() usage error!). Will be used sender native damage instead",
     const_cast<DamageDesc&>(desc).damageType = desc.pSender ? desc.pSender->GetNativeDamageType() : NDb::APPLICATORDAMAGETYPE_MATERIAL );
 
@@ -3701,7 +3701,7 @@ void PFBaseUnit::OnSerialize(IBinSaver& f)
 {
   if (f.IsReading())
   {
-    // NOTE: десериализация контейнера переменных не уничтожает элементы
+    // NOTE: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     variablesRing.clear(ring::DeleteEraser<Variable>());
   }
 }
@@ -3785,8 +3785,8 @@ bool PFBaseUnitDebug::Process(Render::IDebugRender* pRender)
   {
     float range = pOwner->GetTargetingRange();
 
-    // Радиус поиска увеличен на макс. размер юнита для того, чтобы учесть размеры юнитов при вычислении дистанции между ними.
-    // А при проверке целей, из результатов поиска отсекаются те, до которых слишком далеко (IsInAttackRange)
+    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
+    // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (IsInAttackRange)
     float searchRadius = range + ( pOwner->GetObjectSize() + pAIWorld->GetMaxObjectSize() ) / 2;
 
     ShowTarget targetFinder(*pOwner.GetPtr(), pRender);
@@ -3852,5 +3852,4 @@ REGISTER_DEV_VAR("show_leash_range", g_showLeashRange, STORAGE_NONE);
 #ifdef EXPOMODE
 REGISTER_VAR( "immortal_heroes", g_immortalHeroes, STORAGE_NONE )
 #else
-REGISTER_DEV_VAR( "immortal_heroes", g_immortalHeroes, STORAGE_NONE )
 #endif

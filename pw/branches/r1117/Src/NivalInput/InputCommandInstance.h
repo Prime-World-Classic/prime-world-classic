@@ -58,8 +58,6 @@ public:
   virtual void UpdateControlsSupersets( TControlsSet & otherSets );
 
 private:
-  typedef list<CObj<ControlsSet>>  TControlsSet;
-
   CPtr<IHwInput>    hwInput;
   string            name;
   bool              inverted;

@@ -912,7 +912,11 @@ void EventSystemRelease( )
 
   if ( lpMemoryPool )
   {
+#ifdef WIN32
     VirtualFree( lpMemoryPool, 0, MEM_RELEASE );
+#else
+    free(lpMemoryPool);
+#endif
     lpMemoryPool = 0;
   }
 
@@ -1239,7 +1243,7 @@ void UpdateVolumes( float soundVol, float musicVol, float voiceVol, float common
       if ( pCategory == pMusicCategory )
         continue;
       int index = 0;
-      char* name = "";
+      char* name = NULL;
       pCategory->getInfo( &index, &name );
       nstl::string categoryName( name );
       if ( categoryName == nstl::string("voice") )
@@ -1546,7 +1550,7 @@ static bool RestartSound( const char *name, const vector<wstring> &params )
 		NSoundScene::StartAmbient();
 		NSoundScene::StartHeartBeat();
 
-    // Восстановление категорий и текущей звуковой сцены
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     nstl::vector<NDb::SoundSceneDesc> soundScenesCache;
     for ( int i = 0; i < NSoundScene::soundScenes.size(); i++ )
     {

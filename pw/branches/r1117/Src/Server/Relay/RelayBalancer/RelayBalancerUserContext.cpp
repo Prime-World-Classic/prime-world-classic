@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "RelayBalancer/RelayBalancerUserContext.h"
+#include "RelayBalancerUserContext.h"
 
 NI_DEFINE_REFCOUNT(Relay::UserContext);
 

@@ -2,10 +2,8 @@
 #define LIVEMMAKINGTYPES_H_INCLUDED
 
 #include "Server/LobbyPvx/CommonTypes.h"
-// Dirty hack! Fix!
-#if defined( NV_LINUX_PLATFORM )
-#include "Server/Db/DBServer.auto.h"
-#endif
+#include "PF_GameLogic/StringExecutor.h"
+#include "PF_GameLogic/DBAdvMap.h"
 
 
 namespace NDb

@@ -105,7 +105,7 @@ private:
   void StopSound(bool immediately = false);
   void StartSound( const NDb::DBFMODEventDesc& dbFMODDesc );
   void UpdateMusicVolume( float dt );
-  NDb::SessionQuest const* DialogController::FindQuest( const string& id );
+  NDb::SessionQuest const* FindQuest( const string& id );
 
   NDb::Dialog const* FindDialogById( const char* );
   int FindPhraseIdByScriptName( const char* );

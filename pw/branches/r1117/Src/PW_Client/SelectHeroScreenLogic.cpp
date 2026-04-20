@@ -104,7 +104,7 @@ void SelectHeroScreenLogic::UpdateTimer(int playerCount)
   if ( pDesc )
   {
 	wchar_t buff[256];
-  swprintf_s(buff, L"%sPlayers connected: %d</style>", playerCount == 10 ? L"<style:green>" : L"<style:money>", playerCount);
+  swprintf_s(buff, 256, L"%sPlayers connected: %d</style>", playerCount == 10 ? L"<style:green>" : L"<style:money>", playerCount);
 
 	pDesc->SetCaptionTextW ( buff );
   }

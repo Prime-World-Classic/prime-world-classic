@@ -83,7 +83,7 @@ void DiAnimGraph::AGTrace( const char *pszFormat, ... )
     vsnprintf_s( out2, 1000, 1000, pszFormat, va );
     va_end( va );
 
-    strcat_s(out1, out2);
+    strcat(out1, out2);
 
     systemLog( NLogg::LEVEL_DEBUG ) << out1;
   }
@@ -618,7 +618,7 @@ DiVoid DiAnimGraph::DebugUpdateNodesInfo(DiAnimGraph *agpGraph)
   // print info about sequence
   anpDbSeqNames     = agpGraph->DebugGetDbSeqTables();
   npNumSeqs         = agpGraph->DebugGetDbNumSeqsInTables();
-  if (anpDbSeqNames != NULL && npNumSeqs > 0)
+  if (anpDbSeqNames != NULL && npNumSeqs != NULL)
   {
     for (nJ = 0; nJ < nNumSubNodes; nJ++)
     {

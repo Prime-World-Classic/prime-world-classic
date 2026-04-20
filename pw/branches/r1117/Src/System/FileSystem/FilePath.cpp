@@ -447,6 +447,7 @@ int CFilePath::operator&( IBinSaver &saver )
 	return 0;
 }
 
+#ifdef _WIN32
 void SetModuleCurrentDir()
 {
     TCHAR szFileName[MAX_PATH];
@@ -458,6 +459,24 @@ void SetModuleCurrentDir()
 
     SetCurrentDirectory(szDirName.c_str());
 }
+#else
+#include <unistd.h>
+void SetModuleCurrentDir()
+{
+    char szFileName[4096];
+    ssize_t count = readlink("/proc/self/exe", szFileName, 4096);
+    if (count != -1) {
+        szFileName[count] = ' ';
+        std::string path(szFileName);
+        std::string::size_type n = path.rfind(NFile::FILE_SEPARATOR);
+        if (n != std::string::npos) {
+            std::string szDirName = path.substr(0, n);
+            chdir(szDirName.c_str());
+        }
+    }
+}
+#endif
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void InitBaseDir(wchar_t const *rootDir)

@@ -2,19 +2,25 @@
 #define RUDP_RDPSTATS_H_INCLUDED
 
 
+#ifndef NI_PLATF_LINUX
 #include <intrin.h>
 #pragma intrinsic(_InterlockedCompareExchange64)
+#endif
 
 namespace
 {
   // This function will work on WinXP 32 bit (Unlike the InterlockedExchangeAdd64 which also isn't intrinsic)
-  void NiInterlockedExchangeAdd64(__int64 volatile *Addend, __int64 Value)
+  void NiInterlockedExchangeAdd64(LONGLONG volatile *Addend, LONGLONG Value)
   {
-      __int64 Comperand;
+  #ifndef NI_PLATF_LINUX
+      LONGLONG Comperand;
       do 
       {
           Comperand = *Addend;
       } while (Comperand != _InterlockedCompareExchange64(Addend, Comperand + Value, Comperand));
+  #else
+      __sync_fetch_and_add(Addend, Value);
+  #endif
   }
 } // namespace
 
@@ -52,9 +58,13 @@ public:
   volatile LONG         warnings;
   volatile LONG         retransmits;
 
-  void Inc( volatile LONG RdpStats::*_field, int _inc = 1 )
+  void Inc( volatile LONG RdpStats::* _field, int _inc = 1 )
   {
+  #ifndef NI_PLATF_LINUX
     InterlockedExchangeAdd( &(this->*_field), _inc );
+  #else
+    __sync_fetch_and_add( &(this->*_field), _inc );
+  #endif
   }
 
   void Inc( volatile LONGLONG RdpStats::*_field, int _inc = 1 )

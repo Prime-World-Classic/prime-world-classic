@@ -11,14 +11,19 @@ index( 0 )
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
 AppInstancesLimit::~AppInstancesLimit()
 {
   if ( winMutex )
     CloseHandle( winMutex );
 }
+#else
+AppInstancesLimit::~AppInstancesLimit() {}
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
 bool AppInstancesLimit::Lock( int limit )
 {
   for( int i = 0; i < limit; ++i )
@@ -39,3 +44,6 @@ bool AppInstancesLimit::Lock( int limit )
   }
   return false;
 }
+#else
+bool AppInstancesLimit::Lock( int limit ) { return true; }
+#endif

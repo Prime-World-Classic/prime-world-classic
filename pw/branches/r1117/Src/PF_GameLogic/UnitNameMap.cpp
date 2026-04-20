@@ -72,15 +72,18 @@ NAMEMAP_END
 
 // -----------------------------------------------------------
 
-NAMEMAP_BEGIN(SingleValueNameMapInt)
+#define NAMEMAP_BEGIN_SPECIALIZATION( className ) \
+  template<> bool className :: ResolveNameByMacro ( const char * _mapElementName, int _mapElementNameLength, const char * _mapElementArgs, int _mapElementArgsLength, NNameMap::Map ** ppMap, NNameMap::Variant ** ppVariant, void* prms, bool _readonlyNeeded ) {
+
+NAMEMAP_BEGIN_SPECIALIZATION(SingleValueNameMapInt)
   NAMEMAP_VAR_RO(value)
 NAMEMAP_END
 
-NAMEMAP_BEGIN(SingleValueNameMapFloat)
+NAMEMAP_BEGIN_SPECIALIZATION(SingleValueNameMapFloat)
   NAMEMAP_VAR_RO(value)
 NAMEMAP_END
 
-NAMEMAP_BEGIN(SingleValueNameMapWstring)
+NAMEMAP_BEGIN_SPECIALIZATION(SingleValueNameMapWstring)
   NAMEMAP_VAR_RO(value)
 NAMEMAP_END
 

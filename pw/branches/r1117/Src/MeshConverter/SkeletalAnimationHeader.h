@@ -12,8 +12,8 @@
 struct MayaSkeletalAnimationHeader
 {
 	char signature[4];
-	unsigned __int32 animationType;
-	unsigned __int32 boneCount;
+	uint32_t animationType;
+	uint32_t boneCount;
 };
 
 

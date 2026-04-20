@@ -91,6 +91,7 @@ Render::Texture2DRef RecolorableTextureCache::AcquireTexture(Render::HDRColor co
 
 void RecolorableTextureCache::FillTexture(Render::Texture2DRef const& tex, Render::HDRColor const& recolor)
 {
+#ifndef NI_PLATF_LINUX
   using namespace Render;
 
 #ifndef _SHIPPING
@@ -122,6 +123,7 @@ void RecolorableTextureCache::FillTexture(Render::Texture2DRef const& tex, Rende
     tex->GenerateMipSubLevels();
 
   }
+#endif
 }
 
 void RecolorableTextureCache::OnDeviceLost()

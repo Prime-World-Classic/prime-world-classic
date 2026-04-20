@@ -245,9 +245,15 @@ string GetFullName( const string &szPath )
     fillPath = NFile::GetBaseDir() + szPath;
   }
 
+#ifdef WIN32
   char *buffer = (char *)alloca((MAX_PATH + 1)* sizeof(char));
   PathCanonicalizeA(buffer, fillPath.c_str());
   return buffer;
+#else
+  string res;
+  NormalizePath( &res, fillPath );
+  return res;
+#endif
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void GetFullName( string *pResult, const string &szPath )

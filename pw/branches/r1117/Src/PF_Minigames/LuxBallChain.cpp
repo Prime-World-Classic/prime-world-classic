@@ -87,7 +87,7 @@ int64 LuxBallChain::GetChainPosition() const
   if ( chainBalls.empty() )
     return 0;
 
-  CPtr<LuxBall> frontBall = chainBalls.front().ball; 
+  CPtr<LuxBall> frontBall( chainBalls.front().ball.GetPtr() ); 
 
   return frontBall->GetCoveredPath() + (frontBall->Size()/2);
 }
@@ -97,7 +97,7 @@ int64 LuxBallChain::GetChainLength() const
   if ( chainBalls.empty() )
     return 0;
 
-  CPtr<LuxBall> lastBall = chainBalls.back().ball;
+  CPtr<LuxBall> lastBall( chainBalls.back().ball.GetPtr() );
 
   return GetChainPosition() - (lastBall->GetCoveredPath() - lastBall->Size()/2);
 }
@@ -572,7 +572,7 @@ LuxBallChain* LuxBallChain::ExplodePaintBlastWave(const SVector &_refBlastPos,in
     {
       if ( fGotExplosion  ) 
       {
-        // у нас определилася область взрыва, рвем все
+        // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         return PaintBlastExplodeBalls(explosionStart,currentBall);
       }
     }
@@ -1018,7 +1018,7 @@ void LuxBallChain::RecalculateBallsSize()
     --currentBalIter;
 
 
-    CPtr<LuxBall> ball = currentBalIter->ball;
+    CPtr<LuxBall> ball( currentBalIter->ball.GetPtr() );
 
     RecalculatePoint(lastEdgePoint, currentBalIter->offset, currentBalIter->edgePoint, currentBalIter->edgeVelocity);
 
@@ -1159,7 +1159,7 @@ void LuxBallChain::SetBallsPositions( int64 newPos )
   ChainBalls::iterator ballsIter = chainBalls.begin();
   for(int i=0; ballsIter != chainBalls.end(); ballsIter++,i++)
   {
-    CPtr<LuxBall> currentBall = ballsIter->ball;
+    CPtr<LuxBall> currentBall( ballsIter->ball.GetPtr() );
     int currentBallRadius = currentBall->Size()/2;
 
     newPos -= currentBallRadius;

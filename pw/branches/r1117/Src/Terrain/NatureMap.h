@@ -2,7 +2,7 @@
 #ifndef _NATUREMAP_H_
 #define _NATUREMAP_H_
 
-#include "../Render/aabb.h"
+#include "AABB.h"
 #include "../System/PlaneGeometry.h"
 #include "NatureAttackSpace.h"
 

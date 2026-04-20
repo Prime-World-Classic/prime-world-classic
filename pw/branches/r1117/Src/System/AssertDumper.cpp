@@ -39,6 +39,7 @@ CAssertDumper::CAssertDumper( CLogger *pDefaultLogger )
 }
 
 static int dummy = 0;
+#ifdef _WIN32
 static int CatchException( const struct tm &tim, EXCEPTION_POINTERS* pExceptionInfo )
 {
   CreateMiniDump( tim, pExceptionInfo, MINI_DUMP, EXCEPTION_ASSERT );
@@ -60,6 +61,10 @@ static void GenerateException(const struct tm & tim)
   {
   }
 }
+#else
+static void GenerateException(const struct tm &) {}
+#endif
+
 
 //collect call stack and remove entries from top of it to read file/line
 static void CollectClearCallStack( vector<SCallStackEntry>* pEntries, const char *szFileName, const DWORD dwLine )
@@ -120,10 +125,18 @@ void CAssertDumper::OnDump( const SEntryInfo & entryInfo, const char * headerAnd
         break;
       }
     case NBSU::BSU_DEBUG:
-      __debugbreak();
+      #ifdef _WIN32
+    __debugbreak();
+#else
+    abort();
+#endif
       break;
     case NBSU::BSU_ABORT:
+#ifdef _WIN32
       FatalExit( 0xDEAD );
+#else
+      exit( 0xDEAD );
+#endif
       break;
     case NBSU::BSU_MAKE_MINI_MINIDUMP:
       struct tm tim;

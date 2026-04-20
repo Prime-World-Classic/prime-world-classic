@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include "../Render/DBRender.h"
 #include "EaselViewEffects.h"
 
 #include "../System/RandomGen.h"
@@ -285,7 +286,7 @@ void EaselViewEffects::BallExplosionHandler(const LuxBallExplodedNotification& n
   NI_VERIFY( IsValid(easel), "EaselViewEffects: something strange happened. easel is dead", return );
   NI_VERIFY( IsValid(notification.ball), "EaselViewEffects: invalid ball passed", return);
 
-  // [@Pavel <GnoM> Cherniavski@] TODO: нужно сделать отдельный эффект взрыва джокера ...
+  // [@Pavel <GnoM> Cherniavski@] TODO: пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ ...
   NDb::EColor color = notification.ball->Color();
   if(color == NDb::COLOR_ANY)
     return;
@@ -376,7 +377,7 @@ void EaselViewEffects::PaintFlyInPointHandler( const PaintFlyingInPointNotificat
       fromWorld.y < -EaselConst::Get_LOGIC_FIELD_HEIGHT() || fromWorld.y > EaselConst::Get_LOGIC_FIELD_HEIGHT()
     )
   {
-    // Не нужен тут ассерт NUM_TASK
+    // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ NUM_TASK
     //NI_ALWAYS_ASSERT( NStr::StrFmt( "Paint flyed off the table: from (%d, %d) to (%d, %d)", fromWorld.x, fromWorld.y, toWorld.x, toWorld.y ) );
     return;
   }
@@ -508,7 +509,7 @@ void EaselViewEffects::CreateEndMovie()
   if( !object )
     return;
 
-  NDb::Ptr<NDb::Material> dbOverrideMaterial = easel->GetPainterLevelData()->paintMaterial;
+  NDb::Ptr<NDb::Material> dbOverrideMaterial( easel->GetPainterLevelData()->paintMaterial.GetPtr() );
   if(IsValid(dbOverrideMaterial))
   {
     // updating material
@@ -570,7 +571,7 @@ void EaselViewEffects::CreateStartMovie()
     return;
   }
 
-  NDb::Ptr<NDb::Material> dbOverrideMaterial = easel->GetPainterLevelData()->paintMaterial;
+  NDb::Ptr<NDb::Material> dbOverrideMaterial( easel->GetPainterLevelData()->paintMaterial.GetPtr() );
   
   if( IsValid( dbOverrideMaterial ) )
   {

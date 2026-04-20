@@ -14,10 +14,7 @@ namespace UI
   class ImageLabel;
 }
 
-namespace ActionBarSlotState
-{
-  enum EActionBarSlotState;
-}
+#include "AdventureFlashInterface.h"
 
 namespace NGameX
 {

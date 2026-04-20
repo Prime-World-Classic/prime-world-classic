@@ -15,14 +15,13 @@ public:
 	void Push( const T& el )
 	{
 		// find first element that TCmp is true for it
-		CTElements::iterator it = lower_bound( elements.begin(), elements.end(), el, cmp );
+		typename CTElements::iterator it = lower_bound( elements.begin(), elements.end(), el, cmp );
 		elements.insert( it, el );
 	}
 	void Remove( const T& el )
 	{
-		CTElements::iterator it = lower_bound( elements.begin(), elements.end(), el, cmp );
-		for( CTElements::iterator rem = it; rem != elements.end(); ++rem ) 
-		{
+		typename CTElements::iterator it = lower_bound( elements.begin(), elements.end(), el, cmp );
+		for( typename CTElements::iterator rem = it; rem != elements.end(); ++rem )		{
 			if ( *rem == el )
 			{
 				elements.erase( rem );
@@ -43,8 +42,8 @@ public:
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// на вершине куче находится наибольший элемент
-// bool Cmp::operator()(const T &a, const T &b) должен возвращать true в случае a < b
+// пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+// bool Cmp::operator()(const T &a, const T &b) пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ true пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ a < b
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<class T>
 struct SVoidSwap
@@ -58,11 +57,11 @@ class CHeap
 	TCmp cmp;
 	TWillSwap WillSwap;
 	
-	// нумерация элементов от 1!
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1!
 	vector<T> heap;
 	int nEl;
 
-	// перебалансирует, начиная с эл. k и вверх
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅ. k пїЅ пїЅпїЅпїЅпїЅпїЅ
 	int Balance( int k );
 public:
 	int operator&( IBinSaver &saver );	
@@ -80,11 +79,11 @@ public:
 	void Erase( const int n );
 	void Clear() { heap.clear(); nEl = 0; heap.resize( 1 ); }
 
-	// возвращает индекс, куда элемент попал
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	int Push( const T& el );
 	const T Pop();
 
-	// перебалансировать при увеличении элемента на позиции k
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ k
 	int Increased( const int k );
 
 	const T& GetMaxEl() const { return heap[1]; }

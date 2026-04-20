@@ -1,0 +1,39 @@
+[  0%] Building CXX object CMakeFiles/PrimeWorld.dir/PF_GameLogic/AdventureScreen.cpp.o
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/specific.h:21,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/stdafx.h:5,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:1:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGrUtils.h:200:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  200 | #endif _DIANGRUTILS_H_
+      |        ^~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGr.h:17,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:21:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGrUtils.h:200:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  200 | #endif _DIANGRUTILS_H_
+      |        ^~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGr.h:18:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGrAPI.h:6:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+    6 | #endif __DIANGRAPI_H__
+      |        ^~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGr.h:599:10: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  599 |   #endif DIANGR_SCREEN_DEBUG_GENERAL
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scene/DiAnGr.h:777:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  777 | #endif DIANGR_SCREEN_DEBUG_GENERAL
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_Core/../Scene/DiAnGrNLinker.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_Core/../Scene/AnimatedSceneComponent.h:10,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_Core/ControlledStatusEffect.h:3,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_Core/EffectsPool.h:6,
+                 from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:24:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_Core/../Scene/DiAnGrUtils.h:200:8: warning: extra tokens at end of ‘#endif’ directive [-Wendif-labels]
+  200 | #endif _DIANGRUTILS_H_
+      |        ^~~~~~~~~~~~~~~
+In file included from /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/AdventureScreen.cpp:65:
+/home/vitaly/p/Prime-World/pw/branches/r1117/Src/Render/AOERenderer.h:6:10: fatal error: Material.h: No such file or directory
+    6 | #include "Material.h"
+      |          ^~~~~~~~~~~~
+compilation terminated.
+make[3]: *** [CMakeFiles/PrimeWorld.dir/build.make:2221: CMakeFiles/PrimeWorld.dir/PF_GameLogic/AdventureScreen.cpp.o] Error 1
+make[2]: *** [CMakeFiles/Makefile2:87: CMakeFiles/PrimeWorld.dir/all] Error 2
+make[1]: *** [CMakeFiles/Makefile2:94: CMakeFiles/PrimeWorld.dir/rule] Error 2
+make: *** [Makefile:124: PrimeWorld] Error 2

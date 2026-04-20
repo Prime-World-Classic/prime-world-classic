@@ -16,7 +16,7 @@
 #include "System/RandomGenerator.h"
 
 #include "Monitoring/PerfCounterProvider/PerfCounterProvider.h"
-#include "UserManagerAgent/UserManagerAgent.h"
+#include "Server/UserManager/UserManagerAgent/UserManagerAgent.h"
 #include "Server/LobbySocial/ISocialLobbyPvxSvc.h"
 #include <list>
 #include <map>

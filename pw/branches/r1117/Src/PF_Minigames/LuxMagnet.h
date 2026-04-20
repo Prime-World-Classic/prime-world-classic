@@ -5,10 +5,7 @@
 #include "EaselConstants.h"
 #include "LuxCollidable.h"
 
-namespace NDb
-{
-  enum EColor;
-}
+#include "DBEasel.h"
 
 namespace PF_Minigames
 {

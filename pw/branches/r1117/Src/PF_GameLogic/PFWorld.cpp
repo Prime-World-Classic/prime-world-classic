@@ -162,10 +162,10 @@ public:
 //=================================================================================================================
 template<class T, bool checkTrees = false> class ObjectsLoader : public ObjectsLoaderBase<checkTrees>
 {
-  virtual PF_Core::WorldObjectBase* CreateObject(const NDb::AdvMapObject &_obj) { return new T(pWorld, _obj); }
+  virtual PF_Core::WorldObjectBase* CreateObject(const NDb::AdvMapObject &_obj) { return new T(this->pWorld, _obj); }
 
 public:
-  ObjectsLoader(PFWorld* _pWorld) : ObjectsLoaderBase(_pWorld) {}
+  ObjectsLoader(PFWorld* _pWorld) : ObjectsLoaderBase<checkTrees>(_pWorld) {}
 };
 
 template<class T>
@@ -593,13 +593,13 @@ void PFWorld::LoadPrecachedResources(const NDb::AdvMapDescription * advMapDescri
   
   for( int i = 0; i < selfAuraEffects.size(); i++ )
   {
-    CObj<PF_Core::BasicEffect> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( selfAuraEffects[i] );
+    CObj<PF_Core::BasicEffectAttached> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( selfAuraEffects[i] );
     pEffect->DieImmediate();
     pEffect->DieImmediate();
   }
   for( int i = 0; i < auraEffects.size(); i++ )
   {
-    CObj<PF_Core::BasicEffect> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( auraEffects[i] );
+    CObj<PF_Core::BasicEffectAttached> pEffect = PF_Core::EffectsPool::Get()->Retrieve<PF_Core::BasicEffectAttached>( auraEffects[i] );
     pEffect->DieImmediate();
     pEffect->DieImmediate();
   }

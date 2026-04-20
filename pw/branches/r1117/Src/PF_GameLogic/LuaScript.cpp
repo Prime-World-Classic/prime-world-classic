@@ -16,12 +16,13 @@
 #include "PFNeutralCreep.h"
 #include "PFMainBuilding.h"
 #include "PFSimpleObject.h"
-#include "PFFlagPole.h"
+#include "PFFlagpole.h"
 #include "PFTree.h"
 #include "PFImpulsiveBuffs.h"
 #include "Client/MainTimer.h"
 #include "System/MainFrame.h"
 #include "PFTalent.h"
+#include "../PW_Client/GameStatGuard.h"
 #include "PFGlyph.h"
 #include "PFWorldNatureMap.h"
 #include "PFScriptedFlagpole.h"
@@ -44,7 +45,7 @@
 #include "PFClientVisibilityMap.h"
 #include "PFConsumable.h"
 #include "Render/AOERenderer.h"
-#include "..\PF_Core\EffectsPool.h"
+#include "../PF_Core/EffectsPool.h"
 #include "PFClientHero.h"
 #include "ObjectsInfo2d.h"
 
@@ -477,11 +478,11 @@ PFBaseUnit* FindUnit( PFAIContainer* pAIContainer, const ::LuaUnitIdParam& unit 
 #define ADD_LUA2CPP_FUNCTION( name )                                                                                         \
 static struct AddScriptFunction_##__LINE__##_##name                                                                          \
 {                                                                                                                            \
-  AddScriptFunction_##__LINE__##_##name##()                                                                                  \
+  AddScriptFunction_##__LINE__##_##name()                                                                                    \
   {                                                                                                                          \
     scriptFunctionsList[#name] = name;                                                                                       \
   }                                                                                                                          \
-} addScriptFunction_##__LINE__##_##name##;
+} addScriptFunction_##__LINE__##_##name;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3135,7 +3136,7 @@ static void CreateCameraSpline(NGameX::AdventureScreen* pAdvScreen, const NDb::A
   NScene::SCameraPosition posFrom;
   pAdvScreen->GetCamera()->GetCameraPosition(&posFrom);
 
-  // конвертация в градусы, потому что эйлеровы углы хранятся в градусах
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   posFrom.ConvertFromRadToDeg();
 
   float pitch = posFrom.fPitch;

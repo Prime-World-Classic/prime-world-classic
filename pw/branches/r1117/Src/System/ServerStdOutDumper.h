@@ -7,7 +7,7 @@
 
 #ifdef NI_PLATF_LINUX
 
-  typedef int HANDLE;
+//  typedef int HANDLE;
 
 #endif
 

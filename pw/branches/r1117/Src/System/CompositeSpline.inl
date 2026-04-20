@@ -545,7 +545,7 @@ template <class POINT>
 bool CCompositeBSplineWidth<POINT>::IsInside(POINT const &p)
 {
   // find closest point on spline
-  float t = GetClosestPointExt(p);
+  float t = this->GetClosestPointExt(p);
   
   if (t < 0.f)
     return false;

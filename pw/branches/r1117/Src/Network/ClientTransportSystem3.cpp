@@ -109,14 +109,20 @@ namespace Transport
       tlcfg.mf_ = factory;
       tlcfg.disableNagleAlgorithm_ = Transport::ClientCfg::DisableNagleAlgorithm();
       tlcfg.read_block_size_ = Transport::ClientCfg::GetReadBlockSize();
-      tlcfg.mbHeapDumpFreq_ = 0;  //  отключает дамп в лог message block heap'а
+      tlcfg.mbHeapDumpFreq_ = 0;  //  пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ message block heap'пїЅ
       tlcfg.checkActivityTimeout_ = Transport::ClientCfg::GetCheckConnectionActivityTimeout();
 
       tlcfg.threads_ = Transport::ClientCfg::GetNumberOfThreads();
+#ifndef NI_PLATF_LINUX
       SYSTEM_INFO si;
       ::GetSystemInfo(&si);
       if ((DWORD)tlcfg.threads_ > si.dwNumberOfProcessors)
         tlcfg.threads_ = 0;
+#else
+      long nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+      if (nprocs < 1 || tlcfg.threads_ > nprocs)
+        tlcfg.threads_ = 0;
+#endif
 
       StrongMT<TL::TransportModule> sptm = new TL::TransportModule;
       if (sptm->Init(tlcfg))

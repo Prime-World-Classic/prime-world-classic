@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "EventsQueue.h"
 #include "Stack.h"
 #include "LockFreeStack.h"
@@ -10,9 +11,7 @@
 namespace nvl {
 
 	class CEventNode;
-
-	struct CEventNodesContainer: IEntity, CLockFreeStack< CEventNode > {
-	};
+	struct CEventNodesContainer;
 
 	typedef CPtr< CEventNodesContainer > CEventNodesContainerPtr;
 	typedef CMTEntity< CEventNodesContainer > CEventNodesContainerEntity;
@@ -25,13 +24,9 @@ namespace nvl {
 		CEventNode(): m_nDeliveryTime( 0 ), m_nPeriod( 0 )
 		{}
 
-		void SendToOwner()
-		{
-			assert( m_cpOwner.Get() != NULL );
+		~CEventNode();
 
-			CEventNodesContainerPtr cpContainer;
-			cpContainer.Attach( m_cpOwner.Detach() )->Push( this );
-		}
+		void SendToOwner();
 
 	public:
 
@@ -43,6 +38,19 @@ namespace nvl {
 		uint_t m_nPeriod;
 
 	};
+
+	struct CEventNodesContainer: IEntity, CLFStack< CEventNode > {
+	};
+
+	CEventNode::~CEventNode() {}
+
+	void CEventNode::SendToOwner()
+	{
+		assert( m_cpOwner.Get() != NULL );
+
+		CEventNodesContainerPtr cpContainer;
+		cpContainer.Attach( m_cpOwner.Detach() )->Push( this );
+	}
 
 	boost::thread_specific_ptr< CEventNodesContainerPtr > g_TLSFreeMessageNodes;
 
@@ -207,15 +215,15 @@ namespace nvl {
 			CEventNode *pNode = AllocNode();
 			pNode->m_cpEvent = pEvent;
 
-			if ( m_pPreparedMessagesLast ) {
+			if ( m_pPreparedEventsLast ) {
 
-				m_pPreparedMessagesLast->SetNextNode( pNode );
+				m_pPreparedEventsLast->SetNextNode( pNode );
 				pNode->SetNextNode( NULL );
 
 			} else
-				m_PreparedMessages.Push( pNode );
+				m_PreparedEvents.Push( pNode );
 
-			m_pPreparedMessagesLast = pNode;
+			m_pPreparedEventsLast = pNode;
 
 			return result_ok;
 		}
@@ -263,8 +271,8 @@ namespace nvl {
 		result_t PostEvent( IEventsReceiver * const pSender, IEventsReceiver * const pReceiver, IEvent * const pEvent, uint_t const nDelay, uint_t const nPeriod )
 		{
 			assert( NULL != pEvent );
-			assert( GetCurrentThread()->GetType() == EVENTS_THREAD );
-			assert( static_cast< IEventsThread * >( GetCurrentThread() )->GetQueue() == this );
+			// assert( GetCurrentThread()->GetType() == EVENTS_THREAD );
+			// assert( static_cast< IEventsThread * >( GetCurrentThread() )->GetQueue() == this );
 
 			return result_ok;
 		}
@@ -332,14 +340,14 @@ namespace nvl {
 
 		CDelayedEventsList m_DelayedEvents;
 
-		CLockFreeStack< CEventNode > m_EventsNoDelay;
-		CLockFreeStack< CEventNode > m_EventsDelay;
+		CLFStack< CEventNode > m_EventsNoDelay;
+		CLFStack< CEventNode > m_EventsDelay;
 
 	};
 
 	typedef CMTEntity< CEventsQueue > CEventsQueueEntity;
 
-	result_t Create( CEventsQueuePtr & const cpEQ )
+	result_t Create( CEventsQueuePtr & cpEQ )
 	{
 		return CEventsQueuePtr( new CEventsQueueEntity ).Detach( cpEQ );
 	}

@@ -1,6 +1,6 @@
-#include "UserManagerAgent/stdafx.h"
-#include "UserManagerAgent/UserManagerAgent.h"
-#include "UserManagerSvc/UserManagerNaming.h"
+#include "stdafx.h"
+#include "UserManagerAgent.h"
+#include "Server/UserManager/UserManagerSvc/UserManagerNaming.h"
 
 NI_DEFINE_REFCOUNT(UserManager::UserManagerAgent);
 

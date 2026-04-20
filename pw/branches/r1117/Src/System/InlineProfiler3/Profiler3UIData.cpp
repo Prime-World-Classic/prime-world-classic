@@ -166,12 +166,17 @@ void SamplingData::UpdateThreadTimings()
 
 void SamplingData::UpdateMemoryUsage()
 {
+#ifdef _WIN32
+
   PROCESS_MEMORY_COUNTERS pmc;
   ZeroMemory( &pmc, sizeof( pmc ) );
   pmc.cb = sizeof( pmc );
   GetProcessMemoryInfo( GetCurrentProcess(), &pmc, sizeof( pmc ) );
 
   memoryUsage = pmc.PagefileUsage;
+#else
+  memoryUsage = 0;
+#endif
 }
 
 

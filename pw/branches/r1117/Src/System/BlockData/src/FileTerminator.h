@@ -116,7 +116,7 @@ namespace bds {
 
 		result_t WriteData( bool bIsFinal )
 		{
-			uint32_t nCurrentTick = GetTickCount();
+			uint32_t nCurrentTick = 0;
 			m_DataFlowsToProcess.clear();
 			m_AdditionalFlows.clear();
 
@@ -147,7 +147,7 @@ namespace bds {
 
 			for ( typename DataFlowsToProcess_t::iterator iDataFlow = m_DataFlowsToProcess.begin(); m_DataFlowsToProcess.end() != iDataFlow; ++iDataFlow ) {
 
-				if ( false == bIsFinal && GetTickCount() - nCurrentTick >= m_nWriteDataPeriod )
+				if ( false == bIsFinal && 0 - nCurrentTick >= m_nWriteDataPeriod )
 					break;
 
 				(*iDataFlow)->WriteData( bIsFinal );

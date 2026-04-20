@@ -2,7 +2,7 @@
 #include <Network/TransportClientsVerifier.h>
 #include "System/Thread.h"
 #include "System/HPTimer.h"
-#include "RelayBalancer/RelayBalancerClientNotifyIface.h"
+#include "Server/Relay/RelayBalancer/RelayBalancerClientNotifyIface.h"
 #include "ServerAppBase/PerfCounters.h"
 
 namespace rpc

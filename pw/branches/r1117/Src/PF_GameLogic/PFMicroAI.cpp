@@ -74,7 +74,7 @@ bool PFBasicMicroAI::CheckConditions() const
     return false;
 
   // check activation condition
-  if (!GetDB().condition(pUnit, pUnit, pAbility, false))
+  if (!GetDB().condition(pUnit, pUnit, pAbility.GetPtr(), false))
     return false;
 
   // check usability by unit
@@ -227,7 +227,7 @@ bool PFTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITargetConditi
   CPtr<PFBaseUnit> const& pUnit = pAbility->GetOwner();
   NI_VERIFY( IsValid(pUnit), "Unit mast be valid!", return false; );
 
-  PFTargetSelector::RequestParams rp(pAbility->GetOwner(), pAbility, Target(pUnit), condition );
+  PFTargetSelector::RequestParams rp(pAbility->GetOwner(), pAbility.GetPtr(), Target(pUnit), condition );
   bool hasTarget = pTargetSelector->FindTarget(rp, target);
 
   if ( hasTarget && g_dump_micro_ai_ts )
@@ -279,7 +279,7 @@ bool PFMultipleTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITarge
 
       CPtr<PFBaseUnit> const& pUnit = target.GetUnit();
 
-      if ( cond(pOwner, pUnit, pAbility) )
+      if ( cond(pOwner, pUnit, pAbility.GetPtr()) )
       {
         if ( !pOwner->CanSelectTarget(pUnit, true) ) // CanSelectTarget is autoattack specific; maybe more loose check needed, also see PFWeightTargetSelector::FindTarget
           return;
@@ -301,7 +301,7 @@ bool PFMultipleTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITarge
 
   } enumerator( pUnit, pAbility, GetDB().unitFilter, GetDB().minTargetWeight, pUnit->GetTargetingParams() );
 
-  PFTargetSelector::RequestParams rp(pUnit, pAbility, Target(pUnit), condition );
+  PFTargetSelector::RequestParams rp(pUnit, pAbility.GetPtr(), Target(pUnit), condition );
   pTargetSelector->EnumerateTargets(enumerator, rp);
 
   if ( GetDB().minTargetCount == 0 ? enumerator.GetCount() == 0 : enumerator.GetCount() >= GetDB().minTargetCount)

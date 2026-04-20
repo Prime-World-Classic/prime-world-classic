@@ -1,13 +1,14 @@
 #ifndef _STATICSTRING_H_
 #define _STATICSTRING_H_
 
+#include <stdint.h>
 #include "dummyallocator.h"
 
 template<typename T>
 class _BaseStaticString
 {
-	unsigned __int32 offset;
-	unsigned __int32 _length;
+	uint32_t offset;
+	uint32_t _length;
 #ifndef TOOLSET_IS_PRESENT
 	_BaseStaticString();
 #endif
@@ -69,7 +70,7 @@ public:
 		T* pBody = reinterpret_cast<T*>(pAllocator->Allocate( _length * sizeof(T), 16 ));
 		memcpy( pBody, pBegin, len );
 		pBody[len] = 0x00;
-		offset = unsigned int ( (unsigned char*)pBody - (unsigned char*)this );
+		offset = (unsigned int) ( (unsigned char*)pBody - (unsigned char*)this );
 		return _length;
 	}
 #endif

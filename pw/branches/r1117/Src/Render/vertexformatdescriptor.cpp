@@ -4,10 +4,6 @@
 namespace Render
 {
 /// Конструктор
-VertexFormatDescriptor::VertexFormatDescriptor()
-{
-	vertexElementDescriptors.reserve(32);
-}
 /// Добавление описания элемента вершины
 void VertexFormatDescriptor::AddVertexElement(const VertexElementDescriptor& descr)
 {

@@ -84,9 +84,9 @@ namespace NGameX
     if (!flashInterface || !socialServer)
       return;
 
-    //пока всего один листенер так что без свитча.
+    //пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ.
     int playerId;
-    sscanf_s(args,"%d", &playerId);
+    sscanf(args,"%d", &playerId);
 
     for (int i = 0; i< playerStartInfos.size(); i++)    
     {

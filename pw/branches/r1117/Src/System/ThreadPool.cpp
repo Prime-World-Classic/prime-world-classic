@@ -129,7 +129,7 @@ namespace threading
   {
     MutexLock lock(threadsMux_);
     if (freethreads_.size() == threads_.size())
-      return 0; //  нет работы
+      return 0; //  пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
     ::WaitForSingleObject(hWaitJobsEvt_, INFINITE);
     return 0;
@@ -248,8 +248,13 @@ namespace threading
 			return 0;
 		}
 
-		ThreadPool::ThreadPool(): state_( State::INIT ), m_active_jobs_counter( 0 )
+#if defined( WIN32 )
+		ThreadPool::ThreadPool(): state_( State::INIT ), hWaitJobsEvt_( NULL )
 		{}
+#else
+		ThreadPool::ThreadPool(): state_( State::INIT ), m_wait_jobs( 0 ), m_job_finished( 0 ), m_active_jobs_counter( 0 )
+		{}
+#endif
 
 		ThreadPool::~ThreadPool()
 		{}

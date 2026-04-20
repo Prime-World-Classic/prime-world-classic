@@ -21,7 +21,7 @@ UINT Random()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define ind(mm,x)	(*(unsigned _int32 *)(( unsigned _int8 *)(mm) + ((x) & ((RANDSIZ-1)<<2))))
+#define ind(mm,x)	(*(unsigned int *)(( unsigned char *)(mm) + ((x) & ((RANDSIZ-1)<<2))))
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define rngstep(mix,a,b,mm,m,m2,r,x) \
 { \
@@ -46,7 +46,7 @@ UINT Random()
 // new random vals recalculation
 static void Isaac( SSeed *pRnd )
 {
-	unsigned _int32 a, b, x, y, *m, *mm, *m2, *r, *mend;
+	unsigned int a, b, x, y, *m, *mm, *m2, *r, *mend;
 	mm = pRnd->randmem; 
 	r = pRnd->randrsl;
 	a = pRnd->randa; 
@@ -88,9 +88,9 @@ static void FillRandRsl( SSeed *pRes )
 void INTERMODULE_EXPORT SSeed::SFLB2_InitVariables()
 {
 	randa = randb = randc = 0;
-	unsigned _int32 *m = randmem;
-	unsigned _int32 *r = randrsl;
-	unsigned _int32 a, b, c, d, e, f, g, h;
+	unsigned int *m = randmem;
+	unsigned int *r = randrsl;
+	unsigned int a, b, c, d, e, f, g, h;
 	a = b = c = d = e = f = g = h = 0x9e3779b9;	// the golden ratio
 	// scramble it
 	for ( int i = 0; i < 4; ++i )

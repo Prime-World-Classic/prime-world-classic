@@ -17,7 +17,7 @@
 #include "SkeletonWrapper.h"
 #include "GlobalMasks.h"
 #include "../MeshConverter/ParticleNewHeader.h"
-#include "DXUtils.h"
+#include "dxutils.h"
 #include "IConfigManager.h"
 
 static const short g_ParticlePivotOffset = 16380;
@@ -102,7 +102,7 @@ struct CompositeParticleIndex : ParticleIndex
   static int const SUBPRIORITY_SHIFT = (8 * sizeof(int) - Material::SUBPRIORITY_SIZE);
   static int const SYS_ID_SIZE = 9;
   static int const PART_ID_SIZE = SUBPRIORITY_SHIFT - SYS_ID_SIZE;
-  static int const SUBPRIORITY_MASK = -1 << SUBPRIORITY_SHIFT;
+  static int const SUBPRIORITY_MASK = ((unsigned int)-1) << SUBPRIORITY_SHIFT;
   static int const SYS_ID_MASK = (1 << SYS_ID_SIZE) - 1;
   static int const PART_ID_MASK = (1 << PART_ID_SIZE) - 1;
 

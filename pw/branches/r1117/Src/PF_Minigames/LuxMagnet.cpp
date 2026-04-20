@@ -56,8 +56,8 @@ namespace PF_Minigames
 
         if( _ball->Color() == _color )
         {
-          int64 _dist = CalculateDistance(_zeroPoint,_ball->Position()); // определить расстояние до точки ...
-          // сравнить расстояние с радиусами
+          int64 _dist = CalculateDistance(_zeroPoint,_ball->Position()); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ ...
+          // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
           if(_dist <= _externalRad)
           {
             if(fGotBall == false)
@@ -237,7 +237,7 @@ void LuxMagnet::ProcessMagnetOperation( LuxGameLogic* _gameLogic )
 
   for (;it != last; ++it )
   {
-    CPtr<LuxGameBoardChain> _boardChain = *it;
+    CPtr<LuxGameBoardChain> _boardChain( (*it).GetPtr() );
 
     ClosestChainBallSeeker2 seeker;
     _boardChain->GetChainsWeak(seeker);

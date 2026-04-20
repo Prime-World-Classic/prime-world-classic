@@ -16,7 +16,7 @@
 #include "PFNeutralCreep.h"
 #include "PFMainBuilding.h"
 #include "PFSimpleObject.h"
-#include "PFRoadFlagPole.h"
+#include "PFRoadFlagpole.h"
 #include "PFTree.h"
 #include "PFImpulsiveBuffs.h"
 #include "Client/MainTimer.h"
@@ -51,7 +51,7 @@ protected:
     error = message;
   }
 
-  bool FromString( const string& value, int* out )
+  bool FromString( const nstl::string& value, int* out )
   {
     *out = 0;
     if ( !NStr::IsFloatNumber( value.c_str() ) || value.find( '.' ) != string::npos )
@@ -65,7 +65,7 @@ protected:
     return true;
   }
 
-  bool FromString( const string& value, float* out )
+  bool FromString( const nstl::string& value, float* out )
   {
     *out = 0;
     if ( !NStr::IsFloatNumber( value.c_str() ) )
@@ -79,7 +79,7 @@ protected:
     return true;
   }
 
-  bool FromString( const string& value, const char** out )
+  bool FromString( const nstl::string& value, const char** out )
   {
     *out = value.c_str();
     return true;
@@ -104,12 +104,12 @@ class CommandExecutor0 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor0 );
 public:
   CommandExecutor0() {}
-	CommandExecutor0( bool (TObj::*func)(), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor0( bool (TObj::*func)(), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)(), 0>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    return (obj->*func)();
+    return (this->obj->*(this->func))();
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,13 +119,13 @@ class CommandExecutor1 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor1 );
 public:
   CommandExecutor1() {}
-	CommandExecutor1( bool (TObj::*func)( const T1 p1 ), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor1( bool (TObj::*func)( const T1 p1 ), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)( const T1 p1 ), 1>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    T1 p1; if ( !FromString( params[0], &p1 ) ) return false;
-    return (obj->*func)( p1 );
+    T1 p1; if ( !this->FromString( params[0], &p1 ) ) return false;
+    return (this->obj->*(this->func))( p1 );
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,14 +135,14 @@ class CommandExecutor2 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor2 );
 public:
   CommandExecutor2() {}
-	CommandExecutor2( bool (TObj::*func)( const T1 p1, const T2 p2 ), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor2( bool (TObj::*func)( const T1 p1, const T2 p2 ), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)( const T1 p1, const T2 p2 ), 2>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    T1 p1; if ( !FromString( params[0], &p1 ) ) return false;
-    T2 p2; if ( !FromString( params[1], &p2 ) ) return false;
-    return (obj->*func)( p1, p2 );
+    T1 p1; if ( !this->FromString( params[0], &p1 ) ) return false;
+    T2 p2; if ( !this->FromString( params[1], &p2 ) ) return false;
+    return (this->obj->*(this->func))( p1, p2 );
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -152,15 +152,15 @@ class CommandExecutor3 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor3 );
 public:
   CommandExecutor3() {}
-	CommandExecutor3( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3 ), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor3( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3 ), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)( const T1 p1, const T2 p2, const T3 p3 ), 3>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    T1 p1; if ( !FromString( params[0], &p1 ) ) return false;
-    T2 p2; if ( !FromString( params[1], &p2 ) ) return false;
-    T3 p3; if ( !FromString( params[2], &p3 ) ) return false;
-    return (obj->*func)( p1, p2, p3 );
+    T1 p1; if ( !this->FromString( params[0], &p1 ) ) return false;
+    T2 p2; if ( !this->FromString( params[1], &p2 ) ) return false;
+    T3 p3; if ( !this->FromString( params[2], &p3 ) ) return false;
+    return (this->obj->*(this->func))( p1, p2, p3 );
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,16 +170,16 @@ class CommandExecutor4 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor4 );
 public:
   CommandExecutor4() {}
-	CommandExecutor4( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3, const T4 p4 ), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor4( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3, const T4 p4 ), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)( const T1 p1, const T2 p2, const T3 p3, const T4 p4 ), 4>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    T1 p1; if ( !FromString( params[0], &p1 ) ) return false;
-    T2 p2; if ( !FromString( params[1], &p2 ) ) return false;
-    T3 p3; if ( !FromString( params[2], &p3 ) ) return false;
-    T4 p4; if ( !FromString( params[3], &p4 ) ) return false;
-    return (obj->*func)( p1, p2, p3, p4 );
+    T1 p1; if ( !this->FromString( params[0], &p1 ) ) return false;
+    T2 p2; if ( !this->FromString( params[1], &p2 ) ) return false;
+    T3 p3; if ( !this->FromString( params[2], &p3 ) ) return false;
+    T4 p4; if ( !this->FromString( params[3], &p4 ) ) return false;
+    return (this->obj->*(this->func))( p1, p2, p3, p4 );
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -189,17 +189,17 @@ class CommandExecutor5 : public CommandExecutorWithChecker<TObj, bool (TObj::*)(
   OBJECT_BASIC_METHODS( CommandExecutor5 );
 public:
   CommandExecutor5() {}
-	CommandExecutor5( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3, const T4 p4, const T5 p5 ), TObj *obj ) : CommandExecutorWithChecker( func, obj ) { }
+	CommandExecutor5( bool (TObj::*func)( const T1 p1, const T2 p2, const T3 p3, const T4 p4, const T5 p5 ), TObj *obj ) : CommandExecutorWithChecker<TObj, bool (TObj::*)( const T1 p1, const T2 p2, const T3 p3, const T4 p4, const T5 p5 ), 5>( func, obj ) { }
 
 protected:
   virtual bool Process( const vector<string>& params )
   {
-    T1 p1; if ( !FromString( params[0], &p1 ) ) return false;
-    T2 p2; if ( !FromString( params[1], &p2 ) ) return false;
-    T3 p3; if ( !FromString( params[2], &p3 ) ) return false;
-    T4 p4; if ( !FromString( params[3], &p4 ) ) return false;
-    T5 p5; if ( !FromString( params[4], &p5 ) ) return false;
-    return (obj->*func)( p1, p2, p3, p4, p5 );
+    T1 p1; if ( !this->FromString( params[0], &p1 ) ) return false;
+    T2 p2; if ( !this->FromString( params[1], &p2 ) ) return false;
+    T3 p3; if ( !this->FromString( params[2], &p3 ) ) return false;
+    T4 p4; if ( !this->FromString( params[3], &p4 ) ) return false;
+    T5 p5; if ( !this->FromString( params[4], &p5 ) ) return false;
+    return (this->obj->*(this->func))( p1, p2, p3, p4, p5 );
   }
 };
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -637,7 +637,7 @@ void PFAIContainer::StepScript()
       }
       else if ( inString && ( line[i] == ' '  ) )
       {
-        line[i] = '©';
+        line[i] = '\xff';
       }
     }
 
@@ -648,7 +648,7 @@ void PFAIContainer::StepScript()
 
     for( int i = 0; i < args.size(); ++i )
     {
-      NStr::ReplaceAllChars( &args[i], '©', ' ' );
+      NStr::ReplaceAllChars( &args[i], '\xff', ' ' );
     }
 
     if ( line.find( "//" ) != 0 && !line.empty() )
@@ -832,8 +832,10 @@ void PFAIContainer::RegisterScriptCommands()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFAIContainer::DebugBreak()
 {
+#ifdef _WIN32
   if ( IsDebuggerPresent() )
     __debugbreak();
+#endif
 
   return true;
 }

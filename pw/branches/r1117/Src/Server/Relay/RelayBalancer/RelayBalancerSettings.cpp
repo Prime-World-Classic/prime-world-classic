@@ -1,6 +1,6 @@
-#include "RelayBalancer/stdafx.h"
-#include "RelayBalancer/RelayBalancerSettings.h"
-#include "RelayBalancer/RelayBalancerCfg.h"
+#include "stdafx.h"
+#include "RelayBalancerSettings.h"
+#include "RelayBalancerCfg.h"
 
 namespace Relay
 {

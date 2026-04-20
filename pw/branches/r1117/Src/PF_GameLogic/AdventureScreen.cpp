@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "AdventureScreen.h"
+#include "WebLauncher.h"
 #include "GameControl.h"
 #include "PFRenderInterface.h"
 #include "SessionEventType.h"
@@ -197,7 +198,7 @@ static CVec2 CalcScrollOffset( SVector const &mousePos, float scrollSize )
   const float scrollWidth = scrollSize;
   const float scrollHeight = scrollSize;
   
-  //Если убрать данную проверку то скроллинг будет нормально работать за границами окна
+  //пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
   if( mousePos.x < 0 || mousePos.y < 0 || 
       mousePos.x >= scrRes.x || mousePos.y >= scrRes.y )
     return VNULL2;
@@ -591,8 +592,8 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
     smartChatController->SetBindsController(bindsController);
   }
 
-  //FIXME: корректно распределить евенты между eventsUI и eventsScene
-  //то есть 2D/UI события регать в 'eventsUI', а относящиеся к сцене - в 'eventsScene'
+  //FIXME: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ eventsUI пїЅ eventsScene
+  //пїЅпїЅ пїЅпїЅпїЅпїЅ 2D/UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 'eventsUI', пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ - пїЅ 'eventsScene'
   eventsScene.AddSystemHandler( "win_mouse_move",             &AdventureScreen::MsgOnMouseMove );
 	eventsScene.AddSystemHandler( "win_left_button_down",       &AdventureScreen::MsgOnLMouseDown );
 	eventsScene.AddSystemHandler( "win_right_button_down",      &AdventureScreen::MsgOnRMouseDown );
@@ -1050,7 +1051,7 @@ bool AdventureScreen::IsValidCommandTarget(Command cmd, const PF_Core::WorldObje
   if (target == GetHero())
     return (flags & NDb::SPELLTARGET_SELF);
 
-  // NUM_TASK: нельзя выбрать - нельзя атаковать
+  // NUM_TASK: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if (target->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK))
     return false;
 
@@ -1427,7 +1428,7 @@ void AdventureScreen::ExecuteCommand(Command cmd, CVec3 const &worldPos, PF_Core
     {
       if ( !pingAbuseController->Use() )
       {
-        // Если ещё чего нужно будет пихать в нейммапу для сообщения, то имеет смысл сам контроллер отнаследовать от NameMap.
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ NameMap.
         SingleValueNameMapT<float> valuesMap( ceil( pingAbuseController->GetCooldown() ) );
         pLogic->SetErrorMessage( NDb::ERRORMESSAGETYPE_PINGRESTRICTED, true, &valuesMap );
         break;
@@ -2710,7 +2711,7 @@ bool AdventureScreen::CmdCancel()
 
     if (!processed)
     {
-      // TEMP: NUM_TASK не показываем игровое меню, если активен какой-нибудь диалог
+      // TEMP: NUM_TASK пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
       if (pLogic->GetDialogController() && !pLogic->GetDialogController()->IsDialogFinished(NULL))
         ;
       else
@@ -2802,7 +2803,9 @@ bool AdventureScreen::CmdCancel()
       }
     
 #ifndef _SHIPPING
+#ifndef NI_PLATF_LINUX
       case VK_CANCEL:		// Ctrl+C ...
+#endif
       case 'c':
       {
         if ( bCtrlPressed )
@@ -4428,10 +4431,10 @@ NWorld::PFBaseUnit * AdventureScreen::GetMainUnit()
         return true;
       }
 
-      // мы неможем выбрать юнит, который под варфогом или невидим
+      // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
       if ( !pUnit->IsVisibleForFaction( GetHero()->GetFaction() ) )
         return false;
-      // нельзя выбрать юнит, который нельзя выбрать (?)
+      // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (?)
       if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK))
         return false;
 
@@ -4620,7 +4623,7 @@ bool AdventureScreen::OnTalentSetButtonClick(int level, int slot)
         SendGameCommand(NWorld::CreateCmdActivateTalent(pMale, level, slot), true);
       }
 
-      if( isPlayingMinigame ) // запрещаем использовать таланты играя в миниигру
+      if( isPlayingMinigame ) // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         return false;
 
       if (pTalent->IsActivated() && pTalent->CanBeUsed() && pTalent->IsActive())
@@ -5164,8 +5167,8 @@ bool AdventureScreen::OnUIEvent( PFUIEvent *  pEvent, NNameMap::Map const *pMap 
             // NUM_TASK
             if (pEvent->GetEventData().dbEvent == evAddGold)
             {
-              // NOTE: название метода противоречит семантике. возможно, это баг.
-              // метод проверяет, является ли герой указанного игрока получателем.
+              // NOTE: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅ.
+              // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
               if (pEvent->IsCurrentHeroEventOwner(GetPlayer()))
               {
                 pOwnerUnit = pLocalHero;
@@ -5248,7 +5251,7 @@ void AdventureScreen::PrecacheResources()
 {
   NI_PROFILE_FUNCTION;
 
-  // Прекэш NDb::SessionRoot::GetRoot()->logicRoot->heroesLevelups->killExperienceModifiers ( NUM_TASK )
+  // пїЅпїЅпїЅпїЅпїЅпїЅ NDb::SessionRoot::GetRoot()->logicRoot->heroesLevelups->killExperienceModifiers ( NUM_TASK )
   NDb::Precache<NDb::HeroesLevelUps>( NDb::SessionRoot::GetRoot()->logicRoot->heroesLevelups->GetDBID(), 10, true );
 
   NDb::Ptr<NDb::GlyphsDB> pDBGlyphs = NDb::SessionRoot::GetRoot()->logicRoot->glyphsDB;
@@ -5721,7 +5724,7 @@ bool AdventureScreen::StartSpectate( const int& heroIdx )
 
   const CPtr<NWorld::PFAIWorld> pAIWorld = pWorld->GetAIWorld();
 
-  // После завершения игры - не можем переключать героев спектатором ( NUM_TASK )
+  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ - пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ( NUM_TASK )
   if ( !pWorld || (IsValid(pAIWorld) && pAIWorld->WasGameFinished()) )
     return true;
 
@@ -5971,10 +5974,12 @@ void AdventureScreen::OnClientStatusChange( int userId, int status, int step, NW
   if (!player)
     return;
 
+#ifndef NI_PLATF_LINUX
   if (userIdToNicknameMap.find(userId) != userIdToNicknameMap.end()) {
     bool isLeaver = !(status == Peered::Connecting || status == Peered::Ready || status == Peered::Active || status == Peered::Away);
     userIdToNicknameMap[userId].isLeaver = isLeaver;
   }
+#endif
 
   NWorld::PFBaseHero * hero = player->GetHero();
 
@@ -6622,7 +6627,7 @@ void AdventureScreen::PlaySameTeamSocial(const bool agreed)
 
   NI_VERIFY(!!localPlayer, "Local player must be valid!", return);
 
-  vector<__int64> teamPlayers;
+  vector<long long> teamPlayers;
 
   for (int i = 0, count = GetWorld()->GetPlayersCount(); i < count; ++i)
   {
@@ -7100,7 +7105,7 @@ void AdventureScreen::OnVictory( NDb::EFaction _failedFaction, int _surrenderVot
 
   const NDb::AdvMapDescription* const mapDesc = pWorld->GetMapDescription();
 
-  //TODO: захардкоженный параметр задержки перенести в аргумент флешовой GameEnd. Корзунов Семен.
+  //TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ GameEnd. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
   if (skipTutorial)
   {
     endGameTimer.Start(1.f);
@@ -7262,7 +7267,7 @@ static bool StopAI( const char *name, const vector<wstring> &params )
   if ( !IsValid( container ) )
     return false;
 
-  bool selected = params.size() == 1 && params.find( L"selected" ) >= 0;
+  bool selected = params.size() == 1 && params.find( L"selected" ) != params.end();
   if ( selected )
   {
     NWorld::PFBaseHero* hero = dynamic_cast<NWorld::PFBaseHero*>( NGameX::AdventureScreen::Instance()->GetSelectedObject().GetPtr() );

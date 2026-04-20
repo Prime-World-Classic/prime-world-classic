@@ -21,7 +21,7 @@ namespace NRTTI
     //".PAUHINSTANCE__@@"	HINSTANCE
     //".?AVCTextFileDumper@NLogg@@" }	NLogg::CTextFileDumper
     const type_info& ti = typeid(*pObj);
-    if(strncmp(ti.raw_name() + 1, "?AV", 3) == 0 || strncmp(ti.raw_name() + 1, "?AU", 3) == 0)
+    if(strncmp((ti.name()) + 1, "?AV", 3) == 0 || strncmp((ti.name()) + 1, "?AU", 3) == 0)
     {
       return true;
     }
@@ -79,7 +79,7 @@ namespace NRTTI
     {
       if(pObj)
       {
-        list.push_back(string(typeid(*pObj).raw_name()));
+        list.push_back(string(typeid(*pObj).name()));
         return true;
       }
       return false;

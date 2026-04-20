@@ -179,7 +179,7 @@ void InstancedMeshGeometry::CreateBuffersHWI(char const *pVtxData, unsigned int 
 {
 	// Create & fill vertex buffer
 	for(int i = 0; i < 40 && 0 == (pVB = CreateVB(originalVBSize, RENDER_POOL_MANAGED)); ++i)
-    Sleep(200);
+    threading::Sleep(200);
 
   if(!pVB)
     UserMessage::ShowMessageAndTerminate(EXCEPTION_BREAKPOINT, "Can't allocate DX resources");

@@ -1,8 +1,9 @@
 #pragma once
 
+#include <stdint.h>
 namespace avmplus
 {
-  typedef __int32	int32_t;
+  typedef int32_t	int32_t;
   typedef int32_t Atom;
 
   class ScriptObject;
@@ -165,7 +166,7 @@ public:
   template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11, typename T12, typename T13, typename T14, typename T15>
   avmplus::Atom CallMethod( const char * method, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8,  T9 p9, T10 p10, T11 p11, T12 p12, T13 p13, T14 p14, T15 p15)
   {
-    return CallMethodI( method, FVar( p1 ), FVar( p2 ), FVar( p3 ), FVar( p4 ), FVar( p5 ), FVar( p6 ), FVar( p7 ), FVar( p8 ), FVar( p9 ), FVar( p10 ),  FVar( p11 ), FVar( p12 ), FVar( p13 ), FVar( p14 ). FVar( p15 )  );
+    return CallMethodI( method, FVar( p1 ), FVar( p2 ), FVar( p3 ), FVar( p4 ), FVar( p5 ), FVar( p6 ), FVar( p7 ), FVar( p8 ), FVar( p9 ), FVar( p10 ),  FVar( p11 ), FVar( p12 ), FVar( p13 ), FVar( p14 ), FVar( p15 )  );
   }
   template<typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11, typename T12, typename T13, typename T14,typename T15, typename T16>
   avmplus::Atom CallMethod( const char * method, T1 p1, T2 p2, T3 p3, T4 p4, T5 p5, T6 p6, T7 p7, T8 p8,  T9 p9, T10 p10, T11 p11, T12 p12, T13 p13, T14 p14, T15 p15, T16 p16)

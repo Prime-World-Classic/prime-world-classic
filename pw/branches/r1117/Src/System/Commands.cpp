@@ -206,18 +206,34 @@ bool VariantValue::IsConvertibleImpl( Type toType, const VariantValue &from )
     case INT:   
     {
       wchar_t *endptr;
+#ifdef WIN32
       const __int64 rez = _wcstoi64( from.szVal.c_str(), &endptr, 10 );
+#else
+      const __int64 rez = wcstoll( from.szVal.c_str(), &endptr, 10 );
+#endif
       
       return endptr == from.szVal.c_str() + from.szVal.size() && 
+#ifdef WIN32
              rez > _I64_MIN && rez < _I64_MAX;
+#else
+             rez > LLONG_MIN && rez < LLONG_MAX;
+#endif
     }    
     case UINT:  
     {
       wchar_t *endptr;
+#ifdef WIN32
       const __int64 rez = _wcstoui64( from.szVal.c_str(), &endptr, 10 );
+#else
+      const __int64 rez = wcstoull( from.szVal.c_str(), &endptr, 10 );
+#endif
       
       return endptr == from.szVal.c_str() + from.szVal.size() && 
+#ifdef WIN32
              rez < _UI64_MAX;
+#else
+             rez < ULLONG_MAX;
+#endif
     }
     default:
       return false;

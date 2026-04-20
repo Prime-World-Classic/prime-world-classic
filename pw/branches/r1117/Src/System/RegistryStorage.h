@@ -24,21 +24,21 @@ public:
   }
 
   bool StoreString( const char * valueName, const char * value );
-  bool ReadStringEx( const char * valueName, string & value, bool doAsserts );
+  bool ReadStringEx( const char * valueName, nstl::string & value, bool doAsserts );
 
-  void ReadString( const char * valueName, string & value, const char * defaultValue )
+  void ReadString( const char * valueName, nstl::string & value, const char * defaultValue )
   {
     if ( !ReadStringEx( valueName, value, false ) )
       value = defaultValue;
   }
 
-  bool StoreBinary( const char * valueName, const vector<ni_detail::Byte> & data );
-  bool ReadBinaryEx( const char * valueName, vector<ni_detail::Byte> & buffer, bool doAsserts );
+  bool StoreBinary( const char * valueName, const nstl::vector<ni_detail::Byte> & data );
+  bool ReadBinaryEx( const char * valueName, nstl::vector<ni_detail::Byte> & buffer, bool doAsserts );
 
   bool OpenSubKey( const char*, PHKEY, bool, bool );
   void CloseKey( PHKEY );
 
-  //FIXME: Enums <-> string search service, move to separate class/file
+  //FIXME: Enums <-> nstl::string search service, move to separate class/file
   template<typename T>
   static void RegisterEnumValue( T value, const char * name )
   {
@@ -74,7 +74,7 @@ public:
   template<typename T>
   T ReadEnum( const char * valueName, T defaultValue )
   {
-    string value;
+    nstl::string value;
     if ( !ReadStringEx( valueName, value, false ) )
       return defaultValue;
     if ( value == "<unknown>" )

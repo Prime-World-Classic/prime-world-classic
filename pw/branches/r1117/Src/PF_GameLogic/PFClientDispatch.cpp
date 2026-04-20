@@ -380,7 +380,7 @@ namespace NGameX
     if( NULL == pWorldObject )
       return false;
 
-    CPtr<NWorld::PFBaseUnit> const pSender = pWorldObject->GetSender();
+    CPtr<NWorld::PFBaseUnit> const pSender = pWorldObject->GetSender().GetPtr();
     if( !IsValid( pSender ) )
       return false;
 
@@ -390,7 +390,7 @@ namespace NGameX
       return true;
     }
 
-    CPtr<NWorld::PFBaseUnit> const pSource = pWorldObject->GetSource().GetUnit();
+    CPtr<NWorld::PFBaseUnit> const pSource = pWorldObject->GetSource().GetUnit().GetPtr();
     if( !IsValid( pSource ) )
       return false;
 
@@ -595,7 +595,7 @@ namespace NGameX
 
     RetrieveTargetCoords();
 
-    // линейный диспатч теперь умеет плавно летать по горкам
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     CVec3 newTarget;
     float dist4SpeedCorrection = 0.0f;
     if( flyMode == NDb::DISPATCHFLYMODE_LINEAR )

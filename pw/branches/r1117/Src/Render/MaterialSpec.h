@@ -3,11 +3,11 @@
 //////////////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "../Render/renderer.h"
-#include "../Render/GlobalMasks.h"
-#include "../Render/Material.h"
-#include "../Render/DBRender.h"
-#include "../Render/RenderResourceManager.h"
+#include "renderer.h"
+#include "GlobalMasks.h"
+#include "material.h"
+#include "DBRender.h"
+#include "renderresourcemanager.h"
 #include "../libdb/AnimatedWrapper.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Render

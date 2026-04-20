@@ -1,5 +1,5 @@
 #pragma once
-#include "System\Crc32Calculator.h"
+#include "System/Crc32Calculator.h"
 
 _interface IPointerHolder;
 namespace NCore
@@ -23,33 +23,42 @@ public:
     InfoType_Count
   };
 
-protected: 
-  template<char Type >
+  struct PointerData
+  {
+    int typeId;
+    int worldId;
+  };
+  
+  typedef map<CObjectBase *, PointerData> PointersData;
+  typedef vector< char > Buffer;
+  typedef vector< Buffer > BuffersStack;
+
+  template<char Type>
   struct Record;
 
 public:
   BinStatsCollector() : buffer( 0 ), buffCurr( 0 ), buffEnd( 0 ), isOverrun(false) { }
   
-  void Init( unsigned char* buffer, size_t size, int step );
+  virtual void Init( unsigned char* buffer, size_t size, int step );
   void* GetBuffer() const { return buffer; }
   size_t GetLength() const { return buffCurr - buffer; }
   bool IsOverrun() const { return isOverrun; }
 
-  bool IsChecksum() { return true; }
+  virtual bool IsChecksum() { return true; }
 
-  void OnReset() {}
+  virtual void OnReset() {}
 
-  bool OnStartChunk( const IBinSaver::chunk_id idChunk, int chunkType );
-	void OnFinishChunk();
-  void OnStorePointer( const IBinSaver::chunk_id idChunk, CObjectBase* object );
-  void OnStartObject();
-  void OnFinishObject( CObjectBase* object );
+  virtual bool OnStartChunk( const IBinSaver::chunk_id idChunk, int chunkType );
+  virtual void OnFinishChunk();
+  virtual void OnStorePointer( const IBinSaver::chunk_id idChunk, CObjectBase* object );
+  virtual void OnStartObject();
+  virtual void OnFinishObject( CObjectBase* object );
 
-  void OnDataChunk( const IBinSaver::chunk_id idChunk, const void* data, int size );
-  void OnDataChunk( const string & ) {}
-  void OnDataChunk( const wstring & ) {}
-  void OnDataChunk( const nstl::fixed_string_base<char> & ) {}
-  void OnDataChunk( const nstl::fixed_string_base<wchar_t> & ) {}
+  virtual void OnDataChunk( const IBinSaver::chunk_id idChunk, const void* data, int size );
+  virtual void OnDataChunk( const string & ) {}
+  virtual void OnDataChunk( const wstring & ) {}
+  virtual void OnDataChunk( const nstl::fixed_string_base<char> & ) {}
+  virtual void OnDataChunk( const nstl::fixed_string_base<wchar_t> & ) {}
   
   template<class TCrc>
   void OnCurrentCrc( const TCrc &crc );
@@ -60,7 +69,10 @@ public:
   static void setStepToBuffer( void *buffer, int _step );
   static void setCrcToBuffer( void *buffer, unsigned int _crc );
   
-  
+  void Dump( const char *buffer, size_t size );
+  void Linearize( BuffersStack &buffStack, const char *buffer, size_t size );
+  void Write( Stream &stream, const BuffersStack &buffStack );
+
 private:
   template<char Type> Record<Type>& AppendObject();
   
@@ -72,22 +84,12 @@ private:
   class DebugPrintData;
   class LinearizeData;
   
-  struct PointerData
-  {
-    int typeId;
-    int worldId;
-  };
-  
-  typedef map<CObjectBase *, PointerData> PointersData;
-  typedef vector< char > Buffer;
-  typedef vector< Buffer > BuffersStack;
-  
 private:
   template<class T>
-  static void ParseBuff( const char *pBeg, const char *pEnd, T &obj );
+  static void ParseBuffInternal( const char *pBeg, const char *pEnd, T &obj );
   
   template<class T>
-  static void ParseBuff( const BuffersStack &buffStack, T &obj );
+  static void ParseBuffExternal( const BuffersStack &buffStack, T &obj );
   
 private:
   unsigned char safeBuffer[64];
@@ -133,7 +135,7 @@ struct BinStatsCollector::Record<BinStatsCollector::Data>
 template<>
 struct BinStatsCollector::Record<BinStatsCollector::Object>
 {
-  //Nothing
+  char type;
 };
 
 template<>
@@ -243,73 +245,6 @@ BinStatsCollector::Record<Type>& BinStatsCollector::AppendObject()
   return *pResult;
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline bool BinStatsCollector::OnStartChunk( const IBinSaver::chunk_id idChunk, int chunkType )
-{
-  AppendObject<StartChunk>().Set( idChunk, chunkType );
-  return true;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline void BinStatsCollector::OnFinishChunk()
-{
-  AppendObject<FinishChunk>().Set();
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-inline void BinStatsCollector::OnStorePointer( const IBinSaver::chunk_id idChunk, CObjectBase* object )
-{
-  AppendObject<Pointer>().Set(idChunk, object);
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline void BinStatsCollector::OnStartObject()
-{
-  AppendObject<StartObject>().Set();
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline void BinStatsCollector::OnFinishObject( CObjectBase* object )
-{
-  AppendObject<FinishObject>().Set( object, object != 0 ? object->GetTypeId() : -1 );
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-template<class TCrc>
-inline void BinStatsCollector::OnCurrentCrc( const TCrc &crc )
-{
-#if 0
-  AppendObject<CurrentCrcObject>().SetCrc( crc.Get() );
-#endif
-}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline void BinStatsCollector::OnDataChunk( const IBinSaver::chunk_id idChunk, const void* pData, int nSize )
-{
-  Record<Data> &dr = AppendObject<Data>();
-
-  dr.Init( idChunk );
-
-  switch ( nSize )
-  {
-  case 0: case 1:
-    dr.SetCrc( *static_cast<const BYTE*>( pData ) );
-    break;
-
-  case 2: case 3:
-    dr.SetCrc( *static_cast<const WORD*>( pData ) );
-    break;
-
-  case 4:
-    dr.SetCrc( *static_cast<const DWORD*>( pData ) );
-    break;
-
-  //Гипотетически здесь можно записать текущее значение CRC 
-  //и ничего дополнительно не вычислять, но тогда разность CRC распространится на 
-  //все последующие после и понять где именно было расхождение будет сложнее
-  default:
-    dr.SetCrc( Crc32ChecksumFast::CalcForSmallLength((const unsigned char*)pData, nSize) );
-  }
-}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace NCore

@@ -1,7 +1,12 @@
 #pragma once
 
+#ifdef _WIN32
 #include <Windows.h>
 #include <Wininet.h>
+#else
+// typedef unsigned long DWORD;
+typedef void* HINTERNET;
+#endif
 #include <vector>
 #include <map>
 #include <string>
@@ -11,14 +16,16 @@
 
 class WebPostRequest
 {
+#ifdef _WIN32
 	HINTERNET hInternet;
 	HINTERNET hConnect;
 	HINTERNET hRequest;
+#endif
 public:
-	WebPostRequest(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags);
-  void Init(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags);
+	WebPostRequest(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, unsigned long flags);
+  void Init(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, unsigned long flags);
   ~WebPostRequest();
-  std::string WebPostRequest::SendPostRequest(const std::string& jsonData);
+  std::string SendPostRequest(const std::string& jsonData);
 };
 
 extern std::string GetSessionData(const char* token, bool registerSession);

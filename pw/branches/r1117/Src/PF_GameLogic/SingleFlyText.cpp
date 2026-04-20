@@ -135,7 +135,7 @@ bool FlyText::DoCalculatePosition(const bool firstUpdate, const SHMatrix& proj, 
 
   if (ownerInvisible && !firstUpdate)
   {
-    if (!NGameX::ClientVisibilityHelper::IsVisibleForPlayer(m_owner))
+    if (!NGameX::ClientVisibilityHelper::IsVisibleForPlayer(m_owner.GetPtr()))
     {
       pos = m_lastOwnerPos2D;
       return true;

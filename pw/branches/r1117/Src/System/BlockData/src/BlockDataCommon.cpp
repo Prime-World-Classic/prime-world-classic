@@ -1,3 +1,4 @@
+#include "System/config.h"
 #include "BlockDataCommon.h"
 
 NV_POOLABLE_MT_ENTITY( bds::CBinaryBlock );
