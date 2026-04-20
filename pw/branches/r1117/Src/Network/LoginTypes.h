@@ -45,7 +45,7 @@ namespace LoginType
   NI_ENUM_DECL_STD;
 }
 
-#if defined( NV_LINUX_PLATFORM )
+#if defined( NV_LINUX_PLATFORM ) && !defined(MAKEWORD)
 inline unsigned short MAKEWORD( unsigned char lo, unsigned char hi )
 {
   return ( static_cast< unsigned short >( hi ) << 8 ) | lo;
@@ -60,7 +60,7 @@ struct LoginRequestMessage
   ushort protocolVersion; //  here for compatibility with old unversioned clients
   string login;
   string password;
-  string sessionKey; // для SessionLogin
+  string sessionKey; // пїЅпїЅпїЅ SessionLogin
   ushort majorVer;
   ushort minorVer;
   uint   patchVer;
@@ -80,7 +80,7 @@ struct LoginResultMessage
   int userId;
   string sessionId;
   string relayCertificate;
-  Transport::TServiceId sessionPath; // куда ломиться после SessionLogin
+  Transport::TServiceId sessionPath; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ SessionLogin
   Network::NetAddress secondaryRelayAddress;
   bool partialReconnectSupport;
   unsigned int partialReconnectRetries;

@@ -685,9 +685,9 @@ CMakeFiles/PrimeWorld.dir/PF_GameLogic/PFBattleBuilding.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnSol.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGr.inl \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGrNLinker.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGr.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../System/fixedString.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/AnimGraphBlender.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/DiAnGr.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/PFTower.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/PFMainBuilding.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/PF_GameLogic/../Scene/GeometryBuilders.h \

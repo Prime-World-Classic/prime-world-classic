@@ -57,6 +57,12 @@ typedef int32_t       BOOL;
 typedef uint32_t      UINT;
 typedef int32_t       INT;
 typedef int32_t       LONG;
+#ifndef MAKELONG
+#define MAKELONG(a, b) ((LONG)(((WORD)(((DWORD_PTR)(a)) & 0xffff)) | ((DWORD)((WORD)(((DWORD_PTR)(b)) & 0xffff))) << 16))
+#endif
+#ifndef MAKEWORD
+#define MAKEWORD(a, b) ((WORD)(((BYTE)(((DWORD_PTR)(a)) & 0xff)) | ((WORD)((BYTE)(((DWORD_PTR)(b)) & 0xff))) << 8))
+#endif
 typedef uint32_t      ULONG;
 typedef uintptr_t     ULONG_PTR;
 typedef uintptr_t     DWORD_PTR;

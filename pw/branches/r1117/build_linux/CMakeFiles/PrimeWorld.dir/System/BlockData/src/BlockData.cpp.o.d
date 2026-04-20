@@ -1,67 +1,39 @@
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/src/BlockData.cpp \
  /usr/include/stdc-predef.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/BlockData.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/NodeManager.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/ThreadManager.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Entity.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Config.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Types.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/types.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/stddef.h \
- /usr/include/assert.h /usr/include/features.h \
- /usr/include/features-time64.h /usr/include/bits/wordsize.h \
- /usr/include/bits/timesize.h /usr/include/sys/cdefs.h \
- /usr/include/bits/long-double.h /usr/include/gnu/stubs.h \
- /usr/include/gnu/stubs-64.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/sstream \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/requires_hosted.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/os_defines.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/cpu_defines.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/pstl/pstl_config.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/istream \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ios \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/iosfwd \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stringfwd.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/memoryfwd.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/postypes.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cwchar \
- /usr/include/wchar.h /usr/include/bits/libc-header-start.h \
- /usr/include/bits/floatn.h /usr/include/bits/floatn-common.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/stdint.h \
+ /usr/include/stdint.h /usr/include/bits/libc-header-start.h \
+ /usr/include/features.h /usr/include/features-time64.h \
+ /usr/include/bits/wordsize.h /usr/include/bits/timesize.h \
+ /usr/include/sys/cdefs.h /usr/include/bits/long-double.h \
+ /usr/include/gnu/stubs.h /usr/include/gnu/stubs-64.h \
+ /usr/include/bits/types.h /usr/include/bits/typesizes.h \
+ /usr/include/bits/time64.h /usr/include/bits/wchar.h \
+ /usr/include/bits/stdint-intn.h /usr/include/bits/stdint-uintn.h \
+ /usr/include/bits/stdint-least.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32_linux.h \
+ /usr/include/string.h /usr/include/bits/types/locale_t.h \
+ /usr/include/bits/types/__locale_t.h /usr/include/strings.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/stdarg.h \
- /usr/include/bits/wchar.h /usr/include/bits/types/wint_t.h \
- /usr/include/bits/types/mbstate_t.h \
- /usr/include/bits/types/__mbstate_t.h /usr/include/bits/types/__FILE.h \
- /usr/include/bits/types/FILE.h /usr/include/bits/types/locale_t.h \
- /usr/include/bits/types/__locale_t.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/exception \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/version.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception_ptr.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception_defines.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/cxxabi_init_exception.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/typeinfo \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/hash_bytes.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/new \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/move.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/type_traits \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/nested_exception.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/char_traits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/localefwd.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++locale.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/clocale \
- /usr/include/locale.h /usr/include/bits/locale.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cctype \
- /usr/include/ctype.h /usr/include/bits/types.h \
- /usr/include/bits/typesizes.h /usr/include/bits/time64.h \
- /usr/include/bits/endian.h /usr/include/bits/endianness.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ios_base.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/atomicity.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/gthr.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/gthr-default.h \
- /usr/include/pthread.h /usr/include/sched.h \
- /usr/include/bits/types/time_t.h \
- /usr/include/bits/types/struct_timespec.h /usr/include/bits/sched.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/limits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/syslimits.h \
+ /usr/include/limits.h /usr/include/bits/posix1_lim.h \
+ /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
+ /usr/include/bits/pthread_stack_min-dynamic.h \
+ /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
+ /usr/include/bits/uio_lim.h /usr/include/malloc.h /usr/include/stdio.h \
+ /usr/include/bits/types/__fpos_t.h /usr/include/bits/types/__mbstate_t.h \
+ /usr/include/bits/types/__fpos64_t.h /usr/include/bits/types/__FILE.h \
+ /usr/include/bits/types/FILE.h /usr/include/bits/types/struct_FILE.h \
+ /usr/include/bits/types/cookie_io_functions_t.h \
+ /usr/include/bits/stdio_lim.h /usr/include/bits/floatn.h \
+ /usr/include/bits/floatn-common.h /usr/include/pthread.h \
+ /usr/include/sched.h /usr/include/bits/types/time_t.h \
+ /usr/include/bits/types/struct_timespec.h /usr/include/bits/endian.h \
+ /usr/include/bits/endianness.h /usr/include/bits/sched.h \
  /usr/include/linux/sched/types.h /usr/include/linux/types.h \
  /usr/include/asm/types.h /usr/include/asm-generic/types.h \
  /usr/include/asm-generic/int-ll64.h /usr/include/asm/bitsperlong.h \
@@ -80,7 +52,111 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/include/bits/struct_rwlock.h /usr/include/bits/setjmp.h \
  /usr/include/bits/types/__sigset_t.h \
  /usr/include/bits/types/struct___jmp_buf_tag.h \
- /usr/include/bits/pthread_stack_min-dynamic.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/requires_hosted.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++config.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/os_defines.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/cpu_defines.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/pstl/pstl_config.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/cpp_type_traits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/version.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/type_traits \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/type_traits.h \
+ /usr/include/math.h /usr/include/bits/math-vector.h \
+ /usr/include/bits/libm-simd-decl-stubs.h \
+ /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h \
+ /usr/include/bits/fp-fast.h /usr/include/bits/mathcalls-macros.h \
+ /usr/include/bits/mathcalls-helper-functions.h \
+ /usr/include/bits/mathcalls.h /usr/include/bits/mathcalls-narrow.h \
+ /usr/include/bits/iscanonical.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/std_abs.h \
+ /usr/include/stdlib.h /usr/include/bits/waitflags.h \
+ /usr/include/bits/waitstatus.h /usr/include/sys/types.h \
+ /usr/include/endian.h /usr/include/bits/byteswap.h \
+ /usr/include/bits/uintn-identity.h /usr/include/sys/select.h \
+ /usr/include/bits/select.h /usr/include/bits/types/sigset_t.h \
+ /usr/include/alloca.h /usr/include/bits/stdlib-float.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/functexcept.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception_defines.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/numeric_traits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_pair.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/move.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/utility.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_funcs.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/concept_check.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/debug/assertions.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ptr_traits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/debug/debug.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/predefined_ops.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bit \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/concepts \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/limits \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/gamma.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/special_function_util.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/bessel_function.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/beta_function.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/ell_integral.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/exp_integral.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/hypergeometric.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/legendre_function.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/modified_bessel_func.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/poly_hermite.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/poly_laguerre.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/riemann_zeta.tcc \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/stdlib.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cstdlib \
+ /usr/include/wchar.h /usr/include/bits/types/wint_t.h \
+ /usr/include/bits/types/mbstate_t.h /usr/include/unistd.h \
+ /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
+ /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
+ /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
+ /usr/include/linux/close_range.h /usr/include/errno.h \
+ /usr/include/bits/errno.h /usr/include/linux/errno.h \
+ /usr/include/asm/errno.h /usr/include/asm-generic/errno.h \
+ /usr/include/asm-generic/errno-base.h /usr/include/bits/types/error_t.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/types.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/../Vendor/DirectX/Include/d3d9types.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/float.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/BlockData.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/NodeManager.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/ThreadManager.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Entity.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Config.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/atomic.h \
+ /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/Types.h \
+ /usr/include/assert.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/sstream \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/istream \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ios \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/iosfwd \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stringfwd.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/memoryfwd.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/postypes.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cwchar \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/exception \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/exception_ptr.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/cxxabi_init_exception.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/typeinfo \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/hash_bytes.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/new \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/nested_exception.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/char_traits.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/localefwd.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++locale.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/clocale \
+ /usr/include/locale.h /usr/include/bits/locale.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cctype \
+ /usr/include/ctype.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ios_base.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/atomicity.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/gthr.h \
+ /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/gthr-default.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/atomic_word.h \
  /usr/include/sys/single_threaded.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/locale_classes.h \
@@ -88,27 +164,10 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/allocator.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/x86_64-pc-linux-gnu/bits/c++allocator.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/new_allocator.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/functexcept.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/cpp_type_traits.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ostream_insert.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/cxxabi_forced.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_funcs.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/concept_check.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/debug/assertions.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator_base_types.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_iterator.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/type_traits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ptr_traits.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_function.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/backward/binders.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/numeric_traits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_algobase.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_pair.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/utility.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/debug/debug.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/predefined_ops.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bit \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/concepts \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/refwrap.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/invoke.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/range_access.h \
@@ -121,26 +180,8 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/functional_hash.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/string_view.tcc \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/ext/string_conversions.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cstdlib \
- /usr/include/stdlib.h /usr/include/bits/waitflags.h \
- /usr/include/bits/waitstatus.h /usr/include/sys/types.h \
- /usr/include/bits/stdint-intn.h /usr/include/endian.h \
- /usr/include/bits/byteswap.h /usr/include/bits/uintn-identity.h \
- /usr/include/sys/select.h /usr/include/bits/select.h \
- /usr/include/bits/types/sigset_t.h /usr/include/alloca.h \
- /usr/include/bits/stdlib-float.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/std_abs.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cstdio \
- /usr/include/stdio.h /usr/include/bits/types/__fpos_t.h \
- /usr/include/bits/types/__fpos64_t.h \
- /usr/include/bits/types/struct_FILE.h \
- /usr/include/bits/types/cookie_io_functions_t.h \
- /usr/include/bits/stdio_lim.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cerrno \
- /usr/include/errno.h /usr/include/bits/errno.h \
- /usr/include/linux/errno.h /usr/include/asm/errno.h \
- /usr/include/asm-generic/errno.h /usr/include/asm-generic/errno-base.h \
- /usr/include/bits/types/error_t.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/charconv.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/basic_string.tcc \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/memory_resource.h \
@@ -168,7 +209,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/ostream.tcc \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/istream.tcc \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/sstream.tcc \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/atomic.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/list \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_list.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/allocated_ptr.h \
@@ -185,11 +225,7 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/include/boost/config/compiler/gcc.hpp \
  /usr/include/boost/config/detail/select_stdlib_config.hpp \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/version \
- /usr/include/boost/config/stdlib/libstdcpp3.hpp /usr/include/unistd.h \
- /usr/include/bits/posix_opt.h /usr/include/bits/environments.h \
- /usr/include/bits/confname.h /usr/include/bits/getopt_posix.h \
- /usr/include/bits/getopt_core.h /usr/include/bits/unistd_ext.h \
- /usr/include/linux/close_range.h \
+ /usr/include/boost/config/stdlib/libstdcpp3.hpp \
  /usr/include/boost/config/detail/select_platform_config.hpp \
  /usr/include/boost/config/platform/linux.hpp \
  /usr/include/boost/config/detail/posix_features.hpp \
@@ -211,11 +247,9 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_vector.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/stl_bvector.h \
  /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/vector.tcc \
- /usr/include/string.h /usr/include/strings.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/TextBuffer.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/stdafx.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/systemStdAfx.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/config.h \
  /usr/include/sys/socket.h /usr/include/bits/types/struct_iovec.h \
  /usr/include/bits/socket.h /usr/include/bits/socket_type.h \
  /usr/include/bits/sockaddr.h /usr/include/asm/socket.h \
@@ -239,10 +273,10 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /usr/include/linux/stat.h /usr/include/bits/statx-generic.h \
  /usr/include/bits/types/struct_statx_timestamp.h \
  /usr/include/bits/types/struct_statx.h /usr/include/sys/time.h \
- /usr/include/netinet/in.h /usr/include/bits/stdint-uintn.h \
- /usr/include/bits/in.h /usr/include/arpa/inet.h /usr/include/syslog.h \
- /usr/include/sys/syslog.h /usr/include/bits/syslog-path.h \
- /usr/include/memory.h /usr/include/iconv.h \
+ /usr/include/netinet/in.h /usr/include/bits/in.h \
+ /usr/include/arpa/inet.h /usr/include/syslog.h /usr/include/sys/syslog.h \
+ /usr/include/bits/syslog-path.h /usr/include/memory.h \
+ /usr/include/iconv.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nlist.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nalgobase.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/npair.h \
@@ -264,15 +298,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nvector.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/StrProc.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ported/types.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/types.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/stdint.h \
- /usr/include/stdint.h /usr/include/bits/stdint-least.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/limits.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/syslimits.h \
- /usr/include/limits.h /usr/include/bits/posix1_lim.h \
- /usr/include/bits/local_lim.h /usr/include/linux/limits.h \
- /usr/include/bits/posix2_lim.h /usr/include/bits/xopen_lim.h \
- /usr/include/bits/uio_lim.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Thread.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/types.h \
@@ -305,7 +330,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/noncopyable.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Pointers/BaseObjectMT.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/interlocked.h \
- /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/types.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SpinLock.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/stdafx.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/noncopyable.h \
@@ -319,7 +343,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nlist.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nset.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ntree.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/limits \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/LogStreamBuffer.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/ChannelLogger.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Logger.h \
@@ -332,28 +355,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/SafeTextFormatBuffers.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/SafeTextFormat.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/MathTools.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/math.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/cmath \
- /usr/include/math.h /usr/include/bits/math-vector.h \
- /usr/include/bits/libm-simd-decl-stubs.h \
- /usr/include/bits/flt-eval-method.h /usr/include/bits/fp-logb.h \
- /usr/include/bits/fp-fast.h /usr/include/bits/mathcalls-macros.h \
- /usr/include/bits/mathcalls-helper-functions.h \
- /usr/include/bits/mathcalls.h /usr/include/bits/mathcalls-narrow.h \
- /usr/include/bits/iscanonical.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/bits/specfun.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/gamma.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/special_function_util.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/bessel_function.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/beta_function.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/ell_integral.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/exp_integral.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/hypergeometric.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/legendre_function.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/modified_bessel_func.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/poly_hermite.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/poly_laguerre.tcc \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/tr1/riemann_zeta.tcc \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/nvector.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/SafeTextFormatNstl.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/nfixed_string.h \
@@ -380,8 +381,6 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Pointers/Weak.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/staticarray.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Geom.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/float.h \
- /usr/lib/gcc/x86_64-pc-linux-gnu/15/include/g++-v15/stdlib.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/./../../Data/GameLogic/Vec2_Base.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/Color.h \
  /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/../System/matrix43.h \

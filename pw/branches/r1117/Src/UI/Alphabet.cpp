@@ -2,7 +2,7 @@
 
 #include "Alphabet.h"
 #include "FontRender.hpp"
-#include "../Render/UIRenderer.h"
+#include "../Render/uirenderer.h"
 
 #include "Resolution.h"
 
@@ -121,8 +121,8 @@ void Alphabet::LoadAlphabet( FT_Library ftLibrary, const char* _ttfFileName, int
     FT_Pos maxAscent = 0;
     FT_Pos minDescent = 0;
 
-    //Расчитаем размер шрифта по габаритам букавак
-    static const wchar_t * sampleChars = L" AIWZapqyАРЯарщуц";
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    static const wchar_t * sampleChars = L" AIWZapqyпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ";
 
     for ( const wchar_t * checkFace = sampleChars; *checkFace; ++checkFace )
     {

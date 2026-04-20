@@ -10474,206 +10474,10 @@ CMakeFiles/PrimeWorld.dir/Scripts/stdafx.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Scripts/stdafx.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Scripts/stdafx.cpp -o CMakeFiles/PrimeWorld.dir/Scripts/stdafx.cpp.s
 
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Basic.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_744) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Basic.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Basic.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Basic.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ChatLogic.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_745) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ChatLogic.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ChatLogic.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ChatLogic.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientSenderThread.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_746) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientSenderThread.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientSenderThread.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientSenderThread.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientThread.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_747) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientThread.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientThread.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ClientThread.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/DatabaseThread.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_748) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/DatabaseThread.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/DatabaseThread.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/DatabaseThread.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ListenerThread.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_749) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ListenerThread.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ListenerThread.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ListenerThread.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/MemoryStream.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_750) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/MemoryStream.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/MemoryStream.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/MemoryStream.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/QuickPlayLogic.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_751) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/QuickPlayLogic.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/QuickPlayLogic.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/QuickPlayLogic.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Server.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_752) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Server.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Server.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Server.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerLogic.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_753) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerLogic.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerLogic.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerLogic.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerThread.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_754) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerThread.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerThread.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/ServerThread.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Stream.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_755) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Stream.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Stream.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/Stream.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/linux/ServerApp.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_756) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/linux/ServerApp.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/linux/ServerApp.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/linux/ServerApp.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.s
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/win32/ServerApp.cpp
-CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_757) "Building CXX object CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/win32/ServerApp.cpp
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/win32/ServerApp.cpp > CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.i
-
-CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server.Old/src/win32/ServerApp.cpp -o CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.s
-
 CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Shared/WebRequests.cpp
 CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_758) "Building CXX object CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_744) "Building CXX object CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o -MF CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Shared/WebRequests.cpp
 
 CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.i: cmake_force
@@ -10687,7 +10491,7 @@ CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Shared/shared_data.cpp
 CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_759) "Building CXX object CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_745) "Building CXX object CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o -MF CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Shared/shared_data.cpp
 
 CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.i: cmake_force
@@ -10701,7 +10505,7 @@ CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/DBSound.cpp
 CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_760) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_746) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o -MF CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/DBSound.cpp
 
 CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.i: cmake_force
@@ -10715,7 +10519,7 @@ CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/EventScene.cpp
 CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_761) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_747) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o -MF CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/EventScene.cpp
 
 CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.i: cmake_force
@@ -10729,7 +10533,7 @@ CMakeFiles/PrimeWorld.dir/Sound/EventScene.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/SoundScene.cpp
 CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_762) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_748) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o -MF CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/SoundScene.cpp
 
 CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.i: cmake_force
@@ -10743,7 +10547,7 @@ CMakeFiles/PrimeWorld.dir/Sound/SoundScene.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/SoundUI.cpp
 CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_763) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_749) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o -MF CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/SoundUI.cpp
 
 CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.i: cmake_force
@@ -10757,7 +10561,7 @@ CMakeFiles/PrimeWorld.dir/Sound/SoundUI.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_764) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_750) "Building CXX object CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Sound/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.i: cmake_force
@@ -10771,7 +10575,7 @@ CMakeFiles/PrimeWorld.dir/Sound/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AppInstancesLimit.cpp
 CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_765) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_751) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AppInstancesLimit.cpp
 
 CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.i: cmake_force
@@ -10785,7 +10589,7 @@ CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AssertDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_766) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_752) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AssertDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.i: cmake_force
@@ -10799,7 +10603,7 @@ CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Asserts.cpp
 CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_767) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_753) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Asserts.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.i: cmake_force
@@ -10813,7 +10617,7 @@ CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AsyncTextFileDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_768) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_754) "Building CXX object CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AsyncTextFileDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.i: cmake_force
@@ -10824,66 +10628,10 @@ CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/AsyncTextFileDumper.cpp -o CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSAssertDialog.cpp
-CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_769) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSAssertDialog.cpp
-
-CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSAssertDialog.cpp > CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSAssertDialog.cpp -o CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSDialogFunctions.cpp
-CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_770) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSDialogFunctions.cpp
-
-CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSDialogFunctions.cpp > CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSDialogFunctions.cpp -o CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSExceptionDialog.cpp
-CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_771) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSExceptionDialog.cpp
-
-CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSExceptionDialog.cpp > CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSExceptionDialog.cpp -o CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSUtil.cpp
-CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_772) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSUtil.cpp
-
-CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSUtil.cpp > CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BSUtil.cpp -o CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Base64.cpp
 CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_773) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_755) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Base64.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Base64.cpp.i: cmake_force
@@ -10897,7 +10645,7 @@ CMakeFiles/PrimeWorld.dir/System/Base64.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Basic.cpp
 CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_774) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_756) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Basic.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Basic.cpp.i: cmake_force
@@ -10911,7 +10659,7 @@ CMakeFiles/PrimeWorld.dir/System/Basic.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BilinearSolver.cpp
 CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_775) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_757) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BilinearSolver.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.i: cmake_force
@@ -10925,7 +10673,7 @@ CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkLoaderImpl.cpp
 CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_776) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_758) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkLoaderImpl.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.i: cmake_force
@@ -10939,7 +10687,7 @@ CMakeFiles/PrimeWorld.dir/System/BinChunkLoaderImpl.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSaverImpl.cpp
 CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_777) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_759) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSaverImpl.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.i: cmake_force
@@ -10953,7 +10701,7 @@ CMakeFiles/PrimeWorld.dir/System/BinChunkSaverImpl.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSerializer.cpp
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_778) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_760) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSerializer.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.i: cmake_force
@@ -10967,7 +10715,7 @@ CMakeFiles/PrimeWorld.dir/System/BinChunkSerializer.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSerializerBase.cpp
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_779) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_761) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinChunkSerializerBase.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.i: cmake_force
@@ -10981,7 +10729,7 @@ CMakeFiles/PrimeWorld.dir/System/BinChunkSerializerBase.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinSaverStatsCollector.cpp
 CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_780) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_762) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BinSaverStatsCollector.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.i: cmake_force
@@ -10995,7 +10743,7 @@ CMakeFiles/PrimeWorld.dir/System/BinSaverStatsCollector.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BitStreams.cpp
 CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_781) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_763) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BitStreams.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.i: cmake_force
@@ -11009,7 +10757,7 @@ CMakeFiles/PrimeWorld.dir/System/BitStreams.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/src/BlockData.cpp
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_782) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_764) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/src/BlockData.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.i: cmake_force
@@ -11023,7 +10771,7 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockData.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/src/BlockDataCommon.cpp
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_783) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_765) "Building CXX object CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/BlockData/src/BlockDataCommon.cpp
 
 CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.i: cmake_force
@@ -11037,7 +10785,7 @@ CMakeFiles/PrimeWorld.dir/System/BlockData/src/BlockDataCommon.cpp.s: cmake_forc
 CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ChannelLogger.cpp
 CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_784) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_766) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ChannelLogger.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.i: cmake_force
@@ -11051,7 +10799,7 @@ CMakeFiles/PrimeWorld.dir/System/ChannelLogger.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ChunklessSaver.cpp
 CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_785) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_767) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ChunklessSaver.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.i: cmake_force
@@ -11065,7 +10813,7 @@ CMakeFiles/PrimeWorld.dir/System/ChunklessSaver.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CmdLine.cpp
 CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_786) "Building CXX object CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_768) "Building CXX object CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CmdLine.cpp
 
 CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.i: cmake_force
@@ -11079,7 +10827,7 @@ CMakeFiles/PrimeWorld.dir/System/CmdLine.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CmdLineLite.cpp
 CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_787) "Building CXX object CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_769) "Building CXX object CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CmdLineLite.cpp
 
 CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.i: cmake_force
@@ -11093,7 +10841,7 @@ CMakeFiles/PrimeWorld.dir/System/CmdLineLite.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Color.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Color.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Color.cpp
 CMakeFiles/PrimeWorld.dir/System/Color.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_788) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Color.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_770) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Color.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Color.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Color.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Color.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Color.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Color.cpp.i: cmake_force
@@ -11107,7 +10855,7 @@ CMakeFiles/PrimeWorld.dir/System/Color.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Commands.cpp
 CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_789) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_771) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Commands.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Commands.cpp.i: cmake_force
@@ -11121,7 +10869,7 @@ CMakeFiles/PrimeWorld.dir/System/Commands.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Compatibility.cpp
 CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_790) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_772) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Compatibility.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.i: cmake_force
@@ -11135,7 +10883,7 @@ CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ConfigFiles.cpp
 CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_791) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_773) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ConfigFiles.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.i: cmake_force
@@ -11146,24 +10894,10 @@ CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ConfigFiles.cpp -o CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CrashRptWrapper.cpp
-CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_792) "Building CXX object CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CrashRptWrapper.cpp
-
-CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CrashRptWrapper.cpp > CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/CrashRptWrapper.cpp -o CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Crc32Checksum.cpp
 CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_793) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_774) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Crc32Checksum.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.i: cmake_force
@@ -11177,7 +10911,7 @@ CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DataExecutor.cpp
 CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_794) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_775) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DataExecutor.cpp
 
 CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.i: cmake_force
@@ -11191,7 +10925,7 @@ CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DebugTraceDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_795) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_776) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DebugTraceDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.i: cmake_force
@@ -11205,7 +10939,7 @@ CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DebugVar.cpp
 CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_796) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_777) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DebugVar.cpp
 
 CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.i: cmake_force
@@ -11219,7 +10953,7 @@ CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Decompose.cpp
 CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_797) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_778) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Decompose.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.i: cmake_force
@@ -11233,7 +10967,7 @@ CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Dumper.cpp
 CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_798) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_779) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Dumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.i: cmake_force
@@ -11247,7 +10981,7 @@ CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DumpingStream.cpp
 CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_799) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_780) "Building CXX object CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DumpingStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.i: cmake_force
@@ -11258,24 +10992,10 @@ CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/DumpingStream.cpp -o CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EditBoxDumper.cpp
-CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_800) "Building CXX object CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EditBoxDumper.cpp
-
-CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EditBoxDumper.cpp > CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EditBoxDumper.cpp -o CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EventDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_801) "Building CXX object CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_781) "Building CXX object CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/EventDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.i: cmake_force
@@ -11289,7 +11009,7 @@ CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Events.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Events.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Events.cpp
 CMakeFiles/PrimeWorld.dir/System/Events.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_802) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Events.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_782) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Events.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Events.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Events.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Events.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Events.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Events.cpp.i: cmake_force
@@ -11303,7 +11023,7 @@ CMakeFiles/PrimeWorld.dir/System/Events.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ExecutionMemoryManager.cpp
 CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_803) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_783) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ExecutionMemoryManager.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.i: cmake_force
@@ -11317,7 +11037,7 @@ CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FastMath.cpp
 CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_804) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_784) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FastMath.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.i: cmake_force
@@ -11331,7 +11051,7 @@ CMakeFiles/PrimeWorld.dir/System/FastMath.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileStreamDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_805) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_785) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileStreamDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.i: cmake_force
@@ -11345,7 +11065,7 @@ CMakeFiles/PrimeWorld.dir/System/FileStreamDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/CombinerFileSystem.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_806) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_786) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/CombinerFileSystem.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.i: cmake_force
@@ -11359,7 +11079,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/CombinerFileSystem.cpp.s: cmake_forc
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileActivitySimpleMonitor.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_807) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_787) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileActivitySimpleMonitor.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.i: cmake_force
@@ -11373,7 +11093,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileActivitySimpleMonitor.cpp.s: cma
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileExtensionStatisticsMonitor.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_808) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_788) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileExtensionStatisticsMonitor.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.i: cmake_force
@@ -11387,7 +11107,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileExtensionStatisticsMonitor.cpp.s
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePath.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_809) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_789) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePath.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.i: cmake_force
@@ -11401,7 +11121,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePath.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePileCompiler.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_810) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_790) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePileCompiler.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.i: cmake_force
@@ -11415,7 +11135,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileCompiler.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePileLoader.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_811) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_791) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FilePileLoader.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.i: cmake_force
@@ -11429,7 +11149,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FilePileLoader.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileStream_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_812) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_792) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileStream_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.i: cmake_force
@@ -11443,7 +11163,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_linux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileStream_stdlib.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_813) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_793) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileStream_stdlib.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.i: cmake_force
@@ -11457,7 +11177,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileStream_stdlib.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileSystem.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_814) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_794) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileSystem.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.i: cmake_force
@@ -11471,7 +11191,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystem.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileSystemChangesProcessor.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_815) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_795) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileSystemChangesProcessor.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.i: cmake_force
@@ -11485,7 +11205,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileSystemChangesProcessor.cpp.s: cm
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUnpile.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_816) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_796) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUnpile.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.i: cmake_force
@@ -11499,7 +11219,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUnpile.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUtils.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_817) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_797) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUtils.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.i: cmake_force
@@ -11513,7 +11233,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUtils_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_818) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_798) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileUtils_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.i: cmake_force
@@ -11527,7 +11247,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileUtils_linux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteAsynchronousStream_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_819) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_799) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteAsynchronousStream_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cpp.i: cmake_force
@@ -11541,7 +11261,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteAsynchronousStream_linux.cp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteBufferedStream.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_820) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_800) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteBufferedStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.i: cmake_force
@@ -11555,7 +11275,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream.cpp.s: cmake
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteBufferedStream_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_821) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_801) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteBufferedStream_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.i: cmake_force
@@ -11569,7 +11289,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteBufferedStream_linux.cpp.s:
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteStream.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_822) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_802) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FileWriteStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.i: cmake_force
@@ -11583,7 +11303,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FileWriteStream.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FsActivityLogReader.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_823) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_803) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/FsActivityLogReader.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.i: cmake_force
@@ -11597,7 +11317,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/FsActivityLogReader.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/PileFileSystem.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_824) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_804) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/PileFileSystem.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.i: cmake_force
@@ -11611,7 +11331,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/PileFileSystem.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/SimpleFileList.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_825) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_805) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/SimpleFileList.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.i: cmake_force
@@ -11625,7 +11345,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/TestFileSystem.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_826) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_806) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/TestFileSystem.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.i: cmake_force
@@ -11639,7 +11359,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/TinyFileWriteStream.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_827) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_807) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/TinyFileWriteStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.i: cmake_force
@@ -11653,7 +11373,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystem.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_828) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_808) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystem.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.i: cmake_force
@@ -11664,24 +11384,10 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystem.cpp -o CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystemWatcher.cpp
-CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_829) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystemWatcher.cpp
-
-CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystemWatcher.cpp > CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileSystemWatcher.cpp -o CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileUnbuffered.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_830) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_809) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/WinFileUnbuffered.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.i: cmake_force
@@ -11695,7 +11401,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_831) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_810) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FileSystem/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.i: cmake_force
@@ -11709,7 +11415,7 @@ CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FixedMemoryStream.cpp
 CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_832) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_811) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FixedMemoryStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.i: cmake_force
@@ -11723,7 +11429,7 @@ CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FlashWindow.cpp
 CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_833) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_812) "Building CXX object CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/FlashWindow.cpp
 
 CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.i: cmake_force
@@ -11737,7 +11443,7 @@ CMakeFiles/PrimeWorld.dir/System/FlashWindow.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Geom.cpp
 CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_834) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_813) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Geom.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Geom.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Geom.cpp.i: cmake_force
@@ -11751,7 +11457,7 @@ CMakeFiles/PrimeWorld.dir/System/Geom.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/HPTimer.cpp
 CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_835) "Building CXX object CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_814) "Building CXX object CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/HPTimer.cpp
 
 CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.i: cmake_force
@@ -11765,7 +11471,7 @@ CMakeFiles/PrimeWorld.dir/System/HPTimer.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/HPTimer_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_836) "Building CXX object CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_815) "Building CXX object CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/HPTimer_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.i: cmake_force
@@ -11779,7 +11485,7 @@ CMakeFiles/PrimeWorld.dir/System/HPTimer_linux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Histogram.cpp
 CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_837) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_816) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Histogram.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.i: cmake_force
@@ -11793,7 +11499,7 @@ CMakeFiles/PrimeWorld.dir/System/Histogram.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/IDGenerator.cpp
 CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_838) "Building CXX object CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_817) "Building CXX object CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/IDGenerator.cpp
 
 CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.i: cmake_force
@@ -11807,7 +11513,7 @@ CMakeFiles/PrimeWorld.dir/System/IDGenerator.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageDDS.cpp
 CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_839) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_818) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageDDS.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.i: cmake_force
@@ -11821,7 +11527,7 @@ CMakeFiles/PrimeWorld.dir/System/ImageDDS.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageInternal.cpp
 CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_840) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_819) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageInternal.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.i: cmake_force
@@ -11835,7 +11541,7 @@ CMakeFiles/PrimeWorld.dir/System/ImageInternal.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageTGA.cpp
 CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_841) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_820) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageTGA.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.i: cmake_force
@@ -11849,7 +11555,7 @@ CMakeFiles/PrimeWorld.dir/System/ImageTGA.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageUnpackDXT.cpp
 CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_842) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_821) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ImageUnpackDXT.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.i: cmake_force
@@ -11863,7 +11569,7 @@ CMakeFiles/PrimeWorld.dir/System/ImageUnpackDXT.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/IniFiles.cpp
 CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_843) "Building CXX object CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_822) "Building CXX object CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/IniFiles.cpp
 
 CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.i: cmake_force
@@ -11877,7 +11583,7 @@ CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfiler3.cpp
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_844) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_823) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfiler3.cpp
 
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.i: cmake_force
@@ -11891,7 +11597,7 @@ CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.s: cmake_fo
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfiler3CG.cpp
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_845) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_824) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfiler3CG.cpp
 
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.i: cmake_force
@@ -11905,7 +11611,7 @@ CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.s: cmake_
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfilerStorage.cpp
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_846) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_825) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfilerStorage.cpp
 
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.i: cmake_force
@@ -11916,66 +11622,10 @@ CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.s: cm
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/InlineProfilerStorage.cpp -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UI.cpp
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_847) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UI.cpp
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UI.cpp > CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UI.cpp -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIData.cpp
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_848) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIData.cpp
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIData.cpp > CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIData.cpp -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIMainDlg.cpp
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_849) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIMainDlg.cpp
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIMainDlg.cpp > CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UIMainDlg.cpp -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UITimeline.cpp
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_850) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UITimeline.cpp
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UITimeline.cpp > CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/Profiler3UITimeline.cpp -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_851) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_826) "Building CXX object CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/InlineProfiler3/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.i: cmake_force
@@ -11989,7 +11639,7 @@ CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JSONChunkSerializer.cpp
 CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_852) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_827) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JSONChunkSerializer.cpp
 
 CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.i: cmake_force
@@ -12003,7 +11653,7 @@ CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JSONReader.cpp
 CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_853) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_828) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JSONReader.cpp
 
 CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.i: cmake_force
@@ -12017,7 +11667,7 @@ CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JobThread.cpp
 CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_854) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_829) "Building CXX object CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/JobThread.cpp
 
 CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.i: cmake_force
@@ -12031,7 +11681,7 @@ CMakeFiles/PrimeWorld.dir/System/JobThread.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LoadingProgress.cpp
 CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_855) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_830) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LoadingProgress.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.i: cmake_force
@@ -12045,7 +11695,7 @@ CMakeFiles/PrimeWorld.dir/System/LoadingProgress.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogFileName.cpp
 CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_856) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_831) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogFileName.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.i: cmake_force
@@ -12059,7 +11709,7 @@ CMakeFiles/PrimeWorld.dir/System/LogFileName.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogHelpers.cpp
 CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_857) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_832) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogHelpers.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.i: cmake_force
@@ -12073,7 +11723,7 @@ CMakeFiles/PrimeWorld.dir/System/LogHelpers.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogMover.cpp
 CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_858) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_833) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogMover.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.i: cmake_force
@@ -12087,7 +11737,7 @@ CMakeFiles/PrimeWorld.dir/System/LogMover.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogStreamBuffer.cpp
 CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_859) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_834) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogStreamBuffer.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.i: cmake_force
@@ -12101,7 +11751,7 @@ CMakeFiles/PrimeWorld.dir/System/LogStreamBuffer.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogStreamHolder.cpp
 CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_860) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_835) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LogStreamHolder.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.i: cmake_force
@@ -12115,7 +11765,7 @@ CMakeFiles/PrimeWorld.dir/System/LogStreamHolder.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Logger.cpp
 CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_861) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_836) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Logger.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Logger.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Logger.cpp.i: cmake_force
@@ -12129,7 +11779,7 @@ CMakeFiles/PrimeWorld.dir/System/Logger.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Logging.cpp
 CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_862) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_837) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Logging.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Logging.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Logging.cpp.i: cmake_force
@@ -12143,7 +11793,7 @@ CMakeFiles/PrimeWorld.dir/System/Logging.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LoggingImpl.cpp
 CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_863) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_838) "Building CXX object CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/LoggingImpl.cpp
 
 CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.i: cmake_force
@@ -12157,7 +11807,7 @@ CMakeFiles/PrimeWorld.dir/System/LoggingImpl.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MainFrame.cpp
 CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_864) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_839) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MainFrame.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.i: cmake_force
@@ -12171,7 +11821,7 @@ CMakeFiles/PrimeWorld.dir/System/MainFrame.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Math/ieeehalfprecision.c
 CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_865) "Building C object CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_840) "Building C object CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o -MF CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o.d -o CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Math/ieeehalfprecision.c
 
 CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.i: cmake_force
@@ -12185,7 +11835,7 @@ CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MathTools.cpp
 CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_866) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_841) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MathTools.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.i: cmake_force
@@ -12199,7 +11849,7 @@ CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MemoryBlockPool.cpp
 CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_867) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_842) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MemoryBlockPool.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.i: cmake_force
@@ -12213,7 +11863,7 @@ CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MemoryStream.cpp
 CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_868) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_843) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MemoryStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.i: cmake_force
@@ -12224,24 +11874,10 @@ CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MemoryStream.cpp -o CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MiniDump.cpp
-CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_869) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MiniDump.cpp
-
-CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MiniDump.cpp > CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MiniDump.cpp -o CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Minizip/unzip.c
 CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_870) "Building C object CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_844) "Building C object CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o -MF CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o.d -o CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Minizip/unzip.c
 
 CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.i: cmake_force
@@ -12255,7 +11891,7 @@ CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MultiReaderLock.cpp
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_871) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_845) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MultiReaderLock.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.i: cmake_force
@@ -12269,7 +11905,7 @@ CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MultiReaderLockLinux.cpp
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_872) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_846) "Building CXX object CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/MultiReaderLockLinux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.i: cmake_force
@@ -12283,7 +11919,7 @@ CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/NameMap.cpp
 CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_873) "Building CXX object CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_847) "Building CXX object CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/NameMap.cpp
 
 CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.i: cmake_force
@@ -12294,24 +11930,10 @@ CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/NameMap.cpp -o CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/EventsQueue.cpp
-CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_874) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/EventsQueue.cpp
-
-CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/EventsQueue.cpp > CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/EventsQueue.cpp -o CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/NodeManager.cpp
 CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_875) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_848) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/NodeManager.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.i: cmake_force
@@ -12325,7 +11947,7 @@ CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/ThreadManager.cpp
 CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_876) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_849) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Node/ThreadManager.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.i: cmake_force
@@ -12339,7 +11961,7 @@ CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ObjectFactory.cpp
 CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_877) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_850) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ObjectFactory.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.i: cmake_force
@@ -12350,24 +11972,10 @@ CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ObjectFactory.cpp -o CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PerfMonitor/PerfMonitor.cpp
-CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_878) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PerfMonitor/PerfMonitor.cpp
-
-CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PerfMonitor/PerfMonitor.cpp > CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PerfMonitor/PerfMonitor.cpp -o CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PersistEvents.cpp
 CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_879) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_851) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PersistEvents.cpp
 
 CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.i: cmake_force
@@ -12381,7 +11989,7 @@ CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PlacementSpline.cpp
 CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_880) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_852) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PlacementSpline.cpp
 
 CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.i: cmake_force
@@ -12395,7 +12003,7 @@ CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PlaneGeometry.cpp
 CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_881) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_853) "Building CXX object CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/PlaneGeometry.cpp
 
 CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.i: cmake_force
@@ -12409,7 +12017,7 @@ CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BaseObjectMT.cpp
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_882) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_854) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BaseObjectMT.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.i: cmake_force
@@ -12423,7 +12031,7 @@ CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectMT.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BaseObjectST.cpp
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_883) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_855) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BaseObjectST.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.i: cmake_force
@@ -12437,7 +12045,7 @@ CMakeFiles/PrimeWorld.dir/System/Pointers/BaseObjectST.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BasicFactory.cpp
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_884) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_856) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BasicFactory.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.i: cmake_force
@@ -12451,7 +12059,7 @@ CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BasicType.cpp
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_885) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_857) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/BasicType.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.i: cmake_force
@@ -12465,7 +12073,7 @@ CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_886) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_858) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Pointers/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.i: cmake_force
@@ -12479,7 +12087,7 @@ CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfileManager.cpp
 CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_887) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_859) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfileManager.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.i: cmake_force
@@ -12490,24 +12098,10 @@ CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfileManager.cpp -o CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfilingHelper.cpp
-CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_888) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfilingHelper.cpp
-
-CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfilingHelper.cpp > CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProfilingHelper.cpp -o CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Progress.cpp
 CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_889) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_860) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Progress.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Progress.cpp.i: cmake_force
@@ -12521,7 +12115,7 @@ CMakeFiles/PrimeWorld.dir/System/Progress.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProtectedStream.cpp
 CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_890) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_861) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ProtectedStream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.i: cmake_force
@@ -12535,7 +12129,7 @@ CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RTTI.cpp
 CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_891) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_862) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RTTI.cpp
 
 CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.i: cmake_force
@@ -12549,7 +12143,7 @@ CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomGen.cpp
 CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_892) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_863) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomGen.cpp
 
 CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.i: cmake_force
@@ -12563,7 +12157,7 @@ CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomGenerator.cpp
 CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_893) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_864) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomGenerator.cpp
 
 CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.i: cmake_force
@@ -12577,7 +12171,7 @@ CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomInterfaceImpl.cpp
 CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_894) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_865) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomInterfaceImpl.cpp
 
 CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.i: cmake_force
@@ -12588,24 +12182,10 @@ CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RandomInterfaceImpl.cpp -o CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RegistryStorage.cpp
-CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_895) "Building CXX object CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RegistryStorage.cpp
-
-CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RegistryStorage.cpp > CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/RegistryStorage.cpp -o CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SafeTextFormat.cpp
 CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_896) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_866) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SafeTextFormat.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.i: cmake_force
@@ -12619,7 +12199,7 @@ CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Schedule.cpp
 CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_897) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_867) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Schedule.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.i: cmake_force
@@ -12633,7 +12213,7 @@ CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ServerStdOutDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_898) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_868) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ServerStdOutDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.i: cmake_force
@@ -12647,7 +12227,7 @@ CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Signals.cpp
 CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_899) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_869) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Signals.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Signals.cpp.i: cmake_force
@@ -12661,7 +12241,7 @@ CMakeFiles/PrimeWorld.dir/System/Signals.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SpinLock.cpp
 CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_900) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_870) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SpinLock.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.i: cmake_force
@@ -12675,7 +12255,7 @@ CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SplashScreen.cpp
 CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_901) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_871) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SplashScreen.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.i: cmake_force
@@ -12689,7 +12269,7 @@ CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Spline.cpp
 CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_902) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_872) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Spline.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Spline.cpp.i: cmake_force
@@ -12700,66 +12280,10 @@ CMakeFiles/PrimeWorld.dir/System/Spline.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/Spline.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Spline.cpp -o CMakeFiles/PrimeWorld.dir/System/Spline.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalk.cpp
-CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_903) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalk.cpp
-
-CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalk.cpp > CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalk.cpp -o CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalker.cpp
-CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_904) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalker.cpp
-
-CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalker.cpp > CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StackWalker.cpp -o CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce.cpp
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_905) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce.cpp
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce.cpp > CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce.cpp -o CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.s
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce_test.cpp
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_906) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce_test.cpp
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce_test.cpp > CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StarForce/StarForce_test.cpp -o CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StdOutDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_907) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_873) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StdOutDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.i: cmake_force
@@ -12773,7 +12297,7 @@ CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StdOutDumperRegistrator.cpp
 CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_908) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_874) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StdOutDumperRegistrator.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.i: cmake_force
@@ -12787,7 +12311,7 @@ CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrConvert.cpp
 CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_909) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_875) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrConvert.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.i: cmake_force
@@ -12801,7 +12325,7 @@ CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrFormatter.cpp
 CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_910) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_876) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrFormatter.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.i: cmake_force
@@ -12815,7 +12339,7 @@ CMakeFiles/PrimeWorld.dir/System/StrFormatter.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrProc.cpp
 CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_911) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_877) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrProc.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.i: cmake_force
@@ -12829,7 +12353,7 @@ CMakeFiles/PrimeWorld.dir/System/StrProc.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrUtils_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_912) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_878) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StrUtils_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.i: cmake_force
@@ -12843,7 +12367,7 @@ CMakeFiles/PrimeWorld.dir/System/StrUtils_linux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Stream.cpp
 CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_913) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_879) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Stream.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Stream.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Stream.cpp.i: cmake_force
@@ -12857,7 +12381,7 @@ CMakeFiles/PrimeWorld.dir/System/Stream.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StringDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_914) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_880) "Building CXX object CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/StringDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.i: cmake_force
@@ -12871,7 +12395,7 @@ CMakeFiles/PrimeWorld.dir/System/StringDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncPrimitives.cpp
 CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_915) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_881) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncPrimitives.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.i: cmake_force
@@ -12885,7 +12409,7 @@ CMakeFiles/PrimeWorld.dir/System/SyncPrimitives.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncProcessorState.cpp
 CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_916) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_882) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncProcessorState.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.i: cmake_force
@@ -12899,7 +12423,7 @@ CMakeFiles/PrimeWorld.dir/System/SyncProcessorState.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncTextFileDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_917) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_883) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SyncTextFileDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.i: cmake_force
@@ -12913,7 +12437,7 @@ CMakeFiles/PrimeWorld.dir/System/SyncTextFileDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SystemLog.cpp
 CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_918) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_884) "Building CXX object CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/SystemLog.cpp
 
 CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.i: cmake_force
@@ -12927,7 +12451,7 @@ CMakeFiles/PrimeWorld.dir/System/SystemLog.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextDumpSerializer.cpp
 CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_919) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_885) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextDumpSerializer.cpp
 
 CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.i: cmake_force
@@ -12941,7 +12465,7 @@ CMakeFiles/PrimeWorld.dir/System/TextDumpSerializer.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextFileDumper.cpp
 CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_920) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_886) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextFileDumper.cpp
 
 CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.i: cmake_force
@@ -12955,7 +12479,7 @@ CMakeFiles/PrimeWorld.dir/System/TextFileDumper.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextFileWorker.cpp
 CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_921) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_887) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TextFileWorker.cpp
 
 CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.i: cmake_force
@@ -12969,7 +12493,7 @@ CMakeFiles/PrimeWorld.dir/System/TextFileWorker.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Texts.cpp
 CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_922) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_888) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Texts.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Texts.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Texts.cpp.i: cmake_force
@@ -12983,7 +12507,7 @@ CMakeFiles/PrimeWorld.dir/System/Texts.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Thread.cpp
 CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_923) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_889) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Thread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Thread.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Thread.cpp.i: cmake_force
@@ -12997,7 +12521,7 @@ CMakeFiles/PrimeWorld.dir/System/Thread.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadHelpers.cpp
 CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_924) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_890) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadHelpers.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.i: cmake_force
@@ -13011,7 +12535,7 @@ CMakeFiles/PrimeWorld.dir/System/ThreadHelpers.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadLocal.cpp
 CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_925) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_891) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadLocal.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.i: cmake_force
@@ -13025,7 +12549,7 @@ CMakeFiles/PrimeWorld.dir/System/ThreadLocal.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadNames.cpp
 CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_926) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_892) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadNames.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.i: cmake_force
@@ -13039,7 +12563,7 @@ CMakeFiles/PrimeWorld.dir/System/ThreadNames.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadPool.cpp
 CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_927) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_893) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ThreadPool.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.i: cmake_force
@@ -13053,7 +12577,7 @@ CMakeFiles/PrimeWorld.dir/System/ThreadPool.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TimeUtils_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_928) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_894) "Building CXX object CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/TimeUtils_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.i: cmake_force
@@ -13067,7 +12591,7 @@ CMakeFiles/PrimeWorld.dir/System/TimeUtils_linux.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Transform.cpp
 CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_929) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_895) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Transform.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Transform.cpp.i: cmake_force
@@ -13081,7 +12605,7 @@ CMakeFiles/PrimeWorld.dir/System/Transform.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/UpdateProcessor.cpp
 CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_930) "Building CXX object CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_896) "Building CXX object CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/UpdateProcessor.cpp
 
 CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.i: cmake_force
@@ -13095,7 +12619,7 @@ CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Updater.cpp
 CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_931) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_897) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Updater.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Updater.cpp.i: cmake_force
@@ -13109,7 +12633,7 @@ CMakeFiles/PrimeWorld.dir/System/Updater.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/VMem_linux.cpp
 CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_932) "Building CXX object CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_898) "Building CXX object CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/VMem_linux.cpp
 
 CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.i: cmake_force
@@ -13120,24 +12644,10 @@ CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/VMem_linux.cpp -o CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/WER.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/WER.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/WER.cpp
-CMakeFiles/PrimeWorld.dir/System/WER.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_933) "Building CXX object CMakeFiles/PrimeWorld.dir/System/WER.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/WER.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/WER.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/WER.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/WER.cpp
-
-CMakeFiles/PrimeWorld.dir/System/WER.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/WER.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/WER.cpp > CMakeFiles/PrimeWorld.dir/System/WER.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/WER.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/WER.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/WER.cpp -o CMakeFiles/PrimeWorld.dir/System/WER.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32Random.cpp
 CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_934) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_899) "Building CXX object CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/Win32Random.cpp
 
 CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.i: cmake_force
@@ -13151,7 +12661,7 @@ CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/dummyallocator.cpp
 CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_935) "Building CXX object CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_900) "Building CXX object CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/dummyallocator.cpp
 
 CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.i: cmake_force
@@ -13162,24 +12672,10 @@ CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/dummyallocator.cpp -o CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/expreport.cpp
-CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_936) "Building CXX object CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/expreport.cpp
-
-CMakeFiles/PrimeWorld.dir/System/expreport.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/expreport.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/expreport.cpp > CMakeFiles/PrimeWorld.dir/System/expreport.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/expreport.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/expreport.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/expreport.cpp -o CMakeFiles/PrimeWorld.dir/System/expreport.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/hwbreak.cpp
 CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_937) "Building CXX object CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_901) "Building CXX object CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/hwbreak.cpp
 
 CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.i: cmake_force
@@ -13190,24 +12686,10 @@ CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/hwbreak.cpp -o CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/meminfo.cpp
-CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_938) "Building CXX object CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/meminfo.cpp
-
-CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/meminfo.cpp > CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/meminfo.cpp -o CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/memorypool.cpp
 CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_939) "Building CXX object CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_902) "Building CXX object CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/memorypool.cpp
 
 CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.i: cmake_force
@@ -13221,7 +12703,7 @@ CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ntree.cpp
 CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_940) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_903) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ntree.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ntree.cpp.i: cmake_force
@@ -13235,7 +12717,7 @@ CMakeFiles/PrimeWorld.dir/System/ntree.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ported/thread_specific.cpp
 CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_941) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_904) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ported/thread_specific.cpp
 
 CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.i: cmake_force
@@ -13246,24 +12728,10 @@ CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ported/thread_specific.cpp -o CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.s
 
-CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
-CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ssememcopy.cpp
-CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_942) "Building CXX object CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ssememcopy.cpp
-
-CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ssememcopy.cpp > CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.i
-
-CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/ssememcopy.cpp -o CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.s
-
 CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_943) "Building CXX object CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_905) "Building CXX object CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.i: cmake_force
@@ -13277,7 +12745,7 @@ CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/threading/thread.cpp
 CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_944) "Building CXX object CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_906) "Building CXX object CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/threading/thread.cpp
 
 CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.i: cmake_force
@@ -13291,7 +12759,7 @@ CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/timesupport.cpp
 CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_945) "Building CXX object CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_907) "Building CXX object CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o -MF CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o.d -o CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/System/timesupport.cpp
 
 CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.i: cmake_force
@@ -13305,7 +12773,7 @@ CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/BezierSurface.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_946) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_908) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/BezierSurface.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.i: cmake_force
@@ -13319,7 +12787,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/BezierSurface.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/DBTerrain.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_947) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_909) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/DBTerrain.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.i: cmake_force
@@ -13333,7 +12801,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/DBTerrain.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassLayersManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_948) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_910) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassLayersManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.i: cmake_force
@@ -13347,7 +12815,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/GrassLayersManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassRegion.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_949) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_911) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassRegion.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.i: cmake_force
@@ -13361,7 +12829,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/GrassRegion.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassRenderManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_950) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_912) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/GrassRenderManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.i: cmake_force
@@ -13375,7 +12843,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/GrassRenderManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureAttackSpace.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_951) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_913) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureAttackSpace.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.i: cmake_force
@@ -13389,7 +12857,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/NatureAttackSpace.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureMap.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_952) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_914) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureMap.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.i: cmake_force
@@ -13403,7 +12871,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/NatureMap.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureMapVisual.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_953) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_915) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/NatureMapVisual.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.i: cmake_force
@@ -13417,7 +12885,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/NatureMapVisual.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/RoadPrimitive.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_954) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_916) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/RoadPrimitive.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.i: cmake_force
@@ -13431,7 +12899,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/RoadPrimitive.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/SpeedGrass.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_955) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_917) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/SpeedGrass.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.i: cmake_force
@@ -13445,7 +12913,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/SpeedGrass.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/Terrain.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_956) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_918) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/Terrain.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.i: cmake_force
@@ -13459,7 +12927,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/Terrain.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainCollision.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_957) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_919) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainCollision.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.i: cmake_force
@@ -13473,7 +12941,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainCollision.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainElement.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_958) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_920) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainElement.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.i: cmake_force
@@ -13487,7 +12955,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainElement.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainElementManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_959) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_921) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainElementManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.i: cmake_force
@@ -13501,7 +12969,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainElementManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainGeometryManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_960) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_922) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainGeometryManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.i: cmake_force
@@ -13515,7 +12983,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainGeometryManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainHeightManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_961) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_923) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainHeightManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.i: cmake_force
@@ -13529,7 +12997,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainHeightManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainLayerManager.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_962) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_924) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainLayerManager.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.i: cmake_force
@@ -13543,7 +13011,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainLayerManager.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainMaterialCache.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_963) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_925) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainMaterialCache.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.i: cmake_force
@@ -13557,7 +13025,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainMaterialCache.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainTextureCache.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_964) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_926) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/TerrainTextureCache.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.i: cmake_force
@@ -13571,7 +13039,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/TerrainTextureCache.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_965) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_927) "Building CXX object CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Terrain/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.i: cmake_force
@@ -13585,7 +13053,7 @@ CMakeFiles/PrimeWorld.dir/Terrain/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Alphabet.cpp
 CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_966) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_928) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Alphabet.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.i: cmake_force
@@ -13599,7 +13067,7 @@ CMakeFiles/PrimeWorld.dir/UI/Alphabet.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Button.cpp
 CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_967) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_929) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Button.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Button.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Button.cpp.i: cmake_force
@@ -13613,7 +13081,7 @@ CMakeFiles/PrimeWorld.dir/UI/Button.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/CheckBox.cpp
 CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_968) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_930) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/CheckBox.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.i: cmake_force
@@ -13627,7 +13095,7 @@ CMakeFiles/PrimeWorld.dir/UI/CheckBox.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/CommonControl.cpp
 CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_969) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_931) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/CommonControl.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.i: cmake_force
@@ -13641,7 +13109,7 @@ CMakeFiles/PrimeWorld.dir/UI/CommonControl.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Cursor.cpp
 CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_970) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_932) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Cursor.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.i: cmake_force
@@ -13655,7 +13123,7 @@ CMakeFiles/PrimeWorld.dir/UI/Cursor.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBPreferences.cpp
 CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_971) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_933) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBPreferences.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.i: cmake_force
@@ -13669,7 +13137,7 @@ CMakeFiles/PrimeWorld.dir/UI/DBPreferences.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBUI.cpp
 CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_972) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_934) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBUI.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.i: cmake_force
@@ -13683,7 +13151,7 @@ CMakeFiles/PrimeWorld.dir/UI/DBUI.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBVotingForSurrender.cpp
 CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_973) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_935) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DBVotingForSurrender.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.i: cmake_force
@@ -13697,7 +13165,7 @@ CMakeFiles/PrimeWorld.dir/UI/DBVotingForSurrender.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DebugDraw.cpp
 CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_974) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_936) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DebugDraw.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.i: cmake_force
@@ -13711,7 +13179,7 @@ CMakeFiles/PrimeWorld.dir/UI/DebugDraw.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DebugVarsRender.cpp
 CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_975) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_937) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/DebugVarsRender.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.i: cmake_force
@@ -13725,7 +13193,7 @@ CMakeFiles/PrimeWorld.dir/UI/DebugVarsRender.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/EditBox.cpp
 CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_976) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_938) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/EditBox.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.i: cmake_force
@@ -13739,7 +13207,7 @@ CMakeFiles/PrimeWorld.dir/UI/EditBox.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_977) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_939) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.i: cmake_force
@@ -13753,7 +13221,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ButtonCharacter.cpp.s: cma
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Characters.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_978) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_940) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Characters.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.i: cmake_force
@@ -13767,7 +13235,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Characters.cpp.s: cmake_fo
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/DisplayTags.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_979) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_941) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/DisplayTags.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.i: cmake_force
@@ -13781,7 +13249,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/DisplayTags.cpp.s: cmake_f
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_980) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_942) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.i: cmake_force
@@ -13795,7 +13263,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/EditTextCharacter.cpp.s: c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_981) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_943) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.i: cmake_force
@@ -13809,7 +13277,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp.s: cm
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_982) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_944) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.i: cmake_force
@@ -13823,7 +13291,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp.s: 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashMovie.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_983) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_945) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashMovie.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.i: cmake_force
@@ -13837,7 +13305,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovie.cpp.s: cmake_fo
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_984) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_946) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.i: cmake_force
@@ -13851,7 +13319,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp.s: c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashPlayer.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_985) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_947) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FlashPlayer.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.i: cmake_force
@@ -13865,7 +13333,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FlashPlayer.cpp.s: cmake_f
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FontTags.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_986) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_948) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FontTags.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.i: cmake_force
@@ -13879,7 +13347,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontTags.cpp.s: cmake_forc
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FontsDict.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_987) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_949) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/FontsDict.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.i: cmake_force
@@ -13893,7 +13361,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/FontsDict.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Image.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_988) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_950) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Image.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.i: cmake_force
@@ -13907,7 +13375,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Image.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ImageData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_989) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_951) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ImageData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.i: cmake_force
@@ -13921,7 +13389,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ImageData.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/JPEGReader.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_990) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_952) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/JPEGReader.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.i: cmake_force
@@ -13935,7 +13403,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/JPEGReader.cpp.s: cmake_fo
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/MorphCharacter.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_991) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_953) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/MorphCharacter.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.i: cmake_force
@@ -13949,7 +13417,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphCharacter.cpp.s: cmak
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/MorphData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_992) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_954) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/MorphData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.i: cmake_force
@@ -13963,7 +13431,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/MorphData.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_993) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_955) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp.i: cmake_force
@@ -13977,7 +13445,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_994) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_956) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp.i: cmake_force
@@ -13991,7 +13459,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BitmapData
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_995) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_957) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp.i: cmake_force
@@ -14005,7 +13473,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/BlendMode.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_996) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_958) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp.i: cmake_force
@@ -14019,7 +13487,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObj
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_997) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_959) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp.i: cmake_force
@@ -14033,7 +13501,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/DisplayObj
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_998) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_960) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp.i: cmake_force
@@ -14047,7 +13515,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/FlashMeshC
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_999) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_961) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp.i: cmake_force
@@ -14061,7 +13529,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Geometry.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1000) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_962) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp.i: cmake_force
@@ -14075,7 +13543,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Graphics.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1001) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_963) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp.i: cmake_force
@@ -14089,7 +13557,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Interactiv
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1002) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_964) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp.i: cmake_force
@@ -14103,7 +13571,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1003) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_965) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp.i: cmake_force
@@ -14117,7 +13585,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1004) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_966) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp.i: cmake_force
@@ -14131,7 +13599,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1005) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_967) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp.i: cmake_force
@@ -14145,7 +13613,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MorphShape
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1006) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_968) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp.i: cmake_force
@@ -14159,7 +13627,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/MovieClip.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1007) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_969) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.i: cmake_force
@@ -14173,7 +13641,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1008) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_970) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp.i: cmake_force
@@ -14187,7 +13655,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/SimpleButt
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1009) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_971) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp.i: cmake_force
@@ -14201,7 +13669,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1010) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_972) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.i: cmake_force
@@ -14215,7 +13683,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1011) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_973) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp.i: cmake_force
@@ -14229,7 +13697,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/StageEnums
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1012) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_974) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp.i: cmake_force
@@ -14243,7 +13711,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/Tesselate.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1013) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_975) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp.i: cmake_force
@@ -14257,7 +13725,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/display/ear_clip_t
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1014) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_976) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.i: cmake_force
@@ -14271,7 +13739,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/Event.cpp.s
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1015) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_977) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp.i: cmake_force
@@ -14285,7 +13753,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/EventDispat
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1016) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_978) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp.i: cmake_force
@@ -14299,7 +13767,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/KeyboardEve
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1017) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_979) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp.i: cmake_force
@@ -14313,7 +13781,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1018) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_980) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp.i: cmake_force
@@ -14327,7 +13795,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1019) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_981) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp.i: cmake_force
@@ -14341,7 +13809,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/filters/ColorMatri
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1020) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_982) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.i: cmake_force
@@ -14355,7 +13823,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1021) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_983) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp.i: cmake_force
@@ -14369,7 +13837,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/PerspectivePr
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1022) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_984) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp.i: cmake_force
@@ -14383,7 +13851,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1023) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_985) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.i: cmake_force
@@ -14397,7 +13865,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp.s:
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1024) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_986) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp.i: cmake_force
@@ -14411,7 +13879,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/Application
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1025) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_987) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp.i: cmake_force
@@ -14425,7 +13893,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/system/FSCommand.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1026) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_988) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp.i: cmake_force
@@ -14439,7 +13907,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/CoreWrappe
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1027) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_989) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp.i: cmake_force
@@ -14453,7 +13921,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/testing/TestingFac
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1028) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_990) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp.i: cmake_force
@@ -14467,7 +13935,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/StaticText.cp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1029) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_991) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp.i: cmake_force
@@ -14481,7 +13949,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1030) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_992) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp.i: cmake_force
@@ -14495,7 +13963,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/text/TextFieldAuto
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1031) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_993) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.i: cmake_force
@@ -14509,7 +13977,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp.s:
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1032) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_994) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp.i: cmake_force
@@ -14523,7 +13991,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ShapeData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1033) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_995) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/ShapeData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.i: cmake_force
@@ -14537,7 +14005,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/ShapeData.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SoundData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1034) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_996) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SoundData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.i: cmake_force
@@ -14551,7 +14019,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SoundData.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1035) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_997) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.i: cmake_force
@@ -14565,7 +14033,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfStreamReader.cpp.s: cma
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SwfTypes.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1036) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_998) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/SwfTypes.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.i: cmake_force
@@ -14579,7 +14047,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/SwfTypes.cpp.s: cmake_forc
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TamarinPCH.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1037) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_999) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TamarinPCH.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.i: cmake_force
@@ -14593,7 +14061,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TamarinPCH.cpp.s: cmake_fo
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextCharacter.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1038) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1000) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextCharacter.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.i: cmake_force
@@ -14607,7 +14075,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextCharacter.cpp.s: cmake
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextContainer.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1039) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1001) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextContainer.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.i: cmake_force
@@ -14621,7 +14089,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextContainer.cpp.s: cmake
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextTagsData.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1040) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1002) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/TextTagsData.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.i: cmake_force
@@ -14635,7 +14103,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/TextTagsData.cpp.s: cmake_
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1041) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1003) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp.i: cmake_force
@@ -14649,7 +14117,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1042) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1004) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp.i: cmake_force
@@ -14663,7 +14131,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/accessibility_bui
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1043) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1005) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp.i: cmake_force
@@ -14677,7 +14145,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/display_builtin.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1044) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1006) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp.i: cmake_force
@@ -14691,7 +14159,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/events_builtin.cp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1045) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1007) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp.i: cmake_force
@@ -14705,7 +14173,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/filters_builtin.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1046) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1008) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.i: cmake_force
@@ -14719,7 +14187,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1047) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1009) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.i: cmake_force
@@ -14733,7 +14201,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp.s
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1048) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1010) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp.i: cmake_force
@@ -14747,7 +14215,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1049) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1011) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp.i: cmake_force
@@ -14761,7 +14229,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/system_builtin.cp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1050) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1012) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp.i: cmake_force
@@ -14775,7 +14243,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/testing_builtin.c
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1051) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1013) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.i: cmake_force
@@ -14789,7 +14257,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp.
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1052) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1014) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.i: cmake_force
@@ -14803,7 +14271,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp.s:
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1053) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1015) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp.i: cmake_force
@@ -14817,7 +14285,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1054) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1016) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.i: cmake_force
@@ -14831,7 +14299,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp.s
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/swf_parse.cpp
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1055) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1017) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Flash/GameSWFIntegration/swf_parse.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.i: cmake_force
@@ -14845,7 +14313,7 @@ CMakeFiles/PrimeWorld.dir/UI/Flash/GameSWFIntegration/swf_parse.cpp.s: cmake_for
 CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashContainer2.cpp
 CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1056) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1018) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashContainer2.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.i: cmake_force
@@ -14859,7 +14327,7 @@ CMakeFiles/PrimeWorld.dir/UI/FlashContainer2.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashFontsRender.cpp
 CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1057) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1019) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashFontsRender.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.i: cmake_force
@@ -14873,7 +14341,7 @@ CMakeFiles/PrimeWorld.dir/UI/FlashFontsRender.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashInterface.cpp
 CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1058) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1020) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FlashInterface.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.i: cmake_force
@@ -14887,7 +14355,7 @@ CMakeFiles/PrimeWorld.dir/UI/FlashInterface.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FontRender.cpp
 CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1059) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1021) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FontRender.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.i: cmake_force
@@ -14901,7 +14369,7 @@ CMakeFiles/PrimeWorld.dir/UI/FontRender.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FontStyle.cpp
 CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1060) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1022) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FontStyle.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.i: cmake_force
@@ -14915,7 +14383,7 @@ CMakeFiles/PrimeWorld.dir/UI/FontStyle.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FrameTimeRender.cpp
 CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1061) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1023) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/FrameTimeRender.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.i: cmake_force
@@ -14929,7 +14397,7 @@ CMakeFiles/PrimeWorld.dir/UI/FrameTimeRender.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/HealthBar.cpp
 CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1062) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1024) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/HealthBar.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.i: cmake_force
@@ -14943,7 +14411,7 @@ CMakeFiles/PrimeWorld.dir/UI/HealthBar.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ImageComponent.cpp
 CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1063) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1025) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ImageComponent.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.i: cmake_force
@@ -14957,7 +14425,7 @@ CMakeFiles/PrimeWorld.dir/UI/ImageComponent.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ImageLabel.cpp
 CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1064) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1026) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ImageLabel.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.i: cmake_force
@@ -14971,7 +14439,7 @@ CMakeFiles/PrimeWorld.dir/UI/ImageLabel.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/LuaEventResult.cpp
 CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1065) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1027) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/LuaEventResult.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.i: cmake_force
@@ -14985,7 +14453,7 @@ CMakeFiles/PrimeWorld.dir/UI/LuaEventResult.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/NameMappedWindow.cpp
 CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1066) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1028) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/NameMappedWindow.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.i: cmake_force
@@ -14999,7 +14467,7 @@ CMakeFiles/PrimeWorld.dir/UI/NameMappedWindow.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/PageTabControl.cpp
 CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1067) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1029) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/PageTabControl.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.i: cmake_force
@@ -15013,7 +14481,7 @@ CMakeFiles/PrimeWorld.dir/UI/PageTabControl.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/PreferencesProcessor.cpp
 CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1068) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1030) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/PreferencesProcessor.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.i: cmake_force
@@ -15027,7 +14495,7 @@ CMakeFiles/PrimeWorld.dir/UI/PreferencesProcessor.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ProgressBar.cpp
 CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1069) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1031) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ProgressBar.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.i: cmake_force
@@ -15041,7 +14509,7 @@ CMakeFiles/PrimeWorld.dir/UI/ProgressBar.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/RadioButton.cpp
 CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1070) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1032) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/RadioButton.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.i: cmake_force
@@ -15055,7 +14523,7 @@ CMakeFiles/PrimeWorld.dir/UI/RadioButton.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/RadioPanel.cpp
 CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1071) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1033) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/RadioPanel.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.i: cmake_force
@@ -15069,7 +14537,7 @@ CMakeFiles/PrimeWorld.dir/UI/RadioPanel.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Resolution.cpp
 CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1072) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1034) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Resolution.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.i: cmake_force
@@ -15083,7 +14551,7 @@ CMakeFiles/PrimeWorld.dir/UI/Resolution.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Root.cpp
 CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1073) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1035) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Root.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Root.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Root.cpp.i: cmake_force
@@ -15097,7 +14565,7 @@ CMakeFiles/PrimeWorld.dir/UI/Root.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScreenLogicBase.cpp
 CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1074) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1036) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScreenLogicBase.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.i: cmake_force
@@ -15111,7 +14579,7 @@ CMakeFiles/PrimeWorld.dir/UI/ScreenLogicBase.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Scripts.cpp
 CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1075) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1037) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Scripts.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.i: cmake_force
@@ -15125,7 +14593,7 @@ CMakeFiles/PrimeWorld.dir/UI/Scripts.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollArea.cpp
 CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1076) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1038) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollArea.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.i: cmake_force
@@ -15139,7 +14607,7 @@ CMakeFiles/PrimeWorld.dir/UI/ScrollArea.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollBar.cpp
 CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1077) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1039) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollBar.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.i: cmake_force
@@ -15153,7 +14621,7 @@ CMakeFiles/PrimeWorld.dir/UI/ScrollBar.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollList.cpp
 CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1078) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1040) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollList.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.i: cmake_force
@@ -15167,7 +14635,7 @@ CMakeFiles/PrimeWorld.dir/UI/ScrollList.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollableWindow.cpp
 CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1079) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1041) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/ScrollableWindow.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.i: cmake_force
@@ -15181,7 +14649,7 @@ CMakeFiles/PrimeWorld.dir/UI/ScrollableWindow.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/SkinStyles.cpp
 CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1080) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1042) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/SkinStyles.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.i: cmake_force
@@ -15195,7 +14663,7 @@ CMakeFiles/PrimeWorld.dir/UI/SkinStyles.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextComponent.cpp
 CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1081) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1043) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextComponent.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.i: cmake_force
@@ -15209,7 +14677,7 @@ CMakeFiles/PrimeWorld.dir/UI/TextComponent.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextComponentBasic.cpp
 CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1082) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1044) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextComponentBasic.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.i: cmake_force
@@ -15223,7 +14691,7 @@ CMakeFiles/PrimeWorld.dir/UI/TextComponentBasic.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkup.cpp
 CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1083) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1045) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkup.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.i: cmake_force
@@ -15237,7 +14705,7 @@ CMakeFiles/PrimeWorld.dir/UI/TextMarkup.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkupLexems.cpp
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1084) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1046) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkupLexems.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.i: cmake_force
@@ -15251,7 +14719,7 @@ CMakeFiles/PrimeWorld.dir/UI/TextMarkupLexems.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkupParser.cpp
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1085) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1047) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/TextMarkupParser.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.i: cmake_force
@@ -15265,7 +14733,7 @@ CMakeFiles/PrimeWorld.dir/UI/TextMarkupParser.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/User.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/User.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/User.cpp
 CMakeFiles/PrimeWorld.dir/UI/User.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1086) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/User.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1048) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/User.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/User.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/User.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/User.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/User.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/User.cpp.i: cmake_force
@@ -15279,7 +14747,7 @@ CMakeFiles/PrimeWorld.dir/UI/User.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/View.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/View.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/View.cpp
 CMakeFiles/PrimeWorld.dir/UI/View.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1087) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/View.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1049) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/View.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/View.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/View.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/View.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/View.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/View.cpp.i: cmake_force
@@ -15293,7 +14761,7 @@ CMakeFiles/PrimeWorld.dir/UI/View.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Window.cpp
 CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1088) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1050) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/Window.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/Window.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/Window.cpp.i: cmake_force
@@ -15307,7 +14775,7 @@ CMakeFiles/PrimeWorld.dir/UI/Window.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/WindowPointJob.cpp
 CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1089) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1051) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/WindowPointJob.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.i: cmake_force
@@ -15321,7 +14789,7 @@ CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1090) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1052) "Building CXX object CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UI/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.i: cmake_force
@@ -15335,7 +14803,7 @@ CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1091) "Building C object CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1053) "Building C object CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o -MF CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o.d -o CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c
 
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.i: cmake_force
@@ -15349,7 +14817,7 @@ CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompi
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1092) "Building CXX object CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1054) "Building CXX object CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o -MF CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o.d -o CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp
 
 CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.i: cmake_force
@@ -15360,10 +14828,38 @@ CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXC
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp -o CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.s
 
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o: CMakeFiles/PrimeWorld.dir/flags.make
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1055) "Building C object CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o -MF CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o.d -o CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c
+
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing C source to CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c > CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.i
+
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling C source to assembly CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c -o CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.s
+
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1056) "Building CXX object CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o -MF CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o.d -o CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp
+
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp > CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.i
+
+CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vitaly/p/Prime-World/pw/branches/r1117/Src/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp -o CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.s
+
 CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/Checksum.cpp
 CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1093) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1057) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/Checksum.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.i: cmake_force
@@ -15377,7 +14873,7 @@ CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DB.cpp
 CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1094) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1058) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DB.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.i: cmake_force
@@ -15391,7 +14887,7 @@ CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DBTestTypes.cpp
 CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1095) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1059) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DBTestTypes.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.i: cmake_force
@@ -15405,7 +14901,7 @@ CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbResourceCache.cpp
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1096) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1060) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbResourceCache.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.i: cmake_force
@@ -15419,7 +14915,7 @@ CMakeFiles/PrimeWorld.dir/libdb/DbResourceCache.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbResourceCacheDump.cpp
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1097) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1061) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbResourceCacheDump.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.i: cmake_force
@@ -15433,7 +14929,7 @@ CMakeFiles/PrimeWorld.dir/libdb/DbResourceCacheDump.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbTypesRegistrator.cpp
 CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1098) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1062) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/DbTypesRegistrator.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.i: cmake_force
@@ -15447,7 +14943,7 @@ CMakeFiles/PrimeWorld.dir/libdb/DbTypesRegistrator.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/LightXML.cpp
 CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1099) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1063) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/LightXML.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.i: cmake_force
@@ -15461,7 +14957,7 @@ CMakeFiles/PrimeWorld.dir/libdb/LightXML.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/LightXMLUtils.cpp
 CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1100) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1064) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/LightXMLUtils.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.i: cmake_force
@@ -15475,7 +14971,7 @@ CMakeFiles/PrimeWorld.dir/libdb/LightXMLUtils.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/Placement.cpp
 CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1101) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1065) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/Placement.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.i: cmake_force
@@ -15489,7 +14985,7 @@ CMakeFiles/PrimeWorld.dir/libdb/Placement.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XMLReader.cpp
 CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1102) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1066) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XMLReader.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.i: cmake_force
@@ -15503,7 +14999,7 @@ CMakeFiles/PrimeWorld.dir/libdb/XMLReader.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XmlChunkSaver.cpp
 CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1103) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1067) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XmlChunkSaver.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.i: cmake_force
@@ -15517,7 +15013,7 @@ CMakeFiles/PrimeWorld.dir/libdb/XmlChunkSaver.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XmlUtils.cpp
 CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1104) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1068) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/XmlUtils.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.i: cmake_force
@@ -15531,7 +15027,7 @@ CMakeFiles/PrimeWorld.dir/libdb/XmlUtils.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/dbid.cpp
 CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1105) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1069) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/dbid.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.i: cmake_force
@@ -15545,7 +15041,7 @@ CMakeFiles/PrimeWorld.dir/libdb/dbid.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/stdafx.cpp
 CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1106) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1070) "Building CXX object CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o -MF CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o.d -o CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/libdb/stdafx.cpp
 
 CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.i: cmake_force
@@ -15559,7 +15055,7 @@ CMakeFiles/PrimeWorld.dir/libdb/stdafx.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/PeeredTypes.cpp
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1107) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1071) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o -MF CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/PeeredTypes.cpp
 
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.i: cmake_force
@@ -15573,7 +15069,7 @@ CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/PeeredTypes.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/LPeered.auto.cpp
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1108) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1072) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o -MF CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/HybridServer/LPeered.auto.cpp
 
 CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.i: cmake_force
@@ -15587,7 +15083,7 @@ CMakeFiles/PrimeWorld.dir/Game/PF/HybridServer/LPeered.auto.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/LobbyPvx/CommonTypes.cpp
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1109) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1073) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o -MF CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/LobbyPvx/CommonTypes.cpp
 
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.i: cmake_force
@@ -15601,7 +15097,7 @@ CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/CommonTypes.cpp.s: cmake_force
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1110) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1074) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o -MF CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp
 
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.i: cmake_force
@@ -15615,7 +15111,7 @@ CMakeFiles/PrimeWorld.dir/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp.s:
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1111) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1075) "Building CXX object CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o -MF CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp
 
 CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.i: cmake_force
@@ -15629,7 +15125,7 @@ CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp.s: cm
 CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o: CMakeFiles/PrimeWorld.dir/flags.make
 CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o: /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp
 CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1112) "Building CXX object CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1076) "Building CXX object CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o -MF CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o.d -o CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o -c /home/vitaly/p/Prime-World/pw/branches/r1117/Src/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp
 
 CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.i: cmake_force
@@ -16385,20 +15881,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/Scripts/lua/pluto.c.o" \
 "CMakeFiles/PrimeWorld.dir/Scripts/lua/print.c.o" \
 "CMakeFiles/PrimeWorld.dir/Scripts/stdafx.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o" \
@@ -16410,10 +15892,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o" \
@@ -16433,7 +15911,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o" \
@@ -16441,7 +15918,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Events.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o" \
@@ -16470,7 +15946,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o" \
@@ -16488,10 +15963,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o" \
@@ -16510,16 +15981,13 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o" \
 "CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o" \
@@ -16529,14 +15997,12 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o" \
@@ -16544,10 +16010,6 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o" \
@@ -16574,16 +16036,12 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/WER.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o" \
-"CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o" \
@@ -16734,6 +16192,8 @@ PrimeWorld_OBJECTS = \
 "CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o" \
 "CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o" \
+"CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o" \
+"CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o" \
 "CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o" \
@@ -17501,20 +16961,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/Scripts/lua/lzio.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Scripts/lua/pluto.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Scripts/lua/print.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Scripts/stdafx.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/Basic.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ChatLogic.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientSenderThread.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ClientThread.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/DatabaseThread.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ListenerThread.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/MemoryStream.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/QuickPlayLogic.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/Server.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerLogic.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/ServerThread.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/Stream.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/linux/ServerApp.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/Server.Old/src/win32/ServerApp.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Shared/WebRequests.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Shared/shared_data.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Sound/DBSound.cpp.o
@@ -17526,10 +16972,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/AppInstancesLimit.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/AssertDumper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Asserts.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/AsyncTextFileDumper.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/BSAssertDialog.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/BSDialogFunctions.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/BSExceptionDialog.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/BSUtil.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Base64.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Basic.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/BilinearSolver.cpp.o
@@ -17549,7 +16991,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Color.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Commands.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Compatibility.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ConfigFiles.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/CrashRptWrapper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Crc32Checksum.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/DataExecutor.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/DebugTraceDumper.cpp.o
@@ -17557,7 +16998,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/DebugVar.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Decompose.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Dumper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/DumpingStream.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/EditBoxDumper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/EventDumper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Events.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ExecutionMemoryManager.cpp.o
@@ -17586,7 +17026,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/SimpleFileList.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/TestFileSystem.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/TinyFileWriteStream.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystem.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileSystemWatcher.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/WinFileUnbuffered.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FileSystem/stdafx.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/FixedMemoryStream.cpp.o
@@ -17604,10 +17043,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/IniFiles.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfiler3CG.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/InlineProfilerStorage.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UI.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIData.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UIMainDlg.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/Profiler3UITimeline.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/InlineProfiler3/stdafx.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/JSONChunkSerializer.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/JSONReader.cpp.o
@@ -17626,16 +17061,13 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Math/ieeehalfprecision.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MathTools.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MemoryBlockPool.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MemoryStream.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MiniDump.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Minizip/unzip.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MultiReaderLock.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/MultiReaderLockLinux.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/NameMap.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Node/EventsQueue.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Node/NodeManager.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Node/ThreadManager.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ObjectFactory.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/PerfMonitor/PerfMonitor.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/PersistEvents.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/PlacementSpline.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/PlaneGeometry.cpp.o
@@ -17645,14 +17077,12 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Pointers/BasicFactory.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Pointers/BasicType.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Pointers/stdafx.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ProfileManager.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ProfilingHelper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Progress.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ProtectedStream.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/RTTI.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/RandomGen.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/RandomGenerator.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/RandomInterfaceImpl.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/RegistryStorage.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/SafeTextFormat.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Schedule.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ServerStdOutDumper.cpp.o
@@ -17660,10 +17090,6 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Signals.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/SpinLock.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/SplashScreen.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Spline.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StackWalk.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StackWalker.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StarForce/StarForce_test.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StdOutDumper.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StdOutDumperRegistrator.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/StrConvert.cpp.o
@@ -17690,16 +17116,12 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Transform.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/UpdateProcessor.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Updater.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/VMem_linux.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/WER.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/Win32Random.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/dummyallocator.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/expreport.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/hwbreak.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/meminfo.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/memorypool.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ntree.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ported/thread_specific.cpp.o
-PrimeWorld: CMakeFiles/PrimeWorld.dir/System/ssememcopy.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/stdafx.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/threading/thread.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/System/timesupport.cpp.o
@@ -17850,6 +17272,8 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/UI/WindowPointJob.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/UI/stdafx.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdC/CMakeCCompilerId.c.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/UniServerApp/CMakeFiles/3.29.5/CompilerIdCXX/CMakeCXXCompilerId.cpp.o
+PrimeWorld: CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdC/CMakeCCompilerId.c.o
+PrimeWorld: CMakeFiles/PrimeWorld.dir/build_linux/CMakeFiles/4.2.4/CompilerIdCXX/CMakeCXXCompilerId.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/libdb/Checksum.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/libdb/DB.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/libdb/DBTestTypes.cpp.o
@@ -17872,9 +17296,8 @@ PrimeWorld: CMakeFiles/PrimeWorld.dir/Game/PF/Server/LobbyPvx/RLobbyIEntrance.au
 PrimeWorld: CMakeFiles/PrimeWorld.dir/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp.o
 PrimeWorld: CMakeFiles/PrimeWorld.dir/build.make
 PrimeWorld: CMakeFiles/PrimeWorld.dir/compiler_depend.ts
-PrimeWorld: CMakeFiles/PrimeWorld.dir/objects1.rsp
 PrimeWorld: CMakeFiles/PrimeWorld.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1113) "Linking CXX executable PrimeWorld"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/home/vitaly/p/Prime-World/pw/branches/r1117/build_linux/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1077) "Linking CXX executable PrimeWorld"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/PrimeWorld.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
