@@ -35,6 +35,13 @@ struct LoadingFlashHeroState
   int force;
   bool hasPremium;
   NDb::EFaction originalFaction;
+  int rating;
+  int ratingAcc;
+  bool isNovice;
+  string rankIcon;
+  wstring rankName;
+  string rankAccIcon;
+  wstring rankAccName;
 
   LoadingFlashHeroState()
     : slotId(-1),
@@ -48,7 +55,10 @@ struct LoadingFlashHeroState
       isLeftGame(false),
       force(0),
       hasPremium(false),
-      originalFaction(NDb::FACTION_NEUTRAL)
+      originalFaction(NDb::FACTION_NEUTRAL),
+      rating(0),
+      ratingAcc(0),
+      isNovice(false)
   {
   }
 };
@@ -177,4 +187,3 @@ public:
 #endif
 
 }
-

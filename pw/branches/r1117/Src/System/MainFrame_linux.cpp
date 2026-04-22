@@ -6,6 +6,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <GL/glx.h>
 
 #include <stdio.h>
 #include <mutex>
@@ -16,6 +17,9 @@ namespace
 Display* g_display = nullptr;
 ::Window g_window = 0;
 HINSTANCE g_instance = nullptr;
+XVisualInfo* g_glVisual = nullptr;
+Colormap g_colormap = 0;
+GLXContext g_glContext = 0;
 bool g_exit = false;
 bool g_active = true;
 bool g_notMinimized = true;
@@ -35,6 +39,45 @@ size_t g_nextMessage = 0;
 unsigned long g_lastLeftClickMs = 0;
 unsigned long g_lastMiddleClickMs = 0;
 unsigned long g_lastRightClickMs = 0;
+
+XVisualInfo* ChooseOpenGlVisual(Display* display)
+{
+  if (!display)
+  {
+    return nullptr;
+  }
+
+  const int screen = DefaultScreen(display);
+  int rgbaDoubleBuffered[] =
+  {
+    GLX_RGBA,
+    GLX_DOUBLEBUFFER,
+    GLX_RED_SIZE, 8,
+    GLX_GREEN_SIZE, 8,
+    GLX_BLUE_SIZE, 8,
+    GLX_ALPHA_SIZE, 8,
+    GLX_DEPTH_SIZE, 24,
+    None
+  };
+
+  XVisualInfo* visual = glXChooseVisual(display, screen, rgbaDoubleBuffered);
+  if (visual)
+  {
+    return visual;
+  }
+
+  int rgbaBuffered[] =
+  {
+    GLX_RGBA,
+    GLX_RED_SIZE, 8,
+    GLX_GREEN_SIZE, 8,
+    GLX_BLUE_SIZE, 8,
+    GLX_ALPHA_SIZE, 8,
+    None
+  };
+
+  return glXChooseVisual(display, screen, rgbaBuffered);
+}
 
 inline HWND EncodeWindow(::Window window)
 {
@@ -339,6 +382,11 @@ HWND GetWnd()
   return EncodeWindow(g_window);
 }
 
+void* GetNativeDisplay()
+{
+  return g_display;
+}
+
 void SetWnd(HWND window)
 {
   g_window = DecodeWindow(window);
@@ -441,6 +489,8 @@ bool InitApplication(
   g_active = true;
   g_notMinimized = true;
   g_exitCode.clear();
+  g_glVisual = nullptr;
+  g_colormap = 0;
 
   if (externalWindow)
   {
@@ -456,19 +506,63 @@ bool InitApplication(
   }
 
   const int screen = DefaultScreen(g_display);
-  g_window = XCreateSimpleWindow(
-    g_display,
-    RootWindow(g_display, screen),
-    0,
-    0,
-    static_cast<unsigned int>(width),
-    static_cast<unsigned int>(height),
-    0,
-    BlackPixel(g_display, screen),
-    WhitePixel(g_display, screen)
-  );
+  g_glVisual = ChooseOpenGlVisual(g_display);
+  if (g_glVisual)
+  {
+    XSetWindowAttributes attributes = {};
+    attributes.border_pixel = 0;
+    attributes.event_mask =
+      ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask |
+      PointerMotionMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask | StructureNotifyMask;
+    attributes.colormap = XCreateColormap(
+      g_display,
+      RootWindow(g_display, screen),
+      g_glVisual->visual,
+      AllocNone
+    );
+    g_colormap = attributes.colormap;
+
+    g_window = XCreateWindow(
+      g_display,
+      RootWindow(g_display, screen),
+      0,
+      0,
+      static_cast<unsigned int>(width),
+      static_cast<unsigned int>(height),
+      0,
+      g_glVisual->depth,
+      InputOutput,
+      g_glVisual->visual,
+      CWBorderPixel | CWColormap | CWEventMask,
+      &attributes
+    );
+  }
+  else
+  {
+    g_window = XCreateSimpleWindow(
+      g_display,
+      RootWindow(g_display, screen),
+      0,
+      0,
+      static_cast<unsigned int>(width),
+      static_cast<unsigned int>(height),
+      0,
+      BlackPixel(g_display, screen),
+      WhitePixel(g_display, screen)
+    );
+  }
   if (!g_window)
   {
+    if (g_colormap)
+    {
+      XFreeColormap(g_display, g_colormap);
+      g_colormap = 0;
+    }
+    if (g_glVisual)
+    {
+      XFree(g_glVisual);
+      g_glVisual = nullptr;
+    }
     XCloseDisplay(g_display);
     g_display = nullptr;
     PrintBootstrapError("NMainFrame::InitApplication failed: XCreateSimpleWindow returned 0");
@@ -476,12 +570,15 @@ bool InitApplication(
   }
 
   XStoreName(g_display, g_window, windowName ? windowName : appName);
-  XSelectInput(
-    g_display,
-    g_window,
-    ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask |
-      PointerMotionMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask | StructureNotifyMask
-  );
+  if (!g_glVisual)
+  {
+    XSelectInput(
+      g_display,
+      g_window,
+      ExposureMask | KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask |
+        PointerMotionMask | EnterWindowMask | LeaveWindowMask | FocusChangeMask | StructureNotifyMask
+    );
+  }
 
   g_wmDeleteWindow = XInternAtom(g_display, "WM_DELETE_WINDOW", False);
   XSetWMProtocols(g_display, g_window, &g_wmDeleteWindow, 1);
@@ -491,12 +588,115 @@ bool InitApplication(
   return true;
 }
 
+bool InitOpenGLContext()
+{
+  if (!g_display || !g_window)
+  {
+    return false;
+  }
+
+  if (g_glContext)
+  {
+    return true;
+  }
+
+  XVisualInfo* visual = g_glVisual;
+  XVisualInfo visualTemplate = {};
+  int visualCount = 0;
+  if (!visual)
+  {
+    XWindowAttributes attributes = {};
+    if (!XGetWindowAttributes(g_display, g_window, &attributes))
+    {
+      return false;
+    }
+
+    visualTemplate.visualid = XVisualIDFromVisual(attributes.visual);
+    visual = XGetVisualInfo(g_display, VisualIDMask, &visualTemplate, &visualCount);
+    if (!visual)
+    {
+      return false;
+    }
+  }
+
+  g_glContext = glXCreateContext(g_display, visual, 0, True);
+  if (!g_glVisual && visual)
+  {
+    XFree(visual);
+  }
+
+  if (!g_glContext)
+  {
+    return false;
+  }
+
+  if (!glXMakeCurrent(g_display, g_window, g_glContext))
+  {
+    glXDestroyContext(g_display, g_glContext);
+    g_glContext = 0;
+    return false;
+  }
+
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_SCISSOR_TEST);
+  glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_FASTEST);
+  return true;
+}
+
+void ShutdownOpenGLContext()
+{
+  if (!g_display || !g_glContext)
+  {
+    return;
+  }
+
+  glXMakeCurrent(g_display, None, 0);
+  glXDestroyContext(g_display, g_glContext);
+  g_glContext = 0;
+}
+
+bool MakeOpenGLContextCurrent()
+{
+  if (!g_display || !g_window || !g_glContext)
+  {
+    return false;
+  }
+
+  return glXMakeCurrent(g_display, g_window, g_glContext) == True;
+}
+
+void SwapOpenGLBuffers()
+{
+  if (!g_display || !g_window || !g_glContext)
+  {
+    return;
+  }
+
+  glXSwapBuffers(g_display, g_window);
+}
+
 void ShutdownApplication()
 {
+  ShutdownOpenGLContext();
+
   if (g_display && g_window)
   {
     XDestroyWindow(g_display, g_window);
     g_window = 0;
+  }
+
+  if (g_display && g_colormap)
+  {
+    XFreeColormap(g_display, g_colormap);
+    g_colormap = 0;
+  }
+
+  if (g_glVisual)
+  {
+    XFree(g_glVisual);
+    g_glVisual = nullptr;
   }
 
   if (g_display)

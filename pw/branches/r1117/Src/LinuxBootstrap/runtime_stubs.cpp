@@ -7,6 +7,7 @@
 #include "System/SystemLog.h"
 #include "System/Texts.h"
 #include "Core/GameTypes.h"
+#include "PF_GameLogic/WebLauncher.h"
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #include "Render/texture.h"
 #include "Scene/SceneComponent.h"
@@ -14,6 +15,8 @@
 
 #include <stdio.h>
 #include <wchar.h>
+
+std::map<nstl::wstring, WebLauncherPostRequest::WebUserData> g_usersData;
 
 template<>
 const CObjectBase* CastToObjectBaseImpl<NScene::SceneComponent>(const NScene::SceneComponent* p, const void*)

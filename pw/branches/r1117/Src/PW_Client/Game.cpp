@@ -34,6 +34,7 @@
 #include "PF_GameLogic/DBVisualRoots.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#include "PF_GameLogic/WebLauncher.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
 #include "LoadingFlashInterface.h"
 #include "LoadingHeroes.h"
@@ -48,6 +49,8 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
 #include <png.h>
 
 #include <ctype.h>
@@ -122,8 +125,11 @@ struct LinuxWindowOverlay
   Display* display;
   ::Window window;
   GC gc;
+  XFontStruct* fontStruct;
   Pixmap artworkPixmap;
   Font font;
+  GLuint artworkTexture;
+  GLuint fontDisplayListBase;
   unsigned long background;
   unsigned long accent;
   unsigned long foreground;
@@ -132,14 +138,19 @@ struct LinuxWindowOverlay
   unsigned long panelBorder;
   unsigned int artworkWidth;
   unsigned int artworkHeight;
+  bool openglReady;
+  bool fontDisplayListsReady;
   bool ready;
 
   LinuxWindowOverlay()
     : display(nullptr),
       window(0),
       gc(0),
+      fontStruct(nullptr),
       artworkPixmap(0),
       font(0),
+      artworkTexture(0),
+      fontDisplayListBase(0),
       background(0),
       accent(0),
       foreground(0),
@@ -148,6 +159,8 @@ struct LinuxWindowOverlay
       panelBorder(0),
       artworkWidth(0),
       artworkHeight(0),
+      openglReady(false),
+      fontDisplayListsReady(false),
       ready(false)
   {
   }
@@ -784,10 +797,17 @@ struct LinuxLoadingRuntimeHeroEntry
   bool human;
   bool leftGame;
   bool hasPremium;
+  bool isNovice;
   float progress;
   int heroLevel;
   int force;
+  int rating;
+  int ratingAcc;
   int leagueIndex;
+  unsigned int partyId;
+  std::string locale;
+  std::string flagId;
+  std::string flagIcon;
   std::string playerName;
   std::string heroTitle;
   std::string iconPath;
@@ -799,10 +819,14 @@ struct LinuxLoadingRuntimeHeroEntry
       human(false),
       leftGame(false),
       hasPremium(false),
+      isNovice(false),
       progress(0.0f),
       heroLevel(0),
       force(0),
-      leagueIndex(0)
+      rating(0),
+      ratingAcc(0),
+      leagueIndex(0),
+      partyId(0)
   {
   }
 };
@@ -815,8 +839,14 @@ struct LinuxLoadingHeroesRuntimePreview
   size_t humanCount;
   size_t botCount;
   size_t disconnectedCount;
+  size_t premiumCount;
+  size_t noviceCount;
+  size_t localeCount;
+  size_t flaggedCount;
+  size_t ratedCount;
   std::vector<LinuxLoadingRuntimeHeroEntry> heroes;
   std::vector<std::string> samples;
+  std::vector<std::string> metaSamples;
   std::vector<std::string> warnings;
 
   LinuxLoadingHeroesRuntimePreview()
@@ -825,7 +855,12 @@ struct LinuxLoadingHeroesRuntimePreview
       ourHeroId(-1),
       humanCount(0),
       botCount(0),
-      disconnectedCount(0)
+      disconnectedCount(0),
+      premiumCount(0),
+      noviceCount(0),
+      localeCount(0),
+      flaggedCount(0),
+      ratedCount(0)
   {
   }
 };
@@ -1370,12 +1405,24 @@ struct LinuxEngineMapStartSlot
   bool filled;
   bool human;
   bool manualHero;
+  bool hasPremium;
+  bool isNovice;
+  bool isAnimatedAvatar;
   unsigned int heroChecksum;
+  unsigned int partyId;
+  int heroLevel;
+  int heroExp;
+  int heroRating;
+  int ownLeaguePlace;
+  int leagueIndex;
   std::string heroId;
   std::string heroTitle;
   std::string heroSkin;
+  std::string locale;
+  std::string flagId;
   std::string nickname;
   std::string scriptName;
+  std::vector<int> leaguePlaces;
   float translateX;
   float translateY;
 
@@ -1389,7 +1436,16 @@ struct LinuxEngineMapStartSlot
       filled(false),
       human(false),
       manualHero(false),
+      hasPremium(false),
+      isNovice(false),
+      isAnimatedAvatar(true),
       heroChecksum(0),
+      partyId(0),
+      heroLevel(0),
+      heroExp(0),
+      heroRating(0),
+      ownLeaguePlace(0),
+      leagueIndex(0),
       translateX(0.0f),
       translateY(0.0f)
   {
@@ -5289,6 +5345,126 @@ const LinuxEngineMapStartSlot* FindEngineMapStartSlotByUserId(
   return 0;
 }
 
+void ResolveLoadingFlagPresentation(
+  const NDb::DBUIData* uiData,
+  const std::string& flagId,
+  string* flagIcon,
+  wstring* flagTooltip
+)
+{
+  if (flagIcon)
+  {
+    flagIcon->clear();
+  }
+  if (flagTooltip)
+  {
+    flagTooltip->clear();
+  }
+
+  if (!uiData)
+  {
+    return;
+  }
+
+  if (!flagId.empty())
+  {
+    for (int i = 0; i < uiData->countryFlags.size(); ++i)
+    {
+      if (uiData->countryFlags[i].id == flagId.c_str())
+      {
+        if (flagIcon && uiData->countryFlags[i].icon)
+        {
+          *flagIcon = uiData->countryFlags[i].icon->textureFileName;
+        }
+        if (flagTooltip)
+        {
+          *flagTooltip = uiData->countryFlags[i].tooltip.GetText();
+        }
+        return;
+      }
+    }
+
+    for (int i = 0; i < uiData->customFlags.size(); ++i)
+    {
+      const NDb::Ptr<NDb::CustomFlag>& customFlag = uiData->customFlags[i];
+      if (customFlag && customFlag->id == flagId.c_str())
+      {
+        if (flagIcon && customFlag->icon)
+        {
+          *flagIcon = customFlag->icon->textureFileName;
+        }
+        if (flagTooltip)
+        {
+          *flagTooltip = customFlag->tooltip.GetText();
+        }
+        return;
+      }
+    }
+
+    for (int i = 0; i < uiData->adminFlags.size(); ++i)
+    {
+      const NDb::Ptr<NDb::CustomFlag>& adminFlag = uiData->adminFlags[i];
+      if (adminFlag && adminFlag->id == flagId.c_str())
+      {
+        if (flagIcon && adminFlag->icon)
+        {
+          *flagIcon = adminFlag->icon->textureFileName;
+        }
+        if (flagTooltip)
+        {
+          *flagTooltip = adminFlag->tooltip.GetText();
+        }
+        return;
+      }
+    }
+  }
+
+  if (!uiData->countryFlags.empty())
+  {
+    if (flagIcon && uiData->countryFlags[0].icon)
+    {
+      *flagIcon = uiData->countryFlags[0].icon->textureFileName;
+    }
+    if (flagTooltip)
+    {
+      *flagTooltip = uiData->countryFlags[0].tooltip.GetText();
+    }
+  }
+}
+
+void ResolveLoadingBotFlagPresentation(
+  const NDb::DBUIData* uiData,
+  NCore::ETeam::Enum team,
+  string* flagIcon,
+  wstring* flagTooltip
+)
+{
+  if (flagIcon)
+  {
+    flagIcon->clear();
+  }
+  if (flagTooltip)
+  {
+    flagTooltip->clear();
+  }
+
+  if (!uiData)
+  {
+    return;
+  }
+
+  const bool freeze = team == NCore::ETeam::Team1;
+  const NDb::CountryFlag& botFlag = freeze ? uiData->botFlags.doctDefaultFlag : uiData->botFlags.adornianDefaultFlag;
+  if (flagIcon && botFlag.icon)
+  {
+    *flagIcon = botFlag.icon->textureFileName;
+  }
+  if (flagTooltip)
+  {
+    *flagTooltip = botFlag.tooltip.GetText();
+  }
+}
+
 void ProbeLoadingHeroesRuntimePreview(
   const LinuxSessionPreview& sessionPreview,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -5324,6 +5500,7 @@ void ProbeLoadingHeroesRuntimePreview(
 
   Strong<Game::LoadingFlashInterface> flashInterface = new Game::LoadingFlashInterface(0, "LinuxBootstrapLoadingHeroes");
   Strong<Game::LoadingHeroes> loadingHeroes = new Game::LoadingHeroes(flashInterface, sessionRoot->logicRoot->heroes);
+  NDb::Ptr<NDb::DBUIData> loadingUiData = ResolveLoadingUiDataResource();
   std::map<int, const LinuxEngineMapStartSlot*> runtimeSlots;
   if (IsValid(advMapDescription))
   {
@@ -5360,6 +5537,8 @@ void ProbeLoadingHeroesRuntimePreview(
 
     Game::HeroInfo heroInfo;
     const string heroSkin(slot.heroSkin.c_str());
+    string flagIcon;
+    wstring flagTooltip;
     heroInfo.isBot = !slot.human;
     heroInfo.partyId = 0;
     heroInfo.team = team;
@@ -5367,14 +5546,33 @@ void ProbeLoadingHeroesRuntimePreview(
     heroInfo.skinId = heroSkin;
     heroInfo.heroId = slot.heroChecksum;
     heroInfo.userId = runtimeUserId;
-    heroInfo.isAnimatedAvatar = true;
+    heroInfo.isAnimatedAvatar = slot.isAnimatedAvatar;
+    heroInfo.exp = slot.heroExp;
+    heroInfo.raiting = slot.heroRating;
+    heroInfo.isNovice = slot.isNovice;
+    heroInfo.isPremium = slot.hasPremium;
+    heroInfo.partyId = slot.partyId;
+    heroInfo.locale = string(slot.locale.c_str());
+    heroInfo.leagueIndex = slot.leagueIndex;
+    heroInfo.ownLeaguePlace = slot.ownLeaguePlace;
+    for (size_t leaguePlaceIndex = 0; leaguePlaceIndex < slot.leaguePlaces.size(); ++leaguePlaceIndex)
+    {
+      heroInfo.leaguePlaces.push_back(slot.leaguePlaces[leaguePlaceIndex]);
+    }
+
+    if (slot.human)
+    {
+      ResolveLoadingFlagPresentation(loadingUiData, slot.flagId, &flagIcon, &flagTooltip);
+    }
+    else
+    {
+      ResolveLoadingBotFlagPresentation(loadingUiData, team, &flagIcon, &flagTooltip);
+    }
 
     wstring playerName =
       !slot.nickname.empty() ?
         NStr::ToUnicode(string(slot.nickname.c_str())) :
         BuildLinuxPreviewNickname(sessionPreview, slot.human, botIndex);
-    string flagIcon;
-    wstring flagTooltip;
     loadingHeroes->AddUser(
       runtimeUserId,
       playerName,
@@ -5395,6 +5593,9 @@ void ProbeLoadingHeroesRuntimePreview(
 
     const float progress = slot.human ? 0.35f : std::min(0.95f, 0.45f + 0.08f * static_cast<float>(botIndex));
     loadingHeroes->SetPlayerProgress(runtimeUserId, progress);
+    flashInterface->SetHeroLevel(runtimeUserId, slot.heroLevel);
+    flashInterface->SetHeroPremium(runtimeUserId, slot.hasPremium, Game::ConvertToFaction(originalTeam));
+    flashInterface->SetHeroRaiting(runtimeUserId, slot.heroRating, 0.0f, 0.0f, slot.isNovice, "", L"");
   }
 
   preview->ourHeroId = flashInterface->GetOurHeroId();
@@ -5409,9 +5610,14 @@ void ProbeLoadingHeroesRuntimePreview(
     entry.progress = captured.loadProgress / 100.0f;
     entry.leftGame = captured.isLeftGame;
     entry.hasPremium = captured.hasPremium;
+    entry.isNovice = captured.isNovice;
     entry.heroLevel = captured.heroLevel;
     entry.force = captured.force;
+    entry.rating = captured.rating;
+    entry.ratingAcc = captured.ratingAcc;
     entry.leagueIndex = captured.leagueIndex;
+    entry.partyId = captured.partyId;
+    entry.flagIcon = ToStdString(captured.flagIcon);
     entry.playerName = ToStdString(NStr::ToMBCS(captured.playerName));
     entry.iconPath = ToStdString(captured.iconPath);
     entry.classIcon = ToStdString(captured.classIcon);
@@ -5422,6 +5628,8 @@ void ProbeLoadingHeroesRuntimePreview(
       entry.team = runtimeSlot->second->team;
       entry.human = runtimeSlot->second->human;
       entry.heroTitle = runtimeSlot->second->heroTitle;
+      entry.locale = runtimeSlot->second->locale;
+      entry.flagId = runtimeSlot->second->flagId;
     }
 
     if (entry.human)
@@ -5436,6 +5644,26 @@ void ProbeLoadingHeroesRuntimePreview(
     {
       ++preview->disconnectedCount;
     }
+    if (entry.hasPremium)
+    {
+      ++preview->premiumCount;
+    }
+    if (entry.isNovice)
+    {
+      ++preview->noviceCount;
+    }
+    if (!entry.locale.empty())
+    {
+      ++preview->localeCount;
+    }
+    if (!entry.flagIcon.empty() || !entry.flagId.empty())
+    {
+      ++preview->flaggedCount;
+    }
+    if (entry.rating != 0 || entry.ratingAcc != 0)
+    {
+      ++preview->ratedCount;
+    }
 
     preview->heroes.push_back(entry);
 
@@ -5448,6 +5676,41 @@ void ProbeLoadingHeroesRuntimePreview(
       sample += " / left";
     }
     AppendSampleValue(&preview->samples, sample, 6);
+
+    std::string metaSample = entry.playerName.empty() ? std::string("<anon>") : entry.playerName;
+    if (!entry.locale.empty())
+    {
+      metaSample += " / " + entry.locale;
+    }
+    if (entry.partyId != 0)
+    {
+      metaSample += NStr::StrFmt(" / party=%u", entry.partyId);
+    }
+    if (entry.heroLevel > 0)
+    {
+      metaSample += NStr::StrFmt(" / lvl=%d", entry.heroLevel);
+    }
+    if (entry.rating != 0)
+    {
+      metaSample += NStr::StrFmt(" / rating=%d", entry.rating);
+    }
+    if (entry.leagueIndex != 0)
+    {
+      metaSample += NStr::StrFmt(" / league=%d", entry.leagueIndex);
+    }
+    if (!entry.flagId.empty())
+    {
+      metaSample += " / flag=" + entry.flagId;
+    }
+    if (entry.hasPremium)
+    {
+      metaSample += " / premium";
+    }
+    if (entry.isNovice)
+    {
+      metaSample += " / novice";
+    }
+    AppendSampleValue(&preview->metaSamples, metaSample, 6);
   }
 
   preview->ready = !preview->heroes.empty();
@@ -6933,12 +7196,157 @@ void BuildLinuxPreviewGameLineup(
   }
 }
 
+struct LinuxSyntheticClientInfo
+{
+  int clientId;
+  NCore::PlayerInfo info;
+
+  LinuxSyntheticClientInfo()
+    : clientId(0)
+  {
+  }
+};
+
+void BuildLinuxPreviewClientInfos(
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
+  const lobby::TGameLineUp& gameLineUp,
+  std::vector<LinuxSyntheticClientInfo>* clientInfos
+)
+{
+  if (!clientInfos)
+  {
+    return;
+  }
+
+  clientInfos->clear();
+  clientInfos->reserve(gameLineUp.size());
+
+  const std::string normalizedLocale = NormalizeLocaleName(defaultLocale);
+  for (size_t i = 0; i < localMatchPreview.lineup.size() && i < gameLineUp.size(); ++i)
+  {
+    const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
+    if (!slot.human)
+    {
+      continue;
+    }
+
+    const lobby::SGameMember& member = gameLineUp[i];
+    LinuxSyntheticClientInfo clientInfo;
+    clientInfo.clientId = member.user.userId;
+
+    NCore::PlayerInfo& info = clientInfo.info;
+    info.heroId = Crc32Checksum().AddString(slot.heroId.c_str()).Get();
+    info.customGame = true;
+    info.isAnimatedAvatar = true;
+
+    if (!normalizedLocale.empty())
+    {
+      info.locale = normalizedLocale.c_str();
+    }
+
+    if (sessionPreview.currentUserId > 0 &&
+        member.user.userId == sessionPreview.currentUserId &&
+        sessionPreview.currentPartyId > 0)
+    {
+      info.partyId = static_cast<uint>(sessionPreview.currentPartyId);
+    }
+
+    const nstl::wstring userNickname(member.user.nickname.c_str());
+    decltype(g_usersData)::iterator userData = g_usersData.find(userNickname);
+    if (userData != g_usersData.end())
+    {
+      info.heroRating = userData->second.currentRating;
+      info.ratingDeltaPrediction.onVictory = userData->second.victoryRating - userData->second.currentRating;
+      info.ratingDeltaPrediction.onDefeat = userData->second.lossRating - userData->second.currentRating;
+      if (userData->second.partyId > 0)
+      {
+        info.partyId = static_cast<uint>(userData->second.partyId);
+      }
+    }
+
+    map<int, WebLauncherPostRequest::PlayerMetaInfo>::iterator meta = userIdToMetaMap.find(member.user.userId);
+    if (meta != userIdToMetaMap.end())
+    {
+      info.leagueIndex = meta->second.leagueIdx;
+      info.flagId = meta->second.flagId;
+    }
+
+    clientInfos->push_back(clientInfo);
+  }
+}
+
+const LinuxSyntheticClientInfo* FindLinuxPreviewClientInfo(
+  int clientId,
+  const std::vector<LinuxSyntheticClientInfo>& clientInfos
+)
+{
+  for (size_t i = 0; i < clientInfos.size(); ++i)
+  {
+    if (clientInfos[i].clientId == clientId)
+    {
+      return &clientInfos[i];
+    }
+  }
+
+  return 0;
+}
+
+void MergeLinuxPreviewPlayerInfoMetadata(
+  NCore::PlayerInfo* destination,
+  const NCore::PlayerInfo& source
+)
+{
+  if (!destination)
+  {
+    return;
+  }
+
+  if (!source.heroSkin.empty())
+  {
+    destination->heroSkin = source.heroSkin;
+  }
+  if (!source.locale.empty())
+  {
+    destination->locale = source.locale;
+  }
+  if (!source.flagId.empty())
+  {
+    destination->flagId = source.flagId;
+  }
+  if (!source.flagCustomPicture.empty())
+  {
+    destination->flagCustomPicture = source.flagCustomPicture;
+  }
+  if (!source.flagCustomTooltip.empty())
+  {
+    destination->flagCustomTooltip = source.flagCustomTooltip;
+  }
+  if (!source.leaguePlaces.empty())
+  {
+    destination->leaguePlaces = source.leaguePlaces;
+  }
+
+  destination->partyId = source.partyId;
+  destination->heroLevel = source.heroLevel;
+  destination->heroExp = source.heroExp;
+  destination->heroRating = source.heroRating;
+  destination->hasPremium = source.hasPremium;
+  destination->basket = source.basket;
+  destination->isAnimatedAvatar = source.isAnimatedAvatar;
+  destination->leagueIndex = source.leagueIndex;
+  destination->ownLeaguePlace = source.ownLeaguePlace;
+  destination->ratingDeltaPrediction = source.ratingDeltaPrediction;
+}
+
 bool TryBuildEngineMapStartPreviewFromRealMapLoader(
   const LinuxSessionPreview& sessionPreview,
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
   LinuxEngineMapStartPreview* preview
 )
 {
@@ -7025,6 +7433,8 @@ bool TryBuildEngineMapStartPreviewFromRealMapLoader(
 
   lobby::TGameLineUp gameLineUp;
   BuildLinuxPreviewGameLineup(sessionPreview, localMatchPreview, &gameLineUp);
+  std::vector<LinuxSyntheticClientInfo> clientInfos;
+  BuildLinuxPreviewClientInfos(sessionPreview, localMatchPreview, defaultLocale, gameLineUp, &clientInfos);
 
   lobby::SGameParameters gameParams;
   gameParams.gameType = lobby::EGameType::Custom;
@@ -7040,6 +7450,22 @@ bool TryBuildEngineMapStartPreviewFromRealMapLoader(
   {
     preview->warnings.push_back("Real map loader failed to build MapStartInfo");
     return false;
+  }
+  for (size_t slotIndex = 0; slotIndex < mapStartInfo.playersInfo.size(); ++slotIndex)
+  {
+    NCore::PlayerStartInfo& player = mapStartInfo.playersInfo[slotIndex];
+    if (player.playerType != NCore::EPlayerType::Human)
+    {
+      continue;
+    }
+
+    const LinuxSyntheticClientInfo* clientInfo = FindLinuxPreviewClientInfo(player.userID, clientInfos);
+    if (!clientInfo)
+    {
+      continue;
+    }
+
+    MergeLinuxPreviewPlayerInfoMetadata(&player.playerInfo, clientInfo->info);
   }
 
   preview->builtMapStartInfo = true;
@@ -7073,6 +7499,22 @@ bool TryBuildEngineMapStartPreviewFromRealMapLoader(
     slot.heroChecksum = player.playerInfo.heroId;
     slot.nickname = NStr::ToMBCS(player.nickname).c_str();
     slot.heroSkin = player.playerInfo.heroSkin.c_str();
+    slot.heroLevel = player.playerInfo.heroLevel;
+    slot.heroExp = player.playerInfo.heroExp;
+    slot.heroRating = static_cast<int>(player.playerInfo.heroRating);
+    slot.hasPremium = player.playerInfo.hasPremium;
+    slot.isNovice = player.playerInfo.basket == NCore::EBasket::Newbie;
+    slot.isAnimatedAvatar = player.playerInfo.isAnimatedAvatar;
+    slot.partyId = player.playerInfo.partyId;
+    slot.locale = player.playerInfo.locale.c_str();
+    slot.flagId = player.playerInfo.flagId.c_str();
+    slot.leagueIndex = player.playerInfo.leagueIndex;
+    slot.ownLeaguePlace = player.playerInfo.ownLeaguePlace;
+    slot.leaguePlaces.clear();
+    for (size_t leaguePlaceIndex = 0; leaguePlaceIndex < player.playerInfo.leaguePlaces.size(); ++leaguePlaceIndex)
+    {
+      slot.leaguePlaces.push_back(player.playerInfo.leaguePlaces[leaguePlaceIndex]);
+    }
 
     if (!slot.filled)
     {
@@ -7280,6 +7722,7 @@ void ProbeEngineMapStartPreview(
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
   LinuxEngineMapStartPreview* preview
 )
 {
@@ -7295,6 +7738,7 @@ void ProbeEngineMapStartPreview(
         mapCatalog,
         mapBrowserState,
         localMatchPreview,
+        defaultLocale,
         preview))
   {
     return;
@@ -9643,7 +10087,7 @@ unsigned long ResolveColor(Display* display, int screen, const char* name, unsig
 
 bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
 {
-  overlay->display = XOpenDisplay(nullptr);
+  overlay->display = static_cast<Display*>(NMainFrame::GetNativeDisplay());
   if (!overlay->display)
   {
     return false;
@@ -9652,7 +10096,6 @@ bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
   overlay->window = static_cast<::Window>(reinterpret_cast<uintptr_t>(NMainFrame::GetWnd()));
   if (!overlay->window)
   {
-    XCloseDisplay(overlay->display);
     overlay->display = nullptr;
     return false;
   }
@@ -9660,7 +10103,6 @@ bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
   overlay->gc = XCreateGC(overlay->display, overlay->window, 0, nullptr);
   if (!overlay->gc)
   {
-    XCloseDisplay(overlay->display);
     overlay->display = nullptr;
     return false;
   }
@@ -9680,8 +10122,23 @@ bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
   }
   if (font)
   {
+    overlay->fontStruct = font;
     overlay->font = font->fid;
     XSetFont(overlay->display, overlay->gc, overlay->font);
+  }
+
+  if (NMainFrame::InitOpenGLContext() && NMainFrame::MakeOpenGLContextCurrent())
+  {
+    overlay->openglReady = true;
+    if (overlay->font)
+    {
+      overlay->fontDisplayListBase = glGenLists(256);
+      if (overlay->fontDisplayListBase != 0)
+      {
+        glXUseXFont(overlay->font, 0, 256, overlay->fontDisplayListBase);
+        overlay->fontDisplayListsReady = true;
+      }
+    }
   }
 
   overlay->ready = true;
@@ -9733,6 +10190,52 @@ bool UploadArtworkPixmap(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork&
   if (!overlay->ready || !artwork.ready || artwork.width <= 0 || artwork.height <= 0)
   {
     return false;
+  }
+
+  if (overlay->openglReady)
+  {
+    if (!NMainFrame::MakeOpenGLContextCurrent())
+    {
+      return false;
+    }
+
+    if (!overlay->artworkTexture)
+    {
+      glGenTextures(1, &overlay->artworkTexture);
+    }
+    if (!overlay->artworkTexture)
+    {
+      return false;
+    }
+
+    glBindTexture(GL_TEXTURE_2D, overlay->artworkTexture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(
+      GL_TEXTURE_2D,
+      0,
+      GL_RGBA,
+      artwork.width,
+      artwork.height,
+      0,
+      GL_RGBA,
+      GL_UNSIGNED_BYTE,
+      &artwork.rgba[0]
+    );
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    if (overlay->artworkPixmap)
+    {
+      XFreePixmap(overlay->display, overlay->artworkPixmap);
+      overlay->artworkPixmap = 0;
+    }
+
+    overlay->artworkWidth = static_cast<unsigned int>(artwork.width);
+    overlay->artworkHeight = static_cast<unsigned int>(artwork.height);
+    return true;
   }
 
   XWindowAttributes attributes = {};
@@ -9833,6 +10336,22 @@ bool UploadArtworkPixmap(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork&
 
 void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
 {
+  if (overlay->openglReady && NMainFrame::MakeOpenGLContextCurrent())
+  {
+    if (overlay->artworkTexture)
+    {
+      glDeleteTextures(1, &overlay->artworkTexture);
+      overlay->artworkTexture = 0;
+    }
+
+    if (overlay->fontDisplayListsReady && overlay->fontDisplayListBase != 0)
+    {
+      glDeleteLists(overlay->fontDisplayListBase, 256);
+      overlay->fontDisplayListBase = 0;
+      overlay->fontDisplayListsReady = false;
+    }
+  }
+
   if (overlay->display && overlay->artworkPixmap)
   {
     XFreePixmap(overlay->display, overlay->artworkPixmap);
@@ -9845,15 +10364,17 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
     overlay->gc = 0;
   }
 
-  if (overlay->display)
+  if (overlay->display && overlay->fontStruct)
   {
-    XCloseDisplay(overlay->display);
-    overlay->display = nullptr;
+    XFreeFont(overlay->display, overlay->fontStruct);
+    overlay->fontStruct = nullptr;
   }
 
+  overlay->display = nullptr;
   overlay->window = 0;
   overlay->artworkWidth = 0;
   overlay->artworkHeight = 0;
+  overlay->openglReady = false;
   overlay->ready = false;
 }
 
@@ -11237,11 +11758,13 @@ std::vector<std::string> BuildOverlayLines(
       snprintf(
         buffer,
         sizeof(buffer),
-        "Loading runtime heroes: count=%lu humans=%lu bots=%lu disconnected=%lu",
+        "Loading runtime heroes: count=%lu humans=%lu bots=%lu disconnected=%lu premium=%lu locale=%lu",
         static_cast<unsigned long>(loadingHeroesRuntimePreview.heroes.size()),
         static_cast<unsigned long>(loadingHeroesRuntimePreview.humanCount),
         static_cast<unsigned long>(loadingHeroesRuntimePreview.botCount),
-        static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount)
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount),
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.premiumCount),
+        static_cast<unsigned long>(loadingHeroesRuntimePreview.localeCount)
       );
       lines.push_back(buffer);
     }
@@ -11250,6 +11773,12 @@ std::vector<std::string> BuildOverlayLines(
     {
       lines.push_back("Loading hero samples: " +
         TruncateForOverlay(JoinPreviewSamples(loadingHeroesRuntimePreview.samples), 84));
+    }
+
+    if (!loadingHeroesRuntimePreview.metaSamples.empty())
+    {
+      lines.push_back("Loading hero meta: " +
+        TruncateForOverlay(JoinPreviewSamples(loadingHeroesRuntimePreview.metaSamples), 84));
     }
 
     if (!loadingUiPreview.localeSamples.empty())
@@ -11761,6 +12290,228 @@ std::vector<std::string> BuildOverlayLines(
   return lines;
 }
 
+void SetOpenGlColor(unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha = 255)
+{
+  glColor4f(
+    static_cast<float>(red) / 255.0f,
+    static_cast<float>(green) / 255.0f,
+    static_cast<float>(blue) / 255.0f,
+    static_cast<float>(alpha) / 255.0f
+  );
+}
+
+void DrawOpenGlRect(int x, int y, int width, int height)
+{
+  glBegin(GL_QUADS);
+  glVertex2i(x, y);
+  glVertex2i(x + width, y);
+  glVertex2i(x + width, y + height);
+  glVertex2i(x, y + height);
+  glEnd();
+}
+
+void DrawOpenGlText(LinuxWindowOverlay* overlay, int x, int y, const std::string& text)
+{
+  if (!overlay->fontDisplayListsReady || text.empty())
+  {
+    return;
+  }
+
+  glRasterPos2i(x, y);
+  glListBase(overlay->fontDisplayListBase);
+  glCallLists(static_cast<GLsizei>(text.size()), GL_UNSIGNED_BYTE, text.c_str());
+}
+
+bool DrawWindowOverlayOpenGl(
+  LinuxWindowOverlay* overlay,
+  const LinuxClientEnvironment& environment,
+  const LinuxClientLaunchSettings& settings,
+  const LinuxLaunchPreview& launchPreview,
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxConfigBootstrapPreview& configPreview,
+  const LinuxContentProbe& contentProbe,
+  const LinuxLoadingScreenPreview& loadingPreview,
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
+  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
+  const LinuxLoadingUiState& loadingUiState,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxArtworkSelectionState& artworkState,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxSelectedHeroDbPreview& selectedHeroPreview,
+  const LinuxEngineMapStartPreview& engineMapStartPreview,
+  const LinuxRootFileSystemPreview& rootFileSystemPreview,
+  const LinuxUiRootPreview& uiRootPreview,
+  const LinuxSessionRootPreview& sessionRootPreview,
+  const LinuxSoundRootPreview& soundRootPreview,
+  const LinuxResourceCatalogPreview& resourceCatalogPreview,
+  const LinuxInputState& inputState,
+  double elapsedSeconds,
+  int width,
+  int height
+)
+{
+  if (!overlay->openglReady || !NMainFrame::MakeOpenGLContextCurrent())
+  {
+    return false;
+  }
+
+  const std::vector<std::string> lines = BuildOverlayLines(
+    environment,
+    settings,
+    launchPreview,
+    sessionPreview,
+    configPreview,
+    contentProbe,
+    loadingPreview,
+    loadingUiPreview,
+    loadingRuntimeDriver,
+    loadingHeroesRuntimePreview,
+    loadingUiState,
+    mapCatalog,
+    mapBrowserState,
+    selectedMapPreview,
+    artworkState,
+    heroCatalog,
+    localMatchPreview,
+    selectedHeroPreview,
+    engineMapStartPreview,
+    rootFileSystemPreview,
+    uiRootPreview,
+    sessionRootPreview,
+    soundRootPreview,
+    resourceCatalogPreview,
+    inputState,
+    elapsedSeconds
+  );
+
+  const int headerHeight = 56;
+  int panelTop = headerHeight + 24;
+
+  glViewport(0, 0, width, height);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_SCISSOR_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0, static_cast<double>(width), static_cast<double>(height), 0.0, -1.0, 1.0);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  glClearColor(17.0f / 255.0f, 22.0f / 255.0f, 28.0f / 255.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT);
+
+  SetOpenGlColor(27, 38, 49);
+  DrawOpenGlRect(0, 0, width, headerHeight);
+
+  std::string header = "Prime World Classic - native Linux OpenGL bootstrap";
+  if (launchPreview.protocolValid)
+  {
+    header += " - ";
+    header += launchPreview.method;
+  }
+  if (!mapCatalog.entries.empty() && mapBrowserState.selectedIndex < mapCatalog.entries.size())
+  {
+    header += " - ";
+    header += mapCatalog.entries[mapBrowserState.selectedIndex].title;
+  }
+
+  if (overlay->artworkTexture && overlay->artworkWidth > 0 && overlay->artworkHeight > 0)
+  {
+    const int artworkX = width > static_cast<int>(overlay->artworkWidth) ?
+      (width - static_cast<int>(overlay->artworkWidth)) / 2 : 16;
+    const int artworkY = headerHeight + 20;
+
+    SetOpenGlColor(95, 115, 134);
+    DrawOpenGlRect(
+      artworkX - 4,
+      artworkY - 4,
+      static_cast<int>(overlay->artworkWidth) + 8,
+      static_cast<int>(overlay->artworkHeight) + 8
+    );
+
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, overlay->artworkTexture);
+    SetOpenGlColor(255, 255, 255);
+    glBegin(GL_QUADS);
+    glTexCoord2f(0.0f, 0.0f); glVertex2i(artworkX, artworkY);
+    glTexCoord2f(1.0f, 0.0f); glVertex2i(artworkX + static_cast<int>(overlay->artworkWidth), artworkY);
+    glTexCoord2f(1.0f, 1.0f); glVertex2i(
+      artworkX + static_cast<int>(overlay->artworkWidth),
+      artworkY + static_cast<int>(overlay->artworkHeight));
+    glTexCoord2f(0.0f, 1.0f); glVertex2i(artworkX, artworkY + static_cast<int>(overlay->artworkHeight));
+    glEnd();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+
+    panelTop = artworkY + static_cast<int>(overlay->artworkHeight) + 24;
+  }
+
+  const int panelLeft = 16;
+  const int panelWidth = width > 32 ? width - 32 : width;
+  int panelHeight = height - panelTop - 16;
+  if (panelHeight < 120)
+  {
+    panelTop = headerHeight + 20;
+    panelHeight = height - panelTop - 16;
+  }
+
+  if (panelWidth > 0 && panelHeight > 0)
+  {
+    SetOpenGlColor(32, 42, 53, 240);
+    DrawOpenGlRect(panelLeft, panelTop, panelWidth, panelHeight);
+
+    SetOpenGlColor(95, 115, 134);
+    glBegin(GL_LINE_LOOP);
+    glVertex2i(panelLeft, panelTop);
+    glVertex2i(panelLeft + panelWidth - 1, panelTop);
+    glVertex2i(panelLeft + panelWidth - 1, panelTop + panelHeight - 1);
+    glVertex2i(panelLeft, panelTop + panelHeight - 1);
+    glEnd();
+  }
+
+  std::vector<std::string> visibleLines = lines;
+  const int lineHeight = 18;
+  const int maxLines = panelHeight > 28 ? (panelHeight - 28) / lineHeight : 0;
+  if (maxLines > 0 && static_cast<int>(visibleLines.size()) > maxLines)
+  {
+    const size_t hiddenLines = visibleLines.size() - static_cast<size_t>(maxLines) + 1;
+    visibleLines.resize(static_cast<size_t>(maxLines));
+    visibleLines[maxLines - 1] = NStr::StrFmt(
+      "... %lu more lines in linux-client-shell.log",
+      static_cast<unsigned long>(hiddenLines)
+    );
+  }
+
+  SetOpenGlColor(244, 239, 230);
+  DrawOpenGlText(overlay, 20, 34, header);
+
+  int y = panelTop + 26;
+  for (size_t i = 0; i < visibleLines.size(); ++i)
+  {
+    if (i < 2)
+    {
+      SetOpenGlColor(244, 239, 230);
+    }
+    else
+    {
+      SetOpenGlColor(199, 208, 216);
+    }
+    DrawOpenGlText(overlay, panelLeft + 14, y, visibleLines[i]);
+    y += lineHeight;
+  }
+
+  NMainFrame::SwapOpenGLBuffers();
+  return true;
+}
+
 void DrawWindowOverlay(
   LinuxWindowOverlay* overlay,
   const LinuxClientEnvironment& environment,
@@ -11832,6 +12583,40 @@ void DrawWindowOverlay(
   );
   const int width = attributes.width > 0 ? attributes.width : static_cast<int>(settings.width);
   const int height = attributes.height > 0 ? attributes.height : static_cast<int>(settings.height);
+  if (DrawWindowOverlayOpenGl(
+        overlay,
+        environment,
+        settings,
+        launchPreview,
+        sessionPreview,
+        configPreview,
+        contentProbe,
+        loadingPreview,
+        loadingUiPreview,
+        loadingRuntimeDriver,
+        loadingHeroesRuntimePreview,
+        loadingUiState,
+        mapCatalog,
+        mapBrowserState,
+        selectedMapPreview,
+        artworkState,
+        heroCatalog,
+        localMatchPreview,
+        selectedHeroPreview,
+        engineMapStartPreview,
+        rootFileSystemPreview,
+        uiRootPreview,
+        sessionRootPreview,
+        soundRootPreview,
+        resourceCatalogPreview,
+        inputState,
+        elapsedSeconds,
+        width,
+        height))
+  {
+    return;
+  }
+
   const int headerHeight = 56;
   int panelTop = headerHeight + 24;
 
@@ -11948,6 +12733,7 @@ void DrawWindowOverlay(
 void WriteStartupLog(
   const LinuxClientEnvironment& environment,
   const LinuxClientLaunchSettings& settings,
+  const LinuxWindowOverlay& overlay,
   const LinuxLaunchPreview& launchPreview,
   const LinuxSessionPreview& sessionPreview,
   const LinuxConfigBootstrapPreview& configPreview,
@@ -11997,6 +12783,7 @@ void WriteStartupLog(
   logFile << "  user=" << (environment.userDir.empty() ? "<not initialized>" : environment.userDir.string()) << "\n";
   logFile << "  logs=" << logsDir.string() << "\n";
   logFile << "  cwd=" << (resolvedCurrentDir.empty() ? "<unknown>" : resolvedCurrentDir.string()) << "\n";
+  logFile << "  overlayBackend=" << (overlay.openglReady ? "OpenGL" : "X11") << "\n";
   logFile << "  size=" << settings.width << "x" << settings.height << "\n";
   logFile << "  sizeFromParent=" << ((settings.widthFromParent || settings.heightFromParent) ? "yes" : "no") << "\n";
   logFile << "  spectator=" << (settings.spectator ? "yes" : "no") << "\n";
@@ -12116,6 +12903,11 @@ void WriteStartupLog(
   logFile << "  loadingHeroesRuntimeHumanCount=" << loadingHeroesRuntimePreview.humanCount << "\n";
   logFile << "  loadingHeroesRuntimeBotCount=" << loadingHeroesRuntimePreview.botCount << "\n";
   logFile << "  loadingHeroesRuntimeDisconnectedCount=" << loadingHeroesRuntimePreview.disconnectedCount << "\n";
+  logFile << "  loadingHeroesRuntimePremiumCount=" << loadingHeroesRuntimePreview.premiumCount << "\n";
+  logFile << "  loadingHeroesRuntimeNoviceCount=" << loadingHeroesRuntimePreview.noviceCount << "\n";
+  logFile << "  loadingHeroesRuntimeLocaleCount=" << loadingHeroesRuntimePreview.localeCount << "\n";
+  logFile << "  loadingHeroesRuntimeFlaggedCount=" << loadingHeroesRuntimePreview.flaggedCount << "\n";
+  logFile << "  loadingHeroesRuntimeRatedCount=" << loadingHeroesRuntimePreview.ratedCount << "\n";
   logFile << "  loadingHeroesRuntimeOurHeroId=" << loadingHeroesRuntimePreview.ourHeroId << "\n";
   logFile << "  loadingUiStateSource=" << loadingUiState.source << "\n";
   logFile << "  loadingUiStateChanges=" << loadingUiState.changeCount << "\n";
@@ -12145,13 +12937,29 @@ void WriteStartupLog(
   {
     logFile << "  loadingHeroesRuntimeSample[" << i << "]=" << loadingHeroesRuntimePreview.samples[i] << "\n";
   }
+  for (size_t i = 0; i < loadingHeroesRuntimePreview.metaSamples.size(); ++i)
+  {
+    logFile << "  loadingHeroesRuntimeMetaSample[" << i << "]=" << loadingHeroesRuntimePreview.metaSamples[i] << "\n";
+  }
   for (size_t i = 0; i < loadingHeroesRuntimePreview.heroes.size(); ++i)
   {
     logFile << "  loadingHeroesRuntimeHero[" << i << "].slotId=" << loadingHeroesRuntimePreview.heroes[i].slotId << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].team=" << loadingHeroesRuntimePreview.heroes[i].team << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].human=" << (loadingHeroesRuntimePreview.heroes[i].human ? "yes" : "no") << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].leftGame=" << (loadingHeroesRuntimePreview.heroes[i].leftGame ? "yes" : "no") << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].hasPremium=" << (loadingHeroesRuntimePreview.heroes[i].hasPremium ? "yes" : "no") << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].isNovice=" << (loadingHeroesRuntimePreview.heroes[i].isNovice ? "yes" : "no") << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].progress=" << loadingHeroesRuntimePreview.heroes[i].progress << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].heroLevel=" << loadingHeroesRuntimePreview.heroes[i].heroLevel << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].rating=" << loadingHeroesRuntimePreview.heroes[i].rating << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].ratingAcc=" << loadingHeroesRuntimePreview.heroes[i].ratingAcc << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].partyId=" << loadingHeroesRuntimePreview.heroes[i].partyId << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].locale="
+            << (loadingHeroesRuntimePreview.heroes[i].locale.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].locale) << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].flagId="
+            << (loadingHeroesRuntimePreview.heroes[i].flagId.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].flagId) << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].flagIcon="
+            << (loadingHeroesRuntimePreview.heroes[i].flagIcon.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].flagIcon) << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].playerName="
             << (loadingHeroesRuntimePreview.heroes[i].playerName.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].playerName) << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].heroTitle="
@@ -12424,6 +13232,18 @@ void WriteStartupLog(
             << (engineMapStartPreview.slots[i].heroSkin.empty() ? "<none>" : engineMapStartPreview.slots[i].heroSkin) << "\n";
     logFile << "  engineStartSlot[" << i << "].nickname="
             << (engineMapStartPreview.slots[i].nickname.empty() ? "<none>" : engineMapStartPreview.slots[i].nickname) << "\n";
+    logFile << "  engineStartSlot[" << i << "].heroLevel=" << engineMapStartPreview.slots[i].heroLevel << "\n";
+    logFile << "  engineStartSlot[" << i << "].heroExp=" << engineMapStartPreview.slots[i].heroExp << "\n";
+    logFile << "  engineStartSlot[" << i << "].heroRating=" << engineMapStartPreview.slots[i].heroRating << "\n";
+    logFile << "  engineStartSlot[" << i << "].premium=" << (engineMapStartPreview.slots[i].hasPremium ? "yes" : "no") << "\n";
+    logFile << "  engineStartSlot[" << i << "].novice=" << (engineMapStartPreview.slots[i].isNovice ? "yes" : "no") << "\n";
+    logFile << "  engineStartSlot[" << i << "].partyId=" << engineMapStartPreview.slots[i].partyId << "\n";
+    logFile << "  engineStartSlot[" << i << "].locale="
+            << (engineMapStartPreview.slots[i].locale.empty() ? "<none>" : engineMapStartPreview.slots[i].locale) << "\n";
+    logFile << "  engineStartSlot[" << i << "].flagId="
+            << (engineMapStartPreview.slots[i].flagId.empty() ? "<none>" : engineMapStartPreview.slots[i].flagId) << "\n";
+    logFile << "  engineStartSlot[" << i << "].leagueIndex=" << engineMapStartPreview.slots[i].leagueIndex << "\n";
+    logFile << "  engineStartSlot[" << i << "].ownLeaguePlace=" << engineMapStartPreview.slots[i].ownLeaguePlace << "\n";
     logFile << "  engineStartSlot[" << i << "].scriptName=" << (engineMapStartPreview.slots[i].scriptName.empty() ? "<none>" : engineMapStartPreview.slots[i].scriptName) << "\n";
     logFile << "  engineStartSlot[" << i << "].position="
             << engineMapStartPreview.slots[i].translateX << ","
@@ -13087,6 +13907,7 @@ int main(int argc, char** argv)
     mapCatalog,
     mapBrowserState,
     localMatchPreview,
+    contentProbe.locale,
     &engineMapStartPreview
   );
   LinuxLoadingHeroesRuntimePreview loadingHeroesRuntimePreview;
@@ -13139,12 +13960,13 @@ int main(int argc, char** argv)
   const bool artworkUploaded = displayArtworkReady && UploadArtworkPixmap(&overlay, displayArtwork);
   if (displayArtworkReady && !artworkUploaded)
   {
-    loadingPreview.warnings.push_back("X11 artwork upload failed");
+    loadingPreview.warnings.push_back("Linux artwork upload failed");
   }
 
   WriteStartupLog(
     environment,
     settings,
+    overlay,
     launchPreview,
     sessionPreview,
     configPreview,
@@ -13270,6 +14092,10 @@ int main(int argc, char** argv)
   {
     fprintf(stdout, "Loading hero samples: %s\n", JoinPreviewSamples(loadingHeroesRuntimePreview.samples).c_str());
   }
+  if (!loadingHeroesRuntimePreview.metaSamples.empty())
+  {
+    fprintf(stdout, "Loading hero metadata: %s\n", JoinPreviewSamples(loadingHeroesRuntimePreview.metaSamples).c_str());
+  }
   if (!loadingUiPreview.localeSamples.empty())
   {
     fprintf(stdout, "Loading locale samples: %s\n", JoinPreviewSamples(loadingUiPreview.localeSamples).c_str());
@@ -13309,11 +14135,14 @@ int main(int argc, char** argv)
   }
   if (loadingHeroesRuntimePreview.ready)
   {
-    fprintf(stdout, "Loading runtime heroes: %lu total, %lu humans, %lu bots, %lu disconnected\n",
+    fprintf(stdout, "Loading runtime heroes: %lu total, %lu humans, %lu bots, %lu disconnected, %lu premium, %lu locales, %lu flagged\n",
       static_cast<unsigned long>(loadingHeroesRuntimePreview.heroes.size()),
       static_cast<unsigned long>(loadingHeroesRuntimePreview.humanCount),
       static_cast<unsigned long>(loadingHeroesRuntimePreview.botCount),
-      static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount));
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.disconnectedCount),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.premiumCount),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.localeCount),
+      static_cast<unsigned long>(loadingHeroesRuntimePreview.flaggedCount));
   }
   if (!loadingUiPreview.tips.empty() && loadingUiState.tipIndex < loadingUiPreview.tips.size())
   {
@@ -13357,6 +14186,7 @@ int main(int argc, char** argv)
     fprintf(stdout, "Loading DB warning: %s\n", loadingUiPreview.warnings[i].c_str());
   }
   fprintf(stdout, "Displayed artwork source: %s\n", displayArtworkSource.c_str());
+  fprintf(stdout, "Overlay backend: %s\n", overlay.openglReady ? "OpenGL" : "X11");
   fprintf(stdout, "Loading artwork uploaded: %s\n", artworkUploaded ? "yes" : "no");
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
@@ -13654,6 +14484,7 @@ int main(int argc, char** argv)
         mapCatalog,
         mapBrowserState,
         localMatchPreview,
+        contentProbe.locale,
         &engineMapStartPreview
       );
       ProbeLoadingHeroesRuntimePreview(

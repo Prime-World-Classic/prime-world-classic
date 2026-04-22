@@ -466,6 +466,8 @@ target_include_directories(
 )
 
 find_package(X11 REQUIRED)
+set(OpenGL_GL_PREFERENCE LEGACY)
+find_package(OpenGL REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -473,12 +475,14 @@ target_link_libraries(
   PrimeWorldLinuxBootstrap
   PRIVATE
     X11::X11
+    OpenGL::GL
 )
 
 target_link_libraries(
   PrimeWorldLinuxClient
   PRIVATE
     X11::X11
+    OpenGL::GL
     ZLIB::ZLIB
     ${PNG_LIBRARIES}
 )
@@ -487,6 +491,12 @@ target_include_directories(
   PrimeWorldLinuxClient
   PRIVATE
     ${PNG_INCLUDE_DIRS}
+)
+
+target_compile_definitions(
+  PrimeWorldLinuxClient
+  PRIVATE
+    PW_LINUX_OPENGL_BOOTSTRAP
 )
 
 set_source_files_properties(

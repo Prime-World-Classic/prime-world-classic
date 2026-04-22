@@ -118,10 +118,26 @@ void LoadingFlashInterface::SetHeroForce( int heroId, int force )
 
 void LoadingFlashInterface::SetHeroRaiting( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
 {
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (state)
+  {
+    state->rating = raiting;
+    state->isNovice = isNovice;
+    state->rankIcon = rankIcon ? rankIcon : "";
+    state->rankName = rankName;
+  }
 }
 
 void LoadingFlashInterface::SetHeroRaitingAcc( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
 {
+  LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
+  if (state)
+  {
+    state->ratingAcc = raiting;
+    state->isNovice = isNovice;
+    state->rankAccIcon = rankIcon ? rankIcon : "";
+    state->rankAccName = rankName;
+  }
 }
 
 void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EFaction originalFraction )

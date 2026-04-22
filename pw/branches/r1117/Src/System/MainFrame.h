@@ -84,6 +84,14 @@ void SetActualClipCursorRect();
 
 void SetCloseHandler( ICloseApplicationHandler* handler );
 
+#if defined(NV_LINUX_PLATFORM)
+void* GetNativeDisplay();
+bool InitOpenGLContext();
+void ShutdownOpenGLContext();
+bool MakeOpenGLContextCurrent();
+void SwapOpenGLBuffers();
+#endif
+
 } //namespace NMainFrame
 
 void SetStepCallback( void (*_stepFunc)() );

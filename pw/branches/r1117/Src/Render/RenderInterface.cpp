@@ -1,6 +1,11 @@
 #include "stdafx.h"
 #include "RenderInterface.h"
 
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include "../System/MainFrame.h"
+#include <GL/gl.h>
+#endif
+
 #if !defined(PW_LINUX_NULL_RENDER)
 #include "../System/MainFrame.h"
 
@@ -31,7 +36,12 @@ Interface::Interface(HWND hwnd)
 	: pScene(0)
   , disableWarFog(false)
 {
-#if defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  (void)hwnd;
+  clearColor = Color();
+  NMainFrame::InitOpenGLContext();
+  s_pSelf = this;
+#elif defined(PW_LINUX_NULL_RENDER)
   (void)hwnd;
   clearColor = Color();
   s_pSelf = this;
@@ -68,7 +78,13 @@ Interface *Interface::Create(HWND hwnd)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Interface::Start( RenderMode& renderMode )
 {
-#if defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if ( !NMainFrame::MakeOpenGLContextCurrent() )
+    return false;
+
+  glViewport( 0, 0, renderMode.width, renderMode.height );
+  return true;
+#elif defined(PW_LINUX_NULL_RENDER)
   (void)renderMode;
   return true;
 #else
@@ -103,7 +119,13 @@ void Interface::Stop()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Clear()
 {
-#if !defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if ( NMainFrame::MakeOpenGLContextCurrent() )
+  {
+    glClearColor( clearColor.R / 255.0f, clearColor.G / 255.0f, clearColor.B / 255.0f, clearColor.A / 255.0f );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+  }
+#elif !defined(PW_LINUX_NULL_RENDER)
 	Render::GetRenderer()->Clear( clearColor );
 #endif
 }
@@ -111,7 +133,15 @@ void Interface::Clear()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Clear( Color color )
 {
-#if defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  clearColor = color;
+
+  if ( NMainFrame::MakeOpenGLContextCurrent() )
+  {
+    glClearColor( clearColor.R / 255.0f, clearColor.G / 255.0f, clearColor.B / 255.0f, clearColor.A / 255.0f );
+    glClear( GL_COLOR_BUFFER_BIT );
+  }
+#elif defined(PW_LINUX_NULL_RENDER)
   clearColor = color;
 #else
 	Render::GetRenderer()->Clear( color );
@@ -121,7 +151,9 @@ void Interface::Clear( Color color )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present()
 {
-#if !defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  NMainFrame::SwapOpenGLBuffers();
+#elif !defined(PW_LINUX_NULL_RENDER)
 	Render::GetRenderer()->Present();
 #endif
 }
@@ -129,7 +161,12 @@ void Interface::Present()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present( HWND hWnd, const Render::Rect& sourceRect, const Render::Rect& destRect )
 {
-#if defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  (void)hWnd;
+  (void)sourceRect;
+  (void)destRect;
+  NMainFrame::SwapOpenGLBuffers();
+#elif defined(PW_LINUX_NULL_RENDER)
   (void)hWnd;
   (void)sourceRect;
   (void)destRect;
@@ -141,7 +178,12 @@ void Interface::Present( HWND hWnd, const Render::Rect& sourceRect, const Render
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present( HWND hWnd, const Render::Rect * sourceRect, const Render::Rect* destRect )
 {
-#if defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  (void)hWnd;
+  (void)sourceRect;
+  (void)destRect;
+  NMainFrame::SwapOpenGLBuffers();
+#elif defined(PW_LINUX_NULL_RENDER)
   (void)hWnd;
   (void)sourceRect;
   (void)destRect;
