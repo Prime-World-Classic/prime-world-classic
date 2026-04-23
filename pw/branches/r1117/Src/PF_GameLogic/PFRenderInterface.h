@@ -1,5 +1,77 @@
 #pragma once
 
+#if defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_OPENGL_BOOTSTRAP)
+
+#include "../Render/RenderInterface.h"
+#include "../Render/DeviceLost.h"
+#include "../System/Basic.h"
+#include "../System/Geom.h"
+
+namespace NDb
+{
+  struct PostFXParams;
+}
+
+namespace Render
+{
+  class BatchQueue;
+  class Texture2D;
+  typedef CObj<Texture2D> Texture2DRef;
+}
+
+namespace PF_Render
+{
+class Interface : public Render::Interface, public Render::DeviceLostHandler
+{
+public:
+  typedef void (*LinuxUiRenderCallback)(void* userData, unsigned int width, unsigned int height);
+
+protected:
+  Interface(HWND hwnd = 0);
+
+  ~Interface();
+  virtual bool Start(Render::RenderMode& renderMode);
+  static void CorrectRendermode(Render::RenderMode& renderMode);
+
+  virtual void Stop();
+  virtual void Render(bool bEditorSpecific);
+  virtual void Render(bool bEditorSpecific, int x, int y, int width, int height);
+  virtual void RenderUI(bool bEditorSpecific);
+  virtual void FlushUI();
+  virtual void ConstrainRender(const RECT& rect) { renderArea = rect; }
+
+  virtual void OnDeviceLost() {}
+  virtual void OnDeviceReset();
+  virtual bool SetShadows(bool val);
+  virtual void Render2SHTexture(const SHMatrix& view, const SHMatrix& proj, const Render::BatchQueue& queue);
+
+  Render::Texture2DRef GetDepthTexture() { return Render::Texture2DRef(); }
+  virtual Render::IDebugRender* GetDebugRender() { return 0; }
+  CVec4 GetVisibleNature() const { return VNULL4; }
+
+  static Interface* Get() { return static_cast<Interface*>(Render::Interface::Get()); }
+
+  void SetColorSaturation(float val);
+  void SetCustomSaturationColor(const CVec4& color, bool useColor);
+  void SetPostFXParams(const NDb::PostFXParams* params);
+  void SetLinuxUiRenderCallback(LinuxUiRenderCallback callback, void* userData);
+
+private:
+  float colorSaturation;
+  CVec4 customSaturationColor;
+  bool useSaturationColor;
+  LinuxUiRenderCallback uiRenderCallback;
+  void* uiRenderUserData;
+  unsigned int surfaceWidth;
+  unsigned int surfaceHeight;
+  unsigned int width3D;
+  unsigned int height3D;
+  RECT renderArea;
+};
+} // namespace PF_Render
+
+#else
+
 #include "../Scene/RenderableScene.h"
 #include "../Scene/SHGrid.h"
 #include "../Render/RenderInterface.h"
@@ -152,3 +224,5 @@ private:
   bool doRTSwap;
 }; // class Interface
 }; // namespace PF_Render
+
+#endif

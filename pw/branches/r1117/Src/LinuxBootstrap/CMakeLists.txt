@@ -58,6 +58,9 @@ add_executable(
   ../PW_Client/LoadingFlashInterface.cpp
   ../PW_Client/LoadingHeroes.cpp
   ../PW_Client/LoadingStatusHandler.cpp
+  ../PF_GameLogic/PFRenderInterface.cpp
+  ../Render/RenderInterface.cpp
+  ../Render/rendermode.cpp
   pfadvmap_bootstrap.cpp
   ../Game/PF/Server/LobbyPvx/CommonTypes.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
@@ -189,6 +192,7 @@ add_library(
   ../Client/DefaultScreenBase.cpp
   ../Client/ScreenCommands.cpp
   ../Client/MainLoop.cpp
+  ../PF_GameLogic/PFRenderInterface.cpp
   ../PW_Client/CpuTopology.cpp
   ../PW_Client/DebugVarsSender.cpp
   ../PW_Client/GameContext.cpp
@@ -496,6 +500,7 @@ target_include_directories(
 target_compile_definitions(
   PrimeWorldLinuxClient
   PRIVATE
+    PW_LINUX_NULL_RENDER
     PW_LINUX_OPENGL_BOOTSTRAP
 )
 
@@ -578,6 +583,7 @@ set_source_files_properties(
 )
 
 set_source_files_properties(
+  ../PF_GameLogic/PFRenderInterface.cpp
   ../Client/DefaultScreenBase.cpp
   ../Client/ScreenCommands.cpp
   ../Client/MainLoop.cpp

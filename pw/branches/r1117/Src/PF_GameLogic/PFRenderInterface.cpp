@@ -1,5 +1,268 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "PFRenderInterface.h"
+
+#include "Render/DeviceLost.h"
+#include "System/MainFrame.h"
+
+#include <GL/gl.h>
+
+namespace
+{
+RECT MakeBootstrapRenderArea(unsigned int width, unsigned int height)
+{
+  RECT rect = {};
+  rect.left = 0;
+  rect.top = 0;
+  rect.right = static_cast<LONG>(width);
+  rect.bottom = static_cast<LONG>(height);
+  return rect;
+}
+
+LONG ClampRenderCoord(LONG value, LONG minimum, LONG maximum)
+{
+  if (value < minimum)
+    return minimum;
+
+  if (value > maximum)
+    return maximum;
+
+  return value;
+}
+
+RECT ResolveBootstrapRenderArea(const RECT& area, unsigned int width, unsigned int height)
+{
+  RECT resolved = area;
+  const LONG maxWidth = static_cast<LONG>(width);
+  const LONG maxHeight = static_cast<LONG>(height);
+
+  resolved.left = ClampRenderCoord(resolved.left, 0, maxWidth);
+  resolved.top = ClampRenderCoord(resolved.top, 0, maxHeight);
+  resolved.right = ClampRenderCoord(resolved.right, 0, maxWidth);
+  resolved.bottom = ClampRenderCoord(resolved.bottom, 0, maxHeight);
+
+  if (resolved.right <= resolved.left || resolved.bottom <= resolved.top)
+    return MakeBootstrapRenderArea(width, height);
+
+  return resolved;
+}
+
+void ApplyBootstrapViewport(const RECT& area, unsigned int height)
+{
+  const int viewportWidth = area.right - area.left;
+  const int viewportHeight = area.bottom - area.top;
+  const int viewportBottom = static_cast<int>(height) - area.bottom;
+
+  glViewport(area.left, viewportBottom, viewportWidth, viewportHeight);
+  glEnable(GL_SCISSOR_TEST);
+  glScissor(area.left, viewportBottom, viewportWidth, viewportHeight);
+}
+
+Render::Color ResolveBootstrapClearColor(
+  const Render::Color& source,
+  float saturation,
+  const CVec4& customColor,
+  bool useCustomColor
+)
+{
+  const float clampedSaturation = saturation < 0.0f ? 0.0f : (saturation > 1.0f ? 1.0f : saturation);
+  const float baseR = source.R / 255.0f;
+  const float baseG = source.G / 255.0f;
+  const float baseB = source.B / 255.0f;
+  const float gray = 0.299f * baseR + 0.587f * baseG + 0.114f * baseB;
+
+  float resultR = gray + (baseR - gray) * clampedSaturation;
+  float resultG = gray + (baseG - gray) * clampedSaturation;
+  float resultB = gray + (baseB - gray) * clampedSaturation;
+  float resultA = source.A / 255.0f;
+
+  if (useCustomColor)
+  {
+    resultR *= customColor.x;
+    resultG *= customColor.y;
+    resultB *= customColor.z;
+    resultA *= customColor.w;
+  }
+
+  resultR = resultR < 0.0f ? 0.0f : (resultR > 1.0f ? 1.0f : resultR);
+  resultG = resultG < 0.0f ? 0.0f : (resultG > 1.0f ? 1.0f : resultG);
+  resultB = resultB < 0.0f ? 0.0f : (resultB > 1.0f ? 1.0f : resultB);
+  resultA = resultA < 0.0f ? 0.0f : (resultA > 1.0f ? 1.0f : resultA);
+
+  return Render::Color(
+    static_cast<Render::Color::TValue>(resultR * 255.0f),
+    static_cast<Render::Color::TValue>(resultG * 255.0f),
+    static_cast<Render::Color::TValue>(resultB * 255.0f),
+    static_cast<Render::Color::TValue>(resultA * 255.0f));
+}
+
+struct SRegister_InterfaceFactorySetter
+{
+  static Render::Interface* CreateRenderInterface(HWND hwnd)
+  {
+    return new Render::DeviceLostWrapper<PF_Render::Interface>(hwnd);
+  }
+
+  SRegister_InterfaceFactorySetter()
+  {
+    Render::Interface::RegisterFactory(&CreateRenderInterface);
+  }
+} interfaceFactorySetter;
+}
+
+namespace PF_Render
+{
+
+Interface::Interface(HWND hwnd)
+  : Render::Interface(hwnd)
+  , Render::DeviceLostHandler(Render::DeviceLostHandler::HANDLERPRIORITY_NORMAL)
+  , colorSaturation(1.0f)
+  , customSaturationColor(1.0f, 1.0f, 1.0f, 1.0f)
+  , useSaturationColor(false)
+  , uiRenderCallback(0)
+  , uiRenderUserData(0)
+  , surfaceWidth(0)
+  , surfaceHeight(0)
+  , width3D(0)
+  , height3D(0)
+{
+  clearColor = Render::Color(17, 22, 28);
+  renderArea = MakeBootstrapRenderArea(0, 0);
+}
+
+Interface::~Interface()
+{
+}
+
+bool Interface::Start(Render::RenderMode& renderMode)
+{
+  CorrectRendermode(renderMode);
+  surfaceWidth = renderMode.width;
+  surfaceHeight = renderMode.height;
+  width3D = renderMode.width3D;
+  height3D = renderMode.height3D;
+  renderArea = MakeBootstrapRenderArea(surfaceWidth, surfaceHeight);
+  return Render::Interface::Start(renderMode);
+}
+
+void Interface::CorrectRendermode(Render::RenderMode& renderMode)
+{
+  if (renderMode.width3D == 0)
+    renderMode.width3D = renderMode.width;
+
+  if (renderMode.height3D == 0)
+    renderMode.height3D = renderMode.height;
+}
+
+void Interface::Stop()
+{
+  surfaceWidth = 0;
+  surfaceHeight = 0;
+  width3D = 0;
+  height3D = 0;
+  uiRenderCallback = 0;
+  uiRenderUserData = 0;
+  renderArea = MakeBootstrapRenderArea(0, 0);
+  Render::Interface::Stop();
+}
+
+void Interface::Render(bool bEditorSpecific)
+{
+  (void)bEditorSpecific;
+
+  if (!surfaceWidth || !surfaceHeight || !NMainFrame::MakeOpenGLContextCurrent())
+    return;
+
+  const RECT viewport = ResolveBootstrapRenderArea(renderArea, surfaceWidth, surfaceHeight);
+  ApplyBootstrapViewport(viewport, surfaceHeight);
+  Render::Interface::Clear(ResolveBootstrapClearColor(
+    clearColor,
+    colorSaturation,
+    customSaturationColor,
+    useSaturationColor));
+  glDisable(GL_SCISSOR_TEST);
+  RenderUI(bEditorSpecific);
+}
+
+void Interface::Render(bool bEditorSpecific, int x, int y, int width, int height)
+{
+  (void)bEditorSpecific;
+  renderArea.left = x;
+  renderArea.top = y;
+  renderArea.right = x + width;
+  renderArea.bottom = y + height;
+  Render(false);
+}
+
+void Interface::RenderUI(bool bEditorSpecific)
+{
+  (void)bEditorSpecific;
+
+  if (uiRenderCallback)
+    uiRenderCallback(uiRenderUserData, surfaceWidth, surfaceHeight);
+}
+
+void Interface::FlushUI()
+{
+}
+
+void Interface::OnDeviceReset()
+{
+  if (!surfaceWidth || !surfaceHeight || !NMainFrame::MakeOpenGLContextCurrent())
+    return;
+
+  const RECT viewport = ResolveBootstrapRenderArea(renderArea, surfaceWidth, surfaceHeight);
+  ApplyBootstrapViewport(viewport, surfaceHeight);
+  glDisable(GL_SCISSOR_TEST);
+}
+
+bool Interface::SetShadows(bool val)
+{
+  return val;
+}
+
+void Interface::SetColorSaturation(float val)
+{
+  if (val < 0.0f)
+    val = 0.0f;
+
+  if (val > 1.0f)
+    val = 1.0f;
+
+  colorSaturation = val;
+}
+
+void Interface::SetCustomSaturationColor(const CVec4& color, bool useColor)
+{
+  customSaturationColor = color;
+  useSaturationColor = useColor;
+}
+
+void Interface::Render2SHTexture(const SHMatrix& view, const SHMatrix& proj, const Render::BatchQueue& queue)
+{
+  (void)view;
+  (void)proj;
+  (void)queue;
+}
+
+void Interface::SetPostFXParams(const NDb::PostFXParams* params)
+{
+  (void)params;
+}
+
+void Interface::SetLinuxUiRenderCallback(LinuxUiRenderCallback callback, void* userData)
+{
+  uiRenderCallback = callback;
+  uiRenderUserData = userData;
+}
+
+} // namespace PF_Render
+
+#else
+
+
 #include "System/2Darray.h"
 #include "System/meminfo.h"
 #include "System/fixedstring.h"
@@ -2033,3 +2296,5 @@ static bool WarfogDisable( const char *name, const vector<wstring> &args )
 
 REGISTER_DEV_CMD( warfogDisable, WarfogDisable);
 
+
+#endif

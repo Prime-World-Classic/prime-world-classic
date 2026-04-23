@@ -34,6 +34,7 @@
 #include "PF_GameLogic/DBVisualRoots.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#include "PF_GameLogic/PFRenderInterface.h"
 #include "PF_GameLogic/WebLauncher.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
 #include "LoadingFlashInterface.h"
@@ -162,6 +163,19 @@ struct LinuxWindowOverlay
       openglReady(false),
       fontDisplayListsReady(false),
       ready(false)
+  {
+  }
+};
+
+struct LinuxRenderBootstrap
+{
+  Render::DeviceLostWrapper<PF_Render::Interface>* renderingInterface;
+  Render::RenderMode renderMode;
+  bool started;
+
+  LinuxRenderBootstrap()
+    : renderingInterface(nullptr),
+      started(false)
   {
   }
 };
@@ -10085,6 +10099,89 @@ unsigned long ResolveColor(Display* display, int screen, const char* name, unsig
   return fallback;
 }
 
+void ConfigureLinuxRenderMode(Render::RenderMode* renderMode, unsigned int width, unsigned int height)
+{
+  Render::GetRenderModeFromConfig(*renderMode);
+  renderMode->isFullScreen = false;
+  renderMode->isBorderless = false;
+  renderMode->width = width;
+  renderMode->height = height;
+  renderMode->width3D = width;
+  renderMode->height3D = height;
+  renderMode->windowedWidth = width;
+  renderMode->windowedHeight = height;
+  renderMode->fullscreenWidth = width;
+  renderMode->fullscreenHeight = height;
+  renderMode->refreshRate = 0;
+  renderMode->vsyncCount = 0;
+  PF_Render::Interface::CorrectRendermode(*renderMode);
+}
+
+bool StartLinuxRenderBootstrap(
+  LinuxRenderBootstrap* renderBootstrap,
+  unsigned int width,
+  unsigned int height
+)
+{
+  if (!renderBootstrap)
+  {
+    return false;
+  }
+
+  if (renderBootstrap->renderingInterface)
+  {
+    return renderBootstrap->started;
+  }
+
+  ConfigureLinuxRenderMode(&renderBootstrap->renderMode, width, height);
+  renderBootstrap->renderingInterface = new Render::DeviceLostWrapper<PF_Render::Interface>;
+  renderBootstrap->started = renderBootstrap->renderingInterface->Start(renderBootstrap->renderMode);
+  if (renderBootstrap->started)
+  {
+    return true;
+  }
+
+  delete renderBootstrap->renderingInterface;
+  renderBootstrap->renderingInterface = nullptr;
+  return false;
+}
+
+void SyncLinuxRenderBootstrapSize(
+  LinuxRenderBootstrap* renderBootstrap,
+  unsigned int width,
+  unsigned int height
+)
+{
+  if (!renderBootstrap || !renderBootstrap->started || !renderBootstrap->renderingInterface)
+  {
+    return;
+  }
+
+  if (renderBootstrap->renderMode.width == width &&
+      renderBootstrap->renderMode.height == height &&
+      renderBootstrap->renderMode.width3D == width &&
+      renderBootstrap->renderMode.height3D == height)
+  {
+    return;
+  }
+
+  ConfigureLinuxRenderMode(&renderBootstrap->renderMode, width, height);
+  renderBootstrap->started = renderBootstrap->renderingInterface->Start(renderBootstrap->renderMode);
+}
+
+void ShutdownLinuxRenderBootstrap(LinuxRenderBootstrap* renderBootstrap)
+{
+  if (!renderBootstrap || !renderBootstrap->renderingInterface)
+  {
+    return;
+  }
+
+  renderBootstrap->renderingInterface->Stop();
+  delete renderBootstrap->renderingInterface;
+  renderBootstrap->renderingInterface = nullptr;
+  renderBootstrap->started = false;
+}
+
 bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
 {
   overlay->display = static_cast<Display*>(NMainFrame::GetNativeDisplay());
@@ -12322,76 +12419,114 @@ void DrawOpenGlText(LinuxWindowOverlay* overlay, int x, int y, const std::string
   glCallLists(static_cast<GLsizei>(text.size()), GL_UNSIGNED_BYTE, text.c_str());
 }
 
-bool DrawWindowOverlayOpenGl(
-  LinuxWindowOverlay* overlay,
-  const LinuxClientEnvironment& environment,
-  const LinuxClientLaunchSettings& settings,
-  const LinuxLaunchPreview& launchPreview,
-  const LinuxSessionPreview& sessionPreview,
-  const LinuxConfigBootstrapPreview& configPreview,
-  const LinuxContentProbe& contentProbe,
-  const LinuxLoadingScreenPreview& loadingPreview,
-  const LinuxLoadingUiPreview& loadingUiPreview,
-  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
-  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
-  const LinuxLoadingUiState& loadingUiState,
-  const LinuxMapCatalog& mapCatalog,
-  const LinuxMapBrowserState& mapBrowserState,
-  const LinuxSelectedMapPreview& selectedMapPreview,
-  const LinuxArtworkSelectionState& artworkState,
-  const LinuxHeroCatalog& heroCatalog,
-  const LinuxLocalMatchPreview& localMatchPreview,
-  const LinuxSelectedHeroDbPreview& selectedHeroPreview,
-  const LinuxEngineMapStartPreview& engineMapStartPreview,
-  const LinuxRootFileSystemPreview& rootFileSystemPreview,
-  const LinuxUiRootPreview& uiRootPreview,
-  const LinuxSessionRootPreview& sessionRootPreview,
-  const LinuxSoundRootPreview& soundRootPreview,
-  const LinuxResourceCatalogPreview& resourceCatalogPreview,
-  const LinuxInputState& inputState,
-  double elapsedSeconds,
-  int width,
-  int height
-)
+struct LinuxOverlayUiRenderContext
 {
-  if (!overlay->openglReady || !NMainFrame::MakeOpenGLContextCurrent())
+  LinuxWindowOverlay* overlay;
+  const LinuxClientEnvironment* environment;
+  const LinuxClientLaunchSettings* settings;
+  const LinuxLaunchPreview* launchPreview;
+  const LinuxSessionPreview* sessionPreview;
+  const LinuxConfigBootstrapPreview* configPreview;
+  const LinuxContentProbe* contentProbe;
+  const LinuxLoadingScreenPreview* loadingPreview;
+  const LinuxLoadingUiPreview* loadingUiPreview;
+  const LinuxLoadingRuntimeDriver* loadingRuntimeDriver;
+  const LinuxLoadingHeroesRuntimePreview* loadingHeroesRuntimePreview;
+  const LinuxLoadingUiState* loadingUiState;
+  const LinuxMapCatalog* mapCatalog;
+  const LinuxMapBrowserState* mapBrowserState;
+  const LinuxSelectedMapPreview* selectedMapPreview;
+  const LinuxArtworkSelectionState* artworkState;
+  const LinuxHeroCatalog* heroCatalog;
+  const LinuxLocalMatchPreview* localMatchPreview;
+  const LinuxSelectedHeroDbPreview* selectedHeroPreview;
+  const LinuxEngineMapStartPreview* engineMapStartPreview;
+  const LinuxRootFileSystemPreview* rootFileSystemPreview;
+  const LinuxUiRootPreview* uiRootPreview;
+  const LinuxSessionRootPreview* sessionRootPreview;
+  const LinuxSoundRootPreview* soundRootPreview;
+  const LinuxResourceCatalogPreview* resourceCatalogPreview;
+  const LinuxInputState* inputState;
+  double elapsedSeconds;
+  int width;
+  int height;
+
+  LinuxOverlayUiRenderContext()
+    : overlay(nullptr),
+      environment(nullptr),
+      settings(nullptr),
+      launchPreview(nullptr),
+      sessionPreview(nullptr),
+      configPreview(nullptr),
+      contentProbe(nullptr),
+      loadingPreview(nullptr),
+      loadingUiPreview(nullptr),
+      loadingRuntimeDriver(nullptr),
+      loadingHeroesRuntimePreview(nullptr),
+      loadingUiState(nullptr),
+      mapCatalog(nullptr),
+      mapBrowserState(nullptr),
+      selectedMapPreview(nullptr),
+      artworkState(nullptr),
+      heroCatalog(nullptr),
+      localMatchPreview(nullptr),
+      selectedHeroPreview(nullptr),
+      engineMapStartPreview(nullptr),
+      rootFileSystemPreview(nullptr),
+      uiRootPreview(nullptr),
+      sessionRootPreview(nullptr),
+      soundRootPreview(nullptr),
+      resourceCatalogPreview(nullptr),
+      inputState(nullptr),
+      elapsedSeconds(0.0),
+      width(0),
+      height(0)
   {
-    return false;
+  }
+};
+
+void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  if (!overlay)
+  {
+    return;
   }
 
+  const int width = renderContext.width;
+  const int height = renderContext.height;
   const std::vector<std::string> lines = BuildOverlayLines(
-    environment,
-    settings,
-    launchPreview,
-    sessionPreview,
-    configPreview,
-    contentProbe,
-    loadingPreview,
-    loadingUiPreview,
-    loadingRuntimeDriver,
-    loadingHeroesRuntimePreview,
-    loadingUiState,
-    mapCatalog,
-    mapBrowserState,
-    selectedMapPreview,
-    artworkState,
-    heroCatalog,
-    localMatchPreview,
-    selectedHeroPreview,
-    engineMapStartPreview,
-    rootFileSystemPreview,
-    uiRootPreview,
-    sessionRootPreview,
-    soundRootPreview,
-    resourceCatalogPreview,
-    inputState,
-    elapsedSeconds
+    *renderContext.environment,
+    *renderContext.settings,
+    *renderContext.launchPreview,
+    *renderContext.sessionPreview,
+    *renderContext.configPreview,
+    *renderContext.contentProbe,
+    *renderContext.loadingPreview,
+    *renderContext.loadingUiPreview,
+    *renderContext.loadingRuntimeDriver,
+    *renderContext.loadingHeroesRuntimePreview,
+    *renderContext.loadingUiState,
+    *renderContext.mapCatalog,
+    *renderContext.mapBrowserState,
+    *renderContext.selectedMapPreview,
+    *renderContext.artworkState,
+    *renderContext.heroCatalog,
+    *renderContext.localMatchPreview,
+    *renderContext.selectedHeroPreview,
+    *renderContext.engineMapStartPreview,
+    *renderContext.rootFileSystemPreview,
+    *renderContext.uiRootPreview,
+    *renderContext.sessionRootPreview,
+    *renderContext.soundRootPreview,
+    *renderContext.resourceCatalogPreview,
+    *renderContext.inputState,
+    renderContext.elapsedSeconds
   );
 
   const int headerHeight = 56;
   int panelTop = headerHeight + 24;
 
-  glViewport(0, 0, width, height);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_CULL_FACE);
   glDisable(GL_LIGHTING);
@@ -12405,22 +12540,20 @@ bool DrawWindowOverlayOpenGl(
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  glClearColor(17.0f / 255.0f, 22.0f / 255.0f, 28.0f / 255.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT);
-
   SetOpenGlColor(27, 38, 49);
   DrawOpenGlRect(0, 0, width, headerHeight);
 
   std::string header = "Prime World Classic - native Linux OpenGL bootstrap";
-  if (launchPreview.protocolValid)
+  if (renderContext.launchPreview->protocolValid)
   {
     header += " - ";
-    header += launchPreview.method;
+    header += renderContext.launchPreview->method;
   }
-  if (!mapCatalog.entries.empty() && mapBrowserState.selectedIndex < mapCatalog.entries.size())
+  if (!renderContext.mapCatalog->entries.empty() &&
+      renderContext.mapBrowserState->selectedIndex < renderContext.mapCatalog->entries.size())
   {
     header += " - ";
-    header += mapCatalog.entries[mapBrowserState.selectedIndex].title;
+    header += renderContext.mapCatalog->entries[renderContext.mapBrowserState->selectedIndex].title;
   }
 
   if (overlay->artworkTexture && overlay->artworkWidth > 0 && overlay->artworkHeight > 0)
@@ -12507,13 +12640,112 @@ bool DrawWindowOverlayOpenGl(
     DrawOpenGlText(overlay, panelLeft + 14, y, visibleLines[i]);
     y += lineHeight;
   }
+}
 
-  NMainFrame::SwapOpenGLBuffers();
+void RenderWindowOverlayOpenGlUiCallback(void* userData, unsigned int width, unsigned int height)
+{
+  LinuxOverlayUiRenderContext* renderContext = static_cast<LinuxOverlayUiRenderContext*>(userData);
+  if (!renderContext)
+  {
+    return;
+  }
+
+  renderContext->width = static_cast<int>(width);
+  renderContext->height = static_cast<int>(height);
+  RenderWindowOverlayOpenGlUi(*renderContext);
+}
+
+bool DrawWindowOverlayOpenGl(
+  LinuxWindowOverlay* overlay,
+  LinuxRenderBootstrap* renderBootstrap,
+  const LinuxClientEnvironment& environment,
+  const LinuxClientLaunchSettings& settings,
+  const LinuxLaunchPreview& launchPreview,
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxConfigBootstrapPreview& configPreview,
+  const LinuxContentProbe& contentProbe,
+  const LinuxLoadingScreenPreview& loadingPreview,
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
+  const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
+  const LinuxLoadingUiState& loadingUiState,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxArtworkSelectionState& artworkState,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxSelectedHeroDbPreview& selectedHeroPreview,
+  const LinuxEngineMapStartPreview& engineMapStartPreview,
+  const LinuxRootFileSystemPreview& rootFileSystemPreview,
+  const LinuxUiRootPreview& uiRootPreview,
+  const LinuxSessionRootPreview& sessionRootPreview,
+  const LinuxSoundRootPreview& soundRootPreview,
+  const LinuxResourceCatalogPreview& resourceCatalogPreview,
+  const LinuxInputState& inputState,
+  double elapsedSeconds,
+  int width,
+  int height
+)
+{
+  if (!overlay->openglReady || !NMainFrame::MakeOpenGLContextCurrent())
+  {
+    return false;
+  }
+
+  SyncLinuxRenderBootstrapSize(renderBootstrap, width, height);
+  LinuxOverlayUiRenderContext renderContext;
+  renderContext.overlay = overlay;
+  renderContext.environment = &environment;
+  renderContext.settings = &settings;
+  renderContext.launchPreview = &launchPreview;
+  renderContext.sessionPreview = &sessionPreview;
+  renderContext.configPreview = &configPreview;
+  renderContext.contentProbe = &contentProbe;
+  renderContext.loadingPreview = &loadingPreview;
+  renderContext.loadingUiPreview = &loadingUiPreview;
+  renderContext.loadingRuntimeDriver = &loadingRuntimeDriver;
+  renderContext.loadingHeroesRuntimePreview = &loadingHeroesRuntimePreview;
+  renderContext.loadingUiState = &loadingUiState;
+  renderContext.mapCatalog = &mapCatalog;
+  renderContext.mapBrowserState = &mapBrowserState;
+  renderContext.selectedMapPreview = &selectedMapPreview;
+  renderContext.artworkState = &artworkState;
+  renderContext.heroCatalog = &heroCatalog;
+  renderContext.localMatchPreview = &localMatchPreview;
+  renderContext.selectedHeroPreview = &selectedHeroPreview;
+  renderContext.engineMapStartPreview = &engineMapStartPreview;
+  renderContext.rootFileSystemPreview = &rootFileSystemPreview;
+  renderContext.uiRootPreview = &uiRootPreview;
+  renderContext.sessionRootPreview = &sessionRootPreview;
+  renderContext.soundRootPreview = &soundRootPreview;
+  renderContext.resourceCatalogPreview = &resourceCatalogPreview;
+  renderContext.inputState = &inputState;
+  renderContext.elapsedSeconds = elapsedSeconds;
+  renderContext.width = width;
+  renderContext.height = height;
+
+  if (renderBootstrap && renderBootstrap->started && renderBootstrap->renderingInterface)
+  {
+    renderBootstrap->renderingInterface->SetLinuxUiRenderCallback(&RenderWindowOverlayOpenGlUiCallback, &renderContext);
+    renderBootstrap->renderingInterface->Render(false, 0, 0, width, height);
+    renderBootstrap->renderingInterface->SetLinuxUiRenderCallback(0, 0);
+    renderBootstrap->renderingInterface->Present();
+  }
+  else
+  {
+    glViewport(0, 0, width, height);
+    glClearColor(17.0f / 255.0f, 22.0f / 255.0f, 28.0f / 255.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    RenderWindowOverlayOpenGlUi(renderContext);
+    NMainFrame::SwapOpenGLBuffers();
+  }
   return true;
 }
 
 void DrawWindowOverlay(
   LinuxWindowOverlay* overlay,
+  LinuxRenderBootstrap* renderBootstrap,
   const LinuxClientEnvironment& environment,
   const LinuxClientLaunchSettings& settings,
   const LinuxLaunchPreview& launchPreview,
@@ -12585,6 +12817,7 @@ void DrawWindowOverlay(
   const int height = attributes.height > 0 ? attributes.height : static_cast<int>(settings.height);
   if (DrawWindowOverlayOpenGl(
         overlay,
+        renderBootstrap,
         environment,
         settings,
         launchPreview,
@@ -12734,6 +12967,7 @@ void WriteStartupLog(
   const LinuxClientEnvironment& environment,
   const LinuxClientLaunchSettings& settings,
   const LinuxWindowOverlay& overlay,
+  const LinuxRenderBootstrap& renderBootstrap,
   const LinuxLaunchPreview& launchPreview,
   const LinuxSessionPreview& sessionPreview,
   const LinuxConfigBootstrapPreview& configPreview,
@@ -12784,6 +13018,16 @@ void WriteStartupLog(
   logFile << "  logs=" << logsDir.string() << "\n";
   logFile << "  cwd=" << (resolvedCurrentDir.empty() ? "<unknown>" : resolvedCurrentDir.string()) << "\n";
   logFile << "  overlayBackend=" << (overlay.openglReady ? "OpenGL" : "X11") << "\n";
+  logFile << "  renderBootstrapReady=" << (renderBootstrap.started ? "yes" : "no") << "\n";
+  logFile << "  renderBootstrapType=" << (renderBootstrap.started ? "PF_Render::Interface" : "<none>") << "\n";
+  logFile << "  renderBootstrapFramePath="
+          << (renderBootstrap.started ? "PF_Render::Interface::Render/Present" : "<none>") << "\n";
+  logFile << "  renderBootstrapUiPath="
+          << (renderBootstrap.started ? "PF_Render::Interface::RenderUI callback" : "<none>") << "\n";
+  logFile << "  renderMode="
+          << renderBootstrap.renderMode.width << "x" << renderBootstrap.renderMode.height << "\n";
+  logFile << "  renderMode3D="
+          << renderBootstrap.renderMode.width3D << "x" << renderBootstrap.renderMode.height3D << "\n";
   logFile << "  size=" << settings.width << "x" << settings.height << "\n";
   logFile << "  sizeFromParent=" << ((settings.widthFromParent || settings.heightFromParent) ? "yes" : "no") << "\n";
   logFile << "  spectator=" << (settings.spectator ? "yes" : "no") << "\n";
@@ -13939,7 +14183,13 @@ int main(int argc, char** argv)
   }
 
   LinuxWindowOverlay overlay;
+  LinuxRenderBootstrap renderBootstrap;
   InitializeWindowOverlay(&overlay);
+  const bool renderBootstrapReady = StartLinuxRenderBootstrap(
+    &renderBootstrap,
+    static_cast<unsigned int>(settings.width),
+    static_cast<unsigned int>(settings.height)
+  );
   LinuxLoadingArtwork displayArtwork;
   std::string displayArtworkSource;
   const bool displayArtworkReady = BuildSelectedMapDisplayArtwork(
@@ -13967,6 +14217,7 @@ int main(int argc, char** argv)
     environment,
     settings,
     overlay,
+    renderBootstrap,
     launchPreview,
     sessionPreview,
     configPreview,
@@ -13993,7 +14244,8 @@ int main(int argc, char** argv)
   );
 
   fprintf(stdout, "Prime World Linux client shell started.\n");
-  fprintf(stdout, "Renderer backend is not ported yet. Input now uses a native Linux binds bootstrap.\n");
+  fprintf(stdout,
+    "Renderer backend is still a bootstrap path. Input now uses a native Linux binds bootstrap.\n");
   fprintf(stdout, "Executable: %s\n", environment.executablePath.empty() ? "<unknown>" : environment.executablePath.string().c_str());
   fprintf(stdout, "Game root: %s\n", environment.gameRoot.empty() ? "<not found>" : environment.gameRoot.string().c_str());
   fprintf(stdout, "Base dir: %s\n", environment.baseDir.empty() ? "<not initialized>" : environment.baseDir.string().c_str());
@@ -14187,6 +14439,10 @@ int main(int argc, char** argv)
   }
   fprintf(stdout, "Displayed artwork source: %s\n", displayArtworkSource.c_str());
   fprintf(stdout, "Overlay backend: %s\n", overlay.openglReady ? "OpenGL" : "X11");
+  fprintf(stdout, "Render bootstrap: %s\n",
+    renderBootstrapReady ? "PF_Render::Interface via OpenGL" : "<none>");
+  fprintf(stdout, "Render frame path: %s\n",
+    renderBootstrapReady ? "PF_Render::Interface::Render/Present" : "<none>");
   fprintf(stdout, "Loading artwork uploaded: %s\n", artworkUploaded ? "yes" : "no");
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
@@ -14525,6 +14781,7 @@ int main(int argc, char** argv)
 
     DrawWindowOverlay(
       &overlay,
+      &renderBootstrap,
       environment,
       settings,
       launchPreview,
@@ -14577,6 +14834,7 @@ int main(int argc, char** argv)
     localMatchPreview,
     engineMapStartPreview
   );
+  ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);
   NDb::SoundRoot::InitRoot(0);
