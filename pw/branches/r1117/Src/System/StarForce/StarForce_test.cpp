@@ -2,7 +2,6 @@
 #include "StarForce_test.h"
 #include "StarForce.h"
 #include "HiddenVars.h"
-#include "StarForce/PsaApi.h"
 
 
 namespace
@@ -66,30 +65,6 @@ Accum<T> TestStarForceVarsImpl2(size_t VarsCount)
 
 void TestStarForceVars()
 { 
-#ifdef STARFORCE_PROTECTED
-  {
-    typedef PsProtFloat64_1 SFType;
-    typedef double OrigType;
-    const size_t VarsCount = 1000;
-    const Accum<OrigType> flRes = TestStarForceVarsImpl1<OrigType>(VarsCount); 
-    const Accum<SFType> sfRes = TestStarForceVarsImpl1<SFType>(VarsCount);
-
-    DebugTrace( "TestStarForceVarsImpl1 %u == %u, %g == %g", 
-        flRes.count, sfRes.count, flRes.sum, const_cast<SFType &>(sfRes.sum).Value() );
-  }
-  
-  {
-    typedef PsProtFloat32_1 SFType;
-    typedef float OrigType;
-    const size_t VarsCount = 15000;
-    const Accum<OrigType> flRes = TestStarForceVarsImpl2<OrigType>(VarsCount); 
-    const Accum<SFType> sfRes = TestStarForceVarsImpl2<SFType>(VarsCount);
-
-    DebugTrace( "TestStarForceVarsImpl2 %u == %u, %g == %g", 
-        flRes.count, sfRes.count, flRes.sum, const_cast<SFType &>(sfRes.sum).Value() );
-  }
-#endif 
-  
   {
     typedef Protection::Detail::HiddenVarImpl<float, unsigned int, 0> SFType;
     typedef float OrigType;

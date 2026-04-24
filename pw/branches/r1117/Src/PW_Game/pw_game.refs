@@ -6,8 +6,3 @@
 ..\..\Tools\Censor\lib\Release\CensorDll.dll
 ..\..\Tools\Censor\lib\Release\CensorDll.pdb
 
-[shippingsingleexe, releasesingleexe]
-..\..\Vendor\StarForce\StarForce\sakijapi.dll
-..\..\Vendor\StarForce\StarForce\pcnsl.exe
-..\..\Vendor\StarForce\StarForce\sakijapi.x86
-

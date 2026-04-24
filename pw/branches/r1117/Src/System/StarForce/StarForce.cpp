@@ -4,7 +4,6 @@
 #pragma code_seg(push, "~")
 
 #ifdef STARFORCE_PROTECTED
-  #include "StarForce/PsaApi.h"
   #include "../AsyncInvoker.h"
 #endif
 
@@ -12,6 +11,27 @@
 namespace Protection
 {
 #ifdef STARFORCE_PROTECTED
+
+static const unsigned __int32 kPscStatusSuccess = 0x00000000;
+
+typedef unsigned __int32 (__stdcall *PSA_CheckProtectedModulesReadOnlyMem_t)( bool *memCheckResultOk );
+typedef unsigned __int32 (__stdcall *PSA_CheckSystemLibsLocation_t)( char* outBuffer, size_t* outBufferSizePtr, bool* systemLibLocationChangedPtr );
+typedef unsigned __int32 (__stdcall *PSA_CheckSystemLibsIat_t)( char* outBuffer, size_t* outBufferSizePtr, bool* systemLibIatModifiedPtr );
+typedef unsigned __int32 (__stdcall *PSA_CheckSystemLibsReadOnlySections_t)( char* outBuffer, size_t* outBufferSizePtr, bool* readOnlySectionsModifiedPtr );
+
+struct StarForceApi
+{
+  HMODULE module;
+  PSA_CheckProtectedModulesReadOnlyMem_t checkProtectedModulesReadOnlyMem;
+  PSA_CheckSystemLibsLocation_t checkSystemLibsLocation;
+  PSA_CheckSystemLibsIat_t checkSystemLibsIat;
+  PSA_CheckSystemLibsReadOnlySections_t checkSystemLibsReadOnlySections;
+  bool initialized;
+  bool available;
+};
+
+static StarForceApi g_starForceApi = { 0 };
+static bool g_unavailableLogged = false;
 
 class CallProxy
 {
@@ -41,9 +61,71 @@ static AsyncInvokerPriority g_invoker;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static STARFORCE_FORCE_INLINE void CheckForTerminate( int line, bool result, unsigned __int32 status = PSC_STATUS_SUCCESS )
+static bool IsProtectionDisabledForCurrentRuntime()
 {
-  if( status != PSC_STATUS_SUCCESS || !result )
+  // Winlator works through Wine and StarForce initialization is not supported there.
+  return Compatibility::IsRunnedUnderWine();
+}
+
+static bool ResolveStarForceApi()
+{
+  if( g_starForceApi.initialized )
+    return g_starForceApi.available;
+
+  g_starForceApi.initialized = true;
+
+  if( IsProtectionDisabledForCurrentRuntime() )
+  {
+    g_starForceApi.available = false;
+    return false;
+  }
+
+  g_starForceApi.module = GetModuleHandleA( "sakijapi.dll" );
+  if( !g_starForceApi.module )
+    g_starForceApi.module = LoadLibraryA( "sakijapi.dll" );
+
+  if( !g_starForceApi.module )
+  {
+    g_starForceApi.available = false;
+    return false;
+  }
+
+  g_starForceApi.checkProtectedModulesReadOnlyMem =
+    (PSA_CheckProtectedModulesReadOnlyMem_t)GetProcAddress( g_starForceApi.module, "PSA_CheckProtectedModulesReadOnlyMem" );
+  g_starForceApi.checkSystemLibsLocation =
+    (PSA_CheckSystemLibsLocation_t)GetProcAddress( g_starForceApi.module, "PSA_CheckSystemLibsLocation" );
+  g_starForceApi.checkSystemLibsIat =
+    (PSA_CheckSystemLibsIat_t)GetProcAddress( g_starForceApi.module, "PSA_CheckSystemLibsIat" );
+  g_starForceApi.checkSystemLibsReadOnlySections =
+    (PSA_CheckSystemLibsReadOnlySections_t)GetProcAddress( g_starForceApi.module, "PSA_CheckSystemLibsReadOnlySections" );
+
+  g_starForceApi.available =
+    g_starForceApi.checkProtectedModulesReadOnlyMem &&
+    g_starForceApi.checkSystemLibsLocation &&
+    g_starForceApi.checkSystemLibsIat &&
+    g_starForceApi.checkSystemLibsReadOnlySections;
+
+  return g_starForceApi.available;
+}
+
+static bool EnsureProtectionAvailable( const char *funcName )
+{
+  if( ResolveStarForceApi() )
+    return true;
+
+  if( !g_unavailableLogged )
+  {
+    WarningTrace( "StarForce disabled: API is unavailable for current runtime" );
+    g_unavailableLogged = true;
+  }
+
+  STARFORCE_LOG( "Implementation call skip (api unavailable): %s", funcName );
+  return false;
+}
+
+static STARFORCE_FORCE_INLINE void CheckForTerminate( int line, bool result, unsigned __int32 status = kPscStatusSuccess )
+{
+  if( status != kPscStatusSuccess || !result )
   {
     ErrorTrace( "Protection Error. Status: 0x%08X, line: %d", status, line );
     int volatile * volatile p = 0;
@@ -54,15 +136,18 @@ static STARFORCE_FORCE_INLINE void CheckForTerminate( int line, bool result, uns
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static STARFORCE_FORCE_INLINE void CheckForLog( int line, bool result, unsigned __int32 status = PSC_STATUS_SUCCESS )
+static STARFORCE_FORCE_INLINE void CheckForLog( int line, bool result, unsigned __int32 status = kPscStatusSuccess )
 {
-  if( status != PSC_STATUS_SUCCESS || !result )
+  if( status != kPscStatusSuccess || !result )
     WarningTrace( "Protection Warning. Status: 0x%08X, line: %d", status, line );
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 STARFORCE_EXPORT void CheckReadOnlyAndExecutableImpl( const void * )
 {
+  if( !EnsureProtectionAvailable( __FUNCTION__ ) )
+    return;
+
   STARFORCE_STOPWATCH();
 
   //По совету поддержки Старфорс воспользовался утилитой StripReloc и скорость работы 
@@ -70,7 +155,7 @@ STARFORCE_EXPORT void CheckReadOnlyAndExecutableImpl( const void * )
   //http://www.jrsoftware.org/striprlc.php
 
   bool checkResult = false;
-  const unsigned __int32 status  = PSA_CheckProtectedModulesReadOnlyMem( &checkResult );
+  const unsigned __int32 status  = g_starForceApi.checkProtectedModulesReadOnlyMem( &checkResult );
 
   // NUM_TASK вызов CheckForTerminate заменен на CheckForLog
   // проверка может запуститься одновременно обоими способами. если проверка провалится, должна быть возможности отправить что-то на сервер,
@@ -80,6 +165,9 @@ STARFORCE_EXPORT void CheckReadOnlyAndExecutableImpl( const void * )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 STARFORCE_EXPORT void CheckSystemDllsImpl( const void * )
 {
+  if( !EnsureProtectionAvailable( __FUNCTION__ ) )
+    return;
+
   STARFORCE_STOPWATCH();
   
   //На результат перечисленных ниже функций полагаться нельзя. Например,
@@ -101,20 +189,20 @@ STARFORCE_EXPORT void CheckSystemDllsImpl( const void * )
   // вызвать ложное срабатывание, при наличии системного ПО (например, антивирус).
   {
     bool systemLibLocationChanged = true;
-    const unsigned __int32 status  = PSA_CheckSystemLibsLocation( NULL, NULL, &systemLibLocationChanged );
+    const unsigned __int32 status  = g_starForceApi.checkSystemLibsLocation( NULL, NULL, &systemLibLocationChanged );
     CheckForLog( __LINE__, !systemLibLocationChanged, status ); 
   }
   
   {
     bool systemLibIatModifiedPtr = true;
-    const unsigned __int32 status  = PSA_CheckSystemLibsIat( NULL, NULL, &systemLibIatModifiedPtr );
+    const unsigned __int32 status  = g_starForceApi.checkSystemLibsIat( NULL, NULL, &systemLibIatModifiedPtr );
     CheckForLog( __LINE__, !systemLibIatModifiedPtr, status ); 
   }
   
   #ifdef OPTION_ENABLE_SYSTEM_LIBS_CODE_SECTION_CHECK
   {
     bool readOnlySectionsModified = true;
-    const unsigned __int32 status  = PSA_CheckSystemLibsReadOnlySections( NULL, NULL, &readOnlySectionsModified );
+    const unsigned __int32 status  = g_starForceApi.checkSystemLibsReadOnlySections( NULL, NULL, &readOnlySectionsModified );
     CheckForLog( __LINE__, !readOnlySectionsModified, status ); 
   } 
   #endif
@@ -141,15 +229,18 @@ STARFORCE_EXPORT void CheckReadOnlyAndExecutable()
 STARFORCE_EXPORT bool CheckReadOnlyAndExecutableImmediate()
 {
 #ifdef STARFORCE_PROTECTED
+  if( !EnsureProtectionAvailable( __FUNCTION__ ) )
+    return true;
+
   STARFORCE_STOPWATCH();
 
   bool checkResult = false;
 
-  const unsigned __int32 status  = PSA_CheckProtectedModulesReadOnlyMem( &checkResult );
+  const unsigned __int32 status  = g_starForceApi.checkProtectedModulesReadOnlyMem( &checkResult );
 
   CheckForLog(__LINE__, checkResult, status);
 
-  if (status != PSC_STATUS_SUCCESS)
+  if (status != kPscStatusSuccess)
     return false;
   if (checkResult != true)
     return false;
