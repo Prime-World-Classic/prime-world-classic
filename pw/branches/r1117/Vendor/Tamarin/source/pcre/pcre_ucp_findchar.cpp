@@ -49,7 +49,7 @@ changed. */
 
 #include "ucp.h"               /* Category definitions */
 #include "ucpinternal.h"       /* Internal table details */
-#include "ucptable.c"          /* The table itself */
+#include "ucptable.cpp"          /* The table itself */
 
 
 
@@ -69,7 +69,7 @@ Arguments:
 Returns:      the character type category or -1 if not found
 */
 
-PCRE_EXPORT int
+int
 _pcre_ucp_findchar(const int c, int *type_ptr, int *case_ptr)
 {
 cnode *node = ucp_table;

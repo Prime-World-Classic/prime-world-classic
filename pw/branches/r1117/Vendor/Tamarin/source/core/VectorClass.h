@@ -48,6 +48,8 @@ namespace avmplus
 	class VectorBaseObject : public ScriptObject
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		VectorBaseObject(VTable *ivtable, ScriptObject *delegate)
 			: ScriptObject(ivtable, delegate)
 		{
@@ -98,6 +100,8 @@ namespace avmplus
 	class TypedVectorObject : public VectorBaseObject
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		TypedVectorObject(VTable *ivtable, ScriptObject *delegate)
 			: VectorBaseObject(ivtable, delegate)
 		{
@@ -429,6 +433,8 @@ namespace avmplus
 
 	class IntVectorObject : public TypedVectorObject<sint32> {
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		IntVectorObject(VTable *ivtable, ScriptObject *delegate)
 			: TypedVectorObject<sint32>(ivtable, delegate)
 		{
@@ -444,6 +450,8 @@ namespace avmplus
 
 	class UIntVectorObject : public TypedVectorObject<uint32> {
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		UIntVectorObject(VTable *ivtable, ScriptObject *delegate)
 			: TypedVectorObject<uint32>(ivtable, delegate)
 		{
@@ -460,6 +468,8 @@ namespace avmplus
 
 	class DoubleVectorObject : public TypedVectorObject<double> {
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		DoubleVectorObject(VTable *ivtable, ScriptObject *delegate)
 			: TypedVectorObject<double>(ivtable, delegate)
 		{
@@ -477,6 +487,8 @@ namespace avmplus
 	class ObjectVectorObject : public TypedVectorObject<Atom>
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		ObjectVectorObject(VTable *ivtable, ScriptObject *delegate)
 			: TypedVectorObject<Atom>(ivtable, delegate)
 		{
@@ -532,6 +544,8 @@ namespace avmplus
 	class IntVectorClass : public ClassClosure
 	{
     public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		IntVectorClass(VTable *vtable);
 
 		ScriptObject *createInstance(VTable *ivtable, ScriptObject *delegate);
@@ -551,6 +565,8 @@ namespace avmplus
 	class UIntVectorClass : public ClassClosure
 	{
     public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		UIntVectorClass(VTable *vtable);
 
 		ScriptObject *createInstance(VTable *ivtable, ScriptObject *delegate);
@@ -570,6 +586,8 @@ namespace avmplus
 	class DoubleVectorClass : public ClassClosure
 	{
     public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		DoubleVectorClass(VTable *vtable);
 
 		ScriptObject *createInstance(VTable *ivtable, ScriptObject *delegate);
@@ -589,6 +607,8 @@ namespace avmplus
 	class VectorClass : public ClassClosure
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		VectorClass(VTable * vtable);
         
         /**
@@ -619,6 +639,8 @@ namespace avmplus
 	{
 		friend class VectorClass;
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		ObjectVectorClass(VTable * vtable);
 
 		ScriptObject *createInstance(VTable *ivtable, ScriptObject *delegate);

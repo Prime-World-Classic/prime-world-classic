@@ -14,7 +14,6 @@ namespace NLogg
 
 void StreamBuffer::WriteHeader( unsigned headerFormat )
 {
-  NI_PROFILE_HEAVY_FUNCTION;
 
   char buf[128] = "";
 

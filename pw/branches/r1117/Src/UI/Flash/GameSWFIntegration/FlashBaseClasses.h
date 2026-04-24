@@ -17,6 +17,8 @@ Atom GetMultinamePropertyFromObject( ScriptObject* _scriptObject, char const* na
 class FlashScriptObject: public ScriptObject
 {
 public:
+	void operator delete(void* p) {}
+	void operator delete(void* p, void* gc) {}
   FlashScriptObject(VTable* vtable, ScriptObject* delegate):ScriptObject(vtable, delegate) {}
 
   flash::FlashMovieAvmCore * FlashCore() { return (flash::FlashMovieAvmCore*) core(); }
@@ -52,6 +54,8 @@ private:
 class FlashClassClosure: public ClassClosure
 {
 public:
+	void operator delete(void* p) {}
+	void operator delete(void* p, void* gc) {}
   FlashClassClosure(VTable *cvtable):ClassClosure(cvtable) {}
   flash::FlashMovieAvmCore * FlashCore() {return (flash::FlashMovieAvmCore*) core();}
 };

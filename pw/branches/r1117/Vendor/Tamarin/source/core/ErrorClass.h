@@ -87,6 +87,8 @@ namespace avmplus
 	class ErrorObject : public ScriptObject
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		ErrorObject(VTable *vtable, ScriptObject *delegate);
 		~ErrorObject() {
 #ifdef DEBUGGER
@@ -115,6 +117,8 @@ namespace avmplus
 	class NativeErrorClass : public ClassClosure
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		NativeErrorClass(VTable* cvtable);
 
 		Atom call(int argc, Atom* argv)
@@ -127,6 +131,8 @@ namespace avmplus
 		class obj : public ErrorObject															\
 		{																						\
 		public:																					\
+			void operator delete(void* p) {}													\
+			void operator delete(void* p, void* gc) {}											\
 			REALLY_INLINE obj(VTable *vtable, ScriptObject *delegate)							\
 				: ErrorObject(vtable, delegate) {}												\
 			DECLARE_SLOTS_##obj;																\
@@ -134,6 +140,8 @@ namespace avmplus
 		class cls : public NativeErrorClass														\
 		{																						\
 		public:																					\
+			void operator delete(void* p) {}													\
+			void operator delete(void* p, void* gc) {}											\
 			REALLY_INLINE cls(VTable* cvtable)													\
 				: NativeErrorClass(cvtable) {}													\
 			ScriptObject *createInstance(VTable *ivtable, ScriptObject *delegate)				\

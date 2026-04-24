@@ -75,7 +75,9 @@
 #include "TypesHash.h"
 #include "PF_TypesHash.h"
 
+#ifdef NV_WIN_PLATFORM
 #include "GameContext.h"
+#endif
 #include "LocalGameContext.h"
 #include "System/Events.h"
 #include "System/EventFileLogger.h"
@@ -1211,7 +1213,11 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   }
   else if (isTutorial)
   {
+#ifdef NV_WIN_PLATFORM
     context = new Game::GameContext(socialLaunchData.sessionId.c_str(), NULL, socialLaunchData.mapId.c_str(), socialServer, guildEmblem, false, true);
+#else
+    context = new Game::LocalGameContext(false);
+#endif
   }
 
   std::string linuxRun = CmdLineLite::Instance().GetStringKey( "linux", "" );
@@ -1327,7 +1333,11 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
           context = new Game::LocalGameContext( false );
           g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebCreate;
         } else {
+#ifdef NV_WIN_PLATFORM
           context = new Game::GameContext(g_sessionToken.c_str(), g_devLogin.c_str(), mapId, socialServer, guildEmblem, isSpectator, false );
+#else
+          context = new Game::LocalGameContext(false);
+#endif
         }
         context->Start();
     } else {
@@ -1821,8 +1831,38 @@ REGISTER_CMD( debug_crash_now, DebugCrashNow );
 REGISTER_CMD( malloc_mask, SetMallocThreadMask )
 #else
 #include <stdlib.h>
+#include <stdio.h>
+#include <SDL2/SDL.h>
+extern int __stdcall PseudoWinMain( void* hInstance, void* hWnd, char* lpCmdLine, void* pluginSett );
 extern "C" {
-void StartPWApplication(void* hWnd) {}
+void StartPWApplication(void* hWnd) {
+  printf("==================================================\n");
+  printf(" Prime World Linux Native Client (SDL2)\n");
+  printf("==================================================\n");
+
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
+      printf("Failed to initialize SDL2: %s\n", SDL_GetError());
+      _exit(1);
+  }
+
+  SDL_Window* win = SDL_CreateWindow("Prime World Native Linux Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+  if (!win) {
+      printf("Failed to create SDL2 window: %s\n", SDL_GetError());
+      _exit(1);
+  }
+  printf("SDL2 Window created successfully. Booting game engine...\n");
+
+  PseudoWinMain( 0, (void*)win, (char*)"", 0 );
+
+  SDL_DestroyWindow(win);
+  SDL_Quit();
+  _exit(0);
+}
 void StartPWPlugin(void* hWnd, int width, int height, bool fullscreen, const char* sessionLogin) {}
+}
+
+int __stdcall PseudoWinMain( void* hInstance, void* hWnd, char* lpCmdLine, void* pluginSett ) {
+  printf("Inside PseudoWinMain dummy.\n");
+  return 0;
 }
 #endif

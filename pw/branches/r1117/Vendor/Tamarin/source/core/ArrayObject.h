@@ -59,6 +59,8 @@ namespace avmplus
 		uint32 m_lowHTentry; // lowest numeric entry in our hash table
 		uint32 m_length;
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		
 		ArrayObject(VTable* ivtable, ScriptObject *delegate, uint32 capacity);
 		~ArrayObject()
@@ -134,6 +136,8 @@ namespace avmplus
 
 #ifdef AVMPLUS_VERBOSE
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		Stringp format(AvmCore* core) const;
 #endif
 

@@ -11,6 +11,8 @@ class Matrix3DObject;
 class PerspectiveProjectionObject: public ScriptObject
 {
 public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
   PerspectiveProjectionObject( PerspectiveProjectionClass * classType );
   PerspectiveProjectionObject( VTable* ivtable, ScriptObject* prototype );
   ~PerspectiveProjectionObject() {}

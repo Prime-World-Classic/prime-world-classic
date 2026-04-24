@@ -4568,7 +4568,7 @@ return the result of the comparison ToPrimitive(x) == y.
 	// not a problem
 	inline static uint32_t apiBit(API api) {
 		uint32_t x;
-		switch (api) {
+		switch ((uint32_t)api) {
 		case 0x00000001: x =  0; break;
 		case 0x00000002: x =  1; break;
 		case 0x00000004: x =  2; break;

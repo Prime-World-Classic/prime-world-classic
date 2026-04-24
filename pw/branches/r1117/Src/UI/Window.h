@@ -543,7 +543,7 @@ TWnd * UI::ScreenLogicBase::GetUIWindow( const char * name, bool recursive, bool
 
 
 #define REGISTER_CONTROLTYPE( layoutType, controlType ) \
-static Window * ConstructControl_##controlType##() \
+static Window * ConstructControl_##controlType() \
 { \
   return new controlType; \
 } \

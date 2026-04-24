@@ -1,10 +1,9 @@
 #pragma once
 
-#ifdef NI_PLATF_LINUX
+#ifndef _WIN32
 #include <stdlib.h>
-#include <malloc.h>
-#define Aligned_MAlloc(size, align) memalign(align, size)
-#define Aligned_Free(ptr) free(ptr)
+#else
+#include "MemoryLib/newdelete.h"
 #endif
 
 class DummyAllocator
@@ -24,12 +23,20 @@ public:
 	}
 	DummyAllocator( unsigned int _storageCapacity ) : storageCapacity(_storageCapacity), currentSize(0), pStorage(0) 
 	{
+#ifndef _WIN32
+		pStorage = static_cast<unsigned char*>( memalign( 16, storageCapacity ) );
+#else
 		pStorage = static_cast<unsigned char*>( Aligned_MAlloc( storageCapacity, 16 ) );
+#endif
 		memset(pStorage, 0, storageCapacity);
 	}
 	~DummyAllocator()
 	{
+#ifndef _WIN32
+		free(pStorage);
+#else
 		Aligned_Free(pStorage);
+#endif
 	}
 	void* Allocate(unsigned int _size, unsigned int _alignmentSize )
 	{

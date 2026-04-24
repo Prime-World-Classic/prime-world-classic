@@ -16,6 +16,8 @@ class ScriptObject;
 class TransformObject: public FlashScriptObject
 {
 public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
   TransformObject( TransformClass * classType );
   TransformObject( VTable* ivtable, ScriptObject* prototype );
   ~TransformObject() {}

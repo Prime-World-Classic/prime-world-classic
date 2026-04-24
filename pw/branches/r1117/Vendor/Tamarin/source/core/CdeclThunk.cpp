@@ -1303,6 +1303,7 @@ static int32_t argDescSize(MethodInfo* info)
 // calls "env" with supplied variadic arguments described by the "immediate" flavor of argument
 // description in argDesc
 // returns an int32_t value
+#if defined(AVMPLUS_IA32) || defined(AVMPLUS_ARM)
 Atom coerce32CdeclArgDescEnter(Traits* retTraits, uintptr_t argDesc, MethodEnv* env, va_list ap)
 {
     MethodInfo* info = env->method;
@@ -1351,6 +1352,12 @@ double coerceNCdeclArgDescEnter(uintptr_t argDesc, MethodEnv* env, va_list ap)
         (void*)info->handler_function(), argDescSize(info),
         immArgDescCoercer, env, NUMBER_TYPE, argDesc, &ap);
     return result;
+#else
+Atom coerce32CdeclArgDescEnter(Traits*, uintptr_t, MethodEnv*, va_list) { return 0; }
+Atom coerce32CdeclArgDescEnter(Traits*, char*, MethodEnv*, va_list) { return 0; }
+Atom coerce32CdeclArgDescEnter(Traits*, MethodEnv*, int, Atom*) { return 0; }
+Atom coerce32CdeclArgDescEnter(Traits*, MethodEnv*, int, uint32_t*) { return 0; }
+#endif
 }
 
 // calls "env" with supplied variadic arguments described by the "pointer" flavor of argument

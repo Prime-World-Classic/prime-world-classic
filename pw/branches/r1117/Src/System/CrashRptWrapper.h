@@ -21,9 +21,14 @@ inline void UninstallFromCurrentThread() {}
 #endif //NI_DISABLE_CRASHRPT
 
 
+#ifndef NV_LINUX_PLATFORM
 void AddFileToReport( const char * filename, const char * description );
 
 void AddTagToReport( const char * name, const char * value );
+#else
+inline void AddFileToReport( const char *, const char * ) {}
+inline void AddTagToReport( const char *, const char * ) {}
+#endif
 
 } //namespace CrashRptWrapper
 

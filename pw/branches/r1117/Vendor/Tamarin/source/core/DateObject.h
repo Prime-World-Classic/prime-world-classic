@@ -48,6 +48,8 @@ namespace avmplus
 	class DateObject : public ScriptObject
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		Date date;
 
 		/**

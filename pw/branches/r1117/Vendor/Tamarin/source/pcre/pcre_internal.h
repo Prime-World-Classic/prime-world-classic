@@ -129,6 +129,9 @@ part of "configure") because PCRE is often cross-compiled for use on other
 systems. Instead we make use of the maximum sizes that are available at
 preprocessor time in standard C environments. */
 
+#include <limits.h>
+#include <stddef.h>
+
 #if USHRT_MAX == 65535
   typedef unsigned short pcre_uint16;
 #elif UINT_MAX == 65535

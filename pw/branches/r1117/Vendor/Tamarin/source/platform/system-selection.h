@@ -44,7 +44,7 @@
 
 // operating system
 
-#ifdef UNIX
+#if defined(UNIX) || defined(__unix__) || defined(__linux__) || defined(NV_LINUX_PLATFORM)
   #define AVMSYSTEM_UNIX 1
 #else
   #define AVMSYSTEM_UNIX 0

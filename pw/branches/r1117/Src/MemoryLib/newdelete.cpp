@@ -22,7 +22,11 @@
 
 // malloc implementation: 1 - CRT, 2 - nedmalloc
 #ifndef NI_MALLOC_IMPL
+#ifdef NV_LINUX_PLATFORM
+#define NI_MALLOC_IMPL 1
+#else
 #define NI_MALLOC_IMPL 2
+#endif
 #endif
 
 #if NI_MALLOC_IMPL == 1
@@ -520,9 +524,14 @@ static void DumpMemoryLeaks()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if NI_MALLOC_IMPL == 1
 #define NI_MALLOC(s)               malloc(s)
+#ifdef NV_LINUX_PLATFORM
+#define NI_MALLOC_ALIGNED(s,a)     memalign(a,s)
+#define NI_FREE_ALIGNED(p)         free(p)
+#else
 #define NI_MALLOC_ALIGNED(s,a)     _aligned_malloc(s,a)
-#define NI_FREE(p)                 free(p)
 #define NI_FREE_ALIGNED(p)         _aligned_free(p)
+#endif
+#define NI_FREE(p)                 free(p)
 #define NI_REALLOC(p,s)            realloc(p,s)
 #elif NI_MALLOC_IMPL == 2
 #define NI_MALLOC(s)               nedalloc::nedmalloc(s)
@@ -768,30 +777,43 @@ void NEWDEL_CCDECL operator delete[](void * p, const std::nothrow_t&)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static struct RegisterDumpMemoryLeaks
 {
+#ifdef NV_WIN_PLATFORM
   CSymEngine se;  
+#endif
 
   RegisterDumpMemoryLeaks()
   {
+#ifdef NV_WIN_PLATFORM
     AssignSymEngine( &se );
+#endif
   }
 
   ~RegisterDumpMemoryLeaks()
   {
     DumpMemoryLeaks();
+#ifdef NV_WIN_PLATFORM
     AssignSymEngine( 0 );
+#endif
   }
 
 } dumpMemoryLeaks;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #else
+#ifdef NV_LINUX_PLATFORM
+void* Aligned_MAlloc(size_t size, size_t alignment) { return memalign(alignment, size); }
+void Aligned_Free(void* ptr) { free(ptr); }
+#else
 void* Aligned_MAlloc(size_t size, size_t alignment) { return _aligned_malloc(size,alignment); }
 void Aligned_Free(void* ptr) { _aligned_free(ptr); }
+#endif
 void ForcedDeleteHack( void *p ) { free( p ); }
 #endif // #ifdef CHECK_MEMORY_LEAKS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 size_t GetAllocatedFootprint()
 {
-#if NI_MALLOC_IMPL == 1
+#ifdef NV_LINUX_PLATFORM
+  return 0;
+#elif NI_MALLOC_IMPL == 1
   _CrtMemState ms = {0};
   memset( &ms, 0, sizeof( ms ) );
   _CrtMemCheckpoint(&ms);

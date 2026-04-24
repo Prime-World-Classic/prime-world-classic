@@ -2,8 +2,8 @@
 #include "FrameTimeRender.h"
 #include "System/LogFileName.h"
 #include "System/SyncProcessorState.h"
-#include "Render/Renderer.h"
-#include "Render/UIRenderer.h"
+#include "Render/renderer.h"
+#include "Render/uirenderer.h"
 #include "Render/smartrenderer.h"
 
 #include "FontRender.h"

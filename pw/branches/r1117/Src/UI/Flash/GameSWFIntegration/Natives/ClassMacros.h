@@ -16,6 +16,8 @@
 class className : public parentClass \
   { \
   public: \
+  void operator delete(void* p) {} \
+  void operator delete(void* p, void* gc) {} \
   className(VTable *vtable): parentClass(vtable){} \
   ~className(){} \
   DECLARE_CREATE_MEMBERS(objectName) \
@@ -27,6 +29,8 @@ class className : public parentClass \
 class className : public parentClass \
   { \
   public: \
+  void operator delete(void* p) {} \
+  void operator delete(void* p, void* gc) {} \
   className(VTable *vtable): parentClass(vtable){ \
     flash::FlashMovieAvmCore * flashCore = (flash::FlashMovieAvmCore*) core(); \
     flashCore->GetClassCache().RegisterClass( EFlashClassID::className, this ); \

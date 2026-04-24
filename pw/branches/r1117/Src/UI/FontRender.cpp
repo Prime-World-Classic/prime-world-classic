@@ -4,10 +4,12 @@
 #include "Resolution.h"
 
 #include "../Render/MaterialSpec.h"
-#include "../Render/UIRenderer.h"
+#include "../Render/uirenderer.h"
 #include "FontStyle.h"
 
+#ifdef _WIN32
 #include <shlobj.h>
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,7 +172,9 @@ static string GetFontPath( const string& fontName )
 {
   if ( fontName.empty() )
     return "";
-
+#ifndef _WIN32
+  return fontName + ".ttf";
+#else
   string fullFontName = fontName + " (TrueType)";
 
   HKEY hKey;
@@ -210,6 +214,7 @@ static string GetFontPath( const string& fontName )
 
   RegCloseKey( hKey );
   return res;
+#endif
 }
 
 

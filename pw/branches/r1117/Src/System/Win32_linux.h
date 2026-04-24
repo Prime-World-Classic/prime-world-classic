@@ -1,6 +1,26 @@
 #ifndef __WIN32_LINUX_H_UNIQUE__
 #define __WIN32_LINUX_H_UNIQUE__
 
+#define VMPI_memcpy memcpy
+#define VMPI_memset memset
+
+#define __time32_t time_t
+#define _time32 time
+#define _gmtime32_s(tm, t) gmtime_r(t, tm)
+#define _snprintf snprintf
+
+#define _stdcall
+#define __stdcall
+
+#include <malloc.h>
+#include <string.h>
+
+template<size_t size> inline int strncpy_s(char (&dest)[size], const char* src, size_t count) {
+    strncpy(dest, src, count);
+    dest[count < size ? count : size - 1] = '\0';
+    return 0;
+}
+
 #define THREAD_PRIORITY_LOWEST          -2
 #define THREAD_PRIORITY_BELOW_NORMAL    -1
 #define THREAD_PRIORITY_NORMAL          0
@@ -246,11 +266,13 @@ typedef const GUID& REFIID;
 typedef const GUID& REFGUID;
 
 #define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-    extern "C" const GUID name = { (DWORD)l, (WORD)w1, (WORD)w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
+    extern "C" const GUID __attribute__((weak)) name = { (DWORD)l, (WORD)w1, (WORD)w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
 
 inline HRESULT UuidCreate(GUID* p) { memset(p, 0, sizeof(GUID)); return S_OK; }
 inline HRESULT CoCreateGuid(GUID* p) { return UuidCreate(p); }
 inline BOOL IsEqualGUID(REFGUID rguid1, REFGUID rguid2) { return memcmp(&rguid1, &rguid2, sizeof(GUID)) == 0; }
+inline bool operator==(const GUID& a, const GUID& b) { return IsEqualGUID(a, b); }
+inline bool operator!=(const GUID& a, const GUID& b) { return !IsEqualGUID(a, b); }
 
 typedef struct POINT {
     LONG x;
@@ -457,8 +479,59 @@ static inline void OutputDebugStringW(const wchar_t*) {}
 #endif
 
 #define _snwprintf_s swprintf
-#define swprintf_s swprintf
+
+#include <stdarg.h>
+#include <wchar.h>
+template <size_t size>
+inline int swprintf_s(wchar_t (&buffer)[size], const wchar_t *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int result = vswprintf(buffer, size, format, args);
+    va_end(args);
+    return result;
+}
+
+inline int swprintf_s(wchar_t *buffer, size_t sizeOfBuffer, const wchar_t *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    int result = vswprintf(buffer, sizeOfBuffer, format, args);
+    va_end(args);
+    return result;
+}
+
+#define fprintf_s fprintf
 #define sscanf_s sscanf
+
+#include <math.h>
+#define _isnan isnan
+
+#include <wctype.h>
+#define VK_SPACE 0x20
+#define VK_DELETE 0x2E
+#define VK_BACK 0x08
+#define VK_HOME 0x24
+#define VK_END 0x23
+#define VK_LEFT 0x25
+#define VK_UP 0x26
+#define VK_RIGHT 0x27
+#define VK_DOWN 0x28
+#define VK_RETURN 0x0D
+
+template<typename A> inline int IsClipboardFormatAvailable(A) { return 0; }
+template<typename A> inline int OpenClipboard(A) { return 0; }
+template<typename A> inline void* GetClipboardData(A) { return 0; }
+template<typename A> inline void* GlobalLock(A) { return 0; }
+template<typename A> inline void GlobalUnlock(A) {}
+inline void CloseClipboard() {}
+inline void EmptyClipboard() {}
+template<typename A, typename B> inline void* GlobalAlloc(A,B) { return 0; }
+template<typename A, typename B> inline void SetClipboardData(A,B) {}
+#define CF_UNICODETEXT 13
+#define CF_TEXT 1
+#define GMEM_MOVEABLE 2
+typedef void* HGLOBAL;
 #define _stricmp strcasecmp
 #define _wcsicmp wcscasecmp
 #define _countof(a) (sizeof(a)/sizeof(*(a)))

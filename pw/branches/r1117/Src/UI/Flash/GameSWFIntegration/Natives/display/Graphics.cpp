@@ -409,7 +409,7 @@ void GraphicsObject::DoRender( Render::IFlashRenderer* _renderer, const flash::S
 
     for (int i = 0, n = cachedMeshes.size(); i < n; i++)
     {
-      Weak<flash::MeshSet>	candidate = cachedMeshes[i];
+      Weak<flash::MeshSet>      candidate = cachedMeshes[i].Get();
 
       if (object_space_max_error > candidate->get_error_tolerance() * 3.0f)
         break;

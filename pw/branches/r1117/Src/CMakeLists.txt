@@ -263,7 +263,10 @@ list_remove_regexp( ALL_SRCS ".+/display/Styles\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/SwfChecker\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/Dummy\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/PFResourcesCollection\\.cpp$" )
-list_remove_regexp( ALL_SRCS ".+/DummySound\\.cpp$" )
+list_remove_regexp( ALL_SRCS ".+/EventScene\\.cpp$" )
+list_remove_regexp( ALL_SRCS ".+/SoundScene\\.cpp$" )
+list_remove_regexp( ALL_SRCS ".+/EaselEventSounds\\.cpp$" )
+list_remove_regexp( ALL_SRCS ".+/EaselFModEvent\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/FullScreenTest\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/FileStream\\.cpp$" )
 list_remove_regexp( ALL_SRCS ".+/FilePileCompilerApp\\.cpp$" )
@@ -273,11 +276,19 @@ set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/HybridServer/PeeredTypes.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/HybridServer/LPeered.auto.cpp )
 
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/LobbyPvx/CommonTypes.cpp )
-#set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsDebugTypes.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Statistic/StatisticsServerTypes.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/Accounting/RLobbyAccounting.auto.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Game/PF/Server/LobbyPvx/RLobbyIEntrance.auto.cpp )
 set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/PerfCounterProvider.cpp )
-#set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/LPerfCounterProviderIntf.auto.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/LPerfCounterProviderIface.auto.cpp )
+set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/Server/Monitoring/PerfCounterProvider/RPerfCounterProviderIface.auto.cpp )
+
+file(GLOB_RECURSE CHAT_AUTO_SRCS ${SRC_DIR}/Server/Chat/ChatSvc/*.auto.cpp)
+set( ALL_SRCS ${ALL_SRCS} ${CHAT_AUTO_SRCS} )
+
+file(GLOB_RECURSE JSON_SRCS ${VENDOR}/JsonCpp/src/lib_json/*.cpp)
+set( ALL_SRCS ${ALL_SRCS} ${JSON_SRCS} )
 
 
 #set( ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/../Tools/GMTools/StatisticService/RPC/RStatisticWriter.auto.cpp )
@@ -330,8 +341,67 @@ if(WIN32)
 else()
   # Linux libraries
   find_package(Threads REQUIRED)
-  set(ALL_LIBS ${ALL_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt dl)
-  # TODO: Add other linux libraries or use find_package for them
+  set(ALL_LIBS ${ALL_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt dl ssl crypto curl z freetype jpeg GLU boost_thread SDL2)
+
+  list_remove_regexp( ALL_SRCS ".*CMakeFiles/.*" )
+  list_remove_regexp( ALL_SRCS ".*System/threading/thread\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*FileWriteBufferedStream\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*MultiReaderLock\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*FileUnpile\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*Network/.*" )
+  list_remove_regexp( ALL_SRCS ".*HybridServer/.*" )
+  list_remove_regexp( ALL_SRCS ".*GameChatClient/.*" )
+  list_remove_regexp( ALL_SRCS ".*LobbyGameClient\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*LobbyClientBase\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*NewLobbyClientPW\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*NewLobbyGameClientPW\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*TestWorld\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*HybridServerNodeImpl\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*GameContext\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*PerfCounterProvider\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*LPerfCounterProviderIface\\.auto\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".*RPerfCounterProviderIface\\.auto\\.cpp$" )
+  
+  set(ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/LinuxStubs.cpp ${SRC_DIR}/LinuxStubs2.cpp ${SRC_DIR}/SoundStubs.cpp ${VENDOR}/MD4/md4c.c ${VENDOR}/MD4/md5c.c ${SRC_DIR}/System/Math/MD.cpp)
+  
+  # Include Server RPC files
+  file(GLOB_RECURSE RPC_SRCS ${SRC_DIR}/Server/RPC/*.cpp)
+  set(ALL_SRCS ${ALL_SRCS} ${RPC_SRCS})
+  list_remove_regexp( ALL_SRCS ".+\\.test\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+\\.testbad\\.cpp$" )
+
+  # Include Tamarin files
+  file(GLOB_RECURSE TAMARIN_SRCS 
+       ${VENDOR}/Tamarin/source/core/*.cpp 
+       ${VENDOR}/Tamarin/source/MMgc/*.cpp 
+       ${VENDOR}/Tamarin/source/nanojit/*.cpp 
+       ${VENDOR}/Tamarin/source/pcre/*.cpp 
+       ${VENDOR}/Tamarin/source/eval/*.cpp 
+       ${VENDOR}/Tamarin/source/platform/unix/*.cpp 
+       ${VENDOR}/Tamarin/source/VMPI/*.cpp
+  )
+  set(ALL_SRCS ${ALL_SRCS} ${TAMARIN_SRCS})
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/NativePPC\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/NativeSparc\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/NativeARM\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/Nativei386\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/unixcpuid\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/.+/MathUtilsSolaris\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/VMPI/.*Mac.*\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/VMPI/.*Symbian.*\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/VMPI/.*Win.*\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/core/builtin\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/core/CdeclThunk\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcredemo\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcregrep\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcretest\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/dftables\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcreposix\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/ucptable\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcre_dfa_exec\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/pcre/pcre_ucp_findchar\\.cpp$" )
+  list_remove_regexp( ALL_SRCS ".+/Tamarin/source/platform/unix/solariscpuid\\.cpp$" )
+  add_definitions( -DPROTOTYPES=1 -DAVMFEATURE_INDIRECT_NATIVE_THUNKS=1 -DHAVE_CONFIG_H=1 -DLINK_SIZE=2 -DPOSIX_MALLOC_THRESHOLD=10 -DNEWLINE=10 -DMATCH_LIMIT=10000000 -DMATCH_LIMIT_RECURSION=10000000 -DSUPPORT_UTF8=1 -DHAVE_STDINT_H=1 -DHAVE_INTTYPES_H=1 )
 endif()
 
 #ws2_32.lib

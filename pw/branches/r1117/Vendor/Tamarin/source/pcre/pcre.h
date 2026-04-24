@@ -81,6 +81,7 @@ don't change existing definitions of PCRE_EXP_DECL and PCRECPP_EXP_DECL. */
 #  endif
 #endif
 
+#include <stddef.h>
 #ifdef __cplusplus
 #  ifndef PCRECPP_EXP_DECL
 #    define PCRECPP_EXP_DECL  extern

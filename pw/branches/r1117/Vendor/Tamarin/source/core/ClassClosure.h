@@ -48,7 +48,9 @@ namespace avmplus
 	{
 	public:
 
-		ClassClosure(VTable *cvtable);
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
+		ClassClosure(VTable* cvtable);
 
 		Atom get_prototype();
 		void set_prototype(Atom p);

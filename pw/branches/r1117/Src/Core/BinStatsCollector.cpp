@@ -326,4 +326,13 @@ void BinStatsCollector::ParseBuffExternal( const BuffersStack &buffStack, T &obj
   }
 }
 
+#if defined(NV_LINUX_PLATFORM)
+  int BinStatsCollector::getStepFromBuffer( const void * ) { return 0; }
+  unsigned int BinStatsCollector::getCrcFromBuffer( const void * ) { return 0; }
+  void BinStatsCollector::setStepToBuffer( void *, int ) {}
+  void BinStatsCollector::setCrcToBuffer( void *, unsigned int ) {}
+  void BinStatsCollector::writeToFile( const void *, size_t, Stream & ) {}
+  template<> void BinStatsCollector::OnCurrentCrc<Crc32ChecksumBaseFast<Crc32ChecksumDummyStrategyTmp> >( const Crc32ChecksumBaseFast<Crc32ChecksumDummyStrategyTmp> & ) {}
+#endif
+
 } // namespace NCore

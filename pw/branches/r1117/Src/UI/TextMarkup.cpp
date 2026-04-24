@@ -840,7 +840,7 @@ bool TextMarkup::WordStartsWithDot(const wchar_t * word, TOffset begin){
 
 bool TextMarkup::WordStartsWithPunctuationMark(const wchar_t * word, TOffset begin)
 {
-  const nstl::wstring &marks = L"-.,;:!?%\"')»";
+  const nstl::wstring &marks = L"-.,;:!?%\"')";
   if ( !word )
     return false;
 
@@ -848,7 +848,7 @@ bool TextMarkup::WordStartsWithPunctuationMark(const wchar_t * word, TOffset beg
 }
 
 bool TextMarkup::IsPunctuationMark(const wchar_t * word, TOffset length){
-  const nstl::wstring &marks = L"-.,;:!?%\"')»";
+  const nstl::wstring &marks = L"-.,;:!?%\"')";
   if (!word || length != 1)
     return false;
 

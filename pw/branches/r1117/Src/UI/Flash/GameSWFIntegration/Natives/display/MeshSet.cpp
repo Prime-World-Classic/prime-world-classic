@@ -4,6 +4,7 @@
 
 #include "Tesselate.h"
 #include "MeshSet.h"
+#include "MemoryLib/newdelete.h"
 
 namespace flash
 {

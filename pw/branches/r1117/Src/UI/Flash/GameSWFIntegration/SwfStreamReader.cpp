@@ -208,7 +208,7 @@ void SwfStreamReader::readUTF8String( nstl::wstring & result )
 
 int SwfStreamReader::readBuffer( UI8 * buffer, int bytesToRead )
 {
-  int actualBytesToRead = min( uint32_t(bytesToRead), swf.getSize() - pos ); 
+  int actualBytesToRead = min( (size_t)(bytesToRead), swf.getSize() - pos ); 
 
   if ( actualBytesToRead <= 0 )
     return 0;
@@ -318,8 +318,8 @@ void SwfStreamReader::readGradient( SWF_GRADIENT& _gradient, EGradientType::Enum
   _gradient.SpreadMode = readUBits(2);
   _gradient.InterpolationMode = readUBits(2);
 
-  _gradient.SpreadMode = 0; // чтобы было меньше вариаций в кеше градиентных текстур 
-  _gradient.InterpolationMode = 0; // чтобы было меньше вариаций в кеше градиентных текстур
+  _gradient.SpreadMode = 0; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+  _gradient.InterpolationMode = 0; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
   _gradient.NumGradient = readUBits(4);
   _gradient.type = type;

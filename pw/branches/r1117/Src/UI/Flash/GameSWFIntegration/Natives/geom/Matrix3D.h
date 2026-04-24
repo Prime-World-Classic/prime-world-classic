@@ -16,6 +16,8 @@ class ObjectVectorObject;
 class Matrix3DObject: public ScriptObject
 {
 public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
   Matrix3DObject( Matrix3DClass * classType );
   Matrix3DObject( VTable* ivtable, ScriptObject* prototype );
   ~Matrix3DObject() {}
@@ -166,6 +168,8 @@ private:
 class Matrix3DClass : public ClassClosure
 {
 public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
   Matrix3DClass(VTable *vtable): ClassClosure(vtable)
   {
     flash::FlashMovieAvmCore * flashCore = (flash::FlashMovieAvmCore*) core();

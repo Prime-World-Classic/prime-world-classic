@@ -21,11 +21,15 @@ void FlashEnterFunction::SaveFloatState()
 {
   WORD _nFPUStatus;
 
+#ifdef NV_LINUX_PLATFORM
+  __asm__ __volatile__ ("fstcw %0\n\twait" : "=m" (_nFPUStatus));
+#else
   __asm 
   {
     fstcw _nFPUStatus
     wait
   }
+#endif
 
   nFPUStatus = GetProcessorState();
 

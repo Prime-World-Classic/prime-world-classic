@@ -1,6 +1,6 @@
 #pragma once
 #include "System/SystemLog.h"
-#include "PlayerGlobalIncludes.h"
+#include "../PlayerGlobalIncludes.h"
 
 namespace avmplus
 {

@@ -47,6 +47,8 @@ namespace avmplus
 	class MathClass : public ClassClosure
 	{
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		MathClass(VTable* cvtable);
 		~MathClass() 
 		{ 

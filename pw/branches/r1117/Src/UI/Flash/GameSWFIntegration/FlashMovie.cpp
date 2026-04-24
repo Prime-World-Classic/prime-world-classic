@@ -9,7 +9,7 @@
 
 #include "FontsRenderInterface.h"
 
-#include "Natives/display/Loaderinfo.h"
+#include "Natives/display/LoaderInfo.h"
 #include "Natives/display/MovieClip.h"
 #include "Natives/display/Bitmap.h"
 #include "Natives/display/BitmapData.h"
@@ -105,7 +105,7 @@ Movie::Movie( IStageProvider * _stageProvider, MMgc::GC * gc, IFontRender * _fon
   uiBlockAddColor( 0.f, 0.f, 0.f, 0.f ),
   blockingFade(0.f)
 {
-  FLASH_ENTER_FUNCTION_VOID( GetGC() ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_VOID( GetGC() ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   core = new FlashMovieAvmCore( GetGC() );
   core->SetJITEnabled( true );
@@ -1535,8 +1535,8 @@ ICharacter * Movie::GetCharacterByName(avmplus::AvmString name)
   //  a++;
   //}
 
-  //TODO:: САша З проверь пожалуйста строчки выше. там формат такой EscMenu::TestInputText
-  //так что это скорее подпорка
+  //TODO:: пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ EscMenu::TestInputText
+  //пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   CharacterNameDictionary::iterator nameIter = characterNameDictionary.find(nstlName);
 
   if (nameIter == characterNameDictionary.end())
@@ -1606,7 +1606,7 @@ void Movie::UnsubscribeForAdvanceByID( int timerID )
 
 bool Movie::CallMethod( const char * path, char const* name )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
     return rootMovieClip->CallMethod( path, name );
@@ -1616,7 +1616,7 @@ bool Movie::CallMethod( const char * path, char const* name )
 
 bool Movie::CallMethod( const char * path, char const* name, const char* arg1 )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
     return rootMovieClip->CallMethod( path, name, arg1 );
@@ -1626,7 +1626,7 @@ bool Movie::CallMethod( const char * path, char const* name, const char* arg1 )
 
 bool Movie::CallMethod( const char * path, char const* name, const char* arg1, const char* arg2 )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
     return rootMovieClip->CallMethod( path, name, arg1, arg2 );
@@ -1636,7 +1636,7 @@ bool Movie::CallMethod( const char * path, char const* name, const char* arg1, c
 
 bool Movie::CallMethod( const char * path, const char * name, int arg1, int arg2 )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
     return rootMovieClip->CallMethod( path, name, arg1, arg2 );
@@ -1646,7 +1646,7 @@ bool Movie::CallMethod( const char * path, const char * name, int arg1, int arg2
 
 bool Movie::CallMethod( const char * path, char const* name, const vector<avmplus::Atom> & args )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), false ) // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
     return rootMovieClip->CallMethod( path, name, args );
@@ -1736,7 +1736,7 @@ avmplus::ScriptObject * Movie::GetFlashObject( const char * path )
 
 avmplus::DisplayObjectObject* Movie::FindDisplayObjectByInstance( const char* _instanceName )
 {
-  FLASH_ENTER_FUNCTION_RETURN( GetGC(), 0 ); // не двигаем выше
+  FLASH_ENTER_FUNCTION_RETURN( GetGC(), 0 ); // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
   if ( rootMovieClip )
   {

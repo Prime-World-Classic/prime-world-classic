@@ -15,11 +15,11 @@ static int _##fname##_cb( lua_State *L )																																								
 }																																																															\
 static struct SRegisterScriptFunction_##fname																																									\
 {																																																															\
-	SRegisterScriptFunction_##fname##()																																													\
+	SRegisterScriptFunction_##fname()																																													\
 	{																																																														\
 		NScript::AddSFunctionToGlobals( #fname, &_##fname##_cb );																																	\
 	}																																																														\
-} registerScriptFunction_##fname##;
+} registerScriptFunction_##fname;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define REGISTER_LUA_SFUNCTION( ScriptEngine, fname )																																					\
@@ -29,20 +29,20 @@ static int _##fname##_cb( lua_State *L )																																								
 }																																																															\
 static struct SRegisterScriptFunction_##fname																																									\
 {																																																															\
-	SRegisterScriptFunction_##fname##()																																													\
+	SRegisterScriptFunction_##fname()																																													\
 	{																																																														\
 		ScriptEngine.AddFunctionToRegList( #fname, &_##fname##_cb );																															\
 	}																																																														\
-} registerScriptFunction_##fname##;
+} registerScriptFunction_##fname;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Регистрация глобальной скриптовой функции без биндинга, вызывается функция такого типа:
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ:
 // int CallbackFunction(lua_State * L)
 #define REGISTER_LUA_SFUNCTION_IMMEDIATE( ScriptEngine, fname )																																\
-static struct SRegisterScriptFunction_##__LINE__##_##fname																																		\
+static struct SRegisterScriptFunction_##fname																																		\
 {																																																															\
-	SRegisterScriptFunction_##__LINE__##_##fname##()																																						\
+	SRegisterScriptFunction_##fname()																																						\
 	{																																																														\
-		ScriptEngine.AddFunctionToRegList( #fname, &fname );																																			\
+		ScriptEngine.AddFunctionToRegList( #fname, &fname );																																					\
 	}																																																														\
-} registerScriptFunction_##__LINE__##_##fname##;
+} registerScriptFunction_##fname;

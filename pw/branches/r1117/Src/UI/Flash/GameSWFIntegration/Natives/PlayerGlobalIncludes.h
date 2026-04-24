@@ -1,9 +1,13 @@
 #pragma once
 #include <Vendor/Tamarin/source/platform/system-selection.h>
+#if defined(NV_LINUX_PLATFORM)
+#include <Vendor/Tamarin/source/platform/unix/unix-platform.h>
+#else
 #include <Vendor/Tamarin/source/platform/win32/win32-platform.h>
+#endif
 #include <Vendor/Tamarin/source/core/avmplus.h>
 
-#include <UI/Flash/GameSWFIntegration/Builtins/NativesBuiltins.h>
+#include <UI/Flash/GameSWFIntegration/builtins/NativesBuiltins.h>
 #include "ClassMacros.h"
 #include <UI/Flash/GameSWFIntegration/SafeGCRoot.h>
 

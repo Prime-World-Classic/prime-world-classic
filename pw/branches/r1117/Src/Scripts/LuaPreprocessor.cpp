@@ -44,14 +44,14 @@ bool LuaPreprocessor::Preprocess(string& result, char const* data, const int siz
   result.reserve(size);
 
   TConstants::const_iterator end = constants.end();
-  for(size_t cur = 0; cur != string::npos;)
+  for(size_t cur = 0; cur != ((size_t)-1);)
   {
     size_t pos   = buffer.find_first_of(delimiters, cur);
     string token = buffer.substr(cur, max<size_t>(pos - cur, 1));
 
     TConstants::const_iterator it = constants.find(token);
     result += end != it ? it->second : token;
-    cur     = min<size_t>( pos + (cur == pos), string::npos);
+    cur     = min<size_t>( pos + (cur == pos), ((size_t)-1));
   }
   
   return true;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Gl.h>
+#include <GL/gl.h>
 
 namespace flash
 {

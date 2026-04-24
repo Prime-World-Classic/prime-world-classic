@@ -103,7 +103,9 @@ ReplayBufferManager::ReplayBufferManager(ReplayBufferMode mode, const char *file
   {
     WriteHeader();
   }
+#ifdef NV_WIN_PLATFORM
   NBSU::SetExceptionCallback(_exceptionCallback);
+#endif
 }
 
 

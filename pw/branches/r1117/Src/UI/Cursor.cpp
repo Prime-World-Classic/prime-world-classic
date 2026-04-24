@@ -14,6 +14,53 @@
 #include "ImageComponent.h"
 #include "Resolution.h"
 
+#ifdef NV_LINUX_PLATFORM
+template<typename A> inline void DestroyIcon(A) {}
+template<typename A> inline void DestroyCursor(A) {}
+template<typename A, typename B, typename C, typename D, typename E, typename F, typename G> inline int FormatMessage(A,B,C,D,E,F,G) { return 0; }
+#define FORMAT_MESSAGE_FROM_SYSTEM 0
+#define ZeroMemory(x,y) memset(x,0,y)
+template<typename A> inline void* CreateCompatibleDC(A) { return (void*)1; }
+typedef void* HBITMAP;
+typedef void* HGDIOBJ;
+template<typename A, typename B, typename C, typename D, typename E, typename F> inline void* CreateDIBSection(A,B,C,D,E,F) { return 0; }
+typedef struct { int biSize, biWidth, biHeight, biSizeImage, biCompression, biXPelsPerMeter, biYPelsPerMeter, biClrImportant, biClrUsed, biPlanes, biBitCount; } BITMAPINFOHEADER;
+typedef struct { BITMAPINFOHEADER bmiHeader; } BITMAPINFO;
+#define BI_RGB 0
+#define DIB_RGB_COLORS 0
+template<typename A, typename B> inline void* SelectObject(A,B) { return 0; }
+template<typename A, typename B, typename C, typename D, typename E, typename F, typename G, typename H, typename I> inline void BitBlt(A,B,C,D,E,F,G,H,I) {}
+#define SRCCOPY 0
+template<typename A, typename B> inline void* _aligned_malloc(A x, B) { return malloc(x); }
+template<typename A> inline void _aligned_free(A x) { free((void*)x); }
+template<typename A, typename B, typename C, typename D, typename E> inline void* CreateBitmap(A,B,C,D,E) { return 0; }
+template<typename A, typename B, typename C> inline void FillMemory(A x, B y, C z) { memset((void*)x,z,y); }
+typedef struct { int fIcon; int xHotspot; int yHotspot; void* hbmMask; void* hbmColor; } ICONINFO;
+template<typename A> inline void* CreateIconIndirect(A) { return 0; }
+template<typename A> inline void DeleteObject(A) {}
+template<typename A> inline void DeleteDC(A) {}
+inline void GdiFlush() {}
+template<typename A> inline void ClipCursor(A) {}
+template<typename A> inline int GetCursorPos(A) { return 0; }
+template<typename A> inline void GetClipCursor(A) {}
+inline void* GetFocus() { return 0; }
+template<typename A, typename B> inline void SetCursorPos(A,B) {}
+template<typename A> inline void* GetDC(A) { return (void*)1; }
+template<typename A, typename B> inline int GetDeviceCaps(A,B) { return 32; }
+#define BITSPIXEL 1
+template<typename A, typename B> inline void ReleaseDC(A,B) {}
+template<typename A, typename B> inline void* LoadCursor(A,B) { return 0; }
+#define IDC_ARROW 0
+template<typename A, typename B> inline int GetClientRect(A,B) { return 0; }
+template<typename A, typename B> inline int ClientToScreen(A,B) { return 0; }
+template<typename A, typename B, typename C, typename D, typename E, typename F> inline void* LoadImage(A,B,C,D,E,F) { return 0; }
+#define IMAGE_CURSOR 0
+#define LR_LOADFROMFILE 0
+template<typename A, typename B> inline void GetIconInfo(A,B) {}
+typedef struct { int bmType, bmWidth, bmHeight, bmWidthBytes, bmPlanes, bmBitsPixel; void* bmBits; } BITMAP;
+template<typename A, typename B, typename C> inline int GetObject(A,B,C) { return 0; }
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NCursor
 {

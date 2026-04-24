@@ -4,7 +4,7 @@
 namespace avmplus
 {
   typedef int32_t	int32_t;
-  typedef int32_t Atom;
+  typedef intptr_t Atom;
 
   class ScriptObject;
   class AvmCore;

@@ -8,6 +8,8 @@
 #ifndef GRID_INDEX_H
 #define GRID_INDEX_H
 
+#include <vector>
+
 //
 // grid_index_point
 //
@@ -502,7 +504,7 @@ struct grid_index_box
 		assert(bound._min.y <= bound._max.y);
 
 		// Allocate the grid.
-		m_grid = new array<grid_entry_t*>[x_cells * y_cells];
+		m_grid = new std::vector<grid_entry_t*>[x_cells * y_cells];
 	}
 
 	// Constructor that picks good values for x_cells and y_cells,
@@ -752,11 +754,10 @@ struct grid_index_box
 		// Find and remove the entry from all cells that it overlaps with.
 		index_box<int>	ib = get_containing_cells_clamped(entry->bound);
 		
-		for (int iy = ib.min.y; iy <= ib.max.y; iy++)
+		for (int iy = ib._min.y; iy <= ib._max.y; iy++)
 		{
-			for (int ix = ib.min.x; ix <= ib.max.x; ix++)
-			{
-				array<grid_entry_t*>*	cell_array = get_cell(ix, iy);
+		        for (int ix = ib._min.x; ix <= ib._max.x; ix++)			{
+				auto cell_array = get_cell(ix, iy);
 
 				int	i, n;
 				for (i = 0, n = cell_array->size(); i < n; i++)
@@ -800,7 +801,7 @@ struct grid_index_box
 	// Should be relatively quick, assuming payload is unique.
 	{
 		index_point<int>	ip = get_containing_cell_clamped(loc);
-		array<grid_entry_t*>*	cell_array = get_cell(ip.x, ip.y);
+		auto cell_array = get_cell(ip.x, ip.y);
 		
 		for (int i = 0, n = cell_array->size(); i < n; i++)
 		{

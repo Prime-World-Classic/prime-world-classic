@@ -91,7 +91,6 @@ bool CChannelLogger::SetChannelLevelFilter( const char* szChannelName, unsigned 
 
 void CChannelLogger::Log( const SEntryInfo & entryInfo, const char * headerAndText, const char * textOnly )
 {
-  NI_PROFILE_HEAVY_FUNCTION;
 
   UpdateCounters( entryInfo );
 

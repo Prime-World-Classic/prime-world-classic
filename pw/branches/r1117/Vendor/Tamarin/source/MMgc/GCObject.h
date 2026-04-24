@@ -181,6 +181,8 @@ namespace MMgc
     static void operator delete( void *, GC * ) {}
     
 	public:
+		void operator delete(void* p) {}
+		void operator delete(void* p, void* gc) {}
 		REALLY_INLINE static void *operator new(size_t size, GC *gc, size_t extra)
 		{
 			return gc->AllocExtraRCObject(size, extra);

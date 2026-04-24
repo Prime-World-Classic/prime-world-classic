@@ -188,7 +188,7 @@ private:
 #if defined( NV_WIN_PLATFORM )
       offset += vsnprintf_s( buf+offset, BUFFER_LENGTH - 1-offset, BUFFER_LENGTH - 1, format, va );
 #elif defined( NV_LINUX_PLATFORM )
-      offset += vsnprintf( buf+offset, BUFFER_LENGTH - 1-offset, BUFFER_LENGTH - 1, format, va );
+      offset += vsnprintf( buf+offset, BUFFER_LENGTH - 1-offset, format, va );
 #endif
     }
     offset += NStr::Printf(buf+offset, BUFFER_LENGTH-1-offset, "\n");
@@ -1070,7 +1070,7 @@ void EntityMap::BroadcastForceLink(const GUID& entityGUID, const GUID& targetGat
       int index = 0;
       while ( StrongMT<INode> node = nodes.GetNode(index++))
       {
-        if (!lastSenderGateId || *lastSenderGateId == node->GetDesc().guid)
+        if (!lastSenderGateId || IsEqualGUID(*lastSenderGateId, node->GetDesc().guid))
         {
           transaction->Go(node->GetConnectedPipe());
         }
@@ -1091,7 +1091,7 @@ bool EntityMap::PublishInternal( EntityId entityId, ILocalEntity* entity, const 
 
     for ( int i = 0; i < guids.size(); i++ )
     {
-      if (!requestingGateId || (*requestingGateId != guids[i].gateId && guids[i].gateId != self.guid))
+      if (!requestingGateId || (!IsEqualGUID(*requestingGateId, guids[i].gateId) && !IsEqualGUID(guids[i].gateId, self.guid)))
       {
         if (createdEntities)
         {

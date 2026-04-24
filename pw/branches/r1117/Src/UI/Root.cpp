@@ -1,4 +1,4 @@
-#include "Stdafx.h"
+#include "stdafx.h"
 
 #include "Root.h"
 
@@ -8,10 +8,10 @@
 #include "Scripts.h"
 #include "DebugVarsRender.h"
 
-#include "Render/UIRenderer.h"
+#include "Render/uirenderer.h"
 #include "Flash/GameSWFIntegration/FlashPlayer.h"
 #include "Render/FlashRendererInterface.h"
-#include "Render/Material.h"
+#include "Render/material.h"
 #include "Scripts/Script.h"
 #include "User.h"
 #include "Resolution.h"

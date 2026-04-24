@@ -1,10 +1,7 @@
 #pragma once
 
 
-namespace NDb
-{
-  enum Sound3DSimultType;
-}
+#include "../Scene/DBScene.h"
 
 namespace FMOD
 {

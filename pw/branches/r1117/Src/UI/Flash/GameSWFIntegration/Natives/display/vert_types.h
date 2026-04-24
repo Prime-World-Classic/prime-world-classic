@@ -78,7 +78,7 @@ inline double	determinant_float(const vec2<float>& a, const vec2<float>& b, cons
 template<class coord_t>
 inline int	vertex_left_test(const vec2<coord_t>& a, const vec2<coord_t>& b, const vec2<coord_t>& c)
 {
-	compiler_assert(0);	// must specialize
+	assert(0);	// must specialize
 	return -1;
 }
  
