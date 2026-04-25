@@ -107,8 +107,10 @@ void FontStyle::SetupMaterial()
   renderMaterial = static_cast<Render::BaseMaterial*>( Render::CreateRenderMaterial( NDb::UIFontMaterial::typeId ) );
   renderMaterial->FillMaterial( &fontMaterialDesc, 0, false );
 
+#if !defined(PW_LINUX_NULL_RENDER)
   renderMaterial->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
   renderMaterial->GetDiffuseMap()->SetTexture( GetFontRenderer()->GetFontsTexture() );
+#endif
 
   //Font metrics
   if ( uiFontStyle )

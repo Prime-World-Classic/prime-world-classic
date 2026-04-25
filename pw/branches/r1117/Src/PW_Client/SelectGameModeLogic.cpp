@@ -4,6 +4,7 @@
 
 #include "SelectGameModeScreen.h"
 #include "UI/EditBox.h"
+#include "UI/ImageLabel.h"
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "Scripts/NameMap.h"
@@ -22,6 +23,131 @@ static int s_reconnect_team = 1;
 
 namespace UI
 {
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+namespace
+{
+void PopulateLinuxBootstrapMapEntry(Window* games, int index, const char* id, const wchar_t* title, const wchar_t* description)
+{
+  Window* list = games->FindChild("List");
+  if (!list)
+  {
+    return;
+  }
+
+  const string itemName = NStr::StrFmt("Item%d", index);
+  Window* item = list->GetChild(itemName.c_str());
+  if (!item)
+  {
+    item = list->CreateChild(itemName.c_str(), "item", 0, 0, -1, -1, NDb::UIELEMENTHALIGN_LEFT, NDb::UIELEMENTVALIGN_TOP);
+  }
+  if (!item)
+  {
+    return;
+  }
+
+  const char* mapId = id ? id : "";
+  const string titleText = title ? NStr::ToMBCS(title) : "";
+  const string descriptionText = description ? NStr::ToMBCS(description) : "";
+  const bool selected = !s_last_map.empty() && s_last_map == mapId;
+
+  if (ImageLabel* idWnd = GetChildChecked<ImageLabel>(item, "Id", true))
+  {
+    idWnd->SetCaptionTextA(mapId);
+  }
+
+  if (ImageLabel* titleWnd = GetChildChecked<ImageLabel>(item, "Title", true))
+  {
+    titleWnd->SetCaptionTextA(titleText.c_str());
+    titleWnd->Show(!selected);
+  }
+
+  if (ImageLabel* activeTitleWnd = GetChildChecked<ImageLabel>(item, "TitleActive", true))
+  {
+    activeTitleWnd->SetCaptionTextA(titleText.c_str());
+    activeTitleWnd->Show(selected);
+  }
+
+  if (ImageLabel* descriptionWnd = GetChildChecked<ImageLabel>(item, "Descr", true))
+  {
+    descriptionWnd->SetCaptionTextA(descriptionText.c_str());
+  }
+
+  if (Window* hiliteWnd = item->FindChild("Hilite"))
+  {
+    hiliteWnd->Show(false);
+  }
+
+  if (Window* activeBorderWnd = item->FindChild("ActiveBorder"))
+  {
+    activeBorderWnd->Show(selected);
+  }
+}
+
+void PopulateLinuxBootstrapSessionEntry(
+  Window* games,
+  const lobby::SDevGameInfo& info,
+  const char* mapTitle
+)
+{
+  Window* list = games->FindChild("List");
+  if (!list)
+  {
+    return;
+  }
+
+  char itemName[64] = {0};
+  snprintf(itemName, sizeof(itemName), "Item%d", static_cast<int>(info.gameId));
+
+  Window* item = list->GetChild(itemName);
+  if (!item)
+  {
+    item = list->CreateChild(itemName, "item", 0, 0, -1, -1, NDb::UIELEMENTHALIGN_LEFT, NDb::UIELEMENTVALIGN_TOP);
+  }
+  if (!item)
+  {
+    return;
+  }
+
+  const string nameText = NStr::ToMBCS(info.name);
+  char idText[64] = {0};
+  snprintf(idText, sizeof(idText), "# %d", static_cast<int>(info.gameId));
+
+  char playersText[64] = {0};
+  snprintf(playersText, sizeof(playersText), "%d / %d", info.playersCount, info.maxPlayers);
+
+  if (ImageLabel* nameWnd = GetChildChecked<ImageLabel>(item, "Name", true))
+  {
+    nameWnd->SetCaptionTextA(nameText.c_str());
+  }
+
+  if (ImageLabel* idWnd = GetChildChecked<ImageLabel>(item, "Id", true))
+  {
+    idWnd->SetCaptionTextA(idText);
+  }
+
+  if (ImageLabel* playersWnd = GetChildChecked<ImageLabel>(item, "Players", true))
+  {
+    playersWnd->SetCaptionTextA(playersText);
+  }
+
+  if (ImageLabel* mapWnd = GetChildChecked<ImageLabel>(item, "Map", true))
+  {
+    mapWnd->SetCaptionTextA(mapTitle ? mapTitle : info.mapId.c_str());
+  }
+
+  if (Window* startedWnd = item->FindChild("Started"))
+  {
+    startedWnd->Show(false);
+  }
+
+  if (Window* hiliteWnd = item->FindChild("Hilite"))
+  {
+    hiliteWnd->Show(false);
+  }
+}
+}
+#endif
 
 
 #pragma warning(push)
@@ -97,7 +223,11 @@ void SelectGameModeLogic::AddMapEntry( int index, const char * id, const wchar_t
   UI::Window * games = pBaseWindow->FindChild( "Maps" );
   if ( games )
   {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    PopulateLinuxBootstrapMapEntry(games, index, id, title, description);
+#else
     games->CallHandler( "CppAddMap", index, id, NStr::ToMBCS( title ).c_str(), NStr::ToMBCS( description ).c_str() );
+#endif
   }
 }
 
@@ -127,7 +257,11 @@ void SelectGameModeLogic::UpdateSessionInfo( const lobby::SDevGameInfo & info )
     params.SetValue( "mapTitle", title );
     params.SetValue( "started", false );
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    PopulateLinuxBootstrapSessionEntry(games, info, title.c_str());
+#else
     games->CallHandler( "CppSessionInfo", (int)info.gameId, params );
+ #endif
   }
 }
 

@@ -54,13 +54,27 @@ add_executable(
 
 add_executable(
   PrimeWorldLinuxClient
+  ../Client/DefaultScreenBase.cpp
+  ../Client/ScreenUILogicBase.cpp
   ../PW_Client/Game.cpp
   ../PW_Client/LoadingFlashInterface.cpp
   ../PW_Client/LoadingHeroes.cpp
+  ../PW_Client/LoadingScreen.cpp
+  ../PW_Client/LoadingScreenLogic.cpp
   ../PW_Client/LoadingStatusHandler.cpp
+  ../PW_Client/LocalCmdScheduler.cpp
+  ../PW_Client/SelectGameModeLogic.cpp
+  ../PW_Client/SelectGameModeScreen.cpp
+  ../PW_Client/SelectHeroScreen.cpp
+  ../PW_Client/SelectHeroScreenLogic.cpp
+  ../PF_GameLogic/MapCollection.cpp
   ../PF_GameLogic/PFRenderInterface.cpp
   ../Render/RenderInterface.cpp
+  ../Render/ConstantProtection.cpp
   ../Render/rendermode.cpp
+  ../Render/renderer.cpp
+  ../Render/texture.cpp
+  ../Render/uirenderer.cpp
   pfadvmap_bootstrap.cpp
   ../Game/PF/Server/LobbyPvx/CommonTypes.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
@@ -70,6 +84,7 @@ add_executable(
   ../System/Commands.cpp
   ../System/ConfigFiles.cpp
   ../System/DebugVar.cpp
+  ../System/LoadingProgress.cpp
   ../System/MainFrame_linux.cpp
   ../System/HPTimer.cpp
   ../System/HPTimer_linux.cpp
@@ -84,6 +99,25 @@ add_executable(
   ../System/StrFormatter.cpp
   ../System/Stream.cpp
   ../System/StrProc.cpp
+  ../System/NameMap.cpp
+  ../UI/Cursor.cpp
+  ../UI/ImageComponent.cpp
+  ../UI/ImageLabel.cpp
+  ../UI/LuaEventResult.cpp
+  ../UI/NameMappedWindow.cpp
+  ../UI/Resolution.cpp
+  ../UI/Root.cpp
+  ../UI/ScreenLogicBase.cpp
+  ../UI/SkinStyles.cpp
+  ../UI/TextComponent.cpp
+  ../UI/TextComponentBasic.cpp
+  ../UI/TextMarkup.cpp
+  ../UI/TextMarkupLexems.cpp
+  ../UI/TextMarkupParser.cpp
+  ../UI/User.cpp
+  ../UI/View.cpp
+  ../UI/Window.cpp
+  ../UI/WindowPointJob.cpp
   ../System/ImageDDS.cpp
   ../System/ImageInternal.cpp
   ../System/ImageUnpackDXT.cpp
@@ -101,6 +135,7 @@ add_executable(
   ../NivalInput/Binds.cpp
   ../NivalInput/ControlsSet.cpp
   ../NivalInput/InputCommandInstance.cpp
+  ../NivalInput/InputCommandRef.cpp
   ../NivalInput/InputConsoleCommands.cpp
   ../NivalInput/InputEvent.cpp
   ../NivalInput/Section.cpp
@@ -216,7 +251,10 @@ add_library(
   ../PW_Client/SelectHeroScreen.cpp
   ../PW_Client/SelectHeroScreenLogic.cpp
   ../UI/DebugVarsRender.cpp
+  ../UI/Cursor.cpp
   ../UI/FrameTimeRender.cpp
+  ../UI/FontRender.cpp
+  ../UI/FontStyle.cpp
   ../UI/ImageComponent.cpp
   ../UI/ImageLabel.cpp
   ../UI/LuaEventResult.cpp
@@ -429,6 +467,7 @@ target_include_directories(
   PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
     ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Core
     ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
@@ -472,6 +511,7 @@ target_include_directories(
 find_package(X11 REQUIRED)
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL REQUIRED)
+find_package(Freetype REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -494,7 +534,14 @@ target_link_libraries(
 target_include_directories(
   PrimeWorldLinuxClient
   PRIVATE
+    ${FREETYPE_INCLUDE_DIRS}
     ${PNG_INCLUDE_DIRS}
+)
+
+target_include_directories(
+  PrimeWorldLinuxClientRuntimeProbe
+  PRIVATE
+    ${FREETYPE_INCLUDE_DIRS}
 )
 
 target_compile_definitions(
@@ -560,6 +607,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
   ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/MapCollection.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
@@ -610,7 +658,10 @@ set_source_files_properties(
   ../PW_Client/SelectHeroScreen.cpp
   ../PW_Client/SelectHeroScreenLogic.cpp
   ../UI/DebugVarsRender.cpp
+  ../UI/Cursor.cpp
   ../UI/FrameTimeRender.cpp
+  ../UI/FontRender.cpp
+  ../UI/FontStyle.cpp
   ../UI/ImageComponent.cpp
   ../UI/ImageLabel.cpp
   ../UI/LuaEventResult.cpp

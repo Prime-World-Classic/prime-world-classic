@@ -5,9 +5,13 @@
 
 #include "../Render/MaterialSpec.h"
 #include "../Render/UIRenderer.h"
+#include "../System/FileSystem/FilePath.h"
+#include "../System/FileSystem/FileUtils.h"
 #include "FontStyle.h"
 
+#if defined( NV_WIN_PLATFORM )
 #include <shlobj.h>
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +44,11 @@ FontRenderer::~FontRenderer()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FontRenderer::Initialize()
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  fontTexture = Render::Texture2DRef();
+#else
   fontTexture = Render::CreateTexture2D( FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_L8 );
+#endif
   Render::GetUIRenderer()->SetFontTextureSize( FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE );
 
   if ( FT_Init_FreeType( &ftLibrary ) )
@@ -157,8 +165,10 @@ IFontStyle * FontRenderer::GetDebugFontStyle( int size )
   {
     FontStyle * st = new FontStyle;
     st->SetDefaultSize( size );
+#if !defined(PW_LINUX_NULL_RENDER)
     st->GetMaterial()->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
     st->GetMaterial()->GetDiffuseMap()->SetTexture( fontTexture );
+#endif
     style = st;
   }
 
@@ -171,6 +181,7 @@ static string GetFontPath( const string& fontName )
   if ( fontName.empty() )
     return "";
 
+#if defined( NV_WIN_PLATFORM )
   string fullFontName = fontName + " (TrueType)";
 
   HKEY hKey;
@@ -210,6 +221,42 @@ static string GetFontPath( const string& fontName )
 
   RegCloseKey( hKey );
   return res;
+#else
+  if ( NFile::DoesFileExist( fontName ) )
+    return fontName;
+
+  const bool hasExtension = !NFile::GetFileExt( fontName ).empty();
+
+  vector<string> searchRoots;
+  searchRoots.push_back( "/usr/share/fonts" );
+  searchRoots.push_back( "/usr/local/share/fonts" );
+
+  const char* homeDir = getenv( "HOME" );
+  if ( homeDir && homeDir[0] )
+    searchRoots.push_back( NFile::Combine( homeDir, ".local/share/fonts" ) );
+
+  vector<string> candidateNames;
+  candidateNames.push_back( fontName );
+  if ( !hasExtension )
+  {
+    candidateNames.push_back( fontName + ".ttf" );
+    candidateNames.push_back( fontName + ".otf" );
+    candidateNames.push_back( fontName + ".TTF" );
+    candidateNames.push_back( fontName + ".OTF" );
+  }
+
+  for ( size_t rootIndex = 0; rootIndex < searchRoots.size(); ++rootIndex )
+  {
+    for ( size_t candidateIndex = 0; candidateIndex < candidateNames.size(); ++candidateIndex )
+    {
+      const string fullPath = NFile::Combine( searchRoots[rootIndex], candidateNames[candidateIndex] );
+      if ( NFile::DoesFileExist( fullPath ) )
+        return fullPath;
+    }
+  }
+
+  return "";
+#endif
 }
 
 

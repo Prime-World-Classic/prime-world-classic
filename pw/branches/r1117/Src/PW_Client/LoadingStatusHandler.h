@@ -46,10 +46,11 @@ public:
   void OnReplayStatus( Game::EReplayStatus::Enum replayStatus );
   const string& GetLastStatusId() const { return lastStatus; }
   const string& GetPendingStatusId() const { return pendingStatus; }
+  wstring GetCurrentStatusText() const;
 
 private:
   void SetStatusText( const char * textId );
-  wstring FindLocalizedString( const char * textId );
+  wstring FindLocalizedString( const char * textId ) const;
 
   Weak<Game::LoadingFlashInterface> flashInterface;
   NDb::Ptr<NDb::DBUIData>         uiData;

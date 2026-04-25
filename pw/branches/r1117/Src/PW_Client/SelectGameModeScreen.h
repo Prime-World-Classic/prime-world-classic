@@ -24,6 +24,7 @@ public:
   
   virtual bool Init( UI::User * uiUser );
   virtual void Step( bool bAppActive );
+  void SyncLinuxBootstrapUiState();
 
   bool IsModal() const { return false; }
 

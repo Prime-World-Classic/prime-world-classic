@@ -36,11 +36,10 @@ typedef list<Strong<NScreenCommands::IScreenCommand>> TScreenCommandsList;
 static struct SRegisterGlobalScreen_##command																																								\
 {																																																															\
 	static NMainLoop::IScreenBase * Create() { return new command(); }																																		\
-	SRegisterGlobalScreen_##command##()																																												\
+	SRegisterGlobalScreen_##command()																																												\
 	{																																																														\
 		NScreenCommands::RegisterInScreensFactory( #command, Create );																																								\
 	}																																																														\
 } registerGlobalScreen_##command##;																																													\
 
 }
-

@@ -33,16 +33,29 @@
 #include "PF_GameLogic/DBUnit.h"
 #include "PF_GameLogic/DBVisualRoots.h"
 #include "PF_GameLogic/GameMaps.h"
+#include "PF_GameLogic/MapCollection.h"
 #include "PF_GameLogic/PFAdvMap.h"
 #include "PF_GameLogic/PFRenderInterface.h"
 #include "PF_GameLogic/WebLauncher.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
 #include "LoadingFlashInterface.h"
 #include "LoadingHeroes.h"
+#include "LoadingScreen.h"
 #include "LoadingScreenLogic.h"
 #include "LoadingStatusHandler.h"
+#include "LocalCmdScheduler.h"
+#include "SelectGameModeScreen.h"
+#include "SelectHeroScreen.h"
 #undef PW_LINUX_DB_BOOTSTRAP
+#include "Client/MainTimer.h"
+#include "System/LoadingProgress.h"
 #include "UI/DBUI.h"
+#include "UI/Cursor.h"
+#include "UI/ImageLabel.h"
+#include "UI/Root.h"
+#include "UI/Resolution.h"
+#include "UI/User.h"
+#include "UI/Window.h"
 #include "libdb/Db.h"
 #include "Version.h"
 #include "Vendor/JsonCpp/include/json/json.h"
@@ -101,6 +114,7 @@ struct LinuxClientLaunchSettings
   double demoCycleSeconds;
   bool spectator;
   bool tutorial;
+  bool bootstrapCreateGame;
   std::string localeOverride;
   std::string mapSelector;
   std::string heroSelector;
@@ -116,6 +130,7 @@ struct LinuxClientLaunchSettings
       demoCycleSeconds(0.0),
       spectator(false),
       tutorial(false),
+      bootstrapCreateGame(false),
       artworkMode(0)
   {
   }
@@ -588,6 +603,7 @@ struct LinuxInputState
   size_t bindContextCount;
   size_t commandBindingHits;
   size_t hardwareControlCount;
+  float lastDeltaSeconds;
   bool initialized;
   bool inputConfigLoaded;
   bool inputOverrideLoaded;
@@ -599,6 +615,7 @@ struct LinuxInputState
       bindContextCount(0),
       commandBindingHits(0),
       hardwareControlCount(0),
+      lastDeltaSeconds(1.0f / 60.0f),
       initialized(false),
       inputConfigLoaded(false),
       inputOverrideLoaded(false)
@@ -881,6 +898,7 @@ struct LinuxLoadingHeroesRuntimePreview
 
 std::string ToStdString(const nstl::string& value);
 NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource();
+NDb::Ptr<NDb::DBUIData>& GetLoadingUiDataResourceCache();
 template <typename T>
 void AppendSampleValue(std::vector<std::string>* samples, const T& value, size_t limit);
 
@@ -1748,7 +1766,33 @@ struct LinuxUiRootPreview
 {
   bool ready;
   bool preferencesReady;
+  bool runtimeInitialized;
+  bool runtimeFrameLoopEnabled;
+  bool runtimeUserReady;
+  bool runtimeCursorReady;
+  bool runtimeCursorRegistered;
+  bool runtimeScreenLookupReady;
+  bool runtimeContentGroupPresent;
+  bool runtimeContentEntriesPresent;
+  bool runtimeContentLookupReady;
+  bool runtimeConstantLookupReady;
+  bool runtimeBootstrapScreenReady;
+  bool runtimeBootstrapScreenWindowReady;
+  bool runtimeBootstrapGamesReady;
+  bool runtimeBootstrapJoinResultReady;
+  bool runtimeBootstrapMapsReady;
+  bool runtimeHeroScreenReady;
+  bool runtimeHeroScreenWindowReady;
+  bool runtimeHeroPlayersReady;
+  bool runtimeHeroSelectionReady;
+  bool runtimeHeroReady;
+  bool runtimeLoadingScreenReady;
+  bool runtimeLoadingScreenWindowReady;
+  bool runtimeLoadingStatusReady;
+  bool runtimeGameSchedulerReady;
+  bool runtimeGameSchedulerStarted;
   bool votingReady;
+  float runtimeLoadingProgress;
   size_t screenCount;
   size_t cursorCount;
   size_t scriptCount;
@@ -1758,7 +1802,46 @@ struct LinuxUiRootPreview
   size_t substituteCount;
   size_t styleAliasCount;
   size_t fontStyleCount;
+  size_t runtimeUserEventCount;
+  size_t runtimeBootstrapScreenEventCount;
+  size_t runtimeBootstrapGameEntryCount;
+  size_t runtimeBootstrapMapEntryCount;
+  size_t runtimeHeroPlayerEntryCount;
+  size_t runtimeLoadingPlayerEntryCount;
+  size_t runtimeLoadingDisconnectedCount;
+  size_t runtimeGameSchedulerTicks;
+  int runtimeHeroSelectedTeam;
+  int runtimeHeroSelectedFaction;
+  int runtimeGameSchedulerNextStep;
+  int runtimeCursorWidth;
+  int runtimeCursorHeight;
+  int runtimeCursorHotspotX;
+  int runtimeCursorHotspotY;
   std::string dbid;
+  std::string runtimePath;
+  std::string runtimeFramePath;
+  std::string runtimeUserPath;
+  std::string runtimeCursorId;
+  std::string runtimeCursorPath;
+  std::string runtimeScreenLookup;
+  std::string runtimeScreenLayoutName;
+  std::string runtimeContentLookup;
+  std::string runtimeContentDbid;
+  std::string runtimeContentState;
+  std::string runtimeConstantLookup;
+  std::string runtimeConstantValue;
+  std::string runtimeBootstrapScreenId;
+  std::string runtimeBootstrapScreenPath;
+  std::string runtimeBootstrapScreenWindow;
+  std::string runtimeBootstrapJoinResult;
+  std::string runtimeHeroScreenPath;
+  std::string runtimeHeroScreenWindow;
+  std::string runtimeHeroPlayersText;
+  std::string runtimeHeroSelectedHeroId;
+  std::string runtimeLoadingScreenPath;
+  std::string runtimeLoadingScreenWindow;
+  std::string runtimeLoadingStatusText;
+  std::string runtimeGameSchedulerPath;
   std::vector<std::string> screenSamples;
   std::vector<std::string> contentSamples;
   std::vector<std::string> constantSamples;
@@ -1767,7 +1850,33 @@ struct LinuxUiRootPreview
   LinuxUiRootPreview()
     : ready(false),
       preferencesReady(false),
+      runtimeInitialized(false),
+      runtimeFrameLoopEnabled(false),
+      runtimeUserReady(false),
+      runtimeCursorReady(false),
+      runtimeCursorRegistered(false),
+      runtimeScreenLookupReady(false),
+      runtimeContentGroupPresent(false),
+      runtimeContentEntriesPresent(false),
+      runtimeContentLookupReady(false),
+      runtimeConstantLookupReady(false),
+      runtimeBootstrapScreenReady(false),
+      runtimeBootstrapScreenWindowReady(false),
+      runtimeBootstrapGamesReady(false),
+      runtimeBootstrapJoinResultReady(false),
+      runtimeBootstrapMapsReady(false),
+      runtimeHeroScreenReady(false),
+      runtimeHeroScreenWindowReady(false),
+      runtimeHeroPlayersReady(false),
+      runtimeHeroSelectionReady(false),
+      runtimeHeroReady(false),
+      runtimeLoadingScreenReady(false),
+      runtimeLoadingScreenWindowReady(false),
+      runtimeLoadingStatusReady(false),
+      runtimeGameSchedulerReady(false),
+      runtimeGameSchedulerStarted(false),
       votingReady(false),
+      runtimeLoadingProgress(0.0f),
       screenCount(0),
       cursorCount(0),
       scriptCount(0),
@@ -1776,7 +1885,312 @@ struct LinuxUiRootPreview
       constantCount(0),
       substituteCount(0),
       styleAliasCount(0),
-      fontStyleCount(0)
+      fontStyleCount(0),
+      runtimeUserEventCount(0),
+      runtimeBootstrapScreenEventCount(0),
+      runtimeBootstrapGameEntryCount(0),
+      runtimeBootstrapMapEntryCount(0),
+      runtimeHeroPlayerEntryCount(0),
+      runtimeLoadingPlayerEntryCount(0),
+      runtimeLoadingDisconnectedCount(0),
+      runtimeGameSchedulerTicks(0),
+      runtimeHeroSelectedTeam(0),
+      runtimeHeroSelectedFaction(0),
+      runtimeGameSchedulerNextStep(-1),
+      runtimeCursorWidth(0),
+      runtimeCursorHeight(0),
+      runtimeCursorHotspotX(0),
+      runtimeCursorHotspotY(0),
+      runtimePath("preview-only"),
+      runtimeFramePath("inactive"),
+      runtimeUserPath("inactive"),
+      runtimeCursorPath("inactive"),
+      runtimeContentState("inactive"),
+      runtimeBootstrapScreenPath("inactive"),
+      runtimeBootstrapJoinResult("<inactive>"),
+      runtimeHeroScreenPath("inactive"),
+      runtimeLoadingScreenPath("inactive"),
+      runtimeGameSchedulerPath("inactive")
+  {
+  }
+};
+
+class LinuxBootstrapGameContextUi : public Game::IGameContextUiInterface, public BaseObjectMT
+{
+  NI_DECLARE_REFCOUNT_CLASS_2(LinuxBootstrapGameContextUi, Game::IGameContextUiInterface, BaseObjectMT);
+
+public:
+  LinuxBootstrapGameContextUi()
+    : developerSex(lobby::ESex::Male),
+      readyState(lobby::EGameMemberReadiness::NotReady),
+      developerParty(0),
+      lastLobbyOperationResult(lobby::EOperationResult::Ok),
+      lobbyStatus(lobby::EClientStatus::Connected),
+      selectedTeam(static_cast<int>(static_cast<lobby::ETeam::Enum>(-1))),
+      selectedFaction(static_cast<int>(static_cast<lobby::ETeam::Enum>(-1))),
+      maxPlayers(0)
+  {
+    StrongMT<NWorld::PWMapCollection> maps = new NWorld::PWMapCollection;
+    maps->ScanForMaps();
+    mapCollection = maps;
+  }
+
+  virtual bool LoginInProgress() const
+  {
+    return false;
+  }
+
+  virtual void SetDeveloperSex(lobby::ESex::Enum _sex)
+  {
+    developerSex = _sex;
+  }
+
+  virtual void ConnectToCluster(
+    const string& login,
+    const string& password,
+    const string& sessionToken,
+    Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY)
+  {
+    (void)login;
+    (void)password;
+    (void)sessionToken;
+    (void)_loginType;
+    lobbyStatus = lobby::EClientStatus::Connected;
+  }
+
+  virtual NWorld::IMapCollection* Maps()
+  {
+    return mapCollection;
+  }
+
+  virtual void RefreshGamesList()
+  {
+    devGamesList.clear();
+
+    const int fallbackMaxPlayers = maxPlayers > 0 ? maxPlayers : 10;
+    int nextGameId = 1001;
+
+    if (!createdMapId.empty())
+    {
+      devGamesList.push_back(
+        lobby::SDevGameInfo(
+          nextGameId++,
+          L"Linux Player's game",
+          createdMapId.c_str(),
+          1,
+          fallbackMaxPlayers
+        )
+      );
+    }
+
+    if (!IsValid(mapCollection))
+    {
+      return;
+    }
+
+    for (int i = 0; i < mapCollection->MapsListSize() && devGamesList.size() < 3; ++i)
+    {
+      const char* mapId = mapCollection->MapDescId(i);
+      if (!mapId || !*mapId)
+      {
+        continue;
+      }
+      if (!createdMapId.empty() && createdMapId == mapId)
+      {
+        continue;
+      }
+
+      wstring gameName;
+      const wchar_t* mapTitle = mapCollection->MapTitle(i);
+      if (mapTitle && *mapTitle)
+      {
+        gameName = mapTitle;
+        gameName += L" practice";
+      }
+      else
+      {
+        gameName = L"Linux practice";
+      }
+
+      const int currentPlayers = std::min(2 + static_cast<int>(devGamesList.size()) * 2, fallbackMaxPlayers);
+      devGamesList.push_back(
+        lobby::SDevGameInfo(
+          nextGameId++,
+          gameName.c_str(),
+          mapId,
+          currentPlayers,
+          fallbackMaxPlayers
+        )
+      );
+    }
+  }
+
+  virtual void PopGameList(lobby::TDevGamesList& buffer)
+  {
+    buffer = devGamesList;
+    devGamesList.clear();
+  }
+
+  virtual lobby::EOperationResult::Enum LastLobbyOperationResult() const
+  {
+    return lastLobbyOperationResult;
+  }
+
+  virtual void CreateGame(const char* mapId, int _maxPlayers)
+  {
+    createdMapId = mapId ? mapId : "";
+    maxPlayers = _maxPlayers;
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void JoinGame(int gameId)
+  {
+    (void)gameId;
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void JoinWebGame(const string& token)
+  {
+    (void)token;
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void Reconnect(int gameId, int team, const string& heroId)
+  {
+    (void)gameId;
+    selectedTeam = team;
+    selectedHeroId = heroId;
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void Spectate(int gameId)
+  {
+    (void)gameId;
+    lobbyStatus = lobby::EClientStatus::InGameSession;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void ChangeCustomGameSettings(lobby::ETeam::Enum team, lobby::ETeam::Enum faction, const string& heroId)
+  {
+    if (team != static_cast<lobby::ETeam::Enum>(-1))
+    {
+      selectedTeam = static_cast<int>(team);
+    }
+    if (faction != static_cast<lobby::ETeam::Enum>(-1))
+    {
+      selectedFaction = static_cast<int>(faction);
+    }
+    if (!heroId.empty())
+    {
+      selectedHeroId = heroId;
+    }
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+    lastLobbyOperationResult = lobby::EOperationResult::Ok;
+  }
+
+  virtual void SetReady(lobby::EGameMemberReadiness::Enum readiness)
+  {
+    readyState = readiness;
+    lobbyStatus = lobby::EClientStatus::InCustomLobby;
+  }
+
+  virtual void SetDeveloperParty(int party)
+  {
+    developerParty = party;
+  }
+
+  virtual lobby::EClientStatus::Enum GetLobbyStatus() const
+  {
+    return lobbyStatus;
+  }
+
+  const string& GetCreatedMapId() const
+  {
+    return createdMapId;
+  }
+
+  int GetMaxPlayers() const
+  {
+    return maxPlayers;
+  }
+
+  int GetSelectedTeam() const
+  {
+    return selectedTeam;
+  }
+
+  int GetSelectedFaction() const
+  {
+    return selectedFaction;
+  }
+
+  const string& GetSelectedHeroId() const
+  {
+    return selectedHeroId;
+  }
+
+  lobby::EGameMemberReadiness::Enum GetReadyState() const
+  {
+    return readyState;
+  }
+
+private:
+  StrongMT<NWorld::IMapCollection> mapCollection;
+  lobby::TDevGamesList devGamesList;
+  lobby::ESex::Enum developerSex;
+  lobby::EGameMemberReadiness::Enum readyState;
+  lobby::EOperationResult::Enum lastLobbyOperationResult;
+  lobby::EClientStatus::Enum lobbyStatus;
+  int developerParty;
+  int selectedTeam;
+  int selectedFaction;
+  int maxPlayers;
+  string createdMapId;
+  string selectedHeroId;
+};
+
+struct LinuxBootstrapScreenRuntime
+{
+  StrongMT<LinuxBootstrapGameContextUi> gameContext;
+  Strong<NGameX::SelectGameModeScreen> gameModeScreen;
+  Strong<NGameX::SelectHeroScreen> heroScreen;
+  Strong<Game::LoadingScreen> loadingScreen;
+  Strong<Game::LoadingGameContext> loadingGameContext;
+  StrongMT<Game::LocalCmdScheduler> localScheduler;
+  CObj<LoadingProgress> loadingProgress;
+  NCore::MapStartInfo loadingMapStartInfo;
+  bool initialized;
+  bool heroInitialized;
+  bool loadingInitialized;
+  bool createGameRequested;
+  bool schedulerStarted;
+  size_t loadingTickCount;
+  size_t heroPlayerEntryCount;
+  size_t loadingPlayerEntryCount;
+  size_t loadingDisconnectedCount;
+  size_t schedulerTickCount;
+  float loadingProgressValue;
+  int schedulerNextStep;
+  std::string heroPlayersText;
+  std::string loadingStatusText;
+
+  LinuxBootstrapScreenRuntime()
+    : initialized(false),
+      heroInitialized(false),
+      loadingInitialized(false),
+      createGameRequested(false),
+      schedulerStarted(false),
+      loadingTickCount(0),
+      heroPlayerEntryCount(0),
+      loadingPlayerEntryCount(0),
+      loadingDisconnectedCount(0),
+      schedulerTickCount(0),
+      loadingProgressValue(0.0f),
+      schedulerNextStep(-1)
   {
   }
 };
@@ -2304,6 +2718,13 @@ double ReadDemoCycleSeconds(int argc, char** argv)
   (void)argv;
   const double value = CmdLineLite::Instance().GetFloatKey("--demo-cycle", 0.0f);
   return value > 0.0 ? value : 0.0;
+}
+
+bool ReadBootstrapCreateGameFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--bootstrap-create-game");
 }
 
 const char* ReadStringArg(int argc, char** argv, const char* key)
@@ -4567,6 +4988,12 @@ void InitializeLoadingRuntimeDriver(
 
   *driver = LinuxLoadingRuntimeDriver();
 
+  if (!preview.ready)
+  {
+    driver->warnings.push_back("Loading runtime skipped because loading UI preview is not ready");
+    return;
+  }
+
   NDb::Ptr<NDb::DBUIData> uiData = ResolveLoadingUiDataResource();
   if (!uiData)
   {
@@ -5263,6 +5690,20 @@ size_t ResolveSelectedHeroCatalogIndex(
   return selectedHeroIndex < heroCatalog.entries.size() ? selectedHeroIndex : static_cast<size_t>(-1);
 }
 
+string ResolveLinuxBootstrapSelectedHeroId(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview
+)
+{
+  const size_t heroIndex = ResolveSelectedHeroCatalogIndex(heroCatalog, localMatchPreview);
+  if (heroIndex == static_cast<size_t>(-1))
+  {
+    return string();
+  }
+
+  return ResolveHeroCatalogId(heroCatalog.entries[heroIndex]).c_str();
+}
+
 int ConvertOverlayTeamToDisplayTeam(int team)
 {
   return team == 1 || team == 2 ? team : 0;
@@ -5325,6 +5766,36 @@ lobby::ETeam::Enum ConvertDisplayTeamToLobbyTeam(int team)
 
     default:
       return static_cast<lobby::ETeam::Enum>(-1);
+  }
+}
+
+int ConvertLobbyTeamToDisplayTeam(lobby::ETeam::Enum team)
+{
+  switch (team)
+  {
+    case lobby::ETeam::Team1:
+      return 1;
+
+    case lobby::ETeam::Team2:
+      return 2;
+
+    default:
+      return 0;
+  }
+}
+
+int ConvertLobbyTeamSelectionToDisplayTeam(int team)
+{
+  switch (team)
+  {
+    case static_cast<int>(lobby::ETeam::Team1):
+      return 1;
+
+    case static_cast<int>(lobby::ETeam::Team2):
+      return 2;
+
+    default:
+      return 0;
   }
 }
 
@@ -7354,6 +7825,161 @@ void MergeLinuxPreviewPlayerInfoMetadata(
   destination->ratingDeltaPrediction = source.ratingDeltaPrediction;
 }
 
+bool TryBuildLinuxBootstrapLoadingContext(
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
+  LinuxBootstrapScreenRuntime* runtime,
+  std::vector<std::string>* warnings
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (mapCatalog.entries.empty() || mapBrowserState.selectedIndex >= mapCatalog.entries.size())
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading skipped because map selection is unavailable");
+    }
+    return false;
+  }
+
+  const LinuxMapCatalogEntry& selectedEntry = mapCatalog.entries[mapBrowserState.selectedIndex];
+  NDb::Ptr<NDb::AdvMapDescription> dbMapDescription =
+    NDb::Get<NDb::AdvMapDescription>(NDb::DBID(selectedEntry.descriptor.c_str()));
+  if (!IsValid(dbMapDescription))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading failed to resolve selected map descriptor");
+    }
+    return false;
+  }
+
+  NDb::Ptr<NDb::AdvMap> dbMap = dbMapDescription->map;
+  if (!IsValid(dbMap))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading failed because the selected map has no DB map resource");
+    }
+    return false;
+  }
+
+  NDb::Ptr<NDb::AdvMapSettings> dbMapSettings =
+    IsValid(dbMapDescription->mapSettings) ? dbMapDescription->mapSettings : dbMap->mapSettings;
+  if (!IsValid(dbMapSettings))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading failed because the selected map has no DB settings");
+    }
+    return false;
+  }
+
+  StrongMT<NWorld::IMapLoader> mapLoader = NWorld::CreatePWFillMapStartInfo(dbMapDescription.GetPtr());
+  if (!IsValid(mapLoader))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading failed to construct a real map loader");
+    }
+    return false;
+  }
+
+  lobby::TGameLineUp gameLineUp;
+  BuildLinuxPreviewGameLineup(sessionPreview, localMatchPreview, &gameLineUp);
+  std::vector<LinuxSyntheticClientInfo> clientInfos;
+  BuildLinuxPreviewClientInfos(sessionPreview, localMatchPreview, defaultLocale, gameLineUp, &clientInfos);
+
+  lobby::SGameParameters gameParams;
+  gameParams.gameType = lobby::EGameType::Custom;
+  gameParams.mapId = selectedEntry.descriptor.c_str();
+  gameParams.maxPlayersPerTeam = mapLoader->GetMaxPlayersPerTeam();
+  gameParams.randomSeed = static_cast<int>(time(0) & 0x7fffffff);
+  gameParams.manoeuvresFaction = ConvertDisplayTeamToLobbyTeam(localMatchPreview.humanTeam);
+  gameParams.hadPreGameLobby = true;
+  gameParams.customGame = true;
+
+  runtime->loadingMapStartInfo = NCore::MapStartInfo();
+  if (!mapLoader->FillMapStartInfo(runtime->loadingMapStartInfo, gameLineUp, gameParams))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux bootstrap loading failed to build MapStartInfo");
+    }
+    return false;
+  }
+
+  for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
+  {
+    NCore::PlayerStartInfo& player = runtime->loadingMapStartInfo.playersInfo[slotIndex];
+    if (player.playerType != NCore::EPlayerType::Human)
+    {
+      continue;
+    }
+
+    const LinuxSyntheticClientInfo* clientInfo = FindLinuxPreviewClientInfo(player.userID, clientInfos);
+    if (clientInfo)
+    {
+      MergeLinuxPreviewPlayerInfoMetadata(&player.playerInfo, clientInfo->info);
+    }
+  }
+
+  runtime->loadingGameContext = new Game::LoadingGameContext(runtime->loadingMapStartInfo);
+  runtime->loadingGameContext->advMapDescription = dbMapDescription;
+  runtime->loadingGameContext->advMapSettings = dbMapSettings;
+  runtime->loadingGameContext->params = gameParams;
+  runtime->loadingGameContext->userId = sessionPreview.currentUserId;
+
+  for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
+  {
+    const NCore::PlayerStartInfo& slotInfo = runtime->loadingMapStartInfo.playersInfo[slotIndex];
+    if (slotInfo.playerType == NCore::EPlayerType::Human && runtime->loadingGameContext->userId <= 0)
+    {
+      runtime->loadingGameContext->userId = slotInfo.userID;
+    }
+
+    if (slotInfo.playerInfo.heroId == 0 || slotInfo.teamID == static_cast<NCore::ETeam::Enum>(-1))
+    {
+      continue;
+    }
+
+    Game::HeroInfo info;
+    info.userId = static_cast<uint>(slotInfo.userID);
+    info.team = slotInfo.teamID;
+    info.originalTeam = slotInfo.originalTeamID;
+    info.locale = slotInfo.playerInfo.locale;
+    info.skinId = slotInfo.playerInfo.heroSkin;
+    info.heroId = slotInfo.playerInfo.heroId;
+    info.exp = slotInfo.playerInfo.heroExp;
+    info.raiting = static_cast<int>(slotInfo.playerInfo.heroRating);
+    info.isBot = slotInfo.playerType != NCore::EPlayerType::Human;
+    info.isPremium = slotInfo.playerInfo.hasPremium;
+    info.isNovice = slotInfo.playerInfo.basket == NCore::EBasket::Newbie;
+    info.partyId = slotInfo.playerInfo.partyId;
+    info.basket = slotInfo.playerInfo.basket;
+    info.isAnimatedAvatar = slotInfo.playerInfo.isAnimatedAvatar;
+    info.leagueIndex = slotInfo.playerInfo.leagueIndex;
+    info.ownLeaguePlace = slotInfo.playerInfo.ownLeaguePlace;
+    info.leaguePlaces = slotInfo.playerInfo.leaguePlaces;
+    runtime->loadingGameContext->lineup_info[slotInfo.playerID] = info;
+  }
+
+  if (runtime->loadingGameContext->userId <= 0 && !runtime->loadingMapStartInfo.playersInfo.empty())
+  {
+    runtime->loadingGameContext->userId = runtime->loadingMapStartInfo.playersInfo[0].userID;
+  }
+
+  return true;
+}
+
 bool TryBuildEngineMapStartPreviewFromRealMapLoader(
   const LinuxSessionPreview& sessionPreview,
   const LinuxHeroCatalog& heroCatalog,
@@ -9110,6 +9736,8 @@ void ProbeLoadingUiPreview(
     return;
   }
 
+  GetLoadingUiDataResourceCache() = uiData;
+
   preview->ready = true;
   preview->dbid = ToStdString(uiData->GetDBID().GetFormatted());
   preview->minimapReady = IsValid(uiData->minimap);
@@ -9308,8 +9936,19 @@ void ProbeLoadingUiPreview(
   }
 }
 
+NDb::Ptr<NDb::DBUIData>& GetLoadingUiDataResourceCache()
+{
+  static NDb::Ptr<NDb::DBUIData> g_loadingUiData;
+  return g_loadingUiData;
+}
+
 NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource()
 {
+  if (GetLoadingUiDataResourceCache())
+  {
+    return GetLoadingUiDataResourceCache();
+  }
+
   static const char* kUiDataCandidates[] =
   {
     "/UI/Content/_.UIDT",
@@ -9322,6 +9961,7 @@ NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource()
     NDb::Ptr<NDb::DBUIData> uiData = NDb::Get<NDb::DBUIData>(NDb::DBID(kUiDataCandidates[i]));
     if (uiData)
     {
+      GetLoadingUiDataResourceCache() = uiData;
       return uiData;
     }
   }
@@ -9750,6 +10390,27 @@ void ProbeSessionRootPreview(
   }
 }
 
+static const char* const kLinuxUiRootCandidates[] =
+{
+  "/UI/UIRoot",
+  "UI/UIRoot"
+};
+
+NDb::Ptr<NDb::UIRoot> ResolveLinuxUiRoot()
+{
+  NDb::Ptr<NDb::UIRoot> uiRoot;
+  for (size_t i = 0; i < ARRAY_SIZE(kLinuxUiRootCandidates); ++i)
+  {
+    uiRoot = NDb::Get<NDb::UIRoot>(NDb::DBID(kLinuxUiRootCandidates[i]));
+    if (uiRoot)
+    {
+      return uiRoot;
+    }
+  }
+
+  return NDb::Ptr<NDb::UIRoot>();
+}
+
 void ProbeUiRootPreview(
   const LinuxRootFileSystemPreview& rootFileSystemPreview,
   LinuxUiRootPreview* preview
@@ -9766,21 +10427,7 @@ void ProbeUiRootPreview(
     return;
   }
 
-  static const char* kUiRootCandidates[] =
-  {
-    "/UI/UIRoot",
-    "UI/UIRoot"
-  };
-
-  NDb::Ptr<NDb::UIRoot> uiRoot;
-  for (size_t i = 0; i < ARRAY_SIZE(kUiRootCandidates); ++i)
-  {
-    uiRoot = NDb::Get<NDb::UIRoot>(NDb::DBID(kUiRootCandidates[i]));
-    if (uiRoot)
-    {
-      break;
-    }
-  }
+  NDb::Ptr<NDb::UIRoot> uiRoot = ResolveLinuxUiRoot();
 
   if (!uiRoot)
   {
@@ -9822,6 +10469,156 @@ void ProbeUiRootPreview(
   for (int i = 0; i < uiRoot->consts.size(); ++i)
   {
     AppendSampleValue(&preview->constantSamples, ToStdString(uiRoot->consts[i].name), 5);
+  }
+}
+
+void ProbeUiRuntimeState(
+  const NDb::UIRoot* uiRoot,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeScreenLookupReady = false;
+  preview->runtimeContentGroupPresent = false;
+  preview->runtimeContentEntriesPresent = false;
+  preview->runtimeContentLookupReady = false;
+  preview->runtimeConstantLookupReady = false;
+  preview->runtimeScreenLookup.clear();
+  preview->runtimeScreenLayoutName.clear();
+  preview->runtimeContentLookup.clear();
+  preview->runtimeContentDbid.clear();
+  preview->runtimeContentState = "inactive";
+  preview->runtimeConstantLookup.clear();
+  preview->runtimeConstantValue.clear();
+
+  if (!uiRoot || !preview->runtimeInitialized)
+  {
+    return;
+  }
+
+  for (int i = 0; i < uiRoot->screens.size(); ++i)
+  {
+    const string& screenId = uiRoot->screens[i].screenId;
+    if (screenId.empty())
+    {
+      continue;
+    }
+
+    preview->runtimeScreenLookup = ToStdString(screenId);
+    if (const NDb::UIBaseLayout* layout = UI::GetScreenLayout(screenId))
+    {
+      preview->runtimeScreenLookupReady = true;
+      preview->runtimeScreenLayoutName = ToStdString(layout->name);
+    }
+    else
+    {
+      preview->warnings.push_back("UI runtime screen lookup failed for " + ToStdString(screenId));
+    }
+    break;
+  }
+
+  std::string firstContentGroup;
+  bool sawValidContentId = false;
+  bool sawContentLookupFailure = false;
+
+  for (int i = 0; i < uiRoot->contents.size() && !preview->runtimeContentLookupReady; ++i)
+  {
+    const NDb::UIContentGroup& group = uiRoot->contents[i];
+    const string& groupId = group.groupId;
+    if (groupId.empty())
+    {
+      continue;
+    }
+
+    preview->runtimeContentGroupPresent = true;
+    if (firstContentGroup.empty())
+    {
+      firstContentGroup = ToStdString(groupId);
+    }
+
+    if (!group.resources.empty())
+    {
+      preview->runtimeContentEntriesPresent = true;
+    }
+
+    for (int j = 0; j < group.resources.size(); ++j)
+    {
+      const NDb::Ptr<NDb::UIContentResource>& resource = group.resources[j];
+      if (!resource)
+      {
+        continue;
+      }
+
+      const string& contentId = resource->contentId;
+      if (contentId.empty())
+      {
+        continue;
+      }
+
+      sawValidContentId = true;
+      preview->runtimeContentLookup = ToStdString(groupId) + "/" + ToStdString(contentId);
+      if (const NDb::UIContentResource* runtimeResource = UI::GetContentResource(groupId, contentId))
+      {
+        preview->runtimeContentLookupReady = true;
+        preview->runtimeContentDbid = ToStdString(runtimeResource->GetDBID().GetFormatted());
+        preview->runtimeContentState = "resolved";
+      }
+      else
+      {
+        sawContentLookupFailure = true;
+        preview->warnings.push_back("UI runtime content lookup failed for " + preview->runtimeContentLookup);
+      }
+    }
+  }
+
+  if (!preview->runtimeContentLookupReady)
+  {
+    if (preview->runtimeContentGroupPresent && !preview->runtimeContentEntriesPresent)
+    {
+      preview->runtimeContentLookup = firstContentGroup + "/<empty-group>";
+      preview->runtimeContentDbid = "<no-resources>";
+      preview->runtimeContentState = "empty-group";
+    }
+    else if (preview->runtimeContentEntriesPresent && !sawValidContentId)
+    {
+      preview->runtimeContentLookup =
+        (firstContentGroup.empty() ? std::string("<content-group>") : firstContentGroup) + "/<no-valid-content-id>";
+      preview->runtimeContentDbid = "<no-valid-content-id>";
+      preview->runtimeContentState = "no-valid-content-id";
+    }
+    else if (sawContentLookupFailure)
+    {
+      preview->runtimeContentDbid = "<lookup-failed>";
+      preview->runtimeContentState = "lookup-failed";
+    }
+    else if (preview->runtimeContentGroupPresent)
+    {
+      preview->runtimeContentLookup = firstContentGroup;
+      preview->runtimeContentDbid = "<no-probe-result>";
+      preview->runtimeContentState = "no-probe-result";
+    }
+    else
+    {
+      preview->runtimeContentState = "no-groups";
+    }
+  }
+
+  for (int i = 0; i < uiRoot->consts.size(); ++i)
+  {
+    const string& constantId = uiRoot->consts[i].name;
+    if (constantId.empty())
+    {
+      continue;
+    }
+
+    preview->runtimeConstantLookup = ToStdString(constantId);
+    preview->runtimeConstantValue = ToStdString(UI::GetConstant(constantId));
+    preview->runtimeConstantLookupReady = true;
+    break;
   }
 }
 
@@ -10138,6 +10935,11 @@ bool StartLinuxRenderBootstrap(
   renderBootstrap->started = renderBootstrap->renderingInterface->Start(renderBootstrap->renderMode);
   if (renderBootstrap->started)
   {
+    UI::UpdateScreenResolution(
+      static_cast<int>(renderBootstrap->renderMode.width),
+      static_cast<int>(renderBootstrap->renderMode.height),
+      false
+    );
     return true;
   }
 
@@ -10167,6 +10969,14 @@ void SyncLinuxRenderBootstrapSize(
 
   ConfigureLinuxRenderMode(&renderBootstrap->renderMode, width, height);
   renderBootstrap->started = renderBootstrap->renderingInterface->Start(renderBootstrap->renderMode);
+  if (renderBootstrap->started)
+  {
+    UI::UpdateScreenResolution(
+      static_cast<int>(renderBootstrap->renderMode.width),
+      static_cast<int>(renderBootstrap->renderMode.height),
+      false
+    );
+  }
 }
 
 void ShutdownLinuxRenderBootstrap(LinuxRenderBootstrap* renderBootstrap)
@@ -10545,6 +11355,7 @@ void UpdateInputState(LinuxInputState* state)
     deltaSeconds = 1.0f / 60.0f;
   }
   state->lastUpdateTime = now;
+  state->lastDeltaSeconds = deltaSeconds;
 
   state->binds->Update(deltaSeconds, NMainFrame::IsAppActive());
 
@@ -10574,6 +11385,1117 @@ void UpdateInputState(LinuxInputState* state)
   {
     state->recentEvents.erase(state->recentEvents.begin(), state->recentEvents.end() - maxRecentEvents);
   }
+}
+
+void DriveLinuxUiUser(
+  const LinuxInputState& inputState,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  UI::User* user = UI::GetUser();
+  preview->runtimeUserReady = user != 0;
+  if (!user)
+  {
+    preview->runtimeUserPath = "inactive";
+    return;
+  }
+
+  preview->runtimeUserPath = "UI::User::StartEvent/EndEvent/Step";
+
+  for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+  {
+    user->StartEvent(inputState.frameEvents[i]);
+  }
+
+  for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+  {
+    user->EndEvent(inputState.frameEvents[i]);
+  }
+
+  user->Step(inputState.lastDeltaSeconds);
+  preview->runtimeUserEventCount += inputState.frameEvents.size();
+}
+
+unsigned long GetLinuxTickMs()
+{
+  NHPTimer::STime now = 0;
+  NHPTimer::GetTime(now);
+  return static_cast<unsigned long>(NHPTimer::Time2Milliseconds(now));
+}
+
+void DriveLinuxUiCursor(
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview || !preview->runtimeInitialized)
+  {
+    return;
+  }
+
+  preview->runtimeCursorReady = false;
+  preview->runtimeCursorRegistered = false;
+  preview->runtimeCursorId.clear();
+  preview->runtimeCursorWidth = 0;
+  preview->runtimeCursorHeight = 0;
+  preview->runtimeCursorHotspotX = 0;
+  preview->runtimeCursorHotspotY = 0;
+
+  static const char* cursorCandidates[] = { "ui_normal", "default" };
+  for (size_t i = 0; i < sizeof(cursorCandidates) / sizeof(cursorCandidates[0]); ++i)
+  {
+    if (NCursors::IsRegistered(cursorCandidates[i]))
+    {
+      preview->runtimeCursorRegistered = true;
+      preview->runtimeCursorId = cursorCandidates[i];
+      break;
+    }
+  }
+
+  if (!preview->runtimeCursorRegistered)
+  {
+    preview->runtimeCursorPath = "no-registered-cursor";
+    return;
+  }
+
+  UI::SetCursor(preview->runtimeCursorId.c_str());
+  NCursor::Update(GetLinuxTickMs());
+
+  const UI::Point& cursorSize = NCursor::GetCurrentSize();
+  const UI::Point& cursorHotspot = NCursor::GetCurrentHotSpot();
+  preview->runtimeCursorWidth = cursorSize.x;
+  preview->runtimeCursorHeight = cursorSize.y;
+  preview->runtimeCursorHotspotX = cursorHotspot.x;
+  preview->runtimeCursorHotspotY = cursorHotspot.y;
+  preview->runtimeCursorReady = (cursorSize.x > 0) && (cursorSize.y > 0);
+  preview->runtimeCursorPath = "UI::SetCursor/NCursor::Update";
+}
+
+bool IsLinuxBootstrapLoadingScreenActive(const LinuxBootstrapScreenRuntime* runtime)
+{
+  return runtime &&
+    runtime->loadingInitialized &&
+    IsValid(runtime->loadingScreen);
+}
+
+bool IsLinuxBootstrapHeroScreenActive(const LinuxBootstrapScreenRuntime* runtime)
+{
+  return runtime &&
+    !IsLinuxBootstrapLoadingScreenActive(runtime) &&
+    runtime->heroInitialized &&
+    IsValid(runtime->heroScreen) &&
+    IsValid(runtime->gameContext) &&
+    runtime->gameContext->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby;
+}
+
+const char* DescribeLinuxBootstrapReadyState(lobby::EGameMemberReadiness::Enum readiness)
+{
+  switch (readiness)
+  {
+    case lobby::EGameMemberReadiness::Ready:
+      return "ready";
+
+    case lobby::EGameMemberReadiness::ReadyForAnything:
+      return "ready-for-anything";
+
+    default:
+      return "not-ready";
+  }
+}
+
+int ResolveLinuxBootstrapCreateGamePlayers(
+  const LinuxBootstrapScreenRuntime& runtime,
+  const LinuxLocalMatchPreview& localMatchPreview
+)
+{
+  if (IsValid(runtime.gameContext) && runtime.gameContext->GetMaxPlayers() > 0)
+  {
+    return runtime.gameContext->GetMaxPlayers();
+  }
+
+  const int requestedPlayers = localMatchPreview.requestedTeamSize > 0 ?
+    localMatchPreview.requestedTeamSize * 2 :
+    0;
+  return requestedPlayers > 0 ? requestedPlayers : 10;
+}
+
+void MaybeRequestLinuxBootstrapCreateGame(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!settings.bootstrapCreateGame || !runtime || runtime->createGameRequested || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby)
+  {
+    runtime->createGameRequested = true;
+    return;
+  }
+
+  if (mapCatalog.entries.empty() || mapBrowserState.selectedIndex >= mapCatalog.entries.size())
+  {
+    return;
+  }
+
+  const std::string& descriptor = mapCatalog.entries[mapBrowserState.selectedIndex].descriptor;
+  if (descriptor.empty())
+  {
+    return;
+  }
+
+  runtime->gameContext->CreateGame(
+    descriptor.c_str(),
+    ResolveLinuxBootstrapCreateGamePlayers(*runtime, localMatchPreview)
+  );
+  runtime->createGameRequested = true;
+}
+
+void BuildLinuxBootstrapHeroPlayerPreview(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxBootstrapGameContextUi& gameContext,
+  vector<wstring>* lines,
+  vector<int>* lineIds
+)
+{
+  if (!lines || !lineIds)
+  {
+    return;
+  }
+
+  lines->clear();
+  lineIds->clear();
+
+  static const wchar_t* teamHeaders[] = { L"Doct:", L"Adornia:" };
+  int botIndex = 1;
+
+  for (int teamIndex = 0; teamIndex < 2; ++teamIndex)
+  {
+    const int team = teamIndex + 1;
+    lines->push_back(teamHeaders[teamIndex]);
+    lineIds->push_back(-1);
+
+    for (size_t i = 0; i < localMatchPreview.lineup.size(); ++i)
+    {
+      const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
+      int displayTeam = slot.team;
+      std::string heroId = slot.heroId;
+      std::string heroTitle = slot.heroTitle;
+      const int selectedTeam = ConvertLobbyTeamSelectionToDisplayTeam(gameContext.GetSelectedTeam());
+
+      if (slot.human && selectedTeam > 0)
+      {
+        displayTeam = selectedTeam;
+      }
+
+      if (slot.human && !gameContext.GetSelectedHeroId().empty())
+      {
+        heroId = gameContext.GetSelectedHeroId().c_str();
+        const size_t heroIndex = FindHeroCatalogIndex(heroCatalog, heroId);
+        if (heroIndex != static_cast<size_t>(-1))
+        {
+          const LinuxHeroCatalogEntry& heroEntry = heroCatalog.entries[heroIndex];
+          heroId = ResolveHeroCatalogId(heroEntry);
+          heroTitle = heroEntry.title;
+        }
+      }
+
+      if (displayTeam != team)
+      {
+        continue;
+      }
+
+      const string nickname = slot.human ?
+        string("Linux Player") :
+        NStr::StrFmt("Bot %d", botIndex++);
+      const bool ready = slot.human ?
+        gameContext.GetReadyState() != lobby::EGameMemberReadiness::NotReady :
+        true;
+      const string heroTitleText = (heroTitle.empty() ? heroId : heroTitle).c_str();
+      const wstring nicknameW = NStr::ToUnicode(nickname);
+      const wstring heroTitleW = NStr::ToUnicode(heroTitleText);
+      const wchar_t* readyText = ready ? L"<style:green>ready</style>" : L"<style:money>not ready</style>";
+
+      lines->push_back(NStr::StrFmtW(
+        L"<space:2>%s as %s, %s",
+        nicknameW.c_str(),
+        heroTitleW.c_str(),
+        readyText
+      ));
+      lineIds->push_back(slot.human ? 1 : 100 + static_cast<int>(i));
+    }
+  }
+}
+
+void SyncLinuxBootstrapHeroScreenSelection(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetLobbyStatus() != lobby::EClientStatus::InCustomLobby)
+  {
+    return;
+  }
+
+  const int desiredTeam = localMatchPreview.humanTeam;
+  if (desiredTeam != 1 && desiredTeam != 2)
+  {
+    return;
+  }
+
+  const int currentTeam = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedTeam());
+  const int currentFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedFaction());
+  int desiredFaction = currentFaction;
+  if (desiredFaction == 0 || desiredFaction == currentTeam)
+  {
+    desiredFaction = desiredTeam;
+  }
+
+  const string desiredHeroId = ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview);
+  const string& currentHeroId = runtime->gameContext->GetSelectedHeroId();
+
+  const bool teamChanged = currentTeam != desiredTeam;
+  const bool factionChanged = currentFaction != desiredFaction;
+  const bool heroChanged = !desiredHeroId.empty() && currentHeroId != desiredHeroId;
+  if (!teamChanged && !factionChanged && !heroChanged)
+  {
+    return;
+  }
+
+  runtime->gameContext->ChangeCustomGameSettings(
+    teamChanged ? ConvertDisplayTeamToLobbyTeam(desiredTeam) : static_cast<lobby::ETeam::Enum>(-1),
+    factionChanged ? ConvertDisplayTeamToLobbyTeam(desiredFaction) : static_cast<lobby::ETeam::Enum>(-1),
+    heroChanged ? desiredHeroId : string()
+  );
+}
+
+void MaybeAutoReadyLinuxBootstrapCreateGame(
+  const LinuxClientLaunchSettings& settings,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!settings.bootstrapCreateGame || !runtime || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetLobbyStatus() != lobby::EClientStatus::InCustomLobby)
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetReadyState() != lobby::EGameMemberReadiness::NotReady)
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetSelectedHeroId().empty())
+  {
+    return;
+  }
+
+  runtime->gameContext->SetReady(lobby::EGameMemberReadiness::ReadyForAnything);
+}
+
+bool HandleLinuxBootstrapHeroScreenHotkeys(
+  const LinuxInputState& inputState,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!IsLinuxBootstrapHeroScreenActive(runtime))
+  {
+    return false;
+  }
+
+  bool changed = false;
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
+    {
+      continue;
+    }
+
+    switch (message.nKey)
+    {
+      case XK_f:
+      case XK_F:
+      {
+        int currentFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedFaction());
+        if (currentFaction == 0)
+        {
+          currentFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedTeam());
+        }
+
+        const int nextFaction = currentFaction == 2 ? 1 : 2;
+        runtime->gameContext->ChangeCustomGameSettings(
+          static_cast<lobby::ETeam::Enum>(-1),
+          ConvertDisplayTeamToLobbyTeam(nextFaction),
+          string()
+        );
+        changed = true;
+        break;
+      }
+
+      case XK_r:
+      case XK_R:
+      {
+        const lobby::EGameMemberReadiness::Enum currentReadyState = runtime->gameContext->GetReadyState();
+        runtime->gameContext->SetReady(
+          currentReadyState == lobby::EGameMemberReadiness::NotReady ?
+            lobby::EGameMemberReadiness::ReadyForAnything :
+            lobby::EGameMemberReadiness::NotReady
+        );
+        changed = true;
+        break;
+      }
+
+      default:
+        break;
+    }
+  }
+
+  return changed;
+}
+
+void UpdateLinuxBootstrapHeroScreenPreview(
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeHeroScreenReady = IsLinuxBootstrapHeroScreenActive(&runtime);
+  preview->runtimeHeroScreenWindowReady = false;
+  preview->runtimeHeroPlayersReady = false;
+  preview->runtimeHeroSelectionReady = false;
+  preview->runtimeHeroReady = false;
+  preview->runtimeHeroPlayerEntryCount = runtime.heroPlayerEntryCount;
+  preview->runtimeHeroSelectedTeam = 0;
+  preview->runtimeHeroSelectedFaction = 0;
+  preview->runtimeHeroSelectedHeroId.clear();
+  preview->runtimeHeroScreenWindow.clear();
+  preview->runtimeHeroPlayersText = runtime.heroPlayersText;
+  preview->runtimeHeroScreenPath = preview->runtimeHeroScreenReady ?
+    "NGameX::SelectHeroScreen::Init/CommonStep/Draw" :
+    "inactive";
+
+  if (!preview->runtimeHeroScreenReady)
+  {
+    return;
+  }
+
+  preview->runtimeHeroSelectionReady = IsValid(runtime.gameContext);
+  if (preview->runtimeHeroSelectionReady)
+  {
+    preview->runtimeHeroSelectedTeam = ConvertLobbyTeamSelectionToDisplayTeam(runtime.gameContext->GetSelectedTeam());
+    preview->runtimeHeroSelectedFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime.gameContext->GetSelectedFaction());
+    preview->runtimeHeroReady = runtime.gameContext->GetReadyState() != lobby::EGameMemberReadiness::NotReady;
+    preview->runtimeHeroSelectedHeroId = runtime.gameContext->GetSelectedHeroId().c_str();
+  }
+
+  UI::Window* mainWindow = runtime.heroScreen->GetMainWindow();
+  preview->runtimeHeroScreenWindowReady = mainWindow != 0;
+  if (!mainWindow)
+  {
+    preview->runtimeHeroScreenWindow = "<no-window>";
+    return;
+  }
+
+  const string& windowName = mainWindow->GetWindowName();
+  if (!windowName.empty())
+  {
+    preview->runtimeHeroScreenWindow = windowName.c_str();
+  }
+  else
+  {
+    char unnamedWindow[64] = {0};
+    snprintf(
+      unnamedWindow,
+      sizeof(unnamedWindow),
+      "<unnamed:%d-children>",
+      mainWindow->GetChildrenCount()
+    );
+    preview->runtimeHeroScreenWindow = unnamedWindow;
+  }
+
+  UI::Window* debugPlayersWindow = mainWindow->FindChild("DebugPlayers");
+  UI::ImageLabel* debugPlayersLabel = debugPlayersWindow ?
+    dynamic_cast<UI::ImageLabel*>(debugPlayersWindow) :
+    0;
+  preview->runtimeHeroPlayersReady = debugPlayersLabel != 0;
+  if (debugPlayersLabel && preview->runtimeHeroPlayersText.empty())
+  {
+    const string caption = debugPlayersLabel->GetCaptionText();
+    if (!caption.empty())
+    {
+      preview->runtimeHeroPlayersText = caption.c_str();
+    }
+  }
+}
+
+void UpdateLinuxBootstrapLoadingScreenPreview(
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeLoadingScreenReady = IsLinuxBootstrapLoadingScreenActive(&runtime);
+  preview->runtimeLoadingScreenWindowReady = false;
+  preview->runtimeLoadingStatusReady = false;
+  preview->runtimeLoadingProgress = runtime.loadingProgressValue;
+  preview->runtimeLoadingPlayerEntryCount = runtime.loadingPlayerEntryCount;
+  preview->runtimeLoadingDisconnectedCount = runtime.loadingDisconnectedCount;
+  preview->runtimeLoadingScreenWindow.clear();
+  preview->runtimeLoadingStatusText = runtime.loadingStatusText;
+  preview->runtimeLoadingScreenPath = preview->runtimeLoadingScreenReady ?
+    "Game::LoadingScreen::Init/Step/Draw" :
+    "inactive";
+
+  if (!preview->runtimeLoadingScreenReady)
+  {
+    return;
+  }
+
+  UI::Window* mainWindow = runtime.loadingScreen->GetMainWindow();
+  preview->runtimeLoadingScreenWindowReady = mainWindow != 0;
+  if (!mainWindow)
+  {
+    preview->runtimeLoadingScreenWindow = "<no-window>";
+  }
+  else
+  {
+    const string& windowName = mainWindow->GetWindowName();
+    if (!windowName.empty())
+    {
+      preview->runtimeLoadingScreenWindow = windowName.c_str();
+    }
+    else
+    {
+      char unnamedWindow[64] = {0};
+      snprintf(
+        unnamedWindow,
+        sizeof(unnamedWindow),
+        "<unnamed:%d-children>",
+        mainWindow->GetChildrenCount()
+      );
+      preview->runtimeLoadingScreenWindow = unnamedWindow;
+    }
+  }
+
+  Game::LoadingScreenLogic* loadingLogic =
+    dynamic_cast<Game::LoadingScreenLogic*>(runtime.loadingScreen->GetLogic());
+  if (!loadingLogic || !loadingLogic->GetLoadingFlashInterface())
+  {
+    return;
+  }
+
+  const Game::LoadingFlashInterface* flashInterface = loadingLogic->GetLoadingFlashInterface();
+  const vector<Game::LoadingFlashHeroState>& heroes = flashInterface->GetHeroes();
+  preview->runtimeLoadingPlayerEntryCount = heroes.size();
+
+  if (!heroes.empty())
+  {
+    float accumulatedProgress = 0.0f;
+    size_t disconnectedCount = 0;
+    for (size_t i = 0; i < heroes.size(); ++i)
+    {
+      accumulatedProgress += heroes[i].loadProgress / 100.0f;
+      if (heroes[i].isLeftGame)
+      {
+        ++disconnectedCount;
+      }
+    }
+
+    preview->runtimeLoadingProgress =
+      std::max(preview->runtimeLoadingProgress, accumulatedProgress / static_cast<float>(heroes.size()));
+    preview->runtimeLoadingDisconnectedCount = disconnectedCount;
+  }
+
+  std::string loadingStatusText = SanitizeLocalizedText(
+    std::string(NStr::ToMBCS(flashInterface->GetLoadingStatusText()).c_str()));
+  const NGameX::LoadingStatusHandler* loadingStatusHandler =
+    runtime.loadingScreen->GetLoadingStatusHandler();
+  if ((loadingStatusText.empty() || loadingStatusText == "{") && loadingStatusHandler)
+  {
+    const std::string statusKey = ToStdString(loadingStatusHandler->GetLastStatusId());
+    const size_t statusIndex = statusKey.empty() ?
+      static_cast<size_t>(-1) :
+      FindLoadingStatusIndex(loadingUiPreview, statusKey.c_str());
+    if (statusIndex != static_cast<size_t>(-1) &&
+        statusIndex < loadingUiPreview.statuses.size() &&
+        !loadingUiPreview.statuses[statusIndex].text.empty())
+    {
+      loadingStatusText = loadingUiPreview.statuses[statusIndex].text;
+    }
+    else
+    {
+      loadingStatusText = SanitizeLocalizedText(
+        std::string(NStr::ToMBCS(loadingStatusHandler->GetCurrentStatusText()).c_str()));
+    }
+  }
+  if (loadingStatusText.size() > 2 &&
+      loadingStatusText[0] == '{' &&
+      loadingStatusText[loadingStatusText.size() - 1] == '}')
+  {
+    const std::string fallbackStatusKey =
+      loadingStatusText.substr(1, loadingStatusText.size() - 2);
+    const size_t fallbackStatusIndex = FindLoadingStatusIndex(
+      loadingUiPreview,
+      fallbackStatusKey.c_str());
+    if (fallbackStatusIndex != static_cast<size_t>(-1) &&
+        fallbackStatusIndex < loadingUiPreview.statuses.size() &&
+        !loadingUiPreview.statuses[fallbackStatusIndex].text.empty())
+    {
+      loadingStatusText = loadingUiPreview.statuses[fallbackStatusIndex].text;
+    }
+  }
+  preview->runtimeLoadingStatusText = loadingStatusText;
+  preview->runtimeLoadingStatusReady = !loadingStatusText.empty();
+}
+
+void UpdateLinuxBootstrapGameSchedulerPreview(
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeGameSchedulerReady = IsValid(runtime.localScheduler);
+  preview->runtimeGameSchedulerStarted = runtime.schedulerStarted;
+  preview->runtimeGameSchedulerTicks = runtime.schedulerTickCount;
+  preview->runtimeGameSchedulerNextStep = runtime.schedulerNextStep;
+  preview->runtimeGameSchedulerPath = preview->runtimeGameSchedulerReady ?
+    "Game::LocalCmdScheduler::StartGame/Step" :
+    "inactive";
+}
+
+void EnsureLinuxBootstrapGameScheduler(
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    return;
+  }
+
+  if (!runtime->localScheduler)
+  {
+    const int schedulerClientId =
+      runtime->loadingGameContext && runtime->loadingGameContext->userId > 0 ?
+        runtime->loadingGameContext->userId :
+        1984;
+    runtime->localScheduler = new Game::LocalCmdScheduler(schedulerClientId);
+    runtime->schedulerStarted = false;
+    runtime->schedulerTickCount = 0;
+    runtime->schedulerNextStep = -1;
+  }
+
+  if (!runtime->schedulerStarted)
+  {
+    runtime->localScheduler->StartGame();
+    runtime->schedulerStarted = true;
+  }
+}
+
+void DriveLinuxBootstrapGameScheduler(
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !runtime->localScheduler)
+  {
+    return;
+  }
+
+  ++runtime->schedulerTickCount;
+  runtime->localScheduler->Step(NMainLoop::GetTimeDelta());
+  runtime->schedulerNextStep = runtime->localScheduler->GetNextStep(false);
+}
+
+void DriveLinuxBootstrapLoadingRuntime(
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    return;
+  }
+
+  if (!runtime->loadingProgress)
+  {
+    runtime->loadingProgress = new LoadingProgress;
+    runtime->loadingProgress->InitPartialWeight(0, 1.0f);
+    runtime->loadingScreen->SetProgress(runtime->loadingProgress);
+  }
+
+  ++runtime->loadingTickCount;
+  runtime->loadingProgressValue = std::min(
+    1.0f,
+    0.08f + static_cast<float>(runtime->loadingTickCount) * 0.06f);
+  runtime->loadingProgress->SetPartialProgress(0, runtime->loadingProgressValue);
+
+  runtime->loadingDisconnectedCount = 0;
+  const size_t totalSlots = runtime->loadingMapStartInfo.playersInfo.size();
+  for (size_t slotIndex = 0; slotIndex < totalSlots; ++slotIndex)
+  {
+    const NCore::PlayerStartInfo& slotInfo = runtime->loadingMapStartInfo.playersInfo[slotIndex];
+    if (slotInfo.userID == 0)
+    {
+      continue;
+    }
+
+    const float slotFactor = 0.70f + 0.05f * static_cast<float>(slotIndex);
+    float slotProgress = runtime->loadingProgressValue * slotFactor;
+    if (slotInfo.playerType == NCore::EPlayerType::Human)
+    {
+      slotProgress = std::min(1.0f, slotProgress + 0.10f);
+    }
+    runtime->loadingScreen->SetPlayerProgress(slotInfo.userID, std::min(1.0f, slotProgress));
+  }
+}
+
+void EnsureLinuxBootstrapHeroScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !preview->runtimeInitialized || !UI::GetUser() || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  if (runtime->gameContext->GetLobbyStatus() != lobby::EClientStatus::InCustomLobby)
+  {
+    return;
+  }
+
+  if (!runtime->heroScreen)
+  {
+    runtime->heroScreen = new NGameX::SelectHeroScreen(runtime->gameContext);
+  }
+
+  if (!runtime->heroInitialized)
+  {
+    if (runtime->heroScreen->Init(UI::GetUser()))
+    {
+      runtime->heroInitialized = true;
+      runtime->heroScreen->OnNewFront(runtime->heroScreen);
+      runtime->heroScreen->OnBecameFront();
+    }
+    else
+    {
+      preview->runtimeHeroScreenPath = "init-failed";
+      preview->warnings.push_back("Linux bootstrap hero screen init failed for LobbyScreen");
+    }
+  }
+}
+
+void EnsureLinuxBootstrapLoadingScreen(
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxClientLaunchSettings& settings,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !preview->runtimeInitialized || !UI::GetUser() || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  if (runtime->loadingInitialized || runtime->gameContext->GetReadyState() == lobby::EGameMemberReadiness::NotReady)
+  {
+    UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
+    return;
+  }
+
+  std::vector<std::string> loadingWarnings;
+  if (!TryBuildLinuxBootstrapLoadingContext(
+        sessionPreview,
+        heroCatalog,
+        mapCatalog,
+        mapBrowserState,
+        localMatchPreview,
+        defaultLocale,
+        runtime,
+        &loadingWarnings))
+  {
+    preview->warnings.insert(preview->warnings.end(), loadingWarnings.begin(), loadingWarnings.end());
+    preview->runtimeLoadingScreenPath = "init-failed";
+    return;
+  }
+
+  runtime->loadingScreen = new Game::LoadingScreen("", "", settings.spectator, settings.tutorial);
+  NCore::ClientSettings clientSettings;
+  clientSettings.showHeroLevel = true;
+  clientSettings.showHeroRating = true;
+  clientSettings.showHeroForce = true;
+  clientSettings.showDeltaRaiting = true;
+  clientSettings.showLocale = true;
+  runtime->loadingScreen->ApplyClientSettings(clientSettings);
+  runtime->loadingScreen->Setup(runtime->loadingGameContext);
+
+  if (!runtime->loadingScreen->Init(UI::GetUser()))
+  {
+    preview->warnings.push_back("Linux bootstrap loading screen init failed for Loading");
+    preview->runtimeLoadingScreenPath = "init-failed";
+    runtime->loadingScreen = 0;
+    runtime->loadingGameContext = 0;
+    return;
+  }
+
+  runtime->loadingInitialized = true;
+  runtime->loadingProgress = 0;
+  runtime->loadingTickCount = 0;
+  runtime->loadingProgressValue = 0.0f;
+  runtime->loadingDisconnectedCount = 0;
+  runtime->loadingScreen->OnNewFront(runtime->loadingScreen);
+  runtime->loadingScreen->OnBecameFront();
+  if (runtime->heroScreen)
+  {
+    runtime->heroScreen->ShowMainWindow(false);
+  }
+
+  if (runtime->loadingScreen->GetLoadingStatusHandler())
+  {
+    runtime->loadingScreen->GetLoadingStatusHandler()->OnLobbyInGameStatus(lobby::EOperationResult::InProgress);
+  }
+
+  EnsureLinuxBootstrapGameScheduler(runtime);
+  DriveLinuxBootstrapLoadingRuntime(runtime);
+  UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
+}
+
+void UpdateLinuxBootstrapHeroScreenPlayers(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !runtime->heroInitialized || !IsValid(runtime->heroScreen) || !IsValid(runtime->gameContext))
+  {
+    return;
+  }
+
+  vector<wstring> lines;
+  vector<int> lineIds;
+  BuildLinuxBootstrapHeroPlayerPreview(heroCatalog, localMatchPreview, *runtime->gameContext, &lines, &lineIds);
+  runtime->heroScreen->UpdatePlayers(lines, lineIds, set<int>());
+  runtime->heroPlayerEntryCount = lineIds.size() >= 2 ? lineIds.size() - 2 : 0;
+  runtime->heroPlayersText = lines.empty() ? std::string() : NStr::ToMBCS(lines.back()).c_str();
+}
+
+void UpdateLinuxBootstrapScreenPreview(
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeBootstrapScreenId = "Lobby_SelectGameMode";
+  preview->runtimeBootstrapScreenReady = runtime.initialized && IsValid(runtime.gameModeScreen);
+  preview->runtimeBootstrapScreenWindowReady = false;
+  preview->runtimeBootstrapGamesReady = false;
+  preview->runtimeBootstrapJoinResultReady = false;
+  preview->runtimeBootstrapMapsReady = false;
+  preview->runtimeBootstrapGameEntryCount = 0;
+  preview->runtimeBootstrapMapEntryCount = 0;
+  preview->runtimeBootstrapScreenWindow.clear();
+  preview->runtimeBootstrapJoinResult = "<inactive>";
+  preview->runtimeBootstrapScreenPath = preview->runtimeBootstrapScreenReady ?
+    "NGameX::SelectGameModeScreen::Init/LoadScreenLayout/Step/Draw" :
+    "inactive";
+
+  if (!preview->runtimeBootstrapScreenReady)
+  {
+    return;
+  }
+
+  UI::Window* mainWindow = runtime.gameModeScreen->GetMainWindow();
+  preview->runtimeBootstrapScreenWindowReady = mainWindow != 0;
+  if (!mainWindow)
+  {
+    preview->runtimeBootstrapScreenWindow = "<no-window>";
+    return;
+  }
+
+  const string& windowName = mainWindow->GetWindowName();
+  if (!windowName.empty())
+  {
+    preview->runtimeBootstrapScreenWindow = windowName.c_str();
+    return;
+  }
+
+  char unnamedWindow[64] = {0};
+  snprintf(
+    unnamedWindow,
+    sizeof(unnamedWindow),
+    "<unnamed:%d-children>",
+    mainWindow->GetChildrenCount()
+  );
+  preview->runtimeBootstrapScreenWindow = unnamedWindow;
+
+  UI::Window* joinResultWindow = mainWindow->FindChild("JoinResult");
+  if (!joinResultWindow)
+  {
+    preview->runtimeBootstrapJoinResult = "<missing>";
+    return;
+  }
+
+  UI::ImageLabel* joinResultLabel = dynamic_cast<UI::ImageLabel*>(joinResultWindow);
+  if (!joinResultLabel)
+  {
+    preview->runtimeBootstrapJoinResult = "<not-image-label>";
+    return;
+  }
+
+  preview->runtimeBootstrapJoinResultReady = true;
+  const string joinResult = joinResultLabel->GetCaptionText();
+  preview->runtimeBootstrapJoinResult = joinResult.empty() ? "<empty>" : joinResult.c_str();
+
+  UI::Window* gamesWindow = mainWindow->FindChild("Games");
+  if (gamesWindow)
+  {
+    preview->runtimeBootstrapGamesReady = true;
+    if (UI::Window* gamesList = gamesWindow->FindChild("List"))
+    {
+      preview->runtimeBootstrapGameEntryCount = static_cast<size_t>(gamesList->GetChildrenCount());
+    }
+  }
+
+  UI::Window* mapsWindow = mainWindow->FindChild("Maps");
+  if (mapsWindow)
+  {
+    preview->runtimeBootstrapMapsReady = true;
+    if (UI::Window* mapsList = mapsWindow->FindChild("List"))
+    {
+      preview->runtimeBootstrapMapEntryCount = static_cast<size_t>(mapsList->GetChildrenCount());
+    }
+  }
+
+  UpdateLinuxBootstrapHeroScreenPreview(runtime, preview);
+  UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, runtime, preview);
+  UpdateLinuxBootstrapGameSchedulerPreview(runtime, preview);
+}
+
+void InitializeLinuxBootstrapScreenRuntime(
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  const LinuxClientLaunchSettings& settings,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview)
+  {
+    return;
+  }
+
+  preview->runtimeBootstrapScreenEventCount = 0;
+
+  if (!preview->runtimeInitialized || !UI::GetUser())
+  {
+    preview->runtimeBootstrapScreenPath = "inactive";
+    return;
+  }
+
+  if (!runtime->gameContext)
+  {
+    runtime->gameContext = new LinuxBootstrapGameContextUi;
+  }
+
+  if (!runtime->gameModeScreen)
+  {
+    runtime->gameModeScreen = new NGameX::SelectGameModeScreen(runtime->gameContext);
+  }
+
+  if (!runtime->initialized)
+  {
+    if (runtime->gameModeScreen->Init(UI::GetUser()))
+    {
+      runtime->initialized = true;
+      runtime->gameModeScreen->OnNewFront(runtime->gameModeScreen);
+      runtime->gameModeScreen->OnBecameFront();
+    }
+    else
+    {
+      preview->runtimeBootstrapScreenPath = "init-failed";
+      preview->warnings.push_back("Linux bootstrap screen init failed for Lobby_SelectGameMode");
+      UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+      return;
+    }
+  }
+
+  MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
+  EnsureLinuxBootstrapHeroScreen(runtime, preview);
+  SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
+  MaybeAutoReadyLinuxBootstrapCreateGame(settings, runtime);
+  UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
+  EnsureLinuxBootstrapLoadingScreen(
+    sessionPreview,
+    loadingUiPreview,
+    settings,
+    heroCatalog,
+    mapCatalog,
+    mapBrowserState,
+    localMatchPreview,
+    defaultLocale,
+    runtime,
+    preview
+  );
+  UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+}
+
+void DriveLinuxBootstrapScreenRuntime(
+  const LinuxInputState& inputState,
+  const LinuxSessionPreview& sessionPreview,
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  const LinuxClientLaunchSettings& settings,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& defaultLocale,
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !runtime->initialized || !IsValid(runtime->gameModeScreen))
+  {
+    return;
+  }
+
+  MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
+  EnsureLinuxBootstrapHeroScreen(runtime, preview);
+  HandleLinuxBootstrapHeroScreenHotkeys(inputState, runtime);
+  SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
+  MaybeAutoReadyLinuxBootstrapCreateGame(settings, runtime);
+  UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
+  EnsureLinuxBootstrapLoadingScreen(
+    sessionPreview,
+    loadingUiPreview,
+    settings,
+    heroCatalog,
+    mapCatalog,
+    mapBrowserState,
+    localMatchPreview,
+    defaultLocale,
+    runtime,
+    preview
+  );
+
+  if (IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+    {
+      runtime->loadingScreen->ProcessUIEvent(inputState.frameEvents[i]);
+    }
+
+    EnsureLinuxBootstrapGameScheduler(runtime);
+    DriveLinuxBootstrapGameScheduler(runtime);
+    DriveLinuxBootstrapLoadingRuntime(runtime);
+    runtime->loadingScreen->Step(NMainFrame::IsAppActive());
+    preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+    UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+    return;
+  }
+
+  if (IsLinuxBootstrapHeroScreenActive(runtime))
+  {
+    for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+    {
+      runtime->heroScreen->ProcessUIEvent(inputState.frameEvents[i]);
+    }
+
+    runtime->heroScreen->Step(NMainFrame::IsAppActive());
+    runtime->heroScreen->CommonStep(NMainFrame::IsAppActive());
+    preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+    UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
+    UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+    return;
+  }
+
+  for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+  {
+    runtime->gameModeScreen->ProcessUIEvent(inputState.frameEvents[i]);
+  }
+
+  runtime->gameModeScreen->Step(NMainFrame::IsAppActive());
+  runtime->gameModeScreen->CommonStep(NMainFrame::IsAppActive());
+  preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+  UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+}
+
+void DrawLinuxBootstrapScreenRuntime(
+  const LinuxLoadingUiPreview& loadingUiPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !runtime->initialized || !IsValid(runtime->gameModeScreen))
+  {
+    return;
+  }
+
+  if (IsLinuxBootstrapHeroScreenActive(runtime))
+  {
+    runtime->heroScreen->Draw(NMainFrame::IsAppActive());
+    UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+    return;
+  }
+
+  if (IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    runtime->loadingScreen->Draw(NMainFrame::IsAppActive());
+    UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
+    return;
+  }
+
+  runtime->gameModeScreen->SyncLinuxBootstrapUiState();
+  runtime->gameModeScreen->Draw(NMainFrame::IsAppActive());
+  runtime->gameModeScreen->SyncLinuxBootstrapUiState();
+  UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
 
 void UpdateMapBrowserState(
@@ -12070,6 +13992,169 @@ std::vector<std::string> BuildOverlayLines(
     );
     lines.push_back(buffer);
 
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI runtime: init=%s path=%s",
+      uiRootPreview.runtimeInitialized ? "yes" : "no",
+      uiRootPreview.runtimePath.empty() ? "<none>" : uiRootPreview.runtimePath.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI frame loop: %s path=%s",
+      uiRootPreview.runtimeFrameLoopEnabled ? "yes" : "no",
+      uiRootPreview.runtimeFramePath.empty() ? "<none>" : uiRootPreview.runtimeFramePath.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI user: %s events=%lu path=%s",
+      uiRootPreview.runtimeUserReady ? "yes" : "no",
+      static_cast<unsigned long>(uiRootPreview.runtimeUserEventCount),
+      uiRootPreview.runtimeUserPath.empty() ? "<none>" : uiRootPreview.runtimeUserPath.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI cursor: %s id=%s size=%dx%d hot=%d,%d",
+      uiRootPreview.runtimeCursorReady ? "yes" : "no",
+      uiRootPreview.runtimeCursorId.empty() ? "<none>" : uiRootPreview.runtimeCursorId.c_str(),
+      uiRootPreview.runtimeCursorWidth,
+      uiRootPreview.runtimeCursorHeight,
+      uiRootPreview.runtimeCursorHotspotX,
+      uiRootPreview.runtimeCursorHotspotY
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI screen runtime: %s window=%s events=%lu",
+      uiRootPreview.runtimeBootstrapScreenReady ? "yes" : "no",
+      uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow.c_str(),
+      static_cast<unsigned long>(uiRootPreview.runtimeBootstrapScreenEventCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI hero runtime: %s window=%s players=%lu",
+      uiRootPreview.runtimeHeroScreenReady ? "yes" : "no",
+      uiRootPreview.runtimeHeroScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenWindow.c_str(),
+      static_cast<unsigned long>(uiRootPreview.runtimeHeroPlayerEntryCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI hero state: team=%d faction=%d ready=%s hero=%s | Tab side [/] hero F faction R ready",
+      uiRootPreview.runtimeHeroSelectedTeam,
+      uiRootPreview.runtimeHeroSelectedFaction,
+      uiRootPreview.runtimeHeroReady ? "yes" : "no",
+      uiRootPreview.runtimeHeroSelectedHeroId.empty() ? "<none>" : uiRootPreview.runtimeHeroSelectedHeroId.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI loading runtime: %s window=%s players=%lu status=%s progress=%.2f disc=%lu",
+      uiRootPreview.runtimeLoadingScreenReady ? "yes" : "no",
+      uiRootPreview.runtimeLoadingScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenWindow.c_str(),
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingPlayerEntryCount),
+      uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText.c_str(),
+      static_cast<double>(uiRootPreview.runtimeLoadingProgress),
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Game scheduler: %s started=%s ticks=%lu next=%d",
+      uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no",
+      uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no",
+      static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerTicks),
+      uiRootPreview.runtimeGameSchedulerNextStep
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI games runtime: %s entries=%lu",
+      uiRootPreview.runtimeBootstrapGamesReady ? "yes" : "no",
+      static_cast<unsigned long>(uiRootPreview.runtimeBootstrapGameEntryCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "UI maps runtime: %s entries=%lu",
+      uiRootPreview.runtimeBootstrapMapsReady ? "yes" : "no",
+      static_cast<unsigned long>(uiRootPreview.runtimeBootstrapMapEntryCount)
+    );
+    lines.push_back(buffer);
+
+    lines.push_back("UI JoinResult: " +
+      TruncateForOverlay(
+        uiRootPreview.runtimeBootstrapJoinResultReady ?
+          uiRootPreview.runtimeBootstrapJoinResult :
+          std::string("<not-ready>"),
+        88
+      ));
+
+    if (uiRootPreview.runtimeScreenLookupReady)
+    {
+      lines.push_back("UI runtime screen: " +
+        TruncateForOverlay(
+          uiRootPreview.runtimeScreenLookup + " -> " +
+          (uiRootPreview.runtimeScreenLayoutName.empty() ? "<unnamed>" : uiRootPreview.runtimeScreenLayoutName),
+          88
+        ));
+    }
+
+    if (uiRootPreview.runtimeContentLookupReady)
+    {
+      lines.push_back("UI runtime content: " +
+        TruncateForOverlay(
+          uiRootPreview.runtimeContentLookup + " -> " +
+          (uiRootPreview.runtimeContentDbid.empty() ? "<no-dbid>" : uiRootPreview.runtimeContentDbid),
+          88
+        ));
+    }
+    else if (!uiRootPreview.runtimeContentLookup.empty() || !uiRootPreview.runtimeContentState.empty())
+    {
+      lines.push_back("UI runtime content: " +
+        TruncateForOverlay(
+          (uiRootPreview.runtimeContentLookup.empty() ? std::string("<none>") : uiRootPreview.runtimeContentLookup) +
+          " [" +
+          (uiRootPreview.runtimeContentState.empty() ? std::string("inactive") : uiRootPreview.runtimeContentState) +
+          "]",
+          88
+        ));
+    }
+
+    if (uiRootPreview.runtimeConstantLookupReady)
+    {
+      lines.push_back("UI runtime const: " +
+        TruncateForOverlay(
+          uiRootPreview.runtimeConstantLookup + "=" +
+          (uiRootPreview.runtimeConstantValue.empty() ? "<empty>" : uiRootPreview.runtimeConstantValue),
+          88
+        ));
+    }
+
     if (!uiRootPreview.screenSamples.empty())
     {
       lines.push_back("UI screen samples: " +
@@ -12422,6 +14507,7 @@ void DrawOpenGlText(LinuxWindowOverlay* overlay, int x, int y, const std::string
 struct LinuxOverlayUiRenderContext
 {
   LinuxWindowOverlay* overlay;
+  LinuxBootstrapScreenRuntime* screenRuntime;
   const LinuxClientEnvironment* environment;
   const LinuxClientLaunchSettings* settings;
   const LinuxLaunchPreview* launchPreview;
@@ -12453,6 +14539,7 @@ struct LinuxOverlayUiRenderContext
 
   LinuxOverlayUiRenderContext()
     : overlay(nullptr),
+      screenRuntime(nullptr),
       environment(nullptr),
       settings(nullptr),
       launchPreview(nullptr),
@@ -12539,6 +14626,13 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
   glOrtho(0.0, static_cast<double>(width), static_cast<double>(height), 0.0, -1.0, 1.0);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
+
+  if (renderContext.screenRuntime && renderContext.uiRootPreview)
+  {
+    DrawLinuxBootstrapScreenRuntime(*renderContext.loadingUiPreview,
+      renderContext.screenRuntime,
+      const_cast<LinuxUiRootPreview*>(renderContext.uiRootPreview));
+  }
 
   SetOpenGlColor(27, 38, 49);
   DrawOpenGlRect(0, 0, width, headerHeight);
@@ -12658,6 +14752,7 @@ void RenderWindowOverlayOpenGlUiCallback(void* userData, unsigned int width, uns
 bool DrawWindowOverlayOpenGl(
   LinuxWindowOverlay* overlay,
   LinuxRenderBootstrap* renderBootstrap,
+  LinuxBootstrapScreenRuntime* screenRuntime,
   const LinuxClientEnvironment& environment,
   const LinuxClientLaunchSettings& settings,
   const LinuxLaunchPreview& launchPreview,
@@ -12694,8 +14789,20 @@ bool DrawWindowOverlayOpenGl(
   }
 
   SyncLinuxRenderBootstrapSize(renderBootstrap, width, height);
+  if (UI::GetUIRoot())
+  {
+    UI::ApplyNewParams(width, height, false, false);
+  }
+
+  const DWORD uiSyncTime = elapsedSeconds > 0.0 ? static_cast<DWORD>(elapsedSeconds * 1000.0) : 0;
+  if (UI::GetUIRoot())
+  {
+    UI::NewFrame(uiSyncTime);
+  }
+
   LinuxOverlayUiRenderContext renderContext;
   renderContext.overlay = overlay;
+  renderContext.screenRuntime = screenRuntime;
   renderContext.environment = &environment;
   renderContext.settings = &settings;
   renderContext.launchPreview = &launchPreview;
@@ -12740,12 +14847,18 @@ bool DrawWindowOverlayOpenGl(
     RenderWindowOverlayOpenGlUi(renderContext);
     NMainFrame::SwapOpenGLBuffers();
   }
+
+  if (UI::GetUIRoot())
+  {
+    UI::PresentFrame(uiSyncTime, true);
+  }
   return true;
 }
 
 void DrawWindowOverlay(
   LinuxWindowOverlay* overlay,
   LinuxRenderBootstrap* renderBootstrap,
+  LinuxBootstrapScreenRuntime* screenRuntime,
   const LinuxClientEnvironment& environment,
   const LinuxClientLaunchSettings& settings,
   const LinuxLaunchPreview& launchPreview,
@@ -12818,6 +14931,7 @@ void DrawWindowOverlay(
   if (DrawWindowOverlayOpenGl(
         overlay,
         renderBootstrap,
+        screenRuntime,
         environment,
         settings,
         launchPreview,
@@ -13028,6 +15142,10 @@ void WriteStartupLog(
           << renderBootstrap.renderMode.width << "x" << renderBootstrap.renderMode.height << "\n";
   logFile << "  renderMode3D="
           << renderBootstrap.renderMode.width3D << "x" << renderBootstrap.renderMode.height3D << "\n";
+  logFile << "  renderBootstrapUiResolution="
+          << UI::GetUIScreenResolution().x << "x" << UI::GetUIScreenResolution().y << "\n";
+  logFile << "  renderBootstrapScreenResolution="
+          << UI::GetScreenResolution().x << "x" << UI::GetScreenResolution().y << "\n";
   logFile << "  size=" << settings.width << "x" << settings.height << "\n";
   logFile << "  sizeFromParent=" << ((settings.widthFromParent || settings.heightFromParent) ? "yes" : "no") << "\n";
   logFile << "  spectator=" << (settings.spectator ? "yes" : "no") << "\n";
@@ -13235,6 +15353,7 @@ void WriteStartupLog(
   logFile << "  artworkModeChanges=" << artworkState.changeCount << "\n";
   logFile << "  launchHeroSelector=" << (settings.heroSelector.empty() ? "<none>" : settings.heroSelector) << "\n";
   logFile << "  demoCycleSeconds=" << settings.demoCycleSeconds << "\n";
+  logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
   logFile << "  mapCatalogCount=" << mapCatalog.descriptorCount << "\n";
   logFile << "  mapCatalogProductionCount=" << mapCatalog.productionDescriptorCount << "\n";
   logFile << "  mapCatalogPvpCount=" << mapCatalog.pvpCount << "\n";
@@ -13515,6 +15634,75 @@ void WriteStartupLog(
   logFile << "  uiRootStyleAliases=" << uiRootPreview.styleAliasCount << "\n";
   logFile << "  uiRootFontStyles=" << uiRootPreview.fontStyleCount << "\n";
   logFile << "  uiRootPreferences=" << (uiRootPreview.preferencesReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeInit=" << (uiRootPreview.runtimeInitialized ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimePath=" << (uiRootPreview.runtimePath.empty() ? "<none>" : uiRootPreview.runtimePath) << "\n";
+  logFile << "  uiRootRuntimeFrameLoop=" << (uiRootPreview.runtimeFrameLoopEnabled ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeFramePath=" << (uiRootPreview.runtimeFramePath.empty() ? "<none>" : uiRootPreview.runtimeFramePath) << "\n";
+  logFile << "  uiRootRuntimeUserReady=" << (uiRootPreview.runtimeUserReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeUserEvents=" << uiRootPreview.runtimeUserEventCount << "\n";
+  logFile << "  uiRootRuntimeUserPath=" << (uiRootPreview.runtimeUserPath.empty() ? "<none>" : uiRootPreview.runtimeUserPath) << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenReady=" << (uiRootPreview.runtimeBootstrapScreenReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenWindowReady=" << (uiRootPreview.runtimeBootstrapScreenWindowReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenId=" << (uiRootPreview.runtimeBootstrapScreenId.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenId) << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenPath=" << (uiRootPreview.runtimeBootstrapScreenPath.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenPath) << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenWindow=" << (uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow) << "\n";
+  logFile << "  uiRootRuntimeHeroScreenReady=" << (uiRootPreview.runtimeHeroScreenReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeHeroScreenWindowReady=" << (uiRootPreview.runtimeHeroScreenWindowReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeHeroScreenPath=" << (uiRootPreview.runtimeHeroScreenPath.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenPath) << "\n";
+  logFile << "  uiRootRuntimeHeroScreenWindow=" << (uiRootPreview.runtimeHeroScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenWindow) << "\n";
+  logFile << "  uiRootRuntimeHeroPlayersReady=" << (uiRootPreview.runtimeHeroPlayersReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeHeroPlayerEntries=" << uiRootPreview.runtimeHeroPlayerEntryCount << "\n";
+  logFile << "  uiRootRuntimeHeroPlayersText="
+          << (uiRootPreview.runtimeHeroPlayersText.empty() ? "<none>" : uiRootPreview.runtimeHeroPlayersText) << "\n";
+  logFile << "  uiRootRuntimeHeroSelectionReady=" << (uiRootPreview.runtimeHeroSelectionReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeHeroSelectedTeam=" << uiRootPreview.runtimeHeroSelectedTeam << "\n";
+  logFile << "  uiRootRuntimeHeroSelectedFaction=" << uiRootPreview.runtimeHeroSelectedFaction << "\n";
+  logFile << "  uiRootRuntimeHeroReady=" << (uiRootPreview.runtimeHeroReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeHeroSelectedHeroId="
+          << (uiRootPreview.runtimeHeroSelectedHeroId.empty() ? "<none>" : uiRootPreview.runtimeHeroSelectedHeroId) << "\n";
+  logFile << "  uiRootRuntimeLoadingScreenReady=" << (uiRootPreview.runtimeLoadingScreenReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeLoadingScreenWindowReady=" << (uiRootPreview.runtimeLoadingScreenWindowReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeLoadingScreenPath="
+          << (uiRootPreview.runtimeLoadingScreenPath.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenPath) << "\n";
+  logFile << "  uiRootRuntimeLoadingScreenWindow="
+          << (uiRootPreview.runtimeLoadingScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenWindow) << "\n";
+  logFile << "  uiRootRuntimeLoadingPlayerEntries=" << uiRootPreview.runtimeLoadingPlayerEntryCount << "\n";
+  logFile << "  uiRootRuntimeLoadingProgress=" << uiRootPreview.runtimeLoadingProgress << "\n";
+  logFile << "  uiRootRuntimeLoadingDisconnected=" << uiRootPreview.runtimeLoadingDisconnectedCount << "\n";
+  logFile << "  uiRootRuntimeLoadingStatusReady=" << (uiRootPreview.runtimeLoadingStatusReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeLoadingStatusText="
+          << (uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText) << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerReady=" << (uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerStarted=" << (uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerTicks=" << uiRootPreview.runtimeGameSchedulerTicks << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerNextStep=" << uiRootPreview.runtimeGameSchedulerNextStep << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerPath="
+          << (uiRootPreview.runtimeGameSchedulerPath.empty() ? "<none>" : uiRootPreview.runtimeGameSchedulerPath) << "\n";
+  logFile << "  uiRootRuntimeBootstrapGamesReady=" << (uiRootPreview.runtimeBootstrapGamesReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeBootstrapGameEntries=" << uiRootPreview.runtimeBootstrapGameEntryCount << "\n";
+  logFile << "  uiRootRuntimeBootstrapMapsReady=" << (uiRootPreview.runtimeBootstrapMapsReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeBootstrapMapEntries=" << uiRootPreview.runtimeBootstrapMapEntryCount << "\n";
+  logFile << "  uiRootRuntimeBootstrapJoinResultReady=" << (uiRootPreview.runtimeBootstrapJoinResultReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeBootstrapJoinResult=" << (uiRootPreview.runtimeBootstrapJoinResult.empty() ? "<none>" : uiRootPreview.runtimeBootstrapJoinResult) << "\n";
+  logFile << "  uiRootRuntimeBootstrapScreenEvents=" << uiRootPreview.runtimeBootstrapScreenEventCount << "\n";
+  logFile << "  uiRootRuntimeCursorReady=" << (uiRootPreview.runtimeCursorReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeCursorRegistered=" << (uiRootPreview.runtimeCursorRegistered ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeCursorId=" << (uiRootPreview.runtimeCursorId.empty() ? "<none>" : uiRootPreview.runtimeCursorId) << "\n";
+  logFile << "  uiRootRuntimeCursorSize=" << uiRootPreview.runtimeCursorWidth << "x" << uiRootPreview.runtimeCursorHeight << "\n";
+  logFile << "  uiRootRuntimeCursorHotspot=" << uiRootPreview.runtimeCursorHotspotX << "," << uiRootPreview.runtimeCursorHotspotY << "\n";
+  logFile << "  uiRootRuntimeCursorPath=" << (uiRootPreview.runtimeCursorPath.empty() ? "<none>" : uiRootPreview.runtimeCursorPath) << "\n";
+  logFile << "  uiRootRuntimeScreenReady=" << (uiRootPreview.runtimeScreenLookupReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeScreen=" << (uiRootPreview.runtimeScreenLookup.empty() ? "<none>" : uiRootPreview.runtimeScreenLookup) << "\n";
+  logFile << "  uiRootRuntimeScreenName=" << (uiRootPreview.runtimeScreenLayoutName.empty() ? "<none>" : uiRootPreview.runtimeScreenLayoutName) << "\n";
+  logFile << "  uiRootRuntimeContentGroups=" << (uiRootPreview.runtimeContentGroupPresent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeContentEntries=" << (uiRootPreview.runtimeContentEntriesPresent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeContentReady=" << (uiRootPreview.runtimeContentLookupReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeContent=" << (uiRootPreview.runtimeContentLookup.empty() ? "<none>" : uiRootPreview.runtimeContentLookup) << "\n";
+  logFile << "  uiRootRuntimeContentDbid=" << (uiRootPreview.runtimeContentDbid.empty() ? "<none>" : uiRootPreview.runtimeContentDbid) << "\n";
+  logFile << "  uiRootRuntimeContentState=" << (uiRootPreview.runtimeContentState.empty() ? "<none>" : uiRootPreview.runtimeContentState) << "\n";
+  logFile << "  uiRootRuntimeConstantReady=" << (uiRootPreview.runtimeConstantLookupReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeConstant=" << (uiRootPreview.runtimeConstantLookup.empty() ? "<none>" : uiRootPreview.runtimeConstantLookup) << "\n";
+  logFile << "  uiRootRuntimeConstantValue=" << (uiRootPreview.runtimeConstantValue.empty() ? "<empty>" : uiRootPreview.runtimeConstantValue) << "\n";
   logFile << "  uiRootVoting=" << (uiRootPreview.votingReady ? "yes" : "no") << "\n";
   for (size_t i = 0; i < uiRootPreview.screenSamples.size(); ++i)
   {
@@ -14067,6 +16255,7 @@ int main(int argc, char** argv)
   LinuxClientLaunchSettings settings;
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
+  settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
   settings.width = ReadWindowSize(argc, argv, "--width", 1280);
   settings.height = ReadWindowSize(argc, argv, "--height", 720);
   settings.spectator = CmdLineLite::Instance().IsKeyDefined("spectator");
@@ -14184,12 +16373,87 @@ int main(int argc, char** argv)
 
   LinuxWindowOverlay overlay;
   LinuxRenderBootstrap renderBootstrap;
+  LinuxBootstrapScreenRuntime screenRuntime;
+  NDb::Ptr<NDb::UIRoot> runtimeUiRoot;
+  bool uiInitialized = false;
   InitializeWindowOverlay(&overlay);
   const bool renderBootstrapReady = StartLinuxRenderBootstrap(
     &renderBootstrap,
     static_cast<unsigned int>(settings.width),
     static_cast<unsigned int>(settings.height)
   );
+  if (renderBootstrapReady)
+  {
+    if (rootFileSystemPreview.dbCacheReady)
+    {
+      runtimeUiRoot = ResolveLinuxUiRoot();
+      if (runtimeUiRoot)
+      {
+        UI::Initialize(runtimeUiRoot);
+        UI::ApplyNewParams(renderBootstrap.renderMode.width, renderBootstrap.renderMode.height, false, false);
+        uiInitialized = UI::GetUIRoot() != 0;
+        uiRootPreview.runtimeInitialized = uiInitialized;
+        uiRootPreview.runtimePath = uiInitialized ? "UI::Initialize" : "UI::Initialize(no-root)";
+        uiRootPreview.runtimeFrameLoopEnabled = uiInitialized;
+        uiRootPreview.runtimeFramePath = uiInitialized ? "UI::ApplyNewParams/NewFrame/PresentFrame" : "inactive";
+        uiRootPreview.runtimeUserReady = uiInitialized && (UI::GetUser() != 0);
+        uiRootPreview.runtimeUserPath = uiRootPreview.runtimeUserReady ?
+          "UI::User::StartEvent/EndEvent/Step" :
+          "UI::GetUser(null)";
+        if (!uiInitialized)
+        {
+          uiRootPreview.warnings.push_back("Linux UI bootstrap called UI::Initialize but UI::GetUIRoot() stayed null");
+        }
+        else if (!uiRootPreview.runtimeUserReady)
+        {
+          uiRootPreview.warnings.push_back("Linux UI bootstrap initialized UIRoot but UI::GetUser() stayed null");
+        }
+        else
+        {
+          ProbeUiRuntimeState(runtimeUiRoot, &uiRootPreview);
+          InitializeLinuxBootstrapScreenRuntime(
+            sessionPreview,
+            loadingUiPreview,
+            &screenRuntime,
+            settings,
+            heroCatalog,
+            mapCatalog,
+            mapBrowserState,
+            localMatchPreview,
+            contentProbe.locale,
+            &uiRootPreview
+          );
+          DriveLinuxUiCursor(&uiRootPreview);
+          if (!uiRootPreview.runtimeContentLookupReady &&
+              uiRootPreview.contentGroupCount > 0 &&
+              uiRootPreview.contentEntryCount == 0 &&
+              !uiRootPreview.contentSamples.empty())
+          {
+            uiRootPreview.runtimeContentGroupPresent = true;
+            uiRootPreview.runtimeContentEntriesPresent = false;
+            uiRootPreview.runtimeContentLookup = uiRootPreview.contentSamples.front() + "/<empty-group>";
+            uiRootPreview.runtimeContentDbid = "<no-resources>";
+            uiRootPreview.runtimeContentState = "empty-group";
+          }
+        }
+      }
+      else
+      {
+        uiRootPreview.runtimePath = "skipped-missing-root";
+        uiRootPreview.runtimeFramePath = "inactive";
+      }
+    }
+    else
+    {
+      uiRootPreview.runtimePath = "skipped-no-db-cache";
+      uiRootPreview.runtimeFramePath = "inactive";
+    }
+  }
+  else
+  {
+    uiRootPreview.runtimePath = "skipped-no-render";
+    uiRootPreview.runtimeFramePath = "inactive";
+  }
   LinuxLoadingArtwork displayArtwork;
   std::string displayArtworkSource;
   const bool displayArtworkReady = BuildSelectedMapDisplayArtwork(
@@ -14443,9 +16707,17 @@ int main(int argc, char** argv)
     renderBootstrapReady ? "PF_Render::Interface via OpenGL" : "<none>");
   fprintf(stdout, "Render frame path: %s\n",
     renderBootstrapReady ? "PF_Render::Interface::Render/Present" : "<none>");
+  fprintf(stdout, "Render UI path: %s\n",
+    renderBootstrapReady ? "PF_Render::Interface::RenderUI callback" : "<none>");
+  fprintf(stdout, "Render UI resolution: %.0fx%.0f on %.0fx%.0f\n",
+    UI::GetUIScreenResolution().x,
+    UI::GetUIScreenResolution().y,
+    UI::GetScreenResolution().x,
+    UI::GetScreenResolution().y);
   fprintf(stdout, "Loading artwork uploaded: %s\n", artworkUploaded ? "yes" : "no");
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
+  fprintf(stdout, "Bootstrap create game: %s\n", settings.bootstrapCreateGame ? "yes" : "no");
   fprintf(stdout, "Map catalog: %lu maps (%lu PvP, %lu PvE, %lu tutorial)\n",
     static_cast<unsigned long>(mapCatalog.descriptorCount),
     static_cast<unsigned long>(mapCatalog.pvpCount),
@@ -14562,6 +16834,87 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(uiRootPreview.cursorCount),
     static_cast<unsigned long>(uiRootPreview.contentGroupCount),
     static_cast<unsigned long>(uiRootPreview.constantCount));
+  fprintf(stdout, "UI runtime: init=%s path=%s\n",
+    uiRootPreview.runtimeInitialized ? "yes" : "no",
+    uiRootPreview.runtimePath.empty() ? "<none>" : uiRootPreview.runtimePath.c_str());
+  fprintf(stdout, "UI frame loop: %s path=%s\n",
+    uiRootPreview.runtimeFrameLoopEnabled ? "yes" : "no",
+    uiRootPreview.runtimeFramePath.empty() ? "<none>" : uiRootPreview.runtimeFramePath.c_str());
+  fprintf(stdout, "UI user: %s events=%lu path=%s\n",
+    uiRootPreview.runtimeUserReady ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeUserEventCount),
+    uiRootPreview.runtimeUserPath.empty() ? "<none>" : uiRootPreview.runtimeUserPath.c_str());
+  fprintf(stdout, "UI cursor: ready=%s registered=%s id=%s size=%dx%d hotspot=%d,%d path=%s\n",
+    uiRootPreview.runtimeCursorReady ? "yes" : "no",
+    uiRootPreview.runtimeCursorRegistered ? "yes" : "no",
+    uiRootPreview.runtimeCursorId.empty() ? "<none>" : uiRootPreview.runtimeCursorId.c_str(),
+    uiRootPreview.runtimeCursorWidth,
+    uiRootPreview.runtimeCursorHeight,
+    uiRootPreview.runtimeCursorHotspotX,
+    uiRootPreview.runtimeCursorHotspotY,
+    uiRootPreview.runtimeCursorPath.empty() ? "<none>" : uiRootPreview.runtimeCursorPath.c_str());
+  fprintf(stdout, "UI screen runtime: ready=%s window=%s events=%lu path=%s\n",
+    uiRootPreview.runtimeBootstrapScreenReady ? "yes" : "no",
+    uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow.c_str(),
+    static_cast<unsigned long>(uiRootPreview.runtimeBootstrapScreenEventCount),
+    uiRootPreview.runtimeBootstrapScreenPath.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenPath.c_str());
+  fprintf(stdout, "UI hero runtime: ready=%s window=%s players=%lu path=%s\n",
+    uiRootPreview.runtimeHeroScreenReady ? "yes" : "no",
+    uiRootPreview.runtimeHeroScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenWindow.c_str(),
+    static_cast<unsigned long>(uiRootPreview.runtimeHeroPlayerEntryCount),
+    uiRootPreview.runtimeHeroScreenPath.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenPath.c_str());
+  fprintf(stdout, "UI hero state: team=%d faction=%d ready=%s hero=%s\n",
+    uiRootPreview.runtimeHeroSelectedTeam,
+    uiRootPreview.runtimeHeroSelectedFaction,
+    uiRootPreview.runtimeHeroReady ? "yes" : "no",
+    uiRootPreview.runtimeHeroSelectedHeroId.empty() ? "<none>" : uiRootPreview.runtimeHeroSelectedHeroId.c_str());
+  fprintf(stdout, "UI loading runtime: ready=%s window=%s players=%lu status=%s progress=%.2f disconnected=%lu path=%s\n",
+    uiRootPreview.runtimeLoadingScreenReady ? "yes" : "no",
+    uiRootPreview.runtimeLoadingScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenWindow.c_str(),
+    static_cast<unsigned long>(uiRootPreview.runtimeLoadingPlayerEntryCount),
+    uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText.c_str(),
+    static_cast<double>(uiRootPreview.runtimeLoadingProgress),
+    static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount),
+    uiRootPreview.runtimeLoadingScreenPath.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenPath.c_str());
+  fprintf(stdout, "Game scheduler runtime: ready=%s started=%s ticks=%lu next=%d path=%s\n",
+    uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no",
+    uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerTicks),
+    uiRootPreview.runtimeGameSchedulerNextStep,
+    uiRootPreview.runtimeGameSchedulerPath.empty() ? "<none>" : uiRootPreview.runtimeGameSchedulerPath.c_str());
+  fprintf(stdout, "UI games runtime: ready=%s entries=%lu\n",
+    uiRootPreview.runtimeBootstrapGamesReady ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeBootstrapGameEntryCount));
+  fprintf(stdout, "UI maps runtime: ready=%s entries=%lu\n",
+    uiRootPreview.runtimeBootstrapMapsReady ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeBootstrapMapEntryCount));
+  fprintf(stdout, "UI JoinResult: ready=%s value=%s\n",
+    uiRootPreview.runtimeBootstrapJoinResultReady ? "yes" : "no",
+    uiRootPreview.runtimeBootstrapJoinResult.empty() ? "<none>" : uiRootPreview.runtimeBootstrapJoinResult.c_str());
+  if (uiRootPreview.runtimeScreenLookupReady)
+  {
+    fprintf(stdout, "UI runtime screen: %s -> %s\n",
+      uiRootPreview.runtimeScreenLookup.c_str(),
+      uiRootPreview.runtimeScreenLayoutName.empty() ? "<unnamed>" : uiRootPreview.runtimeScreenLayoutName.c_str());
+  }
+  if (uiRootPreview.runtimeContentLookupReady)
+  {
+    fprintf(stdout, "UI runtime content: %s -> %s\n",
+      uiRootPreview.runtimeContentLookup.c_str(),
+      uiRootPreview.runtimeContentDbid.empty() ? "<no-dbid>" : uiRootPreview.runtimeContentDbid.c_str());
+  }
+  else if (!uiRootPreview.runtimeContentLookup.empty() || !uiRootPreview.runtimeContentState.empty())
+  {
+    fprintf(stdout, "UI runtime content: %s [%s]\n",
+      uiRootPreview.runtimeContentLookup.empty() ? "<none>" : uiRootPreview.runtimeContentLookup.c_str(),
+      uiRootPreview.runtimeContentState.empty() ? "inactive" : uiRootPreview.runtimeContentState.c_str());
+  }
+  if (uiRootPreview.runtimeConstantLookupReady)
+  {
+    fprintf(stdout, "UI runtime constant: %s = %s\n",
+      uiRootPreview.runtimeConstantLookup.c_str(),
+      uiRootPreview.runtimeConstantValue.empty() ? "<empty>" : uiRootPreview.runtimeConstantValue.c_str());
+  }
   if (!uiRootPreview.screenSamples.empty())
   {
     fprintf(stdout, "UI screen samples: %s\n", JoinPreviewSamples(uiRootPreview.screenSamples).c_str());
@@ -14690,6 +17043,25 @@ int main(int argc, char** argv)
   {
     NMainFrame::PumpMessages();
     UpdateInputState(&inputState);
+    if (uiRootPreview.runtimeInitialized)
+    {
+      NMainLoop::SetTemporaryTimeDelta(inputState.lastDeltaSeconds);
+      DriveLinuxUiUser(inputState, &uiRootPreview);
+      DriveLinuxBootstrapScreenRuntime(
+        inputState,
+        sessionPreview,
+        loadingUiPreview,
+        settings,
+        heroCatalog,
+        mapCatalog,
+        mapBrowserState,
+        localMatchPreview,
+        contentProbe.locale,
+        &screenRuntime,
+        &uiRootPreview
+      );
+      DriveLinuxUiCursor(&uiRootPreview);
+    }
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;
@@ -14782,6 +17154,7 @@ int main(int argc, char** argv)
     DrawWindowOverlay(
       &overlay,
       &renderBootstrap,
+      &screenRuntime,
       environment,
       settings,
       launchPreview,
@@ -14834,6 +17207,10 @@ int main(int argc, char** argv)
     localMatchPreview,
     engineMapStartPreview
   );
+  if (uiInitialized)
+  {
+    UI::Release();
+  }
   ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);

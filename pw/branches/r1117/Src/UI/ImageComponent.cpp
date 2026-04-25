@@ -91,6 +91,18 @@ void ImageComponent::SetImageTexture(const Render::Texture2DRef& _pTexture)
   if ( !material.GetRenderMaterial() )
   {
     material.CreateDefaultMaterial();
+    if ( !material.GetRenderMaterial() )
+    {
+      textureSize.x = _pTexture->GetWidth();
+      textureSize.y = _pTexture->GetHeight();
+
+      uvTextureSize = textureSize;
+      imgUV.x = 0;
+      imgUV.y = 0;
+      imgUVL = textureSize;
+      return;
+    }
+
     material.GetRenderMaterial()->ModifyColor( Render::HDRColor(1,1,1,1), Render::HDRColor(1,1,1,1) );
 #if !defined(PW_LINUX_NULL_RENDER)
     material.GetRenderMaterial()->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );

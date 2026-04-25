@@ -108,6 +108,7 @@ void LoadingScreen::InitLoadingUI()
   logic->ShowTeamForce();
   ignoreListStorage = loadingGameContext->ignoreListStorage;
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   const Weak<NGameX::ChatUiController> chatController(loadingGameContext->chatController);
 
   if (IsValid(chatController))
@@ -116,6 +117,7 @@ void LoadingScreen::InitLoadingUI()
 
     chatController->LoadPlayerIcons(loadingGameContext->advMapDescription, playersInfo);
   }
+#endif
 
 	NDb::Locale myTeamLocale;
 	NDb::Locale enemyTeamLocale;

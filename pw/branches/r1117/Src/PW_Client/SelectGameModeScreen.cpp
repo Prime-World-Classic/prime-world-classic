@@ -26,6 +26,19 @@ REGISTER_VAR( "custom_game_reconnect_team", s_reconnect_team, STORAGE_NONE );
 namespace NGameX
 {
 
+void SelectGameModeScreen::SyncLinuxBootstrapUiState()
+{
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if ( !logic )
+    return;
+
+  StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
+  const lobby::EOperationResult::Enum joinResult =
+    locked ? locked->LastLobbyOperationResult() : lobby::EOperationResult::InProgress;
+  logic->UpdateJoinResult( joinResult );
+#endif
+}
+
 
 SelectGameModeScreen::SelectGameModeScreen( Game::IGameContextUiInterface * _ctx ) :
 gameCtx( _ctx )
@@ -41,13 +54,19 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
   SetLogic( logic );
   logic->SetUser( uiUser );
   logic->SetScreen( this );
-  logic->LoadScreenLayout( "Lobby_SelectGameMode" );
+
+  if ( !logic->LoadScreenLayout( "Lobby_SelectGameMode" ) )
+    return false;
 
   {
     NI_PROFILE_BLOCK( "Maps" )
     StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
     if ( !locked )
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+      return true;
+#else
       return false;
+#endif
 
     NWorld::IMapCollection * maps = locked->Maps();
     NDb::Ptr<NDb::MapList> pMapList = NDb::Get<NDb::MapList>( NDb::DBID( "\\Tech\\Default\\_.MAPLST.xdb" ) );
@@ -58,6 +77,23 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
 
     for ( int i = 0; i < pMapList->maps.size(); ++i )
       logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    locked->RefreshGamesList();
+
+    lobby::TDevGamesList infos;
+    locked->PopGameList( infos );
+    if ( infos.empty() )
+    {
+      const int bootstrapMaxPlayers = g_playersCount > 0 ? g_playersCount : 10;
+      const char* primaryMapId = g_mapId.empty() ? "Maps/Multiplayer/ARAM/_.ADMPDSCR.xdb" : g_mapId.c_str();
+      infos.push_back( lobby::SDevGameInfo( 1001, L"Linux Player's game", primaryMapId, 1, bootstrapMaxPlayers ) );
+      infos.push_back( lobby::SDevGameInfo( 1002, L"ARAM practice", "Maps/Multiplayer/ARAM/_.ADMPDSCR.xdb", 2, 10 ) );
+      infos.push_back( lobby::SDevGameInfo( 1003, L"Classic battle", "Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb", 6, 10 ) );
+    }
+    for ( lobby::TDevGamesList::iterator it = infos.begin(); it != infos.end(); ++it )
+      logic->UpdateSessionInfo( *it );
+#endif
   }
 /*
   if ( StrongMT<Game::IGameContextUiInterface> cl = gameCtx.Lock() )
@@ -142,10 +178,24 @@ static size_t GetHeroCount()
 void SelectGameModeScreen::Step( bool bAppActive )
 {
   StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
-  if ( !locked || !logic )
+  if ( !logic )
     return;
 
-  lobby::EOperationResult::Enum joinResult = locked->LastLobbyOperationResult();
+  lobby::EOperationResult::Enum joinResult = lobby::EOperationResult::InProgress;
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if ( !locked )
+  {
+    DefaultScreenBase::Step( bAppActive );
+    logic->UpdateJoinResult( lobby::EOperationResult::InProgress );
+    return;
+  }
+#else
+  if ( !locked )
+    return;
+#endif
+
+  joinResult = locked->LastLobbyOperationResult();
   if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebJoinRetry) {
     if (joinResult == lobby::EOperationResult::InternalError) {
       locked->JoinWebGame(g_protocolToken.c_str());
@@ -184,7 +234,9 @@ void SelectGameModeScreen::Step( bool bAppActive )
   }
 
   lobby::TDevGamesList infos;
-  //locked->PopGameList( infos );
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  locked->PopGameList( infos );
+#endif
 
   // 1. Create game for others
   if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Create) {
@@ -253,10 +305,15 @@ void SelectGameModeScreen::Step( bool bAppActive )
 
 
   joinResult = locked->LastLobbyOperationResult();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  DefaultScreenBase::Step( bAppActive );
+  SyncLinuxBootstrapUiState();
+#else
   if ( joinResult != lobby::EOperationResult::InProgress )
     logic->UpdateJoinResult( joinResult );
 
   DefaultScreenBase::Step( bAppActive );
+#endif
 }
 
 } //namespace NGameX

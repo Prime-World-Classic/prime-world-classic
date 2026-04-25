@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "Window.h"
+#include "RegisterControlCompat.h"
 #include "SkinStyles.h"
 #include "Resolution.h"
 #include "User.h"
@@ -293,10 +294,10 @@ const string& Window::GetState()
 }
 
 
-void Window::ProcessWindowCoords( LinearCoord & resultOffs, LinearCoord & resultSize, NDb::EUIElementHAlign align, //Ну, тут все ясно
-  ERecalcRectsReason reason, //Указывает, что имеет приоритет - size или offset
-  LinearCoord prevOffs, LinearCoord newOffs, LinearCoord prevSize, LinearCoord newSize, //Координаты элемента, старые и новые
-  LinearCoord prevParentSize, LinearCoord newParentSize ) //Размеры родителя, старые и новые
+void Window::ProcessWindowCoords( LinearCoord & resultOffs, LinearCoord & resultSize, NDb::EUIElementHAlign align, //РќСѓ, С‚СѓС‚ РІСЃРµ СЏСЃРЅРѕ
+  ERecalcRectsReason reason, //РЈРєР°Р·С‹РІР°РµС‚, С‡С‚Рѕ РёРјРµРµС‚ РїСЂРёРѕСЂРёС‚РµС‚ - size РёР»Рё offset
+  LinearCoord prevOffs, LinearCoord newOffs, LinearCoord prevSize, LinearCoord newSize, //РљРѕРѕСЂРґРёРЅР°С‚С‹ СЌР»РµРјРµРЅС‚Р°, СЃС‚Р°СЂС‹Рµ Рё РЅРѕРІС‹Рµ
+  LinearCoord prevParentSize, LinearCoord newParentSize ) //Р Р°Р·РјРµСЂС‹ СЂРѕРґРёС‚РµР»СЏ, СЃС‚Р°СЂС‹Рµ Рё РЅРѕРІС‹Рµ
 {
   NI_ASSERT( 
     NDb::UIELEMENTHALIGN_LEFT          == NDb::UIELEMENTVALIGN_TOP &&
@@ -351,13 +352,13 @@ void Window::ProcessWindowCoords( LinearCoord & resultOffs, LinearCoord & result
   case NDb::UIELEMENTHALIGN_FIXEDMARGINS:
     {
       if ( reason == eRecalcByPos || reason == eRecalcByParent )
-      { // Сохраняем правый край, а если  (newOffs == prevOffs), то и левый
+      { // РЎРѕС…СЂР°РЅСЏРµРј РїСЂР°РІС‹Р№ РєСЂР°Р№, Р° РµСЃР»Рё  (newOffs == prevOffs), С‚Рѕ Рё Р»РµРІС‹Р№
         const LinearCoord prevRight = prevParentSize - (prevOffs + prevSize);
         resultOffs = newOffs;
         resultSize = newParentSize - newOffs - prevRight;
       }
       else if( reason == eRecalcBySize )
-      { // Сохраняем левый край, действуем подобно ALIGN_LEFT
+      { // РЎРѕС…СЂР°РЅСЏРµРј Р»РµРІС‹Р№ РєСЂР°Р№, РґРµР№СЃС‚РІСѓРµРј РїРѕРґРѕР±РЅРѕ ALIGN_LEFT
         resultOffs = prevOffs; //FIXME: use 'newOffs'?
         resultSize = newSize;
       }
@@ -368,8 +369,8 @@ void Window::ProcessWindowCoords( LinearCoord & resultOffs, LinearCoord & result
 
   case NDb::UIELEMENTHALIGN_PROPORTIONAL:
     {
-      //FXIME: Если сначала уменьшить парента до 3 пикселей, а потом растянуть до 1000, то мы получим высокую дискретность координат!
-      //Часть информации потеряется при масштабировании парента до 3 пикселей
+      //FXIME: Р•СЃР»Рё СЃРЅР°С‡Р°Р»Р° СѓРјРµРЅСЊС€РёС‚СЊ РїР°СЂРµРЅС‚Р° РґРѕ 3 РїРёРєСЃРµР»РµР№, Р° РїРѕС‚РѕРј СЂР°СЃС‚СЏРЅСѓС‚СЊ РґРѕ 1000, С‚Рѕ РјС‹ РїРѕР»СѓС‡РёРј РІС‹СЃРѕРєСѓСЋ РґРёСЃРєСЂРµС‚РЅРѕСЃС‚СЊ РєРѕРѕСЂРґРёРЅР°С‚!
+      //Р§Р°СЃС‚СЊ РёРЅС„РѕСЂРјР°С†РёРё РїРѕС‚РµСЂСЏРµС‚СЃСЏ РїСЂРё РјР°СЃС€С‚Р°Р±РёСЂРѕРІР°РЅРёРё РїР°СЂРµРЅС‚Р° РґРѕ 3 РїРёРєСЃРµР»РµР№
       NI_ASSERT( prevParentSize > 0, "Proportional alignment with zero-sized parent" );
       const float kLeft = (float)prevOffs / (float)prevParentSize;
       const float kRight = (float)( prevOffs + prevSize ) / (float)prevParentSize;
@@ -379,7 +380,7 @@ void Window::ProcessWindowCoords( LinearCoord & resultOffs, LinearCoord & result
         resultSize = (LinearCoord)( newParentSize * (kRight - kLeft) + .5f );
       }
       else if ( reason == eRecalcByPos )
-      { //Сохраняем пропорции правого края
+      { //РЎРѕС…СЂР°РЅСЏРµРј РїСЂРѕРїРѕСЂС†РёРё РїСЂР°РІРѕРіРѕ РєСЂР°СЏ
         resultOffs = newOffs;
         resultSize = (LinearCoord)( newParentSize * kRight + .5f ) - resultOffs;
       }
@@ -413,7 +414,7 @@ bool Window::ChangeOffsetAndSize( ERecalcRectsReason reason, const Point & newOf
 
   case NDb::UIELEMENTASPECTRATIO_WIDTHBASED:
     {
-      //Сначала считаем ширину, потом вычисляем высоту и затем - выравнивание
+      //РЎРЅР°С‡Р°Р»Р° СЃС‡РёС‚Р°РµРј С€РёСЂРёРЅСѓ, РїРѕС‚РѕРј РІС‹С‡РёСЃР»СЏРµРј РІС‹СЃРѕС‚Сѓ Рё Р·Р°С‚РµРј - РІС‹СЂР°РІРЅРёРІР°РЅРёРµ
       ProcessWindowCoords( resultOffs.x, resultSize.x, hAlign, reason, layout->location.x, newOffs.x, layout->size.x, newSize.x, prevParentSize.x, newParentSize.x );
       if(!RENDER_DISABLED)
         NI_VERIFY( resultSize.x, "Zero fixed aspect window width", break );
@@ -424,7 +425,7 @@ bool Window::ChangeOffsetAndSize( ERecalcRectsReason reason, const Point & newOf
 
   case NDb::UIELEMENTASPECTRATIO_HEIGHTBASED:
     {
-      //Аналогично ширине
+      //РђРЅР°Р»РѕРіРёС‡РЅРѕ С€РёСЂРёРЅРµ
       ProcessWindowCoords( resultOffs.y, resultSize.y, vAlign, reason, layout->location.y, newOffs.y, layout->size.y, newSize.y, prevParentSize.y, newParentSize.y );
       NI_VERIFY( resultSize.y, "Zero fixed aspect window height", break );
       LinearCoord fixedSize = (LinearCoord)( .5f + (float)layout->size.x * (float)resultSize.y / (float)layout->size.y );
@@ -569,7 +570,7 @@ void Window::SetWorldPosition(const SHMatrix & position, const CVec2 & worldSize
     return;
   }
 
-  //Проверим аспект
+  //РџСЂРѕРІРµСЂРёРј Р°СЃРїРµРєС‚
   CVec2 normWorldSize = worldSize;
   if(winRect.Width() && winRect.Height())
   {
@@ -579,13 +580,13 @@ void Window::SetWorldPosition(const SHMatrix & position, const CVec2 & worldSize
       normWorldSize.y = normWorldSize.x * (float)winRect.Height() / (float)winRect.Width();
   }
 
-  //Дополнительно трансформируем координаты для:
-  // 1. УИ живет в плоскости OXY, а нам нужна плоскость OXZ
-  // 2. Отскалим контрол под заданный размер normWorldSize
-  // 3. Выравняем контрол в соответствии с align
+  //Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅРѕ С‚СЂР°РЅСЃС„РѕСЂРјРёСЂСѓРµРј РєРѕРѕСЂРґРёРЅР°С‚С‹ РґР»СЏ:
+  // 1. РЈР Р¶РёРІРµС‚ РІ РїР»РѕСЃРєРѕСЃС‚Рё OXY, Р° РЅР°Рј РЅСѓР¶РЅР° РїР»РѕСЃРєРѕСЃС‚СЊ OXZ
+  // 2. РћС‚СЃРєР°Р»РёРј РєРѕРЅС‚СЂРѕР» РїРѕРґ Р·Р°РґР°РЅРЅС‹Р№ СЂР°Р·РјРµСЂ normWorldSize
+  // 3. Р’С‹СЂР°РІРЅСЏРµРј РєРѕРЅС‚СЂРѕР» РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёРё СЃ align
   CVec2 parentSz(parent->winRect.Width(), parent->winRect.Height());
-  //Координаты в эту матрицу приходят в диапазоне от -1.0 до 1.0 по x и по y
-  //Пэтому размер квадрата составляет (2.0 х 2.0)
+  //РљРѕРѕСЂРґРёРЅР°С‚С‹ РІ СЌС‚Сѓ РјР°С‚СЂРёС†Сѓ РїСЂРёС…РѕРґСЏС‚ РІ РґРёР°РїР°Р·РѕРЅРµ РѕС‚ -1.0 РґРѕ 1.0 РїРѕ x Рё РїРѕ y
+  //РџСЌС‚РѕРјСѓ СЂР°Р·РјРµСЂ РєРІР°РґСЂР°С‚Р° СЃРѕСЃС‚Р°РІР»СЏРµС‚ (2.0 С… 2.0)
 
   float winScaleX = parentSz.x / winRect.Width();
   float winScaleY = parentSz.y / winRect.Height();
@@ -824,9 +825,9 @@ Window *Window::Traverse( IWindowJob * job )
   Window * bestChild = NULL;
   float bestDepth = 0;
 
-  //Если мышка попадает в 3D-окно, мы вынуждены перебрать все 3D-окна, что бы найти ближайшее к камере
-  //Если все окна - 2D, то берем первое попавшееся
-  //Причем 2D окна имеют приоритет над 3D
+  //Р•СЃР»Рё РјС‹С€РєР° РїРѕРїР°РґР°РµС‚ РІ 3D-РѕРєРЅРѕ, РјС‹ РІС‹РЅСѓР¶РґРµРЅС‹ РїРµСЂРµР±СЂР°С‚СЊ РІСЃРµ 3D-РѕРєРЅР°, С‡С‚Рѕ Р±С‹ РЅР°Р№С‚Рё Р±Р»РёР¶Р°Р№С€РµРµ Рє РєР°РјРµСЂРµ
+  //Р•СЃР»Рё РІСЃРµ РѕРєРЅР° - 2D, С‚Рѕ Р±РµСЂРµРј РїРµСЂРІРѕРµ РїРѕРїР°РІС€РµРµСЃСЏ
+  //РџСЂРёС‡РµРј 2D РѕРєРЅР° РёРјРµСЋС‚ РїСЂРёРѕСЂРёС‚РµС‚ РЅР°Рґ 3D
 
   for ( int i = ( (int)childs.size() - 1 ); i >= 0; --i )
   {
@@ -849,7 +850,7 @@ Window *Window::Traverse( IWindowJob * job )
           bestDepth = depth;
         }
       }
-      else //Если нашлось простое 2D-окно, возвращаем его сразу
+      else //Р•СЃР»Рё РЅР°С€Р»РѕСЃСЊ РїСЂРѕСЃС‚РѕРµ 2D-РѕРєРЅРѕ, РІРѕР·РІСЂР°С‰Р°РµРј РµРіРѕ СЃСЂР°Р·Сѓ
       {
         bestChild = p;
         break;
@@ -966,11 +967,11 @@ void Window::StepInternal( float deltaTime )
       child->toRemove = false;
       child = 0;
 
-      //@iA@TODO: делать erase со сдвигом вектора при удалении каждого чилда дороговато.
-      //решение:
-      //1. занулять удаляемые элементы, потом удалять их скопом. будут проблемы,
-      //   когда во вовремя итерирования /виртуальной/ функции степ Step() кто-то начнет работать с чилдами.
-      //2. использовать list<> со всеми вытекающими
+      //@iA@TODO: РґРµР»Р°С‚СЊ erase СЃРѕ СЃРґРІРёРіРѕРј РІРµРєС‚РѕСЂР° РїСЂРё СѓРґР°Р»РµРЅРёРё РєР°Р¶РґРѕРіРѕ С‡РёР»РґР° РґРѕСЂРѕРіРѕРІР°С‚Рѕ.
+      //СЂРµС€РµРЅРёРµ:
+      //1. Р·Р°РЅСѓР»СЏС‚СЊ СѓРґР°Р»СЏРµРјС‹Рµ СЌР»РµРјРµРЅС‚С‹, РїРѕС‚РѕРј СѓРґР°Р»СЏС‚СЊ РёС… СЃРєРѕРїРѕРј. Р±СѓРґСѓС‚ РїСЂРѕР±Р»РµРјС‹,
+      //   РєРѕРіРґР° РІРѕ РІРѕРІСЂРµРјСЏ РёС‚РµСЂРёСЂРѕРІР°РЅРёСЏ /РІРёСЂС‚СѓР°Р»СЊРЅРѕР№/ С„СѓРЅРєС†РёРё СЃС‚РµРї Step() РєС‚Рѕ-С‚Рѕ РЅР°С‡РЅРµС‚ СЂР°Р±РѕС‚Р°С‚СЊ СЃ С‡РёР»РґР°РјРё.
+      //2. РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ list<> СЃРѕ РІСЃРµРјРё РІС‹С‚РµРєР°СЋС‰РёРјРё
       childs.erase( childs.begin() + i );
       i = i - 1; // same index item again
     }
@@ -1027,7 +1028,7 @@ void Window::OnDataChanged()
 {
   Invalidate();
 
-  RecalcThisWindowRects( eRecalcByParent ); //@iA@TODO: завести еще один тип eRecalcByData??
+  RecalcThisWindowRects( eRecalcByParent ); //@iA@TODO: Р·Р°РІРµСЃС‚Рё РµС‰Рµ РѕРґРёРЅ С‚РёРї eRecalcByData??
 
   if ( layout )
     tooltipText = layout->tooltipText.GetText();
@@ -1792,8 +1793,8 @@ void Window::LoadLayout( const NDb::ClonedPtr< NDb::UILayout > &newLayout )
   debugWindowName = layout->name;
 #endif //_SHIPPING
 
-  //@iA@TODO: правильнее было бы сделать RecalcThisWindowRects _после_ создания чилдов, один раз и для всех
-  //сейчас эта функция вызывается для каждого чилда отдельно
+  //@iA@TODO: РїСЂР°РІРёР»СЊРЅРµРµ Р±С‹Р»Рѕ Р±С‹ СЃРґРµР»Р°С‚СЊ RecalcThisWindowRects _РїРѕСЃР»Рµ_ СЃРѕР·РґР°РЅРёСЏ С‡РёР»РґРѕРІ, РѕРґРёРЅ СЂР°Р· Рё РґР»СЏ РІСЃРµС…
+  //СЃРµР№С‡Р°СЃ СЌС‚Р° С„СѓРЅРєС†РёСЏ РІС‹Р·С‹РІР°РµС‚СЃСЏ РґР»СЏ РєР°Р¶РґРѕРіРѕ С‡РёР»РґР° РѕС‚РґРµР»СЊРЅРѕ
   RecalcThisWindowRects( eRecalcByParent );
 
   const NDb::UIBaseLayout * scriptedLayout = dynamic_cast<const NDb::UIBaseLayout *>( layout.GetPtr() );
@@ -1944,7 +1945,7 @@ int GetIndexFromString( lua_State * L )
   int luaTop = lua_gettop(L);
   NI_VERIFY( luaTop == 1, "GetIndexFromString() takes at 1 parameter", return 0 );
 
-  if( lua_type( L, 1 ) != LUA_TSTRING ) //FIXME: Здесь лучше поставить NI_VERIFY
+  if( lua_type( L, 1 ) != LUA_TSTRING ) //FIXME: Р—РґРµСЃСЊ Р»СѓС‡С€Рµ РїРѕСЃС‚Р°РІРёС‚СЊ NI_VERIFY
     return -1;
 
   const char * s = lua_tostring( L, 1 );

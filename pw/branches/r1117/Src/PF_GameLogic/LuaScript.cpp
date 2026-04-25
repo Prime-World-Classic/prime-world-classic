@@ -475,13 +475,13 @@ PFBaseUnit* FindUnit( PFAIContainer* pAIContainer, const ::LuaUnitIdParam& unit 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define ADD_LUA2CPP_FUNCTION( name )                                                                                         \
-static struct AddScriptFunction_##__LINE__##_##name                                                                          \
+static struct SCRIPT_TOKEN_CONCAT4( AddScriptFunction_, __LINE__, _, name )                                                  \
 {                                                                                                                            \
-  AddScriptFunction_##__LINE__##_##name##()                                                                                  \
+  SCRIPT_TOKEN_CONCAT4( AddScriptFunction_, __LINE__, _, name )()                                                            \
   {                                                                                                                          \
     scriptFunctionsList[#name] = name;                                                                                       \
   }                                                                                                                          \
-} addScriptFunction_##__LINE__##_##name##;
+} SCRIPT_TOKEN_CONCAT4( addScriptFunction_, __LINE__, _, name );
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -3135,7 +3135,7 @@ static void CreateCameraSpline(NGameX::AdventureScreen* pAdvScreen, const NDb::A
   NScene::SCameraPosition posFrom;
   pAdvScreen->GetCamera()->GetCameraPosition(&posFrom);
 
-  // конвертация в градусы, потому что эйлеровы углы хранятся в градусах
+  // РєРѕРЅРІРµСЂС‚Р°С†РёСЏ РІ РіСЂР°РґСѓСЃС‹, РїРѕС‚РѕРјСѓ С‡С‚Рѕ СЌР№Р»РµСЂРѕРІС‹ СѓРіР»С‹ С…СЂР°РЅСЏС‚СЃСЏ РІ РіСЂР°РґСѓСЃР°С…
   posFrom.ConvertFromRadToDeg();
 
   float pitch = posFrom.fPitch;

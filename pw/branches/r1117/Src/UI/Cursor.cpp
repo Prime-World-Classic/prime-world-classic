@@ -10,9 +10,14 @@
 #include "../Render/texture.h"
 #include "../Render/renderer.h"
 #include "../Render/renderresourcemanager.h"
+#include "../Render/TextureManager.h"
 
 #include "ImageComponent.h"
 #include "Resolution.h"
+
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+#include <cstring>
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NCursor
@@ -50,9 +55,15 @@ struct SCursor
 
 	void ReleaseResources()
 	{
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+    hCursor32 = 0;
+    hCursor24 = 0;
+    hCursor16 = 0;
+#else
 		if ( hCursor32 ) { DestroyIcon( hCursor32 ); hCursor32 = 0; }
 		if ( hCursor24 ) { DestroyIcon( hCursor24 ); hCursor24 = 0; }
 		if ( hCursor16 ) { DestroyIcon( hCursor16 ); hCursor16 = 0; }
+#endif
     hCursor = 0; // do not destroy because you're not the owner
 	}
 };
@@ -76,18 +87,24 @@ static int GetCacheRefVersion( int cacheRef ) { return cacheRef >> CACHE_SHIFT; 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static const char * FormatLastLastErrorMessage( DWORD errorCode )
 {
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  return "System error text is unavailable on Linux bootstrap";
+#else
   static char buffer[512] = "";
   if ( FormatMessage( FORMAT_MESSAGE_FROM_SYSTEM, 0, errorCode, 0, buffer, 512, 0 ) )
     return buffer;
   else
     return "Eror message not found";
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Image::~Image()
 {
+#if !defined(NV_LINUX_PLATFORM) || !defined(PW_LINUX_NULL_RENDER)
   if (hCursor)
     DestroyCursor(hCursor);
+#endif
   hCursor = 0;
 }
 
@@ -105,6 +122,39 @@ static bool CreateCursors( SCursor *pCursor, const Image & image )
 
   PushDXPoolGuard dxPool("UI");
 
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  if (image.GetHandle())
+  {
+    pCursor->hCursor = image.GetHandle();
+    pCursor->hCursor16 = 0;
+    pCursor->hCursor24 = 0;
+    pCursor->hCursor32 = image.GetCursorPic();
+    pCursor->pTexture = 0;
+    return true;
+  }
+
+  const CArray2D<DWORD> & data = image.GetData();
+  const int cw = image.GetWidth();
+  const int ch = image.GetHeight();
+
+  CArray2D<Render::Color> bits;
+  bits.SetSizes( cw, ch );
+  for ( int y = 0; y < ch; ++y )
+  {
+    for ( int x = 0; x < cw; ++x )
+    {
+      const unsigned char *bytes = reinterpret_cast<const unsigned char *>( &(data[y][x]) );
+      bits[y][x] = Render::Color( bytes[2], bytes[1], bytes[0], bytes[3] );
+    }
+  }
+
+  pCursor->hCursor = 0;
+  pCursor->hCursor16 = 0;
+  pCursor->hCursor24 = 0;
+  pCursor->hCursor32 = 0;
+  pCursor->pTexture = Render::Create2DTextureFromArray2D( bits );
+  return true;
+#else
   // separate processing for precompiled cursor
   if (image.GetHandle())
   {
@@ -297,6 +347,7 @@ static bool CreateCursors( SCursor *pCursor, const Image & image )
 
 	pCursor->pTexture = Render::Create2DTextureFromArray2D( bits );
 	return true;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -416,6 +467,11 @@ static RECT g_freezeClip;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Freeze( bool freeze )
 {
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  g_frozen = freeze;
+  g_startAutoUnfreeze = freeze;
+  return;
+#else
 	if ( !freeze )
 	{
 		g_frozen = false;
@@ -437,6 +493,7 @@ void Freeze( bool freeze )
 
 		g_frozen = true;
 	}
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -450,6 +507,10 @@ void Update( DWORD time )
 
 	if ( g_frozen )
 	{
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+    g_frozen = false;
+    g_startAutoUnfreeze = false;
+#else
 		if ( g_startAutoUnfreeze )
 		{
 			g_startAutoUnfreeze = false;
@@ -466,11 +527,16 @@ void Update( DWORD time )
 			::SetCursorPos( g_freezePos.x, g_freezePos.y );
 			::ClipCursor( &g_freezeClip );
 		}
+#endif
 	}
 
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  const int displayBits = 32;
+#else
 	HDC hdc = GetDC( NMainFrame::GetWnd() );
 	const int displayBits = GetDeviceCaps( hdc, BITSPIXEL );
 	ReleaseDC( NMainFrame::GetWnd(), hdc );
+#endif
 
 	if ( !g_needUpdate && g_lastHW == g_cursorHW && g_lastSmooth == g_cursorSmooth && g_lastDisplayBits == displayBits )
 		return;
@@ -495,7 +561,11 @@ void Update( DWORD time )
 	{
 		if ( g_useDefaultCursor )
 		{
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+      NMainFrame::SetCursor( 0 );
+#else
 			NMainFrame::SetCursor( LoadCursor( NULL, IDC_ARROW ) );
+#endif
 			g_cursorSW.SetRenderable( false );
 			return;
 		}
@@ -513,7 +583,11 @@ void Update( DWORD time )
 
 	const bool trueColor = (displayBits == 32 || displayBits == 24);
 
-	if ( g_cursorHW )
+	if ( g_cursorHW
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+      && false
+#endif
+    )
 	{
     if (pCursor->hCursor)
     {
@@ -567,6 +641,9 @@ void Render()
 	if ( !g_cursorsInit )
 		return;
 
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  return;
+#else
 	if ( g_cursorHW )
 		return;
 
@@ -607,11 +684,15 @@ void Render()
 	g_cursorSW.SetCropRect( rect );
 	//g_cursorSW.Update();
 	g_cursorSW.Render();
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static HCURSOR LoadPrecompiledCursor( const string& fileName )
 {
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  return 0;
+#else
   CObj<Stream> pIStream = RootFileSystem::OpenFile( fileName, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING );
   NI_VERIFY( pIStream && pIStream->IsOk(), NStr::StrFmt( "Cannot open file to load precompiled cursor: \"%s\"", fileName.c_str() ), return 0; );
 
@@ -636,6 +717,7 @@ static HCURSOR LoadPrecompiledCursor( const string& fileName )
   ::remove(tempName.c_str());
 
   return hCursor;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -673,6 +755,9 @@ bool Image::Load( const NDb::UICursorBase *pCursorBase )
   }
   else if (const NDb::UIAnimatedCursor* pCursor = dynamic_cast<const NDb::UIAnimatedCursor*>(pCursorBase))
   {
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+    return false;
+#else
     data.SetSizes(0, 0);
 
     string const& fileName = pCursor->dstFileName;
@@ -734,6 +819,7 @@ bool Image::Load( const NDb::UICursorBase *pCursorBase )
 
     hotSpot.x = ie.xHotspot;
     hotSpot.y = ie.yHotspot;
+#endif
   }
   else
   {
@@ -817,6 +903,10 @@ void Init()
 	g_cursorsCache.clear();
 	g_cursorsCache.resize( CACHE_SIZE );
 	g_cursorsCacheHead = 1;
+
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER)
+  g_cursorHW = false;
+#endif
 
 	NMainFrame::EnableCursorManagement( true );
 

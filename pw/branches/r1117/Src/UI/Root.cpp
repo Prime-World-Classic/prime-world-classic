@@ -26,7 +26,16 @@ static bool initialized = false;
 
 Strong<UI::User> g_user;
 
+#if defined(NV_LINUX_PLATFORM) && (defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_OPENGL_BOOTSTRAP))
+#define PW_LINUX_UI_BOOTSTRAP 1
+static const bool g_linuxBootstrapUiInit = true;
+#else
+static const bool g_linuxBootstrapUiInit = false;
+#endif
+
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
 DECLARE_NULL_RENDER_FLAG
+#endif
 }
 
 
@@ -54,6 +63,9 @@ struct UIMaterialPreloader : public NDb::IResourcesProcessor
 {
   virtual bool Call( const NDb::DBID& dbid, const NDb::DbResource* pResource )
   {
+#if defined(PW_LINUX_UI_BOOTSTRAP)
+    return true;
+#else
     const NDb::UIBaseLayout* baseLayout = dynamic_cast<const NDb::UIBaseLayout*>( pResource );
 
     if ( baseLayout )
@@ -95,6 +107,7 @@ struct UIMaterialPreloader : public NDb::IResourcesProcessor
     }
 
     return true;
+#endif
   }
 
   virtual bool LoadResources() { return true; }
@@ -113,8 +126,10 @@ const NDb::UIBaseLayout *GetScreenLayout( const string & screenId )
 
   NDb::Ptr<NDb::UIBaseLayout> layout = NDb::Precache<NDb::UIBaseLayout>( it->second.GetRawResourcePtr()->GetDBID(), 30 );
 
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
   UIMaterialPreloader preloadFunctor;
   layout.Traverse( 100, &preloadFunctor );
+#endif
 
   it->second = layout;
   return layout;
@@ -129,7 +144,9 @@ void SetCursor( const string & cursorId )
 
 void FreezeCursor( bool freeze )
 {
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
 	NCursor::Freeze( freeze );
+#endif
 }
 
 
@@ -288,7 +305,9 @@ User * GetUser()
 void NewFrame( DWORD time )
 {
 	g_syncTime = time;
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
 	NCursors::Reset();
+#endif
 }
 
 
@@ -318,12 +337,17 @@ void Initialize( const NDb::UIRoot *pRoot )
 
   g_user = 0;
 
-  flash::ReleaseFlash();
+  if ( !g_linuxBootstrapUiInit )
+  {
+    flash::ReleaseFlash();
+  }
 
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
   // Clean up
   NCursors::Release();
   NCursor::Release();
   NDebug::Release();
+#endif
 
   if ( initialized )
     UI::GetFontRenderer()->Release();
@@ -340,13 +364,16 @@ void Initialize( const NDb::UIRoot *pRoot )
   if ( !pRoot )
     return;
 
-  if ( pRoot )
-  {
-    UI::GetFontRenderer()->Initialize();
-    initialized = true;
-  }
+  UI::GetFontRenderer()->Initialize();
+  initialized = true;
 
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
   NDebug::Initialize();
+#endif
+
+#if defined(PW_LINUX_UI_BOOTSTRAP)
+  NCursor::Init(); // bootstrap-safe on Linux null render / OpenGL bootstrap
+#endif
 
   // Screens
   for ( int i = 0; i < pRoot->screens.size(); ++i )
@@ -438,11 +465,12 @@ void Initialize( const NDb::UIRoot *pRoot )
     s_textSubsts[id] = pRoot->substitutes[i].captionText.GetText();
   }
 
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
   // Startup
   UI::GetUIScript()->RegisterGlobals(); //IREF
   NCursor::Init(); //IREF
-
   flash::InitializeFlash();
+#endif
 
   // Create User object
   g_user = new UI::User;

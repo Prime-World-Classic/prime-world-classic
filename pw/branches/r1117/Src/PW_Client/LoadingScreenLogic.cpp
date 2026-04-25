@@ -46,6 +46,12 @@ namespace
   }
 
   // copy-paste from AdventureScreen.cpp
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  wstring GetHeroNameByPlayerInfo( const NCore::PlayerStartInfo & playerStartInfo, const NDb::AdvMapDescription* pAdvMapDesc )
+  {
+    return playerStartInfo.nickname;
+  }
+#else
   wstring GetHeroNameByPlayerInfo( const NCore::PlayerStartInfo & playerStartInfo, const NDb::AdvMapDescription* pAdvMapDesc )
   {
     NDb::Ptr<NDb::HeroesDB>   heroesDb = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
@@ -73,6 +79,7 @@ namespace
     //NI_ALWAYS_ASSERT( NStr::StrFmt( "Unknown hero id '%s'", heroId ) );
     return wstring();
   }
+#endif
 
 }
 
@@ -100,8 +107,10 @@ isShowTeamForce(true),partyFlag(true),tamburFlag(true)
 
 LoadingScreenLogic::~LoadingScreenLogic()
 {
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ModeDescriptionTooltip));
   flashWnd->RemoveFSListner(FlashFSCommands::ConvertToString(FlashFSCommands::ExitLoadingScreen));
+#endif
 }
 
 
@@ -109,9 +118,52 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
 {
   m_heroDb = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
 
-  rankCalculator = new NGameX::HeroRankCalculator(NDb::SessionRoot::GetRoot()->logicRoot->aiLogic->heroRanks);
-
   SetProgress( 0 );
+
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  flashInterface = new LoadingFlashInterface( 0, "LoaderWindowInterface" );
+  loadingHeroes = new LoadingHeroes(flashInterface, m_heroDb);
+
+  UI::ScreenLogicBase::OnLoadedScreenLayout();
+
+  if (uiData)
+  {
+    const int size = uiData->forceColors.forceColors.size();
+    vector<int> force(size);
+    vector<uint> colors(size);
+
+    for (int i = 0; i < size; ++i)
+    {
+      force[i] = uiData->forceColors.forceColors[i].force;
+      colors[i] = uiData->forceColors.forceColors[i].color.Dummy;
+    }
+
+    flashInterface->SetForceColorTable(force, colors);
+
+    manoeuvresModeDesc = uiData->mapModeCustomDescriptions.maneuvers;
+    guardModeDesc = uiData->mapModeCustomDescriptions.guardBattle;
+    guildModeDesc = uiData->mapModeCustomDescriptions.guildBattle;
+    customGameDescription = uiData->mapModeCustomDescriptions.customBattle;
+  }
+
+  if (isSpectator)
+  {
+    flashInterface->SwitchToSpectatorMode();
+  }
+
+  if (loadingStatusHandler)
+  {
+    loadingStatusHandler->SetFlashInterface(flashInterface);
+  }
+
+  if (uiData && !uiData->tips.empty())
+  {
+    flashInterface->SetTip(uiData->tips.front().tipText.GetText());
+  }
+
+  return;
+#else
+  rankCalculator = new NGameX::HeroRankCalculator(NDb::SessionRoot::GetRoot()->logicRoot->aiLogic->heroRanks);
 
   flashWnd = UI::GetChildChecked<UI::FlashContainer2>( pBaseWindow, "FlashScreen", true );
   //flashWnd->Show(false);
@@ -169,8 +221,7 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
     wstring tip = uiData->tips[NRandom::Random(0, uiData->tips.size() - 1)].tipText.GetText();
     flashInterface->SetTip(tip);
   }
-     
-  
+#endif
 }
 void LoadingScreenLogic::ShowTeamForce()
 {
@@ -193,6 +244,9 @@ void LoadingScreenLogic::ShowTeamForce()
 
 void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerIdMapper, NGameX::ChatUiController * _chatController, NGameX::IgnoreListStorage* _ignoreListStorage, const bool muted, const bool leaver, const bool leaverParty)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return;
+#else
   NI_VERIFY(IsValid(flashInterface), "Invalid Flash interface!\nShould be called after loading UI layout.", return);
   NI_VERIFY(IsValid(flashWnd), "Invalid Flash window!\nShould be called after loading UI layout.", return);
 
@@ -217,6 +271,7 @@ void LoadingScreenLogic::SetChat( const Strong<NGameX::IPlayerIdMapper>& playerI
   }
 
   chatController->SetPlayerIdMapper(playerIdMapper);
+#endif
 }
 
 
@@ -257,11 +312,13 @@ void LoadingScreenLogic::Step( float deltaTime )
 {
   UI::ScreenLogicBase::Step( deltaTime );
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   if (chatController)
     chatController->Update();
 
   if (tooltip && tooltip->IsVisible())
     tooltip->SetLocation(lastMousePosition.x , lastMousePosition.y);
+#endif
 }
 
 void LoadingScreenLogic::SetProgress( float pro )
@@ -272,6 +329,21 @@ void LoadingScreenLogic::SetProgress( float pro )
 
 void LoadingScreenLogic::recalcTeamForce(const HeroInfo& heroInfo)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  const uint val = heroInfo.force > 0.0f ? static_cast<uint>(heroInfo.force) : 0;
+
+  if (heroInfo.team == NCore::ETeam::Team1)
+  {
+    leftTeamForce += val;
+  }
+  else if (heroInfo.team == NCore::ETeam::Team2)
+  {
+    rightTeamForce += val;
+  }
+
+  isShowTeamForce = true;
+  return;
+#else
   if (!advMapDescription->matchmakingSettings)
     return; 
   rankMMCalculator = new NGameX::HeroRankCalculator(advMapDescription->matchmakingSettings);
@@ -296,13 +368,33 @@ void LoadingScreenLogic::recalcTeamForce(const HeroInfo& heroInfo)
   const NDb::EMapType mapType = advMapDescription->mapType;
   
   tamburFlag = tamburFlag && rankMMCalculator->GetMMRank(heroInfo.raiting).useForceMM;
- 
+
   isShowTeamForce = isShowTeamForce && (!heroInfo.isNovice && tamburFlag && mapType == NDb::MAPTYPE_PVP && heroInfo.basket != NCore::EBasket::Newbie && partyFlag ) ; 
+#endif
 }
 
 void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& info, 
                                    const HeroInfo& heroInfo )
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  string flagIcon;
+  wstring flagTooltip;
+  const string skinId = heroInfo.skinId.empty() ? info.playerInfo.heroSkin : heroInfo.skinId;
+  const wstring playerName = info.nickname.empty()
+    ? (heroInfo.isBot ? wstring(L"Bot") : wstring(L"Player"))
+    : info.nickname;
+
+  loadingHeroes->AddUser(info.userID, playerName, true, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip, skinId, heroInfo.leagueIndex);
+  recalcTeamForce(heroInfo);
+
+  if (heroInfo.isBot)
+  {
+    loadingHeroes->AddBot(info.userID);
+    flashInterface->SetHeroLevel(info.userID, 1);
+  }
+
+  return;
+#else
   if (heroInfo.isBot)
   {
     wstring botNickname;
@@ -432,6 +524,7 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
     loadingHeroes->AddUser(info.userID, name, isMale, info.teamID, info.originalTeamID, heroInfo, flagIcon, flagTooltip, skinId, leagueIdx);
     recalcTeamForce(heroInfo);
   }
+#endif
 }
 
 void LoadingScreenLogic::SetPlayerProgress( int userId, float pro )
@@ -512,6 +605,11 @@ void LoadingScreenLogic::SetHeroInfo( int userId, const HeroInfo & heroInfo, con
 
   if ( _clientSettings.showHeroRating )
   {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    const wstring emptyRankName;
+    flashInterface->SetHeroRaiting(userId, heroInfo.raiting, heroInfo.winDeltaRaiting, heroInfo.loseDeltaRaiting, heroInfo.isNovice, "", emptyRankName);
+    flashInterface->SetHeroRaitingAcc(userId, heroInfo.raitingAcc, heroInfo.winDeltaRaitingAcc, heroInfo.loseDeltaRaitingAcc, heroInfo.isNovice, "", emptyRankName);
+#else
 
     const NDb::Rank & rank = rankCalculator->GetRank(heroInfo.raiting);
 	const NDb::Rank & rankAcc = rankCalculator->GetRank(heroInfo.raitingAcc);
@@ -521,12 +619,16 @@ void LoadingScreenLogic::SetHeroInfo( int userId, const HeroInfo & heroInfo, con
 
     flashInterface->SetHeroRaiting(userId, heroInfo.raiting, heroInfo.winDeltaRaiting, heroInfo.loseDeltaRaiting, heroInfo.isNovice,  rankCalculator->GetRankIcon(faction, rank), rankCalculator->GetRankName(faction, rank));
     flashInterface->SetHeroRaitingAcc(userId, heroInfo.raitingAcc, heroInfo.winDeltaRaitingAcc, heroInfo.loseDeltaRaitingAcc, heroInfo.isNovice,  rankCalculator->GetRankIcon(faction, rankAcc), rankCalculator->GetRankName(faction, rankAcc));
+#endif
   }
 }
 
 
 void LoadingScreenLogic::OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID, const char* args, const wchar_t * argsW )
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return;
+#else
   using namespace FlashFSCommands;
 
   switch (ConvertToFSCommand(listenerID))
@@ -565,6 +667,7 @@ void LoadingScreenLogic::OnFSCommand( UI::FlashContainer2* _wnd, const char* lis
   }
 
 
+#endif
 }
 
 void LoadingScreenLogic::AddModeVisual( const NDb::AdvMapModeDescription * modeDescription )

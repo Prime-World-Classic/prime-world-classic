@@ -1,12 +1,18 @@
 #include "Stdafx.h"
 #include "User.h"
 
-#include "Window.h"
-#include "ScreenLogicBase.h"
 #include "Resolution.h"
-#include "DebugDraw.h"
+#include "NivalInput/InputEvent.h"
 
 #include "../System/InlineProfiler.h"
+
+#if defined(NV_LINUX_PLATFORM) && (defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_OPENGL_BOOTSTRAP))
+#define PW_LINUX_UI_USER_BOOTSTRAP 1
+#else
+#include "Window.h"
+#include "ScreenLogicBase.h"
+#include "DebugDraw.h"
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace UI
@@ -20,6 +26,192 @@ static int MOUSE_MOVE_DELTA = 3;
 REGISTER_VAR( "ui_mouse_move_delta", MOUSE_MOVE_DELTA, STORAGE_NONE );
 
 
+#if defined(PW_LINUX_UI_USER_BOOTSTRAP)
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+User::User() :
+mouseOverWindowUpdated( false ),
+mouseOverTime( 0.0f ),
+tooltipShown( false ),
+dropTargetIsValid( false )
+{
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::UpdateMouseMove( const Point & mouseCoords )
+{
+  lastMouseCoords = mouseCoords;
+
+  const bool moved = ( abs( mouseCoords.x - lastQuantizedMouseCoords.x ) > MOUSE_MOVE_DELTA ) ||
+                     ( abs( mouseCoords.y - lastQuantizedMouseCoords.y ) > MOUSE_MOVE_DELTA );
+  if ( moved )
+  {
+    lastQuantizedMouseCoords = mouseCoords;
+    ResetTooltipMouse();
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::UpdateMouseOver( Window * newOverWindow, const Point & mousePos )
+{
+  (void)newOverWindow;
+  lastMouseCoords = mousePos;
+  mouseOverWindowUpdated = true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::SetKeyboardFocus( Window * newFocusWindow )
+{
+  (void)newFocusWindow;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::Step( float deltaTime )
+{
+  NI_PROFILE_FUNCTION
+
+  if ( mouseOverWindowUpdated )
+  {
+    mouseOverTime += deltaTime;
+  }
+  else
+  {
+    ResetTooltipMouse();
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::StartEvent( const Input::Event & event )
+{
+  if ( event.Type() != Input::EEventType::System || !event.Command() )
+  {
+    return;
+  }
+
+  const string& commandName = event.Command()->Name();
+  if ( commandName == "win_mouse_move" )
+  {
+    mouseOverWindowUpdated = false;
+    UpdateMouseMove( ExtractMsgCoords( event.SysParams() ) );
+  }
+  else if ( commandName == "win_mouse_out" )
+  {
+    UpdateMouseOver( 0, ExtractMsgCoords( event.SysParams() ) );
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::EndEvent( const Input::Event & event )
+{
+  if ( event.Type() != Input::EEventType::System || !event.Command() )
+  {
+    return;
+  }
+
+  const string& commandName = event.Command()->Name();
+  if ( commandName == "win_mouse_move" && !mouseOverWindowUpdated )
+  {
+    UpdateMouseOver( 0, ExtractMsgCoords( event.SysParams() ) );
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::ForceTooltip( const Point & mouseCoords )
+{
+  lastQuantizedMouseCoords = lastMouseCoords = mouseCoords;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::ResetTooltipMouse()
+{
+  mouseOverTime = 0.0f;
+  tooltipShown = false;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::SetMouseCapture( Window * target )
+{
+  (void)target;
+  ResetTooltipMouse();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool User::StartDrag( Window * target, const char * id, int offsX, int offsY )
+{
+  if ( !dragAndDropId.empty() || !target || !id )
+  {
+    return false;
+  }
+
+  dragAndDropId = id;
+  dropTargetIsValid = false;
+  dragOffset.x = offsX < 0 ? 0 : offsX;
+  dragOffset.y = offsY < 0 ? 0 : offsY;
+  dndTargetOriginalPos = lastMouseCoords;
+  lastDragPos = lastMouseCoords;
+  return false;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::Drop( bool restoreLocation )
+{
+  if ( restoreLocation )
+  {
+    RestoreDNDLocation();
+  }
+  ResetDragAndDrop();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::CancelDrag()
+{
+  RestoreDNDLocation();
+  ResetDragAndDrop();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::ModifyDragLimits( const Rect & limits )
+{
+  dragLimits = limits;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::ImplUpdateDragAndDrop( Window * _dropTarget )
+{
+  dropTargetIsValid = _dropTarget != 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::RestoreDNDLocation()
+{
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void User::ResetDragAndDrop()
+{
+  dragAndDropId.clear();
+  dropTargetIsValid = false;
+  dndTargetOriginalPos.Set( 0, 0 );
+  dragOffset.Set( 0, 0 );
+  lastDragPos.Set( 0, 0 );
+}
+
+#else
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 User::User() :
 mouseMoveEventBind( "win_mouse_move" ), mouseOutEventBind( "win_mouse_out" ),
@@ -322,6 +514,7 @@ void User::ResetDragAndDrop()
   dragOffset.Set( 0, 0 );
   lastDragPos.Set( 0, 0 );
 }
+#endif
 
 } //namespace UI
 

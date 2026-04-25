@@ -5,6 +5,7 @@
 #include "PFRenderInterface.h"
 
 #include "Render/DeviceLost.h"
+#include "Render/uirenderer.h"
 #include "System/MainFrame.h"
 
 #include <GL/gl.h>
@@ -144,7 +145,11 @@ bool Interface::Start(Render::RenderMode& renderMode)
   width3D = renderMode.width3D;
   height3D = renderMode.height3D;
   renderArea = MakeBootstrapRenderArea(surfaceWidth, surfaceHeight);
-  return Render::Interface::Start(renderMode);
+  if (!Render::Interface::Start(renderMode))
+    return false;
+
+  Render::GetUIRenderer()->Initialize();
+  return true;
 }
 
 void Interface::CorrectRendermode(Render::RenderMode& renderMode)
@@ -158,6 +163,7 @@ void Interface::CorrectRendermode(Render::RenderMode& renderMode)
 
 void Interface::Stop()
 {
+  Render::GetUIRenderer()->Release();
   surfaceWidth = 0;
   surfaceHeight = 0;
   width3D = 0;
@@ -200,12 +206,16 @@ void Interface::RenderUI(bool bEditorSpecific)
 {
   (void)bEditorSpecific;
 
+  Render::GetUIRenderer()->StartFrame();
+  Render::GetUIRenderer()->BeginQueue();
   if (uiRenderCallback)
     uiRenderCallback(uiRenderUserData, surfaceWidth, surfaceHeight);
+  Render::GetUIRenderer()->EndQueue();
 }
 
 void Interface::FlushUI()
 {
+  RenderUI(false);
 }
 
 void Interface::OnDeviceReset()

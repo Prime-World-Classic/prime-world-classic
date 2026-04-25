@@ -9,6 +9,7 @@
 #endif
 #include "PF_GameLogic/DBStats.h"
 #include "LoadingFlashInterface.h"
+#include "System/StrProc.h"
 
 namespace
 {
@@ -167,7 +168,7 @@ namespace NGameX
 
     wstring text = FindLocalizedString(textId);
     if ( text.empty() && textId[0] )
-      text = NStr::StrFmtW( L"{%S}", textId );
+      text = L"{" + NStr::ToUnicode(string(textId)) + L"}";
 
     DevTrace( "Login screen status '%s', converted to '%s'", textId, NStr::ToMBCS( text ).c_str() );
 
@@ -175,7 +176,20 @@ namespace NGameX
     flashInterface->SetLoadingStatusText(text);
   }
 
-  nstl::wstring LoadingStatusHandler::FindLocalizedString( const char * textId )
+  nstl::wstring LoadingStatusHandler::GetCurrentStatusText() const
+  {
+    const string& statusId = !lastStatus.empty() ? lastStatus : pendingStatus;
+    if (statusId.empty())
+      return wstring();
+
+    wstring text = FindLocalizedString(statusId.c_str());
+    if (text.empty())
+      return L"{" + NStr::ToUnicode(statusId) + L"}";
+
+    return text;
+  }
+
+  nstl::wstring LoadingStatusHandler::FindLocalizedString( const char * textId ) const
   {
     for (int i = 0; i< uiData->loadingScreenStatuses.size(); i++)
     {

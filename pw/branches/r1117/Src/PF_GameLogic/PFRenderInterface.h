@@ -29,6 +29,7 @@ public:
 protected:
   Interface(HWND hwnd = 0);
 
+public:
   ~Interface();
   virtual bool Start(Render::RenderMode& renderMode);
   static void CorrectRendermode(Render::RenderMode& renderMode);
