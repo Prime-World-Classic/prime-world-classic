@@ -161,9 +161,9 @@
 					<caption>Add_Range</caption>
 					<customApplyType>None</customApplyType>
 					<enabled>
-						<compiledString>FSIAAAADAAAAOAAAAEQAAABaAAAAQWRkX0V2YWRlT3JSYW5nZV9SZWRzZXQ3XzJDb3VudGVyAFWL7FGLRQiLEItNCIuChAAAAP/Q3B2EAAAA3+D2xEF1K2gAAAAAi00IixGLTQiLgogBAAD/0NwdfAAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAhAAAAAAAAAFEA=</compiledString>
+						<compiledString>FSIAAAADAAAAOAAAAEQAAABaAAAAQWRkX0V2YWRlT3JSYW5nZV9SZWRzZXQ3XzJDb3VudGVyAFWL7FGLRQiLEItNCIuChAAAAP/Q3B2EAAAA3+D2xEF1K2gAAAAAi00IixGLTQiLgogBAAD/0NwdfAAAAN/g9sREegnHRfwBAAAA6wfHRfwAAAAAikX8i+VdwwAAAAAAAAhAAAAAAAAAHEA=</compiledString>
 						<returnType>bool</returnType>
-						<sString>sBaseRange&gt;5 &amp;&amp; sender.vAdd_EvadeOrRange_Redset7_2Counter == 3</sString>
+						<sString>sBaseRange&gt;7 &amp;&amp; sender.vAdd_EvadeOrRange_Redset7_2Counter == 3</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
