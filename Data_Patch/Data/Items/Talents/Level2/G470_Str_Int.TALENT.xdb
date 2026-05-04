@@ -164,9 +164,9 @@
 											<caption>G470_KillCount</caption>
 											<customApplyType>None</customApplyType>
 											<enabled>
-												<compiledString></compiledString>
+												<compiledString>FR4AAAACAAAALQAAAEcAAABHNDcwX0tpbGxDb3VudAAARzQ3MF9NYXhDb3VudABVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0otFDFCLTQhRaBAAAACLVRCLAotNEItQUN1d+P/S3F343+D2xEF1CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
 												<returnType>bool</returnType>
-												<sString>true</sString>
+												<sString>cG470_KillCount &lt; cG470_MaxCount </sString>
 											</enabled>
 											<formulaName></formulaName>
 											<LoggingEvent>-1</LoggingEvent>
@@ -400,9 +400,9 @@
 					<UnitConstant>
 						<name>BaseDmgPerKill</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAcEEAAAxCVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJItNCIsRi00Ii4I0AQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAAIEEAAOBBVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(max(sIntellect,sStrength), 15, 35)</sString>
+							<sString>damageScale(max(sIntellect,sStrength), 10, 28)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -500,6 +500,16 @@
 							<compiledString>FSsAAAAGAAAAMgAAAEgAAABcAAAAbwAAAIEAAACUAAAARzQ3Ml9BY3RpdmUARzQ3MF9LaWxsQ291bnQAAEc0NzBfS2lsbENvdW50AFWL7IPsDGgAAAAAi0UIixCLTQiLgogBAAD/0NwduAAAAN/g9sREeiWLTQxRi1UIUmgMAAAAi0UQixCLTRCLQlD/0NwNsAAAAN1d+Osji00MUYtVCFJoHAAAAItFEIsQi00Qi0JQ/9DcDagAAADdXfjdRfjZXfTZRfSL5V3DmpmZmZmZ6T8AAABAMzPzPwAAAAAAAPA/</compiledString>
 							<returnType>float</returnType>
 							<sString>sender.vG472_Active == 1?(1.2f *  cG470_KillCount) :(0.8*  cG470_KillCount)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level2/G470_Str_Int.TALENT" id="19ECCF77-3D2C-4D27-8F2F-B9DF11C9EE57">
+					<UnitConstant>
+						<name>G470_MaxCount</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>10</sString>
 						</var>
 					</UnitConstant>
 				</Item>
