@@ -80,7 +80,6 @@
 	<BackLink DBID="/Items/Talents/Class/Archeress/MagicDamage.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Artist/status_A2_damage.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/spell_A2u.SPLL" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bard/A4_SummonViolin.APLR" Count="1" />
@@ -280,6 +279,7 @@
 	<BackLink DBID="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrRange.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
 	<signRecipients>EVENT_PARTICIPANTS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" id="FCDDC7F1-12E2-4611-8C2F-927182843C56">

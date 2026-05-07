@@ -51,10 +51,10 @@
 	<BackLink DBID="/Items/Talents/Class/Alchemist/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Alchemist/status_Slow_Alchemist_A1.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Alchemist/status_Slow_Alchemist_Glue.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" Count="2" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/status_A3u_HasteBurst.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2u_HasteBurst.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/ProgramA3.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Brewer/status_Honey_Disarm.APLR" Count="1" />
@@ -105,6 +105,7 @@
 	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A1_SpectralLashAlly.APLR" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/_Aram_Haste_status.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" Count="2" />
 	<signRecipients>PLAYER_ONLY</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventCustomFlyoff.UIEV" id="8BB942C3-4CCD-4302-A121-C182BF75F144">

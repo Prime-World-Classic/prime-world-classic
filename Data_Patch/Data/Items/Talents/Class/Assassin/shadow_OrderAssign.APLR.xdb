@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PermanentStatModApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<caption>Assign CloneOrder = master's CloneSpawnCounter</caption>
+	<customApplyType>None</customApplyType>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<modifier>
+		<addValue>
+			<compiledString>FRIAAAABAAAAKgAAAENsb25lU3Bhd25Db3VudGVyAFWL7FGLRQiLEItNCIuCfAEAAP/QiUX8aAAAAACLTfyLEYtN/IuCiAEAAP/Qi+Vdww==</compiledString>
+			<returnType>float</returnType>
+			<sString>pFirst-&gt;GetObjectMaster()-&gt;GetVariable("CloneSpawnCounter")</sString>
+		</addValue>
+		<multValue>
+			<compiledString></compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</multValue>
+		<stat>Life</stat>
+		<topModifier>false</topModifier>
+		<variable>CloneOrder</variable>
+	</modifier>
+	<providerName></providerName>
+</PermanentStatModApplicator>

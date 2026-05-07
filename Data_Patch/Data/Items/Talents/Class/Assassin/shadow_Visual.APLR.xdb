@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<FlagsApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="3" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>144</behaviorFlags>
+	<caption>A3 visual host</caption>
+	<consumables />
+	<effect>
+		<Item href="/Items/Talents/Class/Assassin/A3_Shadow_Switcher.EFFT" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flag>0</flag>
+	<formulaName>AssassinShadow</formulaName>
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<talents />
+	<useListAs>ListAsRule</useListAs>
+</FlagsApplicator>

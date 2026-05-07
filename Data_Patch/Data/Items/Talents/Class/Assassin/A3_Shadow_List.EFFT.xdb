@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EffectList>
+	<BackLink DBID="/Items/Talents/Class/Assassin/A3_Shadow_Switcher.EFFT" Count="1" />
+	<deathType>Manual</deathType>
+	<effects>
+		<Item href="/Effects/General/Illusion/_.EFFT" />
+		<Item href="/Items/Talents/Class/Assassin/A3_Shadow_Recolor.EFFT" />
+	</effects>
+	<enableCondition href="" />
+	<lifeTime>0</lifeTime>
+</EffectList>

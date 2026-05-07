@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<GhostMoveApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>144</behaviorFlags>
+	<caption>A3 ghost move</caption>
+	<collisionFlags>7</collisionFlags>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<pushUnits>true</pushUnits>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+</GhostMoveApplicator>

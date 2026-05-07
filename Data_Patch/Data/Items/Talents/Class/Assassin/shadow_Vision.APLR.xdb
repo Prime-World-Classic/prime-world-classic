@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EyeApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>144</behaviorFlags>
+	<cancelObstacles>true</cancelObstacles>
+	<caption>A3 shadow vision</caption>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<eyeTarget>ApplicatorTarget</eyeTarget>
+	<flags>8</flags>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<startCondition>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<visRange>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
+		<returnType>float</returnType>
+		<sString>8.0</sString>
+	</visRange>
+</EyeApplicator>

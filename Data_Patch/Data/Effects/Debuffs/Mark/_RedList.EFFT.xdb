@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<EffectList>
+	<deathType>Manual</deathType>
+	<effects><Item href="/Effects/Debuffs/Mark/_Red.EFFT" /><Item href="/Effects/Debuffs/Mark/_RedRecolor.EFFT" /></effects>
+	<enableCondition href="" />
+	<lifeTime>0</lifeTime>
+</EffectList>

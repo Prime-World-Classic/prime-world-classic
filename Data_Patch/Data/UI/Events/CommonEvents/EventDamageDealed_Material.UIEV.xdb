@@ -154,7 +154,6 @@
 	<BackLink DBID="/Items/Talents/Class/Archeress/PhysDamage.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Artist/A1_Damage.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A1.TALENT" Count="15" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bard/A4_SummonViolin.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/appl_BladeDancerAA.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />

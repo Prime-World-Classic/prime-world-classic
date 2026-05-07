@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<applicators>
+		<Item href="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" id="4C4ED059-2546-4D47-B2BA-70710E0BC2F4">
+			<InvisibilityApplicator parent="/GameLogic/GeneralApplicators/Invisibility.APLR" />
+		</Item>
+		<Item href="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" id="A4622554-27B1-42BE-AF48-020863BD5817">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>A0 MoveSpeed +60%</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+						<returnType>float</returnType>
+						<sString>0</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPw==</compiledString>
+						<returnType>float</returnType>
+						<sString>1.6</sString>
+					</multValue>
+					<stat>MoveSpeed</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" id="22F5CA5D-F024-4186-B635-F5758C70319D">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>A0 Evasion +40%</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+						<returnType>float</returnType>
+						<sString>40</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Evasion</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>1</behaviorFlags>
+	<caption>статус Призрачный бег</caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="/Effects/Buffs/SpeedingUp/_Move.EFFT" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FRUAAAABAAAAHwAAAEFzc2Fzc2luU3RvcEdob3N0UnVuAFWL7GoBi0UQUGgAAAAAi00IixGLTQiLgpwBAAD/0DPJO0UQD5TBisFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>sender.applAssassinStopGhostRun(UNIT) == pMisc</sString>
+	</enabled>
+	<flags>0</flags>
+	<formulaName></formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Assassin/A2.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR_name.txt" />
+	<power>30</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByChild</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

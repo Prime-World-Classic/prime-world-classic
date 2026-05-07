@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="2" />
+	<applicators />
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption>Assassin Blue Mark</caption>
+	<customCounter>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="" />
+	<dispellPriority>Low</dispellPriority>
+	<effect>
+		<Item href="/Effects/Debuffs/Mark/_Blue.EFFT" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>2</flags>
+	<formulaName>AssassinBlueMark</formulaName>
+	<image href="/UI/Styles/Icons/Heroes/Assassin/A4_1.ITEX" />
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+		<returnType>float</returnType>
+		<sString>4</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString>FRAAAAABAAAAGgAAAEFzc2Fzc2luUmVkTWFyawBVi+xqAYtFEFBoAAAAAItNDIsRi00Mi4KcAQAA/9AzyTtFEA+UwYrBXcM=</compiledString>
+		<returnType>bool</returnType>
+		<sString>receiver.applAssassinRedMark(UNIT) == pMisc</sString>
+	</startCondition>
+	<statusPosition>0</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="/Items/Talents/Class/Assassin/_marks.APLS" />
+</StatusApplicator>

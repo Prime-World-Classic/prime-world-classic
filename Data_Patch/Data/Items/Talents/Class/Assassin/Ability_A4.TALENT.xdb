@@ -1,0 +1,376 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/SocialTest.ROOT" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Assassin_Alternative.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/A0_RefreshCd.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/_legacy/Ability_A2u1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0u2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset6_2_CDR/appl_Redset6_2_RefreshCooldown.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentList_Mighty/Assassin_Mighty.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Assassin/Duel.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Assassin/Elite_Int.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Assassin/Epic_Int.TALENTSET" Count="1" />
+	<BackLink DBID="/Test/Talents/Assassin/Epic_Str.TALENTSET" Count="1" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators>
+		<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="241FE4F0-6FF0-4999-B987-807B89611A17">
+			<SpellApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>A2 teleport to LIFO clone</caption>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<spell href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="A7D331F6-9B9D-46B0-85F7-449F72906ABC">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="86E5120C-3272-4FD7-A5DA-629E0643A508">
+								<TeleportApplicator>
+									<appearEffect href="" />
+									<applyTarget>AbilityOwner</applyTarget>
+									<caption>A2 teleport to clone</caption>
+									<disappearEffect href="" />
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<maxDistance>
+										<compiledString></compiledString>
+										<returnType>float</returnType>
+										<sString>0.0f</sString>
+									</maxDistance>
+									<notifyInboundDispatches>true</notifyInboundDispatches>
+									<providerName></providerName>
+									<pushUnits>false</pushUnits>
+									<teleportTarget>ApplicatorTarget</teleportTarget>
+								</TeleportApplicator>
+							</Item>
+							<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="A9B75898-9BEF-4350-B565-9F71F5A6C804">
+								<KillApplicator>
+									<applyTarget>ApplicatorTarget</applyTarget>
+									<caption>A2 kill clone after teleport</caption>
+									<dontGiveRewards>true</dontGiveRewards>
+									<enabled>
+										<compiledString></compiledString>
+										<returnType>bool</returnType>
+										<sString>true</sString>
+									</enabled>
+									<flag>Unsummon</flag>
+									<formulaName></formulaName>
+									<LoggingEvent>-1</LoggingEvent>
+									<providerName></providerName>
+								</KillApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="5CC10BC6-D52A-4277-9410-821386A5485B">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>0</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<spellTarget>ApplicatorTarget</spellTarget>
+				<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="3BE1EBC7-6CCF-4E3F-9E58-C6BBF9EDE5AE">
+					<FirstTargetSelector>
+						<nearestTarget>false</nearestTarget>
+						<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="8141E743-6D75-47BA-86A2-2C1426F60151">
+							<CountingTargetSelector>
+								<enableSorting>true</enableSorting>
+								<flags>0</flags>
+								<heroesFirst>false</heroesFirst>
+								<mode>Normal</mode>
+								<order>Decreasing</order>
+								<sortingValue>
+									<compiledString>FQsAAAABAAAADwAAAENsb25lT3JkZXIAVYvsaAAAAACLRQyLEItNDIuCiAEAAP/QXcM=</compiledString>
+									<returnType>float</returnType>
+									<sString>receiver.vCloneOrder</sString>
+								</sortingValue>
+								<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="FAB214CC-3415-49A6-8162-A17621DA847E">
+									<ApplicatorRecipientsTargetSelector>
+										<applicator href="/Items/Talents/Class/Assassin/shadow_Visual.APLR" />
+										<flags>0</flags>
+										<mode>Normal</mode>
+									</ApplicatorRecipientsTargetSelector>
+								</targetSelector>
+								<targetsNumber>
+									<compiledString>FQAAAAAAAAAAVYvsuAEAAABdww==</compiledString>
+									<returnType>int</returnType>
+									<sString>1</sString>
+								</targetsNumber>
+							</CountingTargetSelector>
+						</targetSelector>
+					</FirstTargetSelector>
+				</targetSelector>
+			</SpellApplicator>
+		</Item>
+	</applicators>
+	<askId>2</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>А4. Подмена</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations>
+		<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="63BF60F9-243A-4368-9879-4BF03E075B4A">
+			<TargetCastLimitation>
+				<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="2E6F9272-2D60-480E-BCBD-2E3E6CD2F30E">
+					<FirstTargetSelector>
+						<nearestTarget>false</nearestTarget>
+						<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="5BCC0AC1-0C24-4889-ADE1-AFCF7FCB0670">
+							<CountingTargetSelector>
+								<enableSorting>true</enableSorting>
+								<flags>0</flags>
+								<heroesFirst>false</heroesFirst>
+								<mode>Normal</mode>
+								<order>Decreasing</order>
+								<sortingValue>
+									<compiledString>FQsAAAABAAAADwAAAENsb25lT3JkZXIAVYvsaAAAAACLRQyLEItNDIuCiAEAAP/QXcM=</compiledString>
+									<returnType>float</returnType>
+									<sString>receiver.vCloneOrder</sString>
+								</sortingValue>
+								<targetSelector href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="5C4CADCF-0F91-4269-B46A-4EE12864B8F7">
+									<ApplicatorRecipientsTargetSelector>
+										<applicator href="/Items/Talents/Class/Assassin/shadow_Visual.APLR" />
+										<flags>0</flags>
+										<mode>Normal</mode>
+									</ApplicatorRecipientsTargetSelector>
+								</targetSelector>
+								<targetsNumber>
+									<compiledString>FQAAAAAAAAAAVYvsuAEAAABdww==</compiledString>
+									<returnType>int</returnType>
+									<sString>1</sString>
+								</targetsNumber>
+							</CountingTargetSelector>
+						</targetSelector>
+					</FirstTargetSelector>
+				</targetSelector>
+				<uiEvent href="/UI/Events/ErrorMessages/CastError_NoValidTargets.UIEV" />
+			</TargetCastLimitation>
+		</Item>
+	</castLimitations>
+	<commonDescription textref="/Items/Talents/Class/Assassin/Ability_A4.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas />
+	<conflictingTalents />
+	<constants href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="E6783359-6751-4542-BE40-19B0C8F56CF9">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="B261C38E-76DF-4165-BD3B-ABA74F7685A7">
+					<UnitConstant>
+						<name>Invisibility_Duration</name>
+						<var>
+							<compiledString>FRAAAAACAAAAQwAAAGMAAABBMl9UZXJyYWluQm9udXMAVYvsg+wIVotFCIsQi00Ii0JM/9CL8ItNCIsRi00Ii4KQAQAA/9A78HUfi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9DZXfzrBdnu2V382UX83AVyAAAA2V342UX4XovlXcMAAAAAAAAuQAAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>15 + nt( cA2_TerrainBonus, 0 )</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="B5080711-A6C5-47D3-8A93-367AE9A4825D">
+					<UnitConstant>
+						<name>Invisibility_FadeIn</name>
+						<var>
+							<compiledString>FSkAAAACAAAANAAAAFYAAABJbnZpc2liaWxpdHkAAAAASW52aXNpYmlsaXR5X0ZhZGVJbl9CYXNlAFWL7FFqAItFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9A7RRB1H4tNDFGLVQhSaBAAAACLRRCLEItNEItCUP/Q2V386wXZ7tld/NlF/IvlXcMAAAAA</compiledString>
+							<returnType>float</returnType>
+							<sString>sender.applInvisibility(GLOBAL) == pMisc ? cInvisibility_FadeIn_Base : 0</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="375439D3-9625-4D76-B122-3FD0E74E4BE8">
+					<UnitConstant>
+						<name>Invisibility_FadeIn_Base</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>2</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="E2C126B6-BE4C-4A2E-B94D-E795A2B6FD1C">
+					<UnitConstant>
+						<name>A2_AfterDuration</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/const_Stun_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/const_A0u2_AddRegenAbs" />
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="DCCF255E-23CD-41F4-AD21-23B8F9D45150">
+					<UnitConstant>
+						<name>A2_TerrainBonus</name>
+						<var>
+							<compiledString>FQoAAAACAAAAFwAAACoAAABURVJSQk9OVVMAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3A04AAAA2V382UX8i+VdwwAAAAAAACRA</compiledString>
+							<returnType>float</returnType>
+							<sString>10 * cTERRBONUS</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="374645BE-DEEC-4229-AF6E-0D6FFBD76A34">
+					<UnitConstant>
+						<name>Haste_Percent</name>
+						<var>
+							<compiledString>FQgAAAACAAAADQAAACMAAABOdE9yTm90AFWL7FFoAAAAAItFCIsQi00Ii4KIAQAA/9DcBTEAAADZXfzZRfyL5V3DAAAAAAAANEA=</compiledString>
+							<returnType>float</returnType>
+							<sString>20+ sender.vNtOrNot</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="F51CD6CC-3947-4222-8757-58415C9B08D4">
+					<UnitConstant>
+						<name>A2_TT_Invisibility_Duration_Base</name>
+						<var>
+							<compiledString>FSgAAAACAAAAWwAAAH8AAABJbnZpc2liaWxpdHlfRHVyYXRpb24AAABBMl9UZXJyYWluQm9udXMAVYvsg+wIVotFCIsQi00Ii0JM/9CL8ItNCIsRi00Ii4KQAQAA/9A78HUfi00MUYtVCFJoGAAAAItFEIsQi00Qi0JQ/9DZXfzrBdnu2V38i00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9DYZfzZXfjZRfhei+VdwwAAAAA=</compiledString>
+							<returnType>float</returnType>
+							<sString>cInvisibility_Duration - nt( cA2_TerrainBonus, 0 )</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="2E810FE7-989F-4B92-B0D6-D9DCC556EB07">
+					<UnitConstant>
+						<name>Haste_Duration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+							<returnType>float</returnType>
+							<sString>-1</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>0.5</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Class/Assassin/Ability_A4.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="53519375-6377-44A4-9C60-E7B0D59FDF6F">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
+	<flags>27</flags>
+	<forceBonus>6</forceBonus>
+	<image href="/UI/Styles/Icons/Heroes/Assassin/A3_2.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+		<returnType>float</returnType>
+		<sString>30.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" id="25D5A6C3-B0A1-4179-A664-B3CCF5413A27">
+		<BasicMicroAI>
+			<castWhenIdle>false</castWhenIdle>
+			<condition>
+				<compiledString>FQ0AAAACAAEAMQAAAL4AAAB5AQAAUmFuZ2VfTWVkaXVtAFWL7IPsKItFCIsQi00IiwL/0ItNCIsRi00Ii0IM3V3o/9DcDfMAAADcXejf4PbEQQ+EogAAAItNCIsRi00Ii4KEAQAA/9A7RQgPhIAAAACLTQiLEYtNCIuChAEAAP/QiUXki03kixGLTeSLQlT/0A+2yIXJdFmNVfhSi0UMixCLTQyLgowBAAD/0FCNTfBRi1UIiwKLTQiLkIwBAAD/0lDoSQAAAIPECItFDFCLTQhRaAAAAACLVRCLAotNEItQUN1d3P/S3F3c3+D2xAV7CcdF2AAAAADrB8dF2AEAAACKRdiL5V3DMzMzMzMz0z9Vi+yD7BSLRQjZQASLTQzYYQTZXfTZRfRR2Rwki1UI2QKLRQzYINld8NlF8FHZHCSNTfjoVwAAANlF+NhN+NlF/NhN/N7B2V3s2UXsUdkcJOgHAAAAg8QEi+Vdw1WL7FHZRQjZHCToBQAAAIPEBF3DVYvsUdlFCIPsCN0cJOhf/v//g8QI2V382UX8i+Vdw1WL7FGJTfyLRfzZRQjZGItN/NlFDNlZBItF/IvlXcIIAA==</compiledString>
+				<returnType>bool</returnType>
+				<sString>sLife &lt; sMaxLife * 0.3 || ( sObjectTarget != pFirst &amp;&amp; sObjectTarget-&gt;IsHero() &amp;&amp; d(sPos, rPos) &gt; cRange_Medium )</sString>
+			</condition>
+		</BasicMicroAI>
+	</microAI>
+	<minLevel>2</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>300</naftaCost>
+	<name textref="/Items/Talents/Class/Assassin/Ability_A4.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/TalentKits/Redset7_11_MiniRefresher/trigger_G766_RefreshAndNotify.APLR" />
+	</passiveApplicators>
+	<persistentId>Assassin_A4</persistentId>
+	<prerequisiteTalents />
+	<rarity>Class</rarity>
+	<requireLineOfSight>true</requireLineOfSight>
+	<shortDescription textref="/Items/Talents/Class/Assassin/Ability_A4.TALENT_shortDescription.txt" />
+	<talentRollGroups>63</talentRollGroups>
+	<talentStats />
+	<targetType>0</targetType>
+	<type>Active</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

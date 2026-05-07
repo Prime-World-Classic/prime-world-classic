@@ -27,10 +27,9 @@
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A1.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A2.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A4_2.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Banshee/Ability_A4_2.TALENT" Count="1" />

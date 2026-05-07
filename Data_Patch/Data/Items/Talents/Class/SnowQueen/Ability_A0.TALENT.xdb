@@ -115,9 +115,7 @@
 	<naftaCost>0</naftaCost>
 	<name textref="/Items/Talents/Class/SnowQueen/Ability_A0.TALENT_name.txt" />
 	<node></node>
-	<passiveApplicators>
-		<Item href="/Items/Talents/Class/SnowQueen/_HeroIsHere.APLR" />
-	</passiveApplicators>
+	<passiveApplicators />
 	<persistentId>SnowQueen_A0</persistentId>
 	<prerequisiteTalents />
 	<rarity>Class</rarity>
