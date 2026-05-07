@@ -52,9 +52,9 @@
 					<UnitConstant>
 						<name>Bonus_Life</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAAQQAAcEI=</compiledString>
+							<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRQiLEItNCItCDP/Q3A0hAAAA2V382UX8i+Vdw7gehetRuJ4/</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale( sStrength, 8, 60 )</sString>
+							<sString>sMaxLife*0.03</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -62,9 +62,9 @@
 					<UnitConstant>
 						<name>Bonus_Stamina</name>
 						<var>
-							<compiledString>FQAAAAACAAAACQAAABMAAABVi+xRagBR2QVPAAAA2RwkUdkFSwAAANkcJGoAi0UIixCLTQiLgjABAAD/0FHZHCRqAItNEIsRi00Qi0Jg/9DcwNld/NlF/IvlXcMK16M+mpkZQA==</compiledString>
+							<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale(sStrength, 0.32, 2.4, false )*2</sString>
+							<sString>0 ;// abilityScale(sStrength, 0.32, 2.4, false )*2</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -75,6 +75,26 @@
 							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 							<returnType>float</returnType>
 							<sString>3.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability0.TALENT" id="F4CACDE7-1945-4A39-87F3-BCAD31E3CF80">
+					<UnitConstant>
+						<name>Bonus_AttackSpeed</name>
+						<var>
+							<compiledString>FQAAAAABAAAAEwAAAFWL7FGLRQiLEItNCItCHP/Q3A0hAAAA2V382UX8i+Vdw7gehetRuJ4/</compiledString>
+							<returnType>float</returnType>
+							<sString>sAttackSpeed * 0.03</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Ratcatcher/Ability0.TALENT" id="176AAA5B-39AF-4142-ACE5-69B8E7597502">
+					<UnitConstant>
+						<name>TT_Bonus</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>0.03 * 100</sString>
 						</var>
 					</UnitConstant>
 				</Item>

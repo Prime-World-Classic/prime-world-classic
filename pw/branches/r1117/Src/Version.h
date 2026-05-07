@@ -10,7 +10,7 @@
 #define ENTERPRISE_TRADEMARK	"Nival® is a registered trademark of NIVAL INTERNATIONAL LIMITED."
 
 #define VERSION_MAJOR    2
-#define VERSION_MINOR    14
+#define VERSION_MINOR    15
 #define VERSION_PATCH    2
 #define VERSION_BUILD    0
 #define VERSION_REVISION 0

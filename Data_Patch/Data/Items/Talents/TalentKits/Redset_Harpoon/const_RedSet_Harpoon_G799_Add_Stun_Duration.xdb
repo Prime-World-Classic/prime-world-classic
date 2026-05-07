@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level4/G799_Harpoon_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G801_Harpoon_StrOrIntAtSpd.TALENT" Count="1" />
+	<name>Add_Stun_Duration</name>
+	<var>
+		<compiledString>FSAAAAADAAAALQAAAEAAAABUAAAARzc5OV9BY3RpdmUAVFRBZGRfU3R1bl9EdXJhdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHXoAAADf4PbERHofi0UMUItNCFFoDAAAAItVEIsCi00Qi1BQ/9LZXfzrBdnu2V382UX8i+VdwwAAAAAAAAAAAADwPw==</compiledString>
+		<returnType>float</returnType>
+		<sString>cG799_Active == 1  ? cTTAdd_Stun_Duration  :  0</sString>
+	</var>
+</UnitConstant>

@@ -967,7 +967,9 @@
 		<Item href="/Heroes/Shaman/_.SOBJ" />
 		<Item href="/Heroes/Shaman/_.SOBJ" />
 	</heroSceneObjects>
-	<heroSkins />
+	<heroSkins>
+		<Item href="/Heroes/Shaman/S1/_.HEROSKIN" />
+	</heroSkins>
 	<id>shaman</id>
 	<image href="" />
 	<interaction href="" />
@@ -1104,16 +1106,16 @@
 					<calcIncrement>25</calcIncrement>
 					<calcValue>650</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAEQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>30</sString>
+						<sString>33</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABIRA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB6RA==</compiledString>
 						<returnType>float</returnType>
-						<sString>800</sString>
+						<sString>1000</sString>
 					</value>
 				</Item>
 				<Item>
@@ -1200,9 +1202,9 @@
 					<calcIncrement>0.5</calcIncrement>
 					<calcValue>53</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmYmPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.50</sString>
+						<sString>0.65</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
@@ -1216,16 +1218,16 @@
 					<calcIncrement>0.8</calcIncrement>
 					<calcValue>55</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzOzPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.35</sString>
+						<sString>0.55</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>40</sString>
+						<sString>60</sString>
 					</value>
 				</Item>
 				<Item>

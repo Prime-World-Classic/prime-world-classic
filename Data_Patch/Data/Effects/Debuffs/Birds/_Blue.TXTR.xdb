@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Texture>
+	<BackLink DBID="/Effects/Debuffs/Birds/_Blue.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Birds/_NightBlue.PRXY" Count="1" />
+	<generatedFileName></generatedFileName>
+	<mipLevels>0</mipLevels>
+	<mipLevelUsage>AutoGenerate</mipLevelUsage>
+	<mipSharpenPasses></mipSharpenPasses>
+	<pixelFormat>DXT5</pixelFormat>
+	<size>
+		<height>128</height>
+		<width>128</width>
+	</size>
+	<srcFileName crc="0">/Effects/Debuffs/Birds/_BlueGold.png</srcFileName>
+	<startMipLevel>0</startMipLevel>
+	<textureFileName>/Effects/Debuffs/Birds/_BlueGold.dds</textureFileName>
+	<textureType>Color</textureType>
+</Texture>

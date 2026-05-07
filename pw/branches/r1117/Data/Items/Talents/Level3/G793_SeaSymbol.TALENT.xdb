@@ -1,0 +1,241 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Talent>
+	<BackLink DBID="/Items/Talents/Healer.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/Redset_SeaSymbol.TALKIT" Count="2" />
+	<activationConditions />
+	<activeCustomTrigger>true</activeCustomTrigger>
+	<allowChase>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</allowChase>
+	<alternativeTargets />
+	<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+	<aoeHeight>0</aoeHeight>
+	<aoeMaterial href="" />
+	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+	<aoeSize>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</aoeSize>
+	<aoeType>None</aoeType>
+	<applicators />
+	<askId>0</askId>
+	<autoTargetSelector href="" />
+	<budget>-1</budget>
+	<caption>G793: Морская устремленность</caption>
+	<castAllowRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</castAllowRange>
+	<castLimitations />
+	<commonDescription textref="/Items/Talents/Level3/G793_SeaSymbol.TALENT_commonDescription.txt" />
+	<compiledDescriptionA textref="" />
+	<compiledDescriptionB textref="" />
+	<conditionFormulas>
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="95A426AF-77D1-4597-AD7F-9353A932B102">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FRQAAAACAAAAIQAAADQAAABTZWFTeW1ib2xLaXRjb3VudGVyAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twdUAAAAN/g9sREewbGRf8B6wTGRf8AikX/i+VdwwAAAAAAAAAA</compiledString>
+					<returnType>bool</returnType>
+					<sString>cSeaSymbolKitcounter</sString>
+				</condition>
+				<name>activatedInKit</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="1627A4E6-3A30-4F36-A6E7-FB18E4B3FC52">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FQwAAAACAAAAGQAAACwAAABHNzkzX0FjdGl2ZQBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHU4AAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAADwPw==</compiledString>
+					<returnType>bool</returnType>
+					<sString>cG793_Active == 1</sString>
+				</condition>
+				<name>G793_Active</name>
+			</ConditionFormula>
+		</Item>
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="4E5C1155-DA6D-4DE8-80B6-8BEB2A315198">
+			<ConditionFormula>
+				<condition>
+					<compiledString>FSQAAAACAAAAMwAAAE0AAABTZWFTeW1ib2xLaXRjb3VudGVyAEtpdF9Db3VudGVyX01heABVi+yD7AyLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0otFDFCLTQhRaBQAAACLVRCLAotNEItQUN1d+P/S3F343+D2xAV6CcdF9AEAAADrB8dF9AAAAACKRfSL5V3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>cSeaSymbolKitcounter&gt;cKit_Counter_Max</sString>
+				</condition>
+				<name>FormOverChargedSession</name>
+			</ConditionFormula>
+		</Item>
+	</conditionFormulas>
+	<conflictingTalents />
+	<constants href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="D0951A1D-FB66-4293-8351-953091E37C90">
+		<UnitConstantsContainer>
+			<vars>
+				<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="B8E620B6-D5FD-4587-B039-DBEE6C5316C2">
+					<UnitConstant>
+						<name>Add_MoveSpeed</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>9</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="88BFA2DD-0883-4055-8F61-682986E8D6D0">
+					<UnitConstant>
+						<name>VisibilityRange</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmaGQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>4.2</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_Kit_Counter" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_Heal_Energy_G793" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_G793_active" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_Kit_Counter_Max" />
+				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/const_G793_BonusMoveSpeed" />
+			</vars>
+		</UnitConstantsContainer>
+	</constants>
+	<consumptionBonus>
+		<constant>0</constant>
+		<percent>0</percent>
+	</consumptionBonus>
+	<cooldownTime>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
+	</cooldownTime>
+	<cooldownTimeSecondState>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</cooldownTimeSecondState>
+	<description textref="/Items/Talents/Level3/G793_SeaSymbol.TALENT_description.txt" />
+	<devPoints>1</devPoints>
+	<dispatch href="" />
+	<flags>0</flags>
+	<forceBonus>0</forceBonus>
+	<image href="/UI/Styles/Icons/Talents/_793.ITEX" />
+	<imageSecondState href="" />
+	<isGenderTalent>false</isGenderTalent>
+	<isTakenOnStart>false</isTakenOnStart>
+	<isUltimateTalent>false</isUltimateTalent>
+	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+	<manaCost>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</manaCost>
+	<marker></marker>
+	<microAI href="" />
+	<minLevel>2</minLevel>
+	<minUseRangeCorrection>0</minUseRangeCorrection>
+	<naftaCost>-1</naftaCost>
+	<name textref="/Items/Talents/Level3/G793_SeaSymbol.TALENT_name.txt" />
+	<node></node>
+	<passiveApplicators>
+		<Item href="/Items/Talents/_commonData/parent_MoveChange.APLR" />
+		<Item href="/Items/Talents/_commonData/AddedMoveSpeed.APLR" />
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="3939E10B-935B-42FE-965C-4C2A21F99BBA">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>Увеличиваем Дальность обзора</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRAAAAABAAAAHAAAAFZpc2liaWxpdHlSYW5nZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+						<returnType>float</returnType>
+						<sString>cVisibilityRange</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>VisibilityRange</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/appl_SeaSymbol_kitCounter.APLR" />
+		<Item href="/Items/Talents/Level3/G793_SeaSymbol.TALENT" id="308A3F91-ACE0-4CFE-A3CE-6503766B71D5">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>G793_Active</caption>
+				<customApplyType>None</customApplyType>
+				<enabled>
+					<compiledString>FVQAAAAIAAAAWwAAAHQAAACqAAAAygAAAOYAAAD/AAAANQEAAFUBAABHNzkyAAAAAEc3OTIAAAAARzc5MgAAAABTZWFTeW1ib2xLaXRjb3VudGVyAEc3OTIAAAAARzc5MgAAAABHNzkyAAAAAEtpdF9Db3VudGVyX01heABVi+yD7CRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAgAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQ3aBAAAACLVQiLAotNCIuQqAEAAP/SiUX0i0UMUItNCFFoGAAAAItV9IsCi030i1BQ/9LZXfDrBdnu2V3waCwAAACLRQiLEItNCIuCqAEAAP/QhcB0Kmg0AAAAi00IixGLTQiLgqgBAAD/0IlF7ItN7IsRi03si0IE/9CIRevrBMZF6wAPtk3rhcl0N2g8AAAAi1UIiwKLTQiLkKgBAAD/0olF5ItFDFCLTQhRaEQAAACLVeSLAotN5ItQUP/S2V3g6wXZ7tld4NlF8NlF4N7Z3+D2xAF1CcdF3AEAAADrB8dF3AAAAACKRdyL5V3DAAAAAA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>talconst("G792","SeaSymbolKitcounter") &lt;= talconst("G792","Kit_Counter_Max")</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Life</stat>
+					<topModifier>false</topModifier>
+					<variable>G793_active</variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+	</passiveApplicators>
+	<persistentId>G793</persistentId>
+	<prerequisiteTalents />
+	<rarity>outstanding</rarity>
+	<requireLineOfSight>false</requireLineOfSight>
+	<shortDescription textref="" />
+	<talentRollGroups>16</talentRollGroups>
+	<talentStats />
+	<targetType>0</targetType>
+	<type>Passive</type>
+	<upgradeLevel>0</upgradeLevel>
+	<useRange>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>0.0f</sString>
+	</useRange>
+	<useRangeMaterial href="" />
+	<variativeMaxTalentStats />
+	<variativeMinTalentStats />
+	<vendorCost>0</vendorCost>
+	<warFogRemoveRadius>0</warFogRemoveRadius>
+	<warFogRemoveTime>0</warFogRemoveTime>
+</Talent>

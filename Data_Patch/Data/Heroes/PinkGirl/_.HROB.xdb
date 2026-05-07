@@ -728,7 +728,7 @@
 											<sString>rMaxLife * ( cA0_BonusDamage * 0.01)</sString>
 										</damage>
 										<damageMode>0</damageMode>
-										<damageType>Pure</damageType>
+										<damageType>Energy</damageType>
 										<enabled>
 											<compiledString>FTQAAAAEAAAAOwAAAFQAAACSAAAApQAAAFBpbmtHaXJsX0EwX1NVUABQaW5rR2lybF9BMF9TVVAAU3R1bl9TdGFydENvbmRpdGlvbgBVi+yD7AxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQwi1UMUotFCFBoIAAAAItNEIsRi00Qi0JQ/9DcHccAAADf4PbERHsJx0X0AQAAAOsHx0X0AAAAAIpF9IvlXcMAAAAAAAAAAA==</compiledString>
 											<returnType>bool</returnType>
@@ -738,7 +738,7 @@
 										<LoggingEvent>-1</LoggingEvent>
 										<providerName></providerName>
 										<timeLimiter>-1</timeLimiter>
-										<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed.UIEV" />
+										<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
 									</DamageApplicator>
 								</applicator>
 								<variableNames>
@@ -817,13 +817,25 @@
 							<UnitConstant>
 								<name>Stun_StartCondition</name>
 								<var>
-									<compiledString>FRcAAAADAAAANAAAAE4AAABkAAAAV2FyZAAAAABQaW5rR2lybFN0b3BBMABVi+xRi0UMixCLTQyLQlD/0IP4EXRLagCLTRBRaAAAAACLVQyLAotNDIuQnAEAAP/SO0UQdStoCAAAAItFCIsQi00Ii4KIAQAA/9DcHYYAAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAANtF/IvlXcMAAAAAAADwPw==</compiledString>
+									<compiledString>FRQAAAACAAAAMQAAAFEAAABXYXJkAAAAAFBpbmtHaXJsX0EwAFWL7FGLRQyLEItNDItCUP/Qg/gRdElqAItNEFFoAAAAAItVDIsCi00Mi5CcAQAA/9I7RRB1KWoBi0UQUGgIAAAAi00IixGLTQiLgpwBAAD/0DtFEHQJx0X8AQAAAOsHx0X8AAAAANtF/IvlXcM=</compiledString>
 									<returnType>float</returnType>
-									<sString>rUnitKind != 17 &amp;&amp; receiver.applWard(GLOBAL) == pMisc &amp;&amp; sender.vPinkGirlStopA0 == 1</sString>
+									<sString>rUnitKind != 17 &amp;&amp; receiver.applWard(GLOBAL) == pMisc &amp;&amp; sender.applPinkGirl_A0(UNIT) != pMisc
+
+</sString>
 								</var>
 							</UnitConstant>
 						</Item>
 						<Item href="/Items/Talents/Class/PinkGirl/const_A0_BonusDamage" />
+						<Item href="/Heroes/PinkGirl/_.HROB" id="91B7E701-DDF5-424F-9868-6ACC30466FE6">
+							<UnitConstant>
+								<name>Stun_Duration</name>
+								<var>
+									<compiledString>FREAAAABAAAAHQAAAEEwX1N0dW5fRHVyYXRpb24AVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+									<returnType>float</returnType>
+									<sString>cA0_Stun_Duration</sString>
+								</var>
+							</UnitConstant>
+						</Item>
 					</vars>
 				</UnitConstantsContainer>
 			</constants>
@@ -1060,16 +1072,16 @@
 					<calcIncrement>25</calcIncrement>
 					<calcValue>750</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 						<returnType>float</returnType>
-						<sString>32</sString>
+						<sString>30</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBtRA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB/RA==</compiledString>
 						<returnType>float</returnType>
-						<sString>950</sString>
+						<sString>1020</sString>
 					</value>
 				</Item>
 				<Item>
@@ -1156,32 +1168,32 @@
 					<calcIncrement>0.7</calcIncrement>
 					<calcValue>56</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.45</sString>
+						<sString>0.55</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAA0Qg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB8Qg==</compiledString>
 						<returnType>float</returnType>
-						<sString>45</sString>
+						<sString>63</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0.3</calcIncrement>
 					<calcValue>54</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzMzPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmYmPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.7</sString>
+						<sString>0.65</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACCQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>65</sString>
+						<sString>64</sString>
 					</value>
 				</Item>
 				<Item>

@@ -697,7 +697,9 @@
 		<Item href="/Heroes/Wendigo/_.SOBJ" />
 		<Item href="/Heroes/Wendigo/_.SOBJ" />
 	</heroSceneObjects>
-	<heroSkins />
+	<heroSkins>
+		<Item href="/Heroes/Wendigo/S1/_A.HEROSKIN" />
+	</heroSkins>
 	<id>wendigo</id>
 	<image href="" />
 	<interaction href="" />
@@ -805,7 +807,7 @@
 	<nativeDefence>Material</nativeDefence>
 	<normalLevelling>0</normalLevelling>
 	<overtipBarsWidth>10</overtipBarsWidth>
-	<overtipVerticalOffset>1.5</overtipVerticalOffset>
+	<overtipVerticalOffset>3</overtipVerticalOffset>
 	<pathFindingSteps>10</pathFindingSteps>
 	<persistentId>wendigo</persistentId>
 	<recolor>
@@ -841,9 +843,9 @@
 					<levelUpgrades />
 					<statId>Life</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBPRA==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIBoRA==</compiledString>
 						<returnType>float</returnType>
-						<sString>830</sString>
+						<sString>930</sString>
 					</value>
 				</Item>
 				<Item>
@@ -930,32 +932,32 @@
 					<calcIncrement>0.5</calcIncrement>
 					<calcValue>55</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzOzPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmbmPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.35</sString>
+						<sString>0.45</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAA0Qg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAB8Qg==</compiledString>
 						<returnType>float</returnType>
-						<sString>45</sString>
+						<sString>63</sString>
 					</value>
 				</Item>
 				<Item>
 					<calcIncrement>0.3</calcIncrement>
 					<calcValue>53</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpkZPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.6</sString>
+						<sString>0.55</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>
 					<value>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACEQg==</compiledString>
 						<returnType>float</returnType>
-						<sString>60</sString>
+						<sString>66</sString>
 					</value>
 				</Item>
 				<Item>

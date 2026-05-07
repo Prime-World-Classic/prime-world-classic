@@ -1060,9 +1060,9 @@
 												<sString>0.0</sString>
 											</lashRange>
 											<maxCount>
-												<compiledString>FQAAAAAAAAAAVYvsuAUAAABdww==</compiledString>
+												<compiledString>FQAAAAAAAAAAVYvsuA8AAABdww==</compiledString>
 												<returnType>int</returnType>
-												<sString>5</sString>
+												<sString>15</sString>
 											</maxCount>
 											<maxThisCount>
 												<compiledString></compiledString>
@@ -1271,9 +1271,9 @@
 					<UnitConstant>
 						<name>Trap_Number</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>5</sString>
+							<sString>15</sString>
 						</var>
 					</UnitConstant>
 				</Item>

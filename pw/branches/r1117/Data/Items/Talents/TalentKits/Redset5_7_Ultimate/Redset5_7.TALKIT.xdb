@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentKit>
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<caption>G613</caption>
+	<kitCapacity>4</kitCapacity>
+	<name textref="/Items/Talents/TalentKits/Redset5_7_Ultimate/Redset5_7.TALKIT_name.txt" />
+	<special href="" />
+	<talents>
+		<Item href="/Items/Talents/Level1/G613_StrOrInt.TALENT" />
+		<Item href="/Items/Talents/Level5/G614_Int_DexOrAtSpd.TALENT" />
+		<Item href="/Items/Talents/Level5/G615_Str_DexOrAtSpd.TALENT" />
+		<Item href="/Items/Talents/Level4/G616_StrOrInt.TALENT" />
+		<Item href="/Items/Talents/Level6/G617_StrOrInt.TALENT" />
+	</talents>
+</TalentKit>

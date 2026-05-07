@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level5/G800_Harpoon_AtSpdOrDex.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" Count="1" />
+	<name>G800_Active</name>
+	<var>
+		<compiledString>FQwAAAABAAAAEAAAAEc4MDBfQWN0aXZlAFWL7GgAAAAAi0UIixCLTQiLgogBAAD/0F3D</compiledString>
+		<returnType>float</returnType>
+		<sString>sender.vG800_Active</sString>
+	</var>
+</UnitConstant>
