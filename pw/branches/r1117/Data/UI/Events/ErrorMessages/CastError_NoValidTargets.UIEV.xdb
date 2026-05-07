@@ -28,6 +28,7 @@
 	<BackLink DBID="/Items/Talents/Class/WitchDoctor/Ability3.TALENT" Count="4" />
 	<BackLink DBID="/Items/Talents/Class/WitchDoctor/Ability2.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="2" />
 	<signRecipients>PLAYER_ONLY</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/ErrorMessages/CastError_NoValidTargets.UIEV" id="59D5B7C6-91BF-43A7-A69F-816065C95D4A">

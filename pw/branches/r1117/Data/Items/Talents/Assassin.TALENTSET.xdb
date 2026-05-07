@@ -26,7 +26,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level1/G469_RegEnergy.TALENT" />
+					<talent href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -54,13 +54,13 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u2.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -78,7 +78,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level2/G783_RegEnergy.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A0u.TALENT" />
 				</Item>
 			</talents>
 		</Item>
@@ -88,13 +88,13 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u1.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A0u2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>2</aIPriority>
@@ -125,10 +125,10 @@
 		<Item>
 			<talents>
 				<Item>
-					<aIPriority>2</aIPriority>
+					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" />
+					<talent href="/Items/Talents/Level4/G043_Dex-Str.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -168,7 +168,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A0_SUP.TALENT" />
+					<talent href="/Items/Talents/Level2/G783_RegEnergy.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

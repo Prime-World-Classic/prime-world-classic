@@ -74,6 +74,7 @@
 				<providerName></providerName>
 			</PermanentStatModApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" />
 	</applicators>
 	<askId>3</askId>
 	<autoTargetSelector href="" />
@@ -270,7 +271,7 @@
 			<instantApply>false</instantApply>
 		</DispatchImmediate>
 	</dispatch>
-	<flags>11</flags>
+	<flags>32779</flags>
 	<forceBonus>9</forceBonus>
 	<image href="/UI/Styles/Icons/Heroes/SnowQueen/A3.ITEX" />
 	<imageSecondState href="" />
@@ -308,7 +309,7 @@
 								<returnType>float</returnType>
 								<sString>cRange_Medium</sString>
 							</range>
-							<targetFilter>947912707</targetFilter>
+							<targetFilter>2021654531</targetFilter>
 							<targetSelector href="" />
 						</AreaTargetSelector>
 					</targetSelector>
@@ -331,7 +332,7 @@
 	<shortDescription textref="/Items/Talents/Class/SnowQueen/Ability_A3.TALENT_shortDescription.txt" />
 	<talentRollGroups>63</talentRollGroups>
 	<talentStats />
-	<targetType>672923711</targetType>
+	<targetType>2015100991</targetType>
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>

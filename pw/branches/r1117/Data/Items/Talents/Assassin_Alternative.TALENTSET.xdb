@@ -14,7 +14,7 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -54,7 +54,7 @@
 					<aIPriority>2</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u2.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A0u2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>3</aIPriority>
@@ -88,13 +88,13 @@
 					<aIPriority>3</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u1.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/_legacy/Ability_A2u1.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>2</aIPriority>
@@ -167,8 +167,8 @@
 				<Item>
 					<aIPriority>0</aIPriority>
 					<refineRate>1</refineRate>
-					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A0_SUP_2.TALENT" />
+					<status>unavailable</status>
+					<talent href="/Items/Talents/Class/Assassin/_legacy/Ability_A0_SUP_2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

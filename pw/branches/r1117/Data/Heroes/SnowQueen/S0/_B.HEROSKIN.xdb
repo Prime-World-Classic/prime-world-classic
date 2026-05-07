@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <HeroSkin>
 	<BackLink DBID="/Heroes/SnowQueen/_.HROB" Count="1" />
+	<BackLink DBID="/Heroes/Helios/_.HROB" Count="1" />
 	<antagonistSkinId>snowqueen_S0_A</antagonistSkinId>
 	<askList href="/Heroes/SnowQueen/S0/_B.HEROSKIN" id="2DAADD30-95B2-48D1-9AEF-056EFFC81003">
 		<AskSoundsRef>

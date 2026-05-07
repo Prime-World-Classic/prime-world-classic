@@ -214,7 +214,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>12</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -380,7 +380,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>12.84</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -546,7 +546,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>13.68</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -712,7 +712,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>14.52</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -878,7 +878,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>15.36</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -1044,7 +1044,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>16.2</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -1210,7 +1210,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>17.04</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -2597,7 +2597,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>12</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -2786,7 +2786,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>12.84</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -2975,7 +2975,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>13.68</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -3164,7 +3164,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>14.52</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -3353,7 +3353,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>15.36</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -3542,7 +3542,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>16.2</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -3731,7 +3731,7 @@
 															</Item>
 														</persistentApplicators>
 														<speed>17.04</speed>
-														<suspendTime>0.5</suspendTime>
+														<suspendTime>1.0</suspendTime>
 														<toLocator>Body</toLocator>
 													</DispatchLinear>
 												</dispatch>
@@ -5399,7 +5399,7 @@
 	<shortDescription textref="/Items/Talents/Class/Artist/Ability_A1.TALENT_shortDescription.txt" />
 	<talentRollGroups>63</talentRollGroups>
 	<talentStats />
-	<targetType>672923711</targetType>
+	<targetType>689700927</targetType>
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>

@@ -1,13 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SpellApplicator>
 	<BackLink DBID="/Heroes/Assassin/AttackAbility.ATCK" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="2" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<caption>(A2u1) застунить</caption>
 	<enabled>
-		<compiledString>FTUAAAADAAAAPAAAAFUAAACRAAAAQXNzYXNzaW5fQTJ1MQAAAEFzc2Fzc2luX0EydTEAAABBc3Nhc3NpblN0b3BHaG9zdFJ1bgBVi+yD7AxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQpagGLVRBSaCAAAACLRQiLEItNCIuCnAEAAP/QO0UQdAnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
+		<compiledString>FTUAAAADAAAAPAAAAFUAAACRAAAAQXNzYXNzaW5fQTB1AAAAAEFzc2Fzc2luX0EwdQAAAABBc3Nhc3NpblN0b3BHaG9zdFJ1bgBVi+yD7AxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQpagGLVRBSaCAAAACLRQiLEItNCIuCnAEAAP/QO0UQdAnHRfQBAAAA6wfHRfQAAAAAikX0i+Vdww==</compiledString>
 		<returnType>bool</returnType>
-		<sString>tal("Assassin_A2u1") &amp;&amp; sender.applAssassinStopGhostRun(UNIT) != pMisc</sString>
+		<sString>tal("Assassin_A0u") &amp;&amp; sender.applAssassinStopGhostRun(UNIT) != pMisc</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<LoggingEvent>-1</LoggingEvent>

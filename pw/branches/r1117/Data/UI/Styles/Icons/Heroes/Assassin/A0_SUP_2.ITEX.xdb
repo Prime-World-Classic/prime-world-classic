@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UITexture>
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0_SUP_2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/_legacy/Ability_A0_SUP_2.TALENT" Count="1" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

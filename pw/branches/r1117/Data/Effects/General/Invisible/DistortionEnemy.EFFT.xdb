@@ -14,6 +14,7 @@
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_7_Glyph/status_Invis.APLR" Count="1" />
 	<BackLink DBID="/Pets/PetInvis.APLR" Count="1" />
 	<BackLink DBID="/Summons/Turret/_.SUMMONED" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" Count="1" />
 	<attachFlags>0</attachFlags>
 	<attachType>Body</attachType>
 	<component href="/Effects/General/Invisible/DistortionEnemy.PRXY" />

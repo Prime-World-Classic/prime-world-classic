@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<PermanentStatModApplicator>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<applyTarget>AbilityOwner</applyTarget>
+	<caption>Clone spawn counter +1 on master</caption>
+	<customApplyType>None</customApplyType>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<LoggingEvent>-1</LoggingEvent>
+	<modifier>
+		<addValue>
+			<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+			<returnType>float</returnType>
+			<sString>1.0</sString>
+		</addValue>
+		<multValue>
+			<compiledString></compiledString>
+			<returnType>float</returnType>
+			<sString>1.0f</sString>
+		</multValue>
+		<stat>Life</stat>
+		<topModifier>false</topModifier>
+		<variable>CloneSpawnCounter</variable>
+	</modifier>
+	<providerName></providerName>
+</PermanentStatModApplicator>

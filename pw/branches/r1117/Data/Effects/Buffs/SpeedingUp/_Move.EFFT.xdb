@@ -14,7 +14,7 @@
 	<BackLink DBID="/Heroes/DefaultStatus/_TechHaste_status.APLR" Count="1" />
 	<BackLink DBID="/Impulses/_.IBCN" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" Count="2" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/status_A3u_HasteBurst.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2u_HasteBurst.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/ProgramA3.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A4_Haste.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Night/Ability4.TALENT" Count="2" />
@@ -26,6 +26,8 @@
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/_Aram_Haste_status.APLR" Count="2" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_haste.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" Count="2" />
 	<attachFlags>1</attachFlags>
 	<attachType>Body</attachType>
 	<component href="/Effects/Buffs/SpeedingUp/_MoveTRS.PRXY" />

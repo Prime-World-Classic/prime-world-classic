@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneObject>
 	<BackLink DBID="/Heroes/SnowQueen/S6/_.HEROSKIN" Count="1" />
+	<BackLink DBID="/Heroes/Helios/_.HROB" Count="4" />
 	<attached>
 		<Item>
 			<attachFlags>14</attachFlags>

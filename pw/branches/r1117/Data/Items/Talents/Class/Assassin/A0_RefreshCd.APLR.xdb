@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <RefreshCooldownApplicator>
 	<BackLink DBID="/Items/Talents/Class/Assassin/A0_UnitDieNearMe.EVNT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="1" />
 	<allowCdIncrease>false</allowCdIncrease>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<caption>уменьшить Cd</caption>
@@ -23,9 +22,9 @@
 	<refreshThis>false</refreshThis>
 	<talents>
 		<Item href="/Items/Talents/Class/Assassin/Ability_A1.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
 	</talents>
 	<useListAs>ListAsRule</useListAs>
 </RefreshCooldownApplicator>

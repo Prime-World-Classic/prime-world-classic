@@ -2,6 +2,7 @@
 <Summoned>
 	<BackLink DBID="/Heroes/Angel/_.HROB" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Angel/Summon_A3_Pick.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
 	<abilities>
 		<Item href="" />
 		<Item href="" />

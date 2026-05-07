@@ -75,8 +75,6 @@
 	<BackLink DBID="/Summons/Whisper/_B.SUMMONED" Count="1" />
 	<BackLink DBID="/Summons/Whisper/_FireWard.SUMMONED" Count="1" />
 	<BackLink DBID="/Summons/Whisper/_Parent.SUMMONED" Count="1" />
-	<BackLink DBID="/Summons/Portal/_1.SUMMONED" Count="1" />
-	<BackLink DBID="/Summons/Portal/_1_1.SUMMONED" Count="1" />
 	<deathTime>5</deathTime>
 	<effect href="/Effects/General/Death/_.EFFT" />
 	<effectOffset>0</effectOffset>

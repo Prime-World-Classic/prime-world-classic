@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UITexture>
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_fake_A3_2.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_fake_self_A3_2.APLR" Count="1" />
 	<generatedFileName></generatedFileName>

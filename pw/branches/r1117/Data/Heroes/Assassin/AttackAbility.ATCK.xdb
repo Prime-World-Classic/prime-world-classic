@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BaseAttack>
 	<BackLink DBID="/Heroes/Assassin/_.HROB" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
 		<compiledString></compiledString>
@@ -20,7 +20,7 @@
 	</aoeSize>
 	<aoeType>None</aoeType>
 	<applicators>
-		<Item href="/Items/Talents/Class/Assassin/appl_A0_SUP_2_ApplyOrUpdate.APLR" />
+		<Item href="/Items/Talents/Class/Assassin/_legacy/appl_A0_SUP_2_ApplyOrUpdate.APLR" />
 		<Item href="/Effects/Shots/HitsApplicators/MeleeHero.APLR" />
 		<Item href="/Heroes/Assassin/AttackAbility.ATCK" id="2298B12D-EF62-4E23-9036-F5252D14C213">
 			<DamageApplicator parent="/GameLogic/GeneralApplicators/BaseAttackDmg_Hero.APLR">
@@ -76,11 +76,11 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Assassin/const_Stun_Duration" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Duration" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Percent" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_StartCondition" />
-				<Item href="/Items/Talents/Class/Assassin/const_A0_SUP_2_Inc_Resp_Time" />
-				<Item href="/Items/Talents/Class/Assassin/const_A0_SUP_2_Appl_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Percent" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_StartCondition" />
+				<Item href="/Items/Talents/Class/Assassin/_legacy/const_A0_SUP_2_Inc_Resp_Time" />
+				<Item href="/Items/Talents/Class/Assassin/_legacy/const_A0_SUP_2_Appl_Duration" />
 				<Item href="/Heroes/Assassin/AttackAbility.ATCK" id="29857C92-F9CA-4432-B412-85B68E6B6362">
 					<UnitConstant>
 						<name>A3HealPerAttack</name>

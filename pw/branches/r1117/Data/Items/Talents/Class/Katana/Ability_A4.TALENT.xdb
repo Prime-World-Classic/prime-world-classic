@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="2" />
+	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="4" />
 	<BackLink DBID="/Items/Talents/Class/Katana/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Katana/Ability_A4_2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Katana/Ability_A4u.TALENT" Count="1" />
@@ -151,18 +151,66 @@
 															<spell href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="631007A1-5877-45DE-9D6A-4EA33BB515CE">
 																<Spell>
 																	<applicators>
-																		<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="8FF584B6-09D3-4823-8B6C-CD41CA09DB28">
-																			<DamageApplicator>
+																		<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="4489449E-A677-4941-8408-9EBCDB83751A">
+																			<VariableProxyApplicator>
+																				<applicators>
+																					<Item>
+																						<applicator href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="8FF584B6-09D3-4823-8B6C-CD41CA09DB28">
+																							<DamageApplicator>
+																								<applyTarget>ApplicatorTarget</applyTarget>
+																								<cancelInvisibility>false</cancelInvisibility>
+																								<caption>Урон</caption>
+																								<damage>
+																									<compiledString>FSYAAAAEAAEANQAAAEcAAABrAAAAgwAAAOAAAABBNF9EYW1hZ2UAAABBNF9TdGFja0NvdW50AAAAQTRfUGVyaW9kAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SaAwAAACLRQyLEItNDIuCiAEAAN1d+P/QUdkcJItNDFGLVQhSaBwAAACLRRCLEItNEItCUP/QUdkcJFHZBaoAAADZHCToHwAAAIPEBNkcJOgUAAAAg8QI3E342V302UX0i+VdwwAAAEBVi+xR2UUM2RwkUdlFCNkcJOgFAAAAg8QIXcNVi+xR2UUMg+wI3Rwk2UUIg+wI3Rwk6P7+//+DxBDZXfzZRfyL5V3D</compiledString>
+																									<returnType>float</returnType>
+																									<sString>cA4_Damage * pow(pow(2, cA4_Period), receiver.vA4_StackCount)</sString>
+																								</damage>
+																								<damageMode>5</damageMode>
+																								<damageType>Energy</damageType>
+																								<enabled>
+																									<compiledString></compiledString>
+																									<returnType>bool</returnType>
+																									<sString>true</sString>
+																								</enabled>
+																								<formulaName></formulaName>
+																								<LoggingEvent>-1</LoggingEvent>
+																								<providerName></providerName>
+																								<timeLimiter>-1</timeLimiter>
+																								<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
+																							</DamageApplicator>
+																						</applicator>
+																						<variableNames>
+																							<Item>damageDealed</Item>
+																						</variableNames>
+																					</Item>
+																					<Item>
+																						<applicator href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="4D489DB9-B68A-4204-BA27-9B6E3C48AA29">
+																							<HealApplicator>
+																								<amount>
+																									<compiledString>FQ0AAAACAAAAJAAAADcAAABkYW1hZ2VEZWFsZWQAVYvsg+wIi0UQixCLTRCLQkj/0IlF/GgAAAAAi038ixGLTfyLQlT/0NwNRQAAANld+NlF+IvlXcMAAABAMzPDPw==</compiledString>
+																									<returnType>float</returnType>
+																									<sString>$ParentApplVariable("damageDealed") * 0.15f</sString>
+																								</amount>
+																								<applyTarget>AbilityOwner</applyTarget>
+																								<caption>(A4u) Lifesteal 15% via damageDealed</caption>
+																								<enabled>
+																									<compiledString>FRcAAAACAAAAHgAAADcAAABLYXRhbmFfQTR1AABLYXRhbmFfQTR1AFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoDAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAikX7i+Vdww==</compiledString>
+																									<returnType>bool</returnType>
+																									<sString>tal("Katana_A4u")</sString>
+																								</enabled>
+																								<formulaName></formulaName>
+																								<healTarget>Health</healTarget>
+																								<ignoreHealingMods>false</ignoreHealingMods>
+																								<LoggingEvent>-1</LoggingEvent>
+																								<providerName></providerName>
+																								<uiEvent href="" />
+																							</HealApplicator>
+																						</applicator>
+																						<variableNames />
+																					</Item>
+																				</applicators>
 																				<applyTarget>ApplicatorTarget</applyTarget>
-																				<cancelInvisibility>false</cancelInvisibility>
-																				<caption>Урон</caption>
-																				<damage>
-																					<compiledString>FQoAAAABAAAAFgAAAEE0X0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
-																					<returnType>float</returnType>
-																					<sString>cA4_Damage</sString>
-																				</damage>
-																				<damageMode>0</damageMode>
-																				<damageType>Energy</damageType>
+																				<caption>(A4u) VariableProxy — capture damageDealed</caption>
 																				<enabled>
 																					<compiledString></compiledString>
 																					<returnType>bool</returnType>
@@ -171,9 +219,106 @@
 																				<formulaName></formulaName>
 																				<LoggingEvent>-1</LoggingEvent>
 																				<providerName></providerName>
-																				<timeLimiter>-1</timeLimiter>
-																				<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
-																			</DamageApplicator>
+																			</VariableProxyApplicator>
+																		</Item>
+																		<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="AA058551-13CC-48EF-9790-EFF6F062A822">
+																			<StatusApplicator>
+																				<applicators>
+																					<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="DF5920BE-D53E-4255-B636-BE187239BBD0">
+																						<StatModApplicator>
+																							<applyTarget>ApplicatorTarget</applyTarget>
+																							<behaviorFlags>0</behaviorFlags>
+																							<caption>счетчик стаков</caption>
+																							<constraint>None</constraint>
+																							<dontUpdate>false</dontUpdate>
+																							<effect>
+																								<Item href="" />
+																								<Item href="" />
+																							</effect>
+																							<enabled>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</enabled>
+																							<formulaName></formulaName>
+																							<lifeTime>
+																								<compiledString></compiledString>
+																								<returnType>float</returnType>
+																								<sString>-1.0</sString>
+																							</lifeTime>
+																							<LoggingEvent>-1</LoggingEvent>
+																							<modifier>
+																								<addValue>
+																									<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+																									<returnType>float</returnType>
+																									<sString>1.0f</sString>
+																								</addValue>
+																								<multValue>
+																									<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+																									<returnType>float</returnType>
+																									<sString>0.0f</sString>
+																								</multValue>
+																								<stat>Life</stat>
+																								<topModifier>false</topModifier>
+																								<variable>A4_StackCount</variable>
+																							</modifier>
+																							<providerName></providerName>
+																							<startCondition>
+																								<compiledString></compiledString>
+																								<returnType>bool</returnType>
+																								<sString>true</sString>
+																							</startCondition>
+																							<statModName></statModName>
+																						</StatModApplicator>
+																					</Item>
+																				</applicators>
+																				<applyTarget>ApplicatorTarget</applyTarget>
+																				<behaviorFlags>0</behaviorFlags>
+																				<caption>метка стака</caption>
+																				<customCounter>
+																					<compiledString></compiledString>
+																					<returnType>int</returnType>
+																					<sString>0</sString>
+																				</customCounter>
+																				<customProgress>
+																					<compiledString></compiledString>
+																					<returnType>float</returnType>
+																					<sString>-1.0</sString>
+																				</customProgress>
+																				<description textref="" />
+																				<dispellPriority>Medium</dispellPriority>
+																				<effect>
+																					<Item href="" />
+																					<Item href="" />
+																				</effect>
+																				<enabled>
+																					<compiledString></compiledString>
+																					<returnType>bool</returnType>
+																					<sString>true</sString>
+																				</enabled>
+																				<flags>3</flags>
+																				<formulaName></formulaName>
+																				<image href="/UI/Styles/Icons/Heroes/Katana/A4.ITEX" />
+																				<lifeTime>
+																					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPw==</compiledString>
+																					<returnType>float</returnType>
+																					<sString>1.2f</sString>
+																				</lifeTime>
+																				<LoggingEvent>-1</LoggingEvent>
+																				<name textref="" />
+																				<power>0</power>
+																				<providerName></providerName>
+																				<stackableAcrossUnits>FullyStackable</stackableAcrossUnits>
+																				<stackCount>17</stackCount>
+																				<startCondition>
+																					<compiledString></compiledString>
+																					<returnType>bool</returnType>
+																					<sString>true</sString>
+																				</startCondition>
+																				<statusPosition>0</statusPosition>
+																				<stopBehaviour>StopByTime</stopBehaviour>
+																				<unstackableWith href="" />
+																			</StatusApplicator>
 																		</Item>
 																	</applicators>
 																	<dispatch href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="6F30389E-3CFB-48C1-9228-73B1B626CDB7">
@@ -460,67 +605,6 @@
 											<unstackableWith href="" />
 										</StatusApplicator>
 									</Item>
-									<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="D7333879-E467-4174-81F6-B809B6469397">
-										<TriggerApplicator>
-											<actionsCount>
-												<compiledString></compiledString>
-												<returnType>int</returnType>
-												<sString>0</sString>
-											</actionsCount>
-											<applyTarget>ApplicatorTarget</applyTarget>
-											<behaviorFlags>145</behaviorFlags>
-											<caption>Меняем исходящий урон</caption>
-											<effect>
-												<Item href="" />
-												<Item href="" />
-											</effect>
-											<enabled>
-												<compiledString></compiledString>
-												<returnType>bool</returnType>
-												<sString>true</sString>
-											</enabled>
-											<formulaName></formulaName>
-											<lifeTime>
-												<compiledString></compiledString>
-												<returnType>float</returnType>
-												<sString>-1.0</sString>
-											</lifeTime>
-											<LoggingEvent>-1</LoggingEvent>
-											<playAck>false</playAck>
-											<processor href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="20F56C5E-7EAE-4657-924D-153B81C35F79">
-												<EventProcessorOutgoingDamage>
-													<abilityFilter>
-														<abilitiesList />
-														<abilityCondition>
-															<compiledString></compiledString>
-															<returnType>bool</returnType>
-															<sString>true</sString>
-														</abilityCondition>
-														<abilityCostMode>Custom</abilityCostMode>
-														<exceptThis>false</exceptThis>
-														<flags>536872191</flags>
-														<onlySingleTarget>false</onlySingleTarget>
-													</abilityFilter>
-													<applyTarget>ApplicatorTarget</applyTarget>
-													<damageTypeFilter>31</damageTypeFilter>
-													<modifiedDamage>
-														<compiledString>FRsAAAAEAAAAKgAAAD0AAABDAAAASAAAAEE0dV9EYW1hZ2VEZWNyZWFzZQAARGFtYWdlAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3C1xAAAA3A1pAAAAaBQAAACLRRCLEItNEItCVN1d+P/Q3E342V302UX0i+Vdw3sUrkfheoQ/AAAAAAAAWUA=</compiledString>
-														<returnType>float</returnType>
-														<sString>(100 - cA4u_DamageDecrease)*0.01*appl.vDamage</sString>
-													</modifiedDamage>
-													<spell href="" />
-												</EventProcessorOutgoingDamage>
-											</processor>
-											<providerName></providerName>
-											<startCondition>
-												<compiledString>FRcAAAACAAAAHgAAADcAAABLYXRhbmFfQTR1AABLYXRhbmFfQTR1AFWL7IPsCGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoDAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAikX7i+Vdww==</compiledString>
-												<returnType>bool</returnType>
-												<sString>tal("Katana_A4u")</sString>
-											</startCondition>
-											<useAbilityCooldown>false</useAbilityCooldown>
-											<useAbilityOwnerMana>false</useAbilityOwnerMana>
-										</TriggerApplicator>
-									</Item>
 									<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="86B245AC-A821-43C5-8967-173FF46F3E01">
 										<StatusApplicator parent="/Heroes/DefaultStatus/_SLOW_MOVE.APLR">
 											<dispellPriority>NonDispellable</dispellPriority>
@@ -758,7 +842,7 @@
 												<returnType>bool</returnType>
 												<sString>true</sString>
 											</enabled>
-											<flag>206424063</flag>
+											<flag>206374911</flag>
 											<formulaName>ChannelingInterrupt</formulaName>
 											<lifeTime>
 												<compiledString>FQwAAAABAAAAGAAAAEhlcm9PZmZUaW1lAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
@@ -1160,9 +1244,9 @@
 					<UnitConstant>
 						<name>A4_Period</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
 							<returnType>float</returnType>
-							<sString>1.0f</sString>
+							<sString>0.3f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1180,9 +1264,9 @@
 					<UnitConstant>
 						<name>A4_Damage</name>
 						<var>
-							<compiledString>FTgAAAADAAAARwAAAGEAAACBAAAAQTRfRGFtYWdlX1RvdGFsAEE0X0E0XzJfU1VQX0RhbWFnZV9Ub3RhbAAAAABBNF9EdXJhdGlvbgBVi+yD7BSLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0otFDFCLTQhRaBAAAACLVRCLAotNEItQUN1d+P/S3EX4i0UMUItNCFFoLAAAAItVEIsCi00Qi1BQ3V3w/9LcffDZXezZReyL5V3D</compiledString>
+							<compiledString>FUIAAAAEAAAAUQAAAGsAAACLAAAAqwAAAEE0X0RhbWFnZV9Ub3RhbABBNF9BNF8yX1NVUF9EYW1hZ2VfVG90YWwAAAAAQTRfRHVyYXRpb24AQTRfUGVyaW9kAFWL7IPsHItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoEAAAAItVEIsCi00Qi1BQ3V34/9LcRfiLRQxQi00IUWgsAAAAi1UQiwKLTRCLUFDdXfD/0tx98ItFDFCLTQhRaDgAAACLVRCLAotNEItQUN1d6P/S3E3o2V3k2UXki+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>(cA4_Damage_Total + cA4_A4_2_SUP_Damage_Total) / cA4_Duration</sString>
+							<sString>((cA4_Damage_Total + cA4_A4_2_SUP_Damage_Total) / cA4_Duration) * cA4_Period</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1210,9 +1294,9 @@
 					<UnitConstant>
 						<name>A4_Damage_Total</name>
 						<var>
-							<compiledString>FSQAAAAIAAAAKwAAAEQAAAB+AAAAiAAAALUAAADOAAAA4wAAAO0AAABLYXRhbmFfQTR1AABLYXRhbmFfQTR1AABTbG93UGVyY2VudABVi+yD7BxoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaAwAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXRlagFR2QU9AQAA2RwkUdkFOQEAANkcJGoAi1UIiwKLTQiLkDQBAAD/0lHZHCRqAYtFEIsQi00Qi0Jg/9BoGAAAAItNCIsRi00Ii4KIAQAA3V3w/9DcNTEBAADZ6N7B3E3w3V3o6z5qAVHZBT0BAADZHCRR2QU5AQAA2RwkagCLTQiLEYtNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d6N1F6Nld5NlF5IvlXcMAAAAAAADwPwAAAAAAAFlAAADQQgDAQUQ=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADQQgDAQUQ=</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Katana_A4u")?(damageScale( sIntellect,104, 775)*(1+sender.vSlowPercent/100) ) :(damageScale( sIntellect,104, 775)) </sString>
+							<sString>damageScale( sIntellect, 104, 775 )</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1254,6 +1338,16 @@
 							<compiledString>FRcAAAACAAAAHgAAADcAAABLYXRhbmFfQTR1AABLYXRhbmFfQTR1AFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoDAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4lN9NtF9IvlXcM=</compiledString>
 							<returnType>float</returnType>
 							<sString>tal("Katana_A4u")</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Katana/Ability_A4.TALENT" id="BD3DABFC-0BC5-48AD-97DC-C95F2DAB6D3E">
+					<UnitConstant>
+						<name>A4_StackCount</name>
+						<var>
+							<compiledString></compiledString>
+							<returnType>float</returnType>
+							<sString>0.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>

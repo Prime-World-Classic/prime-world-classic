@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Summoned parent="/Summons/Clone/_Parent.SUMMONED">
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="3" />
+	<recolor>
+		<A>1</A>
+		<B>0.15</B>
+		<G>0</G>
+		<R>0.05</R>
+	</recolor>
+	<sceneObject href="/Heroes/Assassin/_B.SOBJ" />
+	<stats href="/Summons/Clone/stats_Clone.STCN" />
+</Summoned>

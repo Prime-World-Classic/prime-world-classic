@@ -357,9 +357,9 @@
 					<UnitConstant>
 						<name>A4_2AttackCount</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>5</sString>
+							<sString>3.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -399,9 +399,9 @@
 					<UnitConstant>
 						<name>A4_2_StackCooldown</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>40.0f</sString>
+							<sString>30.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -409,9 +409,9 @@
 					<UnitConstant>
 						<name>A4_2_MaxCharges</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>5.0f</sString>
+							<sString>3.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -860,7 +860,7 @@
 					<returnType>float</returnType>
 					<sString>sender.applFirefox_A4StackCooldownSpell(UNIT).GetVariable("duration") / cA4_2_StackCooldown</sString>
 				</customProgress>
-				<description textref="" />
+				<description textref="/Items/Talents/Class/FireFox/Ability4_2.TALENT_47fbc740e48f456999445b1033189153_description.txt" />
 				<dispellPriority>NonDispellable</dispellPriority>
 				<effect>
 					<Item href="" />
@@ -880,7 +880,7 @@
 					<sString>-1.0</sString>
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
-				<name textref="" />
+				<name textref="/Items/Talents/Class/FireFox/Ability4_2.TALENT_47fbc740e48f456999445b1033189153_name.txt" />
 				<power>0</power>
 				<providerName></providerName>
 				<stackableAcrossUnits>Unstackable</stackableAcrossUnits>

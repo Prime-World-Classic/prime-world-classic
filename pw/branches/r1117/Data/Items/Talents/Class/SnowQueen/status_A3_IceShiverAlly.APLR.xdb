@@ -1,16 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/SnowQueen/Ability_A3.TALENT" Count="1" />
 	<applicators>
-		<Item href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="84CB4420-949D-491C-9A3D-185B4234203E">
-			<TriggerApplicator>
-				<actionsCount>
-					<compiledString></compiledString>
-					<returnType>int</returnType>
-					<sString>0</sString>
-				</actionsCount>
+		<Item href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="0C76001F-184D-495B-A9B0-B32E1EAF1827">
+			<FlagsApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<behaviorFlags>144</behaviorFlags>
-				<caption>триггер на урон</caption>
+				<behaviorFlags>0</behaviorFlags>
+				<caption></caption>
+				<consumables />
 				<effect>
 					<Item href="" />
 					<Item href="" />
@@ -20,6 +17,7 @@
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
+				<flag>44435335</flag>
 				<formulaName></formulaName>
 				<lifeTime>
 					<compiledString></compiledString>
@@ -27,49 +25,15 @@
 					<sString>-1.0</sString>
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
-				<playAck>false</playAck>
-				<processor href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="5110937C-FE40-4F56-885B-049D49277201">
-					<EventProcessorDamageTransformer parent="/Items/Talents/Class/SnowQueen/A2A3_OnDamage.EVNT">
-						<spell href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="0C265516-5CD7-4B53-8A2C-7F54BA00527E">
-							<Spell parent="/Items/Talents/Class/SnowQueen/A2A3_Spell.SPLL">
-								<applicators>
-									<Item href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="F7A422D6-E8A9-4F11-93F2-EFB7EDA08508">
-										<VariableProxyApplicator parent="/Items/Talents/Class/SnowQueen/damageWithA0.APLR">
-											<applicators>
-												<Item>
-													<applicator href="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR" id="37420B5C-4F62-4F22-84B3-385D74FA0B4E">
-														<DamageApplicator parent="/GameLogic/GeneralApplicators/CommonDamage.APLR">
-															<damage>
-																<compiledString>FREAAAABAAAAHQAAAEEzX0RhbWFnZVJlZmxlY3QAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
-																<returnType>float</returnType>
-																<sString>cA3_DamageReflect</sString>
-															</damage>
-															<damageType>Energy</damageType>
-															<enabled>
-																<compiledString></compiledString>
-															</enabled>
-															<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" />
-														</DamageApplicator>
-													</applicator>
-												</Item>
-												<Item skip="1" />
-											</applicators>
-										</VariableProxyApplicator>
-									</Item>
-								</applicators>
-							</Spell>
-						</spell>
-					</EventProcessorDamageTransformer>
-				</processor>
 				<providerName></providerName>
 				<startCondition>
 					<compiledString></compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
-				<useAbilityCooldown>false</useAbilityCooldown>
-				<useAbilityOwnerMana>false</useAbilityOwnerMana>
-			</TriggerApplicator>
+				<talents />
+				<useListAs>ListAsRule</useListAs>
+			</FlagsApplicator>
 		</Item>
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
@@ -86,9 +50,9 @@
 		<sString>-1.0</sString>
 	</customProgress>
 	<description textref="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR_description.txt" />
-	<dispellPriority>Medium</dispellPriority>
+	<dispellPriority>NonDispellable</dispellPriority>
 	<effect>
-		<Item href="/Effects/Debuffs/Crystal/_Ally.EFFT" />
+		<Item href="/Effects/Debuffs/Freeze/_Full.EFFT" />
 		<Item href="" />
 	</effect>
 	<enabled>
@@ -100,9 +64,9 @@
 	<formulaName></formulaName>
 	<image href="/UI/Styles/Icons/Heroes/SnowQueen/A3.ITEX" />
 	<lifeTime>
-		<compiledString>FQwAAAABAAAAGAAAAEEzX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>cA3_Duration</sString>
+		<sString>2.5f</sString>
 	</lifeTime>
 	<LoggingEvent>-1</LoggingEvent>
 	<name textref="/Items/Talents/Class/SnowQueen/status_A3_IceShiverAlly.APLR_name.txt" />
@@ -111,9 +75,9 @@
 	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
 	<stackCount>0</stackCount>
 	<startCondition>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsVotFDIsQi00Mi4KQAQAA/9CL8ItNCIsRi00Ii4KQAQAA/9AzyTvwD5TBisFeXcM=</compiledString>
 		<returnType>bool</returnType>
-		<sString>true</sString>
+		<sString>receiver.GetFctn() == sender.GetFctn()</sString>
 	</startCondition>
 	<statusPosition>0</statusPosition>
 	<stopBehaviour>StopByTime</stopBehaviour>

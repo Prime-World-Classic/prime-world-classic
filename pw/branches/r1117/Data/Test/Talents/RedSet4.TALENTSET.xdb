@@ -25,7 +25,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A1.TALENT" />
+					<talent href="" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

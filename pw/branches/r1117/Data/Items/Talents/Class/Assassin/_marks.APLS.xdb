@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ApplicatorsList>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
+	<applicatorLists />
+	<applicators>
+		<Item href="/Items/Talents/Class/Assassin/status_RedMark.APLR" />
+		<Item href="/Items/Talents/Class/Assassin/status_BlueMark.APLR" />
+	</applicators>
+</ApplicatorsList>

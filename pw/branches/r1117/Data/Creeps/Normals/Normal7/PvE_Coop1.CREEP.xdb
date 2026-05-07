@@ -1055,7 +1055,7 @@
 								<sString>true</sString>
 							</startCondition>
 							<talents>
-								<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+								<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 							</talents>
 							<useListAs>ListAsRule</useListAs>
 						</FlagsApplicator>

@@ -2,7 +2,7 @@
 <BasicEffectAttached>
 	<BackLink DBID="/Effects/Shots/MeleeHit/_HeroB.EFFT" Count="2" />
 	<BackLink DBID="/Heroes/IronKnight/HitBerserk.APLR" Count="2" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Ent/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Hunter/Ability4_2.TALENT" Count="1" />

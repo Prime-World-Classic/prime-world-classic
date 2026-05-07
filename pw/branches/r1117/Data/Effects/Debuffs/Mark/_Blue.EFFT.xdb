@@ -2,6 +2,7 @@
 <BasicEffectAttached>
 	<BackLink DBID="/Effects/Debuffs/Mark/_Blue.EFFT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/A3_2_FX2.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
 	<attachFlags>1</attachFlags>
 	<attachType>Above</attachType>
 	<component href="/Effects/Debuffs/Mark/_BlueTRS.PRXY" />

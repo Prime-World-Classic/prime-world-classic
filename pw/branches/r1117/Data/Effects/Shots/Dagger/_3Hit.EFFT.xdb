@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectStandalone>
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Hunter/Ability4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/PinkGirl/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Level4/G339_IntDex_Slow.TALENT" Count="1" />

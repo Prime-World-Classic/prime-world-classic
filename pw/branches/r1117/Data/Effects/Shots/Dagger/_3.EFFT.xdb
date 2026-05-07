@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectStandalone>
 	<BackLink DBID="/Effects/Shots/Dagger/_3.EFFT" Count="2" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
 	<component href="/Effects/Shots/Dagger/_3TRS.PRXY" />
 	<deathType>Manual</deathType>
 	<enableCondition href="" />

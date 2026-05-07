@@ -112,7 +112,7 @@
 	</manaCost>
 	<marker></marker>
 	<microAI href="" />
-	<minLevel>1</minLevel>
+	<minLevel>4</minLevel>
 	<minUseRangeCorrection>0</minUseRangeCorrection>
 	<naftaCost>-1</naftaCost>
 	<name textref="/Items/Talents/Level2/G783_RegEnergy.TALENT_name.txt" />

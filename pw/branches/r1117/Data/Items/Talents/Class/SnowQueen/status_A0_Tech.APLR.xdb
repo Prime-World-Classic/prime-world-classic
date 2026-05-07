@@ -85,6 +85,7 @@
 				<unstackableWith href="" />
 			</StatusApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/SnowQueen/status_A0_HitCounter.APLR" />
 	</applicators>
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>144</behaviorFlags>

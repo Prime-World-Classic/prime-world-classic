@@ -7,13 +7,13 @@
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A1.TALENT" />
+					<talent href="" />
 				</Item>
 				<Item>
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -53,13 +53,13 @@
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u1.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/_legacy/Ability_A2u1.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -87,19 +87,19 @@
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A2u2.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A0u2.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>1</aIPriority>
 					<refineRate>1</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" />
+					<talent href="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>

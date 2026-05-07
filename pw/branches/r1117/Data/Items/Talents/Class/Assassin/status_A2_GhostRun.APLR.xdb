@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
 	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="3" />
 	<applicators>
 		<Item href="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" id="E0F211C5-82D0-4997-B364-23CBE8EACBF4">
 			<ProgramApplicator>
@@ -308,7 +309,7 @@
 			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
 				<behaviorFlags>0</behaviorFlags>
-				<caption>(Upg2) Add Regen</caption>
+				<caption>(A0u2) Add HP Regen</caption>
 				<constraint>None</constraint>
 				<dontUpdate>true</dontUpdate>
 				<effect>
@@ -316,9 +317,9 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString>FR4AAAACAAAAJQAAAD4AAABBc3Nhc3Npbl9BMnUyAAAAQXNzYXNzaW5fQTJ1MgBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABBc3Nhc3Npbl9BMHUyAAAAQXNzYXNzaW5fQTB1MgBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
 					<returnType>bool</returnType>
-					<sString>tal("Assassin_A2u2")</sString>
+					<sString>tal("Assassin_A0u2")</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
@@ -345,6 +346,100 @@
 				<providerName></providerName>
 				<startCondition>
 					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" id="55044E54-9330-437D-A1F8-B8D0D596AB74">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>+40% AA Evasion (A0 dodge)</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+						<returnType>float</returnType>
+						<sString>40</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1</sString>
+					</multValue>
+					<stat>Evasion</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" id="64A63566-EEAF-4C58-9C55-E98CDD74DE5D">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>(A0u2) Add Energy Regen</caption>
+				<constraint>None</constraint>
+				<dontUpdate>true</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABBc3Nhc3Npbl9BMHUyAAAAQXNzYXNzaW5fQTB1MgBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("Assassin_A0u2")</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FREAAAABAAAAHQAAAEEydTJfQWRkUmVnZW5BYnMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cA2u2_AddRegenAbs</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>EnergyRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>

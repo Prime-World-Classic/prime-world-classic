@@ -2,6 +2,7 @@
 <DBSceneObject>
 	<BackLink DBID="/Heroes/Assassin/_.HROB" Count="1" />
 	<BackLink DBID="/Heroes/Assassin/S0/_B.HEROSKIN" Count="1" />
+	<BackLink DBID="/Summons/Clone/AssassinShadow.SUMMONED" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

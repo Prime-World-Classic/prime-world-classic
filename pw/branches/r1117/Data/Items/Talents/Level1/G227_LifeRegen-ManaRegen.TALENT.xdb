@@ -10,10 +10,11 @@
 	<BackLink DBID="/Test/Talents/Witch/Duel_Int.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Witch/Duel_Str.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/TalentsCollection" Count="3" />
+	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 		<returnType>bool</returnType>
 		<sString>true</sString>
 	</allowChase>
@@ -23,7 +24,7 @@
 	<aoeMaterial href="" />
 	<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
 	<aoeSize>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</aoeSize>
@@ -34,7 +35,7 @@
 	<budget>-1</budget>
 	<caption>G227: Универсальная регенерация</caption>
 	<castAllowRange>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</castAllowRange>
@@ -67,6 +68,26 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="4981A895-16BC-47A1-80C2-B790CBDE1FF0">
+					<UnitConstant>
+						<name>BaseLifeReg</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLQiz/0F3D</compiledString>
+							<returnType>float</returnType>
+							<sString>sLifeRegenAbs</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="937B5D9F-1AB2-4BDC-A81C-02D7EBC093BB">
+					<UnitConstant>
+						<name>BaseEnergyReg</name>
+						<var>
+							<compiledString>FQAAAAAAAAAAVYvsi0UIixCLTQiLQjD/0F3D</compiledString>
+							<returnType>float</returnType>
+							<sString>sEnergyRegenAbs</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -75,18 +96,36 @@
 		<percent>3</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>0</sString>
+		<sString>2.0</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.0f</sString>
+		<sString>2.0</sString>
 	</cooldownTimeSecondState>
 	<description textref="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT_description.txt" />
 	<devPoints>1</devPoints>
-	<dispatch href="" />
+	<dispatch href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="EA112491-0F5A-4807-8301-E12C9A80A56C">
+		<DispatchImmediate>
+			<alwaysApply>false</alwaysApply>
+			<applyEffect>
+				<Item href="" />
+				<Item href="" />
+			</applyEffect>
+			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+			<applyEffectOrientation>Default</applyEffectOrientation>
+			<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+			<dieAfterApply>true</dieAfterApply>
+			<dispatchEffect>
+				<Item href="" />
+				<Item href="" />
+			</dispatchEffect>
+			<flags>0</flags>
+			<instantApply>false</instantApply>
+		</DispatchImmediate>
+	</dispatch>
 	<flags>3</flags>
 	<forceBonus>6</forceBonus>
 	<image href="/UI/Styles/Icons/Talents/_227.ITEX" />
@@ -98,7 +137,7 @@
 	<manaCost>
 		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
-		<sString>0</sString>
+		<sString>0.0</sString>
 	</manaCost>
 	<marker></marker>
 	<microAI href="" />
@@ -108,26 +147,37 @@
 	<name textref="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT_name.txt" />
 	<node></node>
 	<passiveApplicators>
-		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="61049256-8E85-46E1-AE1C-9404CF8FE396">
-			<PermanentStatModApplicator>
+		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="AB5582B2-81D5-448F-B602-2C338BE9E6CE">
+			<StatModApplicator>
 				<applyTarget>ApplicatorTarget</applyTarget>
-				<caption>+LifeRegenAbs</caption>
-				<customApplyType>None</customApplyType>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>G227_RegenSwap_LifeRegenerationAbsolute</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvsi0UQixCLTRCLAv/QD7bA99gbwIPAAV3D</compiledString>
 					<returnType>bool</returnType>
-					<sString>true</sString>
+					<sString>mIsAbilityOn == false</sString>
 				</enabled>
 				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FQ8AAAABAAAAGwAAAEFkZF9MaWZlUmVnQWJzAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+						<compiledString>FQwAAAABAAAAGAAAAEJhc2VMaWZlUmVnAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S2eBdww==</compiledString>
 						<returnType>float</returnType>
-						<sString>cAdd_LifeRegAbs</sString>
+						<sString>-cBaseLifeReg</sString>
 					</addValue>
 					<multValue>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 						<returnType>float</returnType>
 						<sString>1.0f</sString>
 					</multValue>
@@ -136,28 +186,45 @@
 					<variable></variable>
 				</modifier>
 				<providerName></providerName>
-			</PermanentStatModApplicator>
-		</Item>
-		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="72EFCE5B-D57B-4FCC-9E61-767D0E2C512E">
-			<PermanentStatModApplicator>
-				<applyTarget>ApplicatorTarget</applyTarget>
-				<caption>Add_EnergyRegAbs</caption>
-				<customApplyType>None</customApplyType>
-				<enabled>
-					<compiledString></compiledString>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="AF1E2E24-0478-4B7F-AF75-5900C9F35696">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>G227_RegenSwap_EnergyRegenerationAbsolute</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsi0UQixCLTRCLAv/QD7bA99gbwIPAAV3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>mIsAbilityOn == false</sString>
 				</enabled>
 				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>
 					<addValue>
-						<compiledString>FREAAAABAAAAHQAAAEFkZF9FbmVyZ3lSZWdBYnMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<compiledString>FQwAAAABAAAAGAAAAEJhc2VMaWZlUmVnAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
 						<returnType>float</returnType>
-						<sString>cAdd_EnergyRegAbs</sString>
+						<sString>cBaseLifeReg</sString>
 					</addValue>
 					<multValue>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 						<returnType>float</returnType>
 						<sString>1.0f</sString>
 					</multValue>
@@ -166,7 +233,107 @@
 					<variable></variable>
 				</modifier>
 				<providerName></providerName>
-			</PermanentStatModApplicator>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="0AEE9D0E-B94D-41B4-97D5-070C7FAB208D">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>G227_RegenSwap_EnergyRegenerationAbsolute</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsi0UQixCLTRCLAv/QD7bAg+gB99gbwIPAAV3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>mIsAbilityOn == true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQ4AAAABAAAAGgAAAEJhc2VFbmVyZ3lSZWcAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LZ4F3D</compiledString>
+						<returnType>float</returnType>
+						<sString>-cBaseEnergyReg</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>EnergyRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level1/G227_LifeRegen-ManaRegen.TALENT" id="A837946A-6001-4CFD-893F-F1ACE0D7B12A">
+			<StatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>152</behaviorFlags>
+				<caption>G227_RegenSwap_LifeRegenerationAbsolute</caption>
+				<constraint>None</constraint>
+				<dontUpdate>false</dontUpdate>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FQAAAAAAAAAAVYvsi0UQixCLTRCLAv/QD7bAg+gB99gbwIPAAV3D</compiledString>
+					<returnType>bool</returnType>
+					<sString>mIsAbilityOn == true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FQ4AAAABAAAAGgAAAEJhc2VFbmVyZ3lSZWcAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cBaseEnergyReg</sString>
+					</addValue>
+					<multValue>
+						<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>LifeRegenerationAbsolute</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<statModName></statModName>
+			</StatModApplicator>
 		</Item>
 	</passiveApplicators>
 	<persistentId>G227</persistentId>
@@ -199,8 +366,8 @@
 			</values>
 		</Item>
 	</talentStats>
-	<targetType>1909247</targetType>
-	<type>Simple</type>
+	<targetType>0</targetType>
+	<type>MultiActive</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
 		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>

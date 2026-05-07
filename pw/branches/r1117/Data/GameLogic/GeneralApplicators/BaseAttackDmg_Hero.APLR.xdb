@@ -51,6 +51,7 @@
 	<BackLink DBID="/Summons/Turret/_.SUMMONED" Count="1" />
 	<BackLink DBID="/Summons/Wolf/PvE_Coop1.CREEP" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Inventor/Ability_A1.TALENT" Count="3" />
+	<BackLink DBID="/Heroes/Helios/_.HROB" Count="1" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<cancelInvisibility>false</cancelInvisibility>
 	<caption> -- Base Attack Damage (Hero)</caption>

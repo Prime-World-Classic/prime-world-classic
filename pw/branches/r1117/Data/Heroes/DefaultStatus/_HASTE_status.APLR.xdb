@@ -10,7 +10,7 @@
 	<BackLink DBID="/Items/Talents/Class/Angel/Ability_A1.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A2.TALENT" Count="4" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2_GhostRun.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/status_A3u_HasteBurst.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2u_HasteBurst.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bard/status_Haste_No_FX.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/ProgramA3.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
@@ -57,6 +57,7 @@
 	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A1_SpectralLashAlly.APLR" Count="3" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A1.TALENT" Count="7" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" Count="3" />
 	<applicators>
 		<Item href="/Heroes/DefaultStatus/_HASTE_status.APLR" id="7CC84B56-9A1A-44F5-B216-FF4A42B55A9F">
 			<StatModApplicator>

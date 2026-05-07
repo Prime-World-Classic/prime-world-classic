@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<EffectSwitcher>
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/shadow_Visual.APLR" Count="1" />
+	<deathType>Manual</deathType>
+	<effectOnInvisible href="" />
+	<effectOnVisible href="/Items/Talents/Class/Assassin/A3_Shadow_List.EFFT" />
+	<enableCondition href="" />
+	<isVisibleUnderWarfog>false</isVisibleUnderWarfog>
+	<lifeTime>0</lifeTime>
+	<logic>FactionVisibility</logic>
+</EffectSwitcher>

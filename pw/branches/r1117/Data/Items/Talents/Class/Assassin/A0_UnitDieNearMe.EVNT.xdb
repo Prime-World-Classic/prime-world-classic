@@ -1,6 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <EventProcessorUnitDieNearMe>
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="2" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<checkSender>0</checkSender>
 	<killerFlags>1</killerFlags>

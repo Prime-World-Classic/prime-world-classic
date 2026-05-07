@@ -2,9 +2,9 @@
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<BackLink DBID="/Items/Talents/Assassin_Alternative.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3_2u.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Assassin.TALENTSET" Count="2" />
 	<activationConditions />
@@ -26,7 +26,7 @@
 	</aoeSize>
 	<aoeType>None</aoeType>
 	<applicators>
-		<Item href="/Items/Talents/Class/Assassin/appl_A0_SUP_2_ApplyOrUpdate.APLR" />
+		<Item href="/Items/Talents/Class/Assassin/_legacy/appl_A0_SUP_2_ApplyOrUpdate.APLR" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" id="DFD47975-1AF0-4154-85E8-FB1191D467FF">
 			<StatusApplicator>
 				<applicators>
@@ -132,7 +132,7 @@
 											<EventProcessorDamageTransformer>
 												<abilityFilter>
 													<abilitiesList>
-														<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+														<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 													</abilitiesList>
 													<abilityCondition>
 														<compiledString></compiledString>
@@ -401,8 +401,8 @@
 		</Item>
 	</conditionFormulas>
 	<conflictingTalents>
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" />
 	</conflictingTalents>
 	<constants href="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" id="5CA6B7E3-4EC5-4CC3-9592-393B3515A4AB">
 		<UnitConstantsContainer>
@@ -449,8 +449,8 @@
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Duration" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Percent" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Percent" />
 				<Item href="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" id="517C982F-301E-4038-B22E-4FF9DE33AEBC">
 					<UnitConstant>
 						<name>UltimateConstant</name>
@@ -471,8 +471,8 @@
 						</var>
 					</UnitConstant>
 				</Item>
-				<Item href="/Items/Talents/Class/Assassin/const_A0_SUP_2_Appl_Duration" />
-				<Item href="/Items/Talents/Class/Assassin/const_A0_SUP_2_Inc_Resp_Time" />
+				<Item href="/Items/Talents/Class/Assassin/_legacy/const_A0_SUP_2_Appl_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/_legacy/const_A0_SUP_2_Inc_Resp_Time" />
 				<Item href="/Items/Talents/Class/Assassin/Ability_A3_2.TALENT" id="718E8D13-FB83-42B4-AD5D-CB40C3EEA13E">
 					<UnitConstant>
 						<name>A3_Duration</name>

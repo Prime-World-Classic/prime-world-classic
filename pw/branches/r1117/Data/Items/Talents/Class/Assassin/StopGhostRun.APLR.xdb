@@ -1,8 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <FlagsApplicator>
 	<BackLink DBID="/Heroes/Assassin/AttackAbility.ATCK" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
 	<applyTarget>AbilityOwner</applyTarget>
 	<behaviorFlags>0</behaviorFlags>
 	<caption>остановить GhostRun</caption>

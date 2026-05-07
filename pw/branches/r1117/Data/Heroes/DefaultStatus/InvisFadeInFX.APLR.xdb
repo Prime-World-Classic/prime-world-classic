@@ -12,6 +12,8 @@
 	<BackLink DBID="/Items/Talents/Level5/G685_InvisibilityStrOrInt.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_7_Glyph/status_Invis.APLR" Count="1" />
 	<BackLink DBID="/Summons/Turret/_.SUMMONED" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A0.TALENT" Count="2" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A0_Stealth.APLR" Count="1" />
 	<applyTarget>ApplicatorTarget</applyTarget>
 	<behaviorFlags>145</behaviorFlags>
 	<caption>Эффект FadeIn</caption>

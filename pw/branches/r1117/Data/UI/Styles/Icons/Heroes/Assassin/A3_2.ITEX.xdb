@@ -2,6 +2,7 @@
 <UITexture>
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_fake_A3.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Assassin/status_fake_self_A3.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A4.TALENT" Count="1" />
 	<generatedFileName></generatedFileName>
 	<importOnlyShape>false</importOnlyShape>
 	<mipLevels>0</mipLevels>

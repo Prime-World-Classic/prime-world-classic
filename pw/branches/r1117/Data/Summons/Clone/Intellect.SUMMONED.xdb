@@ -4,6 +4,7 @@
 	<BackLink DBID="/Items/Talents/Class/Alchemist/_summon_Clone.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Alchemist/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Alchemist/Ability_A4_2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
 	<abilities>
 		<Item skip="1" />
 		<Item href="/Items/Talents/Class/Alchemist/_summonAbility_BlueClone.ABLT" />

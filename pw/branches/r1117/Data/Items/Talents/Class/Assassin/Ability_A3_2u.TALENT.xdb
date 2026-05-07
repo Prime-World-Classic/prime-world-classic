@@ -2,8 +2,8 @@
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<BackLink DBID="/Items/Talents/Assassin_Alternative.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -49,15 +49,15 @@
 		</Item>
 	</conditionFormulas>
 	<conflictingTalents>
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" />
 	</conflictingTalents>
 	<constants href="/Items/Talents/Class/Assassin/Ability_A3_2u.TALENT" id="E2D955A8-1622-4E65-8664-665640AB1736">
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Assassin/const_A3_2u_AddEnergyRegenAbs" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Duration" />
-				<Item href="/Items/Talents/Class/Assassin/const_A3u_Haste_Percent" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Duration" />
+				<Item href="/Items/Talents/Class/Assassin/const_A2u_Haste_Percent" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

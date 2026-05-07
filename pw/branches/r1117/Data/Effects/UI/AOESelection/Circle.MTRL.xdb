@@ -125,6 +125,8 @@
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Shops/_A.SHOP" Count="1" />
 	<BackLink DBID="/Items/Talents/Level4/G096_Flower.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A3.TALENT" Count="2" />
 	<aspectRatio>2</aspectRatio>
 	<caption></caption>
 	<DiffuseMap>

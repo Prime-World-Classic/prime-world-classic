@@ -6,7 +6,7 @@
 	<BackLink DBID="/Creeps/Normals/Normal6/PvE_Ep1.CREEP" Count="1" />
 	<BackLink DBID="/Heroes/DefaultStatus/_HASTE_status.APLR" Count="1" />
 	<BackLink DBID="/Impulses/_.IBCN" Count="2" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/status_A3u_HasteBurst.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Assassin/status_A2u_HasteBurst.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bard/status_Haste_No_FX.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/ProgramA3.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/status_A4_Haste.APLR" Count="1" />

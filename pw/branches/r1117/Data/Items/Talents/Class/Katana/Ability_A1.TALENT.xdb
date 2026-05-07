@@ -624,9 +624,9 @@
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
-					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPQ==</compiledString>
 					<returnType>float</returnType>
-					<sString>0.2</sString>
+					<sString>0.05</sString>
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<modifier>

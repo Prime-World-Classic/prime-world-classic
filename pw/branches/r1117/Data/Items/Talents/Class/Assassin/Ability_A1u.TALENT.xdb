@@ -31,7 +31,7 @@
 	<askId>0</askId>
 	<autoTargetSelector href="" />
 	<budget>-1</budget>
-	<caption>А1у. Безжалостная сталь</caption>
+	<caption>А1+. Безжалостная сталь</caption>
 	<castAllowRange>
 		<compiledString></compiledString>
 		<returnType>float</returnType>

@@ -2,6 +2,7 @@
 <Summoned>
 	<BackLink DBID="/Summons/Clone/Intellect.SUMMONED" Count="1" />
 	<BackLink DBID="/Summons/Clone/Strength.SUMMONED" Count="1" />
+	<BackLink DBID="/Summons/Clone/AssassinShadow.SUMMONED" Count="1" />
 	<abilities>
 		<Item href="/Summons/Clone/_Parent.SUMMONED" id="D4C15C1E-1C62-4D9A-A7BA-0814C713E2B5">
 			<Ability>

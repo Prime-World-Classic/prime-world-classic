@@ -2,7 +2,6 @@
 <AOEMaterial>
 	<BackLink DBID="/Items/Consumables/Snowball.ARCT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Angel/Ability_A1.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Assassin/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Demonolog/Ability1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Demonolog/Ability2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Dryad/Ability_A1.TALENT" Count="1" />

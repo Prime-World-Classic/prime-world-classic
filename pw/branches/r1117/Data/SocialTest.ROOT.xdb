@@ -153,127 +153,6 @@
 		<talentProductionBuilding href="" />
 	</freeSkipsEventBuildings>
 	<GoldPriceCycleTable href="/SocialTest/GoldTable" />
-	<GoldTalentsUnsoulboundPrice>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-		<Item>
-			<Currencies />
-			<CWPoints_Clan>0</CWPoints_Clan>
-			<CWPoints_Player>0</CWPoints_Player>
-			<Gold>0</Gold>
-			<Perl>0</Perl>
-			<Population>0</Population>
-			<RedPerl>0</RedPerl>
-			<Resource1>0</Resource1>
-			<Resource1_Rare>0</Resource1_Rare>
-			<Resource2>0</Resource2>
-			<Resource2_Rare>0</Resource2_Rare>
-			<Resource3>0</Resource3>
-			<Resource3_Rare>0</Resource3_Rare>
-			<Shard>0</Shard>
-			<Silver>0</Silver>
-		</Item>
-	</GoldTalentsUnsoulboundPrice>
 	<GroupMaps />
 	<GuestInitParams href="/SocialTest/MDGuestInitParams" />
 	<GuestResourceAndInventoryLimits href="/SocialTest/GuestResourceAndInventoryLimits" />
@@ -628,12 +507,12 @@
 		<Item href="/Items/Talents/Class/Assassin/Ability_A0.TALENT" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A1.TALENT" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A1u.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A2u1.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A2u2.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
-		<Item href="/Items/Talents/Class/Assassin/Ability_A3u.TALENT" />
 		<Item href="/Items/Talents/Class/Assassin/Ability_A4.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/_legacy/Ability_A2u1.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A0u2.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A2u.TALENT" />
+		<Item href="/Items/Talents/Class/Assassin/Ability_A3.TALENT" />
 		<Item href="/Items/Talents/Class/Bard/Ability_A0.TALENT" />
 		<Item href="/Items/Talents/Class/Bard/Ability_A1.TALENT" />
 		<Item href="/Items/Talents/Class/Bard/Ability_A1u.TALENT" />
@@ -1200,6 +1079,8 @@
 			<Silver>0</Silver>
 		</Item>
 	</TalentsSellPrice>
+	<TalentsUnsoulboundPriceByLevel />
+	<TalentUpgradeEntities />
 	<UIRoot href="/UI/UIRoot" />
 	<UITexts />
 	<UnitLogicParameters href="/GameLogic/UnitsLogic.UNTL" />

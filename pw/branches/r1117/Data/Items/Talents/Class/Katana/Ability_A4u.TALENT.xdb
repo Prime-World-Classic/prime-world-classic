@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="2" />
+	<BackLink DBID="/Items/Talents/Katana.TALENTSET" Count="4" />
 	<BackLink DBID="/Items/Talents/Class/Katana/Ability_A4_2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Katana/Ability_A4_2u.TALENT" Count="1" />
 	<activationConditions />

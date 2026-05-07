@@ -132,9 +132,9 @@
 	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
 	<stackCount>0</stackCount>
 	<startCondition>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsVotFDIsQi00Mi4KQAQAA/9CL8ItNCIsRi00Ii4KQAQAA/9AzyTvwD5XBisFeXcM=</compiledString>
 		<returnType>bool</returnType>
-		<sString>true</sString>
+		<sString>receiver.GetFctn() != sender.GetFctn()</sString>
 	</startCondition>
 	<statusPosition>0</statusPosition>
 	<stopBehaviour>StopByTime</stopBehaviour>
