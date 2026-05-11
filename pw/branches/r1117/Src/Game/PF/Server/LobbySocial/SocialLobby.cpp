@@ -18,6 +18,7 @@
 #include "Server/LiveMMaking/RankTable.h"
 #include "Db/DBServer.auto.h"
 #include "SocialLobbyMMStatisticsEx.h"
+#include "../LobbyPvx/LobbyConfig.h"
 
 
 NI_DEFINE_REFCOUNT( socialLobby::SocialLobby );
@@ -605,6 +606,7 @@ SServerStatus SocialLobby::GetServerStatus()
   GetServerStatusEx(st);
 
   st.pvpMmDebugStatus = mmDebugStatus;
+  st.devMode = lobby::IsDevModeEnabled();
 
   return st;
 }
@@ -734,6 +736,12 @@ void SocialLobby::RemoveRequest( UserContext * _ctx, bool clearGameOfRequest )
 
 UserContext * SocialLobby::FindSpectatorTarget( const SMatchmakingRequestCore & _reqData, TUId _targetUid )
 {
+  if ( !lobby::IsDevModeEnabled() )
+  {
+    SOCLOBBY_LOG_WRN( "Spectator request rejected: server is in production mode. uid=u%d, target=u%d", _reqData.uid, _targetUid );
+    return 0;
+  }
+
   TRequestMap::iterator targetIt = requests.find( _targetUid );
   if ( targetIt == requests.end() )
   {

@@ -314,14 +314,16 @@ struct SServerStatus : public rpc::Data
   float     guardLobbyTimeout;
   string    pvpMmDebugStatus;
   TBasketAvgTimes avgTimesPerMode;
+  bool      devMode;
 
-  ZEND int operator&( IBinSaver &f ) { f.Add(2,&acceptTimeout); f.Add(3,&averageMmTime); f.Add(4,&reconnectTimeout); f.Add(5,&guardLobbyTimeout); f.Add(6,&pvpMmDebugStatus); f.Add(7, &avgTimesPerMode); return 0; }
+  ZEND int operator&( IBinSaver &f ) { f.Add(2,&acceptTimeout); f.Add(3,&averageMmTime); f.Add(4,&reconnectTimeout); f.Add(5,&guardLobbyTimeout); f.Add(6,&pvpMmDebugStatus); f.Add(7, &avgTimesPerMode); f.Add(8, &devMode); return 0; }
 
   SServerStatus() :
   acceptTimeout( 0.0f ),
   averageMmTime( 0.0f ),
   reconnectTimeout( 0.0f ),
-  guardLobbyTimeout( 0.0f )
+  guardLobbyTimeout( 0.0f ),
+  devMode( false )
   {}
 };
 
