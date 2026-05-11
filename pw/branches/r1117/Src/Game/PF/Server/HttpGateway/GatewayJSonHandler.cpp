@@ -1135,6 +1135,7 @@ void GatewayJsonHandler::HandleServerStatus( Json::Value & pvxReply, const Json:
       status["reconnect_timeout"] = lastServerStatus.reconnectTimeout;
       status["guard_lobby_timeout"] = lastServerStatus.guardLobbyTimeout;
       status["mm_debug_status"] = lastServerStatus.pvpMmDebugStatus.c_str();
+      status["dev_mode"] = lastServerStatus.devMode;
     }
 
     pvxReply["server_status"] = status;

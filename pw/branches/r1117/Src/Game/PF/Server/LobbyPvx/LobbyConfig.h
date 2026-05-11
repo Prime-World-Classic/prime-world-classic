@@ -50,6 +50,8 @@ typedef IConfigProvider::TConfig LobbyConfig;
 
 StrongMT<IConfigProvider> CreateConfigFromStatics();
 
+bool IsDevModeEnabled();
+
 } //namespace lobby
 
 #endif //LOBBYCONFIG_H_INCLUDED
