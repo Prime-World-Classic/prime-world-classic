@@ -1158,6 +1158,30 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   RootFileSystem::RegisterFileSystem( new fileSystem::PileFileSystem(callback), callback );
   RootFileSystem::RegisterFileSystem( new WinFileSystem( NFile::GetBaseDir() + "Data", false ) );
 
+  {
+    string earlyProtocol = CmdLineLite::Instance().GetStringKey( "protocol", "" );
+    if(!earlyProtocol.empty()) {
+      const char* delim = "/";
+      char* line = const_cast<char*>(earlyProtocol.c_str());
+      char* tok = strtok(line, delim);
+      vector<string> tokens;
+      tokens.reserve(6);
+      while(tok) { tokens.push_back(tok); tok = strtok(0, delim); }
+      if(tokens.size() >= 6) {
+        string langPart = tokens[5];
+        if(!langPart.empty()) {
+          if((int)langPart.size() == 2) {
+            string upper = langPart;
+            for(int i = 0; i < (int)upper.size(); ++i) upper[i] = toupper(upper[i]);
+            g_language = langPart + "-" + upper;
+          } else {
+            g_language = langPart;
+          }
+        }
+      }
+    }
+  }
+
   if (g_language.empty())
   {
     g_language = "ru-RU";

@@ -104,6 +104,23 @@ namespace libdb.DB
       return true;
     }
 
+    private static string currentLanguage = "ru";
+
+    public static string CurrentLanguage
+    {
+      get { return currentLanguage; }
+      set { currentLanguage = value; }
+    }
+
+    private static string AddLanguageSuffix(string fileName, string langCode)
+    {
+      if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(langCode))
+        return fileName;
+      if (!fileName.EndsWith(".txt"))
+        return fileName;
+      return fileName.Substring(0, fileName.Length - 4) + "_" + langCode + ".txt";
+    }
+
     private static string GetFileNameFromFieldPath(FieldPath path)
     {
       string result = string.Empty;
@@ -202,23 +219,28 @@ namespace libdb.DB
 
     protected override TextRefSerializeAttributes Serialize(FieldPath path)
     {
-      string wantedFileName = string.IsNullOrEmpty(text) ? string.Empty : GetFileNameFromFieldPath(path);
+      string baseFileName = string.IsNullOrEmpty(text) ? string.Empty : GetFileNameFromFieldPath(path);
+      string diskFileName = AddLanguageSuffix(baseFileName, currentLanguage);
 
-      if (!string.IsNullOrEmpty(wantedFileName) && !StoreTest(DataBase.FileSystem, wantedFileName, text))
-        wantedFileName = string.Empty;
+      if (!string.IsNullOrEmpty(baseFileName) && !StoreTest(DataBase.FileSystem, diskFileName, text))
+        baseFileName = string.Empty;
 
-      fileName = wantedFileName;
+      fileName = baseFileName;
       return new TextRefSerializeAttributes(fileName);
     }
 
     protected override bool Deserialize(TextRef.TextRefSerializeAttributes attributes)
     {
       fileName = attributes.textref;
-      //@Ivn@TODO: actually I want Application here
-      if (!TryLoadString(DataBase.FileSystem, fileName, out text))
+      string localizedFileName = AddLanguageSuffix(fileName, currentLanguage);
+
+      if (!TryLoadString(DataBase.FileSystem, localizedFileName, out text))
       {
-        fileName = string.Empty;
-        text = string.Empty;
+        if (!TryLoadString(DataBase.FileSystem, fileName, out text))
+        {
+          fileName = string.Empty;
+          text = string.Empty;
+        }
       }
       OnChanged();
 
@@ -235,7 +257,6 @@ namespace libdb.DB
         {
             fileName = string.IsNullOrEmpty(src.text) ? string.Empty : GetFileNameFromFieldPath(path);
 
-            // avoid calling OnChanged on creating new object due Initialize( this ) in classes' constructors
             if (string.IsNullOrEmpty(ToString()) && string.IsNullOrEmpty(src.ToString()))
                 return;
 
