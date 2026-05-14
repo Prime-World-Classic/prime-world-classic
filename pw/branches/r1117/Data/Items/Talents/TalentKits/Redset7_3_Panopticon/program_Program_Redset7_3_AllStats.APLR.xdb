@@ -62,9 +62,9 @@
 					<caption>Add_Strength</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -111,9 +111,9 @@
 					<caption>Add_Intellect</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -160,9 +160,9 @@
 					<caption>Add_Dex</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -209,9 +209,9 @@
 					<caption>Add_AttSpd</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -258,9 +258,9 @@
 					<caption>Add_Stamina</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -307,9 +307,9 @@
 					<caption>Add_Will</caption>
 					<customApplyType>Maximize</customApplyType>
 					<enabled>
-						<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+						<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 						<returnType>bool</returnType>
-						<sString>sender.vAdd_AllStats_Redset7_3Counter == 2</sString>
+						<sString>true</sString>
 					</enabled>
 					<formulaName></formulaName>
 					<LoggingEvent>-1</LoggingEvent>
@@ -358,9 +358,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xAV6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAAEA=</compiledString>
+		<compiledString>FR4AAAACAAAAIwAAADkAAABBZGRfQWxsU3RhdHNfUmVkc2V0N18zQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1bAAAA3+D2xAV6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAEEA=</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vAdd_AllStats_Redset7_3Counter &lt; 2</sString>
+		<sString>sender.vAdd_AllStats_Redset7_3Counter &lt; 4</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>

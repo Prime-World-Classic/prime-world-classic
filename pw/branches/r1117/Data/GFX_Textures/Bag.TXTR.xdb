@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Texture>
 	<BackLink DBID="/Heroes/Mage/S2/FXIdle.PRXY" Count="3" />
-	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/FXIdle.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

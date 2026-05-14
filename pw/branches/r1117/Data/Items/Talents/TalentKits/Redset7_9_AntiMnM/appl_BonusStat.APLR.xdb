@@ -1,6 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <ProgramApplicator>
 	<BackLink DBID="/Items/Talents/Level4/G752_StrOrInt.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G751_AtSpdOrDex.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G753_StrOrIntAtSpd.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level5/G754_StrOrIntDex.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G755_StaminaLife.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level6/G756_WillLife.TALENT" Count="1" />
 	<applicators>
 		<Item>
 			<applicator href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_BonusStat.APLR" id="DAB236DF-1E6D-4F6C-86DF-6110E49D15F1">
@@ -109,9 +114,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FRIAAAACAAAAFwAAAC0AAABSZWRzZXQ3XzlfQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1PAAAA3+D2xAF1CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAEEA=</compiledString>
+		<compiledString>FRIAAAACAAAAFwAAAC0AAABSZWRzZXQ3XzlfQ291bnRlcgBVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B1PAAAA3+D2xER6CcdF/AEAAADrB8dF/AAAAACKRfyL5V3DAAAAAAAAEEA=</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vRedset7_9_Counter &gt;= 4</sString>
+		<sString>sender.vRedset7_9_Counter == 4</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>

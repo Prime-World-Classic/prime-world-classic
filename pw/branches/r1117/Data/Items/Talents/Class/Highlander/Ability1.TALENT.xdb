@@ -650,6 +650,26 @@
 				</Item>
 				<Item href="/Items/Talents/Class/Highlander/const_A2_AddDrainLife_Total" />
 				<Item href="/Items/Talents/Class/Highlander/const_A2_MaxStacks" />
+				<Item href="/Items/Talents/Class/Highlander/Ability1.TALENT" id="0A24EAEC-BAF6-414A-B108-B60246C02A4E">
+					<UnitConstant>
+						<name>A1DamageCrit</name>
+						<var>
+							<compiledString>FQkAAAACAAAAFgAAACkAAABBMURhbWFnZQBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcDTcAAADZXfzZRfyL5V3DMzMzMzMz6z8=</compiledString>
+							<returnType>float</returnType>
+							<sString>cA1Damage*0.85</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Highlander/Ability1.TALENT" id="BAEE6639-C7AF-49B8-A2B0-7F8B7F63DB77">
+					<UnitConstant>
+						<name>Percent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+							<returnType>float</returnType>
+							<sString>15</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -658,9 +678,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQQ==</compiledString>
+		<compiledString>FSYAAAACAAAALQAAAEYAAABIaWdobGFuZGVyX0ExX1NVUAAAAEhpZ2hsYW5kZXJfQTFfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4QODwQyJTfTbRfSL5V3D</compiledString>
 		<returnType>float</returnType>
-		<sString>12</sString>
+		<sString>(tal("Highlander_A1_SUP") ? 15:12)</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

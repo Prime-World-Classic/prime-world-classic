@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Class/Artist/Ability_A1_SUP.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Artist_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Social.ROOT" Count="1" />
+	<BackLink DBID="/Items/Talents/Artist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -54,6 +55,16 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Artist/const_A2_SUP_CDReduce" />
+				<Item href="/Items/Talents/Class/Artist/Ability_A2_SUP.TALENT" id="E41DF265-EAFC-4F05-9378-685967C9A199">
+					<UnitConstant>
+						<name>A2_SUP_TotalHeal</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACgQQAASEM=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( sIntellect, 20, 200 )</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

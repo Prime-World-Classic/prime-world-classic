@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <LocatorList>
 	<BackLink DBID="/Heroes/Bomber/_.SOBJ" Count="1" />
+	<BackLink DBID="/Heroes/Bomber/S1/_.SOBJ" Count="1" />
 	<locators>
 		<Item>
 			<flags>7</flags>

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SingleStateObject>
-	<BackLink DBID="/Maps/Test/PlaneMap/_.ADMP" Count="10" />
+	<BackLink DBID="/Maps/Test/PlaneMap/_.ADMP" Count="9" />
 	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeRune.GLPH" Count="1" />
 	<collision>
 		<x1>0</x1>
@@ -15,5 +15,5 @@
 	</lockMask>
 	<minLockScale>0</minLockScale>
 	<rounded>false</rounded>
-	<sceneObject href="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/_.SOBJ" />
+	<sceneObject href="/Maps/Test/PlaneMap/GiftGlyph/_.SOBJ" />
 </SingleStateObject>

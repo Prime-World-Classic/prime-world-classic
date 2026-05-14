@@ -272,6 +272,16 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/Class/Warlord/const_A4u_HealAmount" />
+				<Item href="/Items/Talents/Class/Warlord/Ability4.TALENT" id="878CE82C-6212-4F5B-A030-17F310EFE0F1">
+					<UnitConstant>
+						<name>A4_HealPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>5</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 				<Item href="/Items/Talents/Class/Warlord/const_A4u_HealPeriod" />
 				<Item href="/Items/Talents/Class/Warlord/Ability4.TALENT" id="2C5BB28D-B032-45F6-88C1-9967CDDF1C3A">
 					<UnitConstant>

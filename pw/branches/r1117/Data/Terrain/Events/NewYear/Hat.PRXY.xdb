@@ -2,6 +2,7 @@
 <DBSceneComponent>
 	<BackLink DBID="/Terrain/Events/NewYear/Hat.EFFT" Count="1" />
 	<BackLink DBID="/Creeps/Normals/Normal4/_.SOBJ" Count="1" />
+	<BackLink DBID="/Creeps/Bosses/Boss1/_.SOBJ" Count="3" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

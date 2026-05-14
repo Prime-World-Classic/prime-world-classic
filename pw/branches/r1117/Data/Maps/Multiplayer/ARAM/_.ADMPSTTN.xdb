@@ -16,7 +16,7 @@
 		<imageBurn href="" />
 		<imageFreeze href="" />
 	</customBattleStartAnnouncement>
-	<dialogsCollection href="" />
+	<dialogsCollection href="/Maps/Multiplayer/ARAM/Dialog" />
 	<dictionary href="/Maps/Multiplayer/ARAM/_.ADMPSTTN" id="4ACB1624-7DFC-4237-A12D-170EE84C5D41">
 		<DictionaryPreloadingResources>
 			<resources>
@@ -50,7 +50,39 @@
 				</Item>
 				<Item>
 					<key>Dragon</key>
-					<resource href="/Creeps/Bosses/Boss1/PVP.CREEP" />
+					<resource href="/Creeps/Bosses/Boss1/PVP_ARAM.CREEP" />
+				</Item>
+				<Item>
+					<key>WithLoveIfst</key>
+					<resource href="/Effects/Buffs/Assist/_.EFFT" />
+				</Item>
+				<Item>
+					<key>PointReceived</key>
+					<resource href="/Effects/Buffs/Regen/_Gender.EFFT" />
+				</Item>
+				<Item>
+					<key>HealBuilding</key>
+					<resource href="/Effects/Buffs/Repair/_In.EFFT" />
+				</Item>
+				<Item>
+					<key>AddLife</key>
+					<resource href="/Maps/Multiplayer/ARAM/Add_Life.APLR" />
+				</Item>
+				<Item>
+					<key>CaptainStatus</key>
+					<resource href="/Glyphs/EggCarrier.EFFT" />
+				</Item>
+				<Item>
+					<key>CaptainGlyph</key>
+					<resource href="/Glyphs/Captain.GLPH" />
+				</Item>
+				<Item>
+					<key>DeadEffect</key>
+					<resource href="/Effects/General/Firework/_Small.EFFT" />
+				</Item>
+				<Item>
+					<key>AddLife10</key>
+					<resource href="/Maps/Multiplayer/ARAM/Add_Life_10.APLR" />
 				</Item>
 			</resources>
 		</DictionaryPreloadingResources>
@@ -73,7 +105,7 @@
 			</overtimeRespawnParams>
 		</HeroRespawnParams>
 	</heroRespawnParams>
-	<hintsCollection href="" />
+	<hintsCollection href="/Maps/Multiplayer/ARAM/Hint" />
 	<maxRequiredHeroForce>10000</maxRequiredHeroForce>
 	<minRequiredHeroForce>0</minRequiredHeroForce>
 	<overrideBotsSettings href="/Maps/Multiplayer/ARAM/_.BOTS" />
@@ -130,7 +162,7 @@
 		<startPrimePerTeam>2100</startPrimePerTeam>
 		<teamNaftaForPresence>-1</teamNaftaForPresence>
 	</primeSettings>
-	<questsCollection href="" />
+	<questsCollection href="/Maps/Multiplayer/ARAM/Quest" />
 	<scriptFileName>/GameLogic/Scripts/ARAM.lua</scriptFileName>
 	<showAllHeroes>true</showAllHeroes>
 	<towersVulnerabilityDelay>0</towersVulnerabilityDelay>

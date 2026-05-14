@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicEffectStandalone>
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
 	<component href="/Effects/Buffs/Assist/_TRS.PRXY" />
 	<deathType>Anim</deathType>
 	<enableCondition href="" />

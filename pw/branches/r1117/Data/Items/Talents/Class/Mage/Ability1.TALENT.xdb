@@ -90,9 +90,9 @@
 					<UnitConstant>
 						<name>ChannelTimeBase</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpkZPw==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>0.6</sString>
+							<sString>0.5</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -134,9 +134,9 @@
 					<UnitConstant>
 						<name>A1_SmallRange</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzMzQA==</compiledString>
+							<compiledString>FQAAAAACAAAANQAAAEAAAABVi+yD7BSLRQiLEItNCIuCuAAAAP/Qi00IixGLTQiLgrwAAADdXfj/0Nxd+N/g9sRBegvdBVwAAADdXfDrCd0FVAAAAN1d8N1F8Nld7NlF7IvlXcNmZmZmZmYGQAAAAAAAAAxA</compiledString>
 							<returnType>float</returnType>
-							<sString>2.8</sString>
+							<sString>(sBaseStrength&gt;=sBaseIntellect)? 3.5 : 2.8</sString>
 						</var>
 					</UnitConstant>
 				</Item>

@@ -1,0 +1,3 @@
+[submodule "PW-Audio"]
+	path = PW-Audio
+	url = https://github.com/Prime-World-Classic/PW-Audio.git

@@ -683,8 +683,9 @@ namespace NWorld
 
         if ( pTargetUnit != pOwner && IsValid(lastTargetState) )
         {
-          if( IsUnitValid(lastTargetTarget) )
-            pTargetUnit->AssignTarget(lastTargetTarget);
+		//убрал в комменты (фикс вечного агра):
+         // if( IsUnitValid(lastTargetTarget) )
+          //  pTargetUnit->AssignTarget(lastTargetTarget);
           pTargetUnit->PushState(lastTargetState);
 
           lastTargetState = 0;

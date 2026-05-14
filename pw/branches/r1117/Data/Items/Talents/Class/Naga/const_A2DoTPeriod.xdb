@@ -5,8 +5,8 @@
 	<BackLink DBID="/Items/Talents/Class/Naga/Ability1.TALENT" Count="1" />
 	<name>A2_DoT_Period</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>2</sString>
+		<sString>1.5</sString>
 	</var>
 </UnitConstant>

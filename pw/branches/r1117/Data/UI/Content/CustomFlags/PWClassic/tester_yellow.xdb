@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CustomFlag>
+	<BackLink DBID="/UI/Content/_.UIDT" Count="2" />
+	<bigIcon href="/UI/Styles/Icons/Flags/Custom/PWClassic/tester_yellow.ITEX" />
+	<icon href="/UI/Styles/Icons/Flags/Custom/PWClassic/tester_yellow.ITEX" />
+	<id>tester_yellow</id>
+	<name textref="/UI/Content/CustomFlags/PWClassic/tester_yellow_name.txt" />
+	<Price>1</Price>
+	<tooltip textref="/UI/Content/CustomFlags/PWClassic/tester_yellow_tooltip.txt" />
+</CustomFlag>

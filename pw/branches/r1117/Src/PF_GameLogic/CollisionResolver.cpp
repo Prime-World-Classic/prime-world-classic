@@ -24,7 +24,7 @@ namespace
 
   static const float DISTANCE_TO_SLOW  = 1.0f;
   static const float DISTANCE_TO_STOP  = 0.3f;
-  static const float SLOW_SPEED        = 0.5f;
+  static const float SLOW_SPEED        = 1.0f;
 
   static const float SCALE_RECT = (float)1/7;
 

@@ -16,7 +16,6 @@
 	<BackLink DBID="/Maps/Tutorial/Talents/ThunderM1.TALENTSET" Count="1" />
 	<BackLink DBID="/Social/TalentsCollection" Count="3" />
 	<BackLink DBID="/Test/Talents/TestSet2.TALENTSET" Count="1" />
-	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>

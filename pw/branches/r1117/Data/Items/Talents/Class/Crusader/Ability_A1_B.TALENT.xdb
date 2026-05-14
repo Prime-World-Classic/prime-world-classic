@@ -245,9 +245,9 @@
 					<UnitConstant>
 						<name>DoT_TotalDamage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADIQgAASEQ=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADwQgAAUkQ=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sStrength, 100, 800)</sString>
+							<sString>damageScale(sStrength, 120, 840)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -322,9 +322,9 @@
 		<percent>0</percent>
 	</consumptionBonus>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>9</sString>
+		<sString>8</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>

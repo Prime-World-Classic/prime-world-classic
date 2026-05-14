@@ -15,9 +15,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FSYAAAAEAAAAKwAAAEEAAABNAAAAYwAAAEc3NTJfU3RhdGVBbnRpU3BlbGwAUmVkc2V0N185X0NvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdjQAAAN/g9sREeytoFAAAAItNCIsRi00Ii4KIAQAA/9DcHYUAAADf4PbEAXUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAQAAAAAAAAAAA</compiledString>
+		<compiledString>FSYAAAAEAAAAKwAAAEEAAABNAAAAYwAAAEc3NTJfU3RhdGVBbnRpU3BlbGwAUmVkc2V0N185X0NvdW50ZXIAVYvsUWgAAAAAi0UIixCLTQiLgogBAAD/0NwdjQAAAN/g9sREeytoFAAAAItNCIsRi00Ii4KIAQAA/9DcHYUAAADf4PbERHoJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAAQAAAAAAAAAAA</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vG752_StateAntiSpell &amp;&amp; sender.vRedset7_9_Counter &gt;= 2</sString>
+		<sString>sender.vG752_StateAntiSpell &amp;&amp; sender.vRedset7_9_Counter == 2</sString>
 	</enabled>
 	<formulaName></formulaName>
 	<lifeTime>

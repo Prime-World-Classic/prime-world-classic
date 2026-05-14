@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Level6/G481_AttackSpeed_StaOrWill.TALENT" Count="1" />
 	<name>G481_Damage</name>
 	<var>
-		<compiledString>FQAAAAADAAAACQAAABMAAAA+AAAAVYvsUWoBUdkFWAAAANkcJFHZBVQAAADZHCRqAYtFCIsQi00Ii0IM/9BR2RwkagGLTRCLEYtNEItCYP/Q3AVMAAAA2V382UX8i+VdwwAAAAAAADBAAADAQAAAwEE=</compiledString>
+		<compiledString>FQAAAAADAAAACQAAABMAAAA+AAAAVYvsUWoBUdkFWAAAANkcJFHZBVQAAADZHCRqAYtFCIsQi00Ii0IM/9BR2RwkagGLTRCLEYtNEItCYP/Q3AVMAAAA2V382UX8i+VdwwAAAAAAAC5AAACgQAAAuEE=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScaleCustomLife(sMaxLife, 6, 24) + 16</sString>
+		<sString>damageScaleCustomLife(sMaxLife, 5, 23) + 15</sString>
 	</var>
 </UnitConstant>

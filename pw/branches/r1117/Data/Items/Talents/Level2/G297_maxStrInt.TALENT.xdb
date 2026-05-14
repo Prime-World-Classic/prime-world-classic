@@ -3,7 +3,7 @@
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar5_Set1" Count="1" />
-	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="2" />
+	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Alchemist_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Angel.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Angel_Alternative.TALENTSET" Count="1" />

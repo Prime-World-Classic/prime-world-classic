@@ -5,8 +5,8 @@
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Shops/Mod9_N.SHOP" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Basic.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Basic_NY.CNSH" Count="1" />
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="1" />
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="1" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="3" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="3" />
 	<BackLink DBID="/Buildings/DefaultStats/MidOnly_ShopList.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Secret.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Secret_NY.CNSH" Count="1" />
@@ -227,9 +227,9 @@
 		</UnitConstantsContainer>
 	</constants>
 	<cooldownTime>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>60</sString>
+		<sString>25</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
 		<compiledString></compiledString>
@@ -271,7 +271,7 @@
 	<maxQuantity>10</maxQuantity>
 	<microAI href="" />
 	<minUseRangeCorrection>0</minUseRangeCorrection>
-	<naftaCost>100</naftaCost>
+	<naftaCost>75</naftaCost>
 	<name textref="/Items/Consumables/EyeOfSeeingCheapest.ARCT_name.txt" />
 	<node></node>
 	<passiveApplicators />

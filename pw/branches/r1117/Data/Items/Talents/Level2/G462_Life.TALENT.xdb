@@ -152,6 +152,66 @@
 			</PermanentStatModApplicator>
 		</Item>
 		<Item href="/Items/Talents/TalentKits/Redset1_3_Armor/Programm_Redset1_3_Armor.APLR" />
+		<Item href="/Items/Talents/Level2/G462_Life.TALENT" id="12A49023-AECD-48E5-B721-2D69AB932D70">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Will_3bonus</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FRsAAAACAAAAIwAAADkAAABBZGRfQXJtb3JfUmVkc2V0MV8zQ291bnRlcgBVi+yD7BhWaAAAAACLRQiLEItNCIuCiAEAAP/Q3B0gAQAA3+D2xEQPiskAAABqE4tNCIsRi00Ii4IsAQAA/9APtvBqFItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAahOLVQiLAotNCIuQLAEAAP/SD7bwahSLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5DIAAAA/9KLRQiLEItNCIuCzAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdQnHRegBAAAA6wfHRegAAAAAikXoXovlXcMAAAAAAAAIQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAdd_Armor_Redset1_3Counter == 3 &amp;&amp; !(pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseStamina&gt;=sBaseWill)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRcAAAABAAAAIwAAAFJlZHNldDFfM19Bcm1vcl9Cb251czMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cRedset1_3_Armor_Bonus3</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Will</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
+		<Item href="/Items/Talents/Level2/G462_Life.TALENT" id="ED86178C-B4F2-43FC-82DB-8F22C269B56B">
+			<PermanentStatModApplicator>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<caption>Add_Stamina_3bonus</caption>
+				<customApplyType>Maximize</customApplyType>
+				<enabled>
+					<compiledString>FRsAAAACAAAAIwAAADkAAABBZGRfQXJtb3JfUmVkc2V0MV8zQ291bnRlcgBVi+yD7BhWaAAAAACLRQiLEItNCIuCiAEAAP/Q3B0gAQAA3+D2xEQPiskAAABqE4tNCIsRi00Ii4IsAQAA/9APtvBqFItNCIsRi00Ii4IsAQAA/9APtsg78X4Mx0X8AQAAAOmAAAAAahOLVQiLAotNCIuQLAEAAP/SD7bwahSLRQiLEItNCIuCLAEAAP/QD7bIO/F9CcdF+AAAAADrQ4tVCIsCi00Ii5DMAAAA/9KLRQiLEItNCIuCyAAAAN1d8P/Q3F3w3+D2xEF6CcdF7AEAAADrB8dF7AAAAACLTeyJTfiLVfiJVfyDffwAdQnHRegBAAAA6wfHRegAAAAAikXoXovlXcMAAAAAAAAIQA==</compiledString>
+					<returnType>bool</returnType>
+					<sString>sender.vAdd_Armor_Redset1_3Counter == 3 &amp;&amp; !(pFirst-&gt;IsRecommended(19) &gt; pFirst-&gt;IsRecommended(20) ? 1 : pFirst-&gt;IsRecommended(19) &lt; pFirst-&gt;IsRecommended(20) ? 0 : sBaseWill&gt;=sBaseStamina)</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<modifier>
+					<addValue>
+						<compiledString>FRcAAAABAAAAIwAAAFJlZHNldDFfM19Bcm1vcl9Cb251czMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
+						<returnType>float</returnType>
+						<sString>cRedset1_3_Armor_Bonus3</sString>
+					</addValue>
+					<multValue>
+						<compiledString></compiledString>
+						<returnType>float</returnType>
+						<sString>1.0f</sString>
+					</multValue>
+					<stat>Stamina</stat>
+					<topModifier>false</topModifier>
+					<variable></variable>
+				</modifier>
+				<providerName></providerName>
+			</PermanentStatModApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>G462</persistentId>
 	<prerequisiteTalents />

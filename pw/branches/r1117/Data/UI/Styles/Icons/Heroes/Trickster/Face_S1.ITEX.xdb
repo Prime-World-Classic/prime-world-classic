@@ -16,6 +16,6 @@
 	</size>
 	<srcFileName crc="0">/UI/Styles/Icons/Heroes/Trickster/Face_S1.png</srcFileName>
 	<startMipLevel>0</startMipLevel>
-	<textureFileName>/UI/Styles/Icons/Heroes/Trickster/Face_S1.dds</textureFileName>
+	<textureFileName>/UI/Styles/Icons/Heroes/Trickster/Figure_S1.dds</textureFileName>
 	<textureType>Color</textureType>
 </UITexture>

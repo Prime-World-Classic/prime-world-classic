@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level4/G464_Life_StaOrWill.TALENT" Count="1" />
 	<name>Redset1_3_Armor_Bonus3_TT</name>
 	<var>
-		<compiledString>FS8AAAACAAAAPgAAAFgAAABSZWRzZXQxXzNfQXJtb3JfQm9udXMyAABSZWRzZXQxXzNfQXJtb3JfQm9udXMzAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoGAAAAItVEIsCi00Qi1BQ3V34/9LcRfjZXfTZRfSL5V3D</compiledString>
+		<compiledString>FRcAAAABAAAAIwAAAFJlZHNldDFfM19Bcm1vcl9Cb251czMAVYvsi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9Jdww==</compiledString>
 		<returnType>float</returnType>
-		<sString>cRedset1_3_Armor_Bonus2 + cRedset1_3_Armor_Bonus3</sString>
+		<sString>cRedset1_3_Armor_Bonus3</sString>
 	</var>
 </UnitConstant>

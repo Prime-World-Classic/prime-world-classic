@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Frogenglut/Ability4_2.TALENT" Count="1" />
 	<name>A4_2_Damage</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUEAAADZHCRR2QU9AAAA2RwkagGLRQiLEItNCItCDP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACwQgCAHUQ=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUEAAADZHCRR2QU9AAAA2RwkagGLRQiLEItNCItCDP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADIQgCAHUQ=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScaleCustomLife(sMaxLife,88, 630)</sString>
+		<sString>damageScaleCustomLife(sMaxLife,100, 630)</sString>
 	</var>
 </UnitConstant>

@@ -532,6 +532,16 @@ namespace NWorld
          heroSpawnDesc.playerInfo.ratingDeltaPrediction.onVictory = userData.victoryRating - userData.currentRating;
          heroSpawnDesc.playerInfo.ratingDeltaPrediction.onDefeat = userData.lossRating - userData.currentRating;
          std::vector<WebLauncherPostRequest::TalentWebData>& talentSet = userData.talents;
+
+         int heroSkinId = userData.heroSkinID;
+         if(heroSkinId > 0){
+           heroSpawnDesc.playerInfo.heroSkin = GetSkinByHeroPersistentId(hero->persistentId.c_str(), heroSkinId - 1).c_str();
+         }
+
+         if (userIdToMetaMap.find(pInfo.userId) != userIdToMetaMap.end()){
+           heroSpawnDesc.playerInfo.leagueIndex = userIdToMetaMap[pInfo.userId].leagueIdx;
+           heroSpawnDesc.playerInfo.flagId = userIdToMetaMap[pInfo.userId].flagId;
+         }
    			
  			  if(talentSet.empty()) {
  				  heroSpawnDesc.usePlayerInfoTalentSet = false;
@@ -611,11 +621,6 @@ namespace NWorld
  
            if(numUltimates > 1 || num5lineUpgrades > 1) {
  					  heroSpawnDesc.usePlayerInfoTalentSet = false;
-           }
- 
-       	  int heroSkinId = userData.heroSkinID;
-     	    if(heroSkinId > 0){
-     	  	  heroSpawnDesc.playerInfo.heroSkin = GetSkinByHeroPersistentId(hero->persistentId.c_str(), heroSkinId - 1).c_str();
  			    }
  			  }
 		  }

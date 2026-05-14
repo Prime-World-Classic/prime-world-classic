@@ -23,9 +23,9 @@
 									<cancelInvisibility>true</cancelInvisibility>
 									<caption>урон</caption>
 									<damage>
-										<compiledString>FQoAAAABAAAAFgAAAEExX0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+										<compiledString>FTwAAAAEAAAAQwAAAFwAAAC3AAAA2wAAAEExX0RhbWFnZQAAAE1hZ2ljR2lybF9BMXUAAABNYWdpY0dpcmxfQTF1AAAAQTF1X0RhbWFnZU5pZ2h0AFWL7IPsEGgMAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoHAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4tVDI0EioXAdDaLTRCLEYtNEIuCkAAAAP/QD7bIhcl0H4tVDFKLRQhQaCwAAACLTRCLEYtNEItCUP/Q2V306wXZ7tld9ItNDFGLVQhSaAAAAACLRRCLEItNEItCUP/Q2EX02V3w2UXwi+VdwwAAAAA=</compiledString>
 										<returnType>float</returnType>
-										<sString>cA1_Damage</sString>
+										<sString>cA1_Damage + ((tal("MagicGirl_A1u") + pSecond != 0 &amp;&amp; mIsNight) ? cA1u_DamageNight : 0)</sString>
 									</damage>
 									<damageMode>4</damageMode>
 									<damageType>Energy</damageType>

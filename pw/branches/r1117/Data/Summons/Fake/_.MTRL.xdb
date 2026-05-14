@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicFXMaterial>
 	<BackLink DBID="/Summons/Fake/_.ANSC" Count="1" />
-	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/_.ANSC" Count="1" />
 	<caption>lambert1</caption>
 	<DiffuseAdd>
 		<A>0</A>

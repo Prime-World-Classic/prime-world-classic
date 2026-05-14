@@ -334,9 +334,9 @@
 					<UnitConstant>
 						<name>A1_Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABIQgAAyEM=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABwQgAA0kM=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sStrength, 50, 400)</sString>
+							<sString>damageScale(sStrength, 60, 420)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -429,9 +429,9 @@
 					<UnitConstant>
 						<name>DoT_TotalDamage</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABIQgAAyEM=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAABwQgAA0kM=</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sStrength, 50, 400)</sString>
+							<sString>damageScale(sStrength, 60, 420)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

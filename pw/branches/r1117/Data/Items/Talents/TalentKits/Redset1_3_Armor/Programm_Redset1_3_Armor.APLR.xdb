@@ -209,7 +209,7 @@
 								</abilityCondition>
 								<abilityCostMode>Any</abilityCostMode>
 								<exceptThis>false</exceptThis>
-								<flags>1073741953</flags>
+								<flags>1073741825</flags>
 								<onlySingleTarget>false</onlySingleTarget>
 							</abilityFilter>
 							<add>

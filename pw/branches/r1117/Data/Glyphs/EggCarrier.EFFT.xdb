@@ -2,6 +2,7 @@
 <BasicEffectAttached>
 	<BackLink DBID="/Glyphs/EggCarrier.APLR" Count="1" />
 	<BackLink DBID="/Glyphs/PvE_Coop1_EggCarrier_Status.APLR" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
 	<attachFlags>0</attachFlags>
 	<attachType>Above</attachType>
 	<component href="/Glyphs/EggCarrier.PRXY" />

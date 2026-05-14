@@ -59,9 +59,9 @@
 					<UnitConstant>
 						<name>Stun_Duration</name>
 						<var>
-							<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
 							<returnType>float</returnType>
-							<sString>1.0f</sString>
+							<sString>1.5f</sString>
 						</var>
 					</UnitConstant>
 				</Item>

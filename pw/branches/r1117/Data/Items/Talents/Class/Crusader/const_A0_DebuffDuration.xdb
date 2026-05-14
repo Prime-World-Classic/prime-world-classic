@@ -3,8 +3,8 @@
 	<BackLink DBID="/Items/Talents/Class/Crusader/Ability_A0.TALENT" Count="1" />
 	<name>A0_DebuffDuration</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>10</sString>
+		<sString>5</sString>
 	</var>
 </UnitConstant>

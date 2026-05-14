@@ -9,7 +9,6 @@
 	<BackLink DBID="/Test/Talents/TST_SummonBoss.TALENT" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Achievements/DragonSlayer.ACHIEV" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Achievements/Legend.ACHIEV" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
 	<abilities>
 		<Item skip="1" />
 		<Item href="/Creeps/Bosses/Boss1/A1.ABLT" />

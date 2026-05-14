@@ -10,8 +10,6 @@
 	<BackLink DBID="/Maps/Multiplayer/MOBA/Shops/Mod9_N.SHOP" Count="1" />
 	<BackLink DBID="/Maps/Test/BalanseTest/Shops/_N.SHOP" Count="1" />
 	<BackLink DBID="/Maps/Test/DesignArtTest/Buildings/_N.SHOP" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/ARAM/Shops/_A.SHOP" Count="3" />
-	<BackLink DBID="/Maps/Multiplayer/ARAM/Shops/_B.SHOP" Count="3" />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
 		<compiledString></compiledString>

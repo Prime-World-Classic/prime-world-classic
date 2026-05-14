@@ -210,12 +210,24 @@
 	<mustRegisterInAIWorld>true</mustRegisterInAIWorld>
 	<path>
 		<Item>
-			<x>129.8568</x>
-			<y>124.8626</y>
+			<x>129.8586</x>
+			<y>124.4295</y>
 		</Item>
 		<Item>
-			<x>243.1887</x>
-			<y>129.8649</y>
+			<x>155.0875</x>
+			<y>124.1934</y>
+		</Item>
+		<Item>
+			<x>187.6216</x>
+			<y>121.3968</y>
+		</Item>
+		<Item>
+			<x>223.5236</x>
+			<y>107.2502</y>
+		</Item>
+		<Item>
+			<x>237.2001</x>
+			<y>128.874</y>
 		</Item>
 	</path>
 	<rounded>false</rounded>

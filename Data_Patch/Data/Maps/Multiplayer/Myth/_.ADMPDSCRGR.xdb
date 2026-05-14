@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<DBAdvMapDescGroup>
-	<BackLink DBID="/Social.ROOT" Count="2" />
-	<maps>
-		<Item href="/Maps/Multiplayer/Myth/Violet.ADMPDSCR" />
-		<Item href="/Maps/Multiplayer/Myth/Orange.ADMPDSCR" />
-		<Item href="/Maps/Multiplayer/Myth/Red.ADMPDSCR" />
-	</maps>
-</DBAdvMapDescGroup>

@@ -16,6 +16,6 @@
 	</size>
 	<srcFileName crc="0">/UI/Styles/Icons/Heroes/IronKnight/Face_S2.png</srcFileName>
 	<startMipLevel>0</startMipLevel>
-	<textureFileName>/UI/Styles/Icons/Heroes/IronKnight/Face_S2.dds</textureFileName>
+	<textureFileName>/UI/Styles/Icons/Heroes/IronKnight/_Face_S2.dds</textureFileName>
 	<textureType>Color</textureType>
 </UITexture>

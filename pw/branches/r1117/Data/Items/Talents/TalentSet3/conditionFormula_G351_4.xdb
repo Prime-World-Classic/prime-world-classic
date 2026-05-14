@@ -7,5 +7,5 @@
 		<returnType>bool</returnType>
 		<sString>sender.vG366_Active &gt; 0</sString>
 	</condition>
-	<name>G366_EnergyRes_StartCondition</name>
+	<name>G366_Dispell_Number</name>
 </ConditionFormula>

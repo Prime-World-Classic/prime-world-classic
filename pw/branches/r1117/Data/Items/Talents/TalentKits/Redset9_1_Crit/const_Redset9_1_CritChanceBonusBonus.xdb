@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level4/G698_StrOrInt.TALENT" Count="1" />
 	<name>Add_CritChanceBonus</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>4.0f</sString>
+		<sString>3.0f</sString>
 	</var>
 </UnitConstant>

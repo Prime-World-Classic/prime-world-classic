@@ -250,6 +250,7 @@ static WebUsersDataMap GetUsersData(Json::Value usersData) {
 
     WebLauncherPostRequest::WebUserData resData;
     Json::Value rating = curPlayer.get("rating", Json::Value());
+    resData.playerRating = rating.get("player", Json::Value()).asFloat();
     resData.currentRating = rating.get("current", Json::Value()).asFloat();
     resData.victoryRating = rating.get("victory", Json::Value()).asFloat();
     resData.lossRating = rating.get("loss", Json::Value()).asFloat();
@@ -635,7 +636,7 @@ void ServerNode::OnChangeClientStatus( Peered::TSessionId _sessionId, const nstl
 
       socialLobbyProxy->UserDroppedFromPvX( clientId, leaver );
 
-      // NUM_TASK не отправляем в статистику события о дисконнектах после окончания игры
+      // NUM_TASK пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
       {
         const GameSession* const game = FindGame(_sessionId);
         // NOTE: hacky

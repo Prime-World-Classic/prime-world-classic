@@ -4,16 +4,68 @@
 	<BackLink DBID="/Maps/Multiplayer/CTE/Shops/_B.SHOP" Count="1" />
 	<interactionRadius>30</interactionRadius>
 	<items>
-		<Item href="/Items/Consumables/HealingPotion.ARCT" />
-		<Item href="/Items/Consumables/EnergyPotion.ARCT" />
-		<Item href="/Items/Consumables/SpeedPotion.ARCT" />
-		<Item href="/Items/Consumables/AdvanceTeleportScroll.ARCT" />
-		<Item href="/Items/Consumables/OpenWarFog.ARCT" />
-		<Item href="/Items/Consumables/CleansingPotion.ARCT" />
-		<Item href="/Items/Consumables/TrueSightPotion.ARCT" />
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="86E45FF7-3756-4005-A748-1B3C3DE3EECB">
+			<Consumable parent="/Items/Consumables/HealingPotion.ARCT">
+				<cooldownTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+					<returnType>float</returnType>
+					<sString>40</sString>
+				</cooldownTime>
+				<naftaCost>50</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="C2A88D2A-09FE-4537-AE4D-EA69A44493E2">
+			<Consumable parent="/Items/Consumables/EnergyPotion.ARCT">
+				<cooldownTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+					<returnType>float</returnType>
+					<sString>40</sString>
+				</cooldownTime>
+				<naftaCost>50</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="F52824F8-032F-41FD-9A53-86F73FBAC1F3">
+			<Consumable parent="/Items/Consumables/SpeedPotion.ARCT">
+				<cooldownTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACMQg==</compiledString>
+					<returnType>float</returnType>
+					<sString>70</sString>
+				</cooldownTime>
+				<naftaCost>120</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="58BA5D58-9941-4CA4-90D2-8C21F7933ABA">
+			<Consumable parent="/Items/Consumables/AdvanceTeleportScroll.ARCT">
+				<cooldownTime>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACMQg==</compiledString>
+					<returnType>float</returnType>
+					<sString>70</sString>
+				</cooldownTime>
+				<naftaCost>100</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="3367B932-201A-4030-8E6D-B42A36E63EFD">
+			<Consumable parent="/Items/Consumables/OpenWarFog.ARCT">
+				<naftaCost>35</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="2B46B484-C0C5-454A-A2E4-67BAA0D6A10F">
+			<Consumable parent="/Items/Consumables/CleansingPotion.ARCT">
+				<naftaCost>100</naftaCost>
+			</Consumable>
+		</Item>
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="4CBFCA8A-5D45-4951-BB67-CBC4EB2B7A96">
+			<Consumable parent="/Items/Consumables/TrueSightPotion.ARCT">
+				<naftaCost>500</naftaCost>
+			</Consumable>
+		</Item>
 		<Item href="/Items/Consumables/EyeOfSeeing.ARCT" />
 		<Item href="/Items/Consumables/EyeOfSeeingCheap.ARCT" />
-		<Item href="/Items/Consumables/EyeOfSeeingCheapest.ARCT" />
+		<Item href="/Buildings/DefaultStats/CTE_Basic.CNSH" id="38EA35AD-AC8C-48CC-8D60-9D30E859BFA6">
+			<Consumable parent="/Items/Consumables/EyeOfSeeingCheapest.ARCT">
+				<naftaCost>80</naftaCost>
+			</Consumable>
+		</Item>
 	</items>
 	<secretShop>false</secretShop>
 </ConsumablesShop>

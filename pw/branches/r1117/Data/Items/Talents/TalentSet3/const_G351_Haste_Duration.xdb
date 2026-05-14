@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Level3/G364_Life_Str_Int.TALENT" Count="1" />
 	<name>Haste_Duration</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>3</sString>
+		<sString>5</sString>
 	</var>
 </UnitConstant>

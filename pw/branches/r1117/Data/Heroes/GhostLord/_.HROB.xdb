@@ -1052,9 +1052,9 @@
 					<calcIncrement>0.3</calcIncrement>
 					<calcValue>57</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.25</sString>
+						<sString>0.30</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>

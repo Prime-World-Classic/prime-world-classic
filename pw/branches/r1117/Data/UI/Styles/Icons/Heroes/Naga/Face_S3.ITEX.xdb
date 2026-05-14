@@ -15,6 +15,6 @@
 	</size>
 	<srcFileName crc="0">/UI/Styles/Icons/Heroes/Naga/Face_S3.png</srcFileName>
 	<startMipLevel>0</startMipLevel>
-	<textureFileName>/UI/Styles/Icons/Heroes/Naga/Face_S3.dds</textureFileName>
+	<textureFileName>/UI/Styles/Icons/Heroes/Naga/Figure_S3.dds</textureFileName>
 	<textureType>Color</textureType>
 </UITexture>

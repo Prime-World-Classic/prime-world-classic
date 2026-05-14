@@ -5,8 +5,8 @@
 	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A4_2.TALENT" Count="1" />
 	<name>TT_DefenceAmount</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQA==</compiledString>
 		<returnType>float</returnType>
-		<sString>4</sString>
+		<sString>3</sString>
 	</var>
 </UnitConstant>

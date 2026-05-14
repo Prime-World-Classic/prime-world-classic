@@ -1080,9 +1080,9 @@
 					<calcIncrement>0.85</calcIncrement>
 					<calcValue>55</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcwMPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.55</sString>
+						<sString>0.50</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Stamina</statId>
@@ -1096,9 +1096,9 @@
 					<calcIncrement>0.5</calcIncrement>
 					<calcValue>52</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmYmPw==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpkZPw==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.65</sString>
+						<sString>0.60</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>Will</statId>

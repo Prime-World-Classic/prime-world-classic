@@ -80,7 +80,21 @@
 							<timeInterval>0</timeInterval>
 						</DBSoundSceneComponent>
 					</Item>
-					<Item href="" />
+					<Item href="/Heroes/Archeress/S6/_.HEROSKIN" id="556E02CE-9A5A-40A5-ACCE-4C817EB29C08">
+						<DBSoundSceneComponent>
+							<attached />
+							<caption></caption>
+							<desc>
+								<eventName>ability_1</eventName>
+								<groupName>Heroes/Archeress_S6</groupName>
+								<projectName>PF</projectName>
+							</desc>
+							<groupFlags>0</groupFlags>
+							<locatorList href="" />
+							<orientation>Default</orientation>
+							<timeInterval>0</timeInterval>
+						</DBSoundSceneComponent>
+					</Item>
 					<Item href="/Heroes/Archeress/S6/_.HEROSKIN" id="9708FF6A-692D-4667-9B69-D582C8A066EA">
 						<DBSoundSceneComponent>
 							<attached />

@@ -56,9 +56,44 @@
 					<Item href="" />
 				</effect>
 				<enabled>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABNYWdpY0dpcmxfQTN1AAAATWFnaWNHaXJsX0EzdQBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("MagicGirl_A3u")</sString>
+				</enabled>
+				<flag>67109380</flag>
+				<formulaName></formulaName>
+				<lifeTime>
 					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
+				</startCondition>
+				<talents>
+					<Item href="/Items/Talents/Class/MagicGirl/Ability_A3.TALENT" />
+				</talents>
+				<useListAs>ListAsException</useListAs>
+			</FlagsApplicator>
+		</Item>
+		<Item href="/Items/Talents/Class/MagicGirl/status_A3_FlyMode.APLR" id="61DFFA75-FCB4-4427-B8CE-A025A2F65A37">
+			<FlagsApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>flags</caption>
+				<consumables />
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABNYWdpY0dpcmxfQTN1AAAATWFnaWNHaXJsX0EzdQBVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2Rfv32BvAg8ABi+Vdww==</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("MagicGirl_A3u") == false</sString>
 				</enabled>
 				<flag>67110908</flag>
 				<formulaName></formulaName>
@@ -70,7 +105,7 @@
 				<LoggingEvent>-1</LoggingEvent>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>

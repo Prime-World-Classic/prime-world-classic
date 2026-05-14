@@ -80,9 +80,9 @@
 					<UnitConstant>
 						<name>A3_BuffDmg</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAABQQQAAwEI=</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoAi00QixGLTRCLQmD/0F3DAABwQQAAyEI=</compiledString>
 							<returnType>float</returnType>
-							<sString>abilityScale( sStrength, 13, 96)</sString>
+							<sString>abilityScale( sStrength, 15, 100)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

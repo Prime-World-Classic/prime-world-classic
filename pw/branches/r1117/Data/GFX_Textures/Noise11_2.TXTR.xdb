@@ -30,7 +30,6 @@
 	<BackLink DBID="/Summons/Panther/FXability1.PRXY" Count="1" />
 	<BackLink DBID="/Summons/Trap/Trail1.TRSC" Count="1" />
 	<BackLink DBID="/Summons/Trap/Trail2.TRSC" Count="1" />
-	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/FXChannelSmart.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

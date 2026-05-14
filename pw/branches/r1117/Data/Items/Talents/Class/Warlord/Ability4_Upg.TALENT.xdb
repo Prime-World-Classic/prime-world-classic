@@ -62,6 +62,16 @@
 			<vars>
 				<Item href="/Items/Talents/Class/Warlord/const_A4u_HealAmount" />
 				<Item href="/Items/Talents/Class/Warlord/const_A4u_HealPeriod" />
+				<Item href="/Items/Talents/Class/Warlord/Ability4_Upg.TALENT" id="56DA12A5-528B-49E0-B586-63BFF93FFEB7">
+					<UnitConstant>
+						<name>A4_HealPercent</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>5</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -255,9 +255,9 @@
 					<UnitConstant>
 						<name>A3_Duration</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAAQQ==</compiledString>
+							<compiledString>FWYAAAAGAAAAbQAAAIYAAAC0AAAAzQAAAPsAAAAUAQAAR3Vuc2xpbmdlcl9BMwAAAEd1bnNsaW5nZXJfQTMAAABHdW5zbGluZ2VyX0EzAAAAR3Vuc2xpbmdlcl9BMwAAAEd1bnNsaW5nZXJfQTNfU1VQAAAAR3Vuc2xpbmdlcl9BM19TVVAAVYvsg+wcaAAAAACLRQiLEItNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wBoIAAAAItNCIsRi00Ii4KoAQAA/9CFwHQqaDAAAACLTQiLEYtNCIuCqAEAAP/QiUX0i030ixGLTfSLQgT/0IhF8+sExkXzAGhAAAAAi00IixGLTQiLgqgBAAD/0IXAdCpoVAAAAItNCIsRi00Ii4KoAQAA/9CJReyLTeyLEYtN7ItCBP/QiEXr6wTGResAD7ZN+w+2VfMryg+2Rev32BvAg+ACg8AIA8iJTeTbReSL5V3D</compiledString>
 							<returnType>float</returnType>
-							<sString>8</sString>
+							<sString>tal("Gunslinger_A3") - tal("Gunslinger_A3")  + (tal("Gunslinger_A3_SUP") ? 10:8)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -285,9 +285,9 @@
 					<UnitConstant>
 						<name>Dec_MoveSpeed</name>
 						<var>
-							<compiledString>FSYAAAACAAAALQAAAEYAAABHdW5zbGluZ2VyX0EzX1NVUAAAAEd1bnNsaW5nZXJfQTNfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4R6JTfTbRfSL5V3D</compiledString>
+							<compiledString>FSYAAAACAAAALQAAAEYAAABHdW5zbGluZ2VyX0EzX1NVUAAAAEd1bnNsaW5nZXJfQTNfU1VQAFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoFAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4RSDwQqJTfTbRfSL5V3D</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Gunslinger_A3_SUP") ? 30 : 0</sString>
+							<sString>(tal("Gunslinger_A3_SUP") ? 30:10)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -376,6 +376,16 @@
 							<compiledString>FSMAAAACAAAAMgAAAEwAAABEYW1hZ2VEZWNyZWFzZVNVUAAAAERhbWFnZURlY3JlYXNlAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoFAAAAItVEIsCi00Qi1BQ3V34/9LcRfjZXfTZRfSL5V3D</compiledString>
 							<returnType>float</returnType>
 							<sString>cDamageDecreaseSUP + cDamageDecrease</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Gunslinger/Ability_A3.TALENT" id="F31B56AD-4756-4685-80FD-4BF1CC0278A7">
+					<UnitConstant>
+						<name>TT_A3_Damage_SUP</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACgQQAAFkM=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale (sIntellect, 20, 150)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

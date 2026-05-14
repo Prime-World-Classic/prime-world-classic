@@ -80,7 +80,7 @@
 	</path>
 	<rounded>false</rounded>
 	<showMinimapIcon>true</showMinimapIcon>
-	<spawnDelay>150</spawnDelay>
+	<spawnDelay>180</spawnDelay>
 	<useEvade>true</useEvade>
 	<waveCount>0</waveCount>
 </AdvMapNeutralCreepSpawner>

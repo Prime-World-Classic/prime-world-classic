@@ -2,8 +2,8 @@
 <Consumable>
 	<BackLink DBID="/Buildings/DefaultStats/Basic.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Basic_NY.CNSH" Count="1" />
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="1" />
-	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="1" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Basic.CNSH" Count="3" />
+	<BackLink DBID="/Buildings/DefaultStats/CTE_Secret.CNSH" Count="3" />
 	<BackLink DBID="/Buildings/DefaultStats/MidOnly_ShopList.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Secret.CNSH" Count="1" />
 	<BackLink DBID="/Buildings/DefaultStats/Secret_NY.CNSH" Count="1" />

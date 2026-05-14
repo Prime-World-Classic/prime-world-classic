@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
-	<BackLink DBID="/Items/Talents/Level4/G573_CDRforKill.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level4/G573_CDRforKill.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Level4/status_G414_CDRforKill.APLR" Count="1" />
 	<applicators>
 		<Item href="/Items/Talents/Level4/status_G573_CDRforKill.APLR" id="EB09E7EA-FFF5-4D6B-A221-7B75219C3ED0">

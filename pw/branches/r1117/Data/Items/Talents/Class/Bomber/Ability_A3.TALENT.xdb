@@ -49,9 +49,9 @@
 									<cancelInvisibility>true</cancelInvisibility>
 									<caption>Физ урон</caption>
 									<damage>
-										<compiledString>FQoAAAABAAAAFgAAAEEzX0RhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+										<compiledString>FToAAAAEAAAAQQAAAFoAAACYAAAAvAAAAEEzX0RhbWFnZQAAAEJvbWJlcl9BM19TVVAAAABCb21iZXJfQTNfU1VQAAAAQTNfc3VwX0RhbWFnZQBVi+yD7BBoDAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBwAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQfi1UMUotFCFBoLAAAAItNEIsRi00Qi0JQ/9DZXfTrBdnu2V30i00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ/9DYRfTZXfDZRfCL5V3DAAAAAA==</compiledString>
 										<returnType>float</returnType>
-										<sString>cA3_Damage</sString>
+										<sString>cA3_Damage + (tal("Bomber_A3_SUP") ? cA3_sup_Damage :0)</sString>
 									</damage>
 									<damageMode>0</damageMode>
 									<damageType>Material</damageType>
@@ -171,6 +171,72 @@
 				<uiEvent href="/UI/Events/CommonEvents/EventHeal.UIEV" />
 			</HealApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="09BE019B-71F2-46D2-8719-A73F73E1DE3A">
+			<SpellApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<caption>(Upg) ослепление в радиусе</caption>
+				<enabled>
+					<compiledString>FR4AAAACAAAAJQAAAD4AAABCb21iZXJfQTNfU1VQAAAAQm9tYmVyX0EzX1NVUABVi+yD7AhoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AIpF+4vlXcM=</compiledString>
+					<returnType>bool</returnType>
+					<sString>tal("Bomber_A3_SUP")</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<spell href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="1413AEF3-0A0C-4888-9645-998066BCE7BD">
+					<Spell>
+						<applicators>
+							<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="11A0170A-4473-413C-8F6F-70B16480F2ED">
+								<StatusApplicator parent="/Heroes/DefaultStatus/_BLIND_status.APLR">
+									<enabled>
+										<compiledString>FS0AAAAGAAAAOgAAAE0AAABZAAAAbwAAAHsAAACRAAAAQmxpbmRfQ29uZGl0aW9uAEltbXVuZTJDb250cm9sAABBbGxvd0NvbnRyb2wAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B27AAAA3+D2xER7ImgQAAAAi0UMixCLTQyLgogBAAD/0NwduwAAAN/g9sREeytoIAAAAItNDIsRi00Mi4KIAQAA/9DcHbMAAADf4PbERHsJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAADwPwAAAAAAAAAA</compiledString>
+										<returnType>bool</returnType>
+										<sString>(cBlind_Condition &amp;&amp; receiver.vImmune2Control == 0) || receiver.vAllowControl == 1</sString>
+									</enabled>
+								</StatusApplicator>
+							</Item>
+						</applicators>
+						<dispatch href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="A9E70453-5765-4B1C-864D-7562945C4BFE">
+							<DispatchImmediate>
+								<alwaysApply>false</alwaysApply>
+								<applyEffect>
+									<Item href="" />
+									<Item href="" />
+								</applyEffect>
+								<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+								<applyEffectOrientation>Default</applyEffectOrientation>
+								<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+								<dieAfterApply>true</dieAfterApply>
+								<dispatchEffect>
+									<Item href="" />
+									<Item href="" />
+								</dispatchEffect>
+								<flags>1</flags>
+								<instantApply>false</instantApply>
+							</DispatchImmediate>
+						</dispatch>
+					</Spell>
+				</spell>
+				<spellTarget>ApplicatorTarget</spellTarget>
+				<targetSelector href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="C5CE75AA-3552-4973-BBBD-04E219D603CC">
+					<AreaTargetSelector>
+						<absolutePosition>
+							<x>0</x>
+							<y>0</y>
+						</absolutePosition>
+						<flags>0</flags>
+						<mode>Normal</mode>
+						<range>
+							<compiledString>FQwAAAABAAAAGAAAAFJhbmdlX1Nob3J0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cRange_Short</sString>
+						</range>
+						<targetFilter>547160127</targetFilter>
+						<targetSelector href="" />
+					</AreaTargetSelector>
+				</targetSelector>
+			</SpellApplicator>
+		</Item>
 	</applicators>
 	<askId>3</askId>
 	<autoTargetSelector href="" />
@@ -284,6 +350,46 @@
 					</UnitConstant>
 				</Item>
 				<Item href="/Items/Talents/Class/Bomber/const_A3_SUP_HealAmount" />
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="033BFAD1-5C1A-4BB3-807B-C0E5FE4AA96E">
+					<UnitConstant>
+						<name>A3_sup_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADIQQAAPEM=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( sStrength, 25, 188)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="9C93085B-C0A6-45A3-97A1-E219E9ED526E">
+					<UnitConstant>
+						<name>Blind_VisibilityRange</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
+							<returnType>float</returnType>
+							<sString>4</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="760FB14B-6006-4E36-A4A1-080D5BA9F945">
+					<UnitConstant>
+						<name>Blind_MissChance</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACWQg==</compiledString>
+							<returnType>float</returnType>
+							<sString>75.0f</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="E30A78F5-E947-4FE2-ACBF-79C3EC25CAB3">
+					<UnitConstant>
+						<name>Blind_Duration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>1.5</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -387,6 +493,52 @@
 	<node></node>
 	<passiveApplicators>
 		<Item href="/Items/Talents/TalentKits/Redset7_11_MiniRefresher/trigger_G766_RefreshAndNotify.APLR" />
+		<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="A16F1BEB-95AF-4D8F-B641-BFE057FC08D2">
+			<TargetsCounterApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>считаем цели для MicroAI</caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName>A3_MicroAITargetCounter</formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<targetSelector href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="C905CD20-9655-41B8-A93B-C1C6779FC928">
+					<AreaTargetSelector>
+						<absolutePosition>
+							<x>0</x>
+							<y>0</y>
+						</absolutePosition>
+						<flags>0</flags>
+						<mode>Normal</mode>
+						<range>
+							<compiledString>FQwAAAABAAAAGAAAAFJhbmdlX1Nob3J0AFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+							<returnType>float</returnType>
+							<sString>cRange_Short</sString>
+						</range>
+						<targetFilter>706478143</targetFilter>
+						<targetSelector href="" />
+					</AreaTargetSelector>
+				</targetSelector>
+			</TargetsCounterApplicator>
+		</Item>
 	</passiveApplicators>
 	<persistentId>Bomber_A3</persistentId>
 	<prerequisiteTalents />

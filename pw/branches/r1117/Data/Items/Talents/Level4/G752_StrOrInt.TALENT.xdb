@@ -398,12 +398,12 @@
 				<statModName></statModName>
 			</StatModApplicator>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/Redset7_9_Counter.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_AA_Dmg_Reduction.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_Spell_Dmg_Reduction.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_SilenceOnHit.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_DisarmOnHit.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_BonusStat.APLR" />
-		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/Redset7_9_Counter.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_DisarmIsReady.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_SilenceIsReady.APLR" />
 		<Item href="/Items/Talents/Level4/G752_StrOrInt.TALENT" id="CF2DDEDA-765A-495A-B721-CED052771818">

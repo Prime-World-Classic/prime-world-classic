@@ -28,6 +28,7 @@
 	<BackLink DBID="/Items/Talents/Level6/G455_Life_StrOrInt.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_1_Blind/status_G649_Blind.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Werewolf/Ability2.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="4" />
 	<applicators>
 		<Item href="/Heroes/DefaultStatus/_BLIND_status.APLR" id="7072DA33-48AE-4A37-BBEB-067328968E30">
 			<StatModApplicator>

@@ -13,6 +13,7 @@
 	<BackLink DBID="/Test/Talents/RedSet7_10.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/RedSet7_9.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/TestSet1.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Alchemist.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -209,6 +210,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/Redset7_9_Counter.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_DisarmIsReady.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_SilenceIsReady.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_BonusStat.APLR" />
 	</passiveApplicators>
 	<persistentId>G751</persistentId>
 	<prerequisiteTalents />

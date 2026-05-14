@@ -2,6 +2,7 @@
 <BaseAttack>
 	<BackLink DBID="/Creeps/Bosses/Boss1/PVP_Walked.CREEP" Count="1" />
 	<BackLink DBID="/Creeps/Bosses/Boss1/PVP_Walked_NY.CREEP" Count="1" />
+	<BackLink DBID="/Creeps/Bosses/Boss1/PVP_ARAM.CREEP" Count="1" />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
 		<compiledString></compiledString>

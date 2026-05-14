@@ -707,9 +707,9 @@
 	<isUltimateTalent>false</isUltimateTalent>
 	<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
 	<manaCost>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAWQw==</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQg==</compiledString>
 		<returnType>float</returnType>
-		<sString>150</sString>
+		<sString>120</sString>
 	</manaCost>
 	<marker>doCast1</marker>
 	<microAI href="/Items/Talents/Class/Alchemist/Ability_A1.TALENT" id="502276E6-031F-4BAC-A562-8DE4E46EB41C">

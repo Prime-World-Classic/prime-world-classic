@@ -920,9 +920,9 @@
 					<calcIncrement>0.3</calcIncrement>
 					<calcValue>53</calcValue>
 					<increment>
-						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DMzOzPg==</compiledString>
 						<returnType>float</returnType>
-						<sString>0.3</sString>
+						<sString>0.35</sString>
 					</increment>
 					<levelUpgrades />
 					<statId>AttackSpeed</statId>

@@ -11,6 +11,7 @@
 	<BackLink DBID="/Test/Talents/Frog/Duel.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Rockman/Duel_Life.TALENTSET" Count="1" />
 	<BackLink DBID="/Test/Talents/Rockman/Duel_Str.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Crusader_A.TALENTSET" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -52,9 +53,9 @@
 					<UnitConstant>
 						<name>Damage</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9BdwwAA8EEAAABA</compiledString>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBWMAAADZHCRR2QVfAAAA2RwkagCLRQiLEItNCIuCRAEAAP/QUdkcJItNCIsRi00Ii4JAAQAA/9BR2Rwk6B8AAACDxATZHCRqAYtNEIsRi00Qi0Jg/9BdwwAASEIAALRCVYvsUdlFCNlFDN7Z3+D2xAV6CNlFCNld/OsG2UUM2V382UX8i+Vdww==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(30, 2)</sString>
+							<sString>damageScale( max(sStamina, sWill),50, 90)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

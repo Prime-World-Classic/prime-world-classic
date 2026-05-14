@@ -1156,6 +1156,84 @@
 							</placement>
 							<timeController href="" />
 						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Terrain/Events/NewYear/Hat.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>HeadL</locatorName>
+							<placement>
+								<pos>
+									<x>-0.4</x>
+									<y>0</y>
+									<z>0.7</z>
+								</pos>
+								<rot>
+									<w>0.9063078</w>
+									<x>0</x>
+									<y>0</y>
+									<z>0.4226183</z>
+								</rot>
+								<scale>
+									<x>1.2</x>
+									<y>1.2</y>
+									<z>1.2</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Terrain/Events/NewYear/Hat.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>HeadM</locatorName>
+							<placement>
+								<pos>
+									<x>-0.1</x>
+									<y>0.4</y>
+									<z>0.7</z>
+								</pos>
+								<rot>
+									<w>0.1995657</w>
+									<x>0.07960427</x>
+									<y>-0.2745998</y>
+									<z>0.9372469</z>
+								</rot>
+								<scale>
+									<x>1.2</x>
+									<y>1.2</y>
+									<z>1.2</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
+						<Item>
+							<attachFlags>15</attachFlags>
+							<component href="/Terrain/Events/NewYear/Hat.PRXY" />
+							<events href="" />
+							<id></id>
+							<locatorName>HeadR</locatorName>
+							<placement>
+								<pos>
+									<x>0</x>
+									<y>0.2</y>
+									<z>0.6</z>
+								</pos>
+								<rot>
+									<w>7.292537E-08</w>
+									<x>-1.954029E-08</x>
+									<y>0.258819</y>
+									<z>-0.9659258</z>
+								</rot>
+								<scale>
+									<x>1.2</x>
+									<y>1.2</y>
+									<z>1.2</z>
+								</scale>
+							</placement>
+							<timeController href="" />
+						</Item>
 					</attached>
 					<caption></caption>
 					<faceFXAnims />

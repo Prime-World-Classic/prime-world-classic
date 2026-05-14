@@ -20,19 +20,19 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level1/G562_AxesBase.TALENT" />
+					<talent href="/Items/Talents/Level1/G576_HealForHeroKill.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>5</refineRate>
+					<refineRate>7</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level1/G015_Life_LifeRegen.TALENT" />
+					<talent href="/Items/Talents/Level1/G424_Str_inc.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>5</refineRate>
+					<refineRate>7</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level1/G611_1_Energy.TALENT" />
+					<talent href="/Items/Talents/Level1/G421_EnergyRegen_inc.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>3</aIPriority>
@@ -104,9 +104,9 @@
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>9</refineRate>
+					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" />
+					<talent href="/Items/Talents/Level3/G575_EnergyReg_MoveSpeed.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
@@ -152,13 +152,13 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>7</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G649_BlindStrOrInt.TALENT" />
+					<talent href="/Items/Talents/Level4/G339_IntDex_Slow.TALENT" />
 				</Item>
 				<Item>
 					<aIPriority>0</aIPriority>
-					<refineRate>7</refineRate>
+					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level4/G339_IntDex_Slow.TALENT" />
+					<talent href="/Items/Talents/Level4/G573_CDRforKill.TALENT" />
 				</Item>
 			</talents>
 		</Item>
@@ -198,7 +198,7 @@
 					<aIPriority>0</aIPriority>
 					<refineRate>5</refineRate>
 					<status>normal</status>
-					<talent href="/Items/Talents/Level5/G651_Str.TALENT" />
+					<talent href="/Items/Talents/Level5/G572_SlowProc-Dex.TALENT" />
 				</Item>
 			</talents>
 		</Item>

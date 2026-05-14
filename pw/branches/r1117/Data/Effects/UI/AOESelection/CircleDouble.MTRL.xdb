@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <AOEMaterial>
 	<BackLink DBID="/Items/Talents/Class/Mage/Ability1.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Mage/Ability4_3.TALENT" Count="1" />
 	<aspectRatio>2</aspectRatio>
 	<caption></caption>
 	<DiffuseMap>

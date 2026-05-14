@@ -10,8 +10,6 @@
 	<BackLink DBID="/Heroes/Mage/S3/FXChannelSmart.PRXY" Count="3" />
 	<BackLink DBID="/Summons/Bear/FXAbility1.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Buffs/Cure/_.PRXY" Count="1" />
-	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/FXChannelSmart.PRXY" Count="1" />
-	<BackLink DBID="/Maps/Test/PlaneMap/GiftGlyph/PrimeIce/_TRS.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

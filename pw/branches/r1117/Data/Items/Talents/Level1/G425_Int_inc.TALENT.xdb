@@ -110,9 +110,9 @@
 					<UnitConstant>
 						<name>Add_Int</name>
 						<var>
-							<compiledString>FQAAAAACAAAABgAAABAAAABVi+xR2QUqAAAA2RwkUdkFJgAAANkcJItFEIsQi00Qi0Js/9Bdw5qZWUDNzMw+</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>refineScale(3.4, 0.4)</sString>
+							<sString>6</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -120,9 +120,9 @@
 					<UnitConstant>
 						<name>Add_IntPerm</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
 							<returnType>float</returnType>
-							<sString>0.2</sString>
+							<sString>0.4</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -130,9 +130,9 @@
 					<UnitConstant>
 						<name>MaxInt</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmplZQA==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAQA==</compiledString>
 							<returnType>float</returnType>
-							<sString>3.4</sString>
+							<sString>4</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -140,9 +140,9 @@
 					<UnitConstant>
 						<name>Period</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
 							<returnType>float</returnType>
-							<sString>60</sString>
+							<sString>40</sString>
 						</var>
 					</UnitConstant>
 				</Item>

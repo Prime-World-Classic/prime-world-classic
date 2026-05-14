@@ -249,6 +249,7 @@
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/Redset7_9_Counter.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_DisarmIsReady.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/status_SilenceIsReady.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset7_9_AntiMnM/appl_BonusStat.APLR" />
 	</passiveApplicators>
 	<persistentId>G753</persistentId>
 	<prerequisiteTalents />

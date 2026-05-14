@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SimpleObject>
 	<BackLink DBID="/Maps/Multiplayer/CTE/_.ADMP" Count="10" />
-	<BackLink DBID="/Maps/Multiplayer/MOBA/_.ADMP" Count="2" />
 	<collision>
 		<x1>0</x1>
 		<x2>0</x2>

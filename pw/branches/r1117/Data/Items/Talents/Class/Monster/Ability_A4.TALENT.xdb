@@ -929,9 +929,9 @@
 					<UnitConstant>
 						<name>A4_BaseStackCooldown</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADIQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>30</sString>
+							<sString>25</sString>
 						</var>
 					</UnitConstant>
 				</Item>

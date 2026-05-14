@@ -3,6 +3,7 @@
 	<BackLink DBID="/Items/Talents/Bomber_Alternative.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1_SUP.TALENT" Count="1" />
 	<BackLink DBID="/Test/Talents/Bomber/Test.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/Bomber.TALENTSET" Count="2" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -54,6 +55,26 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Bomber/const_A3_SUP_HealAmount" />
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3_SUP.TALENT" id="2FAFB132-EEBC-4CB0-BA8C-43F5A512975E">
+					<UnitConstant>
+						<name>A3_sup_Damage</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAADIQQAAPEM=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale( sStrength, 25, 188)</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/Bomber/Ability_A3_SUP.TALENT" id="3A90273D-9843-44D6-ABBD-D815F63568A0">
+					<UnitConstant>
+						<name>Blind_Duration</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>1.5</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <UsableBuilding>
-	<BackLink DBID="/Maps/Test/PlaneMap/_.ADMP" Count="5" />
+	<BackLink DBID="/Maps/Test/PlaneMap/_.ADMP" Count="4" />
 	<BackLink DBID="/Maps/Multiplayer/MOBA/_.ADMP" Count="1" />
 	<abilities>
 		<Item href="/Maps/Test/PlaneMap/Portal/portal1.USBL" id="1540E86D-6319-4CDB-8F28-2D925E799013">
