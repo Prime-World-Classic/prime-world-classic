@@ -1,0 +1,13 @@
+--- pw/branches/r1117/Src/Render/uirenderer.cpp
++++ pw/branches/r1117/Src/Render/uirenderer.cpp
+@@ -714,9 +714,14 @@
+ {
++    fprintf(stderr, "UIRenderer::Render called, initialized=%d\n", initialized);
+ 	if ( !initialized )
+ 		return;
+ 
+   RenderQueue & queue = (what == ERenderWhat::_2D) ? que2D : que3D;
+ 
++    fprintf(stderr, "UIRenderer::Render queue.quadCounter=%d\n", queue.quadCounter);
+ 	if( queue.quadCounter == 0 )
+ 		return;

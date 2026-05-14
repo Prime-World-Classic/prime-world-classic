@@ -90,7 +90,7 @@ Renderer::Renderer(unsigned int _hWnd) :
 	pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 	if (pD3D == 0)
 	{
-		//Log.Add(MAIN_LOG, "[!] Ошибка Direct3DCreate9\n"); FIXME
+		//Log.Add(MAIN_LOG, "[!] пїЅпїЅпїЅпїЅпїЅпїЅ Direct3DCreate9\n"); FIXME
 	}
 
 	hWnd = _hWnd;
@@ -145,18 +145,18 @@ void Renderer::CorrectResolution( unsigned int &width, unsigned int &height ) co
     float deltaWidth =  (float)curWidth - width;
     float deltaHeight = (float)curHeight - height;  
 
-    //Найти разрешение больше запрошенного намного предпочтительнее чем меньше,
-    //поэтому для всех разрешений меньше запрошенного будет искусственно завышать 
-    //коэффициент, тем самым разделив разрешения на два класса
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ,
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     //
-    //Для отрицательных разрешений искусственно добавляем следующую разницу 
-    //в процентах
+    //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+    //пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     const float additionalDeltaPercent = 0.1f;
 
     if( deltaWidth < 0 )  deltaWidth  -= width * additionalDeltaPercent;
     if( deltaHeight < 0 ) deltaHeight -= height * additionalDeltaPercent;
 
-    //Среднеквадратичное отклонение текущего разрешения к запрошенному
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     float curCoef = deltaWidth * deltaWidth + deltaHeight * deltaHeight;
 
     //DebugTrace( "Relation %dx%d to %dx%d is %g", width, height, curWidth, curHeight, curCoef );
@@ -241,12 +241,12 @@ void Renderer::UpdateRealRenderMode( const RenderMode &configRenderMode )
   D3DDISPLAYMODE mode = {};
   pDevice->GetDisplayMode( 0, &mode );
   
-  //В оконном режиме режиме mode.Width и mode.Height содержат разрешение 
-  //рабочего стола, поэтому воспользуемся данными presentParams
+  //пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ mode.Width пїЅ mode.Height пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ presentParams
   realRenderMode.width = presentParams.BackBufferWidth;
   realRenderMode.height = presentParams.BackBufferHeight;
   
-  //Если в настройках refreshRate равен 0, то так мы точно получаем настоящее значение
+  //пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ refreshRate пїЅпїЅпїЅпїЅпїЅ 0, пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   realRenderMode.refreshRate = mode.RefreshRate; 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,9 +266,9 @@ bool Renderer::NeedToFilterResolutionFromUser( unsigned int width, unsigned int 
   
   const float desktopAspectRatio = float(deskWidth) / deskHeight;
   
-  //Будем считать, что разрешение можно показывать пользователю если 
-  //его соотношение сторон отличается от соотношения сторон рабочего стола 
-  //менее чем на aspectRatioThreshold процентов
+  //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 
+  //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ 
+  //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ aspectRatioThreshold пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   const float aspectRatioThreshold = 0.1f;
   
   const float ratio = (curAspectRatio - desktopAspectRatio) / desktopAspectRatio;
@@ -280,24 +280,38 @@ bool Renderer::NeedToFilterResolutionFromUser( unsigned int width, unsigned int 
 
 void Renderer::OnDeviceChanged()
 {
+  fprintf(stderr, "Renderer::OnDeviceChanged start\n");
+  fflush(stderr);
   DebugTrace("OnDeviceChanged");
   
   FillCaps();
 
   // Save links to surfaces
   IDirect3DSurface9 *pSurf;
+  fprintf(stderr, "Getting depth stencil surface...\n");
+  fflush(stderr);
   pDevice->GetDepthStencilSurface(&pSurf);
+  fprintf(stderr, "Depth surface: %p\n", pSurf);
+  fflush(stderr);
   pDeviceDepthSurface.Attach(pSurf);
+  
+  fprintf(stderr, "Getting render target 0...\n");
+  fflush(stderr);
   pDevice->GetRenderTarget(0, &pSurf);
+  fprintf(stderr, "Color surface: %p\n", pSurf);
+  fflush(stderr);
   pDeviceColorSurface.Attach(pSurf);
 
+  fprintf(stderr, "Creating query...\n");
+  fflush(stderr);
   IDirect3DQuery9* pQuery;
   pDevice->CreateQuery(D3DQUERYTYPE_EVENT, &pQuery);
+  fprintf(stderr, "Query: %p\n", pQuery);
+  fflush(stderr);
   pFrameSynchQuery = DXQueryRef(pQuery, false);
 
-  
-  //systemLog(NLogg::LEVEL_MESSAGE) << "Renderer: render mode is " << presentParams.BackBufferWidth << " x " << presentParams.BackBufferHeight << " @ " 
-    //<< (presentParams.PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE ? "NOSYNC" : "VSYNC") << endl;
+  fprintf(stderr, "Renderer::OnDeviceChanged finished\n");
+  fflush(stderr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -704,7 +718,7 @@ void Renderer::Synchronize()
           break;
         }
 
-        // Здесь можно что-нибудь сделать
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
         threading::Sleep(1);
       }

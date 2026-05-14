@@ -341,7 +341,7 @@ if(WIN32)
 else()
   # Linux libraries
   find_package(Threads REQUIRED)
-  set(ALL_LIBS ${ALL_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt dl ssl crypto curl z freetype jpeg GLU boost_thread SDL2)
+  set(ALL_LIBS ${ALL_LIBS} ${CMAKE_THREAD_LIBS_INIT} rt dl ssl crypto curl z freetype jpeg GL GLU OpenGL boost_thread SDL2)
 
   list_remove_regexp( ALL_SRCS ".*CMakeFiles/.*" )
   list_remove_regexp( ALL_SRCS ".*System/threading/thread\\.cpp$" )
@@ -362,7 +362,7 @@ else()
   list_remove_regexp( ALL_SRCS ".*LPerfCounterProviderIface\\.auto\\.cpp$" )
   list_remove_regexp( ALL_SRCS ".*RPerfCounterProviderIface\\.auto\\.cpp$" )
   
-  set(ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/LinuxStubs.cpp ${SRC_DIR}/LinuxStubs2.cpp ${SRC_DIR}/SoundStubs.cpp ${VENDOR}/MD4/md4c.c ${VENDOR}/MD4/md5c.c ${SRC_DIR}/System/Math/MD.cpp)
+  set(ALL_SRCS ${ALL_SRCS} ${SRC_DIR}/LinuxStubs.cpp ${SRC_DIR}/SoundStubs.cpp ${VENDOR}/MD4/md4c.c ${VENDOR}/MD4/md5c.c ${SRC_DIR}/System/Math/MD.cpp)
   
   # Include Server RPC files
   file(GLOB_RECURSE RPC_SRCS ${SRC_DIR}/Server/RPC/*.cpp)

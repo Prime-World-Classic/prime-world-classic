@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#ifdef _WIN32
+#if defined(_WIN32) || defined(NV_LINUX_PLATFORM)
 
 #pragma warning (disable : 4996)
 #include "System/StrProc.h"
@@ -213,6 +213,7 @@ static NDebug::PerformanceDebugVar* FindPerfVar( const wchar_t* screen, const wc
 
 void DumpLoadedModules() 
 { 
+#ifndef NV_LINUX_PLATFORM
   CObj<FileWriteStream> pFile;
   string logFileName = NDebug::GenerateDebugFileName( "modules", "dmp" );
   pFile = new FileWriteStream( logFileName, FILEACCESS_WRITE, FILEOPEN_OPEN_ALWAYS );
@@ -260,6 +261,7 @@ void DumpLoadedModules()
 
   //  Do not forget to clean up the snapshot object. 
   CloseHandle( hModuleSnap ); 
+#endif
 }
 
 
@@ -742,7 +744,7 @@ std::string GetDirectoryFromPath(const std::string& fullPath) {
     return "";
 }
 
-#ifdef _WIN32
+#ifndef NV_LINUX_PLATFORM
 #include <windows.h>
 #include <TlHelp32.h>
 
@@ -770,9 +772,6 @@ int count = 0;
                 count++;
             }
         } while (Process32Next(hProcessSnap, &pe32));
-#else
-int NumProcessRunning(const char* processName) { return 0; }
-#endif
     }
 
     CloseHandle(hProcessSnap);
@@ -793,6 +792,10 @@ static void RunLinuxLauncher() {
 
   systemLog( NLogg::LEVEL_MESSAGE ) << "Linux proc run: \"" << procRun << "\"" << endl;
 }
+#else
+int NumProcessRunning(const char* processName) { return 0; }
+static void RunLinuxLauncher() {}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, SPluginSettings * pluginSett )
@@ -891,8 +894,10 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
   StrongMT<NLogg::CDumper> pAuxDumper;
 
+#if 0
   if( Compatibility::IsRunnedUnderWine() )
     pAuxDumper = new NLogg::CStdOutDumper( &GetSystemLog(), stderr, false );
+#endif
 
   if ( isSpectator )
   {
@@ -978,7 +983,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   {
     const NGameX::TutorialSplash splash;
 
-    ::Sleep(5000);
+    threading::Sleep(5000);
 
     return 0xBEEF;
   }
@@ -1335,11 +1340,13 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
         } else {
 #ifdef NV_WIN_PLATFORM
           context = new Game::GameContext(g_sessionToken.c_str(), g_devLogin.c_str(), mapId, socialServer, guildEmblem, isSpectator, false );
+#elif defined(NV_LINUX_PLATFORM)
+          context = 0;
 #else
           context = new Game::LocalGameContext(false);
 #endif
         }
-        context->Start();
+        if (context) context->Start();
     } else {
       ShowLocalizedErrorMB( L"Error", L"Unknown response" );
       return 0;
@@ -1354,18 +1361,24 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   if(s_bRegisterReplayExtention)
    RegisterReplayFileExtentionAssociation();
 
+#ifndef NV_LINUX_PLATFORM
   CoInitialize(NULL);
+#endif
 
+#ifndef NV_LINUX_PLATFORM
   if ( s_NullRender && !g_NullRenderNoLogBox )
   {
     mainVars.logBox = new NLogg::EditBoxDumper( &GetSystemLog(), NMainFrame::GetWnd() );
   }
+#endif
 
+#ifndef NV_LINUX_PLATFORM
   if ( g_DebugDumpInfo )
   {
     NBSU::SystemReport sysRep;
     sysRep.dumpSystemInfo(true);
   }
+#endif
 
   Render::RenderMode renderMode;
   
@@ -1400,8 +1413,10 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     NMainFrame::ResizeWindow( currentRenderMode.width, currentRenderMode.height, currentRenderMode.isFullScreen, currentRenderMode.isBorderless );
   }
 
+#ifndef NV_LINUX_PLATFORM
   if ( mainVars.logBox )
     mainVars.logBox->ResizeLogWindow();
+#endif
 
   /*if(s_NullRender != RENDER_DISABLE_FLAG)*/ 
   {
@@ -1592,7 +1607,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     if ( !NMainFrame::IsAppActive() && 0 <= g_inactiveSleep && g_inactiveSleep < 1000 )
     {
       NI_PROFILE_BLOCK( "Sleep" );
-      Sleep( g_inactiveSleep );
+      threading::Sleep( g_inactiveSleep );
     }
 
     // Do present, unless skip everything
@@ -1708,6 +1723,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
 
 //Entry point
+#ifndef NV_LINUX_PLATFORM
 extern "C"
 {
 
@@ -1729,8 +1745,9 @@ INTERMODULE_EXPORT void WINAPIV StartPWPlugin( HWND hWnd, int width, int height,
 }
 
 } //extern "C"
+#endif
 
-
+#ifndef NV_LINUX_PLATFORM
 #ifndef DO_NOT_USE_DLLMAIN
 BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved )
 {
@@ -1747,6 +1764,7 @@ BOOL WINAPI DllMain( HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved )
   }
   return TRUE;
 }
+#endif
 #endif
 
 
@@ -1775,7 +1793,7 @@ static bool DebugCrashNow( const char *name, const vector<wstring> &params )
     if ( !_wcsicmp( params[0].c_str(),  L"gpf") )
     {
       int * nullPtr = 0;
-      DebugTrace( "Writing address 0x%08x...", (int)nullPtr ); //Block compiler optimizations
+      DebugTrace( "Writing address 0x%p...", (void*)nullPtr ); //Block compiler optimizations
       *nullPtr = 0;
       return true;
     }
@@ -1829,40 +1847,4 @@ static bool SetMallocThreadMask( const char * name, const vector<wstring> & _par
 
 REGISTER_CMD( debug_crash_now, DebugCrashNow );
 REGISTER_CMD( malloc_mask, SetMallocThreadMask )
-#else
-#include <stdlib.h>
-#include <stdio.h>
-#include <SDL2/SDL.h>
-extern int __stdcall PseudoWinMain( void* hInstance, void* hWnd, char* lpCmdLine, void* pluginSett );
-extern "C" {
-void StartPWApplication(void* hWnd) {
-  printf("==================================================\n");
-  printf(" Prime World Linux Native Client (SDL2)\n");
-  printf("==================================================\n");
-
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
-      printf("Failed to initialize SDL2: %s\n", SDL_GetError());
-      _exit(1);
-  }
-
-  SDL_Window* win = SDL_CreateWindow("Prime World Native Linux Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
-  if (!win) {
-      printf("Failed to create SDL2 window: %s\n", SDL_GetError());
-      _exit(1);
-  }
-  printf("SDL2 Window created successfully. Booting game engine...\n");
-
-  PseudoWinMain( 0, (void*)win, (char*)"", 0 );
-
-  SDL_DestroyWindow(win);
-  SDL_Quit();
-  _exit(0);
-}
-void StartPWPlugin(void* hWnd, int width, int height, bool fullscreen, const char* sessionLogin) {}
-}
-
-int __stdcall PseudoWinMain( void* hInstance, void* hWnd, char* lpCmdLine, void* pluginSett ) {
-  printf("Inside PseudoWinMain dummy.\n");
-  return 0;
-}
 #endif

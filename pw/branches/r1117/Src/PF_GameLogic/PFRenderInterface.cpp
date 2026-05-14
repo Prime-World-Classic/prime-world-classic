@@ -372,6 +372,8 @@ Interface::Interface(HWND hwnd) :
   useSaturationColor(false),
   width3D(0), height3D(0)
 {
+  fprintf(stderr, "PF_Render::Interface created with hwnd %p\n", hwnd);
+  fflush(stderr);
   // mark renderArea as invalid
   renderArea.left = renderArea.top = 0;
   renderArea.bottom = renderArea.right = -1;
@@ -451,6 +453,8 @@ static inline DWORD CorrectResolution(DWORD _resolution)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Interface::Start( RenderMode& mode )
 {
+  fprintf(stderr, "PF_Render::Interface::Start\n");
+  fflush(stderr);
   PushDXPoolGuard dxPool("Renderer");
 
   mode.width3D  = width3D  = CorrectResolution(mode.width);
@@ -460,28 +464,52 @@ bool Interface::Start( RenderMode& mode )
     return false;
 	
   CreateRTs(mode);
+  fprintf(stderr, "CreateRTs finished\n");
+  fflush(stderr);
 
   //s_Reprojector.Init(mode.width3D, mode.height3D, FORMAT_A8R8G8B8, FORMAT_R32F);
 
   s_waterReflCoeff = Clamp(s_waterReflCoeff, 0.125f, 1.0f);
 
+  fprintf(stderr, "WaterManager::Init...\n");
+  fflush(stderr);
   WaterManager::CreateParams params(s_waterReflCoeff, s_waterReflCoeff);
   WaterManager::Init(params);
 
+  fprintf(stderr, "GetDefaultTextures().Init()...\n");
+  fflush(stderr);
   GetDefaultTextures().Init();
 
+  fprintf(stderr, "Init()...\n");
+  fflush(stderr);
   Init();
 
+  fprintf(stderr, "InstancedPrimManager::Init()...\n");
+  fflush(stderr);
   InstancedPrimManager::Init();
 
+  fprintf(stderr, "Creating FullScreenFX...\n");
+  fflush(stderr);
   Reset( pPostFX, new FullScreenFX() );
+  fprintf(stderr, "Creating PostFXParamsManager...\n");
+  fflush(stderr);
   Reset( pPostFXMan, ::Create<PostFXParamsManager>() );
+  fprintf(stderr, "Initializing UIRenderer...\n");
+  fflush(stderr);
   GetUIRenderer()->Initialize();
+  fprintf(stderr, "Initializing DebugRenderer...\n");
+  fflush(stderr);
   DebugRenderer::Initialize();
+  fprintf(stderr, "Clearing scene...\n");
+  fflush(stderr);
   Clear( Color(0, 0, 0, 0) );
 
+  fprintf(stderr, "Initializing RecolorableTextureManager...\n");
+  fflush(stderr);
   PF_Core::RecolorableTextureManager::Init();
 
+  fprintf(stderr, "PF_Render::Interface::Start finished\n");
+  fflush(stderr);
   return true;
 }
 
@@ -1537,6 +1565,8 @@ void Interface::FlushUI()
 
 void Interface::Render( bool GIsEditor )
 {
+  fprintf(stderr, "PF_Render::Interface::Render (GIsEditor: %d)\n", GIsEditor);
+  fflush(stderr);
   NI_PROFILE_FUNCTION
 
   Renderer* const pRenderer = GetRenderer();
@@ -1888,6 +1918,8 @@ void Interface::DebugRenderTextures()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::CreateRTs( const RenderMode &mode )
 {
+  fprintf(stderr, "Interface::CreateRTs start\n");
+  fflush(stderr);
   const bool useAdditionalRTs = s_forceAdditionalRTs || (mode.width * mode.height > 3 * width3D * height3D);
 
   DWORD  widthRT = useAdditionalRTs ?  width3D : mode.width;
@@ -1901,6 +1933,8 @@ void Interface::CreateRTs( const RenderMode &mode )
   CreateMainTextures(widthRT, heightRT); // Those textures can be used by UI too
   if(useAdditionalRTs)
     CreateAdditionalRTs(mode.width, mode.height); // Those textures will be used by UI
+  fprintf(stderr, "Interface::CreateRTs finished\n");
+  fflush(stderr);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

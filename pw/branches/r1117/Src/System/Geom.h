@@ -417,7 +417,7 @@ struct SVector
 	SVector& operator-=( const SVector &vec ) { x -= vec.x; y -= vec.y; return *this; }
 	const int operator*( const SVector &vec ) const { return x*vec.x + y*vec.y; }
 	SVector& operator*=( const int n ) { x *= n; y *= n; return *this; }
-	// деление нацело
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	SVector& operator/=( const int n ) { const float coeff = 1.0f / float(n); x *= (int)coeff; y *= (int)coeff; return *this; }
 };
 inline const SVector operator*( const SVector &a, const int b ) { return SVector( a.x*b, a.y*b ); }
@@ -447,16 +447,16 @@ public:
 	CLine2( const float _a, const float _b, const float _c ) : dummy(0), a(_a), b(_b), c(_c) { }
 	CLine2( const CVec2 &p1, const CVec2 &p2 ) : dummy(0), a( p2.y - p1.y ), b( p1.x - p2.x ), c( p2.x*p1.y - p1.x*p2.y ) {	}
 
-	// расстояние до точки со знаком
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	float DistToPoint( const CVec2 &point );
-	// проекция точки на прямую
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	void ProjectPoint( const CVec2 &point, CVec2 *result );
-	// знак - в какой полуплоскости отн. прямой лежит точка
+	// пїЅпїЅпїЅпїЅ - пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	const int GetSign( const CVec2 &point ) const { return Sign( (int)(a * point.x + b * point.y + c) ) ; }
-  // перпендикуляр к прямой, проходящий через заданную точку
+  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
   CLine2* GetPerpendicularByPoint( const CVec2& point ) const { return new CLine2( b, -a, a*point.y - b*point.x ); }
 
-	// нормализация линии
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 	void Normalize()
 	{
 		if ( !bNormalized )
@@ -484,9 +484,9 @@ public:
 		: p1( _p1 ), p2( _p2 ), dir( p2 - p1 ) {	}
 	CSegment( const float x1, const float y1, const float x2, const float y2 )
 		: p1( x1, y1 ), p2( x2, y2 ), dir( p2 - p1 ) { }
-	// расстояние от точки до отрезка
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	const float GetDistToPoint( const CVec2 &point ) const;
-	// дать точку на отрезке, ближайшую к заданной
+	// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	void GetClosestPoint( const CVec2 &point, CVec2 *result ) const;
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -509,18 +509,18 @@ public:
   bool IsInside( const CVec2 &pt ) const { return fabs2(pt - center) <= sqr(r); }
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// по касательному вектору (единичной длины), точке касания и радиусу
+// пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ), пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline void GetCirclesByTangent( const CVec2 &tang, const CVec2 &p, const float r, CCircle *c1, CCircle *c2 );
 
 inline int QuadraticEquation( double c2, double halfC1, double c0, double& x1, double& x2 );
 
-//Пересекаем прямую с окружностью. Возвращаем кол-во точек пересечения.
+//пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
 inline int GetLineCircleIntersection( const CLine2& _line, const CCircle& _circle, CVec2& p1, CVec2& p2 );
 
-// найти точки касания для касательной, проведённой из данной точки к окружности
+// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline bool FindTangentPoints( const CVec2 &p, const CCircle &c, CVec2 *p1, CVec2 *p2 );
 
-// ориентированная ( против часовой - положительна ) площадь треугольника, помноженная на два
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ( пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
 inline float TriangleArea2( const CVec2 &p1, const CVec2 &p2, const CVec2 &p3 );
 
 inline float IsPointInsideTriangle( const CVec2 &p1, const CVec2 &p2, const CVec2 &p3, const CVec2 &p );
@@ -567,7 +567,7 @@ public:
 	bool IsPointOnPlane( const CVec3 &pt ) const { return n*pt == -d; }
 	bool IsPointOverPlane( const CVec3 &pt ) const { return n*pt > -d; }
 	bool IsPointUnderPlane( const CVec3 &pt ) const { return n*pt < -d; }
-	// протестировать, не лежит ли точка под плоскостью. вернуть 0x80000000 если это так или 0 в противном случае
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0x80000000 пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ 0 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	unsigned long CheckPointUnderPlane( const CVec3 &pt ) const;
 	*/
 };
@@ -675,7 +675,7 @@ public :
 inline bool operator==( const SHMatrix &a, const SHMatrix &b ) { return memcmp( &a, &b, sizeof(a) ) == 0; }
 inline bool operator!=( const SHMatrix &a, const SHMatrix &b ) { return !(a == b); }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// прямое и обратное преобразование вместе
+// пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 struct SFBTransform
 {
 	SHMatrix forward, backward;
@@ -986,7 +986,7 @@ struct STriangle
 	//
 	void Set( const unsigned short _i1, const unsigned short _i2, const unsigned short _i3 ) { i1 = _i1; i2 = _i2; i3 = _i3; }
 };
-// ориентированная ( против часовой - положительна ) площадь треугольника, помноженная на два
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ( пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ) пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ
 inline float TriangleAAA( const CVec2 &p1, const CVec2 &p2, const CVec2 &p3 )
 {
 	return p1.x * ( p2.y - p3.y ) + p2.x * ( p3.y - p1.y ) + p3.x * ( p1.y - p2.y );
@@ -1140,8 +1140,8 @@ inline void SPlane::Set( const CVec3 &pt0, const CVec3 &pt1, const CVec3 &pt2 )
 	d = -( pt0 * n );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// протестировать, не лежит ли точка под плоскостью.
-// вернуть 0x80000000 если это так или 0 в противном случае
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0x80000000 пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ 0 пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 inline unsigned long SPlane::CheckPointUnderPlane( const CVec3 &pt ) const
 {
 	float fDist = n*pt + d;
@@ -1162,7 +1162,7 @@ inline unsigned long SPlane::CheckPointUnderPlane( const CVec3 &pt ) const
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline void Identity( SHMatrix *pRes )
 {
-	MemSetDWord( reinterpret_cast<unsigned long*>(pRes), 0, 16 );
+	MemSetDWord( pRes, 0, 16 );
 	pRes->_11 = pRes->_22 = pRes->_33 = pRes->_44 = 1.0f;
 }
 //#pragma optimize( "aw", off )
@@ -1178,7 +1178,7 @@ inline void Transpose( SHMatrix *p, const SHMatrix &m )
 inline void SHMatrix::Set( const CVec3 &vPos )
 {
 	// zero everything
-	MemSetDWord( reinterpret_cast<unsigned long*>(this), 0, 16 );
+	MemSetDWord( this, 0, 16 );
 	// identity
 	_11 = _22 = _33 = _44 = 1.0f;
 	// write position to last column
@@ -2310,16 +2310,16 @@ const unsigned short GetDirectionByVector( float x, float y );
 const CVec2 GetVectorByDirection( const unsigned short dir );
 const unsigned short GetZDirectionBy3DVector( const float x, const float y, const float z );
 const unsigned short GetZDirectionBy3DVector( const CVec2 &vec, const float z );
-// угол между между вектором и OXY
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ OXY
 const unsigned short GetZAngle( const float x, const float y, float z );
-// угол между между вектором и OXY
+// пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ OXY
 const unsigned short GetZAngle( const CVec2 &vec, const float z );
 const unsigned short GetZAngle( const CVec3 &vPoint );
 const unsigned short DirsDifference( const unsigned short dir1, const unsigned short dir2 );
 const int DifferenceSign( const unsigned short dir1, const unsigned short dir2 );
-// в угле от startAngleDir до finishAngleDir против часовой
+// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ startAngleDir пїЅпїЅ finishAngleDir пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 bool IsInTheAngle( const unsigned short dir, const unsigned short startAngleDir, const unsigned short finishAngleDir );
-// dir в минимальном угле мжду dir1 и dir2
+// dir пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ dir1 пїЅ dir2
 bool IsInTheMinAngle( const unsigned short dir, const unsigned short dir1, const unsigned short dir2 );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline bool IsAlmostZero( const CVec2 &vec )
@@ -2363,15 +2363,15 @@ struct SRect
 
 	//public:
 	void InitRect( const CVec2 &_v1, const CVec2 &_v2, const CVec2 &_v3, const CVec2 &_v4 );
-	// задаётся половина реальной длины и ширины (как бы радиусы)
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 	void InitRect( const CVec2 &center, const CVec2 &dir, const float length, const float width );
-	// задаются длины вперёд и назад, половина ширины
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 	void InitRect( const CVec2 &center, const CVec2 &dir, const float lengthAhead, const float lengthBack, const float width );
 
 	bool IsIntersected( const SRect &rect ) const;
 	bool IsIntersected( const CSegment &segment ) const;
 
-	// границы прямоугольника не принадлежат ему
+	// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
 	bool IsPointInside( const CVec2 &point ) const;
 	bool IsIntersectCircle( const CVec2 &circleCenter, const float r ) const;
 	bool IsIntersectCircle( const CCircle &circle ) const { return IsIntersectCircle( circle.center, circle.r ); }
@@ -2384,28 +2384,28 @@ struct SRect
 };
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const float fabs( const SRect rect1, const SRect rect2 );
-// угол, под которым rect виден из точки point
+// пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ rect пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ point
 const unsigned short GetVisibleAngle( const CVec2 &point, const SRect rect );
-// точка пересечения луча из точки vPoint по направлению vDir (можно не нормировать) с прямоугольником rect
-// возвращает false, если не пересекается
+// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ vPoint пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ vDir (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ) пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ rect
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ false, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 const bool GetRectBeamIntersection( CVec2 *pvResult, const CVec2 &vPoint, const CVec2 &vDir, const SRect &rect );
-// вернуть нормализованное значение вектора
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 inline const CVec2 Norm( const CVec2 &v )
 {
 	return ( v == VNULL2 ) ? VNULL2 : v/fabs(v);
 }
-// получить углы, необходимые для поворота этой нормали относительно осей X (phi) и Y (theta) 
-// для совпадения её с осью Z
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ X (phi) пїЅ Y (theta) 
+// пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅ пїЅпїЅпїЅпїЅ Z
 inline void GetAngles( const CVec3 &vNormal, float *pfPhi, float *pfTheta )
 {
-	// phi - поворот в плоскости ZY относительно оси X
+	// phi - пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ZY пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ X
 	// cos( phi ) = Z*N(x=0) = (0, 0, 1) * (0, Ny, Nz) / sqrt( Ny**2 + Nz**2 );
 	{
 		const float fLen2 = fabs2( vNormal.y, vNormal.z );
 		*pfPhi = fLen2 < 1e-8f ? 0 : vNormal.z / sqrt( fLen2 );
 		*pfPhi = -Sign( vNormal.y ) * acos( Clamp(*pfPhi, -1.0f, 1.0f) );
 	}
-	// theta - поворот в плоскости ZX относительно оси Y
+	// theta - пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ZX пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ Y
 	// cos( theta ) = Z*N(y=0) = Nz / fabs( Nx, Nz )
 	{
 		const float fLen2 = fabs2( vNormal.x, vNormal.z );
@@ -2494,7 +2494,7 @@ template<> struct hash<CVec2>
 #pragma pack( pop )
 
 
-//Здеся были какие-то операторы вывода векторов в NLogg::StreamBuffer. Но PW собирается и без них.
-//Если что, эти самые операторы вынесены в отдельный ашник GeomStreamers.h
+//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ NLogg::StreamBuffer. пїЅпїЅ PW пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ.
+//пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ GeomStreamers.h
 
 #endif //_GEOM_H_

@@ -1,5 +1,5 @@
 #pragma once
-#include "Server/RPC/base.h"
+#include "Server/RPC/Base.h"
 
 namespace StatisticService
 {

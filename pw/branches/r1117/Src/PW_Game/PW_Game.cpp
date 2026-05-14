@@ -112,6 +112,6 @@ int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, char * lpCm
   return 0;
 }
 #else
-extern "C" void StartPWApplication( void* hWnd );
-int main() { StartPWApplication( 0 ); return 0; }
+extern "C" void StartPWApplication( void* hWnd, int argc, char** argv );
+int main(int argc, char** argv) { StartPWApplication( 0, argc, argv ); return 0; }
 #endif

@@ -110,3 +110,15 @@ pw/branches/r1117/Src/Shared/Debug/vc90.pdb
 pw/branches/r1117/Src/Shared/Debug/BuildLog.htm
 pw/branches/r1117/Vendor/wsdlpull/win32/vs2008/*
 FlashUI/main.fla
+
+# Linux build artifacts
+build_linux/
+pw/branches/r1117/build_linux/
+Bin/logs/
+pw/branches/Bin/
+pw/branches/r1117/Bin/
+*.rej
+*.ii
+linux_port.patch
+pw/branches/linux_port.patch
+pw/branches/r1117/linux_port.patch

@@ -28,6 +28,8 @@ Interface::Interface(HWND hwnd)
   , disableWarFog(false)
 {
 	unsigned int nWnd = (unsigned int)(uintptr_t)( hwnd ? hwnd : NMainFrame::GetWnd() );
+    fprintf(stderr, "Interface::Interface: calling Renderer::Init with nWnd %p\n", (void*)(uintptr_t)nWnd);
+    fflush(stderr);
 	Renderer::Init(nWnd);
 
 	s_pSelf = this;
@@ -56,18 +58,28 @@ Interface *Interface::Create(HWND hwnd)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool Interface::Start( RenderMode& renderMode )
 {
+  fprintf(stderr, "Render::Interface::Start\n");
+  fflush(stderr);
   if ( !Render::GetRenderer()->Start( renderMode ) )
 	{
     if(RENDER_DISABLED)
       Render::AOERenderer::Init();
     else
-		  MessageBox( 0, "Failed to set display mode", "Error", MB_OK );
+	  {
+		  //MessageBox( 0, "Failed to set display mode", "Error", MB_OK );
+          fprintf(stderr, "Renderer::Start failed\n");
+          fflush(stderr);
+	  }
 		return false;
 	}
 
+  fprintf(stderr, "Renderer::Start succeeded, initializing sub-renderers...\n");
+  fflush(stderr);
   Render::ImmRenderer::Init();
   Render::SmartRenderer::Init();
   Render::AOERenderer::Init();
+  fprintf(stderr, "Render::Interface::Start finished\n");
+  fflush(stderr);
 	return true;
 }
 

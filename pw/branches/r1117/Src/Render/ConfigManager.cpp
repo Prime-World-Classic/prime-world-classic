@@ -87,12 +87,16 @@ static const D3DFORMAT g_R2VBFormats[] = {
 
 HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _checkFormats)
 {
+  fprintf(stderr, "ConfigManagerImpl::CheckDeviceCaps start, _pDevice=%p\n", _pDevice);
+  fflush(stderr);
   ASSERT(_pDevice);
 
   HRESULT hr = E_FAIL;
 
   D3DCAPS9 caps9;
   _pDevice->GetDeviceCaps(&caps9);
+  fprintf(stderr, "GetDeviceCaps succeeded\n");
+  fflush(stderr);
   sysInfo.MaxVertexShaderConst = caps9.MaxVertexShaderConst;
 
   D3DADAPTER_IDENTIFIER9 adapterID;
@@ -100,12 +104,20 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
 
   {
     IDirect3D9 *p;
+    fprintf(stderr, "Calling GetDirect3D...\n");
+    fflush(stderr);
     hr = _pDevice->GetDirect3D( &p );
+    fprintf(stderr, "GetDirect3D returned hr=%08X, p=%p\n", hr, p);
+    fflush(stderr);
     NI_DX_THROW(hr, "Corrupted D3D device");
     pD3D.Attach(p);
   }   
   
+  fprintf(stderr, "Calling GetAdapterIdentifier...\n");
+  fflush(stderr);
   hr = pD3D->GetAdapterIdentifier(caps9.AdapterOrdinal, 0, &adapterID);
+  fprintf(stderr, "GetAdapterIdentifier returned hr=%08X\n", hr);
+  fflush(stderr);
 
   sysInfo.IsNullRef = (D3DDEVTYPE_NULLREF == caps9.DeviceType);
   //if(D3DDEVTYPE_REF == caps9.DeviceType) // Probably this mean it is NULLREF actually. OR this mean we are under PerfHUD.
@@ -115,14 +127,20 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
     sysInfo.IsNullRef = NGlobal::GetVar("nullrender").GetInt64();
 
   if( _checkFormats ) {
+    fprintf(stderr, "Checking formats...\n");
+    fflush(stderr);
     D3DDISPLAYMODE displayMode;
     pD3D->GetAdapterDisplayMode(caps9.AdapterOrdinal, &displayMode);
 
     CheckFormats(::Get(pD3D), caps9.AdapterOrdinal, caps9.DeviceType, displayMode.Format);
+    fprintf(stderr, "Formats checked\n");
+    fflush(stderr);
   }
 
   if( hasR2VB & caps )
   {
+    fprintf(stderr, "Checking R2VB support...\n");
+    fflush(stderr);
     IDirect3DTexture9* pRT = 0;
     const DWORD usage = D3DUSAGE_RENDERTARGET | D3DUSAGE_DMAP;
     for(int i = 0; i < ARRAY_SIZE(g_R2VBFormats); ++i)
@@ -132,14 +150,22 @@ HRESULT ConfigManagerImpl::CheckDeviceCaps(IDirect3DDevice9* _pDevice, bool _che
         pRT->Release();
         hr = S_OK;
       }
+    fprintf(stderr, "R2VB check finished\n");
+    fflush(stderr);
   }
   
+  fprintf(stderr, "Creating ConfigDatabase...\n");
+  fflush(stderr);
   if( IConfigDatabase* const pCDB = IConfigDatabase::Create() )
   {
+    fprintf(stderr, "ConfigDatabase created\n");
+    fflush(stderr);
     SOUND_DEVICE sndDev;
     if( pCDB->Load("config.txt", sndDev, adapterID, caps9, 1024, 64, 1700) )
         config_params = pCDB->GetAggregateProperties();
     pCDB->Release();
+    fprintf(stderr, "ConfigDatabase loaded and released\n");
+    fflush(stderr);
 
     for(int i = config_params.size(); --i >= 0;) {
       const StringPair& curProperty = config_params[i];

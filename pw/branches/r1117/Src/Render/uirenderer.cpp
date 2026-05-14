@@ -565,8 +565,8 @@ void UIRenderer::ResetWorldMatrix()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void UIRenderer::GetBillboardMatrix(SHMatrix * pCombined, const SHMatrix & world, ETransformMode::Enum transformMode, const CVec3 & pivot, float depthBias)
 {
-  //FIXME: Не очень оптимальная работа с матицами
-  //TODO: iA: Надо бы упростить расчет матриц; Думаю, можно свести все к 3-4 умножениям в самом сложном случае
+  //FIXME: пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //TODO: iA: пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ; пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ 3-4 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
   //Rotation = PivotOffset * (~viewMatrix) * swap * (~PivotOffset);
   SHMatrix RotLeft;
@@ -712,11 +712,13 @@ void UIRenderer::EndQueue()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void UIRenderer::Render( ERenderWhat::Enum what, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy )
 {
+  fprintf(stderr, "UIRenderer::Render called, initialized=%d\n", initialized);
 	if ( !initialized )
 		return;
 
   RenderQueue & queue = (what == ERenderWhat::_2D) ? que2D : que3D;
 
+  fprintf(stderr, "UIRenderer::Render queue.quadCounter=%d\n", queue.quadCounter);
 	if( queue.quadCounter == 0 )
 		return;
 

@@ -797,5 +797,21 @@ std::string WebLauncherPostRequest::CreateDebugSession()
 
 #else
 #include <vector>
+#include "WebLauncher.h"
+
+WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;
+WebLauncherPostRequest::WebLoginResponse g_webLoginResponse;
+std::map<nstl::wstring, WebLauncherPostRequest::WebUserData> g_usersData;
+nstl::map<int, WebLauncherPostRequest::PlayerInfoByUserId> userIdToNicknameMap;
+
+WebLauncherPostRequest::WebLauncherPostRequest() {}
+WebLauncherPostRequest::~WebLauncherPostRequest() {}
+WebLauncherPostRequest::WebLoginResponse WebLauncherPostRequest::GetSessionData(const char*, const char*) { 
+    WebLoginResponse res;
+    res.retCode = LoginResponse_WEB_JOIN;
+    res.response = "dummy_user";
+    return res; 
+}
+
 namespace NGameX { void WebLauncherPostRequest(const char*, const std::vector<int>&, int) {} void WebLauncherPostRequest(const char*, const char*, int) {} void StartWebLauncher() {} }
 #endif

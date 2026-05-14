@@ -66,9 +66,10 @@ public:
 	explicit Renderer(unsigned int _hWnd);
 	 ~Renderer();
 
-	static void Init(unsigned int _hWnd)
-	{
-	  s_pInstance = new Renderer(_hWnd);
+	static void Init(unsigned int _hWnd) { 
+	fprintf(stderr, "Renderer::Init called with hWnd %p\n", (void*)(uintptr_t)_hWnd);
+	fflush(stderr);
+	s_pInstance = new Renderer(_hWnd); 
 	}
 
 	static Renderer* Get();// { return s_pInstance; }

@@ -4,6 +4,14 @@
 #include "Sound/SoundScene.h"
 
 namespace NSoundScene {
+  void TryTurnOffSound() {}
+  void TryTurnOnSound() {}
+  void InitSoundScene(int, const NDb::SoundSceneDesc&) {}
+  void SystemResume() {}
+  void SystemStop() {}
+  void EventSystemUpdate(float) {}
+  void Update() {}
+
   void FMODEvent::Init(const NDb::DBFMODEventDesc &) {}
   bool FMODEvent::IsVaild() const { return false; }
   FMOD::Event* FMODEvent::GetEvent() const { return 0; }

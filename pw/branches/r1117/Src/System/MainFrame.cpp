@@ -315,7 +315,7 @@ static void SetClipCursorRect( HWND _hWnd )
 	
   if ( !s_fullscreen && !s_borderless )
 	{
-    //NUM_TASK Сессия в оконном режиме - курсор не должен покидать пределы окна
+    //NUM_TASK пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
     if (s_clipCursorInWindowedMode && !cursorClipDisabled)
     {
       r.top += wndCaptionSize;
@@ -467,11 +467,11 @@ LRESULT CALLBACK WndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
           {
              SetClipCursorRect( hWnd );
               
-              //Мак, при закрытии модального окна, не присылает WM_ACTIVATEAPP и
-              //поэтому, например, после ассерта приложение игнорирует 
-              //клавиатуру и мышь.
-              //Не очень понятно почему здесь не вызывается SetActive, но,
-              //на всякий случай, будем делать это только под Mac
+              //пїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ WM_ACTIVATEAPP пїЅ
+              //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+              //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ.
+              //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ SetActive, пїЅпїЅ,
+              //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ Mac
               if( Compatibility::IsRunnedUnderWine() )
                 SetActive( true );  
           }
@@ -594,7 +594,7 @@ bool NMainFrame::InitApplication( HINSTANCE hInstance, const char *pszAppName, c
 //     ::hWnd = hUseWindow;
 // 
 //     s_OldWindowProc = (WNDPROC)GetWindowLong( hWnd, GWL_WNDPROC );
-//     // Устанавливаем наш PW'шный
+//     // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ PW'пїЅпїЅпїЅпїЅ
 //     SetWindowLong( hWnd, GWL_WNDPROC, (LONG)WndProc );
 // 
 //     hCursor = LoadCursor( hInstance, IDC_ARROW );
@@ -691,7 +691,7 @@ void AddMsgCursor()
 {
   NI_PROFILE_FUNCTION
 
-  //@iA@TODO: сделать отправку сообщения только при изменении координат
+  //@iA@TODO: пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 	int x,y;
 
   const NMainFrame::SWindowsMsg::EMsg msg = GetLocalCursorPos( x, y );
@@ -740,7 +740,7 @@ static RECT GetVirtualScreenRect()
 
 static RECT GetMonitorRect( const RECT &windowRect )
 {
-  //Находим координаты и размер монитора на котором находится окно
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
   HMONITOR hMon = ::MonitorFromRect( &windowRect, MONITOR_DEFAULTTOPRIMARY );
 
   if( hMon == NULL )
@@ -752,9 +752,9 @@ static RECT GetMonitorRect( const RECT &windowRect )
   if( !::GetMonitorInfo(hMon, &monInfo) )
     return GetVirtualScreenRect();  
     
-  //Монитор может находиться в полноэкранном режиме и тогда его разрешение не соответствуют
-  //разрешению оконного режима. В этом случае находим разрешение монитора в реестре и  
-  //корректируем значения
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ. пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ  
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   DEVMODE devMode;
   
   devMode.dmSize = sizeof(devMode);
@@ -763,8 +763,8 @@ static RECT GetMonitorRect( const RECT &windowRect )
   if( !::EnumDisplaySettings(monInfo.szDevice, ENUM_REGISTRY_SETTINGS, &devMode) )
     return monInfo.rcWork;
   
-  //Увеличиваем размер рабочей области монитора на разницу между оригинальным 
-  //разрешением монитора и текущем разрешением
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   RECT res = { 
     monInfo.rcWork.left, monInfo.rcWork.top, 
     monInfo.rcWork.right + (devMode.dmPelsWidth - Width(monInfo.rcMonitor)), 
@@ -800,7 +800,7 @@ void NMainFrame::ResizeWindow( unsigned long width, unsigned long height, bool i
   }
   else
   {
-    //Центр окна должен остаться в той же позиции
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     POINT newPos;
 
     newPos.x = g_windowCenterPos.x - (int)width / 2;
@@ -829,7 +829,7 @@ void NMainFrame::ResizeWindow( unsigned long width, unsigned long height, bool i
       ::GetWindowLong(hWindow, GWL_EXSTYLE) 
     );
         
-    //Нужно добиться того чтобы окно всегда влезало в монитор на котором оно находится
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     AlignRect( GetMonitorRect(rect), rect );
   }
      
@@ -1002,20 +1002,55 @@ REGISTER_CMD( toggle_cursor_clip, ToggleCursorClip );
 
 #else
 
+#include <SDL2/SDL.h>
+
 namespace NMainFrame {
+  static bool s_isExit = false;
+  static HWND s_hWnd = NULL;
+
   bool GetMessage( SWindowsMsg *pRes ) { return false; }
   bool IsAppActive() { return true; }
   bool IsAppNotMinimized() { return true; }
-  bool IsExit() { return false; }
-  void Exit() { exit(0); }
-  void Exit( const nstl::string& exitCode ) { exit(0); }
+  bool IsExit() { return s_isExit; }
+  void Exit() { 
+      fprintf(stderr, "NMainFrame::Exit() called\n");
+      fflush(stderr);
+      s_isExit = true; 
+  }
+  void Exit( const nstl::string& exitCode ) { 
+      fprintf(stderr, "NMainFrame::Exit(%s) called\n", exitCode.c_str());
+      fflush(stderr);
+      s_isExit = true; 
+  }
   void SetExitCode( const nstl::string& exitCode ) {}
   const nstl::string& GetExitCode() { static nstl::string empty; return empty; }
-  HWND GetWnd() { return NULL; }
-  void SetWnd(HWND _hwnd) {}
+  HWND GetWnd() { 
+      fprintf(stderr, "NMainFrame::GetWnd() returning %p\n", s_hWnd);
+      fflush(stderr);
+      return s_hWnd; 
+  }
+  void SetWnd(HWND _hwnd) { 
+      fprintf(stderr, "NMainFrame::SetWnd(%p)\n", _hwnd);
+      fflush(stderr);
+      s_hWnd = _hwnd; 
+  }
   HINSTANCE GetInstance() { return NULL; }
-  void PumpMessages() {}
-  bool InitApplication( HINSTANCE hInstance, const char *pszAppName, const char *pszWndName, LPCWSTR nIcon, bool fullscreen, int width, int height, HWND hUseWindow ) { return true; }
+  void PumpMessages() {
+      SDL_Event event;
+      while (SDL_PollEvent(&event)) {
+          if (event.type == SDL_QUIT) {
+              fprintf(stderr, "SDL_QUIT received\n");
+              fflush(stderr);
+              s_isExit = true;
+          }
+      }
+  }
+  bool InitApplication( HINSTANCE hInstance, const char *pszAppName, const char *pszWndName, LPCWSTR nIcon, bool fullscreen, int width, int height, HWND hUseWindow ) { 
+      fprintf(stderr, "NMainFrame::InitApplication with hUseWindow %p\n", hUseWindow);
+      fflush(stderr);
+      s_hWnd = hUseWindow;
+      return true; 
+  }
   void ShutdownApplication() {}
   void SetCursor( HCURSOR _hCursor ) {}
   void ShowCursor( bool bShow ) {}

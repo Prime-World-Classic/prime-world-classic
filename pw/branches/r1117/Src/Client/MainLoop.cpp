@@ -66,7 +66,7 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
   // step game state machine
   NCore::GetGlobalGameFSM()->Step(NMainLoop::GetTimeDelta() * 1000.0f); // @BVS@TIME
 
-  //обработка команд на добавление/удаление и прочее про интерфейсы, позвать методы OnBefore*
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ OnBefore*
   NScreenCommands::AnalizeScreenCmds();
 
   UI::NewFrame( GetTime() * 1000.0f ); //IREF //@BVS@TIME
@@ -85,9 +85,9 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
         continue;
       }
 
-      //TODO: Было бы куда удобнее, если бы все окна от всех экранов складывались под единым родительским окном.
-      //Тогда обработка сообщений, mouseCapture, mouseMove & mouseOver, drag&drop была бы заметно очевидней,
-      //и не надо было бы протаскивать все эти механизмы через NMainLoop и IScreenBase
+      //TODO: пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
+      //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, mouseCapture, mouseMove & mouseOver, drag&drop пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+      //пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ NMainLoop пїЅ IScreenBase
 
       UI::GetUser()->StartEvent( event );
       if ( !ProcessScreensEvents( true, event ) )
@@ -136,15 +136,15 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
       (*it)->CommonStep( bAppActive );
   }
 
-	//здесь собственно выполнение команд
+	//пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   NScreenCommands::ProcessScreenCmds();
 
-  //@iA@FIXME: Внимание! DrawScreens складывает геометрию UI и _обычные_ указатели на материалы во внутренние буферы UIRenderer-а
-  //Если между DrawScreens() и собственно отправкой геометрии в DX вызвать Window::Step() или NScreenCommands::ProcessScreenCmds(),
-  //то там вместе с окнами/экранами могут быть удалены материалы, указатели на которые остались в UIRenderer-е..
-  //Со всеми вытекающими при попытке отрендерить эту геометрию
+  //@iA@FIXME: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! DrawScreens пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅ _пїЅпїЅпїЅпїЅпїЅпїЅпїЅ_ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ UIRenderer-пїЅ
+  //пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ DrawScreens() пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ DX пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Window::Step() пїЅпїЅпїЅ NScreenCommands::ProcessScreenCmds(),
+  //пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ UIRenderer-пїЅ..
+  //пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-  //Отправка UI-геометрии в очередь рендера
+  //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   if ( !Render::GetRenderer()->DeviceIsLost() )
   {
     Render::GetUIRenderer()->BeginQueue();
@@ -153,6 +153,11 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
 
     UI::PresentFrame( GetTime() * 1000.0f, bAppActive ); //IREF //@BVS@TIME
     Render::GetUIRenderer()->EndQueue();
+  }
+
+  if (g_screens.empty()) {
+    fprintf(stderr, "NMainLoop::Step: g_screens is empty, exiting loop\n");
+    fflush(stderr);
   }
 
   return !g_screens.empty();
@@ -292,6 +297,9 @@ static void DrawScreens(bool bAppActive)
   drawList.clear();
   drawList.reserve( g_screens.size() );
 
+  fprintf(stderr, "DrawScreens: g_screens size=%d\n", (int)g_screens.size());
+  fflush(stderr);
+
   for(TScreenList::iterator it = g_screens.begin(); it != g_screens.end(); ++it)
   {
     NMainLoop::IScreenBase * pScreen = *it;
@@ -299,10 +307,17 @@ static void DrawScreens(bool bAppActive)
 
     if(pScreen->IsInited())
       drawList.push_back( pScreen );
+    else {
+        fprintf(stderr, "  Screen %p not inited\n", pScreen);
+        fflush(stderr);
+    }
 
     if(pScreen->IsInited() && !transparent)
       break;
   }
+
+  fprintf(stderr, "  drawList size=%d\n", (int)drawList.size());
+  fflush(stderr);
 
   for( int i = 0; i < drawList.size(); ++i )
     drawList[ drawList.size() - 1 - i ]->Draw( bAppActive );
