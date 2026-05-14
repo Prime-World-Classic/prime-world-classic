@@ -9,18 +9,24 @@
 #include "RdpLoginClient.h"
 #include "System/NiTimer.h"
 #include "System/InlineProfiler.h"
+#include "PW_Game/server_ip.h"
+
+
+static unsigned s_rdpLogEevents = ni_udp::RdpOptions::LogMajorEvents | ni_udp::RdpOptions::LogWarnings | ni_udp::RdpOptions::LogErrors;
+REGISTER_VAR( "rdp_log_events", s_rdpLogEevents, STORAGE_NONE );
+
+static int s_rdpLogicPriority = 1;
+REGISTER_VAR( "rdp_logic_priority", s_rdpLogicPriority, STORAGE_NONE );
+
+static int s_sockServPriority = 1;
+REGISTER_VAR( "rdp_sock_server_priority", s_sockServPriority, STORAGE_NONE );
+
+static int s_sockBufferSize = 65536;
+REGISTER_VAR( "rdp_sock_buffer_size", s_sockBufferSize, STORAGE_NONE );
+
 
 namespace rdp_transport
 {
-
-// Конфигурационные переменные
-static TransportConfig s_transportConfig;
-REGISTER_VAR( "login_timeout", s_transportConfig.loginTimeout, STORAGE_NONE );
-REGISTER_VAR( "login_chann_timeout", s_transportConfig.channelTimeout, STORAGE_NONE );
-REGISTER_VAR( "rdp_log_events", s_transportConfig.rdpLogEvents, STORAGE_NONE );
-REGISTER_VAR( "rdp_logic_priority", s_transportConfig.logicPriority, STORAGE_NONE );
-REGISTER_VAR( "rdp_sock_server_priority", s_transportConfig.sockServPriority, STORAGE_NONE );
-REGISTER_VAR( "rdp_sock_buffer_size", s_transportConfig.sockBufferSize, STORAGE_NONE );
 
 class ClientTransport::Worker : public threading::IThreadJob, public BaseObjectMT
 {
@@ -42,66 +48,46 @@ private:
   }
 };
 
+
+
 ClientTransport::ClientTransport( const ni_udp::NetAddr & _bindAddr, unsigned _portSearchRange, Transport::MessageFactory * _msgFactory ) :
-  bindAddr( _bindAddr ),
-  portSearchRange( _portSearchRange )
+bindAddr( _bindAddr ),
+portSearchRange( _portSearchRange )
 {
   commonCtx.msgFactory = _msgFactory;
   commonCtx.schedule = 0;
   commonCtx.allocator = new HeapAllocator;
 }
 
-ClientTransport::~ClientTransport()
-{
-  Logout();
-}
+
 
 void ClientTransport::Cleanup()
 {
   rdp = 0;
   sockServer = 0;
+
   loginClient = 0;
 }
 
+
+
 void ClientTransport::ParallelPoll()
 {
-  StrongMT<LoginClient> localClient;
-  
-  {
-    threading::MutexLock lock(mutex);
-    if ( !loginClient )
-      return;
-    localClient = loginClient;
-  }
+  threading::MutexLock lock( mutex );
+
+  if ( !loginClient )
+    return;
 
   timer::Time now = timer::Now();
-  localClient->ParallelPoll( now );
+
+  loginClient->ParallelPoll( now );
 }
 
-bool ClientTransport::InitializeNetworkStack(const ni_udp::NetAddr& loginSvcAddr)
-{
-  // ИСПОЛЬЗУЕМ s_transportConfig вместо config
-  sockServer = new ni_udp::BlockingUdpSocketServer( s_transportConfig.sockServPriority, s_transportConfig.sockBufferSize );
-  if ( !sockServer )
-    return false;
 
-  Strong<ni_rnd::Factory> rndFact = new ni_rnd::Factory;
-  StrongMT<SocketFactory> sockFact = new SocketFactory( sockServer, bindAddr, portSearchRange, rndFact->Produce( timer::GetTicks() & 0xffffffffu ) );
-
-  ni_udp::RdpOptions opts;
-  opts.logEvents = s_transportConfig.rdpLogEvents;
-  opts.logicThreadPriority = s_transportConfig.logicPriority;
-
-  rdp = ni_udp::NewRdpInstance();
-  if ( !rdp || !rdp->Init( sockFact, opts, rndFact->Produce( (unsigned)timer::GetTicks() ), new timer::RealTimer ) )
-    return false;
-
-  return true;
-}
 
 int ClientTransport::GetUserId() const
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( !loginClient )
     return 0;
@@ -109,9 +95,11 @@ int ClientTransport::GetUserId() const
   return loginClient->LoginSvcReply().uid;
 }
 
+
+
 StrongMT<Transport::IChannel> ClientTransport::OpenChannel( Transport::TServiceId interfaceId, unsigned int pingperiod, unsigned int to )
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( !loginClient )
     return 0;
@@ -122,54 +110,147 @@ StrongMT<Transport::IChannel> ClientTransport::OpenChannel( Transport::TServiceI
   return loginClient->NewSvcChannel( commonCtx, interfaceId );
 }
 
+
+
 void ClientTransport::GetNewAcceptedChannels(vector<StrongMT<Transport::IChannel>> & _chnls)
 {
-  // Реализация для принятых каналов
-  _chnls.clear();
 }
+
+
 
 void ClientTransport::Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, Login::LoginType::Enum _loginType )
 {
-  threading::MutexLock initLock(initShutdownMutex);
+  threading::MutexLock lock( initShutdownMutex );
   thread = 0;
 
-  {
-    threading::MutexLock stateLock(mutex);
-    Cleanup();
-  }
+  threading::MutexLock lock2( mutex );
+  Cleanup();
 
+  // Парсим адрес логин-сервера
   ni_udp::NetAddr loginSvcAddr;
   unsigned loginSvcMux = 0;
   if ( !ParseAddress( loginSvcAddr, loginSvcMux, _loginServerAddress.c_str() ) )
     return;
 
-  if ( loginSvcAddr.Address() == INADDR_ANY )
-    loginSvcAddr.Set( "localhost", loginSvcAddr.Port() );
+  // Создаём сокет-сервер и RDP (один раз, переиспользуем для всех попыток)
+  sockServer = new ni_udp::BlockingUdpSocketServer( s_sockServPriority, s_sockBufferSize );
 
-  if ( !InitializeNetworkStack(loginSvcAddr) )
+  Strong<ni_rnd::Factory> rndFact = new ni_rnd::Factory;
+
+  StrongMT<SocketFactory> sockFact = new SocketFactory( sockServer, bindAddr, portSearchRange, rndFact->Produce( timer::GetTicks() & 0xffffffffu ) );
+
+  ni_udp::RdpOptions opts;
+  opts.logEvents = s_rdpLogEevents;
+  opts.logicThreadPriority = s_rdpLogicPriority;
+
+  rdp = ni_udp::NewRdpInstance();
+  if ( !rdp->Init( sockFact, opts, rndFact->Produce( (unsigned)timer::GetTicks() ), new timer::RealTimer ) )
     return;
 
+  // Пробуем подключиться к логин-серверу с перебором IP при ошибке
+  int maxAttempts = _countof( SERVER_IP_ARRAY );
+  for ( int attempt = 0; attempt < maxAttempts; ++attempt )
   {
-    threading::MutexLock lock(mutex);
-    // ИСПОЛЬЗУЕМ s_transportConfig вместо config
-    loginClient = new LoginClient( rdp, loginSvcAddr, loginSvcMux, _login, _password, _sessionKey, s_transportConfig.loginTimeout );
+    // Устанавливаем IP для текущей попытки
+    const char * currentIp = SERVER_IP_ARRAY[attempt];
+    
+    // Подменяем IP в адресе логин-сервера
+    Network::NetAddress correctedAddress = Network::ReplaceIpInAddress( _loginServerAddress, currentIp );
+    
+    // Парсим исправленный адрес
+    ni_udp::NetAddr correctedLoginAddr;
+    unsigned correctedMux = 0;
+    if ( !ParseAddress( correctedLoginAddr, correctedMux, correctedAddress.c_str() ) )
+    {
+      WarningTrace( "ClientTransport: Failed to parse corrected address. addr=%s", correctedAddress.c_str() );
+      continue;
+    }
+
+    if ( correctedLoginAddr.Address() == INADDR_ANY )
+      correctedLoginAddr.Set( "localhost", correctedLoginAddr.Port() );
+
+    MessageTrace( "ClientTransport: Login attempt %d/%d. addr=%s, ip=%s", 
+      attempt + 1, maxAttempts, correctedLoginAddr, currentIp );
+
+    loginClient = new LoginClient( rdp, correctedLoginAddr, correctedMux, _login, _password, _sessionKey );
+
+    // Ждём результат подключения
+    timer::Time startTime = timer::Now();
+    while ( true )
+    {
+      Sleep( 100 );
+
+      ELoginClientState::Enum clSt = loginClient->State();
+
+      if ( clSt == ELoginClientState::Ready )
+      {
+        // Успешно подключились
+        MessageTrace( "ClientTransport: Login successful. attempt=%d, addr=%s, ip=%s", 
+          attempt + 1, correctedLoginAddr, currentIp );
+        
+        // Синхронизируем usedServer с текущим IP
+        for ( int i = 0; i < maxAttempts; ++i )
+        {
+          if ( strcmp( SERVER_IP_ARRAY[i], currentIp ) == 0 )
+          {
+            usedServer = i;
+            break;
+          }
+        }
+        
+        thread = new threading::JobThread( new Worker( this ), "ClientTransport" );
+        return;
+      }
+
+      if ( clSt == ELoginClientState::Failed )
+      {
+        MessageTrace( "ClientTransport: Login failed. attempt=%d, addr=%s, ip=%s", 
+          attempt + 1, correctedLoginAddr, currentIp );
+        loginClient = 0;
+        break;
+      }
+
+      // Таймаут для попытки (15 секунд)
+      if ( timer::Now() - startTime > 15.0 )
+      {
+        WarningTrace( "ClientTransport: Login timeout. attempt=%d, addr=%s, ip=%s", 
+          attempt + 1, correctedLoginAddr, currentIp );
+        loginClient = 0;
+        break;
+      }
+    }
+
+    // Если это не последняя попытка — создаём новый RDP
+    if ( attempt < maxAttempts - 1 )
+    {
+      rdp = 0;
+      rdp = ni_udp::NewRdpInstance();
+      if ( !rdp->Init( sockFact, opts, rndFact->Produce( (unsigned)timer::GetTicks() ), new timer::RealTimer ) )
+        return;
+    }
   }
 
-  thread = new threading::JobThread( new Worker( this ), "ClientTransport" );
-}
-
-void ClientTransport::Logout()
-{
-  threading::MutexLock initLock(initShutdownMutex);
-  thread = 0;
-
-  threading::MutexLock stateLock(mutex);
+  // Все попытки исчерпаны
+  ErrorTrace( "ClientTransport: All login attempts failed!" );
   Cleanup();
 }
 
+
+
+void ClientTransport::Logout()
+{
+  threading::MutexLock lock( initShutdownMutex );
+  thread = 0;
+
+  threading::MutexLock lock2( mutex );
+  Cleanup();
+}
+
+
+
 Login::ELoginResult::Enum ClientTransport::GetLoginResult() const
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( loginClient )
   {
@@ -181,9 +262,11 @@ Login::ELoginResult::Enum ClientTransport::GetLoginResult() const
   return Login::ELoginResult::NoResult;
 }
 
+
+
 Transport::EStatus::Enum ClientTransport::GetStatus()
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( !loginClient )
     return Transport::EStatus::NONE;
@@ -199,9 +282,11 @@ Transport::EStatus::Enum ClientTransport::GetStatus()
   return Transport::EStatus::NONE;
 }
 
+
+
 Transport::TServiceId ClientTransport::GetSessionPath() const
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( !loginClient )
     return Transport::TServiceId();
@@ -209,9 +294,11 @@ Transport::TServiceId ClientTransport::GetSessionPath() const
   return loginClient->LoginSvcReply().welcomingSvcId.c_str();
 }
 
+
+
 Network::NetAddress ClientTransport::GetRelayAddress() const
 {
-  threading::MutexLock lock(mutex);
+  threading::MutexLock lock( mutex );
 
   if ( !loginClient )
     return Network::NetAddress();
@@ -222,9 +309,11 @@ Network::NetAddress ClientTransport::GetRelayAddress() const
   return buf;
 }
 
+
+
 Network::NetAddress ClientTransport::GetSecondaryRelayAddress() const
 {
   return Network::NetAddress();
 }
 
-} // namespace rdp_transport
+} //namespace rdp_transport

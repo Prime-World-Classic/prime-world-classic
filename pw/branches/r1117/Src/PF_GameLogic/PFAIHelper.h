@@ -2,6 +2,9 @@
 #include "PFUniTarget.h"
 #include "AdventureScreen.h"
 
+#include <cmath>
+inline double round(double x) { return floor(x + 0.5); }
+
 //#define LOG_AI							1
 //#define LOG_AI_MOVE					1
 

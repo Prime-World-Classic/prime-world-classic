@@ -12,7 +12,9 @@
 
 namespace Transport
 {
-  int _ChannelAddr::Serialize(Stream* pS) const
+  // Теперь реализуем только ChannelAddr (единственную структуру)
+
+  int ChannelAddr::Serialize(Stream* pS) const
   {
     // pS->Write( (const void*)&(this->pipe), sizeof( TPipeId ) );
     ( void ) nival::WriteUInt16( pS, this -> pipe );
@@ -20,10 +22,12 @@ namespace Transport
     ( void ) nival::WriteInt32( pS, this -> client );
     // pS->Write( (const void*)&(this->sender), sizeof( TClientId ) );
     ( void ) nival::WriteInt32( pS, this -> sender );
+    // pS->Write((const void*)&this->seqnum, sizeof(this->seqnum));
+    ( void ) nival::WriteUInt32( pS, this -> seqnum );
     return 0;
   }
 
-  int _ChannelAddr::Deserialize(Stream* pS)
+  int ChannelAddr::Deserialize(Stream* pS)
   {
     // pS->Read( (void*)&(this->pipe), sizeof( TPipeId ) );
     ( void ) nival::ReadUInt16( pS, this -> pipe );
@@ -31,26 +35,12 @@ namespace Transport
     ( void ) nival::ReadInt32( pS, this -> client );
     // pS->Read( (void*)&(this->sender), sizeof( TClientId ) );
     ( void ) nival::ReadInt32( pS, this -> sender );
-    return 0;
-  }
-
-  int ChannelHeader::Serialize(Stream* pS) const
-  {
-    _ChannelAddr::Serialize(pS);
-    // pS->Write((const void*)&this->seqnum, sizeof(this->seqnum));
-    ( void ) nival::WriteUInt32( pS, this -> seqnum );
-    return 0;
-  }
-
-  int ChannelHeader::Deserialize(Stream* pS)
-  {
-    _ChannelAddr::Deserialize(pS);
     // pS->Read((void*)&(this->seqnum), sizeof(this->seqnum));
     ( void ) nival::ReadUInt32( pS, this -> seqnum );
     return 0;
   }
 
-  int ChannelHeader::ConsistensyCheck(unsigned int prevSeqNum) const
+  int ChannelAddr::ConsistensyCheck(unsigned int prevSeqNum) const
   {
     int rc = -1;
     if (prevSeqNum + 1 == this->seqnum)

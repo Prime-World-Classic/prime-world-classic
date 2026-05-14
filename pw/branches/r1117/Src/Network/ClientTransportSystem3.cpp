@@ -7,6 +7,8 @@
 #include "transport/TLTransportModule.h"
 #include "transport/TLDefaultLogCallback.h"
 #include "ClientTransportConfig.h"
+#include "Network/Address.h"
+#include "../PW_Game/server_ip.h"
 
 
 namespace Transport
@@ -109,7 +111,7 @@ namespace Transport
       tlcfg.mf_ = factory;
       tlcfg.disableNagleAlgorithm_ = Transport::ClientCfg::DisableNagleAlgorithm();
       tlcfg.read_block_size_ = Transport::ClientCfg::GetReadBlockSize();
-      tlcfg.mbHeapDumpFreq_ = 0;  //  ��������� ���� � ��� message block heap'�
+      tlcfg.mbHeapDumpFreq_ = 0;  //  отключает дамп в лог message block heap'а
       tlcfg.checkActivityTimeout_ = Transport::ClientCfg::GetCheckConnectionActivityTimeout();
 
       tlcfg.threads_ = Transport::ClientCfg::GetNumberOfThreads();
@@ -129,40 +131,78 @@ namespace Transport
     {
       LOG_M(0).Trace("%s connecting to relay server (addr=%s login=%s)", logtag_, relayAddress.c_str(), login.c_str());
 
-      relayChannel = transport_->OpenChannelDirect(Transport::Address( Transport::ENetInterface::FrontEnd, userId ), 
-          sessionId,
-          relayAddress);
-
-      if ( relayChannel )
+      // Пробуем подключиться к релею с переключением IP при ошибке
+      int maxAttempts = 3;
+      for (int attempt = 0; attempt < maxAttempts; ++attempt)
       {
-        relayChannel->KeepAlivePeriod(Transport::ClientCfg::GetKeepalivePeriod());
+        Network::NetAddress correctedRelayAddress = Network::ReplaceIpInAddress( relayAddress, SERVER_IP_ARRAY[usedServer] );
+        
+        relayChannel = transport_->OpenChannelDirect(
+          Transport::Address( Transport::ENetInterface::FrontEnd, userId ), 
+          sessionId,
+          correctedRelayAddress);
 
-        if (!secondaryRelayAddress.empty() && relayAddress != secondaryRelayAddress)
+        if ( relayChannel )
         {
-          LOG_M(0).Trace("%s connecting to secondary-relay server(addr=%s login=%s)", 
-            logtag_, secondaryRelayAddress.c_str(), login.c_str());
+          relayChannel->KeepAlivePeriod(Transport::ClientCfg::GetKeepalivePeriod());
+          break; // Успешно подключились
+        }
 
-          secondaryRelayChannel = transport_->OpenChannelDirect(Transport::Address( Transport::ENetInterface::FrontEnd, userId ), 
-            sessionId,
-            secondaryRelayAddress);
-
-          if (secondaryRelayChannel)
-            secondaryRelayChannel->KeepAlivePeriod(Transport::ClientCfg::GetKeepalivePeriod());
-          else
-          {
-            LOG_M(0).Trace("%s cannot open channel to secondary-relay server(addr=%s login=%s)", 
-              logtag_, secondaryRelayAddress.c_str(), login.c_str());
-            loginResult = Login::ELoginResult::ServerError;
-            state = Failed;
-          }
+        LOG_W(0).Trace("%s Failed to connect to relay(addr=%s attempt=%d)", logtag_, correctedRelayAddress.c_str(), attempt + 1);
+        
+        if (attempt < maxAttempts - 1)
+        {
+          Network::SwitchToNextPublicIp();
+          usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
         }
       }
-      else
+
+      if ( !relayChannel )
       {
-        LOG_M(0).Trace("%s: cannot open channel to relay server(addr=%s login=%s)", 
+        LOG_E(0).Trace("%s cannot open channel to relay server(addr=%s login=%s)", 
           logtag_, relayAddress.c_str(), login.c_str());
         loginResult = Login::ELoginResult::ServerError;
         state = Failed;
+        return;
+      }
+
+      // Подключаемся к secondary relay, если нужно
+      if (!secondaryRelayAddress.empty() && relayAddress != secondaryRelayAddress)
+      {
+        LOG_M(0).Trace("%s connecting to secondary-relay server(addr=%s login=%s)", 
+          logtag_, secondaryRelayAddress.c_str(), login.c_str());
+
+        for (int attempt = 0; attempt < maxAttempts; ++attempt)
+        {
+          Network::NetAddress correctedSecondaryAddress = Network::ReplaceIpInAddress( secondaryRelayAddress, SERVER_IP_ARRAY[usedServer] );
+
+          secondaryRelayChannel = transport_->OpenChannelDirect(
+            Transport::Address( Transport::ENetInterface::FrontEnd, userId ), 
+            sessionId,
+            correctedSecondaryAddress);
+
+          if (secondaryRelayChannel)
+          {
+            secondaryRelayChannel->KeepAlivePeriod(Transport::ClientCfg::GetKeepalivePeriod());
+            break;
+          }
+
+          LOG_W(0).Trace("%s Failed to connect to secondary relay(addr=%s attempt=%d)", logtag_, correctedSecondaryAddress.c_str(), attempt + 1);
+          
+          if (attempt < maxAttempts - 1)
+          {
+            Network::SwitchToNextPublicIp();
+            usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
+          }
+        }
+
+        if (!secondaryRelayChannel)
+        {
+          LOG_E(0).Trace("%s cannot open channel to secondary-relay server(addr=%s login=%s)", 
+            logtag_, secondaryRelayAddress.c_str(), login.c_str());
+          loginResult = Login::ELoginResult::ServerError;
+          state = Failed;
+        }
       }
     }
     else

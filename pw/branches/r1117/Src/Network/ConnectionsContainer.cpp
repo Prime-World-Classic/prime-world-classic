@@ -11,7 +11,7 @@ REGISTER_VAR( "login_conn_timeout2", s_connectionTimeout, STORAGE_GLOBAL);
 
 
   ConnectionsContainer::ConnectionsContainer() :
-  addedConn( false ),
+  addedConn( 0 ),
   lastConnectionsLeakReport( 0 )
   {
   }
@@ -20,7 +20,7 @@ REGISTER_VAR( "login_conn_timeout2", s_connectionTimeout, STORAGE_GLOBAL);
   {
     mutex.Lock();
     toAddConns.push_back( connection );
-    addedConn = true;
+    InterlockedExchange( &addedConn, 1 );
     mutex.Unlock();
   }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -28,14 +28,13 @@ REGISTER_VAR( "login_conn_timeout2", s_connectionTimeout, STORAGE_GLOBAL);
   {
     timer::Time now = timer::Now();
 
-    if ( addedConn )
+    if ( InterlockedExchange( &addedConn, 0 ) )
     {
       mutex.Lock();
       for ( int i = 0; i < toAddConns.size(); i++ )
         connections.push_back( ConnSlot( toAddConns[ i ], now + s_connectionTimeout ) );
 
       toAddConns.clear();
-      addedConn = false;
       mutex.Unlock();
     }
 
@@ -68,22 +67,18 @@ REGISTER_VAR( "login_conn_timeout2", s_connectionTimeout, STORAGE_GLOBAL);
     FD_ZERO( &exceptSet );
 
     NI_VERIFY( num <= FD_SETSIZE, "too many connections for one select call", /* nothing to do */ );
-    // добавляем в множества
     for ( int i = first; i < first + num && i < first + FD_SETSIZE; i++ )
       connections[i].conn->AddSelf( &readSet, &writeSet, &exceptSet );
-    // выбираем сокеты с событиями
     select( num, &readSet, &writeSet, &exceptSet, &timeout );
 
     for ( int j = first; j < first + num && j < first + FD_SETSIZE; j++ )
     {
       StrongMT<Connection> conn = connections[j].conn;
-      // обрабатываем события
       conn->DoIO( &readSet, &writeSet, &exceptSet );
 
       if ( conn->WantAsyncClose() )
         conn->Close();
 
-      // если закрыт, то обнуляем и удаляем
       if ( conn->GetStatus() == ConnectionState::Closed )
       {
         connections[j].conn = 0;

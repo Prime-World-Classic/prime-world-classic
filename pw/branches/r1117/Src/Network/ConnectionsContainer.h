@@ -34,7 +34,7 @@ namespace Network
 
     vector<ConnSlot> connections;
     vector< StrongMT< Connection > > toAddConns; // array for new connections
-    volatile bool addedConn; // flag
+    LONG addedConn; // 0 = false, 1 = true (потокобезопасная замена volatile bool)
     mutable threading::Mutex mutex;
 
     timer::Time lastConnectionsLeakReport;

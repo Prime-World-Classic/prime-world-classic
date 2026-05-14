@@ -60,11 +60,9 @@ namespace Transport
 
 		virtual void SendMsg( MessageBase* pMessage );
 		virtual MessageBase* ReceiveMsg();
-    virtual MessageBase* PeekMsg();
 
     virtual void SendRaw( const byte* data, int size );
     virtual bool ReceiveRaw( vector<byte>* data );
-    virtual bool PeekRaw( vector<byte>* data );
 
     virtual Ping GetPingTime() const;
     virtual void FillDebugString( string & _outStr ) {}

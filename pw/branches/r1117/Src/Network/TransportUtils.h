@@ -24,53 +24,28 @@ namespace Transport
     const TPipeId FirstCustomPipeId = 4;
   };
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  struct _ChannelAddr
+
+  // Единая структура адреса канала с поддержкой sequence number
+  struct ChannelAddr
   {
     ZDATA
     TPipeId pipe;
     TClientId client;
     TClientId sender;
-    ZEND int operator&( IBinSaver &f ) { f.Add(2,&pipe); f.Add(3,&client); f.Add(4,&sender); return 0; }
-
-    _ChannelAddr() : pipe( EKnownPipeId::Invalid ), client( autoAssignClientId ), sender( autoAssignClientId ) {}
-    _ChannelAddr( TPipeId _pipe, TClientId _client ) : pipe( _pipe ), client( _client ), sender( autoAssignClientId ) {}
-    _ChannelAddr( TPipeId _pipe, TClientId _client, TClientId _sender ) : pipe( _pipe ), client( _client ), sender( _sender ) {}
-    _ChannelAddr( TPipeId _pipe, TClientId _client, TClientId _sender, uint /*dummy*/ ) 
-      : pipe( _pipe ), client( _client ), sender( _sender ) {}
-
-    int Serialize(Stream* pS) const;
-    int Deserialize(Stream* pS);
-    int ConsistensyCheck(unsigned int /*seqNum*/) const { return 0;};
-    unsigned int SeqNum() const { return 0; }
-    void SeqNum(unsigned int sn) { return; }
-    size_t GetSeqNumSize() const { return 0; }
-  };
-
-  struct ChannelHeader : public _ChannelAddr
-  {
     uint seqnum;
-    int operator&( IBinSaver &f ) 
-    {
-      int rc = this->_ChannelAddr::operator & (f);
-      f.Add(5, &seqnum); 
-      return rc;
-    }
+    ZEND int operator&( IBinSaver &f ) { f.Add(2,&pipe); f.Add(3,&client); f.Add(4,&sender); f.Add(5, &seqnum); return 0; }
 
-    ChannelHeader() : seqnum(0) {}
-    ChannelHeader( TPipeId _pipe, TClientId _client ) : _ChannelAddr(_pipe, _client), seqnum(0) {}
-    ChannelHeader( TPipeId _pipe, TClientId _client, TClientId _sender ) : _ChannelAddr(_pipe, _client, _sender), seqnum(0) {}
-    ChannelHeader( TPipeId _pipe, TClientId _client, TClientId _sender, uint _seqnum ) 
-      : _ChannelAddr(_pipe, _client, _sender), seqnum(_seqnum) {}
+    ChannelAddr() : pipe( EKnownPipeId::Invalid ), client( autoAssignClientId ), sender( autoAssignClientId ), seqnum(0) {}
+    ChannelAddr( TPipeId _pipe, TClientId _client ) : pipe( _pipe ), client( _client ), sender( autoAssignClientId ), seqnum(0) {}
+    ChannelAddr( TPipeId _pipe, TClientId _client, TClientId _sender ) : pipe( _pipe ), client( _client ), sender( _sender ), seqnum(0) {}
+    ChannelAddr( TPipeId _pipe, TClientId _client, TClientId _sender, uint _seqnum ) 
+      : pipe( _pipe ), client( _client ), sender( _sender ), seqnum(_seqnum) {}
 
     int Serialize(Stream* pS) const;
     int Deserialize(Stream* pS);
     int ConsistensyCheck(unsigned int prevSeqNum) const;
     unsigned int SeqNum() const { return seqnum; }
-    void SeqNum(unsigned int sn)
-    {
-      seqnum = sn;
-    }
-
+    void SeqNum(unsigned int sn) { seqnum = sn; }
     size_t GetSeqNumSize() const
     {
 #if defined( NV_WIN_PLATFORM )
@@ -81,14 +56,6 @@ namespace Transport
     }
   };
 
-#undef TRANSPORT_SEQ_PACKET_CHECK
-#define TRANSPORT_SEQ_PACKET_CHECK
-
-#ifdef TRANSPORT_SEQ_PACKET_CHECK
-  #define ChannelAddr ChannelHeader
-#else
-  #define ChannelAddr _ChannelAddr
-#endif
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   struct MessageHeader : public Transport::ChannelAddr
   {

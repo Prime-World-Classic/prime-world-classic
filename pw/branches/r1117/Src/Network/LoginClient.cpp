@@ -67,7 +67,7 @@ ELoginResult::Enum LoginClient::Step()
       if ( !stream )
         return ELoginResult::NoResult;
 
-      CObj<IBinSaver> saver = CreateChunklessSaver( (MemoryStream*)stream.GetPtr(), 0, true );
+      CObj<IBinSaver> saver = CreateChunklessSaver( static_cast<MemoryStream*>(stream.GetPtr()), 0, true );
       resultMsg & (*saver);
 
       connection->ReleaseReceived( stream );
@@ -85,29 +85,15 @@ ELoginResult::Enum LoginClient::Step()
   return ELoginResult::NoResult;
 }
 
-static Network::NetAddress ReplaceIpWithServerIp(Network::NetAddress& frontendAddress)
-{
-  const char* port = std::find(frontendAddress.begin(),frontendAddress.end(), ':');
-  int portSize = strlen(port);
-
-  const char* whiteIp = SERVER_IP_ARRAY[usedServer];
-  char newAddress[64];
-
-  memcpy((void*)newAddress, whiteIp, strlen(whiteIp) + 1);
-  memcpy((void*)(newAddress + strlen(whiteIp)), (void*)port, portSize + 1);
-
-  return newAddress;
-}
-
 
 void LoginClient::GetConnectionData( Network::NetAddress* baseRelayAddress, Network::NetAddress* secondaryRelayAddress, 
                                     int* userId, string* sessionId, string* relayCertificate, Transport::TServiceId* sessionPath,
                                     bool* partialReconnectSupport, unsigned int * partialReconnectRetries, unsigned int * partialReconnectRetryTimeout )
 {
   if (baseRelayAddress)
-    *baseRelayAddress = ReplaceIpWithServerIp(resultMsg.relayAddress);
+    *baseRelayAddress = Network::ReplaceIpInAddress( resultMsg.relayAddress, SERVER_IP_ARRAY[usedServer] );
   if (secondaryRelayAddress)
-    *secondaryRelayAddress = ReplaceIpWithServerIp(resultMsg.secondaryRelayAddress);
+    *secondaryRelayAddress = Network::ReplaceIpInAddress( resultMsg.secondaryRelayAddress, SERVER_IP_ARRAY[usedServer] );
   if (userId)
     *userId = resultMsg.userId;
   if(sessionId)

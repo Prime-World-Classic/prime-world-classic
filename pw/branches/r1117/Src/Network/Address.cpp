@@ -154,4 +154,41 @@ namespace Network
     }
   }
 
+  NetAddress ReplaceIpInAddress( const NetAddress & _addr, const char * _newIp )
+  {
+      if ( !_newIp || !_newIp[0] )
+          return _addr;
+
+      const char * addrStr = _addr.c_str();
+      const char * portStart = strchr( addrStr, ':' );
+
+      if ( !portStart )
+      {
+          // Адрес без порта — возвращаем просто новый IP
+          return NetAddress( _newIp );
+      }
+
+      // Собираем новый адрес: новый_IP + порт
+      size_t newIpLen = strlen( _newIp );
+      size_t portLen = strlen( portStart ); // включает ':'
+
+      // Буфер под новую строку: IP + ":" + порт + нуль-терминатор
+      size_t totalLen = newIpLen + portLen;
+      if ( totalLen >= 256 )
+          return _addr;
+
+      char newAddr[256];
+      memcpy( newAddr, _newIp, newIpLen );
+      memcpy( newAddr + newIpLen, portStart, portLen + 1 ); // +1 копирует '\0'
+
+      return NetAddress( newAddr );
+  }
+
+  // Хранилище индекса текущего IP для переключения при ошибках подключения к релею
+  static int s_currentIpIndex = 0;
+
+  void SwitchToNextPublicIp()
+  {
+      s_currentIpIndex = (s_currentIpIndex + 1) % 3; // 3 адреса в SERVER_IP_ARRAY
+  }
 }

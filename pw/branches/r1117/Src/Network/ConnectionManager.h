@@ -31,7 +31,7 @@ namespace Network
     IncomingConnectionManager( const char* url, bool useCompressionForNewConnections, const ConnectionSettings& settings );
     virtual ~IncomingConnectionManager();
 
-    // _newConnections может содержать уже закрытые соединения - надо проверять на IsValid
+    // _newConnections РјРѕР¶РµС‚ СЃРѕРґРµСЂР¶Р°С‚СЊ СѓР¶Рµ Р·Р°РєСЂС‹С‚С‹Рµ СЃРѕРµРґРёРЅРµРЅРёСЏ - РЅР°РґРѕ РїСЂРѕРІРµСЂСЏС‚СЊ РЅР° IsValid
     virtual void GetNewConnections( TNewConnections& _newConnections );
 
     void Step();

@@ -6,7 +6,7 @@
 #include "Server/RdpTransport/RdpTransportUtils.h"
 #include "Server/NewLogin/NewLoginTypes.h"
 #include "System/JobThread.h"
-#include "TransportConfig.h"
+
 
 namespace ni_udp
 {
@@ -19,17 +19,19 @@ namespace rdp_transport
 
 class LoginClient;
 
+
 class ClientTransport : public Transport::IClientTransportSystem, public BaseObjectMT
 {
   NI_DECLARE_REFCOUNT_CLASS_2( ClientTransport, Transport::IClientTransportSystem, BaseObjectMT );
 
 public:
   ClientTransport( const ni_udp::NetAddr & _bindAddr, unsigned _portSearchRange, Transport::MessageFactory * _msgFactory );
-  virtual ~ClientTransport();
 
   virtual int GetUserId() const;
+
   virtual StrongMT<Transport::IChannel> OpenChannel( Transport::TServiceId interfaceId, unsigned int pingperiod, unsigned int to );
   virtual void GetNewAcceptedChannels(vector<StrongMT<Transport::IChannel>> & _chnls);
+
   virtual void Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, Login::LoginType::Enum _loginType );
   virtual void Logout();
   virtual Login::ELoginResult::Enum GetLoginResult() const;
@@ -45,7 +47,6 @@ private:
 
   ni_udp::NetAddr                   bindAddr;
   unsigned                          portSearchRange;
-  TransportConfig                   config;
   threading::Mutex                  mutex;
   threading::Mutex                  initShutdownMutex;
   CommonCtx                         commonCtx;
@@ -56,9 +57,8 @@ private:
 
   void Cleanup();
   void ParallelPoll();
-  bool InitializeNetworkStack(const ni_udp::NetAddr& loginSvcAddr);
 };
 
-} // namespace rdp_transport
+} //namesapce rdp_transport
 
-#endif // RDPCLIENTTRANSPORT_H_INCLUDED
+#endif //RDPCLIENTTRANSPORT_H_INCLUDED

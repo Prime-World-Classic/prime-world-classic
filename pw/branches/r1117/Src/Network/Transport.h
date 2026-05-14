@@ -39,36 +39,17 @@ struct IChannel : public IBaseInterfaceMT
 
   virtual void SendMsg( MessageBase* pMessage ) = 0;
   virtual MessageBase* ReceiveMsg() = 0;
-  virtual MessageBase* PeekMsg() = 0;
 
   virtual void SendRaw( const byte* data, int size ) = 0;
   virtual bool ReceiveRaw( vector<byte>* data ) = 0;
-  virtual bool ReceiveRaw( vector<byte>* data, MessageMiscInfo & _miscInfo ) { return false; };
-  virtual bool PeekRaw( vector<byte>* data ) = 0;
+  virtual bool ReceiveRaw( vector<byte>* data, MessageMiscInfo & _miscInfo ) { return ReceiveRaw( data ); }
 
   virtual Ping GetPingTime() const = 0;
 
   virtual void KeepAlivePeriod(unsigned int sec) {};
 
   virtual void FillDebugString( string & _outStr ) = 0;
-
-  template<class TMessage>
-  TMessage* ReceiveCast();
 };
-
-
-
-template<class TMessage>
-TMessage* IChannel::ReceiveCast()
-{
-  MessageBase* pMsg = ReceiveMsg();
-  if ( !pMsg )
-    return 0;
-  TMessage* pCasted = dynamic_cast<TMessage*>( pMsg );
-  if ( !pCasted )
-    return 0;
-  return pCasted;
-}
 
 
 
@@ -139,5 +120,20 @@ class ITransportSystem : public IBaseInterfaceMT
 
   virtual void AddFrontendAuth( const TServiceId & interfaceId, IFrontendTransportAuth * _auth ) = 0;
 };
+
+// Безопасное приведение полученного сообщения к нужному типу
+template<class TMessage>
+TMessage* ChannelReceiveCast( IChannel* _channel )
+{
+  if ( !_channel )
+    return 0;
+  MessageBase* pMsg = _channel->ReceiveMsg();
+  if ( !pMsg )
+    return 0;
+  TMessage* pCasted = dynamic_cast<TMessage*>( pMsg );
+  if ( !pCasted )
+    return 0;
+  return pCasted;
+}
 
 } //namespace Transport

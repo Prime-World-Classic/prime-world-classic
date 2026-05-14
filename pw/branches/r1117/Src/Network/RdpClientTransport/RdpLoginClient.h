@@ -5,8 +5,8 @@
 #include "Network/RUDP/IRdp.h"
 #include "Server/NewLogin/NewLoginTypes.h"
 #include "System/NiTimer.h"
-#include "TransportConfig.h"
 #include <map>
+
 
 namespace ni_udp
 {
@@ -14,10 +14,12 @@ namespace ni_udp
   class IRdpConnection;
 }
 
+
 namespace Network
 {
   class PacketDispatcher;
 }
+
 
 namespace rdp_transport
 {
@@ -26,6 +28,7 @@ namespace ELoginClientState
 {
   enum Enum { Connecting, WaitingReply, Ready, Failed };
 }
+
 
 class PacketWriter;
 class ClientChannel;
@@ -36,8 +39,7 @@ class LoginClient : public BaseObjectMT, public ni_udp::IRdpConnectionCallback
   NI_DECLARE_REFCOUNT_CLASS_2( LoginClient, BaseObjectMT, ni_udp::IRdpConnectionCallback );
 
 public:
-  LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, 
-               const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, float operationTimeout );
+  LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey );
 
   void ParallelPoll( timer::Time _now );
   ELoginClientState::Enum State();
@@ -54,31 +56,28 @@ protected:
 private:
   typedef std::map<int, StrongMT<ClientChannel> > TChannelsByReqId;
 
-  const nstl::string                login, password, sessionKey;
-  const ni_udp::NetAddr             loginSvcAddr;
-  const float                       operationTimeout;
+  const string                login, password, sessionKey;
+  const ni_udp::NetAddr       loginSvcAddr;
 
-  ELoginClientState::Enum           state;
-  newLogin::LoginReply              loginSvcReply;
+  ELoginClientState::Enum     state;
+  newLogin::LoginReply        loginSvcReply;
 
-  threading::Mutex                  mutex;
-  StrongMT<ni_udp::IRdp>            rdp;
-  StrongMT<ni_udp::IRdpConnection>  connection;
+  threading::Mutex            mutex;
+  StrongMT<ni_udp::IRdp>      rdp;
+  StrongMT<ni_udp::IRdpConnection> connection;
   StrongMT<Network::PacketDispatcher> dispatcher;
-  StrongMT<PacketWriter>            writer;
+  StrongMT<PacketWriter>      writer;
   timer::MemberPtrTimer<LoginClient> timeout;
-  int                               nextChanReqId;
-  TChannelsByReqId                  channelsByReqId;
+  int                         nextChanReqId;
+  TChannelsByReqId            channelsByReqId;
 
   void Switch( ELoginClientState::Enum _st );
   void Fail( Login::ELoginResult::Enum _result );
   void OnHelloReply( const newLogin::LoginReply & _reply );
   void OnSvcReqReply( const newLogin::ServiceReqReply  & _reply );
   void OnTimeout();
-  bool ValidateDatagram(const void* data, size_t size) const;
-  void SafeUpdateServiceAddress(newLogin::ServiceReqReply& reply) const;
 };
 
-} // namespace rdp_transport
+} //namesapce rdp_transport
 
-#endif // RDPLOGINCLIENT_H_INCLUDED
+#endif //RDPLOGINCLIENT_H_INCLUDED

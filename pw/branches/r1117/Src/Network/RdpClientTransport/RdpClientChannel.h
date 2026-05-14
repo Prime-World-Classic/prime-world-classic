@@ -4,12 +4,13 @@
 #include "Server/RdpTransport/RdpTransportChannel.h"
 #include "Server/NewLogin/NewLoginTypes.h"
 #include "System/NiTimer.h"
-#include "TransportConfig.h"
+
 
 namespace Network
 {
   class PacketDispatcher;
 }
+
 
 namespace rdp_transport
 {
@@ -26,6 +27,7 @@ namespace EClientChanState
   };
 }
 
+
 class PacketWriter;
 
 class ClientChannel : public Channel
@@ -33,19 +35,20 @@ class ClientChannel : public Channel
   NI_DECLARE_REFCOUNT_CLASS_1( ClientChannel, Channel );
 
 public:
-  ClientChannel( ni_udp::IRdp * _rdp, const CommonCtx & _ctx, const Transport::Address & _ta, int _requestId, float operationTimeout );
+  ClientChannel( ni_udp::IRdp * _rdp, const CommonCtx & _ctx, const Transport::Address & _ta, int _requestId );
 
   int RequestId() const { return requestId; }
+
   void OnSvcRequestReply( const newLogin::ServiceReqReply & _reply );
   bool Poll( timer::Time _now );
 
 public:
-  // IChannel
+  //IChannel
   virtual Network::ConnectionState::Enum GetStatus() const;
   virtual void SendRaw( const byte * _data, int _size );
 
 protected:
-  // IRdpConnectionCallback
+  //IRdpConnectionCallback
   virtual void OnConnectionEstablished( ni_udp::IRdpConnection * _conn );
   virtual void OnConnectionClosed( ni_udp::IRdpConnection * _conn );
   virtual void OnConnectionFailed( ni_udp::IRdpConnection * _conn );
@@ -53,7 +56,6 @@ protected:
 
 private:
   const int                                   requestId;
-  const float                                 operationTimeout;
   StrongMT<ni_udp::IRdp>                      rdp;
   threading::Mutex                            mutex;
   EClientChanState::Enum                      state;
@@ -66,9 +68,8 @@ private:
   void OnTimeout();
   void OnHelloReply( const newLogin::FrontendHelloReply & _reply );
   void CloseClientChannel();
-  bool ValidateData(const void* data, int size) const;
 };
 
-} // namespace rdp_transport
+} //namesapce rdp_transport
 
-#endif // RDPCLIENTCHANNEL_H_INCLUDED
+#endif //RDPCLIENTCHANNEL_H_INCLUDED

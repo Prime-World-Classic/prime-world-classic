@@ -2,6 +2,7 @@
 #define ADDRESS_H_08355E67_4B40_4BF5_AA9
 
 #include "System/systemStdAfx.h"
+#include <cstring>
 #if defined( NV_WIN_PLATFORM )
 #include <winsock2.h>
 #elif defined( NV_LINUX_PLATFORM )
@@ -68,5 +69,12 @@ namespace Network
 
   NetAddress GetHostIPByName( NetAddress const & name, bool noloopback = false );
   void GetHost(NetAddress const & netaddr, NetAddress& host);
+
+  // Безопасная замена IP-адреса в строке вида "ip:port" или "ip"
+  // Используется для подмены внутренних адресов релеев на публичные
+  NetAddress ReplaceIpInAddress( const NetAddress & _addr, const char * _newIp );
+  
+  // Переключение на следующий публичный IP при ошибке подключения к релею
+  void SwitchToNextPublicIp();
 }
 #endif //#define ADDRESS_H_08355E67_4B40_4BF5_AA9
