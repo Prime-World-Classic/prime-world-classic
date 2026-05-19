@@ -41,7 +41,15 @@ namespace RootFileSystem
   void GetDirectories( vector<string> *pDirectories, const string &root ) { GetRootFileSystem()->GetDirectories( pDirectories, root ); }
   void GetFiles( vector<string> *pFiles, const string &root, const string &mask, bool recursive ) { GetRootFileSystem()->GetFiles( pFiles, root, mask, recursive ); }
   void GetFilesFromPileOnly( vector<string> *pFiles, const string &root, const string &mask, bool recursive ) { GetRootFileSystem()->GetFiles( pFiles, root, mask, recursive, CombinerFileSystem::CFS_GETFILES_PILEONLY ); }
-  Stream* OpenFile( const string &fileName, EFileAccess access, EFileOpen options ) { return GetRootFileSystem()->OpenFile( fileName, access, options ); }
+  Stream* OpenFile( const string &fileName, EFileAccess access, EFileOpen options ) { 
+    Stream* s = GetRootFileSystem()->OpenFile( fileName, access, options );
+    if (!s) {
+        systemLog( NLogg::LEVEL_ERROR ) << "RootFileSystem::OpenFile FAILED: " << fileName << endl;
+    } else {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "RootFileSystem::OpenFile SUCCESS: " << fileName << endl;
+    }
+    return s;
+  }
   IFileWatcher *CreateFileWatcher( const string& path )  { return GetRootFileSystem()->CreateFileWatcher( path ); }
 
   FileSystemChangesProcessor& GetChangesProcessor() { return GetRootFileSystem()->GetChangesProcessor(); }

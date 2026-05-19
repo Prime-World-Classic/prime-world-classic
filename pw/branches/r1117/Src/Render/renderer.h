@@ -44,7 +44,7 @@ class Renderer
   bool                  bResetDevice;
   bool                  bTripleBufferUsed;
   bool                  isRunningUnderPerfHUD;
-	unsigned int          hWnd;
+	HWND                  hWnd;
 	D3DPRESENT_PARAMETERS presentParams;
 	DXSurfacePtr          pDeviceDepthSurface;
 	DXSurfacePtr          pDeviceColorSurface;
@@ -63,11 +63,11 @@ class Renderer
 	void FillCaps();
 
 public:
-	explicit Renderer(unsigned int _hWnd);
+	explicit Renderer(uintptr_t _hWnd);
 	 ~Renderer();
 
-	static void Init(unsigned int _hWnd) { 
-	fprintf(stderr, "Renderer::Init called with hWnd %p\n", (void*)(uintptr_t)_hWnd);
+	static void Init(uintptr_t _hWnd) { 
+	fprintf(stderr, "Renderer::Init called with hWnd %p\n", (void*)_hWnd);
 	fflush(stderr);
 	s_pInstance = new Renderer(_hWnd); 
 	}

@@ -1,10 +1,13 @@
 #include "stdafx.h"
 
 #ifdef NV_LINUX_PLATFORM
+void* g_sdlWindow = NULL;
+
 #include <string>
 #include "System/nstring.h"
 #include "System/nvector.h"
 #include "libdb/dbid.h"
+#include "System/MainFrame.h"
 #include "Game/PF/Server/Statistic/GameStatClient.h"
 #include "Render/vertexformatdescriptor.h"
 #include "Render/dxutils.h"
@@ -67,7 +70,6 @@ bool GetVideoMemoryViaDirectDraw(void* pGuid, unsigned int* pMem) { return false
 bool GetVideoMemoryViaWMI(void* pGuid, unsigned int* pMem) { return false; }
 
 namespace Render {
-  bool VertexFormatDescriptor::operator==(const VertexFormatDescriptor&) const { return false; }
   template<class T> void SharedD3DBufferST<T>::QuerySize(unsigned int) {}
   template void SharedD3DBufferST<DXVertexBufferDynamicRef>::QuerySize(unsigned int);
   template void SharedD3DBufferST<DXIndexBufferDynamicRef_<16u>>::QuerySize(unsigned int);
@@ -164,29 +166,54 @@ extern int __stdcall PseudoWinMain( void* hInstance, void* hWnd, char* lpCmdLine
 extern "C" {
 void StartPWApplication(void* hWnd, int argc, char** argv) {
   printf("==================================================\n");
-  printf(" Prime World Linux Native Client (SDL2)\n");
-  printf("==================================================\n");
 
+  printf("Starting SDL_Init...\n");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) < 0) {
       printf("Failed to initialize SDL2: %s\n", SDL_GetError());
       _exit(1);
   }
+  printf("SDL_Init succeeded.\n");
 
-  SDL_Window* win = SDL_CreateWindow("Prime World Native Linux Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
+  printf("Creating SDL window...\n");
+  SDL_Window* win = SDL_CreateWindow("Prime World Native Linux Client", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1024, 768, SDL_WINDOW_OPENGL);
   if (!win) {
       printf("Failed to create SDL2 window: %s\n", SDL_GetError());
       _exit(1);
   }
+  printf("SDL window created: %p\n", win);
+  g_sdlWindow = win;
 
+  printf("Creating GL context...\n");
   SDL_GLContext glContext = SDL_GL_CreateContext(win);
   if (!glContext) {
       printf("Failed to create GL context: %s\n", SDL_GetError());
       _exit(1);
   }
+  printf("GL context created: %p\n", glContext);
+
+  // Set the window for the renderer
+  {
+      typedef void (*PFNSETWINDOW)(void*);
+      // We can't easily call GLDirect3DDevice9::SetSDLWindow directly without header mess, 
+      // but we know it's there. Actually, let's just use a global or something.
+      // For now, let's assume the renderer will find it.
+  }
+  
+  SDL_ShowWindow(win);
+  SDL_RaiseWindow(win);
+
+  SDL_ShowWindow(win);
   
   printf("SDL2 Window and GL Context created successfully. Booting bypass...\n");
 
-  Render::Renderer::Init((unsigned int)(uintptr_t)win);
+  Render::Renderer::Init((uintptr_t)win);
   Render::RenderMode renderMode;
   renderMode.width = 1024;
   renderMode.height = 768;
@@ -204,57 +231,8 @@ void StartPWApplication(void* hWnd, int argc, char** argv) {
   Render::ImmRenderer::Init();
   Render::SmartRenderer::Init();
 
-  // Initialize UIRenderer
-  Render::GetUIRenderer()->Initialize();
-
-  // Infinite loop
-  bool running = true;
-  while(running) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      if (event.type == SDL_QUIT) {
-        running = false;
-      }
-    }
-    
-    Render::Renderer::Get()->ClearColorOnly(Render::Color(0, 128, 255, 255));
-    Render::Renderer::Get()->BeginScene();
-
-    Render::GetUIRenderer()->StartFrame();
-    Render::GetUIRenderer()->BeginQueue();
-
-    // Draw a test quad
-    Render::UIQuad quad;
-    quad.tl = CVec2(100.0f, 100.0f);
-    quad.br = CVec2(500.0f, 500.0f);
-    quad.uv = CVec2(0.0f, 0.0f);
-    quad.uvl = CVec2(1.0f, 1.0f);
-    quad.uv2 = CVec2(0.0f, 0.0f);
-    quad.uvl2 = CVec2(1.0f, 1.0f);
-    quad.ext = false;
-    
-    Render::SMaterialParams matParams;
-    matParams.color0 = Render::Color(255, 0, 0, 255); // Red
-
-    Render::UIRenderMaterial dummyMat;
-    dummyMat.CreateDefaultMaterial();
-
-    Render::GetUIRenderer()->AddQuad(quad, dummyMat.GetRenderMaterial(), matParams);
-
-    Render::GetUIRenderer()->EndQueue();
-
-    // Now tell UIRenderer to actually render the queued parts
-    Render::GetUIRenderer()->Render(Render::ERenderWhat::_2D, NULL, NULL);
-
-    Render::Renderer::Get()->EndScene();
-    Render::Renderer::Get()->Present();
-
-    fflush(stdout);
-    fflush(stderr);
-  }
-
-  Render::GetUIRenderer()->Release();
-  Render::Renderer::Term();
+  // Start the actual game engine
+  PseudoWinMain( 0, (void*)win, (char*)"", 0 );
 
   SDL_GL_DeleteContext(glContext);
   SDL_DestroyWindow(win);
@@ -291,6 +269,7 @@ namespace NBSU {
 }
 
 namespace NFile {
+  void CheckFileAccess( const char * _fileName, bool _readOnly ) {}
   void DeleteOldFiles(char const*, double) {}
 }
 
@@ -303,28 +282,162 @@ namespace NDebug {
   unsigned int GetTotalHeapAllocSize() { return 0; }
 }
 
+#include "NivalInput/HwInputInterface.h"
+#include "NivalInput/Binds.h"
+
 namespace Input {
-  class IHwInput {};
-  IHwInput* CreateHwInput(void*, void*, bool, bool) { return nullptr; }
+  class LinuxHwInput : public IHwInput, public CObjectBase {
+    OBJECT_BASIC_METHODS(LinuxHwInput);
+    mutable nstl::map<nstl::string, int> names;
+    mutable nstl::map<int, nstl::string> idToName;
+  public:
+    LinuxHwInput() {}
+    virtual int FindControlZ( const char * name ) const { return FindControl(nstl::string(name)); }
+    virtual int FindControl( const nstl::string & name ) const {
+        if (names.find(name) == names.end()) {
+            int id = names.size();
+            fprintf(stderr, "LinuxHwInput: registering control %s as %d\n", name.c_str(), id);
+            names[name] = id;
+            idToName[id] = name;
+        }
+        return names[name];
+    }
+    virtual const nstl::string & ControlName( int id ) const { 
+        if (idToName.find(id) != idToName.end()) return idToName[id];
+        static nstl::string empty; return empty; 
+    }
+    virtual bool GetReadableControlName( int id, nstl::string & name ) const { 
+        if (idToName.find(id) != idToName.end()) {
+            name = idToName[id];
+            return true;
+        }
+        return false; 
+    }
+    virtual bool ControlIsAKey( int id ) const { 
+        const nstl::string& name = ControlName(id);
+        if (name.substr(0, 10) == "MOUSE_AXIS") return false;
+        return true; 
+    }
+    virtual void Poll( nstl::vector<HwEvent> & events ) {
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_KEYDOWN:
+                case SDL_KEYUP:
+                    {
+                        const char* name = SDL_GetKeyName(SDL_GetKeyFromScancode(event.key.keysym.scancode));
+                        // Map common SDL names to game names
+                        nstl::string ctrlName = name;
+                        std::transform(ctrlName.begin(), ctrlName.end(), ctrlName.begin(), ::toupper);
+                        if (ctrlName == "ESCAPE") ctrlName = "ESC";
+                        else if (ctrlName == "LEFT CTRL") ctrlName = "LCTRL";
+                        else if (ctrlName == "RIGHT CTRL") ctrlName = "RCTRL";
+                        else if (ctrlName == "LEFT SHIFT") ctrlName = "LSHIFT";
+                        else if (ctrlName == "RIGHT SHIFT") ctrlName = "RSHIFT";
+                        else if (ctrlName == "LEFT ALT") ctrlName = "LALT";
+                        else if (ctrlName == "RIGHT ALT") ctrlName = "RALT";
+                        else if (ctrlName == "RETURN") ctrlName = "ENTER";
+                        
+                        events.push_back(HwEvent(FindControl(ctrlName), event.type == SDL_KEYDOWN));
+                    }
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_MOUSEBUTTONUP:
+                    {
+                        char name[32];
+                        sprintf(name, "MOUSE_BUTTON%d", event.button.button - 1);
+                        events.push_back(HwEvent(FindControl(name), event.type == SDL_MOUSEBUTTONDOWN));
+                    }
+                    break;
+                case SDL_MOUSEMOTION:
+                    {
+                        events.push_back(HwEvent(FindControl("MOUSE_AXIS_X"), (float)event.motion.x, true));
+                        events.push_back(HwEvent(FindControl("MOUSE_AXIS_Y"), (float)event.motion.y, true));
+                    }
+                    break;
+                case SDL_MOUSEWHEEL:
+                    {
+                        events.push_back(HwEvent(FindControl("MOUSE_AXIS_Z"), (float)event.wheel.y, false));
+                    }
+                    break;
+                case SDL_QUIT:
+                    NMainFrame::Exit();
+                    break;
+            }
+        }
+    }
+    virtual void OnApplicationFocus( bool focused ) {}
+  };
+
+  IHwInput * CreateHwInput( HWND hWnd, HINSTANCE hInstance, bool debugMouse, bool nonExclusiveMode ) {
+    return new LinuxHwInput();
+  }
 }
 
-#include "PW_Client/LocalGameContext.h"
-namespace Game {
-  LocalGameContext::LocalGameContext(bool) {}
-  LocalGameContext::~LocalGameContext() {}
-  void LocalGameContext::Start() {}
-  void LocalGameContext::CreateGame(const char*, int) {}
-  void LocalGameContext::ChangeCustomGameSettings(lobby::ETeam::Enum, lobby::ETeam::Enum, const nstl::string&) {}
-  void LocalGameContext::SetReady(lobby::EGameMemberReadiness::Enum) {}
-  void LocalGameContext::SetDeveloperParty(int) {}
-  int LocalGameContext::Poll(float) { return 0; }
-  void LocalGameContext::Shutdown() {}
-  void LocalGameContext::OnAltTab(bool) {}
-  void LocalGameContext::SetTimeScale(float) {}
-  void LocalGameContext::OnCombatScreenStarted(NCore::IWorldBase*, const NGameX::ReplayInfo&) {}
-  void LocalGameContext::OnVictory(const StatisticService::RPC::SessionClientResults&, const NGameX::ReplayInfo&) {}
-  void LocalGameContext::LeaveGame() {}
-  bool LocalGameContext::IsGameReady() { return true; }
+#include "System/Commands.h"
+
+namespace {
+  nstl::string s_stat_client_url;
+  int s_mmaking_pcbt_mode = 0;
+  int s_rdp_log_events = 0;
+  int s_rs_keepalive_timeout = 0;
+  bool s_mmaking_enabled = false;
+  int s_mmaking_sex = 0;
+  bool s_lobby_customization = false;
+  bool s_enable_cursor_clip = false;
+  bool s_debug_disable_world_crc = false;
+
+  REGISTER_VAR( "stat_client_url", s_stat_client_url, STORAGE_NONE );
+  REGISTER_VAR( "mmaking_pcbt_mode", s_mmaking_pcbt_mode, STORAGE_NONE );
+  REGISTER_VAR( "rdp_log_events", s_rdp_log_events, STORAGE_NONE );
+  REGISTER_VAR( "rs_keepalive_timeout", s_rs_keepalive_timeout, STORAGE_NONE );
+  REGISTER_VAR( "mmaking_enabled", s_mmaking_enabled, STORAGE_NONE );
+  REGISTER_VAR( "mmaking_sex", s_mmaking_sex, STORAGE_NONE );
+  REGISTER_VAR( "lobby_customization", s_lobby_customization, STORAGE_NONE );
+  REGISTER_VAR( "enable_cursor_clip", s_enable_cursor_clip, STORAGE_NONE );
+  REGISTER_VAR( "debug_disable_world_crc", s_debug_disable_world_crc, STORAGE_NONE );
+
+  bool CommandLobby( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: lobby command called\n");
+      return true; 
+  }
+  REGISTER_CMD( lobby, CommandLobby );
+
+  bool CommandLogin( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: login command called\n");
+      return true; 
+  }
+  REGISTER_CMD( login, CommandLogin );
+
+  bool CommandCustom( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: custom command called\n");
+      return true; 
+  }
+  REGISTER_CMD( custom, CommandCustom );
+
+  bool CommandSettings( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: settings command called\n");
+      return true; 
+  }
+  REGISTER_CMD( settings, CommandSettings );
+
+  bool CommandReady( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: ready command called\n");
+      return true; 
+  }
+  REGISTER_CMD( ready, CommandReady );
+
+  bool CommandAddGold( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: add_gold command called\n");
+      return true; 
+  }
+  REGISTER_CMD( add_gold, CommandAddGold );
+
+  bool CommandWaitWorldStep( const char *, const nstl::vector<nstl::wstring> & ) { 
+      printf("STUB: waitWorldStep command called\n");
+      return true; 
+  }
+  REGISTER_CMD( waitWorldStep, CommandWaitWorldStep );
 }
 
 #include "Game/PF/HybridServer/PeeredTypes.h"

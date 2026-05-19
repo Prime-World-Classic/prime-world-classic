@@ -15,8 +15,10 @@
 #include "Resolution.h"
 
 #ifdef NV_LINUX_PLATFORM
+#include <SDL2/SDL.h>
+#include <algorithm>
 template<typename A> inline void DestroyIcon(A) {}
-template<typename A> inline void DestroyCursor(A) {}
+template<typename A> inline void DestroyCursor(A x) { if (x) SDL_FreeCursor((SDL_Cursor*)x); }
 template<typename A, typename B, typename C, typename D, typename E, typename F, typename G> inline int FormatMessage(A,B,C,D,E,F,G) { return 0; }
 #define FORMAT_MESSAGE_FROM_SYSTEM 0
 #define ZeroMemory(x,y) memset(x,0,y)
@@ -144,6 +146,31 @@ static bool CreateCursors( SCursor *pCursor, const Image & image )
 	if ( !pCursor )
 		return false;
 
+#ifdef NV_LINUX_PLATFORM
+  if ( pCursor->hCursor || pCursor->hCursor16 || pCursor->hCursor24 || pCursor->hCursor32 )
+  {
+    pCursor->ReleaseResources();
+  }
+
+  const CArray2D<DWORD> & data = image.GetData();
+	const int cw = image.GetWidth();
+	const int ch = image.GetHeight();
+  const UI::Point & hotSpot = image.GetHotSpot();
+
+  SDL_Surface* surf = SDL_CreateRGBSurface(0, cw, ch, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+  if (!surf) return false;
+
+  SDL_LockSurface(surf);
+  for (int y = 0; y < ch; ++y) {
+      memcpy((uint8_t*)surf->pixels + y * surf->pitch, &data[y][0], cw * 4);
+  }
+  SDL_UnlockSurface(surf);
+
+  pCursor->hCursor32 = (HCURSOR)SDL_CreateColorCursor(surf, hotSpot.x, hotSpot.y);
+  SDL_FreeSurface(surf);
+
+  return pCursor->hCursor32 != NULL;
+#else
   if ( pCursor->hCursor || pCursor->hCursor16 || pCursor->hCursor24 || pCursor->hCursor32 )
   {
     NI_ALWAYS_ASSERT("Try REcreate exist cursor");
@@ -344,6 +371,7 @@ static bool CreateCursors( SCursor *pCursor, const Image & image )
 
 	pCursor->pTexture = Render::Create2DTextureFromArray2D( bits );
 	return true;
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -515,9 +543,13 @@ void Update( DWORD time )
 		}
 	}
 
+#ifdef NV_LINUX_PLATFORM
+	const int displayBits = 32;
+#else
 	HDC hdc = GetDC( NMainFrame::GetWnd() );
 	const int displayBits = GetDeviceCaps( hdc, BITSPIXEL );
 	ReleaseDC( NMainFrame::GetWnd(), hdc );
+#endif
 
 	if ( !g_needUpdate && g_lastHW == g_cursorHW && g_lastSmooth == g_cursorSmooth && g_lastDisplayBits == displayBits )
 		return;

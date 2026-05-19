@@ -1,12 +1,12 @@
 #include "stdafx.h"
 
 
-#ifdef _WIN32
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(NV_LINUX_PLATFORM)
+#if defined(_WIN32) && !defined(NV_LINUX_PLATFORM)
 #include "LobbyConnection.h"
 #include <winsock2.h>
 #include "System/StarForce/StarForce.h"
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(NV_LINUX_PLATFORM)
 #include <Tlhelp32.h>
 #endif
 

@@ -154,11 +154,10 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
     UI::PresentFrame( GetTime() * 1000.0f, bAppActive ); //IREF //@BVS@TIME
     Render::GetUIRenderer()->EndQueue();
   }
-
-  if (g_screens.empty()) {
-    fprintf(stderr, "NMainLoop::Step: g_screens is empty, exiting loop\n");
-    fflush(stderr);
-  }
+if ( g_screens.empty() )
+{
+  return false;
+}
 
   return !g_screens.empty();
 }
@@ -297,9 +296,6 @@ static void DrawScreens(bool bAppActive)
   drawList.clear();
   drawList.reserve( g_screens.size() );
 
-  fprintf(stderr, "DrawScreens: g_screens size=%d\n", (int)g_screens.size());
-  fflush(stderr);
-
   for(TScreenList::iterator it = g_screens.begin(); it != g_screens.end(); ++it)
   {
     NMainLoop::IScreenBase * pScreen = *it;
@@ -307,20 +303,15 @@ static void DrawScreens(bool bAppActive)
 
     if(pScreen->IsInited())
       drawList.push_back( pScreen );
-    else {
-        fprintf(stderr, "  Screen %p not inited\n", pScreen);
-        fflush(stderr);
-    }
 
     if(pScreen->IsInited() && !transparent)
       break;
   }
 
-  fprintf(stderr, "  drawList size=%d\n", (int)drawList.size());
-  fflush(stderr);
-
-  for( int i = 0; i < drawList.size(); ++i )
-    drawList[ drawList.size() - 1 - i ]->Draw( bAppActive );
+  for( int i = 0; i < (int)drawList.size(); ++i ) {
+    int idx = (int)drawList.size() - 1 - i;
+    drawList[idx]->Draw( bAppActive );
+  }
 }
 
 } //namespace NMainLoop

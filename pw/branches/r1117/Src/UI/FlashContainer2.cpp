@@ -103,6 +103,7 @@ void FlashContainer2::Init()
 void FlashContainer2::Load( const nstl::string& filename )
 {
   NI_PROFILE_FUNCTION_MEM
+  systemLog( NLogg::LEVEL_MESSAGE ) << "FlashContainer2::Load: " << filename << endl;
 
   flash::FlashEnterFunction flashEnterFunction;
 
@@ -176,7 +177,8 @@ void FlashContainer2::OnMovedSized()
 void FlashContainer2::LoadOnly( const nstl::string& filename, flash::IFontRender* fontRender )
 {
   flash::FlashEnterFunction flashEnterFunction;
-
+  systemLog( NLogg::LEVEL_MESSAGE ) << "FlashContainer2::LoadOnly: " << filename << endl;
+  
   flash::Player::Get();
   MMGC_ENTER_VOID
 

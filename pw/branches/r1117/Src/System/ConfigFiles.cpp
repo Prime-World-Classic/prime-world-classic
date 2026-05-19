@@ -71,7 +71,8 @@ vector<wstring> LoadConfig( const string &szFileName, const NProfile::EProfileFo
   vector<wstring> wcommands;
 
   string fullPath = NProfile::GetFullFilePath( szFileName, folder );
-  if ( !NFile::DoesFileExist( fullPath ) )
+  bool exists = NFile::DoesFileExist( fullPath );
+  if ( !exists )
   {
     systemLog( NLogg::LEVEL_MESSAGE ) << "Cannot read configuration file \"" << fullPath << "\"" << endl;
     return wcommands;
@@ -97,7 +98,7 @@ vector<wstring> LoadConfig( const string &szFileName, const NProfile::EProfileFo
 
     string szCommand( *it );
     NStr::TrimBoth( szCommand, "\n\r" );
-    if ( szCommand.substr( 0, 1 ).compare( ";" ) == 0 || szCommand.substr( 0, 2 ).compare( "//" ) == 0 )
+    if ( szCommand.size() >= 1 && (szCommand[0] == ';' || szCommand.substr( 0, 2 ) == "//") )
       continue;
 
     wstring wszCommand;

@@ -27,7 +27,7 @@ public:
     STDMETHOD_(D3DRESOURCETYPE, GetType)() { return D3DRTYPE_SURFACE; }
 
 protected:
-    ULONG m_refCount;
+    LONG m_refCount;
 };
 
 class GLDirect3DVertexBuffer9 : public GLDirect3DResource9, public IDirect3DVertexBuffer9
@@ -54,10 +54,10 @@ public:
     STDMETHOD(GetDesc)(D3DVERTEXBUFFER_DESC *pDesc);
 
     GLuint GetVBO() const { return m_vbo; }
+    void* m_pData;
 
 private:
     UINT m_length;
-    void* m_pData;
     GLuint m_vbo;
 };
 
@@ -86,11 +86,11 @@ public:
 
     GLuint GetIBO() const { return m_ibo; }
     D3DFORMAT GetFormat() const { return m_format; }
+    void* m_pData;
 
 private:
     UINT m_length;
     D3DFORMAT m_format;
-    void* m_pData;
     GLuint m_ibo;
 };
 
@@ -119,16 +119,27 @@ public:
     STDMETHOD(SetAutoGenFilterType)(D3DTEXTUREFILTERTYPE FilterType) { return D3D_OK; }
     STDMETHOD_(D3DTEXTUREFILTERTYPE, GetAutoGenFilterType)() { return D3DTEXF_NONE; }
     STDMETHOD_(void, GenerateMipSubLevels)() {}
-    STDMETHOD(GetLevelDesc)(UINT Level,D3DSURFACE_DESC *pDesc) { return E_NOTIMPL; }
-    STDMETHOD(GetSurfaceLevel)(UINT Level,IDirect3DSurface9** ppSurfaceLevel) { return E_NOTIMPL; }
+    STDMETHOD(GetLevelDesc)(UINT Level,D3DSURFACE_DESC *pDesc);
+    STDMETHOD(GetSurfaceLevel)(UINT Level,IDirect3DSurface9** ppSurfaceLevel);
     STDMETHOD(LockRect)(UINT Level,D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags);
     STDMETHOD(UnlockRect)(UINT Level);
     STDMETHOD(AddDirtyRect)(CONST RECT* pDirtyRect) { return D3D_OK; }
 
     GLuint GetTex() const { return m_tex; }
+    GLuint GetFBO() { 
+        if (!m_fbo) { 
+            glGenFramebuffers(1, &m_fbo); glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex, 0);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+        return m_fbo;
+    }
+    UINT GetWidth() const { return m_width; }
+    UINT GetHeight() const { return m_height; }
 
 private:
     GLuint m_tex;
+    GLuint m_fbo;
     UINT m_width, m_height;
     D3DFORMAT m_format;
     UINT m_levels;
@@ -143,7 +154,14 @@ public:
 
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj) { return E_NOINTERFACE; }
     STDMETHOD_(ULONG,AddRef)() { return ++m_refCount; }
-    STDMETHOD_(ULONG,Release)() { if (--m_refCount == 0) { delete this; return 0; } return m_refCount; }
+    STDMETHOD_(ULONG,Release)() { 
+        if (--m_refCount == 0) { 
+            fprintf(stderr, "GLDirect3DVertexDeclaration9 DELETED %p\n", this);
+            delete this; 
+            return 0; 
+        } 
+        return m_refCount; 
+    }
 
     STDMETHOD(GetDevice)(IDirect3DDevice9** ppDevice) { return E_NOTIMPL; }
     STDMETHOD(GetDeclaration)(D3DVERTEXELEMENT9* pElement,UINT* pNumElements);
@@ -151,14 +169,14 @@ public:
     const std::vector<D3DVERTEXELEMENT9>& GetElements() const { return m_elements; }
 
 private:
-    ULONG m_refCount;
+    LONG m_refCount;
     std::vector<D3DVERTEXELEMENT9> m_elements;
 };
 
 class GLDirect3DSurface9 : public GLDirect3DResource9, public IDirect3DSurface9
 {
 public:
-    GLDirect3DSurface9() : GLDirect3DResource9() {}
+    GLDirect3DSurface9(GLDirect3DTexture9* pParent = NULL, UINT level = 0);
     virtual ~GLDirect3DSurface9() {}
 
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj) { return GLDirect3DResource9::QueryInterface(riid, ppvObj); }
@@ -175,11 +193,16 @@ public:
     STDMETHOD_(D3DRESOURCETYPE, GetType)() { return D3DRTYPE_SURFACE; }
 
     STDMETHOD(GetContainer)(REFIID riid,void** ppContainer) { return E_NOTIMPL; }
-    STDMETHOD(GetDesc)(D3DSURFACE_DESC *pDesc) { return E_NOTIMPL; }
-    STDMETHOD(LockRect)(D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags) { return E_NOTIMPL; }
-    STDMETHOD(UnlockRect)() { return D3D_OK; }
+    STDMETHOD(GetDesc)(D3DSURFACE_DESC *pDesc);
+    GLDirect3DTexture9* GetParent() const { return m_pParent; }
+    STDMETHOD(LockRect)(D3DLOCKED_RECT* pLockedRect,CONST RECT* pRect,DWORD Flags);
+    STDMETHOD(UnlockRect)();
     STDMETHOD(GetDC)(HDC *phdc) { return E_NOTIMPL; }
     STDMETHOD(ReleaseDC)(HDC hdc) { return D3D_OK; }
+
+private:
+    GLDirect3DTexture9* m_pParent;
+    UINT m_level;
 };
 
 class GLDirect3DQuery9 : public IDirect3DQuery9
@@ -199,7 +222,7 @@ public:
     STDMETHOD(GetData)(void* pData,DWORD dwSize,DWORD dwGetDataFlags) { return D3D_OK; }
 
 private:
-    ULONG m_refCount;
+    LONG m_refCount;
 };
 
 class GLDirect3DVertexShader9 : public IDirect3DVertexShader9
@@ -216,7 +239,7 @@ public:
     STDMETHOD(GetFunction)(void* pData,UINT* pSizeOfData);
 
 private:
-    ULONG m_refCount;
+    LONG m_refCount;
     std::vector<DWORD> m_function;
 };
 
@@ -234,7 +257,7 @@ public:
     STDMETHOD(GetFunction)(void* pData,UINT* pSizeOfData);
 
 private:
-    ULONG m_refCount;
+    LONG m_refCount;
     std::vector<DWORD> m_function;
 };
 
@@ -266,7 +289,7 @@ public:
     STDMETHOD(CreateDevice)(UINT Adapter,D3DDEVTYPE DeviceType,HWND hFocusWindow,DWORD BehaviorFlags,D3DPRESENT_PARAMETERS* pPresentationParameters,IDirect3DDevice9** ppReturnedDeviceInterface);
 
 private:
-    ULONG m_refCount;
+    LONG m_refCount;
 };
 
 class GLDirect3DDevice9 : public IDirect3DDevice9
@@ -275,7 +298,7 @@ public:
     GLDirect3DDevice9(IDirect3D9* pD3D, HWND hWnd, D3DPRESENT_PARAMETERS* pPresentationParameters);
     virtual ~GLDirect3DDevice9();
 
-    void SetSDLWindow(void* pWindow) { m_sdlWindow = pWindow; }
+    void SetSDLWindow(void* pWindow) { g_sdlWindow = pWindow; }
 
     /*** IUnknown methods ***/
     STDMETHOD(QueryInterface)(REFIID riid, void** ppvObj);
@@ -403,11 +426,12 @@ public:
 private:
     void UpdateShaderProgram();
     GLuint CompileShader(GLenum type, const char* source);
+    void ApplyAttributes(const void* pUPData, UINT UPStride, UINT StartVertex);
+    bool HandleLegacyRHW(D3DPRIMITIVETYPE PrimitiveType, UINT StartVertex, UINT PrimitiveCount, INT BaseVertexIndex = 0);
 
-    ULONG m_refCount;
+    LONG m_refCount;
     IDirect3D9* m_pD3D;
     HWND m_hWnd;
-    void* m_sdlWindow;
     D3DPRESENT_PARAMETERS m_presentParams;
 
     struct StreamSource {
@@ -425,6 +449,7 @@ private:
     IDirect3DVertexShader9* m_pVertexShader;
     IDirect3DPixelShader9* m_pPixelShader;
 
+    IDirect3DBaseTexture9* m_textures[16];
     float m_vsConstF[256][4];
     float m_psConstF[256][4];
 

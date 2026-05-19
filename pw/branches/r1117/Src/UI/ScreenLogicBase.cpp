@@ -424,7 +424,10 @@ void ScreenLogicBase::RenderWindows()
   NI_PROFILE_FUNCTION_MEM
 
   if ( !pBaseWindow )
+  {
+    static int nullCount = 0; if (nullCount++ < 10) fprintf(stderr, "ScreenLogicBase::RenderWindows: pBaseWindow is NULL!\n");
     return;
+  }
 
   NewFrameForAllObjectViewProviders();
 

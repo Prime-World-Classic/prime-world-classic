@@ -596,7 +596,10 @@ const DXVertexDeclarationRef & GetVertexFormatDeclaration(const VertexFormatDesc
 	if ( it != VertexDeclaraionsCash.end() )
 		return it->second;
 
-	VertexDeclaraionsCash[descr] = GetRenderer()->CreateVertexFormatDeclaration(descr);
+	DXVertexDeclarationRef newDecl = GetRenderer()->CreateVertexFormatDeclaration(descr);
+	fprintf(stderr, "GetVertexFormatDeclaration after Create: newDecl=%p\n", Get(newDecl));
+	VertexDeclaraionsCash[descr] = newDecl;
+    fprintf(stderr, "GetVertexFormatDeclaration caching %p\n", Get(VertexDeclaraionsCash[descr]));
 	return VertexDeclaraionsCash[descr];
 }
 
@@ -606,6 +609,7 @@ void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
 	if(pLastVertexDeclaration == pDecl) 
 		return;
 
+    fprintf(stderr, "BindVertexDeclarationRaw calling SetVertexDeclaration with %p\n", pDecl);
   HRESULT hr = GetDevice()->SetVertexDeclaration(pDecl);
   if(s_DXWarnLevel > 1)
     NI_DX_WARN(hr, "BindVertexDeclarationRaw");

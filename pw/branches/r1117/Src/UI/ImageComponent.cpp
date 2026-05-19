@@ -21,7 +21,7 @@ ImageComponent::ImageComponent() :
 renderable( false ),
 skinTag(-1),
 drawRect(0,0,0,0),
-cropRect(0,0,0,0),
+cropRect(-100000,-100000,100000,100000),
 color(255,255,255,255),
 opacity( 255 ),
 needUpdateStyle( false ),
@@ -392,7 +392,7 @@ void ImageComponent::DrawTile( const Point &_tlPoint, const Point &_brPoint, con
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void ImageComponent::Render() 
+void ImageComponent::Render()
 {
   NI_PROFILE_FUNCTION
 
@@ -401,8 +401,12 @@ void ImageComponent::Render()
 
 	UpdateStyleTexture();
 
-	Render::GetUIRenderer()->PushCrop( cropRect );
+  Render::BaseMaterial* renderMaterial = material.GetRenderMaterial();
+  if (!renderMaterial) {
+    return;
+  }
 
+	Render::GetUIRenderer()->PushCrop( cropRect );
 	Point	tlPoint( 0, 0 ), brPoint( 0, 0 );
 
 	switch ( material.GetDBMaterial() ? material.GetDBMaterial()->horizontalDrawMode : NDb::UIIMAGEDRAWMODE_STRETCH )

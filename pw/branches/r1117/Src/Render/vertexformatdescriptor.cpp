@@ -3,8 +3,8 @@
 
 namespace Render
 {
-/// Конструктор
-/// Добавление описания элемента вершины
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 void VertexFormatDescriptor::AddVertexElement(const VertexElementDescriptor& descr)
 {
 	vertexElementDescriptors.push_back(descr);
@@ -15,13 +15,13 @@ void VertexFormatDescriptor::AssignVertexElements( const VertexElementDescriptor
 	vertexElementDescriptors.resize(count);
 	memcpy(&vertexElementDescriptors[0], &descr, sizeof(VertexElementDescriptor)*count );
 }
-/// Получение описания элемента вершины
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 const VertexElementDescriptor& VertexFormatDescriptor::GetVertexElement(unsigned int index) const
 {
 	NI_ASSERT(index < GetVertexElementsCount(), "Invalid vertex element index!");
 	return vertexElementDescriptors[index];
 }
-/// Получение количества элементов вершины
+/// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 unsigned int VertexFormatDescriptor::GetVertexElementsCount() const
 {
 	return vertexElementDescriptors.size();
@@ -35,5 +35,22 @@ int VertexFormatDescriptor::FindMaxUsageIndex(EVertexElementUsage usage) const
 		if (vertexElementDescriptors[i].usage == usage)
 			usageIndex = max(usageIndex, int(vertexElementDescriptors[i].usageIndex));
 	return usageIndex;
+}
+
+bool VertexFormatDescriptor::operator==(const VertexFormatDescriptor& descr) const
+{
+	return vertexElementDescriptors == descr.vertexElementDescriptors;
+}
+
+bool VertexFormatDescriptor::operator<(const VertexFormatDescriptor& descr) const
+{
+	if (vertexElementDescriptors.size() != descr.vertexElementDescriptors.size())
+		return vertexElementDescriptors.size() < descr.vertexElementDescriptors.size();
+	for (size_t i = 0; i < vertexElementDescriptors.size(); ++i)
+	{
+		if (vertexElementDescriptors[i] != descr.vertexElementDescriptors[i])
+			return vertexElementDescriptors[i] < descr.vertexElementDescriptors[i];
+	}
+	return false;
 }
 }; // namespace Render

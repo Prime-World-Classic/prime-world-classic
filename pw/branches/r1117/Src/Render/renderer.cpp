@@ -75,10 +75,10 @@ const RenderMode& Renderer::GetCurrentRenderMode()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Renderer::Renderer(unsigned int _hWnd) : 
+Renderer::Renderer(uintptr_t _hWnd) : 
 	pD3D(0), 
 	pDevice(0),
-	hWnd(_hWnd),
+	hWnd((HWND)_hWnd),
 	bDeviceLost(true),
   bResetDevice(false),
   bTripleBufferUsed(false),
@@ -93,7 +93,7 @@ Renderer::Renderer(unsigned int _hWnd) :
 		//Log.Add(MAIN_LOG, "[!] ������ Direct3DCreate9\n"); FIXME
 	}
 
-	hWnd = _hWnd;
+	hWnd = (HWND)_hWnd;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -582,6 +582,7 @@ DXVertexDeclarationRef Renderer::CreateVertexFormatDeclaration(const VertexForma
     NI_DX_THROW( hr, "CreateVertexFormatDeclaration" );
   }
 
+  fprintf(stderr, "CreateVertexFormatDeclaration returning decl_d3d=%p\n", decl_d3d);
   return DXVertexDeclarationRef(decl_d3d, false);
 }
 
@@ -761,6 +762,7 @@ void Renderer::ClearDeviceResources()
 
 void Renderer::Present( HWND hWnd_, const Rect* sourceRect_, const Rect* destRect_ )
 {
+  static int calls = 0; if (++calls % 60 == 0) printf("Renderer::Present called %d\n", calls);
   NI_PROFILE_FUNCTION
 
   {

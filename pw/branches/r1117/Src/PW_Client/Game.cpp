@@ -141,7 +141,7 @@ REGISTER_DEV_VAR( "video_FPS", g_VideoFPS, STORAGE_NONE);
 REGISTER_DEV_VAR( "video_recording_time", g_RecordingTime, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender", s_NullRender, STORAGE_NONE);
 REGISTER_DEV_VAR( "nullrender_no_log_box", g_NullRenderNoLogBox, STORAGE_NONE);
-//REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
+REGISTER_DEV_VAR( "local_game", s_localGame, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesEnable", s_skipFrames, STORAGE_NONE);
 REGISTER_DEV_VAR( "skipFramesBarrier", s_skipFramesBarrier, STORAGE_NONE);
 
@@ -989,7 +989,9 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   }
 #endif // _SHIPPING
 
+#ifndef NV_LINUX_PLATFORM
   hWnd = (HWND)CmdLineLite::Instance().GetIntKey( "parentWindow" );
+#endif
   SPluginSettings parentSettings;
   Strong<NGameX::ISocialConnection> socialServer;
   Strong<NGameX::GuildEmblem> guildEmblem = new NGameX::GuildEmblem;
@@ -1260,8 +1262,10 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   }
 
   if(protocolLineStr.empty()) {
+#ifndef NV_LINUX_PLATFORM
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
+#endif
   } else {
     const char* protocolLine = protocolLineStr.c_str();
     const char* delimiter = "/";
@@ -1353,6 +1357,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     }
   }
 
+  if (context && !mainVars.initContext) context->Start();
   mainVars.initContext = true;
 
   //This config is mainly needed to enable custom lobby console commands
@@ -1397,12 +1402,14 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   mainVars.initRender = true;
   mainVars.initDisplay = true;
 
+#ifndef NV_LINUX_PLATFORM
   if(s_NullRender != RENDER_DISABLE_FLAG)
     if ( !CheckHardwareCompatibility() )
     {
       mainVars.DeInit();
       return 0xDEAD;
     }
+#endif
 
   UI::Initialize( NDb::Get<NDb::UIRoot>( NDb::DBID( "UI/UIRoot" ) ) );
   mainVars.initUI = true;
@@ -1422,9 +1429,12 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   {
     NSoundScene::TryTurnOnSound();
 
-    NDb::SoundRoot::InitRoot( NDb::DBID( "Audio/SoundRoot" ) );
-    for ( int i = 0; i < NDb::SoundRoot::GetRoot()->sceneScenes.size(); i++ )
-      NSoundScene::InitSoundScene( i, NDb::SoundRoot::GetRoot()->sceneScenes[i] );
+    NDb::Ptr<NDb::SoundRoot> soundRoot = NDb::Get<NDb::SoundRoot>( NDb::DBID( "Audio/SoundRoot" ) );
+    NDb::SoundRoot::InitRoot( soundRoot );
+    if ( IsValid( soundRoot ) ) {
+      for ( int i = 0; i < soundRoot->sceneScenes.size(); i++ )
+        NSoundScene::InitSoundScene( i, soundRoot->sceneScenes[i] );
+    }
     NSoundScene::ActivateSoundScene( NDb::SOUNDSCENE_LOADING, false );
     mainVars.initSound = true;
   }
@@ -1509,7 +1519,8 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
     // Update socialConnection
     {
-      socialServer->Step();
+      if ( IsValid( socialServer ) )
+        socialServer->Step();
     }
 
     // Update sound
@@ -1611,14 +1622,24 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     }
 
     // Do present, unless skip everything
-    if ( !s_NullRender )
+    bool shouldPresent = !s_NullRender;
+#ifdef NV_LINUX_PLATFORM
+    shouldPresent = true; // FORCE PRESENT ON LINUX
+#endif
+    if ( shouldPresent )
     {
+#ifndef NV_LINUX_PLATFORM
       Render::SharedVB::UnlockAll(); // Don't hold VB's locked for too long
+#endif
 
       NI_PROFILE_BLOCK( "RenderPresent" );
       mainPerf_Present.Start(true);
       //NMainLoop::VSyncController::WaitBeforePresent();
       int presentCount = NMainLoop::VSyncController::CalculatePresentCount();
+#ifdef NV_LINUX_PLATFORM
+      static int loopCount = 0; if (++loopCount % 60 == 0) printf("Game loop %d, presentCount: %d, s_NullRender: %d\n", loopCount, presentCount, s_NullRender);
+      if (presentCount < 1) presentCount = 1;
+#endif
       for (int i = 0; i < presentCount; i++)
         mainVars.renderingInterface->Present();
       NMainLoop::VSyncController::MarkPresentFinished();
@@ -1680,10 +1701,13 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     else
       mainVars.renderingInterface->FlushUI();
 
-    if ( isFirstLoopStep )
-      pCastleLink->StartRender();
+    if ( IsValid( pCastleLink ) )
+    {
+      if ( isFirstLoopStep )
+        pCastleLink->StartRender();
       
-    pCastleLink->Update( NMainLoop::GetTimeDelta() );
+      pCastleLink->Update( NMainLoop::GetTimeDelta() );
+    }
     
     isFirstLoopStep = false;
   } //Main loop ends

@@ -18,7 +18,7 @@ namespace Render
 DECLARE_NULL_RENDER_FLAG
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static const UIRect noCrop(-1,-1,-1,-1);
+static const UIRect noCropUI(-100000,-100000,100000,100000);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static NDebug::DebugVar<int> render_QuadCounter( "UIQuads", "Render" );
@@ -76,6 +76,9 @@ bool UIRenderer::Initialize()
 	if( initialized )
 		return false;
 
+  fprintf(stderr, "UIRenderer::Initialize CALLED! [this=%p]\n", this);
+  fflush(stderr);
+
   flashRenderer = new FlashRenderer();
   textureCache = new UITextureCache();
 
@@ -92,6 +95,7 @@ bool UIRenderer::Initialize()
 		formatDescriptor.AddVertexElement( VertexElementDescriptor(0, 24, VERTEXELEMENTTYPE_D3DCOLOR, VERETEXELEMENTUSAGE_COLOR, 0) );
 
 		pVDecl = SmartRenderer::GetVertexFormatDeclaration( formatDescriptor );
+    fprintf(stderr, "UIRenderer::Initialize pVDecl set to %p\n", Get(pVDecl));
 		dipDesc.primitiveType = RENDERPRIMITIVE_TRIANGLELIST;
 	}
 
@@ -217,7 +221,7 @@ void UIRenderer::PushCrop( const UIRect & cropRect )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void UIRenderer::PushNoCrop()
 {
-	cropRects.push_back( noCrop );
+	cropRects.push_back( noCropUI );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -234,10 +238,12 @@ bool UIRenderer::CropQuadInternal( UIQuad& quad, const UIRect & cropRect )
   CTRect<float> floatCropRect( cropRect );
 	croppedRect.Intersect( floatCropRect );
 
-	if ( croppedRect.minx >= croppedRect.maxx )
+	if ( croppedRect.minx >= croppedRect.maxx ) {
 		return false;
-	if ( croppedRect.miny >= croppedRect.maxy )
+  }
+	if ( croppedRect.miny >= croppedRect.maxy ) {
 		return false;
+  }
 
 	if ( quad.tl.x < croppedRect.x1 )
 	{
@@ -292,7 +298,7 @@ static void ExtPointTransform( float & x, float & y, const CVec2 & pivot, float 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 unsigned int UIRenderer::AddQuadInternal( const UIQuad & _quad, const Color& _color )
 {
-  RenderQueue & queue = GetQueue();
+	RenderQueue & queue = GetQueue();
 	NI_VERIFY( initialized, "UIRenderer: Not initialized!", return 0 );
 
   if(queue.quadCounter < QUAD_MAX_COUNT)
@@ -401,9 +407,12 @@ void UIRenderer::AddQuad( UIQuad & _quad, Render::BaseMaterial* _renderMaterial,
   if ( !_renderMaterial )
     return;
 
-  if ( !_quad.ext && !cropRects.empty() && !cropRects.back().IsSame( noCrop ) )
-    if ( !CropQuadInternal( _quad, cropRects.back() ) )
+  if ( !_quad.ext && !cropRects.empty() && !cropRects.back().IsSame( noCropUI ) )
+  {
+    if ( !CropQuadInternal( _quad, cropRects.back() ) ) {
       return;
+    }
+  }
 
   RenderQueue & queue = GetQueue();
 
@@ -464,7 +473,7 @@ void UIRenderer::AddTextQuad( UIQuad & _quad, const SMaterialParams & params )
 
 	_quad.ext = false; // not supported for texts
 
-	if ( !cropRects.empty() && !cropRects.back().IsSame( noCrop ) )
+	if ( !cropRects.empty() && !cropRects.back().IsSame( noCropUI ) )
 		if ( !CropQuadInternal( _quad, cropRects.back() ) )
 			return;
 
@@ -712,14 +721,16 @@ void UIRenderer::EndQueue()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void UIRenderer::Render( ERenderWhat::Enum what, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy )
 {
-  fprintf(stderr, "UIRenderer::Render called, initialized=%d\n", initialized);
 	if ( !initialized )
 		return;
 
   RenderQueue & queue = (what == ERenderWhat::_2D) ? que2D : que3D;
+  int flashParts = 0;
+  for( int i = 0; i < queue.parts.size(); ++i ) if (queue.parts[i].flashElement) flashParts++;
+  fprintf(stderr, "UIRenderer::Render: what=%d, quads=%d, parts=%d (flash=%d)\n", (int)what, queue.quadCounter, (int)queue.parts.size(), flashParts);
+  fflush(stderr);
 
-  fprintf(stderr, "UIRenderer::Render queue.quadCounter=%d\n", queue.quadCounter);
-	if( queue.quadCounter == 0 )
+	if( queue.quadCounter == 0 && queue.parts.empty() )
 		return;
 
 	if ( ERenderWhat::_2D == what )
@@ -819,6 +830,8 @@ BaseMaterial* UIRenderer::GetPartMaterial( int _partID, ERenderWhat::Enum what )
 void UIRenderer::PrepareRender()
 {
   const Render::RenderMode & renderMode = Render::GetRenderer()->GetCurrentRenderMode();
+
+  fprintf(stderr, "UIRenderer::PrepareRender [this=%p] pVDecl=%p\n", this, Get(pVDecl));
 
   SmartRenderer::BindVertexDeclaration( pVDecl );
   SmartRenderer::BindIndexBuffer( pIB );

@@ -287,10 +287,13 @@ void NewFrame( DWORD time )
 
 void PresentFrame( DWORD time, bool active )
 {
+  fprintf(stderr, "UI::PresentFrame: NCursor::Update\n"); fflush(stderr);
   NCursor::Update( time );
 
-	if ( active )
-		NCursor::Render();
+  if ( active ) {
+    fprintf(stderr, "UI::PresentFrame: NCursor::Render\n"); fflush(stderr);
+    NCursor::Render();
+  }
 }
 
 
@@ -345,6 +348,7 @@ void Initialize( const NDb::UIRoot *pRoot )
   for ( int i = 0; i < pRoot->screens.size(); ++i )
   {
     const string & screenId = pRoot->screens[i].screenId;
+    systemLog( NLogg::LEVEL_MESSAGE ) << "UI::Initialize: loading screen " << screenId << endl;
     NDb::Ptr<NDb::UIBaseLayout> pLayout = pRoot->screens[i].baseLayout;
     NI_VERIFY( !screenId.empty(), NStr::StrFmt( "UIRoot: Empty screen ID! (#%d)", i ), continue );
     NI_VERIFY( g_screens.find( screenId ) == g_screens.end(), NStr::StrFmt( "UIRoot: Screen ID (%s) already registered! (#%d)", screenId.c_str(), i ), continue );

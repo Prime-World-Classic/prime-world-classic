@@ -47,23 +47,23 @@ bool SelectGameModeScreen::Init( UI::User * uiUser )
   {
     NI_PROFILE_BLOCK( "Maps" )
     StrongMT<Game::IGameContextUiInterface> locked = gameCtx.Lock();
-    if ( !locked )
+    if ( !locked ) {
       return false;
+    }
 
     NWorld::IMapCollection * maps = locked->Maps();
     NDb::Ptr<NDb::MapList> pMapList = NDb::Get<NDb::MapList>( NDb::DBID( "\\Tech\\Default\\_.MAPLST.xdb" ) );
 
-    NI_VERIFY( IsValid( pMapList ), "\\Tech\\Default\\_.MAPLST does not exist", return false )
+    if ( !IsValid( pMapList ) ) {
+      return false;
+    }
 
     maps->InitCustomList(pMapList);
 
     for ( int i = 0; i < pMapList->maps.size(); ++i )
       logic->AddMapEntry( i, maps->CustomDescId( i ), maps->CustomTitle( i ), maps->CustomDescription( i ) );
   }
-/*
-  if ( StrongMT<Game::IGameContextUiInterface> cl = gameCtx.Lock() )
-    cl->RefreshGamesList();
-*/
+
   return true; 
 } 
 

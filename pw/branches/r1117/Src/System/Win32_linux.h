@@ -1,6 +1,14 @@
 #ifndef __WIN32_LINUX_H_UNIQUE__
 #define __WIN32_LINUX_H_UNIQUE__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+extern void* g_sdlWindow;
+#ifdef __cplusplus
+}
+#endif
+
 #define VMPI_memcpy memcpy
 #define VMPI_memset memset
 
@@ -234,7 +242,7 @@ typedef struct _DEVMODE {
 inline BOOL EnumDisplaySettings(const char*, DWORD, DEVMODE*) { return FALSE; }
 
 #define MAX_PATH 260
-#define THREAD_LS __thread
+#define THREAD_LS thread_local
 
 #define ZeroMemory(Destination,Length) memset((Destination),0,(Length))
 #define CopyMemory(Destination,Source,Length) memcpy((Destination),(Source),(Length))
@@ -695,10 +703,19 @@ inline long _wtol(const wchar_t *str) { return wcstol(str, NULL, 10); }
 #define FAILED(hr)    (((HRESULT)(hr)) < 0)
 
 
+
+
+
 #ifndef _WIN32_LINUX_EXTRA_STUBS
 #define _WIN32_LINUX_EXTRA_STUBS
 
 #include <stdint.h>
+
+#ifndef _interface
+#define _interface struct
+#endif
+
+// Compatibility moved to its own file
 
 // Toolhelp32
 #define TH32CS_SNAPMODULE 0x00000008
@@ -814,5 +831,8 @@ inline HRESULT CoInitialize(LPVOID pvReserved) { return 0; }
 #define _BitScanForward(Index, Mask) (0)
 
 #endif // _WIN32_LINUX_EXTRA_STUBS
+
+
+
 
 #endif // __WIN32_LINUX_H_UNIQUE__

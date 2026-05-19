@@ -108,6 +108,7 @@ void Interface::Clear( Color color )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void Interface::Present()
 {
+	static int calls = 0; if (++calls % 60 == 0) printf("Interface::Present called %d\n", calls);
 	Render::GetRenderer()->Present();
 }
 

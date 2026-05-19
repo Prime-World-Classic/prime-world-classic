@@ -1668,8 +1668,12 @@ void Interface::Render( bool GIsEditor )
   pRenderer->EndScene(); 
 
   // Total statistics
-  StatisticsMeasurer::GetValues(render_TotalTriangleCount, render_TotalDIPCount);
+  //StatisticsMeasurer::GetValues(render_TotalTriangleCount, render_TotalDIPCount);
 
+  // Total statistics
+  //StatisticsMeasurer::GetValues(render_TotalTriangleCount, render_TotalDIPCount);
+
+  /*
   statesManager.UpdateStats();
 
   // ================================================
@@ -1683,11 +1687,12 @@ void Interface::Render( bool GIsEditor )
 
   // Dump screenshots
   DumpScreenshots();
+  */
 
   // Drop logger
   LogMarker("########################### FRAME END ###########################################");
   BatchQueue::SetRenderLogger(0);
-  render_MatSwitchCount.SetValue(BatchQueue::GetMaterialSwitchCounter());
+  //render_MatSwitchCount.SetValue(BatchQueue::GetMaterialSwitchCounter());
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
