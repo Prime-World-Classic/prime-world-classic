@@ -1,4 +1,184 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#ifdef random
+#undef random
+#endif
+
+#define PW_INLINE_NULL_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseApplicator;
+class PFBaseBehaviour;
+class PFApplStatus;
+class PFApplTaunt;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+PW_INLINE_NULL_CAST(NWorld::PFAbilityData)
+PW_INLINE_NULL_CAST(NWorld::PFAbilityInstance)
+PW_INLINE_NULL_CAST(NWorld::PFBaseApplicator)
+PW_INLINE_NULL_CAST(NWorld::PFBaseBehaviour)
+PW_INLINE_NULL_CAST(NWorld::PFApplStatus)
+PW_INLINE_NULL_CAST(NWorld::PFApplTaunt)
+PW_INLINE_NULL_CAST(NWorld::PFBehaviourGroup)
+PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_INLINE_NULL_CAST
+
+#include "PFBaseMovingUnit.h"
+#include "PFWorld.h"
+#include "PFVoxelMap.h"
+#include "TileMap.h"
+#include "WarFog.h"
+
+#define PW_NULL_CAST(TypeName) \
+template<> CObjectBase* CastToObjectBaseImpl<TypeName>(TypeName*, void*) { return 0; } \
+template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, void*) { return 0; } \
+template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_NULL_CAST(CCommonStaticPath)
+PW_NULL_CAST(NWorld::CStandartPath2)
+PW_NULL_CAST(NWorld::IPointChecking)
+#undef PW_NULL_CAST
+
+namespace NWorld
+{
+static const int RANDOM_MAX = 1024;
+
+MovingUnit::MovingUnit(const CVec3& pos, const CVec2& direction, TileMap* pTileMap, const NDb::Unit&)
+: pMap(pTileMap), origin(pos.AsVec2D()), moveState(MOVE_STATE_IDLE), moveFlags(0), stateTime(0.0f), stateTimeout(0.0f), timeStanding(0.0f), speedScale(1.0f), speed(0.0f), ghostModeIndex(-1), curGhostMode(0), vShortTarget(pos.AsVec2D()), vFarTarget(pos.AsVec2D()), vLastMoveTarget(pos.AsVec2D()), splineIter(0), splineSegmentLen(0), numSplineTiles(0), numIncrementalUpdates(0), bSplineRequiresExtraPoint(false), mapMode(0), mapModeStatic(0), mapModeAll(0), stopDistance(0.0f), isMarkedOnMap(false), moveDir(direction), followDistance(-1.0f), isFollowing(false), holdingPosition(false), pathFindingSteps(0), evading(false), chasing(false), isFollowingForced(false), ignoreCollision(false)
+{
+  splinePoint.resize(NUM_SPLINE_POINTS);
+  splineTiles.resize(NUM_SPLINE_POINTS * MAX_SPLINE_TILES);
+}
+
+void MovingUnit::Init(PFBaseMovingUnit* owner) { pOwner = owner; }
+void MovingUnit::Reset(TileMap* map) { pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pAttached = 0; pFollowed = 0; isFollowing = false; }
+void MovingUnit::RecalculateGhostMode() { curGhostMode = 0; for (int i = 0; i < ghostMode.size(); ++i) curGhostMode |= ghostMode[i].mode; }
+void MovingUnit::ApplyGhostMode() { RecalculateGhostMode(); }
+int MovingUnit::SetGhostMode(int mode, bool overrideMode) { ghostModeIndex++; ghostMode.push_back(GhostModeType(ghostModeIndex, mode, overrideMode)); ApplyGhostMode(); return ghostModeIndex; }
+void MovingUnit::ResetGhostMode(int index) { for (int i = 0; i < ghostMode.size(); ++i) if (ghostMode[i].index == index) { ghostMode.eraseByIndex(i); break; } ApplyGhostMode(); }
+void MovingUnit::MoveTo(const CVec2& target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = 0; vFarTarget = target; vShortTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; UpdateMoveDir(target); moveState = MOVE_STATE_MOVING; }
+void MovingUnit::MoveTo(PFBaseUnit* target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; if (target) MoveTo(target->GetPosition().AsVec2D(), stopDistance_, pointChecking); }
+bool MovingUnit::TeleportTo(const CVec2& target, bool) { SetCenter(target); vFarTarget = target; vShortTarget = target; moveState = MOVE_STATE_IDLE; return true; }
+void MovingUnit::Stop(bool) { moveState = MOVE_STATE_IDLE; pUnitTarget = 0; }
+bool MovingUnit::MoveToSpecial(const CVec2& target, bool) { MoveTo(target, 0.0f, 0); moveState = MOVE_STATE_SPECIAL_MOVE; return true; }
+bool MovingUnit::MoveToSpecial(const CPtr<PFBaseUnit>& target, bool notifyClient) { return IsValid(target) ? MoveToSpecial(target->GetPosition().AsVec2D(), notifyClient) : false; }
+void MovingUnit::FollowTo(const CPtr<PFBaseMovingUnit>& unit, bool forced) { pFollowed = unit; isFollowing = IsValid(unit); isFollowingForced = forced; }
+float MovingUnit::CheckStraightMove(CVec2 const& target, int) { return fabs(target - origin); }
+PathMap* MovingUnit::BuildPathMap(float) { return 0; }
+void MovingUnit::UpdateMovements(const PFVoxelMap*, const CollisionResolver*, TileMap*, float) {}
+void MovingUnit::Step(float timeDelta) { stateTime += timeDelta; timeStanding += timeDelta; if (moveState == MOVE_STATE_MOVING || moveState == MOVE_STATE_SPECIAL_MOVE) { SetCenter(vFarTarget); moveState = MOVE_STATE_IDLE; } }
+void MovingUnit::PreStep(float) {}
+void MovingUnit::MovingUnitStep(float) {}
+void MovingUnit::NotifyMoving(bool) {}
+void MovingUnit::OnDie() { moveState = MOVE_STATE_DEAD; }
+void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { pAttached = unit; moveState = MOVE_STATE_MOUNTED; }
+void MovingUnit::DetachUnit() { pAttached = 0; moveState = MOVE_STATE_IDLE; }
+bool MovingUnit::ShouldLockMap() const { return false; }
+bool MovingUnit::IsTerrainNative(float, float) const { return true; }
+bool MovingUnit::IsTerrainNative(SVector) const { return true; }
+bool MovingUnit::IsTerrainNative() const { return true; }
+void MovingUnit::UpdateAttachedMovement() {}
+Pathfinding::CCommonPathFinder* MovingUnit::GetPathFinder() { return 0; }
+Pathfinding::RoutePathFinder* MovingUnit::GetRoutePathFinder() { return 0; }
+bool MovingUnit::UseRoutePathFinder(SVector const&, SVector const&) const { return false; }
+CCommonStaticPath* MovingUnit::CreateStaticPath(const SVector&, const SVector&) { return 0; }
+CStandartPath2* MovingUnit::CreateStandartPath() { return 0; }
+void MovingUnit::InitMapMode() {}
+bool MovingUnit::CreatePath(bool) { return false; }
+bool MovingUnit::CreatePathFromSync() { return false; }
+bool MovingUnit::NeedPathFromSync() const { return false; }
+bool MovingUnit::MoveToShort(CVec2 dest) { MoveTo(dest, 0.0f, 0); return true; }
+bool MovingUnit::RecomputePath(int) { return false; }
+bool MovingUnit::UpdatePath() { return false; }
+bool MovingUnit::ValidatePath(bool) { return true; }
+bool MovingUnit::ValidatePos(CVec2) { return true; }
+bool MovingUnit::CheckSplineControlPoint() { return true; }
+bool MovingUnit::BypassPoint(CVec2 const&, int, float) { return false; }
+void MovingUnit::SetState(EMoveState state, float timeout) { moveState = state; stateTimeout = timeout; stateTime = 0.0f; }
+void MovingUnit::StartMoving() { moveState = MOVE_STATE_MOVING; }
+void MovingUnit::BlockedBy(MovingUnit*) { moveState = MOVE_STATE_BLOCKED; }
+void MovingUnit::BypassingUnit(MovingUnit*) { moveState = MOVE_STATE_BYPASSING; }
+void MovingUnit::PathFailed() { moveState = MOVE_STATE_NO_PATH; }
+void MovingUnit::Wait(float minTime, float maxTime) { (void)minTime; (void)maxTime; moveState = MOVE_STATE_WAITING; }
+void MovingUnit::InitSpline(bool) {}
+void MovingUnit::StraightSpline() {}
+CVec2 MovingUnit::IterateSpline() { return origin; }
+void MovingUnit::AddSplineTile(CVec2 const&) {}
+void MovingUnit::DropSplineTiles(int) {}
+void MovingUnit::ClearSpline() {}
+void MovingUnit::TickMove(float) {}
+void MovingUnit::TickMoveSpecial(float) {}
+void MovingUnit::MoveToInternal(const CVec2& target, float stopDistance_, IPointChecking* pointChecking) { MoveTo(target, stopDistance_, pointChecking); }
+void MovingUnit::MarkTilesInternal(bool mark) { isMarkedOnMap = mark; }
+void MovingUnit::UnmarkTiles(bool) { isMarkedOnMap = false; }
+void MovingUnit::MarkTiles() { isMarkedOnMap = true; }
+bool MovingUnit::PlaceUnit(const CVec2& newPosition, float, bool, bool, bool) { SetCenter(newPosition); return true; }
+bool MovingUnit::FindFreePlace(CVec2 const& newPosition, float, CVec2& foundPosition, bool, bool, bool, float, int, bool) { foundPosition = newPosition; return true; }
+bool MovingUnit::FindFreePlace(CVec2 const& newPosition, CVec2 const&, float, float, CVec2& foundPosition, bool, bool, int, bool) { foundPosition = newPosition; return true; }
+bool MovingUnit::FindFreePlace2(CVec2 const& newPosition, CVec2 const&, float, CVec2& foundPosition, bool, bool, float, int, bool) { foundPosition = newPosition; return true; }
+bool MovingUnit::CanOccupyPosition(CVec2 const&) { return true; }
+bool MovingUnit::IsClientUnit() const { return false; }
+void MovingUnit::NotifyClientMove(bool) {}
+void MovingUnit::NotifyClientStop() {}
+void MovingUnit::NotifyClientTeleport() {}
+bool MovingUnit::ClientIsVisible() const { return true; }
+const CVec2 MovingUnit::GetCenter(CVec2 const& origin_) const { return origin_; }
+const CVec2 MovingUnit::GetOrigin(CVec2 const& center) const { return center; }
+void MovingUnit::SetCenter(CVec2 const& center) { origin = center; if (pOwner) pOwner->position = CVec3(center, pOwner->position.z); }
+void MovingUnit::SetOrigin(CVec2 const& origin_) { origin = origin_; }
+void MovingUnit::UpdateMoveDir(CVec2 const& dst) { CVec2 dir = dst - origin; if (fabs2(dir) > EPS_VALUE) Normalize(&dir); moveDir = dir; }
+int MovingUnit::UnitRangeSorter(const void*, const void*) { return 0; }
+int MovingUnit::GetPathFindingSteps() const { return 0; }
+PFBaseUnit* MovingUnit::GetRealOwner() const { return pOwner; }
+
+void PFBaseMovingUnit::GetAllUnits(const PFVoxelMap*, vector<PFBaseMovingUnit*>& movingUnits, bool, const PFBaseMovingUnit*) { movingUnits.clear(); }
+void PFBaseMovingUnit::GetPushableUnitsInRange(const PFVoxelMap*, const CVec2&, float, vector<PFBaseMovingUnit*>& pushableUnits, vector<PFBaseMovingUnit*>& nonPushableUnits, bool, const PFBaseMovingUnit*) { pushableUnits.clear(); nonPushableUnits.clear(); }
+void PFBaseMovingUnit::GetAllUnitsInRangeConsiderSize(const PFVoxelMap*, const CVec2&, float, vector<PFBaseMovingUnit*>& movingUnits, bool, const PFBaseMovingUnit*) { movingUnits.clear(); }
+PFBaseMovingUnit::PFBaseMovingUnit(PFWorld* pWorld, const CVec3& pos, const CVec2& direction, const NDb::Unit& unitDesc) : PFBaseUnit(pWorld, pos, &unitDesc), world(pos, direction, GetTileMap(), unitDesc), random(0), isMount(false), forbidStop(false), doNotTeleportInStepInvisibility(false) {}
+PFBaseMovingUnit::PFBaseMovingUnit() : random(0), isMount(false), forbidStop(false), doNotTeleportInStepInvisibility(false) {}
+void PFBaseMovingUnit::Initialize(InitData const& data) { PFBaseUnit::Initialize(data); world.Init(this); }
+void PFBaseMovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { world.AttachUnit(unit); }
+void PFBaseMovingUnit::DetachUnit() { world.DetachUnit(); }
+int PFBaseMovingUnit::GetUnitRadius() const { return Max(1, GetObjectTileSize() / 2); }
+int PFBaseMovingUnit::GetUnitDynamicRadius() const { return Max(1, GetObjectDynamicTileSize() / 2); }
+bool PFBaseMovingUnit::MoveTo(const CVec2& target, float stopDistance, IPointChecking* pointChecking) { world.MoveTo(target, stopDistance, pointChecking); return world.IsMoving(); }
+bool PFBaseMovingUnit::MoveTo(PFBaseUnit* target, float stopDistance, IPointChecking* pointChecking) { if (!target) return false; world.MoveTo(target, stopDistance, pointChecking); return world.IsMoving(); }
+void PFBaseMovingUnit::SetMoveFlags(unsigned value) { world.moveFlags = value; }
+float PFBaseMovingUnit::SetUnitSpeed(float value) { world.SetUnitSpeed(value * world.speedScale); return world.GetUnitSpeed(); }
+void PFBaseMovingUnit::NotifyDispatchesOnTargetTeleport() {}
+bool PFBaseMovingUnit::TeleportTo(const CVec2& target, bool, bool) { const bool result = world.TeleportTo(target, true); position = CVec3(target, position.z); return result; }
+void PFBaseMovingUnit::Stop(bool notifyClient) { if (!forbidStop) { world.Stop(notifyClient); OnStopped(); } }
+bool PFBaseMovingUnit::Step(float dtInSeconds) { random = (random + 1) % RANDOM_MAX; world.Step(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
+void PFBaseMovingUnit::StepInvisibility() { PFBaseUnit::StepInvisibility(); }
+void PFBaseMovingUnit::MovingUnitStep(float worldTimeDelta) { world.MovingUnitStep(worldTimeDelta); position = world.GetCenter3(); }
+void PFBaseMovingUnit::NotifyMoving(bool) {}
+void PFBaseMovingUnit::UpdateWarFog() {}
+PathMap* PFBaseMovingUnit::BuildPathMap(float) { return 0; }
+void PFBaseMovingUnit::OnDie() { world.OnDie(); PFBaseUnit::OnDie(); }
+void PFBaseMovingUnit::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc) { world.OnDie(); PFBaseUnit::OnUnitDie(killer, flags, damageDesc); }
+float PFBaseMovingUnit::CheckStraightMove(CVec2 const& target, int mapModeFlags) { return world.CheckStraightMove(target, mapModeFlags); }
+bool PFBaseMovingUnit::PlaceUnit(CVec2 const& newPosition, bool ignoreUnits, bool nativeTerrainOnly, bool notifyClient) { return world.PlaceUnit(newPosition, MovingUnit::PLACE_UNIT_RADIUS, ignoreUnits, nativeTerrainOnly, notifyClient); }
+void PFBaseMovingUnit::Reset() { PFBaseUnit::Reset(); world.Reset(GetWorld() ? GetWorld()->GetTileMap() : 0); }
+void PFBaseMovingUnit::OnGameFinished(const NDb::EFaction failedFaction) { PFBaseUnit::OnGameFinished(failedFaction); Stop(); }
+void PFBaseMovingUnit::PlaceUnitWithPush(const CVec2& newPosition, float, bool, bool nativeTerrainOnly) { PlaceUnit(newPosition, true, nativeTerrainOnly, true); }
+#ifndef _SHIPPING
+CObj<NDebug::DebugObject> PFBaseMovingUnit::CreateDebugObject() { return 0; }
+void PFBaseMovingUnit::ShowPaths(Render::IDebugRender*) const {}
+void PFBaseMovingUnit::ShowSpeed(Render::IDebugRender*) const {}
+void PFBaseMovingUnit::ShowSectors(Render::IDebugRender*) const {}
+void PFBaseMovingUnit::ShowPredict(Render::IDebugRender*) const {}
+void PFBaseMovingUnit::ShowUnit(Render::IDebugRender*) const {}
+#endif
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseMovingUnit, NWorld)
+
+#else
 #include "StandartPath2.h"
 #include "StaticPathInternal.h"
 #include "PFBaseMovingUnit.h"
@@ -2621,3 +2801,5 @@ REGISTER_DEV_VAR( "dump_path", g_dumpPath, STORAGE_NONE );
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFBaseMovingUnit, NWorld)
 REGISTER_WORLD_OBJECT_NM(ObjectRangeChecking, NWorld)
 REGISTER_WORLD_OBJECT_NM(RangeChecking, NWorld)
+
+#endif

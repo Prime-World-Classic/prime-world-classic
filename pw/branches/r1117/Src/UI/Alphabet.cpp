@@ -121,8 +121,8 @@ void Alphabet::LoadAlphabet( FT_Library ftLibrary, const char* _ttfFileName, int
     FT_Pos maxAscent = 0;
     FT_Pos minDescent = 0;
 
-    //Расчитаем размер шрифта по габаритам букавак
-    static const wchar_t * sampleChars = L" AIWZapqyАРЯарщуц";
+    // Include representative Latin and Cyrillic glyphs for default metric sampling.
+    static const wchar_t * sampleChars = L" AIWZapqy\u0410\u0419\u0426\u0429\u0444\u0443\u044F\u0434";
 
     for ( const wchar_t * checkFace = sampleChars; *checkFace; ++checkFace )
     {

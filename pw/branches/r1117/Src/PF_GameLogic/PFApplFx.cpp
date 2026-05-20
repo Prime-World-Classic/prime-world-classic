@@ -1,4 +1,43 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplFx.h"
+#include "PFBaseUnit.h"
+
+namespace NWorld
+{
+
+bool PFApplFX::Start()
+{
+  origin = GetTarget();
+  return PFApplBuff::Start();
+}
+
+PFLogicObject* PFApplFX::GetEffectOrigin()
+{
+  return origin.IsObjectValid(true) ? origin.GetObject().GetPtr() : GetAbilityOwner().GetPtr();
+}
+
+PFLogicObject* PFApplFX::GetEffectTarget()
+{
+  return pReceiver;
+}
+
+const IUnitFormulaPars* PFApplFX::GetObject(char const* objName) const
+{
+  if (strcmp(objName, "AuxTarget") == 0)
+    return origin.IsObjectValid(true) ? origin.GetObject().GetPtr() : pReceiver.GetPtr();
+
+  return Base::GetObject(objName);
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplFX, NWorld);
+
+#else
+
 #include "PFApplFx.h"
 #include "PFTargetSelector.h"
 #include "PFBaseUnit.h"
@@ -48,3 +87,5 @@ const IUnitFormulaPars* PFApplFX::GetObject( char const* objName ) const
 }
 
 REGISTER_WORLD_OBJECT_NM(PFApplFX, NWorld);
+
+#endif

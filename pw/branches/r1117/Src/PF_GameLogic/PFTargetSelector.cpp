@@ -1,4 +1,1511 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFTargetSelector.h"
+#include "PFApplicator.h"
+#include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
+#include "PFBaseUnit.h"
+#include "PFAIWorld.h"
+#include "TargetSelectorHelper.hpp"
+
+namespace
+{
+  static int g_show_ts_ranges = 0;
+}
+
+namespace NWorld
+{
+
+void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
+
+namespace
+{
+  inline const ITargetCondition* GetDefaultTargetCondition()
+  {
+    static const CheckValidAbilityTargetCondition condition;
+    return &condition;
+  }
+
+  static void LinuxAddUniqueUnit(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* pUnit)
+  {
+    if (!pUnit)
+      return;
+    for (vector<CPtr<PFBaseUnit> >::const_iterator it = units.begin(); it != units.end(); ++it)
+      if (it->GetPtr() == pUnit)
+        return;
+    units.push_back(pUnit);
+  }
+
+  static void LinuxCollectCandidateUnits(vector<CPtr<PFBaseUnit> >& units, const PFTargetSelector::RequestParams& pars)
+  {
+    GetLinuxBootstrapUnits(units);
+    LinuxAddUniqueUnit(units, pars.pOwner.GetPtr());
+    LinuxAddUniqueUnit(units, pars.pReceiver.GetPtr());
+    if (pars.pRequester && pars.pRequester->IsUnit())
+      LinuxAddUniqueUnit(units, pars.pRequester->GetUnit().GetPtr());
+  }
+
+  static bool LinuxSelectorDeadAllowed(const PFTargetSelector* selector)
+  {
+    if (!selector || !selector->GetDBBase())
+      return false;
+
+    const NDb::MultipleTargetSelector* pMultiple =
+      dynamic_cast<const NDb::MultipleTargetSelector*>(selector->GetDBBase().GetPtr());
+    return pMultiple && (pMultiple->flags & NDb::TARGETSELECTORFLAGS_DEADALLOWED);
+  }
+
+  static bool LinuxTargetPasses(const Target& target, const PFTargetSelector::RequestParams& pars, bool deadAllowed)
+  {
+    return target.IsValid(deadAllowed) && CheckTargetCondition(target, pars);
+  }
+
+  static bool LinuxUnitPasses(PFBaseUnit* unit, NDb::ESpellTarget targetFilter, const PFTargetSelector::RequestParams& pars, bool deadAllowed)
+  {
+    if (!unit)
+      return false;
+
+    Target target(unit);
+    if (!LinuxTargetPasses(target, pars, deadAllowed))
+      return false;
+
+    UnitMaskingPredicate predicate(pars.pOwner.GetPtr(), targetFilter);
+    return predicate(*unit);
+  }
+
+  static void LinuxMakeSelectorPoint(const PFTargetSelector::RequestParams& pars, const CVec2& prevPos, NDb::ETargetSelectorPoint pointSpec, CVec2& pos)
+  {
+    switch (pointSpec)
+    {
+      case NDb::TARGETSELECTORPOINT_ABILITYOWNER:
+        pos = pars.pOwner ? pars.pOwner->GetPosition().AsVec2D() : VNULL2;
+        break;
+      case NDb::TARGETSELECTORPOINT_PREVIOUSPOSITION:
+        pos = prevPos;
+        break;
+      case NDb::TARGETSELECTORPOINT_OWNERDIRECTION:
+        pos = pars.pOwner ? pars.pOwner->GetPosition().AsVec2D() + CVec2(1.0f, 0.0f) : CVec2(1.0f, 0.0f);
+        break;
+      case NDb::TARGETSELECTORPOINT_CURRENTPOSITION:
+      default:
+        pos = pars.pRequester ? pars.pRequester->AcquirePosition().AsVec2D() : VNULL2;
+        break;
+    }
+  }
+
+  static void LinuxRotateVector(CVec2& v, float angleDegrees)
+  {
+    if (fabs(angleDegrees) <= FLT_EPSILON)
+      return;
+
+    const float alpha = ToRadian(angleDegrees);
+    const float s = sin(alpha);
+    const float c = cos(alpha);
+    const float x = v.x * c - v.y * s;
+    const float y = v.y * c + v.x * s;
+    v.x = x;
+    v.y = y;
+  }
+
+  static bool LinuxNormalizeVector(CVec2& v)
+  {
+    if (fabs2(v) <= EPS_VALUE)
+      return false;
+    Normalize(&v);
+    return true;
+  }
+
+  static float LinuxSqrDist2Segment(const CVec2& p, const CVec2& b, const CVec2& e, const CVec2& dir, float length, bool beginCutoffCheck)
+  {
+    if (length <= EPS_VALUE)
+      return beginCutoffCheck ? -1.0f : fabs2(p - b);
+
+    CVec2 d = p - b;
+    const float proj = d.Dot(dir);
+    if (proj <= 0.0f)
+      return beginCutoffCheck ? -1.0f : fabs2(d);
+    if (proj >= length)
+      return fabs2(p - e);
+
+    const float range = Cross(d, dir);
+    return range * range;
+  }
+
+  struct LinuxFilteredTargetAction : public ITargetAction, public NonCopyable
+  {
+    LinuxFilteredTargetAction(ITargetAction& action_, const Target* originalTarget_, bool deadAllowed_, vector<Target>* rememberedTargets_, bool sendOnce_)
+      : action(action_)
+      , originalTarget(originalTarget_)
+      , deadAllowed(deadAllowed_)
+      , rememberedTargets(rememberedTargets_)
+      , sendOnce(sendOnce_)
+    {
+    }
+
+    virtual void operator()(const Target& target)
+    {
+      if (!target.IsValid(deadAllowed))
+        return;
+      if (originalTarget && target == *originalTarget)
+        return;
+      if (sendOnce && rememberedTargets && find(rememberedTargets->begin(), rememberedTargets->end(), target) != rememberedTargets->end())
+        return;
+
+      action(target);
+      if (rememberedTargets)
+        rememberedTargets->push_back(target);
+    }
+
+    ITargetAction& action;
+    const Target* originalTarget;
+    bool deadAllowed;
+    vector<Target>* rememberedTargets;
+    bool sendOnce;
+  };
+
+  static void LinuxEnumerateUnits(PFTargetSelector* selector, ITargetAction& action, const PFTargetSelector::RequestParams& pars, NDb::ESpellTarget targetFilter, const CVec3* center, float range)
+  {
+    vector<CPtr<PFBaseUnit> > units;
+    LinuxCollectCandidateUnits(units, pars);
+
+    const bool deadAllowed = LinuxSelectorDeadAllowed(selector);
+
+    for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+    {
+      PFBaseUnit* unit = it->GetPtr();
+      if (!LinuxUnitPasses(unit, targetFilter, pars, deadAllowed))
+        continue;
+
+      if (center)
+      {
+        const float objectRadius = unit->GetObjectSize() * 0.5f;
+        const float allowedRange = range + objectRadius;
+        if (fabs2(unit->GetPosition().AsVec2D() - center->AsVec2D()) > fabs2(allowedRange))
+          continue;
+      }
+
+      Target target(unit);
+      action(target);
+    }
+  }
+}
+
+PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_)
+  : pMiscPars(&appl_)
+  , pOwner(appl_.GetAbilityOwner())
+  , pRequester(&requester_)
+  , pAbility(appl_.GetAbility().GetPtr())
+  , pReceiver(appl_.GetReceiver())
+  , condition(GetDefaultTargetCondition())
+{
+}
+
+PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_, const ITargetCondition& cond)
+  : pMiscPars(&appl_)
+  , pOwner(appl_.GetAbilityOwner())
+  , pRequester(&requester_)
+  , pAbility(appl_.GetAbility().GetPtr())
+  , pReceiver(appl_.GetReceiver())
+  , condition(&cond)
+{
+}
+
+PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_, const ITargetCondition* const cond)
+  : pMiscPars(&appl_)
+  , pOwner(appl_.GetAbilityOwner())
+  , pRequester(&requester_)
+  , pAbility(appl_.GetAbility().GetPtr())
+  , pReceiver(appl_.GetReceiver())
+  , condition(cond)
+{
+}
+
+PFTargetSelector::RequestParams::RequestParams(const CPtr<PFBaseUnit> &pOwner_, const IMiscFormulaPars * pMiscPars_, const Target &requester_)
+  : pMiscPars(pMiscPars_)
+  , pOwner(pOwner_)
+  , pRequester(&requester_)
+  , pAbility(0)
+  , pReceiver(pOwner_)
+  , condition(GetDefaultTargetCondition())
+{
+}
+
+PFTargetSelector::RequestParams::RequestParams(const CPtr<PFBaseUnit> &pOwner_, const IMiscFormulaPars * pMiscPars_, const Target &requester_, const ITargetCondition& cond)
+  : pMiscPars(pMiscPars_)
+  , pOwner(pOwner_)
+  , pRequester(&requester_)
+  , pAbility(0)
+  , pReceiver(pOwner_)
+  , condition(&cond)
+{
+}
+
+PFTargetSelector::RequestParams::RequestParams(const CPtr<PFBaseUnit> &pOwner_, const IMiscFormulaPars * pMiscPars_, const Target &requester_, const ITargetCondition* const cond)
+  : pMiscPars(pMiscPars_)
+  , pOwner(pOwner_)
+  , pRequester(&requester_)
+  , pAbility(0)
+  , pReceiver(pOwner_)
+  , condition(cond)
+{
+}
+
+float PFTargetSelector::RetrieveParam(ExecutableFloatString const &par, const RequestParams &pars, float defaultValue)
+{
+  return par(pars.pOwner, pars.pOwner, pars.pMiscPars, defaultValue);
+}
+
+int PFTargetSelector::RetrieveParam(ExecutableIntString const &par, const RequestParams &pars, int defaultValue)
+{
+  return par(pars.pOwner, pars.pOwner, pars.pMiscPars, defaultValue);
+}
+
+bool PFTargetSelector::s_DumpSelectors = false;
+
+string PFTargetSelector::GetDebugName() const
+{
+  return GetDBBase() ? GetDBBase()->GetDBID().GetFileName() : string();
+}
+
+string PFTargetSelector::DumpTarget( const Target& target ) const
+{
+  CVec3 pos = target.AcquirePosition();
+  return NStr::StrFmt("%s @%d,%d", target.IsUnit() ? "Unit" : target.IsObject() ? "Object" : "Point", static_cast<int>(pos.x), static_cast<int>(pos.y));
+}
+
+void PFMultipleTargetSelector::EnumerateTargets(ITargetAction &action, const RequestParams &pars)
+{
+  const NDb::MultipleTargetSelector* pDBData = static_cast<const NDb::MultipleTargetSelector*>(pDB.GetPtr());
+  const Target* pOriginalTarget = (pDBData && (pDBData->flags & NDb::TARGETSELECTORFLAGS_IGNOREORIGINALTARGET)) ? pars.pRequester : 0;
+  const bool deadAllowed = pDBData && (pDBData->flags & NDb::TARGETSELECTORFLAGS_DEADALLOWED);
+  const NDb::ETargetSelectorMode mode = pDBData ? pDBData->mode : NDb::TARGETSELECTORMODE_NORMAL;
+
+  switch (mode)
+  {
+    case NDb::TARGETSELECTORMODE_CAPTURETARGETS:
+    {
+      if (runCount == 0)
+      {
+        LinuxFilteredTargetAction filtered(action, pOriginalTarget, deadAllowed, &rememberedTargets, false);
+        ForAllTargets(filtered, pars);
+      }
+      else
+      {
+        for (vector<Target>::iterator it = rememberedTargets.begin(); it != rememberedTargets.end(); ++it)
+          if (it->IsValid(deadAllowed))
+            action(*it);
+      }
+      break;
+    }
+    case NDb::TARGETSELECTORMODE_SENDONCE:
+    {
+      LinuxFilteredTargetAction filtered(action, pOriginalTarget, deadAllowed, &rememberedTargets, true);
+      ForAllTargets(filtered, pars);
+      break;
+    }
+    case NDb::TARGETSELECTORMODE_NORMAL:
+    default:
+    {
+      LinuxFilteredTargetAction filtered(action, pOriginalTarget, deadAllowed, 0, false);
+      ForAllTargets(filtered, pars);
+      break;
+    }
+  }
+
+  ++runCount;
+}
+
+void PFSingleTargetSelector::EnumerateTargets(ITargetAction &action, const RequestParams &pars)
+{
+  Target target;
+  if (FindTarget(pars, target))
+    action(target);
+}
+
+PFAreaTargetSelector::PFAreaTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : Base(db, world)
+#ifndef _SHIPPING
+  , debug_show(false)
+#endif
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+void PFAreaTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  CVec3 pos(0.0f, 0.0f, 0.0f);
+  if (fabs2(GetDB().absolutePosition) > 0.0f)
+  {
+    pos = CVec3(GetDB().absolutePosition, 0.0f);
+  }
+  else if (pTargetSelector)
+  {
+    Target target;
+    if (!pTargetSelector->FindTarget(pars, target))
+      return;
+    pos = target.AcquirePosition();
+  }
+  else
+  {
+    pos = pars.pRequester->AcquirePosition();
+  }
+
+  const float range = RetrieveParam(GetDB().range, pars);
+  LinuxEnumerateUnits(this, action, pars, GetDB().targetFilter, &pos, range);
+}
+
+void PFDblPointTargetSelector::MakePos(const RequestParams &pars, NDb::ETargetSelectorPoint pointSpec, CVec2 &pos) const
+{
+  LinuxMakeSelectorPoint(pars, prevPos, pointSpec, pos);
+}
+
+void PFDblPointTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  const CVec2 newPos = pars.pRequester->AcquirePosition().AsVec2D();
+  if (runCount == 0)
+    prevPos = newPos;
+
+  OnForAllTargets(action, pars);
+  prevPos = newPos;
+}
+
+void PFSectorTargetSelector::OnForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  CVec2 beginPos;
+  CVec2 endPos;
+  MakePos(pars, GetDB().segmentBegin, beginPos);
+  MakePos(pars, GetDB().segmentEnd, endPos);
+
+  CVec2 dir = endPos - beginPos;
+  if (!LinuxNormalizeVector(dir))
+    dir = CVec2(1.0f, 0.0f);
+  LinuxRotateVector(dir, GetDB().segmentDirectionOffset);
+
+  if (GetDB().centerIsSegmentEnd)
+    beginPos = endPos;
+
+  const float range = RetrieveParam(GetDB().range, pars);
+  const float limitAngle = ToRadian(GetDB().angle);
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, deadAllowed))
+      continue;
+
+    const float halfSize = unit->GetObjectSize() * 0.5f;
+    const CVec2 vectorToTarget = unit->GetPosition().AsVec2D() - beginPos;
+    const float distToTarget = sqrt(fabs2(vectorToTarget));
+    if (distToTarget > range + halfSize)
+      continue;
+
+    if (distToTarget > halfSize && distToTarget > EPS_VALUE)
+    {
+      const float invDist = 1.0f / distToTarget;
+      float angleCos = dir.Dot(vectorToTarget) * invDist;
+      angleCos = max(-1.0f, min(1.0f, angleCos));
+      float radiusSin = halfSize * invDist;
+      radiusSin = max(-1.0f, min(1.0f, radiusSin));
+      const float angle = acosf(angleCos) - asinf(radiusSin);
+      if (angle > limitAngle)
+        continue;
+    }
+
+    Target target(unit);
+    DUMP_TARGET(target);
+    action(target);
+  }
+}
+
+PFCapsuleTargetSelector::PFCapsuleTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : Base(db, world)
+  , origin(0.0f, 0.0f)
+{
+  if (GetDB().segmentEndTargetSelector)
+    pSegmentEndTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().segmentEndTargetSelector->Create(world));
+}
+
+void PFCapsuleTargetSelector::OnForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  CVec2 beginPos;
+  CVec2 endPos;
+  MakePos(pars, GetDB().segmentBegin, beginPos);
+  if (pSegmentEndTargetSelector)
+  {
+    Target target;
+    if (!pSegmentEndTargetSelector->FindTarget(pars, target))
+      return;
+    endPos = target.AcquirePosition().AsVec2D();
+  }
+  else
+  {
+    MakePos(pars, GetDB().segmentEnd, endPos);
+  }
+
+  if (fabs(GetDB().segmentDirectionOffset) > FLT_EPSILON)
+  {
+    CVec2 dir = endPos - beginPos;
+    LinuxRotateVector(dir, GetDB().segmentDirectionOffset);
+    endPos = beginPos + dir;
+  }
+
+  if (runCount == 0)
+    origin = pars.pOwner->GetPosition().AsVec2D();
+
+  CVec2 dir = endPos - beginPos;
+  const float length = sqrt(fabs2(dir));
+  if (length > EPS_VALUE)
+    dir /= length;
+  else
+    dir = CVec2(1.0f, 0.0f);
+
+  const float range = RetrieveParam(GetDB().range, pars);
+  const float rangeFromOrigin = RetrieveParam(GetDB().rangeFromOwner, pars);
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+  const bool cutoff = runCount <= 1 && GetDB().cutoffFirstSegment;
+
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, deadAllowed))
+      continue;
+    if (rangeFromOrigin > 0.0f && !unit->IsInRange(origin, rangeFromOrigin))
+      continue;
+
+    const float sqrDist = LinuxSqrDist2Segment(unit->GetPosition().AsVec2D(), beginPos, endPos, dir, length, cutoff);
+    if (0.0f <= sqrDist && sqrDist < fabs2(range + unit->GetObjectSize() * 0.5f))
+    {
+      Target target(unit);
+      DUMP_TARGET(target);
+      action(target);
+    }
+  }
+}
+
+void PFNearestInAreaTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  const CVec3 pos = pars.pRequester->AcquirePosition();
+  const float range = RetrieveParam(GetDB().range, pars);
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+
+  PFBaseUnit* best = 0;
+  float bestDist = FLT_MAX;
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, false))
+      continue;
+    const float dist = fabs2(unit->GetPosition().AsVec2D() - pos.AsVec2D());
+    if (dist <= fabs2(range + unit->GetObjectSize() * 0.5f) && dist < bestDist)
+    {
+      bestDist = dist;
+      best = unit;
+    }
+  }
+
+  if (best)
+  {
+    Target target(best);
+    DUMP_TARGET(target);
+    action(target);
+  }
+}
+
+void PFSummonEnumerator::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pRequester || !pars.pRequester->IsUnitValid())
+    return;
+
+  PFBaseUnit* master = pars.pRequester->GetUnit().GetPtr();
+  if (!master)
+    return;
+
+  const bool includeSummons = (GetDB().summonTypes & (NDb::SUMMONTYPEFLAGS_PRIMARY | NDb::SUMMONTYPEFLAGS_SECONDARY | NDb::SUMMONTYPEFLAGS_PET)) != 0;
+  const bool includeClones = (GetDB().summonTypes & NDb::SUMMONTYPEFLAGS_CLONE) != 0;
+  if (!includeSummons && !includeClones)
+    return;
+
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || unit == master || unit->GetMasterUnit().GetPtr() != master)
+      continue;
+
+    const bool isClone = unit->IsHero();
+    const bool isSummon = !isClone && (unit->GetUnitType() == NDb::UNITTYPE_SUMMON || unit->GetUnitType() == NDb::UNITTYPE_PET);
+    if ((isClone && !includeClones) || (isSummon && !includeSummons) || (!isClone && !isSummon))
+      continue;
+
+    Target target(unit);
+    if (!LinuxTargetPasses(target, pars, deadAllowed))
+      continue;
+
+    DUMP_TARGET(target);
+    action(target);
+  }
+}
+
+void PFHeroEnumerator::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || !unit->IsHero())
+      continue;
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, deadAllowed))
+      continue;
+
+    Target target(unit);
+    DUMP_TARGET(target);
+    action(target);
+  }
+}
+
+void PFUnitEnumerator::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  NDb::ESpellTarget targetFilter = GetDB().targetFilter;
+  targetFilter = static_cast<NDb::ESpellTarget>(targetFilter & ~NDb::SPELLTARGET_FLAGPOLE);
+  if (targetFilter == 0)
+    return;
+  LinuxEnumerateUnits(this, action, pars, targetFilter, 0, 0.0f);
+}
+
+PFNearestTargetSelector::PFNearestTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFNearestTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector || !pars.pRequester)
+    return false;
+
+  struct Func : public ITargetAction, public NonCopyable
+  {
+    Func(Target& result_, const CVec2& pos_) : result(result_), pos(pos_), best(FLT_MAX) {}
+    virtual void operator()(const Target& candidate)
+    {
+      const float dist = fabs2(candidate.AcquirePosition().AsVec2D() - pos);
+      if (dist < best)
+      {
+        best = dist;
+        result = candidate;
+      }
+    }
+    Target& result;
+    CVec2 pos;
+    float best;
+  } finder(target, pars.pRequester->AcquirePosition().AsVec2D());
+
+  pTargetSelector->EnumerateTargets(finder, pars);
+  return target.IsValid(true);
+}
+
+PFUnitPlaceCorrector::PFUnitPlaceCorrector(const NDb::TargetSelector &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+bool PFUnitPlaceCorrector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector || !pars.pRequester)
+    return false;
+
+  if (!pTargetSelector->FindTarget(pars, target))
+    return false;
+
+  CVec3 targetPos = target.AcquirePosition();
+  if (GetDB().checkByRangeToRequester && GetDB().radius > 0.0f)
+  {
+    const CVec3 requestPos = pars.pRequester->AcquirePosition();
+    CVec3 dir = targetPos - requestPos;
+    dir.z = 0.0f;
+    const float len = sqrt(fabs2(dir.AsVec2D()));
+    if (len > GetDB().radius && len > EPS_VALUE)
+      targetPos = requestPos + dir * (GetDB().radius / len);
+  }
+
+  target.SetPosition(targetPos);
+  DUMP_SELECTOR_TARGET(target);
+  return target.IsValid(true);
+}
+
+PFConvertTargetToLand::PFConvertTargetToLand(const NDb::TargetSelector &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFConvertTargetToLand::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector)
+  {
+    if (!pars.pRequester)
+      return false;
+    target.SetPosition(pars.pRequester->AcquirePosition());
+    return true;
+  }
+
+  struct Collector : public ITargetAction, public NonCopyable
+  {
+    virtual void operator()(const Target &candidate) { targets.push_back(candidate.AcquirePosition()); }
+    vector<CVec3> targets;
+  } collector;
+
+  pTargetSelector->EnumerateTargets(collector, pars);
+  if (collector.targets.empty())
+    return false;
+
+  CVec3 result = collector.targets.front();
+  switch (GetDB().aggregateMode)
+  {
+    case NDb::TARGETTOLANDMODE_CENTER:
+    {
+      result = CVec3(0.0f, 0.0f, 0.0f);
+      for (vector<CVec3>::iterator it = collector.targets.begin(); it != collector.targets.end(); ++it)
+        result += *it;
+      result /= collector.targets.size();
+      break;
+    }
+    case NDb::TARGETTOLANDMODE_CENTERTARGET:
+    {
+      CVec3 avg(0.0f, 0.0f, 0.0f);
+      for (vector<CVec3>::iterator it = collector.targets.begin(); it != collector.targets.end(); ++it)
+        avg += *it;
+      avg /= collector.targets.size();
+      float best = FLT_MAX;
+      for (vector<CVec3>::iterator it = collector.targets.begin(); it != collector.targets.end(); ++it)
+      {
+        const float dist = fabs2(*it - avg);
+        if (dist < best)
+        {
+          best = dist;
+          result = *it;
+        }
+      }
+      break;
+    }
+    case NDb::TARGETTOLANDMODE_NEAREST:
+    {
+      if (!pars.pOwner)
+        break;
+      const CVec3 ownerPos = pars.pOwner->GetPosition();
+      float best = FLT_MAX;
+      for (vector<CVec3>::iterator it = collector.targets.begin(); it != collector.targets.end(); ++it)
+      {
+        const float dist = fabs2(*it - ownerPos);
+        if (dist < best)
+        {
+          best = dist;
+          result = *it;
+        }
+      }
+      break;
+    }
+    case NDb::TARGETTOLANDMODE_FIRST:
+    default:
+      break;
+  }
+
+  result.z = 0.0f;
+  target.SetPosition(result);
+  DUMP_SELECTOR_TARGET(target);
+  return true;
+}
+
+bool PFMainBuildingTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pOwner)
+    return false;
+
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || unit->GetUnitType() != NDb::UNITTYPE_MAINBUILDING || unit->GetFaction() != pars.pOwner->GetFaction())
+      continue;
+    Target candidate(unit);
+    if (!CheckTargetCondition(candidate, pars))
+      continue;
+    target = candidate;
+    DUMP_SELECTOR_TARGET(target);
+    return true;
+  }
+  return false;
+}
+
+void PFMainBuildingTargetSelector::operator()(PFLogicObject&)
+{
+}
+
+bool PFFountainTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pOwner)
+    return false;
+
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || unit->GetUnitType() != NDb::UNITTYPE_BUILDING || unit->GetFaction() != pars.pOwner->GetFaction())
+      continue;
+    Target candidate(unit);
+    if (!CheckTargetCondition(candidate, pars))
+      continue;
+    target = candidate;
+    DUMP_SELECTOR_TARGET(target);
+    return true;
+  }
+  return false;
+}
+
+void PFFountainTargetSelector::operator()(PFLogicObject&)
+{
+}
+
+bool PFShopTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pOwner)
+    return false;
+
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  PFBaseUnit* best = 0;
+  float bestDist = FLT_MAX;
+  const CVec3 ownerPos = pars.pOwner->GetPosition();
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || unit->GetUnitType() != NDb::UNITTYPE_SHOP)
+      continue;
+    if (unit->GetFaction() != pars.pOwner->GetFaction() && unit->GetFaction() != NDb::FACTION_NEUTRAL)
+      continue;
+    Target candidate(unit);
+    if (!CheckTargetCondition(candidate, pars))
+      continue;
+    const float dist = fabs2(unit->GetPosition() - ownerPos);
+    if (!best || dist < bestDist)
+    {
+      best = unit;
+      bestDist = dist;
+    }
+  }
+
+  if (!best)
+    return false;
+  target.SetUnit(best);
+  DUMP_SELECTOR_TARGET(target);
+  return true;
+}
+
+void PFShopTargetSelector::operator()(PFLogicObject&)
+{
+}
+
+bool PFRelativeUnitTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pRequester || !pars.pRequester->IsUnit())
+    return false;
+
+  PFBaseUnit* unit = pars.pRequester->GetUnit().GetPtr();
+  CPtr<PFBaseUnit> related;
+  switch (GetDB().relation)
+  {
+    case NDb::UNITRELATION_MASTER:
+      related = unit->GetMasterUnit();
+      break;
+    case NDb::UNITRELATION_TARGET:
+      related = unit->GetCurrentTarget();
+      if (!IsValid(related) && pars.pOwner.GetPtr() != unit)
+        related = pars.pOwner->GetCurrentTarget();
+      break;
+    case NDb::UNITRELATION_ALPHASUMMON:
+      related = unit->GetAlphaSummon();
+      break;
+    case NDb::UNITRELATION_MOUNT:
+    default:
+      related = 0;
+      break;
+  }
+
+  if (!IsValid(related))
+    return false;
+
+  target.SetUnit(related);
+  return CheckTargetCondition(target, pars);
+}
+
+bool PFUnitShiftTarget::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsUnitValid())
+    return false;
+
+  const CVec3 from = pars.pOwner->GetPosition();
+  const CVec3 current = pars.pRequester->AcquirePosition();
+  CVec3 dir = current - from;
+  dir.z = 0.0f;
+  if (fabs2(dir.AsVec2D()) <= EPS_VALUE)
+    dir = CVec3(1.0f, 0.0f, 0.0f);
+  Normalize(&dir);
+
+  const float distance = RetrieveParam(GetDB().distance, pars);
+  target.SetPosition(current + dir * distance);
+  DUMP_SELECTOR_TARGET(target);
+  return target.IsValid(true);
+}
+
+PFPointTargetSelector::PFPointTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+bool PFPointTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return false;
+
+  Target requestedTarget;
+  if (pTargetSelector)
+  {
+    if (!pTargetSelector->FindTarget(pars, requestedTarget))
+      return false;
+  }
+  else
+  {
+    requestedTarget = *pars.pRequester;
+  }
+
+  if (!requestedTarget.IsValid(true) || !CheckTargetCondition(requestedTarget, pars))
+    return false;
+
+  const CVec3 targetPos = requestedTarget.AcquirePosition();
+  const CVec3 ownerPos = pars.pOwner->GetPosition();
+  const float range = RetrieveParam(GetDB().range, pars);
+
+  switch (GetDB().mode)
+  {
+    case NDb::POINTTARGETSELECTORMODE_TOOWNER:
+      target.SetPosition(ownerPos);
+      break;
+    case NDb::POINTTARGETSELECTORMODE_RANGEFROMOWNER:
+    {
+      CVec3 direction = targetPos - ownerPos;
+      direction.z = 0.0f;
+      if (fabs2(direction.AsVec2D()) < EPS_VALUE)
+        direction = CVec3(1.0f, 0.0f, 0.0f);
+      Normalize(&direction);
+      target.SetPosition(ownerPos + direction * range);
+      break;
+    }
+    case NDb::POINTTARGETSELECTORMODE_RANGEFROMTARGET:
+    {
+      CVec3 direction = ownerPos - targetPos;
+      direction.z = 0.0f;
+      if (fabs2(direction.AsVec2D()) < EPS_VALUE)
+        direction = CVec3(1.0f, 0.0f, 0.0f);
+      Normalize(&direction);
+      target.SetPosition(targetPos + direction * range);
+      break;
+    }
+    case NDb::POINTTARGETSELECTORMODE_OFFSETFROMOWNER:
+      target.SetPosition(ownerPos + CVec3(GetDB().offset, 0.0f));
+      break;
+    case NDb::POINTTARGETSELECTORMODE_OFFSETFROMTARGET:
+      target.SetPosition(targetPos + CVec3(GetDB().offset, 0.0f));
+      break;
+    case NDb::POINTTARGETSELECTORMODE_TOTARGET:
+    default:
+      target.SetPosition(targetPos);
+      break;
+  }
+
+  return target.IsValid(true);
+}
+
+PFFirstTargetSelector::PFFirstTargetSelector(NDb::FirstTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFFirstTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector || !pars.pRequester)
+    return false;
+
+  struct Func : public ITargetAction, public NonCopyable
+  {
+    Func(const CVec2& pos_, bool nearest_) : pos(pos_), nearest(nearest_), best(FLT_MAX) {}
+    virtual void operator()(const Target& candidate)
+    {
+      if (!nearest && result.IsValid(true))
+        return;
+      const float dist = fabs2(candidate.AcquirePosition().AsVec2D() - pos);
+      if (!result.IsValid(true) || dist < best)
+      {
+        best = dist;
+        result = candidate;
+      }
+    }
+    Target result;
+    CVec2 pos;
+    bool nearest;
+    float best;
+  } finder(pars.pRequester->AcquirePosition().AsVec2D(), GetDB().nearestTarget);
+
+  pTargetSelector->EnumerateTargets(finder, pars);
+  if (!finder.result.IsValid(true))
+    return false;
+  target = finder.result;
+  return true;
+}
+
+PFWeightTargetSelector::PFWeightTargetSelector(NDb::WeightTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFWeightTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector || !pars.pRequester || !pars.pRequester->IsUnit())
+    return false;
+
+  PFBaseUnit* owner = pars.pRequester->GetUnit().GetPtr();
+  if (!owner)
+    return false;
+
+  struct Func : public ITargetAction, public NonCopyable
+  {
+    Func(PFBaseUnit& owner_, const NDb::UnitTargetingParameters& unitPars_)
+      : owner(owner_), unitPars(unitPars_), maxWeight(-FLT_MAX) {}
+
+    virtual void operator()(const Target& candidate)
+    {
+      if (!candidate.IsUnit())
+        return;
+      PFBaseUnit* unit = candidate.GetUnit().GetPtr();
+      if (!owner.CanSelectTarget(unit, true))
+        return;
+
+      const CPtr<PFBaseUnit> pUnit(unit);
+      const float weight = owner.GetTargetWeight(pUnit, unitPars, 0);
+      if (!target.IsValid(true) || weight > maxWeight)
+      {
+        maxWeight = weight;
+        target = candidate;
+      }
+    }
+
+    PFBaseUnit& owner;
+    const NDb::UnitTargetingParameters& unitPars;
+    float maxWeight;
+    Target target;
+  } finder(*owner, owner->GetTargetingParams());
+
+  pTargetSelector->EnumerateTargets(finder, pars);
+  if (!finder.target.IsValid(true))
+    return false;
+
+  target = finder.target;
+  DUMP_SELECTOR_TARGET(target);
+  return true;
+}
+
+PFListOfTargetSelectors::PFListOfTargetSelectors(NDb::ListOfTargetSelectors const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  targetSelectors.reserve(db.targetSelectors.size());
+  for (vector<NDb::Ptr<NDb::TargetSelector> >::const_iterator it = db.targetSelectors.begin(); it != db.targetSelectors.end(); ++it)
+    if (*it)
+      if (CObj<PFTargetSelector> selector = (*it)->Create(world))
+        targetSelectors.push_back(selector);
+}
+
+void PFListOfTargetSelectors::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  for (vector<CObj<PFTargetSelector> >::iterator it = targetSelectors.begin(); it != targetSelectors.end(); ++it)
+    if (*it)
+      (*it)->EnumerateTargets(action, pars);
+}
+
+PFFilterTargetSelector::PFFilterTargetSelector(NDb::FilterTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFFilterTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pTargetSelector)
+    return;
+
+  struct TargetsFilter : public ITargetAction, public NonCopyable
+  {
+    TargetsFilter(const vector<NDb::Ptr<NDb::Unit> >& units_, const DumpTargetWrapper& action_)
+      : units(units_), action(action_) {}
+
+    virtual void operator()(const Target &target)
+    {
+      if (!target.IsUnit())
+        return;
+
+      const NDb::Unit* dbUnit = target.GetUnit()->DbUnitDesc();
+      if (!dbUnit)
+        return;
+
+      for (vector<NDb::Ptr<NDb::Unit> >::const_iterator it = units.begin(); it != units.end(); ++it)
+      {
+        if (*it && (*it)->GetDBID() == dbUnit->GetDBID())
+        {
+          action(target);
+          return;
+        }
+      }
+    }
+
+    const vector<NDb::Ptr<NDb::Unit> >& units;
+    DumpTargetWrapper action;
+  } filter(GetDB().suitableUnits, DumpTargetWrapper(this, action));
+
+  pTargetSelector->EnumerateTargets(filter, pars);
+}
+
+PFConditionTargetSelector::PFConditionTargetSelector(const NDb::ConditionTargetSelector& db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFConditionTargetSelector::ForAllTargets(ITargetAction& action, const RequestParams& pars)
+{
+  if (!pTargetSelector)
+    return;
+
+  struct Func : public ITargetAction, public NonCopyable
+  {
+    Func(const PFConditionTargetSelector* selector_, ITargetAction& action_, const RequestParams& pars_)
+      : selector(selector_), action(action_), pars(pars_) {}
+    virtual void operator()(const Target& target)
+    {
+      if (!target.IsObjectValid())
+        return;
+      if (selector->GetDB().condition(pars.pOwner, target.GetObject(), pars.pMiscPars, true))
+        action(target);
+    }
+    const PFConditionTargetSelector* selector;
+    ITargetAction& action;
+    const RequestParams& pars;
+  } func(this, action, pars);
+
+  pTargetSelector->EnumerateTargets(func, pars);
+}
+
+PFCountingTargetSelector::PFCountingTargetSelector(NDb::CountingTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFCountingTargetSelector::ForAllTargets(ITargetAction& action, const RequestParams& pars)
+{
+  if (!pTargetSelector)
+    return;
+
+  const int targetsNumber = RetrieveParam(GetDB().targetsNumber, pars);
+  if (targetsNumber <= 0)
+    return;
+
+  struct Collector : public ITargetAction, public NonCopyable
+  {
+    virtual void operator()(const Target& target) { targets.push_back(target); }
+    vector<Target> targets;
+  } collector;
+
+  pTargetSelector->EnumerateTargets(collector, pars);
+  for (int i = 0; i < targetsNumber && i < collector.targets.size(); ++i)
+    action(collector.targets[i]);
+}
+
+PFComparingTargetSelector::PFComparingTargetSelector(NDb::ComparingTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFComparingTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector)
+    return false;
+
+  struct ComparingFunc : public ITargetAction, public NonCopyable
+  {
+    ComparingFunc(float valueToCompare_, PFComparingTargetSelector const* selector_, const RequestParams& pars_)
+      : valueToCompare(valueToCompare_), selector(selector_), pars(pars_), prevDifference(FLT_MAX) {}
+
+    virtual void operator()(const Target& candidate)
+    {
+      if (!candidate.IsUnitValid())
+        return;
+
+      const float formulaValue = selector->GetDB().valueToCompare(pars.pOwner, candidate.GetUnit(), pars.pMiscPars, true);
+      const float difference = fabs(valueToCompare - formulaValue);
+      if (!target.IsValid(true) || difference < prevDifference)
+      {
+        target = candidate;
+        prevDifference = difference;
+      }
+    }
+
+    float valueToCompare;
+    PFComparingTargetSelector const* selector;
+    const RequestParams& pars;
+    float prevDifference;
+    Target target;
+  } finder(RetrieveParam(GetDB().referenceValue, pars), this, pars);
+
+  pTargetSelector->EnumerateTargets(finder, pars);
+  if (!finder.target.IsValid(true))
+    return false;
+
+  target = finder.target;
+  DUMP_SELECTOR_TARGET(target);
+  return true;
+}
+
+bool PFSelectApplicatorTarget::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (GetDB().selectTarget == NDb::APPLICATORAPPLYTARGET_ABILITYOWNER)
+  {
+    target.SetUnit(pars.pOwner);
+  }
+  else
+  {
+    PFBaseApplicator const* pAppl = dynamic_cast<PFBaseApplicator const*>(pars.pMiscPars);
+    if (!pAppl)
+      return false;
+    pAppl->MakeApplicationTarget(target, GetDB().selectTarget);
+  }
+
+  if (!GetDB().applicatorName.empty())
+  {
+    if (!target.IsUnitValid(true))
+      return false;
+    PFBaseApplicator const* pAppl = dynamic_cast<PFBaseApplicator const*>(target.GetUnit()->FindApplicator(GetDB().applicatorName.c_str(), pars.pMiscPars, GLOBAL, GetDB().applicatorIndex));
+    if (!pAppl)
+      return false;
+    pAppl->MakeApplicationTarget(target, GetDB().namedApplicatorTarget);
+  }
+
+  return target.IsValid(true) && CheckTargetCondition(target, pars);
+}
+
+PFWallTargetSelector::PFWallTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : Base(db, world)
+{
+  if (GetDB().origin)
+    pOriginTS = static_cast<PFSingleTargetSelector*>(GetDB().origin->Create(world));
+  if (GetDB().direction)
+    pDirectionTS = static_cast<PFSingleTargetSelector*>(GetDB().direction->Create(world));
+}
+
+void PFWallTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  CVec2 originPos;
+  CVec2 directionPos;
+  if (pOriginTS)
+  {
+    Target target;
+    if (!pOriginTS->FindTarget(pars, target))
+      return;
+    originPos = target.AcquirePosition().AsVec2D();
+  }
+  else
+  {
+    originPos = pars.pRequester->AcquirePosition().AsVec2D();
+  }
+
+  if (pDirectionTS)
+  {
+    Target target;
+    if (!pDirectionTS->FindTarget(pars, target))
+      return;
+    directionPos = target.AcquirePosition().AsVec2D();
+  }
+  else
+  {
+    directionPos = pars.pRequester->AcquirePosition().AsVec2D();
+  }
+
+  CVec2 direction = directionPos - originPos;
+  if (!LinuxNormalizeVector(direction))
+    direction = CVec2(1.0f, 0.0f);
+
+  const float halfWidth = RetrieveParam(GetDB().width, pars) * 0.5f;
+  const float halfLength = RetrieveParam(GetDB().length, pars) * 0.5f;
+  direction *= halfLength;
+
+  const CVec2 startPos(originPos.x - direction.y, originPos.y + direction.x);
+  const CVec2 endPos(originPos.x + direction.y, originPos.y - direction.x);
+  CVec2 segmentDir = endPos - startPos;
+  const float segmentLength = sqrt(fabs2(segmentDir));
+  if (segmentLength > EPS_VALUE)
+    segmentDir /= segmentLength;
+  else
+    segmentDir = CVec2(0.0f, 1.0f);
+
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, deadAllowed))
+      continue;
+
+    const float sqrDist = LinuxSqrDist2Segment(unit->GetPosition().AsVec2D(), startPos, endPos, segmentDir, segmentLength, false);
+    if (0.0f <= sqrDist && sqrDist < fabs2(halfWidth + unit->GetObjectSize() * 0.5f))
+    {
+      Target target(unit);
+      DUMP_TARGET(target);
+      action(target);
+    }
+  }
+}
+
+void PFApplicatorRecipientsTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pOwner || !GetDB().applicator)
+    return;
+
+  struct Processor : public NonCopyable
+  {
+    Processor(const NDb::DBID& dbid_, const DumpTargetWrapper& action_, const RequestParams& pars_)
+      : dbid(dbid_), action(action_), pars(pars_) {}
+    void operator()(const CObj<PFBaseApplicator>& pAppl)
+    {
+      if (pAppl && pAppl->GetDBBase() && pAppl->GetDBBase()->GetDBID() == dbid)
+      {
+        Target target(pAppl->GetReceiver());
+        if (CheckTargetCondition(target, pars))
+          action(target);
+      }
+    }
+    NDb::DBID dbid;
+    DumpTargetWrapper action;
+    const RequestParams& pars;
+  } processor(GetDB().applicator->GetDBID(), DumpTargetWrapper(this, action), pars);
+
+  pars.pOwner->ForAllSentApplicators(processor);
+}
+
+PFFixToCenterTargetSelector::PFFixToCenterTargetSelector(NDb::FixToCenterTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+bool PFFixToCenterTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector)
+    return false;
+
+  Target selected;
+  if (!pTargetSelector->FindTarget(pars, selected) || !selected.IsValid(true))
+    return false;
+
+  CVec3 pos = selected.AcquirePosition();
+  pos.z = 0.0f;
+  target.SetPosition(pos);
+  DUMP_SELECTOR_TARGET(target);
+  return true;
+}
+
+PFBetweenUnitsTargetSelector::PFBetweenUnitsTargetSelector(const NDb::BetweenUnitsTargetSelector &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFMultipleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+void PFBetweenUnitsTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pTargetSelector)
+    return;
+
+  struct Collector : public ITargetAction, public NonCopyable
+  {
+    virtual void operator()(const Target& target) { targets.push_back(target); }
+    vector<Target> targets;
+  } collector;
+
+  pTargetSelector->EnumerateTargets(collector, pars);
+  if (collector.targets.size() < 2)
+    return;
+
+  const int maxTargets = RetrieveParam(GetDB().maxTargets, pars);
+  const float minDist = RetrieveParam(GetDB().minDistBetweenTargets, pars);
+  const float minDist2 = minDist * minDist;
+  int targetCount = 0;
+
+  if (GetDB().pairMode == NDb::BETWEENUNITSMODE_CHAIN)
+  {
+    for (int i = 1; i < collector.targets.size(); ++i)
+    {
+      const CVec3 p1 = collector.targets[i - 1].AcquirePosition();
+      const CVec3 p2 = collector.targets[i].AcquirePosition();
+      if (fabs2(p1 - p2) < minDist2)
+        continue;
+      Target target(0, (p1 + p2) / 2.0f);
+      DUMP_TARGET(target);
+      action(target);
+      if (maxTargets > 0 && ++targetCount >= maxTargets)
+        return;
+    }
+    return;
+  }
+
+  for (int i = 0; i < collector.targets.size(); ++i)
+  {
+    for (int j = i + 1; j < collector.targets.size(); ++j)
+    {
+      const CVec3 p1 = collector.targets[i].AcquirePosition();
+      const CVec3 p2 = collector.targets[j].AcquirePosition();
+      if (fabs2(p1 - p2) < minDist2)
+        continue;
+      Target target(0, (p1 + p2) / 2.0f);
+      DUMP_TARGET(target);
+      action(target);
+      if (maxTargets > 0 && ++targetCount >= maxTargets)
+        return;
+    }
+  }
+}
+
+PFAttackersTargetSelector::PFAttackersTargetSelector(const NDb::TargetSelector &db, PFWorld* world)
+  : Base(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(world));
+}
+
+void PFAttackersTargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  Target selected = pars.pRequester ? *pars.pRequester : Target();
+  if (pTargetSelector && !pTargetSelector->FindTarget(pars, selected))
+    return;
+  if (!selected.IsUnitValid(true))
+    return;
+
+  PFBaseUnit* targetUnit = selected.GetUnit().GetPtr();
+  if (!targetUnit)
+    return;
+
+  const bool deadAllowed = LinuxSelectorDeadAllowed(this);
+  vector<CPtr<PFBaseUnit> > units;
+  LinuxCollectCandidateUnits(units, pars);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!unit || unit == targetUnit || unit->GetCurrentTarget().GetPtr() != targetUnit)
+      continue;
+    if (!LinuxUnitPasses(unit, GetDB().targetFilter, pars, deadAllowed))
+      continue;
+
+    Target target(unit);
+    DUMP_TARGET(target);
+    action(target);
+  }
+}
+
+} // namespace NWorld
+
+REGISTER_DEV_VAR("show_ts_range", g_show_ts_ranges, STORAGE_NONE);
+
+REGISTER_WORLD_OBJECT_NM(PFTargetSelector                 , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFMultipleTargetSelector         , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFAreaTargetSelector             , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFDblPointTargetSelector         , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFSectorTargetSelector           , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFCapsuleTargetSelector          , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFSummonEnumerator               , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFUnitEnumerator                 , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFHeroEnumerator                 , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFNearestInAreaTargetSelector    , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFSingleTargetSelector           , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFNearestTargetSelector          , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFUnitPlaceCorrector             , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFConvertTargetToLand            , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFMainBuildingTargetSelector     , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFFountainTargetSelector         , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFShopTargetSelector             , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFRelativeUnitTargetSelector     , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFUnitShiftTarget                , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFPointTargetSelector            , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFFirstTargetSelector            , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFWeightTargetSelector           , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFListOfTargetSelectors          , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFFilterTargetSelector           , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFConditionTargetSelector        , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFCountingTargetSelector         , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFComparingTargetSelector        , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFSelectApplicatorTarget         , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFFixToCenterTargetSelector      , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFBetweenUnitsTargetSelector     , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFWallTargetSelector             , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFAttackersTargetSelector        , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplicatorRecipientsTargetSelector, NWorld);
+
+#else
+
 #include "PFTargetSelector.h"
 #include "PFAIWorld.h"
 #include "PFBaseUnit.h"
@@ -209,30 +1716,30 @@ namespace
 
 PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_)
   : pMiscPars(&appl_)
-  , pOwner(appl_.GetAbilityOwner())
+  , pOwner(0)
   , pRequester(&requester_)
-  , pAbility(appl_.GetAbility())
-  , pReceiver(appl_.GetReceiver())
+  , pAbility(0)
+  , pReceiver(0)
   , condition(GetDefaultTargetCondition())
 {
 }
 
 PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_, const ITargetCondition& cond)
   : pMiscPars(&appl_)
-  , pOwner(appl_.GetAbilityOwner())
+  , pOwner(0)
   , pRequester(&requester_)
-  , pAbility(appl_.GetAbility())
-  , pReceiver(appl_.GetReceiver())
+  , pAbility(0)
+  , pReceiver(0)
   , condition(&cond)
 {
 }
 
 PFTargetSelector::RequestParams::RequestParams(const PFBaseApplicator &appl_, const Target &requester_, const ITargetCondition* const cond)
   : pMiscPars(&appl_)
-  , pOwner(appl_.GetAbilityOwner())
+  , pOwner(0)
   , pRequester(&requester_)
-  , pAbility(appl_.GetAbility())
-  , pReceiver(appl_.GetReceiver())
+  , pAbility(0)
+  , pReceiver(0)
   , condition(cond)
 {
 }
@@ -2386,3 +3893,4 @@ REGISTER_WORLD_OBJECT_NM(PFFixToCenterTargetSelector      , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFBetweenUnitsTargetSelector     , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFWallTargetSelector             , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFAttackersTargetSelector        , NWorld);
+#endif

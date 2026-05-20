@@ -1,5 +1,90 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "PFHero.h"
+#include "PFMaleHero.h"
+#include "PFPlayer.h"
+#include "PFWorld.h"
+#include "../Game/PF/Audit/ClientStubs.h"
+
+namespace NWorld
+{
+
+class PFGenericHero : public PFBaseMaleHero
+{
+  WORLD_OBJECT_METHODS_WITH_CLIENT(0x2C59BC80, PFGenericHero, NGameX::PFBaseClientHero)
+  explicit PFGenericHero() {}
+
+  virtual void Reset()
+  {
+    PFBaseMaleHero::Reset();
+  }
+
+  virtual void RestoreClientObject()
+  {
+  }
+
+  ZDATA_(PFBaseMaleHero)
+public:
+  ZEND int operator&( IBinSaver &f ) { f.Add(1,(PFBaseMaleHero*)this); return 0; }
+
+  PFGenericHero(PFWorld* pWorld, const PFBaseHero::SpawnInfo &info, NDb::EFaction faction, NDb::EFaction _originalFaction);
+};
+
+PFGenericHero::PFGenericHero(PFWorld* pWorld, const PFBaseHero::SpawnInfo &info, NDb::EFaction faction, NDb::EFaction _originalFaction)
+  : PFBaseMaleHero(pWorld, info, faction, _originalFaction)
+{
+  InitHero(info.pHero, info.bInitTalents, info.usePlayerInfoTalentSet, info.playerInfo, info.bInitInventory);
+}
+
+PFBaseHero* CreateHero(PFWorld* pWorld, PFBaseHero::SpawnInfo const& info)
+{
+  NI_PROFILE_FUNCTION_MEM;
+
+  NI_VERIFY(pWorld,     "World must exist!",         return NULL; );
+  NI_VERIFY(info.pHero, "Invalid hero description!", return NULL; );
+
+  PFPlayer* pPlayer = NULL;
+  NDb::EFaction faction = info.faction;
+  NDb::EFaction originalFaction = info.originalFaction;
+
+  const bool isDummyPlayer = info.playerId < 0;
+  if (!isDummyPlayer)
+  {
+    pPlayer = pWorld->GetPlayer(info.playerId);
+    faction = NWorld::GetFaction(pPlayer);
+    originalFaction = NWorld::GetOriginalFaction(pPlayer);
+  }
+
+  PFBaseHero* pHero = NULL;
+  switch (info.pHero->GetObjectTypeID())
+  {
+  case NDb::Hero::typeId:
+    pHero = new PFGenericHero(pWorld, info, faction, originalFaction);
+    break;
+  default:
+    NI_ALWAYS_ASSERT("Unknown type ID for hero");
+    break;
+  }
+
+  if (pHero)
+  {
+    if (!isDummyPlayer)
+      pHero->AttachToPlayer(pPlayer);
+    else
+      pHero->UpdateClientColor();
+  }
+
+  return pHero;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFGenericHero, NWorld)
+
+#else
+
 #include "DBSessionRoots.h"
 #include "DBVisualRoots.h"
 #include "PFHero.h"
@@ -165,3 +250,5 @@ PFBaseHero* CreateHero(PFWorld* pWorld, PFBaseHero::SpawnInfo const& info)
 }
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFGenericHero,   NWorld)
+
+#endif

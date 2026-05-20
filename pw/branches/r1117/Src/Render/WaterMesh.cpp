@@ -8,6 +8,7 @@
 
 namespace Render
 {
+  DECLARE_INSTANCE_COUNTER(WaterMesh);
 
   void WaterMesh::Initialize( const Matrix43& worldMatrix_, const NDb::DBWaterSceneComponent* pDBComponent, const NDb::DBWaterInfo* pParams )
   {

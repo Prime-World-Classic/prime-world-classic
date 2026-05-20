@@ -6,6 +6,12 @@
 
 #include "BasicEffect.h"
 
+#if defined(NV_LINUX_PLATFORM)
+  #define LIGHTNING_EFFECT_ALIGN16 __attribute__((aligned(16)))
+#else
+  #define LIGHTNING_EFFECT_ALIGN16 __declspec(align(16))
+#endif
+
 namespace PF_Core
 {
 
@@ -40,7 +46,7 @@ class LightningEffect : public EffectDBLinker<NDb::LightningEffect>
 {
 public:
   
-  __declspec(align(16))
+  LIGHTNING_EFFECT_ALIGN16
   class Object : public NScene::SceneObjectBase
   {
   public:
@@ -108,3 +114,5 @@ protected:
 };
 
 }
+
+#undef LIGHTNING_EFFECT_ALIGN16

@@ -1,5 +1,157 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseBehaviour;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "../Game/PF/Audit/ClientStubs.h"
+#include "PFRoadFlagpole.h"
+#include "PFWorldNatureMap.h"
+
+namespace NWorld
+{
+
+StaticArray<PFRoadFlagpole::RoadRing, PFRoadFlagpole::NUM_ROADS> PFRoadFlagpole::s_roads;
+
+unsigned int OwnerListener::OnEvent(const PFBaseUnitEvent*) { return 0; }
+
+PFRoadFlagpole::PFRoadFlagpole(PFWorld* pWorld, const NDb::AdvMapObject& _dbObject)
+  : PFFlagpole(pWorld, _dbObject)
+  , natureRoad(NDb::NATUREROAD_TOP)
+  , natureSegment(0)
+  , needFindOwners(false)
+{
+  if (pWorld && pWorld->GetNatureMap())
+    pWorld->GetNatureMap()->GetNatureSegment(GetPosition().AsVec2D(), natureRoad, natureSegment);
+  if (natureRoad < 0 || natureRoad >= NUM_ROADS)
+    natureRoad = NDb::NATUREROAD_TOP;
+
+  PFRoadFlagpole* pNext = s_roads[natureRoad].first();
+  PFRoadFlagpole* pLast = s_roads[natureRoad].last();
+  while (pNext && pLast != pNext && pNext->natureSegment < natureSegment)
+    pNext = RoadRing::next(pNext);
+  if (pNext)
+    RoadRing::insertBefore(this, pNext);
+  else
+    s_roads[natureRoad].addLast(this);
+}
+
+void PFRoadFlagpole::Reset() { PFFlagpole::Reset(); needFindOwners = false; }
+bool PFRoadFlagpole::CanRaise(NDb::EFaction _faction) const { return IsNeutral() && !IsRising() && IsOutermost(_faction); }
+void PFRoadFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit* unitWhoRaised) { PFFlagpole::OnRaise(_faction, unitWhoRaised); }
+void PFRoadFlagpole::OnDropFlag(PFBaseUnit* unitWhoDropped) { PFFlagpole::OnDropFlag(unitWhoDropped); }
+void PFRoadFlagpole::OnEvent(const PFBaseUnitEvent*) { UpdateVulnerable(); }
+
+bool PFRoadFlagpole::IsOutermost(NDb::EFaction _faction) const
+{
+  if (!IsNeutral())
+    return false;
+  const PFFlagpole* prev = PFFlagpole::GetPrevFlagpole(_faction);
+  return !prev || prev->GetFaction() == _faction;
+}
+
+bool PFRoadFlagpole::IsProtectedByTower(NDb::EFaction) const { return false; }
+bool PFRoadFlagpole::IsProtectedByNext() const
+{
+  if (IsNeutral())
+    return false;
+  const PFFlagpole* next = PFFlagpole::GetNextFlagpole(faction);
+  return next && next->GetFaction() == faction;
+}
+
+PFFlagpole* PFRoadFlagpole::GetPrevFlagpole(NDb::EFaction _faction)
+{
+  if (GetFirstFlagpole(_faction, natureRoad) == this)
+    return 0;
+  return _faction == NDb::FACTION_FREEZE ? RoadRing::prev(this) : RoadRing::next(this);
+}
+
+PFFlagpole* PFRoadFlagpole::GetNextFlagpole(NDb::EFaction _faction)
+{
+  if (GetLastFlagpole(_faction, natureRoad) == this)
+    return 0;
+  return _faction == NDb::FACTION_FREEZE ? RoadRing::next(this) : RoadRing::prev(this);
+}
+
+bool PFRoadFlagpole::Step(float dtInSeconds) { return PFFlagpole::Step(dtInSeconds); }
+void PFRoadFlagpole::OnDestroyContents() { RoadRing::safeRemove(this); PFFlagpole::OnDestroyContents(); }
+void PFRoadFlagpole::LogFlagEvent(NDb::EFaction, PFBaseUnit*, bool) {}
+void PFRoadFlagpole::FindOwners() { owners.clear(); listeners.clear(); needFindOwners = false; }
+NDb::EFaction PFRoadFlagpole::GetOwnersFaction() const { return NDb::FACTION_NEUTRAL; }
+
+PFFlagpole* PFRoadFlagpole::GetFirstFlagpole(NDb::EFaction _faction, NDb::ENatureRoad _natureRoad)
+{
+  if ((unsigned int)_natureRoad >= s_roads.capacity() || s_roads[_natureRoad].empty())
+    return 0;
+  RoadRing& road = s_roads[_natureRoad];
+  return _faction == NDb::FACTION_FREEZE ? road.first() : RoadRing::prev(road.last());
+}
+
+PFFlagpole* PFRoadFlagpole::GetLastFlagpole(NDb::EFaction _faction, NDb::ENatureRoad _natureRoad)
+{
+  if ((unsigned int)_natureRoad >= s_roads.capacity() || s_roads[_natureRoad].empty())
+    return 0;
+  RoadRing& road = s_roads[_natureRoad];
+  return _faction == NDb::FACTION_FREEZE ? RoadRing::prev(road.last()) : road.first();
+}
+
+void PFRoadFlagpole::Attack(NDb::EFaction _faction, NDb::ENatureRoad _natureRoad, int count)
+{
+  PFFlagpole* pole = GetFirstFlagpole(_faction, _natureRoad);
+  while (pole && count-- > 0)
+  {
+    if (!pole->IsNeutral())
+      pole->OnDropFlag(0);
+    pole->OnStartRaise(GetTeamId(_faction), 0.0f);
+    pole->OnRaise(_faction, 0);
+    pole = pole->GetNextFlagpole(_faction);
+  }
+}
+
+void PFRoadFlagpole::PushAll(vector<PFFlagpole*>* pFlagpoles)
+{
+  if (!pFlagpoles)
+    return;
+  for (uint road = 0; road < s_roads.capacity(); ++road)
+  {
+    PFRoadFlagpole* pNext = s_roads[road].first();
+    PFRoadFlagpole* pLast = s_roads[road].last();
+    while (pNext && pLast != pNext)
+    {
+      pFlagpoles->push_back(pNext);
+      pNext = RoadRing::next(pNext);
+    }
+  }
+}
+
+#ifndef _SHIPPING
+CObj<NDebug::DebugObject> PFRoadFlagpole::CreateDebugObject() { return 0; }
+#endif
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFRoadFlagpole, NWorld)
+REGISTER_WORLD_OBJECT_NM(OwnerListener, NWorld)
+
+#else
+
+
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
 #ifndef VISUAL_CUTTED
@@ -400,3 +552,5 @@ REGISTER_WORLD_OBJECT_NM(PFRoadFlagpole, NWorld);
 REGISTER_WORLD_OBJECT_NM(OwnerListener, NWorld);
 
 REGISTER_DEV_VAR("show_flagpole",   NWorld::g_showFlagpole,   STORAGE_NONE);
+
+#endif

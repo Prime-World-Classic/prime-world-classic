@@ -1,4 +1,183 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFGlyph.h"
+#include "PFWorld.h"
+#include "DBAdvMap.h"
+#include "PFBaseUnit.h"
+#include "PFAIContainer.h"
+
+namespace NWorld
+{
+
+PFGlyphSpawner::PFGlyphSpawner( const CPtr<PFWorld>& pWorld, const NDb::AdvMapObject &dbObject )
+: PFWorldObjectBase( pWorld, 1 )
+, position( dbObject.offset.GetPlace().pos )
+, spawnOffset(-1.0f)
+, hidden(false)
+, lastGlyph(0)
+{
+  pDesc = dynamic_cast<const NDb::GlyphSpawner*>( dbObject.gameObject.GetPtr() );
+  scriptName = dbObject.scriptName;
+  pSpawnedGlyph = CreateGlyph(position);
+}
+
+const NDb::GlyphSettings& PFGlyphSpawner::GetSettings() const
+{
+  return pDesc->settings;
+}
+
+CPtr<NWorld::PFGlyph> PFGlyphSpawner::CreateGlyph( CVec3 const& position )
+{
+  if (!pDesc || !pDesc->glyphs || pDesc->glyphs->glyphs.empty())
+    return 0;
+
+  const int glyphIndex = lastGlyph % pDesc->glyphs->glyphs.size();
+  const NDb::GlyphEntry& glyphEntry = pDesc->glyphs->glyphs[glyphIndex];
+  lastGlyph = (lastGlyph + 1) % pDesc->glyphs->glyphs.size();
+  if (!glyphEntry.glyph)
+    return 0;
+
+  CPtr<NWorld::PFGlyph> glyph = new PFGlyph(GetWorld(), glyphEntry.glyph, position);
+  glyph->SetMapObject(true);
+  glyph->Hide(hidden);
+  if (!scriptName.empty())
+  {
+    string name = scriptName + "_glyph";
+    glyph->SetScriptName(name);
+    if (GetWorld() && GetWorld()->GetAIContainer())
+      GetWorld()->GetAIContainer()->RegisterObject(glyph, name, "");
+  }
+  return glyph;
+}
+
+void PFGlyphSpawner::Hide(bool hide)
+{
+  hidden = hide;
+}
+
+bool PFGlyphSpawner::Step(float dtInSeconds)
+{
+  (void)dtInSeconds;
+  return PFWorldObjectBase::Step(dtInSeconds);
+}
+
+NAMEMAP_BEGIN(PFGlyph)
+NAMEMAP_FUNC_RO(name, &PFGlyph::GetName);
+NAMEMAP_END
+
+PFGlyph::PFGlyph( const CPtr<PFWorld>& pWorld, const NDb::Ptr<NDb::Glyph>& pGlyphDesc, const CVec3& position )
+: PFPickupableObjectBase( pWorld, position, pGlyphDesc && pGlyphDesc->gameObject ? pGlyphDesc->gameObject.GetPtr() : 0 )
+, visUnitID1(-1)
+, visUnitID2(-1)
+, pDesc(pGlyphDesc)
+, enabled(true)
+, hidden(false)
+, glyphNumber(-1)
+{
+  if (pDesc && pDesc->gameObject)
+  {
+    const float objectSize = pDesc->gameObject->lockMask.tileSize > 0.0f ? pDesc->gameObject->lockMask.tileSize : 1.0f;
+    SetObjectSizes(objectSize, 1, 1);
+  }
+}
+
+void PFGlyph::Reset()
+{
+  PFPickupableObjectBase::Reset();
+  visUnitID1 = -1;
+  visUnitID2 = -1;
+}
+
+void PFGlyph::Hide(bool hide)
+{
+  hidden = hide;
+  UpdateHiddenState(!hidden);
+}
+
+void PFGlyph::OpenWarFog()
+{
+}
+
+void PFGlyph::CloseWarFog()
+{
+  visUnitID1 = -1;
+  visUnitID2 = -1;
+}
+
+void PFGlyph::OnPickedUp( PFBaseUnit* pPicker )
+{
+  if (pPicker)
+    pPicker->OnGlyphPickUp(this);
+}
+
+void PFGlyph::OnDie()
+{
+  CloseWarFog();
+  PFLogicObject::OnDie();
+}
+
+bool PFGlyph::CanBePickedUpBy( const PFBaseUnit* pPicker ) const
+{
+  return enabled && PFPickupableObjectBase::CanBePickedUpBy(pPicker);
+}
+
+NAMEMAP_BEGIN(PFNatureGlyph)
+NAMEMAP_FUNC_RO(name, &PFNatureGlyph::GetName);
+NAMEMAP_END
+
+PFNatureGlyph::PFNatureGlyph( const CPtr<PFBaseMaleHero>& targetHero_, NDb::ERoute routeID_, const CPtr<PFWorld>& pWorld, const NDb::Ptr<NDb::GameObject> _gameObject, const CVec3& position )
+: PFPickupableObjectBase(pWorld, position, _gameObject.GetPtr())
+, bVisible(true)
+, targetHero(targetHero_)
+, routeID(routeID_)
+, visUnitID(-1)
+, gameObject(_gameObject)
+{
+  if (gameObject)
+  {
+    const float objectSize = gameObject->lockMask.tileSize > 0.0f ? gameObject->lockMask.tileSize : 1.0f;
+    SetObjectSizes(objectSize, 1, 1);
+  }
+}
+
+void PFNatureGlyph::SetPosition( const CVec3 newPosition )
+{
+  position = newPosition;
+}
+
+void PFNatureGlyph::SetVisible( bool newVisible )
+{
+  bVisible = newVisible;
+  UpdateHiddenState(bVisible);
+}
+
+void PFNatureGlyph::Destroy()
+{
+  visUnitID = -1;
+  Die();
+}
+
+void PFNatureGlyph::Reset()
+{
+  PFPickupableObjectBase::Reset();
+  visUnitID = -1;
+}
+
+void PFNatureGlyph::OnPickedUp( const CPtr<PFBaseHero>& pPicker )
+{
+  (void)pPicker;
+}
+
+} //namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFGlyph,        NWorld);
+REGISTER_WORLD_OBJECT_NM(PFNatureGlyph,  NWorld);
+REGISTER_WORLD_OBJECT_NM(PFGlyphSpawner,  NWorld);
+
+#else
+
 #include "PFGlyph.h"
 #include "PFMaleHero.h"
 #include "TileMap.h"
@@ -419,3 +598,4 @@ void PFNatureGlyph::Reset()
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFGlyph,           NWorld);
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFNatureGlyph,     NWorld);
 REGISTER_WORLD_OBJECT_NM(PFGlyphSpawner,  NWorld);
+#endif

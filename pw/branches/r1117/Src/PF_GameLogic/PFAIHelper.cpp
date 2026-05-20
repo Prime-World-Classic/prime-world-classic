@@ -1,4 +1,141 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAIHelper.h"
+#include "PFMaleHero.h"
+#include "PFTalent.h"
+#include "PFWorld.h"
+#include "PFWorldNatureMap.h"
+#include "PFPickupable.h"
+#include "PFFlagpole.h"
+#include "PFBuildings.h"
+
+namespace NWorld
+{
+
+TalentWrapper::TalentWrapper() : level(0), slot(0), pTalent(NULL) {}
+TalentWrapper::TalentWrapper( CPtr<PFBaseMaleHero> _pUnit, int _level, int _slot )
+  : level(_level), slot(_slot), pUnit(_pUnit)
+{
+  pTalent = ::IsValid(pUnit) ? pUnit->GetTalent(level, slot) : NULL;
+}
+bool TalentWrapper::operator<( const TalentWrapper& other ) const { return level == other.level ? slot < other.slot : level < other.level; }
+bool TalentWrapper::operator!=( const TalentWrapper& other ) const { return pUnit != other.pUnit || level != other.level || slot != other.slot; }
+TalentWrapper TalentWrapper::operator++() { pTalent = 0; level = -1; slot = -1; return *this; }
+bool TalentWrapper::IsPreferable( const TalentWrapper& other ) const { return GetPriority() > other.GetPriority(); }
+int TalentWrapper::GetPriority() const { return pTalent ? pTalent->GetAIPriority() : -1; }
+bool TalentWrapper::IsActive() const { return pTalent ? pTalent->IsActive() : false; }
+bool TalentWrapper::IsActivated() const { return pTalent ? pTalent->IsActivated() : false; }
+bool TalentWrapper::CanBeUsed() const { return ::IsValid(pUnit) && pUnit->CanUseTalent(level, slot); }
+bool TalentWrapper::CanBeActivated() const { return ::IsValid(pUnit) && pUnit->CanActivateTalent(level, slot) == ETalentActivation::Ok; }
+string TalentWrapper::GetName() const { return pTalent ? NStr::ToMBCS(pTalent->GetDBDesc()->name.GetText()) : "Empty talent here!"; }
+
+bool GetRoute( PFWorld* pWorld, NDb::EFaction faction, int roadIndex, vector<CVec2>& road )
+{
+  road.clear();
+  if (!pWorld || !pWorld->GetNatureMap() || roadIndex < 0 || roadIndex >= NDb::KnownEnum<NDb::ENatureRoad>::sizeOf)
+    return false;
+  road = pWorld->GetNatureMap()->GetLogicRoad((NDb::ENatureRoad)roadIndex);
+  if (faction != NDb::FACTION_FREEZE)
+    reverse(road.begin(), road.end());
+  return !road.empty();
+}
+
+int GetNextRoutePoint( const vector<CVec2>& road, const CVec2& unitPos )
+{
+  if (road.empty())
+    return 0;
+  int nearestPoint = 0;
+  float nearestDist = FP_MAX_VALUE;
+  for (int i = 0; i < road.size(); ++i)
+  {
+    const float dist = fabs2(unitPos - road[i]);
+    if (dist < nearestDist)
+    {
+      nearestDist = dist;
+      nearestPoint = i;
+    }
+  }
+  return Min(nearestPoint + 1, (int)road.size());
+}
+
+bool CompareRoutePoints( const vector<CVec2>& road, const CVec2& pos1, const CVec2& pos2 )
+{
+  return GetNextRoutePoint(road, pos1) <= GetNextRoutePoint(road, pos2);
+}
+
+EConsumableType IdentifyConsumable( const NDb::Consumable* pConsumable )
+{
+  if (!pConsumable)
+    return OBJECT_UNKNOWN;
+  string dbFileName = pConsumable->GetDBID().GetFileName();
+  NStr::ToLower(&dbFileName);
+  if (strstr(dbFileName.c_str(), "healingpotion."))
+    return OBJECT_HEALING_POTION;
+  if (strstr(dbFileName.c_str(), "energypotion."))
+    return OBJECT_ENERGY_POTION;
+  if (strstr(dbFileName.c_str(), "teleportscroll."))
+    return OBJECT_TELEPORT_SCROLL;
+  return OBJECT_UNKNOWN;
+}
+
+void ShiftWaypoint(CVec2 &wayPoint, CVec2 &refferenceWayPoint, int shift, float shiftDistance)
+{
+  const CVec2 delta = wayPoint - refferenceWayPoint;
+  const float dist = fabs(delta.x, delta.y);
+  if (dist <= EPS_VALUE)
+    return;
+  CVec2 normal(delta.y / dist, -delta.x / dist);
+  if (shift < 0)
+    normal = -normal;
+  wayPoint += normal * shiftDistance;
+}
+
+PFAIHelper::PFAIHelper( PFBaseHero* unit, NCore::ITransceiver* pTransceiver )
+  : transceiver(pTransceiver)
+  , needResetHealing(false)
+{
+  pUnit = dynamic_cast<PFBaseMaleHero*>(unit);
+  pDBBots = IsValid(pUnit) && pUnit->GetWorld() ? pUnit->GetWorld()->GetBotsSettings() : 0;
+}
+
+void PFAIHelper::SendGameCommand( NCore::WorldCommand* _command )
+{
+  CObj<NCore::WorldCommand> command(_command);
+}
+
+void PFAIHelper::GetLife( float& current, float& maximal ) { current = IsValid(pUnit) ? pUnit->GetLife() : 0.0f; maximal = IsValid(pUnit) ? pUnit->GetMaxLife() : 0.0f; }
+void PFAIHelper::GetMana( float& current, float& maximal ) { current = IsValid(pUnit) ? pUnit->GetMana() : 0.0f; maximal = IsValid(pUnit) ? pUnit->GetMaxMana() : 0.0f; }
+PFWorld* PFAIHelper::GetWorld() { return IsValid(pUnit) ? pUnit->GetWorld() : 0; }
+bool PFAIHelper::IsMoving() const { return IsValid(pUnit) && pUnit->IsMoving(); }
+bool PFAIHelper::IsHolding() const { return IsValid(pUnit) && pUnit->IsHoldingPosition(); }
+void PFAIHelper::MoveTo( const CVec2& pos ) { if (IsValid(pUnit)) pUnit->Move(pos); }
+void PFAIHelper::CombatMoveTo( const CVec2& pos ) { MoveTo(pos); }
+void PFAIHelper::Stop() { if (IsValid(pUnit)) pUnit->Stop(); }
+void PFAIHelper::Follow( PFBaseUnit* target, float followRange, float forceFollowRange ) { (void)followRange; (void)forceFollowRange; if (IsValid(pUnit) && IsValid(target)) pUnit->Move(target->GetPosition().AsVec2D()); }
+void PFAIHelper::Attack( PFBaseUnit* target ) { if (IsValid(pUnit) && IsValid(target)) pUnit->AssignTarget(target, true); }
+void PFAIHelper::ActivateTalent( int level, int slot ) { if (IsValid(pUnit)) pUnit->ActivateTalent(level, slot); }
+void PFAIHelper::ActivateTalent( const TalentWrapper& iTalent ) { ActivateTalent(iTalent.GetLevel(), iTalent.GetSlot()); }
+void PFAIHelper::UseTalent( int level, int slot, const Target& target ) { if (IsValid(pUnit)) pUnit->UseTalent(level, slot, target); }
+void PFAIHelper::UseTalent( const TalentWrapper& iTalent, const Target& target ) { UseTalent(iTalent.GetLevel(), iTalent.GetSlot(), target); }
+void PFAIHelper::BuyConsumable( PFShop* pShop, int index ) { (void)pShop; (void)index; }
+void PFAIHelper::UseConsumable( int slot, const Target& target ) { if (IsValid(pUnit)) pUnit->ExecuteCommandUseConsumable(slot, target, false); }
+void PFAIHelper::UsePortal( const Target& target ) { (void)target; }
+void PFAIHelper::PickupObject( PFPickupableObjectBase* pObject ) { (void)pObject; }
+void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole ) { (void)pFlagpole; }
+int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex ) { (void)type; if (firstIndex) *firstIndex = -1; return 0; }
+PFBaseUnit* PFAIHelper::FindEnemyNear() { return 0; }
+
+void TalentPart::ActivateTalents( PFAIHelper &aiHelper ) { (void)aiHelper; }
+void TalentPart::UseTalents( PFAIHelper &aiHelper ) { (void)aiHelper; }
+TalentWrapper TalentPart::GetFirstTalent( PFAIHelper &aiHelper ) { return TalentWrapper(aiHelper.pUnit, 0, 0); }
+TalentWrapper TalentPart::GetLastTalent( PFAIHelper &aiHelper ) { return TalentWrapper(aiHelper.pUnit, 0, 0); }
+
+}
+
+#else
+
 #include "../Core/GameCommand.h"
 #include "../Core/Scheduler.h"
 #include "PFMaleHero.h"
@@ -544,3 +681,5 @@ TalentWrapper TalentPart::GetLastTalent( PFAIHelper &aiHelper )
 }
 
 }
+
+#endif

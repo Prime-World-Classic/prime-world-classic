@@ -1,5 +1,192 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "TileMap.h"
+#include "PFVoxelMap.h"
+#include "PFBaseUnit.h"
+
+namespace NWorld
+{
+
+PFLogicObject* PFVoxelMap::SelectObjects::Cast(PFLogicObject* obj)
+{
+  return obj;
+}
+
+PFBaseUnit* PFVoxelMap::SelectUnits::Cast(PFLogicObject* obj)
+{
+  return static_cast<PFBaseUnit*>(obj);
+}
+
+PFVoxelMap::PFVoxelMap( PFWorld* world )
+: PFWorldObjectBase( world, 0 )
+, width(0)
+, height(0)
+, widthF(0.0f)
+, heightF(0.0f)
+{
+}
+
+PFVoxelMap::PFVoxelMap()
+: width(0)
+, height(0)
+, widthF(0.0f)
+, heightF(0.0f)
+{
+}
+
+namespace
+{
+float const s_LinuxVoxelSize = 10.0f;
+float const s_LinuxVoxelSizeInv = 1.0f / s_LinuxVoxelSize;
+float const s_LinuxMapEps = 0.001f;
+}
+
+void PFVoxelMap::SetVoxelMapSizes(const TileMap *map)
+{
+  if (!map)
+    return;
+
+  widthF = static_cast<float>(map->GetSizeX()) * map->GetTileSize();
+  heightF = static_cast<float>(map->GetSizeY()) * map->GetTileSize();
+  width = Max(1, static_cast<int>(ceil(widthF * s_LinuxVoxelSizeInv)));
+  height = Max(1, static_cast<int>(ceil(heightF * s_LinuxVoxelSizeInv)));
+  widthF -= s_LinuxMapEps;
+  heightF -= s_LinuxMapEps;
+  pVoxels.clear();
+  pVoxels.resize(width * height);
+}
+
+template <class RingT> void PFVoxelMap::insertSorted(RingT &r, PFLogicObject *o)
+{
+  PFLogicObject * const last = r.last();
+  for (PFLogicObject * current = r.first(); current != last; current = RingT::next(current))
+  {
+    if (current->GetObjectId() > o->GetObjectId())
+    {
+      r.insertBefore(o, current);
+      return;
+    }
+  }
+  r.addLast(o);
+}
+
+void PFVoxelMap::AddObject(PFLogicObject &obj)
+{
+  if (width <= 0 || height <= 0 || pVoxels.empty())
+    return;
+
+  int i, j;
+  CalcVoxelIndices(obj.GetPosition().x, obj.GetPosition().y, i, j);
+  if (i < 0 || i >= width || j < 0 || j >= height)
+    return;
+
+  PFLogicObject::LORing &r = GetVoxel(i, j).objectsRing;
+  insertSorted(r, &obj);
+}
+
+void PFVoxelMap::AddObject(PFBaseUnit &unit)
+{
+  if (width <= 0 || height <= 0 || pVoxels.empty())
+    return;
+
+  int i, j;
+  CalcVoxelIndices(unit.GetPosition().x, unit.GetPosition().y, i, j);
+  if (i < 0 || i >= width || j < 0 || j >= height)
+    return;
+
+  PFLogicObject::LORing &r = GetVoxel(i, j).unitsRing;
+  insertSorted(r, &unit);
+}
+
+void PFVoxelMap::RemoveObject(PFLogicObject &obj)
+{
+  ringElemRemovalHandler.OnRemove(&obj);
+  PFLogicObject::LORing::remove(&obj);
+}
+
+void PFVoxelMap::OnUnitMove(PFBaseUnit &unit)
+{
+  RemoveObject(unit);
+  AddObject(unit);
+}
+
+bool PFVoxelMap::IsPointInRange(const CVec3 &pos, const Range &range)
+{
+  float xs = pos.x - range.center.x;
+  float ys = pos.y - range.center.y;
+  return (xs * xs + ys * ys) <= range.radiusSquared;
+}
+
+void PFVoxelMap::CalcVoxelIndices(float x, float y, int &voxelI, int &voxelJ)
+{
+  voxelI = static_cast<int>(floor(x * s_LinuxVoxelSizeInv));
+  voxelJ = static_cast<int>(floor(y * s_LinuxVoxelSizeInv));
+}
+
+PFVoxelMap::Voxel &PFVoxelMap::GetVoxel(PFLogicObject& obj)
+{
+  int i, j;
+  CalcVoxelIndices(obj.GetPosition().x, obj.GetPosition().y, i, j);
+  return GetVoxel(i, j);
+}
+
+PFVoxelMap::Voxel &PFVoxelMap::GetVoxel(int i, int j)
+{
+  static Voxel emptyVoxel;
+  if (i < 0 || i >= width || j < 0 || j >= height || pVoxels.empty())
+    return emptyVoxel;
+  return pVoxels[j * width + i];
+}
+
+const PFVoxelMap::Voxel &PFVoxelMap::GetVoxel(int i, int j) const
+{
+  static Voxel emptyVoxel;
+  if (i < 0 || i >= width || j < 0 || j >= height || pVoxels.empty())
+    return emptyVoxel;
+  return pVoxels[j * width + i];
+}
+
+PFVoxelMap::Voxel &PFVoxelMap::GetVoxel(int linearI)
+{
+  static Voxel emptyVoxel;
+  if (linearI < 0 || linearI >= width * height || pVoxels.empty())
+    return emptyVoxel;
+  return pVoxels[linearI];
+}
+
+const PFVoxelMap::Voxel &PFVoxelMap::GetVoxel(int linearI) const
+{
+  static Voxel emptyVoxel;
+  if (linearI < 0 || linearI >= width * height || pVoxels.empty())
+    return emptyVoxel;
+  return pVoxels[linearI];
+}
+BBox2D PFVoxelMap::ConvertRangeToBBox(CVec3 const& vPos, float range) const
+{
+  BBox2D bbox;
+  bbox.minx = vPos.x - range;
+  bbox.miny = vPos.y - range;
+  bbox.maxx = vPos.x + range;
+  bbox.maxy = vPos.y + range;
+  return bbox;
+}
+void PFVoxelMap::OnDestroyContents()
+{
+  pVoxels.clear();
+  width = 0;
+  height = 0;
+  widthF = 0.0f;
+  heightF = 0.0f;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFVoxelMap, NWorld);
+
+#else
+
 #include "TileMap.h"
 #include "PFVoxelMap.h"
 
@@ -207,3 +394,5 @@ void PFVoxelMap::OnDestroyContents()
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFVoxelMap, NWorld);
+
+#endif

@@ -1,4 +1,266 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseUnitStates.h"
+#include "PFBaseMovingUnit.h"
+
+namespace
+{
+  static int g_useAttackSectors = 1;
+};
+
+namespace NWorld
+{
+
+void PushAttackState( PFHFSM* fsm, PFBaseMovingUnit* owner, PFBaseUnit* target, bool strongTarget, bool scream, bool ignoreChaseRange )
+{
+  (void)scream;
+  if ( fsm && IsValid( owner ) && IsValid( target ) )
+    fsm->PushState( new PFBaseUnitAttackState( owner->GetWorld(), owner, target, strongTarget, ignoreChaseRange ) );
+}
+
+void EnqueueAttackState( PFBaseMovingUnit* owner, PFBaseUnit* target, bool strongTarget, bool scream, bool ignoreChaseRange )
+{
+  (void)scream;
+  if ( IsValid( owner ) && IsValid( target ) )
+    owner->EnqueueState( new PFBaseUnitAttackState( owner->GetWorld(), owner, target, strongTarget, ignoreChaseRange ), true );
+}
+
+void MoveUnitStateFSM::DumpStateToConsole(int depths)
+{
+  (void)depths;
+}
+
+PFBaseUnitMoveToState::PFBaseUnitMoveToState( PFBaseMovingUnit* _pUnit, const CVec2& _target, const float _range, bool _requireLOS )
+  : PFBaseMovingUnitState(_pUnit)
+  , range(_range > 0.0f ? _range : 1.0f)
+  , initiatedMove(false)
+  , target(_target)
+  , requireLineOfSight(_requireLOS)
+{
+}
+
+bool PFBaseUnitMoveToState::OnStep(float dt)
+{
+  (void)dt;
+  if (!IsValid(pOwner))
+    return true;
+  if (!initiatedMove)
+  {
+    pOwner->MoveTo(target);
+    initiatedMove = true;
+  }
+  return pOwner->IsPositionInRange(target, range);
+}
+
+void PFBaseUnitMoveToState::OnEnter()
+{
+}
+
+void PFBaseUnitMoveToState::OnLeave()
+{
+}
+
+PFBaseUnitMoveToBuildingState::PFBaseUnitMoveToBuildingState(PFBaseMovingUnit * pUnit, PFBaseUnit * _targetBuilding, IPointChecking * _pointChecking, bool _requireLineOfSight)
+  : PFBaseMovingUnitState(pUnit)
+  , pointChecking(_pointChecking)
+  , initiatedMove(false)
+  , targetBuilding(_targetBuilding)
+  , requireLineOfSight(_requireLineOfSight)
+  , needStopOnLeave(true)
+{
+}
+
+bool PFBaseUnitMoveToBuildingState::OnStep(float dt)
+{
+  (void)dt;
+  if (!IsValid(pOwner) || !IsValid(targetBuilding))
+    return true;
+  if (!initiatedMove)
+  {
+    pOwner->MoveTo(targetBuilding->GetPosition().AsVec2D());
+    initiatedMove = true;
+  }
+  return pOwner->IsPositionInRange(targetBuilding->GetPosition().AsVec2D(), Max(targetBuilding->GetObjectSize() * 0.5f, 1.0f));
+}
+
+void PFBaseUnitMoveToBuildingState::OnLeave()
+{
+  if (needStopOnLeave && IsValid(pOwner) && pOwner->IsMoving())
+    pOwner->Stop();
+}
+
+PFBaseUnitPathMovingState::PFBaseUnitPathMovingState( CPtr<PFBaseMovingUnit> const& pUnit, vector<CVec2> const & _wayPoints, const float _range )
+  : PFBaseMovingUnitState(pUnit)
+  , wayPoints(_wayPoints)
+  , currentPoint(_wayPoints.empty() ? VNULL2 : _wayPoints.front())
+  , isFirstMove(true)
+  , range(_range > 0.0f ? _range : 1.0f)
+{
+}
+
+bool PFBaseUnitPathMovingState::OnStep( float dt )
+{
+  (void)dt;
+  if (!IsValid(pOwner) || wayPoints.empty())
+    return true;
+  if (isFirstMove || pOwner->IsPositionInRange(currentPoint, range))
+  {
+    if (!isFirstMove)
+      wayPoints.erase(wayPoints.begin());
+    if (wayPoints.empty())
+      return true;
+    currentPoint = wayPoints.front();
+    pOwner->MoveTo(currentPoint);
+    isFirstMove = false;
+  }
+  return false;
+}
+
+const CVec2& PFBaseUnitPathMovingState::GetNextWaypoint() const
+{
+  return currentPoint;
+}
+
+void PFBaseUnitPathMovingState::OnLeave()
+{
+}
+
+PFBaseUnitChaseState::PFBaseUnitChaseState(PFBaseMovingUnit * pOwner, bool _requireLineOfSight, float _attackRange, float _chaseRange, PFBaseUnit * target, bool _strongTarget, bool ignoreVisibility_, bool useAttackRange_)
+  : PFBaseMovingUnitState(pOwner)
+  , targetUnit(target)
+  , lastPos(VNULL2)
+  , halfTargetSize(0.0f)
+  , attackRange(_attackRange)
+  , chaseRange(_chaseRange)
+  , requireLineOfSight(_requireLineOfSight)
+  , strongTarget(_strongTarget)
+  , attackSector(-1)
+  , ignoreVisibility(ignoreVisibility_)
+  , useAttackRange(useAttackRange_)
+{
+}
+
+bool PFBaseUnitChaseState::OnStep( float dt )
+{
+  (void)dt;
+  if (!IsValid(pOwner) || !IsValid(targetUnit))
+    return true;
+  lastPos = targetUnit->GetPosition().AsVec2D();
+  if (pOwner->IsTargetInAttackRange(targetUnit, true))
+    return true;
+  pOwner->MoveTo(lastPos);
+  return false;
+}
+
+void PFBaseUnitChaseState::OnLeave()
+{
+}
+
+void PFBaseUnitChaseState::OnDestroyContents()
+{
+  targetUnit = 0;
+  PFBaseMovingUnitState::OnDestroyContents();
+}
+
+PFBaseUnitAttackState::PFBaseUnitAttackState(CPtr<PFWorld> const& pWorld_, CPtr<PFBaseMovingUnit> const& pOwner_, const CPtr<PFBaseUnit>& pTarget_, bool strongTarget_, bool ignoreChaseRange_, bool ignoreVisibility_, bool _allowAllies, bool _allowChase)
+  : MoveUnitStateFSM(pOwner_)
+  , pWorld(pWorld_)
+  , pTarget(pTarget_)
+  , strongTarget(strongTarget_)
+  , ignoreChaseRange(ignoreChaseRange_)
+  , statePassedThrough(false)
+  , ignoreVisibility(ignoreVisibility_)
+  , allowAllies(_allowAllies)
+  , allowChase(_allowChase)
+{
+}
+
+void PFBaseUnitAttackState::OnEnter()
+{
+}
+
+void PFBaseUnitAttackState::OnLeave()
+{
+}
+
+bool PFBaseUnitAttackState::OnStep(float dt)
+{
+  (void)dt;
+  if (!IsValid(pOwner) || !IsValid(pTarget))
+    return true;
+  if (!pOwner->CanAttackTarget(pTarget))
+    return true;
+  if (!pOwner->IsTargetInAttackRange(pTarget, true))
+  {
+    if (allowChase)
+      pOwner->MoveTo(pTarget->GetPosition().AsVec2D());
+    return false;
+  }
+  return pOwner->IsReadyToAttack() && !pOwner->DoAttack(allowAllies);
+}
+
+bool PFBaseUnitAttackState::IsBlocking() const
+{
+  return true;
+}
+
+bool PFBaseUnitAttackState::isTargetDropped(const PFBaseUnit* pTarget_)
+{
+  return !pTarget_;
+}
+
+PFBaseUnitCombatMoveState::PFBaseUnitCombatMoveState( const CPtr<PFWorld>& pWorld, const CPtr<PFBaseMovingUnit>& pOwner, const CVec2& target, float range )
+  : MoveUnitStateFSM(pOwner)
+{
+  (void)pWorld;
+  PushState(new PFBaseUnitMoveToState(pOwner, target, range));
+}
+
+bool PFBaseUnitCombatMoveState::OnStep(float dt)
+{
+  FSMStep(dt);
+  return GetCurrentState() == 0;
+}
+
+void PFBaseUnitCombatMoveState::OnLeave()
+{
+}
+
+PFBaseUnitCombatMoveToBuildingState::PFBaseUnitCombatMoveToBuildingState(const CPtr<PFWorld>& pWorld_, PFBaseMovingUnit* pUnit, PFBaseUnit* pTarget_, IPointChecking* pPointChecking, bool requireLineOfSight)
+  : MoveUnitStateFSM(pUnit)
+  , pWorld(pWorld_)
+  , pTarget(pTarget_)
+  , targetSearchInterval(0.2f)
+  , targetSearchTimer(0.0f)
+{
+  PushState(new PFBaseUnitMoveToBuildingState(pUnit, pTarget_, pPointChecking, requireLineOfSight));
+}
+
+bool PFBaseUnitCombatMoveToBuildingState::OnStep(float dt)
+{
+  FSMStep(dt);
+  return GetCurrentState() == 0;
+}
+
+void PFBaseUnitCombatMoveToBuildingState::OnLeave()
+{
+}
+
+} // namespace NWorld
+
+REGISTER_DEV_VAR("use_attack_sectors",   g_useAttackSectors,   STORAGE_NONE);
+
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitMoveToState,     NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitChaseState,      NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitAttackState,     NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitCombatMoveState, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitPathMovingState,  NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitMoveToBuildingState,  NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitCombatMoveToBuildingState, NWorld)
+
+#else
+
 #include "PFBaseUnitStates.h"
 #include "PFBaseMovingUnit.h"
 #include "PFDispatchStrike1.h"
@@ -850,3 +1112,4 @@ REGISTER_WORLD_OBJECT_NM(PFBaseUnitAlertMoveState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitPathMovingState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitMoveToBuildingState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitCombatMoveToBuildingState, NWorld)
+#endif

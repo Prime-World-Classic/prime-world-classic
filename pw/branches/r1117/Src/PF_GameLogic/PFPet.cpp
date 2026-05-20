@@ -1,5 +1,59 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFPet.h"
+
+namespace NWorld
+{
+
+PFPetAIBaseState::PFPetAIBaseState(CPtr<PFBasePetUnit> const& pPet)
+  : PFBasePetUnitState(pPet)
+  , pPetKeeper(IsValid(pPet) ? pPet->GetKeeper() : 0)
+  , maxEscortDistance(0.0f)
+  , minEscortDistance(0.0f)
+{
+}
+
+bool PFPetAIBaseState::OnStep(float dt)
+{
+  (void)dt;
+  return true;
+}
+
+PFBasePetUnit::PFBasePetUnit(CPtr<PFWorld> pWorld, const NDb::BasePet& petObj, CPtr<PFBaseHero> pKeeper_)
+  : PFCreature(pWorld.GetPtr(), CVec3(0.0f, 0.0f, 0.0f), CVec2(0.0f, 1.0f), petObj)
+  , pKeeper(pKeeper_)
+{
+  PFBaseUnit::InitData data;
+  data.faction = NDb::FACTION_NEUTRAL;
+  data.type = NDb::UNITTYPE_PET;
+  data.playerId = -1;
+  data.pObjectDesc = &petObj;
+  Initialize(data);
+  SetVulnerable(true);
+}
+
+void PFBasePetUnit::Reset()
+{
+  PFCreature::Reset();
+}
+
+PFBasePetUnit* CreateTestPet(PFWorld* pWorld, const char* name, const CPtr<PFBaseHero>& pKeeper)
+{
+  (void)pWorld;
+  (void)name;
+  (void)pKeeper;
+  return 0;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFPetAIBaseState, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFBasePetUnit, NWorld)
+
+#else
+
 #include "DBSessionRoots.h"
 #include "DBVisualRoots.h"
 #include "PFPet.h"
@@ -110,3 +164,5 @@ PFBasePetUnit *CreateTestPet( PFWorld* pWorld, const char *name, const CPtr<PFBa
 
 REGISTER_WORLD_OBJECT_NM(PFPetAIBaseState, NWorld);
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFBasePetUnit, NWorld)
+
+#endif

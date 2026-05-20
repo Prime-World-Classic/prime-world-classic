@@ -44,7 +44,7 @@ REGISTER_DBRESOURCE( TimeController );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
-#if !defined(PW_LINUX_DB_BOOTSTRAP)
+#if !defined(PW_LINUX_DB_BOOTSTRAP) || defined(PW_LINUX_NULL_RENDER)
 #ifndef VISUAL_CUTTED
 #include "AnimatedSceneComponent.h"
 #include "LightningSceneComponent.h"
@@ -55,7 +55,7 @@ REGISTER_DBRESOURCE( TimeController );
 #include "TraceSceneComponent.h"
 #include "WaterSceneComponent.h"
 #endif // #ifndef VISUAL_CUTTED
-#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
+#endif // !defined(PW_LINUX_DB_BOOTSTRAP) || defined(PW_LINUX_NULL_RENDER)
 
 namespace NDb
 {
@@ -719,7 +719,7 @@ void DBSceneComponentBase::Assign( const DBSceneComponentBase& _dBSceneComponent
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSceneComponentBase::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -780,7 +780,7 @@ void DBSceneComponent::Assign( const DBSceneComponent& _dBSceneComponent )
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -874,7 +874,7 @@ void DBAnimatedSceneComponent::Assign( const DBAnimatedSceneComponent& _dBAnimat
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBAnimatedSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -949,7 +949,7 @@ void DBLightningSceneComponent::Assign( const DBLightningSceneComponent& _dBLigh
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBLightningSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1089,7 +1089,7 @@ void DBParticleSceneComponent::Assign( const DBParticleSceneComponent& _dBPartic
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBParticleSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1151,7 +1151,7 @@ void DBSoundSceneComponent::Assign( const DBSoundSceneComponent& _dBSoundSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBSoundSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1221,7 +1221,7 @@ void DBStaticSceneComponent::Assign( const DBStaticSceneComponent& _dBStaticScen
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBStaticSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1317,7 +1317,7 @@ void DBTraceSceneComponent::Assign( const DBTraceSceneComponent& _dBTraceSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBTraceSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1470,7 +1470,7 @@ void DBWaterSceneComponent::Assign( const DBWaterSceneComponent& _dBWaterSceneCo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> DBWaterSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 

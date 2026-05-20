@@ -100,6 +100,10 @@ CObj<BasicEffect> EffectsPool::Retrieve(NDb::Ptr<NDb::EffectBase> const &pDBObj)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void KillAllActiveEffects()
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
+  // DB-only Linux bootstrap tools can retrieve individual effects, but they do
+  // not own the full global active-effect update/kill traversal.
+#else
 	struct Func : public IUpdateableFunc 
 	{
 		virtual void operator()(IUpdateable *pObj)
@@ -111,6 +115,7 @@ void KillAllActiveEffects()
 	} f;
 
 	IUpdateable::ForAll(f);
+#endif
 }
 
 }

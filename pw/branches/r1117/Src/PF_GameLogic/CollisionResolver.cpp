@@ -1,5 +1,25 @@
 #include "StdAfx.h"
 
+#if defined( PW_LINUX_OPENGL_BOOTSTRAP ) && defined( PW_LINUX_NULL_RENDER )
+
+#include "PFWorldObjectBase.h"
+#include "CollisionResolver.h"
+
+namespace NWorld
+{
+
+void CollisionResolver::Resolve( const vector<PFBaseMovingUnit*> units, float timeDelta ) const
+{
+  (void)units;
+  (void)timeDelta;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM( CollisionResolver, NWorld );
+
+#else
+
 #include "PFBaseMovingUnit.h"
 #include "PFBaseUnit.h"
 #include "CommonPathFinder.h"
@@ -781,3 +801,5 @@ void CollisionResolver::CollisionIdle( MovingUnit* unit, bool blockedBefore, flo
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 REGISTER_WORLD_OBJECT_NM( CollisionResolver, NWorld );
+
+#endif

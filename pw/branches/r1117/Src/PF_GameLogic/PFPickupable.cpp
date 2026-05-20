@@ -32,13 +32,19 @@ bool PFPickupableObjectBase::PickUp( PFBaseUnit* pPicker )
 
 bool PFPickupableObjectBase::CanBePickedUpBy( const PFBaseUnit* pPicker ) const
 {
+#if defined( PW_LINUX_NULL_RENDER )
+  return isBeingPickuped == false && pPicker && pPicker->CheckFlag( NDb::UNITFLAG_FORBIDINTERACT ) == false;
+#else
   return isBeingPickuped == false && pPicker->CheckFlag( NDb::UNITFLAG_FORBIDINTERACT ) == false;
+#endif
 }
 
 bool PFPickupableObjectBase::Step(float dt)
 {
   NI_PROFILE_FUNCTION
+#if !defined( PW_LINUX_NULL_RENDER )
   CALL_CLIENT(UpdateVisibility);
+#endif
   return PFLogicObject::Step(dt);
 }
 

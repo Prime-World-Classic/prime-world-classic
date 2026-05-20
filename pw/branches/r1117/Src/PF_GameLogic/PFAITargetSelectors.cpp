@@ -1,4 +1,346 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAITargetSelectors.h"
+#include "PFBaseUnit.h"
+#include "TargetSelectorHelper.hpp"
+
+namespace NWorld
+{
+
+namespace
+{
+  struct LinuxTargetCounter : public ITargetAction, public NonCopyable
+  {
+    LinuxTargetCounter() : targets(0) {}
+    virtual void operator()(const Target&) { ++targets; }
+    int targets;
+  };
+
+  struct LinuxTargetCollector : public ITargetAction, public NonCopyable
+  {
+    virtual void operator()(const Target& target) { targets.push_back(target); }
+    vector<Target> targets;
+  };
+
+}
+
+PFMaximizingTargetSelector::PFMaximizingTargetSelector(NDb::MaximizingTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+bool PFMaximizingTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pTargetSelector || !pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return false;
+
+  const float radius = RetrieveParam(GetDB().range, pars, 0.0f);
+  if (radius <= 0.0f)
+    return false;
+
+  const int minTargets = Max(RetrieveParam(GetDB().minTargetsNumber, pars, 0), 1);
+  const CVec3 center = pars.pRequester->AcquirePosition();
+  const int steps = 72;
+  int maxTargets = -1;
+  CVec3 bestPos = center;
+
+  Target destPoint;
+  RequestParams destPars(pars.pOwner, pars.pMiscPars, destPoint, pars.condition);
+
+  for (int i = 0; i < steps; ++i)
+  {
+    const float angle = FP_2PI * static_cast<float>(i) / static_cast<float>(steps);
+    const CVec3 pos = center + CVec3(radius * sin(angle), radius * cos(angle), 0.0f);
+    destPoint.SetPosition(pos);
+
+    LinuxTargetCounter counter;
+    pTargetSelector->EnumerateTargets(counter, destPars);
+    if (counter.targets > maxTargets)
+    {
+      maxTargets = counter.targets;
+      bestPos = pos;
+    }
+  }
+
+  if (maxTargets < minTargets)
+    return false;
+
+  target.SetPosition(bestPos);
+  DUMP_SELECTOR_TARGET(target)
+  return target.IsValid(true);
+}
+
+PFDelayTargetSelector::PFDelayTargetSelector( const NDb::DelayTargetSelector &db, PFWorld* world )
+  : DBLinker(db, world)
+  , lastUpdateTime(0.0f)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFDelayTargetSelector::ForAllTargets( ITargetAction &action, const RequestParams &pars )
+{
+  if (!pTargetSelector)
+    return;
+
+  const float delay = RetrieveParam(GetDB().delay, pars, 0.0f);
+  if (delay <= 0.0f)
+  {
+    pTargetSelector->EnumerateTargets(action, pars);
+    return;
+  }
+
+  float time = 0.0f;
+  if (GetWorld())
+    time = GetWorld()->GetTimeElapsed();
+  else
+    time = lastUpdateTime + (delay > 0.0f ? delay : 0.001f);
+
+  struct Func : public ITargetAction, public NonCopyable
+  {
+    Func(const hash_map<int, float>& oldTargets_, float time_, float delay_, const DumpTargetWrapper& action_)
+      : oldTargets(oldTargets_), time(time_), delay(delay_), action(action_) {}
+
+    virtual void operator()(const Target &target)
+    {
+      if (!target.IsObject())
+        return;
+
+      int woid = target.GetObject()->GetWOID();
+      float appearTime = time;
+      hash_map<int, float>::const_iterator it = oldTargets.find(woid);
+      if (it != oldTargets.end())
+        appearTime = it->second;
+
+      newTargets[woid] = appearTime;
+      if (appearTime + delay <= time)
+      {
+        action(target);
+      }
+    }
+
+    void MergeOldTargets()
+    {
+      for (hash_map<int, float>::const_iterator it = oldTargets.begin(); it != oldTargets.end(); ++it)
+        if (newTargets.find(it->first) != newTargets.end())
+          newTargets.insert(*it);
+    }
+
+    hash_map<int, float> newTargets;
+    const hash_map<int, float>& oldTargets;
+    float time;
+    float delay;
+    DumpTargetWrapper action;
+  } proc(targetAppearTimes, time, delay, DumpTargetWrapper(this, action));
+
+  pTargetSelector->EnumerateTargets(proc, pars);
+  if (lastUpdateTime == time)
+    proc.MergeOldTargets();
+  lastUpdateTime = time;
+  targetAppearTimes.swap(proc.newTargets);
+}
+
+PFCheckConditionTargetSelector::PFCheckConditionTargetSelector( const NDb::CheckConditionTargetSelector &db, PFWorld* world )
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+}
+
+void PFCheckConditionTargetSelector::ForAllTargets( ITargetAction &action, const RequestParams &pars )
+{
+  if (!pTargetSelector)
+    return;
+
+  struct Collector : public ITargetAction, public NonCopyable
+  {
+    Collector(const ExecutableBoolString& condition_, const RequestParams& pars_)
+      : condition(condition_), pars(pars_), counter(0) {}
+
+    virtual void operator()(const Target &target)
+    {
+      targets.push_back(target);
+      if (target.IsUnitValid() && condition(pars.pOwner, target.GetUnit(), pars.pMiscPars, true))
+        ++counter;
+    }
+
+    const ExecutableBoolString& condition;
+    const RequestParams& pars;
+    int counter;
+    vector<Target> targets;
+  } collector(GetDB().condition, pars);
+
+  pTargetSelector->EnumerateTargets(collector, pars);
+  if (collector.counter < RetrieveParam(GetDB().minTargetsNumber, pars, 1))
+    return;
+
+  for (vector<Target>::iterator it = collector.targets.begin(); it != collector.targets.end(); ++it)
+  {
+    DUMP_TARGET(*it)
+    action(*it);
+  }
+}
+
+PFNotTargetOfSameAbilitySelector::PFNotTargetOfSameAbilitySelector( const NDb::NotTargetOfSameAbilitySelector &db, PFWorld* world )
+  : DBLinker(db, world)
+{
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(world);
+  if (GetDB().abilityCastersSelector)
+    pCastersSelector = GetDB().abilityCastersSelector->Create(world);
+}
+
+void PFNotTargetOfSameAbilitySelector::ForAllTargets( ITargetAction &action, const RequestParams &pars )
+{
+  if (!pTargetSelector)
+    return;
+  if (!pCastersSelector)
+  {
+    pTargetSelector->EnumerateTargets(action, pars);
+    return;
+  }
+
+  struct UsedTargetsCollector : public ITargetAction, public NonCopyable
+  {
+    virtual void operator()(const Target& caster)
+    {
+      if (!caster.IsUnitValid(true))
+        return;
+      CPtr<PFBaseUnit> current = caster.GetUnit()->GetCurrentTarget();
+      if (IsValid(current))
+        targets.push_back(Target(current));
+    }
+    vector<Target> targets;
+  } usedTargets;
+
+  pCastersSelector->EnumerateTargets(usedTargets, pars);
+
+  const float minDist = RetrieveParam(GetDB().minDistBetweenTargets, pars, 0.0f);
+  const float minDist2 = minDist * minDist;
+  struct Filter : public ITargetAction, public NonCopyable
+  {
+    Filter(const vector<Target>& usedTargets_, float minDist2_, const DumpTargetWrapper& action_)
+      : usedTargets(usedTargets_), minDist2(minDist2_), action(action_) {}
+
+    virtual void operator()(const Target& target)
+    {
+      PFLogicObject* obj = target.GetObject().GetPtr();
+      const CVec3 pos = target.AcquirePosition();
+      for (vector<Target>::const_iterator it = usedTargets.begin(); it != usedTargets.end(); ++it)
+      {
+        if (obj && obj == it->GetObject().GetPtr())
+          return;
+        if (!obj && fabs2(pos - it->AcquirePosition()) <= minDist2)
+          return;
+      }
+      action(target);
+    }
+
+    const vector<Target>& usedTargets;
+    float minDist2;
+    DumpTargetWrapper action;
+  } filter(usedTargets.targets, minDist2, DumpTargetWrapper(this, action));
+
+  pTargetSelector->EnumerateTargets(filter, pars);
+}
+
+PFDamagingLinksTargetSelector::PFDamagingLinksTargetSelector(NDb::DamagingLinksTargetSelector const &db, PFWorld* world)
+  : DBLinker(db, world)
+{
+  if (GetDB().linkEndsSelector)
+    pLinkEndsSelector = GetDB().linkEndsSelector->Create(world);
+  if (GetDB().linkTargetsSelector)
+    pLinkTargetsSelector = GetDB().linkTargetsSelector->Create(world);
+}
+
+bool PFDamagingLinksTargetSelector::FindTarget(const RequestParams &pars, Target &target)
+{
+  if (!pLinkEndsSelector || !pLinkTargetsSelector || !pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return false;
+
+  const float radius = RetrieveParam(GetDB().moveRange, pars, 0.0f);
+  if (radius <= 0.0f)
+    return false;
+
+  const CVec2 ownerPoint = pars.pRequester->AcquirePosition().AsVec2D();
+  struct PositionCollector : public ITargetAction, public NonCopyable
+  {
+    PositionCollector(vector<CVec2>& positions_, const CVec2& ownerPoint_)
+      : positions(positions_), ownerPoint(ownerPoint_) {}
+    virtual void operator()(const Target& target)
+    {
+      const CVec2 pos = target.AcquirePosition().AsVec2D();
+      if (fabs(pos - ownerPoint) > EPS_VALUE)
+        positions.push_back(pos);
+    }
+    vector<CVec2>& positions;
+    CVec2 ownerPoint;
+  };
+
+  vector<CVec2> linkEnds;
+  PositionCollector collectLinkEnds(linkEnds, ownerPoint);
+  pLinkEndsSelector->EnumerateTargets(collectLinkEnds, pars);
+  if (linkEnds.empty())
+    return false;
+
+  float minRadius2 = RetrieveParam(GetDB().minRangeFromLinkEnds, pars, 0.0f);
+  minRadius2 *= minRadius2;
+  float maxRadius2 = RetrieveParam(GetDB().maxRangeFromLinkEnds, pars, 0.0f);
+  maxRadius2 *= maxRadius2;
+
+  const int steps = 72;
+  float bestWeight = -FLT_MAX;
+  int bestTargets = 0;
+  CVec2 bestPoint = ownerPoint;
+  Target destPoint;
+  RequestParams destPars(pars.pOwner, pars.pMiscPars, destPoint, pars.condition);
+
+  for (int i = 0; i < steps; ++i)
+  {
+    const float angle = FP_2PI * static_cast<float>(i) / static_cast<float>(steps);
+    const CVec2 curPoint(ownerPoint.x + radius * sin(angle), ownerPoint.y + radius * cos(angle));
+    destPoint.SetPosition(CVec3(curPoint, 0.0f));
+
+    LinuxTargetCounter counter;
+    pLinkTargetsSelector->EnumerateTargets(counter, destPars);
+    float weight = static_cast<float>(counter.targets);
+
+    for (vector<CVec2>::iterator it = linkEnds.begin(); it != linkEnds.end(); ++it)
+    {
+      const float d2 = fabs2(curPoint - *it);
+      if (maxRadius2 > 0.0f && (d2 > maxRadius2 || d2 < minRadius2))
+        weight -= 1.0f;
+    }
+
+    if (weight > bestWeight)
+    {
+      bestWeight = weight;
+      bestTargets = counter.targets;
+      bestPoint = curPoint;
+    }
+  }
+
+  if (bestTargets <= 0)
+    return false;
+
+  target.SetPosition(CVec3(bestPoint, 0.0f));
+  DUMP_SELECTOR_TARGET(target)
+  return true;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFMaximizingTargetSelector       , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFDelayTargetSelector            , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFCheckConditionTargetSelector   , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFNotTargetOfSameAbilitySelector , NWorld);
+REGISTER_WORLD_OBJECT_NM(PFDamagingLinksTargetSelector    , NWorld);
+
+#else
+
 #include "PFAIWorld.h"
 #include "PFAITargetSelectors.h"
 #include "TargetSelectorHelper.hpp"
@@ -531,3 +873,5 @@ REGISTER_WORLD_OBJECT_NM(PFDelayTargetSelector            , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFCheckConditionTargetSelector   , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFNotTargetOfSameAbilitySelector , NWorld);
 REGISTER_WORLD_OBJECT_NM(PFDamagingLinksTargetSelector , NWorld);
+
+#endif

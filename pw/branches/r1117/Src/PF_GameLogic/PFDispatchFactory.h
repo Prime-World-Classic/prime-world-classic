@@ -1,5 +1,7 @@
 #pragma once
 
+#include "DBAbility.h"
+
 namespace NWorld
 {
 

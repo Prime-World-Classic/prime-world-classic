@@ -1,5 +1,25 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplicatorHistoryAnalysis.h"
+#include "PFAbilityInstance.h"
+
+namespace NWorld
+{
+
+float GetDamageDealed(CPtr<PFBaseUnit> unit, float deltaTime, PFAbilityInstance *ability)
+{
+  (void)unit;
+  (void)deltaTime;
+  (void)ability;
+  return 0.0f;
+}
+
+}
+
+#else
+
 #include "PFApplInstant.h"
 #include "PFApplicatorHistoryAnalysis.h"
 
@@ -34,3 +54,5 @@ float GetDamageDealed(CPtr<PFBaseUnit> unit, float deltaTime, PFAbilityInstance 
 }
 
 }
+
+#endif

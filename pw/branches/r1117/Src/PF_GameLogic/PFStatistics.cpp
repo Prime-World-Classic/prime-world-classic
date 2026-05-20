@@ -1,5 +1,94 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_OPENGL_BOOTSTRAP ) && defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFBaseHero;
+class PFBaseUnit;
+class PFAIWorld;
+class PFLogicObject;
+class PFStatistics;
+}
+
+template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase*, NWorld::PFBaseHero*, void*);
+template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase*, NWorld::PFBaseHero*, CObjectBase*);
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, void*);
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*);
+template<> NWorld::PFAIWorld* CastToUserObjectImpl<NWorld::PFAIWorld>(CObjectBase*, NWorld::PFAIWorld*, void*);
+template<> NWorld::PFAIWorld* CastToUserObjectImpl<NWorld::PFAIWorld>(CObjectBase*, NWorld::PFAIWorld*, CObjectBase*);
+template<> NWorld::PFLogicObject* CastToUserObjectImpl<NWorld::PFLogicObject>(CObjectBase*, NWorld::PFLogicObject*, void*);
+template<> NWorld::PFLogicObject* CastToUserObjectImpl<NWorld::PFLogicObject>(CObjectBase*, NWorld::PFLogicObject*, CObjectBase*);
+template<> NWorld::PFStatistics* CastToUserObjectImpl<NWorld::PFStatistics>(CObjectBase*, NWorld::PFStatistics*, void*);
+template<> NWorld::PFStatistics* CastToUserObjectImpl<NWorld::PFStatistics>(CObjectBase*, NWorld::PFStatistics*, CObjectBase*);
+
+#include "PFStatistics.h"
+#include "DBSessionRoots.h"
+
+REGISTER_WORLD_OBJECT_NM(PFStatistics, NWorld)
+
+namespace NWorld
+{
+
+PFStatistics::PFStatistics(const CPtr<PFWorld> pWorld)
+: PFWorldObjectBase( pWorld, 0 )
+, pWorld(pWorld)
+, firstMiniGameWinner(-1)
+, towersDestroyedCnt(0)
+, mainBuildingKiller(-1)
+, firstMerciless(-1)
+, firstMGAllLevelsWinner(-1)
+, wasFirstAssault(false)
+{
+  if (NDb::SessionRoot::GetRoot() && NDb::SessionRoot::GetRoot()->logicRoot)
+    scoring = NDb::SessionRoot::GetRoot()->logicRoot->scoringTable;
+
+  ResetUiEvents();
+}
+
+bool PFStatistics::OnStep(float)
+{
+  return true;
+}
+
+PFStatistics* CreateLinuxPFStatistics(PFWorld* pWorld)
+{
+  return new PFStatistics(pWorld);
+}
+
+bool StepLinuxPFStatistics(PFStatistics* pStatistics, float dtInSeconds)
+{
+  return pStatistics ? pStatistics->OnStep(dtInSeconds) : true;
+}
+
+void PFStatistics::Reset()
+{
+  PFWorldObjectBase::Reset();
+  ResetUiEvents();
+}
+
+void PFStatistics::ResetUiEvents()
+{
+  pCustomUiEvents = 0;
+  pEventHeroKill = 0;
+  pEventHeroKillByAI = 0;
+  evHeroKillByNeutralAI = 0;
+  pEventTowerDestroy = 0;
+  pEventTowerDestroyByAI = 0;
+  pEventCheat = 0;
+
+  if (NDb::SessionRoot::GetRoot() && NDb::SessionRoot::GetRoot()->visualRoot)
+    pCustomUiEvents = NDb::SessionRoot::GetRoot()->visualRoot->uiEvents;
+}
+
+void PFStatistics::NotifyTeleportByAbility(PFBaseMovingUnit*, NDb::Ability const*)
+{
+}
+
+} // namespace NWorld
+
+#else
+
 #include "AdventureScreen.h"
 #include "AdventureScreenEvents.h"
 #include "PFAchievement.h"
@@ -1316,3 +1405,5 @@ void PFStatistics::AddFlagRaised(CPtr<PFBaseUnit> pRaiser)
 #pragma code_seg(pop)
 
 } //namespace NWorld
+
+#endif

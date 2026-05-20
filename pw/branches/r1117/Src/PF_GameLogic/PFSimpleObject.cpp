@@ -85,6 +85,25 @@ PFMultiStateObject::PFMultiStateObject(PFWorld* pWorld, const NDb::AdvMapObject 
 
   PFLogicObject::UpdateNatureType();
   PFLogicObject::UpdateDayNightState(night);
+
+#if defined( PW_LINUX_NULL_RENDER )
+  InitData id;
+  id.faction = NDb::FACTION_NEUTRAL;
+  id.playerId = -1;
+  id.pObjectDesc = dbObject.gameObject.GetPtr();
+  id.type = NDb::UNITTYPE_SIMPLEOBJECT;
+  Initialize(id);
+
+  health = 1.0f;
+  UpdateNatureType();
+  UpdateDayNightState(night);
+
+  const float tileSize = pWorld->GetTileMap() ? pWorld->GetTileMap()->GetTileSize() : 0.0f;
+  const int objectTileSize = pMSO && pMSO->lockMask.tileSize > 0 ? pMSO->lockMask.tileSize : 1;
+  const float objectSize = tileSize * objectTileSize;
+  SetObjectSizes(objectSize, objectTileSize, objectTileSize);
+  return;
+#else
   CreateClientObject<NGameX::PFClientMultiStateObject>(pWorld->GetScene(), dbObject, GetTerrainType());
   
   InitData id;
@@ -147,6 +166,7 @@ PFMultiStateObject::PFMultiStateObject(PFWorld* pWorld, const NDb::AdvMapObject 
   float objectSize      = objectTileSize * fTileSize; // rounded up to tile size
 
   SetObjectSizes(objectSize, objectTileSize, objectDynTileSize);
+#endif
 }
 
 NDb::DBSceneComponent const * PFMultiStateObject::GetDBSceneComponent()

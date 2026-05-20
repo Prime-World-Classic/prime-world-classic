@@ -1,4 +1,47 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "PFEaselPlayer.h"
+#include "PFMinigamePlace.h"
+#include "PFAbilityData.h"
+
+namespace NWorld
+{
+
+PFEaselPlayer::PFEaselPlayer(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType unitType, NDb::EFaction faction, NDb::EFaction _originalFaction)
+  : PFBaseHero(pWorld, info, unitType, faction, _originalFaction)
+  , bidon(NDb::BIDONTYPE_NONE)
+{
+}
+
+void PFEaselPlayer::OnDestroyContents() { minigames = 0; PFBaseHero::OnDestroyContents(); }
+void PFEaselPlayer::ForceLeaveMinigame() {}
+bool PFEaselPlayer::Step(float dtInSeconds) { return PFBaseHero::Step(dtInSeconds); }
+void PFEaselPlayer::OnGameFinished( const NDb::EFaction failedFaction ) { PFBaseHero::OnGameFinished(failedFaction); }
+void PFEaselPlayer::OnBeforeClose() {}
+void PFEaselPlayer::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { PFBaseHero::DropCooldowns(dropCooldownParams); }
+void PFEaselPlayer::Isolate( bool isolate ) { isolated = isolate; }
+bool PFEaselPlayer::StartMinigame( PFMinigamePlace * pPlace ) { minigamePlace = pPlace; isolated = IsValid(pPlace); return IsValid(pPlace); }
+bool PFEaselPlayer::OnLeaveMinigameCmd() { minigamePlace = 0; isolated = false; return true; }
+void PFEaselPlayer::GetItemTransferTargets( vector<CPtr<PFBaseHero> > & targets ) { targets.clear(); }
+bool PFEaselPlayer::CanGetScrollDuplicate( PFBaseHero * target ) { (void)target; return false; }
+bool PFEaselPlayer::AddItemToHero( PFBaseHero * target, const NDb::Consumable * pDBDesc, int quantity ) { return target ? target->TakeConsumable(pDBDesc, quantity, NDb::CONSUMABLEORIGIN_MINIGAME) : false; }
+void PFEaselPlayer::SetCurrentBidon( NDb::EBidonType _bidon ) { bidon = _bidon; }
+void PFEaselPlayer::SetNaftaInfoProvider( NGameX::INaftaInfoProvider * naftaInfoProvider ) { (void)naftaInfoProvider; }
+bool PFEaselPlayer::CanBuyZZBoost() { return false; }
+void PFEaselPlayer::BuyZZBoost() {}
+void PFEaselPlayer::LogMinigameEvent( SessionEventType::EventType eventType, int param1, int param2 ) { LogSessionEvent(eventType, param1); (void)param2; }
+void PFEaselPlayer::OnMapLoaded() {}
+void PFEaselPlayer::MinigameEvent( NDb::EBaseUnitEvent eventType) { (void)eventType; }
+void PFEaselPlayer::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseHero::OnUnitDie(pKiller, flags, pDamageDesc); }
+
+} //namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM( PFEaselPlayer, NWorld )
+BASIC_REGISTER_CLASS( PF_Minigames::IMinigames );
+
+#else
 #include "PFEaselPlayer.h"
 
 #include "PFAbilityData.h"
@@ -396,3 +439,5 @@ void PFEaselPlayer::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDam
 
 REGISTER_WORLD_OBJECT_NM( PFEaselPlayer, NWorld )
 BASIC_REGISTER_CLASS( PF_Minigames::IMinigames );
+
+#endif

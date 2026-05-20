@@ -2,11 +2,13 @@
 #define MAPSTARTUP_H_INCLUDED
 
 #include "Core/GameTypes.h"
+#include "Core/WorldBase.h"
 
 
 namespace NDb
 {
   struct AdvMap;
+  struct AdvMapDescription;
   struct AdvMapSettings;
   struct AdventureCameraSettings;
 }

@@ -1,5 +1,129 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseBehaviour;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "../Game/PF/Audit/ClientStubs.h"
+#include "PFFlagpole.h"
+
+namespace NWorld
+{
+
+PFFlagpole::PFFlagpole(PFWorld* pWorld, const NDb::AdvMapObject& _dbObject)
+  : PFBaseUnit(pWorld, _dbObject.offset.GetPlace().pos, dynamic_cast<NDb::Flagpole const*>(_dbObject.gameObject.GetPtr()))
+  , lastSetVulnerable(true)
+  , isRising(false)
+  , dbObject(_dbObject)
+{
+  const NDb::Flagpole* db = dynamic_cast<const NDb::Flagpole*>(dbObject.gameObject.GetPtr());
+  if (!db)
+    return;
+
+  PFBaseUnit::InitData data;
+  data.faction = NDb::FACTION_NEUTRAL;
+  data.type = NDb::UNITTYPE_FLAGPOLE;
+  data.playerId = -1;
+  data.pObjectDesc = db;
+  Initialize(data);
+  health = GetMaxHealth();
+  AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+  AddFlag(NDb::UNITFLAG_FORBIDATTACK);
+  AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+  SetVulnerable(false);
+  lastSetVulnerable = false;
+}
+
+void PFFlagpole::Reset()
+{
+  PFBaseUnit::Reset();
+  isRising = false;
+  UpdateVulnerable();
+}
+
+void PFFlagpole::OnStartRaise(int, const float) { isRising = true; }
+void PFFlagpole::OnCancelRaise() { isRising = false; }
+
+void PFFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit*)
+{
+  ChangeFaction(_faction);
+  health = GetMaxHealth();
+  RemoveFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+  isRising = false;
+  UpdateVulnerable();
+  if (PFFlagpole* prev = GetPrevFlagpole(faction))
+    prev->UpdateVulnerable();
+}
+
+void PFFlagpole::OnDropFlag(PFBaseUnit*)
+{
+  const NDb::EFaction oldFaction = faction;
+  ChangeFaction(NDb::FACTION_NEUTRAL);
+  health = GetMaxHealth();
+  AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+  isRising = false;
+  UpdateVulnerable();
+  if (PFFlagpole* prev = GetPrevFlagpole(oldFaction))
+    prev->UpdateVulnerable();
+}
+
+void PFFlagpole::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
+{
+  OnDropFlag(0);
+  PFBaseUnit::OnUnitDie(pKiller, flags, pDamageDesc);
+}
+
+NDb::ETeamID PFFlagpole::GetTeamId(NDb::EFaction faction) { return faction == NDb::FACTION_FREEZE ? NDb::TEAMID_A : NDb::TEAMID_B; }
+const NDb::Texture* PFFlagpole::GetUiAvatarImage() const { return PFBaseUnit::GetUiAvatarImage(); }
+const wstring& PFFlagpole::GetDescription() const { return PFBaseUnit::GetDescription(); }
+
+float PFFlagpole::OnDamage(const DamageDesc& desc)
+{
+  if (desc.amount < EPS_VALUE || !IsVulnerable())
+    return 0.0f;
+  health = Max(0.0f, health - 1.0f);
+  if (IsDead())
+    OnDropFlag(desc.pSender);
+  return 1.0f;
+}
+
+void PFFlagpole::UpdateVulnerable()
+{
+  const bool vulnerable = !IsNeutral() && !IsProtected();
+  if (lastSetVulnerable == vulnerable)
+    return;
+  SetVulnerable(vulnerable);
+  lastSetVulnerable = vulnerable;
+}
+
+const PFFlagpole* PFFlagpole::GetPrevFlagpole(NDb::EFaction _faction) const { return const_cast<PFFlagpole*>(this)->GetPrevFlagpole(_faction); }
+const PFFlagpole* PFFlagpole::GetNextFlagpole(NDb::EFaction _faction) const { return const_cast<PFFlagpole*>(this)->GetNextFlagpole(_faction); }
+void PFFlagpole::OnAfterReset() { PFBaseUnit::OnAfterReset(); }
+void PFFlagpole::Hide(bool hide) { PFBaseUnit::Hide(hide); }
+
+} // namespace NWorld
+
+WORLD_OBJECT_FUNCTIONS_NM(PFFlagpole, NWorld);
+
+#else
+
+
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
 #ifndef VISUAL_CUTTED
@@ -247,3 +371,5 @@ void PFFlagpole::Hide(bool hide)
 } // end of namespace NWorld
 
 WORLD_OBJECT_FUNCTIONS_NM(PFFlagpole, NWorld);
+
+#endif

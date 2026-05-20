@@ -29,7 +29,7 @@ public:
     INDEX_COUNT,
   };
 
-  int GetIndex() const;
+  int GetIndex() const { return INDEX_MAIN; }
 };
 
 #endif

@@ -50,7 +50,9 @@ PFTree::PFTree(PFWorld *pWorld, const NDb::AdvMapObject &dbObject)
 
   PFLogicObject::UpdateNatureType();
   PFLogicObject::UpdateDayNightState(night);
+#if !defined( PW_LINUX_NULL_RENDER )
   CreateClientObject<NGameX::PFClientTree>( dbObject, pWorld->GetScene(), GetTerrainType() );
+#endif
 
 	CTRect<int> tileRegion;
  
@@ -78,6 +80,9 @@ PFTree::PFTree(PFWorld *pWorld, const NDb::AdvMapObject &dbObject)
 
 void PFTree::Reset()
 {
+#if defined( PW_LINUX_NULL_RENDER )
+  return;
+#else
   if (currentState != stateNormal)
   {
     NGameX::PFClientTree* clientTree = static_cast<NGameX::PFClientTree*>( ClientObject() );
@@ -89,6 +94,7 @@ void PFTree::Reset()
 
   // TODO: prevNatureType and prevNight ?
   CALL_CLIENT_2ARGS(SetState, natureType, GetWorld()->IsNight());
+#endif
 }
 
 void PFTree::Hide( bool hide )
@@ -101,7 +107,9 @@ void PFTree::Hide( bool hide )
   else
     GetWorld()->GetFogOfWar()->AddObstacle( occupiedTiles );
 
+#if !defined( PW_LINUX_NULL_RENDER )
   CALL_CLIENT_1ARGS(Hide, hide);
+#endif
 }
 
 void PFTree::DropTree( const CVec2& dir, const CPtr<NWorld::PFBaseUnit>& pUnitThatDropsTree )
@@ -111,8 +119,13 @@ void PFTree::DropTree( const CVec2& dir, const CPtr<NWorld::PFBaseUnit>& pUnitTh
     return;
   }
 
+#if !defined( PW_LINUX_NULL_RENDER )
   NGameX::PFClientTree* clientTree = static_cast<NGameX::PFClientTree*>( ClientObject() );
   clientTree->DropTree( dir, pUnitThatDropsTree );
+#else
+  (void)dir;
+  (void)pUnitThatDropsTree;
+#endif
   // unlock place on TileMap
   //!! NOTE: should use the same MAP_MODE_... as when marking tree on TileMap
   //   from function PFWorld::AddMapObject()
@@ -133,8 +146,10 @@ void PFTree::DropTree( const CVec2& dir, const CPtr<NWorld::PFBaseUnit>& pUnitTh
 
 void PFTree::RestoreTree()
 {
+#if !defined( PW_LINUX_NULL_RENDER )
   NGameX::PFClientTree *clientTree = (NGameX::PFClientTree*)ClientObject();
   clientTree->RestoreTree();
+#endif
   // lock place on TileMap
   GetWorld()->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_STATIC);
   GetWorld()->GetFogOfWar()->AddObstacle(occupiedTiles);
@@ -159,7 +174,9 @@ void PFTree::UpdateNatureType()
 
   prevNatureType = natureType;
 
+#if !defined( PW_LINUX_NULL_RENDER )
   CALL_CLIENT_2ARGS(SetState, prevNatureType, prevNight);
+#endif
 }
 
 void PFTree::UpdateDayNightState(const bool night)
@@ -171,7 +188,9 @@ void PFTree::UpdateDayNightState(const bool night)
 
   prevNight = night;
 
+#if !defined( PW_LINUX_NULL_RENDER )
   CALL_CLIENT_2ARGS(SetState, prevNatureType, prevNight);
+#endif
 }
 
 bool PFTree::Step(float dtInSeconds)
@@ -223,6 +242,10 @@ void PFTree::CalculateSize(PFWorld *pWorld)
 
   float fObjectSize = pTreeObject->lockMask.tileSize;
 
+#if defined( PW_LINUX_NULL_RENDER )
+  if (fObjectSize <= 0.0f)
+    fObjectSize = 1.0f;
+#else
   if (fObjectSize <= 0)
   {
     NI_DATA_VERIFY( pTreeObject->sceneObjects.size() > 0 &&
@@ -246,6 +269,7 @@ void PFTree::CalculateSize(PFWorld *pWorld)
       fObjectSize = sqrt( fabs2(pAABB->maxX - pAABB->minX) + fabs2(pAABB->maxY - pAABB->minY) );
     }
   }
+#endif
 
   const float fTileSize   = pWorld->GetTileMap()->GetTileSize();
 

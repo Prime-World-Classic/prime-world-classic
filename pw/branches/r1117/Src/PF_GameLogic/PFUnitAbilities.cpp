@@ -1,5 +1,234 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFBaseUnit.h"
+#include "PFUnitAbilities.h"
+
+namespace NWorld
+{
+
+void PFUnitAbilities::CreateAbilities(PFBaseUnit* pOwner, const NDb::Unit& unitDesc)
+{
+  const int abilitiesCount = NDb::KnownEnum<NDb::EAbility>::SizeOf();
+  abilities.clear();
+  abilities.resize(abilitiesCount);
+
+  int curAbility = 0;
+  for (vector<NDb::Ptr<NDb::Ability> >::const_iterator it = unitDesc.abilities.begin(),
+    end = unitDesc.abilities.end(); it != end && curAbility < abilitiesCount; ++it, ++curAbility)
+  {
+    if (*it)
+    {
+      abilities[curAbility].pAbility =
+        new PFAbilityData(pOwner, *it, NDb::EAbilityTypeId(NDb::ABILITYTYPEID_ABILITY0 + curAbility), false);
+    }
+  }
+
+  globalCooldownTime = 0.0f;
+  globalActionsCooldown = 0.0f;
+}
+
+PFAbilityData* PFUnitAbilities::GetAbility(int id)
+{
+  if (id < 0 || id >= abilities.size())
+    return 0;
+  return abilities[id].pAbility;
+}
+
+PFAbilityData const* PFUnitAbilities::GetAbility(int id) const
+{
+  if (id < 0 || id >= abilities.size())
+    return 0;
+  return abilities[id].pAbility;
+}
+
+void PFUnitAbilities::SetAbility(int id, PFAbilityData* pAbility)
+{
+  if (id < 0)
+    return;
+  if (id >= abilities.size())
+    abilities.resize(id + 1);
+  abilities[id].pAbility = pAbility;
+}
+
+int PFUnitAbilities::GetAbilitiesCount() const { return abilities.size(); }
+
+int PFUnitAbilities::GetAbilityIndex(PFAbilityData const* pAbility) const
+{
+  for (TAbilities::const_iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+    if (it->pAbility == pAbility)
+      return it - abilities.begin();
+  return -1;
+}
+
+bool PFUnitAbilities::IsAbilityInProgress(int id) const
+{
+  return 0 <= id && id < abilities.size() && abilities[id].isInProgress;
+}
+
+void PFUnitAbilities::SetAbilityInProgress(int id, bool isInProgress)
+{
+  if (id < 0)
+    return;
+  if (id >= abilities.size())
+    abilities.resize(id + 1);
+  abilities[id].isInProgress = isInProgress;
+}
+
+bool PFUnitAbilities::HaveAbilityInProgress() const
+{
+  for (TAbilities::const_iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+    if (it->isInProgress)
+      return true;
+  return false;
+}
+
+void PFUnitAbilities::DropAbilitiesCooldowns(DropCooldownParams const& dropCooldownParams)
+{
+  for (TAbilities::iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+  {
+    if (it->pAbility)
+    {
+      const bool checkMask = 0 != (dropCooldownParams.flags & (1 << it->pAbility->GetAbilityTypeId()));
+      const bool checkExceptAbility = it->pAbility.GetPtr() != dropCooldownParams.exceptAbility;
+
+      if (checkMask && checkExceptAbility)
+        it->pAbility->DropCooldown(true, dropCooldownParams.cooldownReduction, dropCooldownParams.reduceByPercent);
+    }
+  }
+}
+
+void PFUnitAbilities::DestroyAbilities()
+{
+  for (TAbilities::iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+    if (it->pAbility)
+      it->pAbility->ApplyPassivePart(false);
+  abilities.clear();
+}
+
+void PFUnitAbilities::UpdateAbilities(float dtInSeconds, bool isDead)
+{
+  for (TAbilities::iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+    if (it->pAbility)
+      it->pAbility->Update(dtInSeconds, !isDead);
+
+  if (globalActionsCooldown > 0.0f)
+    globalActionsCooldown = Max(0.0f, globalActionsCooldown - dtInSeconds);
+}
+void PFUnitAbilities::DropAbilitiesProgress()
+{
+  for (TAbilities::iterator it = abilities.begin(), end = abilities.end(); it != end; ++it)
+    it->isInProgress = false;
+  channellingProgress = 0.0f;
+}
+void PFUnitAbilities::UpgradeAbilities()
+{
+  for (int i = 0, count = abilities.size(); i < count; ++i)
+  {
+    PFAbilityData* pAbility = GetAbility(i);
+    if (IsValid(pAbility))
+      pAbility->LevelUp();
+  }
+}
+
+bool PFUnitAbilities::IsAbilityAvailable(int id) const
+{
+  if (id < 0 || id >= abilities.size() || abilities[id].isInProgress)
+    return false;
+
+  PFAbilityData const* pAbility = GetAbility(id);
+  if (!pAbility)
+    return false;
+
+  if (pAbility->IsActive() && globalActionsCooldown > 0.0f)
+    return false;
+
+  return pAbility->CanBeUsed();
+}
+
+float PFUnitAbilities::GetAbilityPreparedness(int id) const
+{
+  if (id < 0 || id >= abilities.size())
+    return 0.0f;
+
+  PFAbilityData const* pAbility = GetAbility(id);
+  if (!pAbility)
+    return 0.0f;
+
+  if (!pAbility->IsActive())
+    return 1.0f;
+
+  const float preparedness = pAbility->GetPreparedness();
+  return preparedness < 1.0f ? preparedness : GetGlobalPreparedness();
+}
+float PFUnitAbilities::GetGlobalPreparedness() const { return globalCooldownTime > 0.0f ? 1.0f - Max(0.0f, globalActionsCooldown) / globalCooldownTime : 1.0f; }
+
+PFBaseUnitUseAbilityState::PFBaseUnitUseAbilityState(CPtr<PFWorld> const& pWorld_, CPtr<PFBaseUnit> const& pOwner_, int id, Target const& target_)
+  : PFBaseUseState(pOwner_, target_)
+  , pWorld(pWorld_)
+  , abilityID(id)
+  , wait4channeling(false)
+{
+}
+
+void PFBaseUnitUseAbilityState::OnEnter()
+{
+  if (IsValid(pOwner))
+    pOwner->SetAbilityInProgress(abilityID, true);
+}
+
+bool PFBaseUnitUseAbilityState::OnStep(float dt)
+{
+  if (!IsUnitValid(pOwner) || !target.IsValid())
+    return true;
+
+  if (target.IsObject() && !IsValid(target.GetObject()))
+    return true;
+
+  FSMStep(dt);
+  if (GetCurrentState())
+    return false;
+
+  if (!pAbilityInstance)
+  {
+    pAbilityInstance = pOwner->UseAbility(abilityID, target);
+    if (!pAbilityInstance)
+      return true;
+  }
+
+  bool isToggleOff = false;
+  if (pAbilityInstance->GetData()->GetType() == NDb::ABILITYTYPE_SWITCHABLE && !pAbilityInstance->IsOn())
+    isToggleOff = true;
+
+  if (IsCastFinished() && wait4channeling && dt > 0.0f)
+    wait4channeling = false;
+
+  return (IsCastFinished() && !wait4channeling) || isToggleOff;
+}
+
+void PFBaseUnitUseAbilityState::OnLeave()
+{
+  if (IsValid(pOwner))
+    pOwner->SetAbilityInProgress(abilityID, false);
+}
+
+NDb::Ability const* PFBaseUnitUseAbilityState::GetDBDesc() const
+{
+  if (!IsValid(pOwner))
+    return 0;
+  PFAbilityData const* pAbility = pOwner->GetAbility(abilityID);
+  return pAbility ? pAbility->GetDBDesc() : 0;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseUnitUseAbilityState, NWorld)
+
+#else
+
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFAIWorld.h"
@@ -291,3 +520,5 @@ NDb::Ability const* PFBaseUnitUseAbilityState::GetDBDesc() const
 
 }
 REGISTER_WORLD_OBJECT_NM(PFBaseUnitUseAbilityState, NWorld)
+
+#endif

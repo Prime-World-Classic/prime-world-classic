@@ -1,5 +1,923 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFBaseAttackData.h"
+#include "PFBaseUnit.h"
+#include "PFWorld.h"
+#include "PFAIWorld.h"
+#include "PFVoxelMap.h"
+#include "TileMap.h"
+#include "WarFog.h"
+#include "Scripts/lua.hpp"
+#include "LuaScript.h"
+
+bool bUseOldUpdateHistoryMethod = false;
+
+extern "C"
+{
+void lua_createtable(lua_State* L, int narr, int nrec) { (void)L; (void)narr; (void)nrec; }
+void lua_settable(lua_State* L, int idx) { (void)L; (void)idx; }
+}
+
+void luaValueSetter::Set(lua_State* L, const char* value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, double value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, float value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, int value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, bool value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, const string& value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, const ILuaValueSettable& value) { value.Set(L); }
+void luaValueSetter::Set(lua_State* L, const CVec2& value) { (void)L; (void)value; }
+void luaValueSetter::Set(lua_State* L, const CVec3& value) { (void)L; (void)value; }
+
+bool IsProcessorStateForLogic() { return false; }
+
+namespace NDebug
+{
+DebugObject::Ring DebugObject::objectsRing;
+DebugObject::SelectedRing DebugObject::selectRing;
+DebugObject::DebugObject() { objectsRing.addLast(this); }
+DebugObject::~DebugObject() { Ring::safeRemove(this); SelectedRing::safeRemove(this); }
+void DebugObject::DeselectAll() {}
+void DebugObject::ProcessAll(Render::IDebugRender*) {}
+void DebugObject::ClearAll() {}
+}
+
+
+
+template<> CObjectBase* CastToObjectBaseImpl<NGameX::DerStatsNameMap>(NGameX::DerStatsNameMap*, void*) { return 0; }
+template<> NGameX::DerStatsNameMap* CastToUserObjectImpl<NGameX::DerStatsNameMap>(CObjectBase*, NGameX::DerStatsNameMap*, void*) { return 0; }
+template<> NGameX::DerStatsNameMap* CastToUserObjectImpl<NGameX::DerStatsNameMap>(CObjectBase*, NGameX::DerStatsNameMap*, CObjectBase*) { return 0; }
+template<> CObjectBase* CastToObjectBaseImpl<NWorld::PFBaseUnitEventListener>(NWorld::PFBaseUnitEventListener*, void*) { return 0; }
+template<> NWorld::PFBaseUnitEventListener* CastToUserObjectImpl<NWorld::PFBaseUnitEventListener>(CObjectBase*, NWorld::PFBaseUnitEventListener*, void*) { return 0; }
+template<> NWorld::PFBaseUnitEventListener* CastToUserObjectImpl<NWorld::PFBaseUnitEventListener>(CObjectBase*, NWorld::PFBaseUnitEventListener*, CObjectBase*) { return 0; }
+namespace NWorld
+{
+PFHFSM::PFHFSM() {}
+PFHFSM::~PFHFSM() {}
+void PFHFSM::DumpAllStates(int) {}
+void PFHFSM::FSMStep(float) {}
+void PFHFSM::PushState(CObj<IPFState> const& pState) { (void)pState; }
+CObj<IPFState> PFHFSM::PopState() { return 0; }
+IPFState* PFHFSM::GetCurrentState() { return 0; }
+IPFState const* PFHFSM::GetCurrentState() const { return 0; }
+void PFHFSM::Cleanup(bool) {}
+void PFHFSM::RemoveState(IPFState*) {}
+const char* PFHFSM::GetCurrentStateName() { return ""; }
+bool PFHFSM::CanClearStack() const { return true; }
+void PFFsm::EnqueueState(CObj<IPFState> pState, bool flushQueue) { (void)pState; (void)flushQueue; }
+bool PFFsm::IsIdle() const { return true; }
+void PFFsm::PauseFSM(bool pause) { paused = pause; }
+void PFFsm::Cleanup(bool) {}
+PFFsm::~PFFsm() {}
+void PFFsm::FsmStep(float) {}
+void PFFsm::FlushStateQueue() {}
+void PFFsm::FlushStateQueue2() {}
+
+static StatValueWithModifiers g_linuxDummyStat;
+typedef vector<StatValueWithModifiers> TLinuxUnitStats;
+static map<const PFBaseUnit*, TLinuxUnitStats> g_linuxUnitStats;
+static vector<PFBaseUnit*> g_linuxBootstrapUnits;
+
+static void LinuxRegisterBootstrapUnit(PFBaseUnit* unit)
+{
+  if (!unit)
+    return;
+  if (find(g_linuxBootstrapUnits.begin(), g_linuxBootstrapUnits.end(), unit) == g_linuxBootstrapUnits.end())
+    g_linuxBootstrapUnits.push_back(unit);
+}
+
+static void LinuxUnregisterBootstrapUnit(PFBaseUnit* unit)
+{
+  g_linuxBootstrapUnits.erase(remove(g_linuxBootstrapUnits.begin(), g_linuxBootstrapUnits.end(), unit), g_linuxBootstrapUnits.end());
+  g_linuxUnitStats.erase(unit);
+}
+
+void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units)
+{
+  units.clear();
+  for (vector<PFBaseUnit*>::iterator it = g_linuxBootstrapUnits.begin(); it != g_linuxBootstrapUnits.end(); ++it)
+  {
+    if (*it)
+      units.push_back(*it);
+  }
+}
+
+static TLinuxUnitStats& GetLinuxUnitStats(const PFBaseUnit* unit)
+{
+  TLinuxUnitStats& stats = g_linuxUnitStats[unit];
+  if (stats.size() < NDb::KnownEnum<NDb::EStat>::SizeOf())
+    stats.resize(NDb::KnownEnum<NDb::EStat>::SizeOf());
+  return stats;
+}
+
+NAMEMAP_BEGIN(PFStatContainer)
+NAMEMAP_END
+
+NAMEMAP_BEGIN(PFStatContainer::StatIncrementProxy)
+NAMEMAP_END
+
+NAMEMAP_BEGIN(PFStatContainer::StatIncrementGE1Proxy)
+NAMEMAP_END
+
+PFStatContainer::PFStatContainer(PFWorld* world)
+  : PFWorldObjectBase(world, 0)
+  , totalIncrementBudget(0.0f)
+  , incrementForceModifier(1.0f)
+  , averageIncPercent(0.0f)
+  , upgradedIncrementBudget(0.0f)
+  , upgradeCounter(0)
+{
+  statIncProxy.Init(this);
+  statIncGE1Proxy.Init(this);
+}
+
+StatValueWithModifiers const* PFStatContainer::Get(NDb::EStat const) const { return &g_linuxDummyStat; }
+StatValueWithModifiers* PFStatContainer::Get(NDb::EStat const) { return &g_linuxDummyStat; }
+NNameMap::Variant* PFStatContainer::ResolveVariant(const char*, int, const char*, int, void*, bool) { return 0; }
+NNameMap::Variant* PFStatContainer::StatIncrementProxy::ResolveVariant(const char*, int, const char*, int, void*, bool) { return 0; }
+NNameMap::Variant* PFStatContainer::StatIncrementGE1Proxy::ResolveVariant(const char*, int, const char*, int, void*, bool) { return 0; }
+void PFStatContainer::Load(const NDb::StatsContainer*, const NDb::Ptr<NDb::UnitConstantsContainer>&) {}
+void PFStatContainer::Load(const NDb::StatsContainer*, const NDb::Ptr<NDb::UnitConstantsContainer>&, const NDb::Ptr<NDb::StatsEnhancersContainer>&) {}
+void PFStatContainer::Load(const NDb::StatsContainer*, const NDb::StatsContainer*, const NDb::Ptr<NDb::UnitConstantsContainer>&) {}
+void PFStatContainer::Load(const NDb::StatsContainer*, const NDb::StatsContainer*, const NDb::Ptr<NDb::UnitConstantsContainer>&, const NDb::Ptr<NDb::StatsEnhancersContainer>&) {}
+NDb::StatBudget const* PFStatContainer::GetStatBudget(NDb::EStat) const { return 0; }
+NDb::StatBudget const* PFStatContainer::GetStatBudget(const NDb::AILogicParameters*, NDb::EStat) { return 0; }
+void PFStatContainer::Upgrade(const int, const int, const float) {}
+void PFStatContainer::Upgrade(const int, const int, const float, const float) {}
+void PFStatContainer::Reset() {}
+void PFStatContainer::CalculateTotalStatIncrements(unsigned) {}
+float PFStatContainer::GetStatUpgradeIncrement(const NDb::EStat, const unsigned, const unsigned) { return 0.0f; }
+void PFStatContainer::StatUpgradeInfo::Initialize(const NDb::UnitStat&, float incr) { increment = incr; upgrades.clear(); }
+
+
+LUA_VALUE_SETTABLE_BEGIN(DeathParamsInfo, 2)
+  LUA_VALUE_SETTABLE_PROPERTY( isAutoAttack )
+  LUA_VALUE_SETTABLE_PROPERTY( isMelee )
+LUA_VALUE_SETTABLE_END
+
+bool UnsummonCriterion::operator()( PFSummonBehaviour*, PFSummonBehaviour* )
+{
+  return false;
+}
+
+NAMEMAP_BEGIN(PFBaseUnit)
+NAMEMAP_END
+
+NAMEMAP_BEGIN(PFBaseUnit::ConditionsResolver)
+NAMEMAP_END
+
+PFBaseUnit::WarFogData::WarFogData() : warFogObjectID(WAR_FOG_BAD_ID), timeOut(0.0f), visRadius(0.0f) {}
+void PFBaseUnit::WarFogData::Clear() { warFogObjectID = WAR_FOG_BAD_ID; timeOut = -1.0f; visRadius = 0.0f; }
+
+PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _dbUnitDesc )
+  : PFLogicObject(_pWorld, pos, _dbUnitDesc)
+  , dbUnitDesc(_dbUnitDesc)
+  , forbidFlags(NDb::KnownEnum<NDb::EUnitFlagType>::SizeOf(), 0)
+  , bStrongTarget(false)
+  , pCurrentTarget(0)
+  , naftaLevel(1)
+  , timeSinceLevelUp(-1.0f)
+  , energy(1.0f)
+  , targetRevisionTime(0.0f)
+  , pMaster(0)
+  , visibleForEnemy(true)
+  , visibleForNeutral(true)
+  , pAttackAbility(0)
+  , maxHealth(1.0f)
+  , maxEnergy(1.0f)
+  , gold(0.0f)
+  , canApplyDispatch(true)
+  , isInCombat(false)
+  , shouldRestoreSceneObject(false)
+  , sleepDelay(2.0f)
+  , bSleep(false)
+  , isInTaunt(false)
+  , murderContext(0)
+  , shield(0.0f)
+  , invalidAbilityTargetCounter(0U)
+  , attackSectorsCount(0)
+  , attackSectorsAngle(0.0f)
+{
+  health = maxHealth;
+  if (_dbUnitDesc)
+  {
+    description = _dbUnitDesc->description.GetText();
+    pImage = _dbUnitDesc->image;
+  }
+  condsResolver.Init(this);
+  InitAttackSectors(3);
+  LinuxRegisterBootstrapUnit(this);
+}
+
+PFBaseUnit::PFBaseUnit()
+  : forbidFlags(NDb::KnownEnum<NDb::EUnitFlagType>::SizeOf(), 0)
+  , bStrongTarget(false)
+  , pCurrentTarget(0)
+  , naftaLevel(1)
+  , timeSinceLevelUp(-1.0f)
+  , energy(1.0f)
+  , targetRevisionTime(0.0f)
+  , pMaster(0)
+  , visibleForEnemy(true)
+  , visibleForNeutral(true)
+  , pAttackAbility(0)
+  , maxHealth(1.0f)
+  , maxEnergy(1.0f)
+  , gold(0.0f)
+  , canApplyDispatch(true)
+  , isInCombat(false)
+  , shouldRestoreSceneObject(false)
+  , sleepDelay(2.0f)
+  , bSleep(false)
+  , isInTaunt(false)
+  , murderContext(0)
+  , shield(0.0f)
+  , invalidAbilityTargetCounter(0U)
+  , attackSectorsCount(0)
+  , attackSectorsAngle(0.0f)
+{
+  condsResolver.Init(this);
+  LinuxRegisterBootstrapUnit(this);
+}
+
+void PFBaseUnit::OnDestroyContents()
+{
+  LinuxUnregisterBootstrapUnit(this);
+}
+void PFBaseUnit::OnDie() {}
+void PFBaseUnit::InitializeLifeEnergy() { maxHealth = 1.0f; maxEnergy = 1.0f; health = maxHealth; energy = maxEnergy; }
+void PFBaseUnit::RegisterInAIWorld() { if (GetWorld() && GetWorld()->GetAIWorld()) GetWorld()->GetAIWorld()->RegisterUnit(this); }
+float PFBaseUnit::GetAttackSpeedInternal() const { return GetAttackSpeed(); }
+const NDb::UnitTargetingParameters& PFBaseUnit::GetTargetingParams() const { return *GetTargetingParamsPtr(); }
+const NDb::UnitTargetingParameters* PFBaseUnit::GetTargetingParamsPtr() const { return unitTargetingParams ? unitTargetingParams.GetPtr() : baseUnitTargetingParams.GetPtr(); }
+bool PFBaseUnit::HasAtackAbility() const { return IsValid(pAttackAbility); }
+NDb::EApplicatorDamageType PFBaseUnit::GetBaseAttackDamageType() const { return GetNativeDamageType(); }
+void PFBaseUnit::InitBaseAttack()
+{
+  if (IsValid(pAttackAbility))
+    pAttackAbility->LevelUp();
+}
+
+void PFBaseUnit::Initialize(InitData const& data)
+{
+  PFLogicObject::Initialize(data);
+  dbUnitDesc = dynamic_cast<const NDb::Unit*>(data.pObjectDesc);
+  if (dbUnitDesc)
+  {
+    baseUnitTargetingParams = dbUnitDesc->targetingParams;
+    unitTargetingParams = dbUnitDesc->targetingParams;
+    description = dbUnitDesc->description.GetText();
+    pImage = dbUnitDesc->image;
+  }
+  InitializeLifeEnergy();
+}
+
+void PFBaseUnit::ModifyStatsByForce(const NDb::MapForceStatModifierApplication) {}
+StatValueWithModifiers* PFBaseUnit::GetStat(NDb::EStat const stat)
+{
+  if (stat < 0 || stat >= NDb::KnownEnum<NDb::EStat>::SizeOf())
+    return 0;
+  return &GetLinuxUnitStats(this)[stat];
+}
+StatValueWithModifiers const* PFBaseUnit::GetStat(NDb::EStat const stat) const
+{
+  if (stat < 0 || stat >= NDb::KnownEnum<NDb::EStat>::SizeOf())
+    return 0;
+  return &GetLinuxUnitStats(this)[stat];
+}
+const float PFBaseUnit::GetUnmodifiedValue(NDb::EStat const stat) const
+{
+  StatValueWithModifiers const* value = GetStat(stat);
+  return value ? value->GetUnmodifiedValue() : 0.0f;
+}
+const float PFBaseUnit::GetStatValue(NDb::EStat const stat) const
+{
+  StatValueWithModifiers const* value = GetStat(stat);
+  return value ? value->GetValue() : 0.0f;
+}
+const float PFBaseUnit::GetStatValue(NDb::EDerivativeStat const) const { return 0.0f; }
+void PFBaseUnit::CopyStatModifiersFrom(PFBaseUnit*, int) {}
+ValueWithModifiers* PFBaseUnit::GetVariableVWM(char const* name)
+{
+  Variable* pVar = SearchVariable(name);
+  if (!pVar)
+  {
+    pVar = new Variable;
+    pVar->name = name ? name : "";
+    variablesRing.addLast(pVar);
+  }
+  return &pVar->var;
+}
+ValueWithModifiers* PFBaseUnit::SearchVariableVWM(char const* name) const
+{
+  Variable* pVar = SearchVariable(name);
+  return pVar ? &pVar->var : 0;
+}
+float PFBaseUnit::GetVariableValue(char const* name) const
+{
+  Variable* pVar = SearchVariable(name);
+  return pVar ? pVar->var.GetValue() : 0.0f;
+}
+float PFBaseUnit::ModifyByVariable(char const* name, float value) const
+{
+  Variable* pVar = SearchVariable(name);
+  if (!pVar)
+    return value;
+  pVar->var.SetBaseValue(value);
+  return pVar->var.GetValue();
+}
+PFBaseUnit::Variable* PFBaseUnit::SearchVariable(char const* name) const
+{
+  if (!name)
+    return 0;
+  for (ring::Range<Variable::Ring> it(variablesRing); it; ++it)
+  {
+    if (it->name == name)
+      return &(*it);
+  }
+  return 0;
+}
+void PFBaseUnit::AddStat(NDb::EStat stat, float amount)
+{
+  if (ValueWithModifiers* value = GetStat(stat))
+    value->SetBaseValue(value->GetBaseValue() + amount);
+}
+const IUnitFormulaPars* PFBaseUnit::GetObjectMaster() const { return pMaster ? pMaster.GetPtr() : this; }
+const IUnitFormulaPars* PFBaseUnit::GetObjectTarget() const { return pCurrentTarget ? pCurrentTarget.GetPtr() : this; }
+int PFBaseUnit::GetNativeDefenceIndex() const { return 0; }
+int PFBaseUnit::GetNativeAttackIndex() const { return 0; }
+NNameMap::Variant* PFBaseUnit::ConditionsResolver::ResolveVariant(const char*, int, const char*, int, void*, bool) { return 0; }
+PFBaseAttackData* PFBaseUnit::GetAttackAbility() { return pAttackAbility; }
+const PFBaseAttackData* PFBaseUnit::GetAttackAbility() const { return pAttackAbility; }
+bool PFBaseUnit::IsAttackFinished() const
+{
+  if (!IsValid(pAttackAbility))
+    return true;
+
+  PFBaseAttackData::AttackInstances const& instances = pAttackAbility->GetAttackInstances();
+  for (PFBaseAttackData::AttackInstances::const_iterator it = instances.begin(), end = instances.end(); it != end; ++it)
+    if (IsValid(*it) && !(*it)->IsAttackFinished())
+      return false;
+
+  return true;
+}
+float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>&, const NDb::UnitTargetingParameters&, PathMap*) const { return 0.0f; }
+bool PFBaseUnit::IsRequireDirectSightToAttack() { return false; }
+bool PFBaseUnit::CanAttackFlying() const { return true; }
+bool PFBaseUnit::CanAttackTarget(PFBaseUnit const* pTarget, bool ignoreInvulnerability) const { return pTarget && (ignoreInvulnerability || pTarget->IsVulnerable()); }
+bool PFBaseUnit::CanSelectTarget(PFBaseUnit const* pTarget, bool) const { return pTarget != 0; }
+CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float, bool, int, bool) { return 0; }
+void PFBaseUnit::OnBeingTargeted(PFBaseUnit&) {}
+void PFBaseUnit::StopAttackingMe(bool) {}
+void PFBaseUnit::AssignTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget) { pCurrentTarget = pTarget; bStrongTarget = strongTarget; OnTargetAssigned(); }
+void PFBaseUnit::DropTarget() { pCurrentTarget = 0; bStrongTarget = false; OnTargetDropped(); }
+void PFBaseUnit::ClearScreamTargets() { screamTargets.clear(); }
+void PFBaseUnit::DoScream(const CPtr<PFBaseUnit>&, ScreamTarget::ScreamType) {}
+void PFBaseUnit::Stacked(const bool) {}
+void PFBaseUnit::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
+bool PFBaseUnit::IsTargetInRange(const Target& target, float range) const
+{
+  if (target.IsObject())
+    return IsObjectInRange(target.GetObject(), range);
+  if (target.IsPosition())
+    return IsPositionInRange(target.GetPosition().AsVec2D(), range);
+  return false;
+}
+
+bool PFBaseUnit::IsTargetInAttackRange(const Target& target, bool useTargetInFormula) const
+{
+  if (useTargetInFormula && target.IsUnit())
+    return IsTargetInAttackRange(target.GetUnit(), useTargetInFormula);
+  return IsTargetInRange(target, GetAttackRange());
+}
+
+bool PFBaseUnit::IsTargetInAttackRange(const PFLogicObject* pTarget, bool useTargetInFormula) const
+{
+  if (!pTarget)
+    return false;
+
+  if (useTargetInFormula && IsValid(pAttackAbility) && pAttackAbility->GetDBDesc())
+  {
+    const float range = pAttackAbility->GetDBDesc()->useRange(this, pTarget, pAttackAbility.GetPtr());
+    if (range > 0.0f)
+      return IsTargetInRange(pTarget, range);
+  }
+
+  return IsObjectInRange(pTarget, GetAttackRange());
+}
+
+void PFBaseUnit::AutoTarget(float) {}
+
+CObj<PFAbilityInstance> PFBaseUnit::CreateAbilityInstance(PFAbilityData* pAbilityData, Target const& target)
+{
+  if (!pAbilityData)
+    return CObj<PFAbilityInstance>(0);
+
+  CObj<PFAbilityInstance> pInstance = pAbilityData->ApplyToTarget(target);
+  if (pInstance)
+    abilityInstances.push_back(pInstance);
+  return pInstance;
+}
+
+bool PFBaseUnit::UseAbilityWithMicroAI()
+{
+  if (!IsMicroAiEnabled() || IsDead() || HaveAbilityInProgress())
+    return false;
+
+  for (int ability = NDb::ABILITY_ID_1; ability <= NDb::ABILITY_ID_4; ++ability)
+  {
+    PFAbilityData* pAbility = GetAbility(ability);
+    if (!pAbility)
+      continue;
+
+    Target target;
+    if (CanUseAbility(ability) && pAbility->CanBeUsed() && pAbility->FindMicroAITarget(target))
+    {
+      CObj<IPFState> pState = InvokeAbility(ability, target);
+      if (IsValid(pState))
+      {
+        EnqueueState(pState, true);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+CObj<PFAbilityInstance> PFBaseUnit::UseAbility(int id, Target const& target)
+{
+  if (!CanUseAbility(id, target) || !IsAbilityAvailable(id))
+    return CObj<PFAbilityInstance>(0);
+
+  PFAbilityData* pAbility = GetAbility(id);
+  if (!pAbility)
+    return CObj<PFAbilityInstance>(0);
+
+  if (!pAbility->IsMultiState())
+    return CreateAbilityInstance(pAbility, target);
+
+  pAbility->Toggle(target);
+  return CObj<PFAbilityInstance>(0);
+}
+
+CObj<IPFState> PFBaseUnit::InvokeAbility(int id, Target const& target)
+{
+  if (IsAbilityInProgress(id) || !CanUseAbility(id))
+    return CObj<IPFState>(0);
+  return CObj<IPFState>(new PFBaseUnitUseAbilityState(GetWorld(), this, id, target));
+}
+
+CObj<PFAbilityInstance> PFBaseUnit::UseExternalAbility(NDb::Ptr<NDb::Ability> const& pDesc, Target const& target)
+{
+  if (!pDesc)
+    return CObj<PFAbilityInstance>(0);
+
+  CObj<PFAbilityData> pAbilityData = new PFAbilityData(this, pDesc, NDb::ABILITYTYPEID_SPECIAL, false, true);
+  return CreateAbilityInstance(pAbilityData, target);
+}
+
+void PFBaseUnit::RegisterExternalPassiveAbility(PFAbilityData* pAbilityData)
+{
+  if (pAbilityData)
+    externalPassiveAbilities.push_back(pAbilityData);
+}
+
+bool PFBaseUnit::UnregisterExternalPassiveAbility(PFAbilityData* pAbilityData)
+{
+  for (vector<CObj<PFAbilityData> >::iterator it = externalPassiveAbilities.begin(); it != externalPassiveAbilities.end(); ++it)
+    if (*it == pAbilityData)
+    {
+      externalPassiveAbilities.erase(it);
+      return true;
+    }
+  return false;
+}
+
+CObj<PFBaseAttackData> PFBaseUnit::ReplaceBaseAttack(CObj<PFBaseAttackData> const& pNewBaseAttack, bool applyPassivePart)
+{
+  if (IsValid(pAttackAbility))
+  {
+    pAttackAbility->ApplyPassivePart(false);
+    pAttackAbility->Cancel();
+  }
+
+  CObj<PFBaseAttackData> old = pAttackAbility;
+  pAttackAbility = pNewBaseAttack;
+
+  if (IsValid(pAttackAbility) && !pAttackAbility->HasPassiveInstance())
+    pAttackAbility->ApplyPassivePart(applyPassivePart);
+
+  return old;
+}
+
+void PFBaseUnit::OnStartedFighting() { isInCombat = true; }
+void PFBaseUnit::OnFinishedFighting() { isInCombat = false; }
+void PFBaseUnit::OnAttackDispatchStarted() const {}
+void PFBaseUnit::OnGameFinished(const NDb::EFaction) {}
+
+void PFBaseUnit::UpdateExternalAbilities(float dt)
+{
+  struct AbilitiesInstancesUpdater
+  {
+    float dt;
+    AbilitiesInstancesUpdater(float dt) : dt(dt) {}
+    bool operator()(CObj<PFAbilityInstance> const& pAbility) { return !IsValid(pAbility) || pAbility->Update(dt); }
+  } updater(dt);
+
+  abilityInstances.erase(remove_if(abilityInstances.begin(), abilityInstances.end(), updater), abilityInstances.end());
+}
+void PFBaseUnit::WakeUp() { bSleep = false; }
+
+bool PFBaseUnit::Step(float dtInSeconds)
+{
+  UpdateAbilities(dtInSeconds, IsDead());
+  if (IsValid(pAttackAbility))
+    pAttackAbility->Update(dtInSeconds, !IsDead());
+  UpdateExternalAbilities(dtInSeconds);
+
+  timeSinceLevelUp += dtInSeconds;
+  StepLastAttackData(dtInSeconds);
+  StepWarFog(dtInSeconds);
+  return PFLogicObject::Step(dtInSeconds);
+}
+
+void PFBaseUnit::StepInvisibility() {}
+void PFBaseUnit::StepWarFog(float) {}
+void PFBaseUnit::ResetWarFog() { for (int i = 0; i < visUnitData.size(); ++i) visUnitData[i].Clear(); }
+bool PFBaseUnit::OnDispatchApply(PFDispatch const&) { return canApplyDispatch; }
+void PFBaseUnit::OnMiss(CPtr<PFBaseUnit> const&) {}
+void PFBaseUnit::CheckAppliedApplicators() {}
+void PFBaseUnit::PlanToRestoreSceneObject(NDb::Ptr<NDb::DBSceneObject>& sObj) { pOriginalSceneObject = sObj; shouldRestoreSceneObject = true; }
+void PFBaseUnit::RestoreStatusEffects() { shouldRestoreStatusEffects = false; }
+void PFBaseUnit::RestoreSceneObject() { shouldRestoreSceneObject = false; }
+void PFBaseUnit::ApplyDamageReduction(float&, NDb::EApplicatorDamageType, DamageDesc const&) {}
+void PFBaseUnit::ApplyDrains(const DamageDesc&, float) {}
+float PFBaseUnit::OnDamage(const DamageDesc& desc)
+{
+  if (!IsVulnerable())
+    return 0.0f;
+  if (desc.damageType < 0 || desc.damageType >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf())
+    return 0.0f;
+
+  DamageDesc normalizedDesc(desc);
+  if (normalizedDesc.damageType == NDb::APPLICATORDAMAGETYPE_NATIVE)
+  {
+    normalizedDesc.damageType =
+      IsValid(normalizedDesc.pSender) && normalizedDesc.pSender->DbUnitDesc()
+        ? normalizedDesc.pSender->GetNativeDamageType()
+        : NDb::APPLICATORDAMAGETYPE_MATERIAL;
+  }
+
+  float damage = Max<float>(0.0f, normalizedDesc.amount);
+  if (!normalizedDesc.ignoreDefences)
+    ApplyDamageReduction(damage, static_cast<NDb::EApplicatorDamageType>(normalizedDesc.damageType), normalizedDesc);
+
+  PFBaseUnitDamageEvent damageEvent(normalizedDesc, damage);
+  EventHappened(damageEvent);
+  damage = Min<float>(Max<float>(0.0f, damageEvent.damage2Deal), GetHealth());
+
+  if (IsDead() || damage <= 0.0f)
+    return 0.0f;
+
+  ApplyDrains(normalizedDesc, damage);
+  TakeHealth(damage);
+
+  if (IsDead())
+  {
+    PFBaseUnitLastHitEvent lastHitEvent(normalizedDesc.pSender);
+    EventHappened(lastHitEvent);
+
+    if (CheckFlag(NDb::UNITFLAG_FORBIDDEATH) || CheckFlag(NDb::UNITFLAG_LIVEAFTERDEATH))
+    {
+      health = 1.0f;
+    }
+    else
+    {
+      int flags = UNITDIEFLAGS_NONE;
+      if (CheckFlag(NDb::UNITFLAG_FORBIDREWARDS))
+        flags |= UNITDIEFLAGS_FORBIDREWARDS;
+      OnUnitDie(normalizedDesc.pSender, flags, &normalizedDesc);
+    }
+  }
+
+  return damage;
+}
+float PFBaseUnit::OnHeal(CPtr<PFBaseUnit>, float amount, bool)
+{
+  if (amount <= 0.0f || CheckFlag(NDb::UNITFLAG_FORBIDLIFERESTORE))
+    return 0.0f;
+  const float before = GetHealth();
+  ChangeHealth(amount);
+  return GetHealth() - before;
+}
+float PFBaseUnit::OnBurnEnergy(CPtr<PFBaseUnit>, float amount)
+{
+  if (amount <= 0.0f)
+    return 0.0f;
+  const float burned = Min<float>(GetMana(), amount);
+  TakeMana(burned);
+  return burned;
+}
+float PFBaseUnit::OnHealEnergy(CPtr<PFBaseUnit>, float amount)
+{
+  if (amount <= 0.0f || CheckFlag(NDb::UNITFLAG_FORBIDENERGYRESTORE))
+    return 0.0f;
+  const float before = GetMana();
+  ChangeMana(amount);
+  return GetMana() - before;
+}
+void PFBaseUnit::OnAddGold(CPtr<PFBaseUnit>, float amount, bool)
+{
+  gold = Max<float>(0.0f, gold + amount);
+}
+float PFBaseUnit::OnRemoveGold(CPtr<PFBaseUnit>, float amount)
+{
+  if (amount <= 0.0f)
+    return 0.0f;
+  float removed = Min<float>(Max<float>(0.0f, gold), amount);
+  gold -= removed;
+  return removed;
+}
+void PFBaseUnit::CancelAbilities()
+{
+  for (int id = 0, count = GetAbilitiesCount(); id < count; ++id)
+  {
+    PFAbilityData* pAbility = GetAbility(id);
+    if (pAbility)
+      pAbility->CancelAbility();
+  }
+
+  for (vector<CObj<PFAbilityData> >::iterator it = externalPassiveAbilities.begin(); it != externalPassiveAbilities.end(); ++it)
+    if (IsValid(*it))
+      (*it)->CancelAbility();
+  externalPassiveAbilities.clear();
+
+  if (IsValid(pAttackAbility))
+    pAttackAbility->Cancel();
+
+  DropAbilitiesProgress();
+}
+void PFBaseUnit::CancelAllDispatchFromUnit(const PFBaseUnit*) {}
+void PFBaseUnit::KillUnit(const CPtr<PFBaseUnit>& pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { OnUnitDie(pKiller, flags, pDamageDesc); }
+void PFBaseUnit::OnUnitDie(CPtr<PFBaseUnit>, int, PFBaseUnitDamageDesc const*) { health = 0.0f; OnDie(); }
+void PFBaseUnit::CleanupAfterDeath(bool) {}
+bool PFBaseUnit::DoAttack(bool allowAllies)
+{
+  if (CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+    return false;
+
+  if (!IsUnitValid(pCurrentTarget) || !IsReadyToAttack() || !IsValid(pAttackAbility))
+    return false;
+
+  return pAttackAbility->DoAttack(Target(pCurrentTarget), allowAllies);
+}
+
+void PFBaseUnit::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget) { AssignTarget(pTarget, strongTarget); }
+
+bool PFBaseUnit::IsReadyToAttack() const
+{
+  return IsValid(pAttackAbility) ? (1.0f - pAttackAbility->GetPreparedness() < EPS_VALUE) : false;
+}
+
+const bool PFBaseUnit::CanUseAbility(int id) const
+{
+  if (id < NDb::ABILITY_ID_1 || id > NDb::ABILITY_ID_4)
+    return false;
+  return !CheckFlagType(static_cast<NDb::EUnitFlagType>(NDb::UNITFLAGTYPE_FORBID_ABILITY1 + id - 1));
+}
+
+const bool PFBaseUnit::CanUseAbility(int id, Target const&) const
+{
+  return CanUseAbility(id);
+}
+
+const bool PFBaseUnit::CanUseAbility(CPtr<PFAbilityData> const& pAbility) const
+{
+  if (!IsValid(pAbility) || !IsValid(pAbility->GetOwner()))
+    return false;
+  if (pAbility->GetOwner()->GetObjectId() != GetObjectId())
+    return false;
+
+  const int abilityIndex = pAbility->GetAbilityTypeId() - NDb::ABILITYTYPEID_ABILITY0;
+  const bool isNormalAbility = NDb::ABILITY_ID_1 <= abilityIndex && abilityIndex <= NDb::ABILITY_ID_4;
+  return isNormalAbility ? CanUseAbility(abilityIndex) : true;
+}
+float PFBaseUnit::GetVisibilityRange() const { return GetStatValue(NDb::STAT_VISIBILITYRANGE); }
+float PFBaseUnit::GetChaseRange() const { return GetVisibilityRange(); }
+float PFBaseUnit::GetTargetingRange() const { return GetVisibilityRange(); }
+float PFBaseUnit::GetAttackRange() const { return GetStatValue(NDb::STAT_RANGE); }
+float PFBaseUnit::GetAggroRange() const { return GetVisibilityRange(); }
+float PFBaseUnit::GetScreamRange() const { return 0.0f; }
+const float PFBaseUnit::GetManaPercent() const { return maxEnergy > EPS_VALUE ? energy / maxEnergy : 0.0f; }
+bool PFBaseUnit::HasMana() const { return maxEnergy > EPS_VALUE; }
+const bool PFBaseUnit::ChangeHealth(float delta) { health = Min(Max(health + delta, 0.0f), static_cast<float>(maxHealth)); return IsDead(); }
+const bool PFBaseUnit::ChangeMana(float delta) { energy = Min(Max(energy + delta, 0.0f), static_cast<float>(maxEnergy)); return true; }
+void PFBaseUnit::TakeMana(const float value) { ChangeMana(-value); }
+void PFBaseUnit::TakeHealth(const float value) { ChangeHealth(-value); }
+
+int PFBaseUnit::OccupyAttackSector(CPtr<PFBaseMovingUnit> const&)
+{
+  if (attackSectors.empty())
+    InitAttackSectors(attackSectorsCount > 0 ? attackSectorsCount : 3);
+
+  if (attackSectors.empty())
+    return -1;
+
+  int bestSector = 0;
+  for (int i = 1; i < attackSectors.size(); ++i)
+    if (attackSectors[i].attackers < attackSectors[bestSector].attackers)
+      bestSector = i;
+
+  ++attackSectors[bestSector].attackers;
+  return bestSector;
+}
+
+void PFBaseUnit::ReleaseAttackSector(int sector)
+{
+  if (0 <= sector && sector < attackSectors.size() && attackSectors[sector].attackers > 0)
+    --attackSectors[sector].attackers;
+}
+
+void PFBaseUnit::ClearAttackSectors()
+{
+  for (int i = 0; i < attackSectors.size(); ++i)
+    attackSectors[i].attackers = 0;
+}
+
+CVec2 PFBaseUnit::GetAttackSectorDir(int sector) const
+{
+  if (0 <= sector && sector < attackSectors.size())
+    return attackSectors[sector].direction;
+  return VNULL2;
+}
+
+CVec2 PFBaseUnit::GetAttackSectorOffset(CPtr<PFBaseMovingUnit> const&, int sector) const
+{
+  if (0 <= sector && sector < attackSectors.size())
+    return attackSectors[sector].direction * (GetObjectSize() * 0.5f);
+  return VNULL2;
+}
+
+void PFBaseUnit::InitAttackSectors(int count)
+{
+  attackSectorsCount = Max(0, count);
+  attackSectorsAngle = attackSectorsCount > 0 ? FP_2PI / attackSectorsCount : 0.0f;
+  attackSectors.resize(attackSectorsCount);
+
+  for (int i = 0; i < attackSectorsCount; ++i)
+  {
+    const float sectorAngle = static_cast<float>(i) * attackSectorsAngle;
+    attackSectors[i].attackers = 0;
+    attackSectors[i].direction.x = cos(sectorAngle);
+    attackSectors[i].direction.y = sin(sectorAngle);
+  }
+}
+
+int PFBaseUnit::GetAttackSectorOccupies(int sector) const
+{
+  if (0 <= sector && sector < attackSectors.size())
+    return attackSectors[sector].attackers;
+  return 0;
+}
+
+void PFBaseUnit::AddFlag(unsigned int flag)
+{
+  for (int i = 0; i < forbidFlags.size(); ++i)
+    if (flag & (1U << i))
+      ++forbidFlags[i];
+}
+
+void PFBaseUnit::RemoveFlag(unsigned int flag)
+{
+  for (int i = 0; i < forbidFlags.size(); ++i)
+    if ((flag & (1U << i)) && forbidFlags[i] > 0)
+      --forbidFlags[i];
+}
+
+bool PFBaseUnit::CheckFlag(unsigned int flag) const
+{
+  for (int i = 0; i < forbidFlags.size(); ++i)
+    if ((flag & (1U << i)) && forbidFlags[i] > 0)
+      return true;
+  return false;
+}
+
+void PFBaseUnit::CopyFlagsFrom(const PFBaseUnit* pOther, bool addNotReplace)
+{
+  if (!pOther)
+    return;
+  if (!addNotReplace)
+    forbidFlags = pOther->forbidFlags;
+  else
+    for (int i = 0; i < forbidFlags.size() && i < pOther->forbidFlags.size(); ++i)
+      forbidFlags[i] += pOther->forbidFlags[i];
+}
+
+bool PFBaseUnit::CheckFlagType(NDb::EUnitFlagType type) const
+{
+  return 0 <= type && type < forbidFlags.size() && forbidFlags[type] > 0;
+}
+
+bool PFBaseUnit::IsStunned() const { return false; }
+void PFBaseUnit::UpgradeStats(int, float) {}
+void PFBaseUnit::UpgradeHeroStats(const int, const float, const float) {}
+void PFBaseUnit::DoLevelups(int count, float) { if (count > 0) { naftaLevel += count; OnLevelUp(); } }
+void PFBaseUnit::OnLevelUp() { timeSinceLevelUp = 0.0f; }
+void PFBaseUnit::SetNaftaLevel(int level) { naftaLevel = Max(1, level); }
+void PFBaseUnit::SetMurderContext(const MurderContext* const context) { murderContext = context; }
+int PFBaseUnit::GetAssistersCount() const { return murderContext ? murderContext->assisterCount : 0; }
+int PFBaseUnit::GetSpecCount() const { return murderContext ? murderContext->spectatorCount : 0; }
+int PFBaseUnit::GetPresentTeamActiveMembers() const { return murderContext ? murderContext->presentTeamActiveMembers : 0; }
+bool PFBaseUnit::CanSee(const CVec3&) const { return true; }
+bool PFBaseUnit::CanSee(const CVec2&) const { return true; }
+bool PFBaseUnit::CanSee(const SVector&) const { return true; }
+bool PFBaseUnit::CanSee(const PFLogicObject&) const { return true; }
+bool PFBaseUnit::IsPlacementVisible(int) const { return true; }
+bool PFBaseUnit::IsVisibleForEnemy(int) const { return visibleForEnemy; }
+bool PFBaseUnit::IsVisibleForFaction(int) const { return true; }
+bool PFBaseUnit::IsVisibleForFactionInternal(const NDb::EFaction) const { return true; }
+void PFBaseUnit::SetVulnerable(bool vulnerable) { if (vulnerable) RemoveFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); else AddFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); }
+void PFBaseUnit::Hide(bool hide) { if (hide) AddFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE); else RemoveFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE); UpdateHiddenState(!hide); }
+void PFBaseUnit::ChangeFaction(NDb::EFaction newFaction) { PFLogicObject::ChangeFaction(newFaction); }
+void PFBaseUnit::OpenWarFog() {}
+void PFBaseUnit::OpenWarFog(NDb::EFaction, float, float) {}
+void PFBaseUnit::CloseWarFog(bool) {}
+const NDb::UnitDeathParameters* PFBaseUnit::GetDeathParams() const { return dbUnitDesc ? dbUnitDesc->deathParameters.GetPtr() : 0; }
+const wstring& PFBaseUnit::GetFactionName() const { static wstring empty; return empty; }
+PFVoxelMap* PFBaseUnit::GetVoxelMap() const { return GetWorld() ? GetWorld()->GetAIWorld() : 0; }
+TileMap* PFBaseUnit::GetTileMap() const { return GetWorld() ? GetWorld()->GetTileMap() : 0; }
+const NDb::AILogicParameters& PFBaseUnit::GetAIParameters() const { return GetWorld()->GetAIWorld()->GetAIParameters(); }
+void PFBaseUnit::SetLastAttackData(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const NDb::EFaction originalFaction) { lastAttack.pVictim = pVictim; lastAttack.byAutoAttack = byAutoAttack; lastAttack.originalFaction = originalFaction; lastAttack.timePassed = 0.0f; }
+void PFBaseUnit::SetLastAttackDataEx(CPtr<PFBaseUnit> const& pVictim, const bool byAutoAttack, const bool, const NDb::EFaction originalFaction) { SetLastAttackData(pVictim, byAutoAttack, originalFaction); }
+void PFBaseUnit::StepLastAttackData(float dtInSeconds) { lastAttack.timePassed += dtInSeconds; lastHeroAttack.timePassed += dtInSeconds; }
+void PFBaseUnit::AddToPriorityTargets(const CPtr<PFBaseUnit>& pTarget) { if (pTarget) priorityTargets[pTarget->GetObjectId()] = PriorityTarget(pTarget, pTarget->GetObjectId(), 0.0f); }
+void PFBaseUnit::UpdatePriorityTargets(float) {}
+bool PFBaseUnit::IsPriorityTarget(const CPtr<PFBaseUnit>& pTarget) const { return pTarget && priorityTargets.find(pTarget->GetObjectId()) != priorityTargets.end(); }
+void PFBaseUnit::RemoveLastAttackData() { lastAttack.Clear(); }
+void PFBaseUnit::RemoveLastHeroAttackData() { lastHeroAttack.Clear(); }
+void PFBaseUnit::OnBecameIdle() {}
+void PFBaseUnit::ForceIdle() { DropTarget(); OnBecameIdle(); }
+void PFBaseUnit::Idle() { ForceIdle(); }
+void PFBaseUnit::DumpInfo(NLogg::CChannelLogger&) const {}
+void PFBaseUnit::ForAllSummons(ISummonAction&, NDb::SummonType) {}
+int PFBaseUnit::GetMaxAllowedSummons(NDb::SummonType type, const string& summonGroupName) const { map<string, int>::const_iterator it = maxAllowedSummons[type].find(summonGroupName); return it == maxAllowedSummons[type].end() ? 0 : it->second; }
+int PFBaseUnit::RemoveSummons(const int, const NDb::SummonType, const string&, const NDb::Creature*, const int, UnsummonCriterion*) { return 0; }
+void PFBaseUnit::RemoveBehaviour() {}
+void PFBaseUnit::Reset() { health = maxHealth; energy = maxEnergy; ResetWarFog(); }
+void PFBaseUnit::OnAfterReset() {}
+void PFBaseUnit::CountAuraApplicators(int& allyAuraCount, int& enemyAuraCount) { allyAuraCount = 0; enemyAuraCount = 0; }
+void PFBaseUnit::ApplyTopBehaviour() {}
+bool PFBaseUnit::UpdateClientColor() { return false; }
+void PFBaseUnit::AddBehaviourOnTop(PFBaseBehaviour* pBehaviour) { if (pBehaviour) behaviourList.addFirst(pBehaviour); }
+void PFBaseUnit::RemoveBehaviour(PFBaseBehaviour* pBehaviour) { if (pBehaviour) PFBaseBehaviour::UnitRing::safeRemove(pBehaviour); }
+float PFBaseUnit::GetNormalLevelling() const { return 0.0f; }
+void PFBaseUnit::CancelChannelling() {}
+void PFBaseUnit::SetHappy() {}
+const NDb::Ability* PFBaseUnit::GetExternalAbility() const { return 0; }
+bool PFBaseUnit::CheckUseLimitations(PFBaseUnit const*, NDb::CastLimitation const*& castLimitation) const { castLimitation = 0; return true; }
+bool PFBaseUnit::CanBeUsedBy(PFBaseUnit const*) const { return false; }
+bool PFBaseUnit::IsUsableBy(PFBaseUnit const* pUnit) const { return CanBeUsedBy(pUnit); }
+CObj<PFAbilityInstance> PFBaseUnit::Use(PFBaseUnit*) { return 0; }
+float PFBaseUnit::GetUseRange(PFBaseUnit*) const { return 0.0f; }
+bool PFBaseUnit::IsLikeHero() const { return IsHero(); }
+void PFBaseUnit::OnSerialize(IBinSaver&) {}
+PFBaseUnit::TClientObject* PFBaseUnit::ClientObject() const { return 0; }
+
+int PFBaseUnitDamageEvent::PushArgsForScript(lua_State*) const { return 0; }
+int MakeSpellTargetFactionFlags(const PFBaseUnit& unit, NDb::ESpellTarget spellTarget)
+{
+  NDb::EFaction faction = unit.GetFaction();
+
+  int factionFlags = 0;
+  if (spellTarget & NDb::SPELLTARGET_NEUTRAL)
+    factionFlags |= (1L << NDb::FACTION_NEUTRAL);
+  if (spellTarget & NDb::SPELLTARGET_ALLY)
+    factionFlags |= (1L << faction);
+  if (spellTarget & NDb::SPELLTARGET_ENEMY)
+    factionFlags |= unit.GetOppositeFactionFlags();
+  if (spellTarget & NDb::SPELLTARGET_SELF)
+    factionFlags |= (1L << faction);
+
+  return factionFlags;
+}
+
+#ifndef _SHIPPING
+CObj<NDebug::DebugObject> PFBaseUnit::CreateDebugObject() { return 0; }
+bool PFBaseUnitDebug::IsObjectValid() const { return IsValid(pOwner); }
+bool PFBaseUnitDebug::Process(Render::IDebugRender*) { return false; }
+#endif
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFStatContainer, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBaseUnit, NWorld)
+
+#else
+
 #include "PFBaseUnit.h"
 #include "PFApplInstant.h"
 #include "WarFog.h"
@@ -21,6 +939,9 @@
 #include "PFApplChannelling.h"
 #include "PFApplAura.h"
 #include "TileMap.h"
+#include "WarFog.h"
+#include "Scripts/lua.hpp"
+#include "LuaScript.h"
 #include "PathMap.h"
 #include "../System/InlineProfiler.h"
 
@@ -3854,4 +4775,6 @@ REGISTER_DEV_VAR("show_leash_range", g_showLeashRange, STORAGE_NONE);
 REGISTER_VAR( "immortal_heroes", g_immortalHeroes, STORAGE_NONE )
 #else
 REGISTER_DEV_VAR( "immortal_heroes", g_immortalHeroes, STORAGE_NONE )
+#endif
+
 #endif

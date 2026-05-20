@@ -1,6 +1,10 @@
 #include "StdAfx.h"
 
 #include "RandomGen.h"
+
+#if defined( NV_LINUX_PLATFORM )
+#include <ctime>
+#endif
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NRandom
 {
@@ -21,7 +25,7 @@ UINT Random()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#define ind(mm,x)	(*(unsigned _int32 *)(( unsigned _int8 *)(mm) + ((x) & ((RANDSIZ-1)<<2))))
+#define ind(mm,x)	(*(nival::uint32_t *)(( nival::uint8_t *)(mm) + ((x) & ((RANDSIZ-1)<<2))))
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define rngstep(mix,a,b,mm,m,m2,r,x) \
 { \
@@ -46,7 +50,7 @@ UINT Random()
 // new random vals recalculation
 static void Isaac( SSeed *pRnd )
 {
-	unsigned _int32 a, b, x, y, *m, *mm, *m2, *r, *mend;
+	nival::uint32_t a, b, x, y, *m, *mm, *m2, *r, *mend;
 	mm = pRnd->randmem; 
 	r = pRnd->randrsl;
 	a = pRnd->randa; 
@@ -80,7 +84,11 @@ const SSeed &GetRandomSeed() { return globalSeed; }
 // It uses first RANDSIZ values from random file for this
 static void FillRandRsl( SSeed *pRes )
 {
+#if defined( NV_WIN_PLATFORM )
 	srand( GetTickCount() );
+#else
+	srand( static_cast<unsigned int>( time(0) ) );
+#endif
 	for ( int i = 0; i < RANDSIZ; i++ )
 		pRes->randrsl[i] = rand();
 }
@@ -88,9 +96,9 @@ static void FillRandRsl( SSeed *pRes )
 void INTERMODULE_EXPORT SSeed::SFLB2_InitVariables()
 {
 	randa = randb = randc = 0;
-	unsigned _int32 *m = randmem;
-	unsigned _int32 *r = randrsl;
-	unsigned _int32 a, b, c, d, e, f, g, h;
+	nival::uint32_t *m = randmem;
+	nival::uint32_t *r = randrsl;
+	nival::uint32_t a, b, c, d, e, f, g, h;
 	a = b = c = d = e = f = g = h = 0x9e3779b9;	// the golden ratio
 	// scramble it
 	for ( int i = 0; i < 4; ++i )

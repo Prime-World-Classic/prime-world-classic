@@ -1,4 +1,365 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplicator.h"
+#include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
+#include "PFBaseUnit.h"
+#include "PFDispatchFactory.h"
+#include "PFWorld.h"
+#include "PFTalent.h"
+#include "TileMap.h"
+
+namespace NWorld
+{
+
+namespace
+{
+const string g_emptyApplicatorName;
+NDb::Ptr<NDb::BaseApplicator> g_emptyApplicatorDb;
+}
+
+#ifndef _SHIPPING
+map<NDb::DBID, int> PFBaseApplicator::s_ActiveApplicatorsCountByDBID;
+#endif
+
+IUnitFormulaPars const *PFBaseApplicator::RetriveReciever() const { return target.IsUnit() ? target.GetUnit() : 0; }
+float PFBaseApplicator::RetrieveParam(ExecutableFloatString const &par, float defaultValue) const { return par(GetAbilityOwner(), pReceiver, this, defaultValue); }
+bool PFBaseApplicator::RetrieveParam(ExecutableBoolString const &par, bool defaultValue) const { return par(GetAbilityOwner(), pReceiver, this, defaultValue); }
+int PFBaseApplicator::RetrieveParam(ExecutableIntString const &par, int defaultValue) const { return par(GetAbilityOwner(), pReceiver, this, defaultValue); }
+int PFBaseApplicator::GetRank() const { return pAbility ? pAbility->GetRank() : 1; }
+
+const CObj<PFDispatch>& PFBaseApplicator::GetDispatch() const { return (!pDispatch && IsValid(pParent)) ? pParent->GetDispatch() : pDispatch; }
+CVec2 PFBaseApplicator::GetTargetPos(void) const { return target.IsPosition() ? target.GetPosition().AsVec2D() : target.GetObject() ? target.GetObject()->GetPos() : VNULL2; }
+float PFBaseApplicator::GetScale() const { return pAbility ? pAbility->GetScale() * GetParentScale() : GetParentScale(); }
+bool PFBaseApplicator::IsAbilityOn() const { return pAbility ? pAbility->IsOn() : true; }
+float PFBaseApplicator::GetDist2Target() const { return pOwner ? (target.AcquirePosition().AsVec2D() - pOwner->GetPosition().AsVec2D()).Length() : 0.0f; }
+float PFBaseApplicator::GetManaCost() const { return GetAbilityData() ? GetAbilityData()->GetManaCost() : 0.0f; }
+float PFBaseApplicator::GetPreparedness() const { return GetAbilityData() ? GetAbilityData()->GetPreparedness() : 0.0f; }
+int PFBaseApplicator::GetAbilityType() const { return GetAbilityData() ? GetAbilityData()->GetType() : 0; }
+int PFBaseApplicator::GetScrollLevel() const { return 0; }
+bool PFBaseApplicator::IsNight() const { return pOwner && pOwner->GetWorld() ? pOwner->GetWorld()->IsNight() : false; }
+float PFBaseApplicator::GetParentScale() const { return IsValid(pParent) ? pParent->GetScale() : 1.0f; }
+bool PFBaseApplicator::Roll(float probability) const { return probability >= 1.0f; }
+int PFBaseApplicator::GetRandom(int from, int to) const { return (from + to) / 2; }
+bool PFBaseApplicator::GetSmartRoll(float probability, int, int, const IUnitFormulaPars*, const IUnitFormulaPars*) const { return Roll(probability); }
+int PFBaseApplicator::GetSmartRandom(int, float, const IUnitFormulaPars*, const IUnitFormulaPars*) const { return 0; }
+
+float PFBaseApplicator::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const
+{
+  if (IsValid(pUpgraderAbilityData))
+    return pUpgraderAbilityData->CalcParam(name, pSender, pReceiver, this);
+  return GetAbilityData() ? GetAbilityData()->CalcParam(name, pSender, pReceiver, this) : 0.0f;
+}
+
+NDb::UnitConstant const* PFBaseApplicator::GetConstant(const char *name) const
+{
+  if (IsValid(pUpgraderAbilityData))
+    return pUpgraderAbilityData->GetConstant(name);
+  return GetAbilityData() ? GetAbilityData()->GetConstant(name) : 0;
+}
+
+int PFBaseApplicator::GetTerrainType() const { return 0; }
+
+IUnitFormulaPars const* PFBaseApplicator::GetObject(char const* objName) const
+{
+  if (strcmp(objName, "Target") == 0)
+    return target.IsUnit() ? target.GetUnit() : 0;
+  if (strcmp(objName, "Receiver") == 0)
+    return pReceiver.GetPtr();
+  if (strcmp(objName, "Owner") == 0)
+    return GetAbilityOwner();
+  return 0;
+}
+
+float PFBaseApplicator::GetAbilityScale(bool, float statValue, EAbilityScaleMode, float, float, bool) const { return statValue; }
+int PFBaseApplicator::GetAlternativeTargetIndex() const { return 0; }
+int PFBaseApplicator::MakeSpellTargetFactionFlags(NDb::ESpellTarget spellTarget) const { return static_cast<int>(spellTarget); }
+
+PFBaseApplicator::PFBaseApplicator(PFApplCreatePars const &cp)
+  : PFWorldObjectBase(cp.pAbility ? cp.pAbility->GetWorld() : (IsValid(cp.pWorld) ? cp.pWorld.GetPtr() : 0), 0)
+  , pOwner(cp.pAbility ? cp.pAbility->GetOwner().GetPtr() : (IsValid(cp.pOwner) ? cp.pOwner.GetPtr() : 0))
+  , pAbility(cp.pAbility)
+  , pDispatch(cp.pDispatch)
+  , pParent(cp.pParent)
+  , pDBAppl(cp.pDBAppl)
+  , target(cp.target)
+  , pUpgraderAbilityData(cp.pUpgraderAbilityData)
+  , flags(FLAG_ENABLED)
+  , markerTime(0.0f)
+  , bPassive(cp.bPassive)
+  , stopReason(APPL_STOP_REASON_NONE)
+{
+  if (IsValid(pParent) && !IsValid(pUpgraderAbilityData))
+    pUpgraderAbilityData = pParent->GetUpgraderAbilityData();
+  if (IsValid(pAbility) && pAbility->GetData() && pAbility->GetData()->IsMelee())
+    flags |= FLAG_MELEE;
+}
+
+PFBaseApplicator::PFBaseApplicator() : flags(0), markerTime(0.0f), bPassive(false), stopReason(APPL_STOP_REASON_NONE) {}
+PFBaseApplicator::~PFBaseApplicator() {}
+
+bool PFBaseApplicator::Init()
+{
+  Target targ;
+  MakeApplicationTarget(targ);
+  pReceiver = targ.IsUnit() ? targ.GetUnit() : 0;
+  return CheckTarget(targ);
+}
+
+void PFBaseApplicator::SetEnabled(bool isEnabled) { isEnabled ? flags |= FLAG_ENABLED : flags &= ~FLAG_ENABLED; }
+void PFBaseApplicator::SetBlocked(bool isBlocked) { isBlocked ? flags |= FLAG_BLOCKED : flags &= ~FLAG_BLOCKED; }
+void PFBaseApplicator::SetChanged(bool isChanged) { isChanged ? flags |= FLAG_CHANGED : flags &= ~FLAG_CHANGED; }
+
+bool PFBaseApplicator::Start()
+{
+  if (pAbility)
+    pAbility->NotifyApplicatorStarted(pReceiver);
+  if (IsValid(pParent))
+    pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_START);
+
+  const bool isEnabled = pDBAppl ? RetrieveParam(pDBAppl->enabled, true) : true;
+  SetEnabled(isEnabled);
+  return !isEnabled;
+}
+
+void PFBaseApplicator::Stop()
+{
+  pDispatch = 0;
+  pUpgraderAbilityData = 0;
+  flags |= FLAG_STOPPED;
+  if (pAbility)
+    pAbility->NotifyApplicatorStopped(pReceiver);
+  if (IsValid(pParent))
+    pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_STOP);
+  RemoveFromRingsSafe();
+}
+
+bool PFBaseApplicator::Step(float) { return !IsAlive(); }
+void PFBaseApplicator::Enable() { SetEnabled(true); }
+void PFBaseApplicator::Disable() { SetEnabled(false); }
+void PFBaseApplicator::Block() { SetBlocked(true); Disable(); }
+void PFBaseApplicator::Unblock() { SetBlocked(false); Enable(); }
+
+void PFBaseApplicator::MakeApplicationTarget(Target &targ, NDb::EApplicatorApplyTarget applyTarget) const
+{
+  switch (applyTarget)
+  {
+  case NDb::APPLICATORAPPLYTARGET_ABILITYOWNER:
+    targ.SetUnit(GetAbilityOwner());
+    break;
+  case NDb::APPLICATORAPPLYTARGET_PREVAPPLICATORRECEIVER:
+    if (IsValid(pParent))
+      targ.SetUnit(pParent->GetReceiver());
+    else
+      targ = target;
+    break;
+  case NDb::APPLICATORAPPLYTARGET_PREVAPPLICATORTARGET:
+    targ = IsValid(pParent) ? pParent->GetTarget() : target;
+    break;
+  case NDb::APPLICATORAPPLYTARGET_ABILITYTARGET:
+    targ = pAbility ? pAbility->GetTarget() : target;
+    break;
+  case NDb::APPLICATORAPPLYTARGET_CASTPOSITION:
+    targ = pAbility ? Target(pAbility->GetCastPosition()) : target;
+    break;
+  case NDb::APPLICATORAPPLYTARGET_CASTMASTERPOSITION:
+    targ = pAbility ? Target(pAbility->GetCastMasterPosition()) : target;
+    break;
+  default:
+    targ = target;
+    break;
+  }
+}
+
+CVec3 PFBaseApplicator::AcquireApplicationPosition() const
+{
+  Target targ;
+  MakeApplicationTarget(targ);
+  return targ.AcquirePosition();
+}
+
+bool PFBaseApplicator::CheckTarget(const Target &targ) const
+{
+  if (targ.GetType() == Target::INVALID)
+    return false;
+  if (((1 << targ.GetType()) & GetAcceptableTargetFlags()) == 0)
+    return false;
+  if (targ.IsUnit() && ((1 << targ.GetUnit()->GetUnitType()) & GetAcceptableUnitTypeFlags()) == 0)
+    return false;
+  return true;
+}
+
+namespace
+{
+struct ApplicatorsToStopCollector : public NonCopyable
+{
+  PFBaseApplicator const* pParent;
+  PFBaseApplicator::SentRing& applicatorsToStop;
+
+  ApplicatorsToStopCollector(PFBaseApplicator const* pParent, PFBaseApplicator::SentRing& applicatorsToStop)
+    : pParent(pParent)
+    , applicatorsToStop(applicatorsToStop)
+  {
+  }
+
+  void operator()(CObj<PFBaseApplicator> const& pApp)
+  {
+    if (pApp && pApp->GetParentAppl() == pParent)
+    {
+      PFBaseApplicator::SentRing::safeRemove(pApp);
+      applicatorsToStop.addLast(pApp);
+    }
+  }
+};
+
+void StopCollectedApplicators(PFBaseApplicator::SentRing& applicatorsToStop)
+{
+  while (!applicatorsToStop.empty())
+  {
+    PFBaseApplicator* app = applicatorsToStop.first();
+    CObj<PFBaseApplicator> applObj(app);
+    PFBaseApplicator::SentRing::remove(app);
+
+    if (app->IsAlive())
+      app->Stop();
+    MemorizeApplicator(applObj);
+  }
+}
+}
+
+void PFBaseApplicator::RemoveChildrenApplicators()
+{
+  PFBaseApplicator::SentRing applicatorsToStop;
+  ApplicatorsToStopCollector collector(this, applicatorsToStop);
+
+  if (IsValid(pOwner))
+  {
+    pOwner->ForAllSentApplicators(collector);
+    pOwner->ForAllAppliedApplicators(collector);
+  }
+
+  if (IsValid(pReceiver))
+  {
+    pReceiver->ForAllSentApplicators(collector);
+    pReceiver->ForAllAppliedApplicators(collector);
+  }
+
+  StopCollectedApplicators(applicatorsToStop);
+}
+
+void PFBaseApplicator::RemoveChildrenApplicatorsFromUnit(PFBaseUnit* pUnit)
+{
+  if (!pUnit)
+    return;
+
+  PFBaseApplicator::SentRing applicatorsToStop;
+  ApplicatorsToStopCollector collector(this, applicatorsToStop);
+  pUnit->ForAllAppliedApplicators(collector);
+  StopCollectedApplicators(applicatorsToStop);
+}
+void PFBaseApplicator::Recalculate() {}
+CPtr<PFBaseUnit> PFBaseApplicator::GetAbilityOwner() const { return pOwner.GetPtr(); }
+void PFBaseApplicator::DumpInfo(NLogg::CChannelLogger&) const {}
+
+bool PFBaseApplicator::CheckDamageTypeFilter(int flags, int damageType, NDb::EDamageFilter filterFlags, bool enableReflected)
+{
+  if (!enableReflected && (flags & FLAG_REFLECTED))
+    return false;
+  int rangeFilter = (flags & FLAG_MELEE) ? NDb::DAMAGEFILTER_MELEE : NDb::DAMAGEFILTER_RANGED;
+  if ((filterFlags & rangeFilter) == 0)
+    return false;
+  int damageFilter = NDb::DAMAGEFILTER_PURE;
+  if (damageType == NDb::APPLICATORDAMAGETYPE_MATERIAL)
+    damageFilter = NDb::DAMAGEFILTER_MATERIAL;
+  else if (damageType != NDb::APPLICATORDAMAGETYPE_PURE)
+    damageFilter = NDb::DAMAGEFILTER_ENERGY;
+  return (filterFlags & damageFilter) != 0;
+}
+
+const char* PFBaseApplicator::ErrorStr(const char *str) const { return str; }
+
+NDb::Ptr<NDb::BaseApplicator> const& PFBaseApplicator::GetDBBase() const
+{
+  if (!pDBAppl)
+    return g_emptyApplicatorDb;
+  if (pDBAppl->GetObjectTypeID() == NDb::ApplicatorNameOverrider::typeId)
+    return static_cast<NDb::ApplicatorNameOverrider const*>(pDBAppl.GetPtr())->applicator;
+  return pDBAppl;
+}
+
+string const& PFBaseApplicator::GetApplicatorName() const
+{
+  if (!pDBAppl)
+    return g_emptyApplicatorName;
+  if (pDBAppl->GetObjectTypeID() == NDb::ApplicatorNameOverrider::typeId)
+    return pDBAppl->formulaName;
+  return GetDBBase() ? GetDBBase()->formulaName : g_emptyApplicatorName;
+}
+
+float PFBaseApplicator::GetTerrainPart(int) const { return 0.0f; }
+int PFBaseApplicator::GetTerrianTypeUnderCursor() const { return 0; }
+int PFBaseApplicator::GetNatureTypeInPos(CVec2) const { return 0; }
+bool PFBaseApplicator::CheckUpgradePerCastPerTarget() const { return true; }
+int PFBaseApplicator::GetActivatedWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetActivatedWithinKit() : 0; }
+int PFBaseApplicator::GetTalentsWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetTalentsWithinKit() : 0; }
+float PFBaseApplicator::GetStatusDispellPriority(const IUnitFormulaPars*, bool) const { return -1.0f; }
+bool PFBaseApplicator::CheckEffectEnabled(const PF_Core::BasicEffect&) { return true; }
+void PFBaseApplicator::OnAfterReset() { PFWorldObjectBase::OnAfterReset(); }
+
+bool ActivateApplicator(CObj<PFBaseApplicator> app, CObj<PFAbilityInstance> const& pAbility)
+{
+  if (!app)
+    return false;
+  Target applicationTarget;
+  app->MakeApplicationTarget(applicationTarget);
+  if (!applicationTarget.IsUnit())
+  {
+    app->Start();
+    app->Stop();
+    MemorizeApplicator(app);
+    return true;
+  }
+  if (!pAbility || !pAbility->GetData() || pAbility->GetData()->IsTargetValid(applicationTarget, app->CanBeAppliedOnDead()))
+    return applicationTarget.GetUnit()->OnApplicatorApply(app);
+  return false;
+}
+
+void CreateAndActivateApplicators(const vector<NDb::Ptr<NDb::BaseApplicator>> &applicators, const CObj<PFAbilityInstance> &pAbility, Target const &target, CPtr<PFBaseApplicator> pParent)
+{
+  PFApplCreatePars cp(pAbility, target, pParent);
+  for (int i = 0, count = applicators.size(); i < count; ++i)
+  {
+    cp.pDBAppl = applicators[i];
+    if (!cp.pDBAppl)
+      continue;
+    CObj<PFBaseApplicator> pApplicator(CreateApplicator(cp));
+    ActivateApplicator(pApplicator, pAbility);
+    if (IsValid(pParent))
+      pParent->OnChildApplicatorCreated(pApplicator);
+  }
+}
+
+void MemorizeApplicator(CObj<PFBaseApplicator> app)
+{
+  if (!app)
+    return;
+  app->RemoveFromRingsSafe();
+  CPtr<PFBaseUnit> pReceiver = app->GetReceiver();
+  if (IsValid(pReceiver))
+    pReceiver->RegisterAppliedApplicatorToHistory(app);
+  CPtr<PFBaseUnit> pSender = app->GetAbilityOwner();
+  if (IsValid(pSender))
+    pSender->RegisterSentApplicatorToHistory(app);
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFBaseApplicator, NWorld);
+
+#else
+
 #include "PFApplicator.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
@@ -944,3 +1305,5 @@ void MemorizeApplicator(CObj<PFBaseApplicator> app)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 REGISTER_WORLD_OBJECT_NM(PFBaseApplicator, NWorld);
+
+#endif

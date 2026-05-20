@@ -1,6 +1,111 @@
 #pragma once
 
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplChannelling.h"
+#include "PFBaseUnit.h"
+#include "PFAbilityInstance.h"
+
+namespace NWorld
+{
+
+bool PFApplChannelling::Start()
+{
+  if (PFApplBuff::Start())
+    return true;
+
+  state = STATE_CHANNELLING;
+  timer = 0.0f;
+  period = GetDB().period;
+  scale = 1.0f;
+  SetOwnerProgress(0.0001f);
+
+  if (IsValid(pOwner))
+    pOwner->AddEventListener(this);
+
+  return false;
+}
+
+void PFApplChannelling::Stop()
+{
+  if (IsValid(pOwner))
+    pOwner->RemoveEventListener(this);
+  SetOwnerProgress(0.0f);
+  PFApplBuff::Stop();
+}
+
+bool PFApplChannelling::Step(float dtInSeconds)
+{
+  if (state == STATE_CANCEL || state == STATE_INTERRUPT)
+    return true;
+
+  if (PFApplBuff::Step(dtInSeconds))
+  {
+    state = STATE_FIRE;
+    return true;
+  }
+
+  timer += dtInSeconds;
+  if (period > EPS_VALUE && timer > period)
+  {
+    timer = fmodf(timer, period);
+    Strike();
+  }
+
+  SetOwnerProgress(CalculateProgress());
+  return state != STATE_CHANNELLING;
+}
+
+void PFApplChannelling::Strike() {}
+void PFApplChannelling::Fire() { state = STATE_FIRE; }
+void PFApplChannelling::Cancel() { state = STATE_CANCEL; }
+
+float PFApplChannelling::CalculateProgress() const
+{
+  return GetLifetime() > 0.0f ? (GetLifetime() - GetDuration()) / GetLifetime() : 1.0f;
+}
+
+void PFApplChannelling::SetOwnerProgress(float) {}
+
+float PFApplChannelling::GetScale() const
+{
+  return state == STATE_CHANNELLING ? scale : CalculateProgress();
+}
+
+unsigned int PFApplChannelling::OnEvent(const PFBaseUnitEvent *pEvent)
+{
+  if (!pEvent)
+    return PFBaseUnitEventListener::FLAGS_REMOVE;
+
+  if (pEvent->GetType() == NDb::BASEUNITEVENT_CHANNELINGCANCELED)
+  {
+    state = STATE_CANCEL;
+    SetOwnerProgress(0.0f);
+    return PFBaseUnitEventListener::FLAGS_REMOVE;
+  }
+
+  return 0;
+}
+
+bool PFApplChannelling::IsChannelingTargetValid() const
+{
+  return true;
+}
+
+float PFApplChannelling::GetVariable(const char* varName) const
+{
+  if (strcmp(varName, "Interrupted") == 0)
+    return state == STATE_INTERRUPT;
+  return Base::GetVariable(varName);
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplChannelling, NWorld);
+
+#else
 #include "PFBaseUnit.h"
 #include "PFHero.h"
 #include "PFAIWorld.h"
@@ -316,3 +421,5 @@ float PFApplChannelling::GetVariable( const char* varName ) const
 }
 
 REGISTER_WORLD_OBJECT_NM(PFApplChannelling, NWorld);
+
+#endif

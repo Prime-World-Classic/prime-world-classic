@@ -1,6 +1,68 @@
 #include "stdafx.h"
 
 #include "TriggerMarkerHandler.h"
+#include "DBAdvMap.h"
+#include "PFLogicObject.h"
+
+#if defined( PW_LINUX_OPENGL_BOOTSTRAP ) && defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TriggerMarkerHandler::UnitAccumulatorFunctor::UnitAccumulatorFunctor( const CVec2 &pos_, float range_, NDb::ESpellTarget _targetType )
+: pos(pos_), range(range_), targetType(_targetType)
+{
+  counterUnitFaction[ NDb::FACTION_NEUTRAL ] = 0;
+  counterUnitFaction[ NDb::FACTION_FREEZE ] = 0;
+  counterUnitFaction[ NDb::FACTION_BURN ] = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void TriggerMarkerHandler::UnitAccumulatorFunctor::operator()( NWorld::PFLogicObject& unit )
+{
+  if ( unit.IsInRange( pos, range ) && (targetType & (1L << unit.GetUnitType())) != 0 )
+    counterUnitFaction[unit.GetFaction()]++;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TriggerMarkerHandler::TriggerMarkerHandler( PFWorld* pWorld, NDb::AdvMapSettings const * _advMapSettings )
+  : PFWorldObjectBase( pWorld, 0 )
+  , advMapSettings(_advMapSettings)
+{
+  if (!advMapSettings)
+    return;
+
+  for( vector<NDb::TriggerMarkerBinding>::const_iterator it = advMapSettings->triggerMarkerBinding.begin(), itEnd = advMapSettings->triggerMarkerBinding.end(); it != itEnd; ++it )
+  {
+    for( int k = 0; k < it->MarkerPoints.size(); k++ )
+    {
+      if( activeStates.find( it->MarkerPoints[k] ) == activeStates.end() )
+      {
+        activeStates[it->MarkerPoints[k]].resize( NDb::KnownEnum<NDb::EFaction>::SizeOf() );
+
+        for( int i = 0; i < activeStates[it->MarkerPoints[k]].size(); i++ )
+        {
+          activeStates[it->MarkerPoints[k]][i].current = 0;
+          activeStates[it->MarkerPoints[k]][i].previous = 0;
+        }
+      }
+    }
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool TriggerMarkerHandler::Step(float)
+{
+  return true;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(TriggerMarkerHandler,  NWorld)
+
+#else
+
 #include "PFAIContainer.h"
 #include "PFAIWorld.h"
 #include "TileMap.h"
@@ -9,6 +71,22 @@
 
 namespace NWorld
 {
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+TriggerMarkerHandler::UnitAccumulatorFunctor::UnitAccumulatorFunctor( const CVec2 &pos_, float range_, NDb::ESpellTarget _targetType )
+: pos(pos_), range(range_), targetType(_targetType)
+{
+  counterUnitFaction[ NDb::FACTION_NEUTRAL ] = 0;
+  counterUnitFaction[ NDb::FACTION_FREEZE ] = 0;
+  counterUnitFaction[ NDb::FACTION_BURN ] = 0;
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void TriggerMarkerHandler::UnitAccumulatorFunctor::operator()( NWorld::PFLogicObject& unit )
+{
+  if ( unit.IsInRange( pos, range ) && (targetType & (1L << unit.GetUnitType())) != 0 )
+    counterUnitFaction[unit.GetFaction()]++;
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 TriggerMarkerHandler::TriggerMarkerHandler( PFWorld* pWorld, NDb::AdvMapSettings const * _advMapSettings )
@@ -95,3 +173,5 @@ bool TriggerMarkerHandler::Step(float dt)
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(TriggerMarkerHandler,  NWorld)
+
+#endif

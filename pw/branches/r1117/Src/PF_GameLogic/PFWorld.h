@@ -164,6 +164,31 @@ class PFWorld : public PF_Core::World
 
   CObj<DayNightController>  dayNightController;
   float                   timeScale;
+#if defined( PW_LINUX_NULL_RENDER )
+  int linuxLoadedWarFogUnblockObjects;
+  int linuxLoadedSimpleObjects;
+  int linuxLoadedMultiStateObjects;
+  int linuxLoadedTreeObjects;
+  int linuxLoadedGlyphSpawnerObjects;
+  int linuxLoadedAdvMapObstacleObjects;
+  int linuxLoadedHeroPlaceHolderObjects;
+  int linuxLoadedCreepSpawnerObjects;
+  int linuxLoadedNeutralCreepSpawnerObjects;
+  int linuxLoadedSimpleBuildingObjects;
+  int linuxLoadedUsableBuildingObjects;
+  int linuxLoadedShopObjects;
+  int linuxLoadedQuarterObjects;
+  int linuxLoadedTowerObjects;
+  int linuxLoadedControllableTowerObjects;
+  int linuxLoadedFountainObjects;
+  int linuxLoadedRoadFlagpoleObjects;
+  int linuxLoadedScriptedFlagpoleObjects;
+  int linuxLoadedMainBuildingObjects;
+  int linuxLoadedMinigamePlaceObjects;
+  int linuxLoadedCameraSplineObjects;
+  int linuxLoadedScriptPathObjects;
+  int linuxLoadedScriptPolygonAreaObjects;
+#endif
 
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(1,(PF_Core::World*)this); f.Add(2,&pTileMap); f.Add(3,&warFog); f.Add(4,&pResolver); f.Add(5,&pAIWorld); f.Add(6,&pAIContainer); f.Add(7,&pNatureMap); f.Add(8,&pStatistics); f.Add(9,&mapSize); f.Add(10,&players); f.Add(11,&deadUnits); f.Add(12,&mainBuildings); f.Add(13,&step); f.Add(14,&timeElapsed); f.Add(15,&randGen); f.Add(16,&smartRandGen); f.Add(17,&manualGameFinish); f.Add(18,&humanPlayersCount); f.Add(19,&triggerMarkerHandler); f.Add(20,&totalCreepsCount); f.Add(21,&allScriptFunctionsEnabled); f.Add(22,&fPUStatesData); f.Add(23,&stepLength); f.Add(24,&stepLengthInSeconds); f.Add(25,&defeatedFaction); f.Add(26,&protection); f.Add(27,&dayNightController); f.Add(28,&timeScale); return 0; }
@@ -234,6 +259,35 @@ public:
   bool IsAllScriptFunctionsEnabled() const { return allScriptFunctionsEnabled; }
   const int  GetPresentPlayersCount() const;
   const int  GetPresentPlayersCount(NDb::EFaction faction) const;
+#if defined( PW_LINUX_NULL_RENDER )
+  int GetLinuxLoadedMapObjectsCount() const
+  {
+    return linuxLoadedWarFogUnblockObjects + linuxLoadedSimpleObjects + linuxLoadedMultiStateObjects + linuxLoadedTreeObjects + linuxLoadedGlyphSpawnerObjects + linuxLoadedAdvMapObstacleObjects + linuxLoadedHeroPlaceHolderObjects + linuxLoadedCreepSpawnerObjects + linuxLoadedNeutralCreepSpawnerObjects + linuxLoadedSimpleBuildingObjects + linuxLoadedUsableBuildingObjects + linuxLoadedShopObjects + linuxLoadedQuarterObjects + linuxLoadedTowerObjects + linuxLoadedControllableTowerObjects + linuxLoadedFountainObjects + linuxLoadedRoadFlagpoleObjects + linuxLoadedScriptedFlagpoleObjects + linuxLoadedMainBuildingObjects + linuxLoadedMinigamePlaceObjects + linuxLoadedCameraSplineObjects + linuxLoadedScriptPathObjects + linuxLoadedScriptPolygonAreaObjects;
+  }
+  int GetLinuxLoadedWarFogUnblockObjectsCount() const { return linuxLoadedWarFogUnblockObjects; }
+  int GetLinuxLoadedSimpleObjectsCount() const { return linuxLoadedSimpleObjects; }
+  int GetLinuxLoadedMultiStateObjectsCount() const { return linuxLoadedMultiStateObjects; }
+  int GetLinuxLoadedTreeObjectsCount() const { return linuxLoadedTreeObjects; }
+  int GetLinuxLoadedGlyphSpawnerObjectsCount() const { return linuxLoadedGlyphSpawnerObjects; }
+  int GetLinuxLoadedAdvMapObstacleObjectsCount() const { return linuxLoadedAdvMapObstacleObjects; }
+  int GetLinuxLoadedHeroPlaceHolderObjectsCount() const { return linuxLoadedHeroPlaceHolderObjects; }
+  int GetLinuxLoadedCreepSpawnerObjectsCount() const { return linuxLoadedCreepSpawnerObjects; }
+  int GetLinuxLoadedNeutralCreepSpawnerObjectsCount() const { return linuxLoadedNeutralCreepSpawnerObjects; }
+  int GetLinuxLoadedSimpleBuildingObjectsCount() const { return linuxLoadedSimpleBuildingObjects; }
+  int GetLinuxLoadedUsableBuildingObjectsCount() const { return linuxLoadedUsableBuildingObjects; }
+  int GetLinuxLoadedShopObjectsCount() const { return linuxLoadedShopObjects; }
+  int GetLinuxLoadedQuarterObjectsCount() const { return linuxLoadedQuarterObjects; }
+  int GetLinuxLoadedTowerObjectsCount() const { return linuxLoadedTowerObjects; }
+  int GetLinuxLoadedControllableTowerObjectsCount() const { return linuxLoadedControllableTowerObjects; }
+  int GetLinuxLoadedFountainObjectsCount() const { return linuxLoadedFountainObjects; }
+  int GetLinuxLoadedRoadFlagpoleObjectsCount() const { return linuxLoadedRoadFlagpoleObjects; }
+  int GetLinuxLoadedScriptedFlagpoleObjectsCount() const { return linuxLoadedScriptedFlagpoleObjects; }
+  int GetLinuxLoadedMainBuildingObjectsCount() const { return linuxLoadedMainBuildingObjects; }
+  int GetLinuxLoadedMinigamePlaceObjectsCount() const { return linuxLoadedMinigamePlaceObjects; }
+  int GetLinuxLoadedCameraSplineObjectsCount() const { return linuxLoadedCameraSplineObjects; }
+  int GetLinuxLoadedScriptPathObjectsCount() const { return linuxLoadedScriptPathObjects; }
+  int GetLinuxLoadedScriptPolygonAreaObjectsCount() const { return linuxLoadedScriptPolygonAreaObjects; }
+#endif
   virtual int GetStepLength() const { return stepLength; }
   virtual float GetStepLengthInSeconds() const { return stepLengthInSeconds; }
 

@@ -3,6 +3,7 @@
 #include "AsyncMapStartup.h"
 #include "MapLoadingUtility.hpp"
 
+#if !defined( PW_LINUX_DB_BOOTSTRAP )
 #include "PFWorld.h"
 #include "Core/CoreFSM.h"
 #include "System/SyncProcessorState.h"
@@ -14,6 +15,17 @@
 #include "PFAIContainer.h"
 #include "CommonPathFinder.h"
 #include "WarFog.h"
+#else
+#if defined( PW_LINUX_NULL_RENDER )
+#include "PFWorld.h"
+#endif
+#include "DBAdvMap.h"
+#include "DBVisualRoots.h"
+#include "DbSessionRoots.h"
+#include "System/LoadingProgress.h"
+#include "../System/InlineProfiler.h"
+#include "../System/ported/cwfn.h"
+#endif
 
 static string s_camera_override;
 REGISTER_VAR( "session_camera", s_camera_override, STORAGE_USER );
@@ -29,9 +41,33 @@ static int g_readWorldFromFile = 0;
 
 namespace NWorld
 {
+#if defined( PW_LINUX_DB_BOOTSTRAP ) && !defined( PW_LINUX_NULL_RENDER )
+namespace EMapLoadStages
+{
+  enum Enum
+  {
+    Environment,
+    Terrain,
+    PathFinding,
+    Scene,
+    MapObjects,
+    Heroes,
+    HeightMap
+  };
+}
+#endif
+
 
 MapLoadingJob::MapLoadingJob( NCore::IWorldBase * _world, const NCore::MapStartInfo & _mapStartInfo, const  NDb::AdvMapDescription * _advMapDescription, const NDb::AdvMapSettings * _advMapSettings, const NDb::AdvMap * _advMap, bool _isReconnecting )
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+#if defined( PW_LINUX_NULL_RENDER )
 : world( dynamic_cast<PFWorld * >( _world ) )
+#else
+: world( 0 )
+#endif
+#else
+: world( dynamic_cast<PFWorld * >( _world ) )
+#endif
 , mapStartInfo( _mapStartInfo )
 , advMapDescription (_advMapDescription)
 , advMapSettings(_advMapSettings)
@@ -52,6 +88,9 @@ MapLoadingJob::MapLoadingJob( NCore::IWorldBase * _world, const NCore::MapStartI
 
 bool MapLoadingJob::InitializeEnvironment()
 {
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  return true;
+#else
   NI_PROFILE_FUNCTION_MEM;
 
   CObj<NScene::IScene> pScene = world->GetScene();
@@ -79,8 +118,8 @@ bool MapLoadingJob::InitializeEnvironment()
   }
 
   pScene->LoadObjectLayer( 1, advMap->ObjectsLayerFileName );
-
   return true;
+#endif
 }
 
 
@@ -93,6 +132,32 @@ bool MapLoadingJob::DoTheJob()
   NI_VERIFY( IsValid(advMap), NStr::StrFmt( "Couldn't get map for '%s'", mapStartInfo.mapDescName.c_str() ), return false );
   NI_VERIFY( IsValid(advMapSettings), NStr::StrFmt( "Couldn't get map settings for '%s'", mapStartInfo.mapDescName.c_str() ), return false );
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  SetupCamera();
+  if ( !InitializeEnvironment() )
+  {
+    return false;
+  }
+  progress->SetPartialProgress( EMapLoadStages::Environment, 1.0f );
+#if defined( PW_LINUX_NULL_RENDER )
+  if ( world )
+  {
+    NWorld::PFResourcesCollection::TalentMap emptyTalents;
+    if ( !world->LoadMap( advMapDescription, camSettings, mapStartInfo.playersInfo, progress, isReconnecting, emptyTalents ) )
+      return false;
+  }
+  else
+#endif
+  {
+    progress->SetPartialProgress( EMapLoadStages::Terrain, 1.0f );
+    progress->SetPartialProgress( EMapLoadStages::PathFinding, 1.0f );
+    progress->SetPartialProgress( EMapLoadStages::Scene, 1.0f );
+    progress->SetPartialProgress( EMapLoadStages::MapObjects, 1.0f );
+    progress->SetPartialProgress( EMapLoadStages::Heroes, 1.0f );
+    progress->SetPartialProgress( EMapLoadStages::HeightMap, 1.0f );
+  }
+  return true;
+#else
   MAP_LOADING_SCOPE(world->GetMapLoadingController());
 
   // сильная ссылка не даст уничтожить ресурсы, пока карта грузится
@@ -133,6 +198,7 @@ bool MapLoadingJob::DoTheJob()
 
   DebugTrace( "Map '%s' loaded", advMap->GetDBID().GetFileName().c_str() );
   return true;
+#endif
 }
 
 

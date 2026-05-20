@@ -1,4 +1,360 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "DBGameLogic.h"
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFBaseUnit.h"
+#include "PFMicroAI.h"
+#include "PFTargetSelector.h"
+#include "PFUniTarget.h"
+
+namespace NNameMap
+{
+  const wstring wstrNoname = L"#noname#";
+  const string  strNoname = "#noname#";
+}
+
+namespace NWorld
+{
+
+int PFAbilityData::baseRefineRate = 4;
+
+NAMEMAP_BEGIN(PFAbilityData::ConstantsResolver)
+NAMEMAP_END;
+
+NAMEMAP_BEGIN(PFAbilityData::ConditionsResolver)
+NAMEMAP_END;
+
+NAMEMAP_BEGIN(PFAbilityData)
+  NAMEMAP_VAR_RO(manaCost)
+  NAMEMAP_VAR_RO(rank)
+  NAMEMAP_VAR_RO(zzCost)
+  NAMEMAP_FUNC_RO(abilityName, &PFAbilityData::GetAbilityName)
+  NAMEMAP_FUNC_RO(name, &PFAbilityData::GetAbilityName)
+  NAMEMAP_FUNC_RO(castLimit, &PFAbilityData::IsCastSelfLimitationPassed)
+  NAMEMAP_FUNC_RO(spendsLife, &PFAbilityData::DoesSpendLifeInsteadEnergy)
+NAMEMAP_END;
+
+PFAbilityData::PFAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Ability> const& pDBDesc_, NDb::EAbilityTypeId abilityType_, bool needRegisterInWorld, bool isInteractionAbility_ )
+  : PFWorldObjectBase( 0, 0 )
+  , pDBDesc( pDBDesc_ )
+  , abilityType( abilityType_ )
+  , pOwner( pOwner_ )
+  , rank( 1 )
+  , manaCost( 0.0f )
+  , zzCost( 0 )
+  , isOn( false )
+  , forbids( 0 )
+  , castSelfLimitationPassed( true )
+  , isInteractionAbility( isInteractionAbility_ )
+  , abilityState( EAbilityState::First )
+  , cachedModifiersTime( -1.0f )
+  , isInPassivePartUpdate( false )
+{
+  (void)needRegisterInWorld;
+  cooldownTime[EAbilityState::First] = 0.0f;
+  cooldownTime[EAbilityState::Second] = 0.0f;
+  cooldown[EAbilityState::First] = 0.0f;
+  cooldown[EAbilityState::Second] = 0.0f;
+
+  if (pDBDesc && pDBDesc->autoTargetSelector)
+    pAutoTargetSelector = static_cast<PFSingleTargetSelector*>(pDBDesc->autoTargetSelector->Create(needRegisterInWorld && IsValid(pOwner) ? pOwner->GetWorld() : 0));
+
+  pMicroAI = CreateMicroAI();
+}
+
+PFAbilityData::PFAbilityData()
+  : abilityType( NDb::ABILITYTYPEID_SPECIAL )
+  , rank( 1 )
+  , manaCost( 0.0f )
+  , zzCost( 0 )
+  , isOn( false )
+  , forbids( 0 )
+  , castSelfLimitationPassed( true )
+  , isInteractionAbility( false )
+  , abilityState( EAbilityState::First )
+  , cachedModifiersTime( -1.0f )
+  , isInPassivePartUpdate( false )
+{
+  cooldownTime[EAbilityState::First] = 0.0f;
+  cooldownTime[EAbilityState::Second] = 0.0f;
+  cooldown[EAbilityState::First] = 0.0f;
+  cooldown[EAbilityState::Second] = 0.0f;
+}
+
+void PFAbilityData::Reset()
+{
+  PFWorldObjectBase::Reset();
+}
+
+PFMicroAI* PFAbilityData::CreateMicroAI() const
+{
+  if (!pDBDesc || !IsValid(pDBDesc->microAI))
+    return 0;
+
+  const PFMicroAICreateParams cp(pDBDesc->microAI, this);
+  return pDBDesc->microAI->Create(cp);
+}
+void PFAbilityData::Update(float dt, bool fullUpdate) { (void)dt; (void)fullUpdate; }
+float PFAbilityData::GetScale() const { return 1.0f; }
+bool PFAbilityData::FindAutoTarget(Target & target)
+{
+  if (!pAutoTargetSelector)
+    return false;
+
+  Target requestPos(pOwner);
+  PFTargetSelector::RequestParams pars(pOwner, this, requestPos);
+  return pAutoTargetSelector->FindTarget(pars, target);
+}
+
+bool PFAbilityData::FindMicroAITarget(Target & target)
+{
+  if (!pMicroAI)
+    return false;
+
+  return pMicroAI->GetTarget(target);
+}
+
+bool PFAbilityData::FindMicroAITargetTemp(Target & target) const
+{
+  if (!pDBDesc || !IsValid(pDBDesc->microAI))
+    return false;
+
+  PFMicroAICreateParams cp(pDBDesc->microAI, this);
+  cp.isAITemp = true;
+  CObj<PFMicroAI> pTempMicroAI = pDBDesc->microAI->Create(cp);
+  return pTempMicroAI && pTempMicroAI->GetTarget(target);
+}
+
+bool PFAbilityData::FindMicroAITargetTemp(Target & target, const ITargetCondition& condition) const
+{
+  if (!pDBDesc || !IsValid(pDBDesc->microAI))
+    return false;
+
+  PFMicroAICreateParams cp(pDBDesc->microAI, this);
+  cp.isAITemp = true;
+  CObj<PFMicroAI> pTempMicroAI = pDBDesc->microAI->Create(cp);
+  return pTempMicroAI && pTempMicroAI->GetTarget(target, condition);
+}
+void PFAbilityData::ApplyPassivePart( bool bApply )
+{
+  if ( IsValid(pPassiveInstance) )
+  {
+    RemoveApplicatorsFrom(pOwner);
+    pPassiveInstance->Remove();
+    pPassiveInstance = NULL;
+  }
+
+  if ( bApply && IsValid(pOwner) && pDBDesc )
+  {
+    pPassiveInstance = new PFAbilityInstance( this, Target( pOwner ), true );
+    pPassiveInstance->ApplyPassive();
+    AddInstance(pPassiveInstance);
+  }
+
+  RecalculateCooldown();
+  RecalculateManaCost();
+}
+
+CObj<PFAbilityInstance> PFAbilityData::ApplyToTarget( Target const& target )
+{
+  if ( !pDBDesc || !IsValid(pOwner) || !IsReady() || !IsEnoughMana() )
+    return CObj<PFAbilityInstance>(0);
+
+  if ( CheckCastLimitations( target ) )
+    return CObj<PFAbilityInstance>(0);
+
+  AbilityTarget targetToApply = target;
+  const float minUseRangeCorrection = pDBDesc->minUseRangeCorrection;
+  if ( target.IsPosition() && minUseRangeCorrection > 0.0f )
+  {
+    CVec2 vectorToTarget = target.GetPosition().AsVec2D() - pOwner->GetPosition().AsVec2D();
+    const float vectorLen2 = fabs2( vectorToTarget );
+    const float minUseRangeCorrection2 = minUseRangeCorrection * minUseRangeCorrection;
+    if ( vectorLen2 < minUseRangeCorrection2 && vectorLen2 > EPS_VALUE )
+    {
+      const float vectorLen = sqrt( vectorLen2 );
+      vectorToTarget *= minUseRangeCorrection / vectorLen;
+      targetToApply.SetPosition( pOwner->GetPosition() + CVec3( vectorToTarget, 0.0f ) );
+    }
+  }
+
+  CObj<PFAbilityInstance> instance = new PFAbilityInstance( this, targetToApply, false );
+  if ( !instance->ApplyToTarget() )
+    return CObj<PFAbilityInstance>(0);
+
+  AddInstance(instance);
+  return instance;
+}
+
+CObj<PFAbilityInstance> PFAbilityData::Toggle( Target const& target )
+{
+  if ( !isOn )
+    return ApplyToTarget(target);
+
+  SwitchOff();
+  CancelActiveInstances();
+  return CObj<PFAbilityInstance>(0);
+}
+
+void PFAbilityData::RemoveApplicatorsFrom(CPtr<PFBaseUnit> const& pUnit) const
+{
+  if ( !IsValid(pUnit) )
+    return;
+
+  for ( InstancesVec::const_iterator iInst = rgInstances.begin(), iEnd = rgInstances.end(); iInst != iEnd; ++iInst )
+    if ( IsValid(*iInst) )
+      (*iInst)->RemoveApplicatorsFrom(pUnit);
+
+  if ( IsValid(pPassiveInstance) )
+    pPassiveInstance->RemoveApplicatorsFrom(pOwner);
+}
+void PFAbilityData::LevelUp() { ++rank; }
+bool PFAbilityData::IsReady() const { return cooldown[abilityState] <= 0.0f && forbids <= 0; }
+bool PFAbilityData::IsEnoughMana() const { return true; }
+void PFAbilityData::SpendMana() const {}
+bool PFAbilityData::DoesSpendLifeInsteadEnergy() const { return false; }
+bool PFAbilityData::IsActiveCustomTrigger() const { return false; }
+bool PFAbilityData::DoesApplyToDead() const { return false; }
+bool PFAbilityData::CanBeUsed() const { return IsReady(); }
+void PFAbilityData::UpdateAbilityModifiers() {}
+float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) const { (void)mode; return value; }
+float PFAbilityData::GetBaseManaCost() const { return 0.0f; }
+void PFAbilityData::RecalculateManaCost() { manaCost = 0.0f; }
+void PFAbilityData::RecalculateCooldown() { cooldownTime[abilityState] = 0.0f; }
+void PFAbilityData::RestartCooldown(float cooldownTime_) { cooldown[abilityState] = cooldownTime_ > 0.0f ? cooldownTime_ : cooldownTime[abilityState]; }
+void PFAbilityData::RecalculateAndRestartCooldown() { RecalculateCooldown(); RestartCooldown(); }
+void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, bool reduceByPercent) { (void)cooldownReduction; (void)reduceByPercent; if (forAllStates) { cooldown[EAbilityState::First] = 0.0f; cooldown[EAbilityState::Second] = 0.0f; } else cooldown[abilityState] = 0.0f; }
+void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cooldownReduction, bool reduceByPercent) { (void)cooldownReduction; (void)reduceByPercent; cooldown[forAbilityState] = 0.0f; }
+float PFAbilityData::GetUseRange() const
+{
+  if (!pDBDesc || !IsValid(pOwner))
+    return 0.0f;
+  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
+}
+float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const { (void)pTarget; return GetUseRange(); }
+float PFAbilityData::GetUseRange(const NWorld::Target & target) const { (void)target; return GetUseRange(); }
+NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const { (void)bFromMinimap; altTarget = origTarget; return 0; }
+void PFAbilityData::AddInstance(CObj<PFAbilityInstance> const& inst) { if (inst) rgInstances.push_back( inst ); }
+void PFAbilityData::SwitchOff() { isOn = false; }
+void PFAbilityData::SwitchOn() { isOn = true; }
+void PFAbilityData::CancelAbility()
+{
+  if ( pDBDesc && IsMultiState() )
+    SwitchOff();
+  else
+    RemoveApplicatorsFrom(pOwner);
+
+  CancelActiveInstances();
+}
+
+void PFAbilityData::CancelActiveInstances()
+{
+  for ( InstancesVec::iterator iInst = rgInstances.begin(), iEnd = rgInstances.end(); iInst != iEnd; ++iInst )
+    if ( IsValid(*iInst) )
+      (*iInst)->Cancel();
+
+  rgInstances.clear();
+}
+
+void PFAbilityData::OnAbilityInstanceRemoved( PFAbilityInstance const* pInstance )
+{
+  InstancesVec::iterator iInst = find( rgInstances.begin(), rgInstances.end(), pInstance );
+  if ( iInst != rgInstances.end() )
+    rgInstances.erase(iInst);
+}
+float PFAbilityData::GetWorkTime() const { return 0.0f; }
+float PFAbilityData::GetSpeed() const { return 0.0f; }
+float PFAbilityData::GetTimeOffset( bool getRawTime ) const { (void)getRawTime; return 0.0f; }
+unsigned PFAbilityData::GetFlags() const { return pDBDesc ? pDBDesc->flags : 0; }
+float PFAbilityData::GetAoeSize() const { return 0.0f; }
+void PFAbilityData::OnDispatchStarted() const {}
+bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const { return target.IsValid( bAllowDead ); }
+float PFAbilityData::GetDist2Target() const { return 0.0f; }
+float PFAbilityData::GetParentScale() const { return 1.0f; }
+int PFAbilityData::GetAbilityType() const { return abilityType; }
+bool PFAbilityData::Roll(float probability ) const { return probability >= 1.0f; }
+int PFAbilityData::GetRandom(int from, int to ) const { return from <= to ? from : to; }
+float PFAbilityData::GetRefineAbilityScale( float valueAtRefineLevel0, float incrementPerLevel ) const { return valueAtRefineLevel0 + incrementPerLevel * GetRefineRate(); }
+bool PFAbilityData::GetSmartRoll( float probability, int maxFailReps, int maxSuccessReps, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const { (void)maxFailReps; (void)maxSuccessReps; (void)pFirst; (void)pSecond; return Roll( probability ); }
+int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const { (void)probDecrement; (void)pFirst; (void)pSecond; return outcomesNumber > 0 ? 0 : -1; }
+float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const { (void)name; (void)pSender; (void)pReceiver; (void)pMisc; return 0.0f; }
+NDb::UnitConstant const* PFAbilityData::GetConstant(char const *name) const { return pConstantsMap ? pConstantsMap->Get( name ) : 0; }
+float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { (void)name; (void)pSender; (void)pReceiver; return 0.0f; }
+bool PFAbilityData::CheckUpgradePerCastPerTarget() const { return false; }
+const IUnitFormulaPars* PFAbilityData::GetObjectOwner() const { return 0; }
+int PFAbilityData::GetScrollLevel() const { return 0; }
+bool PFAbilityData::IsNight() const { return false; }
+NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& target ) const { (void)target; return 0; }
+::DiAnimGraph* PFAbilityData::GetAG( NScene::SceneObject* so ) const { (void)so; return 0; }
+float PFAbilityData::GetAttackTimeOffset() const { return 0.0f; }
+float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::string &nodeName, const nstl::string &markerName ) const { (void)pSO; (void)nodeName; (void)markerName; return 0.0f; }
+NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const { needDelete = false; return 0; }
+bool PFAbilityData::IsInstaCast() const { return (GetFlags() & NDb::ABILITYFLAGS_INSTACAST) != 0; }
+bool PFAbilityData::GetEventTypeByAbilityTypeId( NDb::EBaseUnitEvent& eventType ) { eventType = NDb::BASEUNITEVENT_CASTMAGIC; return false; }
+float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilityScaleMode abScaleMode, float valueLeft, float valueRight, bool bRound ) const { (void)isDamage; (void)statValue; (void)abScaleMode; (void)valueRight; (void)bRound; return valueLeft; }
+bool PFAbilityData::IsAbilitySupposedToStopUnit() const { return false; }
+bool PFAbilityData::IsAbilitySupposedToSyncVisual() const { return false; }
+bool PFAbilityData::IsAbilitySuitable( NDb::Ability const* pDbAbility, vector<NDb::Ptr<NDb::Ability> > const& dbAbilities, NDb::EUseMode mode ) { (void)mode; return pDbAbility && dbAbilities.find( pDbAbility ) != dbAbilities.end(); }
+float PFAbilityData::GetTerrainPart(int faction) const { (void)faction; return 0.0f; }
+int PFAbilityData::GetTerrianTypeUnderCursor() const { return 0; }
+int PFAbilityData::GetNatureTypeInPos(CVec2 pos) const { (void)pos; return 0; }
+int PFAbilityData::GetActivatedWithinKit() const { return 0; }
+int PFAbilityData::GetTalentsWithinKit() const { return 0; }
+float PFAbilityData::GetStatusDispellPriority( const IUnitFormulaPars* pUnitToCheck, bool returnDuration ) const { (void)pUnitToCheck; (void)returnDuration; return -1.0f; }
+void PFAbilityData::SubscribeChanneling( PFBaseUnitEventListener *pListener ) { if ( pListener ) channelings.push_back( pListener ); }
+void PFAbilityData::UnsubscribeChanneling( PFBaseUnitEventListener *pListener ) { channelings.remove( pListener ); }
+void PFAbilityData::AddForbid( const PFBaseApplicator* pAppl ) { (void)pAppl; ++forbids; }
+
+NNameMap::Variant * PFAbilityData::ConstantsResolver::ResolveVariant( const char * name, int length, const char * args, int argsLength, void* prms, bool readonly )
+{
+  (void)name; (void)length; (void)args; (void)argsLength; (void)prms; (void)readonly;
+  return 0;
+}
+
+NNameMap::Variant * PFAbilityData::ConditionsResolver::ResolveVariant( const char * name, int length, const char * args, int argsLength, void* prms, bool readonly )
+{
+  (void)name; (void)length; (void)args; (void)argsLength; (void)prms; (void)readonly;
+  return 0;
+}
+
+PFAbilityConstantsMap::PFAbilityConstantsMap( CPtr<PFAbilityData> const& pAbility_, const NDb::Ability* pDBDesc )
+  : pAbility( pAbility_ )
+{
+  (void)pDBDesc;
+}
+
+NDb::UnitConstant const* PFAbilityConstantsMap::Get(const char *name) const
+{
+  (void)name;
+  return 0;
+}
+
+PFConsumableAbilityData::PFConsumableAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Ability> const& pDBDesc, NDb::EAbilityTypeId abilityType, bool needRegisterInWorld, bool isInteractionAbility )
+  : PFAbilityData( pOwner_, pDBDesc, abilityType, needRegisterInWorld, isInteractionAbility )
+  , pDBGroup( 0 )
+  , pOwner( 0 )
+{
+}
+
+void PFConsumableAbilityData::NotifyCastProcessed()
+{
+  pUsingConsumable = 0;
+}
+
+void PFConsumableAbilityData::RestartCooldown( float cooldownTime_ )
+{
+  PFAbilityData::RestartCooldown( cooldownTime_ );
+}
+
+} //namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFAbilityData, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFConsumableAbilityData, NWorld);
+
+#else
 #include "PFAbilityData.h"
 #include "../Core/Transceiver.h"
 
@@ -1273,3 +1629,5 @@ void PFConsumableAbilityData::RestartCooldown( float cooldownTime_ )
 
 REGISTER_WORLD_OBJECT_NM(PFAbilityData, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFConsumableAbilityData, NWorld);
+
+#endif

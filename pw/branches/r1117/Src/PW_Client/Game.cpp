@@ -31,19 +31,50 @@
 #include "PF_GameLogic/DBStats.h"
 #include "PF_GameLogic/DBTalent.h"
 #include "PF_GameLogic/DBUnit.h"
+#include "PF_GameLogic/DBPFEffect.h"
+#include "PF_GameLogic/PFEffectSwitcher.h"
+#include "PF_GameLogic/PFInvisibilityEffect.h"
 #include "PF_GameLogic/DBVisualRoots.h"
 #include "PF_GameLogic/GameMaps.h"
 #include "PF_GameLogic/MapCollection.h"
+#include "PF_GameLogic/MapStartup.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#include "PF_GameLogic/PFWorld.h"
 #include "PF_GameLogic/PFRenderInterface.h"
+#include "PF_GameLogic/WarFog.h"
 #include "PF_GameLogic/WebLauncher.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
+#include "PF_GameLogic/PFAuraEffect.h"
+#include "PF_GameLogic/PFApplAura.h"
+#include "PF_GameLogic/PFApplBounce.h"
+#include "PF_GameLogic/PFApplBuff.h"
+#include "PF_GameLogic/PFApplChainLightning.h"
+#include "PF_GameLogic/PFApplDelegateDamage.h"
+#include "PF_GameLogic/PFApplMod.h"
+#include "PF_GameLogic/PFAbilityData.h"
+#include "PF_GameLogic/PFAbilityInstance.h"
+#include "PF_GameLogic/PFBaseAttackData.h"
+#include "PF_GameLogic/PFBaseUnit.h"
+#include "PF_GameLogic/PFClientApplicators.h"
+#include "PF_GameLogic/PFDispatch.h"
+#include "PF_GameLogic/PFDispatchFactory.h"
+#include "PF_GameLogic/PFMinimapEffect.h"
+#include "PF_GameLogic/PFMicroAI.h"
+#include "PF_GameLogic/PFPlayAnimEffect.h"
+#include "PF_GameLogic/PFPriestessSignEffect.h"
+#include "PF_GameLogic/PFTargetSelector.h"
+#include "PF_GameLogic/PFUnitSceneObjectModify.h"
+#include "Core/Transceiver.h"
+#include "PF_Core/EffectsPool.h"
+#include "Scene/DBScene.h"
+#include "DebugVarsSender.h"
 #include "LoadingFlashInterface.h"
 #include "LoadingHeroes.h"
 #include "LoadingScreen.h"
 #include "LoadingScreenLogic.h"
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
+#include "NetworkStatusScreen.h"
 #include "SelectGameModeScreen.h"
 #include "SelectHeroScreen.h"
 #undef PW_LINUX_DB_BOOTSTRAP
@@ -899,6 +930,7 @@ struct LinuxLoadingHeroesRuntimePreview
 std::string ToStdString(const nstl::string& value);
 NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource();
 NDb::Ptr<NDb::DBUIData>& GetLoadingUiDataResourceCache();
+void ClearLoadingUiDataResourceCache();
 template <typename T>
 void AppendSampleValue(std::vector<std::string>* samples, const T& value, size_t limit);
 
@@ -1567,6 +1599,101 @@ struct LinuxSessionRootPreview
   bool mapListReady;
   bool visualRootReady;
   bool visualEffectsReady;
+  bool visualEffectsPoolRuntimeReady;
+  bool visualEffectsPoolDefaultRetrieved;
+  bool visualEffectsPoolDefaultReleased;
+  bool visualEffectsPoolComponentRetrieved;
+  bool visualEffectsPoolComponentReleased;
+  bool visualEffectsPoolComponentRootReady;
+  bool visualEffectsPoolComponentSceneCreated;
+  bool visualEffectsPoolComponentSceneAdded;
+  bool visualEffectsPoolComponentSceneUpdated;
+  bool visualEffectsPoolComponentSceneRemoved;
+  bool visualEffectsPoolAttachedRetrieved;
+  bool visualEffectsPoolAttachedReleased;
+  bool visualEffectsPoolAttachedRootReady;
+  bool visualEffectsPoolAttachedSceneCreated;
+  bool visualEffectsPoolAttachedTargetInScene;
+  bool visualEffectsPoolAttachedApplied;
+  bool visualEffectsPoolAttachedUpdated;
+  bool visualEffectsPoolAttachedDetached;
+  bool visualEffectsPoolApplyRetrieved;
+  bool visualEffectsPoolApplyReleased;
+  bool visualEffectsPoolApplyRootReady;
+  bool visualEffectsPoolApplySceneCreated;
+  bool visualEffectsPoolApplyTargetInScene;
+  bool visualEffectsPoolApplyClientObjectReady;
+  bool visualEffectsPoolApplyCallbackObserved;
+  bool visualEffectsPoolApplyApplied;
+  bool visualEffectsPoolApplyUpdated;
+  bool visualEffectsPoolApplyKilled;
+  bool visualEffectsPoolApplyDetached;
+  bool visualEffectsPoolRandomDbReady;
+  bool visualEffectsPoolRandomRetrieved;
+  bool visualEffectsPoolRandomReleased;
+  bool visualEffectsPoolRandomSceneCreated;
+  bool visualEffectsPoolRandomTargetInScene;
+  bool visualEffectsPoolRandomClientObjectReady;
+  bool visualEffectsPoolRandomCallbackObserved;
+  bool visualEffectsPoolRandomChildApplied;
+  bool visualEffectsPoolRandomUpdated;
+  bool visualEffectsPoolRandomChildDetached;
+  bool visualEffectsPoolSwitcherDbReady;
+  bool visualEffectsPoolSwitcherRetrieved;
+  bool visualEffectsPoolSwitcherReleased;
+  bool visualEffectsPoolSwitcherSceneCreated;
+  bool visualEffectsPoolSwitcherTargetInScene;
+  bool visualEffectsPoolSwitcherClientObjectReady;
+  bool visualEffectsPoolSwitcherCallbackObserved;
+  bool visualEffectsPoolSwitcherChildApplied;
+  bool visualEffectsPoolSwitcherUpdated;
+  bool visualEffectsPoolSwitcherChildDetached;
+  bool visualEffectsPoolInvisibilityDbReady;
+  bool visualEffectsPoolInvisibilityRetrieved;
+  bool visualEffectsPoolInvisibilityReleased;
+  bool visualEffectsPoolInvisibilitySceneCreated;
+  bool visualEffectsPoolInvisibilityTargetInScene;
+  bool visualEffectsPoolInvisibilityClientObjectReady;
+  bool visualEffectsPoolInvisibilityChannelCreated;
+  bool visualEffectsPoolInvisibilityUpdated;
+  bool visualEffectsPoolInvisibilityOpacityChanged;
+  bool visualEffectsPoolInvisibilityChannelRemoved;
+  bool visualEffectsPoolAuraDbReady;
+  bool visualEffectsPoolAuraRetrieved;
+  bool visualEffectsPoolAuraApplied;
+  bool visualEffectsPoolAuraReleased;
+  bool visualEffectsPoolMinimapDbReady;
+  bool visualEffectsPoolMinimapRetrieved;
+  bool visualEffectsPoolMinimapApplied;
+  bool visualEffectsPoolMinimapUpdated;
+  bool visualEffectsPoolMinimapReleased;
+  bool visualEffectsPoolPlayAnimDbReady;
+  bool visualEffectsPoolPlayAnimRetrieved;
+  bool visualEffectsPoolPlayAnimApplied;
+  bool visualEffectsPoolPlayAnimSceneUpdated;
+  bool visualEffectsPoolPlayAnimReleased;
+  bool visualEffectsPoolPriestessDbReady;
+  bool visualEffectsPoolPriestessRetrieved;
+  bool visualEffectsPoolPriestessInitialized;
+  bool visualEffectsPoolPriestessApplied;
+  bool visualEffectsPoolPriestessSceneCreated;
+  bool visualEffectsPoolPriestessTargetInScene;
+  bool visualEffectsPoolPriestessClientObjectReady;
+  bool visualEffectsPoolPriestessSoulDbReady;
+  bool visualEffectsPoolPriestessSoulStarted;
+  bool visualEffectsPoolPriestessFlyInStarted;
+  bool visualEffectsPoolPriestessFlyOutStarted;
+  bool visualEffectsPoolPriestessCompleted;
+  bool visualEffectsPoolPriestessReleased;
+  bool visualEffectsPoolUnitSceneModifyDbReady;
+  bool visualEffectsPoolUnitSceneModifyRetrieved;
+  bool visualEffectsPoolUnitSceneModifyReleased;
+  bool visualEffectsPoolUnitSceneModifySceneCreated;
+  bool visualEffectsPoolUnitSceneModifyTargetInScene;
+  bool visualEffectsPoolUnitSceneModifyClientObjectReady;
+  bool visualEffectsPoolUnitSceneModifyApplied;
+  bool visualEffectsPoolUnitSceneModifyUpdated;
+  bool visualEffectsPoolUnitSceneModifyDetached;
   bool visualUiEventsReady;
   bool visualTeamColoringReady;
   bool visualEmoteSettingsReady;
@@ -1608,6 +1735,45 @@ struct LinuxSessionRootPreview
   size_t visualSelfAuraCount;
   size_t visualAuraCount;
   size_t visualUiEventCount;
+  size_t visualEffectsPoolComponentSceneComponents;
+  size_t visualEffectsPoolComponentSceneObjectsAfterAdd;
+  size_t visualEffectsPoolComponentSceneObjectsAfterRelease;
+  size_t visualEffectsPoolAttachedSceneComponents;
+  size_t visualEffectsPoolAttachedTargetComponentsBefore;
+  size_t visualEffectsPoolAttachedTargetComponentsAfterAttach;
+  size_t visualEffectsPoolAttachedTargetComponentsAfterRelease;
+  size_t visualEffectsPoolAttachedSceneObjects;
+  size_t visualEffectsPoolApplySceneComponents;
+  size_t visualEffectsPoolApplyTargetComponentsBefore;
+  size_t visualEffectsPoolApplyTargetComponentsAfterApply;
+  size_t visualEffectsPoolApplyTargetComponentsAfterKill;
+  size_t visualEffectsPoolApplySceneObjects;
+  size_t visualEffectsPoolApplyAttachCallbacks;
+  size_t visualEffectsPoolRandomChoices;
+  size_t visualEffectsPoolRandomSceneObjects;
+  size_t visualEffectsPoolRandomTargetComponentsBefore;
+  size_t visualEffectsPoolRandomTargetComponentsAfterApply;
+  size_t visualEffectsPoolRandomTargetComponentsAfterDie;
+  size_t visualEffectsPoolRandomAttachCallbacks;
+  size_t visualEffectsPoolSwitcherSceneObjects;
+  size_t visualEffectsPoolSwitcherTargetComponentsBefore;
+  size_t visualEffectsPoolSwitcherTargetComponentsAfterApply;
+  size_t visualEffectsPoolSwitcherTargetComponentsAfterDie;
+  size_t visualEffectsPoolSwitcherAttachCallbacks;
+  size_t visualEffectsPoolInvisibilitySceneObjects;
+  size_t visualEffectsPoolInvisibilityTargetComponents;
+  size_t visualEffectsPoolInvisibilityChannelCreates;
+  size_t visualEffectsPoolInvisibilityChannelRemoves;
+  size_t visualEffectsPoolAuraChangeCount;
+  size_t visualEffectsPoolMinimapUpdateCount;
+  size_t visualEffectsPoolPriestessUpdateCount;
+  size_t visualEffectsPoolPriestessSceneObjectsBefore;
+  size_t visualEffectsPoolPriestessSceneObjectsAfterApply;
+  size_t visualEffectsPoolPriestessSceneObjectsAfterDie;
+  size_t visualEffectsPoolUnitSceneModifySceneObjectsBefore;
+  size_t visualEffectsPoolUnitSceneModifySceneObjectsAfterApply;
+  size_t visualEffectsPoolUnitSceneModifySceneObjectsAfterDie;
+  size_t visualEffectsPoolUnitSceneModifyTargetComponents;
   size_t rollPvpContainerCount;
   size_t rollPvpPremiumContainerCount;
   size_t rollGuildLevelCount;
@@ -1626,6 +1792,8 @@ struct LinuxSessionRootPreview
   int rollRequiredLevelForExclusiveTalents;
   int rollRequiredRatingForExclusiveTalents;
   float visualWallTargetZoneWidth;
+  float visualEffectsPoolInvisibilityOpacityBefore;
+  float visualEffectsPoolInvisibilityOpacityAfterUpdate;
   std::string rootDbid;
   std::string logicRootDbid;
   std::string uiRootDbid;
@@ -1641,6 +1809,24 @@ struct LinuxSessionRootPreview
   std::string logicGuildBuffsDbid;
   std::string visualTeamColoringDbid;
   std::string visualEmoteSettingsDbid;
+  std::string visualEffectsPoolDefaultType;
+  std::string visualEffectsPoolDefaultDbid;
+  std::string visualEffectsPoolComponentType;
+  std::string visualEffectsPoolComponentDbid;
+  std::string visualEffectsPoolAttachedType;
+  std::string visualEffectsPoolAttachedDbid;
+  std::string visualEffectsPoolApplyType;
+  std::string visualEffectsPoolApplyDbid;
+  std::string visualEffectsPoolRandomType;
+  std::string visualEffectsPoolRandomChildDbid;
+  std::string visualEffectsPoolSwitcherType;
+  std::string visualEffectsPoolSwitcherChildDbid;
+  std::string visualEffectsPoolInvisibilityType;
+  std::string visualEffectsPoolAuraType;
+  std::string visualEffectsPoolMinimapType;
+  std::string visualEffectsPoolPlayAnimType;
+  std::string visualEffectsPoolPriestessType;
+  std::string visualEffectsPoolUnitSceneModifyType;
   std::string rollPvpModeName;
   std::string sessionMessagesDbid;
   std::string dxErrorTitle;
@@ -1679,6 +1865,101 @@ struct LinuxSessionRootPreview
       mapListReady(false),
       visualRootReady(false),
       visualEffectsReady(false),
+      visualEffectsPoolRuntimeReady(false),
+      visualEffectsPoolDefaultRetrieved(false),
+      visualEffectsPoolDefaultReleased(false),
+      visualEffectsPoolComponentRetrieved(false),
+      visualEffectsPoolComponentReleased(false),
+      visualEffectsPoolComponentRootReady(false),
+      visualEffectsPoolComponentSceneCreated(false),
+      visualEffectsPoolComponentSceneAdded(false),
+      visualEffectsPoolComponentSceneUpdated(false),
+      visualEffectsPoolComponentSceneRemoved(false),
+      visualEffectsPoolAttachedRetrieved(false),
+      visualEffectsPoolAttachedReleased(false),
+      visualEffectsPoolAttachedRootReady(false),
+      visualEffectsPoolAttachedSceneCreated(false),
+      visualEffectsPoolAttachedTargetInScene(false),
+      visualEffectsPoolAttachedApplied(false),
+      visualEffectsPoolAttachedUpdated(false),
+      visualEffectsPoolAttachedDetached(false),
+      visualEffectsPoolApplyRetrieved(false),
+      visualEffectsPoolApplyReleased(false),
+      visualEffectsPoolApplyRootReady(false),
+      visualEffectsPoolApplySceneCreated(false),
+      visualEffectsPoolApplyTargetInScene(false),
+      visualEffectsPoolApplyClientObjectReady(false),
+      visualEffectsPoolApplyCallbackObserved(false),
+      visualEffectsPoolApplyApplied(false),
+      visualEffectsPoolApplyUpdated(false),
+      visualEffectsPoolApplyKilled(false),
+      visualEffectsPoolApplyDetached(false),
+      visualEffectsPoolRandomDbReady(false),
+      visualEffectsPoolRandomRetrieved(false),
+      visualEffectsPoolRandomReleased(false),
+      visualEffectsPoolRandomSceneCreated(false),
+      visualEffectsPoolRandomTargetInScene(false),
+      visualEffectsPoolRandomClientObjectReady(false),
+      visualEffectsPoolRandomCallbackObserved(false),
+      visualEffectsPoolRandomChildApplied(false),
+      visualEffectsPoolRandomUpdated(false),
+      visualEffectsPoolRandomChildDetached(false),
+      visualEffectsPoolSwitcherDbReady(false),
+      visualEffectsPoolSwitcherRetrieved(false),
+      visualEffectsPoolSwitcherReleased(false),
+      visualEffectsPoolSwitcherSceneCreated(false),
+      visualEffectsPoolSwitcherTargetInScene(false),
+      visualEffectsPoolSwitcherClientObjectReady(false),
+      visualEffectsPoolSwitcherCallbackObserved(false),
+      visualEffectsPoolSwitcherChildApplied(false),
+      visualEffectsPoolSwitcherUpdated(false),
+      visualEffectsPoolSwitcherChildDetached(false),
+      visualEffectsPoolInvisibilityDbReady(false),
+      visualEffectsPoolInvisibilityRetrieved(false),
+      visualEffectsPoolInvisibilityReleased(false),
+      visualEffectsPoolInvisibilitySceneCreated(false),
+      visualEffectsPoolInvisibilityTargetInScene(false),
+      visualEffectsPoolInvisibilityClientObjectReady(false),
+      visualEffectsPoolInvisibilityChannelCreated(false),
+      visualEffectsPoolInvisibilityUpdated(false),
+      visualEffectsPoolInvisibilityOpacityChanged(false),
+      visualEffectsPoolInvisibilityChannelRemoved(false),
+      visualEffectsPoolAuraDbReady(false),
+      visualEffectsPoolAuraRetrieved(false),
+      visualEffectsPoolAuraApplied(false),
+      visualEffectsPoolAuraReleased(false),
+      visualEffectsPoolMinimapDbReady(false),
+      visualEffectsPoolMinimapRetrieved(false),
+      visualEffectsPoolMinimapApplied(false),
+      visualEffectsPoolMinimapUpdated(false),
+      visualEffectsPoolMinimapReleased(false),
+      visualEffectsPoolPlayAnimDbReady(false),
+      visualEffectsPoolPlayAnimRetrieved(false),
+      visualEffectsPoolPlayAnimApplied(false),
+      visualEffectsPoolPlayAnimSceneUpdated(false),
+      visualEffectsPoolPlayAnimReleased(false),
+      visualEffectsPoolPriestessDbReady(false),
+      visualEffectsPoolPriestessRetrieved(false),
+      visualEffectsPoolPriestessInitialized(false),
+      visualEffectsPoolPriestessApplied(false),
+      visualEffectsPoolPriestessSceneCreated(false),
+      visualEffectsPoolPriestessTargetInScene(false),
+      visualEffectsPoolPriestessClientObjectReady(false),
+      visualEffectsPoolPriestessSoulDbReady(false),
+      visualEffectsPoolPriestessSoulStarted(false),
+      visualEffectsPoolPriestessFlyInStarted(false),
+      visualEffectsPoolPriestessFlyOutStarted(false),
+      visualEffectsPoolPriestessCompleted(false),
+      visualEffectsPoolPriestessReleased(false),
+      visualEffectsPoolUnitSceneModifyDbReady(false),
+      visualEffectsPoolUnitSceneModifyRetrieved(false),
+      visualEffectsPoolUnitSceneModifyReleased(false),
+      visualEffectsPoolUnitSceneModifySceneCreated(false),
+      visualEffectsPoolUnitSceneModifyTargetInScene(false),
+      visualEffectsPoolUnitSceneModifyClientObjectReady(false),
+      visualEffectsPoolUnitSceneModifyApplied(false),
+      visualEffectsPoolUnitSceneModifyUpdated(false),
+      visualEffectsPoolUnitSceneModifyDetached(false),
       visualUiEventsReady(false),
       visualTeamColoringReady(false),
       visualEmoteSettingsReady(false),
@@ -1720,6 +2001,45 @@ struct LinuxSessionRootPreview
       visualSelfAuraCount(0),
       visualAuraCount(0),
       visualUiEventCount(0),
+      visualEffectsPoolComponentSceneComponents(0),
+      visualEffectsPoolComponentSceneObjectsAfterAdd(0),
+      visualEffectsPoolComponentSceneObjectsAfterRelease(0),
+      visualEffectsPoolAttachedSceneComponents(0),
+      visualEffectsPoolAttachedTargetComponentsBefore(0),
+      visualEffectsPoolAttachedTargetComponentsAfterAttach(0),
+      visualEffectsPoolAttachedTargetComponentsAfterRelease(0),
+      visualEffectsPoolAttachedSceneObjects(0),
+      visualEffectsPoolApplySceneComponents(0),
+      visualEffectsPoolApplyTargetComponentsBefore(0),
+      visualEffectsPoolApplyTargetComponentsAfterApply(0),
+      visualEffectsPoolApplyTargetComponentsAfterKill(0),
+      visualEffectsPoolApplySceneObjects(0),
+      visualEffectsPoolApplyAttachCallbacks(0),
+      visualEffectsPoolRandomChoices(0),
+      visualEffectsPoolRandomSceneObjects(0),
+      visualEffectsPoolRandomTargetComponentsBefore(0),
+      visualEffectsPoolRandomTargetComponentsAfterApply(0),
+      visualEffectsPoolRandomTargetComponentsAfterDie(0),
+      visualEffectsPoolRandomAttachCallbacks(0),
+      visualEffectsPoolSwitcherSceneObjects(0),
+      visualEffectsPoolSwitcherTargetComponentsBefore(0),
+      visualEffectsPoolSwitcherTargetComponentsAfterApply(0),
+      visualEffectsPoolSwitcherTargetComponentsAfterDie(0),
+      visualEffectsPoolSwitcherAttachCallbacks(0),
+      visualEffectsPoolInvisibilitySceneObjects(0),
+      visualEffectsPoolInvisibilityTargetComponents(0),
+      visualEffectsPoolInvisibilityChannelCreates(0),
+      visualEffectsPoolInvisibilityChannelRemoves(0),
+      visualEffectsPoolAuraChangeCount(0),
+      visualEffectsPoolMinimapUpdateCount(0),
+      visualEffectsPoolPriestessUpdateCount(0),
+      visualEffectsPoolPriestessSceneObjectsBefore(0),
+      visualEffectsPoolPriestessSceneObjectsAfterApply(0),
+      visualEffectsPoolPriestessSceneObjectsAfterDie(0),
+      visualEffectsPoolUnitSceneModifySceneObjectsBefore(0),
+      visualEffectsPoolUnitSceneModifySceneObjectsAfterApply(0),
+      visualEffectsPoolUnitSceneModifySceneObjectsAfterDie(0),
+      visualEffectsPoolUnitSceneModifyTargetComponents(0),
       rollPvpContainerCount(0),
       rollPvpPremiumContainerCount(0),
       rollGuildLevelCount(0),
@@ -1737,7 +2057,9 @@ struct LinuxSessionRootPreview
       rollPvpContainersOnWin(0),
       rollRequiredLevelForExclusiveTalents(0),
       rollRequiredRatingForExclusiveTalents(0),
-      visualWallTargetZoneWidth(0.0f)
+      visualWallTargetZoneWidth(0.0f),
+      visualEffectsPoolInvisibilityOpacityBefore(0.0f),
+      visualEffectsPoolInvisibilityOpacityAfterUpdate(0.0f)
   {
   }
 };
@@ -1791,6 +2113,16 @@ struct LinuxUiRootPreview
   bool runtimeLoadingStatusReady;
   bool runtimeGameSchedulerReady;
   bool runtimeGameSchedulerStarted;
+  bool runtimeGameSchedulerSegmentReady;
+  bool runtimeGameTransceiverReady;
+  bool runtimeGameTransceiverWorldAttached;
+  bool runtimeGameTransceiverNoData;
+  bool runtimeGameTransceiverAsynced;
+  bool runtimeNetworkStatusReady;
+  bool runtimeNetworkStatusWindowReady;
+  bool runtimeNetworkStatusVisible;
+  bool runtimeDebugVarsReady;
+  bool runtimeDebugVarsPolled;
   bool votingReady;
   float runtimeLoadingProgress;
   size_t screenCount;
@@ -1810,9 +2142,47 @@ struct LinuxUiRootPreview
   size_t runtimeLoadingPlayerEntryCount;
   size_t runtimeLoadingDisconnectedCount;
   size_t runtimeGameSchedulerTicks;
+  size_t runtimeGameSchedulerSegmentCommands;
+  size_t runtimeGameSchedulerSegmentStatuses;
+  size_t runtimeGameTransceiverCommandBatches;
+  size_t runtimeGameTransceiverCommands;
+  size_t runtimeGameTransceiverStatusUpdates;
+  size_t runtimeGameWorldPlayers;
+  size_t runtimeGameWorldPresentPlayers;
+  size_t runtimeGameWorldFogWidth;
+  size_t runtimeGameWorldFogHeight;
+  size_t runtimeGameWorldMapObjects;
+  size_t runtimeGameWorldWarFogUnblockObjects;
+  size_t runtimeGameWorldSimpleObjects;
+  size_t runtimeGameWorldMultiStateObjects;
+  size_t runtimeGameWorldTreeObjects;
+  size_t runtimeGameWorldGlyphSpawnerObjects;
+  size_t runtimeGameWorldAdvMapObstacleObjects;
+  size_t runtimeGameWorldHeroPlaceHolderObjects;
+  size_t runtimeGameWorldCreepSpawnerObjects;
+  size_t runtimeGameWorldNeutralCreepSpawnerObjects;
+  size_t runtimeGameWorldSimpleBuildingObjects;
+  size_t runtimeGameWorldUsableBuildingObjects;
+  size_t runtimeGameWorldShopObjects;
+  size_t runtimeGameWorldQuarterObjects;
+  size_t runtimeGameWorldTowerObjects;
+  size_t runtimeGameWorldControllableTowerObjects;
+  size_t runtimeGameWorldFountainObjects;
+  size_t runtimeGameWorldRoadFlagpoleObjects;
+  size_t runtimeGameWorldScriptedFlagpoleObjects;
+  size_t runtimeGameWorldMainBuildingObjects;
+  size_t runtimeGameWorldMinigamePlaceObjects;
+  size_t runtimeGameWorldCameraSplineObjects;
+  size_t runtimeGameWorldScriptPathObjects;
+  size_t runtimeGameWorldScriptPolygonAreaObjects;
   int runtimeHeroSelectedTeam;
   int runtimeHeroSelectedFaction;
   int runtimeGameSchedulerNextStep;
+  int runtimeGameSchedulerSegmentStep;
+  int runtimeGameTransceiverNextStep;
+  int runtimeGameTransceiverWorldStep;
+  int runtimeGameTransceiverBufferLimit;
+  int runtimeGameWorldLocalUserId;
   int runtimeCursorWidth;
   int runtimeCursorHeight;
   int runtimeCursorHotspotX;
@@ -1842,6 +2212,10 @@ struct LinuxUiRootPreview
   std::string runtimeLoadingScreenWindow;
   std::string runtimeLoadingStatusText;
   std::string runtimeGameSchedulerPath;
+  std::string runtimeGameTransceiverPath;
+  std::string runtimeNetworkStatusPath;
+  std::string runtimeNetworkStatusWindow;
+  std::string runtimeDebugVarsPath;
   std::vector<std::string> screenSamples;
   std::vector<std::string> contentSamples;
   std::vector<std::string> constantSamples;
@@ -1875,6 +2249,16 @@ struct LinuxUiRootPreview
       runtimeLoadingStatusReady(false),
       runtimeGameSchedulerReady(false),
       runtimeGameSchedulerStarted(false),
+      runtimeGameSchedulerSegmentReady(false),
+      runtimeGameTransceiverReady(false),
+      runtimeGameTransceiverWorldAttached(false),
+      runtimeGameTransceiverNoData(false),
+      runtimeGameTransceiverAsynced(false),
+      runtimeNetworkStatusReady(false),
+      runtimeNetworkStatusWindowReady(false),
+      runtimeNetworkStatusVisible(false),
+      runtimeDebugVarsReady(false),
+      runtimeDebugVarsPolled(false),
       votingReady(false),
       runtimeLoadingProgress(0.0f),
       screenCount(0),
@@ -1894,9 +2278,47 @@ struct LinuxUiRootPreview
       runtimeLoadingPlayerEntryCount(0),
       runtimeLoadingDisconnectedCount(0),
       runtimeGameSchedulerTicks(0),
+      runtimeGameSchedulerSegmentCommands(0),
+      runtimeGameSchedulerSegmentStatuses(0),
+      runtimeGameTransceiverCommandBatches(0),
+      runtimeGameTransceiverCommands(0),
+      runtimeGameTransceiverStatusUpdates(0),
+      runtimeGameWorldPlayers(0),
+      runtimeGameWorldPresentPlayers(0),
+      runtimeGameWorldFogWidth(0),
+      runtimeGameWorldFogHeight(0),
+      runtimeGameWorldMapObjects(0),
+      runtimeGameWorldWarFogUnblockObjects(0),
+      runtimeGameWorldSimpleObjects(0),
+      runtimeGameWorldMultiStateObjects(0),
+      runtimeGameWorldTreeObjects(0),
+      runtimeGameWorldGlyphSpawnerObjects(0),
+      runtimeGameWorldAdvMapObstacleObjects(0),
+      runtimeGameWorldHeroPlaceHolderObjects(0),
+      runtimeGameWorldCreepSpawnerObjects(0),
+      runtimeGameWorldNeutralCreepSpawnerObjects(0),
+      runtimeGameWorldSimpleBuildingObjects(0),
+      runtimeGameWorldUsableBuildingObjects(0),
+      runtimeGameWorldShopObjects(0),
+      runtimeGameWorldQuarterObjects(0),
+      runtimeGameWorldTowerObjects(0),
+      runtimeGameWorldControllableTowerObjects(0),
+      runtimeGameWorldFountainObjects(0),
+      runtimeGameWorldRoadFlagpoleObjects(0),
+      runtimeGameWorldScriptedFlagpoleObjects(0),
+      runtimeGameWorldMainBuildingObjects(0),
+      runtimeGameWorldMinigamePlaceObjects(0),
+      runtimeGameWorldCameraSplineObjects(0),
+      runtimeGameWorldScriptPathObjects(0),
+      runtimeGameWorldScriptPolygonAreaObjects(0),
       runtimeHeroSelectedTeam(0),
       runtimeHeroSelectedFaction(0),
       runtimeGameSchedulerNextStep(-1),
+      runtimeGameSchedulerSegmentStep(-1),
+      runtimeGameTransceiverNextStep(-1),
+      runtimeGameTransceiverWorldStep(-1),
+      runtimeGameTransceiverBufferLimit(0),
+      runtimeGameWorldLocalUserId(0),
       runtimeCursorWidth(0),
       runtimeCursorHeight(0),
       runtimeCursorHotspotX(0),
@@ -1910,7 +2332,10 @@ struct LinuxUiRootPreview
       runtimeBootstrapJoinResult("<inactive>"),
       runtimeHeroScreenPath("inactive"),
       runtimeLoadingScreenPath("inactive"),
-      runtimeGameSchedulerPath("inactive")
+      runtimeGameSchedulerPath("inactive"),
+      runtimeGameTransceiverPath("inactive"),
+      runtimeNetworkStatusPath("inactive"),
+      runtimeDebugVarsPath("inactive")
   {
   }
 };
@@ -2156,41 +2581,140 @@ private:
 struct LinuxBootstrapScreenRuntime
 {
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
+  Strong<Game::DebugVarsSender> debugVarsSender;
   Strong<NGameX::SelectGameModeScreen> gameModeScreen;
+  Strong<Game::NetworkStatusScreen> networkStatusScreen;
   Strong<NGameX::SelectHeroScreen> heroScreen;
   Strong<Game::LoadingScreen> loadingScreen;
   Strong<Game::LoadingGameContext> loadingGameContext;
   StrongMT<Game::LocalCmdScheduler> localScheduler;
+  Strong<NCore::Transceiver> transceiver;
+  CObj<NCore::IWorldBase> transceiverWorld;
+  StrongMT<NWorld::MapLoadingJob> mapLoadingJob;
   CObj<LoadingProgress> loadingProgress;
   NCore::MapStartInfo loadingMapStartInfo;
   bool initialized;
+  bool debugVarsInitialized;
+  bool networkStatusInitialized;
   bool heroInitialized;
   bool loadingInitialized;
   bool createGameRequested;
   bool schedulerStarted;
+  bool transceiverStepped;
+  bool mapLoadingJobCompleted;
   size_t loadingTickCount;
   size_t heroPlayerEntryCount;
   size_t loadingPlayerEntryCount;
   size_t loadingDisconnectedCount;
   size_t schedulerTickCount;
+  size_t schedulerSegmentCommandCount;
+  size_t schedulerSegmentStatusCount;
   float loadingProgressValue;
   int schedulerNextStep;
+  int schedulerSegmentStep;
+  bool schedulerSegmentReady;
+  bool transceiverReady;
+  bool transceiverWorldAttached;
+  bool transceiverNoData;
+  bool transceiverAsynced;
+  int transceiverNextStep;
+  int transceiverWorldStep;
+  int transceiverBufferLimit;
+  size_t transceiverCommandBatches;
+  size_t transceiverCommands;
+  size_t transceiverStatusUpdates;
+  size_t worldPlayers;
+  size_t worldPresentPlayers;
+  size_t worldFogWidth;
+  size_t worldFogHeight;
+  size_t worldMapObjects;
+  size_t worldWarFogUnblockObjects;
+  size_t worldSimpleObjects;
+  size_t worldMultiStateObjects;
+  size_t worldTreeObjects;
+  size_t worldGlyphSpawnerObjects;
+  size_t worldAdvMapObstacleObjects;
+  size_t worldHeroPlaceHolderObjects;
+  size_t worldCreepSpawnerObjects;
+  size_t worldNeutralCreepSpawnerObjects;
+  size_t worldSimpleBuildingObjects;
+  size_t worldUsableBuildingObjects;
+  size_t worldShopObjects;
+  size_t worldQuarterObjects;
+  size_t worldTowerObjects;
+  size_t worldControllableTowerObjects;
+  size_t worldFountainObjects;
+  size_t worldRoadFlagpoleObjects;
+  size_t worldScriptedFlagpoleObjects;
+  size_t worldMainBuildingObjects;
+  size_t worldMinigamePlaceObjects;
+  size_t worldCameraSplineObjects;
+  size_t worldScriptPathObjects;
+  size_t worldScriptPolygonAreaObjects;
+  int worldLocalUserId;
   std::string heroPlayersText;
   std::string loadingStatusText;
 
   LinuxBootstrapScreenRuntime()
     : initialized(false),
+      debugVarsInitialized(false),
+      networkStatusInitialized(false),
       heroInitialized(false),
       loadingInitialized(false),
       createGameRequested(false),
       schedulerStarted(false),
+      transceiverStepped(false),
+      mapLoadingJobCompleted(false),
       loadingTickCount(0),
       heroPlayerEntryCount(0),
       loadingPlayerEntryCount(0),
       loadingDisconnectedCount(0),
       schedulerTickCount(0),
+      schedulerSegmentCommandCount(0),
+      schedulerSegmentStatusCount(0),
       loadingProgressValue(0.0f),
-      schedulerNextStep(-1)
+      schedulerNextStep(-1),
+      schedulerSegmentStep(-1),
+      schedulerSegmentReady(false),
+      transceiverReady(false),
+      transceiverWorldAttached(false),
+      transceiverNoData(false),
+      transceiverAsynced(false),
+      transceiverNextStep(-1),
+      transceiverWorldStep(-1),
+      transceiverBufferLimit(0),
+      transceiverCommandBatches(0),
+      transceiverCommands(0),
+      transceiverStatusUpdates(0),
+      worldPlayers(0),
+      worldPresentPlayers(0),
+      worldFogWidth(0),
+      worldFogHeight(0),
+      worldMapObjects(0),
+      worldWarFogUnblockObjects(0),
+      worldSimpleObjects(0),
+      worldMultiStateObjects(0),
+      worldTreeObjects(0),
+      worldGlyphSpawnerObjects(0),
+      worldAdvMapObstacleObjects(0),
+      worldHeroPlaceHolderObjects(0),
+      worldCreepSpawnerObjects(0),
+      worldNeutralCreepSpawnerObjects(0),
+      worldSimpleBuildingObjects(0),
+      worldUsableBuildingObjects(0),
+      worldShopObjects(0),
+      worldQuarterObjects(0),
+      worldTowerObjects(0),
+      worldControllableTowerObjects(0),
+      worldFountainObjects(0),
+      worldRoadFlagpoleObjects(0),
+      worldScriptedFlagpoleObjects(0),
+      worldMainBuildingObjects(0),
+      worldMinigamePlaceObjects(0),
+      worldCameraSplineObjects(0),
+      worldScriptPathObjects(0),
+      worldScriptPolygonAreaObjects(0),
+      worldLocalUserId(0)
   {
   }
 };
@@ -9969,6 +10493,4620 @@ NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource()
   return NDb::Ptr<NDb::DBUIData>();
 }
 
+void ClearLoadingUiDataResourceCache()
+{
+  GetLoadingUiDataResourceCache() = NDb::Ptr<NDb::DBUIData>();
+}
+
+struct LinuxEffectSceneComponentCounter : PF_Core::ISceneComponentProcessor
+{
+  size_t count;
+
+  LinuxEffectSceneComponentCounter() : count(0) {}
+
+  virtual void operator()(NScene::SceneComponent* pComponent)
+  {
+    if (pComponent)
+    {
+      ++count;
+    }
+  }
+};
+
+struct LinuxSceneObjectCounter : NScene::ISceneObjectFunctor
+{
+  size_t count;
+
+  LinuxSceneObjectCounter() : count(0) {}
+
+  virtual void operator()(NScene::SceneObjectBase* pSceneObject)
+  {
+    if (pSceneObject)
+    {
+      ++count;
+    }
+  }
+};
+
+size_t CountLinuxSceneObjects(NScene::IScene* scene)
+{
+  if (!scene)
+  {
+    return 0;
+  }
+
+  LinuxSceneObjectCounter counter;
+  scene->ForAllSceneObjects(&counter);
+  return counter.count;
+}
+
+size_t CountLinuxSceneObjectComponents(NScene::SceneObject* sceneObject)
+{
+  if (!sceneObject)
+  {
+    return 0;
+  }
+
+  LinuxEffectSceneComponentCounter counter;
+  sceneObject->Traverse(counter);
+  return counter.count;
+}
+
+class LinuxEffectProbeClientObject : public PF_Core::ClientObjectBase
+{
+  OBJECT_METHODS(0x9E6A1190, LinuxEffectProbeClientObject)
+
+public:
+  LinuxEffectProbeClientObject()
+    : sceneObject(0),
+      effectAttachCount(0),
+      colorChanged(false),
+      channelCreateCount(0),
+      channelRemoveCount(0)
+  {
+  }
+
+  explicit LinuxEffectProbeClientObject(NScene::SceneObject* sceneObject_)
+    : sceneObject(sceneObject_),
+      effectAttachCount(0),
+      colorChanged(false),
+      channelCreateCount(0),
+      channelRemoveCount(0)
+  {
+  }
+
+  virtual NScene::SceneObject* GetSceneObject() const
+  {
+    return sceneObject;
+  }
+
+  virtual void OnEffectAttach(PF_Core::BasicEffectAttached* pEffect)
+  {
+    if (pEffect)
+    {
+      ++effectAttachCount;
+    }
+  }
+
+  virtual PF_Core::ColorModificationChannel* CreateColorModificationChannel(
+    PF_Core::ColorModificationPriority priority,
+    bool fullRecolor = false
+  )
+  {
+    colorChannel = new PF_Core::ColorModificationChannel(priority, &colorChanged);
+    colorChannel->SetFullRecolor(fullRecolor);
+    ++channelCreateCount;
+    return colorChannel.GetPtr();
+  }
+
+  virtual void RemoveColorModificationChannel(PF_Core::ColorModificationChannel* pChannel)
+  {
+    if (pChannel && pChannel == colorChannel.GetPtr())
+    {
+      colorChannel = 0;
+      ++channelRemoveCount;
+    }
+  }
+
+  bool HasColorChannel() const
+  {
+    return colorChannel != 0;
+  }
+
+  float GetChannelOpacity() const
+  {
+    return colorChannel ? colorChannel->GetOpacity() : 0.0f;
+  }
+
+  size_t GetChannelCreateCount() const
+  {
+    return channelCreateCount;
+  }
+
+  size_t GetChannelRemoveCount() const
+  {
+    return channelRemoveCount;
+  }
+
+  size_t GetEffectAttachCount() const
+  {
+    return effectAttachCount;
+  }
+
+private:
+  NScene::SceneObject* sceneObject;
+  size_t effectAttachCount;
+  bool colorChanged;
+  CObj<PF_Core::ColorModificationChannel> colorChannel;
+  size_t channelCreateCount;
+  size_t channelRemoveCount;
+};
+
+class LinuxBuffApplicatorProbe : public NWorld::PFApplBuff
+{
+  OBJECT_METHODS(0x9E6A1191, LinuxBuffApplicatorProbe)
+
+public:
+  LinuxBuffApplicatorProbe()
+  {
+  }
+
+  explicit LinuxBuffApplicatorProbe(NWorld::PFApplCreatePars const& cp)
+    : NWorld::PFApplBuff(cp)
+  {
+  }
+
+  bool ProbeInit()
+  {
+    return Init();
+  }
+
+  bool ProbeStart()
+  {
+    return Start();
+  }
+
+  void ProbeRestartEffects()
+  {
+    RestartEffects();
+  }
+
+  void ProbeStop()
+  {
+    Stop();
+  }
+
+  size_t ProbeEffectsSlots() const
+  {
+    return effects.size();
+  }
+
+  size_t ProbeLiveEffects() const
+  {
+    size_t liveEffects = 0;
+    for (int i = 0; i < effects.size(); ++i)
+    {
+      if (IsValid(effects[i]) && !effects[i]->IsDead())
+      {
+        ++liveEffects;
+      }
+    }
+    return liveEffects;
+  }
+
+  std::string ProbeFirstEffectType() const
+  {
+    for (int i = 0; i < effects.size(); ++i)
+    {
+      if (IsValid(effects[i]))
+      {
+        return effects[i]->GetObjectTypeName();
+      }
+    }
+    return std::string();
+  }
+
+protected:
+  virtual int GetAcceptableTargetFlags() const
+  {
+    return NWorld::Target::FLAG_ALL;
+  }
+};
+
+class LinuxAuraApplicatorProbe : public NWorld::PFApplAura
+{
+  OBJECT_METHODS(0x9E6A1192, LinuxAuraApplicatorProbe)
+
+public:
+  LinuxAuraApplicatorProbe()
+  {
+  }
+
+  explicit LinuxAuraApplicatorProbe(NWorld::PFApplCreatePars const& cp)
+    : NWorld::PFApplAura(cp)
+  {
+  }
+
+  bool ProbeInit()
+  {
+    return Init();
+  }
+
+  bool ProbeStart()
+  {
+    return Start();
+  }
+
+  bool ProbeStep(float dtInSeconds)
+  {
+    return Step(dtInSeconds);
+  }
+
+  void ProbeStop()
+  {
+    Stop();
+  }
+
+  float ProbeTargetsCount() const
+  {
+    return GetVariable("targetsCount");
+  }
+
+  size_t ProbeChildDbCount() const
+  {
+    return GetDB().applicators.size();
+  }
+};
+
+class LinuxBounceApplicatorProbe : public NWorld::PFApplBounce
+{
+public:
+  explicit LinuxBounceApplicatorProbe(NWorld::PFApplCreatePars const& cp)
+    : NWorld::PFApplBounce(cp)
+  {
+  }
+
+  bool ProbeInit()
+  {
+    return Init();
+  }
+
+  bool ProbeStart()
+  {
+    return Start();
+  }
+
+  bool ProbeStep(float dtInSeconds)
+  {
+    return Step(dtInSeconds);
+  }
+
+  void ProbeStop()
+  {
+    Stop();
+  }
+};
+
+struct LinuxApplicatorRingCounter
+{
+  explicit LinuxApplicatorRingCounter(NWorld::PFBaseApplicator* pParent = 0)
+    : pParent(pParent)
+    , total(0)
+    , parented(0)
+    , liveParented(0)
+    , abilityUpgrades(0)
+  {
+  }
+
+  void operator()(const CObj<NWorld::PFBaseApplicator>& pApplicator)
+  {
+    if (!pApplicator)
+      return;
+
+    ++total;
+    if (pApplicator->GetParentAppl() == pParent)
+    {
+      ++parented;
+      if (pApplicator->IsAlive())
+        ++liveParented;
+    }
+
+    if (pApplicator->GetTypeId() == NWorld::PFApplAbilityUpgrade::typeId)
+      ++abilityUpgrades;
+  }
+
+  NWorld::PFBaseApplicator* pParent;
+  size_t total;
+  size_t parented;
+  size_t liveParented;
+  size_t abilityUpgrades;
+};
+
+struct LinuxUnitModApplicatorCollector
+{
+  LinuxUnitModApplicatorCollector()
+    : statMods(0)
+    , statuses(0)
+    , flags(0)
+    , invisibilities(0)
+    , values(0)
+    , markers(0)
+    , targetCounters(0)
+    , abilityMods(0)
+    , taunts(0)
+    , statModVariable(0.0f)
+    , valueVariable(0.0f)
+    , markerVariable(0.0f)
+    , targetsCountVariable(0.0f)
+    , abilityModAdd(0.0f)
+    , abilityModMul(1.0f)
+  {
+  }
+
+  void operator()(const CObj<NWorld::PFBaseApplicator>& pApplicator)
+  {
+    if (!pApplicator)
+      return;
+
+    if (pApplicator->GetTypeId() == NWorld::PFApplStatMod::typeId)
+    {
+      ++statMods;
+      statModVariable = pApplicator->GetVariable("statMod");
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplStatus::typeId)
+    {
+      ++statuses;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplFlags::typeId)
+    {
+      ++flags;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplInvisibility::typeId)
+    {
+      ++invisibilities;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplValue::typeId)
+    {
+      ++values;
+      valueVariable = pApplicator->GetVariable("Value");
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplMarker::typeId)
+    {
+      ++markers;
+      markerVariable = pApplicator->GetVariable("value");
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplTargetsCounter::typeId)
+    {
+      ++targetCounters;
+      targetsCountVariable = pApplicator->GetVariable("targetsCount");
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplAbilityMod::typeId)
+    {
+      ++abilityMods;
+      abilityModAdd = 0.0f;
+      abilityModMul = 1.0f;
+      NWorld::PFApplAbilityMod* abilityMod =
+        dynamic_cast<NWorld::PFApplAbilityMod*>(pApplicator.GetPtr());
+      if (abilityMod)
+      {
+        abilityMod->AddModifier(
+          abilityModAdd,
+          abilityModMul,
+          NDb::ABILITYMODMODE_COOLDOWN,
+          NDb::ABILITYTYPEID_SPECIAL,
+          NDb::Ptr<NDb::Ability>());
+      }
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplTaunt::typeId)
+    {
+      ++taunts;
+    }
+  }
+
+  size_t statMods;
+  size_t statuses;
+  size_t flags;
+  size_t invisibilities;
+  size_t values;
+  size_t markers;
+  size_t targetCounters;
+  size_t abilityMods;
+  size_t taunts;
+  float statModVariable;
+  float valueVariable;
+  float markerVariable;
+  float targetsCountVariable;
+  float abilityModAdd;
+  float abilityModMul;
+};
+
+struct LinuxTargetSelectorCollector : public NWorld::ITargetAction
+{
+  LinuxTargetSelectorCollector()
+    : count(0)
+    , units(0)
+    , positions(0)
+    , firstUnit(0)
+    , firstPosition(false)
+    , firstPositionValue(0.0f, 0.0f, 0.0f)
+  {
+  }
+
+  virtual void operator()(const NWorld::Target& target)
+  {
+    ++count;
+    if (target.IsUnit())
+    {
+      ++units;
+      if (!firstUnit)
+        firstUnit = target.GetUnit().GetPtr();
+    }
+    else if (target.IsPosition())
+    {
+      ++positions;
+      if (!firstPosition)
+      {
+        firstPosition = true;
+        firstPositionValue = target.GetPosition();
+      }
+    }
+    targets.push_back(target);
+  }
+
+  size_t count;
+  size_t units;
+  size_t positions;
+  NWorld::PFBaseUnit* firstUnit;
+  bool firstPosition;
+  CVec3 firstPositionValue;
+  vector<NWorld::Target> targets;
+};
+
+void ProbeEffectsPoolRuntime(
+  NDb::Ptr<NDb::EffectsPool> effectsPoolDb,
+  LinuxSessionRootPreview* preview
+)
+{
+  if (!preview || !effectsPoolDb)
+  {
+    return;
+  }
+
+  const bool initializedHere = PF_Core::EffectsPool::Get() == 0;
+  if (initializedHere)
+  {
+    PF_Core::EffectsPool::Init(effectsPoolDb);
+  }
+
+  PF_Core::EffectsPool* effectsPool = PF_Core::EffectsPool::Get();
+  preview->visualEffectsPoolRuntimeReady = effectsPool != 0;
+  if (effectsPool)
+  {
+    CObj<PF_Core::BasicEffect> effect = effectsPool->Retrieve(NDb::EFFECTS_DEFAULTEFFECT);
+    preview->visualEffectsPoolDefaultRetrieved = effect != 0;
+    if (effect)
+    {
+      preview->visualEffectsPoolDefaultType = effect->GetObjectTypeName();
+      if (const NDb::EffectBase* effectDb = effect->GetDBDesc())
+      {
+        preview->visualEffectsPoolDefaultDbid = ToStdString(effectDb->GetDBID().GetFormatted());
+      }
+
+      effect->DieImmediate();
+      preview->visualEffectsPoolDefaultReleased = effect->IsDead();
+      effect = 0;
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool runtime did not retrieve DefaultEffect");
+    }
+
+    CObj<PF_Core::BasicEffect> componentEffect = effectsPool->Retrieve(NDb::EFFECTS_CLICKONTERRAIN);
+    preview->visualEffectsPoolComponentRetrieved = componentEffect != 0;
+    if (componentEffect)
+    {
+      preview->visualEffectsPoolComponentType = componentEffect->GetObjectTypeName();
+      if (const NDb::EffectBase* effectDb = componentEffect->GetDBDesc())
+      {
+        preview->visualEffectsPoolComponentDbid = ToStdString(effectDb->GetDBID().GetFormatted());
+      }
+
+      PF_Core::SceneComponentsEffect* sceneEffect =
+        dynamic_cast<PF_Core::SceneComponentsEffect*>(componentEffect.GetPtr());
+      PF_Core::BasicEffectStandalone* standaloneEffect =
+        dynamic_cast<PF_Core::BasicEffectStandalone*>(componentEffect.GetPtr());
+      CObj<NScene::IScene> componentProbeScene;
+      if (sceneEffect)
+      {
+        preview->visualEffectsPoolComponentRootReady = sceneEffect->GetRootComponent() != 0;
+        LinuxEffectSceneComponentCounter counter;
+        sceneEffect->ForAllSceneComponents(counter);
+        preview->visualEffectsPoolComponentSceneComponents = counter.count;
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool ClickOnTerrain effect is not scene-component-backed");
+      }
+
+      if (standaloneEffect)
+      {
+        componentProbeScene = NScene::CreateScene();
+        preview->visualEffectsPoolComponentSceneCreated = componentProbeScene != 0;
+        if (componentProbeScene)
+        {
+          componentProbeScene->Init("LinuxEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          const Placement effectPlacement(CVec3(12.0f, 8.0f, 0.0f));
+          standaloneEffect->SetPosition(effectPlacement);
+          standaloneEffect->AddToScene(componentProbeScene.GetPtr());
+
+          NScene::SceneObject* sceneObject = standaloneEffect->GetSceneObject();
+          preview->visualEffectsPoolComponentSceneObjectsAfterAdd =
+            CountLinuxSceneObjects(componentProbeScene.GetPtr());
+          preview->visualEffectsPoolComponentSceneAdded =
+            sceneObject &&
+            sceneObject->GetScene() == componentProbeScene.GetPtr() &&
+            sceneObject->IsInScene() &&
+            preview->visualEffectsPoolComponentSceneObjectsAfterAdd > 0;
+
+          standaloneEffect->Update(0.016f);
+          if (sceneObject)
+          {
+            sceneObject->UpdateForced(0.016f);
+          }
+          preview->visualEffectsPoolComponentSceneUpdated =
+            preview->visualEffectsPoolComponentSceneAdded && !standaloneEffect->IsDead();
+        }
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool ClickOnTerrain effect is not standalone");
+      }
+
+      componentEffect->DieImmediate();
+      preview->visualEffectsPoolComponentReleased = componentEffect->IsDead();
+      preview->visualEffectsPoolComponentSceneObjectsAfterRelease =
+        CountLinuxSceneObjects(componentProbeScene.GetPtr());
+      preview->visualEffectsPoolComponentSceneRemoved =
+        !standaloneEffect ||
+        !standaloneEffect->GetSceneObject() ||
+        (!standaloneEffect->GetSceneObject()->GetScene() &&
+          preview->visualEffectsPoolComponentSceneObjectsAfterRelease == 0);
+      if (standaloneEffect &&
+          standaloneEffect->GetSceneObject() &&
+          standaloneEffect->GetSceneObject()->GetScene())
+      {
+        preview->visualEffectsPoolComponentSceneRemoved = false;
+      }
+      componentEffect = 0;
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool runtime did not retrieve ClickOnTerrain");
+    }
+
+    CObj<PF_Core::BasicEffect> attachedBase = effectsPool->Retrieve(NDb::EFFECTS_SELECTIONAURASELF);
+    preview->visualEffectsPoolAttachedRetrieved = attachedBase != 0;
+    if (attachedBase)
+    {
+      preview->visualEffectsPoolAttachedType = attachedBase->GetObjectTypeName();
+      if (const NDb::EffectBase* effectDb = attachedBase->GetDBDesc())
+      {
+        preview->visualEffectsPoolAttachedDbid = ToStdString(effectDb->GetDBID().GetFormatted());
+      }
+
+      PF_Core::SceneComponentsEffect* attachedSceneEffect =
+        dynamic_cast<PF_Core::SceneComponentsEffect*>(attachedBase.GetPtr());
+      PF_Core::BasicEffectAttached* attachedEffect =
+        dynamic_cast<PF_Core::BasicEffectAttached*>(attachedBase.GetPtr());
+      if (attachedSceneEffect)
+      {
+        preview->visualEffectsPoolAttachedRootReady = attachedSceneEffect->GetRootComponent() != 0;
+        LinuxEffectSceneComponentCounter counter;
+        attachedSceneEffect->ForAllSceneComponents(counter);
+        preview->visualEffectsPoolAttachedSceneComponents = counter.count;
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool SelectionAuraSelf effect is not scene-component-backed");
+      }
+
+      if (attachedEffect)
+      {
+        CObj<NScene::IScene> attachedProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        preview->visualEffectsPoolAttachedSceneCreated = attachedProbeScene != 0;
+        if (attachedProbeScene && targetObject && targetRoot)
+        {
+          attachedProbeScene->Init("LinuxAttachedEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(16.0f, 10.0f, 0.0f)));
+          targetObject->AddToScene(attachedProbeScene.GetPtr());
+
+          preview->visualEffectsPoolAttachedSceneObjects =
+            CountLinuxSceneObjects(attachedProbeScene.GetPtr());
+          preview->visualEffectsPoolAttachedTargetInScene =
+            targetObject->GetScene() == attachedProbeScene.GetPtr() &&
+            targetObject->IsInScene() &&
+            preview->visualEffectsPoolAttachedSceneObjects > 0;
+          preview->visualEffectsPoolAttachedTargetComponentsBefore =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+
+          attachedEffect->Attach(Get(targetObject));
+          preview->visualEffectsPoolAttachedTargetComponentsAfterAttach =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolAttachedApplied =
+            attachedEffect->GetSceneObject() == Get(targetObject) &&
+            preview->visualEffectsPoolAttachedTargetComponentsAfterAttach >
+              preview->visualEffectsPoolAttachedTargetComponentsBefore;
+
+          attachedEffect->Update(0.016f);
+          preview->visualEffectsPoolAttachedUpdated =
+            preview->visualEffectsPoolAttachedApplied && !attachedEffect->IsDead();
+
+          attachedEffect->DieImmediate();
+          preview->visualEffectsPoolAttachedReleased = attachedEffect->IsDead();
+          preview->visualEffectsPoolAttachedTargetComponentsAfterRelease =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolAttachedDetached =
+            preview->visualEffectsPoolAttachedTargetComponentsAfterRelease <=
+            preview->visualEffectsPoolAttachedTargetComponentsBefore;
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolAttachedReleased)
+        {
+          attachedEffect->DieImmediate();
+          preview->visualEffectsPoolAttachedReleased = attachedEffect->IsDead();
+        }
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool SelectionAuraSelf effect is not attached");
+        attachedBase->DieImmediate();
+        preview->visualEffectsPoolAttachedReleased = attachedBase->IsDead();
+      }
+
+      attachedBase = 0;
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool runtime did not retrieve SelectionAuraSelf");
+    }
+
+    CObj<PF_Core::BasicEffect> applyBase = effectsPool->Retrieve(NDb::EFFECTS_SELECTIONAURASELF);
+    preview->visualEffectsPoolApplyRetrieved = applyBase != 0;
+    if (applyBase)
+    {
+      preview->visualEffectsPoolApplyType = applyBase->GetObjectTypeName();
+      if (const NDb::EffectBase* effectDb = applyBase->GetDBDesc())
+      {
+        preview->visualEffectsPoolApplyDbid = ToStdString(effectDb->GetDBID().GetFormatted());
+      }
+
+      PF_Core::SceneComponentsEffect* applySceneEffect =
+        dynamic_cast<PF_Core::SceneComponentsEffect*>(applyBase.GetPtr());
+      PF_Core::BasicEffectAttached* applyEffect =
+        dynamic_cast<PF_Core::BasicEffectAttached*>(applyBase.GetPtr());
+      if (applySceneEffect)
+      {
+        preview->visualEffectsPoolApplyRootReady = applySceneEffect->GetRootComponent() != 0;
+        LinuxEffectSceneComponentCounter counter;
+        applySceneEffect->ForAllSceneComponents(counter);
+        preview->visualEffectsPoolApplySceneComponents = counter.count;
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool Apply probe effect is not scene-component-backed");
+      }
+
+      if (applyEffect)
+      {
+        CObj<NScene::IScene> applyProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        preview->visualEffectsPoolApplySceneCreated = applyProbeScene != 0;
+        preview->visualEffectsPoolApplyClientObjectReady = targetClient != 0;
+        if (applyProbeScene && targetObject && targetRoot && targetClient)
+        {
+          applyProbeScene->Init("LinuxApplyEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(20.0f, 12.0f, 0.0f)));
+          targetObject->AddToScene(applyProbeScene.GetPtr());
+
+          preview->visualEffectsPoolApplySceneObjects =
+            CountLinuxSceneObjects(applyProbeScene.GetPtr());
+          preview->visualEffectsPoolApplyTargetInScene =
+            targetObject->GetScene() == applyProbeScene.GetPtr() &&
+            targetObject->IsInScene() &&
+            preview->visualEffectsPoolApplySceneObjects > 0;
+          preview->visualEffectsPoolApplyTargetComponentsBefore =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          applyEffect->Apply(targetClientPtr);
+          preview->visualEffectsPoolApplyAttachCallbacks =
+            targetClient->GetEffectAttachCount();
+          preview->visualEffectsPoolApplyCallbackObserved =
+            preview->visualEffectsPoolApplyAttachCallbacks == 1;
+          preview->visualEffectsPoolApplyTargetComponentsAfterApply =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolApplyApplied =
+            applyEffect->GetSceneObject() == Get(targetObject) &&
+            preview->visualEffectsPoolApplyTargetComponentsAfterApply >
+              preview->visualEffectsPoolApplyTargetComponentsBefore &&
+            preview->visualEffectsPoolApplyCallbackObserved;
+
+          PF_Core::IUpdateable::ProceedUpdate(0.016f);
+          preview->visualEffectsPoolApplyUpdated =
+            preview->visualEffectsPoolApplyApplied && !applyEffect->IsDead();
+
+          PF_Core::KillAllActiveEffects();
+          preview->visualEffectsPoolApplyKilled =
+            preview->visualEffectsPoolApplyUpdated && applyEffect->IsDead();
+          preview->visualEffectsPoolApplyReleased = applyEffect->IsDead();
+          preview->visualEffectsPoolApplyTargetComponentsAfterKill =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolApplyDetached =
+            preview->visualEffectsPoolApplyTargetComponentsAfterKill <=
+            preview->visualEffectsPoolApplyTargetComponentsBefore;
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolApplyReleased)
+        {
+          applyEffect->DieImmediate();
+          preview->visualEffectsPoolApplyReleased = applyEffect->IsDead();
+          preview->visualEffectsPoolApplyTargetComponentsAfterKill =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolApplyDetached =
+            preview->visualEffectsPoolApplyTargetComponentsAfterKill <=
+            preview->visualEffectsPoolApplyTargetComponentsBefore;
+        }
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool Apply probe effect is not attached");
+        applyBase->DieImmediate();
+        preview->visualEffectsPoolApplyReleased = applyBase->IsDead();
+      }
+
+      applyBase = 0;
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool runtime did not retrieve Apply probe effect");
+    }
+
+    NDb::Ptr<NDb::EffectBase> applicatorAttachedDb;
+    if (NDb::EFFECTS_SELECTIONAURASELF < effectsPoolDb->effectsList.size())
+    {
+      applicatorAttachedDb = effectsPoolDb->effectsList[NDb::EFFECTS_SELECTIONAURASELF];
+    }
+    NDb::Ptr<NDb::EffectBase> applicatorStandaloneDb;
+    if (NDb::EFFECTS_CLICKONTERRAIN < effectsPoolDb->effectsList.size())
+    {
+      applicatorStandaloneDb = effectsPoolDb->effectsList[NDb::EFFECTS_CLICKONTERRAIN];
+    }
+
+    CObj<PF_Core::BasicEffect> applicatorPrepared;
+    std::string applicatorPreparedType;
+    if (applicatorAttachedDb)
+    {
+      NGameX::PrepareEffect(applicatorPrepared, applicatorAttachedDb);
+      if (applicatorPrepared)
+      {
+        applicatorPreparedType = applicatorPrepared->GetObjectTypeName();
+      }
+    }
+    const bool applicatorPreparedOk = applicatorPrepared != 0;
+    bool applicatorKilled = false;
+    if (applicatorPrepared)
+    {
+      NGameX::KillEffect(applicatorPrepared);
+      applicatorKilled = applicatorPrepared == 0;
+    }
+
+    CObj<PF_Core::BasicEffectStandalone> applicatorStandalone;
+    std::string applicatorStandaloneType;
+    if (applicatorStandaloneDb)
+    {
+      applicatorStandalone = NGameX::RetrieveStandaloneEffect(applicatorStandaloneDb.GetPtr(), 0, 0);
+      if (applicatorStandalone)
+      {
+        applicatorStandaloneType = applicatorStandalone->GetObjectTypeName();
+      }
+    }
+    const bool applicatorStandaloneRetrieved = applicatorStandalone != 0;
+    bool applicatorStandaloneSceneCreated = false;
+    bool applicatorStandaloneAdded = false;
+    bool applicatorStandaloneUpdated = false;
+    bool applicatorStandaloneReleased = false;
+    size_t applicatorStandaloneObjectsBefore = 0;
+    size_t applicatorStandaloneObjectsAfterAdd = 0;
+    size_t applicatorStandaloneObjectsAfterRelease = 0;
+    if (applicatorStandalone)
+    {
+      CObj<NScene::IScene> applicatorStandaloneScene = NScene::CreateScene();
+      applicatorStandaloneSceneCreated = applicatorStandaloneScene != 0;
+      if (applicatorStandaloneScene)
+      {
+        applicatorStandaloneScene->Init("LinuxClientApplicatorsProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+        applicatorStandaloneObjectsBefore = CountLinuxSceneObjects(applicatorStandaloneScene.GetPtr());
+
+        applicatorStandalone->SetPosition(Placement(CVec3(36.0f, 20.0f, 0.0f)));
+        applicatorStandalone->AddToScene(applicatorStandaloneScene.GetPtr());
+
+        NScene::SceneObject* standaloneSceneObject = applicatorStandalone->GetSceneObject();
+        applicatorStandaloneObjectsAfterAdd = CountLinuxSceneObjects(applicatorStandaloneScene.GetPtr());
+        applicatorStandaloneAdded =
+          standaloneSceneObject &&
+          standaloneSceneObject->GetScene() == applicatorStandaloneScene.GetPtr() &&
+          standaloneSceneObject->IsInScene() &&
+          applicatorStandaloneObjectsAfterAdd > applicatorStandaloneObjectsBefore;
+
+        applicatorStandalone->Update(0.016f);
+        if (standaloneSceneObject)
+        {
+          standaloneSceneObject->UpdateForced(0.016f);
+        }
+        applicatorStandaloneUpdated = applicatorStandaloneAdded && !applicatorStandalone->IsDead();
+
+        applicatorStandalone->DieImmediate();
+        applicatorStandaloneReleased = applicatorStandalone->IsDead();
+        applicatorStandaloneObjectsAfterRelease = CountLinuxSceneObjects(applicatorStandaloneScene.GetPtr());
+      }
+    }
+
+    NGameX::StandaloneEffectsVector applicatorCollection;
+    if (applicatorStandaloneDb)
+    {
+      NGameX::RetrieveStandaloneEffect(&applicatorCollection, applicatorStandaloneDb.GetPtr(), 0, 0);
+    }
+    const bool applicatorCollectionRetrieved = !applicatorCollection.empty();
+    for (int i = 0; i < applicatorCollection.size(); ++i)
+    {
+      if (applicatorCollection[i])
+      {
+        applicatorCollection[i]->DieImmediate();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects client-applicators runtime: prepared=%s killed=%s standalone=%s scene=%s added=%s updated=%s released=%s collection=%s/%lu objects=%lu/%lu/%lu type=%s standaloneType=%s\n",
+      applicatorPreparedOk ? "yes" : "no",
+      applicatorKilled ? "yes" : "no",
+      applicatorStandaloneRetrieved ? "yes" : "no",
+      applicatorStandaloneSceneCreated ? "yes" : "no",
+      applicatorStandaloneAdded ? "yes" : "no",
+      applicatorStandaloneUpdated ? "yes" : "no",
+      applicatorStandaloneReleased ? "yes" : "no",
+      applicatorCollectionRetrieved ? "yes" : "no",
+      static_cast<unsigned long>(applicatorCollection.size()),
+      static_cast<unsigned long>(applicatorStandaloneObjectsBefore),
+      static_cast<unsigned long>(applicatorStandaloneObjectsAfterAdd),
+      static_cast<unsigned long>(applicatorStandaloneObjectsAfterRelease),
+      applicatorPreparedType.empty() ? "<none>" : applicatorPreparedType.c_str(),
+      applicatorStandaloneType.empty() ? "<none>" : applicatorStandaloneType.c_str());
+
+    const bool buffApplicatorDbReady = IsValid(applicatorAttachedDb);
+    bool buffApplicatorInit = false;
+    bool buffApplicatorRunning = false;
+    bool buffApplicatorEnabledAfterStart = false;
+    bool buffApplicatorStopped = false;
+    size_t buffApplicatorSlotsAfterStart = 0;
+    size_t buffApplicatorLiveAfterStart = 0;
+    size_t buffApplicatorSlotsAfterRestart = 0;
+    size_t buffApplicatorLiveAfterRestart = 0;
+    size_t buffApplicatorSlotsAfterStop = 0;
+    size_t buffApplicatorLiveAfterStop = 0;
+    std::string buffApplicatorEffectType;
+    if (buffApplicatorDbReady)
+    {
+      NDb::AbilityUpgradeApplicator* buffDb = static_cast<NDb::AbilityUpgradeApplicator*>(
+        NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeBuffApplicator")
+        )
+      );
+      buffDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+      buffDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+      NDb::Ptr<NDb::BaseApplicator> buffDbPtr(buffDb);
+
+      CObj<NWorld::PFAbilityInstance> noAbility;
+      NWorld::Target buffTarget(CVec3(44.0f, 24.0f, 0.0f));
+      NWorld::PFApplCreatePars buffCp(noAbility, buffTarget);
+      buffCp.pDBAppl = buffDbPtr;
+
+      CObj<LinuxBuffApplicatorProbe> buffProbe(new LinuxBuffApplicatorProbe(buffCp));
+      buffApplicatorInit = buffProbe && buffProbe->ProbeInit();
+      if (buffApplicatorInit)
+      {
+        buffApplicatorRunning = !buffProbe->ProbeStart();
+        buffApplicatorEnabledAfterStart = buffProbe->IsEnabled();
+        buffApplicatorSlotsAfterStart = buffProbe->ProbeEffectsSlots();
+        buffApplicatorLiveAfterStart = buffProbe->ProbeLiveEffects();
+        buffApplicatorEffectType = buffProbe->ProbeFirstEffectType();
+
+        buffProbe->ProbeRestartEffects();
+        buffApplicatorSlotsAfterRestart = buffProbe->ProbeEffectsSlots();
+        buffApplicatorLiveAfterRestart = buffProbe->ProbeLiveEffects();
+        if (buffApplicatorEffectType.empty())
+        {
+          buffApplicatorEffectType = buffProbe->ProbeFirstEffectType();
+        }
+
+        buffProbe->ProbeStop();
+        buffApplicatorStopped = !buffProbe->IsAlive();
+        buffApplicatorSlotsAfterStop = buffProbe->ProbeEffectsSlots();
+        buffApplicatorLiveAfterStop = buffProbe->ProbeLiveEffects();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects buff-applicator runtime: db=%s init=%s running=%s enabled=%s prepared=%lu/%lu restarted=%lu/%lu stopped=%s killed=%s type=%s\n",
+      buffApplicatorDbReady ? "yes" : "no",
+      buffApplicatorInit ? "yes" : "no",
+      buffApplicatorRunning ? "yes" : "no",
+      buffApplicatorEnabledAfterStart ? "yes" : "no",
+      static_cast<unsigned long>(buffApplicatorLiveAfterStart),
+      static_cast<unsigned long>(buffApplicatorSlotsAfterStart),
+      static_cast<unsigned long>(buffApplicatorLiveAfterRestart),
+      static_cast<unsigned long>(buffApplicatorSlotsAfterRestart),
+      buffApplicatorStopped ? "yes" : "no",
+      (buffApplicatorSlotsAfterStop == 0 && buffApplicatorLiveAfterStop == 0) ? "yes" : "no",
+      buffApplicatorEffectType.empty() ? "<none>" : buffApplicatorEffectType.c_str());
+
+    const bool auraApplicatorDbReady = IsValid(applicatorAttachedDb);
+    bool auraApplicatorUnitsReady = false;
+    bool auraApplicatorAbilityReady = false;
+    bool auraApplicatorInit = false;
+    bool auraApplicatorChildFactoryReady = false;
+    bool auraApplicatorRunning = false;
+    bool auraApplicatorStepRunning = false;
+    bool auraApplicatorChildApplied = false;
+    bool auraApplicatorStopped = false;
+    bool auraApplicatorChildRemoved = false;
+    float auraApplicatorTargets = 0.0f;
+    size_t auraApplicatorChildDbCount = 0;
+    size_t auraApplicatorReceiverAppliedBefore = 0;
+    size_t auraApplicatorReceiverAppliedAfterStep = 0;
+    size_t auraApplicatorReceiverChildAfterStep = 0;
+    size_t auraApplicatorReceiverLiveChildAfterStep = 0;
+    size_t auraApplicatorReceiverAbilityUpgradesAfterStep = 0;
+    size_t auraApplicatorReceiverAppliedAfterStop = 0;
+    size_t auraApplicatorReceiverChildAfterStop = 0;
+    size_t auraApplicatorReceiverLiveChildAfterStop = 0;
+    if (auraApplicatorDbReady)
+    {
+      CObj<NWorld::PFBaseUnit> auraOwner(
+        new NWorld::PFBaseUnit(0, CVec3(52.0f, 26.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> auraReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(53.0f, 26.0f, 0.0f), 0)
+      );
+      auraApplicatorUnitsReady = auraOwner && auraReceiver;
+      if (auraApplicatorUnitsReady)
+      {
+        auraOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        auraReceiver->ChangeFaction(NDb::FACTION_FREEZE);
+
+        NDb::Ptr<NDb::Ability> auraAbilityDb(new NDb::Ability());
+        CObj<NWorld::PFAbilityData> auraAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(auraOwner.GetPtr()),
+            auraAbilityDb,
+            NDb::ABILITYTYPEID_SPECIAL,
+            false
+          )
+        );
+        NWorld::Target auraTarget(auraReceiver.GetPtr());
+        CObj<NWorld::PFAbilityInstance> auraAbility(
+          new NWorld::PFAbilityInstance(auraAbilityData, auraTarget, false)
+        );
+        auraApplicatorAbilityReady = auraAbility != 0;
+
+        if (auraApplicatorAbilityReady)
+        {
+          NDb::AbilityUpgradeApplicator* auraChildDb =
+            static_cast<NDb::AbilityUpgradeApplicator*>(
+              NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+                NDb::DBID("", "LinuxBootstrapRuntimeAuraChildApplicator")
+              )
+            );
+          auraChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+          auraChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+          NDb::Ptr<NDb::BaseApplicator> auraChildDbPtr(auraChildDb);
+
+          NDb::AuraApplicator* auraDb =
+            static_cast<NDb::AuraApplicator*>(
+              NDb::AuraApplicator::NewAuraApplicator(
+                NDb::DBID("", "LinuxBootstrapRuntimeAuraApplicator")
+              )
+            );
+          auraDb->behaviorFlags = NDb::BUFFBEHAVIOR_REMOVECHILDREN;
+          auraDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+          auraDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+          auraDb->applicators.push_back(auraChildDbPtr);
+          NDb::Ptr<NDb::BaseApplicator> auraDbPtr(auraDb);
+
+          NWorld::PFApplCreatePars auraCp(auraAbility, auraTarget);
+          auraCp.pDBAppl = auraDbPtr;
+          CObj<LinuxAuraApplicatorProbe> auraProbe(new LinuxAuraApplicatorProbe(auraCp));
+          auraApplicatorInit = auraProbe && auraProbe->ProbeInit();
+          if (auraApplicatorInit)
+          {
+            auraApplicatorChildDbCount = auraProbe->ProbeChildDbCount();
+            NWorld::PFApplCreatePars auraChildFactoryCp(
+              auraAbility,
+              auraTarget,
+              CPtr<NWorld::PFBaseApplicator>(auraProbe.GetPtr())
+            );
+            auraChildFactoryCp.pDBAppl = auraChildDbPtr;
+            CObj<NWorld::PFBaseApplicator> auraFactoryProbe(
+              auraChildDbPtr->Create(auraChildFactoryCp)
+            );
+            auraApplicatorChildFactoryReady = auraFactoryProbe != 0;
+            auraFactoryProbe = 0;
+
+            LinuxApplicatorRingCounter beforeCounter(auraProbe.GetPtr());
+            auraReceiver->ForAllAppliedApplicators(beforeCounter);
+            auraApplicatorReceiverAppliedBefore = beforeCounter.total;
+
+            auraApplicatorRunning = !auraProbe->ProbeStart();
+            auraApplicatorStepRunning = !auraProbe->ProbeStep(0.016f);
+            auraApplicatorTargets = auraProbe->ProbeTargetsCount();
+
+            LinuxApplicatorRingCounter afterStepCounter(auraProbe.GetPtr());
+            auraReceiver->ForAllAppliedApplicators(afterStepCounter);
+            auraApplicatorReceiverAppliedAfterStep = afterStepCounter.total;
+            auraApplicatorReceiverChildAfterStep = afterStepCounter.parented;
+            auraApplicatorReceiverLiveChildAfterStep = afterStepCounter.liveParented;
+            auraApplicatorReceiverAbilityUpgradesAfterStep = afterStepCounter.abilityUpgrades;
+            auraApplicatorChildApplied =
+              auraApplicatorReceiverAppliedAfterStep > auraApplicatorReceiverAppliedBefore &&
+              auraApplicatorReceiverChildAfterStep == 1 &&
+              auraApplicatorReceiverLiveChildAfterStep == 1 &&
+              auraApplicatorReceiverAbilityUpgradesAfterStep == 1;
+
+            auraProbe->ProbeStop();
+            auraApplicatorStopped = !auraProbe->IsAlive();
+
+            LinuxApplicatorRingCounter afterStopCounter(auraProbe.GetPtr());
+            auraReceiver->ForAllAppliedApplicators(afterStopCounter);
+            auraApplicatorReceiverAppliedAfterStop = afterStopCounter.total;
+            auraApplicatorReceiverChildAfterStop = afterStopCounter.parented;
+            auraApplicatorReceiverLiveChildAfterStop = afterStopCounter.liveParented;
+            auraApplicatorChildRemoved =
+              auraApplicatorReceiverChildAfterStop == 0 &&
+              auraApplicatorReceiverLiveChildAfterStop == 0;
+          }
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects aura-applicator runtime: db=%s units=%s ability=%s init=%s factory=%s/%lu running=%s stepped=%s targets=%.0f child=%s/%lu/%lu/%lu applied=%lu/%lu/%lu stopped=%s removed=%s\n",
+      auraApplicatorDbReady ? "yes" : "no",
+      auraApplicatorUnitsReady ? "yes" : "no",
+      auraApplicatorAbilityReady ? "yes" : "no",
+      auraApplicatorInit ? "yes" : "no",
+      auraApplicatorChildFactoryReady ? "yes" : "no",
+      static_cast<unsigned long>(auraApplicatorChildDbCount),
+      auraApplicatorRunning ? "yes" : "no",
+      auraApplicatorStepRunning ? "yes" : "no",
+      auraApplicatorTargets,
+      auraApplicatorChildApplied ? "yes" : "no",
+      static_cast<unsigned long>(auraApplicatorReceiverChildAfterStep),
+      static_cast<unsigned long>(auraApplicatorReceiverLiveChildAfterStep),
+      static_cast<unsigned long>(auraApplicatorReceiverAbilityUpgradesAfterStep),
+      static_cast<unsigned long>(auraApplicatorReceiverAppliedBefore),
+      static_cast<unsigned long>(auraApplicatorReceiverAppliedAfterStep),
+      static_cast<unsigned long>(auraApplicatorReceiverAppliedAfterStop),
+      auraApplicatorStopped ? "yes" : "no",
+      auraApplicatorChildRemoved ? "yes" : "no");
+
+    const bool dispatchApplicatorDbReady = IsValid(applicatorAttachedDb);
+    bool dispatchApplicatorUnitsReady = false;
+    bool dispatchApplicatorAbilityReady = false;
+    bool dispatchApplicatorSpellReady = false;
+    bool dispatchApplicatorCreated = false;
+    bool dispatchApplicatorStarted = false;
+    bool dispatchApplicatorStepped = false;
+    bool dispatchApplicatorApplied = false;
+    bool dispatchApplicatorRemoved = false;
+    size_t dispatchReceiverAppliedBefore = 0;
+    size_t dispatchReceiverAppliedAfterStep = 0;
+    size_t dispatchReceiverLiveAfterStep = 0;
+    size_t dispatchReceiverAbilityUpgradesAfterStep = 0;
+    size_t dispatchReceiverAppliedAfterCleanup = 0;
+    size_t dispatchReceiverLiveAfterCleanup = 0;
+    if (dispatchApplicatorDbReady)
+    {
+      CObj<NWorld::PFBaseUnit> dispatchOwner(
+        new NWorld::PFBaseUnit(0, CVec3(60.0f, 28.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> dispatchReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(61.0f, 28.0f, 0.0f), 0)
+      );
+      dispatchApplicatorUnitsReady = dispatchOwner && dispatchReceiver;
+      if (dispatchApplicatorUnitsReady)
+      {
+        dispatchOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        dispatchReceiver->ChangeFaction(NDb::FACTION_FREEZE);
+
+        NDb::Ptr<NDb::Ability> dispatchAbilityDb(new NDb::Ability());
+        CObj<NWorld::PFAbilityData> dispatchAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(dispatchOwner.GetPtr()),
+            dispatchAbilityDb,
+            NDb::ABILITYTYPEID_SPECIAL,
+            false
+          )
+        );
+        NWorld::Target dispatchTarget(dispatchReceiver.GetPtr());
+        CObj<NWorld::PFAbilityInstance> dispatchAbility(
+          new NWorld::PFAbilityInstance(dispatchAbilityData, dispatchTarget, false)
+        );
+        dispatchApplicatorAbilityReady = dispatchAbility != 0;
+
+        if (dispatchApplicatorAbilityReady)
+        {
+          NDb::AbilityUpgradeApplicator* dispatchChildDb =
+            static_cast<NDb::AbilityUpgradeApplicator*>(
+              NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+                NDb::DBID("", "LinuxBootstrapRuntimeDispatchApplicator")
+              )
+            );
+          dispatchChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+          dispatchChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+
+          NDb::Ptr<NDb::BaseApplicator> dispatchChildDbPtr(dispatchChildDb);
+          NDb::Spell* dispatchSpell = new NDb::Spell();
+          dispatchSpell->applicators.push_back(dispatchChildDbPtr);
+          NDb::Ptr<NDb::Spell> dispatchSpellDb(dispatchSpell);
+          dispatchApplicatorSpellReady = dispatchSpell->applicators.size() == 1;
+
+          LinuxApplicatorRingCounter beforeDispatchCounter;
+          dispatchReceiver->ForAllAppliedApplicators(beforeDispatchCounter);
+          dispatchReceiverAppliedBefore = beforeDispatchCounter.total;
+
+          CPtr<NWorld::PFBaseApplicator> noParentApplicator;
+          CObj<NWorld::PFDispatch> dispatch(
+            NWorld::CreateDispatch(
+              dispatchAbility,
+              noParentApplicator,
+              NWorld::Target(dispatchOwner.GetPtr()),
+              dispatchTarget,
+              dispatchSpellDb,
+              0,
+              true,
+              0.0f
+            )
+          );
+          dispatchApplicatorCreated = dispatch != 0;
+          dispatchApplicatorStarted = dispatchApplicatorCreated && dispatch->Started();
+          dispatchApplicatorStepped = dispatchApplicatorCreated && dispatch->Step(0.016f);
+
+          LinuxApplicatorRingCounter afterDispatchCounter;
+          dispatchReceiver->ForAllAppliedApplicators(afterDispatchCounter);
+          dispatchReceiverAppliedAfterStep = afterDispatchCounter.total;
+          dispatchReceiverLiveAfterStep = afterDispatchCounter.liveParented;
+          dispatchReceiverAbilityUpgradesAfterStep = afterDispatchCounter.abilityUpgrades;
+          dispatchApplicatorApplied =
+            dispatchReceiverAppliedAfterStep > dispatchReceiverAppliedBefore &&
+            dispatchReceiverLiveAfterStep == 1 &&
+            dispatchReceiverAbilityUpgradesAfterStep == 1;
+
+          dispatchReceiver->RemoveAppliedApplicators();
+          LinuxApplicatorRingCounter afterDispatchCleanupCounter;
+          dispatchReceiver->ForAllAppliedApplicators(afterDispatchCleanupCounter);
+          dispatchReceiverAppliedAfterCleanup = afterDispatchCleanupCounter.total;
+          dispatchReceiverLiveAfterCleanup = afterDispatchCleanupCounter.liveParented;
+          dispatchApplicatorRemoved =
+            dispatchReceiverAppliedAfterCleanup == 0 &&
+            dispatchReceiverLiveAfterCleanup == 0;
+
+          if (dispatch)
+            dispatch->Cancel();
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects dispatch-applicator runtime: db=%s units=%s ability=%s spell=%s created=%s started=%s stepped=%s applied=%s/%lu/%lu removed=%s/%lu/%lu\n",
+      dispatchApplicatorDbReady ? "yes" : "no",
+      dispatchApplicatorUnitsReady ? "yes" : "no",
+      dispatchApplicatorAbilityReady ? "yes" : "no",
+      dispatchApplicatorSpellReady ? "yes" : "no",
+      dispatchApplicatorCreated ? "yes" : "no",
+      dispatchApplicatorStarted ? "yes" : "no",
+      dispatchApplicatorStepped ? "yes" : "no",
+      dispatchApplicatorApplied ? "yes" : "no",
+      static_cast<unsigned long>(dispatchReceiverAppliedAfterStep),
+      static_cast<unsigned long>(dispatchReceiverAbilityUpgradesAfterStep),
+      dispatchApplicatorRemoved ? "yes" : "no",
+      static_cast<unsigned long>(dispatchReceiverAppliedAfterCleanup),
+      static_cast<unsigned long>(dispatchReceiverLiveAfterCleanup));
+
+    const bool abilityApplicatorDbReady = IsValid(applicatorAttachedDb);
+    bool abilityApplicatorUnitsReady = false;
+    bool abilityApplicatorPassiveReady = false;
+    bool abilityApplicatorPassiveApplied = false;
+    bool abilityApplicatorPassiveRemoved = false;
+    bool abilityApplicatorActiveReady = false;
+    bool abilityApplicatorActiveCreated = false;
+    bool abilityApplicatorActiveApplied = false;
+    bool abilityApplicatorActiveRemoved = false;
+    size_t abilityPassiveAppliedBefore = 0;
+    size_t abilityPassiveAppliedAfter = 0;
+    size_t abilityPassiveLiveAfter = 0;
+    size_t abilityPassiveUpgradesAfter = 0;
+    size_t abilityPassiveAppliedAfterRemove = 0;
+    size_t abilityPassiveLiveAfterRemove = 0;
+    size_t abilityActiveAppliedBefore = 0;
+    size_t abilityActiveAppliedAfter = 0;
+    size_t abilityActiveLiveAfter = 0;
+    size_t abilityActiveUpgradesAfter = 0;
+    size_t abilityActiveAppliedAfterRemove = 0;
+    size_t abilityActiveLiveAfterRemove = 0;
+    if (abilityApplicatorDbReady)
+    {
+      CObj<NWorld::PFBaseUnit> abilityOwner(
+        new NWorld::PFBaseUnit(0, CVec3(68.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> abilityReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(69.0f, 30.0f, 0.0f), 0)
+      );
+      abilityApplicatorUnitsReady = abilityOwner && abilityReceiver;
+      if (abilityApplicatorUnitsReady)
+      {
+        abilityOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        abilityReceiver->ChangeFaction(NDb::FACTION_FREEZE);
+
+        NDb::AbilityUpgradeApplicator* passiveChildDb =
+          static_cast<NDb::AbilityUpgradeApplicator*>(
+            NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+              NDb::DBID("", "LinuxBootstrapRuntimePassiveAbilityApplicator")
+            )
+          );
+        passiveChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+        passiveChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+        NDb::Ptr<NDb::BaseApplicator> passiveChildDbPtr(passiveChildDb);
+
+        NDb::Ability* passiveAbility = new NDb::Ability();
+        passiveAbility->type = NDb::ABILITYTYPE_PASSIVE;
+        passiveAbility->targetType = NDb::SPELLTARGET_SELF;
+        passiveAbility->passiveApplicators.push_back(passiveChildDbPtr);
+        NDb::Ptr<NDb::Ability> passiveAbilityDb(passiveAbility);
+
+        CObj<NWorld::PFAbilityData> passiveAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(abilityOwner.GetPtr()),
+            passiveAbilityDb,
+            NDb::ABILITYTYPEID_SPECIAL,
+            false
+          )
+        );
+        abilityApplicatorPassiveReady = passiveAbilityData != 0;
+        if (abilityApplicatorPassiveReady)
+        {
+          LinuxApplicatorRingCounter beforePassiveCounter;
+          abilityOwner->ForAllAppliedApplicators(beforePassiveCounter);
+          abilityPassiveAppliedBefore = beforePassiveCounter.total;
+
+          passiveAbilityData->ApplyPassivePart(true);
+
+          LinuxApplicatorRingCounter afterPassiveCounter;
+          abilityOwner->ForAllAppliedApplicators(afterPassiveCounter);
+          abilityPassiveAppliedAfter = afterPassiveCounter.total;
+          abilityPassiveLiveAfter = afterPassiveCounter.liveParented;
+          abilityPassiveUpgradesAfter = afterPassiveCounter.abilityUpgrades;
+          abilityApplicatorPassiveApplied =
+            passiveAbilityData->HasPassiveInstance() &&
+            abilityPassiveAppliedAfter > abilityPassiveAppliedBefore &&
+            abilityPassiveLiveAfter == 1 &&
+            abilityPassiveUpgradesAfter == 1;
+
+          passiveAbilityData->ApplyPassivePart(false);
+
+          LinuxApplicatorRingCounter afterPassiveRemoveCounter;
+          abilityOwner->ForAllAppliedApplicators(afterPassiveRemoveCounter);
+          abilityPassiveAppliedAfterRemove = afterPassiveRemoveCounter.total;
+          abilityPassiveLiveAfterRemove = afterPassiveRemoveCounter.liveParented;
+          abilityApplicatorPassiveRemoved =
+            !passiveAbilityData->HasPassiveInstance() &&
+            abilityPassiveAppliedAfterRemove == 0 &&
+            abilityPassiveLiveAfterRemove == 0;
+        }
+
+        NDb::AbilityUpgradeApplicator* activeChildDb =
+          static_cast<NDb::AbilityUpgradeApplicator*>(
+            NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+              NDb::DBID("", "LinuxBootstrapRuntimeActiveAbilityApplicator")
+            )
+          );
+        activeChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+        activeChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+        NDb::Ptr<NDb::BaseApplicator> activeChildDbPtr(activeChildDb);
+
+        NDb::Ability* activeAbility = new NDb::Ability();
+        activeAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        activeAbility->targetType = NDb::SPELLTARGET_ALL;
+        activeAbility->applicators.push_back(activeChildDbPtr);
+        NDb::Ptr<NDb::Ability> activeAbilityDb(activeAbility);
+
+        CObj<NWorld::PFAbilityData> activeAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(abilityOwner.GetPtr()),
+            activeAbilityDb,
+            NDb::ABILITYTYPEID_SPECIAL,
+            false
+          )
+        );
+        abilityApplicatorActiveReady = activeAbilityData != 0;
+        if (abilityApplicatorActiveReady)
+        {
+          LinuxApplicatorRingCounter beforeActiveCounter;
+          abilityReceiver->ForAllAppliedApplicators(beforeActiveCounter);
+          abilityActiveAppliedBefore = beforeActiveCounter.total;
+
+          CObj<NWorld::PFAbilityInstance> activeInstance =
+            activeAbilityData->ApplyToTarget(NWorld::Target(abilityReceiver.GetPtr()));
+          abilityApplicatorActiveCreated = activeInstance != 0;
+
+          LinuxApplicatorRingCounter afterActiveCounter;
+          abilityReceiver->ForAllAppliedApplicators(afterActiveCounter);
+          abilityActiveAppliedAfter = afterActiveCounter.total;
+          abilityActiveLiveAfter = afterActiveCounter.liveParented;
+          abilityActiveUpgradesAfter = afterActiveCounter.abilityUpgrades;
+          abilityApplicatorActiveApplied =
+            abilityApplicatorActiveCreated &&
+            abilityActiveAppliedAfter > abilityActiveAppliedBefore &&
+            abilityActiveLiveAfter == 1 &&
+            abilityActiveUpgradesAfter == 1;
+
+          activeAbilityData->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(abilityReceiver.GetPtr()));
+          activeAbilityData->CancelActiveInstances();
+
+          LinuxApplicatorRingCounter afterActiveRemoveCounter;
+          abilityReceiver->ForAllAppliedApplicators(afterActiveRemoveCounter);
+          abilityActiveAppliedAfterRemove = afterActiveRemoveCounter.total;
+          abilityActiveLiveAfterRemove = afterActiveRemoveCounter.liveParented;
+          abilityApplicatorActiveRemoved =
+            abilityActiveAppliedAfterRemove == 0 &&
+            abilityActiveLiveAfterRemove == 0;
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects ability-applicator runtime: db=%s units=%s passive=%s/%s/%lu/%lu/%lu removed=%s/%lu/%lu active=%s/%s/%s/%lu/%lu/%lu removed=%s/%lu/%lu\n",
+      abilityApplicatorDbReady ? "yes" : "no",
+      abilityApplicatorUnitsReady ? "yes" : "no",
+      abilityApplicatorPassiveReady ? "yes" : "no",
+      abilityApplicatorPassiveApplied ? "yes" : "no",
+      static_cast<unsigned long>(abilityPassiveAppliedAfter),
+      static_cast<unsigned long>(abilityPassiveLiveAfter),
+      static_cast<unsigned long>(abilityPassiveUpgradesAfter),
+      abilityApplicatorPassiveRemoved ? "yes" : "no",
+      static_cast<unsigned long>(abilityPassiveAppliedAfterRemove),
+      static_cast<unsigned long>(abilityPassiveLiveAfterRemove),
+      abilityApplicatorActiveReady ? "yes" : "no",
+      abilityApplicatorActiveCreated ? "yes" : "no",
+      abilityApplicatorActiveApplied ? "yes" : "no",
+      static_cast<unsigned long>(abilityActiveAppliedAfter),
+      static_cast<unsigned long>(abilityActiveLiveAfter),
+      static_cast<unsigned long>(abilityActiveUpgradesAfter),
+      abilityApplicatorActiveRemoved ? "yes" : "no",
+      static_cast<unsigned long>(abilityActiveAppliedAfterRemove),
+      static_cast<unsigned long>(abilityActiveLiveAfterRemove));
+
+    const bool unitCombatDbReady = IsValid(applicatorAttachedDb);
+    bool unitCombatUnitsReady = false;
+    bool unitCombatSlotReady = false;
+    bool unitCombatSlotCreated = false;
+    bool unitCombatSlotApplied = false;
+    bool unitCombatSlotRemoved = false;
+    bool unitCombatExternalCreated = false;
+    bool unitCombatExternalApplied = false;
+    bool unitCombatExternalRemoved = false;
+    bool unitCombatBaseAttackReplaced = false;
+    bool unitCombatBaseAttackReady = false;
+    bool unitCombatBaseAttackDone = false;
+    bool unitCombatBaseAttackApplied = false;
+    bool unitCombatBaseAttackRemoved = false;
+    size_t unitCombatSlotAppliedAfter = 0;
+    size_t unitCombatSlotLiveAfter = 0;
+    size_t unitCombatSlotAppliedAfterRemove = 0;
+    size_t unitCombatSlotLiveAfterRemove = 0;
+    size_t unitCombatExternalAppliedAfter = 0;
+    size_t unitCombatExternalLiveAfter = 0;
+    size_t unitCombatExternalAppliedAfterRemove = 0;
+    size_t unitCombatExternalLiveAfterRemove = 0;
+    size_t unitCombatBaseAttackAppliedAfter = 0;
+    size_t unitCombatBaseAttackLiveAfter = 0;
+    size_t unitCombatBaseAttackAppliedAfterRemove = 0;
+    size_t unitCombatBaseAttackLiveAfterRemove = 0;
+    if (unitCombatDbReady)
+    {
+      CObj<NWorld::PFBaseUnit> unitCombatOwner(
+        new NWorld::PFBaseUnit(0, CVec3(72.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> unitCombatReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(73.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> unitCombatExternalReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(74.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> unitCombatAttackReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(75.0f, 30.0f, 0.0f), 0)
+      );
+      unitCombatUnitsReady =
+        unitCombatOwner &&
+        unitCombatReceiver &&
+        unitCombatExternalReceiver &&
+        unitCombatAttackReceiver;
+      if (unitCombatUnitsReady)
+      {
+        unitCombatOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        unitCombatReceiver->ChangeFaction(NDb::FACTION_BURN);
+        unitCombatExternalReceiver->ChangeFaction(NDb::FACTION_BURN);
+        unitCombatAttackReceiver->ChangeFaction(NDb::FACTION_BURN);
+
+        NDb::AbilityUpgradeApplicator* slotChildDb =
+          static_cast<NDb::AbilityUpgradeApplicator*>(
+            NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+              NDb::DBID("", "LinuxBootstrapRuntimeUnitSlotApplicator")
+            )
+          );
+        slotChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+        slotChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+        NDb::Ptr<NDb::BaseApplicator> slotChildDbPtr(slotChildDb);
+
+        NDb::Ability* slotAbility = new NDb::Ability();
+        slotAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        slotAbility->targetType = NDb::SPELLTARGET_ALL;
+        slotAbility->applicators.push_back(slotChildDbPtr);
+        NDb::Ptr<NDb::Ability> slotAbilityDb(slotAbility);
+
+        CObj<NWorld::PFAbilityData> slotAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(unitCombatOwner.GetPtr()),
+            slotAbilityDb,
+            NDb::ABILITYTYPEID_ABILITY1,
+            false
+          )
+        );
+        unitCombatOwner->SetAbility(NDb::ABILITY_ID_1, slotAbilityData.GetPtr());
+        unitCombatSlotReady =
+          slotAbilityData &&
+          unitCombatOwner->GetAbility(NDb::ABILITY_ID_1) == slotAbilityData.GetPtr() &&
+          unitCombatOwner->CanUseAbility(NDb::ABILITY_ID_1) &&
+          unitCombatOwner->IsAbilityAvailable(NDb::ABILITY_ID_1);
+        if (unitCombatSlotReady)
+        {
+          CObj<NWorld::PFAbilityInstance> slotInstance =
+            unitCombatOwner->UseAbility(
+              NDb::ABILITY_ID_1,
+              NWorld::Target(unitCombatReceiver.GetPtr())
+            );
+          unitCombatSlotCreated = slotInstance != 0;
+
+          LinuxApplicatorRingCounter afterSlotCounter;
+          unitCombatReceiver->ForAllAppliedApplicators(afterSlotCounter);
+          unitCombatSlotAppliedAfter = afterSlotCounter.total;
+          unitCombatSlotLiveAfter = afterSlotCounter.liveParented;
+          unitCombatSlotApplied =
+            unitCombatSlotCreated &&
+            unitCombatSlotAppliedAfter == 1 &&
+            unitCombatSlotLiveAfter == 1 &&
+            afterSlotCounter.abilityUpgrades == 1;
+
+          slotAbilityData->RemoveApplicatorsFrom(
+            CPtr<NWorld::PFBaseUnit>(unitCombatReceiver.GetPtr())
+          );
+          slotAbilityData->CancelActiveInstances();
+
+          LinuxApplicatorRingCounter afterSlotRemoveCounter;
+          unitCombatReceiver->ForAllAppliedApplicators(afterSlotRemoveCounter);
+          unitCombatSlotAppliedAfterRemove = afterSlotRemoveCounter.total;
+          unitCombatSlotLiveAfterRemove = afterSlotRemoveCounter.liveParented;
+          unitCombatSlotRemoved =
+            unitCombatSlotAppliedAfterRemove == 0 &&
+            unitCombatSlotLiveAfterRemove == 0;
+        }
+
+        NDb::AbilityUpgradeApplicator* externalChildDb =
+          static_cast<NDb::AbilityUpgradeApplicator*>(
+            NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+              NDb::DBID("", "LinuxBootstrapRuntimeExternalAbilityApplicator")
+            )
+          );
+        externalChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+        externalChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+        NDb::Ptr<NDb::BaseApplicator> externalChildDbPtr(externalChildDb);
+
+        NDb::Ability* externalAbility = new NDb::Ability();
+        externalAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        externalAbility->targetType = NDb::SPELLTARGET_ALL;
+        externalAbility->applicators.push_back(externalChildDbPtr);
+        NDb::Ptr<NDb::Ability> externalAbilityDb(externalAbility);
+
+        CObj<NWorld::PFAbilityInstance> externalInstance =
+          unitCombatOwner->UseExternalAbility(
+            externalAbilityDb,
+            NWorld::Target(unitCombatExternalReceiver.GetPtr())
+          );
+        unitCombatExternalCreated = externalInstance != 0;
+
+        LinuxApplicatorRingCounter afterExternalCounter;
+        unitCombatExternalReceiver->ForAllAppliedApplicators(afterExternalCounter);
+        unitCombatExternalAppliedAfter = afterExternalCounter.total;
+        unitCombatExternalLiveAfter = afterExternalCounter.liveParented;
+        unitCombatExternalApplied =
+          unitCombatExternalCreated &&
+          unitCombatExternalAppliedAfter == 1 &&
+          unitCombatExternalLiveAfter == 1 &&
+          afterExternalCounter.abilityUpgrades == 1;
+
+        if (externalInstance)
+        {
+          externalInstance->RemoveApplicatorsFrom(
+            CPtr<NWorld::PFBaseUnit>(unitCombatExternalReceiver.GetPtr())
+          );
+          externalInstance->Cancel();
+        }
+
+        LinuxApplicatorRingCounter afterExternalRemoveCounter;
+        unitCombatExternalReceiver->ForAllAppliedApplicators(afterExternalRemoveCounter);
+        unitCombatExternalAppliedAfterRemove = afterExternalRemoveCounter.total;
+        unitCombatExternalLiveAfterRemove = afterExternalRemoveCounter.liveParented;
+        unitCombatExternalRemoved =
+          unitCombatExternalAppliedAfterRemove == 0 &&
+          unitCombatExternalLiveAfterRemove == 0;
+
+        NDb::AbilityUpgradeApplicator* attackChildDb =
+          static_cast<NDb::AbilityUpgradeApplicator*>(
+            NDb::AbilityUpgradeApplicator::NewAbilityUpgradeApplicator(
+              NDb::DBID("", "LinuxBootstrapRuntimeBaseAttackApplicator")
+            )
+          );
+        attackChildDb->effect[NDb::TEAMID_A] = applicatorAttachedDb;
+        attackChildDb->effect[NDb::TEAMID_B] = applicatorAttachedDb;
+        NDb::Ptr<NDb::BaseApplicator> attackChildDbPtr(attackChildDb);
+
+        NDb::BaseAttack* baseAttack = new NDb::BaseAttack();
+        baseAttack->type = NDb::ABILITYTYPE_ACTIVE;
+        baseAttack->targetType = NDb::SPELLTARGET_ALL;
+        baseAttack->applicators.push_back(attackChildDbPtr);
+        NDb::Ptr<NDb::BaseAttack> baseAttackDb(baseAttack);
+
+        CObj<NWorld::PFBaseAttackData> baseAttackData(
+          new NWorld::PFBaseAttackData(
+            CPtr<NWorld::PFBaseUnit>(unitCombatOwner.GetPtr()),
+            baseAttackDb
+          )
+        );
+        unitCombatOwner->ReplaceBaseAttack(baseAttackData, false);
+        unitCombatBaseAttackReplaced =
+          baseAttackData &&
+          unitCombatOwner->HasAtackAbility() &&
+          unitCombatOwner->GetAttackAbilityData() == baseAttackData;
+        unitCombatOwner->AssignTarget(
+          CPtr<NWorld::PFBaseUnit>(unitCombatAttackReceiver.GetPtr()),
+          true
+        );
+        unitCombatBaseAttackReady = unitCombatOwner->IsReadyToAttack();
+        unitCombatBaseAttackDone = unitCombatOwner->DoAttack(true);
+
+        LinuxApplicatorRingCounter afterAttackCounter;
+        unitCombatAttackReceiver->ForAllAppliedApplicators(afterAttackCounter);
+        unitCombatBaseAttackAppliedAfter = afterAttackCounter.total;
+        unitCombatBaseAttackLiveAfter = afterAttackCounter.liveParented;
+        unitCombatBaseAttackApplied =
+          unitCombatBaseAttackDone &&
+          unitCombatBaseAttackAppliedAfter == 1 &&
+          unitCombatBaseAttackLiveAfter == 1 &&
+          afterAttackCounter.abilityUpgrades == 1;
+
+        baseAttackData->RemoveApplicatorsFrom(
+          CPtr<NWorld::PFBaseUnit>(unitCombatAttackReceiver.GetPtr())
+        );
+        baseAttackData->Cancel();
+
+        LinuxApplicatorRingCounter afterAttackRemoveCounter;
+        unitCombatAttackReceiver->ForAllAppliedApplicators(afterAttackRemoveCounter);
+        unitCombatBaseAttackAppliedAfterRemove = afterAttackRemoveCounter.total;
+        unitCombatBaseAttackLiveAfterRemove = afterAttackRemoveCounter.liveParented;
+        unitCombatBaseAttackRemoved =
+          unitCombatBaseAttackAppliedAfterRemove == 0 &&
+          unitCombatBaseAttackLiveAfterRemove == 0;
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-combat runtime: db=%s units=%s slot=%s/%s/%s/%lu/%lu removed=%s/%lu/%lu external=%s/%s/%lu/%lu removed=%s/%lu/%lu baseattack=%s/%s/%s/%s/%lu/%lu removed=%s/%lu/%lu\n",
+      unitCombatDbReady ? "yes" : "no",
+      unitCombatUnitsReady ? "yes" : "no",
+      unitCombatSlotReady ? "yes" : "no",
+      unitCombatSlotCreated ? "yes" : "no",
+      unitCombatSlotApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatSlotAppliedAfter),
+      static_cast<unsigned long>(unitCombatSlotLiveAfter),
+      unitCombatSlotRemoved ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatSlotAppliedAfterRemove),
+      static_cast<unsigned long>(unitCombatSlotLiveAfterRemove),
+      unitCombatExternalCreated ? "yes" : "no",
+      unitCombatExternalApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatExternalAppliedAfter),
+      static_cast<unsigned long>(unitCombatExternalLiveAfter),
+      unitCombatExternalRemoved ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatExternalAppliedAfterRemove),
+      static_cast<unsigned long>(unitCombatExternalLiveAfterRemove),
+      unitCombatBaseAttackReplaced ? "yes" : "no",
+      unitCombatBaseAttackReady ? "yes" : "no",
+      unitCombatBaseAttackDone ? "yes" : "no",
+      unitCombatBaseAttackApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatBaseAttackAppliedAfter),
+      static_cast<unsigned long>(unitCombatBaseAttackLiveAfter),
+      unitCombatBaseAttackRemoved ? "yes" : "no",
+      static_cast<unsigned long>(unitCombatBaseAttackAppliedAfterRemove),
+      static_cast<unsigned long>(unitCombatBaseAttackLiveAfterRemove));
+
+    bool unitInstantFormulaReady = false;
+    float unitInstantFormulaValue = 0.0f;
+    {
+      ExecutableFloatString formulaProbe;
+      formulaProbe.sString = "0.25";
+      unitInstantFormulaValue = formulaProbe(
+        static_cast<IUnitFormulaPars const*>(0),
+        static_cast<IUnitFormulaPars const*>(0),
+        static_cast<IMiscFormulaPars const*>(0),
+        0.0f
+      );
+      unitInstantFormulaReady =
+        unitInstantFormulaValue > 0.24f &&
+        unitInstantFormulaValue < 0.26f;
+    }
+
+    NDb::DamageApplicator* instantDamageDb =
+      static_cast<NDb::DamageApplicator*>(
+        NDb::DamageApplicator::NewDamageApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeDamageApplicator")
+        )
+      );
+    NDb::HealApplicator* instantHealDb =
+      static_cast<NDb::HealApplicator*>(
+        NDb::HealApplicator::NewHealApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeHealApplicator")
+        )
+      );
+    NDb::HealApplicator* instantEnergyHealDb =
+      static_cast<NDb::HealApplicator*>(
+        NDb::HealApplicator::NewHealApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeEnergyHealApplicator")
+        )
+      );
+    NDb::KillApplicator* instantKillDb =
+      static_cast<NDb::KillApplicator*>(
+        NDb::KillApplicator::NewKillApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeKillApplicator")
+        )
+      );
+    NDb::AddNaftaApplicator* instantNaftaDb =
+      static_cast<NDb::AddNaftaApplicator*>(
+        NDb::AddNaftaApplicator::NewAddNaftaApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeNaftaApplicator")
+        )
+      );
+    NDb::DamageApplicator* instantBaseAttackDamageDb =
+      static_cast<NDb::DamageApplicator*>(
+        NDb::DamageApplicator::NewDamageApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeBaseAttackDamageApplicator")
+        )
+      );
+
+    bool unitInstantDbReady =
+      instantDamageDb &&
+      instantHealDb &&
+      instantEnergyHealDb &&
+      instantKillDb &&
+      instantNaftaDb &&
+      instantBaseAttackDamageDb;
+    bool unitInstantUnitsReady = false;
+    bool unitInstantDamageCreated = false;
+    bool unitInstantDamageApplied = false;
+    bool unitInstantHealCreated = false;
+    bool unitInstantHealApplied = false;
+    bool unitInstantEnergyCreated = false;
+    bool unitInstantEnergyApplied = false;
+    bool unitInstantKillCreated = false;
+    bool unitInstantKillApplied = false;
+    bool unitInstantNaftaCreated = false;
+    bool unitInstantNaftaApplied = false;
+    bool unitInstantBaseAttackReplaced = false;
+    bool unitInstantBaseAttackReady = false;
+    bool unitInstantBaseAttackDone = false;
+    bool unitInstantBaseAttackApplied = false;
+    float unitInstantDamageBefore = 0.0f;
+    float unitInstantDamageAfter = 0.0f;
+    float unitInstantHealBefore = 0.0f;
+    float unitInstantHealAfter = 0.0f;
+    float unitInstantEnergyBefore = 0.0f;
+    float unitInstantEnergyAfter = 0.0f;
+    float unitInstantBaseAttackBefore = 0.0f;
+    float unitInstantBaseAttackAfter = 0.0f;
+    int unitInstantNaftaBefore = 0;
+    int unitInstantNaftaAfter = 0;
+
+    if (unitInstantDbReady)
+    {
+      instantDamageDb->damage.sString = "0.25";
+      instantDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      instantHealDb->amount.sString = "0.25";
+      instantHealDb->healTarget = NDb::HEALTARGET_HEALTH;
+      instantEnergyHealDb->amount.sString = "0.25";
+      instantEnergyHealDb->healTarget = NDb::HEALTARGET_ENERGY;
+      instantKillDb->dontGiveRewards = true;
+      instantNaftaDb->nafta.sString = "3";
+      instantBaseAttackDamageDb->damage.sString = "0.20";
+      instantBaseAttackDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+
+      CObj<NWorld::PFBaseUnit> instantOwner(
+        new NWorld::PFBaseUnit(0, CVec3(76.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantDamageReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(77.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantHealReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(78.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantEnergyReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(79.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantKillReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(80.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantNaftaReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(81.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> instantAttackReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(82.0f, 30.0f, 0.0f), 0)
+      );
+
+      unitInstantUnitsReady =
+        instantOwner &&
+        instantDamageReceiver &&
+        instantHealReceiver &&
+        instantEnergyReceiver &&
+        instantKillReceiver &&
+        instantNaftaReceiver &&
+        instantAttackReceiver;
+
+      if (unitInstantUnitsReady)
+      {
+        instantOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        instantDamageReceiver->ChangeFaction(NDb::FACTION_BURN);
+        instantHealReceiver->ChangeFaction(NDb::FACTION_BURN);
+        instantEnergyReceiver->ChangeFaction(NDb::FACTION_BURN);
+        instantKillReceiver->ChangeFaction(NDb::FACTION_BURN);
+        instantNaftaReceiver->ChangeFaction(NDb::FACTION_BURN);
+        instantAttackReceiver->ChangeFaction(NDb::FACTION_BURN);
+
+        NDb::Ptr<NDb::BaseApplicator> damageDbPtr(instantDamageDb);
+        NDb::Ability* damageAbility = new NDb::Ability();
+        damageAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        damageAbility->targetType = NDb::SPELLTARGET_ALL;
+        damageAbility->applicators.push_back(damageDbPtr);
+        NDb::Ptr<NDb::Ability> damageAbilityDb(damageAbility);
+        unitInstantDamageBefore = instantDamageReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> damageInstance =
+          instantOwner->UseExternalAbility(
+            damageAbilityDb,
+            NWorld::Target(instantDamageReceiver.GetPtr())
+          );
+        unitInstantDamageCreated = damageInstance != 0;
+        unitInstantDamageAfter = instantDamageReceiver->GetHealth();
+        unitInstantDamageApplied =
+          unitInstantDamageCreated &&
+          unitInstantDamageBefore > unitInstantDamageAfter &&
+          unitInstantDamageAfter > 0.74f &&
+          unitInstantDamageAfter < 0.76f;
+        if (damageInstance)
+          damageInstance->Cancel();
+
+        instantHealReceiver->TakeHealth(0.50f);
+        NDb::Ptr<NDb::BaseApplicator> healDbPtr(instantHealDb);
+        NDb::Ability* healAbility = new NDb::Ability();
+        healAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        healAbility->targetType = NDb::SPELLTARGET_ALL;
+        healAbility->applicators.push_back(healDbPtr);
+        NDb::Ptr<NDb::Ability> healAbilityDb(healAbility);
+        unitInstantHealBefore = instantHealReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> healInstance =
+          instantOwner->UseExternalAbility(
+            healAbilityDb,
+            NWorld::Target(instantHealReceiver.GetPtr())
+          );
+        unitInstantHealCreated = healInstance != 0;
+        unitInstantHealAfter = instantHealReceiver->GetHealth();
+        unitInstantHealApplied =
+          unitInstantHealCreated &&
+          unitInstantHealAfter > unitInstantHealBefore &&
+          unitInstantHealAfter > 0.74f &&
+          unitInstantHealAfter < 0.76f;
+        if (healInstance)
+          healInstance->Cancel();
+
+        instantEnergyReceiver->TakeMana(0.50f);
+        NDb::Ptr<NDb::BaseApplicator> energyHealDbPtr(instantEnergyHealDb);
+        NDb::Ability* energyHealAbility = new NDb::Ability();
+        energyHealAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        energyHealAbility->targetType = NDb::SPELLTARGET_ALL;
+        energyHealAbility->applicators.push_back(energyHealDbPtr);
+        NDb::Ptr<NDb::Ability> energyHealAbilityDb(energyHealAbility);
+        unitInstantEnergyBefore = instantEnergyReceiver->GetMana();
+        CObj<NWorld::PFAbilityInstance> energyHealInstance =
+          instantOwner->UseExternalAbility(
+            energyHealAbilityDb,
+            NWorld::Target(instantEnergyReceiver.GetPtr())
+          );
+        unitInstantEnergyCreated = energyHealInstance != 0;
+        unitInstantEnergyAfter = instantEnergyReceiver->GetMana();
+        unitInstantEnergyApplied =
+          unitInstantEnergyCreated &&
+          unitInstantEnergyAfter > unitInstantEnergyBefore &&
+          unitInstantEnergyAfter > 0.74f &&
+          unitInstantEnergyAfter < 0.76f;
+        if (energyHealInstance)
+          energyHealInstance->Cancel();
+
+        NDb::Ptr<NDb::BaseApplicator> killDbPtr(instantKillDb);
+        NDb::Ability* killAbility = new NDb::Ability();
+        killAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        killAbility->targetType = NDb::SPELLTARGET_ALL;
+        killAbility->applicators.push_back(killDbPtr);
+        NDb::Ptr<NDb::Ability> killAbilityDb(killAbility);
+        CObj<NWorld::PFAbilityInstance> killInstance =
+          instantOwner->UseExternalAbility(
+            killAbilityDb,
+            NWorld::Target(instantKillReceiver.GetPtr())
+          );
+        unitInstantKillCreated = killInstance != 0;
+        unitInstantKillApplied =
+          unitInstantKillCreated &&
+          instantKillReceiver->IsDead();
+        if (killInstance)
+          killInstance->Cancel();
+
+        NDb::Ptr<NDb::BaseApplicator> naftaDbPtr(instantNaftaDb);
+        NDb::Ability* naftaAbility = new NDb::Ability();
+        naftaAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        naftaAbility->targetType = NDb::SPELLTARGET_ALL;
+        naftaAbility->applicators.push_back(naftaDbPtr);
+        NDb::Ptr<NDb::Ability> naftaAbilityDb(naftaAbility);
+        unitInstantNaftaBefore = instantNaftaReceiver->GetGold();
+        CObj<NWorld::PFAbilityInstance> naftaInstance =
+          instantOwner->UseExternalAbility(
+            naftaAbilityDb,
+            NWorld::Target(instantNaftaReceiver.GetPtr())
+          );
+        unitInstantNaftaCreated = naftaInstance != 0;
+        unitInstantNaftaAfter = instantNaftaReceiver->GetGold();
+        unitInstantNaftaApplied =
+          unitInstantNaftaCreated &&
+          unitInstantNaftaAfter == unitInstantNaftaBefore + 3;
+        if (naftaInstance)
+          naftaInstance->Cancel();
+
+        NDb::Ptr<NDb::BaseApplicator> attackDamageDbPtr(instantBaseAttackDamageDb);
+        NDb::BaseAttack* damageBaseAttack = new NDb::BaseAttack();
+        damageBaseAttack->type = NDb::ABILITYTYPE_ACTIVE;
+        damageBaseAttack->targetType = NDb::SPELLTARGET_ALL;
+        damageBaseAttack->applicators.push_back(attackDamageDbPtr);
+        NDb::Ptr<NDb::BaseAttack> damageBaseAttackDb(damageBaseAttack);
+        CObj<NWorld::PFBaseAttackData> damageBaseAttackData(
+          new NWorld::PFBaseAttackData(
+            CPtr<NWorld::PFBaseUnit>(instantOwner.GetPtr()),
+            damageBaseAttackDb
+          )
+        );
+        instantOwner->ReplaceBaseAttack(damageBaseAttackData, false);
+        unitInstantBaseAttackReplaced =
+          damageBaseAttackData &&
+          instantOwner->HasAtackAbility() &&
+          instantOwner->GetAttackAbilityData() == damageBaseAttackData;
+        instantOwner->AssignTarget(
+          CPtr<NWorld::PFBaseUnit>(instantAttackReceiver.GetPtr()),
+          true
+        );
+        unitInstantBaseAttackReady = instantOwner->IsReadyToAttack();
+        unitInstantBaseAttackBefore = instantAttackReceiver->GetHealth();
+        unitInstantBaseAttackDone = instantOwner->DoAttack(true);
+        unitInstantBaseAttackAfter = instantAttackReceiver->GetHealth();
+        unitInstantBaseAttackApplied =
+          unitInstantBaseAttackDone &&
+          unitInstantBaseAttackBefore > unitInstantBaseAttackAfter &&
+          unitInstantBaseAttackAfter > 0.79f &&
+          unitInstantBaseAttackAfter < 0.81f;
+        if (damageBaseAttackData)
+          damageBaseAttackData->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-instant runtime: formula=%s/%.2f db=%s units=%s damage=%s/%s/%.2f->%.2f heal=%s/%s/%.2f->%.2f energy=%s/%s/%.2f->%.2f kill=%s/%s nafta=%s/%s/%d->%d baseattack=%s/%s/%s/%s/%.2f->%.2f\n",
+      unitInstantFormulaReady ? "yes" : "no",
+      unitInstantFormulaValue,
+      unitInstantDbReady ? "yes" : "no",
+      unitInstantUnitsReady ? "yes" : "no",
+      unitInstantDamageCreated ? "yes" : "no",
+      unitInstantDamageApplied ? "yes" : "no",
+      unitInstantDamageBefore,
+      unitInstantDamageAfter,
+      unitInstantHealCreated ? "yes" : "no",
+      unitInstantHealApplied ? "yes" : "no",
+      unitInstantHealBefore,
+      unitInstantHealAfter,
+      unitInstantEnergyCreated ? "yes" : "no",
+      unitInstantEnergyApplied ? "yes" : "no",
+      unitInstantEnergyBefore,
+      unitInstantEnergyAfter,
+      unitInstantKillCreated ? "yes" : "no",
+      unitInstantKillApplied ? "yes" : "no",
+      unitInstantNaftaCreated ? "yes" : "no",
+      unitInstantNaftaApplied ? "yes" : "no",
+      unitInstantNaftaBefore,
+      unitInstantNaftaAfter,
+      unitInstantBaseAttackReplaced ? "yes" : "no",
+      unitInstantBaseAttackReady ? "yes" : "no",
+      unitInstantBaseAttackDone ? "yes" : "no",
+      unitInstantBaseAttackApplied ? "yes" : "no",
+      unitInstantBaseAttackBefore,
+      unitInstantBaseAttackAfter);
+
+    NDb::AbilityEndApplicator* chainAbilityEndDb = new NDb::AbilityEndApplicator();
+    NDb::RefreshCooldownApplicator* chainRefreshCooldownDb = new NDb::RefreshCooldownApplicator();
+    NDb::SpellApplicator* chainSpellDb = new NDb::SpellApplicator();
+    NDb::StatusApplicator* chainStatusDb = new NDb::StatusApplicator();
+    NDb::DispellApplicator* chainDispellDb = new NDb::DispellApplicator();
+    NDb::VariableProxyApplicator* chainVariableProxyDb = new NDb::VariableProxyApplicator();
+    NDb::SpellPeriodicallyApplicator* chainPeriodicDb = new NDb::SpellPeriodicallyApplicator();
+    NDb::SpellProbabilityApplicator* chainProbabilityDb = new NDb::SpellProbabilityApplicator();
+    NDb::DamageApplicator* chainSpellDamageDb = new NDb::DamageApplicator();
+    NDb::DamageApplicator* chainProxyDamageDb = new NDb::DamageApplicator();
+    NDb::DamageApplicator* chainPeriodicDamageDb = new NDb::DamageApplicator();
+    NDb::DamageApplicator* chainProbabilityDamageDb = new NDb::DamageApplicator();
+
+    bool unitChainDbReady =
+      chainAbilityEndDb &&
+      chainRefreshCooldownDb &&
+      chainSpellDb &&
+      chainStatusDb &&
+      chainDispellDb &&
+      chainVariableProxyDb &&
+      chainPeriodicDb &&
+      chainProbabilityDb &&
+      chainSpellDamageDb &&
+      chainProxyDamageDb &&
+      chainPeriodicDamageDb &&
+      chainProbabilityDamageDb;
+    bool unitChainUnitsReady = false;
+    bool unitChainSpellCreated = false;
+    bool unitChainSpellApplied = false;
+    bool unitChainProxyCreated = false;
+    bool unitChainProxyApplied = false;
+    bool unitChainProxyVariable = false;
+    bool unitChainStatusCreated = false;
+    bool unitChainDispellCreated = false;
+    bool unitChainDispellApplied = false;
+    bool unitChainRefreshCreated = false;
+    bool unitChainRefreshApplied = false;
+    bool unitChainAbilityEndCreated = false;
+    bool unitChainAbilityEndApplied = false;
+    bool unitChainPeriodicCreated = false;
+    bool unitChainPeriodicApplied = false;
+    bool unitChainProbabilityCreated = false;
+    bool unitChainProbabilityApplied = false;
+    float unitChainSpellBefore = 0.0f;
+    float unitChainSpellAfter = 0.0f;
+    float unitChainProxyBefore = 0.0f;
+    float unitChainProxyAfter = 0.0f;
+    float unitChainProxyDamage = 0.0f;
+    float unitChainRefreshBefore = 0.0f;
+    float unitChainRefreshAfter = 0.0f;
+    float unitChainPeriodicBefore = 0.0f;
+    float unitChainPeriodicAfter = 0.0f;
+    float unitChainProbabilityBefore = 0.0f;
+    float unitChainProbabilityAfter = 0.0f;
+    int unitChainStatusesBefore = 0;
+    int unitChainStatusesAfter = 0;
+
+    if (unitChainDbReady)
+    {
+      chainAbilityEndDb->cancelApplicators = false;
+      chainRefreshCooldownDb->flags = NDb::EAbilityIdFlags(0);
+      chainRefreshCooldownDb->refreshThis = true;
+      chainSpellDamageDb->damage.sString = "0.15";
+      chainSpellDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      chainProxyDamageDb->damage.sString = "0.12";
+      chainProxyDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      chainProxyDamageDb->formulaName = "proxiedDamage";
+      chainStatusDb->dispellPriority = NDb::DISPELLPRIORITY_HIGH;
+      chainStatusDb->lifeTime.sString = "5.0";
+      chainDispellDb->maxEffectsToDispell.sString = "1";
+      chainPeriodicDb->period.sString = "1.0";
+      chainPeriodicDb->startOffset.sString = "0.0";
+      chainPeriodicDb->lifeTime.sString = "2.0";
+      chainPeriodicDamageDb->damage.sString = "0.06";
+      chainPeriodicDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      chainProbabilityDb->probability.sString = "100";
+      chainProbabilityDamageDb->damage.sString = "0.07";
+      chainProbabilityDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+
+      NDb::Spell* nestedSpell = new NDb::Spell();
+      nestedSpell->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainSpellDamageDb));
+      chainSpellDb->spell = NDb::Ptr<NDb::Spell>(nestedSpell);
+
+      NDb::ApplicatorToProxy proxiedDamage;
+      proxiedDamage.applicator = NDb::Ptr<NDb::BaseApplicator>(chainProxyDamageDb);
+      proxiedDamage.variableNames.push_back("DamageDealed");
+      chainVariableProxyDb->applicators.push_back(proxiedDamage);
+
+      NDb::Spell* periodicSpell = new NDb::Spell();
+      periodicSpell->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainPeriodicDamageDb));
+      chainPeriodicDb->spell = NDb::Ptr<NDb::Spell>(periodicSpell);
+
+      NDb::Spell* probabilitySpell = new NDb::Spell();
+      probabilitySpell->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainProbabilityDamageDb));
+      chainProbabilityDb->spell = NDb::Ptr<NDb::Spell>(probabilitySpell);
+
+      CObj<NWorld::PFBaseUnit> chainFreezeOwner(
+        new NWorld::PFBaseUnit(0, CVec3(84.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainBurnOwner(
+        new NWorld::PFBaseUnit(0, CVec3(85.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainSpellReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(86.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainProxyReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(87.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainStatusReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(88.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainPeriodicReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(89.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> chainProbabilityReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(90.0f, 30.0f, 0.0f), 0)
+      );
+
+      unitChainUnitsReady =
+        chainFreezeOwner &&
+        chainBurnOwner &&
+        chainSpellReceiver &&
+        chainProxyReceiver &&
+        chainStatusReceiver &&
+        chainPeriodicReceiver &&
+        chainProbabilityReceiver;
+
+      if (unitChainUnitsReady)
+      {
+        chainFreezeOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        chainBurnOwner->ChangeFaction(NDb::FACTION_BURN);
+        chainSpellReceiver->ChangeFaction(NDb::FACTION_BURN);
+        chainProxyReceiver->ChangeFaction(NDb::FACTION_BURN);
+        chainStatusReceiver->ChangeFaction(NDb::FACTION_BURN);
+        chainPeriodicReceiver->ChangeFaction(NDb::FACTION_BURN);
+        chainProbabilityReceiver->ChangeFaction(NDb::FACTION_BURN);
+
+        NDb::Ability* spellAbility = new NDb::Ability();
+        spellAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        spellAbility->targetType = NDb::SPELLTARGET_ALL;
+        spellAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainSpellDb));
+        unitChainSpellBefore = chainSpellReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> spellInstance =
+          chainFreezeOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(spellAbility),
+            NWorld::Target(chainSpellReceiver.GetPtr())
+          );
+        unitChainSpellCreated = spellInstance != 0;
+        unitChainSpellAfter = chainSpellReceiver->GetHealth();
+        unitChainSpellApplied =
+          unitChainSpellCreated &&
+          unitChainSpellBefore > unitChainSpellAfter &&
+          unitChainSpellAfter > 0.84f &&
+          unitChainSpellAfter < 0.86f;
+        if (spellInstance)
+          spellInstance->Cancel();
+
+        NDb::Ability* proxyAbility = new NDb::Ability();
+        proxyAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        proxyAbility->targetType = NDb::SPELLTARGET_ALL;
+        CObj<NWorld::PFAbilityData> proxyAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(chainFreezeOwner.GetPtr()),
+            NDb::Ptr<NDb::Ability>(proxyAbility),
+            NDb::ABILITYTYPEID_SPECIAL,
+            false,
+            true
+          )
+        );
+        NWorld::Target proxyTarget(chainProxyReceiver.GetPtr());
+        CObj<NWorld::PFAbilityInstance> proxyInstance(
+          new NWorld::PFAbilityInstance(proxyAbilityData, proxyTarget, false)
+        );
+        NWorld::PFApplCreatePars proxyCp(proxyInstance, proxyTarget);
+        proxyCp.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(chainVariableProxyDb);
+        CObj<NWorld::PFBaseApplicator> proxyApplicator = NWorld::CreateApplicator(proxyCp);
+        unitChainProxyBefore = chainProxyReceiver->GetHealth();
+        unitChainProxyCreated =
+          proxyApplicator &&
+          NWorld::ActivateApplicator(proxyApplicator, proxyInstance);
+        unitChainProxyAfter = chainProxyReceiver->GetHealth();
+        unitChainProxyDamage = proxyApplicator ? proxyApplicator->GetVariable("DamageDealed") : 0.0f;
+        unitChainProxyApplied =
+          unitChainProxyCreated &&
+          unitChainProxyBefore > unitChainProxyAfter &&
+          unitChainProxyAfter > 0.87f &&
+          unitChainProxyAfter < 0.89f;
+        unitChainProxyVariable =
+          unitChainProxyDamage > 0.11f &&
+          unitChainProxyDamage < 0.13f;
+        if (proxyInstance)
+          proxyInstance->Cancel();
+
+        NDb::Ability* statusAbility = new NDb::Ability();
+        statusAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        statusAbility->targetType = NDb::SPELLTARGET_ALL;
+        statusAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainStatusDb));
+        CObj<NWorld::PFAbilityInstance> statusInstance =
+          chainFreezeOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(statusAbility),
+            NWorld::Target(chainStatusReceiver.GetPtr())
+          );
+        unitChainStatusCreated = statusInstance != 0;
+        struct CountChainStatuses
+        {
+          int count;
+          CountChainStatuses() : count(0) {}
+          void operator()(const CObj<NWorld::PFBaseApplicator>& app)
+          {
+            if (app && app->GetTypeId() == NWorld::PFApplStatus::typeId)
+              ++count;
+          }
+        } countStatusesBefore;
+        chainStatusReceiver->ForAllAppliedApplicators(countStatusesBefore);
+        unitChainStatusesBefore = countStatusesBefore.count;
+
+        NDb::Ability* dispellAbility = new NDb::Ability();
+        dispellAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        dispellAbility->targetType = NDb::SPELLTARGET_ALL;
+        dispellAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainDispellDb));
+        CObj<NWorld::PFAbilityInstance> dispellInstance =
+          chainBurnOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(dispellAbility),
+            NWorld::Target(chainStatusReceiver.GetPtr())
+          );
+        unitChainDispellCreated = dispellInstance != 0;
+        struct CountChainStatusesAfter
+        {
+          int count;
+          CountChainStatusesAfter() : count(0) {}
+          void operator()(const CObj<NWorld::PFBaseApplicator>& app)
+          {
+            if (app && app->GetTypeId() == NWorld::PFApplStatus::typeId)
+              ++count;
+          }
+        } countStatusesAfter;
+        chainStatusReceiver->ForAllAppliedApplicators(countStatusesAfter);
+        unitChainStatusesAfter = countStatusesAfter.count;
+        unitChainDispellApplied =
+          unitChainStatusCreated &&
+          unitChainDispellCreated &&
+          unitChainStatusesBefore == 1 &&
+          unitChainStatusesAfter == 0;
+        if (dispellInstance)
+          dispellInstance->Cancel();
+        if (statusInstance)
+          statusInstance->Cancel();
+
+        NDb::Ability* refreshAbility = new NDb::Ability();
+        refreshAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        refreshAbility->targetType = NDb::SPELLTARGET_ALL;
+        CObj<NWorld::PFAbilityData> refreshAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(chainFreezeOwner.GetPtr()),
+            NDb::Ptr<NDb::Ability>(refreshAbility),
+            NDb::ABILITYTYPEID_SPECIAL,
+            false,
+            true
+          )
+        );
+        refreshAbilityData->RestartCooldown(4.0f);
+        unitChainRefreshBefore = refreshAbilityData->GetCurrentCooldown();
+        NWorld::Target refreshTarget(chainFreezeOwner.GetPtr());
+        CObj<NWorld::PFAbilityInstance> refreshInstance(
+          new NWorld::PFAbilityInstance(refreshAbilityData, refreshTarget, false)
+        );
+        NWorld::PFApplCreatePars refreshCp(refreshInstance, refreshTarget);
+        refreshCp.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(chainRefreshCooldownDb);
+        CObj<NWorld::PFBaseApplicator> refreshApplicator = NWorld::CreateApplicator(refreshCp);
+        unitChainRefreshCreated =
+          refreshApplicator &&
+          NWorld::ActivateApplicator(refreshApplicator, refreshInstance);
+        unitChainRefreshAfter = refreshAbilityData->GetCurrentCooldown();
+        unitChainRefreshApplied =
+          unitChainRefreshCreated &&
+          unitChainRefreshBefore > 3.9f &&
+          unitChainRefreshAfter < 0.01f;
+        if (refreshInstance)
+          refreshInstance->Cancel();
+
+        NDb::Ability* abilityEndAbility = new NDb::Ability();
+        abilityEndAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        abilityEndAbility->targetType = NDb::SPELLTARGET_ALL;
+        abilityEndAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainAbilityEndDb));
+        CObj<NWorld::PFAbilityInstance> abilityEndInstance =
+          chainFreezeOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(abilityEndAbility),
+            NWorld::Target(chainFreezeOwner.GetPtr())
+          );
+        unitChainAbilityEndCreated = abilityEndInstance != 0;
+        unitChainAbilityEndApplied =
+          unitChainAbilityEndCreated &&
+          abilityEndInstance->IsFinished();
+        if (abilityEndInstance)
+          abilityEndInstance->Cancel();
+
+        NDb::Ability* periodicAbility = new NDb::Ability();
+        periodicAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        periodicAbility->targetType = NDb::SPELLTARGET_ALL;
+        periodicAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainPeriodicDb));
+        unitChainPeriodicBefore = chainPeriodicReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> periodicInstance =
+          chainFreezeOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(periodicAbility),
+            NWorld::Target(chainPeriodicReceiver.GetPtr())
+          );
+        unitChainPeriodicCreated = periodicInstance != 0;
+        unitChainPeriodicAfter = chainPeriodicReceiver->GetHealth();
+        unitChainPeriodicApplied =
+          unitChainPeriodicCreated &&
+          unitChainPeriodicBefore > unitChainPeriodicAfter &&
+          unitChainPeriodicAfter > 0.93f &&
+          unitChainPeriodicAfter < 0.95f;
+        if (periodicInstance)
+          periodicInstance->Cancel();
+
+        NDb::Ability* probabilityAbility = new NDb::Ability();
+        probabilityAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        probabilityAbility->targetType = NDb::SPELLTARGET_ALL;
+        probabilityAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(chainProbabilityDb));
+        unitChainProbabilityBefore = chainProbabilityReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> probabilityInstance =
+          chainFreezeOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(probabilityAbility),
+            NWorld::Target(chainProbabilityReceiver.GetPtr())
+          );
+        unitChainProbabilityCreated = probabilityInstance != 0;
+        unitChainProbabilityAfter = chainProbabilityReceiver->GetHealth();
+        unitChainProbabilityApplied =
+          unitChainProbabilityCreated &&
+          unitChainProbabilityBefore > unitChainProbabilityAfter &&
+          unitChainProbabilityAfter > 0.92f &&
+          unitChainProbabilityAfter < 0.94f;
+        if (probabilityInstance)
+          probabilityInstance->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-chain runtime: db=%s units=%s spell=%s/%s/%.2f->%.2f proxy=%s/%s/%s/%.2f/%.2f->%.2f dispell=%s/%s/%s/%d->%d refresh=%s/%s/%.2f->%.2f abilityend=%s/%s periodic=%s/%s/%.2f->%.2f probability=%s/%s/%.2f->%.2f\n",
+      unitChainDbReady ? "yes" : "no",
+      unitChainUnitsReady ? "yes" : "no",
+      unitChainSpellCreated ? "yes" : "no",
+      unitChainSpellApplied ? "yes" : "no",
+      unitChainSpellBefore,
+      unitChainSpellAfter,
+      unitChainProxyCreated ? "yes" : "no",
+      unitChainProxyApplied ? "yes" : "no",
+      unitChainProxyVariable ? "yes" : "no",
+      unitChainProxyDamage,
+      unitChainProxyBefore,
+      unitChainProxyAfter,
+      unitChainStatusCreated ? "yes" : "no",
+      unitChainDispellCreated ? "yes" : "no",
+      unitChainDispellApplied ? "yes" : "no",
+      unitChainStatusesBefore,
+      unitChainStatusesAfter,
+      unitChainRefreshCreated ? "yes" : "no",
+      unitChainRefreshApplied ? "yes" : "no",
+      unitChainRefreshBefore,
+      unitChainRefreshAfter,
+      unitChainAbilityEndCreated ? "yes" : "no",
+      unitChainAbilityEndApplied ? "yes" : "no",
+      unitChainPeriodicCreated ? "yes" : "no",
+      unitChainPeriodicApplied ? "yes" : "no",
+      unitChainPeriodicBefore,
+      unitChainPeriodicAfter,
+      unitChainProbabilityCreated ? "yes" : "no",
+      unitChainProbabilityApplied ? "yes" : "no",
+      unitChainProbabilityBefore,
+      unitChainProbabilityAfter);
+
+    NDb::BounceApplicator* fanoutBounceDb = new NDb::BounceApplicator();
+    NDb::ChainLightningApplicator* fanoutChainDb = new NDb::ChainLightningApplicator();
+    NDb::DelegateDamageApplicator* fanoutDelegateDb = new NDb::DelegateDamageApplicator();
+    NDb::DamageApplicator* fanoutBounceDamageDb = new NDb::DamageApplicator();
+    NDb::DamageApplicator* fanoutChainDamageDb = new NDb::DamageApplicator();
+    NDb::DamageApplicator* fanoutIncomingDamageDb = new NDb::DamageApplicator();
+
+    bool unitFanoutDbReady =
+      fanoutBounceDb &&
+      fanoutChainDb &&
+      fanoutDelegateDb &&
+      fanoutBounceDamageDb &&
+      fanoutChainDamageDb &&
+      fanoutIncomingDamageDb;
+    bool unitFanoutUnitsReady = false;
+    bool unitFanoutBounceFactory = false;
+    bool unitFanoutBounceStarted = false;
+    bool unitFanoutBounceApplied = false;
+    bool unitFanoutChainCreated = false;
+    bool unitFanoutChainApplied = false;
+    bool unitFanoutDelegateBuffCreated = false;
+    bool unitFanoutDelegateDamageCreated = false;
+    bool unitFanoutDelegateApplied = false;
+    float unitFanoutBounceBefore = 0.0f;
+    float unitFanoutBounceAfterFirst = 0.0f;
+    float unitFanoutBounceAfterSecond = 0.0f;
+    float unitFanoutChainBefore = 0.0f;
+    float unitFanoutChainAfter = 0.0f;
+    float unitFanoutDelegateReceiverBefore = 0.0f;
+    float unitFanoutDelegateReceiverAfter = 0.0f;
+    float unitFanoutDelegateProtectorBefore = 0.0f;
+    float unitFanoutDelegateProtectorAfter = 0.0f;
+
+    if (unitFanoutDbReady)
+    {
+      fanoutBounceDamageDb->damage.sString = "0.09";
+      fanoutBounceDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      NDb::Spell* bounceSpell = new NDb::Spell();
+      bounceSpell->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(fanoutBounceDamageDb));
+      fanoutBounceDb->spell = NDb::Ptr<NDb::Spell>(bounceSpell);
+      fanoutBounceDb->targetsNumber.sString = "2";
+      fanoutBounceDb->bounceDelay.sString = "0.0";
+      fanoutBounceDb->startTarget = NDb::APPLICATORAPPLYTARGET_APPLICATORTARGET;
+
+      fanoutChainDamageDb->damage.sString = "0.11";
+      fanoutChainDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      NDb::Spell* chainSpell = new NDb::Spell();
+      chainSpell->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(fanoutChainDamageDb));
+      fanoutChainDb->spell = NDb::Ptr<NDb::Spell>(chainSpell);
+      fanoutChainDb->numJumps.sString = "1";
+      fanoutChainDb->range.sString = "8.0";
+      fanoutChainDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_ENEMY);
+
+      fanoutDelegateDb->damageToDelegate.sString = "0.30";
+      fanoutDelegateDb->damageToApply.sString = "0.20";
+      fanoutDelegateDb->totalDamage.sString = "0.50";
+      fanoutDelegateDb->infiniteTotalDamage = false;
+      fanoutDelegateDb->ignoreDefences = false;
+      fanoutDelegateDb->forceDontAttackBack = true;
+      fanoutIncomingDamageDb->damage.sString = "0.50";
+      fanoutIncomingDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+
+      CObj<NWorld::PFBaseUnit> fanoutOwner(
+        new NWorld::PFBaseUnit(0, CVec3(92.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> fanoutBounceReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(93.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> fanoutChainReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(94.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> fanoutDelegateProtector(
+        new NWorld::PFBaseUnit(0, CVec3(95.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> fanoutDelegateReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(96.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> fanoutDelegateAttacker(
+        new NWorld::PFBaseUnit(0, CVec3(97.0f, 30.0f, 0.0f), 0)
+      );
+      unitFanoutUnitsReady =
+        fanoutOwner &&
+        fanoutBounceReceiver &&
+        fanoutChainReceiver &&
+        fanoutDelegateProtector &&
+        fanoutDelegateReceiver &&
+        fanoutDelegateAttacker;
+
+      if (unitFanoutUnitsReady)
+      {
+        fanoutOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        fanoutBounceReceiver->ChangeFaction(NDb::FACTION_BURN);
+        fanoutChainReceiver->ChangeFaction(NDb::FACTION_BURN);
+        fanoutDelegateProtector->ChangeFaction(NDb::FACTION_FREEZE);
+        fanoutDelegateReceiver->ChangeFaction(NDb::FACTION_FREEZE);
+        fanoutDelegateAttacker->ChangeFaction(NDb::FACTION_BURN);
+
+        NDb::Ptr<NDb::BaseApplicator> bounceDbPtr(fanoutBounceDb);
+        NDb::Ability* bounceAbility = new NDb::Ability();
+        bounceAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        bounceAbility->targetType = NDb::SPELLTARGET_ALL;
+        CObj<NWorld::PFAbilityData> bounceAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(fanoutOwner.GetPtr()),
+            NDb::Ptr<NDb::Ability>(bounceAbility),
+            NDb::ABILITYTYPEID_SPECIAL,
+            false,
+            true
+          )
+        );
+        NWorld::Target bounceTarget(fanoutBounceReceiver.GetPtr());
+        CObj<NWorld::PFAbilityInstance> bounceInstance(
+          new NWorld::PFAbilityInstance(bounceAbilityData, bounceTarget, false)
+        );
+        NWorld::PFApplCreatePars bounceFactoryCp(bounceInstance, bounceTarget);
+        bounceFactoryCp.pDBAppl = bounceDbPtr;
+        CObj<NWorld::PFBaseApplicator> bounceFactoryProbe =
+          NWorld::CreateApplicator(bounceFactoryCp);
+        unitFanoutBounceFactory =
+          bounceFactoryProbe &&
+          bounceFactoryProbe->GetTypeId() == NWorld::PFApplBounce::typeId;
+        bounceFactoryProbe = 0;
+
+        NWorld::PFApplCreatePars bounceCp(bounceInstance, bounceTarget);
+        bounceCp.pDBAppl = bounceDbPtr;
+        CObj<LinuxBounceApplicatorProbe> bounceProbe(new LinuxBounceApplicatorProbe(bounceCp));
+        unitFanoutBounceBefore = fanoutBounceReceiver->GetHealth();
+        if (bounceProbe && bounceProbe->ProbeInit())
+        {
+          unitFanoutBounceStarted = !bounceProbe->ProbeStart();
+          unitFanoutBounceAfterFirst = fanoutBounceReceiver->GetHealth();
+          bounceProbe->ProbeStep(0.0f);
+          unitFanoutBounceAfterSecond = fanoutBounceReceiver->GetHealth();
+          unitFanoutBounceApplied =
+            unitFanoutBounceFactory &&
+            unitFanoutBounceStarted &&
+            unitFanoutBounceBefore > unitFanoutBounceAfterFirst &&
+            unitFanoutBounceAfterFirst > unitFanoutBounceAfterSecond &&
+            unitFanoutBounceAfterSecond > 0.81f &&
+            unitFanoutBounceAfterSecond < 0.83f;
+          bounceProbe->ProbeStop();
+        }
+        if (bounceInstance)
+          bounceInstance->Cancel();
+
+        NDb::Ability* chainAbility = new NDb::Ability();
+        chainAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        chainAbility->targetType = NDb::SPELLTARGET_ALL;
+        chainAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(fanoutChainDb));
+        unitFanoutChainBefore = fanoutChainReceiver->GetHealth();
+        CObj<NWorld::PFAbilityInstance> chainInstance =
+          fanoutOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(chainAbility),
+            NWorld::Target(fanoutChainReceiver.GetPtr())
+          );
+        unitFanoutChainCreated = chainInstance != 0;
+        unitFanoutChainAfter = fanoutChainReceiver->GetHealth();
+        unitFanoutChainApplied =
+          unitFanoutChainCreated &&
+          unitFanoutChainBefore > unitFanoutChainAfter &&
+          unitFanoutChainAfter > 0.88f &&
+          unitFanoutChainAfter < 0.90f;
+        if (chainInstance)
+          chainInstance->Cancel();
+
+        NDb::Ability* delegateAbility = new NDb::Ability();
+        delegateAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        delegateAbility->targetType = NDb::SPELLTARGET_ALL;
+        delegateAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(fanoutDelegateDb));
+        CObj<NWorld::PFAbilityInstance> delegateBuffInstance =
+          fanoutDelegateProtector->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(delegateAbility),
+            NWorld::Target(fanoutDelegateReceiver.GetPtr())
+          );
+        unitFanoutDelegateBuffCreated = delegateBuffInstance != 0;
+
+        NDb::Ability* incomingDamageAbility = new NDb::Ability();
+        incomingDamageAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        incomingDamageAbility->targetType = NDb::SPELLTARGET_ALL;
+        incomingDamageAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(fanoutIncomingDamageDb));
+        unitFanoutDelegateReceiverBefore = fanoutDelegateReceiver->GetHealth();
+        unitFanoutDelegateProtectorBefore = fanoutDelegateProtector->GetHealth();
+        CObj<NWorld::PFAbilityInstance> incomingDamageInstance =
+          fanoutDelegateAttacker->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(incomingDamageAbility),
+            NWorld::Target(fanoutDelegateReceiver.GetPtr())
+          );
+        unitFanoutDelegateDamageCreated = incomingDamageInstance != 0;
+        unitFanoutDelegateReceiverAfter = fanoutDelegateReceiver->GetHealth();
+        unitFanoutDelegateProtectorAfter = fanoutDelegateProtector->GetHealth();
+        unitFanoutDelegateApplied =
+          unitFanoutDelegateBuffCreated &&
+          unitFanoutDelegateDamageCreated &&
+          unitFanoutDelegateReceiverAfter > 0.79f &&
+          unitFanoutDelegateReceiverAfter < 0.81f &&
+          unitFanoutDelegateProtectorAfter > 0.69f &&
+          unitFanoutDelegateProtectorAfter < 0.71f;
+        if (incomingDamageInstance)
+          incomingDamageInstance->Cancel();
+        if (delegateBuffInstance)
+          delegateBuffInstance->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-fanout runtime: db=%s units=%s bounce=%s/%s/%s/%.2f->%.2f->%.2f chain=%s/%s/%.2f->%.2f delegate=%s/%s/%s/%.2f->%.2f/%.2f->%.2f\n",
+      unitFanoutDbReady ? "yes" : "no",
+      unitFanoutUnitsReady ? "yes" : "no",
+      unitFanoutBounceFactory ? "yes" : "no",
+      unitFanoutBounceStarted ? "yes" : "no",
+      unitFanoutBounceApplied ? "yes" : "no",
+      unitFanoutBounceBefore,
+      unitFanoutBounceAfterFirst,
+      unitFanoutBounceAfterSecond,
+      unitFanoutChainCreated ? "yes" : "no",
+      unitFanoutChainApplied ? "yes" : "no",
+      unitFanoutChainBefore,
+      unitFanoutChainAfter,
+      unitFanoutDelegateBuffCreated ? "yes" : "no",
+      unitFanoutDelegateDamageCreated ? "yes" : "no",
+      unitFanoutDelegateApplied ? "yes" : "no",
+      unitFanoutDelegateReceiverBefore,
+      unitFanoutDelegateReceiverAfter,
+      unitFanoutDelegateProtectorBefore,
+      unitFanoutDelegateProtectorAfter);
+
+    NDb::StatModApplicator* unitModStatDb = new NDb::StatModApplicator();
+    NDb::PermanentStatModApplicator* unitModPermanentDb = new NDb::PermanentStatModApplicator();
+    NDb::FlagsApplicator* unitModFlagsDb = new NDb::FlagsApplicator();
+    NDb::ValueApplicator* unitModValueDb = new NDb::ValueApplicator();
+    NDb::MarkerApplicator* unitModMarkerDb = new NDb::MarkerApplicator();
+    NDb::TargetsCounterApplicator* unitModTargetsDb = new NDb::TargetsCounterApplicator();
+    NDb::StatusApplicator* unitModStatusDb = new NDb::StatusApplicator();
+    NDb::StatModApplicator* unitModStatusChildDb = new NDb::StatModApplicator();
+    NDb::InvisibilityApplicator* unitModInvisibilityDb = new NDb::InvisibilityApplicator();
+    NDb::AbilityModApplicator* unitModAbilityDb = new NDb::AbilityModApplicator();
+    NDb::TauntApplicator* unitModTauntDb = new NDb::TauntApplicator();
+
+    bool unitModDbReady =
+      unitModStatDb &&
+      unitModPermanentDb &&
+      unitModFlagsDb &&
+      unitModValueDb &&
+      unitModMarkerDb &&
+      unitModTargetsDb &&
+      unitModStatusDb &&
+      unitModStatusChildDb &&
+      unitModInvisibilityDb &&
+      unitModAbilityDb &&
+      unitModTauntDb;
+    bool unitModUnitsReady = false;
+    bool unitModStatCreated = false;
+    bool unitModStatApplied = false;
+    bool unitModStatRemoved = false;
+    bool unitModPermanentCreated = false;
+    bool unitModPermanentApplied = false;
+    bool unitModFlagsCreated = false;
+    bool unitModFlagsApplied = false;
+    bool unitModFlagsRemoved = false;
+    bool unitModValueCreated = false;
+    bool unitModValueApplied = false;
+    bool unitModMarkerCreated = false;
+    bool unitModMarkerApplied = false;
+    bool unitModTargetsCreated = false;
+    bool unitModTargetsApplied = false;
+    bool unitModStatusCreated = false;
+    bool unitModStatusApplied = false;
+    bool unitModStatusRemoved = false;
+    bool unitModInvisibilityCreated = false;
+    bool unitModInvisibilityApplied = false;
+    bool unitModInvisibilityRemoved = false;
+    bool unitModAbilityCreated = false;
+    bool unitModAbilityApplied = false;
+    bool unitModTauntCreated = false;
+    bool unitModTauntApplied = false;
+    bool unitModTauntStopped = false;
+    float unitModStatBefore = 0.0f;
+    float unitModStatAfter = 0.0f;
+    float unitModStatAfterRemove = 0.0f;
+    float unitModStatVariable = 0.0f;
+    float unitModPermanentBefore = 0.0f;
+    float unitModPermanentAfter = 0.0f;
+    float unitModStatusBefore = 0.0f;
+    float unitModStatusAfter = 0.0f;
+    float unitModStatusAfterRemove = 0.0f;
+    float unitModValueVariable = 0.0f;
+    float unitModMarkerVariable = 0.0f;
+    float unitModTargetsVariable = 0.0f;
+    float unitModAbilityAdd = 0.0f;
+    float unitModAbilityMul = 1.0f;
+
+    if (unitModDbReady)
+    {
+      unitModStatDb->modifier.stat = NDb::STAT_BASEATTACK;
+      unitModStatDb->modifier.addValue.sString = "0.25";
+      unitModStatDb->modifier.multValue.sString = "1.0";
+      unitModStatDb->lifeTime.sString = "-1.0";
+
+      unitModPermanentDb->modifier.stat = NDb::STAT_STAMINA;
+      unitModPermanentDb->modifier.addValue.sString = "0.50";
+      unitModPermanentDb->modifier.multValue.sString = "1.0";
+
+      unitModFlagsDb->flag = NDb::UNITFLAG_FORBIDATTACK;
+      unitModFlagsDb->lifeTime.sString = "-1.0";
+
+      unitModValueDb->value.sString = "0.33";
+      unitModValueDb->lifeTime.sString = "-1.0";
+
+      unitModMarkerDb->addValue.sString = "0.40";
+      unitModMarkerDb->multValue.sString = "1.0";
+      unitModMarkerDb->lifeTime.sString = "-1.0";
+
+      unitModTargetsDb->lifeTime.sString = "-1.0";
+
+      unitModStatusChildDb->modifier.stat = NDb::STAT_RANGE;
+      unitModStatusChildDb->modifier.addValue.sString = "0.20";
+      unitModStatusChildDb->modifier.multValue.sString = "1.0";
+      unitModStatusChildDb->lifeTime.sString = "-1.0";
+      unitModStatusDb->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(unitModStatusChildDb));
+      unitModStatusDb->stopBehaviour = NDb::STOPBEHAVIOUR_STOPBYTIME;
+      unitModStatusDb->lifeTime.sString = "-1.0";
+
+      unitModInvisibilityDb->fadeIn.sString = "0.0";
+      unitModInvisibilityDb->lifeTime.sString = "-1.0";
+
+      unitModAbilityDb->mode = NDb::ABILITYMODMODE_COOLDOWN;
+      unitModAbilityDb->addValue.sString = "0.25";
+      unitModAbilityDb->multValue.sString = "2.0";
+      unitModAbilityDb->lifeTime.sString = "-1.0";
+
+      unitModTauntDb->tauntTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitModTauntDb->strongTarget = true;
+      unitModTauntDb->lifeTime.sString = "-1.0";
+
+      CObj<NWorld::PFBaseUnit> unitModOwner(
+        new NWorld::PFBaseUnit(0, CVec3(98.0f, 30.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> unitModReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(99.0f, 30.0f, 0.0f), 0)
+      );
+      unitModUnitsReady = unitModOwner && unitModReceiver;
+
+      if (unitModUnitsReady)
+      {
+        unitModOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        unitModReceiver->ChangeFaction(NDb::FACTION_BURN);
+
+        auto applyUnitModApplicator =
+          [&](NDb::BaseApplicator* applicatorDb) -> CObj<NWorld::PFAbilityInstance>
+          {
+            NDb::Ability* ability = new NDb::Ability();
+            ability->type = NDb::ABILITYTYPE_ACTIVE;
+            ability->targetType = NDb::SPELLTARGET_ALL;
+            ability->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(applicatorDb));
+            return unitModOwner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(ability),
+              NWorld::Target(unitModReceiver.GetPtr()));
+          };
+
+        unitModStatBefore = unitModReceiver->GetStatValue(NDb::STAT_BASEATTACK);
+        CObj<NWorld::PFAbilityInstance> statInstance = applyUnitModApplicator(unitModStatDb);
+        unitModStatCreated = statInstance != 0;
+        unitModStatAfter = unitModReceiver->GetStatValue(NDb::STAT_BASEATTACK);
+        LinuxUnitModApplicatorCollector statCollector;
+        unitModReceiver->ForAllAppliedApplicators(statCollector);
+        unitModStatVariable = statCollector.statModVariable;
+        unitModStatApplied =
+          unitModStatCreated &&
+          statCollector.statMods == 1 &&
+          unitModStatAfter > 0.24f &&
+          unitModStatAfter < 0.26f &&
+          unitModStatVariable > 0.24f &&
+          unitModStatVariable < 0.26f;
+        if (statInstance)
+        {
+          statInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          statInstance->Cancel();
+        }
+        unitModStatAfterRemove = unitModReceiver->GetStatValue(NDb::STAT_BASEATTACK);
+        LinuxUnitModApplicatorCollector statRemoveCollector;
+        unitModReceiver->ForAllAppliedApplicators(statRemoveCollector);
+        unitModStatRemoved = statRemoveCollector.statMods == 0 && unitModStatAfterRemove < 0.01f;
+
+        unitModPermanentBefore = unitModReceiver->GetStatValue(NDb::STAT_STAMINA);
+        CObj<NWorld::PFAbilityInstance> permanentInstance = applyUnitModApplicator(unitModPermanentDb);
+        unitModPermanentCreated = permanentInstance != 0;
+        unitModPermanentAfter = unitModReceiver->GetStatValue(NDb::STAT_STAMINA);
+        unitModPermanentApplied =
+          unitModPermanentCreated &&
+          unitModPermanentBefore < 0.01f &&
+          unitModPermanentAfter > 0.49f &&
+          unitModPermanentAfter < 0.51f;
+        if (permanentInstance)
+          permanentInstance->Cancel();
+
+        CObj<NWorld::PFAbilityInstance> flagsInstance = applyUnitModApplicator(unitModFlagsDb);
+        unitModFlagsCreated = flagsInstance != 0;
+        unitModFlagsApplied =
+          unitModFlagsCreated &&
+          unitModReceiver->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK);
+        if (flagsInstance)
+        {
+          flagsInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          flagsInstance->Cancel();
+        }
+        unitModFlagsRemoved = !unitModReceiver->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK);
+
+        CObj<NWorld::PFAbilityInstance> valueInstance = applyUnitModApplicator(unitModValueDb);
+        unitModValueCreated = valueInstance != 0;
+        LinuxUnitModApplicatorCollector valueCollector;
+        unitModReceiver->ForAllAppliedApplicators(valueCollector);
+        unitModValueVariable = valueCollector.valueVariable;
+        unitModValueApplied =
+          unitModValueCreated &&
+          valueCollector.values == 1 &&
+          unitModValueVariable > 0.32f &&
+          unitModValueVariable < 0.34f;
+        if (valueInstance)
+        {
+          valueInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          valueInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> markerInstance = applyUnitModApplicator(unitModMarkerDb);
+        unitModMarkerCreated = markerInstance != 0;
+        LinuxUnitModApplicatorCollector markerCollector;
+        unitModReceiver->ForAllAppliedApplicators(markerCollector);
+        unitModMarkerVariable = markerCollector.markerVariable;
+        unitModMarkerApplied =
+          unitModMarkerCreated &&
+          markerCollector.markers == 1 &&
+          unitModMarkerVariable > 0.39f &&
+          unitModMarkerVariable < 0.41f;
+        if (markerInstance)
+        {
+          markerInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          markerInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> targetsInstance = applyUnitModApplicator(unitModTargetsDb);
+        unitModTargetsCreated = targetsInstance != 0;
+        LinuxUnitModApplicatorCollector targetsCollector;
+        unitModReceiver->ForAllAppliedApplicators(targetsCollector);
+        unitModTargetsVariable = targetsCollector.targetsCountVariable;
+        unitModTargetsApplied =
+          unitModTargetsCreated &&
+          targetsCollector.targetCounters == 1 &&
+          unitModTargetsVariable == 1.0f;
+        if (targetsInstance)
+        {
+          targetsInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          targetsInstance->Cancel();
+        }
+
+        unitModStatusBefore = unitModReceiver->GetStatValue(NDb::STAT_RANGE);
+        CObj<NWorld::PFAbilityInstance> statusInstance = applyUnitModApplicator(unitModStatusDb);
+        unitModStatusCreated = statusInstance != 0;
+        unitModStatusAfter = unitModReceiver->GetStatValue(NDb::STAT_RANGE);
+        LinuxUnitModApplicatorCollector statusCollector;
+        unitModReceiver->ForAllAppliedApplicators(statusCollector);
+        unitModStatusApplied =
+          unitModStatusCreated &&
+          statusCollector.statuses == 1 &&
+          statusCollector.statMods == 1 &&
+          unitModStatusAfter > 0.19f &&
+          unitModStatusAfter < 0.21f;
+        if (statusInstance)
+        {
+          statusInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          statusInstance->Cancel();
+        }
+        unitModStatusAfterRemove = unitModReceiver->GetStatValue(NDb::STAT_RANGE);
+        LinuxUnitModApplicatorCollector statusRemoveCollector;
+        unitModReceiver->ForAllAppliedApplicators(statusRemoveCollector);
+        unitModStatusRemoved =
+          statusRemoveCollector.statuses == 0 &&
+          statusRemoveCollector.statMods == 0 &&
+          unitModStatusAfterRemove < 0.01f;
+
+        CObj<NWorld::PFAbilityInstance> invisibilityInstance = applyUnitModApplicator(unitModInvisibilityDb);
+        unitModInvisibilityCreated = invisibilityInstance != 0;
+        unitModInvisibilityApplied =
+          unitModInvisibilityCreated &&
+          unitModReceiver->CheckFlagType(NDb::UNITFLAGTYPE_INVISIBLE);
+        if (invisibilityInstance)
+        {
+          invisibilityInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          invisibilityInstance->Cancel();
+        }
+        unitModInvisibilityRemoved = !unitModReceiver->CheckFlagType(NDb::UNITFLAGTYPE_INVISIBLE);
+
+        CObj<NWorld::PFAbilityInstance> abilityModInstance = applyUnitModApplicator(unitModAbilityDb);
+        unitModAbilityCreated = abilityModInstance != 0;
+        LinuxUnitModApplicatorCollector abilityModCollector;
+        unitModReceiver->ForAllAppliedApplicators(abilityModCollector);
+        unitModAbilityAdd = abilityModCollector.abilityModAdd;
+        unitModAbilityMul = abilityModCollector.abilityModMul;
+        unitModAbilityApplied =
+          unitModAbilityCreated &&
+          abilityModCollector.abilityMods == 1 &&
+          unitModAbilityAdd > 0.24f &&
+          unitModAbilityAdd < 0.26f &&
+          unitModAbilityMul > 1.99f &&
+          unitModAbilityMul < 2.01f;
+        if (abilityModInstance)
+        {
+          abilityModInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          abilityModInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> tauntInstance = applyUnitModApplicator(unitModTauntDb);
+        unitModTauntCreated = tauntInstance != 0;
+        LinuxUnitModApplicatorCollector tauntCollector;
+        unitModReceiver->ForAllAppliedApplicators(tauntCollector);
+        unitModTauntApplied =
+          unitModTauntCreated &&
+          tauntCollector.taunts == 1 &&
+          unitModReceiver->IsInTaunt() &&
+          unitModReceiver->GetCurrentTarget().GetPtr() == unitModOwner.GetPtr();
+        if (tauntInstance)
+        {
+          tauntInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitModReceiver.GetPtr()));
+          tauntInstance->Cancel();
+        }
+        unitModTauntStopped = !unitModReceiver->IsInTaunt();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-mod runtime: db=%s units=%s stat=%s/%s/%s/%.2f->%.2f->%.2f/%.2f permanent=%s/%s/%.2f->%.2f flags=%s/%s/%s value=%s/%s/%.2f marker=%s/%s/%.2f targets=%s/%s/%.0f status=%s/%s/%s/%.2f->%.2f->%.2f invis=%s/%s/%s abilitymod=%s/%s/%.2f/%.2f taunt=%s/%s/%s\n",
+      unitModDbReady ? "yes" : "no",
+      unitModUnitsReady ? "yes" : "no",
+      unitModStatCreated ? "yes" : "no",
+      unitModStatApplied ? "yes" : "no",
+      unitModStatRemoved ? "yes" : "no",
+      unitModStatBefore,
+      unitModStatAfter,
+      unitModStatAfterRemove,
+      unitModStatVariable,
+      unitModPermanentCreated ? "yes" : "no",
+      unitModPermanentApplied ? "yes" : "no",
+      unitModPermanentBefore,
+      unitModPermanentAfter,
+      unitModFlagsCreated ? "yes" : "no",
+      unitModFlagsApplied ? "yes" : "no",
+      unitModFlagsRemoved ? "yes" : "no",
+      unitModValueCreated ? "yes" : "no",
+      unitModValueApplied ? "yes" : "no",
+      unitModValueVariable,
+      unitModMarkerCreated ? "yes" : "no",
+      unitModMarkerApplied ? "yes" : "no",
+      unitModMarkerVariable,
+      unitModTargetsCreated ? "yes" : "no",
+      unitModTargetsApplied ? "yes" : "no",
+      unitModTargetsVariable,
+      unitModStatusCreated ? "yes" : "no",
+      unitModStatusApplied ? "yes" : "no",
+      unitModStatusRemoved ? "yes" : "no",
+      unitModStatusBefore,
+      unitModStatusAfter,
+      unitModStatusAfterRemove,
+      unitModInvisibilityCreated ? "yes" : "no",
+      unitModInvisibilityApplied ? "yes" : "no",
+      unitModInvisibilityRemoved ? "yes" : "no",
+      unitModAbilityCreated ? "yes" : "no",
+      unitModAbilityApplied ? "yes" : "no",
+      unitModAbilityAdd,
+      unitModAbilityMul,
+      unitModTauntCreated ? "yes" : "no",
+      unitModTauntApplied ? "yes" : "no",
+      unitModTauntStopped ? "yes" : "no");
+
+    NDb::UnitEnumerator* targetSelectorUnitEnumDb = new NDb::UnitEnumerator();
+    NDb::AreaTargetSelector* targetSelectorAreaDb = new NDb::AreaTargetSelector();
+    NDb::AreaTargetSelector* targetSelectorTightAreaDb = new NDb::AreaTargetSelector();
+    NDb::SectorTargetSelector* targetSelectorSectorDb = new NDb::SectorTargetSelector();
+    NDb::CapsuleTargetSelector* targetSelectorCapsuleDb = new NDb::CapsuleTargetSelector();
+    NDb::WallTargetSelector* targetSelectorWallDb = new NDb::WallTargetSelector();
+    NDb::HeroEnumerator* targetSelectorHeroDb = new NDb::HeroEnumerator();
+    NDb::SummonEnumerator* targetSelectorSummonDb = new NDb::SummonEnumerator();
+    NDb::NearestInAreaTargetSelector* targetSelectorNearestInAreaDb = new NDb::NearestInAreaTargetSelector();
+    NDb::NearestTargetSelector* targetSelectorNearestDb = new NDb::NearestTargetSelector();
+    NDb::FirstTargetSelector* targetSelectorFirstDb = new NDb::FirstTargetSelector();
+    NDb::WeightTargetSelector* targetSelectorWeightDb = new NDb::WeightTargetSelector();
+    NDb::FilterTargetSelector* targetSelectorFilterDb = new NDb::FilterTargetSelector();
+    NDb::CountingTargetSelector* targetSelectorCountingDb = new NDb::CountingTargetSelector();
+    NDb::ComparingTargetSelector* targetSelectorComparingDb = new NDb::ComparingTargetSelector();
+    NDb::ListOfTargetSelectors* targetSelectorListDb = new NDb::ListOfTargetSelectors();
+    NDb::RelativeUnitTargetSelector* targetSelectorRelativeDb = new NDb::RelativeUnitTargetSelector();
+    NDb::UnitShiftTarget* targetSelectorShiftDb = new NDb::UnitShiftTarget();
+    NDb::PointTargetSelector* targetSelectorPointDb = new NDb::PointTargetSelector();
+    NDb::UnitPlaceCorrector* targetSelectorPlaceDb = new NDb::UnitPlaceCorrector();
+    NDb::ConvertTargetToLand* targetSelectorConvertDb = new NDb::ConvertTargetToLand();
+    NDb::FixToCenterTargetSelector* targetSelectorFixDb = new NDb::FixToCenterTargetSelector();
+    NDb::BetweenUnitsTargetSelector* targetSelectorBetweenDb = new NDb::BetweenUnitsTargetSelector();
+    NDb::MainBuildingTargetSelector* targetSelectorMainBuildingDb = new NDb::MainBuildingTargetSelector();
+    NDb::FountainTargetSelector* targetSelectorFountainDb = new NDb::FountainTargetSelector();
+    NDb::ShopTargetSelector* targetSelectorShopDb = new NDb::ShopTargetSelector();
+    NDb::AttackersTargetSelector* targetSelectorAttackersDb = new NDb::AttackersTargetSelector();
+    NDb::MaximizingTargetSelector* targetSelectorMaximizingDb = new NDb::MaximizingTargetSelector();
+    NDb::DelayTargetSelector* targetSelectorDelayDb = new NDb::DelayTargetSelector();
+    NDb::CheckConditionTargetSelector* targetSelectorCheckConditionDb = new NDb::CheckConditionTargetSelector();
+    NDb::NotTargetOfSameAbilitySelector* targetSelectorNotSameAbilityDb = new NDb::NotTargetOfSameAbilitySelector();
+    NDb::DamagingLinksTargetSelector* targetSelectorDamagingLinksDb = new NDb::DamagingLinksTargetSelector();
+    NDb::HighlanderA1TargetSelector* targetSelectorHighlanderDb = new NDb::HighlanderA1TargetSelector();
+    NDb::TargetSelectorMicroAI* targetSelectorMicroAiDb = new NDb::TargetSelectorMicroAI();
+    NDb::MultipleTargetSelectorMicroAI* targetSelectorMultiMicroAiDb = new NDb::MultipleTargetSelectorMicroAI();
+    NDb::TargetsCounterApplicator* targetSelectorCounterApplicatorDb = new NDb::TargetsCounterApplicator();
+    NDb::Ptr<NDb::Unit> targetSelectorOwnerUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorOwnerUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorAllyUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorAllyUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorNearUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorNearUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorFarUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorFarUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorHeroUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorHeroUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorSummonUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorSummonUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorMainBuildingUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorMainBuildingUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorFountainUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorFountainUnit")))
+    );
+    NDb::Ptr<NDb::Unit> targetSelectorShopUnitDb(
+      static_cast<NDb::Unit*>(NDb::Unit::NewUnit(NDb::DBID("", "LinuxBootstrapTargetSelectorShopUnit")))
+    );
+
+    bool targetSelectorDbReady =
+      targetSelectorUnitEnumDb &&
+      targetSelectorAreaDb &&
+      targetSelectorTightAreaDb &&
+      targetSelectorSectorDb &&
+      targetSelectorCapsuleDb &&
+      targetSelectorWallDb &&
+      targetSelectorHeroDb &&
+      targetSelectorSummonDb &&
+      targetSelectorNearestInAreaDb &&
+      targetSelectorNearestDb &&
+      targetSelectorFirstDb &&
+      targetSelectorWeightDb &&
+      targetSelectorFilterDb &&
+      targetSelectorCountingDb &&
+      targetSelectorComparingDb &&
+      targetSelectorListDb &&
+      targetSelectorRelativeDb &&
+      targetSelectorShiftDb &&
+      targetSelectorPointDb &&
+      targetSelectorPlaceDb &&
+      targetSelectorConvertDb &&
+      targetSelectorFixDb &&
+      targetSelectorBetweenDb &&
+      targetSelectorMainBuildingDb &&
+      targetSelectorFountainDb &&
+      targetSelectorShopDb &&
+      targetSelectorAttackersDb &&
+      targetSelectorMaximizingDb &&
+      targetSelectorDelayDb &&
+      targetSelectorCheckConditionDb &&
+      targetSelectorNotSameAbilityDb &&
+      targetSelectorDamagingLinksDb &&
+      targetSelectorHighlanderDb &&
+      targetSelectorMicroAiDb &&
+      targetSelectorMultiMicroAiDb &&
+      targetSelectorCounterApplicatorDb &&
+      targetSelectorOwnerUnitDb.GetPtr() &&
+      targetSelectorAllyUnitDb.GetPtr() &&
+      targetSelectorNearUnitDb.GetPtr() &&
+      targetSelectorFarUnitDb.GetPtr() &&
+      targetSelectorHeroUnitDb.GetPtr() &&
+      targetSelectorSummonUnitDb.GetPtr() &&
+      targetSelectorMainBuildingUnitDb.GetPtr() &&
+      targetSelectorFountainUnitDb.GetPtr() &&
+      targetSelectorShopUnitDb.GetPtr();
+    bool targetSelectorUnitsReady = false;
+    bool targetSelectorUnitEnumCreated = false;
+    bool targetSelectorUnitEnumApplied = false;
+    bool targetSelectorAreaCreated = false;
+    bool targetSelectorAreaApplied = false;
+    bool targetSelectorSectorCreated = false;
+    bool targetSelectorSectorApplied = false;
+    bool targetSelectorCapsuleCreated = false;
+    bool targetSelectorCapsuleApplied = false;
+    bool targetSelectorWallCreated = false;
+    bool targetSelectorWallApplied = false;
+    bool targetSelectorHeroCreated = false;
+    bool targetSelectorHeroApplied = false;
+    bool targetSelectorSummonCreated = false;
+    bool targetSelectorSummonApplied = false;
+    bool targetSelectorNearestCreated = false;
+    bool targetSelectorNearestApplied = false;
+    bool targetSelectorWeightCreated = false;
+    bool targetSelectorWeightApplied = false;
+    bool targetSelectorFilterCreated = false;
+    bool targetSelectorFilterApplied = false;
+    bool targetSelectorCountingCreated = false;
+    bool targetSelectorCountingApplied = false;
+    bool targetSelectorComparingCreated = false;
+    bool targetSelectorComparingApplied = false;
+    bool targetSelectorListCreated = false;
+    bool targetSelectorListApplied = false;
+    bool targetSelectorRelativeCreated = false;
+    bool targetSelectorRelativeApplied = false;
+    bool targetSelectorShiftCreated = false;
+    bool targetSelectorShiftApplied = false;
+    bool targetSelectorPointCreated = false;
+    bool targetSelectorPointApplied = false;
+    bool targetSelectorPlaceCreated = false;
+    bool targetSelectorPlaceApplied = false;
+    bool targetSelectorConvertCreated = false;
+    bool targetSelectorConvertApplied = false;
+    bool targetSelectorFixCreated = false;
+    bool targetSelectorFixApplied = false;
+    bool targetSelectorBetweenCreated = false;
+    bool targetSelectorBetweenApplied = false;
+    bool targetSelectorMainBuildingCreated = false;
+    bool targetSelectorMainBuildingApplied = false;
+    bool targetSelectorFountainCreated = false;
+    bool targetSelectorFountainApplied = false;
+    bool targetSelectorShopCreated = false;
+    bool targetSelectorShopApplied = false;
+    bool targetSelectorAttackersCreated = false;
+    bool targetSelectorAttackersApplied = false;
+    bool targetSelectorMaximizingCreated = false;
+    bool targetSelectorMaximizingApplied = false;
+    bool targetSelectorDelayCreated = false;
+    bool targetSelectorDelayApplied = false;
+    bool targetSelectorCheckConditionCreated = false;
+    bool targetSelectorCheckConditionApplied = false;
+    bool targetSelectorNotSameAbilityCreated = false;
+    bool targetSelectorNotSameAbilityApplied = false;
+    bool targetSelectorDamagingLinksCreated = false;
+    bool targetSelectorDamagingLinksApplied = false;
+    bool targetSelectorHighlanderCreated = false;
+    bool targetSelectorHighlanderApplied = false;
+    bool targetSelectorMicroAiCreated = false;
+    bool targetSelectorMicroAiApplied = false;
+    bool targetSelectorMultiMicroAiCreated = false;
+    bool targetSelectorMultiMicroAiApplied = false;
+    bool targetSelectorCounterCreated = false;
+    bool targetSelectorCounterApplied = false;
+    size_t targetSelectorUnitEnumCount = 0;
+    size_t targetSelectorAreaCount = 0;
+    size_t targetSelectorSectorCount = 0;
+    size_t targetSelectorCapsuleCount = 0;
+    size_t targetSelectorWallCount = 0;
+    size_t targetSelectorHeroCount = 0;
+    size_t targetSelectorSummonCount = 0;
+    size_t targetSelectorFilterCount = 0;
+    size_t targetSelectorCountingCount = 0;
+    size_t targetSelectorListCount = 0;
+    size_t targetSelectorBetweenCount = 0;
+    size_t targetSelectorAttackersCount = 0;
+    size_t targetSelectorDelayCount = 0;
+    size_t targetSelectorCheckConditionCount = 0;
+    size_t targetSelectorNotSameAbilityCount = 0;
+    size_t targetSelectorHighlanderCount = 0;
+    float targetSelectorShiftX = 0.0f;
+    float targetSelectorPointX = 0.0f;
+    float targetSelectorPlaceX = 0.0f;
+    float targetSelectorConvertX = 0.0f;
+    float targetSelectorFixX = 0.0f;
+    float targetSelectorBetweenX = 0.0f;
+    float targetSelectorMaximizingX = 0.0f;
+    float targetSelectorDamagingLinksX = 0.0f;
+    float targetSelectorCounterValue = 0.0f;
+
+    if (targetSelectorDbReady)
+    {
+      targetSelectorUnitEnumDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+
+      targetSelectorAreaDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorAreaDb->range.sString = "2.0";
+      targetSelectorTightAreaDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorTightAreaDb->range.sString = "0.05";
+
+      targetSelectorSectorDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorSectorDb->range.sString = "2.0";
+      targetSelectorSectorDb->angle = 15.0f;
+
+      targetSelectorCapsuleDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorCapsuleDb->range.sString = "0.6";
+
+      targetSelectorWallDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorWallDb->length.sString = "3.0";
+      targetSelectorWallDb->width.sString = "2.2";
+
+      targetSelectorHeroDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_HEROMALE | NDb::SPELLTARGET_ENEMY);
+      targetSelectorSummonDb->summonTypes = NDb::SUMMONTYPEFLAGS_PRIMARY;
+
+      targetSelectorNearestInAreaDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorNearestInAreaDb->range.sString = "8.0";
+
+      targetSelectorNearestDb->targetSelector = NDb::Ptr<NDb::TargetSelector>(targetSelectorUnitEnumDb);
+      targetSelectorFirstDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorFirstDb->nearestTarget = false;
+      targetSelectorWeightDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorFilterDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorFilterDb->suitableUnits.push_back(targetSelectorNearUnitDb);
+
+      targetSelectorCountingDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorCountingDb->targetsNumber.sString = "1";
+
+      targetSelectorComparingDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorComparingDb->referenceValue.sString = "1.0";
+      targetSelectorComparingDb->valueToCompare.sString = "1.0";
+
+      targetSelectorListDb->targetSelectors.push_back(NDb::Ptr<NDb::TargetSelector>(targetSelectorAreaDb));
+      targetSelectorListDb->targetSelectors.push_back(NDb::Ptr<NDb::TargetSelector>(targetSelectorCountingDb));
+
+      targetSelectorRelativeDb->relation = NDb::UNITRELATION_TARGET;
+
+      targetSelectorShiftDb->distance.sString = "2.0";
+
+      targetSelectorPointDb->mode = NDb::POINTTARGETSELECTORMODE_RANGEFROMOWNER;
+      targetSelectorPointDb->range.sString = "3.0";
+
+      targetSelectorPlaceDb->targetSelector = targetSelectorPointDb;
+      targetSelectorConvertDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorConvertDb->aggregateMode = NDb::TARGETTOLANDMODE_CENTER;
+      targetSelectorFixDb->targetSelector = targetSelectorPointDb;
+      targetSelectorBetweenDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorBetweenDb->maxTargets.sString = "1";
+      targetSelectorBetweenDb->minDistBetweenTargets.sString = "1.0";
+      targetSelectorAttackersDb->targetSelector = targetSelectorFirstDb;
+      targetSelectorAttackersDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorMaximizingDb->targetSelector = targetSelectorTightAreaDb;
+      targetSelectorMaximizingDb->range.sString = "1.0";
+      targetSelectorMaximizingDb->searchRange.sString = "2.0";
+      targetSelectorMaximizingDb->minTargetsNumber.sString = "1";
+      targetSelectorMaximizingDb->searchFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorDelayDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorDelayDb->delay.sString = "0.05";
+      targetSelectorCheckConditionDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorCheckConditionDb->condition.sString = "true";
+      targetSelectorCheckConditionDb->minTargetsNumber.sString = "1";
+      targetSelectorNotSameAbilityDb->targetSelector = targetSelectorUnitEnumDb;
+      targetSelectorNotSameAbilityDb->abilityCastersSelector = targetSelectorUnitEnumDb;
+      targetSelectorNotSameAbilityDb->minDistBetweenTargets.sString = "0.1";
+      targetSelectorDamagingLinksDb->linkEndsSelector = targetSelectorHeroDb;
+      targetSelectorDamagingLinksDb->linkTargetsSelector = targetSelectorTightAreaDb;
+      targetSelectorDamagingLinksDb->moveRange.sString = "1.0";
+      targetSelectorDamagingLinksDb->minRangeFromLinkEnds.sString = "0.0";
+      targetSelectorDamagingLinksDb->maxRangeFromLinkEnds.sString = "10.0";
+      targetSelectorHighlanderDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      targetSelectorHighlanderDb->range.sString = "8.0";
+      targetSelectorHighlanderDb->targetCount.sString = "2";
+      targetSelectorMicroAiDb->targetSelector = NDb::Ptr<NDb::SingleTargetSelector>(targetSelectorNearestDb);
+      targetSelectorMicroAiDb->condition.sString = "true";
+      targetSelectorMultiMicroAiDb->targetSelector = NDb::Ptr<NDb::MultipleTargetSelector>(targetSelectorUnitEnumDb);
+      targetSelectorMultiMicroAiDb->condition.sString = "true";
+      targetSelectorMultiMicroAiDb->unitFilter.sString = "true";
+      targetSelectorMultiMicroAiDb->minTargetCount = 2;
+      targetSelectorMultiMicroAiDb->minTargetWeight = 0.0f;
+
+      targetSelectorCounterApplicatorDb->targetSelector = NDb::Ptr<NDb::TargetSelector>(targetSelectorUnitEnumDb);
+      targetSelectorCounterApplicatorDb->lifeTime.sString = "-1.0";
+
+      CObj<NWorld::PFBaseUnit> targetSelectorOwner(
+        new NWorld::PFBaseUnit(0, CVec3(100.0f, 30.0f, 0.0f), targetSelectorOwnerUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorAlly(
+        new NWorld::PFBaseUnit(0, CVec3(100.5f, 30.0f, 0.0f), targetSelectorAllyUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorEnemyNear(
+        new NWorld::PFBaseUnit(0, CVec3(101.0f, 30.0f, 0.0f), targetSelectorNearUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorEnemyFar(
+        new NWorld::PFBaseUnit(0, CVec3(106.0f, 30.0f, 0.0f), targetSelectorFarUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorHeroEnemy(
+        new NWorld::PFBaseUnit(0, CVec3(102.0f, 33.0f, 0.0f), targetSelectorHeroUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorSummon(
+        new NWorld::PFBaseUnit(0, CVec3(100.0f, 31.0f, 0.0f), targetSelectorSummonUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorMainBuilding(
+        new NWorld::PFBaseUnit(0, CVec3(95.0f, 30.0f, 0.0f), targetSelectorMainBuildingUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorFountain(
+        new NWorld::PFBaseUnit(0, CVec3(94.0f, 30.0f, 0.0f), targetSelectorFountainUnitDb.GetPtr())
+      );
+      CObj<NWorld::PFBaseUnit> targetSelectorShop(
+        new NWorld::PFBaseUnit(0, CVec3(99.0f, 28.0f, 0.0f), targetSelectorShopUnitDb.GetPtr())
+      );
+      targetSelectorUnitsReady =
+        targetSelectorOwner &&
+        targetSelectorAlly &&
+        targetSelectorEnemyNear &&
+        targetSelectorEnemyFar &&
+        targetSelectorHeroEnemy &&
+        targetSelectorSummon &&
+        targetSelectorMainBuilding &&
+        targetSelectorFountain &&
+        targetSelectorShop;
+
+      if (targetSelectorUnitsReady)
+      {
+        targetSelectorOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        targetSelectorAlly->ChangeFaction(NDb::FACTION_FREEZE);
+        targetSelectorEnemyNear->ChangeFaction(NDb::FACTION_BURN);
+        targetSelectorEnemyFar->ChangeFaction(NDb::FACTION_BURN);
+        targetSelectorHeroEnemy->ChangeFaction(NDb::FACTION_BURN);
+        targetSelectorSummon->ChangeFaction(NDb::FACTION_FREEZE);
+        targetSelectorMainBuilding->ChangeFaction(NDb::FACTION_FREEZE);
+        targetSelectorFountain->ChangeFaction(NDb::FACTION_FREEZE);
+        targetSelectorShop->ChangeFaction(NDb::FACTION_NEUTRAL);
+        targetSelectorOwner->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        targetSelectorAlly->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        targetSelectorEnemyNear->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        targetSelectorEnemyFar->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        targetSelectorHeroEnemy->SetUnitType(NDb::UNITTYPE_HEROMALE);
+        targetSelectorSummon->SetUnitType(NDb::UNITTYPE_SUMMON);
+        targetSelectorMainBuilding->SetUnitType(NDb::UNITTYPE_MAINBUILDING);
+        targetSelectorFountain->SetUnitType(NDb::UNITTYPE_BUILDING);
+        targetSelectorShop->SetUnitType(NDb::UNITTYPE_SHOP);
+        targetSelectorOwner->SetObjectSize(1.0f);
+        targetSelectorAlly->SetObjectSize(1.0f);
+        targetSelectorEnemyNear->SetObjectSize(1.0f);
+        targetSelectorEnemyFar->SetObjectSize(1.0f);
+        targetSelectorHeroEnemy->SetObjectSize(1.0f);
+        targetSelectorSummon->SetObjectSize(1.0f);
+        targetSelectorMainBuilding->SetObjectSize(2.0f);
+        targetSelectorFountain->SetObjectSize(2.0f);
+        targetSelectorShop->SetObjectSize(2.0f);
+        targetSelectorSummon->SetMaster(CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()));
+
+        NWorld::Target selectorRequester(targetSelectorOwner.GetPtr());
+        NWorld::PFTargetSelector::RequestParams selectorPars(
+          CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+          static_cast<const IMiscFormulaPars*>(0),
+          selectorRequester);
+        NWorld::Target selectorDirectionRequester(targetSelectorEnemyFar.GetPtr());
+        NWorld::PFTargetSelector::RequestParams selectorDirectionPars(
+          CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+          static_cast<const IMiscFormulaPars*>(0),
+          selectorDirectionRequester);
+
+        CObj<NWorld::PFTargetSelector> unitEnumSelector(targetSelectorUnitEnumDb->Create(0));
+        targetSelectorUnitEnumCreated = unitEnumSelector != 0;
+        LinuxTargetSelectorCollector unitEnumCollector;
+        if (unitEnumSelector)
+          unitEnumSelector->EnumerateTargets(unitEnumCollector, selectorPars);
+        targetSelectorUnitEnumCount = unitEnumCollector.units;
+        targetSelectorUnitEnumApplied =
+          targetSelectorUnitEnumCreated &&
+          targetSelectorUnitEnumCount >= 2 &&
+          unitEnumCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> areaSelector(targetSelectorAreaDb->Create(0));
+        targetSelectorAreaCreated = areaSelector != 0;
+        LinuxTargetSelectorCollector areaCollector;
+        if (areaSelector)
+          areaSelector->EnumerateTargets(areaCollector, selectorPars);
+        targetSelectorAreaCount = areaCollector.units;
+        targetSelectorAreaApplied =
+          targetSelectorAreaCreated &&
+          targetSelectorAreaCount == 1 &&
+          areaCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> sectorSelector(targetSelectorSectorDb->Create(0));
+        targetSelectorSectorCreated = sectorSelector != 0;
+        LinuxTargetSelectorCollector sectorCollector;
+        if (sectorSelector)
+          sectorSelector->EnumerateTargets(sectorCollector, selectorDirectionPars);
+        targetSelectorSectorCount = sectorCollector.units;
+        targetSelectorSectorApplied =
+          targetSelectorSectorCreated &&
+          targetSelectorSectorCount == 1 &&
+          sectorCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> capsuleSelector(targetSelectorCapsuleDb->Create(0));
+        targetSelectorCapsuleCreated = capsuleSelector != 0;
+        LinuxTargetSelectorCollector capsuleCollector;
+        if (capsuleSelector)
+          capsuleSelector->EnumerateTargets(capsuleCollector, selectorDirectionPars);
+        targetSelectorCapsuleCount = capsuleCollector.units;
+        targetSelectorCapsuleApplied =
+          targetSelectorCapsuleCreated &&
+          targetSelectorCapsuleCount == 2 &&
+          capsuleCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> wallSelector(targetSelectorWallDb->Create(0));
+        targetSelectorWallCreated = wallSelector != 0;
+        LinuxTargetSelectorCollector wallCollector;
+        if (wallSelector)
+          wallSelector->EnumerateTargets(wallCollector, selectorPars);
+        targetSelectorWallCount = wallCollector.units;
+        targetSelectorWallApplied =
+          targetSelectorWallCreated &&
+          targetSelectorWallCount == 1 &&
+          wallCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> heroSelector(targetSelectorHeroDb->Create(0));
+        targetSelectorHeroCreated = heroSelector != 0;
+        LinuxTargetSelectorCollector heroCollector;
+        if (heroSelector)
+          heroSelector->EnumerateTargets(heroCollector, selectorPars);
+        targetSelectorHeroCount = heroCollector.units;
+        targetSelectorHeroApplied =
+          targetSelectorHeroCreated &&
+          targetSelectorHeroCount == 1 &&
+          heroCollector.firstUnit == targetSelectorHeroEnemy.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> summonSelector(targetSelectorSummonDb->Create(0));
+        targetSelectorSummonCreated = summonSelector != 0;
+        LinuxTargetSelectorCollector summonCollector;
+        if (summonSelector)
+          summonSelector->EnumerateTargets(summonCollector, selectorPars);
+        targetSelectorSummonCount = summonCollector.units;
+        targetSelectorSummonApplied =
+          targetSelectorSummonCreated &&
+          targetSelectorSummonCount == 1 &&
+          summonCollector.firstUnit == targetSelectorSummon.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> nearestInAreaSelector(targetSelectorNearestInAreaDb->Create(0));
+        LinuxTargetSelectorCollector nearestInAreaCollector;
+        if (nearestInAreaSelector)
+          nearestInAreaSelector->EnumerateTargets(nearestInAreaCollector, selectorPars);
+
+        NWorld::PFTargetSelector* nearestRaw = targetSelectorNearestDb->Create(0);
+        CObj<NWorld::PFTargetSelector> nearestHolder(nearestRaw);
+        NWorld::PFSingleTargetSelector* nearestSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(nearestRaw);
+        NWorld::Target nearestTarget;
+        targetSelectorNearestCreated = nearestSelector != 0;
+        targetSelectorNearestApplied =
+          targetSelectorNearestCreated &&
+          nearestSelector->FindTarget(selectorPars, nearestTarget) &&
+          nearestTarget.IsUnit() &&
+          nearestTarget.GetUnit().GetPtr() == targetSelectorEnemyNear.GetPtr() &&
+          nearestInAreaCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        NWorld::PFTargetSelector* weightRaw = targetSelectorWeightDb->Create(0);
+        CObj<NWorld::PFTargetSelector> weightHolder(weightRaw);
+        NWorld::PFSingleTargetSelector* weightSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(weightRaw);
+        NWorld::Target weightTarget;
+        targetSelectorWeightCreated = weightSelector != 0;
+        targetSelectorWeightApplied =
+          targetSelectorWeightCreated &&
+          weightSelector->FindTarget(selectorPars, weightTarget) &&
+          weightTarget.IsUnit() &&
+          weightTarget.GetUnit().GetPtr() == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> filterSelector(targetSelectorFilterDb->Create(0));
+        targetSelectorFilterCreated = filterSelector != 0;
+        LinuxTargetSelectorCollector filterCollector;
+        if (filterSelector)
+          filterSelector->EnumerateTargets(filterCollector, selectorPars);
+        targetSelectorFilterCount = filterCollector.units;
+        targetSelectorFilterApplied =
+          targetSelectorFilterCreated &&
+          targetSelectorFilterCount == 1 &&
+          filterCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> countingSelector(targetSelectorCountingDb->Create(0));
+        targetSelectorCountingCreated = countingSelector != 0;
+        LinuxTargetSelectorCollector countingCollector;
+        if (countingSelector)
+          countingSelector->EnumerateTargets(countingCollector, selectorPars);
+        targetSelectorCountingCount = countingCollector.units;
+        targetSelectorCountingApplied =
+          targetSelectorCountingCreated &&
+          targetSelectorCountingCount == 1 &&
+          countingCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        NWorld::PFTargetSelector* comparingRaw = targetSelectorComparingDb->Create(0);
+        CObj<NWorld::PFTargetSelector> comparingHolder(comparingRaw);
+        NWorld::PFSingleTargetSelector* comparingSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(comparingRaw);
+        NWorld::Target comparingTarget;
+        targetSelectorComparingCreated = comparingSelector != 0;
+        targetSelectorComparingApplied =
+          targetSelectorComparingCreated &&
+          comparingSelector->FindTarget(selectorPars, comparingTarget) &&
+          comparingTarget.IsUnit() &&
+          comparingTarget.GetUnit().GetPtr() == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> listSelector(targetSelectorListDb->Create(0));
+        targetSelectorListCreated = listSelector != 0;
+        LinuxTargetSelectorCollector listCollector;
+        if (listSelector)
+          listSelector->EnumerateTargets(listCollector, selectorPars);
+        targetSelectorListCount = listCollector.units;
+        targetSelectorListApplied =
+          targetSelectorListCreated &&
+          targetSelectorListCount == 2;
+
+        targetSelectorOwner->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetSelectorEnemyFar.GetPtr()), true);
+        NWorld::PFTargetSelector* relativeRaw = targetSelectorRelativeDb->Create(0);
+        CObj<NWorld::PFTargetSelector> relativeHolder(relativeRaw);
+        NWorld::PFSingleTargetSelector* relativeSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(relativeRaw);
+        NWorld::Target relativeTarget;
+        targetSelectorRelativeCreated = relativeSelector != 0;
+        targetSelectorRelativeApplied =
+          targetSelectorRelativeCreated &&
+          relativeSelector->FindTarget(selectorPars, relativeTarget) &&
+          relativeTarget.IsUnit() &&
+          relativeTarget.GetUnit().GetPtr() == targetSelectorEnemyFar.GetPtr();
+
+        NWorld::PFTargetSelector* shiftRaw = targetSelectorShiftDb->Create(0);
+        CObj<NWorld::PFTargetSelector> shiftHolder(shiftRaw);
+        NWorld::PFSingleTargetSelector* shiftSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(shiftRaw);
+        NWorld::Target shiftRequester(targetSelectorEnemyNear.GetPtr());
+        NWorld::PFTargetSelector::RequestParams shiftPars(
+          CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+          static_cast<const IMiscFormulaPars*>(0),
+          shiftRequester);
+        NWorld::Target shiftTarget;
+        targetSelectorShiftCreated = shiftSelector != 0;
+        targetSelectorShiftApplied =
+          targetSelectorShiftCreated &&
+          shiftSelector->FindTarget(shiftPars, shiftTarget) &&
+          shiftTarget.IsPosition();
+        if (targetSelectorShiftApplied)
+          targetSelectorShiftX = shiftTarget.GetPosition().x;
+        targetSelectorShiftApplied =
+          targetSelectorShiftApplied &&
+          targetSelectorShiftX > 102.9f &&
+          targetSelectorShiftX < 103.1f;
+
+        NWorld::PFTargetSelector* pointRaw = targetSelectorPointDb->Create(0);
+        CObj<NWorld::PFTargetSelector> pointHolder(pointRaw);
+        NWorld::PFSingleTargetSelector* pointSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(pointRaw);
+        NWorld::Target pointRequester(targetSelectorEnemyNear.GetPtr());
+        NWorld::PFTargetSelector::RequestParams pointPars(
+          CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+          static_cast<const IMiscFormulaPars*>(0),
+          pointRequester);
+        NWorld::Target pointTarget;
+        targetSelectorPointCreated = pointSelector != 0;
+        targetSelectorPointApplied =
+          targetSelectorPointCreated &&
+          pointSelector->FindTarget(pointPars, pointTarget) &&
+          pointTarget.IsPosition();
+        if (targetSelectorPointApplied)
+          targetSelectorPointX = pointTarget.GetPosition().x;
+        targetSelectorPointApplied =
+          targetSelectorPointApplied &&
+          targetSelectorPointX > 102.9f &&
+          targetSelectorPointX < 103.1f;
+
+        NWorld::PFTargetSelector* placeRaw = targetSelectorPlaceDb->Create(0);
+        CObj<NWorld::PFTargetSelector> placeHolder(placeRaw);
+        NWorld::PFSingleTargetSelector* placeSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(placeRaw);
+        NWorld::Target placeTarget;
+        targetSelectorPlaceCreated = placeSelector != 0;
+        targetSelectorPlaceApplied =
+          targetSelectorPlaceCreated &&
+          placeSelector->FindTarget(pointPars, placeTarget) &&
+          placeTarget.IsPosition();
+        if (targetSelectorPlaceApplied)
+          targetSelectorPlaceX = placeTarget.GetPosition().x;
+        targetSelectorPlaceApplied =
+          targetSelectorPlaceApplied &&
+          targetSelectorPlaceX > 102.9f &&
+          targetSelectorPlaceX < 103.1f;
+
+        NWorld::PFTargetSelector* convertRaw = targetSelectorConvertDb->Create(0);
+        CObj<NWorld::PFTargetSelector> convertHolder(convertRaw);
+        NWorld::PFSingleTargetSelector* convertSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(convertRaw);
+        NWorld::Target convertTarget;
+        targetSelectorConvertCreated = convertSelector != 0;
+        targetSelectorConvertApplied =
+          targetSelectorConvertCreated &&
+          convertSelector->FindTarget(selectorPars, convertTarget) &&
+          convertTarget.IsPosition();
+        if (targetSelectorConvertApplied)
+          targetSelectorConvertX = convertTarget.GetPosition().x;
+        targetSelectorConvertApplied =
+          targetSelectorConvertApplied &&
+          targetSelectorConvertX > 103.4f &&
+          targetSelectorConvertX < 103.6f;
+
+        NWorld::PFTargetSelector* fixRaw = targetSelectorFixDb->Create(0);
+        CObj<NWorld::PFTargetSelector> fixHolder(fixRaw);
+        NWorld::PFSingleTargetSelector* fixSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(fixRaw);
+        NWorld::Target fixTarget;
+        targetSelectorFixCreated = fixSelector != 0;
+        targetSelectorFixApplied =
+          targetSelectorFixCreated &&
+          fixSelector->FindTarget(pointPars, fixTarget) &&
+          fixTarget.IsPosition();
+        if (targetSelectorFixApplied)
+          targetSelectorFixX = fixTarget.GetPosition().x;
+        targetSelectorFixApplied =
+          targetSelectorFixApplied &&
+          targetSelectorFixX > 102.9f &&
+          targetSelectorFixX < 103.1f;
+
+        CObj<NWorld::PFTargetSelector> betweenSelector(targetSelectorBetweenDb->Create(0));
+        targetSelectorBetweenCreated = betweenSelector != 0;
+        LinuxTargetSelectorCollector betweenCollector;
+        if (betweenSelector)
+          betweenSelector->EnumerateTargets(betweenCollector, selectorPars);
+        targetSelectorBetweenCount = betweenCollector.positions;
+        if (betweenCollector.firstPosition)
+          targetSelectorBetweenX = betweenCollector.firstPositionValue.x;
+        targetSelectorBetweenApplied =
+          targetSelectorBetweenCreated &&
+          targetSelectorBetweenCount == 1 &&
+          targetSelectorBetweenX > 103.4f &&
+          targetSelectorBetweenX < 103.6f;
+
+        NWorld::PFTargetSelector* mainBuildingRaw = targetSelectorMainBuildingDb->Create(0);
+        CObj<NWorld::PFTargetSelector> mainBuildingHolder(mainBuildingRaw);
+        NWorld::PFSingleTargetSelector* mainBuildingSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(mainBuildingRaw);
+        NWorld::Target mainBuildingTarget;
+        targetSelectorMainBuildingCreated = mainBuildingSelector != 0;
+        targetSelectorMainBuildingApplied =
+          targetSelectorMainBuildingCreated &&
+          mainBuildingSelector->FindTarget(selectorPars, mainBuildingTarget) &&
+          mainBuildingTarget.IsUnit() &&
+          mainBuildingTarget.GetUnit().GetPtr() == targetSelectorMainBuilding.GetPtr();
+
+        NWorld::PFTargetSelector* fountainRaw = targetSelectorFountainDb->Create(0);
+        CObj<NWorld::PFTargetSelector> fountainHolder(fountainRaw);
+        NWorld::PFSingleTargetSelector* fountainSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(fountainRaw);
+        NWorld::Target fountainTarget;
+        targetSelectorFountainCreated = fountainSelector != 0;
+        targetSelectorFountainApplied =
+          targetSelectorFountainCreated &&
+          fountainSelector->FindTarget(selectorPars, fountainTarget) &&
+          fountainTarget.IsUnit() &&
+          fountainTarget.GetUnit().GetPtr() == targetSelectorFountain.GetPtr();
+
+        NWorld::PFTargetSelector* shopRaw = targetSelectorShopDb->Create(0);
+        CObj<NWorld::PFTargetSelector> shopHolder(shopRaw);
+        NWorld::PFSingleTargetSelector* shopSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(shopRaw);
+        NWorld::Target shopTarget;
+        targetSelectorShopCreated = shopSelector != 0;
+        targetSelectorShopApplied =
+          targetSelectorShopCreated &&
+          shopSelector->FindTarget(selectorPars, shopTarget) &&
+          shopTarget.IsUnit() &&
+          shopTarget.GetUnit().GetPtr() == targetSelectorShop.GetPtr();
+
+        targetSelectorEnemyFar->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetSelectorEnemyNear.GetPtr()), true);
+        CObj<NWorld::PFTargetSelector> attackersSelector(targetSelectorAttackersDb->Create(0));
+        targetSelectorAttackersCreated = attackersSelector != 0;
+        LinuxTargetSelectorCollector attackersCollector;
+        if (attackersSelector)
+          attackersSelector->EnumerateTargets(attackersCollector, selectorPars);
+        targetSelectorAttackersCount = attackersCollector.units;
+        targetSelectorAttackersApplied =
+          targetSelectorAttackersCreated &&
+          targetSelectorAttackersCount == 1 &&
+          attackersCollector.firstUnit == targetSelectorEnemyFar.GetPtr();
+
+        NWorld::PFTargetSelector* maximizingRaw = targetSelectorMaximizingDb->Create(0);
+        CObj<NWorld::PFTargetSelector> maximizingHolder(maximizingRaw);
+        NWorld::PFSingleTargetSelector* maximizingSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(maximizingRaw);
+        NWorld::Target maximizingTarget;
+        targetSelectorMaximizingCreated = maximizingSelector != 0;
+        targetSelectorMaximizingApplied =
+          targetSelectorMaximizingCreated &&
+          maximizingSelector->FindTarget(selectorPars, maximizingTarget) &&
+          maximizingTarget.IsPosition();
+        if (targetSelectorMaximizingApplied)
+          targetSelectorMaximizingX = maximizingTarget.GetPosition().x;
+        targetSelectorMaximizingApplied =
+          targetSelectorMaximizingApplied &&
+          targetSelectorMaximizingX > 100.4f &&
+          targetSelectorMaximizingX < 101.6f;
+
+        CObj<NWorld::PFTargetSelector> delaySelector(targetSelectorDelayDb->Create(0));
+        targetSelectorDelayCreated = delaySelector != 0;
+        LinuxTargetSelectorCollector delayFirstCollector;
+        LinuxTargetSelectorCollector delaySecondCollector;
+        if (delaySelector)
+        {
+          delaySelector->EnumerateTargets(delayFirstCollector, selectorPars);
+          delaySelector->EnumerateTargets(delaySecondCollector, selectorPars);
+        }
+        targetSelectorDelayCount = delaySecondCollector.units;
+        targetSelectorDelayApplied =
+          targetSelectorDelayCreated &&
+          delayFirstCollector.units == 0 &&
+          targetSelectorDelayCount >= 1;
+
+        CObj<NWorld::PFTargetSelector> checkConditionSelector(targetSelectorCheckConditionDb->Create(0));
+        targetSelectorCheckConditionCreated = checkConditionSelector != 0;
+        LinuxTargetSelectorCollector checkConditionCollector;
+        if (checkConditionSelector)
+          checkConditionSelector->EnumerateTargets(checkConditionCollector, selectorPars);
+        targetSelectorCheckConditionCount = checkConditionCollector.units;
+        targetSelectorCheckConditionApplied =
+          targetSelectorCheckConditionCreated &&
+          targetSelectorCheckConditionCount >= 2 &&
+          checkConditionCollector.firstUnit == targetSelectorEnemyNear.GetPtr();
+
+        CObj<NWorld::PFTargetSelector> notSameAbilitySelector(targetSelectorNotSameAbilityDb->Create(0));
+        targetSelectorNotSameAbilityCreated = notSameAbilitySelector != 0;
+        LinuxTargetSelectorCollector notSameAbilityCollector;
+        if (notSameAbilitySelector)
+          notSameAbilitySelector->EnumerateTargets(notSameAbilityCollector, selectorPars);
+        targetSelectorNotSameAbilityCount = notSameAbilityCollector.units;
+        targetSelectorNotSameAbilityApplied =
+          targetSelectorNotSameAbilityCreated &&
+          targetSelectorNotSameAbilityCount == 1 &&
+          notSameAbilityCollector.firstUnit == targetSelectorEnemyFar.GetPtr();
+
+        NWorld::PFTargetSelector* damagingLinksRaw = targetSelectorDamagingLinksDb->Create(0);
+        CObj<NWorld::PFTargetSelector> damagingLinksHolder(damagingLinksRaw);
+        NWorld::PFSingleTargetSelector* damagingLinksSelector =
+          dynamic_cast<NWorld::PFSingleTargetSelector*>(damagingLinksRaw);
+        NWorld::Target damagingLinksTarget;
+        targetSelectorDamagingLinksCreated = damagingLinksSelector != 0;
+        targetSelectorDamagingLinksApplied =
+          targetSelectorDamagingLinksCreated &&
+          damagingLinksSelector->FindTarget(selectorPars, damagingLinksTarget) &&
+          damagingLinksTarget.IsPosition();
+        if (targetSelectorDamagingLinksApplied)
+          targetSelectorDamagingLinksX = damagingLinksTarget.GetPosition().x;
+        targetSelectorDamagingLinksApplied =
+          targetSelectorDamagingLinksApplied &&
+          targetSelectorDamagingLinksX > 100.4f &&
+          targetSelectorDamagingLinksX < 101.6f;
+
+        CObj<NWorld::PFTargetSelector> highlanderSelector(targetSelectorHighlanderDb->Create(0));
+        targetSelectorHighlanderCreated = highlanderSelector != 0;
+        LinuxTargetSelectorCollector highlanderCollector;
+        if (highlanderSelector)
+          highlanderSelector->EnumerateTargets(highlanderCollector, selectorPars);
+        targetSelectorHighlanderCount = highlanderCollector.units;
+        targetSelectorHighlanderApplied =
+          targetSelectorHighlanderCreated &&
+          targetSelectorHighlanderCount == 2;
+
+        NDb::Ability* microAiAbility = new NDb::Ability();
+        microAiAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        microAiAbility->targetType =
+          static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+        microAiAbility->useRange.sString = "8.0";
+        microAiAbility->microAI = NDb::Ptr<NDb::MicroAI>(targetSelectorMicroAiDb);
+        CObj<NWorld::PFAbilityData> microAiAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+            NDb::Ptr<NDb::Ability>(microAiAbility),
+            NDb::ABILITYTYPEID_ABILITY1,
+            false)
+        );
+        NWorld::PFMicroAICreateParams microAiCreateParams(
+          NDb::Ptr<NDb::MicroAI>(targetSelectorMicroAiDb),
+          microAiAbilityData.GetPtr());
+        CObj<NWorld::PFMicroAI> microAiFactoryProof(targetSelectorMicroAiDb->Create(microAiCreateParams));
+        NWorld::Target microAiTarget;
+        targetSelectorMicroAiCreated = microAiFactoryProof != 0;
+        targetSelectorMicroAiApplied =
+          targetSelectorMicroAiCreated &&
+          microAiAbilityData &&
+          microAiAbilityData->FindMicroAITarget(microAiTarget) &&
+          microAiTarget.IsUnit() &&
+          microAiTarget.GetUnit().GetPtr() == targetSelectorEnemyNear.GetPtr();
+
+        NDb::Ability* multiMicroAiAbility = new NDb::Ability();
+        multiMicroAiAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        multiMicroAiAbility->targetType =
+          static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+        multiMicroAiAbility->useRange.sString = "8.0";
+        multiMicroAiAbility->microAI = NDb::Ptr<NDb::MicroAI>(targetSelectorMultiMicroAiDb);
+        CObj<NWorld::PFAbilityData> multiMicroAiAbilityData(
+          new NWorld::PFAbilityData(
+            CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+            NDb::Ptr<NDb::Ability>(multiMicroAiAbility),
+            NDb::ABILITYTYPEID_ABILITY2,
+            false)
+        );
+        NWorld::PFMicroAICreateParams multiMicroAiCreateParams(
+          NDb::Ptr<NDb::MicroAI>(targetSelectorMultiMicroAiDb),
+          multiMicroAiAbilityData.GetPtr());
+        CObj<NWorld::PFMicroAI> multiMicroAiFactoryProof(
+          targetSelectorMultiMicroAiDb->Create(multiMicroAiCreateParams));
+        NWorld::Target multiMicroAiTarget;
+        targetSelectorMultiMicroAiCreated = multiMicroAiFactoryProof != 0;
+        targetSelectorMultiMicroAiApplied =
+          targetSelectorMultiMicroAiCreated &&
+          multiMicroAiAbilityData &&
+          multiMicroAiAbilityData->FindMicroAITarget(multiMicroAiTarget) &&
+          multiMicroAiTarget.IsUnit() &&
+          multiMicroAiTarget.GetUnit().GetPtr() == targetSelectorOwner.GetPtr();
+
+        NDb::Ability* counterAbility = new NDb::Ability();
+        counterAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        counterAbility->targetType = NDb::SPELLTARGET_ALL;
+        counterAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(targetSelectorCounterApplicatorDb));
+        CObj<NWorld::PFAbilityInstance> counterInstance =
+          targetSelectorOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(counterAbility),
+            NWorld::Target(targetSelectorEnemyNear.GetPtr())
+          );
+        targetSelectorCounterCreated = counterInstance != 0;
+        LinuxUnitModApplicatorCollector counterApplicatorCollector;
+        targetSelectorEnemyNear->ForAllAppliedApplicators(counterApplicatorCollector);
+        targetSelectorCounterValue = counterApplicatorCollector.targetsCountVariable;
+        targetSelectorCounterApplied =
+          targetSelectorCounterCreated &&
+          counterApplicatorCollector.targetCounters == 1 &&
+          targetSelectorCounterValue >= 2.0f;
+        if (counterInstance)
+        {
+          counterInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(targetSelectorEnemyNear.GetPtr()));
+          counterInstance->Cancel();
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects target-selector runtime: db=%s units=%s unitenum=%s/%s/%lu area=%s/%s/%lu sector=%s/%s/%lu capsule=%s/%s/%lu wall=%s/%s/%lu hero=%s/%s/%lu summon=%s/%s/%lu nearest=%s/%s weight=%s/%s filter=%s/%s/%lu counting=%s/%s/%lu comparing=%s/%s list=%s/%s/%lu relative=%s/%s shift=%s/%s/%.2f point=%s/%s/%.2f place=%s/%s/%.2f convert=%s/%s/%.2f fix=%s/%s/%.2f between=%s/%s/%lu/%.2f main=%s/%s fountain=%s/%s shop=%s/%s attackers=%s/%s/%lu maximizing=%s/%s/%.2f delay=%s/%s/%lu check=%s/%s/%lu notsame=%s/%s/%lu links=%s/%s/%.2f highlander=%s/%s/%lu micro=%s/%s multimicro=%s/%s counter=%s/%s/%.0f\n",
+      targetSelectorDbReady ? "yes" : "no",
+      targetSelectorUnitsReady ? "yes" : "no",
+      targetSelectorUnitEnumCreated ? "yes" : "no",
+      targetSelectorUnitEnumApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorUnitEnumCount),
+      targetSelectorAreaCreated ? "yes" : "no",
+      targetSelectorAreaApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorAreaCount),
+      targetSelectorSectorCreated ? "yes" : "no",
+      targetSelectorSectorApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorSectorCount),
+      targetSelectorCapsuleCreated ? "yes" : "no",
+      targetSelectorCapsuleApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorCapsuleCount),
+      targetSelectorWallCreated ? "yes" : "no",
+      targetSelectorWallApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorWallCount),
+      targetSelectorHeroCreated ? "yes" : "no",
+      targetSelectorHeroApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorHeroCount),
+      targetSelectorSummonCreated ? "yes" : "no",
+      targetSelectorSummonApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorSummonCount),
+      targetSelectorNearestCreated ? "yes" : "no",
+      targetSelectorNearestApplied ? "yes" : "no",
+      targetSelectorWeightCreated ? "yes" : "no",
+      targetSelectorWeightApplied ? "yes" : "no",
+      targetSelectorFilterCreated ? "yes" : "no",
+      targetSelectorFilterApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorFilterCount),
+      targetSelectorCountingCreated ? "yes" : "no",
+      targetSelectorCountingApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorCountingCount),
+      targetSelectorComparingCreated ? "yes" : "no",
+      targetSelectorComparingApplied ? "yes" : "no",
+      targetSelectorListCreated ? "yes" : "no",
+      targetSelectorListApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorListCount),
+      targetSelectorRelativeCreated ? "yes" : "no",
+      targetSelectorRelativeApplied ? "yes" : "no",
+      targetSelectorShiftCreated ? "yes" : "no",
+      targetSelectorShiftApplied ? "yes" : "no",
+      targetSelectorShiftX,
+      targetSelectorPointCreated ? "yes" : "no",
+      targetSelectorPointApplied ? "yes" : "no",
+      targetSelectorPointX,
+      targetSelectorPlaceCreated ? "yes" : "no",
+      targetSelectorPlaceApplied ? "yes" : "no",
+      targetSelectorPlaceX,
+      targetSelectorConvertCreated ? "yes" : "no",
+      targetSelectorConvertApplied ? "yes" : "no",
+      targetSelectorConvertX,
+      targetSelectorFixCreated ? "yes" : "no",
+      targetSelectorFixApplied ? "yes" : "no",
+      targetSelectorFixX,
+      targetSelectorBetweenCreated ? "yes" : "no",
+      targetSelectorBetweenApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorBetweenCount),
+      targetSelectorBetweenX,
+      targetSelectorMainBuildingCreated ? "yes" : "no",
+      targetSelectorMainBuildingApplied ? "yes" : "no",
+      targetSelectorFountainCreated ? "yes" : "no",
+      targetSelectorFountainApplied ? "yes" : "no",
+      targetSelectorShopCreated ? "yes" : "no",
+      targetSelectorShopApplied ? "yes" : "no",
+      targetSelectorAttackersCreated ? "yes" : "no",
+      targetSelectorAttackersApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorAttackersCount),
+      targetSelectorMaximizingCreated ? "yes" : "no",
+      targetSelectorMaximizingApplied ? "yes" : "no",
+      targetSelectorMaximizingX,
+      targetSelectorDelayCreated ? "yes" : "no",
+      targetSelectorDelayApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorDelayCount),
+      targetSelectorCheckConditionCreated ? "yes" : "no",
+      targetSelectorCheckConditionApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorCheckConditionCount),
+      targetSelectorNotSameAbilityCreated ? "yes" : "no",
+      targetSelectorNotSameAbilityApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorNotSameAbilityCount),
+      targetSelectorDamagingLinksCreated ? "yes" : "no",
+      targetSelectorDamagingLinksApplied ? "yes" : "no",
+      targetSelectorDamagingLinksX,
+      targetSelectorHighlanderCreated ? "yes" : "no",
+      targetSelectorHighlanderApplied ? "yes" : "no",
+      static_cast<unsigned long>(targetSelectorHighlanderCount),
+      targetSelectorMicroAiCreated ? "yes" : "no",
+      targetSelectorMicroAiApplied ? "yes" : "no",
+      targetSelectorMultiMicroAiCreated ? "yes" : "no",
+      targetSelectorMultiMicroAiApplied ? "yes" : "no",
+      targetSelectorCounterCreated ? "yes" : "no",
+      targetSelectorCounterApplied ? "yes" : "no",
+      targetSelectorCounterValue);
+
+    NDb::Ptr<NDb::EffectBase> randomChildEffect;
+    if (NDb::EFFECTS_SELECTIONAURASELF < effectsPoolDb->effectsList.size())
+    {
+      randomChildEffect = effectsPoolDb->effectsList[NDb::EFFECTS_SELECTIONAURASELF];
+    }
+    preview->visualEffectsPoolRandomDbReady = IsValid(randomChildEffect);
+    if (randomChildEffect)
+    {
+      NDb::RandomEffect* randomEffectDb = static_cast<NDb::RandomEffect*>(
+        NDb::RandomEffect::NewRandomEffect(NDb::DBID("", "LinuxBootstrapRuntimeRandomEffect"))
+      );
+      randomEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      randomEffectDb->lifeTime = 0.0f;
+      randomEffectDb->effects.push_back(randomChildEffect);
+      preview->visualEffectsPoolRandomChoices = randomEffectDb->effects.size();
+      preview->visualEffectsPoolRandomChildDbid =
+        ToStdString(randomChildEffect->GetDBID().GetFormatted());
+
+      NDb::Ptr<NDb::EffectBase> randomEffectDbPtr(randomEffectDb);
+      CObj<PF_Core::BasicEffect> randomBase = effectsPool->Retrieve(randomEffectDbPtr);
+      preview->visualEffectsPoolRandomRetrieved = randomBase != 0;
+      if (randomBase)
+      {
+        preview->visualEffectsPoolRandomType = randomBase->GetObjectTypeName();
+
+        CObj<NScene::IScene> randomProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        preview->visualEffectsPoolRandomSceneCreated = randomProbeScene != 0;
+        preview->visualEffectsPoolRandomClientObjectReady = targetClient != 0;
+        if (randomProbeScene && targetObject && targetRoot && targetClient)
+        {
+          randomProbeScene->Init("LinuxRandomEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(24.0f, 14.0f, 0.0f)));
+          targetObject->AddToScene(randomProbeScene.GetPtr());
+
+          preview->visualEffectsPoolRandomSceneObjects =
+            CountLinuxSceneObjects(randomProbeScene.GetPtr());
+          preview->visualEffectsPoolRandomTargetInScene =
+            targetObject->GetScene() == randomProbeScene.GetPtr() &&
+            targetObject->IsInScene() &&
+            preview->visualEffectsPoolRandomSceneObjects > 0;
+          preview->visualEffectsPoolRandomTargetComponentsBefore =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          randomBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolRandomAttachCallbacks =
+            targetClient->GetEffectAttachCount();
+          preview->visualEffectsPoolRandomCallbackObserved =
+            preview->visualEffectsPoolRandomAttachCallbacks == 1;
+          preview->visualEffectsPoolRandomTargetComponentsAfterApply =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolRandomChildApplied =
+            preview->visualEffectsPoolRandomTargetComponentsAfterApply >
+              preview->visualEffectsPoolRandomTargetComponentsBefore &&
+            preview->visualEffectsPoolRandomCallbackObserved;
+
+          PF_Core::IUpdateable::ProceedUpdate(0.016f);
+          preview->visualEffectsPoolRandomUpdated =
+            preview->visualEffectsPoolRandomChildApplied && !randomBase->IsDead();
+
+          randomBase->Die();
+          preview->visualEffectsPoolRandomReleased = randomBase->IsDead();
+          preview->visualEffectsPoolRandomTargetComponentsAfterDie =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolRandomChildDetached =
+            preview->visualEffectsPoolRandomTargetComponentsAfterDie <=
+            preview->visualEffectsPoolRandomTargetComponentsBefore;
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolRandomReleased)
+        {
+          randomBase->DieImmediate();
+          preview->visualEffectsPoolRandomReleased = randomBase->IsDead();
+        }
+
+        randomBase = 0;
+      }
+      else
+      {
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic RandomEffect");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool RandomEffect probe child effect was not available");
+    }
+
+    NDb::Ptr<NDb::EffectBase> switcherChildEffect;
+    if (NDb::EFFECTS_SELECTIONAURASELF < effectsPoolDb->effectsList.size())
+    {
+      switcherChildEffect = effectsPoolDb->effectsList[NDb::EFFECTS_SELECTIONAURASELF];
+    }
+    preview->visualEffectsPoolSwitcherDbReady = IsValid(switcherChildEffect);
+    if (switcherChildEffect)
+    {
+      NDb::EffectSwitcher* switcherEffectDb = static_cast<NDb::EffectSwitcher*>(
+        NDb::EffectSwitcher::NewEffectSwitcher(NDb::DBID("", "LinuxBootstrapRuntimeEffectSwitcher"))
+      );
+      switcherEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      switcherEffectDb->lifeTime = 0.0f;
+      switcherEffectDb->effectOnVisible = switcherChildEffect;
+      switcherEffectDb->effectOnInvisible = switcherChildEffect;
+      preview->visualEffectsPoolSwitcherChildDbid =
+        ToStdString(switcherChildEffect->GetDBID().GetFormatted());
+
+      NDb::Ptr<NDb::EffectBase> switcherEffectDbPtr(switcherEffectDb);
+      CObj<PF_Core::BasicEffect> switcherBase = effectsPool->Retrieve(switcherEffectDbPtr);
+      NGameX::PFEffectSwitcher* switcherEffect =
+        dynamic_cast<NGameX::PFEffectSwitcher*>(switcherBase.GetPtr());
+      preview->visualEffectsPoolSwitcherRetrieved = switcherEffect != 0;
+      if (switcherEffect)
+      {
+        preview->visualEffectsPoolSwitcherType = switcherBase->GetObjectTypeName();
+
+        CObj<NScene::IScene> switcherProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        preview->visualEffectsPoolSwitcherSceneCreated = switcherProbeScene != 0;
+        preview->visualEffectsPoolSwitcherClientObjectReady = targetClient != 0;
+        if (switcherProbeScene && targetObject && targetRoot && targetClient)
+        {
+          switcherProbeScene->Init("LinuxSwitcherEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(28.0f, 16.0f, 0.0f)));
+          targetObject->AddToScene(switcherProbeScene.GetPtr());
+
+          preview->visualEffectsPoolSwitcherSceneObjects =
+            CountLinuxSceneObjects(switcherProbeScene.GetPtr());
+          preview->visualEffectsPoolSwitcherTargetInScene =
+            targetObject->GetScene() == switcherProbeScene.GetPtr() &&
+            targetObject->IsInScene() &&
+            preview->visualEffectsPoolSwitcherSceneObjects > 0;
+          preview->visualEffectsPoolSwitcherTargetComponentsBefore =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          switcherEffect->SwitchEffect(true, targetClientPtr);
+          preview->visualEffectsPoolSwitcherAttachCallbacks =
+            targetClient->GetEffectAttachCount();
+          preview->visualEffectsPoolSwitcherCallbackObserved =
+            preview->visualEffectsPoolSwitcherAttachCallbacks == 1;
+          preview->visualEffectsPoolSwitcherTargetComponentsAfterApply =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolSwitcherChildApplied =
+            preview->visualEffectsPoolSwitcherTargetComponentsAfterApply >
+              preview->visualEffectsPoolSwitcherTargetComponentsBefore &&
+            preview->visualEffectsPoolSwitcherCallbackObserved;
+
+          PF_Core::IUpdateable::ProceedUpdate(0.016f);
+          preview->visualEffectsPoolSwitcherUpdated =
+            preview->visualEffectsPoolSwitcherChildApplied && !switcherBase->IsDead();
+
+          switcherBase->Die();
+          preview->visualEffectsPoolSwitcherReleased = switcherBase->IsDead();
+          preview->visualEffectsPoolSwitcherTargetComponentsAfterDie =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolSwitcherChildDetached =
+            preview->visualEffectsPoolSwitcherTargetComponentsAfterDie <=
+            preview->visualEffectsPoolSwitcherTargetComponentsBefore;
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolSwitcherReleased)
+        {
+          switcherBase->DieImmediate();
+          preview->visualEffectsPoolSwitcherReleased = switcherBase->IsDead();
+          preview->visualEffectsPoolSwitcherTargetComponentsAfterDie =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+          preview->visualEffectsPoolSwitcherChildDetached =
+            preview->visualEffectsPoolSwitcherTargetComponentsAfterDie <=
+            preview->visualEffectsPoolSwitcherTargetComponentsBefore;
+        }
+
+        switcherBase = 0;
+      }
+      else
+      {
+        if (switcherBase)
+        {
+          switcherBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic EffectSwitcher");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool EffectSwitcher probe child effect was not available");
+    }
+
+    NDb::InvisibilityEffect* invisibilityEffectDb = static_cast<NDb::InvisibilityEffect*>(
+      NDb::InvisibilityEffect::NewInvisibilityEffect(NDb::DBID("", "LinuxBootstrapRuntimeInvisibilityEffect"))
+    );
+    invisibilityEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+    invisibilityEffectDb->lifeTime = 0.0f;
+    invisibilityEffectDb->fadeInTime = 0.1f;
+    invisibilityEffectDb->fadeOutTime = 0.0f;
+    invisibilityEffectDb->scale = 1.0f;
+    invisibilityEffectDb->colorMul = Render::HDRColor(1.0f, 1.0f, 1.0f, 0.5f);
+    invisibilityEffectDb->colorAdd = Render::HDRColor(0.0f, 0.0f, 0.0f, 0.0f);
+    preview->visualEffectsPoolInvisibilityDbReady = true;
+
+    NDb::Ptr<NDb::EffectBase> invisibilityEffectDbPtr(invisibilityEffectDb);
+    CObj<PF_Core::BasicEffect> invisibilityBase = effectsPool->Retrieve(invisibilityEffectDbPtr);
+    NGameX::InvisibilityEffect* invisibilityEffect =
+      dynamic_cast<NGameX::InvisibilityEffect*>(invisibilityBase.GetPtr());
+    preview->visualEffectsPoolInvisibilityRetrieved = invisibilityEffect != 0;
+    if (invisibilityEffect)
+    {
+      preview->visualEffectsPoolInvisibilityType = invisibilityBase->GetObjectTypeName();
+
+      CObj<NScene::IScene> invisibilityProbeScene = NScene::CreateScene();
+      AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+      CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+      CObj<LinuxEffectProbeClientObject> targetClient(
+        new LinuxEffectProbeClientObject(Get(targetObject))
+      );
+      preview->visualEffectsPoolInvisibilitySceneCreated = invisibilityProbeScene != 0;
+      preview->visualEffectsPoolInvisibilityClientObjectReady = targetClient != 0;
+      if (invisibilityProbeScene && targetObject && targetRoot && targetClient)
+      {
+        invisibilityProbeScene->Init("LinuxInvisibilityEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+        targetRoot->Init();
+        targetObject->Add(targetRoot);
+        targetObject->SetPlacement(Placement(CVec3(32.0f, 18.0f, 0.0f)));
+        targetObject->AddToScene(invisibilityProbeScene.GetPtr());
+
+        preview->visualEffectsPoolInvisibilitySceneObjects =
+          CountLinuxSceneObjects(invisibilityProbeScene.GetPtr());
+        preview->visualEffectsPoolInvisibilityTargetInScene =
+          targetObject->GetScene() == invisibilityProbeScene.GetPtr() &&
+          targetObject->IsInScene() &&
+          preview->visualEffectsPoolInvisibilitySceneObjects > 0;
+        preview->visualEffectsPoolInvisibilityTargetComponents =
+          CountLinuxSceneObjectComponents(Get(targetObject));
+
+        CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+        invisibilityEffect->Apply(targetClientPtr);
+        preview->visualEffectsPoolInvisibilityChannelCreates =
+          targetClient->GetChannelCreateCount();
+        preview->visualEffectsPoolInvisibilityChannelCreated =
+          targetClient->HasColorChannel() &&
+          preview->visualEffectsPoolInvisibilityChannelCreates == 1;
+        preview->visualEffectsPoolInvisibilityOpacityBefore =
+          targetClient->GetChannelOpacity();
+
+        invisibilityEffect->Update(0.05f);
+        preview->visualEffectsPoolInvisibilityOpacityAfterUpdate =
+          targetClient->GetChannelOpacity();
+        preview->visualEffectsPoolInvisibilityUpdated =
+          preview->visualEffectsPoolInvisibilityChannelCreated &&
+          !invisibilityEffect->IsDead();
+        preview->visualEffectsPoolInvisibilityOpacityChanged =
+          preview->visualEffectsPoolInvisibilityOpacityAfterUpdate <
+          preview->visualEffectsPoolInvisibilityOpacityBefore;
+
+        invisibilityBase->DieImmediate();
+        preview->visualEffectsPoolInvisibilityReleased = invisibilityEffect->IsDead();
+        preview->visualEffectsPoolInvisibilityChannelRemoves =
+          targetClient->GetChannelRemoveCount();
+        preview->visualEffectsPoolInvisibilityChannelRemoved =
+          !targetClient->HasColorChannel() &&
+          preview->visualEffectsPoolInvisibilityChannelRemoves == 1;
+
+        targetObject->RemoveFromScene();
+      }
+
+      if (!preview->visualEffectsPoolInvisibilityReleased)
+      {
+        invisibilityBase->DieImmediate();
+        preview->visualEffectsPoolInvisibilityReleased = invisibilityEffect->IsDead();
+      }
+
+      invisibilityBase = 0;
+    }
+    else
+    {
+      if (invisibilityBase)
+      {
+        invisibilityBase->DieImmediate();
+      }
+      preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic InvisibilityEffect");
+    }
+
+    NDb::AuraEffect* auraEffectDb = static_cast<NDb::AuraEffect*>(
+      NDb::AuraEffect::NewAuraEffect(NDb::DBID("", "LinuxBootstrapRuntimeAuraEffect"))
+    );
+    if (auraEffectDb)
+    {
+      auraEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      auraEffectDb->lifeTime = 0.0f;
+      auraEffectDb->type = NDb::AURATYPE_ALLY;
+      preview->visualEffectsPoolAuraDbReady = true;
+
+      NDb::Ptr<NDb::EffectBase> auraEffectDbPtr(auraEffectDb);
+      CObj<PF_Core::BasicEffect> auraBase = effectsPool->Retrieve(auraEffectDbPtr);
+      NGameX::PFAuraEffect* auraEffect =
+        dynamic_cast<NGameX::PFAuraEffect*>(auraBase.GetPtr());
+      preview->visualEffectsPoolAuraRetrieved = auraEffect != 0;
+      if (auraEffect)
+      {
+        preview->visualEffectsPoolAuraType = auraBase->GetObjectTypeName();
+
+        CObj<LinuxEffectProbeClientObject> targetClient(new LinuxEffectProbeClientObject());
+        if (targetClient)
+        {
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          auraBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolAuraApplied =
+            auraEffect->IsBootstrapAuraActive() &&
+            auraEffect->IsBootstrapAuraAlly();
+          preview->visualEffectsPoolAuraChangeCount =
+            auraEffect->GetBootstrapAuraChangeCount();
+        }
+
+        auraBase->Die();
+        preview->visualEffectsPoolAuraReleased = auraBase->IsDead();
+        preview->visualEffectsPoolAuraChangeCount =
+          auraEffect->GetBootstrapAuraChangeCount();
+        auraBase = 0;
+      }
+      else
+      {
+        if (auraBase)
+        {
+          auraBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic AuraEffect");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool AuraEffect probe DB construction failed");
+    }
+
+    NDb::MinimapEffect* minimapEffectDb = static_cast<NDb::MinimapEffect*>(
+      NDb::MinimapEffect::NewMinimapEffect(NDb::DBID("", "LinuxBootstrapRuntimeMinimapEffect"))
+    );
+    if (minimapEffectDb)
+    {
+      minimapEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      minimapEffectDb->lifeTime = 0.0f;
+      minimapEffectDb->effect = NDb::MINIMAPEFFECTS_MARKERALLY;
+      preview->visualEffectsPoolMinimapDbReady = true;
+
+      NDb::Ptr<NDb::EffectBase> minimapEffectDbPtr(minimapEffectDb);
+      CObj<PF_Core::BasicEffect> minimapBase = effectsPool->Retrieve(minimapEffectDbPtr);
+      NGameX::PFMinimapEffect* minimapEffect =
+        dynamic_cast<NGameX::PFMinimapEffect*>(minimapBase.GetPtr());
+      preview->visualEffectsPoolMinimapRetrieved = minimapEffect != 0;
+      if (minimapEffect)
+      {
+        preview->visualEffectsPoolMinimapType = minimapBase->GetObjectTypeName();
+
+        CObj<NScene::IScene> minimapProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        if (minimapProbeScene && targetObject && targetRoot && targetClient)
+        {
+          minimapProbeScene->Init("LinuxMinimapEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(40.0f, 22.0f, 0.0f)));
+          targetObject->AddToScene(minimapProbeScene.GetPtr());
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          minimapBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolMinimapApplied =
+            minimapEffect->IsBootstrapActive();
+
+          minimapBase->Update(0.016f);
+          preview->visualEffectsPoolMinimapUpdateCount =
+            minimapEffect->GetBootstrapUpdateCount();
+          preview->visualEffectsPoolMinimapUpdated =
+            preview->visualEffectsPoolMinimapApplied &&
+            preview->visualEffectsPoolMinimapUpdateCount == 1;
+
+          minimapBase->Die();
+          preview->visualEffectsPoolMinimapReleased = minimapBase->IsDead();
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolMinimapReleased)
+        {
+          minimapBase->DieImmediate();
+          preview->visualEffectsPoolMinimapReleased = minimapBase->IsDead();
+        }
+
+        minimapBase = 0;
+      }
+      else
+      {
+        if (minimapBase)
+        {
+          minimapBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic MinimapEffect");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool MinimapEffect probe DB construction failed");
+    }
+
+    NDb::PlayAnimationEffect* playAnimEffectDb = static_cast<NDb::PlayAnimationEffect*>(
+      NDb::PlayAnimationEffect::NewPlayAnimationEffect(NDb::DBID("", "LinuxBootstrapRuntimePlayAnimationEffect"))
+    );
+    if (playAnimEffectDb)
+    {
+      playAnimEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      playAnimEffectDb->lifeTime = 0.0f;
+      playAnimEffectDb->animGraphNode = "LinuxBootstrapAnim";
+      playAnimEffectDb->goToOtherNodeOnStop = true;
+      playAnimEffectDb->returnAnimGraphNode = "LinuxBootstrapIdle";
+      preview->visualEffectsPoolPlayAnimDbReady = true;
+
+      NDb::Ptr<NDb::EffectBase> playAnimEffectDbPtr(playAnimEffectDb);
+      CObj<PF_Core::BasicEffect> playAnimBase = effectsPool->Retrieve(playAnimEffectDbPtr);
+      NGameX::PFPlayAnimEffect* playAnimEffect =
+        dynamic_cast<NGameX::PFPlayAnimEffect*>(playAnimBase.GetPtr());
+      preview->visualEffectsPoolPlayAnimRetrieved = playAnimEffect != 0;
+      if (playAnimEffect)
+      {
+        preview->visualEffectsPoolPlayAnimType = playAnimBase->GetObjectTypeName();
+
+        CObj<NScene::IScene> playAnimProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        if (playAnimProbeScene && targetObject && targetRoot && targetClient)
+        {
+          playAnimProbeScene->Init("LinuxPlayAnimEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(44.0f, 24.0f, 0.0f)));
+          targetObject->AddToScene(playAnimProbeScene.GetPtr());
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          playAnimBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolPlayAnimApplied =
+            playAnimEffect->WasBootstrapApplied();
+          preview->visualEffectsPoolPlayAnimSceneUpdated =
+            playAnimEffect->WasBootstrapSceneUpdated();
+
+          playAnimBase->Die();
+          preview->visualEffectsPoolPlayAnimReleased = playAnimBase->IsDead();
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolPlayAnimReleased)
+        {
+          playAnimBase->DieImmediate();
+          preview->visualEffectsPoolPlayAnimReleased = playAnimBase->IsDead();
+        }
+
+        playAnimBase = 0;
+      }
+      else
+      {
+        if (playAnimBase)
+        {
+          playAnimBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic PlayAnimationEffect");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool PlayAnimationEffect probe DB construction failed");
+    }
+
+    NDb::PriestessSignEffect* priestessEffectDb = static_cast<NDb::PriestessSignEffect*>(
+      NDb::PriestessSignEffect::NewPriestessSignEffect(NDb::DBID("", "LinuxBootstrapRuntimePriestessSignEffect"))
+    );
+    NDb::BasicEffectStandalone* priestessSoulEffectDb = static_cast<NDb::BasicEffectStandalone*>(
+      NDb::BasicEffectStandalone::NewBasicEffectStandalone(NDb::DBID("", "LinuxBootstrapRuntimePriestessSoulEffect"))
+    );
+    if (priestessEffectDb && priestessSoulEffectDb)
+    {
+      priestessSoulEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      priestessSoulEffectDb->lifeTime = 0.0f;
+      priestessSoulEffectDb->parentType = "soul";
+      priestessEffectDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      priestessEffectDb->lifeTime = 0.0f;
+      priestessEffectDb->flyInDelay = 0.0f;
+      priestessEffectDb->destinationLocator = "destination";
+      priestessEffectDb->flyInAnim = "LinuxBootstrapFlyIn";
+      priestessEffectDb->flyOutAnim = "LinuxBootstrapFlyOut";
+      priestessEffectDb->soulEffect = priestessSoulEffectDb;
+      preview->visualEffectsPoolPriestessDbReady = IsValid(priestessEffectDb->soulEffect);
+
+      NDb::Ptr<NDb::EffectBase> priestessEffectDbPtr(priestessEffectDb);
+      CObj<PF_Core::BasicEffect> priestessBase = effectsPool->Retrieve(priestessEffectDbPtr);
+      NGameX::PriestessSignEffect* priestessEffect =
+        dynamic_cast<NGameX::PriestessSignEffect*>(priestessBase.GetPtr());
+      preview->visualEffectsPoolPriestessRetrieved = priestessEffect != 0;
+      if (priestessEffect)
+      {
+        preview->visualEffectsPoolPriestessType = priestessBase->GetObjectTypeName();
+        preview->visualEffectsPoolPriestessInitialized =
+          priestessEffect->WasBootstrapInitialized();
+
+        CObj<NScene::IScene> priestessProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        preview->visualEffectsPoolPriestessSceneCreated = priestessProbeScene != 0;
+        preview->visualEffectsPoolPriestessClientObjectReady = targetClient != 0;
+        if (priestessProbeScene && targetObject && targetRoot && targetClient)
+        {
+          priestessProbeScene->Init("LinuxPriestessEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(46.0f, 26.0f, 0.0f)));
+          targetObject->AddToScene(priestessProbeScene.GetPtr());
+
+          preview->visualEffectsPoolPriestessSceneObjectsBefore =
+            CountLinuxSceneObjects(priestessProbeScene.GetPtr());
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          priestessBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolPriestessApplied =
+            priestessEffect->WasBootstrapApplied();
+          preview->visualEffectsPoolPriestessTargetInScene =
+            priestessEffect->WasBootstrapTargetInScene();
+          preview->visualEffectsPoolPriestessSceneObjectsAfterApply =
+            CountLinuxSceneObjects(priestessProbeScene.GetPtr());
+
+          priestessBase->Update(0.02f);
+          priestessBase->Update(0.02f);
+          priestessBase->Update(0.02f);
+          preview->visualEffectsPoolPriestessUpdateCount =
+            priestessEffect->GetBootstrapUpdateCount();
+          preview->visualEffectsPoolPriestessSoulDbReady =
+            priestessEffect->WasBootstrapSoulEffectDbReady();
+          preview->visualEffectsPoolPriestessSoulStarted =
+            priestessEffect->WasBootstrapSoulStarted();
+          preview->visualEffectsPoolPriestessFlyInStarted =
+            priestessEffect->WasBootstrapFlyInStarted();
+          preview->visualEffectsPoolPriestessFlyOutStarted =
+            priestessEffect->WasBootstrapFlyOutStarted();
+          preview->visualEffectsPoolPriestessCompleted =
+            priestessEffect->WasBootstrapCompleted();
+          preview->visualEffectsPoolPriestessReleased = priestessBase->IsDead();
+          preview->visualEffectsPoolPriestessSceneObjectsAfterDie =
+            CountLinuxSceneObjects(priestessProbeScene.GetPtr());
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolPriestessReleased)
+        {
+          priestessBase->DieImmediate();
+          preview->visualEffectsPoolPriestessReleased = priestessBase->IsDead();
+          preview->visualEffectsPoolPriestessSceneObjectsAfterDie =
+            CountLinuxSceneObjects(priestessEffect->GetSceneObject() ?
+              priestessEffect->GetSceneObject()->GetScene() : 0);
+        }
+
+        priestessBase = 0;
+      }
+      else
+      {
+        if (priestessBase)
+        {
+          priestessBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic PriestessSignEffect");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool PriestessSignEffect probe DB construction failed");
+    }
+
+    NDb::UnitSceneObjectModify* unitSceneModifyDb = static_cast<NDb::UnitSceneObjectModify*>(
+      NDb::UnitSceneObjectModify::NewUnitSceneObjectModify(NDb::DBID("", "LinuxBootstrapRuntimeUnitSceneObjectModify"))
+    );
+    NDb::DBSceneObject* unitSceneModifySceneObjectDb = static_cast<NDb::DBSceneObject*>(
+      NDb::DBSceneObject::NewDBSceneObject(NDb::DBID("", "LinuxBootstrapRuntimeUnitSceneObjectModifySceneObject"))
+    );
+    if (unitSceneModifyDb && unitSceneModifySceneObjectDb)
+    {
+      unitSceneModifyDb->deathType = NDb::EFFECTDEATHTYPE_MANUAL;
+      unitSceneModifyDb->lifeTime = 0.0f;
+      unitSceneModifyDb->mode = NDb::UNITSCENEOBJECTMODIFYMODE_APPEND;
+      unitSceneModifyDb->visibilityMode = NDb::SCENEOBJECTVISIBILITYMODE_ASOBJECT;
+      unitSceneModifyDb->sceneObjects.resize(3);
+      unitSceneModifyDb->sceneObjects[0] = unitSceneModifySceneObjectDb;
+      preview->visualEffectsPoolUnitSceneModifyDbReady = IsValid(unitSceneModifyDb->sceneObjects[0]);
+
+      NDb::Ptr<NDb::EffectBase> unitSceneModifyDbPtr(unitSceneModifyDb);
+      CObj<PF_Core::BasicEffect> unitSceneModifyBase = effectsPool->Retrieve(unitSceneModifyDbPtr);
+      NGameX::PFUnitSceneObjectModify* unitSceneModifyEffect =
+        dynamic_cast<NGameX::PFUnitSceneObjectModify*>(unitSceneModifyBase.GetPtr());
+      preview->visualEffectsPoolUnitSceneModifyRetrieved = unitSceneModifyEffect != 0;
+      if (unitSceneModifyEffect)
+      {
+        preview->visualEffectsPoolUnitSceneModifyType = unitSceneModifyBase->GetObjectTypeName();
+
+        CObj<NScene::IScene> unitSceneModifyProbeScene = NScene::CreateScene();
+        AutoPtr<NScene::SceneObject> targetObject(new NScene::SceneObject());
+        CObj<NScene::SceneComponent> targetRoot = new NScene::SceneComponent();
+        CObj<LinuxEffectProbeClientObject> targetClient(
+          new LinuxEffectProbeClientObject(Get(targetObject))
+        );
+        preview->visualEffectsPoolUnitSceneModifySceneCreated = unitSceneModifyProbeScene != 0;
+        preview->visualEffectsPoolUnitSceneModifyClientObjectReady = targetClient != 0;
+        if (unitSceneModifyProbeScene && targetObject && targetRoot && targetClient)
+        {
+          unitSceneModifyProbeScene->Init("LinuxUnitSceneModifyEffectsPoolProbe", 1, CVec3(0.0f, 0.0f, 0.0f), 320.0f);
+
+          targetRoot->Init();
+          targetObject->Add(targetRoot);
+          targetObject->SetPlacement(Placement(CVec3(36.0f, 20.0f, 0.0f)));
+          targetObject->AddToScene(unitSceneModifyProbeScene.GetPtr());
+
+          preview->visualEffectsPoolUnitSceneModifySceneObjectsBefore =
+            CountLinuxSceneObjects(unitSceneModifyProbeScene.GetPtr());
+          preview->visualEffectsPoolUnitSceneModifyTargetInScene =
+            targetObject->GetScene() == unitSceneModifyProbeScene.GetPtr() &&
+            targetObject->IsInScene() &&
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsBefore > 0;
+          preview->visualEffectsPoolUnitSceneModifyTargetComponents =
+            CountLinuxSceneObjectComponents(Get(targetObject));
+
+          CPtr<PF_Core::ClientObjectBase> targetClientPtr(targetClient.GetPtr());
+          unitSceneModifyBase->Apply(targetClientPtr);
+          preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterApply =
+            CountLinuxSceneObjects(unitSceneModifyProbeScene.GetPtr());
+          preview->visualEffectsPoolUnitSceneModifyApplied =
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterApply >
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsBefore;
+
+          unitSceneModifyBase->Update(0.016f);
+          preview->visualEffectsPoolUnitSceneModifyUpdated =
+            preview->visualEffectsPoolUnitSceneModifyApplied &&
+            !unitSceneModifyBase->IsDead();
+
+          unitSceneModifyBase->Die();
+          preview->visualEffectsPoolUnitSceneModifyReleased = unitSceneModifyBase->IsDead();
+          preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterDie =
+            CountLinuxSceneObjects(unitSceneModifyProbeScene.GetPtr());
+          preview->visualEffectsPoolUnitSceneModifyDetached =
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterDie <=
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsBefore;
+
+          targetObject->RemoveFromScene();
+        }
+
+        if (!preview->visualEffectsPoolUnitSceneModifyReleased)
+        {
+          unitSceneModifyBase->DieImmediate();
+          preview->visualEffectsPoolUnitSceneModifyReleased = unitSceneModifyBase->IsDead();
+          preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterDie =
+            CountLinuxSceneObjects(unitSceneModifyProbeScene.GetPtr());
+          preview->visualEffectsPoolUnitSceneModifyDetached =
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsAfterDie <=
+            preview->visualEffectsPoolUnitSceneModifySceneObjectsBefore;
+        }
+
+        unitSceneModifyBase = 0;
+      }
+      else
+      {
+        if (unitSceneModifyBase)
+        {
+          unitSceneModifyBase->DieImmediate();
+        }
+        preview->warnings.push_back("EffectsPool runtime did not retrieve synthetic UnitSceneObjectModify");
+      }
+    }
+    else
+    {
+      preview->warnings.push_back("EffectsPool UnitSceneObjectModify probe DB construction failed");
+    }
+  }
+  else
+  {
+    preview->warnings.push_back("EffectsPool runtime singleton was not initialized");
+  }
+
+  if (initializedHere && PF_Core::EffectsPool::Get())
+  {
+    PF_Core::EffectsPool::Term();
+  }
+}
+
 void ProbeSessionRootPreview(
   const LinuxRootFileSystemPreview& rootFileSystemPreview,
   LinuxSessionRootPreview* preview
@@ -10292,6 +15430,7 @@ void ProbeSessionRootPreview(
   if (sessionRoot->visualRoot)
   {
     preview->visualEffectsReady = IsValid(sessionRoot->visualRoot->effects);
+    ProbeEffectsPoolRuntime(sessionRoot->visualRoot->effects, preview);
     preview->visualUiEventsReady = IsValid(sessionRoot->visualRoot->uiEvents);
     preview->visualTeamColoringReady = IsValid(sessionRoot->visualRoot->teamColoringScheme);
     preview->visualEmoteSettingsReady = IsValid(sessionRoot->visualRoot->emoteSettings);
@@ -11873,7 +17012,9 @@ void UpdateLinuxBootstrapLoadingScreenPreview(
   preview->runtimeLoadingScreenWindow.clear();
   preview->runtimeLoadingStatusText = runtime.loadingStatusText;
   preview->runtimeLoadingScreenPath = preview->runtimeLoadingScreenReady ?
-    "Game::LoadingScreen::Init/Step/Draw" :
+    (runtime.mapLoadingJob ?
+      "Game::LoadingScreen::Init/Step/Draw + NWorld::MapLoadingJob::DoTheJob/PFWorld::LoadMap/TileMap::Prepare" :
+      "Game::LoadingScreen::Init/Step/Draw") :
     "inactive";
 
   if (!preview->runtimeLoadingScreenReady)
@@ -11992,9 +17133,198 @@ void UpdateLinuxBootstrapGameSchedulerPreview(
   preview->runtimeGameSchedulerStarted = runtime.schedulerStarted;
   preview->runtimeGameSchedulerTicks = runtime.schedulerTickCount;
   preview->runtimeGameSchedulerNextStep = runtime.schedulerNextStep;
+  preview->runtimeGameSchedulerSegmentReady = runtime.schedulerSegmentReady;
+  preview->runtimeGameSchedulerSegmentStep = runtime.schedulerSegmentStep;
+  preview->runtimeGameSchedulerSegmentCommands = runtime.schedulerSegmentCommandCount;
+  preview->runtimeGameSchedulerSegmentStatuses = runtime.schedulerSegmentStatusCount;
+  preview->runtimeGameTransceiverReady = runtime.transceiverReady;
+  preview->runtimeGameTransceiverWorldAttached = runtime.transceiverWorldAttached;
+  preview->runtimeGameTransceiverNoData = runtime.transceiverNoData;
+  preview->runtimeGameTransceiverAsynced = runtime.transceiverAsynced;
+  preview->runtimeGameTransceiverNextStep = runtime.transceiverNextStep;
+  preview->runtimeGameTransceiverWorldStep = runtime.transceiverWorldStep;
+  preview->runtimeGameTransceiverBufferLimit = runtime.transceiverBufferLimit;
+  preview->runtimeGameTransceiverCommandBatches = runtime.transceiverCommandBatches;
+  preview->runtimeGameTransceiverCommands = runtime.transceiverCommands;
+  preview->runtimeGameTransceiverStatusUpdates = runtime.transceiverStatusUpdates;
+  preview->runtimeGameWorldPlayers = runtime.worldPlayers;
+  preview->runtimeGameWorldPresentPlayers = runtime.worldPresentPlayers;
+  preview->runtimeGameWorldFogWidth = runtime.worldFogWidth;
+  preview->runtimeGameWorldFogHeight = runtime.worldFogHeight;
+  preview->runtimeGameWorldMapObjects = runtime.worldMapObjects;
+  preview->runtimeGameWorldWarFogUnblockObjects = runtime.worldWarFogUnblockObjects;
+  preview->runtimeGameWorldSimpleObjects = runtime.worldSimpleObjects;
+  preview->runtimeGameWorldMultiStateObjects = runtime.worldMultiStateObjects;
+  preview->runtimeGameWorldTreeObjects = runtime.worldTreeObjects;
+  preview->runtimeGameWorldGlyphSpawnerObjects = runtime.worldGlyphSpawnerObjects;
+  preview->runtimeGameWorldAdvMapObstacleObjects = runtime.worldAdvMapObstacleObjects;
+  preview->runtimeGameWorldHeroPlaceHolderObjects = runtime.worldHeroPlaceHolderObjects;
+  preview->runtimeGameWorldCreepSpawnerObjects = runtime.worldCreepSpawnerObjects;
+  preview->runtimeGameWorldNeutralCreepSpawnerObjects = runtime.worldNeutralCreepSpawnerObjects;
+  preview->runtimeGameWorldSimpleBuildingObjects = runtime.worldSimpleBuildingObjects;
+  preview->runtimeGameWorldUsableBuildingObjects = runtime.worldUsableBuildingObjects;
+  preview->runtimeGameWorldShopObjects = runtime.worldShopObjects;
+  preview->runtimeGameWorldQuarterObjects = runtime.worldQuarterObjects;
+  preview->runtimeGameWorldTowerObjects = runtime.worldTowerObjects;
+  preview->runtimeGameWorldControllableTowerObjects = runtime.worldControllableTowerObjects;
+  preview->runtimeGameWorldFountainObjects = runtime.worldFountainObjects;
+  preview->runtimeGameWorldRoadFlagpoleObjects = runtime.worldRoadFlagpoleObjects;
+  preview->runtimeGameWorldScriptedFlagpoleObjects = runtime.worldScriptedFlagpoleObjects;
+  preview->runtimeGameWorldMainBuildingObjects = runtime.worldMainBuildingObjects;
+  preview->runtimeGameWorldMinigamePlaceObjects = runtime.worldMinigamePlaceObjects;
+  preview->runtimeGameWorldCameraSplineObjects = runtime.worldCameraSplineObjects;
+  preview->runtimeGameWorldScriptPathObjects = runtime.worldScriptPathObjects;
+  preview->runtimeGameWorldScriptPolygonAreaObjects = runtime.worldScriptPolygonAreaObjects;
+  preview->runtimeGameWorldLocalUserId = runtime.worldLocalUserId;
   preview->runtimeGameSchedulerPath = preview->runtimeGameSchedulerReady ?
-    "Game::LocalCmdScheduler::StartGame/Step" :
+    (runtime.schedulerSegmentReady ?
+      "Game::LocalCmdScheduler::StartGame/Step/GetSyncSegment" :
+      "Game::LocalCmdScheduler::StartGame/Step") :
     "inactive";
+  preview->runtimeGameTransceiverPath = preview->runtimeGameTransceiverReady ?
+    (preview->runtimeGameTransceiverWorldAttached ?
+      "NCore::Transceiver::Transceiver/SetWorld(PFWorld)/Step" :
+      "NCore::Transceiver::Transceiver/Step") :
+    "inactive";
+}
+
+void UpdateLinuxBootstrapNetworkStatusPreview(
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeNetworkStatusReady =
+    runtime.networkStatusInitialized && IsValid(runtime.networkStatusScreen);
+  preview->runtimeNetworkStatusWindowReady = false;
+  preview->runtimeNetworkStatusVisible = false;
+  preview->runtimeNetworkStatusWindow.clear();
+  preview->runtimeNetworkStatusPath = preview->runtimeNetworkStatusReady ?
+    "Game::NetworkStatusScreen::Init/SetClientAsync/Step/Draw" :
+    "inactive";
+
+  if (!preview->runtimeNetworkStatusReady)
+  {
+    return;
+  }
+
+  UI::Window* mainWindow = runtime.networkStatusScreen->GetMainWindow();
+  preview->runtimeNetworkStatusWindowReady = mainWindow != 0;
+  if (!mainWindow)
+  {
+    preview->runtimeNetworkStatusWindow = "<no-window>";
+    return;
+  }
+
+  preview->runtimeNetworkStatusVisible = mainWindow->IsVisible();
+  const string& windowName = mainWindow->GetWindowName();
+  if (!windowName.empty())
+  {
+    preview->runtimeNetworkStatusWindow = windowName.c_str();
+    return;
+  }
+
+  char unnamedWindow[64] = {0};
+  snprintf(
+    unnamedWindow,
+    sizeof(unnamedWindow),
+    "<unnamed:%d-children>",
+    mainWindow->GetChildrenCount()
+  );
+  preview->runtimeNetworkStatusWindow = unnamedWindow;
+}
+
+void UpdateLinuxBootstrapDebugVarsPreview(
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  preview->runtimeDebugVarsReady =
+    runtime.debugVarsInitialized && IsValid(runtime.debugVarsSender);
+  preview->runtimeDebugVarsPolled = preview->runtimeDebugVarsReady;
+  preview->runtimeDebugVarsPath = preview->runtimeDebugVarsReady ?
+    "Game::DebugVarsSender::DebugVarsSender/PollSession(null-statistics)" :
+    "inactive";
+}
+
+void EnsureLinuxBootstrapDebugVarsSender(
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview)
+  {
+    return;
+  }
+
+  if (!runtime->debugVarsSender)
+  {
+    runtime->debugVarsSender = new Game::DebugVarsSender;
+    runtime->debugVarsInitialized = true;
+  }
+
+  runtime->debugVarsSender->PollSession(
+    runtime->transceiverWorldStep >= 0 ? runtime->transceiverWorldStep : 0);
+  UpdateLinuxBootstrapDebugVarsPreview(*runtime, preview);
+}
+
+void EnsureLinuxBootstrapNetworkStatusScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !preview->runtimeInitialized || !UI::GetUser())
+  {
+    return;
+  }
+
+  if (!runtime->networkStatusScreen)
+  {
+    runtime->networkStatusScreen = new Game::NetworkStatusScreen;
+  }
+
+  if (!runtime->networkStatusInitialized)
+  {
+    if (runtime->networkStatusScreen->Init(UI::GetUser()))
+    {
+      runtime->networkStatusInitialized = true;
+      runtime->networkStatusScreen->OnNewFront(runtime->networkStatusScreen);
+      runtime->networkStatusScreen->OnBecameFront();
+      runtime->networkStatusScreen->SetClientAsync();
+    }
+    else
+    {
+      preview->runtimeNetworkStatusPath = "init-failed";
+      preview->warnings.push_back("Linux bootstrap network-status screen init failed for NetworkStatus");
+      return;
+    }
+  }
+
+  runtime->networkStatusScreen->Step(NMainFrame::IsAppActive());
+  UpdateLinuxBootstrapNetworkStatusPreview(*runtime, preview);
+}
+
+void DrawLinuxBootstrapNetworkStatusScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  LinuxUiRootPreview* preview
+)
+{
+  if (!runtime || !preview || !runtime->networkStatusInitialized || !IsValid(runtime->networkStatusScreen))
+  {
+    return;
+  }
+
+  runtime->networkStatusScreen->Draw(NMainFrame::IsAppActive());
+  UpdateLinuxBootstrapNetworkStatusPreview(*runtime, preview);
 }
 
 void EnsureLinuxBootstrapGameScheduler(
@@ -12016,12 +17346,47 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->schedulerStarted = false;
     runtime->schedulerTickCount = 0;
     runtime->schedulerNextStep = -1;
+    runtime->schedulerSegmentReady = false;
+    runtime->schedulerSegmentStep = -1;
+    runtime->schedulerSegmentCommandCount = 0;
+    runtime->schedulerSegmentStatusCount = 0;
+    runtime->transceiver = 0;
+    runtime->transceiverWorld = 0;
+    runtime->transceiverStepped = false;
+    runtime->transceiverReady = false;
+    runtime->transceiverWorldAttached = false;
+    runtime->transceiverNoData = false;
+    runtime->transceiverAsynced = false;
+    runtime->transceiverNextStep = -1;
+    runtime->transceiverWorldStep = -1;
+    runtime->transceiverBufferLimit = 0;
+    runtime->transceiverCommandBatches = 0;
+    runtime->transceiverCommands = 0;
+    runtime->transceiverStatusUpdates = 0;
   }
 
   if (!runtime->schedulerStarted)
   {
     runtime->localScheduler->StartGame();
     runtime->schedulerStarted = true;
+  }
+
+  if (!runtime->transceiver)
+  {
+    runtime->transceiver = new NCore::Transceiver(
+      runtime->localScheduler,
+      DEFAULT_GAME_STEP_LENGTH,
+      false);
+    runtime->transceiverWorld = NWorld::PFWorld::CreatePFWorld();
+    runtime->transceiver->SetWorld(runtime->transceiverWorld);
+    runtime->transceiverReady = true;
+    runtime->transceiverWorldAttached = true;
+    runtime->transceiverStepped = false;
+    runtime->transceiverNoData = runtime->transceiver->GetNoData();
+    runtime->transceiverAsynced = runtime->transceiver->IsAsynced();
+    runtime->transceiverNextStep = runtime->transceiver->GetNextStep();
+    runtime->transceiverWorldStep = runtime->transceiver->GetWorldStep();
+    runtime->transceiverBufferLimit = runtime->transceiver->GetBufferLimit();
   }
 }
 
@@ -12034,9 +17399,92 @@ void DriveLinuxBootstrapGameScheduler(
     return;
   }
 
-  ++runtime->schedulerTickCount;
-  runtime->localScheduler->Step(NMainLoop::GetTimeDelta());
+  const bool primeTransceiverBuffer = runtime->transceiver && !runtime->transceiverStepped;
+  const int schedulerSteps = primeTransceiverBuffer ? 3 : 1;
+  for (int i = 0; i < schedulerSteps; ++i)
+  {
+    ++runtime->schedulerTickCount;
+    runtime->localScheduler->Step(primeTransceiverBuffer ? 0.1f : NMainLoop::GetTimeDelta());
+  }
   runtime->schedulerNextStep = runtime->localScheduler->GetNextStep(false);
+
+  if (runtime->transceiver && !runtime->transceiverStepped)
+  {
+    runtime->transceiver->Step(static_cast<float>(DEFAULT_GAME_STEP_LENGTH));
+    runtime->transceiverStepped = true;
+    runtime->transceiverReady = true;
+    runtime->transceiverWorldAttached = runtime->transceiver->GetWorld() != 0;
+    runtime->transceiverNoData = runtime->transceiver->GetNoData();
+    runtime->transceiverAsynced = runtime->transceiver->IsAsynced();
+    runtime->transceiverNextStep = runtime->transceiver->GetNextStep();
+    runtime->transceiverWorldStep = runtime->transceiver->GetWorldStep();
+    runtime->transceiverBufferLimit = runtime->transceiver->GetBufferLimit();
+    runtime->transceiverCommandBatches = runtime->transceiverWorldAttached ? 1 : 0;
+    runtime->transceiverCommands = 0;
+    runtime->transceiverStatusUpdates = runtime->transceiverWorldAttached ? 1 : 0;
+  }
+
+  if (runtime->transceiverWorld)
+  {
+    NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+    if (world)
+    {
+      runtime->worldPlayers = world->GetPlayersCount();
+      runtime->worldPresentPlayers = world->GetPresentPlayersCount();
+      runtime->worldFogWidth = world->GetFogOfWar() ? world->GetFogOfWar()->GetWidth() : 0;
+      runtime->worldFogHeight = world->GetFogOfWar() ? world->GetFogOfWar()->GetHeight() : 0;
+      runtime->worldMapObjects = world->GetLinuxLoadedMapObjectsCount();
+      runtime->worldWarFogUnblockObjects = world->GetLinuxLoadedWarFogUnblockObjectsCount();
+      runtime->worldSimpleObjects = world->GetLinuxLoadedSimpleObjectsCount();
+      runtime->worldMultiStateObjects = world->GetLinuxLoadedMultiStateObjectsCount();
+      runtime->worldTreeObjects = world->GetLinuxLoadedTreeObjectsCount();
+      runtime->worldGlyphSpawnerObjects = world->GetLinuxLoadedGlyphSpawnerObjectsCount();
+      runtime->worldAdvMapObstacleObjects = world->GetLinuxLoadedAdvMapObstacleObjectsCount();
+      runtime->worldHeroPlaceHolderObjects = world->GetLinuxLoadedHeroPlaceHolderObjectsCount();
+      runtime->worldCreepSpawnerObjects = world->GetLinuxLoadedCreepSpawnerObjectsCount();
+      runtime->worldNeutralCreepSpawnerObjects = world->GetLinuxLoadedNeutralCreepSpawnerObjectsCount();
+      runtime->worldSimpleBuildingObjects = world->GetLinuxLoadedSimpleBuildingObjectsCount();
+      runtime->worldUsableBuildingObjects = world->GetLinuxLoadedUsableBuildingObjectsCount();
+      runtime->worldShopObjects = world->GetLinuxLoadedShopObjectsCount();
+      runtime->worldQuarterObjects = world->GetLinuxLoadedQuarterObjectsCount();
+      runtime->worldTowerObjects = world->GetLinuxLoadedTowerObjectsCount();
+      runtime->worldControllableTowerObjects = world->GetLinuxLoadedControllableTowerObjectsCount();
+      runtime->worldFountainObjects = world->GetLinuxLoadedFountainObjectsCount();
+      runtime->worldRoadFlagpoleObjects = world->GetLinuxLoadedRoadFlagpoleObjectsCount();
+      runtime->worldScriptedFlagpoleObjects = world->GetLinuxLoadedScriptedFlagpoleObjectsCount();
+      runtime->worldMainBuildingObjects = world->GetLinuxLoadedMainBuildingObjectsCount();
+      runtime->worldMinigamePlaceObjects = world->GetLinuxLoadedMinigamePlaceObjectsCount();
+      runtime->worldCameraSplineObjects = world->GetLinuxLoadedCameraSplineObjectsCount();
+      runtime->worldScriptPathObjects = world->GetLinuxLoadedScriptPathObjectsCount();
+      runtime->worldScriptPolygonAreaObjects = world->GetLinuxLoadedScriptPolygonAreaObjectsCount();
+      runtime->worldLocalUserId = 0;
+      for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
+           it != runtime->loadingMapStartInfo.playersInfo.end();
+           ++it)
+      {
+        if (it->playerType == NCore::EPlayerType::Human && it->userID > 0)
+        {
+          runtime->worldLocalUserId = it->userID;
+          break;
+        }
+      }
+    }
+  }
+
+  if (runtime->transceiverStepped && runtime->transceiverWorldAttached)
+  {
+    runtime->schedulerSegmentReady = runtime->transceiverWorldStep >= 0;
+    runtime->schedulerSegmentStep = runtime->transceiverNextStep;
+    runtime->schedulerSegmentCommandCount = runtime->transceiverCommands;
+    runtime->schedulerSegmentStatusCount = runtime->transceiverStatusUpdates;
+    return;
+  }
+
+  CObj<NCore::SyncSegment> segment = runtime->localScheduler->GetSyncSegment();
+  runtime->schedulerSegmentReady = IsValid(segment);
+  runtime->schedulerSegmentStep = runtime->schedulerSegmentReady ? static_cast<int>(segment->step) : -1;
+  runtime->schedulerSegmentCommandCount = runtime->schedulerSegmentReady ? segment->commands.size() : 0;
+  runtime->schedulerSegmentStatusCount = runtime->schedulerSegmentReady ? segment->statuses.size() : 0;
 }
 
 void DriveLinuxBootstrapLoadingRuntime(
@@ -12050,8 +17498,70 @@ void DriveLinuxBootstrapLoadingRuntime(
 
   if (!runtime->loadingProgress)
   {
-    runtime->loadingProgress = new LoadingProgress;
-    runtime->loadingProgress->InitPartialWeight(0, 1.0f);
+    if (!runtime->mapLoadingJob &&
+        runtime->loadingGameContext &&
+        runtime->loadingGameContext->advMapDescription &&
+        runtime->loadingGameContext->advMapSettings)
+    {
+      runtime->mapLoadingJob = new NWorld::MapLoadingJob(
+        runtime->transceiverWorld,
+        runtime->loadingMapStartInfo,
+        runtime->loadingGameContext->advMapDescription,
+        runtime->loadingGameContext->advMapSettings,
+        runtime->loadingGameContext->advMapDescription->map,
+        false);
+      runtime->mapLoadingJobCompleted = runtime->mapLoadingJob->DoTheJob();
+      runtime->loadingProgress = runtime->mapLoadingJob->GetProgress();
+      NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+      if (world)
+      {
+        runtime->worldPlayers = world->GetPlayersCount();
+        runtime->worldPresentPlayers = world->GetPresentPlayersCount();
+        runtime->worldFogWidth = world->GetFogOfWar() ? world->GetFogOfWar()->GetWidth() : 0;
+        runtime->worldFogHeight = world->GetFogOfWar() ? world->GetFogOfWar()->GetHeight() : 0;
+        runtime->worldMapObjects = world->GetLinuxLoadedMapObjectsCount();
+        runtime->worldWarFogUnblockObjects = world->GetLinuxLoadedWarFogUnblockObjectsCount();
+        runtime->worldSimpleObjects = world->GetLinuxLoadedSimpleObjectsCount();
+        runtime->worldMultiStateObjects = world->GetLinuxLoadedMultiStateObjectsCount();
+        runtime->worldTreeObjects = world->GetLinuxLoadedTreeObjectsCount();
+        runtime->worldGlyphSpawnerObjects = world->GetLinuxLoadedGlyphSpawnerObjectsCount();
+        runtime->worldAdvMapObstacleObjects = world->GetLinuxLoadedAdvMapObstacleObjectsCount();
+        runtime->worldHeroPlaceHolderObjects = world->GetLinuxLoadedHeroPlaceHolderObjectsCount();
+        runtime->worldCreepSpawnerObjects = world->GetLinuxLoadedCreepSpawnerObjectsCount();
+        runtime->worldNeutralCreepSpawnerObjects = world->GetLinuxLoadedNeutralCreepSpawnerObjectsCount();
+        runtime->worldSimpleBuildingObjects = world->GetLinuxLoadedSimpleBuildingObjectsCount();
+        runtime->worldUsableBuildingObjects = world->GetLinuxLoadedUsableBuildingObjectsCount();
+        runtime->worldShopObjects = world->GetLinuxLoadedShopObjectsCount();
+        runtime->worldQuarterObjects = world->GetLinuxLoadedQuarterObjectsCount();
+        runtime->worldTowerObjects = world->GetLinuxLoadedTowerObjectsCount();
+        runtime->worldControllableTowerObjects = world->GetLinuxLoadedControllableTowerObjectsCount();
+        runtime->worldFountainObjects = world->GetLinuxLoadedFountainObjectsCount();
+        runtime->worldRoadFlagpoleObjects = world->GetLinuxLoadedRoadFlagpoleObjectsCount();
+        runtime->worldScriptedFlagpoleObjects = world->GetLinuxLoadedScriptedFlagpoleObjectsCount();
+        runtime->worldMainBuildingObjects = world->GetLinuxLoadedMainBuildingObjectsCount();
+        runtime->worldMinigamePlaceObjects = world->GetLinuxLoadedMinigamePlaceObjectsCount();
+        runtime->worldCameraSplineObjects = world->GetLinuxLoadedCameraSplineObjectsCount();
+        runtime->worldScriptPathObjects = world->GetLinuxLoadedScriptPathObjectsCount();
+        runtime->worldScriptPolygonAreaObjects = world->GetLinuxLoadedScriptPolygonAreaObjectsCount();
+        runtime->worldLocalUserId = 0;
+        for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
+             it != runtime->loadingMapStartInfo.playersInfo.end();
+             ++it)
+        {
+          if (it->playerType == NCore::EPlayerType::Human && it->userID > 0)
+          {
+            runtime->worldLocalUserId = it->userID;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!runtime->loadingProgress)
+    {
+      runtime->loadingProgress = new LoadingProgress;
+      runtime->loadingProgress->InitPartialWeight(0, 1.0f);
+    }
     runtime->loadingScreen->SetProgress(runtime->loadingProgress);
   }
 
@@ -12059,7 +17569,14 @@ void DriveLinuxBootstrapLoadingRuntime(
   runtime->loadingProgressValue = std::min(
     1.0f,
     0.08f + static_cast<float>(runtime->loadingTickCount) * 0.06f);
-  runtime->loadingProgress->SetPartialProgress(0, runtime->loadingProgressValue);
+  if (!runtime->mapLoadingJob)
+  {
+    runtime->loadingProgress->SetPartialProgress(0, runtime->loadingProgressValue);
+  }
+  else if (runtime->mapLoadingJobCompleted)
+  {
+    runtime->loadingProgressValue = std::max(runtime->loadingProgressValue, 1.0f);
+  }
 
   runtime->loadingDisconnectedCount = 0;
   const size_t totalSlots = runtime->loadingMapStartInfo.playersInfo.size();
@@ -12194,6 +17711,7 @@ void EnsureLinuxBootstrapLoadingScreen(
   }
 
   EnsureLinuxBootstrapGameScheduler(runtime);
+  DriveLinuxBootstrapGameScheduler(runtime);
   DriveLinuxBootstrapLoadingRuntime(runtime);
   UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
 }
@@ -12312,6 +17830,8 @@ void UpdateLinuxBootstrapScreenPreview(
   UpdateLinuxBootstrapHeroScreenPreview(runtime, preview);
   UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, runtime, preview);
   UpdateLinuxBootstrapGameSchedulerPreview(runtime, preview);
+  UpdateLinuxBootstrapNetworkStatusPreview(runtime, preview);
+  UpdateLinuxBootstrapDebugVarsPreview(runtime, preview);
 }
 
 void InitializeLinuxBootstrapScreenRuntime(
@@ -12350,6 +17870,8 @@ void InitializeLinuxBootstrapScreenRuntime(
     runtime->gameModeScreen = new NGameX::SelectGameModeScreen(runtime->gameContext);
   }
 
+  EnsureLinuxBootstrapDebugVarsSender(runtime, preview);
+
   if (!runtime->initialized)
   {
     if (runtime->gameModeScreen->Init(UI::GetUser()))
@@ -12367,6 +17889,7 @@ void InitializeLinuxBootstrapScreenRuntime(
     }
   }
 
+  EnsureLinuxBootstrapNetworkStatusScreen(runtime, preview);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
   SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
@@ -12424,6 +17947,8 @@ void DriveLinuxBootstrapScreenRuntime(
     runtime,
     preview
   );
+  EnsureLinuxBootstrapNetworkStatusScreen(runtime, preview);
+  EnsureLinuxBootstrapDebugVarsSender(runtime, preview);
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
@@ -12481,6 +18006,7 @@ void DrawLinuxBootstrapScreenRuntime(
   if (IsLinuxBootstrapHeroScreenActive(runtime))
   {
     runtime->heroScreen->Draw(NMainFrame::IsAppActive());
+    DrawLinuxBootstrapNetworkStatusScreen(runtime, preview);
     UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
     return;
   }
@@ -12488,12 +18014,14 @@ void DrawLinuxBootstrapScreenRuntime(
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
     runtime->loadingScreen->Draw(NMainFrame::IsAppActive());
+    DrawLinuxBootstrapNetworkStatusScreen(runtime, preview);
     UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
     return;
   }
 
   runtime->gameModeScreen->SyncLinuxBootstrapUiState();
   runtime->gameModeScreen->Draw(NMainFrame::IsAppActive());
+  DrawLinuxBootstrapNetworkStatusScreen(runtime, preview);
   runtime->gameModeScreen->SyncLinuxBootstrapUiState();
   UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
@@ -13061,6 +18589,43 @@ std::vector<std::string> BuildOverlayLines(
       sessionPreview.valid ? "yes" : "no",
       static_cast<unsigned long>(sessionPreview.players.size()),
       sessionPreview.method.empty() ? "<none>" : sessionPreview.method.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Session effect random: db=%s random=%s released=%s choices=%lu client=%s cb=%s/%lu target=%s/%s/%s/%s/%s objs=%lu comps=%lu/%lu/%lu type=%s",
+      sessionRootPreview.visualEffectsPoolRandomDbReady ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomRetrieved ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomReleased ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomChoices),
+      sessionRootPreview.visualEffectsPoolRandomClientObjectReady ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomCallbackObserved ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomAttachCallbacks),
+      sessionRootPreview.visualEffectsPoolRandomSceneCreated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomTargetInScene ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomChildApplied ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomUpdated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolRandomChildDetached ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomSceneObjects),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsBefore),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterApply),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterDie),
+      sessionRootPreview.visualEffectsPoolRandomType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolRandomType.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Game transceiver: %s world=%s next=%d step=%d buffer=%d noData=%s",
+      uiRootPreview.runtimeGameTransceiverReady ? "yes" : "no",
+      uiRootPreview.runtimeGameTransceiverWorldAttached ? "yes" : "no",
+      uiRootPreview.runtimeGameTransceiverNextStep,
+      uiRootPreview.runtimeGameTransceiverWorldStep,
+      uiRootPreview.runtimeGameTransceiverBufferLimit,
+      uiRootPreview.runtimeGameTransceiverNoData ? "yes" : "no"
     );
     lines.push_back(buffer);
 
@@ -14080,11 +19645,13 @@ std::vector<std::string> BuildOverlayLines(
     snprintf(
       buffer,
       sizeof(buffer),
-      "Game scheduler: %s started=%s ticks=%lu next=%d",
+      "Game scheduler: %s started=%s ticks=%lu next=%d segment=%s/%d",
       uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no",
       uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no",
       static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerTicks),
-      uiRootPreview.runtimeGameSchedulerNextStep
+      uiRootPreview.runtimeGameSchedulerNextStep,
+      uiRootPreview.runtimeGameSchedulerSegmentReady ? "yes" : "no",
+      uiRootPreview.runtimeGameSchedulerSegmentStep
     );
     lines.push_back(buffer);
 
@@ -14260,6 +19827,80 @@ std::vector<std::string> BuildOverlayLines(
       static_cast<unsigned long>(sessionRootPreview.visualSelfAuraCount),
       static_cast<unsigned long>(sessionRootPreview.visualAuraCount),
       static_cast<unsigned long>(sessionRootPreview.visualUiEventCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Session effects runtime: pool=%s default=%s released=%s type=%s",
+      sessionRootPreview.visualEffectsPoolRuntimeReady ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolDefaultRetrieved ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolDefaultReleased ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolDefaultType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolDefaultType.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Session effect component: click=%s released=%s root=%s comps=%lu scene=%s/%s/%s/%s objs=%lu/%lu type=%s",
+      sessionRootPreview.visualEffectsPoolComponentRetrieved ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolComponentReleased ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolComponentRootReady ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneComponents),
+      sessionRootPreview.visualEffectsPoolComponentSceneCreated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolComponentSceneAdded ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolComponentSceneUpdated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolComponentSceneRemoved ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterAdd),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterRelease),
+      sessionRootPreview.visualEffectsPoolComponentType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolComponentType.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Session effect attached: selection=%s released=%s root=%s comps=%lu target=%s/%s/%s/%s/%s objs=%lu comps=%lu/%lu/%lu type=%s",
+      sessionRootPreview.visualEffectsPoolAttachedRetrieved ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedReleased ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedRootReady ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedSceneComponents),
+      sessionRootPreview.visualEffectsPoolAttachedSceneCreated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedTargetInScene ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedApplied ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedUpdated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolAttachedDetached ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedSceneObjects),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsBefore),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterAttach),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterRelease),
+      sessionRootPreview.visualEffectsPoolAttachedType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAttachedType.c_str()
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Session effect apply: selection=%s released=%s root=%s comps=%lu client=%s cb=%s/%lu target=%s/%s/%s/%s/%s objs=%lu comps=%lu/%lu/%lu type=%s",
+      sessionRootPreview.visualEffectsPoolApplyRetrieved ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyReleased ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyRootReady ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplySceneComponents),
+      sessionRootPreview.visualEffectsPoolApplyClientObjectReady ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyCallbackObserved ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyAttachCallbacks),
+      sessionRootPreview.visualEffectsPoolApplySceneCreated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyTargetInScene ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyApplied ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyUpdated ? "yes" : "no",
+      sessionRootPreview.visualEffectsPoolApplyKilled ? "yes" : "no",
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplySceneObjects),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsBefore),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterApply),
+      static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterKill),
+      sessionRootPreview.visualEffectsPoolApplyType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolApplyType.c_str()
     );
     lines.push_back(buffer);
 
@@ -15676,8 +21317,64 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeGameSchedulerStarted=" << (uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeGameSchedulerTicks=" << uiRootPreview.runtimeGameSchedulerTicks << "\n";
   logFile << "  uiRootRuntimeGameSchedulerNextStep=" << uiRootPreview.runtimeGameSchedulerNextStep << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerSegmentReady=" << (uiRootPreview.runtimeGameSchedulerSegmentReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerSegmentStep=" << uiRootPreview.runtimeGameSchedulerSegmentStep << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerSegmentCommands=" << uiRootPreview.runtimeGameSchedulerSegmentCommands << "\n";
+  logFile << "  uiRootRuntimeGameSchedulerSegmentStatuses=" << uiRootPreview.runtimeGameSchedulerSegmentStatuses << "\n";
   logFile << "  uiRootRuntimeGameSchedulerPath="
           << (uiRootPreview.runtimeGameSchedulerPath.empty() ? "<none>" : uiRootPreview.runtimeGameSchedulerPath) << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverReady=" << (uiRootPreview.runtimeGameTransceiverReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverWorldAttached=" << (uiRootPreview.runtimeGameTransceiverWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverNextStep=" << uiRootPreview.runtimeGameTransceiverNextStep << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverWorldStep=" << uiRootPreview.runtimeGameTransceiverWorldStep << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverBufferLimit=" << uiRootPreview.runtimeGameTransceiverBufferLimit << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverCommandBatches=" << uiRootPreview.runtimeGameTransceiverCommandBatches << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverCommands=" << uiRootPreview.runtimeGameTransceiverCommands << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverStatusUpdates=" << uiRootPreview.runtimeGameTransceiverStatusUpdates << "\n";
+  logFile << "  uiRootRuntimeGameWorldPlayers=" << uiRootPreview.runtimeGameWorldPlayers << "\n";
+  logFile << "  uiRootRuntimeGameWorldPresentPlayers=" << uiRootPreview.runtimeGameWorldPresentPlayers << "\n";
+  logFile << "  uiRootRuntimeGameWorldFogWidth=" << uiRootPreview.runtimeGameWorldFogWidth << "\n";
+  logFile << "  uiRootRuntimeGameWorldFogHeight=" << uiRootPreview.runtimeGameWorldFogHeight << "\n";
+  logFile << "  uiRootRuntimeGameWorldMapObjects=" << uiRootPreview.runtimeGameWorldMapObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldWarFogUnblockObjects=" << uiRootPreview.runtimeGameWorldWarFogUnblockObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldSimpleObjects=" << uiRootPreview.runtimeGameWorldSimpleObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldMultiStateObjects=" << uiRootPreview.runtimeGameWorldMultiStateObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldTreeObjects=" << uiRootPreview.runtimeGameWorldTreeObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldGlyphSpawnerObjects=" << uiRootPreview.runtimeGameWorldGlyphSpawnerObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldAdvMapObstacleObjects=" << uiRootPreview.runtimeGameWorldAdvMapObstacleObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldHeroPlaceHolderObjects=" << uiRootPreview.runtimeGameWorldHeroPlaceHolderObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldCreepSpawnerObjects=" << uiRootPreview.runtimeGameWorldCreepSpawnerObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldNeutralCreepSpawnerObjects=" << uiRootPreview.runtimeGameWorldNeutralCreepSpawnerObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldSimpleBuildingObjects=" << uiRootPreview.runtimeGameWorldSimpleBuildingObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldUsableBuildingObjects=" << uiRootPreview.runtimeGameWorldUsableBuildingObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldShopObjects=" << uiRootPreview.runtimeGameWorldShopObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldQuarterObjects=" << uiRootPreview.runtimeGameWorldQuarterObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldTowerObjects=" << uiRootPreview.runtimeGameWorldTowerObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldControllableTowerObjects=" << uiRootPreview.runtimeGameWorldControllableTowerObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldFountainObjects=" << uiRootPreview.runtimeGameWorldFountainObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldRoadFlagpoleObjects=" << uiRootPreview.runtimeGameWorldRoadFlagpoleObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldScriptedFlagpoleObjects=" << uiRootPreview.runtimeGameWorldScriptedFlagpoleObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldMainBuildingObjects=" << uiRootPreview.runtimeGameWorldMainBuildingObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldMinigamePlaceObjects=" << uiRootPreview.runtimeGameWorldMinigamePlaceObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldCameraSplineObjects=" << uiRootPreview.runtimeGameWorldCameraSplineObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldScriptPathObjects=" << uiRootPreview.runtimeGameWorldScriptPathObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldScriptPolygonAreaObjects=" << uiRootPreview.runtimeGameWorldScriptPolygonAreaObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldLocalUserId=" << uiRootPreview.runtimeGameWorldLocalUserId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverNoData=" << (uiRootPreview.runtimeGameTransceiverNoData ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverAsynced=" << (uiRootPreview.runtimeGameTransceiverAsynced ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverPath="
+          << (uiRootPreview.runtimeGameTransceiverPath.empty() ? "<none>" : uiRootPreview.runtimeGameTransceiverPath) << "\n";
+  logFile << "  uiRootRuntimeNetworkStatusReady=" << (uiRootPreview.runtimeNetworkStatusReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeNetworkStatusWindowReady=" << (uiRootPreview.runtimeNetworkStatusWindowReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeNetworkStatusVisible=" << (uiRootPreview.runtimeNetworkStatusVisible ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeNetworkStatusWindow="
+          << (uiRootPreview.runtimeNetworkStatusWindow.empty() ? "<none>" : uiRootPreview.runtimeNetworkStatusWindow) << "\n";
+  logFile << "  uiRootRuntimeNetworkStatusPath="
+          << (uiRootPreview.runtimeNetworkStatusPath.empty() ? "<none>" : uiRootPreview.runtimeNetworkStatusPath) << "\n";
+  logFile << "  uiRootRuntimeDebugVarsReady=" << (uiRootPreview.runtimeDebugVarsReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeDebugVarsPolled=" << (uiRootPreview.runtimeDebugVarsPolled ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeDebugVarsPath="
+          << (uiRootPreview.runtimeDebugVarsPath.empty() ? "<none>" : uiRootPreview.runtimeDebugVarsPath) << "\n";
   logFile << "  uiRootRuntimeBootstrapGamesReady=" << (uiRootPreview.runtimeBootstrapGamesReady ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeBootstrapGameEntries=" << uiRootPreview.runtimeBootstrapGameEntryCount << "\n";
   logFile << "  uiRootRuntimeBootstrapMapsReady=" << (uiRootPreview.runtimeBootstrapMapsReady ? "yes" : "no") << "\n";
@@ -15782,6 +21479,313 @@ void WriteStartupLog(
   logFile << "  sessionRootVisualReady=" << (sessionRootPreview.visualRootReady ? "yes" : "no") << "\n";
   logFile << "  sessionRootVisualDbid=" << (sessionRootPreview.visualRootDbid.empty() ? "<none>" : sessionRootPreview.visualRootDbid) << "\n";
   logFile << "  sessionRootVisualEffects=" << (sessionRootPreview.visualEffectsReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRuntime=" << (sessionRootPreview.visualEffectsPoolRuntimeReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolDefaultRetrieved="
+          << (sessionRootPreview.visualEffectsPoolDefaultRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolDefaultReleased="
+          << (sessionRootPreview.visualEffectsPoolDefaultReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolDefaultType="
+          << (sessionRootPreview.visualEffectsPoolDefaultType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolDefaultType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolDefaultDbid="
+          << (sessionRootPreview.visualEffectsPoolDefaultDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolDefaultDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentRetrieved="
+          << (sessionRootPreview.visualEffectsPoolComponentRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentReleased="
+          << (sessionRootPreview.visualEffectsPoolComponentReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentRootReady="
+          << (sessionRootPreview.visualEffectsPoolComponentRootReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneComponents="
+          << sessionRootPreview.visualEffectsPoolComponentSceneComponents << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneCreated="
+          << (sessionRootPreview.visualEffectsPoolComponentSceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneAdded="
+          << (sessionRootPreview.visualEffectsPoolComponentSceneAdded ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneUpdated="
+          << (sessionRootPreview.visualEffectsPoolComponentSceneUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneRemoved="
+          << (sessionRootPreview.visualEffectsPoolComponentSceneRemoved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneObjectsAfterAdd="
+          << sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterAdd << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentSceneObjectsAfterRelease="
+          << sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterRelease << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentType="
+          << (sessionRootPreview.visualEffectsPoolComponentType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolComponentType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolComponentDbid="
+          << (sessionRootPreview.visualEffectsPoolComponentDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolComponentDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedRetrieved="
+          << (sessionRootPreview.visualEffectsPoolAttachedRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedReleased="
+          << (sessionRootPreview.visualEffectsPoolAttachedReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedRootReady="
+          << (sessionRootPreview.visualEffectsPoolAttachedRootReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedSceneComponents="
+          << sessionRootPreview.visualEffectsPoolAttachedSceneComponents << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedSceneCreated="
+          << (sessionRootPreview.visualEffectsPoolAttachedSceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolAttachedTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedApplied="
+          << (sessionRootPreview.visualEffectsPoolAttachedApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedUpdated="
+          << (sessionRootPreview.visualEffectsPoolAttachedUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedDetached="
+          << (sessionRootPreview.visualEffectsPoolAttachedDetached ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedSceneObjects="
+          << sessionRootPreview.visualEffectsPoolAttachedSceneObjects << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedTargetComponentsBefore="
+          << sessionRootPreview.visualEffectsPoolAttachedTargetComponentsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedTargetComponentsAfterAttach="
+          << sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterAttach << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedTargetComponentsAfterRelease="
+          << sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterRelease << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedType="
+          << (sessionRootPreview.visualEffectsPoolAttachedType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAttachedType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAttachedDbid="
+          << (sessionRootPreview.visualEffectsPoolAttachedDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAttachedDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyRetrieved="
+          << (sessionRootPreview.visualEffectsPoolApplyRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyReleased="
+          << (sessionRootPreview.visualEffectsPoolApplyReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyRootReady="
+          << (sessionRootPreview.visualEffectsPoolApplyRootReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplySceneComponents="
+          << sessionRootPreview.visualEffectsPoolApplySceneComponents << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplySceneCreated="
+          << (sessionRootPreview.visualEffectsPoolApplySceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolApplyTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolApplyClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyCallbackObserved="
+          << (sessionRootPreview.visualEffectsPoolApplyCallbackObserved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyApplied="
+          << (sessionRootPreview.visualEffectsPoolApplyApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyUpdated="
+          << (sessionRootPreview.visualEffectsPoolApplyUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyKilled="
+          << (sessionRootPreview.visualEffectsPoolApplyKilled ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyDetached="
+          << (sessionRootPreview.visualEffectsPoolApplyDetached ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplySceneObjects="
+          << sessionRootPreview.visualEffectsPoolApplySceneObjects << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyTargetComponentsBefore="
+          << sessionRootPreview.visualEffectsPoolApplyTargetComponentsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyTargetComponentsAfterApply="
+          << sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterApply << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyTargetComponentsAfterKill="
+          << sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterKill << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyAttachCallbacks="
+          << sessionRootPreview.visualEffectsPoolApplyAttachCallbacks << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyType="
+          << (sessionRootPreview.visualEffectsPoolApplyType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolApplyType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolApplyDbid="
+          << (sessionRootPreview.visualEffectsPoolApplyDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolApplyDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomDbReady="
+          << (sessionRootPreview.visualEffectsPoolRandomDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomRetrieved="
+          << (sessionRootPreview.visualEffectsPoolRandomRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomReleased="
+          << (sessionRootPreview.visualEffectsPoolRandomReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomSceneCreated="
+          << (sessionRootPreview.visualEffectsPoolRandomSceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolRandomTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolRandomClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomCallbackObserved="
+          << (sessionRootPreview.visualEffectsPoolRandomCallbackObserved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomChildApplied="
+          << (sessionRootPreview.visualEffectsPoolRandomChildApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomUpdated="
+          << (sessionRootPreview.visualEffectsPoolRandomUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomChildDetached="
+          << (sessionRootPreview.visualEffectsPoolRandomChildDetached ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomChoices="
+          << sessionRootPreview.visualEffectsPoolRandomChoices << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomSceneObjects="
+          << sessionRootPreview.visualEffectsPoolRandomSceneObjects << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomTargetComponentsBefore="
+          << sessionRootPreview.visualEffectsPoolRandomTargetComponentsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomTargetComponentsAfterApply="
+          << sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterApply << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomTargetComponentsAfterDie="
+          << sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterDie << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomAttachCallbacks="
+          << sessionRootPreview.visualEffectsPoolRandomAttachCallbacks << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomType="
+          << (sessionRootPreview.visualEffectsPoolRandomType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolRandomType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolRandomChildDbid="
+          << (sessionRootPreview.visualEffectsPoolRandomChildDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolRandomChildDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherDbReady="
+          << (sessionRootPreview.visualEffectsPoolSwitcherDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherRetrieved="
+          << (sessionRootPreview.visualEffectsPoolSwitcherRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherReleased="
+          << (sessionRootPreview.visualEffectsPoolSwitcherReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherSceneCreated="
+          << (sessionRootPreview.visualEffectsPoolSwitcherSceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolSwitcherTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolSwitcherClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherCallbackObserved="
+          << (sessionRootPreview.visualEffectsPoolSwitcherCallbackObserved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherChildApplied="
+          << (sessionRootPreview.visualEffectsPoolSwitcherChildApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherUpdated="
+          << (sessionRootPreview.visualEffectsPoolSwitcherUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherChildDetached="
+          << (sessionRootPreview.visualEffectsPoolSwitcherChildDetached ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherSceneObjects="
+          << sessionRootPreview.visualEffectsPoolSwitcherSceneObjects << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherTargetComponentsBefore="
+          << sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherTargetComponentsAfterApply="
+          << sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsAfterApply << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherTargetComponentsAfterDie="
+          << sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsAfterDie << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherAttachCallbacks="
+          << sessionRootPreview.visualEffectsPoolSwitcherAttachCallbacks << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherType="
+          << (sessionRootPreview.visualEffectsPoolSwitcherType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolSwitcherType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolSwitcherChildDbid="
+          << (sessionRootPreview.visualEffectsPoolSwitcherChildDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolSwitcherChildDbid) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityDbReady="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityRetrieved="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityReleased="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilitySceneCreated="
+          << (sessionRootPreview.visualEffectsPoolInvisibilitySceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityChannelCreated="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityChannelCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityUpdated="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityOpacityChanged="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityOpacityChanged ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityChannelRemoved="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityChannelRemoved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilitySceneObjects="
+          << sessionRootPreview.visualEffectsPoolInvisibilitySceneObjects << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityTargetComponents="
+          << sessionRootPreview.visualEffectsPoolInvisibilityTargetComponents << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityChannelCreates="
+          << sessionRootPreview.visualEffectsPoolInvisibilityChannelCreates << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityChannelRemoves="
+          << sessionRootPreview.visualEffectsPoolInvisibilityChannelRemoves << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityOpacityBefore="
+          << sessionRootPreview.visualEffectsPoolInvisibilityOpacityBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityOpacityAfterUpdate="
+          << sessionRootPreview.visualEffectsPoolInvisibilityOpacityAfterUpdate << "\n";
+  logFile << "  sessionRootVisualEffectsPoolInvisibilityType="
+          << (sessionRootPreview.visualEffectsPoolInvisibilityType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolInvisibilityType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraDbReady="
+          << (sessionRootPreview.visualEffectsPoolAuraDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraRetrieved="
+          << (sessionRootPreview.visualEffectsPoolAuraRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraApplied="
+          << (sessionRootPreview.visualEffectsPoolAuraApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraReleased="
+          << (sessionRootPreview.visualEffectsPoolAuraReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraChangeCount="
+          << sessionRootPreview.visualEffectsPoolAuraChangeCount << "\n";
+  logFile << "  sessionRootVisualEffectsPoolAuraType="
+          << (sessionRootPreview.visualEffectsPoolAuraType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAuraType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapDbReady="
+          << (sessionRootPreview.visualEffectsPoolMinimapDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapRetrieved="
+          << (sessionRootPreview.visualEffectsPoolMinimapRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapApplied="
+          << (sessionRootPreview.visualEffectsPoolMinimapApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapUpdated="
+          << (sessionRootPreview.visualEffectsPoolMinimapUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapReleased="
+          << (sessionRootPreview.visualEffectsPoolMinimapReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapUpdateCount="
+          << sessionRootPreview.visualEffectsPoolMinimapUpdateCount << "\n";
+  logFile << "  sessionRootVisualEffectsPoolMinimapType="
+          << (sessionRootPreview.visualEffectsPoolMinimapType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolMinimapType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimDbReady="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimRetrieved="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimApplied="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimSceneUpdated="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimSceneUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimReleased="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPlayAnimType="
+          << (sessionRootPreview.visualEffectsPoolPlayAnimType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolPlayAnimType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessDbReady="
+          << (sessionRootPreview.visualEffectsPoolPriestessDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessRetrieved="
+          << (sessionRootPreview.visualEffectsPoolPriestessRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessInitialized="
+          << (sessionRootPreview.visualEffectsPoolPriestessInitialized ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessApplied="
+          << (sessionRootPreview.visualEffectsPoolPriestessApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessSceneCreated="
+          << (sessionRootPreview.visualEffectsPoolPriestessSceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolPriestessTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolPriestessClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessSoulDbReady="
+          << (sessionRootPreview.visualEffectsPoolPriestessSoulDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessSoulStarted="
+          << (sessionRootPreview.visualEffectsPoolPriestessSoulStarted ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessFlyInStarted="
+          << (sessionRootPreview.visualEffectsPoolPriestessFlyInStarted ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessFlyOutStarted="
+          << (sessionRootPreview.visualEffectsPoolPriestessFlyOutStarted ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessCompleted="
+          << (sessionRootPreview.visualEffectsPoolPriestessCompleted ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessReleased="
+          << (sessionRootPreview.visualEffectsPoolPriestessReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessUpdateCount="
+          << sessionRootPreview.visualEffectsPoolPriestessUpdateCount << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessObjectsBefore="
+          << sessionRootPreview.visualEffectsPoolPriestessSceneObjectsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessObjectsAfterApply="
+          << sessionRootPreview.visualEffectsPoolPriestessSceneObjectsAfterApply << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessObjectsAfterDie="
+          << sessionRootPreview.visualEffectsPoolPriestessSceneObjectsAfterDie << "\n";
+  logFile << "  sessionRootVisualEffectsPoolPriestessType="
+          << (sessionRootPreview.visualEffectsPoolPriestessType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolPriestessType) << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyDbReady="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyDbReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyRetrieved="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyRetrieved ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyReleased="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyReleased ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifySceneCreated="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifySceneCreated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyTargetInScene="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyTargetInScene ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyClientObjectReady="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyClientObjectReady ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyApplied="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyApplied ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyUpdated="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyUpdated ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyDetached="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyDetached ? "yes" : "no") << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyObjectsBefore="
+          << sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsBefore << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyObjectsAfterApply="
+          << sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsAfterApply << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyObjectsAfterDie="
+          << sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsAfterDie << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyTargetComponents="
+          << sessionRootPreview.visualEffectsPoolUnitSceneModifyTargetComponents << "\n";
+  logFile << "  sessionRootVisualEffectsPoolUnitSceneModifyType="
+          << (sessionRootPreview.visualEffectsPoolUnitSceneModifyType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolUnitSceneModifyType) << "\n";
   logFile << "  sessionRootVisualUiEvents=" << (sessionRootPreview.visualUiEventsReady ? "yes" : "no") << "\n";
   logFile << "  sessionRootVisualUiEventCount=" << sessionRootPreview.visualUiEventCount << "\n";
   logFile << "  sessionRootVisualTeamColoring=" << (sessionRootPreview.visualTeamColoringReady ? "yes" : "no") << "\n";
@@ -16876,12 +22880,66 @@ int main(int argc, char** argv)
     static_cast<double>(uiRootPreview.runtimeLoadingProgress),
     static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount),
     uiRootPreview.runtimeLoadingScreenPath.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenPath.c_str());
-  fprintf(stdout, "Game scheduler runtime: ready=%s started=%s ticks=%lu next=%d path=%s\n",
+  fprintf(stdout, "Game scheduler runtime: ready=%s started=%s ticks=%lu next=%d segment=%s step=%d commands=%lu statuses=%lu path=%s\n",
     uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no",
     uiRootPreview.runtimeGameSchedulerStarted ? "yes" : "no",
     static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerTicks),
     uiRootPreview.runtimeGameSchedulerNextStep,
+    uiRootPreview.runtimeGameSchedulerSegmentReady ? "yes" : "no",
+    uiRootPreview.runtimeGameSchedulerSegmentStep,
+    static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerSegmentCommands),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerSegmentStatuses),
     uiRootPreview.runtimeGameSchedulerPath.empty() ? "<none>" : uiRootPreview.runtimeGameSchedulerPath.c_str());
+  fprintf(stdout, "Game transceiver runtime: ready=%s world=%s next=%d step=%d buffer=%d batches=%lu commands=%lu statuses=%lu players=%lu present=%lu fog=%lux%lu mapObjects=%lu simple=%lu multi=%lu trees=%lu glyphSpawners=%lu obstacles=%lu heroPlaceholders=%lu creepSpawners=%lu neutralSpawners=%lu simpleBuildings=%lu usableBuildings=%lu shops=%lu quarters=%lu towers=%lu controllableTowers=%lu fountains=%lu roadFlagpoles=%lu scriptedFlagpoles=%lu mainBuildings=%lu minigamePlaces=%lu cameraSplines=%lu scriptPaths=%lu scriptPolygons=%lu warfog=%lu localUid=%d noData=%s asynced=%s path=%s\n",
+    uiRootPreview.runtimeGameTransceiverReady ? "yes" : "no",
+    uiRootPreview.runtimeGameTransceiverWorldAttached ? "yes" : "no",
+    uiRootPreview.runtimeGameTransceiverNextStep,
+    uiRootPreview.runtimeGameTransceiverWorldStep,
+    uiRootPreview.runtimeGameTransceiverBufferLimit,
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverCommandBatches),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverCommands),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverStatusUpdates),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldPlayers),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldPresentPlayers),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldFogWidth),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldFogHeight),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldMapObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldSimpleObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldMultiStateObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldTreeObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldGlyphSpawnerObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldAdvMapObstacleObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldHeroPlaceHolderObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldCreepSpawnerObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldNeutralCreepSpawnerObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldSimpleBuildingObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldUsableBuildingObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldShopObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldQuarterObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldTowerObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldControllableTowerObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldFountainObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldRoadFlagpoleObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldScriptedFlagpoleObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldMainBuildingObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldMinigamePlaceObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldCameraSplineObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldScriptPathObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldScriptPolygonAreaObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldWarFogUnblockObjects),
+    uiRootPreview.runtimeGameWorldLocalUserId,
+    uiRootPreview.runtimeGameTransceiverNoData ? "yes" : "no",
+    uiRootPreview.runtimeGameTransceiverAsynced ? "yes" : "no",
+    uiRootPreview.runtimeGameTransceiverPath.empty() ? "<none>" : uiRootPreview.runtimeGameTransceiverPath.c_str());
+  fprintf(stdout, "UI network status runtime: ready=%s window=%s visible=%s path=%s\n",
+    uiRootPreview.runtimeNetworkStatusReady ? "yes" : "no",
+    uiRootPreview.runtimeNetworkStatusWindow.empty() ? "<none>" : uiRootPreview.runtimeNetworkStatusWindow.c_str(),
+    uiRootPreview.runtimeNetworkStatusVisible ? "yes" : "no",
+    uiRootPreview.runtimeNetworkStatusPath.empty() ? "<none>" : uiRootPreview.runtimeNetworkStatusPath.c_str());
+  fprintf(stdout, "Debug vars runtime: ready=%s polled=%s path=%s\n",
+    uiRootPreview.runtimeDebugVarsReady ? "yes" : "no",
+    uiRootPreview.runtimeDebugVarsPolled ? "yes" : "no",
+    uiRootPreview.runtimeDebugVarsPath.empty() ? "<none>" : uiRootPreview.runtimeDebugVarsPath.c_str());
   fprintf(stdout, "UI games runtime: ready=%s entries=%lu\n",
     uiRootPreview.runtimeBootstrapGamesReady ? "yes" : "no",
     static_cast<unsigned long>(uiRootPreview.runtimeBootstrapGameEntryCount));
@@ -16988,6 +23046,172 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(sessionRootPreview.visualSelfAuraCount),
     static_cast<unsigned long>(sessionRootPreview.visualAuraCount),
     static_cast<unsigned long>(sessionRootPreview.visualUiEventCount));
+  fprintf(stdout, "Session effects runtime: pool=%s default=%s released=%s type=%s dbid=%s\n",
+    sessionRootPreview.visualEffectsPoolRuntimeReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolDefaultRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolDefaultReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolDefaultType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolDefaultType.c_str(),
+    sessionRootPreview.visualEffectsPoolDefaultDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolDefaultDbid.c_str());
+  fprintf(stdout, "Session effects component runtime: retrieved=%s released=%s root=%s components=%lu scene=%s added=%s updated=%s removed=%s objects=%lu/%lu type=%s dbid=%s\n",
+    sessionRootPreview.visualEffectsPoolComponentRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolComponentReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolComponentRootReady ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneComponents),
+    sessionRootPreview.visualEffectsPoolComponentSceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolComponentSceneAdded ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolComponentSceneUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolComponentSceneRemoved ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterAdd),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolComponentSceneObjectsAfterRelease),
+    sessionRootPreview.visualEffectsPoolComponentType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolComponentType.c_str(),
+    sessionRootPreview.visualEffectsPoolComponentDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolComponentDbid.c_str());
+  fprintf(stdout, "Session effects attached runtime: retrieved=%s released=%s root=%s components=%lu scene=%s target=%s applied=%s updated=%s detached=%s objects=%lu targetComponents=%lu/%lu/%lu type=%s dbid=%s\n",
+    sessionRootPreview.visualEffectsPoolAttachedRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedRootReady ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedSceneComponents),
+    sessionRootPreview.visualEffectsPoolAttachedSceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAttachedDetached ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedSceneObjects),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterAttach),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAttachedTargetComponentsAfterRelease),
+    sessionRootPreview.visualEffectsPoolAttachedType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAttachedType.c_str(),
+    sessionRootPreview.visualEffectsPoolAttachedDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAttachedDbid.c_str());
+  fprintf(stdout, "Session effects apply runtime: retrieved=%s released=%s root=%s components=%lu scene=%s target=%s client=%s callback=%s/%lu applied=%s updated=%s killed=%s detached=%s objects=%lu targetComponents=%lu/%lu/%lu type=%s dbid=%s\n",
+    sessionRootPreview.visualEffectsPoolApplyRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyRootReady ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplySceneComponents),
+    sessionRootPreview.visualEffectsPoolApplySceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyCallbackObserved ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyAttachCallbacks),
+    sessionRootPreview.visualEffectsPoolApplyApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyKilled ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolApplyDetached ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplySceneObjects),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterApply),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolApplyTargetComponentsAfterKill),
+    sessionRootPreview.visualEffectsPoolApplyType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolApplyType.c_str(),
+    sessionRootPreview.visualEffectsPoolApplyDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolApplyDbid.c_str());
+  fprintf(stdout, "Session effects random runtime: db=%s retrieved=%s released=%s choices=%lu scene=%s target=%s client=%s callback=%s/%lu childApplied=%s updated=%s childDetached=%s objects=%lu targetComponents=%lu/%lu/%lu type=%s childDbid=%s\n",
+    sessionRootPreview.visualEffectsPoolRandomDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomReleased ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomChoices),
+    sessionRootPreview.visualEffectsPoolRandomSceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomCallbackObserved ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomAttachCallbacks),
+    sessionRootPreview.visualEffectsPoolRandomChildApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolRandomChildDetached ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomSceneObjects),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterApply),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolRandomTargetComponentsAfterDie),
+    sessionRootPreview.visualEffectsPoolRandomType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolRandomType.c_str(),
+    sessionRootPreview.visualEffectsPoolRandomChildDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolRandomChildDbid.c_str());
+  fprintf(stdout, "Session effects switcher runtime: db=%s retrieved=%s released=%s scene=%s target=%s client=%s callback=%s/%lu childApplied=%s updated=%s childDetached=%s objects=%lu targetComponents=%lu/%lu/%lu type=%s childDbid=%s\n",
+    sessionRootPreview.visualEffectsPoolSwitcherDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherSceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherCallbackObserved ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolSwitcherAttachCallbacks),
+    sessionRootPreview.visualEffectsPoolSwitcherChildApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolSwitcherChildDetached ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolSwitcherSceneObjects),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsAfterApply),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolSwitcherTargetComponentsAfterDie),
+    sessionRootPreview.visualEffectsPoolSwitcherType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolSwitcherType.c_str(),
+    sessionRootPreview.visualEffectsPoolSwitcherChildDbid.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolSwitcherChildDbid.c_str());
+  fprintf(stdout, "Session effects invisibility runtime: db=%s retrieved=%s released=%s scene=%s target=%s client=%s channel=%s/%lu removed=%s/%lu updated=%s opacityChanged=%s opacity=%.2f->%.2f objects=%lu targetComponents=%lu type=%s\n",
+    sessionRootPreview.visualEffectsPoolInvisibilityDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilitySceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityChannelCreated ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolInvisibilityChannelCreates),
+    sessionRootPreview.visualEffectsPoolInvisibilityChannelRemoved ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolInvisibilityChannelRemoves),
+    sessionRootPreview.visualEffectsPoolInvisibilityUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityOpacityChanged ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolInvisibilityOpacityBefore,
+    sessionRootPreview.visualEffectsPoolInvisibilityOpacityAfterUpdate,
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolInvisibilitySceneObjects),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolInvisibilityTargetComponents),
+    sessionRootPreview.visualEffectsPoolInvisibilityType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolInvisibilityType.c_str());
+  fprintf(stdout, "Session effects aura runtime: db=%s retrieved=%s applied=%s released=%s changes=%lu type=%s\n",
+    sessionRootPreview.visualEffectsPoolAuraDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAuraRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAuraApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolAuraReleased ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolAuraChangeCount),
+    sessionRootPreview.visualEffectsPoolAuraType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolAuraType.c_str());
+  fprintf(stdout, "Session effects minimap runtime: db=%s retrieved=%s applied=%s updated=%s released=%s updates=%lu type=%s\n",
+    sessionRootPreview.visualEffectsPoolMinimapDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolMinimapRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolMinimapApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolMinimapUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolMinimapReleased ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolMinimapUpdateCount),
+    sessionRootPreview.visualEffectsPoolMinimapType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolMinimapType.c_str());
+  fprintf(stdout, "Session effects play-anim runtime: db=%s retrieved=%s applied=%s sceneUpdated=%s released=%s type=%s\n",
+    sessionRootPreview.visualEffectsPoolPlayAnimDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPlayAnimRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPlayAnimApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPlayAnimSceneUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPlayAnimReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPlayAnimType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolPlayAnimType.c_str());
+  fprintf(stdout, "Session effects priestess runtime: db=%s retrieved=%s init=%s scene=%s target=%s client=%s applied=%s soul=%s/%s fly=%s/%s completed=%s released=%s updates=%lu objects=%lu/%lu/%lu type=%s\n",
+    sessionRootPreview.visualEffectsPoolPriestessDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessInitialized ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessSceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessSoulDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessSoulStarted ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessFlyInStarted ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessFlyOutStarted ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessCompleted ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolPriestessReleased ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolPriestessUpdateCount),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolPriestessSceneObjectsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolPriestessSceneObjectsAfterApply),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolPriestessSceneObjectsAfterDie),
+    sessionRootPreview.visualEffectsPoolPriestessType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolPriestessType.c_str());
+  fprintf(stdout, "Session effects unit-scene-modify runtime: db=%s retrieved=%s released=%s scene=%s target=%s client=%s applied=%s updated=%s detached=%s objects=%lu/%lu/%lu targetComponents=%lu type=%s\n",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyDbReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyRetrieved ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyReleased ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifySceneCreated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyTargetInScene ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyClientObjectReady ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyApplied ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyUpdated ? "yes" : "no",
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyDetached ? "yes" : "no",
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsBefore),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsAfterApply),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolUnitSceneModifySceneObjectsAfterDie),
+    static_cast<unsigned long>(sessionRootPreview.visualEffectsPoolUnitSceneModifyTargetComponents),
+    sessionRootPreview.visualEffectsPoolUnitSceneModifyType.empty() ? "<none>" : sessionRootPreview.visualEffectsPoolUnitSceneModifyType.c_str());
   if (!sessionRootPreview.visualCameraSamples.empty())
   {
     fprintf(stdout, "Session camera samples: %s\n", JoinPreviewSamples(sessionRootPreview.visualCameraSamples).c_str());
@@ -17211,9 +23435,11 @@ int main(int argc, char** argv)
   {
     UI::Release();
   }
+  runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
   ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);
+  ClearLoadingUiDataResourceCache();
   NDb::SoundRoot::InitRoot(0);
   NDb::SessionRoot::InitRoot(0);
   NDb::SetResourceCache(0);

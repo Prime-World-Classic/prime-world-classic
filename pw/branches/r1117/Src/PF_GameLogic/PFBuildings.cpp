@@ -1,4 +1,141 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseBehaviour;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "PFBuildings.h"
+#include "PFWorld.h"
+#include "TileMap.h"
+
+namespace NWorld
+{
+
+PFBuilding::PFBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFBaseUnit(pWorld, dbObject.offset.GetPlace().pos, dynamic_cast<NDb::Building const*>(dbObject.gameObject.GetPtr()))
+  , routeID(NDb::ROUTE_UNASSIGNED)
+  , routeLevel(0)
+  , isDenying(false)
+  , isDecoration(false)
+  , dbObjectCopy(dbObject)
+  , levelUpInterval(0.0f)
+  , levelUpTimer(0.0f)
+{
+  if (const NDb::Building* pDesc = dynamic_cast<NDb::Building const*>(dbObject.gameObject.GetPtr()))
+  {
+    isDecoration = pDesc->isDecoration;
+    Init(dbObject, pDesc, NDb::UNITTYPE_BUILDING);
+  }
+}
+
+void PFBuilding::Init(NDb::AdvMapObject const&, NDb::Building const* pDesc, NDb::EUnitType type)
+{
+  if (!pDesc)
+    return;
+
+  PFBaseUnit::InitData data;
+  data.faction = pDesc->faction;
+  data.type = type;
+  data.playerId = -1;
+  data.pObjectDesc = pDesc;
+  Initialize(data);
+
+  routeID = pDesc->routeID;
+  routeLevel = pDesc->routeLevel;
+  levelUpInterval = pDesc->levelUpInterval;
+  levelUpTimer = levelUpInterval;
+}
+
+bool PFBuilding::CanDenyBuilding(CPtr<PFBaseHero>const&) const { return false; }
+void PFBuilding::DenyBuilding(CPtr<PFBaseHero>const&) {}
+bool PFBuilding::IsInRange(const CVec2& aimerPos, float range) const { return fabs2(aimerPos - GetPosition().AsVec2D()) <= fabs2(range + GetObjectSize() * 0.5f); }
+float PFBuilding::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods) { return PFBaseUnit::OnHeal(pSender, amount, ignoreHealingMods); }
+void PFBuilding::OnAfterReset() { PFBaseUnit::OnAfterReset(); }
+void PFBuilding::Reset() { PFBaseUnit::Reset(); }
+void PFBuilding::Hide(bool hide) { PFBaseUnit::Hide(hide); }
+
+void PFBuilding::MakeLevelupsForTimeDelta(float dtInSeconds)
+{
+  if (levelUpInterval <= 0.0f)
+    return;
+
+  levelUpTimer -= dtInSeconds;
+  while (levelUpTimer <= 0.0f)
+  {
+    DoLevelups(1);
+    levelUpTimer += levelUpInterval;
+  }
+}
+
+void PFBuilding::SetState(const string& newStateName) { stateName = newStateName; }
+void PFBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseUnit::OnUnitDie(pKiller, flags, pDamageDesc); }
+bool PFBuilding::Step(float dtInSeconds) { MakeLevelupsForTimeDelta(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
+
+PFQuarters::PFQuarters(PFWorld* pWorld, NDb::AdvMapObject const& dbObject) : PFBuilding(pWorld, dbObject) {}
+void PFQuarters::Reset() { PFBuilding::Reset(); }
+void PFQuarters::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBuilding::OnUnitDie(pKiller, flags, pDamageDesc); }
+
+PFShop::PFShop(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFBuilding(pWorld, dbObject)
+{
+  pDesc = dynamic_cast<NDb::Shop const*>(dbObject.gameObject.GetPtr());
+  if (pDesc)
+    Init(dbObject, pDesc, NDb::UNITTYPE_SHOP);
+}
+
+bool PFShop::IsHeroNear(PFBaseHero const*) const { return true; }
+float PFShop::GetInteractionRadius() const { return IsValid(pDesc) && IsValid(pDesc->shop) ? pDesc->shop->interactionRadius : 0.0f; }
+NDb::ConsumablesShop const* PFShop::GetConsumablesShop() const { return IsValid(pDesc) ? pDesc->shop.GetPtr() : 0; }
+int PFShop::GetNumConsumables() const { return IsValid(pDesc) && IsValid(pDesc->shop) ? pDesc->shop->items.size() : 0; }
+NDb::Consumable const* PFShop::GetConsumableDesc(int item) const
+{
+  if (!IsValid(pDesc) || !IsValid(pDesc->shop) || item < 0 || item >= pDesc->shop->items.size())
+    return 0;
+  return pDesc->shop->items[item];
+}
+bool PFShop::CanBuyConsumable(PFBaseHero const*, int itemId) const { return GetConsumableDesc(itemId) != 0; }
+void PFShop::Reset() { PFBuilding::Reset(); }
+
+PFSimpleBuilding::PFSimpleBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject) : PFBuilding(pWorld, dbObject)
+{
+  if (const NDb::Building* pDesc = dynamic_cast<NDb::Building const*>(dbObject.gameObject.GetPtr()))
+    Init(dbObject, pDesc, NDb::UNITTYPE_BUILDING);
+}
+void PFSimpleBuilding::Reset() { PFBuilding::Reset(); }
+
+PFUsableBuilding::PFUsableBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject) : PFBuilding(pWorld, dbObject)
+{
+  if (const NDb::UsableBuilding* pDesc = dynamic_cast<NDb::UsableBuilding const*>(dbObject.gameObject.GetPtr()))
+    Init(dbObject, pDesc, NDb::UNITTYPE_SHOP);
+}
+void PFUsableBuilding::Reset() { PFBuilding::Reset(); }
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBuilding, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFQuarters, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFShop, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFSimpleBuilding, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFUsableBuilding, NWorld)
+
+#else
+
 #include "PFAdvMapObject.h"
 #include "PFBuildings.h"
 #include "DBStats.h"
@@ -431,3 +568,5 @@ REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFQuarters,      NWorld);
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFShop,          NWorld);
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFSimpleBuilding,NWorld);
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFUsableBuilding,NWorld);
+
+#endif

@@ -1,4 +1,217 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplBuff.h"
+#include "PFBaseUnit.h"
+#include "PFAbilityInstance.h"
+#include "PFClientApplicators.h"
+#include "../PF_Core/DBEffect.h"
+
+namespace NWorld
+{
+
+PFApplBuff::PFApplBuff(PFApplCreatePars const &cp)
+  : PFBaseApplicator(cp)
+  , lifeTime(0.0f)
+  , duration(0.0f)
+  , isInterrupted(false)
+{
+}
+
+bool PFApplBuff::Init()
+{
+  if (!PFBaseApplicator::Init())
+  {
+    lifeTime = -1.0f;
+    duration = 0.0f;
+    return false;
+  }
+
+  lifeTime = RetrieveParam(GetDBAppl<NDb::BuffApplicator>().lifeTime, -1.0f);
+  duration = GetModifiedDuration(lifeTime);
+  return true;
+}
+
+bool PFApplBuff::Start()
+{
+  PFBaseApplicator::Start();
+
+  if (RetrieveParam(GetDBAppl<NDb::BuffApplicator>().startCondition, true) == false)
+  {
+    SetEnabled(false);
+    return true;
+  }
+
+  if (IsEnabled())
+    Enable();
+
+  if (IsValid(pReceiver))
+    receiverPlacementOnStart = pReceiver->GetVisualPosition3D();
+
+  return false;
+}
+
+PFLogicObject* PFApplBuff::GetEffectOrigin() { return GetAbilityOwner(); }
+PFLogicObject* PFApplBuff::GetEffectTarget() { return pReceiver; }
+
+void PFApplBuff::Enable()
+{
+  PrepareEffects(false);
+
+  for (int i = 0; i < effects.size(); ++i)
+    NGameX::ApplyEffect(effects[i], GetAbilityOwner(), GetEffectTarget(), GetEffectOrigin(), this);
+
+  AfterStartEffects();
+}
+
+void PFApplBuff::RestartEffects()
+{
+  KillEffects();
+
+  if (IsEnabled())
+  {
+    PrepareEffects(true);
+
+    for (int i = 0; i < effects.size(); ++i)
+      NGameX::RestoreEffect(effects[i], GetAbilityOwner(), GetEffectTarget(), GetEffectOrigin(), receiverPlacementOnStart, this);
+
+    AfterStartEffects();
+  }
+}
+
+void PFApplBuff::PrepareEffects(bool manualDeathTypeOnly)
+{
+  const NDb::BuffApplicator& dbAppl = GetDBAppl<NDb::BuffApplicator>();
+
+  int teamID = GetAbilityOwner() ? GetAbilityOwner()->GetOriginalTeamId() : -1;
+  if (teamID == -1)
+  {
+    teamID = NDb::TEAMID_A;
+  }
+  if (dbAppl.effect[teamID].IsEmpty())
+  {
+    teamID = (teamID == NDb::TEAMID_B) ? NDb::TEAMID_A : NDb::TEAMID_B;
+    if (dbAppl.effect[teamID].IsEmpty())
+    {
+      return;
+    }
+  }
+
+  const NDb::EffectBase* pDBEffect = dbAppl.effect[teamID];
+  const bool isList = (pDBEffect->GetObjectTypeID() == NDb::EffectList::typeId);
+  const NDb::EffectList* pEffectList = isList ? (static_cast<const NDb::EffectList*>(pDBEffect)) : 0;
+  const int effectsNumber = isList ? pEffectList->effects.size() : 1;
+  effects.resize(effectsNumber);
+
+  if (isList)
+  {
+    for (int i = 0; i < effectsNumber; ++i)
+    {
+      if (GetAbilityOwner())
+        pEffectList->effects[i].ChangeState(GetAbilityOwner()->GetSkinId());
+
+      if (!manualDeathTypeOnly || (pEffectList->effects[i]->deathType == NDb::EFFECTDEATHTYPE_MANUAL))
+      {
+        NGameX::PrepareEffect(effects[i], pEffectList->effects[i]);
+      }
+    }
+  }
+  else
+  {
+    if (GetAbilityOwner())
+      dbAppl.effect[teamID].ChangeState(GetAbilityOwner()->GetSkinId());
+
+    if (!manualDeathTypeOnly || (dbAppl.effect[teamID]->deathType == NDb::EFFECTDEATHTYPE_MANUAL))
+    {
+      NGameX::PrepareEffect(effects[0], dbAppl.effect[teamID]);
+    }
+  }
+}
+
+void PFApplBuff::Disable()
+{
+  KillEffects();
+}
+
+void PFApplBuff::KillEffects()
+{
+  for (int i = 0; i < effects.size(); ++i)
+  {
+    CObj<PF_Core::BasicEffect>& pEffect = effects[i];
+
+    if (IsValid(pEffect))
+      pEffect->SetInterrupted(GetInterrupted());
+
+    NGameX::KillEffect(pEffect, GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_DONTREMOVEEFFECT);
+  }
+
+  effects.clear();
+}
+
+bool PFApplBuff::Step(float dtInSeconds)
+{
+  PFBaseApplicator::Step(dtInSeconds);
+  if (!IsEnabled() && (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_STOPONDISABLE) != 0)
+    return true;
+  if (duration == -1.0f)
+    return false;
+  duration -= dtInSeconds;
+  return duration < EPS_VALUE;
+}
+
+bool PFApplBuff::CanBeAppliedOnDead()
+{
+  return (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_APPLYTODEAD) != 0;
+}
+
+void PFApplBuff::Stop()
+{
+  if (IsEnabled())
+  {
+    SetEnabled(false);
+    Disable();
+  }
+
+  if ((GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_REMOVECHILDREN) != 0)
+    RemoveChildrenApplicators();
+
+  PFBaseApplicator::Stop();
+}
+
+bool PFApplBuff::GetRemainingLifeTime(float &time) const
+{
+  time = duration;
+  return duration >= 0.0f;
+}
+
+float PFApplBuff::GetVariable(const char *varName) const
+{
+  if (strcmp(varName, "LifeTime") == 0)
+    return lifeTime;
+  if (strcmp(varName, "Duration") == 0)
+    return duration;
+  return PFBaseApplicator::GetVariable(varName);
+}
+
+void PFApplBuff::DumpInfo(NLogg::CChannelLogger&) const {}
+bool PFApplBuff::NeedToStopOnDeath() const { return (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_DONTSTOPONDEATH) == 0; }
+bool PFApplBuff::NeedToStopOnSenderDeath() const { return (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_DONTSTOPONSENDERDEATH) == 0; }
+bool PFApplBuff::NeedToDisableOnDeath() const { return (GetDBAppl<NDb::BuffApplicator>().behaviorFlags & NDb::BUFFBEHAVIOR_ENABLEDONSENDERDEATH) == 0; }
+
+bool PFApplAddApplicatorDuration::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplBuff,                  NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplAddApplicatorDuration, NWorld);
+
+#else
+
 #include "PFApplBuff.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
@@ -344,3 +557,4 @@ bool PFApplAddApplicatorDuration::Start()
 REGISTER_WORLD_OBJECT_NM(PFApplBuff,                  NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplAddApplicatorDuration, NWorld);
 
+#endif

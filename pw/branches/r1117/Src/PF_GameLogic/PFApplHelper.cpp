@@ -1,4 +1,139 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplHelper.h"
+#include "PFBaseUnit.h"
+#include "PFApplUtils.h"
+#include "PFDispatchFactory.h"
+#include "PFTargetSelector.h"
+
+namespace NWorld
+{
+
+void PFApplSpellPeriodically::DoStrike()
+{
+  SendSpell2Targets(this, GetDB().spell, pTargetSelector);
+}
+
+void PFApplSpellPeriodically::Strike()
+{
+  DoStrike();
+  ++strikeCount;
+}
+
+bool PFApplSpellPeriodically::Start()
+{
+  if (PFApplBuff::Start())
+    return true;
+
+  period = RetrieveParam(GetDB().period, 0.0f);
+  startOffset = RetrieveParam(GetDB().startOffset, 0.0f);
+  curPeriod = startOffset > 0.0f ? startOffset : period;
+  timer = 0.0f;
+  strikeCount = 0;
+
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(GetWorld());
+
+  if (startOffset < EPS_VALUE && IsEnabled())
+    Strike();
+
+  return false;
+}
+
+bool PFApplSpellPeriodically::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (!IsEnabled())
+  {
+    strikeCount = 0;
+    return false;
+  }
+
+  if (period <= EPS_VALUE)
+  {
+    Strike();
+    return false;
+  }
+
+  timer += dtInSeconds;
+  if (timer > curPeriod)
+  {
+    timer = fmodf(timer, curPeriod);
+    curPeriod = period;
+    Strike();
+  }
+
+  return false;
+}
+
+float PFApplSpellPeriodically::GetScale() const
+{
+  switch (GetDB().scaleMode)
+  {
+  case NDb::SCALECALCULATIONMODE_SCALEISCOUNT:
+    return static_cast<float>(strikeCount);
+  case NDb::SCALECALCULATIONMODE_SCALEISTIME:
+    return (strikeCount - 1) * period + timer + startOffset;
+  case NDb::SCALECALCULATIONMODE_SCALEISVPAR:
+    return GetLifetime() > 0.0f ? Min(1.0f, ((strikeCount - 1) * period + timer + startOffset) / GetLifetime()) : 0.0f;
+  default:
+    return PFApplBuff::GetScale();
+  }
+}
+
+bool PFApplSpellPeriodicallyVisual::Start()
+{
+  if (PFApplSpellPeriodically::Start())
+    return true;
+  attackTimeOffset = RetrieveParam(GetDB().attackTimeOffset, 0.0f);
+  strikeCountMarker = 0;
+  return false;
+}
+
+void PFApplSpellPeriodicallyVisual::AfterStartEffects()
+{
+}
+
+void PFApplSpellPeriodicallyVisual::Disable()
+{
+  PFApplBuff::Disable();
+}
+
+bool PFApplSpellPeriodicallyVisual::Step(float dtInSeconds)
+{
+  if (PFApplSpellPeriodically::Step(dtInSeconds))
+    return true;
+  strikeCountMarker = 0;
+  return false;
+}
+
+bool PFApplSpellProbability::Start()
+{
+  PFBaseApplicator::Start();
+  Target targ;
+  MakeApplicationTarget(targ);
+
+  const float probability = RetrieveParam(GetDB().probability, 0.0f);
+  if (Roll(probability * 0.01f))
+    CreateDispatch(pAbility, this, targ, targ, GetDB().spell);
+  else if (GetDB().spellIfFailed)
+    CreateDispatch(pAbility, this, targ, targ, GetDB().spellIfFailed);
+
+  return true;
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplSpellPeriodically,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplSpellProbability,        NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplSpellPeriodicallyVisual, NWorld);
+
+#else
+
 #include "PFApplHelper.h"
 #include "PFBaseUnit.h"
 #include "PFApplUtils.h"
@@ -244,3 +379,5 @@ bool PFApplSpellProbability::Start()
 REGISTER_WORLD_OBJECT_NM(PFApplSpellPeriodically,       NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplSpellProbability,        NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplSpellPeriodicallyVisual, NWorld);
+
+#endif

@@ -104,10 +104,9 @@ void FontStyle::SetupMaterial()
   fontMaterialDesc.DiffuseMap.samplerState.minFilter = NDb::MINFILTERTYPE_LINEAR;
   fontMaterialDesc.DiffuseMap.samplerState.mipFilter = NDb::MIPFILTERTYPE_POINT;
 
+#if !defined(PW_LINUX_NULL_RENDER)
   renderMaterial = static_cast<Render::BaseMaterial*>( Render::CreateRenderMaterial( NDb::UIFontMaterial::typeId ) );
   renderMaterial->FillMaterial( &fontMaterialDesc, 0, false );
-
-#if !defined(PW_LINUX_NULL_RENDER)
   renderMaterial->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
   renderMaterial->GetDiffuseMap()->SetTexture( GetFontRenderer()->GetFontsTexture() );
 #endif

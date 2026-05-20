@@ -5,7 +5,11 @@
 #include "PFClientLogicObject.h"
 #include "PFLogicConst.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "ClientVisibilityHelper_linuxbootstrap.h"
+#else
 #include "ClientVisibilityHelper.h"
+#endif
 
 namespace NGameX
 {
@@ -21,14 +25,18 @@ namespace NGameX
 
   PFEffectSwitcher::~PFEffectSwitcher()
   {
-    PF_Core::SpectatorEffectsPool::Get()->UnregisterEffectSwitcher(this);
+    PF_Core::SpectatorEffectsPool* spectatorEffectsPool = PF_Core::SpectatorEffectsPool::Get();
+    if (spectatorEffectsPool)
+      spectatorEffectsPool->UnregisterEffectSwitcher(this);
   }
 
   void PFEffectSwitcher::Init()
   {
     EffectDBLinker::Init();
 
-    PF_Core::SpectatorEffectsPool::Get()->RegisterEffectSwitcher(this);
+    PF_Core::SpectatorEffectsPool* spectatorEffectsPool = PF_Core::SpectatorEffectsPool::Get();
+    if (spectatorEffectsPool)
+      spectatorEffectsPool->RegisterEffectSwitcher(this);
   }
 
   void PFEffectSwitcher::Apply( CPtr<PF_Core::ClientObjectBase> const &pObject )
@@ -40,13 +48,19 @@ namespace NGameX
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   void PFEffectSwitcher::Apply( CPtr<PF_Core::ClientObjectBase> const &pObject, NDb::EFaction senderFaction)
   {
-    PF_Core::SpectatorEffectsPool::Get()->RegisterEffectSwitcher(this);
+    PF_Core::SpectatorEffectsPool* spectatorEffectsPool = PF_Core::SpectatorEffectsPool::Get();
+    if (spectatorEffectsPool)
+      spectatorEffectsPool->RegisterEffectSwitcher(this);
 
     if ( !IsValid( pObject ) )
       return;
 
     pUnit = pObject;
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+    SetEffect(true);
+    return;
+#else
     const CDynamicCast<PFClientLogicObject> pClientLogicObject(pObject.GetPtr());
 
     NI_DATA_VERIFY(IsValid(pClientLogicObject),
@@ -82,6 +96,7 @@ namespace NGameX
 
     // Logic of visibility selection
     SetEffect(isEffectVisible);
+#endif
   }
 
   // Only for Invisibility Applicator!
@@ -156,7 +171,10 @@ namespace NGameX
   void PFEffectSwitcher::PrepareAndApplyChildEffect( NDb::Ptr<NDb::EffectBase> const& pDBEffect, CObj<BasicEffect>& pEffect )
   {
     pDBEffect.ChangeState(stateName);
-    pEffect = PF_Core::EffectsPool::Get()->Retrieve(pDBEffect);
+    PF_Core::EffectsPool* effectsPool = PF_Core::EffectsPool::Get();
+    NI_VERIFY(effectsPool, "EffectsPool is not initialized for EffectSwitcher", return);
+
+    pEffect = effectsPool->Retrieve(pDBEffect);
 
     NI_VERIFY( pEffect, NI_STRFMT( "Can't retrieve effect %s for EffectSwitcher", pDBEffect->GetDBID().GetFormatted().c_str() ), return );
 
@@ -179,7 +197,9 @@ namespace NGameX
 
   void PFEffectSwitcher::Die()
   {
-    PF_Core::SpectatorEffectsPool::Get()->UnregisterEffectSwitcher(this);
+    PF_Core::SpectatorEffectsPool* spectatorEffectsPool = PF_Core::SpectatorEffectsPool::Get();
+    if (spectatorEffectsPool)
+      spectatorEffectsPool->UnregisterEffectSwitcher(this);
 
     DieEffects();
 
@@ -188,7 +208,9 @@ namespace NGameX
 
   void PFEffectSwitcher::DieImmediate()
   {
-    PF_Core::SpectatorEffectsPool::Get()->UnregisterEffectSwitcher(this);
+    PF_Core::SpectatorEffectsPool* spectatorEffectsPool = PF_Core::SpectatorEffectsPool::Get();
+    if (spectatorEffectsPool)
+      spectatorEffectsPool->UnregisterEffectSwitcher(this);
 
     BasicEffect::DieImmediate();
   }

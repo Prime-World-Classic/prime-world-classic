@@ -1,4 +1,145 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFPlayer.h"
+#include "PFWorld.h"
+
+namespace NWorld
+{
+
+NAMEMAP_BEGIN( PFPlayer )
+  NAMEMAP_FUNC_RO ( playerName, &PFPlayer::GetPlayerName )
+NAMEMAP_END
+
+PFPlayer::PFPlayer( PFWorld * _world,
+                    int _playerID,
+                    NCore::ETeam::Enum _teamID,
+                    NCore::ETeam::Enum _originalTeamID,
+                    int _userID,
+                    NCore::ESex::Enum _zzimaSex,
+                    bool _aiForLeaversEnabled,
+                    int _aiForLeaversThreshold,
+                    const bool chatMuted,
+                    const bool )
+: PFWorldObjectBase( _world, 1 )
+, chatMuted(chatMuted)
+, isLocal(false)
+, timeWhenDisconnected(0)
+, userID(_userID)
+, playerID(_playerID)
+, teamID(_teamID)
+, originalTeamID(_originalTeamID)
+, zzimaSex(_zzimaSex)
+, isPlaying(true)
+, isActive(true)
+, aiForLeaversEnabled(_aiForLeaversEnabled)
+, aiForLeaversThreshold(_aiForLeaversThreshold)
+, aiStartTimer(0)
+, disconnected(false)
+, leaver(false)
+{
+}
+
+PFPlayer::PFPlayer()
+: chatMuted(false)
+, isLocal(false)
+, timeWhenDisconnected(0)
+, userID(-1)
+, playerID(0)
+, teamID(NCore::ETeam::None)
+, originalTeamID(NCore::ETeam::None)
+, zzimaSex(NCore::ESex::Undefined)
+, isPlaying(false)
+, isActive(false)
+, aiForLeaversEnabled(false)
+, aiForLeaversThreshold(0)
+, aiStartTimer(0)
+, disconnected(false)
+, leaver(false)
+{
+}
+
+void PFPlayer::AttachHero(PFBaseHero* pNewHero)
+{
+  pHero = pNewHero;
+}
+
+void PFPlayer::DetachHero()
+{
+  pHero = 0;
+}
+
+void PFPlayer::SetIsPlaying(bool _isPlaying)
+{
+  isPlaying = _isPlaying;
+}
+
+bool PFPlayer::Step(float dtInSeconds)
+{
+  return PFWorldObjectBase::Step(dtInSeconds);
+}
+
+void PFPlayer::OnDestroyContents()
+{
+  pHero = 0;
+  PF_Core::WorldObjectBase::OnDestroyContents();
+}
+
+const wstring& PFPlayer::GetPlayerName() const
+{
+  static const wstring emptyName;
+  return emptyName;
+}
+
+NDb::EFaction TeamIdToFaction( NCore::ETeam::Enum teamId )
+{
+  switch(teamId)
+  {
+    case NCore::ETeam::Team1:
+      return NDb::FACTION_FREEZE;
+    case NCore::ETeam::Team2:
+      return NDb::FACTION_BURN;
+    default:
+      return NDb::FACTION_NEUTRAL;
+  }
+}
+
+NDb::EFaction GetFaction(NWorld::PFPlayer const* pPlayer)
+{
+  return pPlayer ? TeamIdToFaction( pPlayer->GetTeamID() ) : NDb::FACTION_NEUTRAL;
+}
+
+NDb::EFaction GetOriginalFaction(NWorld::PFPlayer const* pPlayer)
+{
+  return pPlayer ? TeamIdToFaction( pPlayer->GetOriginalTeamID() ) : NDb::FACTION_NEUTRAL;
+}
+
+void PFPlayer::SetDisconnected(const bool _disconnected, const bool _leaver)
+{
+  if (disconnected != _disconnected)
+  {
+    disconnected = _disconnected;
+    if (disconnected)
+      timeWhenDisconnected = timer::Now();
+  }
+
+  if (_leaver)
+    leaver = true;
+}
+
+timer::Time const PFPlayer::GetTimeElapsedSinceDisconnection() const
+{
+  if (!disconnected)
+    return timer::Time(0);
+
+  const timer::Time time = timer::Now();
+  return time > timeWhenDisconnected ? time - timeWhenDisconnected : timer::Time(0);
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFPlayer, NWorld);
+#else
 
 #include "PFBaseUnit.h"
 #include "PFHero.h"
@@ -200,3 +341,4 @@ timer::Time const PFPlayer::GetTimeElapsedSinceDisconnection() const
 
 
 REGISTER_WORLD_OBJECT_NM(PFPlayer, NWorld);
+#endif

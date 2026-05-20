@@ -1,7 +1,207 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFLogicObject.h"
+#include "PFAIWorld.h"
+#include "PFWorldNatureMap.h"
+#include "../Game/PF/Audit/ClientStubs.h"
+
+namespace NWorld
+{
+
+PFLogicObject::PFLogicObject(PFWorld* _pWorld, const CVec3 &pos, const NDb::GameObject* objectDesc)
+  : PFWorldObjectBase( _pWorld, 1 )
+  , health(0.0f)
+  , type(NDb::UNITTYPE_CREEP)
+  , faction(NDb::FACTION_NEUTRAL)
+  , playerId(0)
+  , natureType(0)
+  , position(pos)
+  , objectSize(0.0f)
+  , objectTileSize(0)
+  , objectDynTileSize(0)
+  , isRounded(false)
+  , hiddenCounter(0)
+{
+  isRounded = objectDesc ? objectDesc->rounded : false;
+}
+
+void PFLogicObject::RegisterInAIWorld()
+{
+  if (GetWorld() && GetWorld()->GetAIWorld())
+    GetWorld()->GetAIWorld()->RegisterObject(this);
+}
+
+void PFLogicObject::Initialize(InitData const& data)
+{
+  type = data.type;
+  faction = data.faction;
+  playerId = data.playerId;
+  RegisterInAIWorld();
+}
+
+NDb::EFaction PFLogicObject::GetOppositeFaction() const
+{
+  switch (faction)
+  {
+  case NDb::FACTION_FREEZE:
+    return NDb::FACTION_BURN;
+  case NDb::FACTION_BURN:
+    return NDb::FACTION_FREEZE;
+  default:
+    return NDb::FACTION_NEUTRAL;
+  }
+}
+
+void PFLogicObject::OnDie()
+{
+  if (ringField.isLinked() && GetWorld() && GetWorld()->GetAIWorld())
+    GetWorld()->GetAIWorld()->UnregisterObjectOrUnit(this);
+  PFWorldObjectBase::OnDie();
+}
+
+void PFLogicObject::OnDestroyContents()
+{
+  if (ringField.isLinked() && GetWorld() && GetWorld()->GetAIWorld())
+    GetWorld()->GetAIWorld()->UnregisterObjectOrUnit(this);
+  PFWorldObjectBase::OnDestroyContents();
+}
+
+void PFLogicObject::UpdateNatureType()
+{
+  if (GetWorld() && GetWorld()->GetNatureMap())
+    natureType = GetWorld()->GetNatureMap()->GetNatureInPoint(position.X(), position.Y());
+}
+
+void PFLogicObject::UpdateDayNightState(const bool night)
+{
+  (void)night;
+}
+
+int PFLogicObject::GetOppositeFactionFlags() const
+{
+  switch (faction)
+  {
+  case NDb::FACTION_NEUTRAL:
+    return (1L << NDb::FACTION_BURN) | (1L << NDb::FACTION_FREEZE);
+  case NDb::FACTION_FREEZE:
+    return (1L << NDb::FACTION_BURN) | (1L << NDb::FACTION_NEUTRAL);
+  case NDb::FACTION_BURN:
+    return (1L << NDb::FACTION_FREEZE) | (1L << NDb::FACTION_NEUTRAL);
+  default:
+    return (1L << NDb::FACTION_BURN) | (1L << NDb::FACTION_FREEZE) | (1L << NDb::FACTION_NEUTRAL);
+  }
+}
+
+int PFLogicObject::GetFactionMask( int flags ) const
+{
+  int factionFlags = 0;
+  if( flags & NDb::FACTIONFLAGS_FACTIONFREEZE )
+    factionFlags |= (1 << NDb::FACTION_FREEZE);
+  if( flags & NDb::FACTIONFLAGS_FACTIONBURN )
+    factionFlags |= (1 << NDb::FACTION_BURN);
+  if( flags & NDb::FACTIONFLAGS_NEUTRAL )
+    factionFlags |= (1 << NDb::FACTION_NEUTRAL);
+  if( flags & NDb::FACTIONFLAGS_SELF )
+    factionFlags |= (1 << GetFaction() );
+  if( flags & NDb::FACTIONFLAGS_OPPOSITE )
+    factionFlags |= ( GetOppositeFactionFlags() & ~(1 << NDb::FACTION_NEUTRAL) ) ;
+  return factionFlags;
+}
+
+bool PFLogicObject::GetOnBase() const
+{
+  if (!GetWorld() || !GetWorld()->GetNatureMap())
+    return false;
+
+  NDb::ENatureRoad road = NDb::NATUREROAD_CENTER;
+  int segment = -1;
+  GetWorld()->GetNatureMap()->GetNatureSegment(position.AsVec2D(), road, segment);
+  return segment == 0 || segment == GetWorld()->GetNatureMap()->GetNumSegments();
+}
+
+bool PFLogicObject::UnitCheck(UnitCheckID id) const
+{
+  switch (id)
+  {
+  case UNITCHECKID_ISHERO:
+    return type == NDb::UNITTYPE_HEROMALE || type == NDb::UNITTYPE_HEROFEMALE;
+  case UNITCHECKID_ISBUILDING:
+    return type == NDb::UNITTYPE_BUILDING || type == NDb::UNITTYPE_MAINBUILDING || type == NDb::UNITTYPE_TOWER;
+  default:
+    return false;
+  }
+}
+
+int PFLogicObject::GetTeamId() const
+{
+  return (faction == NDb::FACTION_FREEZE) ? NCore::ETeam::Team1 : (faction == NDb::FACTION_BURN) ? NCore::ETeam::Team2 : NCore::ETeam::None;
+}
+
+void PFLogicObject::ChangeFaction( NDb::EFaction newFaction )
+{
+  faction = newFaction;
+}
+
+void PFLogicObject::UpdateHiddenState( bool bVisibility )
+{
+  if (bVisibility)
+  {
+    if (hiddenCounter > 0)
+      --hiddenCounter;
+  }
+  else
+  {
+    ++hiddenCounter;
+  }
+}
+
+CVec3 PFLogicObject::GetVisualPosition3D() const
+{
+  return GetPosition();
+}
+
+void PFLogicObject::SetObjectSizes(float size, int tileSize, int dynamicTileSize)
+{
+  SetObjectSize(size);
+  SetObjectTileSize(tileSize);
+  SetObjectDynamicTileSize(dynamicTileSize);
+}
+
+CVec3 PFLogicObject::GetClientPosition() const
+{
+  return GetVisualPosition3D();
+}
+
+bool PFLogicObject::IsInRange( const CVec2& aimerPos, float range ) const
+{
+  const float halfObjectSize = GetObjectSize() * 0.5f;
+  const float distance2 = fabs2( GetPosition().AsVec2D() - aimerPos );
+  return distance2 <= fabs2(range + halfObjectSize);
+}
+
+bool PFLogicObject::IsObjectInRange( const PFLogicObject* pTargetObject, float range ) const
+{
+  return pTargetObject && pTargetObject->IsInRange(GetPosition().AsVec2D(), range);
+}
+
+bool PFLogicObject::IsPositionInRange( const CVec2& targetPos, float range ) const
+{
+  return fabs2(GetPosition().AsVec2D() - targetPos) <= fabs2(range);
+}
+
+} //namespace NWorld
+
+BASIC_REGISTER_CLASS(NWorld::PFLogicObject)
+WORLD_OBJECT_FUNCTIONS_NM(PFLogicObject, NWorld)
+
+#else
+
 #include "PFLogicObject.h"
 #include "TileMap.h"
 #include "../Terrain/Terrain.h"
+#include "PFAIWorld.h"
 #include "PFWorldNatureMap.h"
 
 #ifndef VISUAL_CUTTED
@@ -235,3 +435,4 @@ bool PFLogicObject::IsPositionInRange( const CVec2& targetPos, float range ) con
 BASIC_REGISTER_CLASS(NWorld::PFLogicObject)
 WORLD_OBJECT_FUNCTIONS_NM(PFLogicObject, NWorld)
 
+#endif

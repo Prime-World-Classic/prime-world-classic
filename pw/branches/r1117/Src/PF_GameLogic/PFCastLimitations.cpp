@@ -1,5 +1,63 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFUniTarget.h"
+#include "PFTargetSelector.h"
+#include "PFBaseUnit.h"
+#include "PFAbilityData.h"
+#include "PFCastLimitations.h"
+
+namespace NWorld
+{
+
+const PFAbilityData* CheckTargetLimitation(NDb::TargetCastLimitation const &dbLimit, CastLimitationsCheckParams const &cp)
+{
+  if (!cp.pAbility || !cp.pTarget || !dbLimit.targetSelector)
+    return 0;
+
+  CObj<PFTargetSelector> pTS = dbLimit.targetSelector->Create(0);
+  if (!pTS)
+    return 0;
+
+  struct CalcTargets : public ITargetAction
+  {
+    CalcTargets() : count(0) {}
+    int count;
+    virtual void operator()(const Target&) { ++count; }
+  } f;
+
+  PFTargetSelector::RequestParams rp(cp.pAbility->GetOwner(), cp.pAbility, *cp.pTarget);
+  pTS->EnumerateTargets(f, rp);
+  return f.count > 0 ? cp.pAbility : 0;
+}
+
+const PFAbilityData* CheckConditionLimitation(NDb::ConditionCastLimitation const &dbLimit, CastLimitationsCheckParams const &cp)
+{
+  if (!cp.pAbility || !cp.pTarget)
+    return 0;
+  PFLogicObject *pObject = cp.pTarget->IsPosition() ? cp.pAbility->GetOwner().GetPtr() : cp.pTarget->GetObject();
+  return dbLimit.condition(cp.pAbility->GetOwner(), pObject, cp.pAbility, true) ? cp.pAbility : 0;
+}
+
+const PFAbilityData* CheckDispellLimitation(NDb::DispellCastLimitation const&, CastLimitationsCheckParams const &cp)
+{
+  return 0;
+}
+
+const PFAbilityData* CheckPositionLimitation(NDb::PositionCastLimitation const& dbLimit, CastLimitationsCheckParams const& cp)
+{
+  if (!cp.pAbility || !cp.pTarget)
+    return 0;
+  const CVec3 pos = cp.pTarget->IsPosition() ? cp.pTarget->GetPosition() : cp.pTarget->GetUnit()->GetPosition();
+  const PFPositionObject object(pos);
+  return dbLimit.condition(cp.pAbility->GetOwner(), &object, cp.pAbility, false) ? cp.pAbility : 0;
+}
+
+}
+
+#else
+
 #include "PFUniTarget.h"
 #include "PFApplInstant.h"
 #include "PFTargetSelector.h"
@@ -59,3 +117,5 @@ const PFAbilityData* CheckPositionLimitation( NDb::PositionCastLimitation const&
   return allow ? cp.pAbility : 0;
 }
 }
+
+#endif

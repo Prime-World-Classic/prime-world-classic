@@ -1,5 +1,216 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAIContainer.h"
+namespace NWorld
+{
+
+Weak<PFScript> PFAIContainer::s_luaScript;
+
+int PFScriptSerializer::operator&( IBinSaver &f )
+{
+  (void)f;
+  return 0;
+}
+
+PFAIContainer::PFAIContainer( PFWorld* pWorld, NCore::ITransceiver *pTransceiver )
+: PFWorldObjectBase( pWorld, 0 )
+, transceiver( pTransceiver )
+, currentLine( 0 )
+, waitStep( 0 )
+, logScriptEvents( false )
+{
+}
+
+bool PFAIContainer::Step( float timeDelta )
+{
+  (void)timeDelta;
+  return true;
+}
+
+IPFAIController* PFAIContainer::Find( const PFBaseHero* pUnit ) const
+{
+  (void)pUnit;
+  return 0;
+}
+
+IPFAIController* PFAIContainer::Add( PFBaseHero* pUnit, int lineNumber )
+{
+  (void)pUnit;
+  (void)lineNumber;
+  return 0;
+}
+
+IPFSeriesAIController* PFAIContainer::AddSeriesController( PFBaseHero* pUnit, bool lvlUpAvailable )
+{
+  (void)pUnit;
+  (void)lvlUpAvailable;
+  return 0;
+}
+
+void PFAIContainer::OnMinimapSignal( PFBaseHero* pSender, PFBaseUnit* pSelected, const Target& target )
+{
+  (void)pSender;
+  (void)pSelected;
+  (void)target;
+}
+
+bool PFAIContainer::Remove( PFBaseHero* pUnit )
+{
+  (void)pUnit;
+  return false;
+}
+
+void PFAIContainer::RemoveAll()
+{
+  controllers.clear();
+}
+
+void PFAIContainer::LoadScript( const vector<string>& _script )
+{
+  script = _script;
+}
+
+bool PFAIContainer::LoadScript( const string & scriptName, const vector<NDb::ResourceDesc> & res, bool isReconnecting )
+{
+  (void)scriptName;
+  (void)res;
+  (void)isReconnecting;
+  return false;
+}
+
+const NDb::ScriptArea* PFAIContainer::GetScriptArea( const char* name )
+{
+  for ( TScriptAreas::const_iterator it = scriptAreas.begin(); it != scriptAreas.end(); ++it )
+  {
+    if ( it->name == name )
+      return &( *it );
+  }
+  return 0;
+}
+
+void PFAIContainer::GetScriptAreasByName( const string& name, vector<const NDb::ScriptArea*>& _scriptAreas )
+{
+  for ( TScriptAreas::const_iterator it = scriptAreas.begin(); it != scriptAreas.end(); ++it )
+  {
+    if ( it->name == name )
+      _scriptAreas.push_back( &( *it ) );
+  }
+}
+
+void PFAIContainer::RegisterScriptPath( const string &scriptName, const NDb::ScriptPath* gameObject )
+{
+  if ( gameObject )
+    scriptPaths[scriptName] = gameObject->path;
+}
+
+const vector<CVec2>* PFAIContainer::GetScriptPath( const string &scriptName )
+{
+  TScriptPaths::const_iterator it = scriptPaths.find(scriptName);
+  return it == scriptPaths.end() ? 0 : &(it->second);
+}
+
+void PFAIContainer::RegisterPolygonArea( string scriptName, const NDb::ScriptPolygonArea* area )
+{
+  if ( area )
+    scriptPolyAreas[scriptName] = area;
+}
+
+PFAIContainer::MinimapIcon::MinimapIcon( NDb::EMinimapIcons _icon, float _x, float _y, NDb::EUnitType _unitType, NDb::EFaction _faction )
+: PF_Core::IUpdateable( true )
+, icon( _icon )
+, x( _x )
+, y( _y )
+, unitType( _unitType )
+, faction( _faction )
+{
+}
+
+void PFAIContainer::MinimapIcon::Update( float timeDelta )
+{
+  (void)timeDelta;
+}
+
+void PFAIContainer::PlaceMinimapIcon( const char* iconName, NDb::EMinimapIcons icon, float x, float y, NDb::EUnitType unitType )
+{
+  if ( iconName )
+    minimapIcons[iconName] = new MinimapIcon( icon, x, y, unitType, NDb::FACTION_NEUTRAL );
+}
+
+void PFAIContainer::RemoveMinimapIcon( const char* iconName )
+{
+  TMinimapIcons::iterator it = minimapIcons.find( iconName );
+  if ( it != minimapIcons.end() )
+    minimapIcons.erase( it );
+}
+
+bool PFAIContainer::CaptureTheFlag(const char *unitScripName, NDb::EFaction faction, bool pickup)
+{
+  (void)unitScripName;
+  (void)faction;
+  (void)pickup;
+  return false;
+}
+
+void PFAIContainer::StepScript()
+{
+}
+
+void PFAIContainer::RemoveInvalidUnits()
+{
+}
+
+void PFAIContainer::BuildIdNameMap()
+{
+}
+
+PFBaseHero* PFAIContainer::GetLocalHero() const { return 0; }
+PFBaseHero* PFAIContainer::FindHero( const char* hero, bool aliasEnabled ) const { (void)hero; (void)aliasEnabled; return 0; }
+PFCreature* PFAIContainer::FindCreature( const char* creature ) const { (void)creature; return 0; }
+PFFlagpole* PFAIContainer::FindFlag(int roadIndex, int flagIndex) const { (void)roadIndex; (void)flagIndex; return 0; }
+PFBaseUnit* PFAIContainer::FindUnit( const char* unit ) const { (void)unit; return 0; }
+PF_Core::WorldObjectBase* PFAIContainer::FindObject( const char* obj ) const { (void)obj; return 0; }
+bool PFAIContainer::FindTalent( PFBaseHero* hero, const char* persistentId, int* level, int* slot ) const { (void)hero; (void)persistentId; (void)level; (void)slot; return false; }
+PFAIContainer::TObjectGroup* PFAIContainer::FindGroup( const char * group ) { (void)group; return 0; }
+bool PFAIContainer::FindDeadObjectName(const char * objectName) const { (void)objectName; return false; }
+const char* PFAIContainer::FindObjectGroupName( const PF_Core::WorldObjectBase* object ) const { (void)object; return 0; }
+void PFAIContainer::GetCreepNames( const hash_set<int>& objectIds, vector<const char*>* pObjectNames ) { (void)objectIds; if (pObjectNames) pObjectNames->clear(); }
+bool PFAIContainer::FindObjectName( string& name, PF_Core::WorldObjectBase* object ) { (void)name; (void)object; return false; }
+void PFAIContainer::GetHeroName( PFBaseHero* pHero, string &name ) { (void)pHero; name.clear(); }
+void PFAIContainer::RemoveStandaloneEffect( const char* effectName ) { (void)effectName; }
+void PFAIContainer::PlaceStandaloneEffect( const char* effectName, const char* dbid, float x, float y ) { (void)effectName; (void)dbid; (void)x; (void)y; }
+void PFAIContainer::PlaceAttachedEffect( const char* name, const char* dbid, const char* parentName ) { (void)name; (void)dbid; (void)parentName; }
+void PFAIContainer::PlaceClientEffect( const char* dbid, float x, float y ) { (void)dbid; (void)x; (void)y; }
+void PFAIContainer::PlaceSimpleObject( const char* name, const char* dbid, float x, float y, float z ) { (void)name; (void)dbid; (void)x; (void)y; (void)z; }
+void PFAIContainer::PlaceSimpleObject( const char* name, const char* dbid, float x, float y, float z, float roll, float pitch, float yaw ) { (void)name; (void)dbid; (void)x; (void)y; (void)z; (void)roll; (void)pitch; (void)yaw; }
+void PFAIContainer::RemoveSimpleObject( const char* name ) { (void)name; }
+void PFAIContainer::ShowSimpleObject( const char* name ) { (void)name; }
+void PFAIContainer::HideSimpleObject( const char* name ) { (void)name; }
+bool PFAIContainer::UseConsumable( const char* hero, const char* item, const char* unit, float x, float y ) { (void)hero; (void)item; (void)unit; (void)x; (void)y; return false; }
+void PFAIContainer::OnReconnect() {}
+void PFAIContainer::RegisterEventScriptHandler( const char* name, NDb::EBaseUnitEvent eventType, const char* callbackFunctionName ) { (void)name; (void)eventType; (void)callbackFunctionName; }
+void PFAIContainer::UnregisterEventScriptHandler( const char* name, NDb::EBaseUnitEvent eventType ) { (void)name; (void)eventType; }
+void PFAIContainer::InvokeEventCallback( const string& name, const string& callbackFunctionName, const PFBaseUnitEvent *pEvent ) { (void)name; (void)callbackFunctionName; (void)pEvent; }
+bool PFAIContainer::CreateZombie( PFCreature const* pCreature, const char* dbid, const NDb::EFaction faction ) { (void)pCreature; (void)dbid; (void)faction; return false; }
+const char* PFAIContainer::GetFileNameByKey(const char* key) { return key; }
+bool PFAIContainer::ChangeNatureMap( const float x, const float y, const float radius, NDb::ENatureType from, NDb::ENatureType to) { (void)x; (void)y; (void)radius; (void)from; (void)to; return false; }
+bool PFAIContainer::HeroRaiseFlag( const char* _hero, const char* _flag ) { (void)_hero; (void)_flag; return false; }
+void PFAIContainer::RegisterObject(PF_Core::WorldObjectBase* pObject, nstl::string scriptName, nstl::string scriptGroupName ) { (void)pObject; (void)scriptName; (void)scriptGroupName; }
+
+bool PFAIContainer::ScriptEffect::Create( NScene::IScene* pScene ) { (void)pScene; return false; }
+void PFAIContainer::ScriptEffect::Remove() {}
+
+bool FindQuarters( PFWorld* pWorld, NDb::EFaction faction, vector<PFQuarters*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
+bool FindMainBuildings( PFWorld* pWorld, NDb::EFaction faction, vector<PFMainBuilding*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
+bool FindShop( PFWorld* pWorld, NDb::EFaction faction, vector<PFShop*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFAIContainer, NWorld)
+
+#else
+
 #include "PFAIContainer.h"
 #include "PFAIController.h"
 #include "PFSeriesAIController.h"
@@ -520,3 +731,5 @@ REGISTER_DEV_CMD( get_talentid, NWorld::GetTalentId );
 
 REGISTER_DEV_CMD( attach_ai, NWorld::CommandAttachAI );
 REGISTER_DEV_CMD( detach_ai, NWorld::CommandDetachAI );
+
+#endif

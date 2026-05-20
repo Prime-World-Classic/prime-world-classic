@@ -7,6 +7,119 @@
 #include "System/niterator.h"
 #include "libdb/DbResourceCache.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+
+namespace UI
+{
+
+PreferencesProcessor::PreferencesProcessor( UI::FlashContainer2 * flashWnd, const char* className )
+  : pPresets(0)
+{
+  (void)flashWnd;
+  (void)className;
+}
+
+void PreferencesProcessor::Init( const NDb::Preferences &desc )
+{
+  variables.clear();
+  pPresets = &desc.presets;
+}
+
+void PreferencesProcessor::RestorePreset( const string &name )
+{
+  DebugTrace( "Linux bootstrap preferences restore skipped for preset: %s", name.c_str() );
+}
+
+void PreferencesProcessor::RestorePreset( int index )
+{
+  DebugTrace( "Linux bootstrap preferences restore skipped for preset index: %d", index );
+}
+
+void PreferencesProcessor::ShortcutRebind( const wchar_t* command )
+{
+  (void)command;
+}
+
+void PreferencesProcessor::Apply()
+{
+}
+
+void PreferencesProcessor::ApplyShortcuts()
+{
+}
+
+void PreferencesProcessor::ApplyValuesOnly()
+{
+}
+
+void PreferencesProcessor::Cancel()
+{
+}
+
+bool PreferencesProcessor::NeedToApply() const
+{
+  return false;
+}
+
+bool PreferencesProcessor::CalcEnabledState( const string &varId ) const
+{
+  (void)varId;
+  return true;
+}
+
+void PreferencesProcessor::UpdateEnabledState( const string &enabledFromVarId, bool isEnabled )
+{
+  (void)enabledFromVarId;
+  (void)isEnabled;
+}
+
+void PreferencesProcessor::UpdateValue( const VarData &var, int value )
+{
+  (void)var;
+  (void)value;
+}
+
+void PreferencesProcessor::UpdateValue( const string &varId, int value )
+{
+  (void)varId;
+  (void)value;
+}
+
+void PreferencesProcessor::RestorePreset( const NDb::PreferencesPreset &preset )
+{
+  (void)preset;
+}
+
+void PreferencesProcessor::StoreAllValues()
+{
+}
+
+void PreferencesProcessor::RestoreAllValues()
+{
+}
+
+bool PreferencesProcessor::CanBeCanceled( const VarData &var )
+{
+  return var.pDesc && !var.pDesc->applyCommandName.empty();
+}
+
+bool PreferencesProcessor::NeedToApplyCommand( const VarData &var )
+{
+  return CanBeCanceled(var);
+}
+
+void PreferencesProcessor::OnFSCommand( UI::FlashContainer2* _wnd, const char* listenerID, const char* args, const wchar_t * argsW )
+{
+  (void)_wnd;
+  (void)listenerID;
+  (void)args;
+  (void)argsW;
+}
+
+} // namespace UI
+
+#else
+
 namespace
 {
   struct DisableAssertionLoadingFilesGuard : NonCopyable
@@ -627,3 +740,5 @@ void PreferencesProcessor::OnFSCommand( UI::FlashContainer2* _wnd, const char* l
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 } // namespace UI
+
+#endif

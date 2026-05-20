@@ -65,6 +65,10 @@ namespace NWorld
     Switch(_settings.initialState, _settings.initialStateFraction);
 
     _nightFraction = CalculateNightFraction();
+#if defined(PW_LINUX_NULL_RENDER)
+    _cycle = false;
+    return;
+#else
     _cycle = _canSwitchLighting;
 
     ApplyNightFraction(true);
@@ -76,6 +80,7 @@ namespace NWorld
 
       scene->SetNightSpecularReduction(_settings.nightSpecularReduction);
     }
+#endif
   }
 
   void DayNightController::Update(const float dt)
@@ -182,6 +187,10 @@ namespace NWorld
 
   void DayNightController::ApplyNightFraction(const bool transition)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    (void)transition;
+    return;
+#else
     if (_canSwitchLighting)
     {
       if (NScene::IScene* const scene = GetWorld()->GetScene())
@@ -237,6 +246,7 @@ namespace NWorld
 
       aiWorld->ForAllObjects(updater);
     }
+#endif
   }
 
   float DayNightController::CalculateNightFraction() const

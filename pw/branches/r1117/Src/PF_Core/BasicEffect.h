@@ -6,10 +6,16 @@
 #include "ObjectsPool.h"
 #include "ClientObject.h"
 #include "DBEffect.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "../PF_GameLogic/StringExecutorBootstrap.h"
+#include "../PF_GameLogic/DBStats.h"
+#endif
 
 namespace NDb
 {
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   enum EFaction;
+#endif
 }
 
 namespace NScene 
@@ -166,7 +172,7 @@ public:
 		NI_ASSERT(dynamic_cast<DB_EFFECT const*>(pDBObj.GetPtr()) != 0, "Invalid DB applicator");
 	}
 
-	DB_EFFECT const &GetDBEffect() const { return *static_cast<DB_EFFECT const*>(pDBObj.GetPtr()); }
+	DB_EFFECT const &GetDBEffect() const { return *static_cast<DB_EFFECT const*>(this->pDBObj.GetPtr()); }
 
 	typedef EffectDBLinker<DB_EFFECT, EFFECT> EffectBase;
 	typedef DB_EFFECT DBType;

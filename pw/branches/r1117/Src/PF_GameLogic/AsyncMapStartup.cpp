@@ -86,12 +86,21 @@ namespace NWorld
 
   bool MapLoader::IsThreaded()
   {
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+    return false;
+#else
     return !!NGlobal::GetVar("threaded_loading", 1L).GetInt64();
+#endif
   }
 
   threading::JobThread* MapLoader::CreateMapLoadingThread(MapLoadingJob* const job)
   {
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+    (void)job;
+    return 0;
+#else
     return new threading::JobThread(new MapLoadingThreadJob(job), "MapLoading", 30 * 60 * 1000);
+#endif
   }
 
 //////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,544 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplMod.h"
+#include "PFBaseUnit.h"
+#include "PFBaseAttackData.h"
+#include "PFHero.h"
+#include "PFTargetSelector.h"
+
+namespace NWorld
+{
+
+const char* PFApplTargetsCounter::targetsCountVariableName = "targetsCount";
+
+namespace
+{
+int LinuxModifierProvider(CPtr<PFBaseUnit> const& unit)
+{
+  return IsValid(unit) ? unit->GetObjectId() : 0;
+}
+}
+
+bool PFApplStatMod::Start()
+{
+  if (!IsValid(pReceiver))
+    return true;
+
+  string const& name = GetDB().modifier.variable;
+  pStat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
+  if (!pStat)
+    return true;
+
+  if (GetDB().dontUpdate)
+  {
+    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
+    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
+    if (!GetStatModName().empty())
+      statModConstant = GetConstant(GetStatModName().c_str(), pOwner, pReceiver);
+  }
+
+  return PFApplBuff::Start();
+}
+
+void PFApplStatMod::Enable()
+{
+  PFApplBuff::Enable();
+  if (!pStat)
+    return;
+
+  if (!GetDB().dontUpdate)
+  {
+    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
+    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
+  }
+
+  modifierID = pStat->AddModifier(
+    mul,
+    add,
+    LinuxModifierProvider(GetAbilityOwner()),
+    GetDB().modifier.topModifier,
+    GetDB().constraint);
+}
+
+void PFApplStatMod::Disable()
+{
+  if (pStat && modifierID != INVALID_MODIFIER_ID)
+    pStat->RemoveModifier(modifierID);
+  modifierID = INVALID_MODIFIER_ID;
+  PFApplBuff::Disable();
+}
+
+bool PFApplStatMod::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (!pStat || !IsEnabled() || modifierID == INVALID_MODIFIER_ID || GetDB().dontUpdate)
+    return false;
+
+  const ValueWithModifiers::Modifier* oldModifier = pStat->Retrieve(modifierID);
+  const float oldMul = oldModifier ? oldModifier->mulValue : 0.0f;
+  const float oldAdd = oldModifier ? oldModifier->addValue : 0.0f;
+  const float newMul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
+  const float newAdd = RetrieveParam(GetDB().modifier.addValue, 0.0f);
+
+  pStat->UpdateModifier(modifierID, newMul, newAdd);
+  if (oldMul != newMul || oldAdd != newAdd)
+  {
+    SetChanged(true);
+    if (IsValid(pParent))
+      pParent->SetChanged(true);
+  }
+  return false;
+}
+
+void PFApplStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
+
+void PFApplStatMod::Reset()
+{
+  PFApplBuff::Reset();
+  modifierID = INVALID_MODIFIER_ID;
+  pStat = 0;
+  if (!IsValid(pReceiver))
+    return;
+  string const& name = GetDB().modifier.variable;
+  pStat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->SearchVariableVWM(name.c_str());
+}
+
+float PFApplStatMod::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "statMod") == 0)
+    return const_cast<PFApplStatMod*>(this)->GetAbsModification();
+  return PFApplBuff::GetVariable(sVariableName);
+}
+
+float PFApplStatMod::GetAbsModification()
+{
+  if (!pStat)
+    return 0.0f;
+
+  if (!GetDB().dontUpdate)
+  {
+    mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
+    add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
+  }
+
+  const bool wasApplied = modifierID != INVALID_MODIFIER_ID;
+  if (wasApplied)
+    pStat->RemoveModifier(modifierID);
+
+  const float valueBefore = pStat->GetValue();
+  const int tempModifierID = pStat->AddModifier(
+    mul,
+    add,
+    LinuxModifierProvider(GetAbilityOwner()),
+    GetDB().modifier.topModifier,
+    GetDB().constraint);
+  const float valueAfter = pStat->GetValue();
+
+  if (wasApplied)
+    modifierID = tempModifierID;
+  else
+    pStat->RemoveModifier(tempModifierID);
+
+  return fabs(valueAfter - valueBefore);
+}
+
+string const& PFApplStatMod::GetStatModName() const { return GetDB().statModName; }
+
+bool PFApplStatMod::GetStatModConstant(float& value) const
+{
+  if (GetDB().dontUpdate && !GetStatModName().empty())
+  {
+    value = statModConstant;
+    return true;
+  }
+  return false;
+}
+
+bool PFApplPermanentStatMod::Start()
+{
+  if (PFBaseApplicator::Start())
+    return true;
+
+  if (!IsValid(pReceiver))
+    return true;
+
+  string const& name = GetDB().modifier.variable;
+  ValueWithModifiers* stat = name.empty() ? pReceiver->GetStat(GetDB().modifier.stat) : pReceiver->GetVariableVWM(name.c_str());
+  if (stat)
+  {
+    const float mul = RetrieveParam(GetDB().modifier.multValue, 1.0f);
+    const float add = RetrieveParam(GetDB().modifier.addValue, 0.0f);
+    stat->SetBaseValue(mul * stat->GetBaseValue() + add);
+  }
+
+  return true;
+}
+
+void PFApplPermanentStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
+
+bool PFApplAbilityMod::Start()
+{
+  cachedAdd = RetrieveParam(GetDB().addValue, 0.0f);
+  cachedMul = RetrieveParam(GetDB().multValue, 1.0f);
+  return PFApplBuff::Start();
+}
+void PFApplAbilityMod::CheckCachedValues()
+{
+  cachedAdd = RetrieveParam(GetDB().addValue, 0.0f);
+  cachedMul = RetrieveParam(GetDB().multValue, 1.0f);
+}
+bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityTypeId, NDb::Ptr<NDb::Ability> const&) { return mode == GetDB().mode; }
+void PFApplAbilityMod::AddModifier(float& add, float& mul, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility)
+{
+  if (IsApplicable(mode, abilityType, dbAbility))
+  {
+    CheckCachedValues();
+    add += cachedAdd;
+    mul *= cachedMul;
+  }
+}
+void PFApplAbilityMod::Enable() { PFApplBuff::Enable(); }
+void PFApplAbilityMod::Disable() { PFApplBuff::Disable(); }
+bool PFApplAbilityMod::Step(float dtInSeconds) { CheckCachedValues(); return PFApplBuff::Step(dtInSeconds); }
+void PFApplAbilityMod::DumpInfo(NLogg::CChannelLogger&) const {}
+void PFApplAbilityMod::Reset() { PFApplBuff::Reset(); cachedAdd = 0.0f; cachedMul = 1.0f; }
+
+bool PFApplAbilityUpgrade::Start()
+{
+  maxCount = RetrieveParam(GetDB().applyCount, 0);
+  return PFApplBuff::Start();
+}
+void PFApplAbilityUpgrade::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddAbilityUpgradeApplicator(this); }
+void PFApplAbilityUpgrade::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveAbilityUpgradeApplicator(this); PFApplBuff::Disable(); }
+void PFApplAbilityUpgrade::DumpInfo(NLogg::CChannelLogger&) const {}
+void PFApplAbilityUpgrade::UpgradeAbilityApplicators(CPtr<PFAbilityData> const&, vector<NDb::Ptr<NDb::BaseApplicator>>&, vector<NDb::Ptr<NDb::BaseApplicator>>&, bool&) {}
+bool PFApplAbilityUpgrade::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
+
+PFApplTechAbilityUpgrade::PFApplTechAbilityUpgrade(const PFApplCreatePars& cp) : Base(cp) {}
+PFApplTechAbilityUpgrade::PFApplTechAbilityUpgrade() {}
+PFApplTechAbilityUpgrade::~PFApplTechAbilityUpgrade() {}
+bool PFApplTechAbilityUpgrade::Start() { PFBaseApplicator::Start(); return true; }
+
+void PFApplStatus::GetChildrenStatMods(vector<PFApplStatMod const*>& statModContainer, bool activeOnly) const
+{
+  for (TApplicators::const_iterator it = childApplicators.begin(); it != childApplicators.end(); ++it)
+  {
+    PFApplStatMod const* statMod = dynamic_cast<PFApplStatMod const*>(it->GetPtr());
+    if (statMod && (!activeOnly || statMod->IsEnabled()))
+      statModContainer.push_back(statMod);
+  }
+}
+void PFApplStatus::CompareByPower(PFApplStatus*) {}
+void PFApplStatus::MergeByValue() {}
+bool PFApplStatus::Start()
+{
+  if (!IsValid(pReceiver) || !RetrieveParam(GetDB().startCondition, true))
+  {
+    PFApplBuff::Start();
+    return true;
+  }
+
+  bStarted = true;
+  switch (GetDB().stopBehaviour)
+  {
+  case NDb::STOPBEHAVIOUR_STOPBYCHILD:
+    m_applicatorCount = 1;
+    break;
+  case NDb::STOPBEHAVIOUR_STOPBYALLCHILDS:
+    m_applicatorCount = GetDB().applicators.size();
+    break;
+  case NDb::STOPBEHAVIOUR_STOPBYTIME:
+  default:
+    m_applicatorCount = GetDB().applicators.size() + 1;
+    break;
+  }
+
+  m_isComparableByValue = true;
+  return PFApplBuff::Start();
+}
+void PFApplStatus::Enable()
+{
+  if (!bStarted)
+    return;
+
+  PFApplBuff::Enable();
+  Target target;
+  MakeApplicationTarget(target);
+  CreateAndActivateApplicators(GetDB().applicators, GetAbility(), target, this);
+  if (IsValid(pReceiver))
+    pReceiver->RegisterStatusApplicator(this);
+}
+void PFApplStatus::Disable()
+{
+  if (!bStarted)
+    return;
+
+  RemoveChildrenApplicators();
+  childApplicators.clear();
+  ActiveStatusRing::safeRemove(this);
+  PFApplBuff::Disable();
+}
+void PFApplStatus::Stop()
+{
+  ActiveStatusRing::safeRemove(this);
+  childApplicators.clear();
+  blockApplicators.clear();
+  blockedByApplicators.clear();
+  mergeApplicators.clear();
+  PFApplBuff::Stop();
+}
+bool PFApplStatus::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
+void PFApplStatus::OnNotification(PFBaseApplicator&, NDb::EParentNotification note)
+{
+  if (note == NDb::PARENTNOTIFICATION_STOP && GetDB().stopBehaviour != NDb::STOPBEHAVIOUR_STOPBYTIME && m_applicatorCount > 0)
+  {
+    --m_applicatorCount;
+    if (m_applicatorCount <= 0)
+      Stop();
+  }
+}
+float PFApplStatus::GetModifiedDuration(float original) const { return original; }
+void PFApplStatus::ForceUpdateLifetime(float newLifetime, float newDuration) { SetLifetime(newLifetime); SetDuration(newDuration); }
+const NDb::Texture* PFApplStatus::GetStatusImage() const { return GetDB().image; }
+
+void PFApplFlags::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddFlag(GetDB().flag); }
+void PFApplFlags::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveFlag(GetDB().flag); PFApplBuff::Disable(); }
+void PFApplFlags::Reset() { PFApplBuff::Reset(); }
+void PFApplFlags::DumpInfo(NLogg::CChannelLogger&) const {}
+
+void PFApplChangeBaseAttack::Enable() { PFApplBuff::Enable(); pSavedBaseAttack = 0; }
+void PFApplChangeBaseAttack::Disable() { pSavedBaseAttack = 0; PFApplBuff::Disable(); }
+
+bool PFApplCreepBehaviourChange::IsStackableWithTheSameType() const { return false; }
+void PFApplCreepBehaviourChange::Enable() { PFApplBuff::Enable(); }
+void PFApplCreepBehaviourChange::Disable() { pBehaviour = 0; oldTargetingParams = 0; PFApplBuff::Disable(); }
+
+float PFApplDamageReflect::OnDamage(CPtr<PFBaseUnit>, float, float damage4Apply, int) { return damage4Apply * amountInPersent * 0.01f; }
+void PFApplOnDamage::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddEventListener(this); }
+void PFApplOnDamage::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveEventListener(this); PFApplBuff::Disable(); }
+unsigned int PFApplOnDamage::OnEvent(const PFBaseUnitEvent*) { return 0; }
+
+PFApplInvisibility::PFApplInvisibility(PFApplCreatePars const &cp)
+  : Base(cp), state(FADEIN), time(0.0f), invisible(false), partialVisibilityEnabled(false), partialVisibilityRevision(0) {}
+void PFApplInvisibility::PrepareEffects(bool) {}
+bool PFApplInvisibility::Start()
+{
+  if (IsValid(pReceiver) && pReceiver->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINVISIBILITY))
+    return true;
+
+  state = FADEIN;
+  time = 0.0f;
+  invisible = false;
+
+  if (PFApplBuff::Start())
+    return true;
+
+  return false;
+}
+void PFApplInvisibility::Enable()
+{
+  if (IsValid(pReceiver))
+  {
+    pReceiver->AddEventListener(this);
+    pReceiver->AddFlag(NDb::UNITFLAG_FORBIDAUTOATTACK);
+    pReceiver->DropTarget();
+  }
+
+  time = RetrieveParam(GetDB().fadeIn, 0.0f);
+  if (time > 0.0f)
+    state = FADEIN;
+  else
+    becomeInvisible();
+
+  PFApplBuff::Enable();
+}
+void PFApplInvisibility::Disable()
+{
+  if (invisible)
+    becomeVisible();
+  if (IsValid(pReceiver))
+  {
+    pReceiver->RemoveFlag(NDb::UNITFLAG_FORBIDAUTOATTACK);
+    pReceiver->RemoveEventListener(this);
+  }
+  PFApplBuff::Disable();
+}
+bool PFApplInvisibility::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+  if (IsEnabled() && state == FADEIN)
+  {
+    time -= dtInSeconds;
+    if (time <= 0.0f)
+      becomeInvisible();
+  }
+  return false;
+}
+unsigned int PFApplInvisibility::OnEvent(const PFBaseUnitEvent*) { return 0; }
+void PFApplInvisibility::becomeVisible()
+{
+  if (IsValid(pReceiver))
+    pReceiver->RemoveFlag(NDb::UNITFLAG_INVISIBLE);
+  invisible = false;
+  state = CANCEL;
+}
+void PFApplInvisibility::becomeInvisible()
+{
+  if (IsValid(pReceiver))
+    pReceiver->AddFlag(NDb::UNITFLAG_INVISIBLE);
+  invisible = true;
+  state = INVISIBLE;
+}
+void PFApplInvisibility::ApplyPartialVisibility(const bool enabled, const bool) { partialVisibilityEnabled = enabled; ++partialVisibilityRevision; }
+void PFApplInvisibility::DoSwitchEffects(const bool) const {}
+void PFApplInvisibility::UpdateVisibility(const bool) {}
+
+void PFApplTargetsCounter::EnumerateTargets()
+{
+  targetsCount = 0;
+  if (!targetSelector && IsValid(GetDB().targetSelector))
+    targetSelector = GetDB().targetSelector->Create(GetWorld());
+
+  if (targetSelector)
+  {
+    struct CalcTargets : public ITargetAction, NonCopyable
+    {
+      int& targetsCount;
+      CalcTargets(int& targetsCount_) : targetsCount(targetsCount_) {}
+      virtual void operator()(const Target&) { ++targetsCount; }
+    } calcTargets(targetsCount);
+    PFTargetSelector::RequestParams pars(*this, GetTarget());
+    targetSelector->EnumerateTargets(calcTargets, pars);
+  }
+  else if (IsValid(pReceiver))
+  {
+    targetsCount = 1;
+  }
+}
+bool PFApplTargetsCounter::Start() { EnumerateTargets(); return PFApplBuff::Start(); }
+bool PFApplTargetsCounter::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+  if (IsEnabled())
+    EnumerateTargets();
+  return false;
+}
+float PFApplTargetsCounter::GetVariable(const char* varName) const { return strcmp(varName, targetsCountVariableName) == 0 ? targetsCount : PFApplBuff::GetVariable(varName); }
+
+bool PFApplValue::Start() { value = RetrieveParam(GetDB().value, 0.0f); return PFApplBuff::Start(); }
+float PFApplValue::GetVariable(const char* varName) const { return strcmp(varName, "value") == 0 || strcmp(varName, "Value") == 0 ? value : PFApplBuff::GetVariable(varName); }
+
+bool PFApplMarker::Start()
+{
+  modifierID = INVALID_MODIFIER_ID;
+  if (!IsValid(pReceiver))
+    return true;
+
+  string markerName(GetApplicatorName());
+  char ownerId[16];
+  snprintf(ownerId, sizeof(ownerId), "%x", LinuxModifierProvider(GetAbilityOwner()));
+  markerName.append(ownerId);
+  pStat = pReceiver->GetVariableVWM(markerName.c_str());
+  return PFApplBuff::Start();
+}
+void PFApplMarker::Enable()
+{
+  PFApplBuff::Enable();
+  if (!pStat)
+    return;
+  const float multValue = RetrieveParam(GetDB().multValue, 1.0f);
+  const float addValue = RetrieveParam(GetDB().addValue, 1.0f);
+  modifierID = pStat->AddModifier(multValue, addValue, LinuxModifierProvider(GetAbilityOwner()));
+}
+void PFApplMarker::Disable()
+{
+  if (pStat && modifierID != INVALID_MODIFIER_ID)
+    pStat->RemoveModifier(modifierID);
+  modifierID = INVALID_MODIFIER_ID;
+  PFApplBuff::Disable();
+}
+float PFApplMarker::GetVariable(const char* varName) const
+{
+  if (strcmp(varName, "marker") == 0)
+    return 1.0f;
+  if ((strcmp(varName, "value") == 0 || strcmp(varName, "Value") == 0) && pStat)
+    return pStat->GetValue();
+  return PFApplBuff::GetVariable(varName);
+}
+void PFApplMarker::Reset() { PFApplBuff::Reset(); pStat = 0; modifierID = INVALID_MODIFIER_ID; }
+
+void PFApplChangeHeroState::Enable() { PFApplBuff::Enable(); }
+void PFApplChangeHeroState::Disable() { PFApplBuff::Disable(); }
+
+bool PFApplSceneObjectChange::Start() { sceneObjectIndex = -1; return PFApplBuff::Start(); }
+bool PFApplSceneObjectChange::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
+void PFApplSceneObjectChange::Enable() { PFApplBuff::Enable(); }
+void PFApplSceneObjectChange::Disable() { oldSceneObject = 0; sceneObjectIndex = -1; PFApplBuff::Disable(); }
+
+bool PFApplTaunt::Start()
+{
+  if (PFApplBuff::Start())
+    return true;
+
+  Target target;
+  MakeApplicationTarget(target, GetDB().tauntTarget);
+  tauntSource = target.IsUnit() ? target.GetUnit() : GetAbilityOwner();
+  if (IsValid(pReceiver) && IsValid(tauntSource))
+  {
+    pReceiver->OnTarget(tauntSource, GetDB().strongTarget);
+    pReceiver->OnBeginTaunt();
+    pReceiver->RegisterTauntApplicator(this);
+    lastVisiblePos = tauntSource->GetPosition().AsVec2D();
+  }
+  return false;
+}
+bool PFApplTaunt::Step(float dtInSeconds)
+{
+  if (!IsValid(pReceiver) || !IsValid(tauntSource))
+    return true;
+  pReceiver->OnTarget(tauntSource, GetDB().strongTarget);
+  return PFApplBuff::Step(dtInSeconds);
+}
+void PFApplTaunt::Stop()
+{
+  if (IsValid(pReceiver))
+  {
+    if (pReceiver->GetAppliedTaunts().IsItLast(this))
+      pReceiver->GetAppliedTaunts().RemoveLast();
+    pReceiver->OnEndTaunt();
+  }
+  tauntSource = 0;
+  PFApplBuff::Stop();
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplDamageReflect,        NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplOnDamage,             NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplFlags,                NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplStatMod,              NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplPermanentStatMod,     NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplAbilityMod,           NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplAbilityUpgrade,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplStatus,               NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplChangeBaseAttack,     NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplCreepBehaviourChange, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplInvisibility,         NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplTargetsCounter,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplValue,                NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplMarker,               NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplChangeHeroState,      NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplSceneObjectChange,    NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplTaunt,                NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplTechAbilityUpgrade,   NWorld);
+
+#else
 #include "PFBaseUnit.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
@@ -2247,3 +2787,5 @@ REGISTER_WORLD_OBJECT_NM(PFApplChangeHeroState,      NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplSceneObjectChange,    NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplTaunt,                NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplTechAbilityUpgrade,   NWorld);
+
+#endif

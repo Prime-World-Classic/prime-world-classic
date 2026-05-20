@@ -1,4 +1,147 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAIStates.h"
+#include "PFAIHelper.h"
+#include "PFBaseUnit.h"
+#include "PFBuildings.h"
+#include "PFMaleHero.h"
+
+namespace NWorld
+{
+
+void AIMoveToState::OnEnter()
+{
+  canCombat ? pHelper->CombatMoveTo(target) : pHelper->MoveTo(target);
+}
+
+bool AIMoveToState::OnStep( float dt )
+{
+  (void)dt;
+  return !pHelper || !IsValid(pHelper->pUnit) || pHelper->pUnit->IsPositionInRange(target, range);
+}
+
+AIMoveByLineState::AIMoveByLineState( const CPtr<PFBaseAIController>& pUnit, const vector<CVec2>& _road, bool _reverse, PFAIController* ctrl_ )
+  : AIBaseState( pUnit, !_reverse ? MOVELINEFORWARD : MOVELINEBACKWARD )
+  , road(_road)
+  , canCombat(!_reverse)
+  , ctrl(ctrl_)
+{
+  if (_reverse)
+    reverse(road.begin(), road.end());
+}
+
+bool AIMoveByLineState::PushNextWaypoint()
+{
+  if (!pHelper || !IsValid(pHelper->pUnit) || road.empty())
+    return false;
+  const int nextPoint = GetNextRoutePoint(road, pHelper->pUnit->GetPosition().AsVec2D());
+  if (nextPoint >= road.size())
+    return false;
+  PushState(new AIMoveToState(pOwner, road[nextPoint], AiConst::MOVE_BY_LINE_SENS(), canCombat));
+  return true;
+}
+
+bool AIMoveByLineState::OnStep( float dt )
+{
+  FSMStep(dt);
+  return GetCurrentState() == NULL && !PushNextWaypoint();
+}
+
+void AIHealingState::OnLeave()
+{
+  if (pHelper)
+    pHelper->ResetHeal();
+}
+
+bool AIHealingState::OnStep( float dt )
+{
+  (void)dt;
+  return true;
+}
+
+bool AIShoppingState::OnStep( float dt )
+{
+  (void)dt;
+  return true;
+}
+
+bool AIFlagRaisingState::OnStep( float dt )
+{
+  (void)dt;
+  if (pHelper && IsValid(pFlag))
+    pHelper->RaiseFlag(pFlag);
+  return true;
+}
+
+bool AIUseTeleportState::OnStep( float dt )
+{
+  (void)dt;
+  if (pHelper)
+    pHelper->UsePortal(target);
+  return true;
+}
+
+void AIUseTeleportState::OnLeave()
+{
+}
+
+void AIGoToObjectState::OnEnter()
+{
+  if (pHelper && IsValid(pTarget))
+    pHelper->MoveTo(pTarget->GetPosition().AsVec2D());
+}
+
+bool AIGoToObjectState::OnStep( float dt )
+{
+  (void)dt;
+  return !pHelper || !IsValid(pTarget) || !pHelper->IsMoving();
+}
+
+void AIAttackUnitState::OnEnter()
+{
+  if (pHelper && IsValid(pTarget))
+    pHelper->Attack(pTarget);
+}
+
+bool AIAttackUnitState::OnStep( float dt )
+{
+  (void)dt;
+  return !IsValid(pTarget);
+}
+
+bool EscapeFromTowerState::OnStep( float dt )
+{
+  return AIMoveToState::OnStep(dt);
+}
+
+const char *PFAIStatesEnum_ToString( const PFAIStatesEnum value )
+{
+  switch( value )
+  {
+  case NONE: return "NONE";
+  case ESCAPEFROMTOWER: return "ESCAPEFROMTOWER";
+  case BACKTOWARFRONT: return "BACKTOWARFRONT";
+  case ATTACKINGTOWER: return "ATTACKINGTOWER";
+  case FLAGRAISING: return "FLAGRAISING";
+  case COMBATMOVE: return "COMBATMOVE";
+  case MOVE: return "MOVE";
+  case HEALING: return "HEALING";
+  case SHOPPING: return "SHOPPING";
+  case TELEPORT: return "TELEPORT";
+  case GOTOBUILDING: return "GOTOBUILDING";
+  case ATTACKUNIT: return "ATTACKUNIT";
+  case MOVELINEFORWARD: return "MOVELINEFORWARD";
+  case MOVELINEBACKWARD: return "MOVELINEBACKWARD";
+  default: return "UNKNOWN";
+  }
+}
+
+} // namespace NWorld
+
+#else
+
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFBuildings.h"
@@ -359,3 +502,5 @@ const char *PFAIStatesEnum_ToString( const PFAIStatesEnum value )
 };
 
 } // namespace
+
+#endif

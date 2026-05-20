@@ -328,9 +328,9 @@ public:
 		if ( pOther ) EffectBase::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct BasicEffect : public EffectBase

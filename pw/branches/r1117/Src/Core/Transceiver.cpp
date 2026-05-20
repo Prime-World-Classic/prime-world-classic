@@ -14,6 +14,16 @@
 #include "RemoteCommandScheduler.h"
 #include "System/SyncProcessorState.h"
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "System/get_tick_count.h"
+#ifndef NI_SYNC_FPU_START
+#define NI_SYNC_FPU_START
+#endif
+#ifndef NI_SYNC_FPU_END
+#define NI_SYNC_FPU_END
+#endif
+#endif
+
 
 namespace CrcMode
 {
@@ -75,6 +85,7 @@ namespace
 namespace NCore
 {
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 CrcStatsCollector::TypeStats& CrcStatsCollector::GetSliceData( const char* key )
 {
   vector<TypeStats>& vecStats = stats[key];
@@ -132,6 +143,7 @@ void CrcStatsCollector::OnFinishChunk()
 }
 
 const CrcStatsCollector::TTypeStatsMap& CrcStatsCollector::GetStatsData() const { return stats; }
+#endif
 
 
 Transceiver::Transceiver(ICommandScheduler *_scheduler, 
@@ -158,7 +170,7 @@ Transceiver::Transceiver(ICommandScheduler *_scheduler,
   stepsBufferLimit.Init(scheduler->GetStepsDelaySettings(), stepLength);
 
   bool crcDataEnabled;
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && !defined(PW_LINUX_DB_BOOTSTRAP)
   if (writeReplay)
   {
     string fileName = NDebug::GenerateDebugFileName( "replay", "rpl" );
@@ -237,7 +249,7 @@ Transceiver::~Transceiver()
     NI_ASSERT( !crcCalc.IsBusy(), "Thread not dead" );
   }
 
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && !defined(PW_LINUX_DB_BOOTSTRAP)
   if ( g_needCrcStats )
   {
     string outputFileName = NDebug::GenerateDebugFileName( NStr::StrFmt( "crc-objects-size" ), "csv" );
@@ -365,7 +377,7 @@ void Transceiver::ProcessSegment( float localTime )
 
     world->Step( stepLengthInSeconds, localTime );
 
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && !defined(PW_LINUX_DB_BOOTSTRAP)
     if ( g_needCrcStats > 0 && ( world->GetStepNumber() % g_needCrcStats == 0 ) )
     {
       CPtr<IWorldBase> pTmp(world);
@@ -399,8 +411,10 @@ void Transceiver::ProcessSegment( float localTime )
  
   replaySegment.crc = crcResult.crc;
   
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   if (replay)
     replay->WriteSegment( replaySegment );
+#endif
 }
 
 
@@ -515,7 +529,10 @@ void TransceiverCrcCalculator::StartCalcCRCSync( int step, CObj<IWorldBase> worl
 
 
 unsigned long TransceiverCrcCalculator::CalcCRCImpl( int step, CObj<IWorldBase> world )
-{ 
+{
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return 0;
+#else
   NI_PROFILE_FUNCTION;
   
   CrcTimeUpdater crcTimeUpdater;
@@ -568,12 +585,16 @@ unsigned long TransceiverCrcCalculator::CalcCRCImpl( int step, CObj<IWorldBase> 
   }
 
   return curCrcValue;
+#endif
 }
 
 
 
 void TransceiverCrcCalculator::DumpCrc( int step )
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return;
+#else
   threadWithTask.Sync();
 
   int crc = 0;
@@ -590,12 +611,16 @@ void TransceiverCrcCalculator::DumpCrc( int step )
   {
     BinStatsCollector::writeToFile( (*it)->buffer, (*it)->length, *file );
   }
+#endif
 }
 
 
 
 void TransceiverCrcCalculator::UpdateBuffers(int lastConfirmedStep)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return;
+#else
   if (crcDataEnabled)
   {
     if (g_processCrcRequests)
@@ -615,12 +640,16 @@ void TransceiverCrcCalculator::UpdateBuffers(int lastConfirmedStep)
       }
     }
   }
+#endif
 }
 
 
 
 TransceiverCrcCalculator::Buffer * TransceiverCrcCalculator::GetBuffer(int step, Stream & stream)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return 0;
+#else
   for (nstl::list<Buffer*>::iterator it = crcBuffers.begin(); it != crcBuffers.end(); ++it)
   {
     if ( BinStatsCollector::getStepFromBuffer( (*it)->buffer ) == step )
@@ -630,6 +659,7 @@ TransceiverCrcCalculator::Buffer * TransceiverCrcCalculator::GetBuffer(int step,
     }
   }
   return 0;
+#endif
 }
 
 bool Transceiver::CanProcessStep()
@@ -927,8 +957,10 @@ void Transceiver::SetWorld( IWorldBase * _world )
 
 void Transceiver::RecordMapStart( const MapStartInfo & info )
 {
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
   if (replay)
     replay->WriteHeader( info );
+#endif
 }
 
 

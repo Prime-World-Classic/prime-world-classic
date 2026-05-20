@@ -149,9 +149,9 @@ public:
 		if ( pOther ) AuraEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct EffectSwitcher : public EffectBase
@@ -182,9 +182,9 @@ public:
 		if ( pOther ) EffectSwitcher::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct InvisibilityEffect : public ScaleColorEffect
@@ -211,9 +211,9 @@ public:
 		if ( pOther ) InvisibilityEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct MinimapEffect : public EffectBase
@@ -241,9 +241,9 @@ public:
 		if ( pOther ) MinimapEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct PlayAnimationEffect : public EffectBase
@@ -275,9 +275,9 @@ public:
 		if ( pOther ) PlayAnimationEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct PriestessSignEffect : public BasicEffectStandalone
@@ -310,9 +310,9 @@ public:
 		if ( pOther ) PriestessSignEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct RandomEffect : public EffectBase
@@ -340,9 +340,9 @@ public:
 		if ( pOther ) RandomEffect::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 struct UnitSceneObjectModify : public EffectBase
@@ -372,9 +372,9 @@ public:
 		if ( pOther ) UnitSceneObjectModify::Assign( *pOther );
 	}
 
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 	virtual CObj<PF_Core::BasicEffect> Retrieve( PF_Core::ObjectsPool &pool ) const;
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 };
 
 }; // namespace NDb

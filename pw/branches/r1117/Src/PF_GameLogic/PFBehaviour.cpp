@@ -1,5 +1,114 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseUnit.h"
+#include "PFBaseMovingUnit.h"
+#include "PFBehaviour.h"
+
+namespace NWorld
+{
+
+void PFSummonBehaviour::UnsummonFunc::operator()(PFSummonBehaviour* pBehaviour)
+{
+  if (pBehaviour)
+    pBehaviour->OnStop();
+}
+
+PFBaseBehaviour::PFBaseBehaviour(PFBaseMovingUnit* pUnit_)
+  : PFWorldObjectBase(pUnit_ ? pUnit_->GetWorld() : 0, 0)
+  , pUnit(pUnit_)
+  , faction(pUnit_ ? pUnit_->GetFaction() : NDb::FACTION_NEUTRAL)
+  , unitType(pUnit_ ? pUnit_->GetUnitType() : NDb::UNITTYPE_INVALID)
+  , isEnabled(true)
+{
+}
+
+void PFBaseBehaviour::Enable() { isEnabled = true; }
+void PFBaseBehaviour::Disable() { isEnabled = false; }
+bool PFBaseBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
+void PFBaseBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
+bool PFBaseBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const { (void)pAttacked; (void)originalAttackedFaction; return false; }
+void PFBaseBehaviour::DoScream(const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st) { (void)pTarget; (void)st; }
+
+PFSummonBehaviour::PFSummonBehaviour(PFBaseMovingUnit* pUnit_, PFBaseUnit* pMaster_, const NDb::SummonBehaviourBase* pBehaviourData, float maxLifeTime_, int behaviourFlags_)
+  : PFBaseBehaviour(pUnit_)
+  , pMaster(pMaster_)
+  , lifeTime(0.0f)
+  , maxLifeTime(maxLifeTime_)
+  , behaviourFlags(behaviourFlags_)
+  , index(-1)
+  , lashRange(0.0f)
+  , responseRange(0.0f)
+  , responseTime(0.0f)
+  , pBehaviourDb(pBehaviourData)
+{
+}
+
+PFSummonBehaviour::PFSummonBehaviour()
+  : pMaster(0)
+  , lifeTime(0.0f)
+  , maxLifeTime(0.0f)
+  , behaviourFlags(0)
+  , index(-1)
+  , lashRange(0.0f)
+  , responseRange(0.0f)
+  , responseTime(0.0f)
+  , pBehaviourDb(0)
+{
+}
+
+void PFSummonBehaviour::Unsummon()
+{
+  lifeTime = -1.0f;
+}
+
+float PFSummonBehaviour::GetLashRange() const
+{
+  return lashRange > 0.0f ? lashRange : 0.0f;
+}
+
+bool PFSummonBehaviour::OnStep(float dtInSeconds)
+{
+  lifeTime += dtInSeconds;
+  return true;
+}
+
+void PFBehaviourGroup::AddBehavior(CPtr<PFSummonBehaviour> const& behaviour)
+{
+  if (!IsValid(behaviour))
+    return;
+  behaviour->SetIndex(groupSize++);
+  group.addLast(behaviour);
+  ++namedGroupsSize[behaviour->GetGroupName()];
+}
+
+void PFBehaviourGroup::RemoveBehavior(CPtr<PFSummonBehaviour> const& behaviour)
+{
+  if (!IsValid(behaviour))
+    return;
+  PFSummonBehaviour::GroupRing::safeRemove(behaviour);
+  if (groupSize > 0)
+    --groupSize;
+  map<string, int>::iterator it = namedGroupsSize.find(behaviour->GetGroupName());
+  if (it != namedGroupsSize.end() && it->second > 0)
+    --it->second;
+}
+
+int PFBehaviourGroup::GetSize(const string& summonGroupName) const
+{
+  map<string, int>::const_iterator it = namedGroupsSize.find(summonGroupName);
+  return it == namedGroupsSize.end() ? 0 : it->second;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseBehaviour, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFSummonBehaviour, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFBehaviourGroup, NWorld);
+
+#else
+
 #include "PFBaseUnit.h"
 #include "PFBaseMovingUnit.h"
 #include "PFBehaviour.h"
@@ -221,3 +330,5 @@ int PFBehaviourGroup::GetSize( const string& summonGroupName ) const
 REGISTER_WORLD_OBJECT_NM(PFBaseBehaviour, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFSummonBehaviour, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFBehaviourGroup, NWorld);
+
+#endif

@@ -1,5 +1,214 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplicator.h"
+#include "PFBaseUnit.h"
+#include "PFBaseAttackData.h"
+#include "PFAbilityData.h"
+
+namespace NWorld
+{
+
+namespace
+{
+struct StopAndMemorizeApplicator
+{
+  void operator()(const CObj<PFBaseApplicator>& app)
+  {
+    if (!app)
+      return;
+    if (app->IsAlive())
+      app->Stop();
+    MemorizeApplicator(app);
+  }
+};
+
+struct StopOnDeathApplicator
+{
+  explicit StopOnDeathApplicator(bool sender) : sender(sender) {}
+  void operator()(const CObj<PFBaseApplicator>& app)
+  {
+    if (!app)
+      return;
+    const bool shouldStop = sender ? app->NeedToStopOnSenderDeath() : app->NeedToStopOnDeath();
+    if (shouldStop)
+    {
+      if (!sender)
+        app->SetStopReason(APPL_STOP_REASON_ONDEATH);
+      app->Stop();
+      MemorizeApplicator(app);
+    }
+  }
+  bool sender;
+};
+
+struct RecalculateApplicator
+{
+  void operator()(const CObj<PFBaseApplicator>& app)
+  {
+    if (app)
+      app->Recalculate();
+  }
+};
+}
+
+bool PFBaseUnit::OnApplicatorApply(CObj<PFBaseApplicator> pApplicator)
+{
+  if (!pApplicator)
+    return false;
+
+  PFBaseUnitApplicatorAppliedEvent evtApplicator(pApplicator);
+  EventHappened(evtApplicator);
+  if (evtApplicator.IsApplicatorCancelled())
+    return false;
+
+  if (pApplicator->Start())
+  {
+    pApplicator->Stop();
+    MemorizeApplicator(pApplicator);
+    return true;
+  }
+
+  if (!pApplicator->GetApplicatorName().empty())
+    RegisterNamedApplicator(pApplicator.GetPtr());
+
+  RegisterAppliedApplicator(pApplicator);
+  CPtr<PFBaseUnit> pSender = pApplicator->GetAbilityOwner();
+  if (IsValid(pSender))
+    pSender->RegisterSentApplicator(pApplicator);
+
+  return true;
+}
+
+void PFBaseUnit::StepApplicators(float dtInSeconds)
+{
+  PFBaseApplicator::StepRing(appliedApplicators, dtInSeconds);
+}
+
+void PFBaseUnit::StepApplicatorsHistory() {}
+
+void PFBaseUnit::RecalculateApplicators()
+{
+  RecalculateApplicator recalculate;
+  ForAllAppliedApplicatorsSafe(recalculate);
+}
+
+void PFBaseUnit::RemoveAppliedApplicators()
+{
+  StopAndMemorizeApplicator stop;
+  ForAllAppliedApplicators(stop);
+}
+
+void PFBaseUnit::RemoveSentApplicators()
+{
+  StopAndMemorizeApplicator stop;
+  ForAllSentApplicators(stop);
+}
+
+void PFBaseUnit::RemoveAppliedApplicatorsOnDeath()
+{
+  StopOnDeathApplicator stop(false);
+  ForAllAppliedApplicators(stop);
+}
+
+void PFBaseUnit::RemoveSentApplicatorsOnDeath()
+{
+  StopOnDeathApplicator stop(true);
+  ForAllSentApplicators(stop);
+}
+
+void PFBaseUnit::CleanupHistoryApplicators()
+{
+  while (!appliedApplicatorsHistory.empty())
+    PFBaseApplicator::AppliedRing::remove(appliedApplicatorsHistory.first());
+  while (!sentApplicatorsHistory.empty())
+    PFBaseApplicator::SentRing::remove(sentApplicatorsHistory.first());
+}
+
+void PFBaseUnit::CleanupTauntApplicatorsStack()
+{
+  tauntApplicators.clear();
+}
+
+void PFBaseUnit::AddEventListener(CPtr<PFBaseUnitEventListener> pListener)
+{
+  if (IsValid(pListener) && nstl::find(eventListeners.begin(), eventListeners.end(), pListener) == eventListeners.end())
+    eventListeners.push_back(pListener.GetPtr());
+}
+
+void PFBaseUnit::RemoveEventListener(CPtr<PFBaseUnitEventListener> pListener)
+{
+  if (!IsValid(pListener))
+    return;
+  nstl::list<CObj<PFBaseUnitEventListener>>::iterator it = nstl::find(eventListeners.begin(), eventListeners.end(), pListener);
+  if (it != eventListeners.end())
+    eventListeners.erase(it);
+}
+
+void PFBaseUnit::EventHappened(const PFBaseUnitEvent &evt)
+{
+  for (nstl::list<CObj<PFBaseUnitEventListener>>::iterator it = eventListeners.begin(); it != eventListeners.end();)
+  {
+    PFBaseUnitEventListener* pListener = *it;
+    if (!pListener || !pListener->IsAlive() || (pListener->OnEvent(&evt) & PFBaseUnitEventListener::FLAGS_REMOVE))
+      it = eventListeners.erase(it);
+    else
+      ++it;
+  }
+}
+
+void PFBaseUnit::AddAbilityUpgradeApplicator(PFApplAbilityUpgrade *pAppl)
+{
+  if (pAppl)
+    abilitiesUpgrades.addLast(pAppl);
+}
+
+void PFBaseUnit::RemoveAbilityUpgradeApplicator(PFApplAbilityUpgrade *pAppl)
+{
+  if (pAppl)
+    PFApplAbilityUpgrade::Ring::safeRemove(pAppl);
+}
+
+PFApplAbilityUpgrade::Ring const & PFBaseUnit::GetAbilityUpgradeApplicators() const
+{
+  return abilitiesUpgrades;
+}
+
+IMiscFormulaPars const* PFBaseUnit::FindApplicator(const char*, IMiscFormulaPars const* pMisc, ApplicatorSearchType) const
+{
+  return pMisc;
+}
+
+const IMiscFormulaPars* PFBaseUnit::FindApplicator(const char*, const IMiscFormulaPars* pMisc, ApplicatorSearchType, int) const
+{
+  return pMisc;
+}
+
+int PFBaseUnit::CountApplicators(const char*, const IMiscFormulaPars*, ApplicatorSearchType) const
+{
+  return 0;
+}
+
+IMiscFormulaPars const* PFBaseUnit::GetAblt(AbilityID abilityId) const
+{
+  if (BASE_ATTACK == abilityId)
+    return pAttackAbility.GetPtr();
+  if (ABILITY0 <= abilityId && abilityId <= ABILITY4)
+    return GetAbility(abilityId);
+  return PFLogicObject::GetAblt(abilityId);
+}
+
+float PFBaseUnit::GetDamageTaken(float) const { return 0.0f; }
+float PFBaseUnit::GetDamageDealt(float) const { return 0.0f; }
+float PFBaseUnit::GetDamageTakenEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
+float PFBaseUnit::GetDamageDealtEx(float, const unsigned, const IMiscFormulaPars* const) const { return 0.0f; }
+int PFBaseUnit::CountStatusesForDispel(const IUnitFormulaPars*) const { return 0; }
+
+}
+
+#else
+
 #include "PFWorld.h"
 #include "PFAIWorld.h"
 
@@ -669,3 +878,5 @@ int PFBaseUnit::CountStatusesForDispel( const IUnitFormulaPars* pDispeller ) con
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace NWorld
+
+#endif

@@ -13,7 +13,10 @@ namespace NGameX
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   class PFEffectRandom : public PF_Core::EffectDBLinker<NDb::RandomEffect>
   {
+    OBJECT_BASIC_METHODS( PFEffectRandom )
+
   public:
+    PFEffectRandom() {}
     PFEffectRandom(const NDb::EffectBase &dbEffect) : EffectBase(dbEffect) {}
 
     virtual void Apply(CPtr<PF_Core::ClientObjectBase> const &pObject);

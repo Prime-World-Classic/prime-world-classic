@@ -2,6 +2,7 @@
 #include "TinyFileWriteStream.h"
 
 TinyFileWriteStream::TinyFileWriteStream( const string & fileName, int flags /*= BINARY*/ )
+  : hFile(0)
 {
   const char *mode;
   
@@ -10,7 +11,8 @@ TinyFileWriteStream::TinyFileWriteStream( const string & fileName, int flags /*=
   else
     mode = "w";
 
-  if ( fopen_s(&hFile, fileName.c_str(), mode) != 0 )
+  hFile = fopen( fileName.c_str(), mode );
+  if ( !hFile )
   {
     DebugTrace( "Failed to open file %s", fileName.c_str() );
     SetBroken( true );
@@ -45,8 +47,11 @@ const char * TinyFileWriteStream::GetBuffer() const
 
 void TinyFileWriteStream::Close()
 {
-  fclose(hFile);
-  hFile = 0;
+  if ( hFile )
+  {
+    fclose(hFile);
+    hFile = 0;
+  }
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

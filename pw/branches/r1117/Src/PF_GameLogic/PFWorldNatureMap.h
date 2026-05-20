@@ -8,7 +8,6 @@
 #include "../System/2Darray.h"
 #include "PFWorldObjectBase.h"
 #include "PFWorld.h"
-#include "PFAIWorld.h"
 #include "../System/ScopedArray.h"
 
 namespace NGameX { class PFClientNatureMap; }

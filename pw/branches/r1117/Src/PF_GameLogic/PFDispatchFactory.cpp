@@ -1,5 +1,65 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFDispatchFactory.h"
+#include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
+#include "PFBaseUnit.h"
+#include "PFDispatch.h"
+#include "PFApplicator.h"
+
+namespace NWorld
+{
+
+CObj<PFBaseApplicator> CreateApplicator(PFApplCreatePars const &cp)
+{
+  if (!cp.pDBAppl)
+    return 0;
+
+  CObj<PFBaseApplicator> pAppl(cp.pDBAppl->Create(cp));
+  if (pAppl && !pAppl->Init())
+    pAppl = 0;
+  return pAppl;
+}
+
+PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
+                           CPtr<PFBaseApplicator> const& pParent,
+                           Target const &source,
+                           Target const &target,
+                           NDb::Ptr<NDb::Spell> const& pSpell,
+                           int flagsForApplicators,
+                           bool start,
+                           float startDelay)
+{
+  (void)startDelay;
+  if (!IsValid(pAbility) || !pAbility->GetData() || !IsValid(pAbility->GetOwner()))
+    return 0;
+
+  PFDispatchCreateParams dcp(pAbility, target, source, flagsForApplicators, pParent);
+  dcp.pDBDispatch = pSpell ? pSpell->dispatch : 0;
+  dcp.pSender = pAbility->GetOwner();
+  dcp.pWorld = dcp.pSender->GetWorld();
+
+  PFDispatch* pDispatch = new PFDispatch(dcp);
+  if (pDispatch && pSpell)
+  {
+    pDispatch->AddApplicators(pSpell->applicators);
+    if (pSpell->dispatch && (pSpell->dispatch->flags & NDb::DISPATCHFLAGS_UPGRADABLE) != 0)
+      pDispatch->UpgradeBeforeApply();
+  }
+  if (start && pDispatch)
+  {
+    pDispatch->Start();
+    pDispatch->Step(0.0f);
+  }
+  return pDispatch;
+}
+
+} // namespace NWorld
+
+#else
+
 #include "PFDispatchFactory.h"
 
 #include "PFBaseUnit.h"
@@ -72,3 +132,5 @@ PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
 }
 
 }
+
+#endif

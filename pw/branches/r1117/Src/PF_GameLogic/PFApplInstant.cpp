@@ -1,4 +1,558 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplInstant.h"
+#include "PFBaseUnit.h"
+#include "PFHero.h"
+#include "PFApplMod.h"
+#include "PFApplUtils.h"
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFDispatchFactory.h"
+#include "PFTargetSelector.h"
+
+namespace NWorld
+{
+
+PFApplDamage::PFApplDamage(PFApplCreatePars const &cp)
+  : Base(cp)
+  , damage(0.0f)
+  , damageDealed(0.0f)
+  , isCritical(false)
+  , ignoreDefences(false)
+  , delegatedDamage(0.0f)
+  , delegateDamageDesc(0)
+{
+}
+
+bool PFApplDamage::Start()
+{
+  PFBaseApplicator::Start();
+  if (IsValid(pReceiver))
+  {
+    damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : RetrieveParam(GetDB().damage, 0.0f);
+    PFBaseUnit::DamageDesc desc;
+    desc.pSender = GetAbilityOwner();
+    desc.amount = damage;
+    desc.damageType =
+      GetDB().damageType == NDb::APPLICATORDAMAGETYPE_NATIVE
+        ? (IsValid(desc.pSender) && desc.pSender->DbUnitDesc() ? desc.pSender->GetNativeDamageType() : NDb::APPLICATORDAMAGETYPE_MATERIAL)
+        : GetDB().damageType;
+    desc.flags = flags;
+    desc.damageMode = GetDB().damageMode;
+    desc.dontAttackBack = false;
+    desc.delegated = IsDelegated();
+    desc.ignoreDefences = ignoreDefences;
+    desc.pDealerApplicator = this;
+    damageDealed = pReceiver->OnDamage(desc);
+  }
+  return true;
+}
+
+void PFApplDamage::SetDelegated(PFBaseUnit::DamageDesc const* desc)
+{
+  if (!desc)
+    return;
+  flags |= FLAG_DELEGATED;
+  pReceiver = GetTarget().IsUnit() ? GetTarget().GetUnit() : 0;
+  delegateDamageDesc = desc;
+  damage = desc->amount;
+  ignoreDefences = desc->ignoreDefences;
+}
+
+void PFApplDamage::LogDamage(PFBaseUnit const*, PFBaseUnit const*) const {}
+
+float PFApplDamage::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "Damage") == 0)
+    return damage;
+  if (strcmp(sVariableName, "DamageDealed") == 0 || strcmp(sVariableName, "DamageDealt") == 0)
+    return damageDealed;
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+void PFApplDamage::DumpInfo(NLogg::CChannelLogger&) const {}
+
+PFApplHeal::PFApplHeal(PFApplCreatePars const &cp)
+  : Base(cp)
+  , amount(0.0f)
+  , amountRestored(0.0f)
+{
+}
+
+bool PFApplHeal::Start()
+{
+  PFBaseApplicator::Start();
+  amount = RetrieveParam(GetDB().amount, 0.0f);
+  if (IsValid(pReceiver))
+  {
+    amountRestored =
+      GetDB().healTarget == NDb::HEALTARGET_ENERGY
+        ? pReceiver->OnHealEnergy(GetAbilityOwner(), amount)
+        : pReceiver->OnHeal(GetAbilityOwner(), amount, GetDB().ignoreHealingMods);
+  }
+  else
+  {
+    amountRestored = 0.0f;
+  }
+  return true;
+}
+
+float PFApplHeal::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "Amount") == 0)
+    return amount;
+  if (strcmp(sVariableName, "AmountRestored") == 0)
+    return amountRestored;
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+bool PFApplKill::Start()
+{
+  PFBaseApplicator::Start();
+  int flags = PFBaseUnit::UNITDIEFLAGS_NONE;
+  if (GetDB().dontGiveRewards)
+    flags |= PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS;
+  switch (GetDB().flag)
+  {
+  case NDb::KILLMODE_UNSUMMON:
+    flags |= PFBaseUnit::UNITDIEFLAGS_UNSUMMON;
+    break;
+  case NDb::KILLMODE_DONTSHOWDEATH:
+    flags |= PFBaseUnit::UNITDIEFLAGS_DONTPLAYDEATHANIMATION;
+    break;
+  case NDb::KILLMODE_INSTANTREMOVE:
+    flags |= PFBaseUnit::UNITDIEFLAGS_FORCEREMOVECORPSE;
+    break;
+  default:
+    break;
+  }
+  if (IsValid(pReceiver))
+  {
+    PFBaseUnitDamageDesc tempDamageDesc;
+    tempDamageDesc.pDealerApplicator = this;
+    tempDamageDesc.pSender = GetAbilityOwner();
+    pReceiver->KillUnit(GetAbilityOwner(), flags, &tempDamageDesc);
+  }
+  return true;
+}
+
+bool PFApplRefreshCooldown::Start()
+{
+  PFBaseApplicator::Start();
+
+  float reductionAmount = RetrieveParam(GetDB().reductionAmount, 0.0f);
+  if (reductionAmount < 0.0f && !GetDB().allowCdIncrease)
+    reductionAmount = 0.0f;
+  else if (reductionAmount == 0.0f && GetDB().allowCdIncrease)
+    return true;
+
+  if (GetDB().talents.empty() && GetDB().flags == 0 && GetDB().refreshThis)
+  {
+    if (GetAbility() && GetAbility()->GetData())
+      GetAbility()->GetData()->DropCooldown(true, reductionAmount, GetDB().reduceByPercent);
+  }
+  else if (IsValid(pReceiver) && pReceiver->IsHero())
+  {
+    PFBaseHero *pHero = static_cast<PFBaseHero*>(pReceiver.GetPtr());
+    const DropCooldownParams dropCdParams(GetDB().flags, GetDB().talents, GetDB().useListAs, GetDB().refreshThis ? NULL : GetAbility()->GetData(), reductionAmount, GetDB().reduceByPercent);
+    pHero->DropCooldowns(dropCdParams);
+  }
+
+  return true;
+}
+
+bool PFApplSpell::Start()
+{
+  PFBaseApplicator::Start();
+  numSpellsSent = SendSpell2Targets(this, GetDB().spell, GetDB().targetSelector);
+  if (IsValid(pParent))
+    pParent->OnNotification(*this, numSpellsSent > 0 ? NDb::PARENTNOTIFICATION_DONE : NDb::PARENTNOTIFICATION_CANCEL);
+  return true;
+}
+
+float PFApplSpell::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "NumSpellsSent") == 0 || strcmp(sVariableName, "spellsSent") == 0)
+    return numSpellsSent;
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+bool PFApplAbilityEnd::Start()
+{
+  PFBaseApplicator::Start();
+  if (GetAbility())
+  {
+    GetAbility()->NotifyAbilityEnd();
+    if (GetDB().cancelApplicators && GetAbility()->GetData())
+      GetAbility()->GetData()->CancelAbility();
+  }
+  if (IsValid(pParent))
+    pParent->OnNotification(*this, NDb::PARENTNOTIFICATION_DONE);
+  return true;
+}
+
+bool PFApplDispell::Start()
+{
+  PFBaseApplicator::Start();
+  effectsDispelled = 0;
+
+  vector<const PFBaseUnit*> targetsToDispell;
+  if (GetDB().targets)
+  {
+    CObj<PFTargetSelector> pTargetSelector = GetDB().targets->Create(GetWorld());
+    PFTargetSelector::TargetsCollector<const PFBaseUnit> targetsCollector(targetsToDispell);
+    PFTargetSelector::RequestParams rp(*this, GetTarget());
+    pTargetSelector->EnumerateTargets(targetsCollector, rp);
+  }
+  else if (IsValid(pReceiver))
+  {
+    targetsToDispell.push_back(pReceiver.GetPtr());
+  }
+
+  int effects2Dispell = RetrieveParam(GetDB().maxEffectsToDispell, 1);
+  if (targetsToDispell.empty() || effects2Dispell <= 0)
+    return true;
+
+  const int factionFlags = IsValid(GetAbilityOwner())
+    ? GetAbilityOwner()->GetOppositeFactionFlags()
+    : ((1 << NDb::FACTION_BURN) | (1 << NDb::FACTION_FREEZE) | (1 << NDb::FACTION_NEUTRAL));
+
+  int potentialEffectApplicatorsCount = 0;
+  do
+  {
+    potentialEffectApplicatorsCount = DispellOneEffect(factionFlags, targetsToDispell);
+  } while (--effects2Dispell > 0 && potentialEffectApplicatorsCount > 0);
+
+  return true;
+}
+
+int PFApplDispell::SearchStatus2Dispell(const vector<const PFBaseUnit*>& targetsToDispell, const int dispellFactionFlags, const Target& requester, vector<PFBaseApplicator*>& statuses)
+{
+  struct SearchForStatusesToDispell : public NonCopyable
+  {
+    const int factionFlags;
+    const CVec2 requestPos;
+    int potentialStatuses2Remove;
+    map<pair<const PFBaseUnit*, NDb::DBID>, vector<PFBaseApplicator*> > statusesMap;
+    NDb::DBID bestApplDBID;
+    NDb::EDispellPriority maxPriority;
+    float maxRemainingDurationPercent;
+    float bestUnitDistToRequester2;
+    const PFBaseUnit* currentUnit;
+    const PFBaseUnit* bestUnit;
+
+    SearchForStatusesToDispell(int factionFlags_, const Target& requester_)
+      : factionFlags(factionFlags_)
+      , requestPos(requester_.AcquirePosition().AsVec2D())
+      , potentialStatuses2Remove(0)
+      , maxPriority(NDb::DISPELLPRIORITY_NONDISPELLABLE)
+      , maxRemainingDurationPercent(0.0f)
+      , bestUnitDistToRequester2(1e10f)
+      , currentUnit(0)
+      , bestUnit(0)
+    {
+    }
+
+    void operator()(const CObj<PFBaseApplicator>& pAppl)
+    {
+      if (!pAppl || pAppl->GetTypeId() != PFApplStatus::typeId)
+        return;
+
+      if (!IsValid(pAppl->GetAbilityOwner()) || (factionFlags & (1 << pAppl->GetAbilityOwner()->GetFaction())) == 0)
+        return;
+
+      PFApplStatus* pStatus = static_cast<PFApplStatus*>(pAppl.GetPtr());
+      const NDb::EDispellPriority dispellPriority = pStatus->GetDB().dispellPriority;
+      if (dispellPriority == NDb::DISPELLPRIORITY_NONDISPELLABLE)
+        return;
+
+      const NDb::DBID applDBID = pStatus->GetDBBase()->GetDBID();
+      vector<PFBaseApplicator*>& vecStatus = statusesMap[make_pair(currentUnit, applDBID)];
+      if (vecStatus.empty())
+        ++potentialStatuses2Remove;
+      vecStatus.push_back(pStatus);
+
+      if (dispellPriority < maxPriority)
+        return;
+
+      const float lifetime = pStatus->GetLifetime();
+      const float otherRemainingDurationPercent = lifetime > EPS_VALUE ? pStatus->GetDuration() / lifetime : 1.0f;
+
+      if (dispellPriority > maxPriority)
+      {
+        maxPriority = dispellPriority;
+        bestApplDBID = applDBID;
+        bestUnit = currentUnit;
+        maxRemainingDurationPercent = otherRemainingDurationPercent;
+      }
+      else if (dispellPriority == maxPriority)
+      {
+        if (otherRemainingDurationPercent > maxRemainingDurationPercent)
+        {
+          bestApplDBID = applDBID;
+          bestUnit = currentUnit;
+          maxRemainingDurationPercent = otherRemainingDurationPercent;
+        }
+        else if (otherRemainingDurationPercent == maxRemainingDurationPercent && currentUnit)
+        {
+          const float dist = fabs2(requestPos - currentUnit->GetPosition().AsVec2D());
+          if (dist < bestUnitDistToRequester2)
+          {
+            bestApplDBID = applDBID;
+            bestUnit = currentUnit;
+            bestUnitDistToRequester2 = dist;
+          }
+        }
+      }
+    }
+
+    vector<PFBaseApplicator*>& GetStatuses()
+    {
+      return statusesMap[make_pair(bestUnit, bestApplDBID)];
+    }
+  } f(dispellFactionFlags, requester);
+
+  for (int i = 0, count = targetsToDispell.size(); i < count; ++i)
+  {
+    const PFBaseUnit* pUnit = targetsToDispell[i];
+    if (!pUnit)
+      continue;
+    f.currentUnit = pUnit;
+    pUnit->ForAllAppliedApplicators(f);
+  }
+
+  statuses = f.GetStatuses();
+  return f.potentialStatuses2Remove;
+}
+
+int PFApplDispell::DispellOneEffect(const int dispellFactionFlags, const vector<const PFBaseUnit*>& targetsToDispell)
+{
+  vector<PFBaseApplicator*> appls2Remove;
+  int potentialStatuses2Remove = SearchStatus2Dispell(targetsToDispell, dispellFactionFlags, GetTarget(), appls2Remove);
+  if (potentialStatuses2Remove == 0)
+    return 0;
+
+  for (int i = 0, count = appls2Remove.size(); i < count; ++i)
+  {
+    if (appls2Remove[i] && appls2Remove[i]->IsAlive())
+    {
+      appls2Remove[i]->Stop();
+      MemorizeApplicator(appls2Remove[i]);
+    }
+  }
+
+  ++effectsDispelled;
+  return potentialStatuses2Remove - 1;
+}
+
+float PFApplDispell::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "EffectsDispelled") == 0 || strcmp(sVariableName, "effectsDispelled") == 0)
+    return effectsDispelled;
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+PFUIMessageApplicator::PFUIMessageApplicator(PFApplCreatePars const& cp)
+  : Base(cp)
+{
+}
+
+bool PFUIMessageApplicator::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+PFResurrectApplicator::PFResurrectApplicator(PFApplCreatePars const& cp)
+  : Base(cp)
+{
+}
+
+bool PFResurrectApplicator::Start()
+{
+  PFBaseApplicator::Start();
+  CDynamicCast<PFBaseHero> pHero(pReceiver);
+  if (pHero && pHero->IsDead() && !pHero->IsResurrecting())
+    pHero->Resurrect();
+  return true;
+}
+
+PFAddNaftaApplicator::PFAddNaftaApplicator(PFApplCreatePars const &cp)
+  : Base(cp)
+  , nafta(0.0f)
+{
+}
+
+bool PFAddNaftaApplicator::Start()
+{
+  PFBaseApplicator::Start();
+  nafta = RetrieveParam(GetDB().nafta, 0.0f);
+  if (IsValid(pReceiver))
+    pReceiver->OnAddGold(GetAbilityOwner(), nafta, false);
+  return true;
+}
+
+float PFAddNaftaApplicator::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "Nafta") == 0)
+    return nafta;
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+void PFAddNaftaApplicator::DumpInfo(NLogg::CChannelLogger&) const {}
+
+PFApplVariableProxy::PFApplVariableProxy(PFApplCreatePars const &cp)
+  : Base(cp)
+  , currentAppl(0)
+  , applicatorCount(0)
+{
+}
+
+bool PFApplVariableProxy::Start()
+{
+  PFBaseApplicator::Start();
+  if (!IsValid(GetAbilityOwner()) || !IsValid(pReceiver))
+    return true;
+
+  Target targ(pReceiver);
+  variables.reserve(GetDB().applicators.size());
+
+  PFApplCreatePars cp(pAbility, targ, this);
+  for (int i = 0, applsNumber = GetDB().applicators.size(); i < applsNumber; ++i)
+  {
+    currentAppl = i;
+
+    const int varNamesSize = GetDB().applicators[i].variableNames.size();
+    variables.push_back(vector<float>(varNamesSize, 0.0f));
+
+    cp.pDBAppl = GetDB().applicators[i].applicator;
+    if (!cp.pDBAppl)
+      continue;
+
+    CObj<PFBaseApplicator> pAppl = CreateApplicator(cp);
+    if (pAppl && ActivateApplicator(pAppl, pAbility))
+      ++applicatorCount;
+  }
+
+  return applicatorCount == 0;
+}
+
+void PFApplVariableProxy::OnNotification(PFBaseApplicator& appl, NDb::EParentNotification note)
+{
+  if (note != NDb::PARENTNOTIFICATION_STOP)
+    return;
+
+  for (int i = 0, applsNumber = GetDB().applicators.size(); i < applsNumber; ++i)
+  {
+    const NDb::ApplicatorToProxy& proxiedAppl = GetDB().applicators[i];
+    if (!proxiedAppl.applicator)
+      continue;
+
+    if (proxiedAppl.applicator->GetDBID() == appl.GetDBBase()->GetDBID())
+    {
+      for (int v = 0, varsNumber = proxiedAppl.variableNames.size(); v < varsNumber; ++v)
+        if (!proxiedAppl.variableNames[v].empty())
+          variables[i][v] = appl.GetVariable(proxiedAppl.variableNames[v].c_str());
+
+      --applicatorCount;
+      return;
+    }
+  }
+}
+
+bool PFApplVariableProxy::Step(float dtInSeconds)
+{
+  if (PFBaseApplicator::Step(dtInSeconds))
+    return true;
+  return applicatorCount <= 0;
+}
+
+void PFApplVariableProxy::Stop()
+{
+  RemoveChildrenApplicators();
+  PFBaseApplicator::Stop();
+}
+
+float PFApplVariableProxy::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "ApplicatorCount") == 0)
+    return applicatorCount;
+  if (strcmp(sVariableName, "CurrentApplicator") == 0)
+    return currentAppl;
+
+  const char* delimPos = strchr(sVariableName, ':');
+  const int varStrLen = delimPos ? delimPos - sVariableName : strlen(sVariableName);
+
+  for (int i = 0, applsNumber = GetDB().applicators.size(); i < applsNumber; ++i)
+  {
+    const NDb::ApplicatorToProxy& proxiedAppl = GetDB().applicators[i];
+    if (!proxiedAppl.applicator)
+      continue;
+
+    if (delimPos && strncmp(sVariableName, proxiedAppl.applicator->formulaName.c_str(), varStrLen) != 0)
+      continue;
+
+    const char* variableName = delimPos ? delimPos + 1 : sVariableName;
+    for (int v = 0, varsNumber = proxiedAppl.variableNames.size(); v < varsNumber; ++v)
+      if (!proxiedAppl.variableNames[v].empty() && strcmp(variableName, proxiedAppl.variableNames[v].c_str()) == 0)
+        return variables[i][v];
+  }
+
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+PFApplCreateGlyph::PFApplCreateGlyph(PFApplCreatePars const &cp)
+  : Base(cp)
+  , originalParentDir(VNULL2)
+{
+}
+
+bool PFApplCreateGlyph::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+bool PFApplVictory::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+bool PFApplChangeState::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+bool PFApplGiveConsumable::Start()
+{
+  PFBaseApplicator::Start();
+  return true;
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplDamage,                NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplHeal,                  NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplKill,                  NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplRefreshCooldown,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplSpell,                 NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplAbilityEnd,            NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplDispell,               NWorld);
+REGISTER_WORLD_OBJECT_NM(PFUIMessageApplicator,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFResurrectApplicator,       NWorld);
+REGISTER_WORLD_OBJECT_NM(PFAddNaftaApplicator,        NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplVariableProxy,         NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplCreateGlyph,           NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplVictory,               NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplChangeState,           NWorld);
+REGISTER_WORLD_OBJECT_NM(PFApplGiveConsumable,        NWorld);
+
+#else
+
 #include "PFApplInstant.h"
 #include "PFBaseUnit.h"
 #include "PFWorld.h"
@@ -1102,3 +1656,5 @@ REGISTER_WORLD_OBJECT_NM(PFApplCreateGlyph,           NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplVictory,               NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplChangeState,           NWorld);
 REGISTER_WORLD_OBJECT_NM(PFApplGiveConsumable,        NWorld);
+
+#endif

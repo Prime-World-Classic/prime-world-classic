@@ -1,6 +1,7 @@
 #include "stdafx.h"
 
 #include "PFAdvMapObject.h"
+#include "DBAdvMap.h"
 #include "TileMap.h"
 
 namespace NWorld

@@ -12,6 +12,202 @@ namespace
   static bool g_dump_micro_ai_ts = false;
 
 }
+
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+
+namespace NWorld
+{
+
+void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
+
+namespace
+{
+  static void AddUniqueUnit(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* unit)
+  {
+    if (!unit)
+      return;
+    for (vector<CPtr<PFBaseUnit> >::const_iterator it = units.begin(); it != units.end(); ++it)
+      if (it->GetPtr() == unit)
+        return;
+    units.push_back(unit);
+  }
+
+  static void CollectCandidateUnits(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* owner)
+  {
+    GetLinuxBootstrapUnits(units);
+    AddUniqueUnit(units, owner);
+    if (owner)
+      AddUniqueUnit(units, owner->GetCurrentTarget().GetPtr());
+  }
+}
+
+bool PFBasicMicroAI::CheckConditions() const
+{
+  if (!IsValid(pAbility) || !pAbility->GetDBDesc())
+    return false;
+  if (!pAbility->CanBeUsed())
+    return false;
+  if (pAbility->GetType() == NDb::ABILITYTYPE_PASSIVE ||
+      pAbility->GetType() == NDb::ABILITYTYPE_AUTOCASTABLE ||
+      pAbility->GetType() == NDb::ABILITYTYPE_SIMPLE)
+    return false;
+
+  CPtr<PFBaseUnit> const& unit = pAbility->GetOwner();
+  if (!IsValid(unit))
+    return false;
+
+  return GetDB().condition(unit.GetPtr(), unit.GetPtr(), static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), false);
+}
+
+bool PFBasicMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
+{
+  if (!CheckConditions())
+    return false;
+
+  CPtr<PFBaseUnit> const& owner = pAbility->GetOwner();
+  const NDb::ESpellTarget targetType = pAbility->GetTargetType();
+  if (targetType == 0 || targetType == NDb::SPELLTARGET_SELF)
+  {
+    target = Target(owner);
+    return CheckTargetCondition(target, condition, pAbility.GetPtr());
+  }
+
+  int factionFlags = 0;
+  if (targetType & NDb::SPELLTARGET_ALLY)
+    factionFlags |= 1 << owner->GetFaction();
+  if (targetType & NDb::SPELLTARGET_ENEMY)
+    factionFlags |= owner->GetOppositeFactionFlags();
+  if (!factionFlags)
+    factionFlags = owner->GetOppositeFactionFlags();
+
+  float useRange = pAbility->GetUseRange();
+  if (useRange <= 0.0f)
+    useRange = owner->GetVisibilityRange() > 0.0f ? owner->GetVisibilityRange() : 10000.0f;
+
+  vector<CPtr<PFBaseUnit> > units;
+  CollectCandidateUnits(units, owner.GetPtr());
+  UnitMaskingPredicate predicate(factionFlags, targetType);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!IsUnitValid(unit) || unit == owner.GetPtr())
+      continue;
+    if (!owner->IsTargetInRange(unit, useRange))
+      continue;
+    if (!predicate(*unit))
+      continue;
+
+    Target candidate(unit);
+    if (!CheckTargetCondition(candidate, condition, pAbility.GetPtr()))
+      continue;
+
+    target = candidate;
+    return true;
+  }
+
+  return false;
+}
+
+PFTargetSelectorMicroAI::PFTargetSelectorMicroAI(CreateParams const &cp) : Base(cp)
+{
+  if (IsValid(GetDB().targetSelector))
+    pTargetSelector = dynamic_cast<PFSingleTargetSelector*>(GetDB().targetSelector->Create(GetWorld()));
+}
+
+bool PFTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
+{
+  if (!CheckConditions())
+    return false;
+  if (!IsValid(pTargetSelector))
+    return PFBasicMicroAI::GetTargetImpl(target, condition);
+
+  CPtr<PFBaseUnit> const& unit = pAbility->GetOwner();
+  if (!IsValid(unit))
+    return false;
+
+  PFTargetSelector::RequestParams rp(unit, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), Target(unit), condition);
+  bool hasTarget = pTargetSelector->FindTarget(rp, target);
+
+  if (hasTarget && g_dump_micro_ai_ts)
+  {
+    PFTargetSelector::s_DumpSelectors = true;
+    Target dumpTarget;
+    pTargetSelector->FindTarget(rp, dumpTarget);
+    PFTargetSelector::s_DumpSelectors = false;
+  }
+
+  return hasTarget;
+}
+
+PFMultipleTargetSelectorMicroAI::PFMultipleTargetSelectorMicroAI(CreateParams const &cp) : Base(cp)
+{
+  if (IsValid(GetDB().targetSelector))
+    pTargetSelector = dynamic_cast<PFMultipleTargetSelector*>(GetDB().targetSelector->Create(GetWorld()));
+}
+
+bool PFMultipleTargetSelectorMicroAI::GetTargetImpl(Target& target, const ITargetCondition* const condition) const
+{
+  if (!CheckConditions())
+    return false;
+  if (!IsValid(pTargetSelector))
+    return PFBasicMicroAI::GetTargetImpl(target, condition);
+
+  CPtr<PFBaseUnit> const& owner = pAbility->GetOwner();
+  if (!IsValid(owner))
+    return false;
+
+  struct Counter : public ITargetAction, public NonCopyable
+  {
+    Counter(PFBaseUnit const* owner_, PFAbilityData const* ability_, ExecutableBoolString const& filter_, const ITargetCondition* condition_, float minWeight_)
+      : owner(owner_), ability(ability_), filter(filter_), condition(condition_), minWeight(minWeight_), count(0) {}
+
+    virtual void operator()(const Target& target)
+    {
+      if (!target.IsUnit())
+        return;
+
+      CPtr<PFBaseUnit> const& unit = target.GetUnit();
+      if (!IsUnitValid(unit))
+        return;
+      if (!filter(owner, unit.GetPtr(), static_cast<const IMiscFormulaPars*>(ability)))
+        return;
+      if (!CheckTargetCondition(target, condition, ability))
+        return;
+      if (minWeight > 0.0f && owner && owner->GetTargetWeight(unit, owner->GetTargetingParams(), NULL) <= minWeight)
+        return;
+      ++count;
+    }
+
+    PFBaseUnit const* owner;
+    PFAbilityData const* ability;
+    ExecutableBoolString const& filter;
+    const ITargetCondition* condition;
+    float minWeight;
+    int count;
+  } counter(owner.GetPtr(), pAbility.GetPtr(), GetDB().unitFilter, condition, GetDB().minTargetWeight);
+
+  PFTargetSelector::RequestParams rp(owner, static_cast<const IMiscFormulaPars*>(pAbility.GetPtr()), Target(owner), condition);
+  pTargetSelector->EnumerateTargets(counter, rp);
+
+  if (GetDB().minTargetCount == 0 ? counter.count == 0 : counter.count >= GetDB().minTargetCount)
+  {
+    target.SetUnit(owner);
+    return true;
+  }
+  return false;
+}
+
+} // namespace NWorld
+
+REGISTER_DEV_VAR("dump_micro_ai_ts", g_dump_micro_ai_ts, STORAGE_NONE);
+
+REGISTER_WORLD_OBJECT_NM(PFMicroAI, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFBasicMicroAI, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFTargetSelectorMicroAI, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFMultipleTargetSelectorMicroAI, NWorld)
+
+#else
+
 namespace NWorld
 {
 
@@ -322,3 +518,5 @@ REGISTER_WORLD_OBJECT_NM(PFMicroAI, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFBasicMicroAI, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFTargetSelectorMicroAI, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFMultipleTargetSelectorMicroAI, NWorld)
+
+#endif

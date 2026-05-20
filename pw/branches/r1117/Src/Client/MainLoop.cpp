@@ -64,7 +64,9 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
   // main time delta clock
 
   // step game state machine
-  NCore::GetGlobalGameFSM()->Step(NMainLoop::GetTimeDelta() * 1000.0f); // @BVS@TIME
+  if ( NCore::GetGlobalGameFSM() )
+    NCore::GetGlobalGameFSM()->Step(NMainLoop::GetTimeDelta() * 1000.0f); // @BVS@TIME
+
 
   //обработка команд на добавление/удаление и прочее про интерфейсы, позвать методы OnBefore*
   NScreenCommands::AnalizeScreenCmds();
@@ -161,7 +163,8 @@ bool Step( bool bAppActive, vector<Input::Event>& inputEvents )
 
 void AddTooltip( const wstring & text, const UI::STooltipDesc & desc )
 {
-  TooltipsScreen::Instance()->AddTooltip( text, desc );
+  if ( TooltipsScreen::Instance() )
+    TooltipsScreen::Instance()->AddTooltip( text, desc );
 }
 
 

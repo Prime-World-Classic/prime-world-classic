@@ -91,9 +91,13 @@ Render::Texture2DRef RecolorableTextureCache::AcquireTexture(Render::HDRColor co
 
 void RecolorableTextureCache::FillTexture(Render::Texture2DRef const& tex, Render::HDRColor const& recolor)
 {
+#ifdef PW_LINUX_NULL_RENDER
+  (void)tex;
+  (void)recolor;
+#else
   using namespace Render;
 
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && defined(_WIN32)
   static DWORD threadID = GetCurrentThreadId();
   ASSERT(GetCurrentThreadId() == threadID);
 #endif // _SHIPPING
@@ -122,6 +126,7 @@ void RecolorableTextureCache::FillTexture(Render::Texture2DRef const& tex, Rende
     tex->GenerateMipSubLevels();
 
   }
+#endif
 }
 
 void RecolorableTextureCache::OnDeviceLost()
@@ -261,6 +266,28 @@ Render::TextureRef LoadRecolorableTextureInPool(const NDb::TextureRecolorable &t
   return LoadRecolorableTexture( tex );
 }
 
+#ifdef PW_LINUX_NULL_RENDER
+
+void RecolorSceneObject(NScene::SceneObject &so, Render::HDRColor const& recolor)
+{
+  (void)so;
+  (void)recolor;
+}
+
+void RecolorSceneComponent( NScene::SceneObject &so, const nstl::string &_componentID, Render::HDRColor const& recolor )
+{
+  (void)so;
+  (void)_componentID;
+  (void)recolor;
+}
+
+void ResetSceneObjectRecolor(NScene::SceneObject &so)
+{
+  (void)so;
+}
+
+#else
+
 struct RecolorProc : public Render::IMaterialProcessor
 {
   Render::HDRColor recolor;
@@ -321,5 +348,7 @@ void ResetSceneObjectRecolor(NScene::SceneObject &so)
 	} proc;
 	NScene::ForAllMaterials(so, proc);
 }
+
+#endif
 
 }

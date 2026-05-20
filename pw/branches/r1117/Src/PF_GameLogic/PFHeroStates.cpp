@@ -1,4 +1,300 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+namespace NWorld
+{
+class PFBaseMaleHero;
+class PFTalent;
+}
+
+template<> CObjectBase* CastToObjectBaseImpl<NWorld::PFBaseMaleHero>(NWorld::PFBaseMaleHero*, void*);
+template<> NWorld::PFBaseMaleHero* CastToUserObjectImpl<NWorld::PFBaseMaleHero>(CObjectBase*, NWorld::PFBaseMaleHero*, void*);
+template<> NWorld::PFBaseMaleHero* CastToUserObjectImpl<NWorld::PFBaseMaleHero>(CObjectBase*, NWorld::PFBaseMaleHero*, CObjectBase*);
+template<> CObjectBase* CastToObjectBaseImpl<NWorld::PFTalent>(NWorld::PFTalent*, void*);
+template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*, NWorld::PFTalent*, void*);
+template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*, NWorld::PFTalent*, CObjectBase*);
+
+#include "PFHeroStates.h"
+#include "PFFlagpole.h"
+#include "PFPickupable.h"
+
+namespace NWorld
+{
+
+void HeroStateFSM::DumpStateToConsole(int depths)
+{
+  (void)depths;
+}
+
+PFBaseUseHeroState::PFBaseUseHeroState( PFBaseMaleHero * _owner, Target const& _target )
+  : PFBaseUseState( _owner, _target )
+  , hero( _owner )
+  , waitForChanneling( false )
+  , approachRequired( false )
+  , wasInvisible( false )
+{
+}
+
+void PFBaseUseHeroState::OnEnter()
+{
+}
+
+void PFBaseUseHeroState::OnAfterLeave()
+{
+}
+
+bool PFBaseUseHeroState::CanIgnoreVisibility() const
+{
+  return true;
+}
+
+bool PFBaseUseHeroState::IsRequireLineOfSight() const
+{
+  return false;
+}
+
+bool PFBaseUseHeroState::NeedToGetClose() const
+{
+  return false;
+}
+
+PFHeroUseConsumableState::PFHeroUseConsumableState( PFBaseMaleHero * _pOwner, int _slot, Target const& _target )
+  : PFBaseUseHeroState( _pOwner, _target )
+  , slot( _slot )
+  , pDBDesc( 0 )
+{
+}
+
+bool PFHeroUseConsumableState::OnStep( float dt )
+{
+  (void)dt;
+  return true;
+}
+
+float PFHeroUseConsumableState::GetUseRange() const
+{
+  return -1.0f;
+}
+
+NDb::Ability const* PFHeroUseConsumableState::GetDBDesc() const
+{
+  return pDBDesc.GetPtr();
+}
+
+const PFConsumable * PFHeroUseConsumableState::GetConsumable() const
+{
+  return 0;
+}
+
+PFHeroUseTalentState::PFHeroUseTalentState( PFBaseMaleHero * _pOwner, PFTalent * _talent, Target const& _target )
+  : PFBaseUseHeroState( _pOwner, _target )
+  , talent( _talent )
+{
+}
+
+void PFHeroUseTalentState::OnEnter()
+{
+}
+
+void PFHeroUseTalentState::OnLeave()
+{
+}
+
+bool PFHeroUseTalentState::OnStep( float dt )
+{
+  (void)dt;
+  return true;
+}
+
+float PFHeroUseTalentState::GetUseRange() const
+{
+  return -1.0f;
+}
+
+void PFHeroUseTalentState::PlayAskSound()
+{
+}
+
+NDb::Ability const* PFHeroUseTalentState::GetDBDesc() const
+{
+  return 0;
+}
+
+PFHeroFollowUnitState::PFHeroFollowUnitState(CPtr<PFBaseHero> const& pOwner, CPtr<PFBaseUnit> const& pUnit, float range, float forceRange)
+  : HeroStateFSM( pOwner )
+  , followRange( range )
+  , moveInitiated( false )
+  , pUnit( pUnit )
+  , pCurrentTarget( 0 )
+  , forceFollowRange( forceRange )
+{
+}
+
+void PFHeroFollowUnitState::OnLeave()
+{
+}
+
+bool PFHeroFollowUnitState::OnStep(float dt)
+{
+  (void)dt;
+  return true;
+}
+
+void PFHeroFollowUnitState::DoMove()
+{
+  moveInitiated = false;
+}
+
+PFHeroHoldState::PFHeroHoldState( CPtr<PFWorld> const& pWorld, CPtr<PFBaseHero> const& pOwner, bool stopOnEnter )
+  : HeroStateFSM( pOwner )
+  , pWorld( pWorld )
+  , doStopOnEnter( stopOnEnter )
+{
+}
+
+bool PFHeroHoldState::OnStep(float dt)
+{
+  (void)dt;
+  return true;
+}
+
+void PFHeroHoldState::OnEnter()
+{
+}
+
+void PFHeroHoldState::OnLeave()
+{
+}
+
+bool PFHeroHoldState::IsOwnerSuitable() const
+{
+  return false;
+}
+
+PFInteractObjectState::PFInteractObjectState( PFBaseHero * _pOwner, const Target& _target )
+  : HeroStateFSM( _pOwner )
+  , target( _target )
+  , range( 0.0f )
+  , used( false )
+{
+}
+
+void PFInteractObjectState::NeedStopOnLeave( bool val )
+{
+  (void)val;
+}
+
+void PFInteractObjectState::OnEnter()
+{
+}
+
+bool PFInteractObjectState::OnStep( float dt )
+{
+  (void)dt;
+  return true;
+}
+
+void PFInteractObjectState::OnLeave()
+{
+}
+
+bool PFInteractObjectState::IsActionFinished() const
+{
+  return true;
+}
+
+bool PFInteractObjectState::CanBeInterrupted() const
+{
+  return true;
+}
+
+void PFInteractObjectState::ApproachObject()
+{
+}
+
+bool PFInteractObjectState::IsObjectInRange() const
+{
+  return true;
+}
+
+PFHeroUseUnitState::PFHeroUseUnitState( PFBaseHero* _pOwner, PFBaseUnit* _pUnit )
+  : PFInteractObjectState( _pOwner, Target( _pUnit ) )
+  , pUnit( _pUnit )
+{
+}
+
+void PFHeroUseUnitState::DoAction()
+{
+}
+
+PFCreatureRaiseFlagState::PFCreatureRaiseFlagState( PFBaseHero* pOwner, PFFlagpole* _pFlagpole )
+  : PFInteractObjectState( pOwner, Target( static_cast<PFBaseUnit*>( _pFlagpole ) ) )
+  , pFlagpole( _pFlagpole )
+{
+}
+
+void PFCreatureRaiseFlagState::DoAction()
+{
+}
+
+PFHeroPickupObjectState::PFHeroPickupObjectState( PFBaseHero* pOwner, PFPickupableObjectBase* _pPickupable )
+  : PFInteractObjectState( pOwner, Target( static_cast<PFLogicObject*>( _pPickupable ) ) )
+  , pPickupable( _pPickupable )
+{
+}
+
+void PFHeroPickupObjectState::DoAction()
+{
+}
+
+PFHeroSuspendState::PFHeroSuspendState( CPtr<PFBaseHero> const& pOwner, bool isLongSuspend )
+  : HeroStateFSM( pOwner )
+  , suspendTimeout( 0.0f )
+  , waitTime( 0.0f )
+  , isSuspendLong( isLongSuspend )
+{
+}
+
+PFHeroSuspendState::PFHeroSuspendState()
+  : suspendTimeout( 0.0f )
+  , waitTime( 0.0f )
+  , isSuspendLong( false )
+{
+}
+
+bool PFHeroSuspendState::OnStep( float dt )
+{
+  waitTime += dt;
+  return true;
+}
+
+void PFHeroSuspendState::OnEnter()
+{
+}
+
+void PFHeroSuspendState::OnLeave()
+{
+}
+
+bool PFHeroSuspendState::IsOwnerSuitable() const
+{
+  return false;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFHeroUseConsumableState,  NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroPickupObjectState,   NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroFollowUnitState,     NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroHoldState,           NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroUseTalentState,      NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroUseUnitState,        NWorld)
+REGISTER_WORLD_OBJECT_NM(PFCreatureRaiseFlagState,  NWorld)
+REGISTER_WORLD_OBJECT_NM(PFInteractObjectState,     NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroSuspendState,        NWorld)
+
+#else
 #include "PFHeroStates.h"
 #include "PFBaseUnitStates.h"
 #include "PFFlagpole.h"
@@ -805,3 +1101,5 @@ REGISTER_WORLD_OBJECT_NM(PFCreatureRaiseFlagState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFInteractObjectState,     NWorld)
 REGISTER_WORLD_OBJECT_NM(PFHeroSuspendState,        NWorld)
 
+
+#endif

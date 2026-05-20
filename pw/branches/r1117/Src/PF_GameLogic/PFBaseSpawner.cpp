@@ -1,4 +1,164 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseSpawner.h"
+#include "PFAIContainer.h"
+
+namespace NWorld
+{
+
+PFBaseSpawner::PFBaseSpawner( PFWorld* pWorld, const NDb::AdvMapObject& dbObject, float timeOffset )
+ : PFWorldObjectBase( pWorld, 1 )
+ , level( 1 )
+ , levelUpTimer( timeOffset )
+ , spawnDelay( 0.0f )
+ , spawnWaveCounter( 0 )
+ , spawnPosition( dbObject.offset.GetPlace() )
+ , creepsInWaveCounter(0)
+ , enabled(true)
+{
+  spawnerName = dbObject.scriptName;
+  spawnerDesc = dynamic_cast<NDb::BaseCreepSpawner const *>(dbObject.gameObject.GetPtr());
+
+  if (pWorld)
+  {
+    if (PFAIWorld const * pAIWorld = pWorld->GetAIWorld())
+      spawnDelay = pAIWorld->GetBattleStartDelay();
+
+    if (PFAIContainer * pAIContainer = pWorld->GetAIContainer())
+      pAIContainer->RegisterObject(this, "", dbObject.scriptGroupName);
+  }
+
+  if (IsValid(spawnerDesc))
+    spawnDelay += spawnerDesc->firstSpawnTimeOffset;
+
+  levelUpInfo.timeLevelUpInterval = GetTimeLevelUpInterval();
+  levelUpInfo.timeLevelUpIncrement = GetTimeLevelUpIncrement();
+  levelUpInfo.spawnLevelUpInterval = IsValid(spawnerDesc) ? spawnerDesc->levelUpInfo.spawnLevelUpInterval : 0;
+  levelUpInfo.spawnLevelUpIncrement = IsValid(spawnerDesc) ? spawnerDesc->levelUpInfo.spawnLevelUpIncrement : 0;
+
+  if (levelUpInfo.timeLevelUpInterval > 0.0f)
+    levelUpTimer += levelUpInfo.timeLevelUpInterval;
+}
+
+void PFBaseSpawner::RegisterCreep(PFBaseCreep * pCreep)
+{
+  (void)pCreep;
+  ++creepsInWaveCounter;
+}
+
+void PFBaseSpawner::MakeLevelupsForTimeDelta( float dtInSeconds )
+{
+  (void)dtInSeconds;
+}
+
+bool PFBaseSpawner::Step( float dtInSeconds )
+{
+  if ( spawnDelay >= 0.0f )
+    spawnDelay -= dtInSeconds;
+
+  StepCreepsTimeLevel(dtInSeconds);
+  return true;
+}
+
+void PFBaseSpawner::SpawnWave()
+{
+  creepsInWaveCounter = 0;
+  ++spawnWaveCounter;
+  StepCreepsWaveLevel();
+}
+
+void PFBaseSpawner::StepCreepsTimeLevel( float dtInSeconds )
+{
+  if ( ( level >= GetMaxCreepsLevel() )
+      || ( levelUpInfo.timeLevelUpInterval < 0.0f ) || ( levelUpInfo.timeLevelUpIncrement < 1 ) )
+    return;
+
+  levelUpTimer -= dtInSeconds;
+  if ( levelUpTimer < 0 )
+  {
+    SetCreepsLevel( level + levelUpInfo.timeLevelUpIncrement );
+    levelUpTimer = levelUpInfo.timeLevelUpInterval;
+  }
+}
+
+void PFBaseSpawner::StepCreepsWaveLevel()
+{
+  if (levelUpInfo.spawnLevelUpInterval > 0 && levelUpInfo.spawnLevelUpIncrement > 0
+      && spawnWaveCounter % levelUpInfo.spawnLevelUpInterval == 0)
+  {
+    SetCreepsLevel( level + levelUpInfo.spawnLevelUpIncrement );
+  }
+}
+
+float PFBaseSpawner::GetTimeLevelUpInterval() const
+{
+  if (!IsValid(spawnerDesc))
+    return 0.0f;
+
+  if (spawnerDesc->levelUpInfo.interval != -1.0f)
+    return spawnerDesc->levelUpInfo.interval;
+
+  return GetWorld() && GetWorld()->GetAIWorld() ? GetWorld()->GetAIWorld()->GetAIParameters().creepsLevelUpInfo.interval : 0.0f;
+}
+
+int PFBaseSpawner::GetTimeLevelUpIncrement() const
+{
+  if (!IsValid(spawnerDesc))
+    return 0;
+
+  if (spawnerDesc->levelUpInfo.increment != -1)
+    return spawnerDesc->levelUpInfo.increment;
+
+  return GetWorld() && GetWorld()->GetAIWorld() ? GetWorld()->GetAIWorld()->GetAIParameters().creepsLevelUpInfo.increment : 0;
+}
+
+float PFBaseSpawner::GetLifeTimeLevelUpInterval() const
+{
+  if (!IsValid(spawnerDesc) || !spawnerDesc->levelUpInfo.lifetimeLevelUp)
+    return 0.0f;
+
+  return GetTimeLevelUpInterval();
+}
+
+int PFBaseSpawner::GetLifeTimeLevelUpIncrement() const
+{
+  if (!IsValid(spawnerDesc) || !spawnerDesc->levelUpInfo.lifetimeLevelUp)
+    return 0;
+
+  return GetTimeLevelUpIncrement();
+}
+
+Placement PFBaseSpawner::GetCreepPosition(Placement const & creepOffset) const
+{
+  Matrix43 m;
+  spawnPosition.GetMatrix(&m);
+  Placement creepPosition = Transform(creepOffset.pos, m);
+
+  CQuat relativeRot(creepOffset.rot );
+  relativeRot.Inverse();
+  creepPosition.rot = spawnPosition.rot * relativeRot;
+
+  return creepPosition;
+}
+
+void PFBaseSpawner::ApplyStatModifiers(PFBaseCreep * creep) const
+{
+  (void)creep;
+}
+
+int PFBaseSpawner::GetMaxCreepsLevel() const
+{
+  return GetWorld() && GetWorld()->GetAIWorld() ? GetWorld()->GetAIWorld()->GetCreepLevelCap() : level;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseSpawner,   NWorld);
+
+#else
+
 #include "PFBaseSpawner.h"
 #include "PFAIContainer.h"
 
@@ -218,3 +378,4 @@ int PFBaseSpawner::GetMaxCreepsLevel() const
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFBaseSpawner,   NWorld);
+#endif

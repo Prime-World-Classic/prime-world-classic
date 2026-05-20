@@ -1,5 +1,226 @@
 #include "stdafx.h"
 
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "DBConsumable.h"
+#include "DBGameLogic.h"
+#include "DBUnit.h"
+
+namespace NWorld
+{
+class PFHeroStatistics;
+}
+
+template<> CObjectBase* CastToObjectBaseImpl<NWorld::PFHeroStatistics>(NWorld::PFHeroStatistics*, void*);
+template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatistics>(CObjectBase*, NWorld::PFHeroStatistics*, void*);
+template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatistics>(CObjectBase*, NWorld::PFHeroStatistics*, CObjectBase*);
+
+#include "PFHero.h"
+#include "PFMaleHero.h"
+#include "PFTalent.h"
+#include "PFConsumable.h"
+#include "PFStatistics.h"
+#include "PFWorld.h"
+#include "../Game/PF/Audit/ClientStubs.h"
+
+namespace
+{
+  int g_addPetToPlayer = -1;
+  float g_fGiveWorldGoldDelay = 1.0f;
+  bool g_zzSexSameAsGender = false;
+  wstring g_linuxHeroEmptyText;
+}
+
+REGISTER_DEV_VAR( "debug_add_pet_to", g_addPetToPlayer, STORAGE_NONE );
+
+namespace NWorld
+{
+
+NAMEMAP_BEGIN( PFBaseHero )
+  NAMEMAP_PARENT( PFCreature )
+  NAMEMAP_FUNC_RO ( maxExperience, &PFBaseHero::GetLevelMaxExperienceRef )
+  NAMEMAP_FUNC_RO ( playerName, &PFBaseHero::GetPlayerName )
+  NAMEMAP_VAR_RO( experience )
+  NAMEMAP_VAR_RO( redeemCost )
+  NAMEMAP_FUNC_RO( team, &PFBaseHero::GetTeamName )
+  NAMEMAP_FUNC_RO( customEnergyValue, &PFBaseHero::GetCustomEnergyValue )
+  NAMEMAP_FUNC_RO( customEnergyMaximum, &PFBaseHero::GetCustomEnergyMaximum )
+  NAMEMAP_FUNC_RO( customEnergyRegeneration, &PFBaseHero::GetCustomEnergyRegeneration )
+NAMEMAP_END
+
+PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType unitType, NDb::EFaction faction, NDb::EFaction _originalFaction)
+  : PFCreature(pWorld, info.placement.pos, INITIALDIR2, *info.pHero)
+  , respawnDelay(-1.0f), advanceRespawnDelay(-1.0f), forbidRespawn(false), spawnPos(info.placement.pos), isClone(info.isClone)
+  , experience(0.0f), pPlayer(0), giveWorldGoldOffset(0.0f), distanceRun(0.0f), pDbHero(info.pHero), isolated(false)
+  , ripTime(0.0f), inTeamId(info.inTeamId), redeemCost(0.0f), redeemCostRecalculateDelay(-1.0f), cloneCounter(0)
+  , abilityModsActualizationTime(-1.0f), fountainPos(VNULL3), canControlMount(false), force(0.0f), raiting(info.playerInfo.heroRating)
+  , originalFaction(_originalFaction), takeModDmg(1.0f), takeTypeUnit(NDb::ESpellTarget(0)), heroSkinId(info.playerInfo.heroSkin)
+  , playerGender(NCore::ESex::Male), scriptControlledProgressValue(0.0f), partyId(info.playerInfo.partyId), heroState(EHeroState::First)
+  , isAnimatedAvatar(info.playerInfo.isAnimatedAvatar), leagueIndex(info.playerInfo.leagueIndex), ownLeaguePlace(0)
+  , timeSinceLastSlice(0.0f), slicesCount(0), isMuted(info.playerInfo.chatMuted), flagId(info.playerInfo.flagId)
+  , customEnergy(false), customEnergyValue(0), customEnergyMaximum(0), customEnergyRegeneration(0)
+{
+  PFBaseUnit::InitData data;
+  data.faction = faction;
+  data.type = unitType;
+  data.playerId = info.playerId;
+  data.pObjectDesc = info.pHero;
+  Initialize(data);
+  pProfile = new PFBetweenSessionsData(pWorld);
+}
+
+void PFBaseHero::PrepareExcludedResourcesList( const NDb::EFaction& sourceFaction ) { (void)sourceFaction; excludedResources.clear(); }
+bool PFBaseHero::SetSkin( const nstl::string& skinId, bool invalidateClientObject ) { (void)invalidateClientObject; heroSkinId = skinId; return true; }
+NDb::EGender PFBaseHero::GetDbGender() const { return pDbHero ? pDbHero->gender : NDb::GENDER_MALE; }
+NCore::ESex::Enum PFBaseHero::PlayerGenderFromDbGender() { return GetDbGender() == NDb::GENDER_FEMALE ? NCore::ESex::Female : NCore::ESex::Male; }
+const NDb::AskSounds* PFBaseHero::GetHeroAsks(EHeroState::Enum forHeroState) const { (void)forHeroState; return 0; }
+void PFBaseHero::PlayAskSound( int id, NWorld::PFBaseHero const * pTarget, int announcePriority ) const { (void)id; (void)pTarget; (void)announcePriority; }
+void PFBaseHero::OnDestroyContents() { consumables.clear(); clones.clear(); pStatistics = 0; pProfile = 0; PFCreature::OnDestroyContents(); }
+void PFBaseHero::Reset() { PFCreature::Reset(); }
+void PFBaseHero::ClientAttachToPlayer() {}
+void PFBaseHero::AttachToPlayer(CPtr<PFPlayer> const& pNewPlayer) { pPlayer = pNewPlayer; }
+void PFBaseHero::DetachFromPlayer() { pPlayer = 0; }
+bool PFBaseHero::UpdateClientColor() { return false; }
+int PFBaseHero::GetStatisticsUid() const { return IsValid(pPlayer) ? pPlayer->GetUserID() : 0; }
+void PFBaseHero::Initialize(InitData const& data) { PFBaseUnit::Initialize(data); }
+void PFBaseHero::InitHero(const NDb::BaseHero *pDesc) { pDbHero = pDesc; InitializeCustomEnergyVariables(); }
+bool PFBaseHero::Step(float dtInSeconds) { (void)dtInSeconds; return PFCreature::Step(dtInSeconds); }
+int PFBaseHero::GetTotalNaftaEarned() const { return GetGold(); }
+int PFBaseHero::GetKillStreak() const { return 0; }
+int PFBaseHero::GetDeathStreak() const { return 0; }
+int PFBaseHero::GetTSliceSalary() const { return 0; }
+void PFBaseHero::SetTSliceSalary(float salary) { (void)salary; }
+void PFBaseHero::AddTSliceSalary(float salary) { (void)salary; }
+void PFBaseHero::OnDie() { PFCreature::OnDie(); }
+void PFBaseHero::CallForTowerHelp( const CPtr<PFBaseUnit>& pTarget ) { (void)pTarget; }
+
+void PFHeroBehaviour::OnDamage( const PFBaseUnitDamageDesc& desc ) { (void)desc; }
+bool PFHeroBehaviour::OnStep( float dtInSeconds ) { (void)dtInSeconds; return false; }
+void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget ) { (void)pTarget; (void)bStrongTarget; }
+
+bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; return true; }
+float PFBaseHero::OnBeforeDamage(const DamageDesc &desc) { (void)desc; return 0.0f; }
+float PFBaseHero::OnDamage(const DamageDesc &desc) { (void)desc; return 0.0f; }
+void PFBaseHero::OnAddGold(CPtr<PFBaseUnit> pSender, float amount, bool showGold) { (void)pSender; (void)showGold; AddGold(amount, false); }
+float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods) { (void)pSender; (void)ignoreHealingMods; return amount; }
+float PFBaseHero::GetTimeToRespawn() const { return respawnDelay; }
+void PFBaseHero::RecalculateRedeemCost() { redeemCost = 0.0f; }
+void PFBaseHero::RemoveCorpse() {}
+void PFBaseHero::StartRespawnTimer() { respawnDelay = 0.0f; }
+void PFBaseHero::AdvanceResurrect() { DoResurrect(); }
+void PFBaseHero::AddTalentActivatedWhileDead( CPtr<PFTalent> pTalent ) { activatedWhileLastDeathtime.push_back(pTalent); }
+void PFBaseHero::DoResurrect() { respawnDelay = -1.0f; advanceRespawnDelay = -1.0f; }
+void PFBaseHero::DoStop() { Stop(); }
+int PFBaseHero::GetOriginalTeamId() const { return inTeamId; }
+int PFBaseHero::GetZZimaSex() const { return playerGender; }
+bool PFBaseHero::IsMale() const { return GetDbGender() != NDb::GENDER_FEMALE; }
+const wstring& PFBaseHero::GetPlayerName() const { return IsValid(pPlayer) ? pPlayer->GetPlayerName() : g_linuxHeroEmptyText; }
+const wstring & PFBaseHero::GetDescription() const { return pDbHero ? pDbHero->description.GetText() : NNameMap::wstrNoname; }
+const NDb::UnitDeathParameters* PFBaseHero::GetDeathParams() const { return pDbHero ? pDbHero->deathParameters.GetPtr() : 0; }
+const NDb::Texture * PFBaseHero::GetUiAvatarImage() const { return GetUiAvatarImage(dynamic_cast<const NDb::Hero*>(pDbHero.GetPtr()), GetFaction(), heroSkinId); }
+const NDb::Texture * PFBaseHero::GetUiAvatarImage(const NDb::Hero* dbHeroPtr, NDb::EFaction faction, const string& skinId) { (void)faction; (void)skinId; return dbHeroPtr ? dbHeroPtr->image.GetPtr() : 0; }
+const NDb::HeroSkin* PFBaseHero::GetHeroSkin(const NDb::Hero* dbHeroPtr, const string& skinId) { (void)skinId; return dbHeroPtr && !dbHeroPtr->heroSkins.empty() ? dbHeroPtr->heroSkins[0].GetPtr() : 0; }
+const NDb::Texture * PFBaseHero::GetUiMinimapImage() const { return 0; }
+void PFBaseHero::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
+void PFBaseHero::DropImpulsesCooldowns() {}
+const int & PFBaseHero::GetLevelMaxExperienceRef() const { static int v = 0; return v; }
+const int PFBaseHero::GetLevelMaxDevPoints() const { return 0; }
+const int & PFBaseHero::GetLevelMaxDevPointsRef() const { static int v = 0; return v; }
+const float PFBaseHero::GetLevelDevPointsPercent() const { return 0.0f; }
+int PFBaseHero::CountLevelups() { return 0; }
+void PFBaseHero::OnLevelUp() {}
+void PFBaseHero::AwardForKill(CPtr<PFBaseUnit> const& pVictim, const float money, bool fromVictim ) { (void)pVictim; (void)money; (void)fromVictim; }
+void PFBaseHero::OnKill( CPtr<PFBaseUnit> const& pVictim, bool lastHit ) { (void)pVictim; (void)lastHit; }
+void PFBaseHero::DebugDie() { OnDie(); }
+void PFBaseHero::Resurrect( const ResurrectParams& params) { resurrectParams = params; DoResurrect(); }
+void PFBaseHero::OnScream( const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamType st ) { (void)pTarget; (void)st; }
+CVec3 PFBaseHero::GetPetEscortPosition() const { return GetPosition(); }
+void PFBaseHero::Emote(NDb::EEmotion emotion) { (void)emotion; }
+const wstring& PFBaseHero::GetTeamName() const { return g_linuxHeroEmptyText; }
+void PFBaseHero::DismountSpecial() { pMount = 0; canControlMount = false; }
+void PFBaseHero::OnMountSpecial( CPtr<NWorld::PFBaseMovingUnit> const& pMountUnit, bool _canControlMount ) { pMount = pMountUnit; canControlMount = _canControlMount; }
+bool PFBaseHero::IsRecommended( int stat ) const { (void)stat; return false; }
+void PFBaseHero::SetRecommendedStats(int* _profileStats) { (void)_profileStats; profileStats.clear(); }
+void PFBaseHero::OnUnmountSpecial() { DismountSpecial(); }
+NDb::ERoute PFBaseHero::GetNearestRoute(float* pDistance) const { if (pDistance) *pDistance = 0.0f; return NDb::ROUTE_UNASSIGNED; }
+bool PFBaseHero::IsSlotValid( int slot ) const { return slot >= 0 && slot < consumables.size(); }
+int PFBaseHero::GetSlotCount() const { return consumables.size(); }
+PFConsumable const* PFBaseHero::GetConsumable(int slot) const { return IsSlotValid(slot) ? consumables[slot].GetPtr() : 0; }
+void PFBaseHero::DropConsumable( int slot, const CVec2& target) { (void)target; RemoveConsumable(slot); }
+void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& pConsumable) { (void)pConsumable; }
+void PFBaseHero::OnSerialize(IBinSaver& f) { (void)f; }
+void PFBaseHero::InitializeCustomEnergyVariables() { customEnergy = false; customEnergyValue = 0; customEnergyMaximum = 0; customEnergyRegeneration = 0; }
+bool PFBaseHero::CanUseConsumable(int slot) const { return IsSlotValid(slot) && consumables[slot] && consumables[slot]->CanBeUsed(); }
+bool PFBaseHero::CanUseConsumables() const { return true; }
+CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumable, const Target& target, bool isLocal ) { (void)pConsumable; (void)target; (void)isLocal; return 0; }
+CObj<PFAbilityInstance> PFBaseHero::UseConsumable( int slot, const Target& target, bool isLocal ) { CObj<PFConsumable> c = IsSlotValid(slot) ? consumables[slot] : 0; return UseConsumable(c, target, isLocal); }
+bool PFBaseHero::TakeConsumable( const NDb::Consumable * pDBDesc, int quantity, NDb::EConsumableOrigin origin, int slot ) { (void)origin; if (!pDBDesc || quantity <= 0) return false; CObj<PFConsumable> c = new PFConsumable(CPtr<PFWorld>(GetWorld()), CPtr<PFBaseUnit>(this), pDBDesc); if (slot >= 0 && slot < consumables.size()) consumables[slot] = c; else consumables.push_back(c); return true; }
+void PFBaseHero::SwapConsumables(int id1, int id2) { if (IsSlotValid(id1) && IsSlotValid(id2)) nstl::swap(consumables[id1], consumables[id2]); }
+bool PFBaseHero::RemoveConsumable(int slot) { if (!IsSlotValid(slot)) return false; consumables[slot] = 0; return true; }
+void PFBaseHero::RemoveConsumable( PFConsumable const* pConsumable ) { for (int i = 0; i < consumables.size(); ++i) if (consumables[i] == pConsumable) consumables[i] = 0; }
+bool PFBaseHero::CanPutConsumableIntoSlot( const NDb::Consumable * pDBDesc, int quantity, int slot) const { (void)pDBDesc; (void)quantity; return slot >= 0; }
+int PFBaseHero::GetSlotForConsumable( const NDb::Consumable * pDBDesc, int quantity ) const { (void)pDBDesc; (void)quantity; return consumables.size(); }
+bool PFBaseHero::CanTakeConsumable( const NDb::Consumable * pDBDesc, int quantity ) const { return pDBDesc && quantity > 0; }
+void PFBaseHero::DropConsumablesCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
+CObj<PFConsumableAbilityData> PFBaseHero::GetConsumableAbility( const NDb::Ability * pDBDesc ) { (void)pDBDesc; return 0; }
+bool PFBaseHero::CanStackConsumables( int src, int dst ) const { (void)src; (void)dst; return false; }
+bool PFBaseHero::StackConsumables( int src, int dst ) { (void)src; (void)dst; return false; }
+void PFBaseHero::SellConsumable(int slot) { RemoveConsumable(slot); }
+float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const { return pDBDesc ? pDBDesc->naftaCost : 0.0f; }
+void PFBaseHero::RestartGroupCooldowns( PFConsumableAbilityData const* pConsumableAD ) { (void)pConsumableAD; }
+void PFBaseHero::AddConsumableToGroup( PFConsumableAbilityData* pConsumableAD ) { (void)pConsumableAD; }
+void PFBaseHero::AddAbilityModifier( PFApplAbilityMod* appl ) { (void)appl; }
+void PFBaseHero::RemoveAbilityModifier( PFApplAbilityMod* appl ) { (void)appl; }
+void PFBaseHero::RecacheAbilitiesModifiers() {}
+float PFBaseHero::GetModifiedAbilityValue( float value, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility ) const { (void)mode; (void)abilityType; (void)dbAbility; return value; }
+void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const StatisticService::RPC::SessionEventInfo & params ) { (void)eventType; (void)params; }
+void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const NDb::DbResource * resource) { (void)eventType; (void)resource; }
+void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, int intParam1) { (void)eventType; (void)intParam1; }
+void PFBaseHero::LoggTimeSliceIfNeeded( float deltaTime ) { (void)deltaTime; }
+void PFBaseHero::ForAllClones( CloneFunc& cloneFunc ) { for (int i = 0; i < clones.size(); ++i) if (clones[i].clone) cloneFunc(clones[i].clone); }
+void PFBaseHero::DoLevelups( int count, float statsBonusBudget ) { (void)count; (void)statsBonusBudget; }
+float PFBaseHero::GetUltimateCD() const { return 0.0f; }
+IMiscFormulaPars const* PFBaseHero::GetTalent(const char* id) const { (void)id; return 0; }
+PFTalent* PFBaseHero::GetTalentById(const char* id) const { (void)id; return 0; }
+bool PFBaseHero::HasTalentFromPack( const char* id ) const { (void)id; return false; }
+void PFBaseHero::OnGameFinished( const NDb::EFaction failedFaction ) { (void)failedFaction; }
+void PFBaseHero::SetHappy() {}
+void PFBaseHero::OnStopped() {}
+void PFBaseHero::OnTargetDropped() {}
+void PFBaseHero::NotifyMoving( bool teleported ) { (void)teleported; }
+void PFBaseHero::OnScrollReceived() {}
+void PFBaseHero::OnGlyphPickUp( const PFGlyph* pGlyph ) { (void)pGlyph; }
+float PFBaseHero::GetHeroStatisticsValue( HeroStatisticsId heroStatId ) const { (void)heroStatId; return 0.0f; }
+int PFBaseHero::GetHeroAchievementCount( const char* achievId ) const { (void)achievId; return 0; }
+bool PFBaseHero::CanMove() const { return true; }
+void PFBaseHero::Move(const CVec2 & target) { TeleportTo(target); }
+float PFBaseHero::GetCustomEnergyValue() const { return customEnergyValue ? customEnergyValue->GetValue() : 0.0f; }
+float PFBaseHero::GetCustomEnergyMaximum() const { return customEnergyMaximum ? customEnergyMaximum->GetValue() : 0.0f; }
+float PFBaseHero::GetCustomEnergyRegeneration() const { return customEnergyRegeneration ? customEnergyRegeneration->GetValue() : 0.0f; }
+void PFBaseHero::OnIdle() {}
+void PFBaseHero::OnAfterSuspend(bool isLongSuspend) { (void)isLongSuspend; }
+void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc ) { PFCreature::OnUnitDie(pKiller, flags, pDamageDesc); }
+PFBaseHero* PFBaseHero::Clone( const CloneParams& params, float takeModDmg, NDb::ESpellTarget takeTypeUnit, const string& summonGroupName )
+{
+  (void)params;
+  (void)takeModDmg;
+  (void)takeTypeUnit;
+  (void)summonGroupName;
+  return 0;
+}
+
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFBaseHero, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFHeroBehaviour, NWorld)
+BASIC_REGISTER_CLASS(NWorld::IInventory);
+REGISTER_DEV_VAR("hero_give_world_gold_delay", g_fGiveWorldGoldDelay, STORAGE_NONE);
+REGISTER_WORLD_OBJECT_NM(PFBetweenSessionsData, NWorld)
+REGISTER_DEV_VAR( "zzsex_is_gender", g_zzSexSameAsGender, STORAGE_NONE )
+
+#else
+
 #include "DBConsumable.h"
 #include "DBGameLogic.h"
 #include "DBGameLogic.h"
@@ -2521,4 +2742,6 @@ REGISTER_WORLD_OBJECT_NM(PFBetweenSessionsData,  NWorld)
 REGISTER_VAR( "zzsex_is_gender", g_zzSexSameAsGender, STORAGE_NONE )
 #else
 REGISTER_DEV_VAR( "zzsex_is_gender", g_zzSexSameAsGender, STORAGE_NONE )
+#endif
+
 #endif

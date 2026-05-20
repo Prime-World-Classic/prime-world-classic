@@ -1,5 +1,176 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseApplicator;
+class PFBaseBehaviour;
+class PFApplStatus;
+class PFApplTaunt;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseApplicator)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFApplStatus)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFApplTaunt)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "../Game/PF/Audit/ClientStubs.h"
+#include "PFScriptedFlagpole.h"
+
+namespace NWorld
+{
+
+PFScriptedFlagpole::TGroups PFScriptedFlagpole::s_groups;
+
+PFScriptedFlagpole::PFScriptedFlagpole(PFWorld* pWorld, const NDb::AdvMapObject& _dbObject)
+  : PFFlagpole(pWorld, _dbObject)
+  , indexInGroup(0)
+  , isProtected(false)
+{
+}
+
+void PFScriptedFlagpole::Reset() { PFFlagpole::Reset(); TryAddIntoGroups(); }
+bool PFScriptedFlagpole::CanRaise(NDb::EFaction _faction) const { return IsNeutral() && !IsRising() && IsOutermost(_faction) && (!isProtected || GetFaction() == _faction); }
+void PFScriptedFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit* unitWhoRaised) { PFFlagpole::OnRaise(_faction, unitWhoRaised); }
+void PFScriptedFlagpole::OnDropFlag(PFBaseUnit* unitWhoDropped) { PFFlagpole::OnDropFlag(unitWhoDropped); }
+
+bool PFScriptedFlagpole::IsOutermost(NDb::EFaction _faction) const
+{
+  if (!IsNeutral())
+    return false;
+  const PFFlagpole* prev = PFFlagpole::GetPrevFlagpole(_faction);
+  return !prev || !prev->IsNeutral();
+}
+
+bool PFScriptedFlagpole::IsProtectedByTower(NDb::EFaction) const { return isProtected; }
+bool PFScriptedFlagpole::IsProtectedByNext() const
+{
+  if (IsNeutral())
+    return false;
+  const PFFlagpole* next = PFFlagpole::GetNextFlagpole(faction);
+  return next && next->GetFaction() == faction;
+}
+
+PFFlagpole* PFScriptedFlagpole::GetPrevFlagpole(NDb::EFaction)
+{
+  if (group.empty())
+    return 0;
+  TGroups::const_iterator it = s_groups.find(group);
+  if (it == s_groups.end() || indexInGroup <= 0)
+    return 0;
+  return it->second[indexInGroup - 1];
+}
+
+PFFlagpole* PFScriptedFlagpole::GetNextFlagpole(NDb::EFaction)
+{
+  if (group.empty())
+    return 0;
+  TGroups::const_iterator it = s_groups.find(group);
+  if (it == s_groups.end() || indexInGroup >= (it->second.size() - 1))
+    return 0;
+  return it->second[indexInGroup + 1];
+}
+
+bool PFScriptedFlagpole::Step(float dtInSeconds) { return PFFlagpole::Step(dtInSeconds); }
+void PFScriptedFlagpole::OnDestroyContents()
+{
+  if (!group.empty())
+  {
+    TGroups::iterator it = s_groups.find(group);
+    if (it != s_groups.end() && 0 <= indexInGroup && indexInGroup < it->second.size() && it->second[indexInGroup] == this)
+      it->second[indexInGroup] = 0;
+  }
+  PFFlagpole::OnDestroyContents();
+}
+
+void PFScriptedFlagpole::LogFlagEvent(NDb::EFaction, PFBaseUnit*, bool) {}
+
+void PFScriptedFlagpole::TryAddIntoGroups()
+{
+  if (group.empty())
+    return;
+  vector<CPtr<PFScriptedFlagpole> >& grp = s_groups[group];
+  if (grp.size() <= indexInGroup)
+    grp.resize(indexInGroup + 1, this);
+  grp[indexInGroup] = this;
+}
+
+void PFScriptedFlagpole::CreateGroup(const vector<PFScriptedFlagpole*>& flagpoles, const string& name)
+{
+  for (int i = 0; i < flagpoles.size(); ++i)
+  {
+    PFScriptedFlagpole* pf = flagpoles[i];
+    if (!pf)
+      continue;
+    pf->group = name;
+    pf->indexInGroup = i;
+    pf->TryAddIntoGroups();
+  }
+}
+
+int PFScriptedFlagpole::GetRaisedCountInGroup(const string& name)
+{
+  TGroups::const_iterator it = s_groups.find(name);
+  if (it == s_groups.end())
+    return -1;
+  for (int i = 0; i < it->second.size(); ++i)
+    if (!it->second[i] || it->second[i]->IsNeutral())
+      return i;
+  return it->second.size();
+}
+
+void PFScriptedFlagpole::SetRaisedCountInGroup(const string& name, int count, PFBaseUnit* pWho)
+{
+  TGroups::const_iterator it = s_groups.find(name);
+  if (it == s_groups.end() || !pWho)
+    return;
+  const vector<CPtr<PFScriptedFlagpole> >& grp = it->second;
+  count = Clamp(count, 0, (int)grp.size());
+  for (int i = 0; i < grp.size(); ++i)
+  {
+    PFScriptedFlagpole* pole = grp[i];
+    if (!pole)
+      continue;
+    if (i < count && pole->IsNeutral())
+      pole->OnRaise(pWho->GetFaction(), pWho);
+    else if (i >= count && !pole->IsNeutral())
+      pole->OnDropFlag(pWho);
+  }
+}
+
+void PFScriptedFlagpole::PushAll(vector<PFFlagpole*>* pFlagpoles)
+{
+  if (!pFlagpoles)
+    return;
+  for (TGroups::const_iterator it = s_groups.begin(); it != s_groups.end(); ++it)
+    for (int i = 0; i < it->second.size(); ++i)
+      if (it->second[i])
+        pFlagpoles->push_back(it->second[i]);
+}
+
+#ifndef _SHIPPING
+CObj<NDebug::DebugObject> PFScriptedFlagpole::CreateDebugObject() { return 0; }
+#endif
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFScriptedFlagpole, NWorld)
+
+#else
+
+
 
 #include "PFAbilityData.h"
 #include "PFAdvMapObject.h"
@@ -272,3 +443,5 @@ namespace NWorld
 }
 
 REGISTER_WORLD_OBJECT_NM(PFScriptedFlagpole, NWorld);
+
+#endif

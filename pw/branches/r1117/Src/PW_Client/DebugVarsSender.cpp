@@ -91,6 +91,10 @@ void DebugVarsSender::SendVar( SVarEntry & debugVar, NHPTimer::FTime now, int wo
   debugVar.nextSendTime = now + debugVar.period;
   debugVar.prevWarningStatus = debugVar.var->IsWarning();
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  // Linux bootstrap exercises command registration and polling without linking the statistic RPC writer yet.
+  return;
+#else
   wchar_t value[128] = L"";
   debugVar.var->FormatValue( value, 128 );
 
@@ -114,6 +118,7 @@ void DebugVarsSender::SendVar( SVarEntry & debugVar, NHPTimer::FTime now, int wo
   msg.debugVarName = debugVar.var->GetName();
   msg.debugVarValue = value;
   statistics->Message( msg );
+#endif
 }
 
 

@@ -1,4 +1,190 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAIController.h"
+#include "PFAIHelper.h"
+#include "PFAIStates.h"
+#include "PFMaleHero.h"
+#include "PFBuildings.h"
+#include "PFFlagpole.h"
+
+namespace
+{
+  static bool g_debugAIStates = false;
+}
+
+REGISTER_DEV_VAR("debug_ai_states", g_debugAIStates, STORAGE_NONE);
+
+namespace NWorld
+{
+
+PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiver, int line, int shift )
+  : PFBaseAIController(hero, transceiver)
+  , lineNumber(0)
+  , lineShift(0)
+  , isRespawned(false)
+  , healing(HEAL_NONE)
+  , healingTick(0)
+  , warFrontTimeDist(0.0f)
+  , useConsumableDelay(0)
+  , activateTalentDelay(0)
+  , useTalentDelay(0)
+  , usePotionDelay(0)
+  , blessDelay(0)
+  , mountDelay(0)
+  , findFlagDelay(0)
+{
+  SetLine(line, shift);
+}
+
+TalentWrapper PFAIController::GetLastTalent()
+{
+  return TalentWrapper(GetHero(), 0, 0);
+}
+
+bool PFAIController::CanUseConsumable( int slot )
+{
+  return IsValid(GetHero()) && slot >= 0 && slot < GetHero()->GetSlotCount() && GetHero()->GetConsumable(slot);
+}
+
+void PFAIController::UseConsumable( int slot, PFLogicObject* pTarget )
+{
+  if (CanUseConsumable(slot))
+    GetHelper().UseConsumable(slot, Target(pTarget ? pTarget : GetHero()));
+}
+
+void PFAIController::UseConsumable( int slot, const CVec2& target )
+{
+  if (CanUseConsumable(slot))
+    GetHelper().UseConsumable(slot, Target(CVec3(target, 1.0f)));
+}
+
+void PFAIController::SetLine( int num, int shift )
+{
+  lineNumber = num < 0 ? 0 : num;
+  lineShift = shift;
+  road.clear();
+  if (IsValid(GetHero()))
+    GetRoute(GetHero()->GetWorld(), GetHero()->GetFaction(), lineNumber, road);
+}
+
+void PFAIController::WalkByRoad( bool backToBase )
+{
+  if (road.empty())
+    return;
+  PushState(new AIMoveByLineState(this, road, backToBase, this));
+}
+
+void PFAIController::GoToEnemyBase()
+{
+  WalkByRoad(false);
+}
+
+void PFAIController::GoToSpawnPos()
+{
+  if (IsValid(GetHero()))
+    PushState(new AIMoveToState(this, GetHero()->GetSpawnPosition().AsVec2D(), GetHero()->GetObjectSize()));
+}
+
+void PFAIController::GoToShop()
+{
+}
+
+void PFAIController::Heal( bool respawned )
+{
+  (void)respawned;
+  healing = HEAL_HEALING;
+  PushState(new AIHealingState(this));
+}
+
+void PFAIController::ProcessHealing()
+{
+  if (healing != HEAL_NONE && !CurrentState())
+    healing = HEAL_NONE;
+}
+
+void PFAIController::RecoverMana()
+{
+}
+
+void PFAIController::RecoverHealth()
+{
+}
+
+void PFAIController::ActivateTalents()
+{
+}
+
+void PFAIController::UseTalents()
+{
+}
+
+void PFAIController::RaiseFlags()
+{
+}
+
+bool PFAIController::TryTeleport()
+{
+  return false;
+}
+
+void PFAIController::CheckWarFront( float timeDelta )
+{
+  (void)timeDelta;
+}
+
+CVec2 PFAIController::GetRoadPointByOffset( CVec2 const& pos, float offset )
+{
+  (void)offset;
+  if (road.empty())
+    return pos;
+  const int next = GetNextRoutePoint(road, pos);
+  return road[Min(next, (int)road.size() - 1)];
+}
+
+void PFAIController::EscapeFromTower()
+{
+  GoToOwnBase();
+}
+
+void PFAIController::AttackTower()
+{
+}
+
+void PFAIController::DoNotAttackTower()
+{
+}
+
+void PFAIController::OnDie()
+{
+  healing = HEAL_NONE;
+  isRespawned = false;
+}
+
+void PFAIController::OnRespawn()
+{
+  isRespawned = true;
+}
+
+void PFAIController::Step( float timeDelta )
+{
+  PFBaseAIController::Step(timeDelta);
+  ProcessHealing();
+  FSMStep(timeDelta);
+}
+
+void PFAIController::OnBecameIdle()
+{
+  if (IsValid(GetHero()) && !road.empty())
+    WalkByRoad(false);
+}
+
+} // namespace NWorld
+
+BASIC_REGISTER_CLASS(NWorld::PFAIController)
+
+#else
+
 #include "../Core/GameCommand.h"
 #include "../Core/Scheduler.h"
 #include "PFMaleHero.h"
@@ -893,3 +1079,4 @@ bool PFAIController::TryTeleport()
 } // namespace
 
 BASIC_REGISTER_CLASS(NWorld::PFAIController)
+#endif

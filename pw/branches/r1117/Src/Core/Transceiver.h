@@ -13,6 +13,7 @@ namespace NCore
 {
 class ReplayStorage;
 
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 class CrcStatsCollector : public BinStatsCollector
 {
 public:
@@ -67,6 +68,7 @@ public:
 
   virtual void DumpStats() const {}
 };
+#endif
 
 
 //TODO: move it to a separate file
@@ -288,7 +290,7 @@ public:
 private:
   StrongMT<ICommandScheduler> scheduler;
 
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && !defined(PW_LINUX_DB_BOOTSTRAP)
   Crc32Calculator<CrcStatsCollector> crcStatCalc;
 #endif
 

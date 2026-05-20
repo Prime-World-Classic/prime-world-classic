@@ -1,4 +1,65 @@
 #include "stdafx.h"
+
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFChest.h"
+#include "DBConsumable.h"
+#include "PFWorld.h"
+
+namespace NWorld
+{
+
+NAMEMAP_BEGIN(PFConsumableChest)
+  NAMEMAP_FUNC_RO(name, &PFConsumableChest::GetName )
+NAMEMAP_END
+
+CObj<PFConsumableChest> PFConsumableChest::Create(PFWorld* pWorld, NDb::Ptr<NDb::Consumable> const& dbConsumable, const CVec2& pos, int quantity, NDb::GameObject const* gameObject)
+{
+  NI_VERIFY(dbConsumable, "Invalid consumable to place into chest!", return NULL;);
+  NDb::AdvMapObject amChest;
+  amChest.gameObject = gameObject ? gameObject : (dbConsumable->gameObject.GetPtr());
+  amChest.offset = CPlacement(CVec3(pos, 0.0f), QNULL, CVec3(1.0f, 1.0f, 1.0f));
+  CObj<PFConsumableChest> pChest(new PFConsumableChest(pWorld, dbConsumable, quantity, amChest));
+  pChest->SetObjectSizes(1.0f, 1, 1);
+  return pChest;
+}
+
+PFConsumableChest::PFConsumableChest(PFWorld* pWorld, NDb::Ptr<NDb::Consumable> const& dbConsumable, int quantity_, const NDb::AdvMapObject& dbObject_)
+: PFPickupableObjectBase(pWorld, dbObject_.offset.GetPlace().pos, dbObject_.gameObject.GetPtr())
+, consumable(dbConsumable)
+, quantity(quantity_)
+, dbObject(dbObject_)
+{
+}
+
+void PFConsumableChest::Reset()
+{
+  PFPickupableObjectBase::Reset();
+}
+
+bool PFConsumableChest::CanBePickedUpBy(CPtr<PFBaseHero> const& pPicker) const
+{
+  (void)pPicker;
+  return IsValid(consumable);
+}
+
+void PFConsumableChest::OnPickedUp(const CPtr<PFBaseHero>& pPicker)
+{
+  (void)pPicker;
+}
+
+const wstring& PFConsumableChest::GetName() const
+{
+  static const wstring emptyName;
+  return consumable ? consumable->name.GetText() : emptyName;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFConsumableChest, NWorld)
+
+#else
 #include "PFChest.h"
 
 #include "DBConsumable.h"
@@ -188,9 +249,12 @@ void PFConsumableChest::OnPickedUp( const CPtr<PFBaseHero>& pPicker )
 
 const wstring& PFConsumableChest::GetName() const
 {
-  return consumable ? consumable->name.GetText() : NNameMap::wstrNoname;
+  static const wstring emptyName;
+  return consumable ? consumable->name.GetText() : emptyName;
 }
 
 } // End of namespace NWorld
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFConsumableChest, NWorld)
+
+#endif

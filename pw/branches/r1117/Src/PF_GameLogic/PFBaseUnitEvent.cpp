@@ -1,4 +1,47 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseUnitEvent.h"
+#include "PFBaseUnit.h"
+
+namespace NWorld
+{
+
+int PFBaseUnitPickupEvent::PushArgsForScript( lua_State *L ) const
+{
+  (void)L;
+  return 0;
+}
+
+bool PFBaseUnitApplicatorEvent::IsEventHostileTo( PFBaseUnit const* pListenerUnit ) const
+{
+  (void)pListenerUnit;
+  return false;
+}
+
+int PFBaseUnitUseAbilityEvent::PushArgsForScript( lua_State *L ) const
+{
+  (void)L;
+  return 0;
+}
+
+int PFBaseUnitAbilityStartEvent::PushArgsForScript( lua_State *L ) const
+{
+  (void)L;
+  return 0;
+}
+
+int PFBaseUnitEventUnitDeath::PushArgsForScript( lua_State *L ) const
+{
+  (void)L;
+  return 0;
+}
+
+}
+
+#else
+
 #include "PFBaseUnitEvent.h"
 #include "PFBaseUnit.h"
 #include "LuaScript.h"
@@ -75,3 +118,5 @@ int PFBaseUnitDamageEvent::PushArgsForScript( lua_State *L ) const
 
 
 }
+
+#endif

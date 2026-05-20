@@ -65,7 +65,9 @@ isSpectator( _isSpectator )
 
   resourceCollection = new NWorld::PFResourcesCollection;
   resourceCollection->CollectTalents();
+#if !defined( PW_LINUX_DB_BOOTSTRAP )
   resourceCollection->CollectConsumables();
+#endif
   resourceCollection->CollectMarketingItems();
 }
 
@@ -107,8 +109,10 @@ void LocalGameContext::Start()
 
   state = ELocalGameState::InLobby;
 
+#if !defined( PW_LINUX_DB_BOOTSTRAP )
   chatController = new NGameX::ChatUiController(0);
   ignoreListStorage = new NGameX::IgnoreListStorage( clientId );
+#endif
 }
 
 
@@ -215,6 +219,9 @@ int LocalGameContext::Poll( float dt )
       break;
 
     case ELocalGameState::LoadingMap:
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+      state = ELocalGameState::Playing;
+#else
       NI_VERIFY( scheduler, "", break );
       scheduler->Step( dt );
 
@@ -231,6 +238,7 @@ int LocalGameContext::Poll( float dt )
         if ( loadingScreeen )
           loadingScreeen->SetPlayerProgress( clientId, Clamp( pro, 0.f, 1.f ) );
       }
+#endif
       break;
 
     case ELocalGameState::Playing:
@@ -261,8 +269,10 @@ void LocalGameContext::Shutdown()
 
 void LocalGameContext::OnAltTab(bool isActive)
 {
+#if !defined( PW_LINUX_DB_BOOTSTRAP )
   if(loadingThread)
     loadingThread->SetPriority( isActive ? 0 : 1 );
+#endif
 }
 
 
@@ -432,6 +442,13 @@ void LocalGameContext::OnCombatScreenStarted( NCore::IWorldBase * _world, const 
 {
   NI_VERIFY( state == ELocalGameState::StartingAdvScreen, "", return );
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  scheduler->OnCombatScreenStarted(_replayInfo);
+  transceiver->SetWorld( _world );
+  transceiver->RecordMapStart( mapStartInfo );
+
+  state = ELocalGameState::Playing;
+#else
   //_world->SetAccounting( client->GetAccounting() );
 
   scheduler->OnCombatScreenStarted(_replayInfo);
@@ -461,6 +478,7 @@ void LocalGameContext::OnCombatScreenStarted( NCore::IWorldBase * _world, const 
 
     LaunchGame();
   }
+#endif
 }
 
 
@@ -506,6 +524,13 @@ void LocalGameContext::StartGame()
     replayWriter->WriteStartGame(0, 0);
   }
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  if ( loadingScreeen )
+    NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( loadingScreeen ) );
+
+  scheduler->StartGame();
+  state = ELocalGameState::Playing;
+#else
   advScreeen = new NGameX::AdventureScreen;
   advScreeen->SetLobbyCallback( this );
   advScreeen->Construct( chatController, NULL, ignoreListStorage, isSpectator, false );
@@ -518,6 +543,7 @@ void LocalGameContext::StartGame()
   NScreenCommands::PushCommand( NScreenCommands::CreatePushScreenCommand( advScreeen ) );
 
   state = ELocalGameState::StartingAdvScreen;
+#endif
 }
 
 
@@ -574,6 +600,13 @@ void LocalGameContext::LaunchGame()
 {
   NI_VERIFY( state == ELocalGameState::LoadingMap, "", return );
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+  if ( loadingScreeen )
+    NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( loadingScreeen ) );
+
+  scheduler->StartGame();
+  state = ELocalGameState::Playing;
+#else
   NI_VERIFY( mapLoadingJob, "", return );
   NI_VERIFY( advScreeen, "", return );
   advScreeen->OnMapLoaded( mapLoadingJob->MapDescriptionResource(), mapLoadingJob->GetCameraSettings() );
@@ -588,6 +621,7 @@ void LocalGameContext::LaunchGame()
   scheduler->StartGame();
 
   state = ELocalGameState::Playing;
+#endif
 }
 
 
@@ -713,11 +747,13 @@ void LocalGameContext::StopAsyncMapLoadingJob()
   if (replayRunner)
     replayRunner->StopAsyncMapLoadingJob();
 
+#if !defined( PW_LINUX_DB_BOOTSTRAP )
   if (loadingThread)
   {
     loadingThread->AsyncStop();
     loadingThread->Wait(30000);
   }
+#endif
 }
 
 void LocalGameContext::PrepareReplayWriter()

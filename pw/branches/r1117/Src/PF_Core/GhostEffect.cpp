@@ -17,21 +17,29 @@ void GhostEffect::Apply(CPtr<ClientObjectBase> const &pUnit)
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void GhostEffect::Update(float timeDelta)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  (void)timeDelta;
+#else
   if (IsValid(target) && Get(sceneObj) && target->GetSceneObject())
   {
     sceneObj->SetPosition(target->GetSceneObject()->GetPosition().pos + CVec3(2.f, -2.f, 1.f));
   }
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void GhostEffect::SetPrototype(NScene::SceneObject const &obj)
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  (void)obj;
+#else
   // @todo  make semi-transparent copy of scene object
 
   NScene::AnimatedSceneComponent const *pComp = dynamic_cast<NScene::AnimatedSceneComponent const *>(obj.GetRootComponent());
   sceneObj = NScene::CreateSceneObject(obj.GetScene(), *pComp->GetDBComponent());
   sceneObj->UpdateForced();
   sceneObj->AddToScene(obj.GetScene());
+#endif
 }
 
 

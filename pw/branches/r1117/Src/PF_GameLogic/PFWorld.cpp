@@ -1,4 +1,429 @@
 #include "stdafx.h"
+#if defined( PW_LINUX_NULL_RENDER )
+namespace NWorld
+{
+class PFBaseUnit;
+}
+
+template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
+
+#include "PFWorld.h"
+#include "PFResourcesCollectionClient.h"
+#include "DBAdvMap.h"
+#include "TileMap.h"
+#include "PFPlayer.h"
+#include "WarFog.h"
+#include "PFWorldProtection.h"
+#include "DayNightController.h"
+#include "PFWorldNatureMap.h"
+#include "TriggerMarkerHandler.h"
+#include "CollisionResolver.h"
+#include "PFAIContainer.h"
+#include "PFAIWorld.h"
+#include "PFCommonCreep.h"
+#include "PFBuildings.h"
+#include "PFTower.h"
+#include "PFGlyph.h"
+#include "PFNeutralCreep.h"
+#include "PFMainBuilding.h"
+#include "PFMinigamePlace.h"
+#include "PFRoadFlagpole.h"
+#include "PFScriptedFlagpole.h"
+#include "PFSimpleObject.h"
+#include "PFTree.h"
+#include "PF_Core/WorldObject.h"
+#include "Scene/DBSceneBase.h"
+#include "System/LoadingProgress.h"
+
+NI_DEFINE_REFCOUNT( NGameX::IAdventureScreen );
+REGISTER_SAVELOAD_CLASS_NM(PFWorld, NWorld);
+
+namespace NWorld
+{
+int PFWorld::instanceCount = 0;
+
+PFStatistics* CreateLinuxPFStatistics(PFWorld* pWorld);
+bool StepLinuxPFStatistics(PFStatistics* pStatistics, float dtInSeconds);
+
+PFWorld::PFWorld() :
+step( -1 ),
+timeElapsed( 0.f ),
+manualGameFinish(false),
+humanPlayersCount(0),
+worldChecker(this),
+ambienceMap(NULL),
+totalCreepsCount(0),
+allScriptFunctionsEnabled(false),
+stepLength(DEFAULT_GAME_STEP_LENGTH),
+stepLengthInSeconds(DEFAULT_GAME_STEP_LENGTH * 0.001f),
+defeatedFaction(NDb::FACTION_NEUTRAL),
+timeScale(1.0f),
+linuxLoadedWarFogUnblockObjects(0),
+linuxLoadedSimpleObjects(0),
+linuxLoadedMultiStateObjects(0),
+linuxLoadedTreeObjects(0),
+linuxLoadedGlyphSpawnerObjects(0),
+linuxLoadedAdvMapObstacleObjects(0),
+linuxLoadedHeroPlaceHolderObjects(0),
+linuxLoadedCreepSpawnerObjects(0),
+linuxLoadedNeutralCreepSpawnerObjects(0),
+linuxLoadedSimpleBuildingObjects(0),
+linuxLoadedUsableBuildingObjects(0),
+linuxLoadedShopObjects(0),
+linuxLoadedQuarterObjects(0),
+linuxLoadedTowerObjects(0),
+linuxLoadedControllableTowerObjects(0),
+linuxLoadedFountainObjects(0),
+linuxLoadedRoadFlagpoleObjects(0),
+linuxLoadedScriptedFlagpoleObjects(0),
+linuxLoadedMainBuildingObjects(0),
+linuxLoadedMinigamePlaceObjects(0),
+linuxLoadedCameraSplineObjects(0),
+linuxLoadedScriptPathObjects(0),
+linuxLoadedScriptPolygonAreaObjects(0)
+{
+}
+
+PFWorld::PFWorld(const NCore::MapStartInfo&, NScene::IScene* _scene, NGameX::IAdventureScreen* _screen, PFResourcesCollection* _collection, int _stepLength, bool, int) :
+step( -1 ),
+timeElapsed( 0.f ),
+pScene(_scene),
+adventureScreen(_screen),
+manualGameFinish(false),
+humanPlayersCount(0),
+worldChecker(this),
+ambienceMap(NULL),
+resourcesCollection(_collection),
+totalCreepsCount(0),
+allScriptFunctionsEnabled(false),
+stepLength(_stepLength),
+stepLengthInSeconds(_stepLength * 0.001f),
+defeatedFaction(NDb::FACTION_NEUTRAL),
+timeScale(1.0f),
+linuxLoadedWarFogUnblockObjects(0),
+linuxLoadedSimpleObjects(0),
+linuxLoadedMultiStateObjects(0),
+linuxLoadedTreeObjects(0),
+linuxLoadedGlyphSpawnerObjects(0),
+linuxLoadedAdvMapObstacleObjects(0),
+linuxLoadedHeroPlaceHolderObjects(0),
+linuxLoadedCreepSpawnerObjects(0),
+linuxLoadedNeutralCreepSpawnerObjects(0),
+linuxLoadedSimpleBuildingObjects(0),
+linuxLoadedUsableBuildingObjects(0),
+linuxLoadedShopObjects(0),
+linuxLoadedQuarterObjects(0),
+linuxLoadedTowerObjects(0),
+linuxLoadedControllableTowerObjects(0),
+linuxLoadedFountainObjects(0),
+linuxLoadedRoadFlagpoleObjects(0),
+linuxLoadedScriptedFlagpoleObjects(0),
+linuxLoadedMainBuildingObjects(0),
+linuxLoadedMinigamePlaceObjects(0),
+linuxLoadedCameraSplineObjects(0),
+linuxLoadedScriptPathObjects(0),
+linuxLoadedScriptPolygonAreaObjects(0)
+{
+}
+
+void PFWorld::OnDestroyContents() {}
+void WorldChecker::Save() const {}
+void WorldChecker::Load() {}
+
+bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const NDb::AdventureCameraSettings*, const NCore::TPlayersStartInfo& playersInfo, LoadingProgress* progress, bool, const NWorld::PFResourcesCollection::TalentMap& talents)
+{
+  advMapDescription = _advMapDescription;
+  humanPlayersCount = 0;
+  players.clear();
+  int maxPlayerId = -1;
+  for (NCore::TPlayersStartInfo::const_iterator it = playersInfo.begin(); it != playersInfo.end(); ++it)
+  {
+    if (it->playerID > maxPlayerId)
+      maxPlayerId = it->playerID;
+    if (it->playerType == NCore::EPlayerType::Human)
+      ++humanPlayersCount;
+  }
+  allScriptFunctionsEnabled = humanPlayersCount <= 1;
+
+  if (maxPlayerId >= 0)
+  {
+    players.resize(maxPlayerId + 1);
+    for (NCore::TPlayersStartInfo::const_iterator it = playersInfo.begin(); it != playersInfo.end(); ++it)
+    {
+      if (it->playerID < 0)
+        continue;
+
+      players[it->playerID] = new PFPlayer(
+        this,
+        it->playerID,
+        it->teamID,
+        it->originalTeamID,
+        it->userID,
+        it->zzimaSex,
+        false,
+        0,
+        false,
+        false);
+    }
+  }
+
+  if (IsValid(advMapDescription) && IsValid(advMapDescription->map) && IsValid(advMapDescription->map->terrain))
+  {
+    const NDb::Terrain* terrain = advMapDescription->map->terrain;
+    const int tilesX = terrain->elemXCount * terrain->tilesPerElement;
+    const int tilesY = terrain->elemYCount * terrain->tilesPerElement;
+    mapSize = CVec2(static_cast<float>(tilesX), static_cast<float>(tilesY));
+    if (!pTileMap)
+      pTileMap = new TileMap(this);
+    pTileMap->Prepare(tilesX, tilesY, 1.0f);
+    if (!pAIWorld)
+    {
+      pAIWorld = new PFAIWorld(this);
+      pAIWorld->SetVoxelMapSizes(pTileMap);
+    }
+    if (!warFog)
+      warFog = new FogOfWar(this, NDb::KnownEnum<NDb::EFaction>::sizeOf, tilesX, tilesY, 4, 0);
+    warFog->ResetVisibility();
+    if (!pNatureMap)
+      pNatureMap = new PFWorldNatureMap(this);
+    pNatureMap->OnLoaded(terrain);
+  }
+
+  if (progress)
+  {
+    progress->SetPartialProgress(EMapLoadStages::Terrain, 1.0f);
+    progress->SetPartialProgress(EMapLoadStages::PathFinding, 1.0f);
+    progress->SetPartialProgress(EMapLoadStages::Scene, 1.0f);
+  }
+
+  if (!LoadSceneMapObjects(advMapDescription, playersInfo, IsValid(advMapDescription) && advMapDescription->mapType == NDb::MAPTYPE_TUTORIAL, progress, talents))
+    return false;
+
+  LoadPrecachedResources(advMapDescription);
+
+  NDb::Ptr<NDb::AdvMapSettings> advMapSettings;
+  if (IsValid(advMapDescription))
+  {
+    advMapSettings = IsValid(advMapDescription->mapSettings) ? advMapDescription->mapSettings :
+      (IsValid(advMapDescription->map) ? advMapDescription->map->mapSettings : NDb::Ptr<NDb::AdvMapSettings>());
+  }
+  if (!triggerMarkerHandler && IsValid(advMapSettings))
+    triggerMarkerHandler = new TriggerMarkerHandler(this, advMapSettings);
+  if (!pResolver)
+    pResolver = new CollisionResolver(this);
+  if (!pAIContainer)
+    pAIContainer = new PFAIContainer(this, 0);
+  if (pAIWorld)
+    pAIWorld->SetMapData(advMapDescription, advMapSettings);
+
+  if (!protection)
+    protection = PFWorldProtection::Create(this);
+  if (!dayNightController)
+  {
+    dayNightController = new DayNightController(this);
+    dayNightController->Initialize();
+  }
+  if (!pStatistics)
+    pStatistics = CreateLinuxPFStatistics(this);
+
+  if (progress)
+    progress->SetPartialProgress(EMapLoadStages::HeightMap, 1.0f);
+
+  return true;
+}
+
+void PFWorld::Reset() {}
+void PFWorld::ResetClientObjects() {}
+PFPlayer* PFWorld::GetPlayer(int id) const { return 0 <= id && id < players.size() ? players[id] : 0; }
+PFPlayer* PFWorld::GetPlayerByUID(int userId) const
+{
+  for (vector<CObj<PFPlayer> >::const_iterator it = players.begin(); it != players.end(); ++it)
+  {
+    PFPlayer* player = *it;
+    if (player && player->GetUserID() == userId)
+      return player;
+  }
+  return 0;
+}
+const int PFWorld::GetPresentPlayersCount() const { return humanPlayersCount; }
+const int PFWorld::GetPresentPlayersCount(NDb::EFaction) const { return humanPlayersCount; }
+void PFWorld::UpdatePlayerStatuses(const NCore::TStatuses&) {}
+void PFWorld::ExecuteCommands(const NCore::TPackedCommands&) {}
+bool PFWorld::Step(float dtInSeconds, float)
+{
+  if (dtInSeconds > 0.0f)
+    ++step;
+  timeElapsed += dtInSeconds;
+  if (protection)
+    protection->Update();
+  if (dayNightController)
+    dayNightController->Update(dtInSeconds);
+  if (pNatureMap)
+    pNatureMap->OnStep(dtInSeconds);
+  if (pAIWorld)
+    pAIWorld->Update(dtInSeconds);
+  StepLinuxPFStatistics(pStatistics, dtInSeconds);
+  if (triggerMarkerHandler)
+    triggerMarkerHandler->Step(dtInSeconds);
+  if (pAIContainer)
+    pAIContainer->Step(dtInSeconds);
+  return true;
+}
+void PFWorld::CalcCRC(IBinSaver&, bool) {}
+void PFWorld::StoreDeadUnit(PFBaseUnit*) {}
+void PFWorld::OnGameFinished(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
+void PFWorld::GameFinish(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
+bool PFWorld::CanCreateClients() { return IsValid(advMapDescription); }
+void PFWorld::StopMovingUnits() {}
+void PFWorld::SyncFPUStart(nfpu::ActionType) {}
+void PFWorld::SyncFPUEnd(nfpu::ActionType) {}
+void PFWorld::AddAI(PFBaseHero*, int) {}
+void PFWorld::RemoveAI(PFBaseHero*) {}
+const NDb::BotsSettings* PFWorld::GetBotsSettings() const { return 0; }
+void PFWorld::NotifyTalentCastProcessed(const NWorld::PFTalent*) {}
+void PFWorld::NotifyConsumableProcessed(const NWorld::PFConsumableAbilityData*) {}
+void PFWorld::NotifyCreepSpawnerCleaned(const NWorld::PFNeutralCreepSpawner*, const NWorld::PFBaseUnit*) {}
+bool PFWorld::IsFactionDefeated(const NDb::EFaction& faction) { return defeatedFaction == faction; }
+void PFWorld::SetDefeatedFaction(const NDb::EFaction& faction) { defeatedFaction = faction; }
+bool PFWorld::PollProtectionResult(NCore::ProtectionResult& result) { return protection ? protection->PopResult(result) : false; }
+void PFWorld::SetProtectionUpdateFrequency(const int offset, const int frequency) { if (protection) protection->SetUpdateFrequency(offset, frequency); }
+bool PFWorld::IsDay() const { return dayNightController ? dayNightController->IsDay() : true; }
+bool PFWorld::IsNight() const { return dayNightController ? dayNightController->IsNight() : false; }
+void PFWorld::LockOutsideCameraArea(const NDb::AdventureCameraSettings*) {}
+void PFWorld::InitMinigames() {}
+void PFWorld::KillDeadUnits(bool) {}
+void PFWorld::LoadPrecachedResources(const NDb::AdvMapDescription*) {}
+
+namespace
+{
+template<class TObject>
+int LoadLinuxMapObjectsOfType(
+  NWorld::PFWorld* world,
+  const vector<NDb::AdvMapObject>& objects,
+  int typeId,
+  int& totalLoaded,
+  LoadingProgress* progress)
+{
+  int loadedCount = 0;
+  for (vector<NDb::AdvMapObject>::const_iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    if (!IsValid(it->gameObject) || it->gameObject->GetObjectTypeID() != (DWORD)typeId)
+      continue;
+
+    ++loadedCount;
+    PF_Core::WorldObjectBase* object = new TObject(world, *it);
+    object->SetMapObject(true);
+    if (world->GetAIContainer())
+      world->GetAIContainer()->RegisterObject(object, it->scriptName, it->scriptGroupName);
+
+    if (progress && !objects.empty())
+      progress->SetPartialProgress(EMapLoadStages::MapObjects, (++totalLoaded) / (float)objects.size());
+  }
+  return loadedCount;
+}
+}
+
+bool PFWorld::LoadSceneMapObjects(const NDb::AdvMapDescription* advMapDesc, const NCore::TPlayersStartInfo&, const bool, LoadingProgress* progress, const NWorld::PFResourcesCollection::TalentMap&)
+{
+  NI_VERIFY(advMapDesc && IsValid(advMapDesc->map), "Invalid advMap resource!", return false);
+
+  const vector<NDb::AdvMapObject>& objects = advMapDesc->map->objects;
+  int objectsLoaded = 0;
+
+  linuxLoadedWarFogUnblockObjects = LoadLinuxMapObjectsOfType<PFWarFogUnblock>(this, objects, NDb::WarFogUnblock::typeId, objectsLoaded, progress);
+  linuxLoadedSimpleObjects = LoadLinuxMapObjectsOfType<PFSimpleObject>(this, objects, NDb::SimpleObject::typeId, objectsLoaded, progress);
+  linuxLoadedSimpleObjects += LoadLinuxMapObjectsOfType<PFSimpleObject>(this, objects, NDb::GameObject::typeId, objectsLoaded, progress);
+  linuxLoadedSimpleObjects += LoadLinuxMapObjectsOfType<PFSimpleObject>(this, objects, NDb::Road::typeId, objectsLoaded, progress);
+  linuxLoadedMultiStateObjects = LoadLinuxMapObjectsOfType<PFMultiStateObject>(this, objects, NDb::MultiStateObject::typeId, objectsLoaded, progress);
+  linuxLoadedTreeObjects = LoadLinuxMapObjectsOfType<PFTree>(this, objects, NDb::TreeObject::typeId, objectsLoaded, progress);
+  linuxLoadedGlyphSpawnerObjects = LoadLinuxMapObjectsOfType<PFGlyphSpawner>(this, objects, NDb::GlyphSpawner::typeId, objectsLoaded, progress);
+  linuxLoadedAdvMapObstacleObjects = LoadLinuxMapObjectsOfType<PFAdvMapObstacle>(this, objects, NDb::AdvMapObstacle::typeId, objectsLoaded, progress);
+  linuxLoadedHeroPlaceHolderObjects = 0;
+  for (vector<NDb::AdvMapObject>::const_iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    if (!IsValid(it->gameObject) || it->gameObject->GetObjectTypeID() != (DWORD)NDb::HeroPlaceHolder::typeId)
+      continue;
+
+    ++linuxLoadedHeroPlaceHolderObjects;
+    if (progress && !objects.empty())
+      progress->SetPartialProgress(EMapLoadStages::MapObjects, (++objectsLoaded) / (float)objects.size());
+  }
+  linuxLoadedCreepSpawnerObjects = LoadLinuxMapObjectsOfType<PFCreepSpawner>(this, objects, NDb::AdvMapCreepSpawner::typeId, objectsLoaded, progress);
+  linuxLoadedNeutralCreepSpawnerObjects = LoadLinuxMapObjectsOfType<PFNeutralCreepSpawner>(this, objects, NDb::AdvMapNeutralCreepSpawner::typeId, objectsLoaded, progress);
+  linuxLoadedUsableBuildingObjects = LoadLinuxMapObjectsOfType<PFUsableBuilding>(this, objects, NDb::UsableBuilding::typeId, objectsLoaded, progress);
+  linuxLoadedSimpleBuildingObjects = LoadLinuxMapObjectsOfType<PFSimpleBuilding>(this, objects, NDb::Building::typeId, objectsLoaded, progress);
+  linuxLoadedShopObjects = LoadLinuxMapObjectsOfType<PFShop>(this, objects, NDb::Shop::typeId, objectsLoaded, progress);
+  linuxLoadedQuarterObjects = LoadLinuxMapObjectsOfType<PFQuarters>(this, objects, NDb::Quarter::typeId, objectsLoaded, progress);
+  linuxLoadedTowerObjects = LoadLinuxMapObjectsOfType<PFTower>(this, objects, NDb::Tower::typeId, objectsLoaded, progress);
+  linuxLoadedControllableTowerObjects = LoadLinuxMapObjectsOfType<PFControllableTower>(this, objects, NDb::ControllableTower::typeId, objectsLoaded, progress);
+  linuxLoadedFountainObjects = LoadLinuxMapObjectsOfType<PFFountain>(this, objects, NDb::Fountain::typeId, objectsLoaded, progress);
+  linuxLoadedRoadFlagpoleObjects = LoadLinuxMapObjectsOfType<PFRoadFlagpole>(this, objects, NDb::Flagpole::typeId, objectsLoaded, progress);
+  linuxLoadedScriptedFlagpoleObjects = LoadLinuxMapObjectsOfType<PFScriptedFlagpole>(this, objects, NDb::ScriptedFlagpole::typeId, objectsLoaded, progress);
+  linuxLoadedMainBuildingObjects = 0;
+  for (vector<NDb::AdvMapObject>::const_iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    if (!IsValid(it->gameObject) || it->gameObject->GetObjectTypeID() != (DWORD)NDb::MainBuilding::typeId)
+      continue;
+
+    ++linuxLoadedMainBuildingObjects;
+    PFMainBuilding* const mb = new PFMainBuilding(this, *it);
+    mb->SetMapObject(true);
+    mainBuildings.push_back(mb);
+    if (GetAIContainer())
+      GetAIContainer()->RegisterObject(mb, it->scriptName, it->scriptGroupName);
+
+    if (progress && !objects.empty())
+      progress->SetPartialProgress(EMapLoadStages::MapObjects, (++objectsLoaded) / (float)objects.size());
+  }
+
+  linuxLoadedMinigamePlaceObjects = LoadLinuxMapObjectsOfType<PFMinigamePlace>(this, objects, NDb::MinigamePlace::typeId, objectsLoaded, progress);
+  linuxLoadedCameraSplineObjects = 0;
+  linuxLoadedScriptPathObjects = 0;
+  linuxLoadedScriptPolygonAreaObjects = 0;
+  for (vector<NDb::AdvMapObject>::const_iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    if (!IsValid(it->gameObject))
+      continue;
+
+    const DWORD typeId = it->gameObject->GetObjectTypeID();
+    if (typeId == (DWORD)NDb::AdvMapCameraSpline::typeId)
+    {
+      ++linuxLoadedCameraSplineObjects;
+      if (GetAIContainer())
+        GetAIContainer()->RegisterCameraSpline(it->gameObject->GetDBID(), it->offset.GetPlace());
+    }
+    else if (typeId == (DWORD)NDb::ScriptPath::typeId)
+    {
+      ++linuxLoadedScriptPathObjects;
+      if (GetAIContainer())
+        GetAIContainer()->RegisterScriptPath(it->scriptName, dynamic_cast<const NDb::ScriptPath*>(it->gameObject.GetPtr()));
+    }
+    else if (typeId == (DWORD)NDb::ScriptPolygonArea::typeId)
+    {
+      ++linuxLoadedScriptPolygonAreaObjects;
+      if (GetAIContainer())
+        GetAIContainer()->RegisterPolygonArea(it->scriptName, dynamic_cast<const NDb::ScriptPolygonArea*>(it->gameObject.GetPtr()));
+    }
+    else
+    {
+      continue;
+    }
+
+    if (progress && !objects.empty())
+      progress->SetPartialProgress(EMapLoadStages::MapObjects, (++objectsLoaded) / (float)objects.size());
+  }
+
+  if (progress)
+  {
+    progress->SetPartialProgress(EMapLoadStages::MapObjects, 1.0f);
+    progress->SetPartialProgress(EMapLoadStages::Heroes, 1.0f);
+  }
+  return true;
+}
+bool PFWorld::CanTrackPlayersBehaviour(const NCore::MapStartInfo&) const { return false; }
+
+} // namespace NWorld
+#else
 #include "PFWorld.h"
 #include "PFPlayer.h"
 #include "PFAdvMap.h"
@@ -1601,3 +2026,6 @@ bool PFWorld::IsNight() const
 }
 
 } // namespace NWorld
+
+
+#endif // PW_LINUX_NULL_RENDER

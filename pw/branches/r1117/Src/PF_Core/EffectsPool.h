@@ -3,7 +3,9 @@
 #include "ObjectsPool.h"
 #include "DBEffect.h"
 #include "BasicEffect.h"
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "ControlledStatusEffect.h"
+#endif
 #include "../System/Singleton4DLL.h"
 
 namespace PF_Core

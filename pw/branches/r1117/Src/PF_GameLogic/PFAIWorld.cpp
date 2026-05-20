@@ -1,4 +1,443 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFAIWorld.h"
+#include "DBGameLogic.h"
+#include "DBSessionRoots.h"
+#include "PFGlyphManager.h"
+
+namespace NWorld
+{
+
+}
+
+template<> inline NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase*, NWorld::PFBaseHero*, CObjectBase*) { return 0; }
+template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
+template<> NWorld::AIWorldFacets::VotingForSurrenderLogic* CastToUserObjectImpl<NWorld::AIWorldFacets::VotingForSurrenderLogic>(CObjectBase*, NWorld::AIWorldFacets::VotingForSurrenderLogic*, CObjectBase*) { return 0; }
+
+namespace NWorld
+{
+
+namespace AIWorldFacets
+{
+FemaleMaleAssistEffect::FemaleMaleAssistEffect()
+{
+}
+
+FemaleMaleAssistEffect::~FemaleMaleAssistEffect()
+{
+}
+
+void FemaleMaleAssistEffect::OnUnitDie( CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller, const HeroesCont &assistants ) const
+{
+  (void)pVictim;
+  (void)pKiller;
+  (void)assistants;
+}
+
+void FemaleMaleAssistEffect::PlayEffect( CPtr<PFBaseUnit> pKiller, CPtr<PFBaseUnit> pAssistant ) const
+{
+  (void)pKiller;
+  (void)pAssistant;
+}
+}
+
+namespace
+{
+NDb::UnitLogicParameters g_linuxDefaultUnitLogicParameters;
+NDb::AILogicParameters g_linuxDefaultAILogicParameters;
+wstring g_linuxEmptyFactionName;
+Render::HDRColor g_linuxDefaultColor(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
+void PFAIWorld::OnDestroyContents()
+{
+  PFVoxelMap::OnDestroyContents();
+}
+
+PFAIWorld::~PFAIWorld()
+{
+}
+
+PFAIWorld::PFAIWorld( PFWorld * _world )
+: PFVoxelMap( _world )
+, pWorld( _world )
+, maxVisibilityRange( 40.0f )
+, maxObjectSize( 1.0f )
+, battleStartDelay( 0.0f )
+, towersVulnerabilityDelay( 0.0f )
+, wasGameFinished( false )
+, spawnCreeps( true )
+, spawnNeutralCreeps( true )
+, isTutorial(false)
+, canUseSkins(true)
+, creepLevelCap(0)
+, creepLevelupPaused(false)
+{
+  const NDb::Ptr<NDb::SessionRoot>& pRoot = NDb::SessionRoot::GetRoot();
+  if (IsValid(pRoot) && IsValid(pRoot->logicRoot))
+  {
+    pUnitLogicParameters = pRoot->logicRoot->unitLogicParameters;
+    pAILogicParameters = pRoot->logicRoot->aiLogic;
+    pLevelUps = pRoot->logicRoot->heroesLevelups;
+    pDefaultFormulasCache = pRoot->logicRoot->defaultFormulas;
+  }
+  if (IsValid(pRoot) && IsValid(pRoot->visualRoot))
+    pColoringScheme = pRoot->visualRoot->teamColoringScheme;
+
+  if (!IsValid(pAILogicParameters))
+    pAILogicParameters = &g_linuxDefaultAILogicParameters;
+}
+
+const NDb::UnitLogicParameters& PFAIWorld::GetUnitParameters(NDb::EUnitType type) const
+{
+  if (IsValid(pUnitLogicParameters) && type >= 0 && type < pUnitLogicParameters->unitParameters.size() && IsValid(pUnitLogicParameters->unitParameters[type]))
+    return *pUnitLogicParameters->unitParameters[type];
+  return g_linuxDefaultUnitLogicParameters;
+}
+
+void PFAIWorld::RegisterUnit(PFBaseUnit* pUnit)
+{
+  if (!pUnit)
+    return;
+  AddObject(*pUnit);
+  maxObjectSize = Max(maxObjectSize, pUnit->GetObjectSize());
+}
+
+void PFAIWorld::RegisterObject(PFLogicObject* pObject)
+{
+  if (!pObject)
+    return;
+  AddObject(*pObject);
+  maxObjectSize = Max(maxObjectSize, pObject->GetObjectSize());
+}
+
+void PFAIWorld::UnregisterObjectOrUnit(PFLogicObject* pObject)
+{
+  if (pObject)
+    RemoveObject(*pObject);
+}
+void PFAIWorld::Update(float dtInSeconds) { (void)dtInSeconds; }
+
+vector<PFAIWorld::BuildingsRoute>::const_iterator PFAIWorld::FindRoute( NDb::EFaction faction, NDb::ERoute routeID ) const
+{
+  for (vector<BuildingsRoute>::const_iterator it = buildingsRoutes.begin(); it != buildingsRoutes.end(); ++it)
+  {
+    if (it->faction == faction && it->routeID == routeID)
+      return it;
+  }
+  return buildingsRoutes.end();
+}
+
+vector<PFAIWorld::BuildingsRoute>::iterator PFAIWorld::GetRoute( NDb::EFaction faction, NDb::ERoute routeID )
+{
+  for (vector<BuildingsRoute>::iterator it = buildingsRoutes.begin(); it != buildingsRoutes.end(); ++it)
+  {
+    if (it->faction == faction && it->routeID == routeID)
+      return it;
+  }
+  buildingsRoutes.push_back(BuildingsRoute(faction, routeID));
+  return buildingsRoutes.end() - 1;
+}
+
+CVec2 PFAIWorld::GetBorderAtRoute( NDb::EFaction faction, NDb::ERoute routeID ) const
+{
+  vector<BuildingsRoute>::const_iterator it = FindRoute(faction, routeID);
+  return it == buildingsRoutes.end() ? VNULL2 : it->borderPoint;
+}
+
+void PFAIWorld::SetRouteLevelVulnerable( BuildingsRoute::RouteLevel* level, bool bVulnerable )
+{
+  (void)level;
+  (void)bVulnerable;
+}
+
+vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator PFAIWorld::BuildingsRoute::GetLevel(int level)
+{
+  vector<RouteLevel>::iterator it = find(levels.begin(), levels.end(), level);
+  if (it == levels.end())
+  {
+    levels.push_back(RouteLevel(level));
+    it = levels.end() - 1;
+  }
+  return it;
+}
+
+int PFAIWorld::BuildingsRoute::GetTowerIDByIndex( int index )
+{
+  return PF_Core::INVALID_OBJECT_ID;
+}
+
+void PFAIWorld::RegisterCreepSpawner( NDb::EFaction faction, NDb::ERoute routeID, int spawnerObjectID )
+{
+  BuildingsRoute& route = *GetRoute(faction, routeID);
+  route.spawnerObjectID = spawnerObjectID;
+}
+
+void PFAIWorld::UpdateRouteBorderPoint( BuildingsRoute::RouteLevel const& borderLevel, BuildingsRoute& route )
+{
+  (void)borderLevel;
+  route.borderPoint = VNULL2;
+}
+
+PFCreepSpawner* PFAIWorld::FindSpawnerWithRouteNearestToPoint( const CVec2& pos, const NDb::EFaction faction ) const
+{
+  (void)pos;
+  (void)faction;
+  return 0;
+}
+
+void PFAIWorld::OnBuildingCreate( NDb::EFaction faction, NDb::ERoute routeID, int level, const CPtr<PFBuilding>& pBuilding )
+{
+  (void)pBuilding;
+  (void)GetRoute(faction, routeID)->GetLevel(level);
+}
+
+void PFAIWorld::OnBuildingDestroy( NDb::EFaction faction, NDb::ERoute routeID, int level, int objectID, bool isQuarter )
+{
+  (void)faction;
+  (void)routeID;
+  (void)level;
+  (void)objectID;
+  (void)isQuarter;
+}
+
+bool PFAIWorld::IsNeutralSpecialAwardingRequired( PFBaseUnit const* pVictim ) const
+{
+  (void)pVictim;
+  return false;
+}
+
+void PFAIWorld::GetKiller(CPtr<PFBaseUnit> const &pVictim, CPtr<PFBaseUnit> &pKiller ) const
+{
+  (void)pVictim;
+  pKiller = 0;
+}
+
+void PFAIWorld::GetKiller(CPtr<PFBaseUnit> const &pVictim, CPtr<PFBaseUnit> &pKiller, PFApplDamage const*& pRefDamageApplicator ) const
+{
+  (void)pVictim;
+  pKiller = 0;
+  pRefDamageApplicator = 0;
+}
+
+void PFAIWorld::GetAssistants(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pAggressor, vector<PFBaseHero* > &assistants) const
+{
+  (void)pVictim;
+  (void)pAggressor;
+  assistants.clear();
+}
+
+void PFAIWorld::AwardKillers(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller) const
+{
+  (void)pVictim;
+  (void)pKiller;
+}
+
+void PFAIWorld::SendUnitDieNotification(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller, PFBaseUnitDamageDesc const* pDamageDesc) const
+{
+  (void)pVictim;
+  (void)pKiller;
+  (void)pDamageDesc;
+}
+
+void PFAIWorld::LogNaftaIncome(CPtr<PFBaseHero> pKiller, CPtr<PFBaseUnit> pVictim, float nafta, float naftaSpec, float teamNafta) const
+{
+  (void)pKiller;
+  (void)pVictim;
+  (void)nafta;
+  (void)naftaSpec;
+  (void)teamNafta;
+}
+
+int PFAIWorld::GetMaxHeroLevel() const
+{
+  return IsValid(pLevelUps) ? pLevelUps->developmentPoints.size() : 0;
+}
+
+void PFAIWorld::OnGameFinished( const NDb::EFaction failedFaction )
+{
+  (void)failedFaction;
+  wasGameFinished = true;
+}
+
+int PFAIWorld::GetHeroDevPoints4Level(int level) const
+{
+  return IsValid(pLevelUps) && 0 <= level && level < pLevelUps->developmentPoints.size() ? pLevelUps->developmentPoints[level] : 0;
+}
+
+float PFAIWorld::GetHeroLevelDiffCoeff( int difference, bool useAlternateTable ) const
+{
+  (void)difference;
+  (void)useAlternateTable;
+  return 1.0f;
+}
+
+void PFAIWorld::RegisterHero(PFBaseHero* pHero) { (void)pHero; }
+void PFAIWorld::UnregisterHero(PFBaseHero* pHero) { (void)pHero; }
+
+const PFCreepSpawner* PFAIWorld::GetSpawner(NDb::EFaction faction, NDb::ERoute routeID) const
+{
+  (void)faction;
+  (void)routeID;
+  return 0;
+}
+
+void PFAIWorld::OnNatureGlyphUsed( NDb::ERoute routeID, const CPtr<PFBaseMaleHero>& pHero)
+{
+  (void)routeID;
+  (void)pHero;
+}
+
+Render::HDRColor const& PFAIWorld::GetTeamColor(NDb::EFaction faction) const
+{
+  (void)faction;
+  return g_linuxDefaultColor;
+}
+
+Render::HDRColor const& PFAIWorld::GetHeroColor(NDb::EFaction faction, int id) const
+{
+  (void)faction;
+  (void)id;
+  return g_linuxDefaultColor;
+}
+
+const wstring& PFAIWorld::GetFactionName(NDb::EFaction faction) const
+{
+  (void)faction;
+  return g_linuxEmptyFactionName;
+}
+
+int PFAIWorld::GetAveragePriestessLvl( NDb::EFaction faction ) const
+{
+  (void)faction;
+  return 0;
+}
+
+void PFAIWorld::SetMapData( NDb::AdvMapDescription const * advMapDescription, NDb::AdvMapSettings const * advMapSettings)
+{
+  isTutorial = advMapDescription && advMapDescription->mapType == NDb::MAPTYPE_TUTORIAL;
+  canUseSkins = !advMapDescription || advMapDescription->canUseSkins;
+  if (advMapSettings)
+  {
+    battleStartDelay = static_cast<float>(advMapSettings->battleStartDelay);
+    towersVulnerabilityDelay = static_cast<float>(advMapSettings->towersVulnerabilityDelay);
+    primeSettings = advMapSettings->primeSettings;
+    heroNaftaParams = advMapSettings->primeSettings.heroNaftaParams;
+    creepAnnounceList = advMapSettings->creepAnnounceList;
+    pHeroRespawnParams = advMapSettings->heroRespawnParams;
+    portalTalent = advMapSettings->overridePortalTalent;
+    creepLevelCap = advMapSettings->creepLevelCap;
+  }
+  else if (IsValid(pAILogicParameters))
+  {
+    pHeroRespawnParams = pAILogicParameters->heroRespawnParams;
+    creepLevelCap = pAILogicParameters->creepLevelCap;
+  }
+}
+
+bool PFAIWorld::IsNeutralCreepInAnnounceList( PFBaseCreep const* pCreep ) const
+{
+  (void)pCreep;
+  return false;
+}
+
+void PFAIWorld::ClearVoxelMap()
+{
+  OnDestroyContents();
+}
+
+void PFAIWorld::VotingForSurrenderStart( CPtr<PFPlayer> pPlayer ) { (void)pPlayer; }
+void PFAIWorld::VotingForSurrenderMakeDecision( CPtr<PFPlayer> pPlayer, bool vote ) { (void)pPlayer; (void)vote; }
+AIWorldFacets::VotingForSurrenderLogic * PFAIWorld::GetVotingForSurrender( int teamId ) { (void)teamId; return 0; }
+void PFAIWorld::ApplyForceModifiers( float forceOfMap, float trainingForceCoeff, NDb::EMapType mapType, PFBaseHero* trainingHero )
+{
+  (void)forceOfMap;
+  (void)trainingForceCoeff;
+  (void)mapType;
+  (void)trainingHero;
+}
+
+#ifndef _SHIPPING
+void PFAIWorld::ApplyForceModifiersCheat() {}
+#endif
+
+void PFAIWorld::CalculateStatsCoeffFromForce( float forceOfMap, float trainingForceCoeff, NDb::EMapType mapType, PFBaseHero* trainingHero )
+{
+  (void)forceOfMap;
+  (void)trainingForceCoeff;
+  (void)mapType;
+  (void)trainingHero;
+}
+
+void PFAIWorld::UpdateUnitsStatsFromForce() {}
+void PFAIWorld::UpdateBotsStats( NDb::EFaction faction ) { (void)faction; }
+int PFAIWorld::GetSurrenderVotes( NDb::EFaction failedFaction ) const { (void)failedFaction; return 0; }
+void PFAIWorld::CollectFlagpoles( vector<PFFlagpole*>* pFlagpoles ) const { if (pFlagpoles) pFlagpoles->clear(); }
+
+UnitsCollector::UnitsCollector(PFAIWorld::Units &_result) : result(_result) {}
+void UnitsCollector::operator()(PFBaseUnit &unit)
+{
+  if (!unit.IsDead())
+    result.push_back(&unit);
+}
+
+UnitMaskingPredicate::UnitMaskingPredicate(PFBaseUnit * _pOwner, NDb::ESpellTarget targetFilter)
+: factionMask(0)
+, unitTypeMask(targetFilter)
+, pOwner(_pOwner)
+{
+  if (_pOwner)
+    factionMask = MakeSpellTargetFactionFlags(*_pOwner, targetFilter);
+  else
+    factionMask =
+      (1L << NDb::FACTION_NEUTRAL) |
+      (1L << NDb::FACTION_FREEZE) |
+      (1L << NDb::FACTION_BURN);
+}
+
+bool UnitMaskingPredicate::operator()(const PFLogicObject &obj) const
+{
+  if ((unitTypeMask & NDb::SPELLTARGET_AFFECTMOUNTED) == 0 && obj.IsMounted())
+    return false;
+
+  if (&obj == pOwner.GetPtr())
+    return (unitTypeMask & NDb::SPELLTARGET_SELF) != 0;
+
+  if ((unitTypeMask & NDb::SPELLTARGET_VULNERABLETARGETSONLY) != 0 && !obj.IsVulnerable())
+    return false;
+
+  if (obj.IsFlying() && (unitTypeMask & NDb::SPELLTARGET_FLYING) == 0)
+    return false;
+
+  if ((factionMask & (1 << obj.GetFaction())) == 0)
+    return false;
+
+  if ((unitTypeMask & (1L << obj.GetUnitType())) == 0)
+    return false;
+
+  if ((unitTypeMask & NDb::SPELLTARGET_VISIBLETARGETSONLY) != 0 && IsValid(pOwner) &&
+      (pOwner->GetFaction() != obj.GetFaction()) && !obj.IsVisibleForEnemy(pOwner->GetFaction()))
+    return false;
+
+  if ((unitTypeMask & NDb::SPELLTARGET_LINEOFSIGHT) != 0 && IsValid(pOwner) && !pOwner->CanSee(obj))
+    return false;
+
+  return true;
+}
+
+bool CreaturePredicate::operator()(const PFLogicObject& pLogicObject) const
+{
+  return !pLogicObject.IsDead();
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFAIWorld, NWorld);
+
+#else
+
 #include "PFAIWorld.h"
 #include "PFBaseUnit.h"
 #include "DBGameLogic.h"
@@ -2340,3 +2779,5 @@ PFAIWorld::PFAIWorld( PFWorld * _world )
 REGISTER_WORLD_OBJECT_NM(PFAIWorld, NWorld);
 REGISTER_DEV_VAR( "battle_start_delay", g_battleStartDelay, STORAGE_NONE );
 
+
+#endif

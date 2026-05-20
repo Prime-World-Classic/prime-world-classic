@@ -1,20 +1,36 @@
 #include "System/stdafx.h"
 #include "System/ChannelLogger.h"
+#include "System/Dumper.h"
 #include "System/InlineProfiler3/InlineProfiler3.h"
 #include "System/LogStreamBuffer.h"
 #include "System/SafeTextFormat.h"
 #include "System/SafeTextFormatEx.h"
+#include "System/FileSystem/FileWriteAsynchronousStream.h"
+#include "System/ImageTGA.h"
+#include "System/Crc32Checksum.h"
 #include "System/SystemLog.h"
 #include "System/Texts.h"
+#include "Core/BaseState.h"
 #include "Core/GameTypes.h"
+#include "Core/WorldBase.h"
+#include "Client/MainLoop.h"
 #include "Client/Tooltips.h"
 #include "Client/ScreenCommands.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
+#include "PF_GameLogic/AdventureScreen.h"
+#include "PF_GameLogic/DBAdvMap.h"
+#include "PF_GameLogic/DBGameLogic.h"
+#include "PF_GameLogic/DBHeroesList.h"
+#include "PF_GameLogic/MapStartup.h"
+#include "PF_GameLogic/PFResourcesCollection.h"
+#include "PF_GameLogic/PointersHolder.h"
 #include "PF_GameLogic/WebLauncher.h"
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #include "Render/NullRenderSignal.h"
 #include "Render/TextureManager.h"
+#include "Render/debugrenderer.h"
 #include "Render/material.h"
+#include "Render/smartrenderer.h"
 #include "Render/texture.h"
 #include "Scene/SceneComponent.h"
 #include "Scripts/Script.h"
@@ -32,31 +48,31 @@
 #include "UI/ImageComponent.h"
 #include "libdb/XmlSaver.h"
 
+#include <cstdlib>
 #include <stdio.h>
 #include <wchar.h>
+
+void* Aligned_MAlloc(size_t size, size_t alignment)
+{
+  if (alignment < sizeof(void*))
+    alignment = sizeof(void*);
+
+  void* result = 0;
+  if (posix_memalign(&result, alignment, size) != 0)
+    return 0;
+
+  return result;
+}
+
+void Aligned_Free(void* ptr)
+{
+  std::free(ptr);
+}
 
 std::map<nstl::wstring, WebLauncherPostRequest::WebUserData> g_usersData;
 string g_devLogin;
 bool g_needNotifyLobbyClients = false;
 string g_selectedHeroes[10];
-
-namespace
-{
-class LinuxBootstrapScreenCommand : public NScreenCommands::IScreenCommand
-{
-  NI_DECLARE_REFCOUNT_CLASS_1(LinuxBootstrapScreenCommand, NScreenCommands::IScreenCommand);
-
-public:
-  virtual void Exec()
-  {
-  }
-
-  virtual bool Prepare()
-  {
-    return true;
-  }
-};
-}
 
 namespace NMainLoop
 {
@@ -113,69 +129,6 @@ void SetTemporaryTime(float val)
 bool IsAppActive()
 {
   return NMainFrame::IsAppActive();
-}
-
-void AddTooltip(const wstring& text, const UI::STooltipDesc& desc)
-{
-  (void)text;
-  (void)desc;
-}
-}
-
-namespace NScreenCommands
-{
-IScreenCommand* CreatePushScreenCommand(NMainLoop::IScreenBase* pScreenToPush)
-{
-  (void)pScreenToPush;
-  return new LinuxBootstrapScreenCommand;
-}
-
-IScreenCommand* CreatePopScreenCommand(NMainLoop::IScreenBase* pScreenToPop)
-{
-  (void)pScreenToPop;
-  return new LinuxBootstrapScreenCommand;
-}
-
-IScreenCommand* CreatePopScreenCommand(const string& screenToPopName)
-{
-  (void)screenToPopName;
-  return new LinuxBootstrapScreenCommand;
-}
-
-IScreenCommand* CreateClearStackCommand()
-{
-  return new LinuxBootstrapScreenCommand;
-}
-
-void RegisterInScreensFactory(const string& name, CreateFun createFun)
-{
-  (void)name;
-  (void)createFun;
-}
-
-NMainLoop::IScreenBase* CreateScreen(const string& name)
-{
-  (void)name;
-  return 0;
-}
-
-void PushCommand(IScreenCommand* pCommand)
-{
-  (void)pCommand;
-}
-
-bool ProcessScreenCmds()
-{
-  return false;
-}
-
-bool AnalizeScreenCmds()
-{
-  return false;
-}
-
-void ClearCommands()
-{
 }
 }
 
@@ -311,6 +264,7 @@ IMPLEMENT_SIMPLE_SIGNAL_ST(NullRenderSignal)
 string g_sessionName;
 WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_Wait;
 int g_playerTeamId = 0;
+int g_fixedTeamCam = 0;
 int g_playerHeroId = 0;
 int g_playerPartyId = 0;
 int g_playersCount = 0;
@@ -318,16 +272,69 @@ std::string g_protocolToken;
 bool g_localGameRun = false;
 string g_mapId;
 
-template<>
-const CObjectBase* CastToObjectBaseImpl<NScene::SceneComponent>(const NScene::SceneComponent* p, const void*)
+namespace NCore
 {
-  return p ? p->CastToObjectBase() : 0;
+class WorldCommand;
 }
 
-template<>
-CObjectBase* CastToObjectBaseImpl<NScene::SceneComponent>(NScene::SceneComponent* p, void*)
+namespace NWorld
 {
-  return p ? p->CastToObjectBase() : 0;
+class Target;
+
+const char* MakeTargetString(const Target&)
+{
+  return "<linux-bootstrap-target>";
+}
+
+NCore::WorldCommand* CreateCmdSetTimescale(float scale)
+{
+  (void)scale;
+  return 0;
+}
+
+namespace
+{
+const NDb::Hero* FindHeroInOverride(const NDb::AdvMapHeroesOverrideData* data, uint heroId)
+{
+  if (!data)
+    return 0;
+
+  if (data->ownHero.hero && Crc32Checksum().AddString(data->ownHero.hero->id.c_str()).Get() == heroId)
+    return data->ownHero.hero;
+
+  for (vector<NDb::AdvMapPlayerData>::const_iterator it = data->allies.begin(); it != data->allies.end(); ++it)
+    if (it->hero && Crc32Checksum().AddString(it->hero->id.c_str()).Get() == heroId)
+      return it->hero;
+
+  for (vector<NDb::AdvMapPlayerData>::const_iterator it = data->enemies.begin(); it != data->enemies.end(); ++it)
+    if (it->hero && Crc32Checksum().AddString(it->hero->id.c_str()).Get() == heroId)
+      return it->hero;
+
+  return 0;
+}
+}
+
+const NDb::Hero* FindHero(const NDb::HeroesDB* db, const NDb::AdvMapDescription* advMapDesc, uint heroId)
+{
+  if (db)
+  {
+    for (int i = 0; i < db->heroes.size(); ++i)
+    {
+      if (db->heroes[i] && Crc32Checksum().AddString(db->heroes[i]->id.c_str()).Get() == heroId)
+        return db->heroes[i];
+    }
+  }
+
+  if (advMapDesc && advMapDesc->heroesOverride)
+  {
+    if (const NDb::Hero* hero = FindHeroInOverride(advMapDesc->heroesOverride->singlePlayerMale, heroId))
+      return hero;
+    if (const NDb::Hero* hero = FindHeroInOverride(advMapDesc->heroesOverride->singlePlayerFemale, heroId))
+      return hero;
+  }
+
+  return 0;
+}
 }
 
 template<>
@@ -342,6 +349,153 @@ CObjectBase* CastToObjectBaseImpl<Render::Texture>(Render::Texture* p, void*)
   return p ? p->CastToObjectBase() : 0;
 }
 
+template<>
+const CObjectBase* CastToObjectBaseImpl<FileWriteAsynchronousStream>(const FileWriteAsynchronousStream* p, const void*)
+{
+  return p ? p->CastToObjectBase() : 0;
+}
+
+template<>
+CObjectBase* CastToObjectBaseImpl<FileWriteAsynchronousStream>(FileWriteAsynchronousStream* p, void*)
+{
+  return p ? p->CastToObjectBase() : 0;
+}
+
+template<>
+CObjectBase* CastToObjectBaseImpl<NCore::IWorldBase>(NCore::IWorldBase* p, void*)
+{
+  return p ? p->CastToObjectBase() : 0;
+}
+
+template<>
+CObjectBase* CastToObjectBaseImpl<NWorld::PFResourcesCollection>(NWorld::PFResourcesCollection* p, void*)
+{
+  return p ? p->CastToObjectBase() : 0;
+}
+
+namespace NWorld
+{
+_interface IPointerHolder;
+class TileMap;
+class PFBaseUnit;
+class PFHeroStatistics;
+class MapLoadingController;
+class PlayerBehaviourTracker;
+}
+
+namespace PF_Minigames
+{
+class IMinigamesMain;
+}
+
+namespace Pathfinding
+{
+class CCommonPathFinder;
+class RoutePathFinder;
+}
+
+template<>
+CObjectBase* CastToObjectBaseImpl<NWorld::IPointerHolder>(NWorld::IPointerHolder*, void*)
+{
+  return 0;
+}
+
+#define PW_LINUX_BOOTSTRAP_OBJECT_CASTS(TypeName) \
+template<> CObjectBase* CastToObjectBaseImpl<TypeName>(TypeName*, void*) { return 0; } \
+template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, void*) { return 0; } \
+template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+
+PW_LINUX_BOOTSTRAP_OBJECT_CASTS(NWorld::PFHeroStatistics)
+PW_LINUX_BOOTSTRAP_OBJECT_CASTS(NWorld::PlayerBehaviourTracker)
+PW_LINUX_BOOTSTRAP_OBJECT_CASTS(PF_Minigames::IMinigamesMain)
+PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::CCommonPathFinder)
+PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::RoutePathFinder)
+
+#undef PW_LINUX_BOOTSTRAP_OBJECT_CASTS
+
+namespace ni_detail
+{
+template<>
+WeakPointerProxyST* AcquireWeakProxyImpl<WeakPointerProxyST, NGameX::AdventureScreen>(NGameX::AdventureScreen* p, void*)
+{
+  return p ? p->AcquireWeakProxy() : 0;
+}
+}
+
+namespace NCore
+{
+namespace
+{
+class LinuxBootstrapInvalidFSMState : public IBaseFSMState
+{
+public:
+  virtual void DestroyContents()
+  {
+  }
+
+  virtual void DeleteThis()
+  {
+  }
+
+  virtual const int IsInvalidRef() const
+  {
+    return 1;
+  }
+
+  virtual CObjectBase* CastToObjectBase()
+  {
+    return 0;
+  }
+
+  virtual const CObjectBase* CastToObjectBase() const
+  {
+    return 0;
+  }
+
+  virtual const int GetTypeId() const
+  {
+    return -1;
+  }
+
+  virtual const char* GetObjectTypeName() const
+  {
+    return "LinuxBootstrapInvalidFSMState";
+  }
+
+  virtual void Init()
+  {
+  }
+
+  virtual IBaseFSMState* Step(float)
+  {
+    return 0;
+  }
+};
+}
+}
+
+template<>
+NCore::IBaseFSMState* GetInvalid<NCore::IBaseFSMState>()
+{
+  static NCore::LinuxBootstrapInvalidFSMState invalidState;
+  return &invalidState;
+}
+
+namespace Render
+{
+CVec2& GetAOEScaleHACK()
+{
+  static CVec2 scale(0.0f, 0.0f);
+  return scale;
+}
+
+CVec2& GetAOEOffsetHACK()
+{
+  static CVec2 offset(0.0f, 0.0f);
+  return offset;
+}
+}
+
 namespace NDb
 {
 struct AdvMapDescription;
@@ -351,28 +505,6 @@ struct Texture;
 namespace NRandom
 {
 class RandomGenerator;
-}
-
-namespace NLogg
-{
-CLogger::CLogger(const char* _szName)
-  : szName(_szName),
-    headerFormat(EHeaderFormat::Default)
-{
-}
-
-CLogger::~CLogger()
-{
-}
-
-void CLogger::Log(const SEntryInfo&, const char*, const char*)
-{
-  // The Linux bootstrap writes its own structured status/log output elsewhere.
-}
-
-CChannelLogger::~CChannelLogger()
-{
-}
 }
 
 namespace NScript
@@ -454,285 +586,6 @@ Script* GetScript(lua_State* pLuaState)
   return GetLinuxBootstrapScriptSingleton();
 }
 }
-
-namespace UI
-{
-namespace
-{
-class LinuxBootstrapAlphabet : public IAlphabet, public BaseObjectST
-{
-  NI_DECLARE_REFCOUNT_CLASS_2(LinuxBootstrapAlphabet, IAlphabet, BaseObjectST);
-
-public:
-  LinuxBootstrapAlphabet()
-  {
-    glyph.u1 = 0.0f;
-    glyph.v1 = 0.0f;
-    glyph.u2 = 1.0f;
-    glyph.v2 = 1.0f;
-    glyph.width = 8.0f;
-    glyph.height = 18.0f;
-    glyph.offsetW = 0.0f;
-    glyph.offsetH = 0.0f;
-    glyph.A = 0.0f;
-    glyph.B = 8.0f;
-    glyph.C = 0.0f;
-  }
-
-  virtual const Glyph& GetGlyph(wchar_t symbol)
-  {
-    const float width = symbol == L' ' ? 5.0f : 8.0f;
-    glyph.width = width;
-    glyph.B = width;
-    return glyph;
-  }
-
-  virtual void SetupMetric(SFontMetric& metric, float gapAbove, float gapUnder, const SFontRenderTweaks& tweaks) const
-  {
-    metric.ascent = 14.0f;
-    metric.descent = 4.0f;
-    metric.gapAbove = gapAbove;
-    metric.gapUnder = gapUnder;
-    metric.tweaks = tweaks;
-    metric.defaultGlyphWidth = 8.0f;
-  }
-
-  virtual float GetStringLength(const wchar_t* text, unsigned length, float maxWidth, unsigned* charsFitIn, const SFontRenderTweaks& tweaks)
-  {
-    const float defaultWidth = 8.0f + tweaks.additionalAdvance;
-    const float spaceWidth = 5.0f * tweaks.spaceScale + tweaks.additionalAdvance;
-    float currentWidth = 0.0f;
-    unsigned fitCount = 0;
-
-    for (unsigned i = 0; i < length; ++i)
-    {
-      const float glyphWidth = text && text[i] == L' ' ? spaceWidth : defaultWidth;
-      if (maxWidth > 0.0f && (currentWidth + glyphWidth) > maxWidth)
-      {
-        break;
-      }
-
-      currentWidth += glyphWidth;
-      ++fitCount;
-    }
-
-    if (charsFitIn)
-    {
-      *charsFitIn = fitCount;
-    }
-
-    if (maxWidth <= 0.0f && text)
-    {
-      for (unsigned i = fitCount; i < length; ++i)
-      {
-        currentWidth += text[i] == L' ' ? spaceWidth : defaultWidth;
-      }
-    }
-
-    return currentWidth;
-  }
-
-  virtual void DrawString(const wchar_t* text, unsigned length, float x, float y, Render::BaseMaterial* fontMaterial, const Render::Color& color, const Rect& cropRect, const SFontRenderTweaks& tweaks, const CVec2& scale)
-  {
-    (void)text;
-    (void)length;
-    (void)x;
-    (void)y;
-    (void)fontMaterial;
-    (void)color;
-    (void)cropRect;
-    (void)tweaks;
-    (void)scale;
-  }
-
-  virtual float GetHeightScale() const
-  {
-    return 1.0f;
-  }
-
-private:
-  mutable Glyph glyph;
-};
-
-class LinuxBootstrapFontStyle : public IFontStyle, public BaseObjectST
-{
-  NI_DECLARE_REFCOUNT_CLASS_2(LinuxBootstrapFontStyle, IFontStyle, BaseObjectST);
-
-public:
-  explicit LinuxBootstrapFontStyle(IAlphabet* bootstrapAlphabet)
-    : uiFontStyle(0),
-      alphabet(bootstrapAlphabet),
-      modified(true)
-  {
-    SFontRenderTweaks tweaks;
-    alphabet->SetupMetric(metric, 0.5f, 0.5f, tweaks);
-  }
-
-  void SetStyle(const NDb::UIFontStyle* style)
-  {
-    uiFontStyle = style;
-
-    SFontRenderTweaks tweaks;
-    if (uiFontStyle)
-    {
-      tweaks.additionalAdvance = uiFontStyle->additionalAdvance;
-      tweaks.spaceScale = uiFontStyle->spaceScale;
-    }
-
-    alphabet->SetupMetric(metric, 0.5f, 0.5f, tweaks);
-    modified = true;
-  }
-
-  virtual const NDb::UIFontStyle* GetStyle() const
-  {
-    return uiFontStyle;
-  }
-
-  virtual Render::BaseMaterial* GetMaterial()
-  {
-    return 0;
-  }
-
-  virtual bool CheckModified()
-  {
-    const bool wasModified = modified;
-    modified = false;
-    return wasModified;
-  }
-
-  virtual void DrawString(const wchar_t* text, unsigned length, float x, float y, const Render::Color& color, const Rect& cropRect)
-  {
-    alphabet->DrawString(text, length, x, y, 0, color, cropRect, metric.tweaks, CVec2(1.0f, 1.0f));
-  }
-
-  virtual float GetStringLength(const wchar_t* text, unsigned length)
-  {
-    return alphabet->GetStringLength(text, length, 0.0f, 0, metric.tweaks);
-  }
-
-  virtual IAlphabet* GetAlphabet()
-  {
-    return alphabet;
-  }
-
-  virtual const SFontMetric& GetMetric() const
-  {
-    return metric;
-  }
-
-private:
-  const NDb::UIFontStyle* uiFontStyle;
-  Strong<IAlphabet> alphabet;
-  SFontMetric metric;
-  bool modified;
-};
-
-class LinuxBootstrapFontRenderer : public IFontRenderer, public BaseObjectST
-{
-  NI_DECLARE_REFCOUNT_CLASS_2(LinuxBootstrapFontRenderer, IFontRenderer, BaseObjectST);
-
-public:
-  LinuxBootstrapFontRenderer()
-    : defaultAlphabet(new LinuxBootstrapAlphabet)
-  {
-  }
-
-  virtual void Initialize()
-  {
-  }
-
-  virtual void Release()
-  {
-    fontStyles.clear();
-    debugFontStyles.clear();
-    fontsTexture = Render::Texture2DRef();
-  }
-
-  virtual Render::Texture2DRef& GetFontsTexture()
-  {
-    return fontsTexture;
-  }
-
-  virtual IAlphabet* FindNearestAlphabet(const char* ttfFileName, int size, bool systemFont, bool bold, bool italic, bool forFlash)
-  {
-    (void)ttfFileName;
-    (void)size;
-    (void)systemFont;
-    (void)bold;
-    (void)italic;
-    (void)forFlash;
-    return defaultAlphabet;
-  }
-
-  virtual const Rect& GetNoCropRect()
-  {
-    static Rect noCropRect(0.0f, 0.0f, 0.0f, 0.0f);
-    return noCropRect;
-  }
-
-  virtual IFontStyle* GetFontStyle(const NDb::UIFontStyle* style)
-  {
-    if (!style)
-    {
-      return GetDebugFontStyle(20);
-    }
-
-    Strong<LinuxBootstrapFontStyle>& slot = fontStyles[style];
-    if (!slot)
-    {
-      slot = new LinuxBootstrapFontStyle(defaultAlphabet);
-    }
-
-    slot->SetStyle(style);
-    return slot;
-  }
-
-  virtual IFontStyle* GetDebugFontStyle(int size)
-  {
-    Strong<LinuxBootstrapFontStyle>& slot = debugFontStyles[size];
-    if (!slot)
-    {
-      slot = new LinuxBootstrapFontStyle(defaultAlphabet);
-      slot->SetStyle(0);
-    }
-
-    return slot;
-  }
-
-private:
-  Strong<LinuxBootstrapAlphabet> defaultAlphabet;
-  Render::Texture2DRef fontsTexture;
-  map<const NDb::UIFontStyle*, Strong<LinuxBootstrapFontStyle> > fontStyles;
-  map<int, Strong<LinuxBootstrapFontStyle> > debugFontStyles;
-};
-}
-
-IFontRenderer* GetFontRenderer()
-{
-  static Strong<LinuxBootstrapFontRenderer> fontRenderer = new LinuxBootstrapFontRenderer;
-  return fontRenderer;
-}
-
-NScript::Script* GetUIScript()
-{
-  return NScript::GetScript(0);
-}
-
-void ReleaseUIScript()
-{
-}
-
-void AddScriptFile(const string& scriptFile)
-{
-  (void)scriptFile;
-}
-}
-
-NI_DEFINE_REFCOUNT(UI::IAlphabet)
-NI_DEFINE_REFCOUNT(UI::IFontStyle)
-NI_DEFINE_REFCOUNT(UI::LinuxBootstrapAlphabet)
-NI_DEFINE_REFCOUNT(UI::LinuxBootstrapFontStyle)
-NI_DEFINE_REFCOUNT(UI::LinuxBootstrapFontRenderer)
 
 namespace Lua
 {
@@ -1103,6 +956,20 @@ int lua_values<wstring>::put(lua_State* L, wstring const& value)
   return 1;
 }
 
+CTPoint<float> lua_values<CTPoint<float> >::get(lua_State* L, int idx)
+{
+  (void)L;
+  (void)idx;
+  return CTPoint<float>(0.0f, 0.0f);
+}
+
+int lua_values<CTPoint<float> >::put(lua_State* L, const CTPoint<float>& value)
+{
+  (void)L;
+  (void)value;
+  return 1;
+}
+
 CTRect<float> lua_values<CTRect<float> >::get(lua_State* L, int idx)
 {
   (void)L;
@@ -1153,18 +1020,6 @@ int lua_values<LuaSubclass const*>::put(lua_State* L, LuaSubclass const* value)
 }
 }
 
-namespace NLogg
-{
-void CChannelLogger::Log(const SEntryInfo& entryInfo, const char* headerAndText, const char* textOnly)
-{
-  CLogger::Log(entryInfo, headerAndText, textOnly);
-}
-
-void StreamBuffer::WriteHeader(unsigned)
-{
-}
-}
-
 namespace profiler3
 {
 void SetupThisThread(const char*)
@@ -1205,129 +1060,6 @@ void FinishMemoryEvent(TEventId)
 }
 }
 
-namespace text
-{
-size_t FormatArray(IBuffer* buffer, const char* fmt, const IArg* const*, size_t)
-{
-  if (!buffer || !fmt)
-  {
-    return 0;
-  }
-
-  return buffer->Write(fmt, strlen(fmt));
-}
-
-void BasicArg::FormatString(IBuffer* buffer, const char* str, const SFormatSpecs&)
-{
-  if (buffer && str)
-  {
-    buffer->Write(str, strlen(str));
-  }
-}
-
-void BasicArg::FormatString(IBuffer* buffer, const wchar_t* str, const SFormatSpecs&)
-{
-  if (!buffer || !str)
-  {
-    return;
-  }
-
-  string mbcs;
-  NStr::ToMBCS(&mbcs, wstring(str));
-  buffer->Write(mbcs.c_str(), mbcs.length());
-}
-
-char* BasicArg::SafeAppend(char* buff, const char* buffEnd, const char* src)
-{
-  if (!buff || !src || buff >= buffEnd)
-  {
-    return 0;
-  }
-
-  while (*src)
-  {
-    if (buff + 1 >= buffEnd)
-    {
-      return 0;
-    }
-
-    *buff++ = *src++;
-  }
-
-  *buff = 0;
-  return buff;
-}
-
-char* BasicArg::SafeAppend(char* buff, const char* buffEnd, char c)
-{
-  if (!buff || buff + 1 >= buffEnd)
-  {
-    return 0;
-  }
-
-  *buff++ = c;
-  *buff = 0;
-  return buff;
-}
-
-char* BasicArg::FormatFormat(char* fmt, size_t fmtBufffSize, const SFormatSpecs& specs)
-{
-  if (!fmt || fmtBufffSize < 2)
-  {
-    return 0;
-  }
-
-  char* ptr = fmt;
-  const char* end = fmt + fmtBufffSize;
-  *ptr++ = '%';
-  *ptr = 0;
-
-  if (specs.flags & EFlags::Minus)
-  {
-    ptr = SafeAppend(ptr, end, '-');
-  }
-  if (ptr && (specs.flags & EFlags::Plus))
-  {
-    ptr = SafeAppend(ptr, end, '+');
-  }
-  if (ptr && (specs.flags & EFlags::Zero))
-  {
-    ptr = SafeAppend(ptr, end, '0');
-  }
-  if (ptr && (specs.flags & EFlags::Sharp))
-  {
-    ptr = SafeAppend(ptr, end, '#');
-  }
-  if (ptr && (specs.flags & EFlags::Blank))
-  {
-    ptr = SafeAppend(ptr, end, ' ');
-  }
-
-  if (ptr && (specs.flags & EFlags::Has_Width))
-  {
-    char width[32];
-    snprintf(width, sizeof(width), "%d", specs.width);
-    ptr = SafeAppend(ptr, end, width);
-  }
-
-  if (ptr && (specs.flags & EFlags::Has_Precision))
-  {
-    char precision[32];
-    snprintf(precision, sizeof(precision), ".%d", specs.precision);
-    ptr = SafeAppend(ptr, end, precision);
-  }
-
-  return ptr;
-}
-
-char (&GetThreadBuffer())[THREAD_BUFF_SZ]
-{
-  static thread_local char buffer[THREAD_BUFF_SZ];
-  buffer[0] = 0;
-  return buffer;
-}
-}
-
 namespace Input
 {
 int GetVerbosityLevel()
@@ -1336,110 +1068,59 @@ int GetVerbosityLevel()
 }
 }
 
-NLogg::CChannelLogger& GetSystemLog()
-{
-  static NLogg::CChannelLogger* g_systemLog = new NLogg::CChannelLogger("System");
-  return *g_systemLog;
-}
-
-void TraceMsg(const char* msg)
-{
-  if (msg && msg[0])
-  {
-    fprintf(stderr, "%s\n", msg);
-  }
-}
-
 bool G_IsRandomBotSkinsEnabled()
 {
   return false;
 }
 
-namespace Render
+namespace Compatibility
 {
-Material* CreateRenderMaterial(const NDb::Material* pDbMaterial)
+void Init()
 {
-  (void)pDbMaterial;
-  return 0;
 }
 
-Material* CreateRenderMaterial(const int typeId)
-{
-  (void)typeId;
-  return 0;
-}
-
-void UnloadTexturePool(void* poolId)
-{
-  (void)poolId;
-}
-
-void OnTextureDestruction(Texture* tex)
-{
-  (void)tex;
-}
-
-Texture2DRef Create2DTextureFromArray2D(const CArray2D<Render::Color>& src)
-{
-  if (src.IsEmpty())
-  {
-    return Texture2DRef();
-  }
-
-  D3DSURFACE_DESC desc = D3DSURFACE_DESC();
-  desc.Format = D3DFMT_A8R8G8B8;
-  desc.Type = D3DRTYPE_TEXTURE;
-  desc.Usage = 0;
-  desc.Pool = D3DPOOL_MANAGED;
-  desc.MultiSampleType = D3DMULTISAMPLE_NONE;
-  desc.MultiSampleQuality = 0;
-  desc.Width = src.GetSizeX();
-  desc.Height = src.GetSizeY();
-  return Create<Texture2D>(desc);
-}
-
-Texture2DRef LoadTexture2DIntoPool(const NDb::Texture&, bool, void*)
-{
-  return Texture2DRef();
-}
-
-Texture2DRef LoadTexture2D(const NDb::Texture&)
-{
-  return Texture2DRef();
-}
-}
-
-namespace NSoundScene
-{
-FMOD::Event* EventStart(const NDb::DBFMODEventDesc& eventDesc)
-{
-  (void)eventDesc;
-  return 0;
-}
-
-FMOD::Event* EventStart(const NDb::DBFMODEventDesc& eventDesc, const CVec3& position)
-{
-  (void)eventDesc;
-  (void)position;
-  return 0;
-}
-}
-
-namespace UI
-{
-namespace Debug
-{
-bool MouseTraceEnabled()
+bool IsRunnedUnderWine()
 {
   return false;
 }
 
-void AddRect(const Rect& rect, const Color& color, float duration)
+bool IsRunnedUnderCrossOverWine()
 {
-  (void)rect;
-  (void)color;
-  (void)duration;
+  return false;
 }
+}
+
+namespace NDebug
+{
+const wchar_t* GetProductNameW()
+{
+  return L"PrimeWorldLinuxClient";
+}
+
+nstl::string GenerateDebugFileName(const char* suffix, const char* extension, const char* folder, bool)
+{
+  nstl::string result;
+  if (folder && folder[0])
+  {
+    result += folder;
+    result += "/";
+  }
+  result += suffix ? suffix : "debug";
+  if (extension && extension[0])
+  {
+    result += ".";
+    result += extension;
+  }
+  return result;
+}
+}
+
+namespace utils
+{
+bool GetMemoryStatus(size_t& virtualSize)
+{
+  virtualSize = 0;
+  return false;
 }
 }
 

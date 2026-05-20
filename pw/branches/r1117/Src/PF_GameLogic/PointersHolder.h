@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../PF_Core/WorldObject.h"
 #include "../System/ChunklessSaver.h"
 
 namespace NWorld

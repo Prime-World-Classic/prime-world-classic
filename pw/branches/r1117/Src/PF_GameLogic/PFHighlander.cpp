@@ -6,6 +6,124 @@
 #include "PFHighlander.h"
 #include "TargetSelectorHelper.hpp"
 
+#if defined( PW_LINUX_DB_BOOTSTRAP )
+
+namespace NWorld
+{
+
+void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
+
+namespace
+{
+  struct BaseUnitWithDistance
+  {
+    CPtr<PFBaseUnit> unit;
+    float            distance;
+
+    bool operator <(BaseUnitWithDistance const right) const { return distance < right.distance; }
+  };
+
+  static void AddUniqueUnit(vector<CPtr<PFBaseUnit> >& units, PFBaseUnit* unit)
+  {
+    if (!unit)
+      return;
+    for (vector<CPtr<PFBaseUnit> >::const_iterator it = units.begin(); it != units.end(); ++it)
+      if (it->GetPtr() == unit)
+        return;
+    units.push_back(unit);
+  }
+
+  struct HeroesFirst
+  {
+    HeroesFirst(CPtr<PFBaseUnit> const& best) : pBest(best) {}
+
+    bool operator()(BaseUnitWithDistance& left, BaseUnitWithDistance& right)
+    {
+      if (left.unit == pBest)
+        return true;
+      if (left.unit->IsHero() && !right.unit->IsHero())
+        return true;
+      return false;
+    }
+
+    CPtr<PFBaseUnit> pBest;
+  };
+}
+
+void PFHighlanderA1TargetSelector::ForAllTargets(ITargetAction &action, const RequestParams &pars)
+{
+  if (!pars.pOwner || !pars.pRequester || !pars.pRequester->IsValid(true))
+    return;
+
+  const int targetsNumber = RetrieveParam(GetDB().targetCount, pars, 0);
+  const float range = RetrieveParam(GetDB().range, pars, 0.0f);
+  if (targetsNumber <= 0 || range <= 0.0f)
+    return;
+
+  const CVec2 center = pars.pRequester->AcquirePosition().AsVec2D();
+  vector<CPtr<PFBaseUnit> > units;
+  GetLinuxBootstrapUnits(units);
+  AddUniqueUnit(units, pars.pOwner.GetPtr());
+  if (pars.pRequester->IsUnit())
+    AddUniqueUnit(units, pars.pRequester->GetUnit().GetPtr());
+
+  vector<BaseUnitWithDistance> collection;
+  UnitMaskingPredicate predicate(pars.pOwner.GetPtr(), GetDB().targetFilter);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* unit = it->GetPtr();
+    if (!IsUnitValid(unit))
+      continue;
+    if (!unit->IsInRange(center, range))
+      continue;
+    if (!predicate(*unit))
+      continue;
+
+    Target target(unit);
+    if (!CheckTargetCondition(target, pars))
+      continue;
+
+    BaseUnitWithDistance item;
+    item.unit = unit;
+    item.distance = fabs2(unit->GetPosition().AsVec2D() - center);
+    collection.push_back(item);
+  }
+
+  if (collection.empty())
+    return;
+
+  BaseUnitWithDistance* best = 0;
+  for (vector<BaseUnitWithDistance>::iterator it = collection.begin(); it != collection.end(); ++it)
+  {
+    if (!best ||
+        (!best->unit->IsHero() && it->unit->IsHero()) ||
+        (it->distance < best->distance && best->unit->IsHero() == it->unit->IsHero()))
+    {
+      best = &(*it);
+    }
+  }
+
+  if (!best)
+    return;
+
+  const CVec2 bestPos = best->unit->GetPosition().AsVec2D();
+  for (vector<BaseUnitWithDistance>::iterator it = collection.begin(); it != collection.end(); ++it)
+    it->distance = fabs2(it->unit->GetPosition().AsVec2D() - bestPos);
+
+  HeroesFirst heroesFirst(best->unit);
+  nstl::sort(collection.begin(), collection.end(), heroesFirst);
+  if (targetsNumber < collection.size())
+    collection.resize(targetsNumber);
+  nstl::sort(collection.begin(), collection.end());
+
+  for (int i = collection.size() - 1; i >= 0; --i)
+    action(Target(collection[i].unit));
+}
+
+} // End of namespace NWorld
+
+#else
+
 namespace NWorld
 {
 
@@ -154,5 +272,7 @@ void PFHighlanderA1TargetSelector::ForAllTargets(ITargetAction &action, const Re
 }
 
 } // End of namespace NWorld
+
+#endif
 
 REGISTER_WORLD_OBJECT_NM(PFHighlanderA1TargetSelector, NWorld);

@@ -1,11 +1,17 @@
 #pragma once
 
 #include "ClientVisibilityFlags.hpp"
+#include "System/StarForce/StarForce.h"
 
 namespace NWorld
 {
   class PFLogicObject;
   class PFPlayer;
+}
+
+namespace PF_Core
+{
+  class ClientObjectBase;
 }
 
 namespace NGameX
@@ -90,6 +96,20 @@ namespace NGameX
       return flags;
     }
 
+    STARFORCE_FORCE_INLINE static ClientVisibilityFlags GetFlags(const PF_Core::ClientObjectBase* const clientObject)
+    {
+      ClientVisibilityFlags flags;
+
+      if (clientObject)
+      {
+        flags.objectVisible = true;
+        flags.placementVisible = true;
+        flags.sharedVision = true;
+      }
+
+      return flags;
+    }
+
     STARFORCE_FORCE_INLINE static ClientVisibilityFlags GetFlags(const NWorld::PFLogicObject* const worldObject)
     {
       ClientVisibilityFlags flags;
@@ -106,6 +126,13 @@ namespace NGameX
       return IsPartialVisibilityApplicable(flags);
     }
 
+    STARFORCE_FORCE_INLINE static bool IsPartialVisibilityApplicable(const PF_Core::ClientObjectBase* const clientObject)
+    {
+      const ClientVisibilityFlags flags(GetFlags(clientObject));
+
+      return IsPartialVisibilityApplicable(flags);
+    }
+
     STARFORCE_FORCE_INLINE static bool IsPartialVisibilityApplicable(const NWorld::PFLogicObject* const worldObject)
     {
       const ClientVisibilityFlags flags(GetFlags(worldObject));
@@ -114,6 +141,13 @@ namespace NGameX
     }
 
     STARFORCE_FORCE_INLINE static bool IsVisibleForPlayer(const PFClientLogicObject* const clientObject)
+    {
+      const ClientVisibilityFlags flags(GetFlags(clientObject));
+
+      return IsVisibleForPlayer(flags);
+    }
+
+    STARFORCE_FORCE_INLINE static bool IsVisibleForPlayer(const PF_Core::ClientObjectBase* const clientObject)
     {
       const ClientVisibilityFlags flags(GetFlags(clientObject));
 

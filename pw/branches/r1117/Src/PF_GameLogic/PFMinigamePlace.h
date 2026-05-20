@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef VISUAL_CUTTED
+#if defined( PW_LINUX_NULL_RENDER ) || !defined( VISUAL_CUTTED )
 
 #include "PFBuildings.h"
 #include "DBMinigamesTypes.h"
@@ -88,4 +88,3 @@ private:
 } // namespace NWorld
 
 #endif
-

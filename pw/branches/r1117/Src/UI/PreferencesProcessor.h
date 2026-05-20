@@ -2,9 +2,12 @@
 #define PREFERENCESPROCESSOR_H_10FB1B03
 #include "DBPreferences.h"
 #include "System/Pointers/BaseObjectST.h"
-#include "FlashInterface.h"
 #include "FSCommandListner.h"
 #include <cstdio>
+
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
+#include "FlashInterface.h"
+#endif
 
 #if defined(__linux__)
 #define sscanf_s sscanf
@@ -23,7 +26,12 @@ struct IPrefVar: BaseObjectST
 };
 
 
-class PreferencesProcessor : public FlashInterface, public IFSCommandListner
+class PreferencesProcessor :
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  public IFSCommandListner, public BaseObjectST
+#else
+  public FlashInterface, public IFSCommandListner
+#endif
 {
    NI_DECLARE_REFCOUNT_CLASS_2( PreferencesProcessor, UI::IFSCommandListner, BaseObjectST );
 

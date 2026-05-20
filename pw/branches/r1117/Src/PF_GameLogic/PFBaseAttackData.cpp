@@ -1,5 +1,184 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseAttackData.h"
+#include "PFBaseUnit.h"
+#include "PFDispatchFactory.h"
+
+namespace NWorld
+{
+
+PFBaseAttackInstance::PFBaseAttackInstance(CObj<PFBaseAttackData> const& pAttackData, Target const& target, bool _allowAllies)
+  : PFAbilityInstance(static_cast<PFAbilityData*>(pAttackData.GetPtr()), target, false)
+  , attackDelay(pAttackData ? pAttackData->GetTimeOffset() : 0.0f)
+  , rawAttackDelay(pAttackData ? pAttackData->GetTimeOffset(true) : 0.0f)
+  , isAttackFinished(false)
+  , allowAllies(_allowAllies)
+{
+}
+
+void PFBaseAttackInstance::ApplyAttack()
+{
+  PFBaseAttackData const* pAttackData = static_cast<PFBaseAttackData const*>(GetData());
+  if (!pAttackData || !pAttackData->GetDBDesc())
+    return;
+
+  Target const source(pAttackData->GetOwner());
+  NDb::Spell const* pSpell = pAttackData->GetDBDesc();
+
+  PFDispatch* pDispatch =
+    CreateDispatch(this, NULL, source, target, pSpell, PFBaseApplicator::FLAG_BASE_ATTACK, false, rawAttackDelay);
+  if (!pDispatch)
+    return;
+
+  dispatch.Attach(pDispatch);
+
+  if (attackDelay < EPS_VALUE)
+    DoAttack();
+}
+
+void PFBaseAttackInstance::DoAttack()
+{
+  if ( IsUnitValid( target.GetUnit() ) && ( allowAllies || !IsValid( pOwner ) || pOwner->GetFaction() != target.GetUnit()->GetFaction() ) )
+  {
+    if ( IsValid( pOwner ) )
+      pOwner->OnAttackDispatchStarted();
+    dispatch.Start();
+  }
+  isAttackFinished = true;
+  Cancel();
+}
+
+void PFBaseAttackInstance::Cancel()
+{
+  attackDelay = 0.0f;
+  target = AbilityTarget();
+  dispatch.Cancel();
+}
+
+bool PFBaseAttackInstance::IsReadyToDie() const
+{
+  return isAttackFinished && !GetActiveApplicatorsCount();
+}
+
+bool PFBaseAttackInstance::Update(float dt)
+{
+  attackDelay -= dt;
+  if ( attackDelay < EPS_VALUE && !isAttackFinished )
+    DoAttack();
+  return IsReadyToDie();
+}
+
+PFBaseAttackData::PFBaseAttackData(CPtr<PFBaseUnit> const& pOwner, NDb::Ptr<NDb::BaseAttack> const& pDBDesc)
+  : PFAbilityData( pOwner, pDBDesc.GetPtr(), NDb::ABILITYTYPEID_BASEATTACK )
+  , processInstances(false)
+  , delayedCancel(false)
+  , damageType(IsValid(pOwner) && pOwner->DbUnitDesc() ? pOwner->GetNativeDamageType() : NDb::APPLICATORDAMAGETYPE_NATIVE)
+{
+  if (!pDBDesc)
+    return;
+
+  for (vector<NDb::Ptr<NDb::BaseApplicator> >::const_iterator iAppl = pDBDesc->applicators.begin(),
+    iEnd = pDBDesc->applicators.end(); iAppl != iEnd; ++iAppl)
+  {
+    NDb::Ptr<NDb::BaseApplicator> const& pAppl = *iAppl;
+    if (pAppl && pAppl->GetObjectTypeID() == NDb::DamageApplicator::typeId)
+    {
+      damageType = static_cast<NDb::DamageApplicator const*>(pAppl.GetPtr())->damageType;
+      if (damageType == NDb::APPLICATORDAMAGETYPE_NATIVE && IsValid(pOwner) && pOwner->DbUnitDesc())
+        damageType = pOwner->GetNativeDamageType();
+      break;
+    }
+  }
+}
+
+PFBaseAttackData::PFBaseAttackData()
+  : processInstances(false)
+  , delayedCancel(false)
+  , damageType(NDb::APPLICATORDAMAGETYPE_NATIVE)
+{
+}
+
+bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
+{
+  if ( !target.IsUnitValid() || !CanBeUsed() )
+    return false;
+
+  CObj<PFBaseAttackInstance> pInst = new PFBaseAttackInstance( this, target, allowAllies );
+  pInst->ApplyAttack();
+  rgAttackInstances.push_back(pInst);
+  AddInstance(pInst.GetPtr());
+
+  const float fAttackSpeed = GetSpeed();
+  RestartCooldown( fAttackSpeed < EPS_VALUE ? FP_MAX_VALUE : (1.0f / fAttackSpeed) );
+  return true;
+}
+
+void PFBaseAttackData::Update(float dt, bool fullUpdate)
+{
+  struct AttackInstancesUpdater
+  {
+    float dt;
+    AttackInstancesUpdater(float dt) : dt(dt) {}
+    bool operator()( CObj<PFBaseAttackInstance>& inst ) { return !IsValid(inst) || inst->Update(dt); }
+  } updater(dt);
+
+  processInstances = true;
+  rgAttackInstances.erase( remove_if( rgAttackInstances.begin(), rgAttackInstances.end(), updater ), rgAttackInstances.end() );
+  processInstances = false;
+  if (delayedCancel)
+    Cancel();
+
+  PFAbilityData::Update(dt, fullUpdate);
+}
+
+void PFBaseAttackData::Cancel()
+{
+  for (AttackInstances::iterator it = rgAttackInstances.begin(); it != rgAttackInstances.end(); ++it)
+    if (IsValid(*it))
+      (*it)->Cancel();
+
+  if (processInstances)
+  {
+    delayedCancel = true;
+    return;
+  }
+
+  rgAttackInstances.clear();
+  delayedCancel = false;
+}
+
+float PFBaseAttackData::GetWorkTime() const
+{
+  return GetTimeOffset();
+}
+
+float PFBaseAttackData::GetSpeed() const
+{
+  const float speed = IsValid(GetOwner()) ? GetOwner()->GetAttacksPerSecond() : 0.0f;
+  return speed < EPS_VALUE ? 0.0f : speed;
+}
+
+float PFBaseAttackData::GetAttackNodeDuration( NScene::SceneObject* pSO ) const
+{
+  (void)pSO;
+  return 0.0f;
+}
+
+bool PFBaseAttackData::IsMelee() const
+{
+  NDb::BaseAttack const* pAttack = dynamic_cast<NDb::BaseAttack const*>(GetDBDesc());
+  return pAttack ? pAttack->isMelee : false;
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseAttackInstance, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFBaseAttackData, NWorld);
+
+#else
+
 #include "PFBaseAttackData.h"
 #include "PFAbilityInstance.h"
 #include "PFAIWorld.h"
@@ -277,3 +456,5 @@ bool PFBaseAttackData::IsMelee() const
 
 REGISTER_WORLD_OBJECT_NM(PFBaseAttackInstance, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFBaseAttackData, NWorld);
+
+#endif

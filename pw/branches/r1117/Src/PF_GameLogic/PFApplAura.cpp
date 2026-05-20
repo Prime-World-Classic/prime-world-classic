@@ -1,4 +1,153 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplAura.h"
+#include "PFBaseUnit.h"
+#include "PFTargetSelector.h"
+
+namespace NWorld
+{
+
+bool PFApplAura::Start()
+{
+  if (PFApplBuff::Start())
+    return true;
+
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(GetWorld());
+
+  activeBuffer = 0;
+  appliedApplicator1.reserve(32);
+  appliedApplicator2.reserve(32);
+  return false;
+}
+
+void PFApplAura::ProcessUnit(const Target &target)
+{
+  if (!target.IsUnitValid())
+    return;
+
+  AffectedUnits &outVec = GetAffectedUnit(1 - activeBuffer);
+  AffectedUnits &vec = GetAffectedUnit(activeBuffer);
+  CPtr<PFBaseUnit> pTargetUnit = target.GetUnit();
+
+  for (AffectedUnits::iterator it = vec.begin(); it != vec.end(); ++it)
+  {
+    if ((*it) == pTargetUnit)
+    {
+      outVec.push_back(pTargetUnit);
+      *it = 0;
+      return;
+    }
+  }
+
+  outVec.push_back(pTargetUnit);
+  CreateAndActivateApplicators(GetDB().applicators, GetAbility(), target, this);
+}
+
+void PFApplAura::RemoveApplicatorsFromUnits()
+{
+  AffectedUnits &vec = GetAffectedUnit(activeBuffer);
+  for (AffectedUnits::const_iterator it = vec.begin(); it != vec.end(); ++it)
+  {
+    if (IsValid(*it))
+      RemoveChildrenApplicatorsFromUnit(it->GetPtr());
+  }
+  vec.clear();
+}
+
+void PFApplAura::Enable()
+{
+  PFApplBuff::Enable();
+}
+
+void PFApplAura::Reset()
+{
+  PFApplBuff::Reset();
+}
+
+void PFApplAura::Disable()
+{
+  RemoveApplicatorsFromUnits();
+  GetAffectedUnit(1 - activeBuffer).clear();
+  PFApplBuff::Disable();
+}
+
+bool PFApplAura::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (!IsEnabled())
+    return false;
+
+  GetAffectedUnit(1 - activeBuffer).clear();
+  if (pTargetSelector)
+  {
+    Target targ;
+    if (IsValid(pReceiver))
+      targ.SetUnit(pReceiver);
+    else
+      targ.SetPosition(AcquireApplicationPosition());
+
+    struct ProcessAuraTarget : public ITargetAction, public NonCopyable
+    {
+      explicit ProcessAuraTarget(PFApplAura* pAura)
+        : pAura(pAura)
+      {
+      }
+
+      virtual void operator()(const Target &target)
+      {
+        if (target.IsUnitValid())
+          pAura->ProcessUnit(target);
+      }
+
+      PFApplAura* pAura;
+    } processAuraTarget(this);
+
+    PFTargetSelector::RequestParams params(*this, targ);
+    pTargetSelector->EnumerateTargets(processAuraTarget, params);
+  }
+  else if (IsValid(pReceiver))
+  {
+    ProcessUnit(Target(pReceiver.GetPtr()));
+  }
+  else if (IsValid(pOwner))
+  {
+    ProcessUnit(Target(pOwner.GetPtr()));
+  }
+
+  RemoveApplicatorsFromUnits();
+  activeBuffer = 1 - activeBuffer;
+  return false;
+}
+
+PFApplAura::AffectedUnits& PFApplAura::GetAffectedUnit(int idx)
+{
+  return idx == 0 ? appliedApplicator1 : appliedApplicator2;
+}
+
+PFApplAura::AffectedUnits const& PFApplAura::GetAffectedUnit(int idx) const
+{
+  return idx == 0 ? appliedApplicator1 : appliedApplicator2;
+}
+
+float PFApplAura::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "targetsCount") == 0)
+    return static_cast<float>(GetAffectedUnit(activeBuffer).size());
+
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplAura, NWorld);
+
+#else
+
 #include "PFApplAura.h"
 #include "PFBaseUnit.h"
 #include "PFDebug.h"
@@ -233,3 +382,5 @@ float PFApplAura::GetVariable(const char* sVariableName) const
 REGISTER_DEV_VAR("show_aura_range", g_showAuraRange, STORAGE_NONE);
 
 REGISTER_WORLD_OBJECT_NM(PFApplAura, NWorld);
+
+#endif

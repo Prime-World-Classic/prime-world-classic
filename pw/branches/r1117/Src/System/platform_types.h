@@ -76,6 +76,24 @@ union LARGE_INTEGER
   long long QuadPart;
 };
 
+struct OVERLAPPED
+{
+  DWORD_PTR Internal;
+  DWORD_PTR InternalHigh;
+  union
+  {
+    struct
+    {
+      uint32_t Offset;
+      uint32_t OffsetHigh;
+    };
+    void* Pointer;
+  };
+  HANDLE hEvent;
+};
+
+typedef OVERLAPPED* LPOVERLAPPED;
+
 #ifndef TRUE
 #define TRUE 1
 #endif
@@ -138,6 +156,10 @@ union LARGE_INTEGER
 
 #ifndef GET_WHEEL_DELTA_WPARAM
 #define GET_WHEEL_DELTA_WPARAM(wParam) ((short)(((wParam) >> 16) & 0xffff))
+#endif
+
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(BADNODENAME)
+#define BADNODENAME "badNodeName"
 #endif
 
 #ifndef MAKEINTRESOURCEW

@@ -1,4 +1,347 @@
 #include "stdafx.h"
+
+#if defined(PW_LINUX_NULL_RENDER)
+
+#include "DBGameLogic.h"
+#include "DBUnit.h"
+
+namespace NWorld
+{
+class PFBaseMaleHero;
+}
+
+template<> CObjectBase* CastToObjectBaseImpl<NWorld::PFBaseMaleHero>(NWorld::PFBaseMaleHero*, void*);
+template<> NWorld::PFBaseMaleHero* CastToUserObjectImpl<NWorld::PFBaseMaleHero>(CObjectBase*, NWorld::PFBaseMaleHero*, void*);
+template<> NWorld::PFBaseMaleHero* CastToUserObjectImpl<NWorld::PFBaseMaleHero>(CObjectBase*, NWorld::PFBaseMaleHero*, CObjectBase*);
+
+#include "PFTalent.h"
+#include "PFMaleHero.h"
+
+namespace
+{
+  string g_strTalentSetToLoad = "";
+  wstring g_linuxTalentEmptyText;
+  string g_linuxTalentEmptyStyle;
+} // unnamed namespace
+
+namespace NWorld
+{
+
+NAMEMAP_BEGIN(PFTalent)
+  NAMEMAP_PARENT(PFAbilityData)
+  NAMEMAP_FUNC_RO(moneyCost, &PFTalent::GetMoneyCost )
+  NAMEMAP_FUNC_RO(devPoints, &PFTalent::GetDevPoints )
+  NAMEMAP_FUNC_RO(minLevel,  &PFTalent::GetMinLevel  )
+  NAMEMAP_FUNC_RO(rarityName, &PFTalent::GetRarityName )
+  NAMEMAP_FUNC_RO(isBought, &PFTalent::IsActivated )
+  NAMEMAP_VAR_RO(refineRate)
+  NAMEMAP_FUNC_RO(isInGroup, &PFTalent::IsInGroup )
+  NAMEMAP_FUNC_RO(groupName, &PFTalent::GetGroupName )
+  NAMEMAP_FUNC_RO(groupDescription, &PFTalent::GetGroupDescription )
+  NAMEMAP_FUNC_RO(isClass,       &PFTalent::IsClass )
+  NAMEMAP_FUNC_RO(isOrdinary,    &PFTalent::IsOrdinary )
+  NAMEMAP_FUNC_RO(isGood,        &PFTalent::IsGood )
+  NAMEMAP_FUNC_RO(isExcellent,   &PFTalent::IsExcellent )
+  NAMEMAP_FUNC_RO(isMagnificent, &PFTalent::IsMagnificent )
+  NAMEMAP_FUNC_RO(isExclusive,   &PFTalent::IsExclusive )
+  NAMEMAP_FUNC_RO(mConsumptionBonusPercent, &PFTalent::ConsumptionBonusPercent )
+  NAMEMAP_FUNC_RO(activatedInKit, &PFTalent::GetActivatedWithinKit )
+  NAMEMAP_FUNC_RO(totalInKit,     &PFTalent::GetTalentsWithinKit )
+  NAMEMAP_FUNC_RO(kitName,        &PFTalent::GetKitName )
+  NAMEMAP_FUNC_RO(isInKit,        &PFTalent::IsInKit )
+  NAMEMAP_FUNC_RO(isInPack,       &PFTalent::IsInPack )
+  NAMEMAP_FUNC_RO(isSpecialInKit, &PFTalent::IsSpecialInKit )
+  NAMEMAP_FUNC_RO(packIcon,       &PFTalent::GetPackIconStyle )
+NAMEMAP_END
+
+PFTalent::PFTalent( CPtr<PFBaseMaleHero> const& _pOwner, NDb::Ptr<NDb::Talent> const& _pDBTalentDesc, int _refineRate, int _aIPriority, int _actionBarIndex, bool _isInstaCast )
+  : PFAbilityData( _pOwner.GetPtr(), _pDBTalentDesc.GetPtr(), NDb::ABILITYTYPEID_TALENT )
+  , pDBTalentDesc( _pDBTalentDesc )
+  , pOwner( _pOwner )
+  , aIPriority( _aIPriority )
+  , refineRate( _refineRate )
+  , bActivated( false )
+  , actionBarIndex( _actionBarIndex )
+  , lastUseStep( -1 )
+  , lastActivatedStep( -1 )
+  , isInstaCast( _isInstaCast )
+  , pDBGroup( 0 )
+{
+  PFAbilityData::SetRank( refineRate );
+}
+
+bool PFTalent::CanBeActivated() const
+{
+  return !bActivated && IsValid( pDBTalentDesc );
+}
+
+bool PFTalent::Activate()
+{
+  if ( !CanBeActivated() )
+    return false;
+
+  bActivated = true;
+  if ( pTalentKit && IsValid( pOwner ) && pOwner->GetTalentsSet() )
+    pOwner->GetTalentsSet()->IncActivatedWithinKit( pTalentKit );
+
+  return true;
+}
+
+void PFTalent::RestartCooldown( float cooldownTime_ )
+{
+  PFAbilityData::RestartCooldown( cooldownTime_ );
+}
+
+int PFTalent::GetMoneyCost() const
+{
+  return IsValid( pDBTalentDesc ) ? pDBTalentDesc->naftaCost : 0;
+}
+
+int PFTalent::GetVendorCost() const
+{
+  return IsValid( pDBTalentDesc ) ? pDBTalentDesc->vendorCost : 0;
+}
+
+wstring const &PFTalent::GetRarityName() const
+{
+  return g_linuxTalentEmptyText;
+}
+
+wstring const& PFTalent::GetGroupName() const
+{
+  return pDBGroup ? pDBGroup->name.GetText() : NNameMap::wstrNoname;
+}
+
+wstring const& PFTalent::GetGroupDescription() const
+{
+  return pDBGroup ? pDBGroup->description.GetText() : NNameMap::wstrNoname;
+}
+
+void PFTalent::NotifyCastProcessed()
+{
+  if ( CPtr<PFWorld> pWorld = GetWorld() )
+    lastActivatedStep = pWorld->GetStepNumber();
+}
+
+float PFTalent::CalcBudget( const NDb::AILogicParameters* pAIParams, int refineRate, int level, int rarity )
+{
+  (void)pAIParams;
+  (void)refineRate;
+  (void)level;
+  (void)rarity;
+  return 0.0f;
+}
+
+int PFTalent::GetActivatedWithinKit() const
+{
+  return pTalentKit && IsValid( pOwner ) && pOwner->GetTalentsSet() ? pOwner->GetTalentsSet()->GetActivatedWithinKit( pTalentKit ) : 0;
+}
+
+int PFTalent::GetTalentsWithinKit() const
+{
+  return pTalentKit ? pTalentKit->talents.size() : 0;
+}
+
+wstring const &PFTalent::GetKitName() const
+{
+  return pTalentKit ? pTalentKit->name.GetText() : NNameMap::wstrNoname;
+}
+
+const bool PFTalent::IsSpecialInKit() const
+{
+  return pTalentKit && pTalentKit->special && IsValid( pDBTalentDesc ) ? pTalentKit->special->GetDBID() == pDBTalentDesc->GetDBID() : false;
+}
+
+const string& PFTalent::GetPackIconStyle() const
+{
+  return pTalentPack ? pTalentPack->iconStyle : g_linuxTalentEmptyStyle;
+}
+
+void PFTalent::Reset()
+{
+  PFAbilityData::Reset();
+}
+
+void PFTalent::PlayAck( const PFBaseHero* pAuxAckRecipient ) const
+{
+  (void)pAuxAckRecipient;
+}
+
+PFTalentsSet::PFTalentsSet( )
+  : devPoints( 0 )
+  , acquiredBudgetPercent( 0.0f )
+{
+}
+
+PFTalentsSet::PFTalentsSet( PFWorld* world )
+  : PFWorldObjectBase( world, 0 )
+  , devPoints( 0 )
+  , acquiredBudgetPercent( 0.0f )
+{
+}
+
+void PFTalentsSet::CleanSet()
+{
+  for ( int levelIndex = 0; levelIndex < LEVELS_COUNT; ++levelIndex )
+    for ( int slotIndex = 0; slotIndex < SLOTS_COUNT; ++slotIndex )
+      talents[levelIndex][slotIndex] = 0;
+
+  talentsToActivate.clear();
+  talentGroups.clear();
+  talentKits.clear();
+  devPoints = 0;
+  acquiredBudgetPercent = 0.0f;
+  pOwner = 0;
+}
+
+void PFTalentsSet::ActivateTakenOnStart()
+{
+  for ( vector<pair<int,int> >::const_iterator it = talentsToActivate.begin(); it != talentsToActivate.end(); ++it )
+    ActivateTalent( it->first, it->second );
+  talentsToActivate.clear();
+}
+
+void PFTalentsSet::LoadSet( CPtr<PFBaseMaleHero> const& pOwner_, SetInfo const& setInfo )
+{
+  CleanSet();
+  pOwner = pOwner_;
+
+  for ( int level = 0; level < LEVELS_COUNT; ++level )
+  {
+    for ( int slot = 0; slot < SLOTS_COUNT; ++slot )
+    {
+      SlotInfo const& slotInfo = setInfo[level][slot];
+      if ( IsValid( slotInfo.pTalentDesc ) && slotInfo.status == NDb::TALENTSLOTSTATUS_NORMAL )
+      {
+        talents[level][slot] = new PFTalent( pOwner, slotInfo.pTalentDesc, slotInfo.refineRate, slotInfo.aIPriority, slotInfo.actionBarIndex, slotInfo.isInstaCast );
+        if ( slotInfo.pTalentDesc->isTakenOnStart )
+          talentsToActivate.push_back( make_pair( level, slot ) );
+      }
+    }
+  }
+}
+
+void PFTalentsSet::Reset()
+{
+}
+
+void PFTalentsSet::CreateGroups()
+{
+  talentGroups.clear();
+}
+
+void PFTalentsSet::CreateKits()
+{
+  talentKits.clear();
+}
+
+void PFTalentsSet::CreatePacks()
+{
+}
+
+void PFTalentsSet::Update(float dt)
+{
+  for ( int lvl = 0; lvl < LEVELS_COUNT; ++lvl )
+    for ( int slot = 0; slot < SLOTS_COUNT; ++slot )
+      if ( CObj<PFTalent> const& pTalent = talents[lvl][slot] )
+        pTalent->Update( dt, true );
+}
+
+CObj<PFTalent> const& PFTalentsSet::GetTalent(int level, int slot) const
+{
+  static CObj<PFTalent> const pNullTalent;
+  if ( level < 0 || level >= LEVELS_COUNT || slot < 0 || slot >= SLOTS_COUNT )
+    return pNullTalent;
+  return talents[level][slot];
+}
+
+ETalentActivation::Enum PFTalentsSet::CanActivateTalent(int level, int slot) const
+{
+  CObj<PFTalent> const& pTalent = GetTalent( level, slot );
+  return pTalent && pTalent->CanBeActivated() ? ETalentActivation::Ok : ETalentActivation::Denied;
+}
+
+bool PFTalentsSet::HasFreshTalentsToBuy() const
+{
+  for ( int level = 0; level < LEVELS_COUNT; ++level )
+    for ( int slot = 0; slot < SLOTS_COUNT; ++slot )
+      if ( CanActivateTalent( level, slot ) == ETalentActivation::Ok )
+        return true;
+  return false;
+}
+
+bool PFTalentsSet::ActivateTalent(int level, int slot)
+{
+  CObj<PFTalent> const& pTalent = GetTalent( level, slot );
+  if ( !pTalent || !pTalent->Activate() )
+    return false;
+
+  devPoints += pTalent->GetDevPoints();
+  (void)level;
+  (void)slot;
+  return true;
+}
+
+float PFTalentsSet::PreloadTalentsSetAndCalcForce(const NDb::AILogicParameters* pAIParams, const NDb::BaseHero* pDBHero,
+                                                  bool usePlayerInfoTalentSet, const NWorld::PFResourcesCollection* collection,
+                                                  const NCore::PlayerInfo& playerInfo, PFTalentsSet::SetInfo& info)
+{
+  (void)pAIParams;
+  (void)pDBHero;
+  (void)usePlayerInfoTalentSet;
+  (void)collection;
+  (void)playerInfo;
+  (void)info;
+  return 0.0f;
+}
+
+void PFTalentsSet::PreparePredefinedSet(const NDb::AILogicParameters* pAIParams, const NDb::BaseHero* pDBHero, string const& forceSetName,
+                                        ITalentCalculator& calculator, SetInfo& info, bool isBot)
+{
+  (void)pAIParams;
+  (void)pDBHero;
+  (void)forceSetName;
+  (void)calculator;
+  (void)info;
+  (void)isBot;
+}
+
+void PFTalentsSet::LoadPredefinedSet(CPtr<PFBaseMaleHero> const& _pOwner, string const& forceSetName, ITalentCalculator& calculator)
+{
+  (void)forceSetName;
+  SetInfo info;
+  LoadSet( _pOwner, info );
+  CalculateForce( calculator );
+}
+
+void PFTalentsSet::PrepareCustomSet(const NCore::PlayerTalentSet* talentSet, const NWorld::PFResourcesCollection* collection, ITalentCalculator& calculator, SetInfo& info)
+{
+  (void)talentSet;
+  (void)collection;
+  (void)calculator;
+  (void)info;
+}
+
+void PFTalentsSet::CalculateForce(ITalentCalculator& calculator)
+{
+  for ( int lvl = 0; lvl < LEVELS_COUNT; ++lvl )
+    for ( int slot = 0; slot < SLOTS_COUNT; ++slot )
+      if ( CObj<PFTalent> const& pTalent = talents[lvl][slot] )
+      {
+        SlotInfo slotInfo;
+        slotInfo.refineRate = pTalent->GetRefineRate();
+        calculator( pTalent->GetTalentDesc(), lvl, slotInfo );
+      }
+}
+
+} //namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFTalent, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFTalentsSet, NWorld);
+REGISTER_DEV_VAR("default_talent_set", g_strTalentSetToLoad, STORAGE_NONE);
+
+#else
+
 #include "PFTalent.h"
 
 #include "DBTalent.h"
@@ -771,3 +1114,5 @@ REGISTER_WORLD_OBJECT_NM(PFTalent, NWorld);
 REGISTER_WORLD_OBJECT_NM(PFTalentsSet, NWorld);
 
 REGISTER_DEV_VAR("default_talent_set",                  g_strTalentSetToLoad,                       STORAGE_NONE);
+
+#endif

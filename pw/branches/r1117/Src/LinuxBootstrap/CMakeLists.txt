@@ -55,36 +55,351 @@ add_executable(
 add_executable(
   PrimeWorldLinuxClient
   ../Client/DefaultScreenBase.cpp
+  ../Client/CommandBinds.cpp
+  ../Client/Console.cpp
+  ../Client/ConsoleLogic.cpp
+  ../Client/DebugTextDraw.cpp
+  ../Client/ScreenCommands.cpp
+  ../Client/MainLoop.cpp
   ../Client/ScreenUILogicBase.cpp
+  ../Client/TooltipsScreen.cpp
+  ../Client/TooltipsScreenLogic.cpp
+  ../Core/BaseFSM.cpp
   ../PW_Client/Game.cpp
   ../PW_Client/LoadingFlashInterface.cpp
   ../PW_Client/LoadingHeroes.cpp
   ../PW_Client/LoadingScreen.cpp
   ../PW_Client/LoadingScreenLogic.cpp
   ../PW_Client/LoadingStatusHandler.cpp
+  ../PW_Client/LocalGameContext.cpp
   ../PW_Client/LocalCmdScheduler.cpp
+  ../PW_Client/CpuTopology.cpp
+  ../PW_Client/DebugVarsSender.cpp
+  ../PW_Client/GameStatistics.cpp
+  ../PW_Client/GameStatisticsWrapper.cpp
+  ../PW_Client/LobbyConnection.cpp
+  ../PW_Client/NetworkStatusScreen.cpp
+  ../PW_Client/ReplayRunner.cpp
+  ../PW_Client/ReplayTransceiver.cpp
   ../PW_Client/SelectGameModeLogic.cpp
   ../PW_Client/SelectGameModeScreen.cpp
   ../PW_Client/SelectHeroScreen.cpp
   ../PW_Client/SelectHeroScreenLogic.cpp
+  ../Core/CommandSerializer.cpp
+  ../Core/BinStatsCollector.cpp
+  ../Core/CoreFSM.cpp
+  ../Core/GameCommand.cpp
+  ../Core/Transceiver.cpp
+  ../PF_GameLogic/CollisionResolver.cpp
+  ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/PFAIController.cpp
+  ../PF_GameLogic/PFAIHelper.cpp
+  ../PF_GameLogic/PFAIStates.cpp
+  ../PF_GameLogic/PFAITargetSelectors.cpp
+  ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFHighlander.cpp
+  ../PF_GameLogic/PFMicroAI.cpp
+  ../PF_GameLogic/DI/DI.cpp
+  ../PF_GameLogic/PFApplAura.cpp
+  ../PF_GameLogic/PFApplBounce.cpp
+  ../PF_GameLogic/PFApplBuff.cpp
+  ../PF_GameLogic/PFApplChainLightning.cpp
+  ../PF_GameLogic/PFApplChannelling.cpp
+  ../PF_GameLogic/PFApplDelegateDamage.cpp
+  ../PF_GameLogic/PFApplFx.cpp
+  ../PF_GameLogic/PFApplHelper.cpp
+  ../PF_GameLogic/PFApplInstant.cpp
+  ../PF_GameLogic/PFApplMove.cpp
+  ../PF_GameLogic/PFApplMod.cpp
+  ../PF_GameLogic/PFApplSpecial.cpp
+  ../PF_GameLogic/PFApplSummon.cpp
+  ../PF_GameLogic/PFApplUtils.cpp
+  ../PF_GameLogic/PFAbilityData.cpp
+  ../PF_GameLogic/PFAbilityInstance.cpp
+  ../PF_GameLogic/PFAdvMapObject.cpp
+  ../PF_GameLogic/PFBaseSpawner.cpp
+  ../PF_GameLogic/PFBaseMovingUnit.cpp
+  ../PF_GameLogic/PFBaseAttackData.cpp
+  ../PF_GameLogic/PFBaseAIController.cpp
+  ../PF_GameLogic/PFBaseUnitAppl.cpp
+  ../PF_GameLogic/PFCreature.cpp
+  ../PF_GameLogic/PFCreep.cpp
+  ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBaseUnitEvent.cpp
+  ../PF_GameLogic/PFBaseUnitStates.cpp
+  ../PF_GameLogic/PFBaseUseState.cpp
+  ../PF_GameLogic/PFBattleBuilding.cpp
+  ../PF_GameLogic/PFBuildings.cpp
+  ../PF_GameLogic/PFChest.cpp
+  ../PF_GameLogic/PFCommonCreep.cpp
+  ../PF_GameLogic/PFConsumable.cpp
+  ../PF_GameLogic/PFDeadBody.cpp
+  ../PF_GameLogic/PFApplicator.cpp
+  ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
+  ../PF_GameLogic/PFCastLimitations.cpp
+  ../PF_GameLogic/PFClientApplicators.cpp
+  ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFDispatchFactory.cpp
+  ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/PFAuraEffect.cpp
+  ../PF_GameLogic/PFEffectRandom.cpp
+  ../PF_GameLogic/PFEffectSwitcher.cpp
+  ../PF_GameLogic/PFInvisibilityEffect.cpp
+  ../PF_GameLogic/PFMinimapEffect.cpp
+  ../PF_GameLogic/PFPlayAnimEffect.cpp
+  ../PF_GameLogic/PFPriestessSignEffect.cpp
+  ../PF_GameLogic/PFUnitSceneObjectModify.cpp
+  ../PF_GameLogic/ForceCalc.cpp
+  ../PF_GameLogic/PFBehaviour.cpp
+  ../PF_GameLogic/PFEaselPlayer.cpp
+  ../PF_GameLogic/PFFlagpole.cpp
+  ../PF_GameLogic/PFGlyph.cpp
+  ../PF_GameLogic/PFGlyphManager.cpp
+  ../PF_GameLogic/PFHero.cpp
+  ../PF_GameLogic/PFHeroesFactory.cpp
+  ../PF_GameLogic/PFHeroStates.cpp
+  ../PF_GameLogic/PFLogicObject.cpp
+  ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMinigamePlace.cpp
+  ../PF_GameLogic/PFMaleHero.cpp
+  ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFPet.cpp
+  ../PF_GameLogic/PFPickupable.cpp
+  ../PF_GameLogic/PFRoadFlagpole.cpp
+  ../PF_GameLogic/PFScriptedFlagpole.cpp
+  ../PF_GameLogic/PFSimpleObject.cpp
+  ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFState.cpp
+  ../PF_GameLogic/PFTree.cpp
+  ../PF_GameLogic/PFTalent.cpp
+  ../PF_GameLogic/PFTargetSelector.cpp
+  ../PF_GameLogic/PFTower.cpp
+  ../PF_GameLogic/PFUnitAbilities.cpp
+  ../PF_GameLogic/PFPredefinedUnitVariables.cpp
+  ../PF_GameLogic/PFUniTarget.cpp
+  ../PF_Core/AnimatedTexture.cpp
+  ../PF_Core/BasicEffect.cpp
+  ../PF_Core/CameraShakeController.cpp
+  ../PF_Core/CameraShakeSceneComponent.cpp
+  ../PF_Core/ChangeMaterialEffect.cpp
+  ../PF_Core/ControlledStatusEffect.cpp
+  ../PF_Core/DBEffect.cpp
+  ../PF_Core/EnableSCEffect.cpp
+  ../PF_Core/EffectGenSceneComponent.cpp
+  ../PF_Core/EffectsPool.cpp
+  ../PF_Core/GhostEffect.cpp
+  ../PF_Core/IUpdateable.cpp
+  ../PF_Core/LightningEffect.cpp
+  ../PF_Core/ObjectsPool.cpp
+  ../PF_Core/ParticleSceneComponentWithEffect.cpp
+  ../PF_Core/RecolorableTexture.cpp
+  ../PF_Core/ScaleColorEffect.cpp
+  ../PF_Core/SpectatorEffectsPool.cpp
+  ../PF_Core/SpringSceneComponent.cpp
+  ../PF_Core/TraceGenSceneComponent.cpp
+  ../PF_Core/World.cpp
+  ../PF_Core/WorldObject.cpp
+  ../PF_GameLogic/DayNightController.cpp
+  ../PF_GameLogic/FPUState.cpp
+  ../PF_GameLogic/AsyncMapStartup.cpp
+  ../PF_GameLogic/MapStartup.cpp
   ../PF_GameLogic/MapCollection.cpp
+  ../PF_GameLogic/PointersHolder.cpp
+  ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PFWorld.cpp
+  ../PF_GameLogic/PFWorldProtection.cpp
+  ../PF_GameLogic/PFWorldNatureMap.cpp
+  ../PF_GameLogic/PFStatistics.cpp
+  ../PF_GameLogic/TriggerMarkerHandler.cpp
+  ../PF_GameLogic/PFVoxelMap.cpp
   ../PF_GameLogic/PFRenderInterface.cpp
+  ../PF_GameLogic/SmartRandom.cpp
+  ../PF_GameLogic/TileMap.cpp
+  ../PF_GameLogic/WarFog.cpp
+  ../Render/ConfigManager.cpp
+  ../Render/DebugMaterial.cpp
+  ../Render/RenderComponent.cpp
   ../Render/RenderInterface.cpp
+  ../Render/AOERenderer.cpp
+  ../Render/aabb.cpp
+  ../Render/batch.cpp
+  ../Render/Blur.cpp
+  ../Render/Bloom.cpp
+  ../Render/BoundingPrimitives.cpp
+  ../Render/CleanGeometry.cpp
   ../Render/ConstantProtection.cpp
+  ../Render/ConvexVolume.cpp
+  ../Render/DeviceLost.cpp
+  ../Render/dipdescriptor.cpp
+  ../Render/DxResourcesControl.cpp
+  ../Render/DXManager.cpp
+  ../Render/FlashRenderer.cpp
+  ../Render/FrustumCuller.cpp
+  ../Render/FullScreenFX.cpp
+  ../Render/fxresource.cpp
+  ../Render/GrassMaterial.cpp
+  ../Render/ImmediateRenderer.cpp
+  ../Render/LightsManager.cpp
+  ../Render/Material.cpp
+  ../Render/MaterialResourceInterface.cpp
+  ../Render/MaterialSpec.cpp
+  ../Render/mesh.cpp
+  ../Render/multishader.cpp
+  ../Render/OcclusionQueries.cpp
+  ../Render/ParticleFX.cpp
+  ../Render/ReadDDS.cpp
+  ../Render/SHCoeffs.cpp
+  ../Render/ShadowManager.cpp
+  ../Render/ShadowMap.cpp
+  ../Render/SkeletalAnimationBlender.cpp
+  ../Render/SkeletalAnimationSampler.cpp
+  ../Render/StaticMesh.cpp
+  ../Render/TextureManager.cpp
+  ../Render/InstancedMesh.cpp
+  ../Render/InstancedMeshResource.cpp
+  ../Render/SkeletalMesh.cpp
+  ../Render/SkeletonWrapper.cpp
+  ../Render/UITextureAtlasItem.cpp
+  ../Render/UITextureCache.cpp
+  ../Render/WaterConvexes.cpp
+  ../Render/WaterManager.cpp
+  ../Render/WaterMathTex.cpp
+  ../Render/WaterMesh.cpp
+  ../Render/VertexColorStream.cpp
+  ../Render/debugrenderer.cpp
+  ../Render/debugmesh.cpp
+  ../Render/debugstaticmesh.cpp
+  ../Render/dxutils.cpp
+  ../Render/facefxsystem.cpp
+  ../Render/renderflagsconverter.cpp
+  ../Render/renderstatesmanager.cpp
+  ../Render/renderresourcemanager.cpp
+  ../Render/rendersurface.cpp
+  ../Render/primitive.cpp
   ../Render/rendermode.cpp
   ../Render/renderer.cpp
+  ../Render/sampler.cpp
+  ../Render/sceneconstants.cpp
+  ../Render/shadercompiler.cpp
+  ../Render/shaderconstantsbinder.cpp
+  ../Render/shaderdefinestable.cpp
+  ../Render/skeletonanimation.cpp
+  ../Render/smartrenderer.cpp
+  ../Render/Stretcher.cpp
   ../Render/texture.cpp
   ../Render/uirenderer.cpp
+  ../Render/vertexformatdescriptor.cpp
+  ../Scene/AmbienceMap.cpp
+  ../Scene/Camera.cpp
+  ../Scene/CameraControllersContainer.cpp
+  ../Scene/CameraInputModifier.cpp
+  ../Scene/AnimSequencer.cpp
+  ../Scene/AnimGraphApplicator.cpp
+  ../Scene/AnimGraphBlender.cpp
+  ../Scene/AnimGraphController.cpp
+  ../Scene/Animators.cpp
+  ../Scene/AnimatedSceneComponent.cpp
+  ../Scene/AnimatedSplitSceneComponent.cpp
+  ../Scene/AttacherSceneComponent.cpp
+  ../Scene/BitMap.cpp
+  ../Scene/CollisionHull.cpp
+  ../Scene/CollisionMap.cpp
+  ../Scene/CollisionGeometry.cpp
+  ../Scene/CollisionGeometryManager.cpp
+  ../Scene/DiAnGr.cpp
+  ../Scene/DiAnGrAPI.cpp
+  ../Scene/DiAnGrDb.cpp
+  ../Scene/DiAnGrEditor.cpp
+  ../Scene/DiAnGrCl.cpp
+  ../Scene/DiAnGrExtPars.cpp
+  ../Scene/DiAnGrExtParsAd.cpp
+  ../Scene/DiAnGrG.cpp
+  ../Scene/DiAnGrIo2.cpp
+  ../Scene/DiAnGrMarker.cpp
+  ../Scene/DiAnGrNLinker.cpp
+  ../Scene/DiAnGrSStorage.cpp
+  ../Scene/DiAnGrUp.cpp
+  ../Scene/DiAnGrUtils.cpp
+  ../Scene/DiGraph.cpp
+  ../Scene/EditorSceneObject.cpp
+  ../Scene/FreeCameraController.cpp
+  ../Scene/GeometryBuilders.cpp
+  ../Scene/GeometryTracer.cpp
+  ../Scene/HeightsController.cpp
+  ../Scene/LandPlacementMutator.cpp
+  ../Scene/LightingScene.cpp
+  ../Scene/LightningFX.cpp
+  ../Scene/LightningSceneComponent.cpp
+  ../Scene/ModelLoader.cpp
+  ../Scene/ParticleSceneComponent.cpp
+  ../Scene/RoadGeometryBuilder.cpp
+  ../Scene/RoadSceneObject.cpp
+  ../Scene/Scene.cpp
+  ../Scene/SceneComponent.cpp
+  ../Scene/SceneObjectCreation.cpp
+  ../Scene/SceneObject.cpp
+  ../Scene/SceneObjectUtils.cpp
+  ../Scene/SceneUtils.cpp
+  ../Scene/SceneObjectsPool.cpp
+  ../Scene/SceneObjectTrack.cpp
+  ../Scene/ScenePassabilityMask.cpp
+  ../Scene/SHGrid.cpp
+  ../Scene/SHGridCalculator.cpp
+  ../Scene/SoundItem.cpp
+  ../Scene/SoundSceneComponent.cpp
+  ../Scene/StaticSceneComponent.cpp
+  ../Scene/TerrainGrid.cpp
+  ../Scene/TimeController.cpp
+  ../Scene/TimeCtrlSceneComponent.cpp
+  ../Scene/TimeMutator.cpp
+  ../Scene/TraceFX.cpp
+  ../Scene/TraceFXGeo.cpp
+  ../Scene/TraceSceneComponent.cpp
+  ../Scene/VertexColorManager.cpp
+  ../Scene/WaterSceneComponent.cpp
+  ../Terrain/GrassLayersManager.cpp
+  ../Terrain/GrassRegion.cpp
+  ../Terrain/GrassRenderManager.cpp
+  ../Terrain/BezierSurface.cpp
+  ../Terrain/NatureMap.cpp
+  ../Terrain/NatureAttackSpace.cpp
+  ../Terrain/NatureMapVisual.cpp
+  ../Terrain/RoadPrimitive.cpp
+  ../Terrain/SpeedGrass.cpp
+  ../Terrain/Terrain.cpp
+  ../Terrain/TerrainCollision.cpp
+  ../Terrain/TerrainElement.cpp
+  ../Terrain/TerrainGeometryManager.cpp
+  ../Terrain/TerrainHeightManager.cpp
+  ../Terrain/TerrainLayerManager.cpp
+  ../Terrain/TerrainMaterialCache.cpp
+  ../Terrain/TerrainTextureCache.cpp
+  ../Terrain/TerrainElementManager.cpp
   pfadvmap_bootstrap.cpp
   ../Game/PF/Server/LobbyPvx/CommonTypes.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
   ../System/Basic.cpp
+  ../System/Asserts.cpp
+  ../System/BilinearSolver.cpp
+  ../System/BinChunkSerializer.cpp
+  ../System/BinChunkSerializerBase.cpp
+  ../System/BinChunkLoaderImpl.cpp
+  ../System/BinChunkSaverImpl.cpp
+  ../System/ChannelLogger.cpp
   ../System/ChunklessSaver.cpp
   ../System/CmdLineLite.cpp
+  ../System/Color.cpp
   ../System/Commands.cpp
   ../System/ConfigFiles.cpp
+  ../System/Decompose.cpp
   ../System/DebugVar.cpp
+  ../System/Dumper.cpp
+  ../System/FastMath.cpp
+  ../System/Geom.cpp
   ../System/LoadingProgress.cpp
+  ../System/Logger.cpp
+  ../System/LogHelpers.cpp
+  ../System/LogStreamBuffer.cpp
   ../System/MainFrame_linux.cpp
   ../System/HPTimer.cpp
   ../System/HPTimer_linux.cpp
@@ -92,23 +407,40 @@ add_executable(
   ../System/ObjectFactory.cpp
   ../System/Pointers/BaseObjectMT.cpp
   ../System/Pointers/BaseObjectST.cpp
+  ../System/Pointers/BasicFactory.cpp
   ../System/Pointers/BasicType.cpp
+  ../System/Progress.cpp
   ../System/ProfileManager.cpp
+  ../System/RandomGen.cpp
+  ../System/Win32Random.cpp
+  ../System/SafeTextFormat.cpp
+  ../System/Spline.cpp
   ../System/SpinLock.cpp
   ../System/StrConvert.cpp
   ../System/StrFormatter.cpp
   ../System/Stream.cpp
   ../System/StrProc.cpp
   ../System/NameMap.cpp
+  ../System/SystemLog.cpp
+  ../System/Transform.cpp
+  ../Sound/DummySound.cpp
   ../UI/Cursor.cpp
+  ../UI/DebugDraw.cpp
+  ../UI/DebugVarsRender.cpp
+  ../UI/FrameTimeRender.cpp
+  ../UI/Alphabet.cpp
+  ../UI/FontRender.cpp
+  ../UI/FontStyle.cpp
   ../UI/ImageComponent.cpp
   ../UI/ImageLabel.cpp
   ../UI/LuaEventResult.cpp
   ../UI/NameMappedWindow.cpp
+  ../UI/PreferencesProcessor.cpp
   ../UI/Resolution.cpp
   ../UI/Root.cpp
   ../UI/ScreenLogicBase.cpp
   ../UI/SkinStyles.cpp
+  ../UI/Scripts.cpp
   ../UI/TextComponent.cpp
   ../UI/TextComponentBasic.cpp
   ../UI/TextMarkup.cpp
@@ -120,14 +452,19 @@ add_executable(
   ../UI/WindowPointJob.cpp
   ../System/ImageDDS.cpp
   ../System/ImageInternal.cpp
+  ../System/ImageTGA.cpp
   ../System/ImageUnpackDXT.cpp
+  ../System/MemoryStream.cpp
   ../System/StrUtils_linux.cpp
   ../System/TimeUtils_linux.cpp
   ../System/ntree.cpp
+  ../System/UpdateProcessor.cpp
+  ../System/Updater.cpp
   ../System/FileSystem/FilePath.cpp
   ../System/FileSystem/FileSystem.cpp
   ../System/FileSystem/FileSystemChangesProcessor.cpp
   ../System/FileSystem/FileStream.cpp
+  ../System/FileSystem/TinyFileWriteStream.cpp
   ../System/FileSystem/FileUtils.cpp
   ../System/FileSystem/FileUtils_linux.cpp
   ../System/FileSystem/CombinerFileSystem.cpp
@@ -157,6 +494,8 @@ add_library(
   ../PF_GameLogic/PFAIHelper.cpp
   ../PF_GameLogic/PFAITargetSelectors.cpp
   ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFHighlander.cpp
+  ../PF_GameLogic/PFMicroAI.cpp
   ../PF_GameLogic/PFApplAura.cpp
   ../PF_GameLogic/PFApplBounce.cpp
   ../PF_GameLogic/PFApplBuff.cpp
@@ -181,6 +520,8 @@ add_library(
   ../PF_GameLogic/PFBaseMovingUnit.cpp
   ../PF_GameLogic/PFBaseSpawner.cpp
   ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBaseUnitEvent.cpp
+  ../PF_GameLogic/PFBaseUnitStates.cpp
   ../PF_GameLogic/PFBattleBuilding.cpp
   ../PF_GameLogic/PFCastLimitations.cpp
   ../PF_GameLogic/PFBehaviour.cpp
@@ -192,7 +533,17 @@ add_library(
   ../PF_GameLogic/PFCreep.cpp
   ../PF_GameLogic/PFDeadBody.cpp
   ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFDispatchFactory.cpp
+  ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/PFAuraEffect.cpp
+  ../PF_GameLogic/PFEffectRandom.cpp
+  ../PF_GameLogic/PFEffectSwitcher.cpp
+  ../PF_GameLogic/PFInvisibilityEffect.cpp
+  ../PF_GameLogic/PFMinimapEffect.cpp
+  ../PF_GameLogic/PFPlayAnimEffect.cpp
+  ../PF_GameLogic/PFPriestessSignEffect.cpp
+  ../PF_GameLogic/PFUnitSceneObjectModify.cpp
   ../PF_GameLogic/ForceCalc.cpp
   ../PF_GameLogic/PFFlagpole.cpp
   ../PF_GameLogic/PFGlyph.cpp
@@ -201,6 +552,7 @@ add_library(
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
   ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
   ../PF_GameLogic/PFPet.cpp
@@ -211,8 +563,11 @@ add_library(
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFWorld.cpp
   ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/CollisionResolver.cpp
   ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFState.cpp
   ../PF_GameLogic/PFStatistics.cpp
+  ../PF_GameLogic/TriggerMarkerHandler.cpp
   ../PF_GameLogic/PFTargetSelector.cpp
   ../PF_GameLogic/PFTree.cpp
   ../PF_GameLogic/PFTower.cpp
@@ -227,7 +582,128 @@ add_library(
   ../Client/DefaultScreenBase.cpp
   ../Client/ScreenCommands.cpp
   ../Client/MainLoop.cpp
+  ../Client/TooltipsScreen.cpp
+  ../Client/TooltipsScreenLogic.cpp
+  ../Core/CommandSerializer.cpp
+  ../Core/CoreFSM.cpp
+  ../Core/GameCommand.cpp
+  ../Core/Transceiver.cpp
+  ../PF_GameLogic/DI/DI.cpp
+  ../PF_GameLogic/PFAuraEffect.cpp
+  ../PF_GameLogic/PFEffectRandom.cpp
+  ../PF_GameLogic/PFEffectSwitcher.cpp
+  ../PF_GameLogic/PFInvisibilityEffect.cpp
+  ../PF_GameLogic/PFMinimapEffect.cpp
+  ../PF_GameLogic/PFPlayAnimEffect.cpp
+  ../PF_GameLogic/PFPriestessSignEffect.cpp
+  ../PF_GameLogic/PFUnitSceneObjectModify.cpp
+  ../PF_Core/AnimatedTexture.cpp
+  ../PF_Core/BasicEffect.cpp
+  ../PF_Core/CameraShakeController.cpp
+  ../PF_Core/CameraShakeSceneComponent.cpp
+  ../PF_Core/ChangeMaterialEffect.cpp
+  ../PF_Core/ControlledStatusEffect.cpp
+  ../PF_Core/DBEffect.cpp
+  ../PF_Core/EnableSCEffect.cpp
+  ../PF_Core/EffectGenSceneComponent.cpp
+  ../PF_Core/EffectsPool.cpp
+  ../PF_Core/GhostEffect.cpp
+  ../PF_Core/IUpdateable.cpp
+  ../PF_Core/LightningEffect.cpp
+  ../PF_Core/ObjectsPool.cpp
+  ../PF_Core/ParticleSceneComponentWithEffect.cpp
+  ../PF_Core/RecolorableTexture.cpp
+  ../PF_Core/ScaleColorEffect.cpp
+  ../PF_Core/SpectatorEffectsPool.cpp
+  ../PF_Core/SpringSceneComponent.cpp
+  ../PF_Core/TraceGenSceneComponent.cpp
+  ../PF_Core/World.cpp
+  ../PF_Core/WorldObject.cpp
+  ../PF_GameLogic/DayNightController.cpp
+  ../PF_GameLogic/FPUState.cpp
+  ../PF_GameLogic/AsyncMapStartup.cpp
+  ../PF_GameLogic/MapStartup.cpp
+  ../PF_GameLogic/CollisionResolver.cpp
+  ../PF_GameLogic/PFAbilityData.cpp
+  ../PF_GameLogic/PFAbilityInstance.cpp
+  ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/PFAIController.cpp
+  ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFAIHelper.cpp
+  ../PF_GameLogic/PFAIStates.cpp
+  ../PF_GameLogic/PFAITargetSelectors.cpp
+  ../PF_GameLogic/PFHighlander.cpp
+  ../PF_GameLogic/PFMicroAI.cpp
+  ../PF_GameLogic/PFApplAura.cpp
+  ../PF_GameLogic/PFApplBounce.cpp
+  ../PF_GameLogic/PFApplBuff.cpp
+  ../PF_GameLogic/PFApplChainLightning.cpp
+  ../PF_GameLogic/PFApplChannelling.cpp
+  ../PF_GameLogic/PFApplDelegateDamage.cpp
+  ../PF_GameLogic/PFApplFx.cpp
+  ../PF_GameLogic/PFApplHelper.cpp
+  ../PF_GameLogic/PFApplInstant.cpp
+  ../PF_GameLogic/PFApplMove.cpp
+  ../PF_GameLogic/PFApplMod.cpp
+  ../PF_GameLogic/PFApplSpecial.cpp
+  ../PF_GameLogic/PFApplSummon.cpp
+  ../PF_GameLogic/PFApplUtils.cpp
+  ../PF_GameLogic/PFAdvMapObject.cpp
+  ../PF_GameLogic/PFBaseSpawner.cpp
+  ../PF_GameLogic/PFBaseAttackData.cpp
+  ../PF_GameLogic/PFBaseAIController.cpp
+  ../PF_GameLogic/PFBaseUnitAppl.cpp
+  ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBattleBuilding.cpp
+  ../PF_GameLogic/PFBuildings.cpp
+  ../PF_GameLogic/PFChest.cpp
+  ../PF_GameLogic/PFCommonCreep.cpp
+  ../PF_GameLogic/PFConsumable.cpp
+  ../PF_GameLogic/PFDeadBody.cpp
+  ../PF_GameLogic/PFApplicator.cpp
+  ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
+  ../PF_GameLogic/PFCastLimitations.cpp
+  ../PF_GameLogic/PFClientApplicators.cpp
+  ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFDispatchFactory.cpp
+  ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/ForceCalc.cpp
+  ../PF_GameLogic/PFBehaviour.cpp
+  ../PF_GameLogic/PFEaselPlayer.cpp
+  ../PF_GameLogic/PFFlagpole.cpp
+  ../PF_GameLogic/PFGlyph.cpp
+  ../PF_GameLogic/PFGlyphManager.cpp
+  ../PF_GameLogic/PFHero.cpp
+  ../PF_GameLogic/PFHeroesFactory.cpp
+  ../PF_GameLogic/PFHeroStates.cpp
+  ../PF_GameLogic/PointersHolder.cpp
+  ../PF_GameLogic/PFLogicObject.cpp
+  ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMinigamePlace.cpp
+  ../PF_GameLogic/PFMaleHero.cpp
+  ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFPet.cpp
+  ../PF_GameLogic/PFRoadFlagpole.cpp
+  ../PF_GameLogic/PFScriptedFlagpole.cpp
+  ../PF_GameLogic/PFSimpleObject.cpp
+  ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFState.cpp
+  ../PF_GameLogic/PFTree.cpp
+  ../PF_GameLogic/PFTalent.cpp
+  ../PF_GameLogic/PFTargetSelector.cpp
+  ../PF_GameLogic/PFTower.cpp
+  ../PF_GameLogic/PFUnitAbilities.cpp
+  ../PF_GameLogic/PFPredefinedUnitVariables.cpp
+  ../PF_GameLogic/PFUniTarget.cpp
+  ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PFWorld.cpp
+  ../PF_GameLogic/PFWorldProtection.cpp
+  ../PF_GameLogic/TriggerMarkerHandler.cpp
+  ../PF_GameLogic/PFVoxelMap.cpp
   ../PF_GameLogic/PFRenderInterface.cpp
+  ../PF_GameLogic/SmartRandom.cpp
+  ../PF_GameLogic/TileMap.cpp
+  ../PF_GameLogic/WarFog.cpp
   ../PW_Client/CpuTopology.cpp
   ../PW_Client/DebugVarsSender.cpp
   ../PW_Client/GameContext.cpp
@@ -251,6 +727,7 @@ add_library(
   ../PW_Client/SelectHeroScreen.cpp
   ../PW_Client/SelectHeroScreenLogic.cpp
   ../UI/DebugVarsRender.cpp
+  ../UI/DebugDraw.cpp
   ../UI/Cursor.cpp
   ../UI/FrameTimeRender.cpp
   ../UI/FontRender.cpp
@@ -272,6 +749,7 @@ add_library(
   ../UI/User.cpp
   ../UI/View.cpp
   ../UI/WindowPointJob.cpp
+  ../System/MemoryStream.cpp
 )
 
 add_library(
@@ -470,6 +948,7 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../Core
     ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
 )
@@ -527,6 +1006,7 @@ target_link_libraries(
   PRIVATE
     X11::X11
     OpenGL::GL
+    ${FREETYPE_LIBRARIES}
     ZLIB::ZLIB
     ${PNG_LIBRARIES}
 )
@@ -563,6 +1043,8 @@ set_source_files_properties(
   ../PF_GameLogic/PFAIHelper.cpp
   ../PF_GameLogic/PFAITargetSelectors.cpp
   ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFHighlander.cpp
+  ../PF_GameLogic/PFMicroAI.cpp
   ../PF_GameLogic/PFApplAura.cpp
   ../PF_GameLogic/PFApplBounce.cpp
   ../PF_GameLogic/PFApplBuff.cpp
@@ -598,7 +1080,16 @@ set_source_files_properties(
   ../PF_GameLogic/PFCreep.cpp
   ../PF_GameLogic/PFDeadBody.cpp
   ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFClientApplicators.cpp
   ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/PFAuraEffect.cpp
+  ../PF_GameLogic/PFEffectRandom.cpp
+  ../PF_GameLogic/PFEffectSwitcher.cpp
+  ../PF_GameLogic/PFInvisibilityEffect.cpp
+  ../PF_GameLogic/PFMinimapEffect.cpp
+  ../PF_GameLogic/PFPlayAnimEffect.cpp
+  ../PF_GameLogic/PFPriestessSignEffect.cpp
+  ../PF_GameLogic/PFUnitSceneObjectModify.cpp
   ../PF_GameLogic/ForceCalc.cpp
   ../PF_GameLogic/PFFlagpole.cpp
   ../PF_GameLogic/PFGlyph.cpp
@@ -607,6 +1098,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
   ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/MapCollection.cpp
   ../PF_GameLogic/MapDescriptionLoader.cpp
   ../PF_GameLogic/PFMaleHero.cpp
@@ -614,11 +1106,13 @@ set_source_files_properties(
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/CollisionResolver.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFSummoned.cpp
   ../PF_GameLogic/PFStatistics.cpp
+  ../PF_GameLogic/TriggerMarkerHandler.cpp
   ../PF_GameLogic/PFTargetSelector.cpp
   ../PF_GameLogic/PFTree.cpp
   ../PF_GameLogic/PFTower.cpp
@@ -627,14 +1121,115 @@ set_source_files_properties(
   ../PF_GameLogic/PFWorld.cpp
   ../PF_GameLogic/PFWorldNatureMap.cpp
   PROPERTIES
-    COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP"
+    COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP"
 )
 
 set_source_files_properties(
   ../PF_GameLogic/PFRenderInterface.cpp
   ../Client/DefaultScreenBase.cpp
+  ../Client/CommandBinds.cpp
+  ../Client/Console.cpp
+  ../Client/ConsoleLogic.cpp
+  ../Client/DebugTextDraw.cpp
   ../Client/ScreenCommands.cpp
   ../Client/MainLoop.cpp
+  ../Client/TooltipsScreen.cpp
+  ../Client/TooltipsScreenLogic.cpp
+  ../Core/CommandSerializer.cpp
+  ../Core/CoreFSM.cpp
+  ../Core/GameCommand.cpp
+  ../Core/Transceiver.cpp
+  ../PF_GameLogic/DI/DI.cpp
+  ../PF_Core/AnimatedTexture.cpp
+  ../PF_Core/BasicEffect.cpp
+  ../PF_Core/CameraShakeController.cpp
+  ../PF_Core/CameraShakeSceneComponent.cpp
+  ../PF_Core/ChangeMaterialEffect.cpp
+  ../PF_Core/ControlledStatusEffect.cpp
+  ../PF_Core/DBEffect.cpp
+  ../PF_Core/EnableSCEffect.cpp
+  ../PF_Core/EffectGenSceneComponent.cpp
+  ../PF_Core/EffectsPool.cpp
+  ../PF_Core/GhostEffect.cpp
+  ../PF_Core/IUpdateable.cpp
+  ../PF_Core/LightningEffect.cpp
+  ../PF_Core/ObjectsPool.cpp
+  ../PF_Core/ParticleSceneComponentWithEffect.cpp
+  ../PF_Core/RecolorableTexture.cpp
+  ../PF_Core/ScaleColorEffect.cpp
+  ../PF_Core/SpectatorEffectsPool.cpp
+  ../PF_Core/SpringSceneComponent.cpp
+  ../PF_Core/TraceGenSceneComponent.cpp
+  ../PF_Core/World.cpp
+  ../PF_Core/WorldObject.cpp
+  ../PF_GameLogic/DayNightController.cpp
+  ../PF_GameLogic/FPUState.cpp
+  ../PF_GameLogic/AsyncMapStartup.cpp
+  ../PF_GameLogic/MapStartup.cpp
+  ../PF_GameLogic/CollisionResolver.cpp
+  ../PF_GameLogic/PFAbilityData.cpp
+  ../PF_GameLogic/PFAIContainer.cpp
+  ../PF_GameLogic/PFAIWorld.cpp
+  ../PF_GameLogic/PFAdvMapObject.cpp
+  ../PF_GameLogic/PFBaseSpawner.cpp
+  ../PF_GameLogic/PFApplAura.cpp
+  ../PF_GameLogic/PFApplBounce.cpp
+  ../PF_GameLogic/PFApplBuff.cpp
+  ../PF_GameLogic/PFApplChainLightning.cpp
+  ../PF_GameLogic/PFApplChannelling.cpp
+  ../PF_GameLogic/PFApplDelegateDamage.cpp
+  ../PF_GameLogic/PFApplFx.cpp
+  ../PF_GameLogic/PFApplHelper.cpp
+  ../PF_GameLogic/PFApplInstant.cpp
+  ../PF_GameLogic/PFApplMove.cpp
+  ../PF_GameLogic/PFApplMod.cpp
+  ../PF_GameLogic/PFApplSpecial.cpp
+  ../PF_GameLogic/PFApplSummon.cpp
+  ../PF_GameLogic/PFApplUtils.cpp
+  ../PF_GameLogic/PFBaseUnitAppl.cpp
+  ../PF_GameLogic/PFBaseUnit.cpp
+  ../PF_GameLogic/PFBaseUseState.cpp
+  ../PF_GameLogic/PFCommonCreep.cpp
+  ../PF_GameLogic/PFConsumable.cpp
+  ../PF_GameLogic/PFDeadBody.cpp
+  ../PF_GameLogic/PFApplicator.cpp
+  ../PF_GameLogic/PFApplicatorHistoryAnalysis.cpp
+  ../PF_GameLogic/PFCastLimitations.cpp
+  ../PF_GameLogic/PFDispatch.cpp
+  ../PF_GameLogic/PFClientApplicators.cpp
+  ../PF_GameLogic/PFDispatchFactory.cpp
+  ../PF_GameLogic/PFDispatchStrike1.cpp
+  ../PF_GameLogic/ForceCalc.cpp
+  ../PF_GameLogic/PFFlagpole.cpp
+  ../PF_GameLogic/PFGlyph.cpp
+  ../PF_GameLogic/PFGlyphManager.cpp
+  ../PF_GameLogic/PFEaselPlayer.cpp
+  ../PF_GameLogic/PFHero.cpp
+  ../PF_GameLogic/PFHeroesFactory.cpp
+  ../PF_GameLogic/PFHeroStates.cpp
+  ../PF_GameLogic/PointersHolder.cpp
+  ../PF_GameLogic/PFLogicObject.cpp
+  ../PF_GameLogic/PFMainBuilding.cpp
+  ../PF_GameLogic/PFMinigamePlace.cpp
+  ../PF_GameLogic/PFMaleHero.cpp
+  ../PF_GameLogic/PFPickupable.cpp
+  ../PF_GameLogic/PFRoadFlagpole.cpp
+  ../PF_GameLogic/PFScriptedFlagpole.cpp
+  ../PF_GameLogic/PFSimpleObject.cpp
+  ../PF_GameLogic/PFState.cpp
+  ../PF_GameLogic/PFTree.cpp
+  ../PF_GameLogic/PFTalent.cpp
+  ../PF_GameLogic/PFTower.cpp
+  ../PF_GameLogic/PFUnitAbilities.cpp
+  ../PF_GameLogic/PFPredefinedUnitVariables.cpp
+  ../PF_GameLogic/PFUniTarget.cpp
+  ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PFWorld.cpp
+  ../PF_GameLogic/PFWorldProtection.cpp
+  ../PF_GameLogic/TileMap.cpp
+  ../PF_GameLogic/TriggerMarkerHandler.cpp
+  ../PF_GameLogic/PFVoxelMap.cpp
+  ../PF_GameLogic/WarFog.cpp
   ../PW_Client/CpuTopology.cpp
   ../PW_Client/DebugVarsSender.cpp
   ../PW_Client/GameContext.cpp
@@ -679,8 +1274,26 @@ set_source_files_properties(
   ../UI/User.cpp
   ../UI/View.cpp
   ../UI/WindowPointJob.cpp
+  ../System/MemoryStream.cpp
+  ../PF_GameLogic/SmartRandom.cpp
+  ../Core/BaseFSM.cpp
+  ../System/UpdateProcessor.cpp
+  ../System/Updater.cpp
   PROPERTIES
     COMPILE_DEFINITIONS "VISUAL_CUTTED;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_NULL_RENDER"
+)
+
+set_source_files_properties(
+  ../PF_Core/EffectsPool.cpp
+  ../PF_Core/DBEffect.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "PW_LINUX_DB_BOOTSTRAP;PW_LINUX_NULL_RENDER"
+)
+
+set_source_files_properties(
+  ../Sound/DummySound.cpp
+  PROPERTIES
+    COMPILE_DEFINITIONS "PW_LINUX_DB_BOOTSTRAP"
 )
 
 set_source_files_properties(

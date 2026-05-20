@@ -1,4 +1,140 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplBounce.h"
+#include "PFBaseUnit.h"
+#include "PFDispatchFactory.h"
+#include "PFTargetSelector.h"
+
+namespace NWorld
+{
+
+bool PFApplBounce::Start()
+{
+  if (PFApplBuff::Start())
+    return true;
+
+  MakeApplicationTarget(currentTarget, GetDB().startTarget);
+  if (GetDB().target)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().target->Create(GetWorld()));
+  targetsNumber = RetrieveParam(GetDB().targetsNumber);
+  bounceDelay = RetrieveParam(GetDB().bounceDelay);
+  timeToNextBounce = 0.0f;
+  targetCounter = 0;
+  finished = false;
+
+  if (targetsNumber == 0)
+    return false;
+
+  return !ExecuteNext();
+}
+
+void PFApplBounce::Stop()
+{
+  if (targetsNumber > 0)
+    targetCounter = targetsNumber;
+  finished = true;
+  PFApplBuff::Stop();
+}
+
+bool PFApplBounce::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (finished)
+    return true;
+
+  if (timeToNextBounce > EPS_VALUE)
+  {
+    timeToNextBounce -= dtInSeconds;
+    return false;
+  }
+
+  return !ExecuteNext();
+}
+
+bool PFApplBounce::ExecuteNext()
+{
+  if (finished)
+    return false;
+
+  if (targetsNumber > 0 && targetCounter >= targetsNumber)
+  {
+    finished = true;
+    return false;
+  }
+
+  ++targetCounter;
+
+  Target source(currentTarget);
+  Target target(currentTarget);
+  if ((GetDB().flags & NDb::BOUNCEFLAGS_STARTFROMOWNER) != 0 && targetCounter == 1)
+  {
+    source.SetUnit(GetAbilityOwner());
+  }
+  else if (IsValid(pTargetSelector))
+  {
+    PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, source);
+    if (!pTargetSelector->FindTarget(params, target))
+    {
+      finished = true;
+      return false;
+    }
+  }
+
+  if (target.IsValid())
+  {
+    currentTarget = target;
+    pDispatch = CreateDispatch(pAbility, this, source, currentTarget, GetDB().spell);
+  }
+
+  timeToNextBounce = bounceDelay;
+
+  if (targetsNumber > 0 && targetCounter >= targetsNumber)
+    finished = true;
+
+  return !finished;
+}
+
+void PFApplBounce::OnDispatchTargetDropped(const PFDispatch*)
+{
+  if ((GetDB().flags & NDb::BOUNCEFLAGS_BOUNCENEXTTARGETONLOSS) == 0)
+    finished = true;
+  else
+    timeToNextBounce = 0.0f;
+}
+
+void PFApplBounce::SetNewTarget(const Target& target)
+{
+  currentTarget = target;
+  timeToNextBounce = 0.0f;
+  if (target.IsUnitValid() && target.GetUnit() == GetAbilityOwner())
+    finished = true;
+}
+
+bool PFApplBounce::IsFinished() const
+{
+  return finished || (targetsNumber > 0 && targetCounter >= targetsNumber);
+}
+
+float PFApplBounce::GetVariable(const char* sVariableName) const
+{
+  if (strcmp(sVariableName, "target") == 0)
+    return static_cast<float>(targetCounter);
+
+  if (strcmp(sVariableName, "IsInDelay") == 0)
+    return timeToNextBounce > EPS_VALUE ? 1.0f : 0.0f;
+
+  return PFBaseApplicator::GetVariable(sVariableName);
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplBounce, NWorld);
+
+#else
 #include "PFApplBounce.h"
 #include "PFBaseUnit.h"
 #include "PFWorld.h"
@@ -233,3 +369,4 @@ float PFApplBounce::GetVariable(const char* sVariableName) const
 }
 
 REGISTER_WORLD_OBJECT_NM(PFApplBounce,        NWorld);
+#endif

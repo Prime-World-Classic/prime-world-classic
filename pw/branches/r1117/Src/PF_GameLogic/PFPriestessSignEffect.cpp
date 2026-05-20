@@ -3,7 +3,9 @@
 #include "stdafx.h"
 
 #include "../PF_Core/EffectsPool.h"
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "../PF_GameLogic/PFAIWorld.h"
+#endif
 #include "PFPriestessSignEffect.h"
 
 using namespace NScene;
@@ -14,11 +16,40 @@ namespace NGameX
 PriestessSignEffect::PriestessSignEffect(const NDb::EffectBase &dbEffect)
 : EffectDBLinker<NDb::PriestessSignEffect, PF_Core::BasicEffectStandalone>(dbEffect)
 , state(STATE_IDLE)
+, countdown(0.0f)
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+, bootstrapInitialized(false)
+, bootstrapApplied(false)
+, bootstrapTargetInScene(false)
+, bootstrapSoulEffectDbReady(false)
+, bootstrapSoulStarted(false)
+, bootstrapFlyInStarted(false)
+, bootstrapFlyOutStarted(false)
+, bootstrapCompleted(false)
+, bootstrapUpdateCount(0)
+#endif
 {
 }
 
 void PriestessSignEffect::Init()
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  BasicEffectStandalone::Init();
+
+  pBootstrapTarget = 0;
+  state = STATE_WAITDEATHEFFECT;
+  countdown = GetDBEffect().flyInDelay > 0.0f ? GetDBEffect().flyInDelay : 0.01f;
+  bootstrapInitialized = true;
+  bootstrapApplied = false;
+  bootstrapTargetInScene = false;
+  bootstrapSoulEffectDbReady = false;
+  bootstrapSoulStarted = false;
+  bootstrapFlyInStarted = false;
+  bootstrapFlyOutStarted = false;
+  bootstrapCompleted = false;
+  bootstrapUpdateCount = 0;
+  bDying = true;
+#else
   BasicEffectStandalone::Init();
 
   // store initial component placement (will restore it on death)
@@ -36,10 +67,40 @@ void PriestessSignEffect::Init()
   // Бывший тип self, сейчас это эффект, который раждается умирающим и умирает, 
   // когда Ready2Die() вернет true или по DieImmediate()
   bDying = true;
+#endif
 }
 
 void PriestessSignEffect::Apply(CPtr<PF_Core::ClientObjectBase> const &pUnit)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  pBootstrapTarget = pUnit;
+  NI_DATA_VERIFY(IsValid(pBootstrapTarget),
+    NStr::StrFmt("Effect %s could be applied on client object", GetDBEffect().GetDBID().GetFileName().c_str()),
+    return; );
+
+  NScene::SceneObject* const pTargetSceneObject = pBootstrapTarget->GetSceneObject();
+  bootstrapTargetInScene =
+    pTargetSceneObject &&
+    pTargetSceneObject->GetScene() &&
+    pTargetSceneObject->IsInScene();
+
+  if (bootstrapTargetInScene)
+  {
+    BasicEffectStandalone::Apply(pUnit);
+    bootstrapApplied =
+      GetSceneObject() &&
+      GetSceneObject()->GetScene() == pTargetSceneObject->GetScene();
+    if (GetSceneObject())
+    {
+      GetSceneObject()->UpdateForced(0.0f);
+    }
+  }
+  else
+  {
+    bootstrapApplied = false;
+    state = STATE_IDLE;
+  }
+#else
   pTargetCreature = dynamic_cast<PFClientCreature*>(pUnit.GetPtr());
   if ( IsValid(pTargetCreature) && pTargetCreature->IsVisible() )
   {
@@ -49,10 +110,57 @@ void PriestessSignEffect::Apply(CPtr<PF_Core::ClientObjectBase> const &pUnit)
   {
     state = STATE_IDLE;
   }
+#endif
 }
 
 void PriestessSignEffect::Update(float timeDelta)
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  BasicEffectStandalone::Update(timeDelta);
+
+  if (state == STATE_IDLE || IsDead())
+  {
+    return;
+  }
+
+  ++bootstrapUpdateCount;
+  switch (state)
+  {
+    case STATE_WAITDEATHEFFECT:
+    {
+      bootstrapSoulEffectDbReady = IsValid(GetDBEffect().soulEffect);
+      bootstrapSoulStarted = bootstrapSoulEffectDbReady;
+      bootstrapFlyInStarted = true;
+      state = STATE_FLYIN;
+      countdown = GetDBEffect().flyInDelay > 0.0f ? GetDBEffect().flyInDelay : 0.01f;
+      break;
+    }
+
+    case STATE_FLYIN:
+    {
+      countdown -= timeDelta;
+      if (countdown <= 0.0f)
+      {
+        bootstrapFlyOutStarted = true;
+        state = STATE_FLYOUT;
+        countdown = 0.01f;
+      }
+      break;
+    }
+
+    case STATE_FLYOUT:
+    {
+      countdown -= timeDelta;
+      if (countdown <= 0.0f)
+      {
+        bootstrapCompleted = true;
+        state = STATE_IDLE;
+        DieImmediate();
+      }
+      break;
+    }
+  }
+#else
   SceneComponentsEffect::Update(timeDelta);
 
   // if no animRoot -- we got nothing reasonable to do
@@ -137,10 +245,16 @@ void PriestessSignEffect::Update(float timeDelta)
       break;
     }
   }
+#endif
 }
 
 void PriestessSignEffect::DieImmediate()
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  pBootstrapTarget = 0;
+  state = STATE_IDLE;
+  BasicEffectStandalone::DieImmediate();
+#else
   // restore original component placement
   // This is a kind of hack -- when we are swapping hierarchies with attached priestess sign
   // our placement correction will affect its position which should not happen.
@@ -153,8 +267,19 @@ void PriestessSignEffect::DieImmediate()
   pTargetCreature = 0;
 
   BasicEffectStandalone::DieImmediate();
+#endif
 }
 
+bool PriestessSignEffect::Ready2Die()
+{
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  return bootstrapCompleted || IsDead();
+#else
+  return false;
+#endif
+}
+
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 void PriestessSignEffect::InitFlyIn()
 {
   if (GetDBEffect().flyInPath)
@@ -298,6 +423,7 @@ CVec3 PriestessSignEffect::PlaceSoulSphereIntoPos(CVec3 const &pos)
 
   return pos;
 }
+#endif
 
 } //namespace PF_Core
 

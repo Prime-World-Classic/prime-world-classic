@@ -171,7 +171,7 @@ const char* GetWorldObjectId( int worldId )
     return "Invalid";
   else
   {
-    sprintf_s( buffer[curBuff], "%05d", worldId );
+    snprintf( buffer[curBuff], sizeof(buffer[curBuff]), "%05d", worldId );
     return buffer[curBuff];
   }
 }
@@ -1115,7 +1115,8 @@ public:
   DebugPrintData(const char *szFileName ): 
     indent(0), pPtrsData(0) 
   {
-    if( fopen_s(&flOut, szFileName, "w") != 0 )
+    flOut = fopen( szFileName, "w" );
+    if( !flOut )
       NI_ALWAYS_ASSERT( "Can't open file" );
   }
   
@@ -1431,7 +1432,7 @@ public:
     buffStack.push_back( Buffer() );  
   }
   
-  template< int num >
+  template< char num >
   void ProcessRecord( const Record<num> &rec )
   {
     ProcessRecordImpl(rec);  
@@ -1458,7 +1459,7 @@ public:
   }
   
 private:
-  template< int num >
+  template< char num >
   void ProcessRecordImpl( const Record<num> &rec )
   {
     NI_ASSERT( curBuffNum < buffStack.size(), "" );
@@ -1513,14 +1514,9 @@ private:
   void fillArray()
   {
     parseFnc[Type] = &ObjectsParser::ParseRecord<Type>;
-    fillArray<Type + 1>();
-  }
-
-  template<>
-  void fillArray<InfoType_Count>()
-  {
-    //Nothing
-  }
+    if constexpr (Type + 1 < InfoType_Count)
+      fillArray<Type + 1>();
+ }
   
 private:
   typedef const char *( ObjectsParser::*ParseRecordFnc )( const char *pCur, const char * const pEnd );
@@ -1560,8 +1556,7 @@ static FILE *CreateNewFileForWriteImpl( const char *szPath )
     return NULL;
   
   //Если файл только что создан, то позиция будет стоять на нуле  
-  fpos_t pos;
-  fgetpos( pFile, &pos );
+  long pos = ftell( pFile );
  
   if( pos != 0 ) 
   { 

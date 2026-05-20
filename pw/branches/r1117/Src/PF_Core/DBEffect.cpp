@@ -45,11 +45,12 @@ REGISTER_DBRESOURCE( TraceGenSceneComponent );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
-#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #ifndef VISUAL_CUTTED
+#include "BasicEffect.h"
 #include "AnimatedTexture.h"
 #include "CameraShakeSceneComponent.h"
 #include "ChangeMaterialEffect.h"
+#include "ControlledStatusEffect.h"
 #include "EffectGenSceneComponent.h"
 #include "EffectsPool.h"
 #include "EnableSCEffect.h"
@@ -61,7 +62,6 @@ REGISTER_DBRESOURCE( TraceGenSceneComponent );
 #include "SpringSceneComponent.h"
 #include "TraceGenSceneComponent.h"
 #endif // #ifndef VISUAL_CUTTED
-#endif // !defined(PW_LINUX_DB_BOOTSTRAP)
 
 namespace NDb
 {
@@ -784,7 +784,7 @@ void CameraShakeSceneComponent::Assign( const CameraShakeSceneComponent& _camera
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> CameraShakeSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1110,7 +1110,7 @@ void EffectGenSceneComponent::Assign( const EffectGenSceneComponent& _effectGenS
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> EffectGenSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1511,7 +1511,7 @@ void ParticleSceneComponentWithEffect::Assign( const ParticleSceneComponentWithE
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> ParticleSceneComponentWithEffect::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -1792,7 +1792,7 @@ void SpringSceneComponent::Assign( const SpringSceneComponent& _springSceneCompo
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> SpringSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 
@@ -2014,7 +2014,7 @@ void TraceGenSceneComponent::Assign( const TraceGenSceneComponent& _traceGenScen
 #ifndef VISUAL_CUTTED
 CObj<NScene::SceneComponent> TraceGenSceneComponent::Create( NScene::HierarchyCreator &creator, const AttachedSceneComponent* pAttached, const Placement& transform ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) && !defined(PW_LINUX_NULL_RENDER)
 	return 0;
 #else
 

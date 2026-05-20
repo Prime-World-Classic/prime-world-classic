@@ -1,4 +1,48 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFCreature.h"
+#include "PFWorld.h"
+
+#define PW_INLINE_NULL_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_INLINE_NULL_CAST(NWorld::PFAbilityData)
+PW_INLINE_NULL_CAST(NWorld::PFAbilityInstance)
+PW_INLINE_NULL_CAST(NWorld::PFBaseApplicator)
+PW_INLINE_NULL_CAST(NWorld::PFBaseBehaviour)
+PW_INLINE_NULL_CAST(NWorld::PFApplStatus)
+PW_INLINE_NULL_CAST(NWorld::PFApplTaunt)
+PW_INLINE_NULL_CAST(NWorld::PFBehaviourGroup)
+PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_INLINE_NULL_CAST
+
+namespace NWorld
+{
+PFCreature::PFCreature(PFWorld* pWorld, const CVec3& pos, const CVec2& direction, const NDb::Creature& unitDesc) : PFBaseMovingUnit(pWorld, pos, direction, unitDesc), deadUnitLifeTime(-1.0f), unitFallUndergroundOffset(-1.0f), observingTimeOffset(-1.0f), forcedAnimationTimeLeft(0.0f) {}
+void PFCreature::Reset() { PFBaseMovingUnit::Reset(); }
+void PFCreature::OnAfterReset() { PFBaseMovingUnit::OnAfterReset(); }
+bool PFCreature::UpdateClientColor() { return PFBaseMovingUnit::UpdateClientColor(); }
+bool PFCreature::Step(float dtInSeconds) { PFBaseMovingUnit::Step(dtInSeconds); if (IsDead() && deadUnitLifeTime >= 0.0f && (deadUnitLifeTime -= dtInSeconds) < 0.0f) RemoveCorpse(); if (forcedAnimationTimeLeft > 0.0f) forcedAnimationTimeLeft -= dtInSeconds; return true; }
+void PFCreature::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc) { PFBaseMovingUnit::OnUnitDie(killer, flags, damageDesc); observingTimeOffset = 0.0f; deadUnitLifeTime = (flags & UNITDIEFLAGS_FORCEREMOVECORPSE) ? 0.0f : 1.0f; }
+void PFCreature::OnRessurect() { deadUnitLifeTime = -1.0f; unitFallUndergroundOffset = -1.0f; observingTimeOffset = -1.0f; }
+void PFCreature::PlaceSkeleton(bool) {}
+int PFCreature::ReplaceAnimSet(NDb::Ptr<NDb::AnimSet>) { return -1; }
+void PFCreature::RollbackAnimSet(int) {}
+int PFCreature::ReplaceAnimation(NDb::EAnimStates, char const*, char const*, bool, bool) { return -1; }
+int PFCreature::ReplaceAnimation(char const*, char const*, char const*, bool, bool) { return -1; }
+void PFCreature::RollbackAnimation(NDb::EAnimStates, int, bool) {}
+void PFCreature::RollbackAnimation(char const*, int, bool) {}
+void PFCreature::OnAbilityDispatchStarted(PFAbilityData const*) const {}
+CObj<IPFState> PFCreature::InvokeAbility(int, Target const&) { return 0; }
+void PFCreature::ForceAnimation(const string&, int) { forcedAnimationTimeLeft = 1e10f; }
+void PFCreature::StopForcedAnimation(bool) { forcedAnimationTimeLeft = 0.0f; }
+void PFCreature::RemoveCorpse() { Die(); }
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFCreature, NWorld)
+
+#else
 #include "PFCreature.h"
 #include "PFDeadBody.h"
 #include "PFAIWorld.h"
@@ -319,3 +363,5 @@ void PFCreature::RemoveCorpse()
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFCreature, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFCreatureUseAbilityState, NWorld)
+
+#endif

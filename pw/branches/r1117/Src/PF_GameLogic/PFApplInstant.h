@@ -121,7 +121,11 @@ protected:
   }
 
 	virtual int  GetAcceptableTargetFlags() const { return Target::FLAG_UNIT; }
+#if defined( PW_LINUX_NULL_RENDER )
+	virtual int  GetAcceptableUnitTypeFlags() const { return NDb::SPELLTARGET_ALL; }
+#else
 	virtual int  GetAcceptableUnitTypeFlags() const { return NDb::SPELLTARGET_HEROFEMALE | NDb::SPELLTARGET_HEROMALE; }
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +252,11 @@ private:
   virtual void DumpInfo(NLogg::CChannelLogger &logger) const;
 
   virtual int  GetAcceptableTargetFlags() const { return Target::FLAG_UNIT; }
+#if defined( PW_LINUX_NULL_RENDER )
+  virtual int  GetAcceptableUnitTypeFlags() const { return NDb::SPELLTARGET_ALL; }
+#else
   virtual int  GetAcceptableUnitTypeFlags() const { return NDb::SPELLTARGET_HEROFEMALE | NDb::SPELLTARGET_HEROMALE; }
+#endif
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

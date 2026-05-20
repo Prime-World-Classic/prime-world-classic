@@ -396,7 +396,7 @@ void FogOfWar::ApplyHeightMap( const CArray2D<float>& _heights, const NScene::IH
       int xTo   = Min(xFrom + visTileSize, _heights.GetSizeY());
       int yTo   = Min(yFrom + visTileSize, _heights.GetSizeX());
 
-      float minHeight = MAX_FLOAT;
+      float minHeight = FLT_MAX;
 
       for (int xCurr = xFrom; xCurr < xTo; ++xCurr )
       {
@@ -1120,7 +1120,7 @@ void DrawWarFogSectors(const CVec3 & pos, const Render::Color& color, const Sect
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FogOfWar::DrawWarFogDebug(NWorld::PFWorld* pWorld) const
 {
-#ifndef _SHIPPING
+#if !defined(_SHIPPING) && !defined(PW_LINUX_NULL_RENDER)
   if (g_showWarFog == 0 || g_showWarFog > 3)
     return;
 

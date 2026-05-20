@@ -1,10 +1,10 @@
 #pragma once
 
 #include "PFWorldObjectBase.h"
-#include "PFLogicObject.h"
 
 namespace NWorld
 {
+class PFLogicObject;
 
 class TriggerMarkerHandler : public PFWorldObjectBase
 {
@@ -21,19 +21,9 @@ private:
     float         range;
     NDb::ESpellTarget targetType;
 
-    UnitAccumulatorFunctor( const CVec2 &pos_, float range_, NDb::ESpellTarget _targetType )
-    : pos(pos_), range(range_), targetType(_targetType)
-    {
-      counterUnitFaction[ NDb::FACTION_NEUTRAL ] = 0;
-      counterUnitFaction[ NDb::FACTION_FREEZE ] = 0;
-      counterUnitFaction[ NDb::FACTION_BURN ] = 0;
-    } 
+    UnitAccumulatorFunctor( const CVec2 &pos_, float range_, NDb::ESpellTarget _targetType );
 
-    void operator()( NWorld::PFLogicObject& unit )
-    {
-      if ( unit.IsInRange( pos, range ) && (targetType & (1L << unit.GetUnitType())) != 0 ) 
-        counterUnitFaction[unit.GetFaction()]++;
-    }
+    void operator()( NWorld::PFLogicObject& unit );
 
     int operator [] (int i) { return counterUnitFaction[i]; }
   };

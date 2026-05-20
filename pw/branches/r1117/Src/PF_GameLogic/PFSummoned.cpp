@@ -1,5 +1,95 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFSummoned.h"
+#include "PFWorld.h"
+
+namespace
+{
+  static bool g_debugSummonStates = false;
+}
+
+REGISTER_DEV_VAR("debug_summon_states", g_debugSummonStates, STORAGE_NONE);
+
+namespace NWorld
+{
+
+PFSummonedUnitBehaviour* PFSummonedUnitBehaviour::Create(PFBaseMovingUnit* pUnit, CPtr<PFBaseUnit> const& pMaster, const NDb::SummonBehaviourBase* pBehaviourData, float lifeTime, int behaviourFlags)
+{
+  return new PFSummonedUnitBehaviour(pUnit, pMaster, pBehaviourData, lifeTime, behaviourFlags);
+}
+
+PFSummonedUnitBehaviour::PFSummonedUnitBehaviour(PFBaseMovingUnit* pUnit, const CPtr<PFBaseUnit>& pMaster, const NDb::SummonBehaviourBase* pBehaviourData, float lifeTime, int behaviourFlags)
+  : PFSummonBehaviour(pUnit, pMaster.GetPtr(), pBehaviourData, lifeTime, behaviourFlags)
+{
+}
+
+void PFSummonedUnitBehaviour::UpdateClientColor() {}
+void PFSummonedUnitBehaviour::GetKillerAward(CPtr<PFBaseUnit> pKiller, NaftaAward& award) { (void)pKiller; if (IsValid(pUnit)) award.toKiller += pUnit->GetGold(); }
+
+PFSummonedUnitAIBehaviour* PFSummonedUnitAIBehaviour::Create(PFBaseMovingUnit* pUnit, CPtr<PFBaseUnit> const& pMaster, const NDb::SummonBehaviourBase* pBehaviourBase, NDb::SummonType summonType, float lifeTime, int behaviourFlags)
+{
+  return new PFSummonedUnitAIBehaviour(pUnit, pMaster, pBehaviourBase, summonType, lifeTime, behaviourFlags);
+}
+
+PFSummonedUnitAIBehaviour::PFSummonedUnitAIBehaviour(PFBaseMovingUnit* pUnit, CPtr<PFBaseUnit> const& pMaster, const NDb::SummonBehaviourBase* pBehaviourBase, NDb::SummonType summonType_, float lifeTime, int behaviourFlags)
+  : PFSummonedUnitBehaviour(pUnit, pMaster, pBehaviourBase, lifeTime, behaviourFlags)
+  , summonType(summonType_)
+  , isSuspended(false)
+{
+  if ((behaviourFlags & BEHAVIOURFLAGS_ALPHASUMMON) != 0 && IsValid(pMaster))
+    pMaster->SetAlphaSummon(pUnit);
+}
+
+bool PFSummonedUnitAIBehaviour::OnStep(float dtInSeconds) { return PFSummonedUnitBehaviour::OnStep(dtInSeconds); }
+void PFSummonedUnitAIBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { (void)pTarget; (void)bStrongTarget; }
+bool PFSummonedUnitAIBehaviour::CanSelectTarget(const PFBaseUnit* pTarget, bool mustSeeTarget) const { (void)pTarget; (void)mustSeeTarget; return false; }
+void PFSummonedUnitAIBehaviour::OnStop() { if (IsValid(pMaster) && (behaviourFlags & BEHAVIOURFLAGS_ALPHASUMMON)) pMaster->SetAlphaSummon(0); }
+void PFSummonedUnitAIBehaviour::Suspend() { isSuspended = true; }
+void PFSummonedUnitAIBehaviour::Resume() { isSuspended = false; }
+void PFSummonedUnitAIBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
+void PFSummonedUnitAIBehaviour::AcquireBehaviourDefinedSpawnPosition(Target& spawnPosition) const { (void)spawnPosition; }
+CVec2 PFSummonedUnitAIBehaviour::GetMasterOffset() const { return VNULL2; }
+unsigned int PFSummonedUnitAIBehaviour::OnEvent(const PFBaseUnitEvent* pEvent) { (void)pEvent; return 0; }
+
+PFBaseSummonedUnit::PFBaseSummonedUnit(CPtr<PFWorld> const& pWorld, NDb::Creature const* creepObj, NDb::EUnitType unitType, CPtr<PFBaseUnit> const& pMaster, Placement const& placement, bool noSummonAnimation, bool attachGlowEffect_, bool openWarFog_)
+  : PFBaseCreep(pWorld.GetPtr(), placement.pos, placement.Get2DDirection(), *creepObj)
+  , takeModDmg(1.0f)
+  , takeTypeUnit(NDb::ESpellTarget(0))
+  , attachGlowEffect(attachGlowEffect_)
+  , openWarFog(openWarFog_)
+{
+  (void)noSummonAnimation;
+  SetMaster(pMaster);
+  PFBaseUnit::InitData data;
+  data.faction = IsValid(pMaster) ? pMaster->GetFaction() : NDb::FACTION_NEUTRAL;
+  data.type = unitType;
+  data.playerId = IsValid(pMaster) ? pMaster->GetPlayerId() : -1;
+  data.pObjectDesc = creepObj;
+  Initialize(data);
+  if (!noSummonAnimation)
+    InitializeSummonBehavior();
+  if (IsValid(pMaster))
+    SetNaftaLevel(pMaster->GetNaftaLevel());
+}
+
+float PFBaseSummonedUnit::OnBeforeDamage(const DamageDesc& desc) { return desc.amount * takeModDmg; }
+float PFBaseSummonedUnit::OnDamage(const DamageDesc& desc) { DamageDesc modified = desc; modified.amount *= takeModDmg; return PFBaseUnit::OnDamage(modified); }
+void PFBaseSummonedUnit::Reset() { PFBaseCreep::Reset(); }
+void PFBaseSummonedUnit::OnAfterReset() { PFBaseCreep::OnAfterReset(); }
+bool PFBaseSummonedUnit::SetSkin(const nstl::string& skinId) { (void)skinId; pCurrentSkin = 0; return false; }
+const NDb::UnitDeathParameters* PFBaseSummonedUnit::GetDeathParams() const { return PFBaseCreep::GetDeathParams(); }
+void PFBaseSummonedUnit::MakeClientObject(PFBaseMaleHero* pHero, NDb::Creature const* dbSummonedObj, bool noSummonAnimation) { (void)pHero; (void)dbSummonedObj; (void)noSummonAnimation; }
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFBaseSummonedUnit, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFSummonedUnitBehaviour, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFSummonedUnitAIBehaviour, NWorld)
+
+#else
+
 #include "PFSummoned.h"
 #include "PFSummonState.h"
 #include "PFAIWorld.h"
@@ -570,3 +660,5 @@ void PFSummonedUnitBehaviour::GetKillerAward(CPtr<PFBaseUnit> pKiller, NaftaAwar
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFBaseSummonedUnit, NWorld)
 REGISTER_WORLD_OBJECT_NM( PFSummonedUnitBehaviour, NWorld )
 REGISTER_WORLD_OBJECT_NM( PFSummonedUnitAIBehaviour, NWorld )
+
+#endif

@@ -1,5 +1,93 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseBehaviour;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "PFTower.h"
+
+namespace NWorld
+{
+
+PFTower::PFTower(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFBattleBuilding(pWorld, dbObject)
+  , screamCooldown(0.0f)
+{
+  pDesc = dynamic_cast<NDb::Tower const*>(dbObject.gameObject.GetPtr());
+  if (pDesc)
+  {
+    Init(dbObject, pDesc, NDb::UNITTYPE_TOWER);
+    ContolTurret(true);
+    SetBaseAngle(pDesc->baseRotation);
+  }
+}
+
+PFTower::~PFTower() {}
+void PFTower::Reset() { PFBattleBuilding::Reset(); screamCooldown = 0.0f; }
+
+bool PFTower::Step(float dtInSeconds)
+{
+  if (0.0f <= screamCooldown)
+    screamCooldown -= dtInSeconds;
+  return PFBattleBuilding::Step(dtInSeconds);
+}
+
+float PFTower::OnDamage(const DamageDesc& desc) { return PFBattleBuilding::OnDamage(desc); }
+void PFTower::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
+void PFTower::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBattleBuilding::OnUnitDie(pKiller, flags, pDamageDesc); }
+void PFTower::OnTargetAssigned() { PFBattleBuilding::OnTargetAssigned(); lastAngleResetDelay = -1.0f; }
+void PFTower::OnTargetDropped() { lastAngleResetDelay = lastAngleResetDelayTime; }
+
+PFControllableTower::PFControllableTower(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFTower(pWorld, dbObject)
+{
+  SetVulnerable(true);
+}
+
+bool PFControllableTower::Step(float dtInSeconds) { return PFTower::Step(dtInSeconds); }
+float PFControllableTower::OnDamage(const DamageDesc& desc) { return PFTower::OnDamage(desc); }
+void PFControllableTower::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFTower::OnUnitDie(pKiller, flags, pDamageDesc); }
+void PFControllableTower::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { AssignTarget(pTarget, bStrongTarget); }
+void PFControllableTower::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
+
+PFFountain::PFFountain(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFBuilding(pWorld, dbObject)
+{
+  pDesc = dynamic_cast<NDb::Fountain const*>(dbObject.gameObject.GetPtr());
+  if (pDesc)
+    Init(dbObject, pDesc, NDb::UNITTYPE_BUILDING);
+  SetVulnerable(false);
+}
+
+void PFFountain::Reset() { PFBuilding::Reset(); SetVulnerable(false); }
+void PFFountain::OnDestroyContents() { PFBuilding::OnDestroyContents(); }
+void PFFountain::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { AssignTarget(pTarget, bStrongTarget); }
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFTower, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFControllableTower, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFFountain, NWorld)
+
+#else
+
+
 #include "PFTower.h"
 #include "DBStats.h"
 #include "TileMap.h"
@@ -256,3 +344,5 @@ REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFControllableTower, NWorld)
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFFountain, NWorld);
 
 REGISTER_WORLD_OBJECT_NM(PFTowerGuardState, NWorld);
+
+#endif

@@ -1,4 +1,32 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFBaseUseState.h"
+#include "PFBaseUnit.h"
+
+namespace NWorld
+{
+
+PFBaseUseState::PFBaseUseState(CPtr<PFBaseUnit> const& owner, Target const& target_)
+  : PFBaseUnitState(owner)
+  , target(target_)
+{
+}
+
+bool PFBaseUseState::NeedToGetClose() const { return false; }
+bool PFBaseUseState::IsCastFinished() const { return true; }
+bool PFBaseUseState::IsAbilityFinished() const { return true; }
+bool PFBaseUseState::IsBlocking() const { return false; }
+bool PFBaseUseState::IsEjecting() const { return true; }
+void PFBaseUseState::OnLeave() { pAbilityInstance = 0; }
+unsigned int PFBaseUseState::GetAbilityFlags() const { return 0; }
+void PFBaseUseState::DumpStateToConsole(int depths) { (void)depths; }
+
+} // namespace NWorld
+
+#else
+
 #include "PFBaseUseState.h"
 #include "PFBaseUnit.h"
 #include "PFAbilityInstance.h"
@@ -76,3 +104,5 @@ unsigned int PFBaseUseState::GetAbilityFlags() const
 }
 
 }
+
+#endif

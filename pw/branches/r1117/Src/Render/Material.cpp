@@ -154,6 +154,10 @@ Render::Material* CreateRenderMaterialInPool( const NDb::Material* pDbMaterial, 
 {
 	NI_VERIFY( pDbMaterial, "Invalid data base material", return 0 );
 	Render::Material* pResult = GetMaterials().CreateObject( pDbMaterial->GetObjectTypeID() );
+#if defined(PW_LINUX_NULL_RENDER)
+  if (!pResult)
+    return 0;
+#endif
 	pResult->FillMaterial( pDbMaterial, texturePoolId ); 
 
 	return pResult;
@@ -169,6 +173,10 @@ Render::Material* CreateRenderMaterial( const NDb::Material* pDbMaterial )
 Render::Material* CreateRenderMaterial( const int typeId )
 {
 	Render::Material* pResult = GetMaterials().CreateObject( typeId );
+#if defined(PW_LINUX_NULL_RENDER)
+  if (!pResult)
+    return 0;
+#endif
 	pResult->FillMaterial(); 
 
 	return pResult;

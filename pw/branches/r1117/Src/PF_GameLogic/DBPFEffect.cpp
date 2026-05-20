@@ -36,6 +36,16 @@ REGISTER_DBRESOURCE( UnitSceneObjectModify );
 #include "PFPriestessSignEffect.h"
 #include "PFUnitSceneObjectModify.h"
 #endif // #ifndef VISUAL_CUTTED
+#if defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
+#include "PFAuraEffect.h"
+#include "PFEffectRandom.h"
+#include "PFEffectSwitcher.h"
+#include "PFInvisibilityEffect.h"
+#include "PFMinimapEffect.h"
+#include "PFPlayAnimEffect.h"
+#include "PFPriestessSignEffect.h"
+#include "PFUnitSceneObjectModify.h"
+#endif // #if defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 
 namespace NDb
 {
@@ -245,12 +255,12 @@ void AuraEffect::Assign( const AuraEffect& _auraEffect )
 	enableCondition = _auraEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> AuraEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFAuraEffect>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 EffectSwitcher::EffectSwitcher() :
 		logic( EFFECTSWITCHLOGIC_FACTIONVISIBILITY )
@@ -315,12 +325,12 @@ void EffectSwitcher::Assign( const EffectSwitcher& _effectSwitcher )
 	enableCondition = _effectSwitcher.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> EffectSwitcher::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFEffectSwitcher>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 InvisibilityEffect::InvisibilityEffect()
 {
@@ -380,12 +390,12 @@ void InvisibilityEffect::Assign( const InvisibilityEffect& _invisibilityEffect )
 	enableCondition = _invisibilityEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> InvisibilityEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::InvisibilityEffect>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 MinimapEffect::MinimapEffect() :
 		effect( MINIMAPEFFECTS_EGGCARRIER )
@@ -440,12 +450,12 @@ void MinimapEffect::Assign( const MinimapEffect& _minimapEffect )
 	enableCondition = _minimapEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> MinimapEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFMinimapEffect>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PlayAnimationEffect::PlayAnimationEffect() :
 		markerReachTime( 0.0f )
@@ -513,12 +523,12 @@ void PlayAnimationEffect::Assign( const PlayAnimationEffect& _playAnimationEffec
 	enableCondition = _playAnimationEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> PlayAnimationEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFPlayAnimEffect>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PriestessSignEffect::PriestessSignEffect() :
 		flyInDelay( 0.0f )
@@ -596,12 +606,12 @@ void PriestessSignEffect::Assign( const PriestessSignEffect& _priestessSignEffec
 	enableCondition = _priestessSignEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> PriestessSignEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PriestessSignEffect>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 RandomEffect::RandomEffect()
 {
@@ -655,12 +665,12 @@ void RandomEffect::Assign( const RandomEffect& _randomEffect )
 	enableCondition = _randomEffect.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> RandomEffect::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFEffectRandom>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 UnitSceneObjectModify::UnitSceneObjectModify() :
 		mode( UNITSCENEOBJECTMODIFYMODE_APPEND )
@@ -724,10 +734,10 @@ void UnitSceneObjectModify::Assign( const UnitSceneObjectModify& _unitSceneObjec
 	enableCondition = _unitSceneObjectModify.enableCondition;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#ifndef VISUAL_CUTTED
+#if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 CObj<PF_Core::BasicEffect> UnitSceneObjectModify::Retrieve( PF_Core::ObjectsPool &pool ) const
 {
 	return PF_Core::CreateEffectFromPool<NGameX::PFUnitSceneObjectModify>( *this, pool );
 }
-#endif // #ifndef VISUAL_CUTTED
+#endif // #if !defined(VISUAL_CUTTED) || defined(PW_LINUX_GAMEPLAY_EFFECTS_BOOTSTRAP)
 }; // namespace NDb

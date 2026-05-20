@@ -1,5 +1,123 @@
 #include "stdafx.h"
 
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFNeutralCreep.h"
+
+namespace
+{
+  bool    g_bSpawnNeutralCreeps = true;
+  bool    g_bKillCreepsOnSpawnerHide = true;
+}
+
+namespace NWorld
+{
+
+PFNeutralCreepSpawner::PFNeutralCreepSpawner(PFWorld* pWorld, const NDb::AdvMapObject &dbObject)
+  : PFBaseSpawner(pWorld, dbObject)
+  , minAttackRange(10000.0f)
+{
+  spawnerDesc = dynamic_cast<NDb::AdvMapNeutralCreepSpawner const*>(dbObject.gameObject.GetPtr());
+  NI_VERIFY( spawnerDesc, "Invalid creep spawner", return; );
+
+  SetCreepsLevel( spawnerDesc->baseLevel, true );
+}
+
+bool PFNeutralCreepSpawner::CanSpawnWave() const
+{
+  return false;
+}
+
+void PFNeutralCreepSpawner::OnAfterReset()
+{
+}
+
+void PFNeutralCreepSpawner::SpawnCreeps()
+{
+}
+
+void PFNeutralCreepSpawner::InitializeCreep( PFNeutralCreep* neutralCreep, const Render::HDRColor& recolor )
+{
+  (void)neutralCreep;
+  (void)recolor;
+}
+
+void PFNeutralCreepSpawner::AwardForCreepKill(NaftaAward& award) const
+{
+  (void)award;
+}
+
+void PFNeutralCreepSpawner::DropCreep( PFNeutralCreep *pCreep)
+{
+  (void)pCreep;
+}
+
+void PFNeutralCreepSpawner::DropAllCreeps()
+{
+  creeps.clear();
+  if (IsValid(spawnerDesc))
+    SetSpawnDelay( spawnerDesc->spawnDelay );
+}
+
+CPtr<PFBaseUnit> PFNeutralCreepSpawner::GetSpawnTarget( CPtr<PFBaseMovingUnit>& pUnit, float range, const bool checkRange )
+{
+  (void)pUnit;
+  (void)range;
+  (void)checkRange;
+  return 0;
+}
+
+void PFNeutralCreepSpawner::Hide(bool hide)
+{
+  PFBaseSpawner::Hide(hide);
+}
+
+NDb::MapForceStatModifierApplication PFNeutralCreepSpawner::GetMapForceStatModifierApplication() const
+{
+  if (IsValid(spawnerDesc))
+    return spawnerDesc->mapForceStatModifierApplication;
+  return NDb::MAPFORCESTATMODIFIERAPPLICATION_ALL;
+}
+
+PFNeutralCreep::PFNeutralCreep(PFWorld* pWorld, const NDb::AdvMapCreep& creepObj, const Placement& placement, bool useSpawnerWalkLimit, float limitWalkDistance, PFNeutralCreepSpawner* parentSpawner, const vector<CVec2>& waypoints, float interval, int increment, bool specialAwarding_)
+  : PFBaseCreep(pWorld, creepObj, NDb::FACTION_NEUTRAL, GetUnitTypeByCreepType(creepObj.creepType), -1, placement, interval, increment, false, parentSpawner ? parentSpawner->GetMapForceStatModifierApplication() : NDb::MAPFORCESTATMODIFIERAPPLICATION_ALL)
+  , spawner(parentSpawner)
+  , needRotate(false)
+  , initialPlacement(placement)
+  , walkLimit(limitWalkDistance)
+  , attachedToSpawner(true)
+  , specialAwarding(specialAwarding_)
+  , positionBySpawner(placement.pos.AsVec2D())
+{
+  (void)waypoints;
+  if (useSpawnerWalkLimit && IsValid(spawner))
+  {
+    if (NDb::AdvMapNeutralCreepSpawner const* pSpawnerDesc = spawner->GetDBDesc())
+      walkLimit = pSpawnerDesc->limitWalkDistance;
+  }
+  InitializeSummonBehavior();
+}
+
+void PFNeutralCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseCreep::OnUnitDie(pKiller, flags, pDamageDesc); DettachFromSpawner(); }
+void PFNeutralCreep::DettachFromSpawner() { if (attachedToSpawner && IsValid(spawner)) spawner->DropCreep(this); attachedToSpawner = false; }
+void PFNeutralCreep::DisableLevelUps() { levelUpInfo.timeLevelUpInterval = 0.0f; levelUpInfo.timeLevelUpIncrement = 0; }
+void PFNeutralCreep::OnAfterReset() { PFBaseCreep::OnAfterReset(); }
+void PFNeutralCreep::ChangeFaction(NDb::EFaction newFaction) { PFBaseCreep::ChangeFaction(newFaction); }
+void PFNeutralCreep::RotateIfNeeded() { needRotate = false; }
+const NDb::DBID* PFNeutralCreep::GetSpawnerDBID() const { return GetSpawner() && GetSpawner()->GetDBDesc() ? &(GetSpawner()->GetDBDesc()->GetDBID()) : 0; }
+const vector<CVec2>* PFNeutralCreep::GetWaypoints() const { static vector<CVec2> empty; return &empty; }
+bool PFNeutralCreep::SetCreepBehavior(const string& behavior, const vector<string>& params) { (void)behavior; (void)params; return false; }
+bool PFNeutralCreep::IsAggressiveNeutralCreep() const { return GetSpawner() && GetSpawner()->GetDBDesc() && GetSpawner()->GetDBDesc()->isAggressive; }
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFNeutralCreep, NWorld);
+REGISTER_WORLD_OBJECT_NM(PFNeutralCreepSpawner, NWorld);
+REGISTER_DEV_VAR("spawn_neutral_creeps",   g_bSpawnNeutralCreeps,   STORAGE_NONE);
+REGISTER_DEV_VAR("kill_creeps_on_spawner_hide",   g_bKillCreepsOnSpawnerHide,   STORAGE_NONE);
+
+#else
+
 #include "PFNeutralCreep.h"
 #include "PFCommonCreep.h"
 #include "AdventureScreen.h"
@@ -464,3 +582,4 @@ REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFNeutralCreepSpawner,      NWorld)
 
 REGISTER_VAR("spawn_neutral_creeps",  g_bSpawnNeutralCreeps,  STORAGE_NONE);
 REGISTER_DEV_VAR("kill_creeps_on_spawner_hide",  g_bKillCreepsOnSpawnerHide,  STORAGE_NONE);
+#endif

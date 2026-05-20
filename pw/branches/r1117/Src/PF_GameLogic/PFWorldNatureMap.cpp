@@ -2,8 +2,13 @@
 
 #include "PFFlagpole.h"
 #include "PFWorldNatureMap.h"
+#include "PFAIWorld.h"
 #include "../Terrain/Terrain.h"
 #include "../System/InlineProfiler.h"
+
+#if defined( PW_LINUX_NULL_RENDER ) && !defined( PW_LINUX_TERRAIN_RUNTIME_PROBE )
+#define PW_LINUX_NATUREMAP_NULL_RENDER 1
+#endif
 
 #ifndef VISUAL_CUTTED
 #include "PFClientNatureMap.h"
@@ -57,28 +62,44 @@ void PFWorldNatureMap::OnLoaded(const NDb::Ptr<NDb::Terrain>& pDBTerrain_)
 
 int PFWorldNatureMap::LocateElement(float x, float y) const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return -1;
+#else
   return pMap ? pMap->LocateElement(x, y) : Terrain::NATUREMAPELEMENTID_BAD;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int PFWorldNatureMap::GetNatureInPoint(float x, float y) const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return 0;
+#else
   return pMap ? pMap->GetNature(x, y) : 0;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int PFWorldNatureMap::GetNatureInPoint(int id) const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return 0;
+#else
   return pMap ? pMap->GetNature(id) : 0;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool PFWorldNatureMap::IsAtBase(float x, float y) const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return false;
+#else
   return pMap ? pMap->IsAtBase(x, y) : false;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -92,7 +113,11 @@ float PFWorldNatureMap::GetNaturePercent(NDb::EFaction faction) const
       ( faction == NDb::FACTION_BURN ? customNaturePercents.m[1] : 1.f - customNaturePercents.m[0] - customNaturePercents.m[1]  );
   }
 
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return 0.0f;
+#else
   return pMap ? pMap->GetNaturePercent((NDb::ENatureType)faction) : 0.0f;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +126,11 @@ float PFWorldNatureMap::GetNaturePercent(NDb::EFaction faction, NDb::ENatureRoad
 {
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::ENatureRoad>::sizeOf == 3, THERE_MUST_BE_THREE_ROADS);
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return 0.0f;
+#else
   return pMap ? pMap->GetNaturePercent((NDb::ENatureType)faction, roadIndex) : 0.0f;
+#endif
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::SetCustomNaturePercents( float freeze, float burn )
@@ -114,12 +143,17 @@ void PFWorldNatureMap::SetCustomNaturePercents( float freeze, float burn )
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int PFWorldNatureMap::GetNumSegments() const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return 0;
+#else
   return pMap ? pMap->GetNumSegments() : 0;
+#endif
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void PFWorldNatureMap::GetNatureBorders(NDb::EFaction faction, CVec2 roadPoints[]) const
 {
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)
   {
     NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
@@ -128,13 +162,16 @@ void PFWorldNatureMap::GetNatureBorders(NDb::EFaction faction, CVec2 roadPoints[
     roadPoints[1] = pMap->GetNatureBound((NDb::ENatureType)faction, NDb::NATUREROAD_CENTER);
     roadPoints[2] = pMap->GetNatureBound((NDb::ENatureType)faction, NDb::NATUREROAD_BOTTOM);
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::GetNatureSegment(CVec2 const &pos, NDb::ENatureRoad &road, int &segment) const
 {
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)
     pMap->GetNatureSegment(pos, road, segment);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +181,10 @@ void PFWorldNatureMap::SetDesiredPosition(NDb::EFaction faction, NDb::ENatureRoa
   NI_VERIFY(road >= 0 && road <= 2, "Invalid road", return;);  
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
   
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)
     pMap->SetDesiredPosition((NDb::ENatureType)faction, road, segment);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,8 +199,10 @@ void PFWorldNatureMap::Expand(NDb::EFaction faction, NDb::ENatureRoad roadIndex,
 void PFWorldNatureMap::Override(NDb::EFaction faction, const CCircle & circle, float lifeTime, unsigned ownerData)
 {
   NI_STATIC_ASSERT(NDb::KnownEnum<NDb::EFaction>::sizeOf == NDb::KnownEnum<NDb::ENatureType>::sizeOf, ASSUME_FACTIONS_EQ_NATURES);
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)
     pMap->Override((NDb::ENatureType)faction, circle, lifeTime, ownerData);
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::DebugOverride(NDb::EFaction faction, CVec2 const &center, float radius, float lifeTime)
@@ -176,6 +217,7 @@ void PFWorldNatureMap::DebugOverride(NDb::EFaction faction, CVec2 const &center,
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
 {
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   struct NatureChnager : public NonCopyable
   {
   public :
@@ -193,10 +235,12 @@ namespace
     NDb::ENatureType from;
     NDb::ENatureType to;
   }; 
+#endif
 
 }
 void PFWorldNatureMap::ChangeNature( CVec2 const &pos, float radius, NDb::ENatureType from, NDb::ENatureType to )
 {
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (!pMap)
     return;
 
@@ -205,10 +249,12 @@ void PFWorldNatureMap::ChangeNature( CVec2 const &pos, float radius, NDb::ENatur
 
   NatureChnager func( *pMap, from, to );
   pMap->ForAllElementsInCircle( func, pos, radius );
+#endif
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFWorldNatureMap::ChangeNature( const vector<CVec2>& polygon, NDb::ENatureType from, NDb::ENatureType to )
 {
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (!pMap)
     return;
   if( polygon.empty() )
@@ -216,12 +262,17 @@ void PFWorldNatureMap::ChangeNature( const vector<CVec2>& polygon, NDb::ENatureT
 
   NatureChnager func( *pMap, from, to );
   pMap->ForAllElementsInPolygon( func, polygon );
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFWorldNatureMap::IsOverrideActive(unsigned int ownerData) const
 {
+#if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
+  return false;
+#else
   return pMap ? pMap->IsOverrideActive(ownerData) : false;
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -229,6 +280,7 @@ void PFWorldNatureMap::OnStep(float dt)
 {
   NI_PROFILE_FUNCTION
 
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   if (pMap)                                                                                                                                        
   {
 #ifndef _SHIPPING
@@ -257,6 +309,7 @@ void PFWorldNatureMap::OnStep(float dt)
       }
     }
   }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +318,9 @@ void PFWorldNatureMap::OnStep(float dt)
 int PFWorldNatureMap::operator&( IBinSaver &f )
 {
   f.Add(1,(PFWorldObjectBase*)this); 
+#if !defined( PW_LINUX_NATUREMAP_NULL_RENDER )
   f.Add(2,pMap);  
+#endif
   f.Add(3, &customNaturePercents);
   return 0;
 }
@@ -274,4 +329,3 @@ int PFWorldNatureMap::operator&( IBinSaver &f )
 } // namespace
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFWorldNatureMap, NWorld)
-

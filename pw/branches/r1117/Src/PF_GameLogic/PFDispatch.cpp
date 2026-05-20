@@ -1,4 +1,183 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFDispatch.h"
+#include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
+#include "PFBaseUnit.h"
+#include "PFDispatchFactory.h"
+#include "PFApplMod.h"
+
+namespace NWorld
+{
+
+void PFDispatch::OnDie()
+{
+  Clear(applicators);
+  pAbility = NULL;
+  pSender = NULL;
+}
+
+void PFDispatch::AddApplicators( vector<NDb::Ptr<NDb::BaseApplicator>> const& newApplicators, PFAbilityData* upgrader )
+{
+  PFApplCreatePars cp(pAbility, target, pParentApplicator, this, false, upgrader);
+
+  for (vector<NDb::Ptr<NDb::BaseApplicator>>::const_iterator it = newApplicators.begin(); it != newApplicators.end(); ++it)
+  {
+    cp.pDBAppl = *it;
+    if (!cp.pDBAppl)
+      continue;
+
+    CObj<PFBaseApplicator> pApplicator(CreateApplicator(cp));
+    if (pApplicator)
+    {
+      pApplicator->AddFlags(flagsForApplicators);
+      AddApplicator(pApplicator);
+    }
+  }
+}
+
+void PFDispatch::UpgradeBeforeApply()
+{
+  if (!IsValid(pSender))
+    return;
+
+  vector<vector<NDb::Ptr<NDb::BaseApplicator>>> newApplicators;
+  vector<vector<NDb::Ptr<NDb::BaseApplicator>>> newPersistentApplicators;
+  vector<PFAbilityData*> upgraders;
+
+  PFApplAbilityUpgrade::Ring const &upgrades = pSender->GetAbilityUpgradeApplicators();
+  bool useOriginal = true;
+
+  for (ring::Range<PFApplAbilityUpgrade::Ring> it(upgrades); it;)
+  {
+    newApplicators.push_back();
+    newPersistentApplicators.push_back();
+
+    PFApplAbilityUpgrade *pUpgrade = &(*it);
+    ++it;
+    upgraders.push_back(pUpgrade->GetAbility() ? pUpgrade->GetAbility()->GetData() : 0);
+    pUpgrade->UpgradeAbilityApplicators(pAbility ? pAbility->GetData() : 0, newApplicators.back(), newPersistentApplicators.back(), useOriginal);
+  }
+
+  if (!useOriginal)
+  {
+    while (!applicators.empty())
+      applicators.remove(applicators.first());
+  }
+
+  for (int i = 0, count = upgraders.size(); i < count; ++i)
+  {
+    AddApplicators(newApplicators[i], upgraders[i]);
+    AddPersistentApplicators(newPersistentApplicators[i], upgraders[i]);
+  }
+}
+
+void PFDispatch::_ApplyInternal()
+{
+  if (target.IsUnit() && IsValid(target.GetUnit()) && !target.GetUnit()->CanApplyDispatch() && (!pDBDispatch || !pDBDispatch->alwaysApply))
+  {
+    state = STATE_WAIT_TO_APPLY;
+    return;
+  }
+
+  if (!IsValid(pAbility) || !pAbility->GetData())
+  {
+    state = STATE_APPLIED;
+    return;
+  }
+
+  if (!originalTarget.IsUnit() || (pAbility->GetData()->IsTargetValid(target) && target.IsUnit() && IsValid(target.GetUnit()) && target.GetUnit()->OnDispatchApply(*this)))
+  {
+    while (!applicators.empty())
+    {
+      CObj<PFBaseApplicator> pHolder(applicators.first());
+      PFBaseApplicator::AppliedRing::remove(pHolder);
+      ActivateApplicator(pHolder, pAbility);
+    }
+  }
+  else if (!IsValid(pParentApplicator))
+  {
+    pAbility->NotifyAbilityEnd();
+  }
+
+  state = STATE_APPLIED;
+}
+
+void PFDispatch::Apply( bool playApplyEffect )
+{
+  (void)playApplyEffect;
+  _ApplyInternal();
+}
+
+bool PFDispatch::IsBaseAttack() const
+{
+  return pUpgraderAbilityData ? pUpgraderAbilityData->IsAutoAttack() : ( IsValid( pAbility ) && pAbility->GetData() && pAbility->GetData()->IsAutoAttack() );
+}
+
+void PFDispatch::Start()
+{
+  if ( state != STATE_INIT )
+    return;
+  state = STATE_PROCEED;
+}
+
+bool PFDispatch::Step(float dtInSeconds)
+{
+  (void)dtInSeconds;
+  if ( IsObjectDead() )
+    return false;
+  if ( state == STATE_PROCEED || state == STATE_READY_TO_APPLY || state == STATE_WAIT_TO_APPLY )
+    Apply(false);
+  return !IsObjectDead();
+}
+
+float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )
+{
+  (void)par;
+  return defaultValue;
+}
+
+void PFDispatch::OpenWarFog()
+{
+}
+
+void PFDispatch::Reset()
+{
+  state = STATE_INIT;
+}
+
+void PFDispatch::SetNewTarget( const Target & _target )
+{
+  target = _target;
+}
+
+void PFDispatch::OnMissed() const
+{
+}
+
+bool PFDispatch::CheckEffectEnabled( const PF_Core::BasicEffect &effect )
+{
+  (void)effect;
+  return true;
+}
+
+void PFDispatch::RegisterAggression()
+{
+}
+
+bool PFDispatch::IsAggressive() const
+{
+  return IsValid( pSender ) && target.IsUnit() && IsValid( target.GetUnit() ) && pSender->GetFaction() != target.GetUnit()->GetFaction();
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFDispatch, NWorld)
+
+#else
+
 #include "PFBaseUnit.h"
 #include "PFDispatch.h"
 #include "PFLogicDebug.h"
@@ -327,3 +506,5 @@ bool PFDispatch::IsAggressive() const
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFDispatch, NWorld)
+
+#endif

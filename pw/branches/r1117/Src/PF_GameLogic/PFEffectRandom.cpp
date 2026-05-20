@@ -15,10 +15,14 @@ void PFEffectRandom::Apply(CPtr<PF_Core::ClientObjectBase> const &pObject)
   int const idx = NRandom::Random(numEffects);
 
   NDb::Ptr<NDb::EffectBase> pDBEffect = GetDBEffect().effects[idx];
-  if (IsValid(pDBEffect))
+  PF_Core::EffectsPool* effectsPool = PF_Core::EffectsPool::Get();
+  if (IsValid(pDBEffect) && effectsPool)
   {
-    pEffect = PF_Core::EffectsPool::Get()->Retrieve(pDBEffect);
-    pEffect->Apply(pObject);
+    pEffect = effectsPool->Retrieve(pDBEffect);
+    if (IsValid(pEffect))
+    {
+      pEffect->Apply(pObject);
+    }
   }
 }
 

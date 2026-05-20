@@ -30,6 +30,10 @@ void CameraShakeController::Update(
 {
   *pWantedPos = wantedPos;
 
+#if defined(PW_LINUX_NULL_RENDER)
+  (void)currentPos;
+  (void)timeDiff;
+#else
   if (bActive)
   {
     if (pSource)
@@ -80,6 +84,7 @@ void CameraShakeController::Update(
       pWantedPos->fRoll  += strength * roll;
     }
   }
+#endif
 }
 
 }

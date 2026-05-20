@@ -1,8 +1,10 @@
 #pragma once
 
 #include "stdafx.h"
+#if !defined(PW_LINUX_DB_BOOTSTRAP)
 #include "PFCreature.h"
 #include "PFClientCreature.h"
+#endif
 #include "PFPlayAnimEffect.h"
 
 namespace NGameX
@@ -15,6 +17,22 @@ void PFPlayAnimEffect::Apply(CPtr<PF_Core::ClientObjectBase> const &pUnit)
 		             NStr::StrFmt("No animation name in effect %s", GetDBEffect().GetDBID().GetFileName().c_str()), 
 								 return; );
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  pBootstrapObject = pUnit;
+  NI_DATA_VERIFY(IsValid(pBootstrapObject),
+                 NStr::StrFmt("Effect %s could be applied on client object", GetDBEffect().GetDBID().GetFileName().c_str()),
+                 return; );
+
+  bootstrapApplied = true;
+  bootstrapReturned = false;
+  bootstrapSceneUpdated = false;
+
+  if (NScene::SceneObject* const pSceneObject = pBootstrapObject->GetSceneObject())
+  {
+    pSceneObject->UpdateForced(0.1f);
+    bootstrapSceneUpdated = true;
+  }
+#else
 	pOwner    = dynamic_cast<PFClientBaseUnit *> (pUnit.GetPtr());
 	pAnimated = dynamic_cast<IAnimatedClientObject*>(pUnit.GetPtr());
 	NI_DATA_VERIFY(NULL != pAnimated && IsValid(pOwner),
@@ -39,11 +57,17 @@ void PFPlayAnimEffect::Apply(CPtr<PF_Core::ClientObjectBase> const &pUnit)
 
 	if ( pUnit->GetSceneObject() )
 		pUnit->GetSceneObject()->UpdateForced(0.1f, false, pOwner->IsVisible());
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFPlayAnimEffect::Die()
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  bootstrapReturned = bootstrapApplied;
+  pBootstrapObject = 0;
+  BasicEffect::Die();
+#else
 	if (!IsValid(pOwner) || !pAnimated )
 	{
 		BasicEffect::DieImmediate();
@@ -74,12 +98,18 @@ void PFPlayAnimEffect::Die()
 		}
 	}
   BasicEffect::Die();
+#endif
 }
 
 void PFPlayAnimEffect::DieImmediate()
 { 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  pBootstrapObject = 0;
+  bootstrapApplied = false;
+#else
   pOwner    = 0;
   pAnimated = 0;
+#endif
 
   BasicEffect::DieImmediate();
 }

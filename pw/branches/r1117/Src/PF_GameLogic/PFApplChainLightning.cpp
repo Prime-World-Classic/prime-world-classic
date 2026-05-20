@@ -1,4 +1,101 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+#include "PFApplChainLightning.h"
+#include "PFBaseUnit.h"
+#include "PFDispatchFactory.h"
+
+namespace NWorld
+{
+
+void PFApplChainLightning::operator()(PFBaseUnit& unit)
+{
+  CPtr<PFBaseUnit> pTargetUnit = &unit;
+  if (unit.IsDead() || unit.IsInvalidAbilityTarget())
+    return;
+  if (find(affectedUnits.begin(), affectedUnits.end(), pTargetUnit) != affectedUnits.end())
+    return;
+
+  if (!IsValid(pBestTarget) || !IsValid(pPrevTargetUnit))
+  {
+    pBestTarget = pTargetUnit;
+    return;
+  }
+
+  float distanceOld = fabs2(pPrevTargetUnit->GetPosition() - pBestTarget->GetPosition());
+  float distance = fabs2(pPrevTargetUnit->GetPosition() - pTargetUnit->GetPosition());
+  if (distance <= distanceOld)
+    pBestTarget = pTargetUnit;
+}
+
+void PFApplChainLightning::ApplyEffect(const NDb::Ptr<NDb::EffectBase>&, PFBaseUnit*)
+{
+}
+
+void PFApplChainLightning::DoIt()
+{
+  numJumpsLeft = 0;
+}
+
+void PFApplChainLightning::AttackUnit(CPtr<PFBaseUnit> const& pTargetUnit)
+{
+  if (!IsValid(pTargetUnit))
+  {
+    numJumpsLeft = 0;
+    return;
+  }
+
+  affectedUnits.push_back(pTargetUnit);
+
+  Target const targ(pTargetUnit.GetPtr());
+  Target const source(IsValid(pPrevTargetUnit) ? pPrevTargetUnit.GetPtr() : GetAbilityOwner().GetPtr());
+  CreateDispatch(pAbility, this, source, targ, GetDB().spell);
+
+  pPrevTargetUnit = pTargetUnit;
+  startDispatchPos = pTargetUnit->GetPosition();
+  timeTillJump = betweenJumpsTimeInterval;
+  if (numJumpsLeft > 0)
+    --numJumpsLeft;
+  scale *= onJumpSpellScale;
+}
+
+bool PFApplChainLightning::Start()
+{
+  if (PFBaseApplicator::Start() || numJumpsLeft <= 0 || !GetTarget().IsUnitValid())
+    return true;
+
+  affectedUnits.reserve(numJumpsLeft);
+  pPrevTargetUnit = GetAbilityOwner();
+  startDispatchPos = IsValid(pPrevTargetUnit) ? pPrevTargetUnit->GetPosition() : VNULL3;
+  AttackUnit(GetTarget().GetUnit());
+
+  return numJumpsLeft <= 0;
+}
+
+bool PFApplChainLightning::Step(float dtInSeconds)
+{
+  if (numJumpsLeft <= 0)
+    return true;
+
+  timeTillJump -= dtInSeconds;
+  if (timeTillJump <= 0.0f)
+    DoIt();
+
+  return numJumpsLeft <= 0;
+}
+
+void PFApplChainLightning::OnDispatchMissed(const PFDispatch*)
+{
+  if (!RetrieveParam(GetDB().jumpOnEvade, true))
+    numJumpsLeft = 0;
+}
+
+}
+
+REGISTER_WORLD_OBJECT_NM(PFApplChainLightning, NWorld);
+
+#else
 #include "PFApplChainLightning.h"
 #include "PFBaseUnit.h"
 #include "PFWorld.h"
@@ -148,3 +245,4 @@ void PFApplChainLightning::OnDispatchMissed( const PFDispatch* _pDispatch )
 }
 
 REGISTER_WORLD_OBJECT_NM(PFApplChainLightning,        NWorld);
+#endif

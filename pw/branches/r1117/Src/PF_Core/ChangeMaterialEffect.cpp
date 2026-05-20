@@ -21,6 +21,11 @@ void ChangeMaterialEffect::Init()
 
 void ChangeMaterialEffect::Apply( CPtr<PF_Core::ClientObjectBase> const& _pUnit )
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  pUnit = _pUnit;
+  curFadeInTime = 0.f;
+  doFadeIn = true;
+#else
   struct SetAltMaterialProc : public Render::IMaterialProcessor, public NonCopyable
   {
     NDb::Ptr<NDb::ChangeMaterialEffect> desc;
@@ -43,6 +48,7 @@ void ChangeMaterialEffect::Apply( CPtr<PF_Core::ClientObjectBase> const& _pUnit 
 
           if ( altMaterial )
           {
+#if !defined(PW_LINUX_NULL_RENDER)
             altMaterial->SetSkeletalMeshPin( material.GetSkeletalMeshPin() );
 
             if(Render::BasicMaterial* basic = dynamic_cast<Render::BasicMaterial*>(&material))
@@ -51,6 +57,7 @@ void ChangeMaterialEffect::Apply( CPtr<PF_Core::ClientObjectBase> const& _pUnit 
               // we need to ignore the override and use what is initially configured.
               basic->SetBlendModeOverride(false);
             }
+#endif
     
             material.SetAlternativeMaterial( altMaterial );
             material.SetEnableAltPriority(true);
@@ -86,6 +93,7 @@ void ChangeMaterialEffect::Apply( CPtr<PF_Core::ClientObjectBase> const& _pUnit 
 
   curFadeInTime = 0.f;
   doFadeIn = true;
+#endif
 }
 
 void ChangeMaterialEffect::Die() 
@@ -218,8 +226,12 @@ void ChangeMaterialEffect::ModifyAltEmissive( float power )
 
   for (; it != last; ++it )
   {
+#if !defined(PW_LINUX_NULL_RENDER)
     if ( *it )
       (*it)->ModifyEmissive( power );
+#else
+    (void)power;
+#endif
   }
 }
 

@@ -1,4 +1,137 @@
 #include "stdafx.h"
+
+#if defined( PW_LINUX_NULL_RENDER )
+
+namespace NWorld
+{
+class PFAbilityData;
+class PFAbilityInstance;
+class PFBaseApplicator;
+class PFBaseBehaviour;
+class PFApplStatus;
+class PFApplTaunt;
+class PFBehaviourGroup;
+class PFDispatchUniformLinearMove;
+}
+
+#define PW_LINUX_INLINE_NULL_USER_CAST(TypeName) \
+template<> inline TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityData)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFAbilityInstance)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseApplicator)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBaseBehaviour)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFApplStatus)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFApplTaunt)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
+PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
+#undef PW_LINUX_INLINE_NULL_USER_CAST
+
+#include "../Game/PF/Audit/ClientStubs.h"
+#include "PFMainBuilding.h"
+
+namespace NWorld
+{
+
+PFMainBuilding::~PFMainBuilding() {}
+
+PFMainBuilding::PFMainBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
+  : PFBattleBuilding(pWorld, dbObject)
+  , activated(false)
+  , aoeCooldown(0.0f)
+  , selectedAttack(Invalid)
+  , aoeUnitsCount(0)
+  , aoeRadius(0.0f)
+  , minAOEDelay(0.0f)
+  , maxAOEDelay(0.0f)
+  , aoeUnitsTypes(0)
+  , aoeUnitsFactions(0)
+  , pRangedAttack(0)
+  , pAOEAttack(0)
+  , pAOEInstance(0)
+  , aoePending(false)
+{
+  pDesc = dynamic_cast<NDb::MainBuilding const*>(dbObject.gameObject.GetPtr());
+  if (!pDesc)
+    return;
+
+  Init(dbObject, pDesc, NDb::UNITTYPE_MAINBUILDING);
+
+  aoeUnitsCount = pDesc->aoeUnitsCount;
+  minAOEDelay = pDesc->minAOEDelay;
+  maxAOEDelay = pDesc->maxAOEDelay;
+  aoeRadius = pDesc->aoeRadius;
+  aoeUnitsTypes = pDesc->aoeUnitsTypes;
+  aoeUnitsFactions = pDesc->aoeUnitsFactions;
+
+  SetBaseAngle(dbObject.offset.GetEulerRotation().z);
+  SetVulnerable(true);
+}
+
+void PFMainBuilding::Reset()
+{
+  PFBattleBuilding::Reset();
+  activated = false;
+  aoePending = false;
+  selectedAttack = Invalid;
+  aoeCooldown = 0.0f;
+}
+
+bool PFMainBuilding::Step(float dtInSeconds)
+{
+  if (aoeCooldown > 0.0f)
+    aoeCooldown = Max(0.0f, aoeCooldown - dtInSeconds);
+  return PFBattleBuilding::Step(dtInSeconds);
+}
+
+void PFMainBuilding::Activate(bool activate)
+{
+  if (activate == activated)
+    return;
+  activated = activate;
+  OnActivated(activated);
+}
+
+void PFMainBuilding::OnActivated(bool)
+{
+  ContolTurret(false);
+}
+
+void PFMainBuilding::StartAOECooldown()
+{
+  aoeCooldown = maxAOEDelay > 0.0f ? maxAOEDelay : 0.0f;
+}
+
+bool PFMainBuilding::CanUseAOE() const { return false; }
+void PFMainBuilding::UseAOE() {}
+bool PFMainBuilding::IsAOEInProcess() const { return selectedAttack == AOE && aoePending; }
+bool PFMainBuilding::IsAOEAttackReady() const { return false; }
+
+void PFMainBuilding::SelectAttack()
+{
+  selectedAttack = IsTargetValid(GetCurrentTarget()) ? Ranged : Invalid;
+}
+
+void PFMainBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
+{
+  if (GetWorld())
+    GetWorld()->SetDefeatedFaction(GetFaction());
+  PFBattleBuilding::OnUnitDie(pKiller, flags, pDamageDesc);
+}
+
+void PFMainBuilding::OnDie()
+{
+  pAOEInstance = 0;
+  pRangedAttack = 0;
+  pAOEAttack = 0;
+  PFBattleBuilding::OnDie();
+}
+
+} // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(PFMainBuilding, NWorld)
+
+#else
+
 #include "PFMainBuilding.h"
 
 #include "PFAIWorld.h"
@@ -302,3 +435,5 @@ PFMainBuilding::PFMainBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObjec
 
 REGISTER_WORLD_OBJECT_WITH_CLIENT_NM(PFMainBuilding,  NWorld);
 REGISTER_WORLD_OBJECT_NM(PFMBGuardState, NWorld);
+
+#endif

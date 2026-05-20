@@ -2,7 +2,7 @@
 
 #include "DeviceLost.h"
 
-#if defined(PW_LINUX_DB_BOOTSTRAP)
+#if defined(PW_LINUX_DB_BOOTSTRAP) || defined(PW_LINUX_NULL_RENDER)
 
 namespace Render
 {
