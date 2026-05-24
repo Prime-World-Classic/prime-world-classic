@@ -1,0 +1,159 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Heroes/Angel/FXAbility5WingsPurple.EFFT" Count="1" />
+	<BackLink DBID="/Heroes/Bomber/S2/_.SOBJ" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Angel/FXAbility5WingsPurple.PRXY" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.9396926</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0.3420202</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5WingsPurpleTRS.PRXY" id="6192BC25-6A49-4F3D-A5CE-00944D9A2707">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Angel/FXAbility5WingsPurple.PRXY" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.9396926</w>
+					<x>0</x>
+					<y>0</y>
+					<z>-0.3420202</z>
+				</rot>
+				<scale>
+					<x>-1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5WingsPurpleTRS.PRXY" id="A44370A5-BA8E-481F-9964-727DF5A52452">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Angel/FXAbility5Wings2Purple.PRXY" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.9396926</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0.3420202</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5WingsPurpleTRS.PRXY" id="8216A224-0B8B-4C2F-AEF7-83727E6422F7">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Angel/FXAbility5Wings2Purple.PRXY" />
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.9396926</w>
+					<x>0</x>
+					<y>0</y>
+					<z>-0.3420202</z>
+				</rot>
+				<scale>
+					<x>-1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5WingsPurpleTRS.PRXY" id="A07F6AB3-7276-4BA7-8EE6-2323FD7B0736">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

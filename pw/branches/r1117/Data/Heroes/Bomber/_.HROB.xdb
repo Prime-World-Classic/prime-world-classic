@@ -871,8 +871,8 @@
 	<description textref="" />
 	<gender>Female</gender>
 	<heightObject>false</heightObject>
-	<heroImageA href="/UI/Styles/Icons/Heroes/Bomber/Face.ITEX" />
-	<heroImageB href="/UI/Styles/Icons/Heroes/Bomber/Face.ITEX" />
+	<heroImageA href="/UI/Styles/Icons/Heroes/Bomber/Face_S2.ITEX" />
+	<heroImageB href="/UI/Styles/Icons/Heroes/Bomber/Face_S2.ITEX" />
 	<heroNameA textref="/Heroes/Bomber/_.HROB_heroNameA.txt" />
 	<heroNameB textref="/Heroes/Bomber/_.HROB_heroNameB.txt" />
 	<heroRace>3</heroRace>
@@ -1233,6 +1233,7 @@
 				<sceneObject href="/Heroes/Bomber/S1/_.SOBJ" />
 			</HeroSkin>
 		</Item>
+		<Item href="/Heroes/Bomber/S2/_A.HEROSKIN" />
 	</heroSkins>
 	<id>bomber</id>
 	<image href="" />
