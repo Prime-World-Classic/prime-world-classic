@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UnitConstant>
+	<BackLink DBID="/Items/Talents/Level6/G797_SeaSymbol.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level2/G792_SeaSymbol.TALENT" Count="1" />
+	<name>G797_Active</name>
+	<var>
+		<compiledString>FQwAAAABAAAAEAAAAEc3OTdfYWN0aXZlAFWL7GgAAAAAi0UIixCLTQiLgogBAAD/0F3D</compiledString>
+		<returnType>float</returnType>
+		<sString>sender.vG797_active</sString>
+	</var>
+</UnitConstant>

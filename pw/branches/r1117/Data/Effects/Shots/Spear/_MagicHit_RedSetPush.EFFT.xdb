@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectAttached>
+	<BackLink DBID="/Effects/Shots/Spear/_MagicHit_RedSetPush.EFFT" Count="3" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset5_1_Push/Program_Redset5_1_Buff.APLR" Count="1" />
+	<attachFlags>0</attachFlags>
+	<attachType>Body</attachType>
+	<component href="/Effects/Shots/Spear/_MagicHitTRS_RedSetPush.PRXY" />
+	<deathType>Anim</deathType>
+	<enableCondition href="" />
+	<fadeIn>0</fadeIn>
+	<fadeOut>0</fadeOut>
+	<groupFlags>0</groupFlags>
+	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="hunter_S3">
+			<component href="/Effects/Shots/Spear/_MagicSnowHit.PRXY" />
+		</state>
+	</__states>
+</BasicEffectAttached>

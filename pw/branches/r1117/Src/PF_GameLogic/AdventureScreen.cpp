@@ -624,6 +624,20 @@ void AdventureScreen::Construct( NGameX::ChatUiController * _chatController, NGa
   eventsUI.AddActivationHandler( "cmd_action_bar_slot8", &AdventureScreen::CmdActionBarHotKey, 7 );
   eventsUI.AddActivationHandler( "cmd_action_bar_slot9", &AdventureScreen::CmdActionBarHotKey, 8 );
   eventsUI.AddActivationHandler( "cmd_action_bar_slot10",&AdventureScreen::CmdActionBarHotKey, 9 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot11",&AdventureScreen::CmdActionBarHotKey, 10 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot12",&AdventureScreen::CmdActionBarHotKey, 11 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot13",&AdventureScreen::CmdActionBarHotKey, 12 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot14",&AdventureScreen::CmdActionBarHotKey, 13 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot15",&AdventureScreen::CmdActionBarHotKey, 14 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot16",&AdventureScreen::CmdActionBarHotKey, 15 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot17",&AdventureScreen::CmdActionBarHotKey, 16 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot18",&AdventureScreen::CmdActionBarHotKey, 17 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot19",&AdventureScreen::CmdActionBarHotKey, 18 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot20",&AdventureScreen::CmdActionBarHotKey, 19 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot21",&AdventureScreen::CmdActionBarHotKey, 20 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot22",&AdventureScreen::CmdActionBarHotKey, 21 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot23",&AdventureScreen::CmdActionBarHotKey, 22 );
+  eventsUI.AddActivationHandler( "cmd_action_bar_slot24",&AdventureScreen::CmdActionBarHotKey, 23 );
 
   eventsUI.AddActivationHandler( "self_cast_on",         &AdventureScreen::SelfCastOn);
   eventsUI.AddActivationHandler( "self_cast_off",        &AdventureScreen::SelfCastOff);

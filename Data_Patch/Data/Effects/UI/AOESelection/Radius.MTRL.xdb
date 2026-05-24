@@ -349,6 +349,7 @@
 	<BackLink DBID="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" Count="1" />
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Shops/_A.SHOP" Count="1" />
 	<BackLink DBID="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Level3/G798_Harpoon_Life.TALENT" Count="1" />
 	<aspectRatio>2</aspectRatio>
 	<caption></caption>
 	<DiffuseMap>

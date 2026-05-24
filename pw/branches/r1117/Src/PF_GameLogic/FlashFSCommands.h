@@ -31,7 +31,8 @@ namespace FlashFSCommands
     PortalTooltip         ,// [%d]
     PortalClick           ,
     
-    ActionBarLock         ,//[%d]        
+    ActionBarLock         ,//[%d]
+    ActionBarShowPanel    ,//[%d]
 
     BuyImpulseBuff		     ,	
     ImpulseBuffClose		   ,	

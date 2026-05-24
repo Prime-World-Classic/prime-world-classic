@@ -405,6 +405,7 @@
 													<providerName></providerName>
 												</VariableProxyApplicator>
 											</Item>
+											<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 										</applicators>
 										<dispatch href="/Items/Talents/Class/Highlander/Ability3_Upg1.TALENT" id="C515DEA9-5A03-4813-B30D-DCCB175DD357">
 											<DispatchImmediate>

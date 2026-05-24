@@ -419,6 +419,7 @@
 				<unstackableWith href="" />
 			</StatusApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/Highlander/_HeroIsHere.APLR" />
 	</passiveApplicators>
 	<persistentId>Highlander_A0</persistentId>
 	<prerequisiteTalents />

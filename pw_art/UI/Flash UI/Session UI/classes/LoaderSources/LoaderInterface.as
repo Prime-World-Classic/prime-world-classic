@@ -269,6 +269,28 @@
 			hero.SetHeroRaiting(raiting, deltaWin, deltaLose,rankIcon,rankTooltip);
 		}
 
+    public function SetHeroRaitingAcc(id:int,raiting:int, deltaWin:Number,deltaLose:Number, isNovice:Boolean = true, rankIcon:String = "", rankTooltip:String=""):void
+    {
+        if(id == this.ourHeroId)
+        {
+          this.isINovice = isNovice;
+          if(this.isINovice)
+          {
+              this.RemoveAllRaitings();
+          }
+        }
+        if(this.isINovice)
+        {
+          return;
+        }
+        var hero:LoaderTeamMate = this.GetHeroById(id);
+        if(hero == null)
+        {
+          return;
+        }
+        hero.SetHeroRaitingAcc(raiting, deltaWin, deltaLose, rankIcon, rankTooltip);
+    }
+
 		private function RemoveAllRaitings():void
 		{
 			humanTeam.RemoveAllRaitings();

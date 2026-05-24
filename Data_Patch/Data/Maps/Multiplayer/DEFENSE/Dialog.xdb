@@ -1,6 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<DialogsCollection>
-	<BackLink DBID="/Maps/Multiplayer/MOBA/Tutorial/_.ADMPSTTN" Count="1" />
-	<BackLink DBID="/Maps/Multiplayer/DEFENSE/_.ADMPSTTN" Count="1" />
-	<dialogs />
-</DialogsCollection>

@@ -1618,6 +1618,13 @@
 		<Item href="/UI/Content/CustomFlags/PWClassic/Rose" />
 		<Item href="/UI/Content/CustomFlags/PWClassic/Space" />
 		<Item href="/UI/Content/CustomFlags/PWClassic/The_brown_cutie" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/Samovar" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/Pancakes" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/Yarilosolnce" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/FY_Pair1" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/FY_Pair2" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/Kitty_LO" />
+		<Item href="/UI/Content/CustomFlags/PWClassic/Kitty_VE" />
 	</customFlags>
 	<dialogsSettings>
 		<defaultPhraseDuration>10</defaultPhraseDuration>

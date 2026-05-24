@@ -58,9 +58,9 @@
 					<sString>0</sString>
 				</stopCondition>
 				<totalDamage>
-					<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+					<compiledString>FQ0AAAABAAAAGQAAAEE0X01heERhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
 					<returnType>float</returnType>
-					<sString>0</sString>
+					<sString>cA4_MaxDamage</sString>
 				</totalDamage>
 			</DelegateDamageApplicator>
 		</Item>

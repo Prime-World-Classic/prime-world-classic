@@ -35,6 +35,7 @@ public:
   void SetTeamForce(const wstring & forceLeft,const wstring & forceRight);
   void SetHeroForce(int heroId, int force);
   void SetHeroRaiting(int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName);
+  void SetHeroRaitingAcc(int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName);
 	void SetHeroPremium(int heroId, bool hasPremium, NDb::EFaction originalFraction);
 
   void AddModeDescription(const char * modeImage, int id) ;

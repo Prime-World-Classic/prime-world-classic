@@ -151,6 +151,16 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/Witch/Ability_A4.TALENT" id="74BAA7DC-CB3B-4B37-AB16-22382790BAAF">
+					<UnitConstant>
+						<name>A4_MaxDamage</name>
+						<var>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAFDDRw==</compiledString>
+							<returnType>float</returnType>
+							<sString>100000</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

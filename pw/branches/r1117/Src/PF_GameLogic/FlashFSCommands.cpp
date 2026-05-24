@@ -41,6 +41,7 @@ namespace
     commands[FlashFSCommands::PortalClick]        = "PortalClick";
 
     commands[FlashFSCommands::ActionBarLock] = "ActionBarLock";
+    commands[FlashFSCommands::ActionBarShowPanel] = "ActionBarShowPanel";
 
     commands[FlashFSCommands::BuyImpulseBuff]		  = "BuyImpulseBuff";
     commands[FlashFSCommands::ImpulseBuffClose]		= "ImpulseBuffClose";

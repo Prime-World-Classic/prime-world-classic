@@ -10,7 +10,7 @@
 	<BackLink DBID="/Maps/Multiplayer/ARAM/Mains/AbilityToReduceCD.ABLT" Count="3" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability1.TALENT" Count="4" />
 	<BackLink DBID="/Items/Talents/Class/Ratcatcher/status_RatDisease.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" Count="3" />
+	<BackLink DBID="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" Count="4" />
 	<applicators>
 		<Item href="/Heroes/DefaultStatus/_MORTALSTRIKE_Status.APLR" id="807806F7-2DE3-47E1-8179-5D3CD9DF1C99">
 			<UIMessageApplicator>

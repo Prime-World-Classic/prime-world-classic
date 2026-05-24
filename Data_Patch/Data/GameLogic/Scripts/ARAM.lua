@@ -20,8 +20,6 @@ LOCAL_FACTION = 0
 
 COMPANION_DATA = {}
 
-BRIDGE_EVENT_LOCAL = ""
-
 function Init( reconnecting )
 	
 	if not reconnecting then
@@ -52,7 +50,7 @@ function Init( reconnecting )
 		
 	end
 	
-	InitCaptainGlyph()
+	-- InitCaptainGlyph()
 	
 	LOCAL_FACTION = LuaGetUnitFaction( "local" )
 	
@@ -64,7 +62,7 @@ function DelayInit()
 	
 	WaitState( 15 )
 	
-	SpawnCaptainGlyph()
+	-- SpawnCaptainGlyph()
 	
 	LuaPlaceAttachedEffect( "WithLoveIfstLocalId", "WithLoveIfst", "local" )
 	
@@ -455,7 +453,7 @@ function OnUnitDie( victimId, killerId, lastHitterId, deathParamsInfo )
 		
 	end
 	
-	AddTriggerTop( CheckDeadCaptain, victimId )
+	-- AddTriggerTop( CheckDeadCaptain, victimId )
 	
 	if LuaGetUnitTypeById( victimId ) ~= UnitTypeHeroMale then 
 	

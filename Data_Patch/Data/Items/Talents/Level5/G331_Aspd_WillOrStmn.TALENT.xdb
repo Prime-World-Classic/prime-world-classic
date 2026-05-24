@@ -45,9 +45,66 @@
 		<Item href="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" id="B3AC8950-373F-4990-AF59-6F3D3E160DB3">
 			<StatusApplicator parent="/Items/Talents/Class/Witch/status_A4_FragileCurse.APLR">
 				<applicators>
-					<Item skip="1" />
-					<Item href="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" id="97A0B31E-4A48-45EC-AE46-676C78E5F754">
-						<StatusApplicator parent="/Heroes/DefaultStatus/_MORTALSTRIKE_Status.APLR" />
+					<Item href="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" id="C7038A78-BBE6-4ED2-8A5B-75DA10C84574">
+						<DelegateDamageApplicator>
+							<applyTarget>ApplicatorTarget</applyTarget>
+							<behaviorFlags>154</behaviorFlags>
+							<caption>Увеличиваем урон по цели1</caption>
+							<damageToApply>
+								<compiledString>FQcAAAABAAAACwAAAERhbWFnZQBVi+xoAAAAAItFEIsQi00Qi0JU/9Bdww==</compiledString>
+								<returnType>float</returnType>
+								<sString>appl.vDamage</sString>
+							</damageToApply>
+							<damageToDelegate>
+								<compiledString>FRcAAAACAAAAHgAAADgAAABEYW1hZ2UAAEE0X0N1cnNlRGVidWZmAFWL7IPsDGgAAAAAi0UQixCLTRCLQlT/0ItNDFGLVQhSaAgAAACLRRCLEItNEItCUN1d+P/Q3E342V302UX0i+Vdww==</compiledString>
+								<returnType>float</returnType>
+								<sString>appl.vDamage * cA4_CurseDebuff</sString>
+							</damageToDelegate>
+							<delegateTargets href="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT" id="216807D7-06FB-495B-BC74-5E9188627EBA">
+								<SelectApplicatorTarget>
+									<applicatorIndex>0</applicatorIndex>
+									<applicatorName></applicatorName>
+									<namedApplicatorTarget>ApplicatorTarget</namedApplicatorTarget>
+									<selectTarget>AbilityTarget</selectTarget>
+								</SelectApplicatorTarget>
+							</delegateTargets>
+							<effect>
+								<Item href="" />
+								<Item href="" />
+							</effect>
+							<enabled>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</enabled>
+							<flags>1</flags>
+							<forceDontAttackBack>true</forceDontAttackBack>
+							<formulaName></formulaName>
+							<ignoreDefences>true</ignoreDefences>
+							<infiniteTotalDamage>false</infiniteTotalDamage>
+							<lifeTime>
+								<compiledString></compiledString>
+								<returnType>float</returnType>
+								<sString>-1.0</sString>
+							</lifeTime>
+							<LoggingEvent>-1</LoggingEvent>
+							<providerName></providerName>
+							<startCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>true</sString>
+							</startCondition>
+							<stopCondition>
+								<compiledString></compiledString>
+								<returnType>bool</returnType>
+								<sString>0</sString>
+							</stopCondition>
+							<totalDamage>
+								<compiledString>FQ0AAAABAAAAGQAAAEE0X01heERhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+								<returnType>float</returnType>
+								<sString>cA4_MaxDamage</sString>
+							</totalDamage>
+						</DelegateDamageApplicator>
 					</Item>
 				</applicators>
 				<effect>
@@ -55,9 +112,10 @@
 					<Item skip="1" />
 				</effect>
 				<image href="/UI/Styles/Icons/Talents/_331.ITEX" />
-				<name textref="/Items/Talents/Level5/G331_Aspd_WillOrStmn.TALENT_b3ac8950373f4990af596f3d3e160db3_name.txt" />
+				<name textref="" />
 			</StatusApplicator>
 		</Item>
+		<Item href="/Heroes/DefaultStatus/_MORTALSTRIKE_Status.APLR" />
 	</applicators>
 	<askId>0</askId>
 	<autoTargetSelector href="" />

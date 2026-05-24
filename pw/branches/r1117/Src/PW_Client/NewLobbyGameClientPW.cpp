@@ -578,6 +578,10 @@ void GameClientPW::OnPlayerInfoLoaded()
 
       info.exp = playerStartInfo.playerInfo.heroExp;
       info.force = force;
+		
+      info.raitingAcc = (int)(userData.currentRatingAcc);
+      info.winDeltaRaitingAcc = userData.victoryRatingAcc - userData.currentRatingAcc;
+      info.loseDeltaRaitingAcc = userData.lossRatingAcc - userData.currentRatingAcc;
 
       info.raiting = (int)( userData.currentRating );
       info.winDeltaRaiting = userData.victoryRating - userData.currentRating;

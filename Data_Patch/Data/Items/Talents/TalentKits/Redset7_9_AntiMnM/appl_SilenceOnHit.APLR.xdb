@@ -59,9 +59,9 @@
 		<Item href="" />
 	</effect>
 	<enabled>
-		<compiledString>FTAAAAAFAAAANQAAAEsAAABXAAAAbQAAAH8AAABHNzUyX1N0YXRlQW50aVNwZWxsAFJlZHNldDdfOV9Db3VudGVyAAAAUjdfOV9DRABVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B3IAAAA3+D2xER7XGgUAAAAi00IixGLTQiLgogBAAD/0NwdwAAAAN/g9sREejpqAItNEFFoKAAAAItVCIsCi00Ii5CcAQAA/9I7RRB1GotFDIsQi00Mi0JQ/9CFwHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAIQAAAAAAAAAAA</compiledString>
+		<compiledString>FTAAAAAFAAAANQAAAEsAAABXAAAAbQAAAH8AAABHNzUyX1N0YXRlQW50aVNwZWxsAFJlZHNldDdfOV9Db3VudGVyAAAAUjdfOV9DRABVi+xRaAAAAACLRQiLEItNCIuCiAEAAP/Q3B3IAAAA3+D2xER7XGgUAAAAi00IixGLTQiLgogBAAD/0NwdwAAAAN/g9sQBdTpqAItNEFFoKAAAAItVCIsCi00Ii5CcAQAA/9I7RRB1GotFDIsQi00Mi0JQ/9CFwHUJx0X8AQAAAOsHx0X8AAAAAIpF/IvlXcMAAAAAAAAIQAAAAAAAAAAA</compiledString>
 		<returnType>bool</returnType>
-		<sString>sender.vG752_StateAntiSpell &amp;&amp; sender.vRedset7_9_Counter == 3 &amp;&amp; sender.applR7_9_CD(GLOBAL) == pMisc &amp;&amp; receiver.UnitKind == 0</sString>
+		<sString>sender.vG752_StateAntiSpell &amp;&amp; sender.vRedset7_9_Counter &gt;= 3 &amp;&amp; sender.applR7_9_CD(GLOBAL) == pMisc &amp;&amp; receiver.UnitKind == 0</sString>
 	</enabled>
 	<flags>0</flags>
 	<formulaName></formulaName>

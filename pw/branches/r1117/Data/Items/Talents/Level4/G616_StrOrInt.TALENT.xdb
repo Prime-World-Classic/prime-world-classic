@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Social.ROOT" Count="1" />
-	<BackLink DBID="/GameLogic/AILogic.AILP" Count="2" />
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set5" Count="1" />
 	<BackLink DBID="/Items/RerollShop/TalentsList_Rar6_Set5_kit7" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/Alchemist_Mighty.TALENTSET" Count="1" />
@@ -43,6 +43,8 @@
 	<BackLink DBID="/Test/Talents/Bomber/Test.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Plane.TALENTSET" Count="1" />
 	<BackLink DBID="/Items/Talents/Gunner.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/ThunderGod.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset5_7_Ultimate/Redset5_7.TALKIT" Count="1" />
 	<activationConditions />
 	<activeCustomTrigger>true</activeCustomTrigger>
 	<allowChase>
@@ -86,8 +88,10 @@
 				<name>StrOrInt</name>
 			</ConditionFormula>
 		</Item>
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/condition_Redset5_7_bonus1Active" />
 		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/condition_Redset5_7_bonus2Active" />
 		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/condition_Redset5_7_bonus3Active" />
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/condition_Redset5_7_bonus4Active" />
 	</conditionFormulas>
 	<conflictingTalents />
 	<constants href="/Items/Talents/Level4/G616_StrOrInt.TALENT" id="4D14CA12-8485-425E-A2DC-234B37CFD8E1">
@@ -105,6 +109,10 @@
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Redset5_7_Stat" />
 				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Redset5_7_CooldownReduction" />
+				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Cooldown_bonus1active" />
+				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Cooldown_bonus2active" />
+				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Cooldown_bonus3active" />
+				<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/const_Cooldown_bonus4active" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>
@@ -240,6 +248,11 @@
 		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/Program_Redset5_7_Add_StrOrInt.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/Program_Redset5_7_TotalCooldown.APLR" />
 		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/Status_Redset5_7_Cooldown.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/appl_Total_CooldownReduction_bonus1.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/appl_Total_CooldownReduction_bonus2.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/appl_Total_CooldownReduction_bonus3.APLR" />
+		<Item href="/Items/Talents/TalentKits/Redset5_7_Ultimate/appl_Total_CooldownReduction_bonus4.APLR" />
+		<Item href="/GameLogic/GeneralApplicators/CooldownReduction.APLR" />
 	</passiveApplicators>
 	<persistentId>G616</persistentId>
 	<prerequisiteTalents />

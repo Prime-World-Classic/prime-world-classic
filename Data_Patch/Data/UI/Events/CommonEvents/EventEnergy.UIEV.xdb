@@ -20,6 +20,7 @@
 	<BackLink DBID="/Items/Talents/Class/Demonolog/Ability1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/GhostLord/A0_WaitAndUnsummon.APLR" Count="1" />
 	<BackLink DBID="/Glyphs/LifeRestorer.GLPH" Count="1" />
+	<BackLink DBID="/Items/Talents/TalentKits/Redset_SeaSymbol/status_SeaSymbol_Heal.APLR" Count="1" />
 	<signRecipients>ALL_PLAYERS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventEnergy.UIEV" id="57DBE8C0-79EF-41CB-9C83-9BC26CFA7FB6">

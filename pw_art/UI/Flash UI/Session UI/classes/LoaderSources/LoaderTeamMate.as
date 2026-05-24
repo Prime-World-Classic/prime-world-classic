@@ -22,7 +22,7 @@
 		public var heroName_txt:TextField;
 		public var lensFlare:MovieClip;
 		public var raitingBar:LoaderHeroRaitingBar;
-		
+		public var raitingAccBar:LoaderHeroRaitingAccBar;
 		//public var chainlock:MovieClip;
 		
 		private var _percent:Number = 0;
@@ -145,6 +145,15 @@
 			if (raitingBar == null ) return;
 			raitingBar.SetHeroRaiting(isItOurHero, raiting, deltaWin, deltaLose, rankIcon, rankTooltip);
 		}
+
+    public function SetHeroRaitingAcc(raiting:int, deltaWin:Number, deltaLose:Number, rankIcon:String, rankTooltip:String) : void
+    {
+        if(raitingAccBar == null)
+        {
+          return;
+        }
+        raitingAccBar.SetHeroRaiting(isItOurHero,raiting,deltaWin,deltaLose,rankIcon,rankTooltip);
+    }
 		
 		public function SetPremium(hasPremium:Boolean, originalFraction:int, heroName:String):void 
 		{
