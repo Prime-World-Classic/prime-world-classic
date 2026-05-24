@@ -42,13 +42,13 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 					<returnType>float</returnType>
 					<sString>-1.0</sString>
 				</lifeTime>
@@ -60,7 +60,7 @@
 						<sString>cBlind_VisibilityRange</sString>
 					</addValue>
 					<multValue>
-						<compiledString></compiledString>
+						<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 						<returnType>float</returnType>
 						<sString>0.0f</sString>
 					</multValue>
@@ -70,7 +70,7 @@
 				</modifier>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
@@ -89,13 +89,13 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 					<returnType>float</returnType>
 					<sString>-1.0</sString>
 				</lifeTime>
@@ -117,7 +117,7 @@
 				</modifier>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
@@ -129,7 +129,7 @@
 				<applyTarget>ApplicatorTarget</applyTarget>
 				<caption> - FlyOff Message</caption>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
@@ -139,7 +139,7 @@
 				<providerName></providerName>
 				<uiEvent href="/UI/Events/CommonEvents/EventCustomFlyoff.UIEV" />
 				<value>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 					<returnType>float</returnType>
 					<sString>-1.0</sString>
 				</value>
@@ -157,13 +157,13 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
 				<formulaName></formulaName>
 				<lifeTime>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 					<returnType>float</returnType>
 					<sString>-1.0</sString>
 				</lifeTime>
@@ -185,7 +185,7 @@
 				</modifier>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
@@ -197,12 +197,12 @@
 	<behaviorFlags>146</behaviorFlags>
 	<caption> - Статус "Слепота" (Blind_Duration)</caption>
 	<customCounter>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
 		<returnType>int</returnType>
 		<sString>0</sString>
 	</customCounter>
 	<customProgress>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 		<returnType>float</returnType>
 		<sString>-1.0</sString>
 	</customProgress>

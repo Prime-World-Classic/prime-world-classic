@@ -9,6 +9,7 @@
 	<BackLink DBID="/Heroes/Witch/FXDeath.PRXY" Count="1" />
 	<BackLink DBID="/MiniGames/Minigame02/Well/_FX.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Catarh/_Dark.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Kamikaze_S2.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

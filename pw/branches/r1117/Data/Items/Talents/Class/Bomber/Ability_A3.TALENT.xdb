@@ -33,7 +33,7 @@
 				<applyTarget>ApplicatorTarget</applyTarget>
 				<caption>Спелл с АоЕ-уроном</caption>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
@@ -56,7 +56,7 @@
 									<damageMode>0</damageMode>
 									<damageType>Material</damageType>
 									<enabled>
-										<compiledString></compiledString>
+										<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 										<returnType>bool</returnType>
 										<sString>true</sString>
 									</enabled>
@@ -112,7 +112,7 @@
 		<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="D3B58424-653A-4A7C-8065-719287336D5F">
 			<MarkerApplicator>
 				<addValue>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvs2ehdwwAAgD8=</compiledString>
 					<returnType>float</returnType>
 					<sString>1.0</sString>
 				</addValue>
@@ -124,7 +124,7 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
@@ -142,7 +142,7 @@
 				</multValue>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
@@ -188,11 +188,23 @@
 						<applicators>
 							<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="11A0170A-4473-413C-8F6F-70B16480F2ED">
 								<StatusApplicator parent="/Heroes/DefaultStatus/_BLIND_status.APLR">
+									<customCounter>
+										<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+									</customCounter>
+									<customProgress>
+										<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+									</customProgress>
 									<enabled>
 										<compiledString>FS0AAAAGAAAAOgAAAE0AAABZAAAAbwAAAHsAAACRAAAAQmxpbmRfQ29uZGl0aW9uAEltbXVuZTJDb250cm9sAABBbGxvd0NvbnRyb2wAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B27AAAA3+D2xER7ImgQAAAAi0UMixCLTQyLgogBAAD/0NwduwAAAN/g9sREeytoIAAAAItNDIsRi00Mi4KIAQAA/9DcHbMAAADf4PbERHsJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAADwPwAAAAAAAAAA</compiledString>
 										<returnType>bool</returnType>
 										<sString>(cBlind_Condition &amp;&amp; receiver.vImmune2Control == 0) || receiver.vAllowControl == 1</sString>
 									</enabled>
+									<lifeTime>
+										<compiledString>FQ8AAAABAAAAGwAAAEJsaW5kX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+									</lifeTime>
+									<startCondition>
+										<compiledString>FRUAAAACAAAAIgAAADUAAABCbGluZF9TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHVEAAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
+									</startCondition>
 								</StatusApplicator>
 							</Item>
 						</applicators>
@@ -243,7 +255,7 @@
 	<budget>-1</budget>
 	<caption>A3. Огнеопасная</caption>
 	<castAllowRange>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</castAllowRange>
@@ -403,7 +415,7 @@
 		<sString>20</sString>
 	</cooldownTime>
 	<cooldownTimeSecondState>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</cooldownTimeSecondState>
@@ -503,20 +515,20 @@
 					<Item href="" />
 				</effect>
 				<enabled>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</enabled>
 				<formulaName>A3_MicroAITargetCounter</formulaName>
 				<lifeTime>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
 					<returnType>float</returnType>
 					<sString>-1.0</sString>
 				</lifeTime>
 				<LoggingEvent>-1</LoggingEvent>
 				<providerName></providerName>
 				<startCondition>
-					<compiledString></compiledString>
+					<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
 					<returnType>bool</returnType>
 					<sString>true</sString>
 				</startCondition>
@@ -551,7 +563,7 @@
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
-		<compiledString></compiledString>
+		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
 		<returnType>float</returnType>
 		<sString>0.0f</sString>
 	</useRange>

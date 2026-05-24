@@ -228,7 +228,7 @@
 			</dispatchEffect>
 			<flags>0</flags>
 			<flyMode>Parabolic</flyMode>
-			<fromLocator>Attack</fromLocator>
+			<fromLocator>HandL</fromLocator>
 			<height>0</height>
 			<killEffect>true</killEffect>
 			<locatorOrient>false</locatorOrient>

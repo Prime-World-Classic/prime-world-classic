@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Texture>
 	<BackLink DBID="/Effects/Debuffs/Explosion/_Purple.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Burn/_Purple.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

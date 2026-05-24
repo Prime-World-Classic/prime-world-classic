@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneComponent>
 	<BackLink DBID="/Effects/Debuffs/Explosion/_FireRingTRS.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_FireRingTRS_1.PRXY" Count="1" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>

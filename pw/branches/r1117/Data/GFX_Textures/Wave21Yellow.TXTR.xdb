@@ -12,6 +12,7 @@
 	<BackLink DBID="/Effects/General/Blink/_SmokeStart.PRXY" Count="1" />
 	<BackLink DBID="/Heroes/Gunslinger/FXIdle.PRXY" Count="1" />
 	<BackLink DBID="/Effects/General/Blink/_SmokeStart_Shaman_RED.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Cast_Blue.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

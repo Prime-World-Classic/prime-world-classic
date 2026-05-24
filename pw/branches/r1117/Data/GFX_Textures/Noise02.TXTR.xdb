@@ -155,6 +155,7 @@
 	<BackLink DBID="/Terrain/Temp/_08B.ANSC" Count="1" />
 	<BackLink DBID="/Terrain/Water/Bubble1.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_TimeSlowTotem_RED.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Cast_Blue.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>
