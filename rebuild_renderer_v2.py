@@ -1,10 +1,13 @@
-#include "stdafx.h"
+import sys
+
+cpp_content = r"""#include "stdafx.h"
 #include "GLRenderer.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 #include <stdio.h>
 #include <string.h>
 #include <algorithm>
+#include <map>
 #include <math.h>
 #include <vector>
 #include "Vendor/DirectX/Include/d3dx9.h"
@@ -58,9 +61,6 @@ GLDirect3DDevice9::GLDirect3DDevice9(IDirect3D9* pD3D, HWND hWnd, D3DPRESENT_PAR
     memset(m_textures, 0, sizeof(m_textures)); memset(m_vsConstF, 0, sizeof(m_vsConstF)); memset(m_psConstF, 0, sizeof(m_psConstF)); memset(m_streams, 0, sizeof(m_streams));
 }
 GLDirect3DDevice9::~GLDirect3DDevice9() { if (m_shaderProg) glDeleteProgram(m_shaderProg); }
-STDMETHODIMP GLDirect3DDevice9::QueryInterface(REFIID riid, void** ppvObj) { return E_NOINTERFACE; }
-STDMETHODIMP_(ULONG) GLDirect3DDevice9::AddRef() { return ++m_refCount; }
-STDMETHODIMP_(ULONG) GLDirect3DDevice9::Release() { if (--m_refCount == 0) { delete this; return 0; } return m_refCount; }
 STDMETHODIMP GLDirect3DDevice9::TestCooperativeLevel() { return D3D_OK; }
 STDMETHODIMP_(UINT) GLDirect3DDevice9::GetAvailableTextureMem() { return 1024*1024*1024; }
 STDMETHODIMP GLDirect3DDevice9::EvictManagedResources() { return D3D_OK; }
@@ -78,12 +78,11 @@ STDMETHODIMP GLDirect3DDevice9::Reset(D3DPRESENT_PARAMETERS* p) { return D3D_OK;
 
 STDMETHODIMP GLDirect3DDevice9::Present(CONST RECT* pSrc, CONST RECT* pDst, HWND hWnd, CONST RGNDATA* pReg) {
     if (g_sdlWindow) {
-        static int frames = 0; if (++frames % 60 == 0) { printf("Present frame %d\n", frames); fflush(stdout); }
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+        static int frames = 0; if (++frames % 60 == 0) { printf("Present frame %d\\n", frames); fflush(stdout); }
         for (GLuint fbo = 1; fbo <= 5; fbo++) {
             if (glIsFramebuffer(fbo)) {
-                glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-                glClearColor(0,0,0.5,1); glClear(GL_COLOR_BUFFER_BIT); glBlitFramebuffer(0, 0, 1024, 768, 0, 0, 1024, 768, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                glBlitFramebuffer(0, 0, 1024, 768, 0, 0, 1024, 768, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                 glGetError();
             }
         }
@@ -112,8 +111,8 @@ STDMETHODIMP GLDirect3DDevice9::GetFrontBufferData(UINT iSC, IDirect3DSurface9* 
 
 STDMETHODIMP GLDirect3DDevice9::StretchRect(IDirect3DSurface9* pS, CONST RECT* pSR, IDirect3DSurface9* pD, CONST RECT* pDR, D3DTEXTUREFILTERTYPE f) {
     GLuint sFBO = 0, dFBO = 0; int sw = 1024, sh = 768, dw = 1024, dh = 768;
-    if (pS) { GLDirect3DSurface9* s_ptr = (GLDirect3DSurface9*)pS; if (s_ptr->GetParent()) { sFBO = s_ptr->GetParent()->GetFBO(); sw = s_ptr->GetParent()->GetWidth(); sh = s_ptr->GetParent()->GetHeight(); } }
-    if (pD) { GLDirect3DSurface9* d_ptr = (GLDirect3DSurface9*)pD; if (d_ptr->GetParent()) { dFBO = d_ptr->GetParent()->GetFBO(); dw = d_ptr->GetParent()->GetWidth(); dh = d_ptr->GetParent()->GetHeight(); } }
+    if (pS) { GLDirect3DSurface9* s = (GLDirect3DSurface9*)pS; if (s->GetParent()) { sFBO = s->GetParent()->GetFBO(); sw = s->GetParent()->GetWidth(); sh = s->GetParent()->GetHeight(); } }
+    if (pD) { GLDirect3DSurface9* d = (GLDirect3DSurface9*)pD; if (d->GetParent()) { dFBO = d->GetParent()->GetFBO(); dw = d->GetParent()->GetWidth(); dh = d->GetParent()->GetHeight(); } }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, sFBO); glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dFBO);
     int sx0=0, sy0=0, sx1=sw, sy1=sh; if (pSR) { sx0=pSR->left; sy0=pSR->top; sx1=pSR->right; sy1=pSR->bottom; }
     int dx0=0, dy0=0, dx1=dw, dy1=dh; if (pDR) { dx0=pDR->left; dy0=pDR->top; dx1=pDR->right; dy1=pDR->bottom; }
@@ -123,15 +122,15 @@ STDMETHODIMP GLDirect3DDevice9::StretchRect(IDirect3DSurface9* pS, CONST RECT* p
 
 STDMETHODIMP GLDirect3DDevice9::ColorFill(IDirect3DSurface9* pS, CONST RECT* pR, D3DCOLOR c) { return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::CreateOffscreenPlainSurface(UINT w, UINT h, D3DFORMAT f, D3DPOOL p, IDirect3DSurface9** ppS, HANDLE* ph) { return E_NOTIMPL; }
-STDMETHODIMP GLDirect3DDevice9::SetRenderTarget(DWORD i, IDirect3DSurface9* pRt) { if (pRt) { GLDirect3DSurface9* s_ptr = (GLDirect3DSurface9*)pRt; if (s_ptr->GetParent()) { g_currentFBO = s_ptr->GetParent()->GetFBO(); glBindFramebuffer(GL_FRAMEBUFFER, g_currentFBO); glViewport(0, 0, s_ptr->GetParent()->GetWidth(), s_ptr->GetParent()->GetHeight()); } else { g_currentFBO=0; glBindFramebuffer(GL_FRAMEBUFFER,0); } } return D3D_OK; }
+STDMETHODIMP GLDirect3DDevice9::SetRenderTarget(DWORD i, IDirect3DSurface9* pRt) { if (pRt) { GLDirect3DSurface9* s = (GLDirect3DSurface9*)pRt; if (s->GetParent()) { g_currentFBO = s->GetParent()->GetFBO(); glBindFramebuffer(GL_FRAMEBUFFER, g_currentFBO); glViewport(0, 0, s->GetParent()->GetWidth(), s->GetParent()->GetHeight()); } else { g_currentFBO=0; glBindFramebuffer(GL_FRAMEBUFFER,0); } } return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::GetRenderTarget(DWORD i, IDirect3DSurface9** r) { if (r) *r = new GLDirect3DSurface9(NULL, 0); return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::SetDepthStencilSurface(IDirect3DSurface9* p) { return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::GetDepthStencilSurface(IDirect3DSurface9** p) { if (p) *p = new GLDirect3DSurface9(NULL, 0); return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::BeginScene() { g_drawCalls = 0; return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::EndScene() { return D3D_OK; }
-STDMETHODIMP GLDirect3DDevice9::Clear(DWORD c, CONST D3DRECT* r_ptr, DWORD f, D3DCOLOR col, float z, DWORD s_val) {
+STDMETHODIMP GLDirect3DDevice9::Clear(DWORD c, CONST D3DRECT* r, DWORD f, D3DCOLOR col, float z, DWORD s) {
     float _a=((col>>24)&0xFF)/255.f, _r=((col>>16)&0xFF)/255.f, _g=((col>>8)&0xFF)/255.f, _b=(col&0xFF)/255.f;
-    glClearColor(_r,_g,_b,_a); glClearDepth(z); glClearStencil(s_val);
+    glClearColor(_r,_g,_b,_a); glClearDepth(z); glClearStencil(s);
     GLbitfield m=0; if(f&D3DCLEAR_TARGET) m|=GL_COLOR_BUFFER_BIT; if(f&D3DCLEAR_ZBUFFER) m|=GL_DEPTH_BUFFER_BIT; if(f&D3DCLEAR_STENCIL) m|=GL_STENCIL_BUFFER_BIT;
     glClear(m); return D3D_OK;
 }
@@ -188,9 +187,10 @@ static GLsizei GetGLCount(D3DPRIMITIVETYPE t, UINT p) {
     if(t==D3DPT_TRIANGLEFAN) return p+2; return p;
 }
 
-void GLDirect3DDevice9::UpdateShaderProgram(bool isRHW) {
+void GLDirect3DDevice9::UpdateShaderProgram() {
+    UINT stride = m_streams[0].Stride; bool isRHW = (m_fvf & D3DFVF_XYZRHW) != 0 || stride == 20 || stride == 28 || stride == 32 || stride == 16;
     if (m_shaderDirty) {
-        const char* vs = "#version 120\nattribute vec4 position; attribute vec4 color; attribute vec2 texcoord0; varying vec4 vColor; varying vec2 vTexCoord; uniform int is3D; uniform vec2 screenRes;\nvoid main() {\nvTexCoord = texcoord0; vColor = color.bgra; if(vColor.a < 0.01) vColor.a = 1.0;\nif (is3D != 0) { gl_Position = vec4(position.xyz, 1.0); }\nelse { gl_Position = vec4((position.x/1366.0)*2.0-1.0, 1.0-(position.y/768.0)*2.0, position.z, 1.0); }\n}\n";
+        const char* vs = "#version 120\nattribute vec4 position; attribute vec4 color; attribute vec2 texcoord0; varying vec4 vColor; varying vec2 vTexCoord; uniform int is3D; uniform vec2 screenRes;\nvoid main() {\nvTexCoord = texcoord0; vColor = color.bgra; if(vColor.a < 0.01) vColor.a = 1.0;\nif (is3D != 0 && abs(position.x) <= 150.0) { gl_Position = vec4(position.xyz, 1.0); }\nelse { gl_Position = vec4((position.x/1366.0)*2.0-1.0, 1.0-(position.y/768.0)*2.0, 0.0, 1.0); }\n}\n";
         const char* ps = "#version 120\nvarying vec4 vColor; varying vec2 vTexCoord; uniform sampler2D tex0; uniform int useTex0;\nvoid main() {\nvec4 t0 = useTex0 != 0 ? texture2D(tex0, vTexCoord) : vec4(1.0);\ngl_FragColor = vColor * t0;\n}\n";
         if (m_shaderProg) glDeleteProgram(m_shaderProg); m_shaderProg = glCreateProgram();
         GLuint v = CompileShader(GL_VERTEX_SHADER, vs); GLuint p = CompileShader(GL_FRAGMENT_SHADER, ps);
@@ -199,12 +199,12 @@ void GLDirect3DDevice9::UpdateShaderProgram(bool isRHW) {
         glLinkProgram(m_shaderProg); m_shaderDirty = false;
     }
     glUseProgram(m_shaderProg);
-    GLint is3DLoc = glGetUniformLocation(m_shaderProg, "is3D"); if (is3DLoc != -1) glUniform1i(is3DLoc, isRHW ? 0 : 1);
+    GLint is3DLoc = glGetUniformLocation(m_shaderProg, "is3D");
+    if (is3DLoc != -1) glUniform1i(is3DLoc, isRHW ? 0 : 1);
     GLint resLoc = glGetUniformLocation(m_shaderProg, "screenRes"); if (resLoc != -1) glUniform2f(resLoc, 1024.f, 768.f);
     GLint useTexLoc = glGetUniformLocation(m_shaderProg, "useTex0"); if (useTexLoc != -1) glUniform1i(useTexLoc, m_textures[0] ? 1 : 0);
     for(int i=0; i<8; i++) { glActiveTexture(GL_TEXTURE0+i); if(m_textures[i]) glBindTexture(GL_TEXTURE_2D, ((GLDirect3DTexture9*)m_textures[i])->GetTex()); else glBindTexture(GL_TEXTURE_2D, 0); }
-    glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    if (isRHW) { glDisable(GL_CULL_FACE); glDisable(GL_DEPTH_TEST); } else { glEnable(GL_DEPTH_TEST); }
+    if (isRHW) { glDisable(GL_CULL_FACE); glDisable(GL_DEPTH_TEST); glDisable(GL_SCISSOR_TEST); glDisable(GL_STENCIL_TEST); } else { glEnable(GL_DEPTH_TEST); }
 }
 
 void GLDirect3DDevice9::ApplyAttributes(const void* pUP, UINT ups, UINT startV) {
@@ -224,26 +224,13 @@ void GLDirect3DDevice9::ApplyAttributes(const void* pUP, UINT ups, UINT startV) 
 }
 
 STDMETHODIMP GLDirect3DDevice9::DrawIndexedPrimitive(D3DPRIMITIVETYPE t, INT bv, UINT min, UINT num, UINT si, UINT pc) {
-    g_drawCalls++;
-    float* f_ptr = NULL; if(m_streams[0].pStreamData) f_ptr = (float*)((GLDirect3DVertexBuffer9*)m_streams[0].pStreamData)->m_pData;
-    bool isRHW_flag = (m_fvf & D3DFVF_XYZRHW) || (f_ptr && (abs(f_ptr[0]) > 2.0f || abs(f_ptr[1]) > 2.0f));
-    UpdateShaderProgram(isRHW_flag); ApplyAttributes(NULL, 0, bv);
+    g_drawCalls++; UpdateShaderProgram(); ApplyAttributes(NULL, 0, bv);
     GLenum it = GL_UNSIGNED_SHORT; int is=2; if(m_pIndexData) { glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ((GLDirect3DIndexBuffer9*)m_pIndexData)->GetIBO()); if(((GLDirect3DIndexBuffer9*)m_pIndexData)->GetFormat()==D3DFMT_INDEX32) { it=GL_UNSIGNED_INT; is=4; } }
     glDrawElements(GetGLPrim(t), GetGLCount(t, pc), it, (void*)(uintptr_t)(si*is)); return D3D_OK;
 }
-STDMETHODIMP GLDirect3DDevice9::DrawPrimitive(D3DPRIMITIVETYPE t, UINT sv, UINT pc) {
-    g_drawCalls++;
-    float* f_ptr = NULL; if(m_streams[0].pStreamData) f_ptr = (float*)((GLDirect3DVertexBuffer9*)m_streams[0].pStreamData)->m_pData;
-    bool isRHW_flag = (m_fvf & D3DFVF_XYZRHW) || (f_ptr && (abs(f_ptr[0]) > 2.0f || abs(f_ptr[1]) > 2.0f));
-    UpdateShaderProgram(isRHW_flag); ApplyAttributes(NULL, 0, sv); glDrawArrays(GetGLPrim(t), 0, GetGLCount(t,pc)); return D3D_OK; }
-STDMETHODIMP GLDirect3DDevice9::DrawPrimitiveUP(D3DPRIMITIVETYPE t, UINT pc, CONST void* d, UINT s) {
-    g_drawCalls++;
-    float* f_ptr = (float*)d; bool isRHW_flag = (m_fvf & D3DFVF_XYZRHW) || (f_ptr && (abs(f_ptr[0]) > 2.0f || abs(f_ptr[1]) > 2.0f));
-    UpdateShaderProgram(isRHW_flag); ApplyAttributes(d, s, 0); glDrawArrays(GetGLPrim(t), 0, GetGLCount(t,pc)); return D3D_OK; }
-STDMETHODIMP GLDirect3DDevice9::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE t, UINT min, UINT num, UINT pc, CONST void* i, D3DFORMAT f_fmt, CONST void* d, UINT s) {
-    g_drawCalls++;
-    float* f_ptr = (float*)d; bool isRHW_flag = (m_fvf & D3DFVF_XYZRHW) || (f_ptr && (abs(f_ptr[0]) > 2.0f || abs(f_ptr[1]) > 2.0f));
-    UpdateShaderProgram(isRHW_flag); ApplyAttributes(d, s, 0); glDrawElements(GetGLPrim(t), GetGLCount(t,pc), (f_fmt==D3DFMT_INDEX32?GL_UNSIGNED_INT:GL_UNSIGNED_SHORT), i); return D3D_OK; }
+STDMETHODIMP GLDirect3DDevice9::DrawPrimitive(D3DPRIMITIVETYPE t, UINT sv, UINT pc) { g_drawCalls++; UpdateShaderProgram(); ApplyAttributes(NULL, 0, sv); glDrawArrays(GetGLPrim(t), 0, GetGLCount(t,pc)); return D3D_OK; }
+STDMETHODIMP GLDirect3DDevice9::DrawPrimitiveUP(D3DPRIMITIVETYPE t, UINT pc, CONST void* d, UINT s) { g_drawCalls++; UpdateShaderProgram(); ApplyAttributes(d, s, 0); glDrawArrays(GetGLPrim(t), 0, GetGLCount(t,pc)); return D3D_OK; }
+STDMETHODIMP GLDirect3DDevice9::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE t, UINT min, UINT num, UINT pc, CONST void* i, D3DFORMAT f, CONST void* d, UINT s) { g_drawCalls++; UpdateShaderProgram(); ApplyAttributes(d, s, 0); glDrawElements(GetGLPrim(t), GetGLCount(t,pc), (f==D3DFMT_INDEX32?GL_UNSIGNED_INT:GL_UNSIGNED_SHORT), i); return D3D_OK; }
 
 STDMETHODIMP GLDirect3DDevice9::ProcessVertices(UINT s, UINT d, UINT c, IDirect3DVertexBuffer9* db, IDirect3DVertexDeclaration9* vd, DWORD f) { return D3D_OK; }
 STDMETHODIMP GLDirect3DDevice9::CreateVertexDeclaration(CONST D3DVERTEXELEMENT9* e, IDirect3DVertexDeclaration9** p) { if(p) *p=new GLDirect3DVertexDeclaration9(e); return D3D_OK; }
@@ -315,7 +302,8 @@ STDMETHODIMP GLDirect3DTexture9::GetLevelDesc(UINT l, D3DSURFACE_DESC* p) { if(p
 STDMETHODIMP GLDirect3DTexture9::GetSurfaceLevel(UINT l, IDirect3DSurface9** ppS) { if(ppS) *ppS=new GLDirect3DSurface9(this,l); return D3D_OK; }
 GLuint GLDirect3DTexture9::GetFBO() { 
     if (!m_fbo) { 
-        glGenFramebuffers(1, &m_fbo); glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+        glGenFramebuffers(1, &m_fbo); 
+        glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_tex, 0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -328,13 +316,17 @@ STDMETHODIMP GLDirect3DSurface9::LockRect(D3DLOCKED_RECT* p, CONST RECT* r, DWOR
 STDMETHODIMP GLDirect3DSurface9::UnlockRect() { if(m_pParent) return m_pParent->UnlockRect(m_level); return D3D_OK; }
 
 GLDirect3DVertexDeclaration9::GLDirect3DVertexDeclaration9(CONST D3DVERTEXELEMENT9* e) : m_refCount(1) { while(e->Stream!=0xFF) { m_elements.push_back(*e); e++; } }
-STDMETHODIMP GLDirect3DVertexDeclaration9::GetDeclaration(D3DVERTEXELEMENT9* e, UINT* n) { if(n) *n=(UINT)m_elements.size(); if(e) for(int i=0;i<(int)m_elements.size();i++) e[i]=m_elements[i]; return D3D_OK; }
+STDMETHODIMP GLDirect3DVertexDeclaration9::GetDeclaration(D3DVERTEXELEMENT9* e, UINT* n) { if(n) *n=m_elements.size(); if(e) for(int i=0;i<(int)m_elements.size();i++) e[i]=m_elements[i]; return D3D_OK; }
 GLDirect3DVertexShader9::GLDirect3DVertexShader9(CONST DWORD* f) : m_refCount(1) { if(f) { int s=0; while(f[s]!=0x0000FFFF) s++; s++; m_function.assign(f,f+s); } }
-STDMETHODIMP GLDirect3DVertexShader9::GetFunction(void* d, UINT* s) { if(s) *s=(UINT)m_function.size()*4; if(d) memcpy(d,&m_function[0],m_function.size()*4); return D3D_OK; }
+STDMETHODIMP GLDirect3DVertexShader9::GetFunction(void* d, UINT* s) { if(s) *s=m_function.size()*4; if(d) memcpy(d,&m_function[0],m_function.size()*4); return D3D_OK; }
 GLDirect3DPixelShader9::GLDirect3DPixelShader9(CONST DWORD* f) : m_refCount(1) { if(f) { int s=0; while(f[s]!=0x0000FFFF) s++; s++; m_function.assign(f,f+s); } }
-STDMETHODIMP GLDirect3DPixelShader9::GetFunction(void* d, UINT* s) { if(s) *s=(UINT)m_function.size()*4; if(d) memcpy(d,&m_function[0],m_function.size()*4); return D3D_OK; }
+STDMETHODIMP GLDirect3DPixelShader9::GetFunction(void* d, UINT* s) { if(s) *s=m_function.size()*4; if(d) memcpy(d,&m_function[0],m_function.size()*4); return D3D_OK; }
 
 STDMETHODIMP GLDirect3DDevice9::QueryInterface(REFIID riid, void** ppvObj) { return E_NOINTERFACE; }
 STDMETHODIMP_(ULONG) GLDirect3DDevice9::AddRef() { return ++m_refCount; }
 STDMETHODIMP_(ULONG) GLDirect3DDevice9::Release() { if (--m_refCount == 0) { delete this; return 0; } return m_refCount; }
 void GLDirect3DDevice9::SetSDLWindow(void* w) { g_sdlWindow = w; }
+"""
+
+with open("pw/branches/r1117/Src/Render/GLRenderer.cpp", "w") as f:
+    f.write(cpp_content)
