@@ -45,9 +45,29 @@ PFSummonedUnitAIBehaviour::PFSummonedUnitAIBehaviour(PFBaseMovingUnit* pUnit, CP
 bool PFSummonedUnitAIBehaviour::OnStep(float dtInSeconds) { return PFSummonedUnitBehaviour::OnStep(dtInSeconds); }
 void PFSummonedUnitAIBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { (void)pTarget; (void)bStrongTarget; }
 bool PFSummonedUnitAIBehaviour::CanSelectTarget(const PFBaseUnit* pTarget, bool mustSeeTarget) const { (void)pTarget; (void)mustSeeTarget; return false; }
-void PFSummonedUnitAIBehaviour::OnStop() { if (IsValid(pMaster) && (behaviourFlags & BEHAVIOURFLAGS_ALPHASUMMON)) pMaster->SetAlphaSummon(0); }
-void PFSummonedUnitAIBehaviour::Suspend() { isSuspended = true; }
-void PFSummonedUnitAIBehaviour::Resume() { isSuspended = false; }
+void PFSummonedUnitAIBehaviour::OnStop()
+{
+  if (IsValid(pMaster))
+  {
+    if (!isSuspended && pMaster->GetSummonedGroup(GetSummonType()))
+      pMaster->GetSummonedGroup(GetSummonType())->RemoveBehavior(this);
+    if (behaviourFlags & BEHAVIOURFLAGS_ALPHASUMMON)
+      pMaster->SetAlphaSummon(0);
+    pMaster = 0;
+  }
+}
+void PFSummonedUnitAIBehaviour::Suspend()
+{
+  if (IsValid(pMaster) && pMaster->GetSummonedGroup(GetSummonType()))
+    pMaster->GetSummonedGroup(GetSummonType())->RemoveBehavior(this);
+  isSuspended = true;
+}
+void PFSummonedUnitAIBehaviour::Resume()
+{
+  if (IsValid(pMaster) && pMaster->GetSummonedGroup(GetSummonType()))
+    pMaster->GetSummonedGroup(GetSummonType())->AddBehavior(this);
+  isSuspended = false;
+}
 void PFSummonedUnitAIBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
 void PFSummonedUnitAIBehaviour::AcquireBehaviourDefinedSpawnPosition(Target& spawnPosition) const { (void)spawnPosition; }
 CVec2 PFSummonedUnitAIBehaviour::GetMasterOffset() const { return VNULL2; }

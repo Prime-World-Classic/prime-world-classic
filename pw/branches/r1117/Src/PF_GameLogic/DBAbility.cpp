@@ -20,7 +20,9 @@
 #include "PFApplAura.h"
 #include "PFApplHelper.h"
 #include "PFApplInstant.h"
+#include "PFApplFx.h"
 #include "PFApplMod.h"
+#include "PFApplMove.h"
 #include "PFAITargetSelectors.h"
 #include "PFHighlander.h"
 #include "PFMicroAI.h"
@@ -206,6 +208,9 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 #include "PFApplBounce.h"
 #include "PFApplChainLightning.h"
 #include "PFApplDelegateDamage.h"
+#include "PFApplMove.h"
+#include "PFApplSpecial.h"
+#include "PFApplSummon.h"
 #include "PFHighlander.h"
 #include "PFMicroAI.h"
 #endif
@@ -4132,7 +4137,7 @@ void AbilityUpgradeTechApplicator::Assign( const AbilityUpgradeTechApplicator& _
 NWorld::PFBaseApplicator* AbilityUpgradeTechApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplTechAbilityUpgrade>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplTechAbilityUpgrade>( *this, cp );
@@ -4256,7 +4261,7 @@ void AddApplicatorDuration::Assign( const AddApplicatorDuration& _addApplicatorD
 NWorld::PFBaseApplicator* AddApplicatorDuration::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplAddApplicatorDuration>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplAddApplicatorDuration>( *this, cp );
@@ -4731,7 +4736,7 @@ void AttackTargetApplicator::Assign( const AttackTargetApplicator& _attackTarget
 NWorld::PFBaseApplicator* AttackTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplAttackTarget>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplAttackTarget>( *this, cp );
@@ -4787,7 +4792,7 @@ void AttractApplicator::Assign( const AttractApplicator& _attractApplicator )
 NWorld::PFBaseApplicator* AttractApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplAttract>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplAttract>( *this, cp );
@@ -5631,7 +5636,7 @@ void ChangeAnimationApplicator::Assign( const ChangeAnimationApplicator& _change
 NWorld::PFBaseApplicator* ChangeAnimationApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimation>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimation>( *this, cp );
@@ -5690,7 +5695,7 @@ void ChangeAnimSetApplicator::Assign( const ChangeAnimSetApplicator& _changeAnim
 NWorld::PFBaseApplicator* ChangeAnimSetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimSet>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChangeAnimSet>( *this, cp );
@@ -5753,7 +5758,7 @@ void ChangeBaseAttackApplicator::Assign( const ChangeBaseAttackApplicator& _chan
 NWorld::PFBaseApplicator* ChangeBaseAttackApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChangeBaseAttack>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChangeBaseAttack>( *this, cp );
@@ -5809,7 +5814,7 @@ void ChangeHeroStateApplicator::Assign( const ChangeHeroStateApplicator& _change
 NWorld::PFBaseApplicator* ChangeHeroStateApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChangeHeroState>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChangeHeroState>( *this, cp );
@@ -5864,7 +5869,7 @@ void ChangeStateApplicator::Assign( const ChangeStateApplicator& _changeStateApp
 NWorld::PFBaseApplicator* ChangeStateApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChangeState>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChangeState>( *this, cp );
@@ -5965,7 +5970,7 @@ void ChannellingApplicator::Assign( const ChannellingApplicator& _channellingApp
 NWorld::PFBaseApplicator* ChannellingApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplChannelling>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplChannelling>( *this, cp );
@@ -6502,7 +6507,7 @@ void CreateGlyphApplicator::Assign( const CreateGlyphApplicator& _createGlyphApp
 NWorld::PFBaseApplicator* CreateGlyphApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplCreateGlyph>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplCreateGlyph>( *this, cp );
@@ -6571,7 +6576,7 @@ void CreepBehaviourChangeApplicator::Assign( const CreepBehaviourChangeApplicato
 NWorld::PFBaseApplicator* CreepBehaviourChangeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplCreepBehaviourChange>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplCreepBehaviourChange>( *this, cp );
@@ -6705,7 +6710,7 @@ void DamageReflectApplicator::Assign( const DamageReflectApplicator& _damageRefl
 NWorld::PFBaseApplicator* DamageReflectApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplDamageReflect>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplDamageReflect>( *this, cp );
@@ -6827,7 +6832,7 @@ void DayNightTransitionApplicator::Assign( const DayNightTransitionApplicator& _
 NWorld::PFBaseApplicator* DayNightTransitionApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplDayNightTransition>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplDayNightTransition>( *this, cp );
@@ -6891,7 +6896,7 @@ void DealedDamageConverterApplicator::Assign( const DealedDamageConverterApplica
 NWorld::PFBaseApplicator* DealedDamageConverterApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplDealedDamageConverter>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplDealedDamageConverter>( *this, cp );
@@ -7838,7 +7843,7 @@ void DropTreeApplicator::Assign( const DropTreeApplicator& _dropTreeApplicator )
 NWorld::PFBaseApplicator* DropTreeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplDropTree>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplDropTree>( *this, cp );
@@ -8889,7 +8894,7 @@ void EyeApplicator::Assign( const EyeApplicator& _eyeApplicator )
 NWorld::PFBaseApplicator* EyeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplEye>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplEye>( *this, cp );
@@ -9214,7 +9219,7 @@ void FlyApplicator::Assign( const FlyApplicator& _flyApplicator )
 NWorld::PFBaseApplicator* FlyApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplFly>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplFly>( *this, cp );
@@ -9288,7 +9293,7 @@ void ForAllTargetsApplicator::Assign( const ForAllTargetsApplicator& _forAllTarg
 NWorld::PFBaseApplicator* ForAllTargetsApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplForAllTargets>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplForAllTargets>( *this, cp );
@@ -9398,7 +9403,7 @@ void FXApplicator::Assign( const FXApplicator& _fXApplicator )
 NWorld::PFBaseApplicator* FXApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplFX>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplFX>( *this, cp );
@@ -9462,7 +9467,7 @@ void GhostMoveApplicator::Assign( const GhostMoveApplicator& _ghostMoveApplicato
 NWorld::PFBaseApplicator* GhostMoveApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplGhostMove>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplGhostMove>( *this, cp );
@@ -9520,7 +9525,7 @@ void GiveConsumable::Assign( const GiveConsumable& _giveConsumable )
 NWorld::PFBaseApplicator* GiveConsumable::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplGiveConsumable>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplGiveConsumable>( *this, cp );
@@ -9748,7 +9753,7 @@ void InvalidAbilityTargetApplicator::Assign( const InvalidAbilityTargetApplicato
 NWorld::PFBaseApplicator* InvalidAbilityTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplInvalidAbilityTarget>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplInvalidAbilityTarget>( *this, cp );
@@ -9870,7 +9875,7 @@ void KickAwayApplicator::Assign( const KickAwayApplicator& _kickAwayApplicator )
 NWorld::PFBaseApplicator* KickAwayApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplKickAway>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplKickAway>( *this, cp );
@@ -10049,7 +10054,7 @@ void LockTilesApplicator::Assign( const LockTilesApplicator& _lockTilesApplicato
 NWorld::PFBaseApplicator* LockTilesApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplLockTiles>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplLockTiles>( *this, cp );
@@ -10336,7 +10341,7 @@ void ModifyTerrainApplicator::Assign( const ModifyTerrainApplicator& _modifyTerr
 NWorld::PFBaseApplicator* ModifyTerrainApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplModifyTerrain>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplModifyTerrain>( *this, cp );
@@ -10456,7 +10461,7 @@ void MovementControlApplicator::Assign( const MovementControlApplicator& _moveme
 NWorld::PFBaseApplicator* MovementControlApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplMovementControl>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplMovementControl>( *this, cp );
@@ -10540,7 +10545,7 @@ void MoveToApplicator::Assign( const MoveToApplicator& _moveToApplicator )
 NWorld::PFBaseApplicator* MoveToApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplMoveTo>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplMoveTo>( *this, cp );
@@ -10782,7 +10787,7 @@ void NaftaTransferApplicator::Assign( const NaftaTransferApplicator& _naftaTrans
 NWorld::PFBaseApplicator* NaftaTransferApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplNaftaTransfer>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplNaftaTransfer>( *this, cp );
@@ -11010,7 +11015,7 @@ void OnDamageApplicator::Assign( const OnDamageApplicator& _onDamageApplicator )
 NWorld::PFBaseApplicator* OnDamageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplOnDamage>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplOnDamage>( *this, cp );
@@ -11138,7 +11143,7 @@ void PickupChannelingApplicator::Assign( const PickupChannelingApplicator& _pick
 NWorld::PFBaseApplicator* PickupChannelingApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplPickupChanneling>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplPickupChanneling>( *this, cp );
@@ -11319,7 +11324,7 @@ void ProgramApplicator::Assign( const ProgramApplicator& _programApplicator )
 NWorld::PFBaseApplicator* ProgramApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplProgram>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplProgram>( *this, cp );
@@ -11388,7 +11393,7 @@ void RaiseFlagApplicator::Assign( const RaiseFlagApplicator& _raiseFlagApplicato
 NWorld::PFBaseApplicator* RaiseFlagApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplRaiseFlag>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplRaiseFlag>( *this, cp );
@@ -11577,7 +11582,7 @@ void ResurrectApplicator::Assign( const ResurrectApplicator& _resurrectApplicato
 NWorld::PFBaseApplicator* ResurrectApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFResurrectApplicator>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFResurrectApplicator>( *this, cp );
@@ -11639,7 +11644,7 @@ void ScaleControlApplicator::Assign( const ScaleControlApplicator& _scaleControl
 NWorld::PFBaseApplicator* ScaleControlApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplScaleControl>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplScaleControl>( *this, cp );
@@ -11701,7 +11706,7 @@ void SceneObjectChangeApplicator::Assign( const SceneObjectChangeApplicator& _sc
 NWorld::PFBaseApplicator* SceneObjectChangeApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplSceneObjectChange>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplSceneObjectChange>( *this, cp );
@@ -11944,7 +11949,7 @@ void SetTimescaleApplicator::Assign( const SetTimescaleApplicator& _setTimescale
 NWorld::PFBaseApplicator* SetTimescaleApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplSetTimescale>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplSetTimescale>( *this, cp );
@@ -12003,7 +12008,7 @@ void ShiftApplicator::Assign( const ShiftApplicator& _shiftApplicator )
 NWorld::PFBaseApplicator* ShiftApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplShift>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplShift>( *this, cp );
@@ -12513,7 +12518,7 @@ void SpellSwitchApplicator::Assign( const SpellSwitchApplicator& _spellSwitchApp
 NWorld::PFBaseApplicator* SpellSwitchApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplSpellSwitch>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplSpellSwitch>( *this, cp );
@@ -12798,7 +12803,7 @@ void SummonApplicator::Assign( const SummonApplicator& _summonApplicator )
 NWorld::PFBaseApplicator* SummonApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplSummon>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplSummon>( *this, cp );
@@ -12843,7 +12848,7 @@ void SummonBehaviourBase::Assign( const SummonBehaviourBase& _summonBehaviourBas
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourBase::Create() const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFSummonBehaviourDataBase( *this );
 #else
 
 	return ( NWorld::PFSummonBehaviourDataBase* )(0);
@@ -12914,7 +12919,7 @@ void SummonBehaviourCommon::Assign( const SummonBehaviourCommon& _summonBehaviou
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourCommon::Create() const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFSummonBehaviourDataCommon( *this );
 #else
 
 	return new NWorld::PFSummonBehaviourDataCommon( *this );
@@ -13391,7 +13396,7 @@ void TeleportApplicator::Assign( const TeleportApplicator& _teleportApplicator )
 NWorld::PFBaseApplicator* TeleportApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplTeleport>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplTeleport>( *this, cp );
@@ -13512,7 +13517,7 @@ void ThrowApplicator::Assign( const ThrowApplicator& _throwApplicator )
 NWorld::PFBaseApplicator* ThrowApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplThrow>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplThrow>( *this, cp );
@@ -13647,7 +13652,7 @@ void UIMessageApplicator::Assign( const UIMessageApplicator& _uIMessageApplicato
 NWorld::PFBaseApplicator* UIMessageApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFUIMessageApplicator>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFUIMessageApplicator>( *this, cp );
@@ -14070,7 +14075,7 @@ void VictoryApplicator::Assign( const VictoryApplicator& _victoryApplicator )
 NWorld::PFBaseApplicator* VictoryApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplVictory>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplVictory>( *this, cp );
@@ -14143,7 +14148,7 @@ void WaitForSpellApplicator::Assign( const WaitForSpellApplicator& _waitForSpell
 NWorld::PFBaseApplicator* WaitForSpellApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplWaitForSpell>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplWaitForSpell>( *this, cp );
@@ -14281,7 +14286,7 @@ void WatchApplicator::Assign( const WatchApplicator& _watchApplicator )
 NWorld::PFBaseApplicator* WatchApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return NWorld::CreateApplicator<NWorld::PFApplWatch>( *this, cp );
 #else
 
 	return NWorld::CreateApplicator<NWorld::PFApplWatch>( *this, cp );

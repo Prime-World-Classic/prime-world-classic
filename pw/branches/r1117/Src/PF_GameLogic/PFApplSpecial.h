@@ -389,6 +389,7 @@ protected:
   virtual bool Start();
   virtual void Fire();
   virtual void Stop();
+  virtual int GetAcceptableTargetFlags() const { return Target::FLAG_OBJECT; }
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

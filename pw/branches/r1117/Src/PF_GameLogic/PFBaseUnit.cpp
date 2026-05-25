@@ -6,6 +6,8 @@
 #include "PFAbilityInstance.h"
 #include "PFBaseAttackData.h"
 #include "PFBaseUnit.h"
+#include "PFBehaviour.h"
+#include "PFSummoned.h"
 #include "PFWorld.h"
 #include "PFAIWorld.h"
 #include "PFVoxelMap.h"
@@ -113,6 +115,7 @@ static TLinuxUnitStats& GetLinuxUnitStats(const PFBaseUnit* unit)
   return stats;
 }
 
+
 NAMEMAP_BEGIN(PFStatContainer)
 NAMEMAP_END
 
@@ -209,6 +212,9 @@ PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _db
   }
   condsResolver.Init(this);
   InitAttackSectors(3);
+  summonedUnits[NDb::SUMMONTYPE_PRIMARY] = new PFBehaviourGroup(_pWorld);
+  summonedUnits[NDb::SUMMONTYPE_SECONDARY] = new PFBehaviourGroup(_pWorld);
+  summonedUnits[NDb::SUMMONTYPE_PET] = new PFBehaviourGroup(_pWorld);
   LinuxRegisterBootstrapUnit(this);
 }
 
@@ -240,6 +246,9 @@ PFBaseUnit::PFBaseUnit()
   , attackSectorsAngle(0.0f)
 {
   condsResolver.Init(this);
+  summonedUnits[NDb::SUMMONTYPE_PRIMARY] = new PFBehaviourGroup(0);
+  summonedUnits[NDb::SUMMONTYPE_SECONDARY] = new PFBehaviourGroup(0);
+  summonedUnits[NDb::SUMMONTYPE_PET] = new PFBehaviourGroup(0);
   LinuxRegisterBootstrapUnit(this);
 }
 
@@ -863,16 +872,133 @@ void PFBaseUnit::OnBecameIdle() {}
 void PFBaseUnit::ForceIdle() { DropTarget(); OnBecameIdle(); }
 void PFBaseUnit::Idle() { ForceIdle(); }
 void PFBaseUnit::DumpInfo(NLogg::CChannelLogger&) const {}
-void PFBaseUnit::ForAllSummons(ISummonAction&, NDb::SummonType) {}
+void PFBaseUnit::ForAllSummons(ISummonAction& action, NDb::SummonType type)
+{
+  if (type < 0 || type >= NDb::KnownEnum<NDb::SummonType>::sizeOf || !summonedUnits[type])
+    return;
+
+  struct ForAll : NonCopyable
+  {
+    ForAll(ISummonAction& action, PFBaseUnit const* master)
+      : action(action)
+      , master(master)
+    {
+    }
+
+    void operator()(PFSummonBehaviour* behaviour)
+    {
+      if (behaviour && IsValid(behaviour->GetUnit()) && behaviour->GetUnit()->GetMasterUnit() == master)
+        action(behaviour->GetUnit());
+    }
+
+    ISummonAction& action;
+    PFBaseUnit const* master;
+  } forAll(action, this);
+
+  summonedUnits[type]->ForAllBehaviour(forAll);
+}
 int PFBaseUnit::GetMaxAllowedSummons(NDb::SummonType type, const string& summonGroupName) const { map<string, int>::const_iterator it = maxAllowedSummons[type].find(summonGroupName); return it == maxAllowedSummons[type].end() ? 0 : it->second; }
-int PFBaseUnit::RemoveSummons(const int, const NDb::SummonType, const string&, const NDb::Creature*, const int, UnsummonCriterion*) { return 0; }
+int PFBaseUnit::RemoveSummons(const int unsummonCount, const NDb::SummonType type, const string& summonGroupName, const NDb::Creature* pDBUnit, const int maxCount, UnsummonCriterion* pUnsummonCriterion)
+{
+  if (type < 0 || type >= NDb::KnownEnum<NDb::SummonType>::sizeOf || !summonedUnits[type])
+    return 0;
+
+  typedef nstl::vector<PFSummonBehaviour*> SummonBehaviours;
+  SummonBehaviours summons;
+
+  struct AddFunc : NonCopyable
+  {
+    AddFunc(SummonBehaviours* summons, const string& summonGroupName, const NDb::DBID* dbid)
+      : summons(summons)
+      , summonGroupName(summonGroupName)
+      , dbid(dbid)
+    {
+    }
+
+    void operator()(PFSummonBehaviour* behaviour)
+    {
+      if (!behaviour || !IsValid(behaviour->GetUnit()))
+        return;
+      if (summonGroupName != behaviour->GetGroupName())
+        return;
+      if (dbid && (!behaviour->GetUnit()->DbUnitDesc() || behaviour->GetUnit()->DbUnitDesc()->GetDBID() != *dbid))
+        return;
+      summons->push_back(behaviour);
+    }
+
+    SummonBehaviours* summons;
+    const string& summonGroupName;
+    const NDb::DBID* dbid;
+  } add(&summons, summonGroupName, pDBUnit ? &pDBUnit->GetDBID() : 0);
+
+  summonedUnits[type]->ForAllBehaviour(add);
+  const int totalCount = summons.size();
+  if (totalCount <= 0)
+    return 0;
+
+  int count = maxCount > 0 ? Max(0, totalCount - maxCount + unsummonCount) : unsummonCount;
+  count = Min(count, totalCount);
+  if (count <= 0)
+    return 0;
+
+  if (pUnsummonCriterion)
+    nstl::sort(summons.begin(), summons.end(), *pUnsummonCriterion);
+
+  for (int i = 0; i < count; ++i)
+  {
+    summons[i]->Unsummon();
+    summons[i]->OnStop();
+  }
+
+  return count;
+}
 void PFBaseUnit::RemoveBehaviour() {}
 void PFBaseUnit::Reset() { health = maxHealth; energy = maxEnergy; ResetWarFog(); }
 void PFBaseUnit::OnAfterReset() {}
 void PFBaseUnit::CountAuraApplicators(int& allyAuraCount, int& enemyAuraCount) { allyAuraCount = 0; enemyAuraCount = 0; }
-void PFBaseUnit::ApplyTopBehaviour() {}
+void PFBaseUnit::ApplyTopBehaviour()
+{
+  PFBaseBehaviour* behaviour = Behaviour();
+  if (!behaviour)
+    return;
+
+  PFSummonBehaviour* summonBehaviour = dynamic_cast<PFSummonBehaviour*>(behaviour);
+  CPtr<PFBaseUnit> newMaster = summonBehaviour ? summonBehaviour->GetMaster() : 0;
+
+  if (IsValid(newMaster))
+  {
+    if (PFSummonedUnitAIBehaviour* summonedAI = dynamic_cast<PFSummonedUnitAIBehaviour*>(behaviour))
+    {
+      const NDb::SummonType summonType = summonedAI->GetSummonType();
+      const int maxAllowed = newMaster->GetMaxAllowedSummons(summonType, summonedAI->GetGroupName());
+      if ((newMaster->IsDead() && summonType == NDb::SUMMONTYPE_PRIMARY) ||
+          (maxAllowed > 0 && newMaster->GetSummonsCount(summonType, summonedAI->GetGroupName()) >= maxAllowed))
+      {
+        summonedAI->Unsummon();
+        return;
+      }
+    }
+  }
+
+  if (GetFaction() != behaviour->GetFaction())
+    ChangeFaction(behaviour->GetFaction());
+  if (GetUnitType() != behaviour->GetUnitType())
+    SetUnitType(behaviour->GetUnitType());
+
+  behaviour->Resume();
+  if (pMaster != newMaster)
+    SetMaster(newMaster);
+}
 bool PFBaseUnit::UpdateClientColor() { return false; }
-void PFBaseUnit::AddBehaviourOnTop(PFBaseBehaviour* pBehaviour) { if (pBehaviour) behaviourList.addFirst(pBehaviour); }
+void PFBaseUnit::AddBehaviourOnTop(PFBaseBehaviour* pBehaviour)
+{
+  if (!pBehaviour || Behaviour() == pBehaviour)
+    return;
+  if (HasBehaviour())
+    Behaviour()->Suspend();
+  behaviourList.addFirst(pBehaviour);
+  ApplyTopBehaviour();
+}
 void PFBaseUnit::RemoveBehaviour(PFBaseBehaviour* pBehaviour) { if (pBehaviour) PFBaseBehaviour::UnitRing::safeRemove(pBehaviour); }
 float PFBaseUnit::GetNormalLevelling() const { return 0.0f; }
 void PFBaseUnit::CancelChannelling() {}

@@ -86,6 +86,10 @@ bool PFApplDropTree::Start()
 
   PFTree* pTree = dynamic_cast<PFTree*>( targ.GetObject().GetPtr() );
   NI_VERIFY( pTree, "Target should be an tree!", return true; );
+#if defined( PW_LINUX_NULL_RENDER )
+  if ( !pTree->GetWorld() )
+    return true;
+#endif
 
   CVec2 fromPos;
 	if ( IsValid( pParent ) )
@@ -467,7 +471,8 @@ bool PFApplModifyTerrain::Start()
 	if (PFBaseApplicator::Start())
 		return true;
 
-  if(PFWorldNatureMap * pMap = GetWorld()->GetNatureMap())
+  PFWorld* const world = GetWorld();
+  if(PFWorldNatureMap * pMap = world ? world->GetNatureMap() : 0)
   {
     float           durationTime = RetrieveParam(GetDB().durationTime);
     NDb::EFaction   faction  = NDb::EFaction(RetrieveParam(GetDB().faction, 0));
@@ -483,7 +488,8 @@ bool PFApplModifyTerrain::Start()
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool PFApplModifyTerrain::Step(float dtInSeconds)
 {
-  PFWorldNatureMap * pMap = GetWorld()->GetNatureMap();
+  PFWorld* const world = GetWorld();
+  PFWorldNatureMap * pMap = world ? world->GetNatureMap() : 0;
   return pMap ? !pMap->IsOverrideActive(GetObjectId()) : true;
 }
 
@@ -561,6 +567,12 @@ bool PFApplProgram::ExecuteNext()
         {
           ready2Execute = true;
         }
+#if defined( PW_LINUX_NULL_RENDER )
+        else if ( GetDB().applicators[applicatorExecuting].continueEvents == NDb::PARENTNOTIFICATIONFLAGS_ZERO )
+        {
+          ready2Execute = true;
+        }
+#endif
 
         if ( IsFinished() )
         {
@@ -755,6 +767,10 @@ bool PFApplForAllTargets::ExecuteNext()
         ready2Execute = true;
       else if ( !ActivateApplicator(pAppl, pAbility) ) // skip if can't activate applicator (target is dead, appl is cancelled etc)
         ready2Execute = true;
+#if defined( PW_LINUX_NULL_RENDER )
+      else if ( GetDB().continueEvents == NDb::PARENTNOTIFICATIONFLAGS_ZERO )
+        ready2Execute = true;
+#endif
 
       if ( IsFinished() && ready2Execute )
         return false;
@@ -867,25 +883,35 @@ void PFApplEye::Enable()
     float visRange = RetrieveParam(GetDB().visRange, 1.0f);
     NI_VERIFY( visRange > 0, NStr::StrFmt("Wrong vision range in applicator %s", NDb::GetFormattedDbId(GetDB().GetDBID()) ) , return; );
 
-    TileMap * tileMap = pOwner->GetWorld()->GetTileMap();
+    PFWorld* const world = pOwner ? pOwner->GetWorld() : 0;
+    TileMap * tileMap = world ? world->GetTileMap() : 0;
+    FogOfWar * fogOfWar = world ? world->GetFogOfWar() : 0;
+    if ( !tileMap || !fogOfWar )
+      return;
+
     SVector position = tileMap->GetTile(eyeTarget.AcquirePosition().AsVec2D());
     int visTileRange = tileMap->GetLenghtInTiles(visRange);
 
     int factionMask = pOwner->GetFactionMask( GetDB().flags );
     if ( (factionMask & (1 << NDb::FACTION_FREEZE)) != 0 )
-      visUnitID0 = pOwner->GetWorld()->GetFogOfWar()->AddObject(position, NDb::FACTION_FREEZE, visTileRange, GetDB().cancelObstacles);
+      visUnitID0 = fogOfWar->AddObject(position, NDb::FACTION_FREEZE, visTileRange, GetDB().cancelObstacles);
     if ( (factionMask & (1 << NDb::FACTION_BURN)) != 0 )
-      visUnitID1 = pOwner->GetWorld()->GetFogOfWar()->AddObject(position, NDb::FACTION_BURN, visTileRange, GetDB().cancelObstacles);
+      visUnitID1 = fogOfWar->AddObject(position, NDb::FACTION_BURN, visTileRange, GetDB().cancelObstacles);
   }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFApplEye::Disable()
 {
+  PFWorld* const world = pOwner ? pOwner->GetWorld() : 0;
+  FogOfWar * fogOfWar = world ? world->GetFogOfWar() : 0;
+
   if ( visUnitID0 > -1 )
-    pOwner->GetWorld()->GetFogOfWar()->RemoveObject(visUnitID0);
+    if ( fogOfWar )
+      fogOfWar->RemoveObject(visUnitID0);
   if ( visUnitID1 > -1 )
-    pOwner->GetWorld()->GetFogOfWar()->RemoveObject(visUnitID1);
+    if ( fogOfWar )
+      fogOfWar->RemoveObject(visUnitID1);
 
 	visUnitID0 = -1;
 	visUnitID1 = -1;
@@ -924,11 +950,17 @@ void PFApplEye::UpdateEyePosition()
 {
   if (eyeTarget.IsValid())
   {
-    SVector pos = pOwner->GetWorld()->GetTileMap()->GetTile(eyeTarget.AcquirePosition().AsVec2D());
+    PFWorld* const world = pOwner ? pOwner->GetWorld() : 0;
+    TileMap * tileMap = world ? world->GetTileMap() : 0;
+    FogOfWar * fogOfWar = world ? world->GetFogOfWar() : 0;
+    if ( !tileMap || !fogOfWar )
+      return;
+
+    SVector pos = tileMap->GetTile(eyeTarget.AcquirePosition().AsVec2D());
     if ( visUnitID0 > -1 )
-      pOwner->GetWorld()->GetFogOfWar()->MoveObject(visUnitID0, pos);
+      fogOfWar->MoveObject(visUnitID0, pos);
     if ( visUnitID1 > -1 )
-      pOwner->GetWorld()->GetFogOfWar()->MoveObject(visUnitID1, pos);
+      fogOfWar->MoveObject(visUnitID1, pos);
   }
 }
 
@@ -938,6 +970,13 @@ void PFApplEye::UpdateEyePosition()
 bool PFApplLockTiles::Start()
 {
   NI_VERIFY(IsValid(pOwner), "Invalid usage", return false;);
+
+  PFWorld* const world = pOwner ? pOwner->GetWorld() : 0;
+  TileMap * tileMap = world ? world->GetTileMap() : 0;
+#if defined( PW_LINUX_NULL_RENDER )
+  if ( !tileMap )
+    return Base::Start();
+#endif
 
   if ( !GetDB().collision.IsEmpty() )
   {
@@ -995,14 +1034,17 @@ bool PFApplLockTiles::Start()
     place.pos = GetTarget().GetPosition();
   }
   
+  if ( !tileMap )
+    return Base::Start();
+
   vector<SVector> occupiedTiles;
-  pOwner->GetWorld()->GetTileMap()->FillOccupiedTiles(occupiedTiles, coll, GetDB().lockMask.tileSize, GetDB().lockMask.mask, place);
-  pOwner->GetWorld()->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+  tileMap->FillOccupiedTiles(occupiedTiles, coll, GetDB().lockMask.tileSize, GetDB().lockMask.mask, place);
+  tileMap->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
 
   // push out units
   float radius = 0.5f * ( Max(coll.x2 - coll.x1, coll.y2 - coll.y1) + 1 );
   vector<PFBaseMovingUnit*> units;
-  PFBaseMovingUnit::GetAllUnitsInRangeConsiderSize(pOwner->GetWorld()->GetAIWorld(), place.pos.AsVec2D(), radius, units, false,
+  PFBaseMovingUnit::GetAllUnitsInRangeConsiderSize(world ? world->GetAIWorld() : 0, place.pos.AsVec2D(), radius, units, false,
                                        GetDB().pushCaster ? 0 : dynamic_cast<PFBaseMovingUnit*>(pOwner.GetPtr()) );
   for ( int i = 0; i < units.size(); ++i)
   {
@@ -1024,9 +1066,14 @@ void PFApplLockTiles::Stop()
 
   Base::Stop();
 
+  PFWorld* const world = pOwner ? pOwner->GetWorld() : 0;
+  TileMap * tileMap = world ? world->GetTileMap() : 0;
+  if ( !tileMap )
+    return;
+
   vector<SVector> occupiedTiles;
-  pOwner->GetWorld()->GetTileMap()->FillOccupiedTiles(occupiedTiles, coll, GetDB().lockMask.tileSize, GetDB().lockMask.mask, place);
-  pOwner->GetWorld()->GetTileMap()->MarkObject(occupiedTiles, false, MAP_MODE_BUILDING);
+  tileMap->FillOccupiedTiles(occupiedTiles, coll, GetDB().lockMask.tileSize, GetDB().lockMask.mask, place);
+  tileMap->MarkObject(occupiedTiles, false, MAP_MODE_BUILDING);
 }
 
 
@@ -1294,7 +1341,8 @@ bool PFApplDayNightTransition::Start()
   if (Base::Start())
     return true;
 
-  if (DayNightController* const dayNightController = GetWorld()->GetDayNightController())
+  PFWorld* const world = GetWorld();
+  if (DayNightController* const dayNightController = world ? world->GetDayNightController() : 0)
     dayNightController->Switch(GetDB().desiredState, GetDB().desiredStateFraction);
 
   return true;
@@ -1318,7 +1366,8 @@ bool PFApplSetTimescale::Start()
 
   float scale = Clamp(GetDB().desiredTimescale, 0.5f, 1.5f);
 #ifdef VISUAL_CUTTED
-  if ( NGameX::IAdventureScreen* screen = GetWorld()->GetIAdventureScreen() )
+  PFWorld* const world = GetWorld();
+  if ( NGameX::IAdventureScreen* screen = world ? world->GetIAdventureScreen() : 0 )
   {
     screen->SendGameCommand(CreateCmdSetTimescale(scale), true);
   }

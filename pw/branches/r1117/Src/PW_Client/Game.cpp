@@ -50,12 +50,17 @@
 #include "PF_GameLogic/PFApplBuff.h"
 #include "PF_GameLogic/PFApplChainLightning.h"
 #include "PF_GameLogic/PFApplDelegateDamage.h"
+#include "PF_GameLogic/PFApplFx.h"
+#include "PF_GameLogic/PFApplInstant.h"
 #include "PF_GameLogic/PFApplMod.h"
+#include "PF_GameLogic/PFApplMove.h"
+#include "PF_GameLogic/PFApplSpecial.h"
 #include "PF_GameLogic/PFAbilityData.h"
 #include "PF_GameLogic/PFAbilityInstance.h"
 #include "PF_GameLogic/PFBaseAttackData.h"
 #include "PF_GameLogic/PFBaseUnit.h"
 #include "PF_GameLogic/PFClientApplicators.h"
+#include "PF_GameLogic/PFCreature.h"
 #include "PF_GameLogic/PFDispatch.h"
 #include "PF_GameLogic/PFDispatchFactory.h"
 #include "PF_GameLogic/PFMinimapEffect.h"
@@ -10833,9 +10838,34 @@ struct LinuxUnitModApplicatorCollector
     , markers(0)
     , targetCounters(0)
     , abilityMods(0)
+    , techAbilityUpgrades(0)
+    , changeBaseAttacks(0)
+    , creepBehaviourChanges(0)
+    , damageReflects(0)
+    , onDamages(0)
+    , changeHeroStates(0)
+    , sceneObjectChanges(0)
+    , fxs(0)
+    , moveTos(0)
+    , ghostMoves(0)
+    , flys(0)
+    , throws(0)
+    , attackTargets(0)
     , taunts(0)
+    , movementControls(0)
+    , changeAnimSets(0)
+    , changeAnimations(0)
+    , watches(0)
+    , scaleControls(0)
+    , invalidAbilityTargets(0)
+    , channellings(0)
+    , waitForSpells(0)
+    , eyes(0)
+    , lockTiles(0)
+    , raiseFlags(0)
     , statModVariable(0.0f)
     , valueVariable(0.0f)
+    , valueVariableSum(0.0f)
     , markerVariable(0.0f)
     , targetsCountVariable(0.0f)
     , abilityModAdd(0.0f)
@@ -10869,6 +10899,7 @@ struct LinuxUnitModApplicatorCollector
     {
       ++values;
       valueVariable = pApplicator->GetVariable("Value");
+      valueVariableSum += valueVariable;
     }
     else if (pApplicator->GetTypeId() == NWorld::PFApplMarker::typeId)
     {
@@ -10891,15 +10922,111 @@ struct LinuxUnitModApplicatorCollector
       {
         abilityMod->AddModifier(
           abilityModAdd,
-          abilityModMul,
-          NDb::ABILITYMODMODE_COOLDOWN,
-          NDb::ABILITYTYPEID_SPECIAL,
-          NDb::Ptr<NDb::Ability>());
+        abilityModMul,
+        NDb::ABILITYMODMODE_COOLDOWN,
+        NDb::ABILITYTYPEID_SPECIAL,
+        NDb::Ptr<NDb::Ability>());
       }
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplTechAbilityUpgrade::typeId)
+    {
+      ++techAbilityUpgrades;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplChangeBaseAttack::typeId)
+    {
+      ++changeBaseAttacks;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplCreepBehaviourChange::typeId)
+    {
+      ++creepBehaviourChanges;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplDamageReflect::typeId)
+    {
+      ++damageReflects;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplOnDamage::typeId)
+    {
+      ++onDamages;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplChangeHeroState::typeId)
+    {
+      ++changeHeroStates;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplSceneObjectChange::typeId)
+    {
+      ++sceneObjectChanges;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplFX::typeId)
+    {
+      ++fxs;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplMoveTo::typeId)
+    {
+      ++moveTos;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplGhostMove::typeId)
+    {
+      ++ghostMoves;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplFly::typeId)
+    {
+      ++flys;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplThrow::typeId)
+    {
+      ++throws;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplAttackTarget::typeId)
+    {
+      ++attackTargets;
     }
     else if (pApplicator->GetTypeId() == NWorld::PFApplTaunt::typeId)
     {
       ++taunts;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplMovementControl::typeId)
+    {
+      ++movementControls;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplChangeAnimSet::typeId)
+    {
+      ++changeAnimSets;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplChangeAnimation::typeId)
+    {
+      ++changeAnimations;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplWatch::typeId)
+    {
+      ++watches;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplScaleControl::typeId)
+    {
+      ++scaleControls;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplInvalidAbilityTarget::typeId)
+    {
+      ++invalidAbilityTargets;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplChannelling::typeId)
+    {
+      ++channellings;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplWaitForSpell::typeId)
+    {
+      ++waitForSpells;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplEye::typeId)
+    {
+      ++eyes;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplLockTiles::typeId)
+    {
+      ++lockTiles;
+    }
+    else if (pApplicator->GetTypeId() == NWorld::PFApplRaiseFlag::typeId)
+    {
+      ++raiseFlags;
     }
   }
 
@@ -10911,13 +11038,106 @@ struct LinuxUnitModApplicatorCollector
   size_t markers;
   size_t targetCounters;
   size_t abilityMods;
+  size_t techAbilityUpgrades;
+  size_t changeBaseAttacks;
+  size_t creepBehaviourChanges;
+  size_t damageReflects;
+  size_t onDamages;
+  size_t changeHeroStates;
+  size_t sceneObjectChanges;
+  size_t fxs;
+  size_t moveTos;
+  size_t ghostMoves;
+  size_t flys;
+  size_t throws;
+  size_t attackTargets;
   size_t taunts;
+  size_t movementControls;
+  size_t changeAnimSets;
+  size_t changeAnimations;
+  size_t watches;
+  size_t scaleControls;
+  size_t invalidAbilityTargets;
+  size_t channellings;
+  size_t waitForSpells;
+  size_t eyes;
+  size_t lockTiles;
+  size_t raiseFlags;
   float statModVariable;
   float valueVariable;
+  float valueVariableSum;
   float markerVariable;
   float targetsCountVariable;
   float abilityModAdd;
   float abilityModMul;
+};
+
+struct LinuxFlagpoleApplicatorProbe : public NWorld::PFFlagpole
+{
+  explicit LinuxFlagpoleApplicatorProbe(const NDb::AdvMapObject& dbObject)
+    : NWorld::PFFlagpole(0, dbObject)
+  {
+  }
+
+  virtual bool CanRaise(NDb::EFaction _faction) const
+  {
+    return _faction != NDb::FACTION_NEUTRAL && _faction != GetFaction() && !IsRising();
+  }
+
+  virtual bool IsOutermost(const NDb::EFaction) const { return true; }
+  virtual bool IsProtectedByTower(const NDb::EFaction) const { return false; }
+  virtual bool IsProtectedByNext() const { return false; }
+  virtual NWorld::PFFlagpole* GetPrevFlagpole(const NDb::EFaction) { return 0; }
+  virtual NWorld::PFFlagpole* GetNextFlagpole(const NDb::EFaction) { return 0; }
+};
+
+struct LinuxPickupableApplicatorProbe : public NWorld::PFPickupableObjectBase
+{
+  LinuxPickupableApplicatorProbe()
+    : NWorld::PFPickupableObjectBase(
+        CPtr<NWorld::PFWorld>(),
+        CVec3(239.0f, 40.0f, 0.0f),
+        static_cast<const NDb::GameObject*>(0))
+    , canChecks(0)
+    , picked(false)
+  {
+  }
+
+  virtual bool CanBePickedUpBy(const NWorld::PFBaseUnit* pPicker) const
+  {
+    ++canChecks;
+    return NWorld::PFPickupableObjectBase::CanBePickedUpBy(pPicker);
+  }
+
+  bool IsBeingPickuped() const { return isBeingPickuped; }
+  int GetCanChecks() const { return canChecks; }
+  bool WasPicked() const { return picked; }
+
+protected:
+  virtual void OnPickedUp(NWorld::PFBaseUnit*) { picked = true; }
+
+private:
+  mutable int canChecks;
+  bool picked;
+};
+
+struct LinuxSummonCollector : public NWorld::ISummonAction
+{
+  LinuxSummonCollector()
+    : count(0)
+  {
+  }
+
+  virtual void operator()(NWorld::PFBaseUnit* unit)
+  {
+    if (!unit)
+      return;
+    ++count;
+    units.push_back(CPtr<NWorld::PFBaseUnit>(unit));
+  }
+
+  size_t count;
+  vector<CPtr<NWorld::PFBaseUnit> > units;
 };
 
 struct LinuxTargetSelectorCollector : public NWorld::ITargetAction
@@ -13430,6 +13650,2006 @@ void ProbeEffectsPoolRuntime(
       unitModTauntApplied ? "yes" : "no",
       unitModTauntStopped ? "yes" : "no");
 
+    NDb::AddApplicatorDuration* unitUtilityAddDurationDb = new NDb::AddApplicatorDuration();
+    NDb::AbilityUpgradeTechApplicator* unitUtilityTechDb = new NDb::AbilityUpgradeTechApplicator();
+    NDb::ChangeBaseAttackApplicator* unitUtilityChangeBaseDb = new NDb::ChangeBaseAttackApplicator();
+    NDb::ChangeHeroStateApplicator* unitUtilityHeroStateDb = new NDb::ChangeHeroStateApplicator();
+    NDb::ChangeStateApplicator* unitUtilityChangeStateDb = new NDb::ChangeStateApplicator();
+    NDb::CreateGlyphApplicator* unitUtilityCreateGlyphDb = new NDb::CreateGlyphApplicator();
+    NDb::CreepBehaviourChangeApplicator* unitUtilityCreepDb = new NDb::CreepBehaviourChangeApplicator();
+    NDb::DamageReflectApplicator* unitUtilityReflectDb = new NDb::DamageReflectApplicator();
+    NDb::FXApplicator* unitUtilityFxDb = new NDb::FXApplicator();
+    NDb::GiveConsumable* unitUtilityGiveConsumableDb = new NDb::GiveConsumable();
+    NDb::OnDamageApplicator* unitUtilityOnDamageDb = new NDb::OnDamageApplicator();
+    NDb::ResurrectApplicator* unitUtilityResurrectDb = new NDb::ResurrectApplicator();
+    NDb::SceneObjectChangeApplicator* unitUtilitySceneDb = new NDb::SceneObjectChangeApplicator();
+    NDb::UIMessageApplicator* unitUtilityUiMessageDb = new NDb::UIMessageApplicator();
+    NDb::VictoryApplicator* unitUtilityVictoryDb = new NDb::VictoryApplicator();
+
+    bool unitUtilityDbReady =
+      unitUtilityAddDurationDb &&
+      unitUtilityTechDb &&
+      unitUtilityChangeBaseDb &&
+      unitUtilityHeroStateDb &&
+      unitUtilityChangeStateDb &&
+      unitUtilityCreateGlyphDb &&
+      unitUtilityCreepDb &&
+      unitUtilityReflectDb &&
+      unitUtilityFxDb &&
+      unitUtilityGiveConsumableDb &&
+      unitUtilityOnDamageDb &&
+      unitUtilityResurrectDb &&
+      unitUtilitySceneDb &&
+      unitUtilityUiMessageDb &&
+      unitUtilityVictoryDb;
+    bool unitUtilityUnitsReady = false;
+    bool unitUtilityFactoryReady = false;
+    bool unitUtilityChangeBaseApplied = false;
+    bool unitUtilityCreepApplied = false;
+    bool unitUtilityReflectApplied = false;
+    bool unitUtilityOnDamageApplied = false;
+    bool unitUtilityHeroStateApplied = false;
+    bool unitUtilitySceneApplied = false;
+    bool unitUtilityFxApplied = false;
+    bool unitUtilityInstantApplied = false;
+    size_t unitUtilityChangeBaseBeforeRemove = 0;
+    size_t unitUtilityChangeBaseAfterRemove = 0;
+    size_t unitUtilityCreepBeforeRemove = 0;
+    size_t unitUtilityCreepAfterRemove = 0;
+    size_t unitUtilityReflectBeforeRemove = 0;
+    size_t unitUtilityReflectAfterRemove = 0;
+    size_t unitUtilityOnDamageBeforeRemove = 0;
+    size_t unitUtilityOnDamageAfterRemove = 0;
+    size_t unitUtilityHeroStateBeforeRemove = 0;
+    size_t unitUtilityHeroStateAfterRemove = 0;
+    size_t unitUtilitySceneBeforeRemove = 0;
+    size_t unitUtilitySceneAfterRemove = 0;
+    size_t unitUtilityFxBeforeRemove = 0;
+    size_t unitUtilityFxAfterRemove = 0;
+    int unitUtilityInstantCount = 0;
+
+    if (unitUtilityDbReady)
+    {
+      unitUtilityChangeBaseDb->lifeTime.sString = "-1.0";
+      unitUtilityHeroStateDb->lifeTime.sString = "-1.0";
+      unitUtilityCreepDb->lifeTime.sString = "-1.0";
+      unitUtilityReflectDb->lifeTime.sString = "-1.0";
+      unitUtilityReflectDb->amountInPersent = 25.0f;
+      unitUtilityOnDamageDb->lifeTime.sString = "-1.0";
+      unitUtilitySceneDb->lifeTime.sString = "-1.0";
+      unitUtilityFxDb->lifeTime.sString = "-1.0";
+      unitUtilityChangeStateDb->newStateName = "linux-bootstrap-state";
+
+      CObj<NWorld::PFBaseUnit> unitUtilityOwner(
+        new NWorld::PFBaseUnit(0, CVec3(101.0f, 31.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> unitUtilityReceiver(
+        new NWorld::PFBaseUnit(0, CVec3(102.0f, 31.0f, 0.0f), 0)
+      );
+      unitUtilityUnitsReady = unitUtilityOwner && unitUtilityReceiver;
+
+      if (unitUtilityUnitsReady)
+      {
+        unitUtilityOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        unitUtilityOwner->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        unitUtilityReceiver->ChangeFaction(NDb::FACTION_BURN);
+        unitUtilityReceiver->SetUnitType(NDb::UNITTYPE_CREEP);
+
+        auto applyUnitUtilityApplicator =
+          [&](NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFAbilityInstance>
+          {
+            NDb::Ability* ability = new NDb::Ability();
+            ability->type = NDb::ABILITYTYPE_ACTIVE;
+            ability->targetType = NDb::SPELLTARGET_ALL;
+            ability->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(applicatorDb));
+            return unitUtilityOwner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(ability),
+              target);
+          };
+
+        auto countUnitUtility =
+          [&](size_t LinuxUnitModApplicatorCollector::*counter) -> size_t
+          {
+            LinuxUnitModApplicatorCollector collector;
+            unitUtilityReceiver->ForAllAppliedApplicators(collector);
+            return collector.*counter;
+          };
+
+        CObj<NWorld::PFAbilityInstance> changeBaseInstance =
+          applyUnitUtilityApplicator(unitUtilityChangeBaseDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityChangeBaseBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::changeBaseAttacks);
+        if (changeBaseInstance)
+        {
+          changeBaseInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          changeBaseInstance->Cancel();
+        }
+        unitUtilityChangeBaseAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::changeBaseAttacks);
+        unitUtilityChangeBaseApplied =
+          changeBaseInstance &&
+          unitUtilityChangeBaseBeforeRemove == 1 &&
+          unitUtilityChangeBaseAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> creepInstance =
+          applyUnitUtilityApplicator(unitUtilityCreepDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityCreepBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::creepBehaviourChanges);
+        if (creepInstance)
+        {
+          creepInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          creepInstance->Cancel();
+        }
+        unitUtilityCreepAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::creepBehaviourChanges);
+        unitUtilityCreepApplied =
+          creepInstance &&
+          unitUtilityCreepBeforeRemove == 1 &&
+          unitUtilityCreepAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> reflectInstance =
+          applyUnitUtilityApplicator(unitUtilityReflectDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityReflectBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::damageReflects);
+        if (reflectInstance)
+        {
+          reflectInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          reflectInstance->Cancel();
+        }
+        unitUtilityReflectAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::damageReflects);
+        unitUtilityReflectApplied =
+          reflectInstance &&
+          unitUtilityReflectBeforeRemove == 1 &&
+          unitUtilityReflectAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> onDamageInstance =
+          applyUnitUtilityApplicator(unitUtilityOnDamageDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityOnDamageBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::onDamages);
+        if (onDamageInstance)
+        {
+          onDamageInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          onDamageInstance->Cancel();
+        }
+        unitUtilityOnDamageAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::onDamages);
+        unitUtilityOnDamageApplied =
+          onDamageInstance &&
+          unitUtilityOnDamageBeforeRemove == 1 &&
+          unitUtilityOnDamageAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> heroStateInstance =
+          applyUnitUtilityApplicator(unitUtilityHeroStateDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityHeroStateBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::changeHeroStates);
+        if (heroStateInstance)
+        {
+          heroStateInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          heroStateInstance->Cancel();
+        }
+        unitUtilityHeroStateAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::changeHeroStates);
+        unitUtilityHeroStateApplied =
+          heroStateInstance &&
+          unitUtilityHeroStateBeforeRemove == 1 &&
+          unitUtilityHeroStateAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> sceneInstance =
+          applyUnitUtilityApplicator(unitUtilitySceneDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilitySceneBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::sceneObjectChanges);
+        if (sceneInstance)
+        {
+          sceneInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          sceneInstance->Cancel();
+        }
+        unitUtilitySceneAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::sceneObjectChanges);
+        unitUtilitySceneApplied =
+          sceneInstance &&
+          unitUtilitySceneBeforeRemove == 1 &&
+          unitUtilitySceneAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> fxInstance =
+          applyUnitUtilityApplicator(unitUtilityFxDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityFxBeforeRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::fxs);
+        if (fxInstance)
+        {
+          fxInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(unitUtilityReceiver.GetPtr()));
+          fxInstance->Cancel();
+        }
+        unitUtilityFxAfterRemove =
+          countUnitUtility(&LinuxUnitModApplicatorCollector::fxs);
+        unitUtilityFxApplied =
+          fxInstance &&
+          unitUtilityFxBeforeRemove == 1 &&
+          unitUtilityFxAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> addDurationInstance =
+          applyUnitUtilityApplicator(unitUtilityAddDurationDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        CObj<NWorld::PFAbilityInstance> techInstance =
+          applyUnitUtilityApplicator(unitUtilityTechDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        CObj<NWorld::PFAbilityInstance> uiMessageInstance =
+          applyUnitUtilityApplicator(unitUtilityUiMessageDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        CObj<NWorld::PFAbilityInstance> glyphInstance =
+          applyUnitUtilityApplicator(unitUtilityCreateGlyphDb, NWorld::Target(CVec3(103.0f, 31.0f, 0.0f)));
+        CObj<NWorld::PFAbilityInstance> victoryInstance =
+          applyUnitUtilityApplicator(unitUtilityVictoryDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        CObj<NWorld::PFAbilityInstance> changeStateInstance =
+          applyUnitUtilityApplicator(unitUtilityChangeStateDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        CObj<NWorld::PFAbilityInstance> giveConsumableInstance =
+          applyUnitUtilityApplicator(unitUtilityGiveConsumableDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+        unitUtilityInstantCount =
+          (addDurationInstance ? 1 : 0) +
+          (techInstance ? 1 : 0) +
+          (uiMessageInstance ? 1 : 0) +
+          (glyphInstance ? 1 : 0) +
+          (victoryInstance ? 1 : 0) +
+          (changeStateInstance ? 1 : 0) +
+          (giveConsumableInstance ? 1 : 0);
+        unitUtilityInstantApplied = unitUtilityInstantCount == 7;
+        if (addDurationInstance)
+          addDurationInstance->Cancel();
+        if (techInstance)
+          techInstance->Cancel();
+        if (uiMessageInstance)
+          uiMessageInstance->Cancel();
+        if (glyphInstance)
+          glyphInstance->Cancel();
+        if (victoryInstance)
+          victoryInstance->Cancel();
+        if (changeStateInstance)
+          changeStateInstance->Cancel();
+        if (giveConsumableInstance)
+          giveConsumableInstance->Cancel();
+
+        CObj<NWorld::PFAbilityInstance> proofInstance =
+          changeBaseInstance ? changeBaseInstance :
+          (creepInstance ? creepInstance :
+          (fxInstance ? fxInstance : addDurationInstance));
+        if (proofInstance)
+        {
+          auto createUnitUtilityProof =
+            [&](NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFBaseApplicator>
+            {
+              NWorld::PFApplCreatePars proofPars(
+                proofInstance,
+                target,
+                static_cast<NWorld::PFBaseApplicator*>(0));
+              proofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(applicatorDb);
+              return applicatorDb->Create(proofPars);
+            };
+
+          CObj<NWorld::PFBaseApplicator> addDurationProof =
+            createUnitUtilityProof(unitUtilityAddDurationDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> techProof =
+            createUnitUtilityProof(unitUtilityTechDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> changeBaseProof =
+            createUnitUtilityProof(unitUtilityChangeBaseDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> heroStateProof =
+            createUnitUtilityProof(unitUtilityHeroStateDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> changeStateProof =
+            createUnitUtilityProof(unitUtilityChangeStateDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> glyphProof =
+            createUnitUtilityProof(unitUtilityCreateGlyphDb, NWorld::Target(CVec3(103.0f, 31.0f, 0.0f)));
+          CObj<NWorld::PFBaseApplicator> creepProof =
+            createUnitUtilityProof(unitUtilityCreepDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> reflectProof =
+            createUnitUtilityProof(unitUtilityReflectDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> fxProof =
+            createUnitUtilityProof(unitUtilityFxDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> giveConsumableProof =
+            createUnitUtilityProof(unitUtilityGiveConsumableDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> onDamageProof =
+            createUnitUtilityProof(unitUtilityOnDamageDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> resurrectProof =
+            createUnitUtilityProof(unitUtilityResurrectDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> sceneProof =
+            createUnitUtilityProof(unitUtilitySceneDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> uiMessageProof =
+            createUnitUtilityProof(unitUtilityUiMessageDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> victoryProof =
+            createUnitUtilityProof(unitUtilityVictoryDb, NWorld::Target(unitUtilityReceiver.GetPtr()));
+          unitUtilityFactoryReady =
+            addDurationProof &&
+            techProof &&
+            changeBaseProof &&
+            heroStateProof &&
+            changeStateProof &&
+            glyphProof &&
+            creepProof &&
+            reflectProof &&
+            fxProof &&
+            giveConsumableProof &&
+            onDamageProof &&
+            resurrectProof &&
+            sceneProof &&
+            uiMessageProof &&
+            victoryProof;
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-utility runtime: db=%s units=%s factory=%s changebase=%s/%lu->%lu creep=%s/%lu->%lu reflect=%s/%lu->%lu ondamage=%s/%lu->%lu herostate=%s/%lu->%lu scene=%s/%lu->%lu fx=%s/%lu->%lu instant=%s/%d\n",
+      unitUtilityDbReady ? "yes" : "no",
+      unitUtilityUnitsReady ? "yes" : "no",
+      unitUtilityFactoryReady ? "yes" : "no",
+      unitUtilityChangeBaseApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityChangeBaseBeforeRemove),
+      static_cast<unsigned long>(unitUtilityChangeBaseAfterRemove),
+      unitUtilityCreepApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityCreepBeforeRemove),
+      static_cast<unsigned long>(unitUtilityCreepAfterRemove),
+      unitUtilityReflectApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityReflectBeforeRemove),
+      static_cast<unsigned long>(unitUtilityReflectAfterRemove),
+      unitUtilityOnDamageApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityOnDamageBeforeRemove),
+      static_cast<unsigned long>(unitUtilityOnDamageAfterRemove),
+      unitUtilityHeroStateApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityHeroStateBeforeRemove),
+      static_cast<unsigned long>(unitUtilityHeroStateAfterRemove),
+      unitUtilitySceneApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilitySceneBeforeRemove),
+      static_cast<unsigned long>(unitUtilitySceneAfterRemove),
+      unitUtilityFxApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitUtilityFxBeforeRemove),
+      static_cast<unsigned long>(unitUtilityFxAfterRemove),
+      unitUtilityInstantApplied ? "yes" : "no",
+      unitUtilityInstantCount);
+
+    NDb::MoveToApplicator* unitMoveMoveToDb = new NDb::MoveToApplicator();
+    NDb::KickAwayApplicator* unitMoveKickDb = new NDb::KickAwayApplicator();
+    NDb::ShiftApplicator* unitMoveShiftDb = new NDb::ShiftApplicator();
+    NDb::ThrowApplicator* unitMoveThrowDb = new NDb::ThrowApplicator();
+    NDb::FlyApplicator* unitMoveFlyDb = new NDb::FlyApplicator();
+    NDb::AttractApplicator* unitMoveAttractDb = new NDb::AttractApplicator();
+    NDb::AttackTargetApplicator* unitMoveAttackTargetDb = new NDb::AttackTargetApplicator();
+    NDb::TeleportApplicator* unitMoveTeleportDb = new NDb::TeleportApplicator();
+    NDb::GhostMoveApplicator* unitMoveGhostDb = new NDb::GhostMoveApplicator();
+    NDb::PointTargetSelector* unitMovePointSelectorDb = new NDb::PointTargetSelector();
+    NDb::Unit* unitMoveUnitDb =
+      static_cast<NDb::Unit*>(
+        NDb::Unit::NewUnit(
+          NDb::DBID("", "LinuxBootstrapRuntimeMoveUnit")
+        )
+      );
+    NDb::Creature* unitMoveCreatureDb =
+      static_cast<NDb::Creature*>(
+        NDb::Creature::NewCreature(
+          NDb::DBID("", "LinuxBootstrapRuntimeMoveCreature")
+        )
+      );
+
+    bool unitMoveDbReady =
+      unitMoveMoveToDb &&
+      unitMoveKickDb &&
+      unitMoveShiftDb &&
+      unitMoveThrowDb &&
+      unitMoveFlyDb &&
+      unitMoveAttractDb &&
+      unitMoveAttackTargetDb &&
+      unitMoveTeleportDb &&
+      unitMoveGhostDb &&
+      unitMovePointSelectorDb &&
+      unitMoveUnitDb &&
+      unitMoveCreatureDb;
+    bool unitMoveUnitsReady = false;
+    bool unitMoveFactoryReady = false;
+    bool unitMoveTeleportApplied = false;
+    bool unitMoveKickApplied = false;
+    bool unitMoveAttractApplied = false;
+    bool unitMoveShiftApplied = false;
+    bool unitMoveMoveToApplied = false;
+    bool unitMoveGhostApplied = false;
+    bool unitMoveFlyApplied = false;
+    bool unitMoveThrowApplied = false;
+    bool unitMoveAttackApplied = false;
+    float unitMoveTeleportBefore = 0.0f;
+    float unitMoveTeleportAfter = 0.0f;
+    float unitMoveKickBefore = 0.0f;
+    float unitMoveKickAfter = 0.0f;
+    float unitMoveAttractBefore = 0.0f;
+    float unitMoveAttractAfter = 0.0f;
+    float unitMoveShiftBefore = 0.0f;
+    float unitMoveShiftAfter = 0.0f;
+    float unitMoveToBefore = 0.0f;
+    float unitMoveToAfter = 0.0f;
+    size_t unitMoveMoveToBeforeRemove = 0;
+    size_t unitMoveMoveToAfterRemove = 0;
+    size_t unitMoveGhostBeforeRemove = 0;
+    size_t unitMoveGhostAfterRemove = 0;
+    int unitMoveGhostModeBeforeRemove = 0;
+    int unitMoveGhostModeAfterRemove = 0;
+    size_t unitMoveFlyBeforeRemove = 0;
+    size_t unitMoveFlyAfterRemove = 0;
+    int unitMoveFlyGhostBeforeRemove = 0;
+    int unitMoveFlyGhostAfterRemove = 0;
+    size_t unitMoveThrowBeforeRemove = 0;
+    size_t unitMoveThrowAfterRemove = 0;
+    bool unitMoveThrowFlagsDuring = false;
+    bool unitMoveThrowFlagsAfter = false;
+    size_t unitMoveAttackBeforeRemove = 0;
+    size_t unitMoveAttackAfterRemove = 0;
+
+    if (unitMoveDbReady)
+    {
+      unitMoveTeleportDb->teleportTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveTeleportDb->maxDistance.sString = "100.0";
+      unitMoveTeleportDb->notifyInboundDispatches = false;
+
+      unitMoveKickDb->distance = 1.0f;
+
+      unitMoveAttractDb->distance = 1.0f;
+
+      unitMovePointSelectorDb->mode = NDb::POINTTARGETSELECTORMODE_TOOWNER;
+      unitMoveShiftDb->targetSelector =
+        NDb::Ptr<NDb::SingleTargetSelector>(unitMovePointSelectorDb);
+
+      unitMoveMoveToDb->lifeTime.sString = "-1.0";
+      unitMoveMoveToDb->moveTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveMoveToDb->moveSpeed.sString = "4.0";
+      unitMoveMoveToDb->moveRange.sString = "0.01";
+      unitMoveMoveToDb->isMoveDirect.sString = "1";
+
+      unitMoveGhostDb->lifeTime.sString = "-1.0";
+      unitMoveGhostDb->collisionFlags = NDb::GHOSTMOVEMODE_IGNOREDYNAMIC;
+      unitMoveGhostDb->pushUnits = false;
+
+      unitMoveFlyDb->lifeTime.sString = "0.25";
+      unitMoveFlyDb->startTime = 0.0f;
+      unitMoveFlyDb->stopTime = 0.0f;
+      unitMoveFlyDb->animatedStopTime = 0.0f;
+      unitMoveFlyDb->radiusFixObstacle = 1.0f;
+
+      unitMoveThrowDb->flightType = NDb::THROWTYPE_FLIP;
+      unitMoveThrowDb->flipTime.sString = "0.25";
+      unitMoveThrowDb->collisionFlags = NDb::GHOSTMOVEMODE_IGNOREDYNAMIC;
+      unitMoveThrowDb->surfaceSpeedFromAG = false;
+
+      unitMoveAttackTargetDb->lifeTime.sString = "-1.0";
+      unitMoveAttackTargetDb->attackTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveAttackTargetDb->ignoreVisibility = true;
+
+      CObj<NWorld::PFBaseMovingUnit> moveTeleportOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(250.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTeleportReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(260.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveKickOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(252.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveKickReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(253.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttractOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(254.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttractReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(257.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveShiftOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(258.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveShiftReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(262.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveToOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(264.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveToReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(269.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveGhostOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(270.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveGhostReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(271.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFCreature> moveFlyReceiver(
+        new NWorld::PFCreature(
+          0,
+          CVec3(272.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveCreatureDb)
+      );
+      CObj<NWorld::PFCreature> moveThrowReceiver(
+        new NWorld::PFCreature(
+          0,
+          CVec3(273.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveCreatureDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttackOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(274.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttackReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(275.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+
+      unitMoveUnitsReady =
+        moveTeleportOwner &&
+        moveTeleportReceiver &&
+        moveKickOwner &&
+        moveKickReceiver &&
+        moveAttractOwner &&
+        moveAttractReceiver &&
+        moveShiftOwner &&
+        moveShiftReceiver &&
+        moveToOwner &&
+        moveToReceiver &&
+        moveGhostOwner &&
+        moveGhostReceiver &&
+        moveFlyReceiver &&
+        moveThrowReceiver &&
+        moveAttackOwner &&
+        moveAttackReceiver;
+
+      if (unitMoveUnitsReady)
+      {
+        NWorld::PFBaseUnit* moveUnits[] =
+        {
+          moveTeleportOwner.GetPtr(), moveTeleportReceiver.GetPtr(),
+          moveKickOwner.GetPtr(), moveKickReceiver.GetPtr(),
+          moveAttractOwner.GetPtr(), moveAttractReceiver.GetPtr(),
+          moveShiftOwner.GetPtr(), moveShiftReceiver.GetPtr(),
+          moveToOwner.GetPtr(), moveToReceiver.GetPtr(),
+          moveGhostOwner.GetPtr(), moveGhostReceiver.GetPtr(),
+          moveFlyReceiver.GetPtr(), moveThrowReceiver.GetPtr(),
+          moveAttackOwner.GetPtr(), moveAttackReceiver.GetPtr()
+        };
+        for (int i = 0; i < ARRAY_SIZE(moveUnits); ++i)
+        {
+          if (!moveUnits[i])
+            continue;
+          moveUnits[i]->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+          moveUnits[i]->ChangeFaction((i % 2) == 0 ? NDb::FACTION_FREEZE : NDb::FACTION_BURN);
+        }
+        moveFlyReceiver->SetUnitType(NDb::UNITTYPE_CREEP);
+        moveThrowReceiver->SetUnitType(NDb::UNITTYPE_CREEP);
+
+        auto applyUnitMoveApplicator =
+          [](NWorld::PFBaseUnit* owner, NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFAbilityInstance>
+          {
+            NDb::Ability* ability = new NDb::Ability();
+            ability->type = NDb::ABILITYTYPE_ACTIVE;
+            ability->targetType = NDb::SPELLTARGET_ALL;
+            ability->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(applicatorDb));
+            return owner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(ability),
+              target);
+          };
+
+        auto countUnitMove =
+          [](NWorld::PFBaseUnit* unit, size_t LinuxUnitModApplicatorCollector::*counter) -> size_t
+          {
+            LinuxUnitModApplicatorCollector collector;
+            unit->ForAllAppliedApplicators(collector);
+            return collector.*counter;
+          };
+
+        unitMoveTeleportBefore = moveTeleportReceiver->GetPosition().x;
+        CObj<NWorld::PFAbilityInstance> teleportInstance =
+          applyUnitMoveApplicator(
+            moveTeleportOwner.GetPtr(),
+            unitMoveTeleportDb,
+            NWorld::Target(moveTeleportReceiver.GetPtr()));
+        unitMoveTeleportAfter = moveTeleportReceiver->GetPosition().x;
+        unitMoveTeleportApplied =
+          teleportInstance &&
+          unitMoveTeleportBefore > 259.9f &&
+          unitMoveTeleportAfter > 249.9f &&
+          unitMoveTeleportAfter < 250.1f;
+        if (teleportInstance)
+          teleportInstance->Cancel();
+
+        unitMoveKickBefore = moveKickReceiver->GetPosition().y;
+        CObj<NWorld::PFAbilityInstance> kickInstance =
+          applyUnitMoveApplicator(
+            moveKickOwner.GetPtr(),
+            unitMoveKickDb,
+            NWorld::Target(moveKickReceiver.GetPtr()));
+        unitMoveKickAfter = moveKickReceiver->GetPosition().y;
+        unitMoveKickApplied =
+          kickInstance &&
+          unitMoveKickBefore > 31.9f &&
+          unitMoveKickAfter > 32.9f &&
+          unitMoveKickAfter < 33.1f;
+        if (kickInstance)
+          kickInstance->Cancel();
+
+        unitMoveAttractBefore = moveAttractReceiver->GetPosition().x;
+        CObj<NWorld::PFAbilityInstance> attractInstance =
+          applyUnitMoveApplicator(
+            moveAttractOwner.GetPtr(),
+            unitMoveAttractDb,
+            NWorld::Target(moveAttractReceiver.GetPtr()));
+        unitMoveAttractAfter = moveAttractReceiver->GetPosition().x;
+        unitMoveAttractApplied =
+          attractInstance &&
+          unitMoveAttractBefore > 256.9f &&
+          unitMoveAttractAfter > 254.9f &&
+          unitMoveAttractAfter < 255.1f;
+        if (attractInstance)
+          attractInstance->Cancel();
+
+        unitMoveShiftBefore = moveShiftReceiver->GetPosition().x;
+        CObj<NWorld::PFAbilityInstance> shiftInstance =
+          applyUnitMoveApplicator(
+            moveShiftOwner.GetPtr(),
+            unitMoveShiftDb,
+            NWorld::Target(moveShiftReceiver.GetPtr()));
+        unitMoveShiftAfter = moveShiftReceiver->GetPosition().x;
+        unitMoveShiftApplied =
+          shiftInstance &&
+          unitMoveShiftBefore > 261.9f &&
+          unitMoveShiftAfter > 257.9f &&
+          unitMoveShiftAfter < 258.1f;
+        if (shiftInstance)
+          shiftInstance->Cancel();
+
+        unitMoveToBefore = moveToReceiver->GetPosition().x;
+        CObj<NWorld::PFAbilityInstance> moveToInstance =
+          applyUnitMoveApplicator(
+            moveToOwner.GetPtr(),
+            unitMoveMoveToDb,
+            NWorld::Target(moveToReceiver.GetPtr()));
+        unitMoveMoveToBeforeRemove =
+          countUnitMove(moveToReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::moveTos);
+        moveToReceiver->Step(0.016f);
+        if (moveToInstance)
+          moveToInstance->Update(0.016f);
+        unitMoveToAfter = moveToReceiver->GetPosition().x;
+        if (moveToInstance)
+        {
+          moveToInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveToReceiver.GetPtr()));
+          moveToInstance->Cancel();
+        }
+        unitMoveMoveToAfterRemove =
+          countUnitMove(moveToReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::moveTos);
+        unitMoveMoveToApplied =
+          moveToInstance &&
+          unitMoveMoveToBeforeRemove == 1 &&
+          unitMoveMoveToAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> ghostInstance =
+          applyUnitMoveApplicator(
+            moveGhostOwner.GetPtr(),
+            unitMoveGhostDb,
+            NWorld::Target(moveGhostReceiver.GetPtr()));
+        unitMoveGhostBeforeRemove =
+          countUnitMove(moveGhostReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::ghostMoves);
+        unitMoveGhostModeBeforeRemove = moveGhostReceiver->GetGhostMode();
+        if (ghostInstance)
+        {
+          ghostInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveGhostReceiver.GetPtr()));
+          ghostInstance->Cancel();
+        }
+        unitMoveGhostAfterRemove =
+          countUnitMove(moveGhostReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::ghostMoves);
+        unitMoveGhostModeAfterRemove = moveGhostReceiver->GetGhostMode();
+        unitMoveGhostApplied =
+          ghostInstance &&
+          unitMoveGhostBeforeRemove == 1 &&
+          unitMoveGhostAfterRemove == 0 &&
+          unitMoveGhostModeBeforeRemove != 0 &&
+          unitMoveGhostModeAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> flyInstance =
+          applyUnitMoveApplicator(
+            moveGhostOwner.GetPtr(),
+            unitMoveFlyDb,
+            NWorld::Target(moveFlyReceiver.GetPtr()));
+        unitMoveFlyBeforeRemove =
+          countUnitMove(moveFlyReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::flys);
+        unitMoveFlyGhostBeforeRemove = moveFlyReceiver->GetGhostMode();
+        if (flyInstance)
+        {
+          flyInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveFlyReceiver.GetPtr()));
+          flyInstance->Cancel();
+        }
+        unitMoveFlyAfterRemove =
+          countUnitMove(moveFlyReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::flys);
+        unitMoveFlyGhostAfterRemove = moveFlyReceiver->GetGhostMode();
+        unitMoveFlyApplied =
+          flyInstance &&
+          unitMoveFlyBeforeRemove == 1 &&
+          unitMoveFlyAfterRemove == 0 &&
+          unitMoveFlyGhostBeforeRemove != 0 &&
+          unitMoveFlyGhostAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> throwInstance =
+          applyUnitMoveApplicator(
+            moveGhostOwner.GetPtr(),
+            unitMoveThrowDb,
+            NWorld::Target(moveThrowReceiver.GetPtr()));
+        unitMoveThrowBeforeRemove =
+          countUnitMove(moveThrowReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::throws);
+        unitMoveThrowFlagsDuring =
+          moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDMOVE) &&
+          moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDATTACK);
+        if (throwInstance)
+        {
+          throwInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveThrowReceiver.GetPtr()));
+          throwInstance->Cancel();
+        }
+        unitMoveThrowAfterRemove =
+          countUnitMove(moveThrowReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::throws);
+        unitMoveThrowFlagsAfter =
+          moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDMOVE) ||
+          moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDATTACK);
+        unitMoveThrowApplied =
+          throwInstance &&
+          unitMoveThrowBeforeRemove == 1 &&
+          unitMoveThrowAfterRemove == 0 &&
+          unitMoveThrowFlagsDuring &&
+          !unitMoveThrowFlagsAfter;
+
+        CObj<NWorld::PFAbilityInstance> attackInstance =
+          applyUnitMoveApplicator(
+            moveAttackOwner.GetPtr(),
+            unitMoveAttackTargetDb,
+            NWorld::Target(moveAttackReceiver.GetPtr()));
+        unitMoveAttackBeforeRemove =
+          countUnitMove(moveAttackReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
+        if (attackInstance)
+        {
+          attackInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveAttackReceiver.GetPtr()));
+          attackInstance->Cancel();
+        }
+        unitMoveAttackAfterRemove =
+          countUnitMove(moveAttackReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
+        unitMoveAttackApplied =
+          attackInstance &&
+          unitMoveAttackBeforeRemove == 1 &&
+          unitMoveAttackAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> proofInstance =
+          ghostInstance ? ghostInstance :
+          (moveToInstance ? moveToInstance :
+          (teleportInstance ? teleportInstance : attackInstance));
+        if (proofInstance)
+        {
+          auto createUnitMoveProof =
+            [&](NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFBaseApplicator>
+            {
+              NWorld::PFApplCreatePars proofPars(
+                proofInstance,
+                target,
+                static_cast<NWorld::PFBaseApplicator*>(0));
+              proofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(applicatorDb);
+              return applicatorDb->Create(proofPars);
+            };
+
+          CObj<NWorld::PFBaseApplicator> moveToProof =
+            createUnitMoveProof(unitMoveMoveToDb, NWorld::Target(moveToReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> kickProof =
+            createUnitMoveProof(unitMoveKickDb, NWorld::Target(moveKickReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> shiftProof =
+            createUnitMoveProof(unitMoveShiftDb, NWorld::Target(moveShiftReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> throwProof =
+            createUnitMoveProof(unitMoveThrowDb, NWorld::Target(moveThrowReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> flyProof =
+            createUnitMoveProof(unitMoveFlyDb, NWorld::Target(moveFlyReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> attractProof =
+            createUnitMoveProof(unitMoveAttractDb, NWorld::Target(moveAttractReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> attackProof =
+            createUnitMoveProof(unitMoveAttackTargetDb, NWorld::Target(moveAttackReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> teleportProof =
+            createUnitMoveProof(unitMoveTeleportDb, NWorld::Target(moveTeleportReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> ghostProof =
+            createUnitMoveProof(unitMoveGhostDb, NWorld::Target(moveGhostReceiver.GetPtr()));
+          unitMoveFactoryReady =
+            moveToProof &&
+            kickProof &&
+            shiftProof &&
+            throwProof &&
+            flyProof &&
+            attractProof &&
+            attackProof &&
+            teleportProof &&
+            ghostProof;
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-move runtime: db=%s units=%s factory=%s teleport=%s/%.1f->%.1f kick=%s/%.1f->%.1f attract=%s/%.1f->%.1f shift=%s/%.1f->%.1f moveto=%s/%lu->%lu/%.1f->%.1f ghost=%s/%lu->%lu/%d->%d fly=%s/%lu->%lu/%d->%d throw=%s/%lu->%lu/%s->%s attack=%s/%lu->%lu\n",
+      unitMoveDbReady ? "yes" : "no",
+      unitMoveUnitsReady ? "yes" : "no",
+      unitMoveFactoryReady ? "yes" : "no",
+      unitMoveTeleportApplied ? "yes" : "no",
+      unitMoveTeleportBefore,
+      unitMoveTeleportAfter,
+      unitMoveKickApplied ? "yes" : "no",
+      unitMoveKickBefore,
+      unitMoveKickAfter,
+      unitMoveAttractApplied ? "yes" : "no",
+      unitMoveAttractBefore,
+      unitMoveAttractAfter,
+      unitMoveShiftApplied ? "yes" : "no",
+      unitMoveShiftBefore,
+      unitMoveShiftAfter,
+      unitMoveMoveToApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitMoveMoveToBeforeRemove),
+      static_cast<unsigned long>(unitMoveMoveToAfterRemove),
+      unitMoveToBefore,
+      unitMoveToAfter,
+      unitMoveGhostApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitMoveGhostBeforeRemove),
+      static_cast<unsigned long>(unitMoveGhostAfterRemove),
+      unitMoveGhostModeBeforeRemove,
+      unitMoveGhostModeAfterRemove,
+      unitMoveFlyApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitMoveFlyBeforeRemove),
+      static_cast<unsigned long>(unitMoveFlyAfterRemove),
+      unitMoveFlyGhostBeforeRemove,
+      unitMoveFlyGhostAfterRemove,
+      unitMoveThrowApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitMoveThrowBeforeRemove),
+      static_cast<unsigned long>(unitMoveThrowAfterRemove),
+      unitMoveThrowFlagsDuring ? "yes" : "no",
+      unitMoveThrowFlagsAfter ? "yes" : "no",
+      unitMoveAttackApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitMoveAttackBeforeRemove),
+      static_cast<unsigned long>(unitMoveAttackAfterRemove));
+
+    NDb::SummonApplicator* unitSummonDb =
+      static_cast<NDb::SummonApplicator*>(
+        NDb::SummonApplicator::NewSummonApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeSummonApplicator")
+        )
+      );
+    NDb::SummonBehaviourCommon* unitSummonBehaviourDb = new NDb::SummonBehaviourCommon();
+    NDb::Summoned* unitSummonCreatureDb =
+      static_cast<NDb::Summoned*>(
+        NDb::Summoned::NewSummoned(
+          NDb::DBID("", "LinuxBootstrapRuntimeSummonedCreature")
+        )
+      );
+    NDb::ValueApplicator* unitSummonChildDb =
+      static_cast<NDb::ValueApplicator*>(
+        NDb::ValueApplicator::NewValueApplicator(
+          NDb::DBID("", "LinuxBootstrapRuntimeSummonChildValue")
+        )
+      );
+
+    bool unitSummonDbReady =
+      unitSummonDb &&
+      unitSummonBehaviourDb &&
+      unitSummonCreatureDb &&
+      unitSummonChildDb;
+    bool unitSummonUnitsReady = false;
+    bool unitSummonAbilityCreated = false;
+    bool unitSummonCreated = false;
+    bool unitSummonMastered = false;
+    bool unitSummonChildApplied = false;
+    bool unitSummonFactory = false;
+    size_t unitSummonGroupCount = 0;
+    size_t unitSummonActionCount = 0;
+    size_t unitSummonChildApplicators = 0;
+    float unitSummonChildValue = 0.0f;
+
+    if (unitSummonDbReady)
+    {
+      unitSummonBehaviourDb->summonType = NDb::SUMMONTYPE_PRIMARY;
+      unitSummonBehaviourDb->maxCount.sString = "4";
+      unitSummonBehaviourDb->maxThisCount.sString = "4";
+      unitSummonBehaviourDb->lashRange.sString = "6.0";
+      unitSummonBehaviourDb->responseRange = 6.0f;
+      unitSummonBehaviourDb->responseTime = 0.05f;
+
+      unitSummonChildDb->value.sString = "0.44";
+      unitSummonChildDb->lifeTime.sString = "-1.0";
+
+      unitSummonDb->behaviour = NDb::Ptr<NDb::SummonBehaviourBase>(unitSummonBehaviourDb);
+      unitSummonDb->summonedUnits.push_back(NDb::Ptr<NDb::Summoned>(unitSummonCreatureDb));
+      unitSummonDb->summonedUnitsCount.sString = "2";
+      unitSummonDb->summonedUnitIndex.sString = "0";
+      unitSummonDb->lifeTime.sString = "5.0";
+      unitSummonDb->placeMode = NDb::SUMMONPLACEMODE_BYAPPLICATOR;
+      unitSummonDb->summonSource = NDb::SUMMONSOURCE_BYAPPLICATOR;
+      unitSummonDb->summonGroupName = "linux-bootstrap-summon";
+      unitSummonDb->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(unitSummonChildDb));
+
+      CObj<NWorld::PFBaseUnit> unitSummonOwner(
+        new NWorld::PFBaseUnit(0, CVec3(100.0f, 34.0f, 0.0f), 0)
+      );
+      unitSummonOwner->ChangeFaction(NDb::FACTION_FREEZE);
+      unitSummonUnitsReady = unitSummonOwner != 0;
+
+      if (unitSummonUnitsReady)
+      {
+        NDb::Ability* summonAbility = new NDb::Ability();
+        summonAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        summonAbility->targetType = NDb::SPELLTARGET_ALL;
+        summonAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(unitSummonDb));
+
+        CObj<NWorld::PFAbilityInstance> summonInstance =
+          unitSummonOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(summonAbility),
+            NWorld::Target(unitSummonOwner.GetPtr())
+          );
+        unitSummonAbilityCreated = summonInstance != 0;
+        CObj<NWorld::PFBaseApplicator> summonFactoryProof;
+        if (unitSummonAbilityCreated)
+        {
+          summonFactoryProof = unitSummonDb->Create(
+            NWorld::PFApplCreatePars(
+              summonInstance,
+              NWorld::Target(unitSummonOwner.GetPtr()),
+              static_cast<NWorld::PFBaseApplicator*>(0)));
+        }
+        unitSummonFactory = summonFactoryProof != 0;
+
+        unitSummonGroupCount =
+          unitSummonOwner->GetSummonsCount(
+            NDb::SUMMONTYPE_PRIMARY,
+            unitSummonDb->summonGroupName);
+
+        LinuxSummonCollector summonCollector;
+        unitSummonOwner->ForAllSummons(summonCollector, NDb::SUMMONTYPE_PRIMARY);
+        unitSummonActionCount = summonCollector.count;
+        unitSummonCreated =
+          unitSummonGroupCount == 2 &&
+          unitSummonActionCount == 2 &&
+          summonCollector.units.size() == 2;
+
+        if (unitSummonCreated)
+        {
+          unitSummonMastered =
+            summonCollector.units[0]->GetMasterUnit().GetPtr() == unitSummonOwner.GetPtr() &&
+            summonCollector.units[1]->GetMasterUnit().GetPtr() == unitSummonOwner.GetPtr() &&
+            summonCollector.units[0]->GetFaction() == unitSummonOwner->GetFaction() &&
+            summonCollector.units[1]->GetFaction() == unitSummonOwner->GetFaction() &&
+            summonCollector.units[0]->GetUnitType() == NDb::UNITTYPE_SUMMON &&
+            summonCollector.units[1]->GetUnitType() == NDb::UNITTYPE_SUMMON;
+
+          LinuxUnitModApplicatorCollector firstSummonApplicators;
+          LinuxUnitModApplicatorCollector secondSummonApplicators;
+          summonCollector.units[0]->ForAllAppliedApplicators(firstSummonApplicators);
+          summonCollector.units[1]->ForAllAppliedApplicators(secondSummonApplicators);
+          unitSummonChildApplicators =
+            firstSummonApplicators.values +
+            secondSummonApplicators.values;
+          unitSummonChildValue =
+            firstSummonApplicators.valueVariable +
+            secondSummonApplicators.valueVariable;
+          unitSummonChildApplied =
+            unitSummonChildApplicators == 2 &&
+            unitSummonChildValue > 0.87f &&
+            unitSummonChildValue < 0.89f;
+        }
+
+        if (summonInstance)
+          summonInstance->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects unit-summon runtime: db=%s units=%s ability=%s factory=%s created=%s/%lu/%lu mastered=%s child=%s/%lu/%.2f\n",
+      unitSummonDbReady ? "yes" : "no",
+      unitSummonUnitsReady ? "yes" : "no",
+      unitSummonAbilityCreated ? "yes" : "no",
+      unitSummonFactory ? "yes" : "no",
+      unitSummonCreated ? "yes" : "no",
+      static_cast<unsigned long>(unitSummonGroupCount),
+      static_cast<unsigned long>(unitSummonActionCount),
+      unitSummonMastered ? "yes" : "no",
+      unitSummonChildApplied ? "yes" : "no",
+      static_cast<unsigned long>(unitSummonChildApplicators),
+      unitSummonChildValue);
+
+    NDb::SpellSwitchApplicator* specialSwitchDb = new NDb::SpellSwitchApplicator();
+    NDb::ProgramApplicator* specialProgramDb = new NDb::ProgramApplicator();
+    NDb::ForAllTargetsApplicator* specialForAllDb = new NDb::ForAllTargetsApplicator();
+    NDb::ProgramApplicator* specialForAllProgramDb = new NDb::ProgramApplicator();
+    NDb::AreaTargetSelector* specialForAllAreaDb = new NDb::AreaTargetSelector();
+    NDb::NaftaTransferApplicator* specialNaftaDb = new NDb::NaftaTransferApplicator();
+    NDb::DealedDamageConverterApplicator* specialConverterDb = new NDb::DealedDamageConverterApplicator();
+    NDb::DamageApplicator* specialConverterDamageDb =
+      static_cast<NDb::DamageApplicator*>(
+        NDb::DamageApplicator::NewDamageApplicator(
+          NDb::DBID("", "LinuxBootstrapSpecialConverterDamage")
+        )
+      );
+    NDb::ValueApplicator* specialSwitchValue0Db = new NDb::ValueApplicator();
+    NDb::ValueApplicator* specialSwitchValue1Db = new NDb::ValueApplicator();
+    NDb::ValueApplicator* specialProgramValue0Db = new NDb::ValueApplicator();
+    NDb::ValueApplicator* specialProgramValue1Db = new NDb::ValueApplicator();
+    NDb::ValueApplicator* specialForAllValueDb = new NDb::ValueApplicator();
+
+    bool specialDbReady =
+      specialSwitchDb &&
+      specialProgramDb &&
+      specialForAllDb &&
+      specialForAllProgramDb &&
+      specialForAllAreaDb &&
+      specialNaftaDb &&
+      specialConverterDb &&
+      specialConverterDamageDb &&
+      specialSwitchValue0Db &&
+      specialSwitchValue1Db &&
+      specialProgramValue0Db &&
+      specialProgramValue1Db &&
+      specialForAllValueDb;
+    bool specialUnitsReady = false;
+    bool specialFactoryReady = false;
+    bool specialSwitchApplied = false;
+    bool specialProgramApplied = false;
+    bool specialForAllApplied = false;
+    bool specialNaftaApplied = false;
+    bool specialConverterApplied = false;
+    size_t specialSwitchValues = 0;
+    size_t specialProgramValues = 0;
+    size_t specialForAllTargets = 0;
+    float specialSwitchValue = 0.0f;
+    float specialProgramValue = 0.0f;
+    float specialForAllValue = 0.0f;
+    int specialNaftaSourceBefore = 0;
+    int specialNaftaSourceAfter = 0;
+    int specialNaftaReceiverBefore = 0;
+    int specialNaftaReceiverAfter = 0;
+    float specialConverterOwnerBefore = 0.0f;
+    float specialConverterOwnerAfter = 0.0f;
+    float specialConverterTargetBefore = 0.0f;
+    float specialConverterTargetAfter = 0.0f;
+
+    if (specialDbReady)
+    {
+      specialSwitchValue0Db->value.sString = "0.11";
+      specialSwitchValue0Db->lifeTime.sString = "-1.0";
+      specialSwitchValue1Db->value.sString = "0.22";
+      specialSwitchValue1Db->lifeTime.sString = "-1.0";
+      NDb::Spell* specialSwitchSpell0 = new NDb::Spell();
+      NDb::Spell* specialSwitchSpell1 = new NDb::Spell();
+      specialSwitchSpell0->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialSwitchValue0Db));
+      specialSwitchSpell1->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialSwitchValue1Db));
+      specialSwitchDb->activeSpellIndex.sString = "1";
+      specialSwitchDb->dontUseDispatches = true;
+      specialSwitchDb->spells.push_back(NDb::Ptr<NDb::Spell>(specialSwitchSpell0));
+      specialSwitchDb->spells.push_back(NDb::Ptr<NDb::Spell>(specialSwitchSpell1));
+
+      specialProgramValue0Db->value.sString = "0.31";
+      specialProgramValue0Db->lifeTime.sString = "-1.0";
+      specialProgramValue1Db->value.sString = "0.32";
+      specialProgramValue1Db->lifeTime.sString = "-1.0";
+      NDb::ApplicatorToExecute specialProgramStep0;
+      NDb::ApplicatorToExecute specialProgramStep1;
+      specialProgramStep0.applicator = NDb::Ptr<NDb::BaseApplicator>(specialProgramValue0Db);
+      specialProgramStep0.continueEvents = NDb::PARENTNOTIFICATIONFLAGS_ZERO;
+      specialProgramStep1.applicator = NDb::Ptr<NDb::BaseApplicator>(specialProgramValue1Db);
+      specialProgramStep1.continueEvents = NDb::PARENTNOTIFICATIONFLAGS_ZERO;
+      specialProgramDb->applicators.push_back(specialProgramStep0);
+      specialProgramDb->applicators.push_back(specialProgramStep1);
+
+      specialForAllValueDb->value.sString = "0.08";
+      specialForAllValueDb->lifeTime.sString = "-1.0";
+      NDb::ApplicatorToExecute specialForAllStep;
+      specialForAllStep.applicator = NDb::Ptr<NDb::BaseApplicator>(specialForAllValueDb);
+      specialForAllStep.continueEvents = NDb::PARENTNOTIFICATIONFLAGS_ZERO;
+      specialForAllProgramDb->applicators.push_back(specialForAllStep);
+      specialForAllAreaDb->targetFilter =
+        static_cast<NDb::ESpellTarget>(NDb::SPELLTARGET_DUMMYUNIT | NDb::SPELLTARGET_ENEMY);
+      specialForAllAreaDb->range.sString = "1.2";
+      specialForAllDb->targets = NDb::Ptr<NDb::MultipleTargetSelector>(specialForAllAreaDb);
+      specialForAllDb->program = NDb::Ptr<NDb::ProgramApplicator>(specialForAllProgramDb);
+      specialForAllDb->continueEvents = NDb::PARENTNOTIFICATIONFLAGS_ZERO;
+      specialForAllDb->lifeTime.sString = "-1.0";
+
+      specialNaftaDb->amount.sString = "4.0";
+      specialNaftaDb->multiplier.sString = "0.5";
+      specialNaftaDb->addition.sString = "1.0";
+      specialNaftaDb->naftaTransferTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+
+      specialConverterDamageDb->damage.sString = "0.20";
+      specialConverterDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+      specialConverterDb->scale = 0.5f;
+      specialConverterDb->deltaTime = 10.0f;
+      specialConverterDb->type = NDb::HEALTARGET_HEALTH;
+      specialConverterDb->applyTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+
+      CObj<NWorld::PFBaseUnit> specialOwner(
+        new NWorld::PFBaseUnit(0, CVec3(220.0f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialSwitchTarget(
+        new NWorld::PFBaseUnit(0, CVec3(230.0f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialProgramTarget(
+        new NWorld::PFBaseUnit(0, CVec3(231.0f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialForAllTarget0(
+        new NWorld::PFBaseUnit(0, CVec3(220.4f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialForAllTarget1(
+        new NWorld::PFBaseUnit(0, CVec3(220.8f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialNaftaSource(
+        new NWorld::PFBaseUnit(0, CVec3(232.0f, 40.0f, 0.0f), 0)
+      );
+      CObj<NWorld::PFBaseUnit> specialConverterTarget(
+        new NWorld::PFBaseUnit(0, CVec3(233.0f, 40.0f, 0.0f), 0)
+      );
+      specialUnitsReady =
+        specialOwner &&
+        specialSwitchTarget &&
+        specialProgramTarget &&
+        specialForAllTarget0 &&
+        specialForAllTarget1 &&
+        specialNaftaSource &&
+        specialConverterTarget;
+
+      if (specialUnitsReady)
+      {
+        specialOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        specialOwner->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialSwitchTarget->ChangeFaction(NDb::FACTION_BURN);
+        specialSwitchTarget->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialProgramTarget->ChangeFaction(NDb::FACTION_BURN);
+        specialProgramTarget->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialForAllTarget0->ChangeFaction(NDb::FACTION_BURN);
+        specialForAllTarget0->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialForAllTarget1->ChangeFaction(NDb::FACTION_BURN);
+        specialForAllTarget1->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialNaftaSource->ChangeFaction(NDb::FACTION_BURN);
+        specialNaftaSource->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialConverterTarget->ChangeFaction(NDb::FACTION_BURN);
+        specialConverterTarget->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+
+        NDb::Ability* specialSwitchAbility = new NDb::Ability();
+        specialSwitchAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        specialSwitchAbility->targetType = NDb::SPELLTARGET_ALL;
+        specialSwitchAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialSwitchDb));
+        CObj<NWorld::PFAbilityInstance> specialSwitchInstance =
+          specialOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(specialSwitchAbility),
+            NWorld::Target(specialSwitchTarget.GetPtr())
+          );
+
+        NDb::Ability* specialProgramAbility = new NDb::Ability();
+        specialProgramAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        specialProgramAbility->targetType = NDb::SPELLTARGET_ALL;
+        specialProgramAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialProgramDb));
+        CObj<NWorld::PFAbilityInstance> specialProgramInstance =
+          specialOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(specialProgramAbility),
+            NWorld::Target(specialProgramTarget.GetPtr())
+          );
+
+        NDb::Ability* specialForAllAbility = new NDb::Ability();
+        specialForAllAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        specialForAllAbility->targetType = NDb::SPELLTARGET_ALL;
+        specialForAllAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialForAllDb));
+        CObj<NWorld::PFAbilityInstance> specialForAllInstance =
+          specialOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(specialForAllAbility),
+            NWorld::Target(specialOwner.GetPtr())
+          );
+
+        specialNaftaSource->OnAddGold(specialOwner.GetPtr(), 6.0f, false);
+        specialNaftaSourceBefore = specialNaftaSource->GetGold();
+        specialNaftaReceiverBefore = specialOwner->GetGold();
+        NDb::Ability* specialNaftaAbility = new NDb::Ability();
+        specialNaftaAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        specialNaftaAbility->targetType = NDb::SPELLTARGET_ALL;
+        specialNaftaAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialNaftaDb));
+        CObj<NWorld::PFAbilityInstance> specialNaftaInstance =
+          specialOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(specialNaftaAbility),
+            NWorld::Target(specialNaftaSource.GetPtr())
+          );
+        specialNaftaSourceAfter = specialNaftaSource->GetGold();
+        specialNaftaReceiverAfter = specialOwner->GetGold();
+
+        specialOwner->ChangeHealth(0.5f - specialOwner->GetLife());
+        specialConverterOwnerBefore = specialOwner->GetLife();
+        specialConverterTargetBefore = specialConverterTarget->GetLife();
+        NDb::Ability* specialConverterAbility = new NDb::Ability();
+        specialConverterAbility->type = NDb::ABILITYTYPE_ACTIVE;
+        specialConverterAbility->targetType = NDb::SPELLTARGET_ALL;
+        specialConverterAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialConverterDamageDb));
+        specialConverterAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(specialConverterDb));
+        CObj<NWorld::PFAbilityInstance> specialConverterInstance =
+          specialOwner->UseExternalAbility(
+            NDb::Ptr<NDb::Ability>(specialConverterAbility),
+            NWorld::Target(specialConverterTarget.GetPtr())
+          );
+        specialConverterOwnerAfter = specialOwner->GetLife();
+        specialConverterTargetAfter = specialConverterTarget->GetLife();
+
+        if (specialSwitchInstance)
+        {
+          NWorld::PFApplCreatePars switchProofPars(
+            specialSwitchInstance,
+            NWorld::Target(specialSwitchTarget.GetPtr()),
+            static_cast<NWorld::PFBaseApplicator*>(0));
+          switchProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialSwitchDb);
+          CObj<NWorld::PFBaseApplicator> switchProof =
+            specialSwitchDb->Create(switchProofPars);
+          NWorld::PFApplCreatePars programProofPars(
+            specialSwitchInstance,
+            NWorld::Target(specialProgramTarget.GetPtr()),
+            static_cast<NWorld::PFBaseApplicator*>(0));
+          programProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialProgramDb);
+          CObj<NWorld::PFBaseApplicator> programProof =
+            specialProgramDb->Create(programProofPars);
+          NWorld::PFApplCreatePars forAllProofPars(
+            specialSwitchInstance,
+            NWorld::Target(specialOwner.GetPtr()),
+            static_cast<NWorld::PFBaseApplicator*>(0));
+          forAllProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialForAllDb);
+          CObj<NWorld::PFBaseApplicator> forAllProof =
+            specialForAllDb->Create(forAllProofPars);
+          NWorld::PFApplCreatePars naftaProofPars(
+            specialSwitchInstance,
+            NWorld::Target(specialNaftaSource.GetPtr()),
+            static_cast<NWorld::PFBaseApplicator*>(0));
+          naftaProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialNaftaDb);
+          CObj<NWorld::PFBaseApplicator> naftaProof =
+            specialNaftaDb->Create(naftaProofPars);
+          NWorld::PFApplCreatePars converterProofPars(
+            specialSwitchInstance,
+            NWorld::Target(specialConverterTarget.GetPtr()),
+            static_cast<NWorld::PFBaseApplicator*>(0));
+          converterProofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(specialConverterDb);
+          CObj<NWorld::PFBaseApplicator> converterProof =
+            specialConverterDb->Create(converterProofPars);
+          specialFactoryReady =
+            switchProof &&
+            programProof &&
+            forAllProof &&
+            naftaProof &&
+            converterProof;
+        }
+
+        LinuxUnitModApplicatorCollector switchCollector;
+        LinuxUnitModApplicatorCollector programCollector;
+        LinuxUnitModApplicatorCollector forAllCollector0;
+        LinuxUnitModApplicatorCollector forAllCollector1;
+        specialSwitchTarget->ForAllAppliedApplicators(switchCollector);
+        specialProgramTarget->ForAllAppliedApplicators(programCollector);
+        specialForAllTarget0->ForAllAppliedApplicators(forAllCollector0);
+        specialForAllTarget1->ForAllAppliedApplicators(forAllCollector1);
+        specialSwitchValues = switchCollector.values;
+        specialSwitchValue = switchCollector.valueVariableSum;
+        specialProgramValues = programCollector.values;
+        specialProgramValue = programCollector.valueVariableSum;
+        specialForAllTargets = forAllCollector0.values + forAllCollector1.values;
+        specialForAllValue = forAllCollector0.valueVariableSum + forAllCollector1.valueVariableSum;
+
+        specialSwitchApplied =
+          specialSwitchInstance &&
+          specialSwitchValues == 1 &&
+          specialSwitchValue > 0.21f &&
+          specialSwitchValue < 0.23f;
+        specialProgramApplied =
+          specialProgramInstance &&
+          specialProgramValues == 2 &&
+          specialProgramValue > 0.62f &&
+          specialProgramValue < 0.64f;
+        specialForAllApplied =
+          specialForAllInstance &&
+          specialForAllTargets == 2 &&
+          specialForAllValue > 0.15f &&
+          specialForAllValue < 0.17f;
+        specialNaftaApplied =
+          specialNaftaInstance &&
+          specialNaftaSourceBefore == 6 &&
+          specialNaftaSourceAfter == 2 &&
+          specialNaftaReceiverBefore == 0 &&
+          specialNaftaReceiverAfter == 3;
+        specialConverterApplied =
+          specialConverterInstance &&
+          specialConverterOwnerBefore > 0.49f &&
+          specialConverterOwnerBefore < 0.51f &&
+          specialConverterOwnerAfter > 0.59f &&
+          specialConverterOwnerAfter < 0.61f &&
+          specialConverterTargetBefore > 0.99f &&
+          specialConverterTargetAfter > 0.79f &&
+          specialConverterTargetAfter < 0.81f;
+
+        if (specialSwitchInstance)
+          specialSwitchInstance->Cancel();
+        if (specialProgramInstance)
+          specialProgramInstance->Cancel();
+        if (specialForAllInstance)
+          specialForAllInstance->Cancel();
+        if (specialNaftaInstance)
+          specialNaftaInstance->Cancel();
+        if (specialConverterInstance)
+          specialConverterInstance->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects special-applicator runtime: db=%s units=%s factory=%s switch=%s/%lu/%.2f program=%s/%lu/%.2f forall=%s/%lu/%.2f nafta=%s/%d->%d/%d->%d converter=%s/%.2f->%.2f/%.2f->%.2f\n",
+      specialDbReady ? "yes" : "no",
+      specialUnitsReady ? "yes" : "no",
+      specialFactoryReady ? "yes" : "no",
+      specialSwitchApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialSwitchValues),
+      specialSwitchValue,
+      specialProgramApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialProgramValues),
+      specialProgramValue,
+      specialForAllApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialForAllTargets),
+      specialForAllValue,
+      specialNaftaApplied ? "yes" : "no",
+      specialNaftaSourceBefore,
+      specialNaftaSourceAfter,
+      specialNaftaReceiverBefore,
+      specialNaftaReceiverAfter,
+      specialConverterApplied ? "yes" : "no",
+      specialConverterOwnerBefore,
+      specialConverterOwnerAfter,
+      specialConverterTargetBefore,
+      specialConverterTargetAfter);
+
+    NDb::InvalidAbilityTargetApplicator* specialControlInvalidDb = new NDb::InvalidAbilityTargetApplicator();
+    NDb::MovementControlApplicator* specialControlMovementDb = new NDb::MovementControlApplicator();
+    NDb::ChangeAnimSetApplicator* specialControlAnimSetDb = new NDb::ChangeAnimSetApplicator();
+    NDb::ChangeAnimationApplicator* specialControlAnimationDb = new NDb::ChangeAnimationApplicator();
+    NDb::WatchApplicator* specialControlWatchDb = new NDb::WatchApplicator();
+    NDb::ScaleControlApplicator* specialControlScaleDb = new NDb::ScaleControlApplicator();
+    NDb::DayNightTransitionApplicator* specialControlDayNightDb = new NDb::DayNightTransitionApplicator();
+    NDb::SetTimescaleApplicator* specialControlTimescaleDb = new NDb::SetTimescaleApplicator();
+    NDb::Unit* specialControlUnitDb =
+      static_cast<NDb::Unit*>(
+        NDb::Unit::NewUnit(
+          NDb::DBID("", "LinuxBootstrapSpecialControlUnit")
+        )
+      );
+    NDb::Creature* specialControlCreatureDb =
+      static_cast<NDb::Creature*>(
+        NDb::Creature::NewCreature(
+          NDb::DBID("", "LinuxBootstrapSpecialControlCreature")
+        )
+      );
+
+    bool specialControlDbReady =
+      specialControlInvalidDb &&
+      specialControlMovementDb &&
+      specialControlAnimSetDb &&
+      specialControlAnimationDb &&
+      specialControlWatchDb &&
+      specialControlScaleDb &&
+      specialControlDayNightDb &&
+      specialControlTimescaleDb &&
+      specialControlUnitDb &&
+      specialControlCreatureDb;
+    bool specialControlUnitsReady = false;
+    bool specialControlFactoryReady = false;
+    bool specialControlInvalidApplied = false;
+    bool specialControlMovementApplied = false;
+    bool specialControlAnimApplied = false;
+    bool specialControlWatchApplied = false;
+    bool specialControlScaleApplied = false;
+    bool specialControlDayNightApplied = false;
+    bool specialControlTimescaleApplied = false;
+    int specialControlInvalidBefore = 0;
+    int specialControlInvalidAfter = 0;
+    int specialControlInvalidRemoved = 0;
+    size_t specialControlMovementBeforeRemove = 0;
+    size_t specialControlMovementAfterRemove = 0;
+    size_t specialControlAnimSetCount = 0;
+    size_t specialControlAnimationCount = 0;
+    size_t specialControlWatchBeforeRemove = 0;
+    size_t specialControlWatchAfterRemove = 0;
+    size_t specialControlScaleCount = 0;
+
+    if (specialControlDbReady)
+    {
+      specialControlInvalidDb->lifeTime.sString = "-1.0";
+      specialControlMovementDb->lifeTime.sString = "-1.0";
+      specialControlAnimSetDb->lifeTime.sString = "-1.0";
+      specialControlAnimationDb->lifeTime.sString = "-1.0";
+      specialControlAnimationDb->animation = "linux-bootstrap-idle";
+      specialControlAnimationDb->marker = "linux-bootstrap";
+      specialControlWatchDb->lifeTime.sString = "-1.0";
+      specialControlScaleDb->lifeTime.sString = "-1.0";
+      specialControlScaleDb->desiredScale.sString = "1.25";
+      specialControlScaleDb->changeSpeed.sString = "0.0";
+      specialControlDayNightDb->desiredState = NDb::DAYNIGHTSTATE_NIGHT;
+      specialControlDayNightDb->desiredStateFraction = 0.5f;
+      specialControlTimescaleDb->desiredTimescale = 1.25f;
+
+      CObj<NWorld::PFBaseMovingUnit> specialControlOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(236.0f, 40.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *specialControlUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> specialControlReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(237.0f, 40.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *specialControlUnitDb)
+      );
+      CObj<NWorld::PFCreature> specialControlCreature(
+        new NWorld::PFCreature(
+          0,
+          CVec3(238.0f, 40.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *specialControlCreatureDb)
+      );
+      specialControlUnitsReady =
+        specialControlOwner &&
+        specialControlReceiver &&
+        specialControlCreature;
+
+      if (specialControlUnitsReady)
+      {
+        specialControlOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        specialControlOwner->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialControlReceiver->ChangeFaction(NDb::FACTION_BURN);
+        specialControlReceiver->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialControlCreature->ChangeFaction(NDb::FACTION_BURN);
+        specialControlCreature->SetUnitType(NDb::UNITTYPE_CREEP);
+
+        auto applySpecialControlApplicator =
+          [&](NDb::BaseApplicator* applicatorDb, NWorld::PFBaseUnit* target) -> CObj<NWorld::PFAbilityInstance>
+          {
+            NDb::Ability* ability = new NDb::Ability();
+            ability->type = NDb::ABILITYTYPE_ACTIVE;
+            ability->targetType = NDb::SPELLTARGET_ALL;
+            ability->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(applicatorDb));
+            return specialControlOwner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(ability),
+              NWorld::Target(target));
+          };
+
+        CObj<NWorld::PFAbilityInstance> invalidInstance =
+          applySpecialControlApplicator(specialControlInvalidDb, specialControlReceiver.GetPtr());
+        specialControlInvalidBefore = 0;
+        specialControlInvalidAfter = specialControlReceiver->IsInvalidAbilityTarget() ? 1 : 0;
+
+        if (invalidInstance)
+        {
+          invalidInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlReceiver.GetPtr()));
+          invalidInstance->Cancel();
+        }
+        specialControlInvalidRemoved = specialControlReceiver->IsInvalidAbilityTarget() ? 1 : 0;
+        specialControlInvalidApplied =
+          invalidInstance &&
+          specialControlInvalidBefore == 0 &&
+          specialControlInvalidAfter == 1 &&
+          specialControlInvalidRemoved == 0;
+
+        CObj<NWorld::PFAbilityInstance> movementInstance =
+          applySpecialControlApplicator(specialControlMovementDb, specialControlReceiver.GetPtr());
+        LinuxUnitModApplicatorCollector movementCollector;
+        specialControlReceiver->ForAllAppliedApplicators(movementCollector);
+        specialControlMovementBeforeRemove = movementCollector.movementControls;
+        if (movementInstance)
+        {
+          movementInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlReceiver.GetPtr()));
+          movementInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector movementRemoveCollector;
+        specialControlReceiver->ForAllAppliedApplicators(movementRemoveCollector);
+        specialControlMovementAfterRemove = movementRemoveCollector.movementControls;
+        specialControlMovementApplied =
+          movementInstance &&
+          specialControlMovementBeforeRemove == 1 &&
+          specialControlMovementAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> animSetInstance =
+          applySpecialControlApplicator(specialControlAnimSetDb, specialControlCreature.GetPtr());
+        CObj<NWorld::PFAbilityInstance> animationInstance =
+          applySpecialControlApplicator(specialControlAnimationDb, specialControlCreature.GetPtr());
+        LinuxUnitModApplicatorCollector animCollector;
+        specialControlCreature->ForAllAppliedApplicators(animCollector);
+        specialControlAnimSetCount = animCollector.changeAnimSets;
+        specialControlAnimationCount = animCollector.changeAnimations;
+        specialControlAnimApplied =
+          animSetInstance &&
+          animationInstance &&
+          specialControlAnimSetCount == 1 &&
+          specialControlAnimationCount == 1;
+        if (animSetInstance)
+        {
+          animSetInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlCreature.GetPtr()));
+          animSetInstance->Cancel();
+        }
+        if (animationInstance)
+        {
+          animationInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlCreature.GetPtr()));
+          animationInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> watchInstance =
+          applySpecialControlApplicator(specialControlWatchDb, specialControlReceiver.GetPtr());
+        LinuxUnitModApplicatorCollector watchCollector;
+        specialControlReceiver->ForAllAppliedApplicators(watchCollector);
+        specialControlWatchBeforeRemove = watchCollector.watches;
+        if (watchInstance)
+        {
+          watchInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlReceiver.GetPtr()));
+          watchInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector watchRemoveCollector;
+        specialControlReceiver->ForAllAppliedApplicators(watchRemoveCollector);
+        specialControlWatchAfterRemove = watchRemoveCollector.watches;
+        specialControlWatchApplied =
+          watchInstance &&
+          specialControlWatchBeforeRemove == 1 &&
+          specialControlWatchAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> scaleInstance =
+          applySpecialControlApplicator(specialControlScaleDb, specialControlReceiver.GetPtr());
+        if (scaleInstance)
+          scaleInstance->Update(0.1f);
+        LinuxUnitModApplicatorCollector scaleCollector;
+        specialControlReceiver->ForAllAppliedApplicators(scaleCollector);
+        specialControlScaleCount = scaleCollector.scaleControls;
+        specialControlScaleApplied =
+          scaleInstance &&
+          specialControlScaleCount == 1;
+        if (scaleInstance)
+        {
+          scaleInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialControlReceiver.GetPtr()));
+          scaleInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> dayNightInstance =
+          applySpecialControlApplicator(specialControlDayNightDb, specialControlReceiver.GetPtr());
+        CObj<NWorld::PFAbilityInstance> timescaleInstance =
+          applySpecialControlApplicator(specialControlTimescaleDb, specialControlReceiver.GetPtr());
+        specialControlDayNightApplied = dayNightInstance != 0;
+        specialControlTimescaleApplied = timescaleInstance != 0;
+
+        CObj<NWorld::PFAbilityInstance> proofInstance =
+          timescaleInstance ? timescaleInstance : (dayNightInstance ? dayNightInstance : invalidInstance);
+        if (proofInstance)
+        {
+          auto createSpecialControlProof =
+            [&](NDb::BaseApplicator* applicatorDb, NWorld::PFBaseUnit* target) -> CObj<NWorld::PFBaseApplicator>
+            {
+              NWorld::PFApplCreatePars proofPars(
+                proofInstance,
+                NWorld::Target(target),
+                static_cast<NWorld::PFBaseApplicator*>(0));
+              proofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(applicatorDb);
+              return applicatorDb->Create(proofPars);
+            };
+
+          CObj<NWorld::PFBaseApplicator> invalidProof =
+            createSpecialControlProof(specialControlInvalidDb, specialControlReceiver.GetPtr());
+          CObj<NWorld::PFBaseApplicator> movementProof =
+            createSpecialControlProof(specialControlMovementDb, specialControlReceiver.GetPtr());
+          CObj<NWorld::PFBaseApplicator> animSetProof =
+            createSpecialControlProof(specialControlAnimSetDb, specialControlCreature.GetPtr());
+          CObj<NWorld::PFBaseApplicator> animationProof =
+            createSpecialControlProof(specialControlAnimationDb, specialControlCreature.GetPtr());
+          CObj<NWorld::PFBaseApplicator> watchProof =
+            createSpecialControlProof(specialControlWatchDb, specialControlReceiver.GetPtr());
+          CObj<NWorld::PFBaseApplicator> scaleProof =
+            createSpecialControlProof(specialControlScaleDb, specialControlReceiver.GetPtr());
+          CObj<NWorld::PFBaseApplicator> dayNightProof =
+            createSpecialControlProof(specialControlDayNightDb, specialControlReceiver.GetPtr());
+          CObj<NWorld::PFBaseApplicator> timescaleProof =
+            createSpecialControlProof(specialControlTimescaleDb, specialControlReceiver.GetPtr());
+          specialControlFactoryReady =
+            invalidProof &&
+            movementProof &&
+            animSetProof &&
+            animationProof &&
+            watchProof &&
+            scaleProof &&
+            dayNightProof &&
+            timescaleProof;
+        }
+
+        if (dayNightInstance)
+          dayNightInstance->Cancel();
+        if (timescaleInstance)
+          timescaleInstance->Cancel();
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects special-control runtime: db=%s units=%s factory=%s invalid=%s/%d->%d->%d movement=%s/%lu->%lu anim=%s/%lu/%lu watch=%s/%lu->%lu scale=%s/%lu daynight=%s timescale=%s\n",
+      specialControlDbReady ? "yes" : "no",
+      specialControlUnitsReady ? "yes" : "no",
+      specialControlFactoryReady ? "yes" : "no",
+      specialControlInvalidApplied ? "yes" : "no",
+      specialControlInvalidBefore,
+      specialControlInvalidAfter,
+      specialControlInvalidRemoved,
+      specialControlMovementApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialControlMovementBeforeRemove),
+      static_cast<unsigned long>(specialControlMovementAfterRemove),
+      specialControlAnimApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialControlAnimSetCount),
+      static_cast<unsigned long>(specialControlAnimationCount),
+      specialControlWatchApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialControlWatchBeforeRemove),
+      static_cast<unsigned long>(specialControlWatchAfterRemove),
+      specialControlScaleApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialControlScaleCount),
+      specialControlDayNightApplied ? "yes" : "no",
+      specialControlTimescaleApplied ? "yes" : "no");
+
+    NDb::ChannellingApplicator* specialObjectChannelDb = new NDb::ChannellingApplicator();
+    NDb::WaitForSpellApplicator* specialObjectWaitDb = new NDb::WaitForSpellApplicator();
+    NDb::EyeApplicator* specialObjectEyeDb = new NDb::EyeApplicator();
+    NDb::LockTilesApplicator* specialObjectLockDb = new NDb::LockTilesApplicator();
+    NDb::ModifyTerrainApplicator* specialObjectTerrainDb = new NDb::ModifyTerrainApplicator();
+    NDb::RaiseFlagApplicator* specialObjectRaiseDb = new NDb::RaiseFlagApplicator();
+    NDb::PickupChannelingApplicator* specialObjectPickupDb = new NDb::PickupChannelingApplicator();
+    NDb::Spell* specialObjectWaitSpellDb = new NDb::Spell();
+    NDb::Unit* specialObjectUnitDb =
+      static_cast<NDb::Unit*>(
+        NDb::Unit::NewUnit(
+          NDb::DBID("", "LinuxBootstrapSpecialObjectUnit")
+        )
+      );
+    NDb::Flagpole* specialObjectFlagpoleDb =
+      static_cast<NDb::Flagpole*>(
+        NDb::Flagpole::NewFlagpole(
+          NDb::DBID("", "LinuxBootstrapSpecialObjectFlagpole")
+        )
+      );
+
+    bool specialObjectDbReady =
+      specialObjectChannelDb &&
+      specialObjectWaitDb &&
+      specialObjectEyeDb &&
+      specialObjectLockDb &&
+      specialObjectTerrainDb &&
+      specialObjectRaiseDb &&
+      specialObjectPickupDb &&
+      specialObjectWaitSpellDb &&
+      specialObjectUnitDb &&
+      specialObjectFlagpoleDb;
+    bool specialObjectUnitsReady = false;
+    bool specialObjectFactoryReady = false;
+    bool specialObjectChannelApplied = false;
+    bool specialObjectWaitApplied = false;
+    bool specialObjectEyeApplied = false;
+    bool specialObjectLockApplied = false;
+    bool specialObjectTerrainApplied = false;
+    bool specialObjectRaiseApplied = false;
+    bool specialObjectPickupApplied = false;
+    size_t specialObjectChannelBeforeRemove = 0;
+    size_t specialObjectChannelAfterRemove = 0;
+    size_t specialObjectWaitBeforeRemove = 0;
+    size_t specialObjectWaitAfterRemove = 0;
+    size_t specialObjectEyeBeforeRemove = 0;
+    size_t specialObjectEyeAfterRemove = 0;
+    size_t specialObjectLockBeforeRemove = 0;
+    size_t specialObjectLockAfterRemove = 0;
+    size_t specialObjectRaiseBeforeRemove = 0;
+    bool specialObjectRaiseRising = false;
+    int specialObjectPickupCanChecks = 0;
+    bool specialObjectPickupFinalBusy = false;
+
+    if (specialObjectDbReady)
+    {
+      specialObjectChannelDb->lifeTime.sString = "-1.0";
+      specialObjectChannelDb->period = 0.05f;
+      specialObjectWaitDb->lifeTime.sString = "-1.0";
+      specialObjectWaitDb->spell = NDb::Ptr<NDb::Spell>(specialObjectWaitSpellDb);
+      specialObjectEyeDb->lifeTime.sString = "-1.0";
+      specialObjectEyeDb->visRange.sString = "1.0";
+      specialObjectLockDb->lifeTime.sString = "-1.0";
+      specialObjectLockDb->collision.Set(-0.5f, -0.5f, 0.5f, 0.5f);
+      specialObjectTerrainDb->durationTime.sString = "0.1";
+      specialObjectTerrainDb->faction.sString = NStr::StrFmt("%d", static_cast<int>(NDb::FACTION_FREEZE));
+      specialObjectTerrainDb->modifRadius.sString = "0.5";
+      specialObjectRaiseDb->lifeTime.sString = "-1.0";
+      specialObjectPickupDb->lifeTime.sString = "-1.0";
+
+      NDb::AdvMapObject flagpoleMapObject;
+      flagpoleMapObject.gameObject = NDb::Ptr<NDb::GameObject>(specialObjectFlagpoleDb);
+      flagpoleMapObject.offset = CPlacement(
+        CVec3(240.0f, 40.0f, 0.0f),
+        QNULL,
+        CVec3(1.0f, 1.0f, 1.0f));
+
+      CObj<NWorld::PFBaseMovingUnit> specialObjectOwner(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(241.0f, 40.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *specialObjectUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> specialObjectReceiver(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(242.0f, 40.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *specialObjectUnitDb)
+      );
+      CObj<NWorld::PFFlagpole> specialObjectFlagpole(
+        new LinuxFlagpoleApplicatorProbe(flagpoleMapObject)
+      );
+      CObj<LinuxPickupableApplicatorProbe> specialObjectPickupable(
+        new LinuxPickupableApplicatorProbe()
+      );
+      specialObjectUnitsReady =
+        specialObjectOwner &&
+        specialObjectReceiver &&
+        specialObjectFlagpole &&
+        specialObjectPickupable;
+
+      if (specialObjectUnitsReady)
+      {
+        specialObjectOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        specialObjectOwner->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialObjectReceiver->ChangeFaction(NDb::FACTION_BURN);
+        specialObjectReceiver->SetUnitType(NDb::UNITTYPE_DUMMYUNIT);
+        specialObjectFlagpole->ChangeFaction(NDb::FACTION_NEUTRAL);
+
+        auto applySpecialObjectApplicator =
+          [&](NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFAbilityInstance>
+          {
+            NDb::Ability* ability = new NDb::Ability();
+            ability->type = NDb::ABILITYTYPE_ACTIVE;
+            ability->targetType = NDb::SPELLTARGET_ALL;
+            ability->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(applicatorDb));
+            return specialObjectOwner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(ability),
+              target);
+          };
+
+        CObj<NWorld::PFAbilityInstance> channelInstance =
+          applySpecialObjectApplicator(
+            specialObjectChannelDb,
+            NWorld::Target(specialObjectReceiver.GetPtr()));
+        LinuxUnitModApplicatorCollector channelCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(channelCollector);
+        specialObjectChannelBeforeRemove = channelCollector.channellings;
+        if (channelInstance)
+        {
+          channelInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialObjectReceiver.GetPtr()));
+          channelInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector channelRemoveCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(channelRemoveCollector);
+        specialObjectChannelAfterRemove = channelRemoveCollector.channellings;
+        specialObjectChannelApplied =
+          channelInstance &&
+          specialObjectChannelBeforeRemove == 1 &&
+          specialObjectChannelAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> waitInstance =
+          applySpecialObjectApplicator(
+            specialObjectWaitDb,
+            NWorld::Target(specialObjectReceiver.GetPtr()));
+        LinuxUnitModApplicatorCollector waitCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(waitCollector);
+        specialObjectWaitBeforeRemove = waitCollector.waitForSpells;
+        if (waitInstance)
+        {
+          waitInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialObjectReceiver.GetPtr()));
+          waitInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector waitRemoveCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(waitRemoveCollector);
+        specialObjectWaitAfterRemove = waitRemoveCollector.waitForSpells;
+        specialObjectWaitApplied =
+          waitInstance &&
+          specialObjectWaitBeforeRemove == 1 &&
+          specialObjectWaitAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> eyeInstance =
+          applySpecialObjectApplicator(
+            specialObjectEyeDb,
+            NWorld::Target(specialObjectReceiver.GetPtr()));
+        LinuxUnitModApplicatorCollector eyeCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(eyeCollector);
+        specialObjectEyeBeforeRemove = eyeCollector.eyes;
+        if (eyeInstance)
+        {
+          eyeInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialObjectReceiver.GetPtr()));
+          eyeInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector eyeRemoveCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(eyeRemoveCollector);
+        specialObjectEyeAfterRemove = eyeRemoveCollector.eyes;
+        specialObjectEyeApplied =
+          eyeInstance &&
+          specialObjectEyeBeforeRemove == 1 &&
+          specialObjectEyeAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> lockInstance =
+          applySpecialObjectApplicator(
+            specialObjectLockDb,
+            NWorld::Target(specialObjectReceiver.GetPtr()));
+        LinuxUnitModApplicatorCollector lockCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(lockCollector);
+        specialObjectLockBeforeRemove = lockCollector.lockTiles;
+        if (lockInstance)
+        {
+          lockInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialObjectReceiver.GetPtr()));
+          lockInstance->Cancel();
+        }
+        LinuxUnitModApplicatorCollector lockRemoveCollector;
+        specialObjectReceiver->ForAllAppliedApplicators(lockRemoveCollector);
+        specialObjectLockAfterRemove = lockRemoveCollector.lockTiles;
+        specialObjectLockApplied =
+          lockInstance &&
+          specialObjectLockBeforeRemove == 1 &&
+          specialObjectLockAfterRemove == 0;
+
+        CObj<NWorld::PFAbilityInstance> terrainInstance =
+          applySpecialObjectApplicator(
+            specialObjectTerrainDb,
+            NWorld::Target(CVec3(243.0f, 40.0f, 0.0f)));
+        specialObjectTerrainApplied = terrainInstance != 0;
+        if (terrainInstance)
+          terrainInstance->Cancel();
+
+        CObj<NWorld::PFAbilityInstance> raiseInstance =
+          applySpecialObjectApplicator(
+            specialObjectRaiseDb,
+            NWorld::Target(specialObjectFlagpole.GetPtr()));
+        LinuxUnitModApplicatorCollector raiseCollector;
+        specialObjectFlagpole->ForAllAppliedApplicators(raiseCollector);
+        specialObjectRaiseBeforeRemove = raiseCollector.raiseFlags;
+        specialObjectRaiseRising = specialObjectFlagpole->IsRising();
+        specialObjectRaiseApplied =
+          raiseInstance &&
+          specialObjectRaiseBeforeRemove == 1 &&
+          specialObjectRaiseRising;
+        if (raiseInstance)
+        {
+          raiseInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(specialObjectFlagpole.GetPtr()));
+          raiseInstance->Cancel();
+        }
+
+        CObj<NWorld::PFAbilityInstance> pickupInstance =
+          applySpecialObjectApplicator(
+            specialObjectPickupDb,
+            NWorld::Target(static_cast<NWorld::PFLogicObject*>(specialObjectPickupable.GetPtr())));
+        specialObjectPickupCanChecks = specialObjectPickupable->GetCanChecks();
+        specialObjectPickupFinalBusy = specialObjectPickupable->IsBeingPickuped();
+        specialObjectPickupApplied =
+          pickupInstance &&
+          specialObjectPickupCanChecks == 1 &&
+          !specialObjectPickupFinalBusy &&
+          !specialObjectPickupable->WasPicked();
+        if (pickupInstance)
+          pickupInstance->Cancel();
+
+        CObj<NWorld::PFAbilityInstance> proofInstance =
+          channelInstance ? channelInstance : (waitInstance ? waitInstance : raiseInstance);
+        if (proofInstance)
+        {
+          auto createSpecialObjectProof =
+            [&](NDb::BaseApplicator* applicatorDb, const NWorld::Target& target) -> CObj<NWorld::PFBaseApplicator>
+            {
+              NWorld::PFApplCreatePars proofPars(
+                proofInstance,
+                target,
+                static_cast<NWorld::PFBaseApplicator*>(0));
+              proofPars.pDBAppl = NDb::Ptr<NDb::BaseApplicator>(applicatorDb);
+              return applicatorDb->Create(proofPars);
+            };
+
+          CObj<NWorld::PFBaseApplicator> channelProof =
+            createSpecialObjectProof(specialObjectChannelDb, NWorld::Target(specialObjectReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> waitProof =
+            createSpecialObjectProof(specialObjectWaitDb, NWorld::Target(specialObjectReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> eyeProof =
+            createSpecialObjectProof(specialObjectEyeDb, NWorld::Target(specialObjectReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> lockProof =
+            createSpecialObjectProof(specialObjectLockDb, NWorld::Target(specialObjectReceiver.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> terrainProof =
+            createSpecialObjectProof(specialObjectTerrainDb, NWorld::Target(CVec3(243.0f, 40.0f, 0.0f)));
+          CObj<NWorld::PFBaseApplicator> raiseProof =
+            createSpecialObjectProof(specialObjectRaiseDb, NWorld::Target(specialObjectFlagpole.GetPtr()));
+          CObj<NWorld::PFBaseApplicator> pickupProof =
+            createSpecialObjectProof(
+              specialObjectPickupDb,
+              NWorld::Target(static_cast<NWorld::PFLogicObject*>(specialObjectPickupable.GetPtr())));
+          specialObjectFactoryReady =
+            channelProof &&
+            waitProof &&
+            eyeProof &&
+            lockProof &&
+            terrainProof &&
+            raiseProof &&
+            pickupProof;
+        }
+      }
+    }
+
+    fprintf(
+      stdout,
+      "Session effects special-object runtime: db=%s units=%s factory=%s channel=%s/%lu->%lu wait=%s/%lu->%lu eye=%s/%lu->%lu lock=%s/%lu->%lu terrain=%s raise=%s/%lu/%d pickup=%s/%d/%d\n",
+      specialObjectDbReady ? "yes" : "no",
+      specialObjectUnitsReady ? "yes" : "no",
+      specialObjectFactoryReady ? "yes" : "no",
+      specialObjectChannelApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialObjectChannelBeforeRemove),
+      static_cast<unsigned long>(specialObjectChannelAfterRemove),
+      specialObjectWaitApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialObjectWaitBeforeRemove),
+      static_cast<unsigned long>(specialObjectWaitAfterRemove),
+      specialObjectEyeApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialObjectEyeBeforeRemove),
+      static_cast<unsigned long>(specialObjectEyeAfterRemove),
+      specialObjectLockApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialObjectLockBeforeRemove),
+      static_cast<unsigned long>(specialObjectLockAfterRemove),
+      specialObjectTerrainApplied ? "yes" : "no",
+      specialObjectRaiseApplied ? "yes" : "no",
+      static_cast<unsigned long>(specialObjectRaiseBeforeRemove),
+      specialObjectRaiseRising ? 1 : 0,
+      specialObjectPickupApplied ? "yes" : "no",
+      specialObjectPickupCanChecks,
+      specialObjectPickupFinalBusy ? 1 : 0);
+
     NDb::UnitEnumerator* targetSelectorUnitEnumDb = new NDb::UnitEnumerator();
     NDb::AreaTargetSelector* targetSelectorAreaDb = new NDb::AreaTargetSelector();
     NDb::AreaTargetSelector* targetSelectorTightAreaDb = new NDb::AreaTargetSelector();
@@ -13814,6 +16034,11 @@ void ProbeEffectsPoolRuntime(
           CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
           static_cast<const IMiscFormulaPars*>(0),
           selectorDirectionRequester);
+        NWorld::Target selectorAreaRequester(CVec3(100.0f, 30.0f, 0.0f));
+        NWorld::PFTargetSelector::RequestParams selectorAreaPars(
+          CPtr<NWorld::PFBaseUnit>(targetSelectorOwner.GetPtr()),
+          static_cast<const IMiscFormulaPars*>(0),
+          selectorAreaRequester);
 
         CObj<NWorld::PFTargetSelector> unitEnumSelector(targetSelectorUnitEnumDb->Create(0));
         targetSelectorUnitEnumCreated = unitEnumSelector != 0;
@@ -13830,7 +16055,7 @@ void ProbeEffectsPoolRuntime(
         targetSelectorAreaCreated = areaSelector != 0;
         LinuxTargetSelectorCollector areaCollector;
         if (areaSelector)
-          areaSelector->EnumerateTargets(areaCollector, selectorPars);
+          areaSelector->EnumerateTargets(areaCollector, selectorAreaPars);
         targetSelectorAreaCount = areaCollector.units;
         targetSelectorAreaApplied =
           targetSelectorAreaCreated &&
@@ -13960,7 +16185,7 @@ void ProbeEffectsPoolRuntime(
         targetSelectorListCreated = listSelector != 0;
         LinuxTargetSelectorCollector listCollector;
         if (listSelector)
-          listSelector->EnumerateTargets(listCollector, selectorPars);
+          listSelector->EnumerateTargets(listCollector, selectorAreaPars);
         targetSelectorListCount = listCollector.units;
         targetSelectorListApplied =
           targetSelectorListCreated &&
@@ -14144,7 +16369,7 @@ void ProbeEffectsPoolRuntime(
         targetSelectorMaximizingCreated = maximizingSelector != 0;
         targetSelectorMaximizingApplied =
           targetSelectorMaximizingCreated &&
-          maximizingSelector->FindTarget(selectorPars, maximizingTarget) &&
+          maximizingSelector->FindTarget(selectorAreaPars, maximizingTarget) &&
           maximizingTarget.IsPosition();
         if (targetSelectorMaximizingApplied)
           targetSelectorMaximizingX = maximizingTarget.GetPosition().x;
@@ -14198,7 +16423,7 @@ void ProbeEffectsPoolRuntime(
         targetSelectorDamagingLinksCreated = damagingLinksSelector != 0;
         targetSelectorDamagingLinksApplied =
           targetSelectorDamagingLinksCreated &&
-          damagingLinksSelector->FindTarget(selectorPars, damagingLinksTarget) &&
+          damagingLinksSelector->FindTarget(selectorAreaPars, damagingLinksTarget) &&
           damagingLinksTarget.IsPosition();
         if (targetSelectorDamagingLinksApplied)
           targetSelectorDamagingLinksX = damagingLinksTarget.GetPosition().x;

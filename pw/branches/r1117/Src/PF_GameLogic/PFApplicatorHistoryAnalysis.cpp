@@ -4,16 +4,41 @@
 
 #include "PFApplicatorHistoryAnalysis.h"
 #include "PFAbilityInstance.h"
+#include "PFApplInstant.h"
 
 namespace NWorld
 {
 
 float GetDamageDealed(CPtr<PFBaseUnit> unit, float deltaTime, PFAbilityInstance *ability)
 {
-  (void)unit;
-  (void)deltaTime;
-  (void)ability;
-  return 0.0f;
+  struct DamageCounter
+  {
+    DamageCounter(PFAbilityInstance* ability)
+      : damageDealed(0.0f)
+      , ability(ability)
+    {
+    }
+
+    void operator()(CObj<PFBaseApplicator>& app)
+    {
+      PFApplDamage* damage = dynamic_cast<PFApplDamage*>(app.GetPtr());
+      if (damage && damage->GetAbility() == ability)
+        damageDealed += damage->GetDamageDealed();
+    }
+
+    float damageDealed;
+    PFAbilityInstance* ability;
+  };
+
+  if (!IsValid(unit) || !ability)
+    return 0.0f;
+
+  DamageCounter counter(ability);
+  if (unit->GetWorld())
+    unit->ForAllSentApplicatorsInHistoryLess(counter, deltaTime);
+  else
+    unit->ForAllSentApplicatorsInHistory(counter);
+  return counter.damageDealed;
 }
 
 }
