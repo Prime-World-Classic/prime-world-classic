@@ -122,12 +122,12 @@ public:
 
   SamplerState& CreateMask()
   {
-    minFilter = UINT_MAX;
-    magFilter = UINT_MAX;
-    mipFilter = UINT_MAX;
-    addressU  = UINT_MAX;
-    addressV  = UINT_MAX;
-    alwaysFailCompare = UINT_MAX;
+    minFilter = 7;
+    magFilter = 1;
+    mipFilter = 3;
+    addressU  = 3;
+    addressV  = 3;
+    alwaysFailCompare = 1;
     return *this;
   }
 
@@ -165,11 +165,14 @@ public:
   SamplerState2() {}
   SamplerState2(SamplerState _src): SamplerState(_src) {}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wclass-conversion"
   operator SamplerState()
   {
     static const SamplerState mask = SamplerState().CreateMask();
     return SamplerState( bitmask & mask.GetBitmask() );
   }
+#pragma GCC diagnostic pop
 
   SamplerState2& operator=(const SamplerState2& _src)
   {

@@ -1,6 +1,8 @@
 #ifndef GLRENDERER_H_INCLUDED
 #define GLRENDERER_H_INCLUDED
 
+#if !defined(_WIN32)
+
 #include "Vendor/DirectX/Include/d3d9.h"
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -149,6 +151,7 @@ public:
     STDMETHOD_(ULONG,Release)() { if(--m_refCount==0){delete this; return 0;} return m_refCount; }
     STDMETHOD(GetDevice)(IDirect3DDevice9** p) { return D3D_OK; }
     STDMETHOD(GetDeclaration)(D3DVERTEXELEMENT9* e, UINT* n);
+    const std::vector<D3DVERTEXELEMENT9>& GetElements() const { return m_elements; }
 private:
     LONG m_refCount;
     std::vector<D3DVERTEXELEMENT9> m_elements;
@@ -319,6 +322,7 @@ public:
     STDMETHOD(CreateQuery)(D3DQUERYTYPE,IDirect3DQuery9**);
     void SetSDLWindow(void* w);
 private:
+    bool IsRHW(const void* d);
     void UpdateShaderProgram(bool isRHW);
     GLuint CompileShader(GLenum type, const char* source);
     void ApplyAttributes(const void* pUP, UINT ups, UINT startV);
@@ -360,5 +364,7 @@ public:
 private:
     LONG m_refCount;
 };
+
+#endif // !defined(_WIN32)
 
 #endif
