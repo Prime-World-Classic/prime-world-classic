@@ -249,6 +249,49 @@
 				</targetSelector>
 			</SpellApplicator>
 		</Item>
+		<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="DB6F338C-A7F6-4B7B-8BA9-EE54FCA8B87E">
+			<FlagsApplicator>
+				<applyTarget>AbilityOwner</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption>эффект взрыва </caption>
+				<consumables />
+				<effect>
+					<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="FDEE9D8D-4AD1-45C8-A90D-C33A95ABC7D1">
+						<EffectList>
+							<deathType>Manual</deathType>
+							<effects>
+								<Item href="/Effects/Debuffs/Explosion/_FireDoom.EFFT" />
+								<Item href="/Heroes/Bomber/FX_Ability3.EFFT" />
+							</effects>
+							<enableCondition href="" />
+							<lifeTime>0</lifeTime>
+						</EffectList>
+					</Item>
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<flag>0</flag>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<talents />
+				<useListAs>ListAsRule</useListAs>
+			</FlagsApplicator>
+		</Item>
 	</applicators>
 	<askId>3</askId>
 	<autoTargetSelector href="" />
@@ -425,17 +468,7 @@
 		<DispatchImmediate>
 			<alwaysApply>false</alwaysApply>
 			<applyEffect>
-				<Item href="/Items/Talents/Class/Bomber/Ability_A3.TALENT" id="0F305950-EA03-4574-A436-1214C8883BAA">
-					<EffectList>
-						<deathType>Manual</deathType>
-						<effects>
-							<Item href="/Effects/Debuffs/Explosion/_FireDoom.EFFT" />
-							<Item href="/Heroes/Bomber/FX_Ability3.EFFT" />
-						</effects>
-						<enableCondition href="" />
-						<lifeTime>0</lifeTime>
-					</EffectList>
-				</Item>
+				<Item href="" />
 				<Item href="" />
 			</applyEffect>
 			<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
