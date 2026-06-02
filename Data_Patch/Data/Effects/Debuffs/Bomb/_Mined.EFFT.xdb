@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<BasicEffectAttached>
+	<BackLink DBID="/Items/Talents/Class/Bomber/status_A4_2_Debuff.APLR" Count="1" />
+	<attachFlags>0</attachFlags>
+	<attachType>Body</attachType>
+	<component href="/Effects/Debuffs/Bomb/_MinedTRS.PRXY" />
+	<deathType>Manual</deathType>
+	<enableCondition href="" />
+	<fadeIn>0</fadeIn>
+	<fadeOut>0.3</fadeOut>
+	<groupFlags>0</groupFlags>
+	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="bomber_S2">
+			<component href="/Effects/Debuffs/Bomb/_PointCastTRS.PRXY" />
+		</state>
+	</__states>
+</BasicEffectAttached>

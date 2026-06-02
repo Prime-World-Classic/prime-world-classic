@@ -1,0 +1,575 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Heroes/Angel/FXAbility5WingsPurpleTRS.PRXY" Count="2" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="594436C9-1389-42B5-BFBE-A5E8973741AE">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>1.022501</maxX>
+						<maxY>1.740761</maxY>
+						<maxZ>2.212437</maxZ>
+						<minX>-0.9774995</minX>
+						<minY>-0.2592387</minY>
+						<minZ>-1.787563</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2_autoClip.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2_autoClip.mayaAnim</mayaFileName>
+							<name>_Wings_autoClip</name>
+							<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2_autoClip.ma</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="" />
+					<anims />
+					<attached />
+					<caption>polySurface14</caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="" />
+					<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2joint36.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>joint36</selection>
+					<skeletonFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2joint36.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2polySurface14.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="202F63B3-1A73-4C4E-BBBC-0C654F0BB468">
+									<BasicFXMaterial>
+										<caption>a_pasted__Noise18Blue_1Material</caption>
+										<DiffuseAdd>
+											<A>0</A>
+											<B>0</B>
+											<G>0</G>
+											<R>0</R>
+										</DiffuseAdd>
+										<DiffuseMap>
+											<samplerState>
+												<addressU>Wrap</addressU>
+												<addressV>Wrap</addressV>
+												<addressW>Wrap</addressW>
+												<magFilter>Linear</magFilter>
+												<minFilter>Linear</minFilter>
+												<mipFilter>Linear</mipFilter>
+											</samplerState>
+											<texture href="/GFX_Textures/Noise18Purple.TXTR" />
+										</DiffuseMap>
+										<DiffuseMul>
+											<A>0.2</A>
+											<B>1.2</B>
+											<G>1</G>
+											<R>1</R>
+										</DiffuseMul>
+										<distortion>0.2</distortion>
+										<DistortionPinValue>DistortNone</DistortionPinValue>
+										<emissive>0</emissive>
+										<ignoreRenderState>false</ignoreRenderState>
+										<MultiplyVertexColorPinValue>Present</MultiplyVertexColorPinValue>
+										<opacity>1</opacity>
+										<OpacityAndEmissiveModePinValue>BlendOpacity</OpacityAndEmissiveModePinValue>
+										<renderState>
+											<alphaTest>Off</alphaTest>
+											<alphaTestRef>127</alphaTestRef>
+											<blendMode>AddColorMulAlpha</blendMode>
+											<culling>Off</culling>
+										</renderState>
+										<SkeletalMeshPinValue>Present</SkeletalMeshPinValue>
+										<SubPriority>0</SubPriority>
+										<uOffset Animated="True">
+											<Tracks>
+												<Item>
+													<Item>
+														<Key>0</Key>
+														<Value>0</Value>
+													</Item>
+													<Item>
+														<Key>3</Key>
+														<Value>1</Value>
+													</Item>
+												</Item>
+											</Tracks>
+											<Type>Clamp</Type>
+											<Values>
+												<Item>
+													<Key>0</Key>
+													<Value>0</Value>
+												</Item>
+												<Item>
+													<Key>3</Key>
+													<Value>1</Value>
+												</Item>
+											</Values>
+										</uOffset>
+										<vOffset Animated="True">
+											<Tracks>
+												<Item>
+													<Item>
+														<Key>0</Key>
+														<Value>0</Value>
+													</Item>
+													<Item>
+														<Key>3</Key>
+														<Value>0</Value>
+													</Item>
+												</Item>
+											</Tracks>
+											<Type>Clamp</Type>
+											<Values>
+												<Item>
+													<Key>0</Key>
+													<Value>0</Value>
+												</Item>
+												<Item>
+													<Key>3</Key>
+													<Value>0</Value>
+												</Item>
+											</Values>
+										</vOffset>
+									</BasicFXMaterial>
+								</Item>
+							</materialsReferences>
+							<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2polySurface14.mayaSkin</mayaFileName>
+							<selection>polySurface14</selection>
+							<skinPartName>polySurface14</skinPartName>
+							<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="34495582-93D0-402A-8187-115B492E5BF9">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>3</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="64553E85-57C8-4789-B26F-1B72022674D6">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0</camoffset>
+					<caption>Sparks</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2Sparks.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>false</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="43A83E7B-6D73-46D9-AD91-862044032342">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>0.1</A>
+									<B>0.7686275</B>
+									<G>0.1176471</G>
+									<R>0.2784314</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2Sparks.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>Sparks</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/Glow05.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.3862305</x>
+								<y>0.1777344</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.3706055</x>
+								<y>0.1464844</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="2483B3C5-81D4-48D9-82F3-92907C717275">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>3</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>1</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="5ECFDAE8-30E0-45A1-96B1-342315F40D17">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0</camoffset>
+					<caption>particle1</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2particle1.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="3E33CD16-9936-46AF-83B2-B01A8581C197">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>3</A>
+									<B>0.8823529</B>
+									<G>0.2509804</G>
+									<R>0.4705882</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>1</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>Simple</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2particle1.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>particle1</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/Spark01.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.1308594</x>
+								<y>0.08203125</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.1230469</x>
+								<y>0.06640625</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.7071068</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0.7071068</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="5AAC7DE5-21B5-4BAB-B1FF-70551EB931D9">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>3</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="7BC170D3-1809-4C64-A422-32C8957CBE8F">
+				<DBParticleSceneComponent>
+					<aabb>
+						<maxX>-666</maxX>
+						<maxY>-666</maxY>
+						<maxZ>-666</maxZ>
+						<minX>666</minX>
+						<minY>666</minY>
+						<minZ>666</minZ>
+					</aabb>
+					<attached />
+					<camoffset>0</camoffset>
+					<caption>smoke</caption>
+					<compression>2</compression>
+					<deathFadeOutTime>0.5</deathFadeOutTime>
+					<fxFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2smoke.part</fxFileName>
+					<groupFlags>0</groupFlags>
+					<leaveParticlesWhereStarted>true</leaveParticlesWhereStarted>
+					<locatorList href="" />
+					<material href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="21E497DA-C20C-463F-8064-08EFDA9AAEA7">
+						<ParticleFXMaterial>
+							<caption></caption>
+							<DiffuseMap>
+								<Add>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</Add>
+								<Multiplier>
+									<A>0.25</A>
+									<B>0.9294118</B>
+									<G>0.454902</G>
+									<R>0.5607843</R>
+								</Multiplier>
+								<samplerState>
+									<addressU>Wrap</addressU>
+									<addressV>Wrap</addressV>
+									<addressW>Wrap</addressW>
+									<magFilter>Linear</magFilter>
+									<minFilter>Linear</minFilter>
+									<mipFilter>Linear</mipFilter>
+								</samplerState>
+								<texture href="/GFX_Textures/Atlases/atlas_0.TXTR" />
+							</DiffuseMap>
+							<distortion>3</distortion>
+							<DistortionPinValue>None</DistortionPinValue>
+							<ignoreRenderState>false</ignoreRenderState>
+							<opacity>1</opacity>
+							<OpacityAndEmissiveModePinValue>BlendOpacity</OpacityAndEmissiveModePinValue>
+							<renderState>
+								<alphaTest>Off</alphaTest>
+								<alphaTestRef>127</alphaTestRef>
+								<blendMode>AddColorMulAlpha</blendMode>
+								<culling>On</culling>
+							</renderState>
+							<scale>0</scale>
+							<SubPriority>0</SubPriority>
+							<uvSpeed>
+								<x>0</x>
+								<y>0</y>
+							</uvSpeed>
+						</ParticleFXMaterial>
+					</material>
+					<mayaFileName>/Heroes/Bomber/S2/FX/FXAbility5Wings2smoke.mayaPart</mayaFileName>
+					<normaltextures />
+					<orient>None</orient>
+					<orientation>Default</orientation>
+					<pivot>
+						<x>0</x>
+						<y>0</y>
+					</pivot>
+					<selection>smoke</selection>
+					<speculartextures />
+					<srcFileName crc="0">/Heroes/Bomber/S2/FX/FXAbility5Wings2.mb</srcFileName>
+					<textures>
+						<Item crc="0">/PFX_Textures/FirePurple01.tga</Item>
+					</textures>
+					<uvPairs>
+						<Item>
+							<uvBottomRight>
+								<x>0.4023438</x>
+								<y>0.1777344</y>
+							</uvBottomRight>
+							<uvTopLeft>
+								<x>0.3867188</x>
+								<y>0.1464844</y>
+							</uvTopLeft>
+						</Item>
+					</uvPairs>
+				</DBParticleSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.7071068</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0.7071068</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Bomber/S2/FX/FXAbility5Wings2Purple.PRXY" id="6344E698-58D1-47E4-80A9-BAAD296BB5EE">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>3</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

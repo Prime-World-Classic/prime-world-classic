@@ -1822,6 +1822,22 @@
 	<BackLink DBID="/Effects/Shots/Harpoon/_TRS_HarpoonRedSet.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Shots/Arrow/_PrimeHit_HarpoonRedset.PRXY" Count="3" />
 	<BackLink DBID="/Effects/Shots/Spear/_MagicHit_RedSetPush.PRXY" Count="4" />
+	<BackLink DBID="/Effects/Shots/FireBall/_FireBomberS2Hit.PRXY" Count="5" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CBomb.PRXY" Count="7" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CBomb2.PRXY" Count="3" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_ApplyCatBomb.PRXY" Count="7" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_FireDoomPink.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_KamikazeCatBomb.PRXY" Count="6" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CatBombOriginal.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CBombBig.PRXY" Count="3" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_ApplyCatBomb_2.PRXY" Count="8" />
+	<BackLink DBID="/Effects/Debuffs/Burn/_TrailBomber_S2.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Debuffs/Burn/_Trail_Begin_2.PRXY" Count="5" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Kamikaze_S2.PRXY" Count="4" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Cast_Blue.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_PointCast_1.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Shots/Rocket/_S1_Pink_TRS.PRXY" Count="3" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Gifts2_Pink.PRXY" Count="4" />
 	<generatedFileName>atlas_0</generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>NoMips</mipLevelUsage>

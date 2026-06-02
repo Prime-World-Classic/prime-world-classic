@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CBomb2.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Bomb/_CBomb.PRXY" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Effects/Debuffs/Bomb/_CatBomb2.PRXY" id="E64D8E2E-3A4A-4558-9FF9-AAD1C128F8F0">
+				<DBStaticSceneComponent>
+					<aabb>
+						<maxX>0.4999999</maxX>
+						<maxY>0.5034771</maxY>
+						<maxZ>0.5</maxZ>
+						<minX>-0.4999999</minX>
+						<minY>-0.5</minY>
+						<minZ>-0.4999999</minZ>
+					</aabb>
+					<attached />
+					<caption>Sphere</caption>
+					<geometryFileName>/Effects/Debuffs/Bomb/_CatBombSphere.stat</geometryFileName>
+					<groupFlags>0</groupFlags>
+					<locatorList href="" />
+					<materialsReferences>
+						<Item href="/Effects/Debuffs/Bomb/_CatBomb2.PRXY" id="DB8A5633-CC3B-4CAA-A829-F7F89F35E4F9">
+							<BasicMaterial>
+								<caption>phong1</caption>
+								<diffuseColor>
+									<A>1</A>
+									<B>1</B>
+									<G>1</G>
+									<R>1</R>
+								</diffuseColor>
+								<DiffuseMap>
+									<samplerState>
+										<addressU>Wrap</addressU>
+										<addressV>Wrap</addressV>
+										<addressW>Wrap</addressW>
+										<magFilter>Linear</magFilter>
+										<minFilter>Linear</minFilter>
+										<mipFilter>Linear</mipFilter>
+									</samplerState>
+									<texture href="/Effects/Debuffs/Bomb/_CatBomb2.PRXY" id="F1DC6704-B67B-4A65-9503-20A03E9586D7">
+										<Texture>
+											<generatedFileName></generatedFileName>
+											<mipLevels>0</mipLevels>
+											<mipLevelUsage>AutoGenerate</mipLevelUsage>
+											<mipSharpenPasses></mipSharpenPasses>
+											<pixelFormat>DXT1</pixelFormat>
+											<size>
+												<height>128</height>
+												<width>128</width>
+											</size>
+											<srcFileName crc="0">/Effects/Debuffs/Bomb/_CatBomb.tga</srcFileName>
+											<startMipLevel>0</startMipLevel>
+											<textureFileName>/Effects/Debuffs/Bomb/_CatBomb.dds</textureFileName>
+											<textureType>Color</textureType>
+										</Texture>
+									</texture>
+								</DiffuseMap>
+								<emissive>0</emissive>
+								<EmissivePinValue>EmissiveOff</EmissivePinValue>
+								<ignoreRenderState>false</ignoreRenderState>
+								<lightingIntencity>1</lightingIntencity>
+								<LightingPinValue>LightingSH</LightingPinValue>
+								<NormalMap>
+									<samplerState>
+										<addressU>Wrap</addressU>
+										<addressV>Wrap</addressV>
+										<addressW>Wrap</addressW>
+										<magFilter>Linear</magFilter>
+										<minFilter>Linear</minFilter>
+										<mipFilter>Linear</mipFilter>
+									</samplerState>
+									<texture href="" />
+								</NormalMap>
+								<outputAdd>
+									<A>0</A>
+									<B>0</B>
+									<G>0</G>
+									<R>0</R>
+								</outputAdd>
+								<outputMul>
+									<A>1</A>
+									<B>1</B>
+									<G>1</G>
+									<R>1</R>
+								</outputMul>
+								<ReflectionMap>
+									<samplerState>
+										<addressU>Wrap</addressU>
+										<addressV>Wrap</addressV>
+										<addressW>Wrap</addressW>
+										<magFilter>Linear</magFilter>
+										<minFilter>Linear</minFilter>
+										<mipFilter>Linear</mipFilter>
+									</samplerState>
+									<texture href="" />
+								</ReflectionMap>
+								<reflectivity>1</reflectivity>
+								<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
+								<renderFlags>2</renderFlags>
+								<renderState>
+									<alphaTest>Off</alphaTest>
+									<alphaTestRef>127</alphaTestRef>
+									<blendMode>Off</blendMode>
+									<culling>On</culling>
+								</renderState>
+								<SpecularMap>
+									<Add>
+										<A>0</A>
+										<B>0</B>
+										<G>0</G>
+										<R>0</R>
+									</Add>
+									<Multiplier>
+										<A>1</A>
+										<B>1</B>
+										<G>1</G>
+										<R>1</R>
+									</Multiplier>
+									<samplerState>
+										<addressU>Wrap</addressU>
+										<addressV>Wrap</addressV>
+										<addressW>Wrap</addressW>
+										<magFilter>Linear</magFilter>
+										<minFilter>Linear</minFilter>
+										<mipFilter>Linear</mipFilter>
+									</samplerState>
+									<texture href="" />
+								</SpecularMap>
+								<specularPower>0</specularPower>
+								<SubPriority>0</SubPriority>
+							</BasicMaterial>
+						</Item>
+					</materialsReferences>
+					<mayaFileName>/Effects/Debuffs/Bomb/_CatBombSphere.mayaStat</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>Sphere</selection>
+					<srcFileName crc="0">/Effects/Debuffs/Bomb/_CatBomb.mb</srcFileName>
+					<uvSetCount>1</uvSetCount>
+				</DBStaticSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>0.6504989</w>
+					<x>0.5471088</x>
+					<y>-0.07541801</y>
+					<z>-0.5213782</z>
+				</rot>
+				<scale>
+					<x>0.3</x>
+					<y>0.3</y>
+					<z>0.3</z>
+				</scale>
+			</placement>
+			<timeController href="" />
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>
