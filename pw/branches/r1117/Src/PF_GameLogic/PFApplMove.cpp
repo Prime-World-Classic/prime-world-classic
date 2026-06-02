@@ -1213,9 +1213,14 @@ namespace NWorld
     {
       if ( !pReceiver->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE) && !pReceiver->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK) )
       {
+#if defined( PW_LINUX_NULL_RENDER )
+        pReceiver->AssignTarget( pTarget2Attack, true );
+        pReceiver->DoAttack( canAttackAlly );
+#else
         CPtr<PFBaseMovingUnit> pReceiverAsMovingUnit(static_cast<PFBaseMovingUnit*>(pReceiver.GetPtr()));
         pReceiver->DropStates();
         pReceiver->PushState( new PFBaseUnitAttackState(pReceiver->GetWorld(), pReceiverAsMovingUnit, pTarget2Attack, true, true, GetDB().ignoreVisibility, canAttackAlly) );
+#endif
       }
     }
 

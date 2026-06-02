@@ -5,6 +5,7 @@
 
 #include "PFMinigamePlace.h"
 #include "PFWorld.h"
+#include "PFHero.h"
 
 namespace NWorld
 {
@@ -46,6 +47,11 @@ CObj<PFAbilityInstance> PFMinigamePlace::Use(PFBaseUnit*)
 bool PFMinigamePlace::CanBeUsedBy(PFBaseHero const*) const
 {
   return CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT) == false;
+}
+
+bool PFMinigamePlace::CanBeUsedBy(PFBaseUnit const* pUnit) const
+{
+  return CanBeUsedBy(dynamic_cast<PFBaseHero const*>(pUnit));
 }
 
 void PFMinigamePlace::Reset()
@@ -198,6 +204,12 @@ CObj<PFAbilityInstance> PFMinigamePlace::Use( PFBaseUnit* pUser )
 bool PFMinigamePlace::CanBeUsedBy( PFBaseHero const* pHero ) const
 {
   return !pHero->IsMounted() && CheckFlagType( NDb::UNITFLAGTYPE_FORBIDINTERACT ) == false;
+}
+
+bool PFMinigamePlace::CanBeUsedBy( PFBaseUnit const* pUnit ) const
+{
+  PFBaseHero const* pHero = dynamic_cast<PFBaseHero const*>(pUnit);
+  return pHero && CanBeUsedBy(pHero);
 }
 
 void PFMinigamePlace::Reset()

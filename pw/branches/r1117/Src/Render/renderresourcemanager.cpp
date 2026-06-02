@@ -2,14 +2,26 @@
 
 #include "stdafx.h"
 #include "renderresourcemanager.h"
+#include "../MeshConverter/MeshHeader.h"
+#include "../MeshConverter/SkeletalAnimationHeader.h"
+#include "../MeshConverter/SkeletonHeader.h"
+#include "../System/FileSystem/FileSystem.h"
 #include "../System/nhash_map.h"
+#include "MeshResource.h"
+#include "smartrenderer.h"
 
 namespace Render
 {
+
+DECLARE_NULL_RENDER_FLAG
+
 namespace
 {
 
 typedef nstl::hash_map<int, int> TMultiShaderTypeIdPool;
+typedef nstl::hash_map<nstl::string, MeshGeometry*> TMeshGeometryPool;
+typedef nstl::hash_map<nstl::string, SkeletonDataWrapper*> TSkeletonDataPool;
+typedef nstl::hash_map<nstl::string, SkeletalAnimationDataWrapper*> TSkeletalAnimationDataPool;
 
 TMultiShaderTypeIdPool& GetMultiShaderTypeIdPool()
 {
@@ -29,6 +41,68 @@ bool& GetSecondaryThreadFlag()
   return isSecondaryThread;
 }
 
+nstl::vector<char*>& GetNullRenderMeshOwnedBlocks()
+{
+  static nstl::vector<char*> blocks;
+  return blocks;
+}
+
+TMeshGeometryPool& GetNullRenderMeshGeometryPool()
+{
+  static TMeshGeometryPool pool;
+  return pool;
+}
+
+TSkeletonDataPool& GetNullRenderSkeletonDataPool()
+{
+  static TSkeletonDataPool pool;
+  return pool;
+}
+
+TSkeletalAnimationDataPool& GetNullRenderSkeletalAnimationDataPool()
+{
+  static TSkeletalAnimationDataPool pool;
+  return pool;
+}
+
+char* ReadNullRenderFileData(const nstl::string& filename, int* fileSize)
+{
+  if (fileSize)
+    *fileSize = 0;
+
+  CObj<Stream> pFileStream = RootFileSystem::OpenFile(filename, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING);
+  NI_VERIFY(pFileStream && pFileStream->IsOk(), NStr::StrFmt("Cannot open file for reading: %s", filename.c_str()), return 0; );
+
+  const int size = pFileStream->GetSize();
+  NI_VERIFY(size > 0, NStr::StrFmt("File size is ZERO: %s", filename.c_str()), return 0; );
+
+  char* data = new char[size];
+  const int readSize = pFileStream->Read(data, size);
+  if (readSize != size)
+  {
+    delete[] data;
+    NI_ALWAYS_ASSERT(NStr::StrFmt("Failed to read full file: %s", filename.c_str()));
+    return 0;
+  }
+
+  if (fileSize)
+    *fileSize = size;
+  return data;
+}
+
+MeshGeometry* LoadNullRenderMeshGeometryFromFile(const nstl::string& filename, bool bSkeletalMesh, bool appendColorStream)
+{
+  int fileSize = 0;
+  char* data = ReadNullRenderFileData(filename, &fileSize);
+  if (!data)
+    return 0;
+
+  MeshGeometry* geometry = RenderResourceManager::LoadMeshGeometry(data, bSkeletalMesh, appendColorStream);
+  delete[] data;
+  NI_ASSERT(geometry, NStr::StrFmt("Failed to load mesh from file: %s", filename.c_str()));
+  return geometry;
+}
+
 } // namespace
 
 namespace RenderResourceManager
@@ -40,14 +114,57 @@ void Init()
 
 void Release()
 {
+  TMeshGeometryPool& meshPool = GetNullRenderMeshGeometryPool();
+  for (TMeshGeometryPool::iterator it = meshPool.begin(); it != meshPool.end(); ++it)
+    delete it->second;
+  meshPool.clear();
+
+  TSkeletonDataPool& skeletonPool = GetNullRenderSkeletonDataPool();
+  for (TSkeletonDataPool::iterator it = skeletonPool.begin(); it != skeletonPool.end(); ++it)
+    delete it->second;
+  skeletonPool.clear();
+
+  TSkeletalAnimationDataPool& animationPool = GetNullRenderSkeletalAnimationDataPool();
+  for (TSkeletalAnimationDataPool::iterator it = animationPool.begin(); it != animationPool.end(); ++it)
+    delete it->second;
+  animationPool.clear();
+
+  nstl::vector<char*>& ownedBlocks = GetNullRenderMeshOwnedBlocks();
+  for (size_t i = 0; i < ownedBlocks.size(); ++i)
+    delete[] ownedBlocks[i];
+  ownedBlocks.clear();
   GetMultiShaderTypeIdPool().clear();
   GetSecondaryThreadFlag() = false;
 }
 
 SkeletonDataWrapper* LoadSkeletonData(const nstl::string& filename)
 {
-  (void)filename;
-  return 0;
+  TSkeletonDataPool& pool = GetNullRenderSkeletonDataPool();
+  TSkeletonDataPool::iterator it = pool.find(filename);
+  if (it != pool.end())
+    return it->second;
+
+  int fileSize = 0;
+  char* data = ReadNullRenderFileData(filename, &fileSize);
+  if (!data)
+    return 0;
+
+  const SkeletonData* skeleton = reinterpret_cast<const SkeletonData*>(data);
+  if (fileSize < static_cast<int>(sizeof(SkeletonData)) ||
+      skeleton->jointsCount == 0 ||
+      skeleton->jointsCount > 512 ||
+      skeleton->invertedBindPoseBones.size() != skeleton->jointsCount ||
+      skeleton->parentsIDs.size() != skeleton->jointsCount)
+  {
+    delete[] data;
+    NI_ALWAYS_ASSERT(NStr::StrFmt("Failed to load skeleton from file: %s", filename.c_str()));
+    return 0;
+  }
+
+  GetNullRenderMeshOwnedBlocks().push_back(data);
+  SkeletonDataWrapper* wrapper = new SkeletonDataWrapper(skeleton);
+  pool[filename] = wrapper;
+  return wrapper;
 }
 
 const PFXBinaryFileWrapper* LoadPFXData(const nstl::string& filename)
@@ -58,15 +175,31 @@ const PFXBinaryFileWrapper* LoadPFXData(const nstl::string& filename)
 
 const MeshGeometry* LoadStaticMeshGeometry(const nstl::string& filename, bool appendColorStream)
 {
-  (void)filename;
-  (void)appendColorStream;
-  return 0;
+  TMeshGeometryPool& pool = GetNullRenderMeshGeometryPool();
+  nstl::string cacheKey = filename;
+  cacheKey += appendColorStream ? "#color" : "#plain";
+
+  TMeshGeometryPool::iterator it = pool.find(cacheKey);
+  if (it != pool.end())
+    return it->second;
+
+  MeshGeometry* geometry = LoadNullRenderMeshGeometryFromFile(filename, false, appendColorStream);
+  if (geometry)
+    pool[cacheKey] = geometry;
+  return geometry;
 }
 
 const MeshGeometry* LoadSkeletalMeshGeometry(const nstl::string& filename)
 {
-  (void)filename;
-  return 0;
+  TMeshGeometryPool& pool = GetNullRenderMeshGeometryPool();
+  TMeshGeometryPool::iterator it = pool.find(filename);
+  if (it != pool.end())
+    return it->second;
+
+  MeshGeometry* geometry = LoadNullRenderMeshGeometryFromFile(filename, true, false);
+  if (geometry)
+    pool[filename] = geometry;
+  return geometry;
 }
 
 InstancedMeshGeometry* LoadInstancedMeshGeometry(const nstl::string& filename)
@@ -77,10 +210,113 @@ InstancedMeshGeometry* LoadInstancedMeshGeometry(const nstl::string& filename)
 
 MeshGeometry* LoadMeshGeometry(const char* pData, bool bSkeletalMesh, bool appendColorStream)
 {
-  (void)pData;
-  (void)bSkeletalMesh;
-  (void)appendColorStream;
-  return 0;
+  NI_VERIFY(pData, "invalid stream", return 0; );
+
+  const H6GeometryFileHeader* pH6GeometryFileHeader =
+    reinterpret_cast<const H6GeometryFileHeader*>(pData);
+
+  NI_VERIFY(
+    pH6GeometryFileHeader->vbOffset < pH6GeometryFileHeader->ibOffset,
+    "stream corrupted",
+    return 0; );
+  if (bSkeletalMesh)
+  {
+    NI_VERIFY(pH6GeometryFileHeader->reindexOffset, "skeletal mesh corrupted", return 0; );
+    NI_VERIFY(
+      pH6GeometryFileHeader->ibOffset < pH6GeometryFileHeader->reindexOffset,
+      "skeletal mesh corrupted",
+      return 0; );
+  }
+  else if (pH6GeometryFileHeader->reindexOffset != 0)
+  {
+    systemLog(NLogg::LEVEL_MESSAGE) << "static mesh is corrupted" << endl;
+    return 0;
+  }
+
+  const char* pVBSrcData = pData + pH6GeometryFileHeader->vbOffset;
+  const char* pIBSrcData = pVBSrcData + pH6GeometryFileHeader->commonVertexBufferSizeInBytes;
+  const char* pReindexData = pData + pH6GeometryFileHeader->reindexOffset;
+
+  DXVertexBufferRef pVB =
+    RENDER_DISABLED ?
+      DXVertexBufferRef() :
+      CreateVB(pH6GeometryFileHeader->commonVertexBufferSizeInBytes, RENDER_POOL_MANAGED, pVBSrcData);
+  DXIndexBufferRef pIB =
+    RENDER_DISABLED ?
+      DXIndexBufferRef() :
+      CreateIB(pH6GeometryFileHeader->commonIndexBufferSizeInBytes, RENDER_POOL_MANAGED, reinterpret_cast<const unsigned int*>(pIBSrcData));
+
+  const StaticVector<H6FragmentHeader>& fragments = pH6GeometryFileHeader->fragments;
+  MeshGeometry* pMeshGeometry = new MeshGeometry();
+  pMeshGeometry->colorStreamAppended = appendColorStream;
+  pMeshGeometry->materialCount = pH6GeometryFileHeader->materialCount;
+  pMeshGeometry->fragmentCount = pH6GeometryFileHeader->fragmentCount;
+  pMeshGeometry->primitives.resize(pH6GeometryFileHeader->fragmentCount);
+
+  for (unsigned int i = 0; i < pH6GeometryFileHeader->fragmentCount; ++i)
+  {
+    Primitive* pPrimitive = new Primitive();
+    pPrimitive->SetVertexStream(pVB, fragments[i].vertexStrideSizeInBytes, fragments[i].streamOffset);
+    pPrimitive->SetIndexBuffer(pIB);
+
+    VertexFormatDescriptor formatDescriptor;
+    formatDescriptor.AssignVertexElements(
+      fragments[i].vertexElementDescriptor[0],
+      fragments[i].vertexElementDescriptor.size());
+    if (appendColorStream)
+    {
+      const unsigned int usageIndex =
+        static_cast<unsigned int>(formatDescriptor.FindMaxUsageIndex(VERETEXELEMENTUSAGE_COLOR) + 1);
+      NI_DATA_ASSERT(usageIndex == 0U, "Mesh with vertex colors can't use additional color stream (baked lighting)");
+      formatDescriptor.AddVertexElement(VertexElementDescriptor(1U, 0U, VERTEXELEMENTTYPE_D3DCOLOR, VERETEXELEMENTUSAGE_COLOR, 0U));
+      formatDescriptor.AddVertexElement(VertexElementDescriptor(2U, 0U, VERTEXELEMENTTYPE_D3DCOLOR, VERETEXELEMENTUSAGE_COLOR, 1U));
+    }
+    pPrimitive->SetVertexDeclaration(SmartRenderer::GetVertexFormatDeclaration(formatDescriptor));
+
+    DipDescriptor& dipDescr = pPrimitive->GetDipDescriptor();
+    dipDescr.primitiveType = RENDERPRIMITIVE_TRIANGLELIST;
+    dipDescr.baseVertexIndex = fragments[i].baseVertexIndex;
+    dipDescr.numVertices = fragments[i].numVertices;
+    dipDescr.primitiveCount = fragments[i].primitiveCount;
+    pMeshGeometry->triangleCount += dipDescr.primitiveCount;
+    dipDescr.startIndex = fragments[i].startIndex;
+
+    pMeshGeometry->primitives[i] = pPrimitive;
+    pMeshGeometry->materialID[i] = fragments[i].materialID;
+  }
+
+  if (pH6GeometryFileHeader->jointsCount > 0)
+  {
+    const StaticVector<StaticVector<unsigned short> >* reindex =
+      reinterpret_cast<const StaticVector<StaticVector<unsigned short> >*>(pReindexData);
+    unsigned int size = Align(reindex->getMemorySize(), 16);
+    for (unsigned int i = 0; i < reindex->size(); ++i)
+      size += Align((*reindex)[i].size() * sizeof((*reindex)[0][0]), 16);
+
+    char* reindexCopy = new char[size];
+    GetNullRenderMeshOwnedBlocks().push_back(reindexCopy);
+    pMeshGeometry->pReindex = reinterpret_cast<const GeometryReindex*>(reindexCopy);
+    memcpy(reindexCopy, pReindexData, size);
+  }
+
+  unsigned int totalTriangles = 0;
+  for (int i = 0, n = pMeshGeometry->primitives.size(); i < n; ++i)
+  {
+    Primitive* pPrimitive = pMeshGeometry->primitives[i];
+    if (pPrimitive->GetDipDescriptor().primitiveType != RENDERPRIMITIVE_TRIANGLELIST)
+    {
+      totalTriangles = 0;
+      break;
+    }
+    totalTriangles += pPrimitive->GetDipDescriptor().primitiveCount;
+  }
+  if (pH6GeometryFileHeader->commonIndexBufferSizeInBytes == 6 * totalTriangles * sizeof(unsigned int))
+  {
+    for (int i = 0, n = pMeshGeometry->primitives.size(); i < n; ++i)
+      pMeshGeometry->primitives[i]->HasHiddenIndices(true);
+  }
+
+  return pMeshGeometry;
 }
 
 void SaveMeshGeometry(MeshGeometry const* pGeometry, Stream* pStream)
@@ -91,8 +327,31 @@ void SaveMeshGeometry(MeshGeometry const* pGeometry, Stream* pStream)
 
 const SkeletalAnimationDataWrapper* LoadSkeletalAnimation(const nstl::string& filename)
 {
-  (void)filename;
-  return 0;
+  TSkeletalAnimationDataPool& pool = GetNullRenderSkeletalAnimationDataPool();
+  TSkeletalAnimationDataPool::iterator it = pool.find(filename);
+  if (it != pool.end())
+    return it->second;
+
+  int fileSize = 0;
+  char* data = ReadNullRenderFileData(filename, &fileSize);
+  if (!data)
+    return 0;
+
+  const SkeletalAnimationData* animation = reinterpret_cast<const SkeletalAnimationData*>(data);
+  if (fileSize < static_cast<int>(sizeof(SkeletalAnimationData)) ||
+      animation->tracks.size() == 0 ||
+      animation->tracks.size() > 512 ||
+      animation->maxTime < animation->minTime)
+  {
+    delete[] data;
+    NI_ALWAYS_ASSERT(NStr::StrFmt("Failed to load skeletal animation from file: %s", filename.c_str()));
+    return 0;
+  }
+
+  GetNullRenderMeshOwnedBlocks().push_back(data);
+  SkeletalAnimationDataWrapper* wrapper = new SkeletalAnimationDataWrapper(animation);
+  pool[filename] = wrapper;
+  return wrapper;
 }
 
 Render::Materials::MultiShader* GetMultiShader(int index)

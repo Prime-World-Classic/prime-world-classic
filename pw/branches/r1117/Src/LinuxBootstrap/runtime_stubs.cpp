@@ -16,6 +16,7 @@
 #include "Client/MainLoop.h"
 #include "Client/Tooltips.h"
 #include "Client/ScreenCommands.h"
+#include "Server/RPC/Types.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
 #include "PF_GameLogic/AdventureScreen.h"
 #include "PF_GameLogic/DBAdvMap.h"
@@ -50,6 +51,8 @@
 
 #include <cstdlib>
 #include <stdio.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <wchar.h>
 
 void* Aligned_MAlloc(size_t size, size_t alignment)
@@ -134,18 +137,88 @@ bool IsAppActive()
 
 namespace NCore
 {
+namespace
+{
+const char kLinuxReplayMagic[] = "PWLXREPLAY1\n";
+const char kLinuxReplayFolder[] = "logs";
+const char kLinuxReplayPath[] = "logs/linux-bootstrap-replay.pwrp";
+
+void EnsureLinuxReplayFolder()
+{
+  mkdir(kLinuxReplayFolder, 0775);
+}
+}
+
 ReplayWriter::ReplayWriter()
   : versionWritten(false),
     lobbyDataWritten(false),
     gsDataWritten(false),
     headerWritten(false),
-    infoheaderWritten(false)
+    infoheaderWritten(false),
+    linuxReplayFile(0),
+    linuxReplayStartWrites(0),
+    linuxReplayStepWrites(0),
+    linuxReplayCommandWrites(0),
+    linuxReplayStatusWrites(0),
+    linuxReplayBytesWritten(0),
+    linuxReplayWriteFailures(0)
 {
+}
+
+ReplayWriter::~ReplayWriter()
+{
+  if (linuxReplayFile)
+  {
+    fflush(linuxReplayFile);
+    fclose(linuxReplayFile);
+    linuxReplayFile = 0;
+  }
+}
+
+void ReplayWriter::LinuxEnsureReplayFile()
+{
+  if (linuxReplayFile)
+  {
+    return;
+  }
+
+  EnsureLinuxReplayFolder();
+  replaysFolderPath = kLinuxReplayFolder;
+  replayFilePath = kLinuxReplayPath;
+  linuxReplayFile = fopen(replayFilePath.c_str(), "wb");
+  if (!linuxReplayFile)
+  {
+    ++linuxReplayWriteFailures;
+  }
+}
+
+void ReplayWriter::LinuxWriteReplay(const void* data, size_t size)
+{
+  if (!data || size == 0)
+  {
+    return;
+  }
+
+  if (!linuxReplayFile)
+  {
+    ++linuxReplayWriteFailures;
+    return;
+  }
+
+  if (fwrite(data, 1, size, linuxReplayFile) == size)
+  {
+    linuxReplayBytesWritten += size;
+  }
+  else
+  {
+    ++linuxReplayWriteFailures;
+  }
 }
 
 void ReplayWriter::WriteVersion(const Login::ClientVersion& _clientVersion)
 {
   (void)_clientVersion;
+  versionWritten = true;
 }
 
 void ReplayWriter::WriteLobbyData(Transport::TClientId clientId, const lobby::TGameLineUp& _gameLineUp, const lobby::SGameParameters& _gameParams)
@@ -153,6 +226,7 @@ void ReplayWriter::WriteLobbyData(Transport::TClientId clientId, const lobby::TG
   (void)clientId;
   (void)_gameLineUp;
   (void)_gameParams;
+  lobbyDataWritten = true;
 }
 
 void ReplayWriter::WriteGSData(int stepLength, const ClientSettings& clientSettings, const vector<Peered::ClientInfo>& clientInfos)
@@ -160,31 +234,83 @@ void ReplayWriter::WriteGSData(int stepLength, const ClientSettings& clientSetti
   (void)stepLength;
   (void)clientSettings;
   (void)clientInfos;
+  gsDataWritten = true;
 }
 
 void ReplayWriter::WriteStartGame(Peered::TSessionId serverId, int step)
 {
-  (void)serverId;
-  (void)step;
+  LinuxEnsureReplayFile();
+  if (!linuxReplayFile)
+  {
+    return;
+  }
+
+  LinuxWriteReplay(kLinuxReplayMagic, sizeof(kLinuxReplayMagic) - 1);
+  LinuxWriteReplay(&serverId, sizeof(serverId));
+  LinuxWriteReplay(&step, sizeof(step));
+  fflush(linuxReplayFile);
+  headerWritten = true;
+  ++linuxReplayStartWrites;
 }
 
 void ReplayWriter::WriteStepData(int step, const nstl::vector<rpc::MemoryBlock>& commands, const vector<Peered::BriefClientInfo>& statuses)
 {
-  (void)step;
-  (void)commands;
+  if (!headerWritten)
+  {
+    WriteStartGame(0, step);
+  }
+
+  if (!linuxReplayFile)
+  {
+    return;
+  }
+
+  LinuxWriteReplay(&step, sizeof(step));
+
+  const size_t commandsToWrite = Min<size_t>(commands.size(), 0xFFFF);
+  const size_t statusesToWrite = 0;
+  unsigned short commandsCount = static_cast<unsigned short>(commandsToWrite);
+  unsigned short statusesCount = static_cast<unsigned short>(statusesToWrite);
+  LinuxWriteReplay(&commandsCount, sizeof(commandsCount));
+  LinuxWriteReplay(&statusesCount, sizeof(statusesCount));
+
+  for (size_t i = 0; i < commandsToWrite; ++i)
+  {
+    const rpc::MemoryBlock& block = commands[i];
+    const size_t bytesToWrite = Min<size_t>(block.size, 0xFFFF);
+    unsigned short size = static_cast<unsigned short>(bytesToWrite);
+    LinuxWriteReplay(&size, sizeof(size));
+    LinuxWriteReplay(block.memory, bytesToWrite);
+  }
+
   (void)statuses;
+
+  fflush(linuxReplayFile);
+  ++linuxReplayStepWrites;
+  linuxReplayCommandWrites += commandsToWrite;
+  linuxReplayStatusWrites += statusesToWrite;
 }
 
 void ReplayWriter::WriteStartGameInfo(const NGameX::ReplayInfo& _replayInfo)
 {
   (void)_replayInfo;
+  infoheaderWritten = true;
 }
 
 void ReplayWriter::WriteFinishGame(int step, const StatisticService::RPC::SessionClientResults& _sessionResults, const NGameX::ReplayInfo& _replayInfo)
 {
-  (void)step;
   (void)_sessionResults;
   (void)_replayInfo;
+  if (!headerWritten || !linuxReplayFile)
+  {
+    return;
+  }
+
+  unsigned short zero = 0;
+  LinuxWriteReplay(&step, sizeof(step));
+  LinuxWriteReplay(&zero, sizeof(zero));
+  LinuxWriteReplay(&zero, sizeof(zero));
+  fflush(linuxReplayFile);
 }
 
 void ReplayWriter::WriteSessionInfoToFile(const StatisticService::RPC::SessionClientResults& _sessionResults, const NGameX::ReplayInfo& _replayInfo)
@@ -284,12 +410,6 @@ class Target;
 const char* MakeTargetString(const Target&)
 {
   return "<linux-bootstrap-target>";
-}
-
-NCore::WorldCommand* CreateCmdSetTimescale(float scale)
-{
-  (void)scale;
-  return 0;
 }
 
 namespace

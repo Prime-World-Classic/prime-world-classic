@@ -67,12 +67,68 @@ class PFStatistics;
 class TriggerMarkerHandler;
 class PFAIContainer;
 class PFBaseUnit;
+class PFBaseHero;
 class FogOfWar;
 class PFCommonCreep;
 class PFTalent;
 class PFConsumableAbilityData;
 class PFNeutralCreepSpawner;
 class PFMainBuilding;
+class PFShop;
+class PFFlagpole;
+class PFPickupableObjectBase;
+class PFMinigamePlace;
+
+#if defined( PW_LINUX_NULL_RENDER )
+struct LinuxDynamicWorldMarker
+{
+  enum EKind
+  {
+    KIND_HERO = 1,
+    KIND_COMMON_CREEP = 2,
+    KIND_NEUTRAL_CREEP = 3
+  };
+
+  float x;
+  float y;
+  int objectId;
+  int kind;
+  int faction;
+  int playerId;
+  int userId;
+  string unitDbid;
+  string sceneObjectDbid;
+  int creepType;
+  float healthPercent;
+  float energyPercent;
+  float objectSize;
+  float moveDirX;
+  float moveDirY;
+  bool hasMoveDirection;
+  bool moving;
+  bool dead;
+
+  LinuxDynamicWorldMarker()
+    : x(0.0f),
+      y(0.0f),
+      objectId(-1),
+      kind(0),
+      faction(0),
+      playerId(-1),
+      userId(-1),
+      creepType(-1),
+      healthPercent(1.0f),
+      energyPercent(0.0f),
+      objectSize(0.0f),
+      moveDirX(0.0f),
+      moveDirY(0.0f),
+      hasMoveDirection(false),
+      moving(false),
+      dead(false)
+  {
+  }
+};
+#endif
 
 class MapLoadingController;
 class DayNightController;
@@ -188,6 +244,22 @@ class PFWorld : public PF_Core::World
   int linuxLoadedCameraSplineObjects;
   int linuxLoadedScriptPathObjects;
   int linuxLoadedScriptPolygonAreaObjects;
+  int linuxLastSteppedSpawnerObjects;
+  int linuxLastSteppedCreepSpawnerObjects;
+  int linuxLastSteppedNeutralCreepSpawnerObjects;
+  int linuxSpawnedHeroObjects;
+  int linuxPlayersWithHeroObjects;
+  int linuxExecutedPackedWorldCommands;
+  int linuxLastPackedWorldCommandClientId;
+  DWORD linuxLastPackedWorldCommandTypeId;
+  int linuxBootstrapRuntimeCommands;
+  int linuxLastBootstrapRuntimeCommandClientId;
+  int linuxLastBootstrapRuntimeCommandToken;
+  float linuxLastBootstrapRuntimeCommandValue;
+  int linuxStoredDeadUnits;
+  int linuxCleanedDeadUnits;
+  int linuxLastStoredDeadUnitObjectId;
+  int linuxLastCleanedDeadUnitObjectId;
 #endif
 
 public:
@@ -287,6 +359,51 @@ public:
   int GetLinuxLoadedCameraSplineObjectsCount() const { return linuxLoadedCameraSplineObjects; }
   int GetLinuxLoadedScriptPathObjectsCount() const { return linuxLoadedScriptPathObjects; }
   int GetLinuxLoadedScriptPolygonAreaObjectsCount() const { return linuxLoadedScriptPolygonAreaObjects; }
+  int GetLinuxLastSteppedSpawnerObjectsCount() const { return linuxLastSteppedSpawnerObjects; }
+  int GetLinuxLastSteppedCreepSpawnerObjectsCount() const { return linuxLastSteppedCreepSpawnerObjects; }
+  int GetLinuxLastSteppedNeutralCreepSpawnerObjectsCount() const { return linuxLastSteppedNeutralCreepSpawnerObjects; }
+  int GetLinuxSpawnedHeroObjectsCount() const { return linuxSpawnedHeroObjects; }
+  int GetLinuxPlayersWithHeroObjectsCount() const { return linuxPlayersWithHeroObjects; }
+  void RegisterLinuxExecutedPackedWorldCommand(int clientId);
+  void RegisterLinuxExecutedPackedWorldCommand(int clientId, DWORD commandTypeId);
+  void RegisterLinuxBootstrapRuntimeCommand(int clientId, int token, float value);
+  int GetLinuxExecutedPackedWorldCommandsCount() const { return linuxExecutedPackedWorldCommands; }
+  int GetLinuxLastPackedWorldCommandClientId() const { return linuxLastPackedWorldCommandClientId; }
+  DWORD GetLinuxLastPackedWorldCommandTypeId() const { return linuxLastPackedWorldCommandTypeId; }
+  int GetLinuxBootstrapRuntimeCommandsCount() const { return linuxBootstrapRuntimeCommands; }
+  int GetLinuxLastBootstrapRuntimeCommandClientId() const { return linuxLastBootstrapRuntimeCommandClientId; }
+  int GetLinuxLastBootstrapRuntimeCommandToken() const { return linuxLastBootstrapRuntimeCommandToken; }
+  float GetLinuxLastBootstrapRuntimeCommandValue() const { return linuxLastBootstrapRuntimeCommandValue; }
+  int GetLinuxStoredDeadUnitsCount() const { return linuxStoredDeadUnits; }
+  int GetLinuxCleanedDeadUnitsCount() const { return linuxCleanedDeadUnits; }
+  int GetLinuxPendingDeadUnitsCount() const { return deadUnits.size(); }
+  int GetLinuxLastStoredDeadUnitObjectId() const { return linuxLastStoredDeadUnitObjectId; }
+  int GetLinuxLastCleanedDeadUnitObjectId() const { return linuxLastCleanedDeadUnitObjectId; }
+  int GetLinuxRegisteredCreepObjectsCount() const { return GetRegisteredCreepsCount(); }
+  int GetLinuxSpawnedNeutralCreepObjectsCount();
+  int GetLinuxMovingCommonCreepObjectsCount();
+  int GetLinuxMovedCommonCreepObjectsCount();
+  float GetLinuxCommonCreepMovementDistance();
+  void GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers);
+  PFBaseUnit* FindLinuxUnitByObjectId(int objectId);
+  int GetLinuxCreepSpawnerWavesCount();
+  int GetLinuxNeutralCreepSpawnerWavesCount();
+  int GetLinuxReadyCreepSpawnerObjectsCount();
+  int GetLinuxReadyNeutralCreepSpawnerObjectsCount();
+  int GetLinuxEnabledCreepSpawnerObjectsCount();
+  int GetLinuxEnabledNeutralCreepSpawnerObjectsCount();
+  int GetLinuxContentCreepSpawnerObjectsCount();
+  int GetLinuxContentNeutralCreepSpawnerObjectsCount();
+  int GetLinuxAICreepSpawnEnabled() const;
+  int GetLinuxAINeutralCreepSpawnEnabled() const;
+  int GetLinuxAIMaxCreepsCount() const;
+  float GetLinuxMinCreepSpawnerSpawnDelay();
+  float GetLinuxMinNeutralCreepSpawnerSpawnDelay();
+  PFShop* FindLinuxFirstShopForHero(PFBaseHero const* hero, int* outConsumableIndex);
+  PFBaseUnit* FindLinuxFirstUsableUnitForHero(PFBaseHero const* hero);
+  PFFlagpole* FindLinuxFirstRaisableFlagpoleForHero(PFBaseHero const* hero);
+  PFMinigamePlace* FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero const* hero);
+  PFPickupableObjectBase* FindLinuxFirstPickupableForHero(PFBaseHero const* hero);
 #endif
   virtual int GetStepLength() const { return stepLength; }
   virtual float GetStepLengthInSeconds() const { return stepLengthInSeconds; }

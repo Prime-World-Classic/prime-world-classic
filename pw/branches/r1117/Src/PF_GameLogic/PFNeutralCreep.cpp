@@ -3,6 +3,7 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFNeutralCreep.h"
+#include "PFCommonCreep.h"
 
 namespace
 {
@@ -25,7 +26,17 @@ PFNeutralCreepSpawner::PFNeutralCreepSpawner(PFWorld* pWorld, const NDb::AdvMapO
 
 bool PFNeutralCreepSpawner::CanSpawnWave() const
 {
-  return false;
+  if (!GetWorld() || !GetWorld()->GetAIWorld() || !IsValid(spawnerDesc))
+    return false;
+
+  if (!PFBaseSpawner::CanSpawnWave() || !GetWorld()->GetAIWorld()->GetSpawnNeutralCreeps())
+    return false;
+
+  if (spawnerDesc->groups.empty() || GetSpawnDelay() >= 0.0f || !creeps.empty())
+    return false;
+
+  const int waveCount = spawnerDesc->waveCount;
+  return (waveCount > GetSpawnWaveCounter() && waveCount) || !waveCount;
 }
 
 void PFNeutralCreepSpawner::OnAfterReset()
@@ -34,36 +45,102 @@ void PFNeutralCreepSpawner::OnAfterReset()
 
 void PFNeutralCreepSpawner::SpawnCreeps()
 {
+  if (!GetWorld() || !GetWorld()->GetRndGen() || !IsValid(spawnerDesc) || spawnerDesc->groups.empty())
+    return;
+
+  minAttackRange = 10000.0f;
+  creeps.clear();
+
+  const int groupIndex = GetWorld()->GetRndGen()->Next(0, spawnerDesc->groups.size() - 1);
+  vector<NDb::AdvMapNeutralCreepsGroup>::const_iterator iGroup = &spawnerDesc->groups[groupIndex];
+
+  for (vector<NDb::NeutralSpawnObject>::const_iterator iCreep = iGroup->creeps.begin();
+       iCreep != iGroup->creeps.end();
+       ++iCreep)
+  {
+    if (!iCreep->creep || iCreep->waveDelayToAppear > GetSpawnWaveCounter())
+      continue;
+
+    PFNeutralCreep* neutralCreep = new PFNeutralCreep(
+      GetWorld(),
+      *iCreep->creep,
+      GetCreepPosition(iCreep->offset.GetPlace()),
+      iCreep->useSpawnerWalkLimit,
+      iCreep->limitWalkDistance,
+      this,
+      GetRelativeTargets(spawnerDesc->path, iCreep->offset.GetPlace().pos),
+      GetLifeTimeLevelUpInterval(),
+      GetLifeTimeLevelUpIncrement(),
+      iCreep->specialAwarding);
+
+    InitializeCreep(neutralCreep, iCreep->creep->recolor);
+    RegisterCreep(neutralCreep);
+  }
 }
 
 void PFNeutralCreepSpawner::InitializeCreep( PFNeutralCreep* neutralCreep, const Render::HDRColor& recolor )
 {
-  (void)neutralCreep;
   (void)recolor;
+  ApplyStatModifiers(neutralCreep);
+
+  if (!neutralCreep)
+    return;
+
+  const int levelsToGrow = GetCreepsLevel() - neutralCreep->GetNaftaLevel();
+  if (levelsToGrow > 0)
+    neutralCreep->DoLevelups(levelsToGrow);
+
+  if (neutralCreep->GetAttackRange() < minAttackRange)
+    minAttackRange = neutralCreep->GetAttackRange();
+
+  creeps.push_back(neutralCreep);
 }
 
 void PFNeutralCreepSpawner::AwardForCreepKill(NaftaAward& award) const
 {
-  (void)award;
+  if (IsValid(spawnerDesc) && spawnerDesc->naftaForGroupKill > 0)
+  {
+    if ((spawnerDesc->waveCount && creeps.size() == 1) && GetSpawnWaveCounter() == spawnerDesc->waveCount)
+      award.toKiller += spawnerDesc->naftaForGroupKill;
+  }
 }
 
 void PFNeutralCreepSpawner::DropCreep( PFNeutralCreep *pCreep)
 {
-  (void)pCreep;
+  TCreeps::iterator it = find(creeps.begin(), creeps.end(), pCreep);
+  if (it != creeps.end())
+    creeps.erase(it);
+
+  if (creeps.empty() && IsValid(spawnerDesc))
+    SetSpawnDelay(spawnerDesc->spawnDelay);
 }
 
 void PFNeutralCreepSpawner::DropAllCreeps()
 {
-  creeps.clear();
-  if (IsValid(spawnerDesc))
-    SetSpawnDelay( spawnerDesc->spawnDelay );
+  if (!creeps.empty())
+  {
+    creeps.clear();
+    if (IsValid(spawnerDesc))
+      SetSpawnDelay(spawnerDesc->spawnDelay);
+  }
 }
 
 CPtr<PFBaseUnit> PFNeutralCreepSpawner::GetSpawnTarget( CPtr<PFBaseMovingUnit>& pUnit, float range, const bool checkRange )
 {
-  (void)pUnit;
-  (void)range;
-  (void)checkRange;
+  for (TCreeps::iterator it = creeps.begin(); it != creeps.end(); ++it)
+  {
+    PFNeutralCreep* pCreep = (*it);
+    if (!pCreep || pCreep == pUnit)
+      continue;
+
+    PFBaseUnit* target = pCreep->GetCurrentTarget();
+    if (!target)
+      continue;
+
+    if (!checkRange || pUnit->IsTargetInRange(target, range))
+      return target;
+  }
+
   return 0;
 }
 

@@ -9,6 +9,7 @@
 #include <GL/glx.h>
 
 #include <stdio.h>
+#include <unistd.h>
 #include <mutex>
 #include <vector>
 
@@ -221,6 +222,186 @@ void ResizeWindowInternal(unsigned long width, unsigned long height)
 void PrintBootstrapError(const char* message)
 {
   fprintf(stderr, "%s\n", message);
+}
+
+Atom InternWindowManagerAtom(const char* name)
+{
+  if (!g_display || !name)
+  {
+    return None;
+  }
+
+  return XInternAtom(g_display, name, False);
+}
+
+void SetWindowCardinalProperty(const char* name, unsigned long value)
+{
+  const Atom property = InternWindowManagerAtom(name);
+  if (!g_display || !g_window || property == None)
+  {
+    return;
+  }
+
+  XChangeProperty(
+    g_display,
+    g_window,
+    property,
+    XA_CARDINAL,
+    32,
+    PropModeReplace,
+    reinterpret_cast<const unsigned char*>(&value),
+    1
+  );
+}
+
+void SetWindowAtomProperty(const char* name, Atom value)
+{
+  const Atom property = InternWindowManagerAtom(name);
+  if (!g_display || !g_window || property == None || value == None)
+  {
+    return;
+  }
+
+  XChangeProperty(
+    g_display,
+    g_window,
+    property,
+    XA_ATOM,
+    32,
+    PropModeReplace,
+    reinterpret_cast<const unsigned char*>(&value),
+    1
+  );
+}
+
+void SetWindowAtomListProperty(const char* name, const Atom* values, int count)
+{
+  const Atom property = InternWindowManagerAtom(name);
+  if (!g_display || !g_window || property == None || !values || count <= 0)
+  {
+    return;
+  }
+
+  XChangeProperty(
+    g_display,
+    g_window,
+    property,
+    XA_ATOM,
+    32,
+    PropModeReplace,
+    reinterpret_cast<const unsigned char*>(values),
+    count
+  );
+}
+
+void ApplyWindowManagerHints(const char* appName, int width, int height)
+{
+  if (!g_display || !g_window)
+  {
+    return;
+  }
+
+  XClassHint classHint = {};
+  classHint.res_name = const_cast<char*>("PrimeWorldLinuxClient");
+  classHint.res_class = const_cast<char*>("PrimeWorld");
+  XSetClassHint(g_display, g_window, &classHint);
+
+  XSizeHints sizeHints = {};
+  sizeHints.flags = USSize | PSize | PMinSize | PMaxSize | PBaseSize;
+  sizeHints.width = width;
+  sizeHints.height = height;
+  sizeHints.min_width = width;
+  sizeHints.min_height = height;
+  sizeHints.max_width = width;
+  sizeHints.max_height = height;
+  sizeHints.base_width = width;
+  sizeHints.base_height = height;
+  XSetWMNormalHints(g_display, g_window, &sizeHints);
+
+  XWMHints wmHints = {};
+  wmHints.flags = InputHint | StateHint;
+  wmHints.input = True;
+  wmHints.initial_state = NormalState;
+  XSetWMHints(g_display, g_window, &wmHints);
+
+  XTextProperty textProperty = {};
+  char* windowNames[] = { const_cast<char*>(appName ? appName : "Prime World Classic") };
+  if (XStringListToTextProperty(windowNames, 1, &textProperty) != 0)
+  {
+    XSetWMName(g_display, g_window, &textProperty);
+    XSetWMIconName(g_display, g_window, &textProperty);
+    XFree(textProperty.value);
+  }
+
+  SetWindowCardinalProperty("_NET_WM_PID", static_cast<unsigned long>(getpid()));
+  const unsigned long allDesktops = 0xFFFFFFFFUL;
+  SetWindowCardinalProperty("_NET_WM_DESKTOP", allDesktops);
+
+  const Atom normalWindowType = InternWindowManagerAtom("_NET_WM_WINDOW_TYPE_NORMAL");
+  SetWindowAtomProperty("_NET_WM_WINDOW_TYPE", normalWindowType);
+
+  Atom windowStates[2] =
+  {
+    InternWindowManagerAtom("_NET_WM_STATE_ABOVE"),
+    InternWindowManagerAtom("_NET_WM_STATE_STICKY")
+  };
+  if (windowStates[0] != None && windowStates[1] != None)
+  {
+    SetWindowAtomListProperty("_NET_WM_STATE", windowStates, 2);
+  }
+}
+
+void RequestWindowForeground(int width, int height)
+{
+  if (!g_display || !g_window)
+  {
+    return;
+  }
+
+  const int screen = DefaultScreen(g_display);
+  XMoveResizeWindow(
+    g_display,
+    g_window,
+    0,
+    0,
+    static_cast<unsigned int>(width),
+    static_cast<unsigned int>(height)
+  );
+  XMapRaised(g_display, g_window);
+  XRaiseWindow(g_display, g_window);
+
+  const Atom activeWindow = InternWindowManagerAtom("_NET_ACTIVE_WINDOW");
+  if (activeWindow != None)
+  {
+    XEvent event = {};
+    event.xclient.type = ClientMessage;
+    event.xclient.serial = 0;
+    event.xclient.send_event = True;
+    event.xclient.display = g_display;
+    event.xclient.window = g_window;
+    event.xclient.message_type = activeWindow;
+    event.xclient.format = 32;
+    event.xclient.data.l[0] = 1;
+    event.xclient.data.l[1] = CurrentTime;
+    event.xclient.data.l[2] = 0;
+    XSendEvent(
+      g_display,
+      RootWindow(g_display, screen),
+      False,
+      SubstructureRedirectMask | SubstructureNotifyMask,
+      &event
+    );
+  }
+
+  XSync(g_display, False);
+
+  XWindowAttributes attributes = {};
+  if (XGetWindowAttributes(g_display, g_window, &attributes) && attributes.map_state == IsViewable)
+  {
+    XSetInputFocus(g_display, g_window, RevertToPointerRoot, CurrentTime);
+  }
+
+  XFlush(g_display);
 }
 
 void ProcessButtonPress(const XButtonEvent& event)
@@ -570,6 +751,7 @@ bool InitApplication(
   }
 
   XStoreName(g_display, g_window, windowName ? windowName : appName);
+  ApplyWindowManagerHints(appName, width, height);
   if (!g_glVisual)
   {
     XSelectInput(
@@ -583,8 +765,7 @@ bool InitApplication(
   g_wmDeleteWindow = XInternAtom(g_display, "WM_DELETE_WINDOW", False);
   XSetWMProtocols(g_display, g_window, &g_wmDeleteWindow, 1);
 
-  XMapRaised(g_display, g_window);
-  XFlush(g_display);
+  RequestWindowForeground(width, height);
   return true;
 }
 

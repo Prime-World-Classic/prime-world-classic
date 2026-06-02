@@ -5,7 +5,9 @@
 #include "PFAIWorld.h"
 #include "DBGameLogic.h"
 #include "DBSessionRoots.h"
+#include "PFBehaviour.h"
 #include "PFGlyphManager.h"
+#include "PFPredefinedUnitVariables.h"
 
 namespace NWorld
 {
@@ -49,6 +51,45 @@ NDb::UnitLogicParameters g_linuxDefaultUnitLogicParameters;
 NDb::AILogicParameters g_linuxDefaultAILogicParameters;
 wstring g_linuxEmptyFactionName;
 Render::HDRColor g_linuxDefaultColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+float GetLinuxDefaultUnitStat(const PFAIWorld& aiWorld, NDb::EUnitType unitType, NDb::EStat statId)
+{
+  const NDb::StatsContainer* statsContainer = aiWorld.GetUnitParameters(unitType).defaultStats;
+  if (!statsContainer)
+    return 0.0f;
+
+  for (vector<NDb::UnitStat>::const_iterator it = statsContainer->stats.begin(), end = statsContainer->stats.end(); it != end; ++it)
+  {
+    if (it->statId == statId)
+      return Max(0.0f, it->value(0, 0, 0));
+  }
+
+  return 0.0f;
+}
+
+float GetLinuxFallbackNaftaForKill(const PFAIWorld& aiWorld, const PFBaseUnit* victim)
+{
+  if (!victim)
+    return 0.0f;
+
+  float award = GetLinuxDefaultUnitStat(aiWorld, victim->GetUnitType(), NDb::STAT_NAFTAFORKILL);
+  if (award > 0.0f)
+    return award;
+
+  switch (victim->GetUnitType())
+  {
+  case NDb::UNITTYPE_NEUTRALCREEP:
+  case NDb::UNITTYPE_NEUTRALCHAMPION:
+  case NDb::UNITTYPE_NEUTRALBOSS:
+    return GetLinuxDefaultUnitStat(aiWorld, NDb::UNITTYPE_NEUTRALCREEP, NDb::STAT_NAFTAFORKILL);
+  case NDb::UNITTYPE_CREEP:
+  case NDb::UNITTYPE_SIEGECREEP:
+  case NDb::UNITTYPE_FACTIONCHAMPION:
+    return GetLinuxDefaultUnitStat(aiWorld, NDb::UNITTYPE_CREEP, NDb::STAT_NAFTAFORKILL);
+  default:
+    return 0.0f;
+  }
+}
 }
 
 void PFAIWorld::OnDestroyContents()
@@ -74,6 +115,24 @@ PFAIWorld::PFAIWorld( PFWorld * _world )
 , canUseSkins(true)
 , creepLevelCap(0)
 , creepLevelupPaused(false)
+, linuxAwardKillersCalls(0)
+, linuxAwardKillersRejected(0)
+, linuxAwardKillersApplied(0)
+, linuxLastAwardRejectCode(0)
+, linuxLastAwardVictimObjectId(-1)
+, linuxLastAwardKillerObjectId(-1)
+, linuxLastAwardHeroObjectId(-1)
+, linuxLastAwardVictimNaftaForKill(0.0f)
+, linuxLastAwardKillerAmount(0.0f)
+, linuxLastAwardTeamAmount(0.0f)
+, linuxLastAwardHeroGoldBefore(0)
+, linuxLastAwardHeroGoldAfter(0)
+, linuxLastAppliedAwardVictimObjectId(-1)
+, linuxLastAppliedAwardKillerObjectId(-1)
+, linuxLastAppliedAwardHeroObjectId(-1)
+, linuxLastAppliedAwardAmount(0.0f)
+, linuxLastAppliedAwardHeroGoldBefore(0)
+, linuxLastAppliedAwardHeroGoldAfter(0)
 {
   const NDb::Ptr<NDb::SessionRoot>& pRoot = NDb::SessionRoot::GetRoot();
   if (IsValid(pRoot) && IsValid(pRoot->logicRoot))
@@ -231,8 +290,90 @@ void PFAIWorld::GetAssistants(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pAggres
 
 void PFAIWorld::AwardKillers(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller) const
 {
-  (void)pVictim;
-  (void)pKiller;
+  ++linuxAwardKillersCalls;
+  linuxLastAwardRejectCode = 0;
+  linuxLastAwardVictimObjectId = IsValid(pVictim) ? pVictim->GetObjectId() : -1;
+  linuxLastAwardKillerObjectId = IsValid(pKiller) ? pKiller->GetObjectId() : -1;
+  linuxLastAwardHeroObjectId = -1;
+  linuxLastAwardVictimNaftaForKill = IsValid(pVictim) ? static_cast<float>(pVictim->GetNaftaForKill()) : 0.0f;
+  linuxLastAwardKillerAmount = 0.0f;
+  linuxLastAwardTeamAmount = 0.0f;
+  linuxLastAwardHeroGoldBefore = 0;
+  linuxLastAwardHeroGoldAfter = 0;
+
+  if (!IsValid(pVictim) || !IsValid(pKiller) || pVictim == pKiller)
+  {
+    ++linuxAwardKillersRejected;
+    linuxLastAwardRejectCode = 1;
+    return;
+  }
+
+  if (pVictim->GetMasterUnit() == pKiller)
+  {
+    ++linuxAwardKillersRejected;
+    linuxLastAwardRejectCode = 2;
+    return;
+  }
+
+  PFBaseHero* killerHero = dynamic_cast<PFBaseHero*>(pKiller.GetPtr());
+  if (!killerHero && IsValid(pKiller->GetMasterUnit()))
+    killerHero = dynamic_cast<PFBaseHero*>(pKiller->GetMasterUnit().GetPtr());
+
+  if (!killerHero)
+  {
+    ++linuxAwardKillersRejected;
+    linuxLastAwardRejectCode = 3;
+    return;
+  }
+
+  linuxLastAwardHeroObjectId = killerHero->GetObjectId();
+
+  NaftaAward award;
+  award.toKiller = linuxLastAwardVictimNaftaForKill;
+  award.toAssister = static_cast<float>(pVictim->GetNaftaForAssist());
+  award.toSpectator = static_cast<float>(pVictim->GetNaftaSpecForKill());
+  award.toKillerTeam = static_cast<float>(pVictim->GetTeamNaftaForKill());
+  award.toPresentTeam = static_cast<float>(pVictim->GetTeamNaftaForPresence());
+
+  if (pVictim->HasBehaviour())
+    pVictim->Behaviour()->GetKillerAward(pKiller, award);
+
+  if (award.toKiller <= 0.0f)
+    award.toKiller = GetLinuxFallbackNaftaForKill(*this, pVictim.GetPtr());
+
+  if (primeSettings.naftaForKill >= 0.0f)
+    award.toKiller = primeSettings.naftaForKill;
+
+  linuxLastAwardVictimNaftaForKill = award.toKiller;
+
+  const float multiplier = 1.0f + killerHero->GetVariable(UnitVariables::szPrimeForKillMultiplier);
+  const float bonus = killerHero->GetVariable(UnitVariables::szLastHitPrimeBonus);
+  const float killerAward = award.toKiller * multiplier + bonus;
+
+  linuxLastAwardKillerAmount = killerAward;
+  linuxLastAwardTeamAmount = award.toKillerTeam;
+  linuxLastAwardHeroGoldBefore = killerHero->GetGold();
+
+  if (killerAward > 0.0f)
+    killerHero->AwardForKill(pVictim, killerAward, true);
+
+  if (award.toKillerTeam > 0.0f)
+    killerHero->AwardForKill(pVictim, award.toKillerTeam, false);
+
+  linuxLastAwardHeroGoldAfter = killerHero->GetGold();
+  if (killerAward > 0.0f || award.toKillerTeam > 0.0f)
+  {
+    linuxLastAppliedAwardVictimObjectId = pVictim->GetObjectId();
+    linuxLastAppliedAwardKillerObjectId = pKiller->GetObjectId();
+    linuxLastAppliedAwardHeroObjectId = killerHero->GetObjectId();
+    linuxLastAppliedAwardAmount = killerAward + award.toKillerTeam;
+    linuxLastAppliedAwardHeroGoldBefore = linuxLastAwardHeroGoldBefore;
+    linuxLastAppliedAwardHeroGoldAfter = linuxLastAwardHeroGoldAfter;
+  }
+  if (linuxLastAwardHeroGoldAfter != linuxLastAwardHeroGoldBefore)
+    ++linuxAwardKillersApplied;
+
+  killerHero->OnKill(pVictim, pKiller.GetPtr() == killerHero);
 }
 
 void PFAIWorld::SendUnitDieNotification(CPtr<PFBaseUnit> pVictim, CPtr<PFBaseUnit> pKiller, PFBaseUnitDamageDesc const* pDamageDesc) const
@@ -253,7 +394,7 @@ void PFAIWorld::LogNaftaIncome(CPtr<PFBaseHero> pKiller, CPtr<PFBaseUnit> pVicti
 
 int PFAIWorld::GetMaxHeroLevel() const
 {
-  return IsValid(pLevelUps) ? pLevelUps->developmentPoints.size() : 0;
+  return IsValid(pLevelUps) ? max(pLevelUps->developmentPoints.size() - 1, 0) : 0;
 }
 
 void PFAIWorld::OnGameFinished( const NDb::EFaction failedFaction )
@@ -264,7 +405,8 @@ void PFAIWorld::OnGameFinished( const NDb::EFaction failedFaction )
 
 int PFAIWorld::GetHeroDevPoints4Level(int level) const
 {
-  return IsValid(pLevelUps) && 0 <= level && level < pLevelUps->developmentPoints.size() ? pLevelUps->developmentPoints[level] : 0;
+  const int maxLevel = GetMaxHeroLevel();
+  return IsValid(pLevelUps) && 0 < level && level <= maxLevel ? pLevelUps->developmentPoints[level] : 0;
 }
 
 float PFAIWorld::GetHeroLevelDiffCoeff( int difference, bool useAlternateTable ) const

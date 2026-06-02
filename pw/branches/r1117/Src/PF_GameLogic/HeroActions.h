@@ -19,6 +19,157 @@ namespace NWorld
   class PFShop;
   class PFUsableBuilding;
 
+#if defined(PW_LINUX_NULL_RENDER)
+  struct LinuxHeroMoveCommandDiagnostics
+  {
+    int canExecuteChecks;
+    int canExecuteAccepted;
+    int executeCalls;
+    int lastCommandId;
+    int lastHeroPlayerId;
+    int lastHeroUserId;
+    int lastHeroIsLocal;
+    int lastHeroIsBot;
+    int lastHeroIsPlaying;
+    int lastIssuedByScript;
+    int lastHeroCheck;
+    int lastControlsCheck;
+    int lastCanMoveCheck;
+    int lastResolvedFromWorld;
+    int lastResolvedByClientId;
+    int lastIsMovingBefore;
+    int lastIsMovingAfter;
+    unsigned int lastMoveFlagsBefore;
+    unsigned int lastMoveFlagsAfter;
+    float lastSourceX;
+    float lastSourceY;
+    float lastTargetX;
+    float lastTargetY;
+    float lastAfterX;
+    float lastAfterY;
+    float lastSpeedBefore;
+    float lastSpeedAfter;
+  };
+
+  struct LinuxHeroGameplayCommandDiagnostics
+  {
+    int attackCanChecks;
+    int attackCanAccepted;
+    int attackExecuteCalls;
+    int attackActionAccepted;
+    int attackIssuedByScript;
+    int attackTargetObjectId;
+    int attackTargetKind;
+    int attackTargetFaction;
+    int attackTargetPlayerId;
+    int attackCurrentTargetObjectId;
+    int attackCanAttack;
+    int attackInRangeBeforePrime;
+    int attackInRangeAfterPrime;
+    int attackReadyBeforeDrop;
+    int attackReadyAfterDrop;
+    int attackDoAttackResult;
+    int attackFallbackDamageApplied;
+    float attackRange;
+    float attackDistanceBeforePrime;
+    float attackDistanceAfterPrime;
+    float attackLifeBefore;
+    float attackLifeAfter;
+
+    int useUnitCanChecks;
+    int useUnitCanAccepted;
+    int useUnitExecuteCalls;
+    int useUnitActionAccepted;
+    int useUnitCanBeUsed;
+    int useUnitTargetObjectId;
+    int useUnitTargetKind;
+    int useUnitTargetFaction;
+    int useUnitTargetPlayerId;
+
+    int activateTalentCanChecks;
+    int activateTalentCanAccepted;
+    int activateTalentExecuteCalls;
+    int activateTalentActionAccepted;
+    int activateTalentCanActivate;
+    int activateTalentLevel;
+    int activateTalentSlot;
+    int activateTalentHeroLevelBefore;
+    int activateTalentHeroLevelAfter;
+    int activateTalentDevPointsBefore;
+    int activateTalentDevPointsAfter;
+    int activateTalentGoldBefore;
+    int activateTalentGoldAfter;
+
+    int useTalentCanChecks;
+    int useTalentCanAccepted;
+    int useTalentExecuteCalls;
+    int useTalentActionAccepted;
+    int useTalentCanUse;
+    int useTalentLevel;
+    int useTalentSlot;
+    int useTalentTargetType;
+    int useTalentTargetObjectId;
+    int useTalentTargetFaction;
+
+    int usePortalCanChecks;
+    int usePortalCanAccepted;
+    int usePortalExecuteCalls;
+    int usePortalActionAccepted;
+    int usePortalCanUse;
+    float usePortalTargetX;
+    float usePortalTargetY;
+
+    int useConsumableCanChecks;
+    int useConsumableCanAccepted;
+    int useConsumableExecuteCalls;
+    int useConsumableActionAccepted;
+    int useConsumableCanUse;
+    int useConsumableSlot;
+    int useConsumableTargetType;
+    int useConsumableTargetObjectId;
+    int useConsumableTargetFaction;
+
+    int buyConsumableCanChecks;
+    int buyConsumableCanAccepted;
+    int buyConsumableExecuteCalls;
+    int buyConsumableActionAccepted;
+    int buyConsumableCanBuy;
+    int buyConsumableTook;
+    int buyConsumableShopObjectId;
+    int buyConsumableIndex;
+    int buyConsumableSlotIndex;
+
+    int raiseFlagCanChecks;
+    int raiseFlagCanAccepted;
+    int raiseFlagExecuteCalls;
+    int raiseFlagActionAccepted;
+    int raiseFlagCanRaise;
+    int raiseFlagObjectId;
+    int raiseFlagFaction;
+
+    int initMinigameCanChecks;
+    int initMinigameCanAccepted;
+    int initMinigameExecuteCalls;
+    int initMinigameActionAccepted;
+    int initMinigameAvailable;
+    int initMinigameCanUse;
+    int initMinigameBattleReady;
+    int initMinigameObjectId;
+
+    int pickupObjectCanChecks;
+    int pickupObjectCanAccepted;
+    int pickupObjectExecuteCalls;
+    int pickupObjectActionAccepted;
+    int pickupObjectCanPickup;
+    int pickupObjectId;
+  };
+
+  LinuxHeroMoveCommandDiagnostics GetLinuxHeroMoveCommandDiagnostics();
+  void ResetLinuxHeroMoveCommandDiagnostics();
+  LinuxHeroGameplayCommandDiagnostics GetLinuxHeroGameplayCommandDiagnostics();
+  void ResetLinuxHeroGameplayCommandDiagnostics();
+#endif
+
   NCore::WorldCommand* CreateCmdCombatMoveHero( PFBaseHero* pHero, CVec2 const& target );
   NCore::WorldCommand* CreateCmdMoveHero( PFBaseHero* pHero, CVec2 const& target, bool issuedByScript = false );
   NCore::WorldCommand* CreateCmdStopHero( PFBaseHero* pHero);

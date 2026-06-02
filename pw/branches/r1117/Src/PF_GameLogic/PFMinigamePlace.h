@@ -44,16 +44,17 @@ public:
 
   const Placement& GetMinigamePlacement() const;
 
-  const NDb::Ptr<NDb::MinigamePlace>& GetMinigamePlaceDB() const { return minigamePlaceDB; }
+	  const NDb::Ptr<NDb::MinigamePlace>& GetMinigamePlaceDB() const { return minigamePlaceDB; }
 
   const string & MinigameId() const { return minigameId; }
 
   // returns invalid ptr if there is no visual state change params
   NDb::Ptr<NDb::MinigameVisualStateChange> ChangeVisualState(NDb::MinigameVisualState _state, NDb::MinigameClientType _clientType);
-	virtual void Reset();
-  virtual CObj<PFAbilityInstance> Use( PFBaseUnit* pUser );
-  virtual bool CanBeUsedBy( PFBaseHero const* pHero ) const;
-  virtual float GetUseRange( PFBaseUnit* pUser ) const { return 0.0f; }
+	  virtual void Reset();
+	  virtual CObj<PFAbilityInstance> Use( PFBaseUnit* pUser );
+	  virtual bool CanBeUsedBy( PFBaseUnit const* pUnit ) const;
+	  virtual bool CanBeUsedBy( PFBaseHero const* pHero ) const;
+	  virtual float GetUseRange( PFBaseUnit* pUser ) const { return 0.0f; }
 protected:
   PFMinigamePlace() { type = NDb::UNITTYPE_MINIGAMEPLACE; }
   

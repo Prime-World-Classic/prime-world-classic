@@ -75,6 +75,12 @@ public:
   virtual NDb::BaseCreepSpawner const* GetDBDesc() const { return spawnerDesc; }
 
   void MakeLevelupsForTimeDelta( float dtInSeconds );
+#if defined( PW_LINUX_NULL_RENDER )
+  bool StepLinuxBootstrap(float dtInSeconds) { return Step(dtInSeconds); }
+  bool CanSpawnLinuxBootstrapWave() const { return CanSpawnWave(); }
+  bool IsLinuxBootstrapEnabled() const { return enabled; }
+  float GetLinuxSpawnDelay() const { return spawnDelay; }
+#endif
 protected:
   PFBaseSpawner( PFWorld* pWorld, const NDb::AdvMapObject& dbObject, float timeOffset = 0 );
 

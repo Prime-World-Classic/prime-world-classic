@@ -3,10 +3,72 @@
 
 #if defined(PW_LINUX_NULL_RENDER)
 
+#include "batch.h"
+#include "MaterialSpec.h"
+#include "smartrenderer.h"
+
+#include <algorithm>
+
 namespace Render
 {
 
 DECLARE_INSTANCE_COUNTER(StaticMesh);
+
+namespace
+{
+
+class NullStaticMeshMaterial : public BaseMaterial
+{
+public:
+  NullStaticMeshMaterial()
+    : BaseMaterial(NDb::MATERIALPRIORITY_MESHESOPAQUE, 0, -1)
+  {
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+};
+
+void ClearStaticMeshMaterials(StaticArray<ScopedPtr<BaseMaterial>, 16>& materials, int* materialsCount)
+{
+  const int count = materialsCount ? *materialsCount : 0;
+  for (int i = 0; i < count && i < static_cast<int>(materials.capacity()); ++i)
+  {
+    Reset(materials[i], 0);
+  }
+  if (materialsCount)
+  {
+    *materialsCount = 0;
+  }
+}
+
+void InitializeStaticMeshNullMaterials(
+  StaticArray<ScopedPtr<BaseMaterial>, 16>& materials,
+  int* materialsCount,
+  const MeshGeometry* meshGeometry,
+  vector<Render::BaseMaterial*> sourceMaterials = vector<Render::BaseMaterial*>())
+{
+  ClearStaticMeshMaterials(materials, materialsCount);
+  if (!materialsCount || !meshGeometry)
+  {
+    return;
+  }
+
+  const int primitiveCount = meshGeometry->primitives.size();
+  const int materialCapacity = static_cast<int>(materials.capacity());
+  *materialsCount = std::min(primitiveCount, materialCapacity);
+  for (int i = 0; i < *materialsCount; ++i)
+  {
+    BaseMaterial* material =
+      i < sourceMaterials.size() && sourceMaterials[i] ?
+      sourceMaterials[i] :
+      new NullStaticMeshMaterial();
+    Reset(materials[i], material);
+  }
+}
+
+} // namespace
 
 StaticMesh::StaticMesh()
   : pMeshGeom(0)
@@ -18,43 +80,53 @@ StaticMesh::StaticMesh()
 
 StaticMesh::~StaticMesh()
 {
+  ClearStaticMeshMaterials(materials, &materialsCount);
 }
 
 void StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::StaticMesh* pDBMeshResource)
 {
   worldMatrix = _worldMatrix;
+  ClearStaticMeshMaterials(materials, &materialsCount);
   pMeshGeom = 0;
-  materialsCount = 0;
   if (pDBMeshResource)
   {
     localAABB.Set(pDBMeshResource->aabb);
+    pMeshGeom = Render::RenderResourceManager::LoadStaticMeshGeometry(pDBMeshResource->geometryFileName, false);
+    InitializeStaticMeshNullMaterials(materials, &materialsCount, pMeshGeom);
   }
 }
 
 bool StaticMesh::Initialize(const Matrix43& _worldMatrix, const NDb::DBStaticSceneComponent* pDBMeshResource, bool appendColorStream)
 {
-  (void)appendColorStream;
   worldMatrix = _worldMatrix;
+  ClearStaticMeshMaterials(materials, &materialsCount);
   pMeshGeom = 0;
-  materialsCount = 0;
   if (pDBMeshResource)
   {
     localAABB.Set(pDBMeshResource->aabb);
+    pMeshGeom = Render::RenderResourceManager::LoadStaticMeshGeometry(pDBMeshResource->geometryFileName, appendColorStream);
+    InitializeStaticMeshNullMaterials(materials, &materialsCount, pMeshGeom);
   }
-  return true;
+  return pMeshGeom != 0 && materialsCount > 0;
 }
 
 void StaticMesh::Initialize(const Matrix43& _worldMatrix, const MeshGeometry* geom, vector<Render::BaseMaterial*> materials)
 {
-  (void)materials;
   worldMatrix = _worldMatrix;
+  ClearStaticMeshMaterials(this->materials, &materialsCount);
   pMeshGeom = geom;
-  materialsCount = 0;
+  localAABB.center = CVec3(0.0f, 0.0f, 0.0f);
+  localAABB.halfSize = CVec3(1.0f, 1.0f, 1.0f);
+  InitializeStaticMeshNullMaterials(this->materials, &materialsCount, pMeshGeom, materials);
 }
 
 void StaticMesh::PrepareRendererAfterMaterial(unsigned int elementNumber) const
 {
   (void)elementNumber;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  SmartRenderer::SetOpenGLImmediateObjectMatrix(&worldMatrix);
+  SmartRenderer::SetOpenGLImmediateSkeletalMatrices(0, 0);
+#endif
 }
 
 void StaticMeshBase::SetWorldMatrix(const Matrix43& transform)
@@ -69,7 +141,23 @@ void StaticMeshBase::SetWorldMatrix(const SHMatrix& transform)
 
 void StaticMesh::RenderToQueue(BatchQueue& queue)
 {
-  (void)queue;
+  if (!pMeshGeom || materialsCount <= 0)
+  {
+    return;
+  }
+
+  const int primitiveCount = std::min(pMeshGeom->primitives.size(), materialsCount);
+  for (int i = 0; i < primitiveCount; ++i)
+  {
+    BaseMaterial* const pMaterial = Get(materials[i]);
+    Primitive const* const pPrimitive = pMeshGeom->primitives[i];
+    if (!pMaterial || !pPrimitive)
+    {
+      continue;
+    }
+
+    queue.Push(pMaterial->GetPriority(), this, pPrimitive, i, pMaterial);
+  }
 }
 
 OcclusionQueries* StaticMesh::GetQueries() const
@@ -79,8 +167,13 @@ OcclusionQueries* StaticMesh::GetQueries() const
 
 bool StaticMesh::FillOBB(CVec3 (&_vertices)[8]) const
 {
-  (void)_vertices;
-  return false;
+  if (localAABB.IsEmpty())
+  {
+    return false;
+  }
+
+  RenderComponent::FillOBB(localAABB, worldMatrix, &_vertices[0]);
+  return true;
 }
 
 void StaticMesh::SetQueryTriBound(UINT _bound)
@@ -90,13 +183,24 @@ void StaticMesh::SetQueryTriBound(UINT _bound)
 
 void StaticMesh::SetMaterial(int nElementIdx, BaseMaterial* _pMaterial)
 {
-  (void)nElementIdx;
-  (void)_pMaterial;
+  if (nElementIdx < 0 || nElementIdx >= materialsCount)
+  {
+    delete _pMaterial;
+    return;
+  }
+
+  Reset(materials[nElementIdx], _pMaterial);
 }
 
 void StaticMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
 {
-  (void)proc;
+  for (int i = 0; i < materialsCount; ++i)
+  {
+    if (materials[i])
+    {
+      proc(*materials[i]);
+    }
+  }
 }
 
 void StaticMesh::SetVertexColors(AutoPtr<MeshVertexColors> pColors, bool fake)

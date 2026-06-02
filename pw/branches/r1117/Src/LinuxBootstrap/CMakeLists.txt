@@ -156,6 +156,7 @@ add_executable(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+  hero_actions_bootstrap.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFHeroStates.cpp
   ../PF_GameLogic/PFLogicObject.cpp
@@ -549,6 +550,7 @@ add_library(
   ../PF_GameLogic/PFGlyph.cpp
   ../PF_GameLogic/PFGlyphManager.cpp
   ../PF_GameLogic/PFHero.cpp
+  hero_actions_bootstrap.cpp
   ../PF_GameLogic/PFHeroesFactory.cpp
   ../PF_GameLogic/PFLogicObject.cpp
   ../PF_GameLogic/PFMainBuilding.cpp
@@ -1034,6 +1036,7 @@ target_compile_definitions(
 set_source_files_properties(
   ${PRIMEWORLD_LINUX_DB_SOURCES}
   pfadvmap_bootstrap.cpp
+  hero_actions_bootstrap.cpp
   ../PF_GameLogic/PFAbilityDataNamemaps.cpp
   ../PF_GameLogic/PFAbilityData.cpp
   ../PF_GameLogic/PFAbilityInstance.cpp

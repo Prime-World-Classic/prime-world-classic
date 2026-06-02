@@ -145,7 +145,27 @@ struct IDirect3DIndexBuffer9
 
   void Unlock() {}
 };
-struct IDirect3DVertexDeclaration9 : IUnknown {};
+struct NullVertexElementDescriptor
+{
+  unsigned int stream;
+  unsigned int offset;
+  int type;
+  int usage;
+  unsigned int usageIndex;
+
+  NullVertexElementDescriptor()
+    : stream(0),
+      offset(0),
+      type(0),
+      usage(0),
+      usageIndex(0)
+  {
+  }
+};
+struct IDirect3DVertexDeclaration9 : IUnknown
+{
+  nstl::vector<NullVertexElementDescriptor> elements;
+};
 struct IDirect3DVertexShader9 : IUnknown {};
 struct IDirect3DPixelShader9 : IUnknown {};
 

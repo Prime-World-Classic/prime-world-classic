@@ -3,24 +3,97 @@
 
 #if defined(PW_LINUX_NULL_RENDER)
 
+#include "DBRenderResources.h"
+#include "batch.h"
+#include "MaterialSpec.h"
+#include "renderresourcemanager.h"
+#include "SkeletalAnimationBlender.h"
+#include "SkeletonWrapper.h"
+#include "smartrenderer.h"
+
 namespace Render
 {
 
 DECLARE_INSTANCE_COUNTER(SkeletalMesh);
 
+namespace
+{
+
+class NullSkeletalMeshMaterial : public BaseMaterial
+{
+public:
+  NullSkeletalMeshMaterial()
+    : BaseMaterial(NDb::MATERIALPRIORITY_MESHESOPAQUE, 0, -1)
+  {
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+};
+
+} // namespace
+
 void SkeletalMesh::Update(bool bNeedBlenderUpdate)
 {
-  (void)bNeedBlenderUpdate;
+  if (bNeedBlenderUpdate && pSkeletalAnimationBlender && pSkeletonWrapper)
+  {
+    pSkeletalAnimationBlender->Sample(pSkeletonWrapper->GetSampledMatrix());
+  }
+
+  if (pSkeletonWrapper)
+  {
+    pSkeletonWrapper->Update(worldMatrix);
+  }
 }
 
 void SkeletalMesh::RenderToQueue(BatchQueue& queue)
 {
-  (void)queue;
+  for (int slotNumber = 0; slotNumber < (int)maxSlotsCount; ++slotNumber)
+  {
+    SkeletalMeshElement& slot = elementSlots[slotNumber];
+    if (slot.IsEmpty() || !slot.IsEnabled())
+      continue;
+
+    BaseMaterial* const pMaterial = slot.GetMaterial();
+    Primitive const* const pPrimitive = slot.GetPrimitive();
+    if (!pMaterial || !pPrimitive)
+      continue;
+
+    queue.Push(pMaterial->GetPriority(), this, pPrimitive, slotNumber, pMaterial);
+  }
 }
 
 void SkeletalMesh::PrepareRendererAfterMaterial(unsigned int slotNumber) const
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  SmartRenderer::SetOpenGLImmediateObjectMatrix(0);
+  if (!pSkeletonWrapper || slotNumber >= maxSlotsCount || elementSlots[slotNumber].IsEmpty())
+  {
+    SmartRenderer::SetOpenGLImmediateSkeletalMatrices(0, 0);
+    return;
+  }
+
+  StaticVector<unsigned short> const* fragmentReindex = elementSlots[slotNumber].GetFragmentReindex();
+  if (!fragmentReindex)
+  {
+    SmartRenderer::SetOpenGLImmediateSkeletalMatrices(0, 0);
+    return;
+  }
+
+  const Matrix43* skinWorldMatrices = pSkeletonWrapper->GetSkinWorldMatrices();
+  if (!skinWorldMatrices)
+  {
+    SmartRenderer::SetOpenGLImmediateSkeletalMatrices(0, 0);
+    return;
+  }
+
+  const unsigned int currentBoneCount = fragmentReindex->size();
+  const Matrix43* matrixArray = skinWorldMatrices + elementSlots[slotNumber].GetMatrixIndex();
+  SmartRenderer::SetOpenGLImmediateSkeletalMatrices(matrixArray, currentBoneCount);
+#else
   (void)slotNumber;
+#endif
 }
 
 SkeletalMesh::SkeletalMesh()
@@ -37,35 +110,120 @@ SkeletalMesh::SkeletalMesh()
 
 void SkeletalMesh::Initialize(const Matrix43& _worldMatrix, const nstl::string& skeletonFileName)
 {
-  (void)skeletonFileName;
   worldMatrix = _worldMatrix;
+  delete pSkeletonWrapper;
+  pSkeletonWrapper = 0;
+
+  if (SkeletonDataWrapper* pSkeletonData = RenderResourceManager::LoadSkeletonData(skeletonFileName))
+  {
+    pSkeletonWrapper = new SkeletonWrapper(pSkeletonData);
+  }
 }
 
 void SkeletalMesh::AddSkinPart(const NDb::SkinPartBase* pDBSkinPartResource, unsigned int* pPartIndexes, unsigned int* pPartsCount)
 {
-  (void)pDBSkinPartResource;
-  (void)pPartIndexes;
   if (pPartsCount)
   {
     *pPartsCount = 0;
   }
+
+  if (!pDBSkinPartResource || !pPartIndexes || !pPartsCount)
+  {
+    return;
+  }
+
+  const MeshGeometry* pMeshGeometry = Render::RenderResourceManager::LoadSkeletalMeshGeometry(pDBSkinPartResource->geometryFileName);
+  if (!pMeshGeometry)
+  {
+    return;
+  }
+
+  const int primitiveCount = pMeshGeometry->primitives.size();
+  int counter = 0;
+  for (int i = 0; i < (int)maxSlotsCount && counter < primitiveCount; ++i)
+  {
+    if (!elementSlots[i].IsEmpty())
+      continue;
+
+    BaseMaterial* pMaterial = new NullSkeletalMeshMaterial();
+    elementSlots[i].Initialize(pMaterial, pMeshGeometry, counter);
+    pPartIndexes[counter] = i;
+    ++counter;
+  }
+
+  *pPartsCount = counter;
+  UpdateReindexMap();
 }
 
 void SkeletalMesh::RemoveSkinPart(unsigned int partsCount, const unsigned int* pPartIndexes)
 {
-  (void)partsCount;
-  (void)pPartIndexes;
+  if (!pPartIndexes)
+    return;
+
+  for (unsigned int i = 0; i < partsCount; ++i)
+  {
+    const unsigned int slotIndex = pPartIndexes[i];
+    if (slotIndex < maxSlotsCount)
+      elementSlots[slotIndex].Destroy();
+  }
+
+  UpdateReindexMap();
 }
 
 void SkeletalMesh::SetEnableSkinPart(unsigned int partsCount, const unsigned int* pPartIndexes, bool val)
 {
-  (void)partsCount;
-  (void)pPartIndexes;
-  (void)val;
+  if (!pPartIndexes)
+    return;
+
+  for (unsigned int i = 0; i < partsCount; ++i)
+  {
+    const unsigned int slotIndex = pPartIndexes[i];
+    if (slotIndex < maxSlotsCount)
+      elementSlots[slotIndex].SetEnabled(val);
+  }
 }
 
 void SkeletalMesh::UpdateReindexMap()
 {
+  if (!pSkeletonWrapper)
+  {
+    return;
+  }
+
+  int startIndex = 0;
+
+  for (unsigned int slotNumber = 0; slotNumber < maxSlotsCount; ++slotNumber)
+  {
+    if (elementSlots[slotNumber].IsEmpty())
+      continue;
+
+    StaticVector<unsigned short> const* fragmentReindex = elementSlots[slotNumber].GetFragmentReindex();
+    if (fragmentReindex)
+      startIndex += fragmentReindex->size();
+  }
+
+  pSkeletonWrapper->SetActiveBones(startIndex);
+
+  startIndex = 0;
+
+  for (unsigned int slotNumber = 0; slotNumber < maxSlotsCount; ++slotNumber)
+  {
+    if (elementSlots[slotNumber].IsEmpty())
+      continue;
+
+    StaticVector<unsigned short> const* fragmentReindex = elementSlots[slotNumber].GetFragmentReindex();
+    if (!fragmentReindex)
+      continue;
+
+    elementSlots[slotNumber].SetMatrixIndex(startIndex);
+    const unsigned int currentFragmentBoneCount = fragmentReindex->size();
+    for (unsigned int boneNumber = 0; boneNumber < currentFragmentBoneCount; ++boneNumber)
+    {
+      pSkeletonWrapper->SetReindex(*(fragmentReindex->at(boneNumber)), startIndex + boneNumber);
+    }
+
+    startIndex += currentFragmentBoneCount;
+  }
 }
 
 bool SkeletalMesh::FillOBB(CVec3 (&_vertices)[8]) const
@@ -111,13 +269,19 @@ BaseMaterial* SkeletalMesh::GetMaterial(int slotNumber)
 
 SkeletalMesh::~SkeletalMesh()
 {
+  delete pSkeletonWrapper;
   pSkeletonWrapper = 0;
   pSkeletalAnimationBlender = 0;
 }
 
 void SkeletalMesh::ForAllMaterials(Render::IMaterialProcessor& proc)
 {
-  (void)proc;
+  for (int i = 0; i < (int)maxSlotsCount; ++i)
+  {
+    BaseMaterial* const pMaterial = GetMaterial(i);
+    if (pMaterial)
+      proc(*pMaterial);
+  }
 }
 
 void SkeletalMeshElement::Initialize(BaseMaterial* pMaterial, MeshGeometry const* meshGeom, int index)
@@ -131,10 +295,12 @@ void SkeletalMeshElement::Initialize(BaseMaterial* pMaterial, MeshGeometry const
 
 SkeletalMeshElement::~SkeletalMeshElement()
 {
+  Destroy();
 }
 
 void SkeletalMeshElement::Destroy()
 {
+  delete pMaterialInstance;
   pMaterialInstance = 0;
   pMeshGeom = 0;
   primitiveIndex = 0;
@@ -143,17 +309,36 @@ void SkeletalMeshElement::Destroy()
 
 void SkeletalMeshElement::SetMaterial(BaseMaterial* _pMaterial)
 {
+  if (pMaterialInstance == _pMaterial)
+    return;
+
+  delete pMaterialInstance;
   pMaterialInstance = _pMaterial;
 }
 
 Primitive const* SkeletalMeshElement::GetPrimitive() const
 {
-  return 0;
+  if (!pMeshGeom ||
+      primitiveIndex < 0 ||
+      primitiveIndex >= pMeshGeom->primitives.size())
+  {
+    return 0;
+  }
+
+  return pMeshGeom->primitives[primitiveIndex];
 }
 
 StaticVector<unsigned short> const* SkeletalMeshElement::GetFragmentReindex() const
 {
-  return 0;
+  if (!pMeshGeom ||
+      !pMeshGeom->pReindex ||
+      primitiveIndex < 0 ||
+      primitiveIndex >= pMeshGeom->pReindex->reindex.size())
+  {
+    return 0;
+  }
+
+  return pMeshGeom->pReindex->reindex.at(primitiveIndex);
 }
 
 } // namespace Render

@@ -523,6 +523,16 @@ namespace NWorld
     if ( !initiatedMove || ( !pOwner->IsMoving() && !pOwner->IsMounted() ) )
     {
       // Move to the specific range from the target
+#if defined(PW_LINUX_NULL_RENDER)
+      if ( pOwner->GetMoveFlags() & MOVE_FLAG_NO_COLLIDE )
+      {
+        const unsigned moveFlags = pOwner->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED;
+        pOwner->MoveToSpecial( target, false );
+        pOwner->SetMoveFlags( moveFlags );
+        pOwner->SetUnitSpeed( 6.0f );
+      }
+      else
+#endif
       if ( !pOwner->MoveTo( target, requireLineOfSight ? pOwner->GetObjectSize() : range ) )
 			{
 				if ( !initiatedMove )

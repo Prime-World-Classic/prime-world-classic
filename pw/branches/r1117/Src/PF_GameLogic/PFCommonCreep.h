@@ -28,6 +28,9 @@ public:
   virtual void RotateIfNeeded();
   virtual float GetWalkLimit() const { return walkLimit; };
   virtual const NDb::DBID* GetSpawnerDBID() const;
+#if defined( PW_LINUX_NULL_RENDER )
+  float GetLinuxDistanceFromInitial() const { return (GetPosition().AsVec2D() - initialPlacement.pos.AsVec2D()).Length(); }
+#endif
 
 protected:
   virtual void OnInvalidPath();

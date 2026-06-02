@@ -8,8 +8,12 @@ class PFBaseUnit;
 template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
 
 #include "PFWorld.h"
+#include "PFBaseMovingUnit.h"
+#include "PFHero.h"
 #include "PFResourcesCollectionClient.h"
 #include "DBAdvMap.h"
+#include "DBHeroesList.h"
+#include "DBSessionRoots.h"
 #include "TileMap.h"
 #include "PFPlayer.h"
 #include "WarFog.h"
@@ -33,6 +37,9 @@ template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(C
 #include "PFTree.h"
 #include "PF_Core/WorldObject.h"
 #include "Scene/DBSceneBase.h"
+#include "Core/GameCommand.h"
+#include "Core/WorldCommand.h"
+#include "System/Crc32Checksum.h"
 #include "System/LoadingProgress.h"
 
 NI_DEFINE_REFCOUNT( NGameX::IAdventureScreen );
@@ -80,7 +87,23 @@ linuxLoadedMainBuildingObjects(0),
 linuxLoadedMinigamePlaceObjects(0),
 linuxLoadedCameraSplineObjects(0),
 linuxLoadedScriptPathObjects(0),
-linuxLoadedScriptPolygonAreaObjects(0)
+linuxLoadedScriptPolygonAreaObjects(0),
+linuxLastSteppedSpawnerObjects(0),
+linuxLastSteppedCreepSpawnerObjects(0),
+linuxLastSteppedNeutralCreepSpawnerObjects(0),
+linuxSpawnedHeroObjects(0),
+linuxPlayersWithHeroObjects(0),
+linuxExecutedPackedWorldCommands(0),
+linuxLastPackedWorldCommandClientId(-1),
+linuxLastPackedWorldCommandTypeId(0),
+linuxBootstrapRuntimeCommands(0),
+linuxLastBootstrapRuntimeCommandClientId(-1),
+linuxLastBootstrapRuntimeCommandToken(0),
+linuxLastBootstrapRuntimeCommandValue(0.0f),
+linuxStoredDeadUnits(0),
+linuxCleanedDeadUnits(0),
+linuxLastStoredDeadUnitObjectId(-1),
+linuxLastCleanedDeadUnitObjectId(-1)
 {
 }
 
@@ -122,7 +145,23 @@ linuxLoadedMainBuildingObjects(0),
 linuxLoadedMinigamePlaceObjects(0),
 linuxLoadedCameraSplineObjects(0),
 linuxLoadedScriptPathObjects(0),
-linuxLoadedScriptPolygonAreaObjects(0)
+linuxLoadedScriptPolygonAreaObjects(0),
+linuxLastSteppedSpawnerObjects(0),
+linuxLastSteppedCreepSpawnerObjects(0),
+linuxLastSteppedNeutralCreepSpawnerObjects(0),
+linuxSpawnedHeroObjects(0),
+linuxPlayersWithHeroObjects(0),
+linuxExecutedPackedWorldCommands(0),
+linuxLastPackedWorldCommandClientId(-1),
+linuxLastPackedWorldCommandTypeId(0),
+linuxBootstrapRuntimeCommands(0),
+linuxLastBootstrapRuntimeCommandClientId(-1),
+linuxLastBootstrapRuntimeCommandToken(0),
+linuxLastBootstrapRuntimeCommandValue(0.0f),
+linuxStoredDeadUnits(0),
+linuxCleanedDeadUnits(0),
+linuxLastStoredDeadUnitObjectId(-1),
+linuxLastCleanedDeadUnitObjectId(-1)
 {
 }
 
@@ -248,7 +287,26 @@ PFPlayer* PFWorld::GetPlayerByUID(int userId) const
 const int PFWorld::GetPresentPlayersCount() const { return humanPlayersCount; }
 const int PFWorld::GetPresentPlayersCount(NDb::EFaction) const { return humanPlayersCount; }
 void PFWorld::UpdatePlayerStatuses(const NCore::TStatuses&) {}
-void PFWorld::ExecuteCommands(const NCore::TPackedCommands&) {}
+void PFWorld::ExecuteCommands(const NCore::TPackedCommands& commands)
+{
+  SyncFPUStart(nfpu::AT_CMD_EXECUTE);
+
+  for (NCore::TPackedCommands::const_iterator it = commands.begin(); it != commands.end(); ++it)
+  {
+    if (!IsValid(*it))
+      continue;
+
+    const DWORD commandTypeId = (*it)->GetCommandId();
+    CObj<NCore::WorldCommand> wcmd = (*it)->GetWorldCommand(GetPointerSerialization());
+    if (!wcmd)
+      continue;
+
+    RegisterLinuxExecutedPackedWorldCommand(wcmd->GetId(), commandTypeId);
+    ExecuteCommand(wcmd.GetPtr());
+  }
+
+  SyncFPUEnd(nfpu::AT_CMD_EXECUTE);
+}
 bool PFWorld::Step(float dtInSeconds, float)
 {
   if (dtInSeconds > 0.0f)
@@ -261,7 +319,70 @@ bool PFWorld::Step(float dtInSeconds, float)
   if (pNatureMap)
     pNatureMap->OnStep(dtInSeconds);
   if (pAIWorld)
+  {
     pAIWorld->Update(dtInSeconds);
+    if (dtInSeconds > 0.0f)
+    {
+      vector<CPtr<PFBaseSpawner> > spawners;
+      linuxLastSteppedSpawnerObjects = 0;
+      linuxLastSteppedCreepSpawnerObjects = 0;
+      linuxLastSteppedNeutralCreepSpawnerObjects = 0;
+      TObjects& objects = GetObjects();
+      for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+      {
+        PFBaseSpawner* spawner = dynamic_cast<PFBaseSpawner*>(it->second.GetPtr());
+        if (spawner)
+        {
+          spawners.push_back(spawner);
+          ++linuxLastSteppedSpawnerObjects;
+          if (dynamic_cast<PFCreepSpawner*>(spawner))
+            ++linuxLastSteppedCreepSpawnerObjects;
+          if (dynamic_cast<PFNeutralCreepSpawner*>(spawner))
+            ++linuxLastSteppedNeutralCreepSpawnerObjects;
+        }
+      }
+
+      for (vector<CPtr<PFBaseSpawner> >::iterator it = spawners.begin(), end = spawners.end(); it != end; ++it)
+      {
+        if (IsValid(*it))
+          (*it)->StepLinuxBootstrap(dtInSeconds);
+      }
+
+      ProcessAddRemove();
+    }
+    if (pResolver)
+    {
+      vector<PFBaseMovingUnit*> movingUnits;
+      PFBaseMovingUnit::GetAllUnits(pAIWorld, movingUnits, false);
+      pResolver->Resolve(movingUnits, dtInSeconds);
+    }
+    MovingUnit::UpdateMovements(pAIWorld, pResolver, GetTileMap(), dtInSeconds);
+  }
+  if (dtInSeconds > 0.0f)
+  {
+    vector<CPtr<PFBaseHero> > deadHeroesWithRespawn;
+    TObjects& objects = GetObjects();
+    for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+    {
+      PFBaseHero* hero = dynamic_cast<PFBaseHero*>(it->second.GetPtr());
+      if (hero && hero->IsDead() && hero->GetTimeToRespawn() >= 0.0f)
+      {
+        deadHeroesWithRespawn.push_back(hero);
+      }
+    }
+
+    for (vector<CPtr<PFBaseHero> >::iterator it = deadHeroesWithRespawn.begin(),
+         end = deadHeroesWithRespawn.end();
+         it != end;
+         ++it)
+    {
+      if (IsValid(*it) && (*it)->IsDead() && (*it)->GetTimeToRespawn() >= 0.0f)
+      {
+        (*it)->Step(dtInSeconds);
+      }
+    }
+  }
+  KillDeadUnits(false);
   StepLinuxPFStatistics(pStatistics, dtInSeconds);
   if (triggerMarkerHandler)
     triggerMarkerHandler->Step(dtInSeconds);
@@ -270,13 +391,468 @@ bool PFWorld::Step(float dtInSeconds, float)
   return true;
 }
 void PFWorld::CalcCRC(IBinSaver&, bool) {}
-void PFWorld::StoreDeadUnit(PFBaseUnit*) {}
+void PFWorld::StoreDeadUnit(PFBaseUnit* pUnit)
+{
+  if (!pUnit)
+    return;
+
+  for (vector<CObj<PFBaseUnit> >::const_iterator it = deadUnits.begin(), end = deadUnits.end(); it != end; ++it)
+  {
+    if (it->GetPtr() == pUnit)
+      return;
+  }
+
+  deadUnits.push_back(CObj<PFBaseUnit>(pUnit));
+  ++linuxStoredDeadUnits;
+  linuxLastStoredDeadUnitObjectId = pUnit->GetObjectId();
+}
+void PFWorld::UnregisterCreep(const PFCommonCreep*)
+{
+  if (totalCreepsCount > 0)
+    --totalCreepsCount;
+}
 void PFWorld::OnGameFinished(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
 void PFWorld::GameFinish(NDb::EFaction failedFaction) { defeatedFaction = failedFaction; }
 bool PFWorld::CanCreateClients() { return IsValid(advMapDescription); }
 void PFWorld::StopMovingUnits() {}
+void PFWorld::KillDeadUnits(bool fullCleanup)
+{
+  for (int i = 0; i < deadUnits.size(); ++i)
+  {
+    if (PFBaseUnit* unit = deadUnits[i])
+    {
+      unit->CleanupAfterDeath(fullCleanup);
+      ++linuxCleanedDeadUnits;
+      linuxLastCleanedDeadUnitObjectId = unit->GetObjectId();
+    }
+  }
+
+  deadUnits.clear();
+}
 void PFWorld::SyncFPUStart(nfpu::ActionType) {}
 void PFWorld::SyncFPUEnd(nfpu::ActionType) {}
+void PFWorld::RegisterLinuxExecutedPackedWorldCommand(int clientId)
+{
+  RegisterLinuxExecutedPackedWorldCommand(clientId, 0);
+}
+void PFWorld::RegisterLinuxExecutedPackedWorldCommand(int clientId, DWORD commandTypeId)
+{
+  ++linuxExecutedPackedWorldCommands;
+  linuxLastPackedWorldCommandClientId = clientId;
+  linuxLastPackedWorldCommandTypeId = commandTypeId;
+}
+void PFWorld::RegisterLinuxBootstrapRuntimeCommand(int clientId, int token, float value)
+{
+  ++linuxBootstrapRuntimeCommands;
+  linuxLastBootstrapRuntimeCommandClientId = clientId;
+  linuxLastBootstrapRuntimeCommandToken = token;
+  linuxLastBootstrapRuntimeCommandValue = value;
+}
+int PFWorld::GetLinuxSpawnedNeutralCreepObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (spawner)
+      count += spawner->GetSpawnedCreepsCount();
+  }
+  return count;
+}
+int PFWorld::GetLinuxMovingCommonCreepObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCommonCreep* creep = dynamic_cast<PFCommonCreep*>(it->second.GetPtr());
+    if (creep && creep->IsMoving())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxMovedCommonCreepObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCommonCreep* creep = dynamic_cast<PFCommonCreep*>(it->second.GetPtr());
+    if (creep && creep->GetLinuxDistanceFromInitial() > 0.5f)
+      ++count;
+  }
+  return count;
+}
+float PFWorld::GetLinuxCommonCreepMovementDistance()
+{
+  float distance = 0.0f;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCommonCreep* creep = dynamic_cast<PFCommonCreep*>(it->second.GetPtr());
+    if (creep)
+      distance += creep->GetLinuxDistanceFromInitial();
+  }
+  return distance;
+}
+
+void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& markers, int maxMarkers)
+{
+  markers.clear();
+  if (maxMarkers <= 0)
+    return;
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    if (static_cast<int>(markers.size()) >= maxMarkers)
+      break;
+
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(it->second.GetPtr());
+    if (!unit)
+      continue;
+
+    LinuxDynamicWorldMarker marker;
+    marker.x = unit->GetPosition().x;
+    marker.y = unit->GetPosition().y;
+    marker.objectId = unit->GetObjectId();
+    marker.faction = static_cast<int>(unit->GetFaction());
+    marker.healthPercent = unit->GetHealthPercent();
+    marker.energyPercent = unit->GetManaPercent();
+    marker.objectSize = unit->GetObjectSize();
+    marker.moving = false;
+    if (PFBaseMovingUnit* movingUnit = dynamic_cast<PFBaseMovingUnit*>(unit))
+    {
+      marker.moving = movingUnit->IsMoving();
+      const CVec2 moveDir = movingUnit->GetMoveDirection();
+      if (moveDir.x * moveDir.x + moveDir.y * moveDir.y > 0.0001f)
+      {
+        marker.moveDirX = moveDir.x;
+        marker.moveDirY = moveDir.y;
+        marker.hasMoveDirection = true;
+      }
+    }
+    marker.dead = unit->IsDead();
+
+    const NDb::Unit* unitDesc = unit->DbUnitDesc();
+    if (unitDesc)
+    {
+      marker.unitDbid = unitDesc->GetDBID().GetFormatted();
+      if (unitDesc->sceneObject)
+      {
+        marker.sceneObjectDbid = unitDesc->sceneObject->GetDBID().GetFormatted();
+      }
+      if (const NDb::AdvMapCreep* creepDesc = dynamic_cast<const NDb::AdvMapCreep*>(unitDesc))
+      {
+        marker.creepType = static_cast<int>(creepDesc->creepType);
+      }
+    }
+
+    if (PFBaseHero* hero = dynamic_cast<PFBaseHero*>(unit))
+    {
+      marker.kind = LinuxDynamicWorldMarker::KIND_HERO;
+      if (IsValid(hero->GetPlayer()))
+      {
+        marker.playerId = hero->GetPlayer()->GetPlayerID();
+        marker.userId = hero->GetPlayer()->GetUserID();
+      }
+    }
+    else if (dynamic_cast<PFCommonCreep*>(unit))
+      marker.kind = LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
+    else if (dynamic_cast<PFNeutralCreep*>(unit))
+      marker.kind = LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+    else
+      continue;
+
+    markers.push_back(marker);
+  }
+}
+
+PFBaseUnit* PFWorld::FindLinuxUnitByObjectId(int objectId)
+{
+  if (objectId < 0)
+    return 0;
+
+  TObjects& objects = GetObjects();
+  TObjects::iterator direct = objects.find(objectId);
+  if (direct != objects.end())
+  {
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(direct->second.GetPtr());
+    if (unit)
+      return unit;
+  }
+
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(it->second.GetPtr());
+    if (unit && unit->GetObjectId() == objectId)
+      return unit;
+  }
+
+  return 0;
+}
+int PFWorld::GetLinuxCreepSpawnerWavesCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(it->second.GetPtr());
+    if (spawner)
+      count += spawner->GetLastWave();
+  }
+  return count;
+}
+int PFWorld::GetLinuxNeutralCreepSpawnerWavesCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (spawner)
+      count += spawner->GetLastWave();
+  }
+  return count;
+}
+int PFWorld::GetLinuxReadyCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(it->second.GetPtr());
+    if (spawner && spawner->CanSpawnLinuxBootstrapWave())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxReadyNeutralCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (spawner && spawner->CanSpawnLinuxBootstrapWave())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxEnabledCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(it->second.GetPtr());
+    if (spawner && spawner->IsLinuxBootstrapEnabled())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxEnabledNeutralCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (spawner && spawner->IsLinuxBootstrapEnabled())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxContentCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(it->second.GetPtr());
+    if (!spawner)
+      continue;
+    const NDb::AdvMapCreepSpawner* desc = dynamic_cast<const NDb::AdvMapCreepSpawner*>(spawner->GetDBDesc());
+    if (desc && !desc->creeps.empty())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxContentNeutralCreepSpawnerObjectsCount()
+{
+  int count = 0;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (!spawner)
+      continue;
+    const NDb::AdvMapNeutralCreepSpawner* desc = dynamic_cast<const NDb::AdvMapNeutralCreepSpawner*>(spawner->GetDBDesc());
+    if (desc && !desc->groups.empty())
+      ++count;
+  }
+  return count;
+}
+int PFWorld::GetLinuxAICreepSpawnEnabled() const
+{
+  return pAIWorld && pAIWorld->GetSpawnCreeps() ? 1 : 0;
+}
+int PFWorld::GetLinuxAINeutralCreepSpawnEnabled() const
+{
+  return pAIWorld && pAIWorld->GetSpawnNeutralCreeps() ? 1 : 0;
+}
+int PFWorld::GetLinuxAIMaxCreepsCount() const
+{
+  return pAIWorld ? pAIWorld->GetAIParameters().maxCreepsCount : 0;
+}
+float PFWorld::GetLinuxMinCreepSpawnerSpawnDelay()
+{
+  bool found = false;
+  float minDelay = 0.0f;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(it->second.GetPtr());
+    if (!spawner)
+      continue;
+    float delay = spawner->GetLinuxSpawnDelay();
+    if (!found || delay < minDelay)
+      minDelay = delay;
+    found = true;
+  }
+  return found ? minDelay : 0.0f;
+}
+float PFWorld::GetLinuxMinNeutralCreepSpawnerSpawnDelay()
+{
+  bool found = false;
+  float minDelay = 0.0f;
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFNeutralCreepSpawner* spawner = dynamic_cast<PFNeutralCreepSpawner*>(it->second.GetPtr());
+    if (!spawner)
+      continue;
+    float delay = spawner->GetLinuxSpawnDelay();
+    if (!found || delay < minDelay)
+      minDelay = delay;
+    found = true;
+  }
+  return found ? minDelay : 0.0f;
+}
+PFShop* PFWorld::FindLinuxFirstShopForHero(PFBaseHero const* hero, int* outConsumableIndex)
+{
+  if (outConsumableIndex)
+  {
+    *outConsumableIndex = -1;
+  }
+
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFShop* shop = dynamic_cast<PFShop*>(it->second.GetPtr());
+    if (!shop)
+    {
+      continue;
+    }
+
+    const int consumables = shop->GetNumConsumables();
+    for (int index = 0; index < consumables; ++index)
+    {
+      if (shop->CanBuyConsumable(hero, index))
+      {
+        if (outConsumableIndex)
+        {
+          *outConsumableIndex = index;
+        }
+        return shop;
+      }
+    }
+  }
+
+  return 0;
+}
+PFBaseUnit* PFWorld::FindLinuxFirstUsableUnitForHero(PFBaseHero const* hero)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(it->second.GetPtr());
+    if (unit && unit != hero && !unit->IsDead() && unit->CanBeUsedBy(hero))
+    {
+      return unit;
+    }
+  }
+
+  return 0;
+}
+PFFlagpole* PFWorld::FindLinuxFirstRaisableFlagpoleForHero(PFBaseHero const* hero)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFFlagpole* flagpole = dynamic_cast<PFFlagpole*>(it->second.GetPtr());
+    if (flagpole && flagpole->CanRaise(hero->GetFaction()))
+    {
+      return flagpole;
+    }
+  }
+
+  return 0;
+}
+PFMinigamePlace* PFWorld::FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero const* hero)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFMinigamePlace* minigamePlace = dynamic_cast<PFMinigamePlace*>(it->second.GetPtr());
+    if (minigamePlace && minigamePlace->IsAvailable() && minigamePlace->CanBeUsedBy(hero))
+    {
+      return minigamePlace;
+    }
+  }
+
+  return 0;
+}
+PFPickupableObjectBase* PFWorld::FindLinuxFirstPickupableForHero(PFBaseHero const* hero)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFPickupableObjectBase* pickupable = dynamic_cast<PFPickupableObjectBase*>(it->second.GetPtr());
+    if (pickupable && pickupable->CanBePickedUpBy(hero))
+    {
+      return pickupable;
+    }
+  }
+
+  return 0;
+}
 void PFWorld::AddAI(PFBaseHero*, int) {}
 void PFWorld::RemoveAI(PFBaseHero*) {}
 const NDb::BotsSettings* PFWorld::GetBotsSettings() const { return 0; }
@@ -291,7 +867,6 @@ bool PFWorld::IsDay() const { return dayNightController ? dayNightController->Is
 bool PFWorld::IsNight() const { return dayNightController ? dayNightController->IsNight() : false; }
 void PFWorld::LockOutsideCameraArea(const NDb::AdventureCameraSettings*) {}
 void PFWorld::InitMinigames() {}
-void PFWorld::KillDeadUnits(bool) {}
 void PFWorld::LoadPrecachedResources(const NDb::AdvMapDescription*) {}
 
 namespace
@@ -321,9 +896,27 @@ int LoadLinuxMapObjectsOfType(
   }
   return loadedCount;
 }
+
+const NDb::Hero* FindLinuxHeroByRuntimeId(const NDb::AdvMapDescription* advMapDesc, uint heroId)
+{
+  NDb::Ptr<NDb::SessionRoot> root = NDb::SessionRoot::GetRoot();
+  if (!IsValid(root) || !IsValid(root->logicRoot) || !IsValid(root->logicRoot->heroes))
+    return 0;
+
+  const NDb::HeroesDB* heroesDb = root->logicRoot->heroes.GetPtr();
+  for (int i = 0; i < heroesDb->heroes.size(); ++i)
+  {
+    const NDb::Hero* hero = heroesDb->heroes[i].GetPtr();
+    if (hero && Crc32Checksum().AddString(hero->id.c_str()).Get() == heroId)
+      return hero;
+  }
+
+  (void)advMapDesc;
+  return 0;
+}
 }
 
-bool PFWorld::LoadSceneMapObjects(const NDb::AdvMapDescription* advMapDesc, const NCore::TPlayersStartInfo&, const bool, LoadingProgress* progress, const NWorld::PFResourcesCollection::TalentMap&)
+bool PFWorld::LoadSceneMapObjects(const NDb::AdvMapDescription* advMapDesc, const NCore::TPlayersStartInfo& playersInfo, const bool isTutorial, LoadingProgress* progress, const NWorld::PFResourcesCollection::TalentMap& talents)
 {
   NI_VERIFY(advMapDesc && IsValid(advMapDesc->map), "Invalid advMap resource!", return false);
 
@@ -339,15 +932,66 @@ bool PFWorld::LoadSceneMapObjects(const NDb::AdvMapDescription* advMapDesc, cons
   linuxLoadedGlyphSpawnerObjects = LoadLinuxMapObjectsOfType<PFGlyphSpawner>(this, objects, NDb::GlyphSpawner::typeId, objectsLoaded, progress);
   linuxLoadedAdvMapObstacleObjects = LoadLinuxMapObjectsOfType<PFAdvMapObstacle>(this, objects, NDb::AdvMapObstacle::typeId, objectsLoaded, progress);
   linuxLoadedHeroPlaceHolderObjects = 0;
+  linuxSpawnedHeroObjects = 0;
+  linuxPlayersWithHeroObjects = 0;
+  vector<Placement> linuxHeroSpawns[NCore::ETeam::COUNT];
   for (vector<NDb::AdvMapObject>::const_iterator it = objects.begin(), end = objects.end(); it != end; ++it)
   {
     if (!IsValid(it->gameObject) || it->gameObject->GetObjectTypeID() != (DWORD)NDb::HeroPlaceHolder::typeId)
       continue;
 
     ++linuxLoadedHeroPlaceHolderObjects;
+    const NDb::HeroPlaceHolder* placeholder = dynamic_cast<const NDb::HeroPlaceHolder*>(it->gameObject.GetPtr());
+    const int teamIndex = placeholder ? static_cast<int>(placeholder->teamId) : -1;
+    if (teamIndex >= 0 && teamIndex < NCore::ETeam::COUNT)
+      linuxHeroSpawns[teamIndex].push_back(it->offset.GetPlace());
+
     if (progress && !objects.empty())
       progress->SetPartialProgress(EMapLoadStages::MapObjects, (++objectsLoaded) / (float)objects.size());
   }
+  int nextHeroSpawn[NCore::ETeam::COUNT] = { 0, 0 };
+  int inTeamHeroId[NCore::ETeam::COUNT] = { 1, 1 };
+  for (NCore::TPlayersStartInfo::const_iterator it = playersInfo.begin(), end = playersInfo.end(); it != end; ++it)
+  {
+    if (it->playerType == NCore::EPlayerType::Invalid ||
+        it->teamID == NCore::ETeam::None ||
+        it->playerInfo.heroId == 0)
+      continue;
+
+    const int teamIndex = static_cast<int>(it->teamID);
+    if (teamIndex < 0 || teamIndex >= NCore::ETeam::COUNT)
+      continue;
+
+    if (nextHeroSpawn[teamIndex] >= linuxHeroSpawns[teamIndex].size())
+      continue;
+
+    const NDb::Hero* hero = FindLinuxHeroByRuntimeId(advMapDesc, it->playerInfo.heroId);
+    if (!hero)
+      continue;
+
+    PFBaseHero::SpawnInfo spawnInfo;
+    spawnInfo.playerId = it->playerID;
+    spawnInfo.inTeamId = inTeamHeroId[teamIndex]++;
+    spawnInfo.placement = linuxHeroSpawns[teamIndex][nextHeroSpawn[teamIndex]++];
+    spawnInfo.pHero = hero;
+    spawnInfo.playerInfo = it->playerInfo;
+    spawnInfo.usePlayerInfoTalentSet = it->usePlayerInfoTalentSet;
+    spawnInfo.bInitInventory = !isTutorial;
+
+    PFBaseHero* heroObject = CreateHero(this, spawnInfo);
+    if (heroObject)
+      ++linuxSpawnedHeroObjects;
+
+    if (progress && playersInfo.size() > 0)
+      progress->SetPartialProgress(EMapLoadStages::Heroes, linuxSpawnedHeroObjects / (float)playersInfo.size());
+  }
+  for (int playerIndex = 0, playerCount = GetPlayersCount(); playerIndex < playerCount; ++playerIndex)
+  {
+    PFPlayer* player = GetPlayer(playerIndex);
+    if (player && player->GetHero())
+      ++linuxPlayersWithHeroObjects;
+  }
+  (void)talents;
   linuxLoadedCreepSpawnerObjects = LoadLinuxMapObjectsOfType<PFCreepSpawner>(this, objects, NDb::AdvMapCreepSpawner::typeId, objectsLoaded, progress);
   linuxLoadedNeutralCreepSpawnerObjects = LoadLinuxMapObjectsOfType<PFNeutralCreepSpawner>(this, objects, NDb::AdvMapNeutralCreepSpawner::typeId, objectsLoaded, progress);
   linuxLoadedUsableBuildingObjects = LoadLinuxMapObjectsOfType<PFUsableBuilding>(this, objects, NDb::UsableBuilding::typeId, objectsLoaded, progress);

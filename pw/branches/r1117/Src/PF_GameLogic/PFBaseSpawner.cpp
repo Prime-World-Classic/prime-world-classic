@@ -44,19 +44,40 @@ PFBaseSpawner::PFBaseSpawner( PFWorld* pWorld, const NDb::AdvMapObject& dbObject
 
 void PFBaseSpawner::RegisterCreep(PFBaseCreep * pCreep)
 {
-  (void)pCreep;
   ++creepsInWaveCounter;
+
+  if (!pCreep || spawnerName.empty())
+    return;
+
+  string groupName = NStr::StrFmt("%s_w%d", spawnerName.c_str(), spawnWaveCounter + 1);
+  string creepName = NStr::StrFmt("%s_w%d_c%d", spawnerName.c_str(), spawnWaveCounter + 1, creepsInWaveCounter);
+
+  if (PFWorld* pWorld = GetWorld())
+  {
+    if (PFAIContainer* pAIContainer = pWorld->GetAIContainer())
+      pAIContainer->RegisterObject(pCreep, creepName, groupName);
+  }
 }
 
 void PFBaseSpawner::MakeLevelupsForTimeDelta( float dtInSeconds )
 {
-  (void)dtInSeconds;
+  if ( levelUpInfo.timeLevelUpInterval > 0.0f && levelUpInfo.timeLevelUpIncrement >= 1 )
+  {
+    float timeAfterStep = dtInSeconds + levelUpInfo.timeLevelUpInterval - levelUpTimer;
+    int fullIntervals = (int)floor( timeAfterStep / levelUpInfo.timeLevelUpInterval );
+    float toNextLevelup = timeAfterStep - fullIntervals * levelUpInfo.timeLevelUpInterval;
+    levelUpTimer = levelUpInfo.timeLevelUpInterval - toNextLevelup;
+    SetCreepsLevel( level + levelUpInfo.timeLevelUpIncrement * fullIntervals );
+  }
 }
 
 bool PFBaseSpawner::Step( float dtInSeconds )
 {
   if ( spawnDelay >= 0.0f )
     spawnDelay -= dtInSeconds;
+
+  if ( CanSpawnWave() )
+    SpawnWave();
 
   StepCreepsTimeLevel(dtInSeconds);
   return true;
@@ -65,6 +86,7 @@ bool PFBaseSpawner::Step( float dtInSeconds )
 void PFBaseSpawner::SpawnWave()
 {
   creepsInWaveCounter = 0;
+  SpawnCreeps();
   ++spawnWaveCounter;
   StepCreepsWaveLevel();
 }
@@ -73,6 +95,9 @@ void PFBaseSpawner::StepCreepsTimeLevel( float dtInSeconds )
 {
   if ( ( level >= GetMaxCreepsLevel() )
       || ( levelUpInfo.timeLevelUpInterval < 0.0f ) || ( levelUpInfo.timeLevelUpIncrement < 1 ) )
+    return;
+
+  if ( GetWorld() && GetWorld()->GetAIWorld() && GetWorld()->GetAIWorld()->IsCreepLevelupPaused() )
     return;
 
   levelUpTimer -= dtInSeconds;
@@ -145,7 +170,18 @@ Placement PFBaseSpawner::GetCreepPosition(Placement const & creepOffset) const
 
 void PFBaseSpawner::ApplyStatModifiers(PFBaseCreep * creep) const
 {
-  (void)creep;
+  if (!creep)
+    return;
+
+  StatModifiers::const_iterator itCurr = statModifiers.begin();
+  StatModifiers::const_iterator itLast = statModifiers.end();
+
+  for (; itCurr != itLast; ++itCurr)
+  {
+    NWorld::ValueWithModifiers* unitValue(creep->GetStat((*itCurr).stat));
+    if (unitValue)
+      unitValue->AddModifier((*itCurr).statMult, 0.0f, PF_Core::WORLD_ID, (*itCurr).isTop);
+  }
 }
 
 int PFBaseSpawner::GetMaxCreepsLevel() const

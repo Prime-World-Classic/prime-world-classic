@@ -31,6 +31,7 @@ PW_INLINE_NULL_CAST(NWorld::PFDispatchUniformLinearMove)
 
 #include "PFBaseMovingUnit.h"
 #include "PFWorld.h"
+#include "PFAIWorld.h"
 #include "PFVoxelMap.h"
 #include "TileMap.h"
 #include "WarFog.h"
@@ -47,42 +48,331 @@ PW_NULL_CAST(NWorld::IPointChecking)
 namespace NWorld
 {
 static const int RANDOM_MAX = 1024;
+static CVec2 g_linuxUnitRangeSorterBase;
+
+static float LinuxUnitCollisionSize(const PFBaseMovingUnit* unit)
+{
+  if (!unit)
+    return 1.0f;
+  return Max(unit->GetObjectSize(), 1.0f);
+}
+
+static CVec2 LinuxSafeDirection(const CVec2& delta, const CVec2& fallback)
+{
+  CVec2 dir = delta;
+  if (fabs2(dir) <= EPS_VALUE)
+    dir = fallback;
+  if (fabs2(dir) <= EPS_VALUE)
+    dir = CVec2(1.0f, 0.0f);
+  Normalize(&dir);
+  return dir;
+}
+
+static bool LinuxUnitsOverlap(const PFBaseMovingUnit* a, const PFBaseMovingUnit* b, const CVec2& aCenter)
+{
+  if (!a || !b || a == b || b->IsDead() || b->IsMounted())
+    return false;
+
+  const float minDistance = LinuxUnitCollisionSize(a) + LinuxUnitCollisionSize(b);
+  return fabs2(b->GetPosition().AsVec2D() - aCenter) < minDistance * minDistance - EPS_VALUE;
+}
+
+static bool LinuxCanOccupyPosition(
+  const PFBaseMovingUnit* owner,
+  TileMap* map,
+  const CVec2& position,
+  bool ignoreDynamicUnits,
+  int ghostMode,
+  unsigned moveFlags,
+  const PFBaseMovingUnit* skipUnitA,
+  const PFBaseMovingUnit* skipUnitB)
+{
+  if (!owner)
+    return true;
+
+  const bool ignoreMapCollision =
+    (moveFlags & MOVE_FLAG_NO_COLLIDE) != 0 ||
+    ((ghostMode & NDb::GHOSTMOVEMODE_IGNORESTATIC) != 0 &&
+     (ghostMode & NDb::GHOSTMOVEMODE_IGNOREBUILDINGS) != 0);
+
+  if (!ignoreMapCollision && map && map->GetSizeX() > 0 && map->GetSizeY() > 0)
+  {
+    const SVector tile = map->GetTile(position);
+    if (map->IsPointOutsideMap(tile.x, tile.y))
+      return false;
+    if (!map->CanUnitGo(Max(1, owner->GetObjectTileSize()), tile))
+      return false;
+  }
+
+  const bool ignoreDynamicCollision =
+    ignoreDynamicUnits ||
+    (moveFlags & MOVE_FLAG_NO_COLLIDE) != 0 ||
+    (ghostMode & NDb::GHOSTMOVEMODE_IGNOREDYNAMIC) != 0;
+
+  if (ignoreDynamicCollision)
+    return true;
+
+  vector<PFBaseMovingUnit*> units;
+  PFBaseMovingUnit::GetAllUnits(owner->GetVoxelMap(), units, false, owner);
+  for (vector<PFBaseMovingUnit*>::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseMovingUnit* unit = *it;
+    if (unit == skipUnitA || unit == skipUnitB)
+      continue;
+    if (LinuxUnitsOverlap(owner, unit, position))
+      return false;
+  }
+
+  return true;
+}
+
+static float LinuxTraceStraightMove(
+  const PFBaseMovingUnit* owner,
+  TileMap* map,
+  const CVec2& origin,
+  const CVec2& target,
+  bool ignoreDynamicUnits,
+  int ghostMode,
+  unsigned moveFlags,
+  const PFBaseMovingUnit* skipUnitA,
+  const PFBaseMovingUnit* skipUnitB)
+{
+  const CVec2 delta = target - origin;
+  const float distance = fabs(delta);
+  if (distance <= EPS_VALUE)
+    return 0.0f;
+
+  CVec2 dir = delta / distance;
+  const float mapStep = map && map->GetTileSize() > EPS_VALUE ? map->GetTileSize() * 0.5f : 0.5f;
+  const float unitStep = owner ? LinuxUnitCollisionSize(owner) * 0.5f : 0.5f;
+  const float step = Max(0.25f, Min(mapStep, unitStep));
+
+  float lastGoodDistance = 0.0f;
+  float walked = Min(step, distance);
+  while (true)
+  {
+    const float clampedWalked = Min(walked, distance);
+    const CVec2 candidate = origin + dir * clampedWalked;
+    if (!LinuxCanOccupyPosition(owner, map, candidate, ignoreDynamicUnits, ghostMode, moveFlags, skipUnitA, skipUnitB))
+      return lastGoodDistance;
+
+    lastGoodDistance = clampedWalked;
+    if (clampedWalked >= distance - EPS_VALUE)
+      break;
+
+    walked = Min(walked + step, distance);
+  }
+
+  return lastGoodDistance;
+}
+
+void GetLinuxBootstrapUnits(vector<CPtr<PFBaseUnit> >& units);
 
 MovingUnit::MovingUnit(const CVec3& pos, const CVec2& direction, TileMap* pTileMap, const NDb::Unit&)
-: pMap(pTileMap), origin(pos.AsVec2D()), moveState(MOVE_STATE_IDLE), moveFlags(0), stateTime(0.0f), stateTimeout(0.0f), timeStanding(0.0f), speedScale(1.0f), speed(0.0f), ghostModeIndex(-1), curGhostMode(0), vShortTarget(pos.AsVec2D()), vFarTarget(pos.AsVec2D()), vLastMoveTarget(pos.AsVec2D()), splineIter(0), splineSegmentLen(0), numSplineTiles(0), numIncrementalUpdates(0), bSplineRequiresExtraPoint(false), mapMode(0), mapModeStatic(0), mapModeAll(0), stopDistance(0.0f), isMarkedOnMap(false), moveDir(direction), followDistance(-1.0f), isFollowing(false), holdingPosition(false), pathFindingSteps(0), evading(false), chasing(false), isFollowingForced(false), ignoreCollision(false)
+: pMap(pTileMap), origin(pos.AsVec2D()), moveState(MOVE_STATE_IDLE), moveFlags(0), stateTime(0.0f), stateTimeout(0.0f), timeStanding(0.0f), speedScale(1.0f), speed(0.0f), ghostModeIndex(-1), curGhostMode(0), vShortTarget(pos.AsVec2D()), vFarTarget(pos.AsVec2D()), vLastMoveTarget(pos.AsVec2D()), splineIter(0), splineSegmentLen(0), numSplineTiles(0), numIncrementalUpdates(0), bSplineRequiresExtraPoint(false), pOwner(0), mapMode(0), mapModeStatic(0), mapModeAll(0), stopDistance(0.0f), isMarkedOnMap(false), moveDir(direction), followDistance(-1.0f), isFollowing(false), holdingPosition(false), pathFindingSteps(0), evading(false), chasing(false), isFollowingForced(false), ignoreCollision(false)
 {
   splinePoint.resize(NUM_SPLINE_POINTS);
   splineTiles.resize(NUM_SPLINE_POINTS * MAX_SPLINE_TILES);
 }
 
-void MovingUnit::Init(PFBaseMovingUnit* owner) { pOwner = owner; }
+void MovingUnit::Init(PFBaseMovingUnit* owner) { pOwner = owner; MarkTiles(); }
 void MovingUnit::Reset(TileMap* map) { pMap = map; moveState = MOVE_STATE_IDLE; pUnitTarget = 0; pAttached = 0; pFollowed = 0; isFollowing = false; }
 void MovingUnit::RecalculateGhostMode() { curGhostMode = 0; for (int i = 0; i < ghostMode.size(); ++i) curGhostMode |= ghostMode[i].mode; }
 void MovingUnit::ApplyGhostMode() { RecalculateGhostMode(); }
 int MovingUnit::SetGhostMode(int mode, bool overrideMode) { ghostModeIndex++; ghostMode.push_back(GhostModeType(ghostModeIndex, mode, overrideMode)); ApplyGhostMode(); return ghostModeIndex; }
 void MovingUnit::ResetGhostMode(int index) { for (int i = 0; i < ghostMode.size(); ++i) if (ghostMode[i].index == index) { ghostMode.eraseByIndex(i); break; } ApplyGhostMode(); }
 void MovingUnit::MoveTo(const CVec2& target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = 0; vFarTarget = target; vShortTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; UpdateMoveDir(target); moveState = MOVE_STATE_MOVING; }
-void MovingUnit::MoveTo(PFBaseUnit* target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; if (target) MoveTo(target->GetPosition().AsVec2D(), stopDistance_, pointChecking); }
+void MovingUnit::MoveTo(PFBaseUnit* target, float stopDistance_, IPointChecking* pointChecking) { pUnitTarget = target; stopDistance = stopDistance_; pChecking = pointChecking; if (target) { vFarTarget = target->GetPosition().AsVec2D(); vShortTarget = vFarTarget; UpdateMoveDir(vFarTarget); moveState = MOVE_STATE_MOVING; } }
 bool MovingUnit::TeleportTo(const CVec2& target, bool) { SetCenter(target); vFarTarget = target; vShortTarget = target; moveState = MOVE_STATE_IDLE; return true; }
 void MovingUnit::Stop(bool) { moveState = MOVE_STATE_IDLE; pUnitTarget = 0; }
 bool MovingUnit::MoveToSpecial(const CVec2& target, bool) { MoveTo(target, 0.0f, 0); moveState = MOVE_STATE_SPECIAL_MOVE; return true; }
 bool MovingUnit::MoveToSpecial(const CPtr<PFBaseUnit>& target, bool notifyClient) { return IsValid(target) ? MoveToSpecial(target->GetPosition().AsVec2D(), notifyClient) : false; }
-void MovingUnit::FollowTo(const CPtr<PFBaseMovingUnit>& unit, bool forced) { pFollowed = unit; isFollowing = IsValid(unit); isFollowingForced = forced; }
-float MovingUnit::CheckStraightMove(CVec2 const& target, int) { return fabs(target - origin); }
+void MovingUnit::FollowTo(const CPtr<PFBaseMovingUnit>& unit, bool forced) { if (unit == pFollowed) return; Stop(); if (IsValid(unit)) { pFollowed = unit; followDistance = fabs(unit->GetPosition().AsVec2D() - origin); isFollowing = true; isFollowingForced = forced; } else if (!isFollowingForced || forced) { pFollowed = 0; followDistance = -1.0f; isFollowing = false; isFollowingForced = false; } }
+float MovingUnit::CheckStraightMove(CVec2 const& target, int mapModeFlags)
+{
+  const bool checkDynamicUnits =
+    mapModeFlags == 0 ||
+    (mapModeFlags & (MAP_MODE_DYNAMIC | MAP_MODE_IDLE)) != 0;
+
+  if (pMap && pMap->GetSizeX() > 0 && pMap->GetSizeY() > 0)
+  {
+    MapModeChanger mode(mapModeFlags != 0 ? mapModeFlags : MAP_MODE_ALL, pMap.GetPtr());
+    return LinuxTraceStraightMove(
+      pOwner.GetPtr(),
+      pMap.GetPtr(),
+      origin,
+      target,
+      ignoreCollision || !checkDynamicUnits,
+      curGhostMode,
+      moveFlags,
+      0,
+      0);
+  }
+
+  return LinuxTraceStraightMove(
+    pOwner.GetPtr(),
+    0,
+    origin,
+    target,
+    ignoreCollision || !checkDynamicUnits,
+    curGhostMode,
+    moveFlags,
+    0,
+    0);
+}
 PathMap* MovingUnit::BuildPathMap(float) { return 0; }
-void MovingUnit::UpdateMovements(const PFVoxelMap*, const CollisionResolver*, TileMap*, float) {}
-void MovingUnit::Step(float timeDelta) { stateTime += timeDelta; timeStanding += timeDelta; if (moveState == MOVE_STATE_MOVING || moveState == MOVE_STATE_SPECIAL_MOVE) { SetCenter(vFarTarget); moveState = MOVE_STATE_IDLE; } }
+void MovingUnit::UpdateMovements(const PFVoxelMap* pVoxelMap, const CollisionResolver*, TileMap*, float timeDelta)
+{
+  if (timeDelta <= 0.0f)
+    return;
+
+  vector<PFBaseMovingUnit*> units;
+  PFBaseMovingUnit::GetAllUnits(pVoxelMap, units, false);
+  for (int i = 0; i < units.size(); ++i)
+  {
+    if (units[i] && !units[i]->IsDead())
+      units[i]->Step(timeDelta);
+  }
+}
+void MovingUnit::Step(float timeDelta)
+{
+  stateTime += timeDelta;
+  timeStanding += timeDelta;
+
+  if (moveState == MOVE_STATE_MOUNTED || moveState == MOVE_STATE_DEAD)
+    return;
+
+  if (isFollowing)
+  {
+    if (!IsValid(pFollowed))
+    {
+      pFollowed = 0;
+      followDistance = -1.0f;
+      isFollowing = false;
+      isFollowingForced = false;
+      Stop();
+    }
+    else
+    {
+      const CVec2 followedPosition = pFollowed->GetPosition().AsVec2D();
+      const float desiredDistance = Max(followDistance, 0.0f);
+      if (fabs(followedPosition - origin) > desiredDistance + EPS_VALUE)
+      {
+        vFarTarget = followedPosition;
+        vShortTarget = vFarTarget;
+        stopDistance = desiredDistance;
+        UpdateMoveDir(vFarTarget);
+        moveState = MOVE_STATE_MOVING;
+      }
+      else if (moveState == MOVE_STATE_MOVING)
+      {
+        moveState = MOVE_STATE_IDLE;
+      }
+    }
+  }
+
+  if (moveState != MOVE_STATE_MOVING && moveState != MOVE_STATE_SPECIAL_MOVE)
+  {
+    UpdateAttachedMovement();
+    return;
+  }
+
+  if (IsValid(pUnitTarget))
+  {
+    vFarTarget = pUnitTarget->GetPosition().AsVec2D();
+    vShortTarget = vFarTarget;
+  }
+
+  CVec2 delta = vFarTarget - origin;
+  const float distance = fabs(delta);
+  const float finishDistance = Max(stopDistance, 0.0f);
+  if (distance <= finishDistance + EPS_VALUE)
+  {
+    moveState = MOVE_STATE_IDLE;
+    timeStanding = 0.0f;
+    UpdateAttachedMovement();
+    return;
+  }
+
+  delta /= distance;
+  const CVec2 finalCenter = finishDistance > EPS_VALUE ? vFarTarget - delta * finishDistance : vFarTarget;
+  float stepDistance = speed > EPS_VALUE ? speed * Max(timeDelta, 0.0f) : distance;
+  const bool finishing = stepDistance <= EPS_VALUE || stepDistance >= distance - finishDistance;
+  const CVec2 desiredCenter = finishing ? finalCenter : origin + delta * stepDistance;
+  const float desiredDistance = fabs(desiredCenter - origin);
+  const PFBaseMovingUnit* movingTarget =
+    IsValid(pUnitTarget) ? dynamic_cast<PFBaseMovingUnit*>(pUnitTarget.GetPtr()) : 0;
+  const float safeDistance = LinuxTraceStraightMove(
+    pOwner.GetPtr(),
+    pMap.GetPtr(),
+    origin,
+    desiredCenter,
+    false,
+    curGhostMode,
+    moveFlags,
+    movingTarget,
+    pFollowed.GetPtr());
+
+  if (safeDistance + EPS_VALUE < desiredDistance)
+  {
+    const bool startBlockedByDynamic = !LinuxCanOccupyPosition(
+      pOwner.GetPtr(),
+      pMap.GetPtr(),
+      origin,
+      false,
+      curGhostMode,
+      moveFlags,
+      movingTarget,
+      pFollowed.GetPtr());
+    if (safeDistance <= EPS_VALUE && startBlockedByDynamic)
+    {
+      const float staticSafeDistance = LinuxTraceStraightMove(
+        pOwner.GetPtr(),
+        pMap.GetPtr(),
+        origin,
+        desiredCenter,
+        true,
+        curGhostMode,
+        moveFlags,
+        movingTarget,
+        pFollowed.GetPtr());
+      if (staticSafeDistance > EPS_VALUE)
+      {
+        const float fallbackDistance = Min(staticSafeDistance, desiredDistance);
+        SetCenter(origin + delta * fallbackDistance);
+        if (finishing && fallbackDistance + EPS_VALUE >= desiredDistance)
+          moveState = MOVE_STATE_IDLE;
+        timeStanding = 0.0f;
+        UpdateAttachedMovement();
+        return;
+      }
+    }
+    if (safeDistance > EPS_VALUE)
+      SetCenter(origin + delta * safeDistance);
+    Stop(false);
+    UpdateAttachedMovement();
+    return;
+  }
+
+  SetCenter(desiredCenter);
+  if (finishing)
+  {
+    moveState = MOVE_STATE_IDLE;
+  }
+  timeStanding = 0.0f;
+  UpdateAttachedMovement();
+}
 void MovingUnit::PreStep(float) {}
 void MovingUnit::MovingUnitStep(float) {}
 void MovingUnit::NotifyMoving(bool) {}
 void MovingUnit::OnDie() { moveState = MOVE_STATE_DEAD; }
-void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { pAttached = unit; moveState = MOVE_STATE_MOUNTED; }
-void MovingUnit::DetachUnit() { pAttached = 0; moveState = MOVE_STATE_IDLE; }
+void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { DetachUnit(); pAttached = unit; if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_MOUNTED; pAttached->world.SetCenter(origin); } }
+void MovingUnit::DetachUnit() { if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_IDLE; pAttached->world.SetCenter(origin); } pAttached = 0; }
 bool MovingUnit::ShouldLockMap() const { return false; }
 bool MovingUnit::IsTerrainNative(float, float) const { return true; }
 bool MovingUnit::IsTerrainNative(SVector) const { return true; }
 bool MovingUnit::IsTerrainNative() const { return true; }
-void MovingUnit::UpdateAttachedMovement() {}
+void MovingUnit::UpdateAttachedMovement() { if (IsValid(pAttached)) { pAttached->world.SetCenter(origin); pAttached->world.UpdateAttachedMovement(); } }
 Pathfinding::CCommonPathFinder* MovingUnit::GetPathFinder() { return 0; }
 Pathfinding::RoutePathFinder* MovingUnit::GetRoutePathFinder() { return 0; }
 bool MovingUnit::UseRoutePathFinder(SVector const&, SVector const&) const { return false; }
@@ -117,11 +407,82 @@ void MovingUnit::MoveToInternal(const CVec2& target, float stopDistance_, IPoint
 void MovingUnit::MarkTilesInternal(bool mark) { isMarkedOnMap = mark; }
 void MovingUnit::UnmarkTiles(bool) { isMarkedOnMap = false; }
 void MovingUnit::MarkTiles() { isMarkedOnMap = true; }
-bool MovingUnit::PlaceUnit(const CVec2& newPosition, float, bool, bool, bool) { SetCenter(newPosition); return true; }
-bool MovingUnit::FindFreePlace(CVec2 const& newPosition, float, CVec2& foundPosition, bool, bool, bool, float, int, bool) { foundPosition = newPosition; return true; }
-bool MovingUnit::FindFreePlace(CVec2 const& newPosition, CVec2 const&, float, float, CVec2& foundPosition, bool, bool, int, bool) { foundPosition = newPosition; return true; }
-bool MovingUnit::FindFreePlace2(CVec2 const& newPosition, CVec2 const&, float, CVec2& foundPosition, bool, bool, float, int, bool) { foundPosition = newPosition; return true; }
-bool MovingUnit::CanOccupyPosition(CVec2 const&) { return true; }
+bool MovingUnit::PlaceUnit(const CVec2& newPosition, float radius, bool ignoreUnits, bool nativeTerrainOnly, bool)
+{
+  CVec2 foundPosition = newPosition;
+  if (!FindFreePlace(newPosition, radius, foundPosition, ignoreUnits, nativeTerrainOnly, false))
+    return false;
+  SetCenter(foundPosition);
+  UpdateAttachedMovement();
+  return true;
+}
+
+bool MovingUnit::FindFreePlace(CVec2 const& newPosition, float radius, CVec2& foundPosition, bool ignoreUnits, bool, bool, float, int, bool)
+{
+  foundPosition = newPosition;
+  if (ignoreUnits || CanOccupyPosition(newPosition))
+    return true;
+
+  const float step = Max(0.5f, pOwner ? LinuxUnitCollisionSize(pOwner.GetPtr()) : 1.0f);
+  const float maxRadius = Max(radius, step);
+  static const CVec2 dirs[] =
+  {
+    CVec2(1.0f, 0.0f), CVec2(-1.0f, 0.0f), CVec2(0.0f, 1.0f), CVec2(0.0f, -1.0f),
+    CVec2(0.70710677f, 0.70710677f), CVec2(-0.70710677f, 0.70710677f),
+    CVec2(0.70710677f, -0.70710677f), CVec2(-0.70710677f, -0.70710677f)
+  };
+
+  for (float r = step; r <= maxRadius + EPS_VALUE; r += step)
+  {
+    for (int i = 0; i < ARRAY_SIZE(dirs); ++i)
+    {
+      const CVec2 candidate = newPosition + dirs[i] * r;
+      if (CanOccupyPosition(candidate))
+      {
+        foundPosition = candidate;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool MovingUnit::FindFreePlace(CVec2 const& newPosition, CVec2 const& attractPoint, float radius, float, CVec2& foundPosition, bool ignoreUnits, bool nativeTerrainOnly, int, bool)
+{
+  foundPosition = newPosition;
+  if (ignoreUnits || CanOccupyPosition(newPosition))
+    return true;
+
+  const float step = Max(0.5f, pOwner ? LinuxUnitCollisionSize(pOwner.GetPtr()) : 1.0f);
+  CVec2 preferred = LinuxSafeDirection(newPosition - attractPoint, CVec2(1.0f, 0.0f));
+  const CVec2 preferredCandidate = newPosition + preferred * step;
+  if (CanOccupyPosition(preferredCandidate))
+  {
+    foundPosition = preferredCandidate;
+    return true;
+  }
+
+  return FindFreePlace(newPosition, radius, foundPosition, false, nativeTerrainOnly, false);
+}
+
+bool MovingUnit::FindFreePlace2(CVec2 const& newPosition, CVec2 const& attractPoint, float radius, CVec2& foundPosition, bool ignoreUnits, bool nativeTerrainOnly, float, int, bool)
+{
+  return FindFreePlace(newPosition, attractPoint, radius, 1.0f, foundPosition, ignoreUnits, nativeTerrainOnly);
+}
+
+bool MovingUnit::CanOccupyPosition(CVec2 const& position)
+{
+  return LinuxCanOccupyPosition(
+    pOwner.GetPtr(),
+    pMap.GetPtr(),
+    position,
+    ignoreCollision,
+    curGhostMode,
+    moveFlags,
+    0,
+    0);
+}
 bool MovingUnit::IsClientUnit() const { return false; }
 void MovingUnit::NotifyClientMove(bool) {}
 void MovingUnit::NotifyClientStop() {}
@@ -129,17 +490,65 @@ void MovingUnit::NotifyClientTeleport() {}
 bool MovingUnit::ClientIsVisible() const { return true; }
 const CVec2 MovingUnit::GetCenter(CVec2 const& origin_) const { return origin_; }
 const CVec2 MovingUnit::GetOrigin(CVec2 const& center) const { return center; }
-void MovingUnit::SetCenter(CVec2 const& center) { origin = center; if (pOwner) pOwner->position = CVec3(center, pOwner->position.z); }
+void MovingUnit::SetCenter(CVec2 const& center) { origin = center; if (pOwner) { pOwner->position = CVec3(center, pOwner->position.z); if (isMarkedOnMap && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld()) pOwner->GetWorld()->GetAIWorld()->OnUnitMove(*pOwner); } }
 void MovingUnit::SetOrigin(CVec2 const& origin_) { origin = origin_; }
 void MovingUnit::UpdateMoveDir(CVec2 const& dst) { CVec2 dir = dst - origin; if (fabs2(dir) > EPS_VALUE) Normalize(&dir); moveDir = dir; }
-int MovingUnit::UnitRangeSorter(const void*, const void*) { return 0; }
+int MovingUnit::UnitRangeSorter(const void* a, const void* b)
+{
+  const PFBaseMovingUnit* unitA = *(const PFBaseMovingUnit**)a;
+  const PFBaseMovingUnit* unitB = *(const PFBaseMovingUnit**)b;
+  const float distA = unitA ? fabs2(unitA->GetPosition().AsVec2D() - g_linuxUnitRangeSorterBase) : FLT_MAX;
+  const float distB = unitB ? fabs2(unitB->GetPosition().AsVec2D() - g_linuxUnitRangeSorterBase) : FLT_MAX;
+  return Sign(distA - distB);
+}
 int MovingUnit::GetPathFindingSteps() const { return 0; }
 PFBaseUnit* MovingUnit::GetRealOwner() const { return pOwner; }
 
-void PFBaseMovingUnit::GetAllUnits(const PFVoxelMap*, vector<PFBaseMovingUnit*>& movingUnits, bool, const PFBaseMovingUnit*) { movingUnits.clear(); }
-void PFBaseMovingUnit::GetPushableUnitsInRange(const PFVoxelMap*, const CVec2&, float, vector<PFBaseMovingUnit*>& pushableUnits, vector<PFBaseMovingUnit*>& nonPushableUnits, bool, const PFBaseMovingUnit*) { pushableUnits.clear(); nonPushableUnits.clear(); }
-void PFBaseMovingUnit::GetAllUnitsInRangeConsiderSize(const PFVoxelMap*, const CVec2&, float, vector<PFBaseMovingUnit*>& movingUnits, bool, const PFBaseMovingUnit*) { movingUnits.clear(); }
-PFBaseMovingUnit::PFBaseMovingUnit(PFWorld* pWorld, const CVec3& pos, const CVec2& direction, const NDb::Unit& unitDesc) : PFBaseUnit(pWorld, pos, &unitDesc), world(pos, direction, GetTileMap(), unitDesc), random(0), isMount(false), forbidStop(false), doNotTeleportInStepInvisibility(false) {}
+void PFBaseMovingUnit::GetAllUnits(const PFVoxelMap* pVoxelMap, vector<PFBaseMovingUnit*>& movingUnits, bool markedOnly, const PFBaseMovingUnit* skipUnit)
+{
+  movingUnits.clear();
+  vector<CPtr<PFBaseUnit> > units;
+  GetLinuxBootstrapUnits(units);
+  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    PFBaseUnit* baseUnit = it->GetPtr();
+    PFBaseMovingUnit* movingUnit = dynamic_cast<PFBaseMovingUnit*>(baseUnit);
+    if (!movingUnit || movingUnit == skipUnit)
+      continue;
+    if (pVoxelMap && movingUnit->GetWorld() != pVoxelMap->GetWorld())
+      continue;
+    if (markedOnly && !movingUnit->IsMarkedOnMap())
+      continue;
+    movingUnits.push_back(movingUnit);
+  }
+}
+void PFBaseMovingUnit::GetPushableUnitsInRange(const PFVoxelMap* pVoxelMap, const CVec2& center, float radius, vector<PFBaseMovingUnit*>& pushableUnits, vector<PFBaseMovingUnit*>& nonPushableUnits, bool markedOnly, const PFBaseMovingUnit* skipUnit)
+{
+  pushableUnits.clear();
+  nonPushableUnits.clear();
+  vector<PFBaseMovingUnit*> units;
+  GetAllUnitsInRangeConsiderSize(pVoxelMap, center, radius, units, markedOnly, skipUnit);
+  for (vector<PFBaseMovingUnit*>::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    if ((*it)->IsMounted())
+      nonPushableUnits.push_back(*it);
+    else
+      pushableUnits.push_back(*it);
+  }
+}
+void PFBaseMovingUnit::GetAllUnitsInRangeConsiderSize(const PFVoxelMap* pVoxelMap, const CVec2& center, float radius, vector<PFBaseMovingUnit*>& movingUnits, bool markedOnly, const PFBaseMovingUnit* skipUnit)
+{
+  movingUnits.clear();
+  vector<PFBaseMovingUnit*> units;
+  GetAllUnits(pVoxelMap, units, markedOnly, skipUnit);
+  for (vector<PFBaseMovingUnit*>::iterator it = units.begin(); it != units.end(); ++it)
+  {
+    const float combinedRadius = radius + (*it)->GetObjectSize();
+    if (fabs2((*it)->GetPosition().AsVec2D() - center) <= combinedRadius * combinedRadius)
+      movingUnits.push_back(*it);
+  }
+}
+PFBaseMovingUnit::PFBaseMovingUnit(PFWorld* pWorld, const CVec3& pos, const CVec2& direction, const NDb::Unit& unitDesc) : PFBaseUnit(pWorld, pos, &unitDesc), world(pos, direction, GetTileMap(), unitDesc), random(0), isMount(false), forbidStop(false), doNotTeleportInStepInvisibility(false) { world.Init(this); }
 PFBaseMovingUnit::PFBaseMovingUnit() : random(0), isMount(false), forbidStop(false), doNotTeleportInStepInvisibility(false) {}
 void PFBaseMovingUnit::Initialize(InitData const& data) { PFBaseUnit::Initialize(data); world.Init(this); }
 void PFBaseMovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { world.AttachUnit(unit); }
@@ -165,7 +574,49 @@ float PFBaseMovingUnit::CheckStraightMove(CVec2 const& target, int mapModeFlags)
 bool PFBaseMovingUnit::PlaceUnit(CVec2 const& newPosition, bool ignoreUnits, bool nativeTerrainOnly, bool notifyClient) { return world.PlaceUnit(newPosition, MovingUnit::PLACE_UNIT_RADIUS, ignoreUnits, nativeTerrainOnly, notifyClient); }
 void PFBaseMovingUnit::Reset() { PFBaseUnit::Reset(); world.Reset(GetWorld() ? GetWorld()->GetTileMap() : 0); }
 void PFBaseMovingUnit::OnGameFinished(const NDb::EFaction failedFaction) { PFBaseUnit::OnGameFinished(failedFaction); Stop(); }
-void PFBaseMovingUnit::PlaceUnitWithPush(const CVec2& newPosition, float, bool, bool nativeTerrainOnly) { PlaceUnit(newPosition, true, nativeTerrainOnly, true); }
+void PFBaseMovingUnit::PlaceUnitWithPush(const CVec2& newPosition, float pushRadius, bool force, bool nativeTerrainOnly)
+{
+  if (IsDead())
+    return;
+
+  if (!force && fabs2(GetPosition().AsVec2D() - newPosition) <= EPS_VALUE)
+    return;
+
+  vector<PFBaseMovingUnit*> pushableUnits;
+  vector<PFBaseMovingUnit*> nonPushableUnits;
+  GetPushableUnitsInRange(GetVoxelMap(), newPosition, Max(pushRadius, LinuxUnitCollisionSize(this)), pushableUnits, nonPushableUnits, false, this);
+
+  CVec2 finalPosition = newPosition;
+  world.PlaceUnit(finalPosition, MovingUnit::PLACE_UNIT_RADIUS, true, nativeTerrainOnly, true);
+
+  if (pushableUnits.empty())
+    return;
+
+  g_linuxUnitRangeSorterBase = finalPosition;
+  qsort(&pushableUnits[0], pushableUnits.size(), sizeof(PFBaseMovingUnit*), MovingUnit::UnitRangeSorter);
+
+  for (vector<PFBaseMovingUnit*>::iterator it = pushableUnits.begin(); it != pushableUnits.end(); ++it)
+  {
+    PFBaseMovingUnit* unit = *it;
+    if (!unit || unit->IsDead() || unit->IsMounted())
+      continue;
+
+    const CVec2 currentPosition = unit->GetPosition().AsVec2D();
+    const float minDistance = LinuxUnitCollisionSize(this) + LinuxUnitCollisionSize(unit);
+    if (fabs2(currentPosition - finalPosition) >= minDistance * minDistance - EPS_VALUE)
+      continue;
+
+    const CVec2 dir = LinuxSafeDirection(currentPosition - finalPosition, unit->GetMoveDirection());
+    CVec2 pushedPosition = finalPosition + dir * minDistance;
+    CVec2 foundPosition = pushedPosition;
+    if (unit->FindFreePlace(pushedPosition, Max(pushRadius, minDistance), foundPosition, false, nativeTerrainOnly))
+      pushedPosition = foundPosition;
+
+    unit->world.PlaceUnit(pushedPosition, MovingUnit::PLACE_UNIT_RADIUS, true, nativeTerrainOnly, true);
+    if (unit->IsMoving() && !unit->IsMovingSpecial())
+      unit->Stop(false);
+  }
+}
 #ifndef _SHIPPING
 CObj<NDebug::DebugObject> PFBaseMovingUnit::CreateDebugObject() { return 0; }
 void PFBaseMovingUnit::ShowPaths(Render::IDebugRender*) const {}
@@ -1304,6 +1755,13 @@ bool MovingUnit::ValidatePos( CVec2 pos )
   {
     return false;
   }
+
+#if defined(PW_LINUX_NULL_RENDER)
+  if ( moveFlags & MOVE_FLAG_NO_COLLIDE )
+  {
+    return true;
+  }
+#endif
 
   MapModeChanger mode( mapModeStatic, pMap );
 

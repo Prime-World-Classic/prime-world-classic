@@ -39,8 +39,11 @@ void LocalCmdScheduler::SendMessage( CObjectBase * pMsg, bool isPlayerCommand )
 
 CObj<NCore::SyncSegment> LocalCmdScheduler::GetSyncSegment()
 {
-  CObj<NCore::SyncSegment> result = nextSegment;
-  nextSegment = 0;
+  if (readySegments.empty())
+    return 0;
+
+  CObj<NCore::SyncSegment> result = readySegments.front();
+  readySegments.pop_front();
   return result;
 }
 
@@ -48,10 +51,8 @@ CObj<NCore::SyncSegment> LocalCmdScheduler::GetSyncSegment()
 
 int LocalCmdScheduler::GetNextStep( bool warnIfNoSegments ) const
 {
-  if ( !nextSegment )
-    return -1;
-
-  return stepIndex;
+  (void)warnIfNoSegments;
+  return readySegments.empty() ? NCore::INVALID_STEP : readySegments.back()->step;
 }
 
 
@@ -69,19 +70,20 @@ void LocalCmdScheduler::Step( float dt )
     return;
 
   ++stepIndex;
-  nextSegment = currentSegment;
+  readySegments.push_back(currentSegment);
+  CObj<NCore::SyncSegment> segmentToWrite = currentSegment;
   currentSegment = new NCore::SyncSegment( stepIndex );
 
   if (StrongMT<NCore::ReplayWriter> lockedReplayWriter = replayWriter.Lock())
   {
-    int commandsCount = nextSegment->commands.size();
+    int commandsCount = segmentToWrite->commands.size();
     if (commandsCount > 0)
     {
       vector<MemoryStream> commandsAsStreams(commandsCount);
       vector<rpc::MemoryBlock> commands(commandsCount);
       for (int i = 0; i < commandsCount; ++i)
       {
-        WriteCommandToStream( nextSegment->commands[i], &commandsAsStreams[i], 0 );
+        WriteCommandToStream( segmentToWrite->commands[i], &commandsAsStreams[i], 0 );
         commands[i].memory = static_cast<void *>(commandsAsStreams[i].GetBuffer());
         commands[i].size = commandsAsStreams[i].GetPosition();
       }

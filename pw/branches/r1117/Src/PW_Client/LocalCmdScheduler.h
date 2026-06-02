@@ -41,6 +41,7 @@ public:
   virtual int     GetProtectionMagicConfirmFrequency() { return 1; }
 
   void StartGame() { gameReady = true; }
+  size_t GetBufferedSegmentCount() const { return readySegments.size(); }
   void SetReplayWriter(NCore::ReplayWriter * _replayWriter) { replayWriter = _replayWriter; }
   void OnVictory(const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
   void OnCombatScreenStarted( const NGameX::ReplayInfo & _replayInfo );
@@ -50,7 +51,7 @@ private:
   timer::Time               localTime;
   bool                      gameReady;
   CObj<NCore::SyncSegment>  currentSegment;
-  CObj<NCore::SyncSegment>  nextSegment;
+  list<CObj<NCore::SyncSegment> > readySegments;
   int                       stepIndex;
   timer::Time               nextStepTime;
   NCore::StepsDelaySettings defaultStepsDelaySettings;

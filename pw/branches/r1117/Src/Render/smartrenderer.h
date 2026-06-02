@@ -8,6 +8,7 @@
 #include "texture.h"
 
 struct IUnknown;
+struct Matrix43;
 
 namespace Render
 {
@@ -39,6 +40,13 @@ namespace SmartRenderer
 void GetTriangleAndDipCount(unsigned int& triangles, unsigned int& dips);
 void ResetTriangleAndDipCount();
 void OnFrameStart();
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+void SetOpenGLImmediateMeshDrawingEnabled(bool enabled);
+void SetOpenGLImmediateMeshPreviewTransform(float centerX, float centerY, float minZ, float scale);
+void SetOpenGLImmediateObjectMatrix(const Matrix43* matrix);
+void SetOpenGLImmediateSkeletalMatrices(const Matrix43* matrices, unsigned int matrixCount);
+#endif
 
 void AddRect(float l, float t, float r, float b, int R, int G, int B);
 void AddLine(float sx, float sy, float ex, float ey, int R, int G, int B, float width = 1.0f);

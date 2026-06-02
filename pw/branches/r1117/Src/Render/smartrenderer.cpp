@@ -3,6 +3,16 @@
 #if defined(PW_LINUX_NULL_RENDER)
 
 #include "smartrenderer.h"
+#include "dipdescriptor.h"
+#include "vertexformatdescriptor.h"
+#include "../System/matrix43.h"
+
+#include <algorithm>
+#include <cmath>
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include <GL/gl.h>
+#endif
 
 namespace
 {
@@ -19,6 +29,381 @@ namespace
   IDirect3DSurface9* g_defaultRT0 = 0;
   IDirect3DSurface9* g_defaultRT1 = 0;
   IDirect3DSurface9* g_defaultDepth = 0;
+  IDirect3DVertexBuffer9* g_boundVertexBuffer = 0;
+  IDirect3DIndexBuffer9* g_boundIndexBuffer = 0;
+  IDirect3DVertexDeclaration9* g_boundVertexDeclaration = 0;
+  unsigned int g_boundVertexStride = 0;
+  unsigned int g_boundVertexOffset = 0;
+  nstl::vector<IDirect3DVertexDeclaration9*> g_vertexDeclarations;
+
+  bool DeclarationMatches(const IDirect3DVertexDeclaration9* declaration, const Render::VertexFormatDescriptor& descr)
+  {
+    if (!declaration || declaration->elements.size() != descr.GetVertexElementsCount())
+      return false;
+
+    for (unsigned int i = 0; i < descr.GetVertexElementsCount(); ++i)
+    {
+      const Render::VertexElementDescriptor& source = descr.GetVertexElement(i);
+      const NullVertexElementDescriptor& stored = declaration->elements[i];
+      if (stored.stream != source.stream ||
+          stored.offset != source.offset ||
+          stored.type != static_cast<int>(source.type) ||
+          stored.usage != static_cast<int>(source.usage) ||
+          stored.usageIndex != source.usageIndex)
+      {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  bool g_openGLImmediateMeshDrawingEnabled = false;
+  const Matrix43* g_openGLImmediateObjectMatrix = 0;
+  const Matrix43* g_openGLImmediateSkeletalMatrices = 0;
+  unsigned int g_openGLImmediateSkeletalMatrixCount = 0;
+  float g_openGLPreviewCenterX = 0.0f;
+  float g_openGLPreviewCenterY = 0.0f;
+  float g_openGLPreviewMinZ = 0.0f;
+  float g_openGLPreviewScale = 1.0f;
+
+  float ClampFloat(float value, float minValue, float maxValue)
+  {
+    return value < minValue ? minValue : (value > maxValue ? maxValue : value);
+  }
+
+  unsigned char ScaleColorByte(unsigned char value, float scale)
+  {
+    const int scaled = static_cast<int>(static_cast<float>(value) * scale + 0.5f);
+    return static_cast<unsigned char>(
+      scaled < 0 ? 0 : (scaled > 255 ? 255 : scaled));
+  }
+
+  const NullVertexElementDescriptor* FindDeclarationElement(
+    const IDirect3DVertexDeclaration9* declaration,
+    Render::EVertexElementUsage usage,
+    unsigned int usageIndex)
+  {
+    if (!declaration)
+      return 0;
+
+    for (unsigned int i = 0; i < declaration->elements.size(); ++i)
+    {
+      const NullVertexElementDescriptor& element = declaration->elements[i];
+      if (element.stream == 0 &&
+          element.usage == static_cast<int>(usage) &&
+          element.usageIndex == usageIndex)
+      {
+        return &element;
+      }
+    }
+
+    return 0;
+  }
+
+  bool ReadVertexFloat(const nstl::vector<unsigned char>& storage, size_t offset, float* value)
+  {
+    if (!value || offset + sizeof(float) > storage.size())
+      return false;
+
+    memcpy(value, &storage[offset], sizeof(float));
+    return true;
+  }
+
+  bool ReadVertexFloat2(const nstl::vector<unsigned char>& storage, size_t offset, float* x, float* y)
+  {
+    return ReadVertexFloat(storage, offset, x) &&
+      ReadVertexFloat(storage, offset + sizeof(float), y);
+  }
+
+  bool ReadVertexFloat3(const nstl::vector<unsigned char>& storage, size_t offset, CVec3* value)
+  {
+    if (!value)
+      return false;
+
+    return ReadVertexFloat(storage, offset, &value->x) &&
+      ReadVertexFloat(storage, offset + sizeof(float), &value->y) &&
+      ReadVertexFloat(storage, offset + sizeof(float) * 2, &value->z);
+  }
+
+  bool ReadVertexFloat4(const nstl::vector<unsigned char>& storage, size_t offset, float* values)
+  {
+    if (!values)
+      return false;
+
+    return ReadVertexFloat(storage, offset, &values[0]) &&
+      ReadVertexFloat(storage, offset + sizeof(float), &values[1]) &&
+      ReadVertexFloat(storage, offset + sizeof(float) * 2, &values[2]) &&
+      ReadVertexFloat(storage, offset + sizeof(float) * 3, &values[3]);
+  }
+
+  bool ReadVertexBytes4(const nstl::vector<unsigned char>& storage, size_t offset, unsigned char* values)
+  {
+    if (!values || offset + 4 > storage.size())
+      return false;
+
+    values[0] = storage[offset + 0];
+    values[1] = storage[offset + 1];
+    values[2] = storage[offset + 2];
+    values[3] = storage[offset + 3];
+    return true;
+  }
+
+  bool ReadIndex32(const nstl::vector<unsigned char>& storage, size_t indexNumber, unsigned int* value)
+  {
+    const size_t offset = indexNumber * sizeof(unsigned int);
+    if (!value || offset + sizeof(unsigned int) > storage.size())
+      return false;
+
+    memcpy(value, &storage[offset], sizeof(unsigned int));
+    return true;
+  }
+
+  void ApplyOpenGLPreviewTransform(const CVec3& source, float* x, float* y, float* z)
+  {
+    if (x)
+      *x = (source.x - g_openGLPreviewCenterX) * g_openGLPreviewScale;
+    if (y)
+      *y = 0.04f + (source.z - g_openGLPreviewMinZ) * g_openGLPreviewScale;
+    if (z)
+      *z = (source.y - g_openGLPreviewCenterY) * g_openGLPreviewScale;
+  }
+
+  void EmitOpenGLImmediateMeshColor(const CVec3& normal, bool normalValid, bool textured)
+  {
+    float light = 1.0f;
+    if (normalValid)
+    {
+      const float mappedX = normal.x;
+      const float mappedY = normal.z;
+      const float mappedZ = normal.y;
+      const float dot = mappedX * -0.38f + mappedY * 0.72f + mappedZ * 0.58f;
+      light = ClampFloat(0.54f + std::max(0.0f, dot) * 0.64f, 0.0f, 1.18f);
+    }
+
+    if (textured)
+    {
+      const unsigned char color = ScaleColorByte(255, light);
+      glColor4ub(color, color, color, 238);
+      return;
+    }
+
+    glColor4ub(
+      ScaleColorByte(74, light),
+      ScaleColorByte(138, light),
+      ScaleColorByte(210, light),
+      232);
+  }
+
+  bool BuildOpenGLImmediateMeshVertex(
+    int effectiveVertexIndex,
+    const NullVertexElementDescriptor* positionElement,
+    const NullVertexElementDescriptor* normalElement,
+    const NullVertexElementDescriptor* texCoordElement,
+    const NullVertexElementDescriptor* blendWeightElement,
+    const NullVertexElementDescriptor* blendIndicesElement,
+    CVec3* position,
+    CVec3* normal,
+    bool* normalValid,
+    float* u,
+    float* v,
+    bool* texCoordValid)
+  {
+    if (!g_boundVertexBuffer || !positionElement || !position || effectiveVertexIndex < 0)
+      return false;
+
+    const nstl::vector<unsigned char>& storage = g_boundVertexBuffer->storage;
+    const size_t vertexBase =
+      static_cast<size_t>(g_boundVertexOffset) +
+      static_cast<size_t>(effectiveVertexIndex) * static_cast<size_t>(g_boundVertexStride);
+    CVec3 rawPosition(0.0f, 0.0f, 0.0f);
+    if (!ReadVertexFloat3(storage, vertexBase + positionElement->offset, &rawPosition))
+      return false;
+
+    CVec3 rawNormal(0.0f, 0.0f, 1.0f);
+    bool hasNormal = false;
+    if (normalElement && normalElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT3))
+    {
+      hasNormal = ReadVertexFloat3(storage, vertexBase + normalElement->offset, &rawNormal);
+    }
+
+    bool hasSkinning = false;
+    CVec3 skinnedPosition(0.0f, 0.0f, 0.0f);
+    CVec3 skinnedNormal(0.0f, 0.0f, 0.0f);
+    float totalWeight = 0.0f;
+    if (g_openGLImmediateSkeletalMatrices &&
+        g_openGLImmediateSkeletalMatrixCount > 0 &&
+        blendWeightElement &&
+        blendIndicesElement &&
+        blendWeightElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT4) &&
+        (blendIndicesElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_D3DCOLOR) ||
+         blendIndicesElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_UBYTE4)))
+    {
+      float weights[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+      unsigned char indices[4] = {0, 0, 0, 0};
+      if (ReadVertexFloat4(storage, vertexBase + blendWeightElement->offset, weights) &&
+          ReadVertexBytes4(storage, vertexBase + blendIndicesElement->offset, indices))
+      {
+        for (unsigned int influence = 0; influence < 4; ++influence)
+        {
+          const float weight = weights[influence];
+          const unsigned int matrixIndex = indices[influence];
+          if (weight <= 0.0001f || matrixIndex >= g_openGLImmediateSkeletalMatrixCount)
+            continue;
+
+          const Matrix43& matrix = g_openGLImmediateSkeletalMatrices[matrixIndex];
+          skinnedPosition += Transform(rawPosition, matrix) * weight;
+          if (hasNormal)
+            skinnedNormal += Rotate(rawNormal, matrix) * weight;
+          totalWeight += weight;
+          hasSkinning = true;
+        }
+      }
+    }
+
+    if (hasSkinning && totalWeight > 0.0001f)
+    {
+      if (fabs(totalWeight - 1.0f) > 0.02f)
+      {
+        skinnedPosition /= totalWeight;
+        if (hasNormal)
+          skinnedNormal /= totalWeight;
+      }
+
+      *position = skinnedPosition;
+      if (hasNormal)
+      {
+        const float normalLengthSq = skinnedNormal.LengthSqr();
+        if (normalLengthSq > 0.000001f)
+        {
+          const float invLength = 1.0f / sqrtf(normalLengthSq);
+          *normal = skinnedNormal * invLength;
+        }
+        else
+        {
+          *normal = rawNormal;
+        }
+      }
+    }
+    else
+    {
+      *position = rawPosition;
+      if (hasNormal)
+        *normal = rawNormal;
+    }
+
+    if (!hasSkinning && g_openGLImmediateObjectMatrix)
+    {
+      *position = Transform(*position, *g_openGLImmediateObjectMatrix);
+      if (hasNormal)
+      {
+        CVec3 transformedNormal = Rotate(*normal, *g_openGLImmediateObjectMatrix);
+        const float normalLengthSq = transformedNormal.LengthSqr();
+        if (normalLengthSq > 0.000001f)
+        {
+          const float invLength = 1.0f / sqrtf(normalLengthSq);
+          *normal = transformedNormal * invLength;
+        }
+      }
+    }
+
+    if (normalValid)
+      *normalValid = hasNormal;
+
+    bool hasTexCoord = false;
+    if (texCoordElement && texCoordElement->type == static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT2))
+    {
+      hasTexCoord = ReadVertexFloat2(storage, vertexBase + texCoordElement->offset, u, v);
+    }
+    if (texCoordValid)
+      *texCoordValid = hasTexCoord;
+
+    return true;
+  }
+
+  void DrawOpenGLImmediateIndexedPrimitive(const Render::DipDescriptor& descr)
+  {
+    if (!g_openGLImmediateMeshDrawingEnabled ||
+        descr.primitiveType != Render::RENDERPRIMITIVE_TRIANGLELIST ||
+        !g_boundVertexBuffer ||
+        !g_boundIndexBuffer ||
+        !g_boundVertexDeclaration ||
+        g_boundVertexStride == 0 ||
+        descr.primitiveCount == 0)
+    {
+      return;
+    }
+
+    const NullVertexElementDescriptor* positionElement =
+      FindDeclarationElement(g_boundVertexDeclaration, Render::VERETEXELEMENTUSAGE_POSITION, 0);
+    const NullVertexElementDescriptor* normalElement =
+      FindDeclarationElement(g_boundVertexDeclaration, Render::VERETEXELEMENTUSAGE_NORMAL, 0);
+    const NullVertexElementDescriptor* texCoordElement =
+      FindDeclarationElement(g_boundVertexDeclaration, Render::VERETEXELEMENTUSAGE_TEXCOORD, 0);
+    const NullVertexElementDescriptor* blendWeightElement =
+      FindDeclarationElement(g_boundVertexDeclaration, Render::VERETEXELEMENTUSAGE_BLENDWEIGHT, 0);
+    const NullVertexElementDescriptor* blendIndicesElement =
+      FindDeclarationElement(g_boundVertexDeclaration, Render::VERETEXELEMENTUSAGE_BLENDINDICES, 0);
+    if (!positionElement || positionElement->type != static_cast<int>(Render::VERTEXELEMENTTYPE_FLOAT3))
+      return;
+
+    const bool textureEnabled = glIsEnabled(GL_TEXTURE_2D) == GL_TRUE;
+    glBegin(GL_TRIANGLES);
+    for (unsigned int triangleIndex = 0; triangleIndex < descr.primitiveCount; ++triangleIndex)
+    {
+      for (unsigned int corner = 0; corner < 3; ++corner)
+      {
+        unsigned int indexValue = 0;
+        if (!ReadIndex32(
+              g_boundIndexBuffer->storage,
+              static_cast<size_t>(descr.startIndex) +
+                static_cast<size_t>(triangleIndex) * 3U +
+                static_cast<size_t>(corner),
+              &indexValue))
+        {
+          continue;
+        }
+
+        const int effectiveVertexIndex =
+          descr.baseVertexIndex + static_cast<int>(indexValue);
+        CVec3 position(0.0f, 0.0f, 0.0f);
+        CVec3 normal(0.0f, 0.0f, 1.0f);
+        bool normalValid = false;
+        float u = 0.0f;
+        float v = 0.0f;
+        bool texCoordValid = false;
+        if (!BuildOpenGLImmediateMeshVertex(
+              effectiveVertexIndex,
+              positionElement,
+              normalElement,
+              texCoordElement,
+              blendWeightElement,
+              blendIndicesElement,
+              &position,
+              &normal,
+              &normalValid,
+              &u,
+              &v,
+              &texCoordValid))
+        {
+          continue;
+        }
+
+        EmitOpenGLImmediateMeshColor(normal, normalValid, textureEnabled && texCoordValid);
+        if (textureEnabled && texCoordValid)
+          glTexCoord2f(u, v);
+
+        float x = 0.0f;
+        float y = 0.0f;
+        float z = 0.0f;
+        ApplyOpenGLPreviewTransform(position, &x, &y, &z);
+        glVertex3f(x, y, z);
+      }
+    }
+    glEnd();
+  }
+#endif
 }
 
 namespace Render
@@ -41,6 +426,38 @@ void ResetTriangleAndDipCount()
 void OnFrameStart()
 {
 }
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+void SetOpenGLImmediateMeshDrawingEnabled(bool enabled)
+{
+  g_openGLImmediateMeshDrawingEnabled = enabled;
+  if (!enabled)
+  {
+    g_openGLImmediateObjectMatrix = 0;
+    g_openGLImmediateSkeletalMatrices = 0;
+    g_openGLImmediateSkeletalMatrixCount = 0;
+  }
+}
+
+void SetOpenGLImmediateMeshPreviewTransform(float centerX, float centerY, float minZ, float scale)
+{
+  g_openGLPreviewCenterX = centerX;
+  g_openGLPreviewCenterY = centerY;
+  g_openGLPreviewMinZ = minZ;
+  g_openGLPreviewScale = scale > 0.0001f ? scale : 1.0f;
+}
+
+void SetOpenGLImmediateObjectMatrix(const Matrix43* matrix)
+{
+  g_openGLImmediateObjectMatrix = matrix;
+}
+
+void SetOpenGLImmediateSkeletalMatrices(const Matrix43* matrices, unsigned int matrixCount)
+{
+  g_openGLImmediateSkeletalMatrices = matrices;
+  g_openGLImmediateSkeletalMatrixCount = matrixCount;
+}
+#endif
 
 void AddRect(float l, float t, float r, float b, int R, int G, int B)
 {
@@ -75,6 +492,11 @@ void Init()
 
 void NullThePointers()
 {
+  g_boundVertexBuffer = 0;
+  g_boundIndexBuffer = 0;
+  g_boundVertexDeclaration = 0;
+  g_boundVertexStride = 0;
+  g_boundVertexOffset = 0;
   for (unsigned int i = 0; i < sizeof(g_renderTargets) / sizeof(g_renderTargets[0]); ++i)
     g_renderTargets[i] = 0;
   g_depthSurface = 0;
@@ -91,17 +513,43 @@ bool IsResourceBound(const IUnknown* const ptr)
 
 const DXVertexDeclarationRef& GetVertexFormatDeclaration(const VertexFormatDescriptor& descr)
 {
-  (void)descr;
-  static DXVertexDeclarationRef s_nullDeclaration = 0;
-  return s_nullDeclaration;
+  static DXVertexDeclarationRef s_lastDeclaration = 0;
+
+  for (unsigned int i = 0; i < g_vertexDeclarations.size(); ++i)
+  {
+    if (DeclarationMatches(g_vertexDeclarations[i], descr))
+    {
+      s_lastDeclaration = g_vertexDeclarations[i];
+      return s_lastDeclaration;
+    }
+  }
+
+  IDirect3DVertexDeclaration9* declaration = new IDirect3DVertexDeclaration9();
+  declaration->elements.reserve(descr.GetVertexElementsCount());
+  for (unsigned int i = 0; i < descr.GetVertexElementsCount(); ++i)
+  {
+    const VertexElementDescriptor& source = descr.GetVertexElement(i);
+    NullVertexElementDescriptor stored;
+    stored.stream = source.stream;
+    stored.offset = source.offset;
+    stored.type = static_cast<int>(source.type);
+    stored.usage = static_cast<int>(source.usage);
+    stored.usageIndex = source.usageIndex;
+    declaration->elements.push_back(stored);
+  }
+  g_vertexDeclarations.push_back(declaration);
+  s_lastDeclaration = declaration;
+  return s_lastDeclaration;
 }
 
 void BindVertexBufferRaw(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
 {
-  (void)streamNumber;
-  (void)buffer;
-  (void)stride;
-  (void)offset;
+  if (streamNumber == 0)
+  {
+    g_boundVertexBuffer = buffer;
+    g_boundVertexStride = stride;
+    g_boundVertexOffset = offset;
+  }
 }
 
 void BindVertexBuffer(unsigned int streamNumber, IDirect3DVertexBuffer9* buffer, unsigned int stride, unsigned int offset)
@@ -116,7 +564,12 @@ void BindInstanceVB(unsigned int offset)
 
 void UnBindVertexBufferRaw(UINT streamNumber)
 {
-  (void)streamNumber;
+  if (streamNumber == 0)
+  {
+    g_boundVertexBuffer = 0;
+    g_boundVertexStride = 0;
+    g_boundVertexOffset = 0;
+  }
 }
 
 void UnBindVertexBuffer(UINT streamNumber)
@@ -149,42 +602,49 @@ void SetFVF(DWORD _fvf)
 
 void DrawIndexedPrimitive(const DipDescriptor& _descr)
 {
-  (void)_descr;
+  if (_descr.primitiveType == RENDERPRIMITIVE_TRIANGLELIST)
+    g_triangleCount += _descr.primitiveCount;
+  ++g_dipCount;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  DrawOpenGLImmediateIndexedPrimitive(_descr);
+#endif
 }
 
 void DrawIndexedPrimitiveUP(const DipDescriptor& _descr, const WORD* pIndexData, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 {
-  (void)_descr;
   (void)pIndexData;
   (void)pVertexStreamZeroData;
   (void)VertexStreamZeroStride;
+  DrawIndexedPrimitive(_descr);
 }
 
 void DrawPrimitive(const DipDescriptor& descr)
 {
-  (void)descr;
+  if (descr.primitiveType == RENDERPRIMITIVE_TRIANGLELIST)
+    g_triangleCount += descr.primitiveCount;
+  ++g_dipCount;
 }
 
 void DrawPrimitiveUP(const DipDescriptor& _descr, const void* pVertexStreamZeroData, UINT VertexStreamZeroStride)
 {
-  (void)_descr;
   (void)pVertexStreamZeroData;
   (void)VertexStreamZeroStride;
+  DrawPrimitive(_descr);
 }
 
 void BindIndexBuffer(IDirect3DIndexBuffer9* buffer)
 {
-  (void)buffer;
+  g_boundIndexBuffer = buffer;
 }
 
 void BindVertexDeclarationRaw(IDirect3DVertexDeclaration9 *pDecl)
 {
-  (void)pDecl;
+  g_boundVertexDeclaration = pDecl;
 }
 
 void BindVertexDeclaration(DXVertexDeclarationRef const &pDecl)
 {
-  (void)pDecl;
+  BindVertexDeclarationRaw(Get(pDecl));
 }
 
 void BindVertexShader(IDirect3DVertexShader9 *shader)
@@ -298,6 +758,11 @@ bool UseMainViewport()
 void Release()
 {
   NullThePointers();
+  for (unsigned int i = 0; i < g_vertexDeclarations.size(); ++i)
+  {
+    delete g_vertexDeclarations[i];
+  }
+  g_vertexDeclarations.clear();
 }
 
 IDirect3DSurface9* GetRenderTarget(unsigned int renderTargetIndex)

@@ -13,6 +13,7 @@
 #include "System/HPTimer.h"
 #include "System/MainFrame.h"
 #include "System/ProfileManager.h"
+#include "System/StrProc.h"
 #include "System/Texts.h"
 #include "NivalInput/Binds.h"
 #include "NivalInput/InputEvent.h"
@@ -39,10 +40,16 @@
 #include "PF_GameLogic/MapCollection.h"
 #include "PF_GameLogic/MapStartup.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#include "PF_GameLogic/PFAIWorld.h"
 #include "PF_GameLogic/PFWorld.h"
+#include "PF_GameLogic/PFWorldObjectBase.h"
 #include "PF_GameLogic/PFRenderInterface.h"
+#include "PF_GameLogic/CollisionResolver.h"
+#include "PF_GameLogic/HeroActions.h"
+#include "PF_GameLogic/TileMap.h"
 #include "PF_GameLogic/WarFog.h"
 #include "PF_GameLogic/WebLauncher.h"
+#include "Core/WorldCommand.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
 #include "PF_GameLogic/PFAuraEffect.h"
 #include "PF_GameLogic/PFApplAura.h"
@@ -59,19 +66,38 @@
 #include "PF_GameLogic/PFAbilityInstance.h"
 #include "PF_GameLogic/PFBaseAttackData.h"
 #include "PF_GameLogic/PFBaseUnit.h"
+#include "PF_GameLogic/PFBuildings.h"
 #include "PF_GameLogic/PFClientApplicators.h"
 #include "PF_GameLogic/PFCreature.h"
 #include "PF_GameLogic/PFDispatch.h"
 #include "PF_GameLogic/PFDispatchFactory.h"
+#include "PF_GameLogic/PFFlagpole.h"
+#include "PF_GameLogic/PFEaselPlayer.h"
+#include "PF_GameLogic/PFHero.h"
+#include "PF_GameLogic/PFMaleHero.h"
+#include "PF_GameLogic/PFMinigamePlace.h"
 #include "PF_GameLogic/PFMinimapEffect.h"
 #include "PF_GameLogic/PFMicroAI.h"
+#include "PF_GameLogic/PFPlayer.h"
 #include "PF_GameLogic/PFPlayAnimEffect.h"
 #include "PF_GameLogic/PFPriestessSignEffect.h"
+#include "PF_GameLogic/PFPickupable.h"
+#include "PF_GameLogic/PFTalent.h"
 #include "PF_GameLogic/PFTargetSelector.h"
 #include "PF_GameLogic/PFUnitSceneObjectModify.h"
 #include "Core/Transceiver.h"
 #include "PF_Core/EffectsPool.h"
+#include "Render/DBRender.h"
+#include "Render/batch.h"
+#include "Render/MeshResource.h"
+#include "Render/renderresourcemanager.h"
+#include "Render/SkeletalAnimationSampler.h"
+#include "Render/SkeletalMesh.h"
+#include "Render/SkeletonWrapper.h"
+#include "Render/smartrenderer.h"
+#include "Render/StaticMesh.h"
 #include "Scene/DBScene.h"
+#include "Terrain/DBTerrain.h"
 #include "DebugVarsSender.h"
 #include "LoadingFlashInterface.h"
 #include "LoadingHeroes.h"
@@ -79,11 +105,15 @@
 #include "LoadingScreenLogic.h"
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
+#include "Game/PF/Client/LobbyPvx/NewReplay.h"
 #include "NetworkStatusScreen.h"
 #include "SelectGameModeScreen.h"
 #include "SelectHeroScreen.h"
 #undef PW_LINUX_DB_BOOTSTRAP
 #include "Client/MainTimer.h"
+#include "MeshConverter/MeshHeader.h"
+#include "MeshConverter/SkeletalAnimationHeader.h"
+#include "MeshConverter/SkeletonHeader.h"
 #include "System/LoadingProgress.h"
 #include "UI/DBUI.h"
 #include "UI/Cursor.h"
@@ -101,10 +131,13 @@
 #include <X11/keysym.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <png.h>
 
 #include <ctype.h>
 #include <errno.h>
+#include <cmath>
 #include <filesystem>
 #include <functional>
 #include <fstream>
@@ -113,6 +146,7 @@
 #include <arpa/inet.h>
 #include <set>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -124,6 +158,11 @@
 namespace
 {
 namespace fs = std::filesystem;
+
+const size_t kLinuxHeroPreviewNoDiffuseTexture = static_cast<size_t>(-1);
+const float kLinuxMapPreviewDefaultYawDegrees = -42.0f;
+const float kLinuxMapPreviewDefaultPitchDegrees = 56.0f;
+const float kLinuxMapPreviewDefaultZoom = 1.18f;
 
 struct LinuxClientEnvironment
 {
@@ -151,6 +190,7 @@ struct LinuxClientLaunchSettings
   bool spectator;
   bool tutorial;
   bool bootstrapCreateGame;
+  bool diagnosticsOverlay;
   std::string localeOverride;
   std::string mapSelector;
   std::string heroSelector;
@@ -167,6 +207,7 @@ struct LinuxClientLaunchSettings
       spectator(false),
       tutorial(false),
       bootstrapCreateGame(false),
+      diagnosticsOverlay(false),
       artworkMode(0)
   {
   }
@@ -174,6 +215,82 @@ struct LinuxClientLaunchSettings
 
 struct LinuxWindowOverlay
 {
+  struct OpenGlTexture
+  {
+    GLuint texture;
+    unsigned int width;
+    unsigned int height;
+
+    OpenGlTexture()
+      : texture(0),
+        width(0),
+        height(0)
+    {
+    }
+  };
+
+  struct OpenGlGlyph
+  {
+    GLuint texture;
+    int width;
+    int height;
+    int bearingX;
+    int bearingY;
+    int advance;
+    bool loaded;
+
+    OpenGlGlyph()
+      : texture(0),
+        width(0),
+        height(0),
+        bearingX(0),
+        bearingY(0),
+        advance(0),
+        loaded(false)
+    {
+    }
+  };
+
+  struct LobbyTextResources
+  {
+    std::string createGameHeader;
+    std::string joinGameHeader;
+    std::string mapsListHeader;
+    std::string playerCountLabel;
+    std::string startSessionButton;
+    std::string createGameButton;
+    std::string refreshButton;
+    std::string developerMale;
+    std::string developerFemale;
+    std::string joinNormal;
+    std::string joinReconnect;
+    std::string joinSpectate;
+    std::string sessionName;
+    std::string sessionPlayers;
+    std::string sessionMap;
+    std::string sessionStarted;
+
+    LobbyTextResources()
+      : createGameHeader("Create game"),
+        joinGameHeader("Join game"),
+        mapsListHeader("Maps list"),
+        playerCountLabel("Players count"),
+        startSessionButton("Start session"),
+        createGameButton("Create"),
+        refreshButton("Refresh"),
+        developerMale("Male"),
+        developerFemale("Female"),
+        joinNormal("Normal"),
+        joinReconnect("Reconnect"),
+        joinSpectate("Spectate"),
+        sessionName("Custom game"),
+        sessionPlayers("Players"),
+        sessionMap("Map"),
+        sessionStarted("Already started")
+    {
+    }
+  };
+
   Display* display;
   ::Window window;
   GC gc;
@@ -181,6 +298,7 @@ struct LinuxWindowOverlay
   Pixmap artworkPixmap;
   Font font;
   GLuint artworkTexture;
+  GLuint lobbyBackgroundTexture;
   GLuint fontDisplayListBase;
   unsigned long background;
   unsigned long accent;
@@ -190,6 +308,34 @@ struct LinuxWindowOverlay
   unsigned long panelBorder;
   unsigned int artworkWidth;
   unsigned int artworkHeight;
+  unsigned int lobbyBackgroundWidth;
+  unsigned int lobbyBackgroundHeight;
+  OpenGlTexture lobbyButtonUp;
+  OpenGlTexture lobbyButtonOver;
+  OpenGlTexture lobbyPanel;
+  OpenGlTexture lobbyHeader;
+  OpenGlTexture lobbyFrame;
+  OpenGlTexture lobbySelectionFrame;
+  OpenGlTexture lobbyRadioNormal;
+  OpenGlTexture lobbyRadioSelected;
+  OpenGlTexture lobbyScrollArea;
+  OpenGlTexture lobbyScrollLever;
+  OpenGlTexture lobbyScrollHorizontalFirst;
+  OpenGlTexture lobbyScrollHorizontalSecond;
+  std::map<std::string, OpenGlTexture> heroPreviewDiffuseTextureCache;
+  std::vector<OpenGlTexture> heroPreviewDiffuseTextures;
+  std::vector<OpenGlTexture> mapPreviewDiffuseTextures;
+  FT_Library ftLibrary;
+  FT_Face ftFace;
+  bool freetypeReady;
+  int freetypePixelSize;
+  std::string freetypeFontPath;
+  std::vector<std::string> heroPreviewDiffuseTextureSourceFiles;
+  std::set<std::string> heroPreviewDiffuseTextureFailedSourceFiles;
+  std::vector<std::string> mapPreviewDiffuseTextureSourceFiles;
+  std::set<std::string> mapPreviewDiffuseTextureFailedSourceFiles;
+  std::map<unsigned long, OpenGlGlyph> fontGlyphs;
+  LobbyTextResources lobbyText;
   bool openglReady;
   bool fontDisplayListsReady;
   bool ready;
@@ -202,6 +348,7 @@ struct LinuxWindowOverlay
       artworkPixmap(0),
       font(0),
       artworkTexture(0),
+      lobbyBackgroundTexture(0),
       fontDisplayListBase(0),
       background(0),
       accent(0),
@@ -211,6 +358,12 @@ struct LinuxWindowOverlay
       panelBorder(0),
       artworkWidth(0),
       artworkHeight(0),
+      lobbyBackgroundWidth(0),
+      lobbyBackgroundHeight(0),
+      ftLibrary(0),
+      ftFace(0),
+      freetypeReady(false),
+      freetypePixelSize(0),
       openglReady(false),
       fontDisplayListsReady(false),
       ready(false)
@@ -659,6 +812,23 @@ struct LinuxInputState
   }
 };
 
+enum LinuxVisibleMenuAction
+{
+  LINUX_VISIBLE_MENU_ACTION_PRIMARY = 0,
+  LINUX_VISIBLE_MENU_ACTION_MAP,
+  LINUX_VISIBLE_MENU_ACTION_HERO,
+  LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS,
+  LINUX_VISIBLE_MENU_ACTION_COUNT
+};
+
+enum LinuxLobbyJoinMode
+{
+  LINUX_LOBBY_JOIN_MODE_NORMAL = 0,
+  LINUX_LOBBY_JOIN_MODE_RECONNECT,
+  LINUX_LOBBY_JOIN_MODE_SPECTATE,
+  LINUX_LOBBY_JOIN_MODE_COUNT
+};
+
 struct LinuxContentProbe
 {
   bool dataMounted;
@@ -1013,6 +1183,445 @@ struct LinuxHeroTalentPreview
   }
 };
 
+struct LinuxHeroMeshPreviewVertex
+{
+  float x;
+  float y;
+  float z;
+  float u;
+  float v;
+  float nx;
+  float ny;
+  float nz;
+  float blendWeights[4];
+  unsigned short blendIndices[4];
+  size_t diffuseTextureIndex;
+  bool texCoordValid;
+  bool normalValid;
+  bool skinningValid;
+
+  LinuxHeroMeshPreviewVertex()
+    : x(0.0f),
+      y(0.0f),
+      z(0.0f),
+      u(0.0f),
+      v(0.0f),
+      nx(0.0f),
+      ny(0.0f),
+      nz(1.0f),
+      diffuseTextureIndex(kLinuxHeroPreviewNoDiffuseTexture),
+      texCoordValid(false),
+      normalValid(false),
+      skinningValid(false)
+  {
+    for (size_t i = 0; i < 4; ++i)
+    {
+      blendWeights[i] = 0.0f;
+      blendIndices[i] = 0;
+    }
+  }
+
+  LinuxHeroMeshPreviewVertex(float _x, float _y, float _z)
+    : x(_x),
+      y(_y),
+      z(_z),
+      u(0.0f),
+      v(0.0f),
+      nx(0.0f),
+      ny(0.0f),
+      nz(1.0f),
+      diffuseTextureIndex(kLinuxHeroPreviewNoDiffuseTexture),
+      texCoordValid(false),
+      normalValid(false),
+      skinningValid(false)
+  {
+    for (size_t i = 0; i < 4; ++i)
+    {
+      blendWeights[i] = 0.0f;
+      blendIndices[i] = 0;
+    }
+  }
+};
+
+struct LinuxHeroSkinGeometryPayloadPreview
+{
+  std::string geometryFile;
+  std::string rootGeometryFile;
+  std::vector<size_t> materialDiffuseTextureIndices;
+};
+
+struct LinuxHeroStaticGeometryPayloadPreview
+{
+  std::string geometryFile;
+  std::string rootGeometryFile;
+  std::vector<size_t> materialDiffuseTextureIndices;
+  Placement placement;
+  Placement originalPlacement;
+  Placement locatorParentPlacement;
+  bool locatorJointPlacement;
+  std::string locatorJointName;
+  Placement locatorOffset;
+  unsigned int locatorFlags;
+  unsigned int attachFlags;
+  NDb::ESCOrientation orientation;
+};
+
+struct LinuxHeroMeshPreview
+{
+  bool attempted;
+  bool ready;
+  bool headerValid;
+  bool boundsValid;
+  bool texCoordValid;
+  bool normalValid;
+  bool skinningValid;
+  bool skinningReindexValid;
+  bool rendererGeometryReady;
+  bool rendererGeometryReindexReady;
+  bool triangleLimitHit;
+  size_t sourceFileSize;
+  size_t payloadCount;
+  size_t payloadReadyCount;
+  size_t rendererGeometryPayloadReadyCount;
+  size_t rendererGeometryReindexPayloadReadyCount;
+  size_t fragmentCount;
+  size_t materialCount;
+  size_t rendererGeometryFragmentCount;
+  size_t rendererGeometryMaterialCount;
+  size_t rendererGeometryTriangleCount;
+  size_t jointsCount;
+  size_t vertexBufferBytes;
+  size_t indexBufferBytes;
+  size_t vertexCount;
+  size_t indexCount;
+  size_t triangleCount;
+  size_t drawnTriangleCount;
+  size_t texCoordTriangleCount;
+  size_t normalTriangleCount;
+  size_t skinningTriangleCount;
+  size_t skinningVertexCount;
+  size_t skinningReindexedVertexCount;
+  size_t skinningInvalidInfluenceCount;
+  size_t vertexStrideBytes;
+  size_t positionOffsetBytes;
+  size_t normalOffsetBytes;
+  size_t blendWeightOffsetBytes;
+  size_t blendIndicesOffsetBytes;
+  float minX;
+  float maxX;
+  float minY;
+  float maxY;
+  float minZ;
+  float maxZ;
+  std::string sourceFile;
+  std::vector<std::string> sourceFiles;
+  std::vector<LinuxHeroMeshPreviewVertex> triangleVertices;
+
+  LinuxHeroMeshPreview()
+    : attempted(false),
+      ready(false),
+      headerValid(false),
+      boundsValid(false),
+      texCoordValid(false),
+      normalValid(false),
+      skinningValid(false),
+      skinningReindexValid(false),
+      rendererGeometryReady(false),
+      rendererGeometryReindexReady(false),
+      triangleLimitHit(false),
+      sourceFileSize(0),
+      payloadCount(0),
+      payloadReadyCount(0),
+      rendererGeometryPayloadReadyCount(0),
+      rendererGeometryReindexPayloadReadyCount(0),
+      fragmentCount(0),
+      materialCount(0),
+      rendererGeometryFragmentCount(0),
+      rendererGeometryMaterialCount(0),
+      rendererGeometryTriangleCount(0),
+      jointsCount(0),
+      vertexBufferBytes(0),
+      indexBufferBytes(0),
+      vertexCount(0),
+      indexCount(0),
+      triangleCount(0),
+      drawnTriangleCount(0),
+      texCoordTriangleCount(0),
+      normalTriangleCount(0),
+      skinningTriangleCount(0),
+      skinningVertexCount(0),
+      skinningReindexedVertexCount(0),
+      skinningInvalidInfluenceCount(0),
+      vertexStrideBytes(0),
+      positionOffsetBytes(0),
+      normalOffsetBytes(0),
+      blendWeightOffsetBytes(0),
+      blendIndicesOffsetBytes(0),
+      minX(0.0f),
+      maxX(0.0f),
+      minY(0.0f),
+      maxY(0.0f),
+      minZ(0.0f),
+      maxZ(0.0f)
+  {
+  }
+};
+
+struct LinuxHeroAnimationSkinningPreview
+{
+  bool attempted;
+  bool ready;
+  bool skeletonPayloadReady;
+  bool animationPayloadReady;
+  bool skeletonJointMatch;
+  bool skinningStreamsReady;
+  bool rendererSamplerReady;
+  bool rendererSkeletonReady;
+  bool rendererResourceSkeletonReady;
+  bool rendererResourceAnimationReady;
+  size_t jointsCount;
+  size_t skeletonPayloadBytes;
+  size_t animationPayloadBytes;
+  size_t previewTriangleCount;
+  size_t previewVertexCount;
+  float minTime;
+  float maxTime;
+  float durationSeconds;
+  std::string skeletonFile;
+  std::string animationFile;
+  std::string skeletonRootFile;
+  std::string animationRootFile;
+  std::vector<char> skeletonPayload;
+  std::vector<char> animationPayload;
+
+  LinuxHeroAnimationSkinningPreview()
+    : attempted(false),
+      ready(false),
+      skeletonPayloadReady(false),
+      animationPayloadReady(false),
+      skeletonJointMatch(false),
+      skinningStreamsReady(false),
+      rendererSamplerReady(false),
+      rendererSkeletonReady(false),
+      rendererResourceSkeletonReady(false),
+      rendererResourceAnimationReady(false),
+      jointsCount(0),
+      skeletonPayloadBytes(0),
+      animationPayloadBytes(0),
+      previewTriangleCount(0),
+      previewVertexCount(0),
+      minTime(0.0f),
+      maxTime(0.0f),
+      durationSeconds(0.0f)
+  {
+  }
+};
+
+struct LinuxHeroSkeletonPreview
+{
+  bool attempted;
+  bool ready;
+  bool fileExists;
+  bool jointsValid;
+  bool parentTreeValid;
+  bool bindPoseValid;
+  size_t sourceFileSize;
+  size_t jointsCount;
+  size_t parentCount;
+  size_t rootCount;
+  size_t maxDepth;
+  std::string sourceFile;
+  std::string rootJointName;
+  std::string firstSortedJointName;
+
+  LinuxHeroSkeletonPreview()
+    : attempted(false),
+      ready(false),
+      fileExists(false),
+      jointsValid(false),
+      parentTreeValid(false),
+      bindPoseValid(false),
+      sourceFileSize(0),
+      jointsCount(0),
+      parentCount(0),
+      rootCount(0),
+      maxDepth(0)
+  {
+  }
+};
+
+struct LinuxHeroAnimationPreview
+{
+  bool attempted;
+  bool ready;
+  bool fileExists;
+  bool headerValid;
+  bool timeValid;
+  bool tracksValid;
+  bool skeletonJointMatch;
+  size_t sourceFileSize;
+  size_t payloadCount;
+  size_t payloadReadyCount;
+  size_t jointsCount;
+  size_t positionTrackCount;
+  size_t rotationTrackCount;
+  size_t scaleTrackCount;
+  size_t positionKeyCount;
+  size_t rotationKeyCount;
+  size_t scaleKeyCount;
+  size_t constantPositionTrackCount;
+  size_t constantRotationTrackCount;
+  size_t constantScaleTrackCount;
+  size_t maxTrackKeys;
+  float minTime;
+  float maxTime;
+  float minDurationSeconds;
+  float maxDurationSeconds;
+  std::string sourceFile;
+  std::string signature;
+  std::vector<std::string> sourceFiles;
+
+  LinuxHeroAnimationPreview()
+    : attempted(false),
+      ready(false),
+      fileExists(false),
+      headerValid(false),
+      timeValid(false),
+      tracksValid(false),
+      skeletonJointMatch(true),
+      sourceFileSize(0),
+      payloadCount(0),
+      payloadReadyCount(0),
+      jointsCount(0),
+      positionTrackCount(0),
+      rotationTrackCount(0),
+      scaleTrackCount(0),
+      positionKeyCount(0),
+      rotationKeyCount(0),
+      scaleKeyCount(0),
+      constantPositionTrackCount(0),
+      constantRotationTrackCount(0),
+      constantScaleTrackCount(0),
+      maxTrackKeys(0),
+      minTime(0.0f),
+      maxTime(0.0f),
+      minDurationSeconds(0.0f),
+      maxDurationSeconds(0.0f)
+  {
+  }
+};
+
+struct LinuxHeroSceneAssetPreview
+{
+  bool ready;
+  bool sceneObjectResolved;
+  bool descriptorResolved;
+  bool boundsValid;
+  bool rendererSkeletalMeshAttempted;
+  bool rendererSkeletalMeshReady;
+  size_t sceneObjectCandidateCount;
+  size_t skinSceneObjectCount;
+  size_t rootAttachedCount;
+  size_t nestedAttachedCount;
+  size_t componentCount;
+  size_t animatedComponentCount;
+  size_t staticComponentCount;
+  size_t particleComponentCount;
+  size_t otherComponentCount;
+  size_t materialReferenceCount;
+  size_t skinPartCount;
+  size_t animationCount;
+  size_t faceFxCount;
+  size_t payloadReferenceCount;
+  size_t payloadResolvedCount;
+  size_t rendererSkeletalMeshComponentCount;
+  size_t rendererSkeletalMeshSkeletonReadyCount;
+  size_t rendererSkeletalMeshSkinPartCount;
+  size_t rendererSkeletalMeshSkinPartReadyCount;
+  size_t rendererSkeletalMeshSlotCount;
+  size_t rendererSkeletalMeshQueuedBatchCount;
+  size_t rendererSkeletalMeshRenderedTriangleCount;
+  size_t rendererSkeletalMeshRenderedDipCount;
+  size_t rendererSkeletalMeshMaterialSwitchCount;
+  bool rendererSkeletalMeshDisableCullReady;
+  bool rendererSkeletalMeshRemoveReady;
+  float minX;
+  float maxX;
+  float minY;
+  float maxY;
+  float minZ;
+  float maxZ;
+  std::string source;
+  std::string dbid;
+  std::string descriptorFile;
+  std::string animatedSrcFile;
+  std::string skeletonFile;
+  std::string firstSkinPartFile;
+  std::string firstSkinGeometryFile;
+  std::vector<std::string> skinGeometryFiles;
+  std::vector<LinuxHeroSkinGeometryPayloadPreview> skinGeometryPayloads;
+  std::vector<LinuxHeroStaticGeometryPayloadPreview> staticGeometryPayloads;
+  std::vector<std::string> skinDiffuseTextureFiles;
+  std::vector<LinuxTextureAssetPreview> skinDiffuseTextures;
+  LinuxTextureAssetPreview skinDiffuseTexture;
+  std::string firstAnimationFile;
+  std::vector<std::string> animationFiles;
+  std::string animGraphDbid;
+  std::string staticSrcFile;
+  std::string staticGeometryFile;
+  std::string particleFxFile;
+  std::string collisionGeometryDbid;
+  std::string collisionGeometryFile;
+  LinuxHeroMeshPreview meshPreview;
+  LinuxHeroSkeletonPreview skeletonPreview;
+  LinuxHeroAnimationPreview animationPreview;
+  LinuxHeroAnimationSkinningPreview animationSkinningPreview;
+  std::vector<std::string> samples;
+  std::vector<std::string> warnings;
+
+  LinuxHeroSceneAssetPreview()
+    : ready(false),
+      sceneObjectResolved(false),
+      descriptorResolved(false),
+      boundsValid(false),
+      rendererSkeletalMeshAttempted(false),
+      rendererSkeletalMeshReady(false),
+      sceneObjectCandidateCount(0),
+      skinSceneObjectCount(0),
+      rootAttachedCount(0),
+      nestedAttachedCount(0),
+      componentCount(0),
+      animatedComponentCount(0),
+      staticComponentCount(0),
+      particleComponentCount(0),
+      otherComponentCount(0),
+      materialReferenceCount(0),
+      skinPartCount(0),
+      animationCount(0),
+      faceFxCount(0),
+      payloadReferenceCount(0),
+      payloadResolvedCount(0),
+      rendererSkeletalMeshComponentCount(0),
+      rendererSkeletalMeshSkeletonReadyCount(0),
+      rendererSkeletalMeshSkinPartCount(0),
+      rendererSkeletalMeshSkinPartReadyCount(0),
+      rendererSkeletalMeshSlotCount(0),
+      rendererSkeletalMeshQueuedBatchCount(0),
+      rendererSkeletalMeshRenderedTriangleCount(0),
+      rendererSkeletalMeshRenderedDipCount(0),
+      rendererSkeletalMeshMaterialSwitchCount(0),
+      rendererSkeletalMeshDisableCullReady(false),
+      rendererSkeletalMeshRemoveReady(false),
+      minX(0.0f),
+      maxX(0.0f),
+      minY(0.0f),
+      maxY(0.0f),
+      minZ(0.0f),
+      maxZ(0.0f)
+  {
+  }
+};
+
 struct LinuxSelectedHeroDbPreview
 {
   bool ready;
@@ -1050,6 +1659,7 @@ struct LinuxSelectedHeroDbPreview
   std::string uniqueResourceName;
   std::string uniqueResourceTooltip;
   LinuxTextureAssetPreview portrait;
+  LinuxHeroSceneAssetPreview sceneAsset;
   std::vector<std::string> statSamples;
   std::vector<std::string> recommendedStatSamples;
   std::vector<std::string> talentSamples;
@@ -1114,20 +1724,28 @@ struct LinuxMapCatalogEntry
 struct LinuxMapCatalog
 {
   size_t descriptorCount;
+  size_t scannedDescriptorCount;
+  size_t customListCount;
+  size_t customListMatchedCount;
   size_t productionDescriptorCount;
   size_t pvpCount;
   size_t pveCount;
   size_t tutorialCount;
+  std::string source;
   std::vector<LinuxMapCatalogEntry> entries;
   std::vector<LinuxMapCatalogEntry> featuredEntries;
   std::vector<std::string> warnings;
 
   LinuxMapCatalog()
     : descriptorCount(0),
+      scannedDescriptorCount(0),
+      customListCount(0),
+      customListMatchedCount(0),
       productionDescriptorCount(0),
       pvpCount(0),
       pveCount(0),
-      tutorialCount(0)
+      tutorialCount(0),
+      source("filesystem-scan")
   {
   }
 };
@@ -1259,6 +1877,237 @@ struct LinuxTacticalMapPreview
   }
 };
 
+struct LinuxMapStaticGeometryPayloadPreview
+{
+  std::string geometryFile;
+  std::string rootGeometryFile;
+  std::vector<size_t> materialDiffuseTextureIndices;
+  Placement placement;
+};
+
+struct LinuxMapSkinGeometryPayloadPreview
+{
+  std::string geometryFile;
+  std::string rootGeometryFile;
+  std::vector<size_t> materialDiffuseTextureIndices;
+};
+
+struct LinuxMapAnimatedGeometryPayloadPreview
+{
+  std::string skeletonFile;
+  std::string skeletonRootFile;
+  std::string animationFile;
+  std::string animationRootFile;
+  std::vector<LinuxMapSkinGeometryPayloadPreview> skinGeometryPayloads;
+  Placement placement;
+};
+
+struct LinuxMapTerrainLayerPreview
+{
+  std::string terrainTypeDbid;
+  std::string materialDbid;
+  std::string diffuseTextureFile;
+  size_t diffuseTextureIndex;
+  bool materialResolved;
+  bool textureLoaded;
+  unsigned char red;
+  unsigned char green;
+  unsigned char blue;
+
+  LinuxMapTerrainLayerPreview()
+    : diffuseTextureIndex(kLinuxHeroPreviewNoDiffuseTexture),
+      materialResolved(false),
+      textureLoaded(false),
+      red(80),
+      green(112),
+      blue(88)
+  {
+  }
+};
+
+struct LinuxMapNatureRoadPreview
+{
+  bool attackRoad;
+  int roadIndex;
+  float width;
+  std::vector<CVec2> nodes;
+
+  LinuxMapNatureRoadPreview()
+    : attackRoad(false),
+      roadIndex(0),
+      width(0.0f)
+  {
+  }
+};
+
+struct LinuxMapWaterZonePreview
+{
+  std::string dbid;
+  std::string scriptName;
+  bool absolutePosition;
+  bool circle;
+  std::vector<CVec2> points;
+
+  LinuxMapWaterZonePreview()
+    : absolutePosition(false),
+      circle(false)
+  {
+  }
+};
+
+struct LinuxMapScriptAreaPreview
+{
+  std::string name;
+  CVec2 position;
+  float radius;
+  int targetType;
+
+  LinuxMapScriptAreaPreview()
+    : position(0.0f, 0.0f),
+      radius(0.0f),
+      targetType(0)
+  {
+  }
+};
+
+struct LinuxMapScriptPathPreview
+{
+  std::string dbid;
+  std::string scriptName;
+  std::vector<CVec2> points;
+};
+
+struct LinuxMapCameraSplinePreview
+{
+  std::string dbid;
+  std::string scriptName;
+  std::vector<CVec3> points;
+};
+
+struct LinuxMapScriptPolygonPreview
+{
+  std::string dbid;
+  std::string scriptName;
+  std::string polygonName;
+  std::vector<CVec2> points;
+};
+
+struct LinuxMapLightEnvironmentPreview
+{
+  bool ready;
+  std::string dbid;
+  Render::HDRColor ambient;
+  Render::HDRColor light1Diffuse;
+  Render::HDRColor light2Diffuse;
+  float light1Yaw;
+  float light1Pitch;
+  float light2Yaw;
+  float light2Pitch;
+  int shadowMode;
+  int warFogType;
+  size_t lightingCubeMapCoeffCount;
+
+  LinuxMapLightEnvironmentPreview()
+    : ready(false),
+      light1Yaw(0.0f),
+      light1Pitch(0.0f),
+      light2Yaw(0.0f),
+      light2Pitch(0.0f),
+      shadowMode(0),
+      warFogType(0),
+      lightingCubeMapCoeffCount(0)
+  {
+  }
+};
+
+struct LinuxMapPointLightPreview
+{
+  CVec3 location;
+  float range;
+  Render::HDRColor diffuse;
+  float diffuseIntensity;
+  int attenuation;
+  int flags;
+
+  LinuxMapPointLightPreview()
+    : location(0.0f, 0.0f, 0.0f),
+      range(0.0f),
+      diffuseIntensity(0.0f),
+      attenuation(0),
+      flags(0)
+  {
+  }
+};
+
+struct LinuxMapTerrainHeightmapPreview
+{
+  bool ready;
+  std::string dbid;
+  std::string heightmapFile;
+  std::string layerMaskFile;
+  size_t sourceWidth;
+  size_t sourceHeight;
+  size_t sampledWidth;
+  size_t sampledHeight;
+  size_t sampledVertices;
+  size_t sampledTriangles;
+  bool layerMaskReady;
+  size_t layerMaskWidth;
+  size_t layerMaskHeight;
+  size_t layerMaskBytes;
+  size_t terrainLayerCount;
+  size_t terrainLayerMaterialCount;
+  size_t terrainLayerTextureCount;
+  size_t terrainLayerTextureLoadedCount;
+  size_t terrainLayerSampledUniqueCount;
+  size_t terrainElementCount;
+  size_t terrainElementPayloadReferenceCount;
+  size_t terrainElementPayloadResolvedCount;
+  bool terrainElementPayloadLimitHit;
+  size_t natureRoadCount;
+  size_t natureRoadNodeCount;
+  size_t natureRoadSegmentCount;
+  float worldWidth;
+  float worldHeight;
+  float minHeight;
+  float maxHeight;
+  std::vector<float> sampledHeights;
+  std::vector<unsigned char> sampledLayerIds;
+  std::vector<LinuxMapTerrainLayerPreview> terrainLayers;
+  std::vector<LinuxMapNatureRoadPreview> natureRoads;
+
+  LinuxMapTerrainHeightmapPreview()
+    : ready(false),
+      sourceWidth(0),
+      sourceHeight(0),
+      sampledWidth(0),
+      sampledHeight(0),
+      sampledVertices(0),
+      sampledTriangles(0),
+      layerMaskReady(false),
+      layerMaskWidth(0),
+      layerMaskHeight(0),
+      layerMaskBytes(0),
+      terrainLayerCount(0),
+      terrainLayerMaterialCount(0),
+      terrainLayerTextureCount(0),
+      terrainLayerTextureLoadedCount(0),
+      terrainLayerSampledUniqueCount(0),
+      terrainElementCount(0),
+      terrainElementPayloadReferenceCount(0),
+      terrainElementPayloadResolvedCount(0),
+      terrainElementPayloadLimitHit(false),
+      natureRoadCount(0),
+      natureRoadNodeCount(0),
+      natureRoadSegmentCount(0),
+      worldWidth(0.0f),
+      worldHeight(0.0f),
+      minHeight(0.0f),
+      maxHeight(0.0f)
+  {
+  }
+};
+
 struct LinuxSelectedMapPreview
 {
   size_t selectedIndex;
@@ -1285,6 +2134,41 @@ struct LinuxSelectedMapPreview
   size_t objectCount;
   size_t lockMapObjectCount;
   size_t scriptedObjectCount;
+  size_t staticSceneObjectScanCount;
+  bool staticSceneObjectScanLimitHit;
+  size_t staticSceneObjectCandidateCount;
+  size_t staticSceneObjectResolvedCount;
+  size_t staticSceneComponentCount;
+  size_t staticScenePayloadReferenceCount;
+  size_t staticScenePayloadResolvedCount;
+  bool staticScenePayloadLimitHit;
+  size_t animatedSceneComponentCount;
+  size_t animatedSceneSkinPartCount;
+  size_t animatedScenePayloadReferenceCount;
+  size_t animatedScenePayloadResolvedCount;
+  bool animatedScenePayloadLimitHit;
+  size_t waterZoneCount;
+  size_t waterZonePointCount;
+  size_t waterZoneTriangleCount;
+  size_t scriptAreaCount;
+  size_t scriptAreaSegmentCount;
+  size_t scriptPathCount;
+  size_t scriptPathPointCount;
+  size_t scriptPathSegmentCount;
+  size_t cameraSplineCount;
+  size_t cameraSplinePointCount;
+  size_t cameraSplineSegmentCount;
+  size_t scriptPolygonAreaCount;
+  size_t scriptPolygonCount;
+  size_t scriptPolygonPointCount;
+  size_t scriptPolygonTriangleCount;
+  size_t pointLightCount;
+  size_t pointLightDayCount;
+  size_t pointLightNightCount;
+  size_t pointLightNeutralCount;
+  size_t pointLightMarkerCount;
+  bool lightEnvironmentResolved;
+  bool nightLightEnvironmentResolved;
   LinuxTextureAssetPreview loadingBack;
   LinuxTextureAssetPreview loadingLogo;
   LinuxTextureAssetPreview minimapFirst;
@@ -1292,6 +2176,20 @@ struct LinuxSelectedMapPreview
   LinuxTextureAssetPreview minimapNeutral;
   LinuxMapSettingsPreview settings;
   LinuxTacticalMapPreview tactical;
+  LinuxMapTerrainHeightmapPreview terrainHeightmap;
+  std::vector<LinuxMapWaterZonePreview> waterZones;
+  std::vector<LinuxMapScriptAreaPreview> scriptAreas;
+  std::vector<LinuxMapScriptPathPreview> scriptPaths;
+  std::vector<LinuxMapCameraSplinePreview> cameraSplines;
+  std::vector<LinuxMapScriptPolygonPreview> scriptPolygons;
+  LinuxMapLightEnvironmentPreview lightEnvironment;
+  LinuxMapLightEnvironmentPreview nightLightEnvironment;
+  std::vector<LinuxMapPointLightPreview> pointLights;
+  std::vector<LinuxMapStaticGeometryPayloadPreview> terrainElementPayloads;
+  std::vector<LinuxMapStaticGeometryPayloadPreview> staticGeometryPayloads;
+  std::vector<LinuxMapAnimatedGeometryPayloadPreview> animatedGeometryPayloads;
+  std::vector<std::string> staticDiffuseTextureFiles;
+  std::vector<LinuxTextureAssetPreview> staticDiffuseTextures;
   std::vector<std::string> warnings;
 
   LinuxSelectedMapPreview()
@@ -1302,10 +2200,51 @@ struct LinuxSelectedMapPreview
       scoringTableResolved(false),
       objectCount(0),
       lockMapObjectCount(0),
-      scriptedObjectCount(0)
+      scriptedObjectCount(0),
+      staticSceneObjectScanCount(0),
+      staticSceneObjectScanLimitHit(false),
+      staticSceneObjectCandidateCount(0),
+      staticSceneObjectResolvedCount(0),
+      staticSceneComponentCount(0),
+      staticScenePayloadReferenceCount(0),
+      staticScenePayloadResolvedCount(0),
+      staticScenePayloadLimitHit(false),
+      animatedSceneComponentCount(0),
+      animatedSceneSkinPartCount(0),
+      animatedScenePayloadReferenceCount(0),
+      animatedScenePayloadResolvedCount(0),
+      animatedScenePayloadLimitHit(false),
+      waterZoneCount(0),
+      waterZonePointCount(0),
+      waterZoneTriangleCount(0),
+      scriptAreaCount(0),
+      scriptAreaSegmentCount(0),
+      scriptPathCount(0),
+      scriptPathPointCount(0),
+      scriptPathSegmentCount(0),
+      cameraSplineCount(0),
+      cameraSplinePointCount(0),
+      cameraSplineSegmentCount(0),
+      scriptPolygonAreaCount(0),
+      scriptPolygonCount(0),
+      scriptPolygonPointCount(0),
+      scriptPolygonTriangleCount(0),
+      pointLightCount(0),
+      pointLightDayCount(0),
+      pointLightNightCount(0),
+      pointLightNeutralCount(0),
+      pointLightMarkerCount(0),
+      lightEnvironmentResolved(false),
+      nightLightEnvironmentResolved(false)
   {
   }
 };
+
+void ProbeSelectedMapStaticSceneObjects(
+  const LinuxClientEnvironment& environment,
+  const LinuxMapCatalogEntry& entry,
+  LinuxSelectedMapPreview* preview
+);
 
 enum ELinuxArtworkMode
 {
@@ -2123,11 +3062,14 @@ struct LinuxUiRootPreview
   bool runtimeGameTransceiverWorldAttached;
   bool runtimeGameTransceiverNoData;
   bool runtimeGameTransceiverAsynced;
+  bool runtimeGameReplayWriterReady;
+  bool runtimeGameReplayWriterOpen;
   bool runtimeNetworkStatusReady;
   bool runtimeNetworkStatusWindowReady;
   bool runtimeNetworkStatusVisible;
   bool runtimeDebugVarsReady;
   bool runtimeDebugVarsPolled;
+  bool runtimeVisibleMenuReady;
   bool votingReady;
   float runtimeLoadingProgress;
   size_t screenCount;
@@ -2151,7 +3093,54 @@ struct LinuxUiRootPreview
   size_t runtimeGameSchedulerSegmentStatuses;
   size_t runtimeGameTransceiverCommandBatches;
   size_t runtimeGameTransceiverCommands;
+  size_t runtimeGameTransceiverRuntimeCommandsSent;
+  size_t runtimeGameTransceiverProductionCommandsSent;
+  size_t runtimeGameTransceiverTimescaleCommandsSent;
+  bool runtimeGameTransceiverHeroMoveCommandSent;
+  size_t runtimeGameTransceiverHeroMoveCommandsSent;
+  float runtimeGameTransceiverHeroMoveSourceX;
+  float runtimeGameTransceiverHeroMoveSourceY;
+  float runtimeGameTransceiverHeroMoveTargetX;
+  float runtimeGameTransceiverHeroMoveTargetY;
+  int runtimeGameTransceiverHeroMovePlayerId;
+  int runtimeGameTransceiverHeroMoveClientId;
+  bool runtimeGameTransceiverHeroStopCommandSent;
+  size_t runtimeGameTransceiverHeroStopCommandsSent;
+  float runtimeGameTransceiverHeroStopX;
+  float runtimeGameTransceiverHeroStopY;
+  int runtimeGameTransceiverHeroStopPlayerId;
+  int runtimeGameTransceiverHeroStopClientId;
+  bool runtimeGameTransceiverHeroAttackCommandSent;
+  size_t runtimeGameTransceiverHeroAttackCommandsSent;
+  float runtimeGameTransceiverHeroAttackSourceX;
+  float runtimeGameTransceiverHeroAttackSourceY;
+  float runtimeGameTransceiverHeroAttackTargetX;
+  float runtimeGameTransceiverHeroAttackTargetY;
+  int runtimeGameTransceiverHeroAttackPlayerId;
+  int runtimeGameTransceiverHeroAttackClientId;
+  int runtimeGameTransceiverHeroAttackTargetPlayerId;
+  int runtimeGameTransceiverHeroAttackTargetClientId;
+  bool runtimeGameTransceiverHeroFollowCommandSent;
+  size_t runtimeGameTransceiverHeroFollowCommandsSent;
+  float runtimeGameTransceiverHeroFollowSourceX;
+  float runtimeGameTransceiverHeroFollowSourceY;
+  float runtimeGameTransceiverHeroFollowTargetX;
+  float runtimeGameTransceiverHeroFollowTargetY;
+  int runtimeGameTransceiverHeroFollowPlayerId;
+  int runtimeGameTransceiverHeroFollowClientId;
+  int runtimeGameTransceiverHeroFollowTargetPlayerId;
+  int runtimeGameTransceiverHeroFollowTargetClientId;
   size_t runtimeGameTransceiverStatusUpdates;
+  bool runtimeGameTransceiverCommandQueuedBeforePrime;
+  size_t runtimeGameReplayWriterStartWrites;
+  size_t runtimeGameReplayWriterStepWrites;
+  size_t runtimeGameReplayWriterCommandWrites;
+  size_t runtimeGameReplayWriterStatusWrites;
+  size_t runtimeGameReplayWriterBytesWritten;
+  size_t runtimeGameReplayWriterFailures;
+  size_t runtimeVisibleMenuActionCount;
+  size_t runtimeVisibleMenuSelectedAction;
+  size_t runtimeVisibleMenuActivatedCount;
   size_t runtimeGameWorldPlayers;
   size_t runtimeGameWorldPresentPlayers;
   size_t runtimeGameWorldFogWidth;
@@ -2164,6 +3153,8 @@ struct LinuxUiRootPreview
   size_t runtimeGameWorldGlyphSpawnerObjects;
   size_t runtimeGameWorldAdvMapObstacleObjects;
   size_t runtimeGameWorldHeroPlaceHolderObjects;
+  size_t runtimeGameWorldSpawnedHeroObjects;
+  size_t runtimeGameWorldPlayersWithHeroObjects;
   size_t runtimeGameWorldCreepSpawnerObjects;
   size_t runtimeGameWorldNeutralCreepSpawnerObjects;
   size_t runtimeGameWorldSimpleBuildingObjects;
@@ -2180,6 +3171,10 @@ struct LinuxUiRootPreview
   size_t runtimeGameWorldCameraSplineObjects;
   size_t runtimeGameWorldScriptPathObjects;
   size_t runtimeGameWorldScriptPolygonAreaObjects;
+  size_t runtimeGameWorldExecutedPackedCommands;
+  size_t runtimeGameWorldBootstrapRuntimeCommands;
+  float runtimeGameWorldLastBootstrapCommandValue;
+  float runtimeGameWorldTimeScale;
   int runtimeHeroSelectedTeam;
   int runtimeHeroSelectedFaction;
   int runtimeGameSchedulerNextStep;
@@ -2188,6 +3183,10 @@ struct LinuxUiRootPreview
   int runtimeGameTransceiverWorldStep;
   int runtimeGameTransceiverBufferLimit;
   int runtimeGameWorldLocalUserId;
+  int runtimeGameWorldLastPackedCommandClientId;
+  DWORD runtimeGameWorldLastPackedCommandTypeId;
+  int runtimeGameWorldLastBootstrapCommandClientId;
+  int runtimeGameWorldLastBootstrapCommandToken;
   int runtimeCursorWidth;
   int runtimeCursorHeight;
   int runtimeCursorHotspotX;
@@ -2218,9 +3217,12 @@ struct LinuxUiRootPreview
   std::string runtimeLoadingStatusText;
   std::string runtimeGameSchedulerPath;
   std::string runtimeGameTransceiverPath;
+  std::string runtimeGameReplayWriterPath;
   std::string runtimeNetworkStatusPath;
   std::string runtimeNetworkStatusWindow;
   std::string runtimeDebugVarsPath;
+  std::string runtimeVisibleMenuPath;
+  std::string runtimeVisibleMenuAction;
   std::vector<std::string> screenSamples;
   std::vector<std::string> contentSamples;
   std::vector<std::string> constantSamples;
@@ -2259,11 +3261,14 @@ struct LinuxUiRootPreview
       runtimeGameTransceiverWorldAttached(false),
       runtimeGameTransceiverNoData(false),
       runtimeGameTransceiverAsynced(false),
+      runtimeGameReplayWriterReady(false),
+      runtimeGameReplayWriterOpen(false),
       runtimeNetworkStatusReady(false),
       runtimeNetworkStatusWindowReady(false),
       runtimeNetworkStatusVisible(false),
       runtimeDebugVarsReady(false),
       runtimeDebugVarsPolled(false),
+      runtimeVisibleMenuReady(false),
       votingReady(false),
       runtimeLoadingProgress(0.0f),
       screenCount(0),
@@ -2287,7 +3292,54 @@ struct LinuxUiRootPreview
       runtimeGameSchedulerSegmentStatuses(0),
       runtimeGameTransceiverCommandBatches(0),
       runtimeGameTransceiverCommands(0),
+      runtimeGameTransceiverRuntimeCommandsSent(0),
+      runtimeGameTransceiverProductionCommandsSent(0),
+      runtimeGameTransceiverTimescaleCommandsSent(0),
+      runtimeGameTransceiverHeroMoveCommandSent(false),
+      runtimeGameTransceiverHeroMoveCommandsSent(0),
+      runtimeGameTransceiverHeroMoveSourceX(0.0f),
+      runtimeGameTransceiverHeroMoveSourceY(0.0f),
+      runtimeGameTransceiverHeroMoveTargetX(0.0f),
+      runtimeGameTransceiverHeroMoveTargetY(0.0f),
+      runtimeGameTransceiverHeroMovePlayerId(-1),
+      runtimeGameTransceiverHeroMoveClientId(-1),
+      runtimeGameTransceiverHeroStopCommandSent(false),
+      runtimeGameTransceiverHeroStopCommandsSent(0),
+      runtimeGameTransceiverHeroStopX(0.0f),
+      runtimeGameTransceiverHeroStopY(0.0f),
+      runtimeGameTransceiverHeroStopPlayerId(-1),
+      runtimeGameTransceiverHeroStopClientId(-1),
+      runtimeGameTransceiverHeroAttackCommandSent(false),
+      runtimeGameTransceiverHeroAttackCommandsSent(0),
+      runtimeGameTransceiverHeroAttackSourceX(0.0f),
+      runtimeGameTransceiverHeroAttackSourceY(0.0f),
+      runtimeGameTransceiverHeroAttackTargetX(0.0f),
+      runtimeGameTransceiverHeroAttackTargetY(0.0f),
+      runtimeGameTransceiverHeroAttackPlayerId(-1),
+      runtimeGameTransceiverHeroAttackClientId(-1),
+      runtimeGameTransceiverHeroAttackTargetPlayerId(-1),
+      runtimeGameTransceiverHeroAttackTargetClientId(-1),
+      runtimeGameTransceiverHeroFollowCommandSent(false),
+      runtimeGameTransceiverHeroFollowCommandsSent(0),
+      runtimeGameTransceiverHeroFollowSourceX(0.0f),
+      runtimeGameTransceiverHeroFollowSourceY(0.0f),
+      runtimeGameTransceiverHeroFollowTargetX(0.0f),
+      runtimeGameTransceiverHeroFollowTargetY(0.0f),
+      runtimeGameTransceiverHeroFollowPlayerId(-1),
+      runtimeGameTransceiverHeroFollowClientId(-1),
+      runtimeGameTransceiverHeroFollowTargetPlayerId(-1),
+      runtimeGameTransceiverHeroFollowTargetClientId(-1),
       runtimeGameTransceiverStatusUpdates(0),
+      runtimeGameTransceiverCommandQueuedBeforePrime(false),
+      runtimeGameReplayWriterStartWrites(0),
+      runtimeGameReplayWriterStepWrites(0),
+      runtimeGameReplayWriterCommandWrites(0),
+      runtimeGameReplayWriterStatusWrites(0),
+      runtimeGameReplayWriterBytesWritten(0),
+      runtimeGameReplayWriterFailures(0),
+      runtimeVisibleMenuActionCount(0),
+      runtimeVisibleMenuSelectedAction(0),
+      runtimeVisibleMenuActivatedCount(0),
       runtimeGameWorldPlayers(0),
       runtimeGameWorldPresentPlayers(0),
       runtimeGameWorldFogWidth(0),
@@ -2300,6 +3352,8 @@ struct LinuxUiRootPreview
       runtimeGameWorldGlyphSpawnerObjects(0),
       runtimeGameWorldAdvMapObstacleObjects(0),
       runtimeGameWorldHeroPlaceHolderObjects(0),
+      runtimeGameWorldSpawnedHeroObjects(0),
+      runtimeGameWorldPlayersWithHeroObjects(0),
       runtimeGameWorldCreepSpawnerObjects(0),
       runtimeGameWorldNeutralCreepSpawnerObjects(0),
       runtimeGameWorldSimpleBuildingObjects(0),
@@ -2316,6 +3370,10 @@ struct LinuxUiRootPreview
       runtimeGameWorldCameraSplineObjects(0),
       runtimeGameWorldScriptPathObjects(0),
       runtimeGameWorldScriptPolygonAreaObjects(0),
+      runtimeGameWorldExecutedPackedCommands(0),
+      runtimeGameWorldBootstrapRuntimeCommands(0),
+      runtimeGameWorldLastBootstrapCommandValue(0.0f),
+      runtimeGameWorldTimeScale(1.0f),
       runtimeHeroSelectedTeam(0),
       runtimeHeroSelectedFaction(0),
       runtimeGameSchedulerNextStep(-1),
@@ -2324,6 +3382,10 @@ struct LinuxUiRootPreview
       runtimeGameTransceiverWorldStep(-1),
       runtimeGameTransceiverBufferLimit(0),
       runtimeGameWorldLocalUserId(0),
+      runtimeGameWorldLastPackedCommandClientId(-1),
+      runtimeGameWorldLastPackedCommandTypeId(0),
+      runtimeGameWorldLastBootstrapCommandClientId(-1),
+      runtimeGameWorldLastBootstrapCommandToken(0),
       runtimeCursorWidth(0),
       runtimeCursorHeight(0),
       runtimeCursorHotspotX(0),
@@ -2339,8 +3401,10 @@ struct LinuxUiRootPreview
       runtimeLoadingScreenPath("inactive"),
       runtimeGameSchedulerPath("inactive"),
       runtimeGameTransceiverPath("inactive"),
+      runtimeGameReplayWriterPath("inactive"),
       runtimeNetworkStatusPath("inactive"),
-      runtimeDebugVarsPath("inactive")
+      runtimeDebugVarsPath("inactive"),
+      runtimeVisibleMenuPath("inactive")
   {
   }
 };
@@ -2375,6 +3439,11 @@ public:
     developerSex = _sex;
   }
 
+  lobby::ESex::Enum GetDeveloperSex() const
+  {
+    return developerSex;
+  }
+
   virtual void ConnectToCluster(
     const string& login,
     const string& password,
@@ -2391,6 +3460,45 @@ public:
   virtual NWorld::IMapCollection* Maps()
   {
     return mapCollection;
+  }
+
+  void EnsureFallbackDevGamesList(int nextGameId, int fallbackMaxPlayers)
+  {
+    if (!devGamesList.empty())
+    {
+      return;
+    }
+
+    const char* primaryMapId = createdMapId.empty() ?
+      "Maps/Multiplayer/ARAM/_.ADMPDSCR.xdb" :
+      createdMapId.c_str();
+    devGamesList.push_back(
+      lobby::SDevGameInfo(
+        nextGameId++,
+        L"Linux Player's game",
+        primaryMapId,
+        1,
+        fallbackMaxPlayers
+      )
+    );
+    devGamesList.push_back(
+      lobby::SDevGameInfo(
+        nextGameId++,
+        L"ARAM practice",
+        "Maps/Multiplayer/ARAM/_.ADMPDSCR.xdb",
+        2,
+        fallbackMaxPlayers
+      )
+    );
+    devGamesList.push_back(
+      lobby::SDevGameInfo(
+        nextGameId++,
+        L"Classic battle",
+        "Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb",
+        std::min(6, fallbackMaxPlayers),
+        fallbackMaxPlayers
+      )
+    );
   }
 
   virtual void RefreshGamesList()
@@ -2415,6 +3523,8 @@ public:
 
     if (!IsValid(mapCollection))
     {
+      EnsureFallbackDevGamesList(nextGameId, fallbackMaxPlayers);
+      visibleGamesList = devGamesList;
       return;
     }
 
@@ -2453,12 +3563,37 @@ public:
         )
       );
     }
+
+    EnsureFallbackDevGamesList(nextGameId, fallbackMaxPlayers);
+    visibleGamesList = devGamesList;
   }
 
   virtual void PopGameList(lobby::TDevGamesList& buffer)
   {
+    const int fallbackMaxPlayers = maxPlayers > 0 ? maxPlayers : 10;
+    EnsureFallbackDevGamesList(1001, fallbackMaxPlayers);
+    visibleGamesList = devGamesList;
     buffer = devGamesList;
     devGamesList.clear();
+  }
+
+  size_t GetVisibleGameCount() const
+  {
+    return visibleGamesList.size();
+  }
+
+  const lobby::SDevGameInfo* GetVisibleGameByRow(size_t row) const
+  {
+    size_t index = 0;
+    for (lobby::TDevGamesList::const_iterator it = visibleGamesList.begin(); it != visibleGamesList.end(); ++it, ++index)
+    {
+      if (index == row)
+      {
+        return &(*it);
+      }
+    }
+
+    return 0;
   }
 
   virtual lobby::EOperationResult::Enum LastLobbyOperationResult() const
@@ -2571,6 +3706,7 @@ public:
 private:
   StrongMT<NWorld::IMapCollection> mapCollection;
   lobby::TDevGamesList devGamesList;
+  lobby::TDevGamesList visibleGamesList;
   lobby::ESex::Enum developerSex;
   lobby::EGameMemberReadiness::Enum readyState;
   lobby::EOperationResult::Enum lastLobbyOperationResult;
@@ -2583,6 +3719,74 @@ private:
   string selectedHeroId;
 };
 
+struct LinuxLiveUnitHudState
+{
+  bool ready;
+  int objectId;
+  int kind;
+  int faction;
+  int playerId;
+  int userId;
+  int level;
+  int gold;
+  float x;
+  float y;
+  float distance;
+  float life;
+  float maxLife;
+  float lifePercent;
+  float energy;
+  float maxEnergy;
+  float energyPercent;
+  float lifeRegen;
+  float energyRegen;
+  float damageMin;
+  float damageMax;
+  float moveSpeedMps;
+  float attacksPerSecond;
+  float moveDirX;
+  float moveDirY;
+  bool hasMoveDirection;
+  bool moving;
+  bool dead;
+  std::string unitDbid;
+  std::string sceneObjectDbid;
+  std::string source;
+
+  LinuxLiveUnitHudState()
+    : ready(false),
+      objectId(-1),
+      kind(0),
+      faction(-1),
+      playerId(-1),
+      userId(-1),
+      level(-1),
+      gold(0),
+      x(0.0f),
+      y(0.0f),
+      distance(0.0f),
+      life(0.0f),
+      maxLife(0.0f),
+      lifePercent(0.0f),
+      energy(0.0f),
+      maxEnergy(0.0f),
+      energyPercent(0.0f),
+      lifeRegen(0.0f),
+      energyRegen(0.0f),
+      damageMin(0.0f),
+      damageMax(0.0f),
+      moveSpeedMps(0.0f),
+      attacksPerSecond(0.0f),
+      moveDirX(0.0f),
+      moveDirY(0.0f),
+      hasMoveDirection(false),
+      moving(false),
+      dead(false),
+      source("none")
+  {
+  }
+};
+
 struct LinuxBootstrapScreenRuntime
 {
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
@@ -2593,6 +3797,7 @@ struct LinuxBootstrapScreenRuntime
   Strong<Game::LoadingScreen> loadingScreen;
   Strong<Game::LoadingGameContext> loadingGameContext;
   StrongMT<Game::LocalCmdScheduler> localScheduler;
+  StrongMT<NCore::ReplayWriter> replayWriter;
   Strong<NCore::Transceiver> transceiver;
   CObj<NCore::IWorldBase> transceiverWorld;
   StrongMT<NWorld::MapLoadingJob> mapLoadingJob;
@@ -2607,6 +3812,8 @@ struct LinuxBootstrapScreenRuntime
   bool schedulerStarted;
   bool transceiverStepped;
   bool mapLoadingJobCompleted;
+  bool visibleMenuReady;
+  bool diagnosticsOverlayActive;
   size_t loadingTickCount;
   size_t heroPlayerEntryCount;
   size_t loadingPlayerEntryCount;
@@ -2628,6 +3835,141 @@ struct LinuxBootstrapScreenRuntime
   size_t transceiverCommandBatches;
   size_t transceiverCommands;
   size_t transceiverStatusUpdates;
+  size_t transceiverStepCalls;
+  size_t transceiverProcessedSteps;
+  bool transceiverRuntimeCommandSent;
+  size_t transceiverRuntimeCommandsSent;
+  size_t transceiverProductionRuntimeCommandsSent;
+  size_t transceiverTimescaleRuntimeCommandsSent;
+  bool transceiverHeroMoveRuntimeCommandSent;
+  size_t transceiverHeroMoveRuntimeCommandsSent;
+  float transceiverHeroMoveSourceX;
+  float transceiverHeroMoveSourceY;
+  float transceiverHeroMoveTargetX;
+  float transceiverHeroMoveTargetY;
+  int transceiverHeroMovePlayerId;
+  int transceiverHeroMoveClientId;
+  bool transceiverHeroStopRuntimeCommandSent;
+  size_t transceiverHeroStopRuntimeCommandsSent;
+  float transceiverHeroStopX;
+  float transceiverHeroStopY;
+  int transceiverHeroStopPlayerId;
+  int transceiverHeroStopClientId;
+  bool transceiverHeroAttackRuntimeCommandSent;
+  size_t transceiverHeroAttackRuntimeCommandsSent;
+  float transceiverHeroAttackSourceX;
+  float transceiverHeroAttackSourceY;
+  float transceiverHeroAttackTargetX;
+  float transceiverHeroAttackTargetY;
+  int transceiverHeroAttackPlayerId;
+  int transceiverHeroAttackClientId;
+  int transceiverHeroAttackTargetPlayerId;
+  int transceiverHeroAttackTargetClientId;
+  bool transceiverHeroFollowRuntimeCommandSent;
+  size_t transceiverHeroFollowRuntimeCommandsSent;
+  float transceiverHeroFollowSourceX;
+  float transceiverHeroFollowSourceY;
+  float transceiverHeroFollowTargetX;
+  float transceiverHeroFollowTargetY;
+  int transceiverHeroFollowPlayerId;
+  int transceiverHeroFollowClientId;
+  int transceiverHeroFollowTargetPlayerId;
+  int transceiverHeroFollowTargetClientId;
+  bool transceiverHeroCombatMoveRuntimeCommandSent;
+  size_t transceiverHeroCombatMoveRuntimeCommandsSent;
+  float transceiverHeroCombatMoveSourceX;
+  float transceiverHeroCombatMoveSourceY;
+  float transceiverHeroCombatMoveTargetX;
+  float transceiverHeroCombatMoveTargetY;
+  int transceiverHeroCombatMovePlayerId;
+  int transceiverHeroCombatMoveClientId;
+  bool transceiverHeroHoldRuntimeCommandSent;
+  size_t transceiverHeroHoldRuntimeCommandsSent;
+  float transceiverHeroHoldX;
+  float transceiverHeroHoldY;
+  int transceiverHeroHoldPlayerId;
+  int transceiverHeroHoldClientId;
+  bool transceiverHeroCancelChannellingRuntimeCommandSent;
+  size_t transceiverHeroCancelChannellingRuntimeCommandsSent;
+  int transceiverHeroCancelChannellingPlayerId;
+  int transceiverHeroCancelChannellingClientId;
+  bool transceiverHeroMinimapSignalRuntimeCommandSent;
+  size_t transceiverHeroMinimapSignalRuntimeCommandsSent;
+  float transceiverHeroMinimapSignalSourceX;
+  float transceiverHeroMinimapSignalSourceY;
+  float transceiverHeroMinimapSignalTargetX;
+  float transceiverHeroMinimapSignalTargetY;
+  int transceiverHeroMinimapSignalPlayerId;
+  int transceiverHeroMinimapSignalClientId;
+  int transceiverHeroMinimapSignalTargetPlayerId;
+  int transceiverHeroMinimapSignalTargetClientId;
+  bool transceiverHeroUseUnitRuntimeCommandSent;
+  size_t transceiverHeroUseUnitRuntimeCommandsSent;
+  int transceiverHeroUseUnitPlayerId;
+  int transceiverHeroUseUnitClientId;
+  int transceiverHeroUseUnitTargetPlayerId;
+  int transceiverHeroUseUnitTargetClientId;
+  bool transceiverHeroActivateTalentRuntimeCommandSent;
+  size_t transceiverHeroActivateTalentRuntimeCommandsSent;
+  int transceiverHeroActivateTalentPlayerId;
+  int transceiverHeroActivateTalentClientId;
+  int transceiverHeroActivateTalentLevel;
+  int transceiverHeroActivateTalentSlot;
+  bool transceiverHeroUseTalentRuntimeCommandSent;
+  size_t transceiverHeroUseTalentRuntimeCommandsSent;
+  int transceiverHeroUseTalentPlayerId;
+  int transceiverHeroUseTalentClientId;
+  int transceiverHeroUseTalentLevel;
+  int transceiverHeroUseTalentSlot;
+  float transceiverHeroUseTalentTargetX;
+  float transceiverHeroUseTalentTargetY;
+  bool transceiverHeroUsePortalRuntimeCommandSent;
+  size_t transceiverHeroUsePortalRuntimeCommandsSent;
+  int transceiverHeroUsePortalPlayerId;
+  int transceiverHeroUsePortalClientId;
+  float transceiverHeroUsePortalTargetX;
+  float transceiverHeroUsePortalTargetY;
+  bool transceiverHeroUseConsumableRuntimeCommandSent;
+  size_t transceiverHeroUseConsumableRuntimeCommandsSent;
+  int transceiverHeroUseConsumablePlayerId;
+  int transceiverHeroUseConsumableClientId;
+  int transceiverHeroUseConsumableSlot;
+  float transceiverHeroUseConsumableTargetX;
+  float transceiverHeroUseConsumableTargetY;
+  bool transceiverHeroBuyConsumableRuntimeCommandSent;
+  size_t transceiverHeroBuyConsumableRuntimeCommandsSent;
+  int transceiverHeroBuyConsumablePlayerId;
+  int transceiverHeroBuyConsumableClientId;
+  int transceiverHeroBuyConsumableShopObjectId;
+  int transceiverHeroBuyConsumableIndex;
+  int transceiverHeroBuyConsumableSlotIndex;
+  bool transceiverHeroRaiseFlagRuntimeCommandSent;
+  size_t transceiverHeroRaiseFlagRuntimeCommandsSent;
+  int transceiverHeroRaiseFlagPlayerId;
+  int transceiverHeroRaiseFlagClientId;
+  int transceiverHeroRaiseFlagObjectId;
+  int transceiverHeroRaiseFlagFaction;
+  bool transceiverHeroInitMinigameRuntimeCommandSent;
+  size_t transceiverHeroInitMinigameRuntimeCommandsSent;
+  int transceiverHeroInitMinigamePlayerId;
+  int transceiverHeroInitMinigameClientId;
+  int transceiverHeroInitMinigameObjectId;
+  bool transceiverHeroPickupObjectRuntimeCommandSent;
+  size_t transceiverHeroPickupObjectRuntimeCommandsSent;
+  int transceiverHeroPickupObjectPlayerId;
+  int transceiverHeroPickupObjectClientId;
+  int transceiverHeroPickupObjectId;
+  bool transceiverRuntimeCommandQueuedBeforePrime;
+  bool replayWriterReady;
+  bool replayWriterOpen;
+  size_t replayWriterStartWrites;
+  size_t replayWriterStepWrites;
+  size_t replayWriterCommandWrites;
+  size_t replayWriterStatusWrites;
+  size_t replayWriterBytesWritten;
+  size_t replayWriterFailures;
+  size_t visibleMenuSelectedAction;
+  size_t visibleMenuActivatedCount;
   size_t worldPlayers;
   size_t worldPresentPlayers;
   size_t worldFogWidth;
@@ -2640,8 +3982,48 @@ struct LinuxBootstrapScreenRuntime
   size_t worldGlyphSpawnerObjects;
   size_t worldAdvMapObstacleObjects;
   size_t worldHeroPlaceHolderObjects;
+  size_t worldSpawnedHeroObjects;
+  size_t worldPlayersWithHeroObjects;
   size_t worldCreepSpawnerObjects;
   size_t worldNeutralCreepSpawnerObjects;
+  size_t worldSteppedSpawnerObjects;
+  size_t worldSteppedCreepSpawnerObjects;
+  size_t worldSteppedNeutralCreepSpawnerObjects;
+  size_t worldReadyCreepSpawnerObjects;
+  size_t worldReadyNeutralCreepSpawnerObjects;
+  size_t worldEnabledCreepSpawnerObjects;
+  size_t worldEnabledNeutralCreepSpawnerObjects;
+  size_t worldContentCreepSpawnerObjects;
+  size_t worldContentNeutralCreepSpawnerObjects;
+  size_t worldRegisteredCreepObjects;
+  size_t worldSpawnedNeutralCreepObjects;
+  size_t worldMovingCommonCreepObjects;
+  size_t worldMovedCommonCreepObjects;
+  size_t worldCreepSpawnerWaves;
+  size_t worldNeutralCreepSpawnerWaves;
+  size_t worldStoredDeadUnits;
+  size_t worldCleanedDeadUnits;
+  size_t worldPendingDeadUnits;
+  int worldLastStoredDeadUnitObjectId;
+  int worldLastCleanedDeadUnitObjectId;
+  int worldAwardKillersCalls;
+  int worldAwardKillersRejected;
+  int worldAwardKillersApplied;
+  int worldLastAwardRejectCode;
+  int worldLastAwardVictimObjectId;
+  int worldLastAwardKillerObjectId;
+  int worldLastAwardHeroObjectId;
+  float worldLastAwardVictimNaftaForKill;
+  float worldLastAwardKillerAmount;
+  float worldLastAwardTeamAmount;
+  int worldLastAwardHeroGoldBefore;
+  int worldLastAwardHeroGoldAfter;
+  int worldLastAppliedAwardVictimObjectId;
+  int worldLastAppliedAwardKillerObjectId;
+  int worldLastAppliedAwardHeroObjectId;
+  float worldLastAppliedAwardAmount;
+  int worldLastAppliedAwardHeroGoldBefore;
+  int worldLastAppliedAwardHeroGoldAfter;
   size_t worldSimpleBuildingObjects;
   size_t worldUsableBuildingObjects;
   size_t worldShopObjects;
@@ -2656,9 +4038,232 @@ struct LinuxBootstrapScreenRuntime
   size_t worldCameraSplineObjects;
   size_t worldScriptPathObjects;
   size_t worldScriptPolygonAreaObjects;
+  size_t worldExecutedPackedCommands;
+  size_t worldBootstrapRuntimeCommands;
   int worldLocalUserId;
+  int worldLastPackedCommandClientId;
+  DWORD worldLastPackedCommandTypeId;
+  int worldLastBootstrapCommandClientId;
+  int worldLastBootstrapCommandToken;
+  int worldAICreepSpawnEnabled;
+  int worldAINeutralCreepSpawnEnabled;
+  int worldAIMaxCreepsCount;
+  float worldLastBootstrapCommandValue;
+  float worldTimeScale;
+  float worldMinCreepSpawnerSpawnDelay;
+  float worldMinNeutralCreepSpawnerSpawnDelay;
+  float worldCommonCreepMovementDistance;
+  size_t visibleLobbyJoinMode;
+  size_t visibleLobbySelectedGameRow;
+  float characterPreviewYawDegrees;
+  bool characterPreviewRendererMeshDrawn;
+  size_t characterPreviewRendererMeshBatches;
+  size_t characterPreviewRendererMeshTriangles;
+  bool characterPreviewRendererStaticMeshDrawn;
+  size_t characterPreviewRendererStaticMeshPayloads;
+  size_t characterPreviewRendererStaticMeshBatches;
+  size_t characterPreviewRendererStaticMeshTriangles;
+  bool mapPreviewRendererStaticMeshDrawn;
+  size_t mapPreviewRendererStaticMeshPayloads;
+  size_t mapPreviewRendererStaticMeshBatches;
+  size_t mapPreviewRendererStaticMeshTriangles;
+  bool mapPreviewTerrainSurfaceDrawn;
+  size_t mapPreviewTerrainSurfaceVertices;
+  size_t mapPreviewTerrainSurfaceTriangles;
+  bool mapPreviewWaterZonesDrawn;
+  size_t mapPreviewWaterZones;
+  size_t mapPreviewWaterZoneTriangles;
+  bool mapPreviewTerrainRoadsDrawn;
+  size_t mapPreviewTerrainRoads;
+  size_t mapPreviewTerrainRoadSegments;
+  bool mapPreviewTeamRoutesDrawn;
+  size_t mapPreviewTeamRouteLines;
+  size_t mapPreviewTeamRouteSegments;
+  size_t mapPreviewTeamStartRouteLines;
+  size_t mapPreviewTeamLaneRouteLines;
+  bool mapPreviewScriptAreasDrawn;
+  size_t mapPreviewScriptAreas;
+  size_t mapPreviewScriptAreaSegments;
+  bool mapPreviewScriptPathsDrawn;
+  size_t mapPreviewScriptPaths;
+  size_t mapPreviewScriptPathSegments;
+  bool mapPreviewCameraSplinesDrawn;
+  size_t mapPreviewCameraSplines;
+  size_t mapPreviewCameraSplineSegments;
+  bool mapPreviewScriptPolygonsDrawn;
+  size_t mapPreviewScriptPolygons;
+  size_t mapPreviewScriptPolygonTriangles;
+  bool mapPreviewPointLightsDrawn;
+  size_t mapPreviewPointLights;
+  size_t mapPreviewPointLightMarkers;
+  bool mapPreviewEngineStartSlotsDrawn;
+  size_t mapPreviewEngineStartSlots;
+  size_t mapPreviewEngineStartAssignedSlots;
+  size_t mapPreviewEngineStartHumanSlots;
+  size_t mapPreviewEngineStartBotSlots;
+  bool mapPreviewDynamicWorldMarkersDrawn;
+  size_t mapPreviewDynamicWorldMarkers;
+  size_t mapPreviewDynamicHeroMarkers;
+  size_t mapPreviewDynamicCommonCreepMarkers;
+  size_t mapPreviewDynamicNeutralCreepMarkers;
+  size_t mapPreviewDynamicMovingMarkers;
+  size_t mapPreviewDynamicHealthBars;
+  size_t mapPreviewDynamicMoveDirectionArrows;
+  bool mapPreviewDynamicHeroMeshesDrawn;
+  size_t mapPreviewDynamicHeroMeshes;
+  size_t mapPreviewDynamicHeroMeshTriangles;
+  size_t mapPreviewDynamicUnitMeshPreviewAssets;
+  size_t mapPreviewDynamicUnitMeshPreviewReady;
+  bool mapPreviewDynamicCreepMeshesDrawn;
+  size_t mapPreviewDynamicCreepMeshes;
+  size_t mapPreviewDynamicCreepMeshTriangles;
+  bool mapPreviewDynamicSelectedHeroMarkerMatched;
+  int mapPreviewDynamicSelectedHeroMarkerPlayerId;
+  size_t mapPreviewLineupHeroMeshPreviewSlots;
+  size_t mapPreviewLineupHeroMeshPreviewReady;
+  size_t mapPreviewHeroDiffuseTexturesCached;
+  size_t mapPreviewHeroDiffuseTextureFailures;
+  bool mapPreviewTerrainElementMeshDrawn;
+  size_t mapPreviewTerrainElementMeshPayloads;
+  size_t mapPreviewTerrainElementMeshBatches;
+  size_t mapPreviewTerrainElementMeshTriangles;
+  bool mapPreviewRendererAnimatedMeshDrawn;
+  size_t mapPreviewRendererAnimatedMeshPayloads;
+  size_t mapPreviewRendererAnimatedMeshBatches;
+  size_t mapPreviewRendererAnimatedMeshTriangles;
+  float mapPreviewYawDegrees;
+  float mapPreviewRenderedYawDegrees;
+  float mapPreviewPitchDegrees;
+  float mapPreviewRenderedPitchDegrees;
+  float mapPreviewZoom;
+  float mapPreviewPanX;
+  float mapPreviewPanZ;
+  size_t mapPreviewInputCount;
+  bool mapPreviewCommandMoveTargetDrawn;
+  bool mapPreviewCommandMoveProofSent;
+  size_t mapPreviewCommandMoveCommandsSent;
+  float mapPreviewCommandMoveSourceX;
+  float mapPreviewCommandMoveSourceY;
+  float mapPreviewCommandMoveTargetX;
+  float mapPreviewCommandMoveTargetY;
+  int mapPreviewCommandMovePlayerId;
+  int mapPreviewCommandMoveClientId;
+  bool mapPreviewCommandMoveHeroTracking;
+  bool mapPreviewCommandMoveHeroMoving;
+  bool mapPreviewCommandMoveHeroMoved;
+  bool mapPreviewCommandMoveHeroReached;
+  size_t mapPreviewCommandMoveHeroSamples;
+  int mapPreviewCommandMoveHeroWorldStep;
+  float mapPreviewCommandMoveHeroCurrentX;
+  float mapPreviewCommandMoveHeroCurrentY;
+  float mapPreviewCommandMoveHeroDistance;
+  float mapPreviewCommandMoveHeroMaxDistance;
+  float mapPreviewCommandMoveHeroRemaining;
+  float mapPreviewCommandMoveHeroTargetDistance;
+  bool mapPreviewCommandActionTargetDrawn;
+  size_t mapPreviewCommandActionCommandsSent;
+  float mapPreviewCommandActionSourceX;
+  float mapPreviewCommandActionSourceY;
+  float mapPreviewCommandActionTargetX;
+  float mapPreviewCommandActionTargetY;
+  int mapPreviewCommandActionPlayerId;
+  int mapPreviewCommandActionClientId;
+  int mapPreviewCommandActionTargetPlayerId;
+  int mapPreviewCommandActionTargetClientId;
+  bool mapPreviewSelectedTargetDrawn;
+  bool mapPreviewSelectedTargetProofSent;
+  bool mapPreviewSelectedTargetAttackCommandSent;
+  bool mapPreviewSelectedTargetFollowCommandSent;
+  bool mapPreviewSelectedTargetUseUnitCommandSent;
+  bool mapPreviewSelectedTargetUseTalentCommandSent;
+  bool mapPreviewSelectedTargetUseConsumableCommandSent;
+  bool mapPreviewSelectedTargetAttackProofPrepared;
+  bool mapPreviewSelectedTargetAttackProofActive;
+  bool mapPreviewSelectedTargetAttackProofDamaged;
+  bool mapPreviewSelectedTargetAttackProofSustained;
+  bool mapPreviewSelectedTargetAttackProofKilled;
+  bool mapPreviewSelectedTargetAttackProofTargetIsHero;
+  bool mapPreviewSelectedTargetAttackProofRespawned;
+  bool mapPreviewSelectedTargetAttackProofReengaged;
+  int mapPreviewSelectedTargetAttackProofObjectId;
+  int mapPreviewSelectedTargetAttackProofStartWorldStep;
+  int mapPreviewSelectedTargetAttackProofLastWorldStep;
+  int mapPreviewSelectedTargetAttackProofRespawnWorldStep;
+  int mapPreviewSelectedTargetAttackProofRequiredGold;
+  size_t mapPreviewSelectedTargetAttackProofSamples;
+  size_t mapPreviewSelectedTargetAttackProofHitCount;
+  size_t mapPreviewSelectedTargetAttackProofKillCount;
+  float mapPreviewSelectedTargetAttackProofLifeBefore;
+  float mapPreviewSelectedTargetAttackProofLifePrevious;
+  float mapPreviewSelectedTargetAttackProofLifeAfter;
+  float mapPreviewSelectedTargetAttackProofRespawnDelay;
+  float mapPreviewSelectedTargetAttackProofRange;
+  float mapPreviewSelectedTargetAttackProofDistanceBefore;
+  float mapPreviewSelectedTargetAttackProofDistanceAfter;
+  float mapPreviewSelectedTargetAttackProofOriginalX;
+  float mapPreviewSelectedTargetAttackProofOriginalY;
+  float mapPreviewSelectedTargetAttackProofX;
+  float mapPreviewSelectedTargetAttackProofY;
+  bool mapPreviewCreepDuelProofPrepared;
+  bool mapPreviewCreepDuelProofActive;
+  bool mapPreviewCreepDuelProofDamaged;
+  bool mapPreviewCreepDuelProofSustained;
+  bool mapPreviewCreepDuelProofKilled;
+  int mapPreviewCreepDuelProofAttackerObjectId;
+  int mapPreviewCreepDuelProofTargetObjectId;
+  int mapPreviewCreepDuelProofStartWorldStep;
+  int mapPreviewCreepDuelProofLastWorldStep;
+  size_t mapPreviewCreepDuelProofSamples;
+  size_t mapPreviewCreepDuelProofHitCount;
+  float mapPreviewCreepDuelProofLifeBefore;
+  float mapPreviewCreepDuelProofLifePrevious;
+  float mapPreviewCreepDuelProofLifeAfter;
+  float mapPreviewCreepDuelProofRange;
+  float mapPreviewCreepDuelProofDistanceBefore;
+  float mapPreviewCreepDuelProofDistanceAfter;
+  float mapPreviewCreepDuelProofAttackerX;
+  float mapPreviewCreepDuelProofAttackerY;
+  float mapPreviewCreepDuelProofTargetX;
+  float mapPreviewCreepDuelProofTargetY;
+  size_t mapPreviewSelectedTargetChanges;
+  int mapPreviewSelectedTargetObjectId;
+  int mapPreviewSelectedTargetKind;
+  int mapPreviewSelectedTargetFaction;
+  int mapPreviewSelectedTargetPlayerId;
+  int mapPreviewSelectedTargetClientId;
+  float mapPreviewSelectedTargetX;
+  float mapPreviewSelectedTargetY;
+  float mapPreviewSelectedTargetDistance;
+  LinuxLiveUnitHudState liveHeroState;
+  LinuxLiveUnitHudState liveTargetState;
+  size_t liveHudSampleCount;
+  bool mapPreviewDragging;
+  bool mapPreviewPanning;
+  bool mapPreviewDragMoved;
+  bool mapPreviewPanMoved;
+  int mapPreviewDragStartX;
+  int mapPreviewDragStartY;
+  int mapPreviewDragX;
+  int mapPreviewDragY;
+  int mapPreviewPanStartX;
+  int mapPreviewPanStartY;
+  int mapPreviewPanDragX;
+  int mapPreviewPanDragY;
+  size_t characterPreviewInputCount;
+  bool characterPreviewDragging;
+  int characterPreviewDragX;
+  int characterPreviewDragY;
   std::string heroPlayersText;
   std::string loadingStatusText;
+  std::string replayWriterPath;
+  std::string mapPreviewLastAction;
+  std::string mapPreviewCommandSource;
+  std::string mapPreviewCommandActionKind;
+  std::string mapPreviewCommandActionSource;
+  std::string mapPreviewSelectedTargetSource;
+  std::string characterPreviewLastAction;
+  std::string visibleMenuLastAction;
+  std::string visibleMenuPath;
 
   LinuxBootstrapScreenRuntime()
     : initialized(false),
@@ -2670,6 +4275,8 @@ struct LinuxBootstrapScreenRuntime
       schedulerStarted(false),
       transceiverStepped(false),
       mapLoadingJobCompleted(false),
+      visibleMenuReady(false),
+      diagnosticsOverlayActive(false),
       loadingTickCount(0),
       heroPlayerEntryCount(0),
       loadingPlayerEntryCount(0),
@@ -2691,6 +4298,141 @@ struct LinuxBootstrapScreenRuntime
       transceiverCommandBatches(0),
       transceiverCommands(0),
       transceiverStatusUpdates(0),
+      transceiverStepCalls(0),
+      transceiverProcessedSteps(0),
+      transceiverRuntimeCommandSent(false),
+      transceiverRuntimeCommandsSent(0),
+      transceiverProductionRuntimeCommandsSent(0),
+      transceiverTimescaleRuntimeCommandsSent(0),
+      transceiverHeroMoveRuntimeCommandSent(false),
+      transceiverHeroMoveRuntimeCommandsSent(0),
+      transceiverHeroMoveSourceX(0.0f),
+      transceiverHeroMoveSourceY(0.0f),
+      transceiverHeroMoveTargetX(0.0f),
+      transceiverHeroMoveTargetY(0.0f),
+      transceiverHeroMovePlayerId(-1),
+      transceiverHeroMoveClientId(-1),
+      transceiverHeroStopRuntimeCommandSent(false),
+      transceiverHeroStopRuntimeCommandsSent(0),
+      transceiverHeroStopX(0.0f),
+      transceiverHeroStopY(0.0f),
+      transceiverHeroStopPlayerId(-1),
+      transceiverHeroStopClientId(-1),
+      transceiverHeroAttackRuntimeCommandSent(false),
+      transceiverHeroAttackRuntimeCommandsSent(0),
+      transceiverHeroAttackSourceX(0.0f),
+      transceiverHeroAttackSourceY(0.0f),
+      transceiverHeroAttackTargetX(0.0f),
+      transceiverHeroAttackTargetY(0.0f),
+      transceiverHeroAttackPlayerId(-1),
+      transceiverHeroAttackClientId(-1),
+      transceiverHeroAttackTargetPlayerId(-1),
+      transceiverHeroAttackTargetClientId(-1),
+      transceiverHeroFollowRuntimeCommandSent(false),
+      transceiverHeroFollowRuntimeCommandsSent(0),
+      transceiverHeroFollowSourceX(0.0f),
+      transceiverHeroFollowSourceY(0.0f),
+      transceiverHeroFollowTargetX(0.0f),
+      transceiverHeroFollowTargetY(0.0f),
+      transceiverHeroFollowPlayerId(-1),
+      transceiverHeroFollowClientId(-1),
+      transceiverHeroFollowTargetPlayerId(-1),
+      transceiverHeroFollowTargetClientId(-1),
+      transceiverHeroCombatMoveRuntimeCommandSent(false),
+      transceiverHeroCombatMoveRuntimeCommandsSent(0),
+      transceiverHeroCombatMoveSourceX(0.0f),
+      transceiverHeroCombatMoveSourceY(0.0f),
+      transceiverHeroCombatMoveTargetX(0.0f),
+      transceiverHeroCombatMoveTargetY(0.0f),
+      transceiverHeroCombatMovePlayerId(-1),
+      transceiverHeroCombatMoveClientId(-1),
+      transceiverHeroHoldRuntimeCommandSent(false),
+      transceiverHeroHoldRuntimeCommandsSent(0),
+      transceiverHeroHoldX(0.0f),
+      transceiverHeroHoldY(0.0f),
+      transceiverHeroHoldPlayerId(-1),
+      transceiverHeroHoldClientId(-1),
+      transceiverHeroCancelChannellingRuntimeCommandSent(false),
+      transceiverHeroCancelChannellingRuntimeCommandsSent(0),
+      transceiverHeroCancelChannellingPlayerId(-1),
+      transceiverHeroCancelChannellingClientId(-1),
+      transceiverHeroMinimapSignalRuntimeCommandSent(false),
+      transceiverHeroMinimapSignalRuntimeCommandsSent(0),
+      transceiverHeroMinimapSignalSourceX(0.0f),
+      transceiverHeroMinimapSignalSourceY(0.0f),
+      transceiverHeroMinimapSignalTargetX(0.0f),
+      transceiverHeroMinimapSignalTargetY(0.0f),
+      transceiverHeroMinimapSignalPlayerId(-1),
+      transceiverHeroMinimapSignalClientId(-1),
+      transceiverHeroMinimapSignalTargetPlayerId(-1),
+      transceiverHeroMinimapSignalTargetClientId(-1),
+      transceiverHeroUseUnitRuntimeCommandSent(false),
+      transceiverHeroUseUnitRuntimeCommandsSent(0),
+      transceiverHeroUseUnitPlayerId(-1),
+      transceiverHeroUseUnitClientId(-1),
+      transceiverHeroUseUnitTargetPlayerId(-1),
+      transceiverHeroUseUnitTargetClientId(-1),
+      transceiverHeroActivateTalentRuntimeCommandSent(false),
+      transceiverHeroActivateTalentRuntimeCommandsSent(0),
+      transceiverHeroActivateTalentPlayerId(-1),
+      transceiverHeroActivateTalentClientId(-1),
+      transceiverHeroActivateTalentLevel(-1),
+      transceiverHeroActivateTalentSlot(-1),
+      transceiverHeroUseTalentRuntimeCommandSent(false),
+      transceiverHeroUseTalentRuntimeCommandsSent(0),
+      transceiverHeroUseTalentPlayerId(-1),
+      transceiverHeroUseTalentClientId(-1),
+      transceiverHeroUseTalentLevel(-1),
+      transceiverHeroUseTalentSlot(-1),
+      transceiverHeroUseTalentTargetX(0.0f),
+      transceiverHeroUseTalentTargetY(0.0f),
+      transceiverHeroUsePortalRuntimeCommandSent(false),
+      transceiverHeroUsePortalRuntimeCommandsSent(0),
+      transceiverHeroUsePortalPlayerId(-1),
+      transceiverHeroUsePortalClientId(-1),
+      transceiverHeroUsePortalTargetX(0.0f),
+      transceiverHeroUsePortalTargetY(0.0f),
+      transceiverHeroUseConsumableRuntimeCommandSent(false),
+      transceiverHeroUseConsumableRuntimeCommandsSent(0),
+      transceiverHeroUseConsumablePlayerId(-1),
+      transceiverHeroUseConsumableClientId(-1),
+      transceiverHeroUseConsumableSlot(-1),
+      transceiverHeroUseConsumableTargetX(0.0f),
+      transceiverHeroUseConsumableTargetY(0.0f),
+      transceiverHeroBuyConsumableRuntimeCommandSent(false),
+      transceiverHeroBuyConsumableRuntimeCommandsSent(0),
+      transceiverHeroBuyConsumablePlayerId(-1),
+      transceiverHeroBuyConsumableClientId(-1),
+      transceiverHeroBuyConsumableShopObjectId(-1),
+      transceiverHeroBuyConsumableIndex(-1),
+      transceiverHeroBuyConsumableSlotIndex(-1),
+      transceiverHeroRaiseFlagRuntimeCommandSent(false),
+      transceiverHeroRaiseFlagRuntimeCommandsSent(0),
+      transceiverHeroRaiseFlagPlayerId(-1),
+      transceiverHeroRaiseFlagClientId(-1),
+      transceiverHeroRaiseFlagObjectId(-1),
+      transceiverHeroRaiseFlagFaction(-1),
+      transceiverHeroInitMinigameRuntimeCommandSent(false),
+      transceiverHeroInitMinigameRuntimeCommandsSent(0),
+      transceiverHeroInitMinigamePlayerId(-1),
+      transceiverHeroInitMinigameClientId(-1),
+      transceiverHeroInitMinigameObjectId(-1),
+      transceiverHeroPickupObjectRuntimeCommandSent(false),
+      transceiverHeroPickupObjectRuntimeCommandsSent(0),
+      transceiverHeroPickupObjectPlayerId(-1),
+      transceiverHeroPickupObjectClientId(-1),
+      transceiverHeroPickupObjectId(-1),
+      transceiverRuntimeCommandQueuedBeforePrime(false),
+      replayWriterReady(false),
+      replayWriterOpen(false),
+      replayWriterStartWrites(0),
+      replayWriterStepWrites(0),
+      replayWriterCommandWrites(0),
+      replayWriterStatusWrites(0),
+      replayWriterBytesWritten(0),
+      replayWriterFailures(0),
+      visibleMenuSelectedAction(0),
+      visibleMenuActivatedCount(0),
       worldPlayers(0),
       worldPresentPlayers(0),
       worldFogWidth(0),
@@ -2703,8 +4445,48 @@ struct LinuxBootstrapScreenRuntime
       worldGlyphSpawnerObjects(0),
       worldAdvMapObstacleObjects(0),
       worldHeroPlaceHolderObjects(0),
+      worldSpawnedHeroObjects(0),
+      worldPlayersWithHeroObjects(0),
       worldCreepSpawnerObjects(0),
       worldNeutralCreepSpawnerObjects(0),
+      worldSteppedSpawnerObjects(0),
+      worldSteppedCreepSpawnerObjects(0),
+      worldSteppedNeutralCreepSpawnerObjects(0),
+      worldReadyCreepSpawnerObjects(0),
+      worldReadyNeutralCreepSpawnerObjects(0),
+      worldEnabledCreepSpawnerObjects(0),
+      worldEnabledNeutralCreepSpawnerObjects(0),
+      worldContentCreepSpawnerObjects(0),
+      worldContentNeutralCreepSpawnerObjects(0),
+      worldRegisteredCreepObjects(0),
+      worldSpawnedNeutralCreepObjects(0),
+      worldMovingCommonCreepObjects(0),
+      worldMovedCommonCreepObjects(0),
+      worldCreepSpawnerWaves(0),
+      worldNeutralCreepSpawnerWaves(0),
+      worldStoredDeadUnits(0),
+      worldCleanedDeadUnits(0),
+      worldPendingDeadUnits(0),
+      worldLastStoredDeadUnitObjectId(-1),
+      worldLastCleanedDeadUnitObjectId(-1),
+      worldAwardKillersCalls(0),
+      worldAwardKillersRejected(0),
+      worldAwardKillersApplied(0),
+      worldLastAwardRejectCode(0),
+      worldLastAwardVictimObjectId(-1),
+      worldLastAwardKillerObjectId(-1),
+      worldLastAwardHeroObjectId(-1),
+      worldLastAwardVictimNaftaForKill(0.0f),
+      worldLastAwardKillerAmount(0.0f),
+      worldLastAwardTeamAmount(0.0f),
+      worldLastAwardHeroGoldBefore(0),
+      worldLastAwardHeroGoldAfter(0),
+      worldLastAppliedAwardVictimObjectId(-1),
+      worldLastAppliedAwardKillerObjectId(-1),
+      worldLastAppliedAwardHeroObjectId(-1),
+      worldLastAppliedAwardAmount(0.0f),
+      worldLastAppliedAwardHeroGoldBefore(0),
+      worldLastAppliedAwardHeroGoldAfter(0),
       worldSimpleBuildingObjects(0),
       worldUsableBuildingObjects(0),
       worldShopObjects(0),
@@ -2719,7 +4501,227 @@ struct LinuxBootstrapScreenRuntime
       worldCameraSplineObjects(0),
       worldScriptPathObjects(0),
       worldScriptPolygonAreaObjects(0),
-      worldLocalUserId(0)
+      worldExecutedPackedCommands(0),
+      worldBootstrapRuntimeCommands(0),
+      worldLocalUserId(0),
+      worldLastPackedCommandClientId(-1),
+      worldLastPackedCommandTypeId(0),
+      worldLastBootstrapCommandClientId(-1),
+      worldLastBootstrapCommandToken(0),
+      worldAICreepSpawnEnabled(0),
+      worldAINeutralCreepSpawnEnabled(0),
+      worldAIMaxCreepsCount(0),
+      worldLastBootstrapCommandValue(0.0f),
+      worldTimeScale(1.0f),
+      worldMinCreepSpawnerSpawnDelay(0.0f),
+      worldMinNeutralCreepSpawnerSpawnDelay(0.0f),
+      worldCommonCreepMovementDistance(0.0f),
+      visibleLobbyJoinMode(LINUX_LOBBY_JOIN_MODE_NORMAL),
+      visibleLobbySelectedGameRow(0),
+      characterPreviewYawDegrees(28.0f),
+      characterPreviewRendererMeshDrawn(false),
+      characterPreviewRendererMeshBatches(0),
+      characterPreviewRendererMeshTriangles(0),
+      characterPreviewRendererStaticMeshDrawn(false),
+      characterPreviewRendererStaticMeshPayloads(0),
+      characterPreviewRendererStaticMeshBatches(0),
+      characterPreviewRendererStaticMeshTriangles(0),
+      mapPreviewRendererStaticMeshDrawn(false),
+      mapPreviewRendererStaticMeshPayloads(0),
+      mapPreviewRendererStaticMeshBatches(0),
+      mapPreviewRendererStaticMeshTriangles(0),
+      mapPreviewTerrainSurfaceDrawn(false),
+      mapPreviewTerrainSurfaceVertices(0),
+      mapPreviewTerrainSurfaceTriangles(0),
+      mapPreviewWaterZonesDrawn(false),
+      mapPreviewWaterZones(0),
+      mapPreviewWaterZoneTriangles(0),
+      mapPreviewTerrainRoadsDrawn(false),
+      mapPreviewTerrainRoads(0),
+      mapPreviewTerrainRoadSegments(0),
+      mapPreviewTeamRoutesDrawn(false),
+      mapPreviewTeamRouteLines(0),
+      mapPreviewTeamRouteSegments(0),
+      mapPreviewTeamStartRouteLines(0),
+      mapPreviewTeamLaneRouteLines(0),
+      mapPreviewScriptAreasDrawn(false),
+      mapPreviewScriptAreas(0),
+      mapPreviewScriptAreaSegments(0),
+      mapPreviewScriptPathsDrawn(false),
+      mapPreviewScriptPaths(0),
+      mapPreviewScriptPathSegments(0),
+      mapPreviewCameraSplinesDrawn(false),
+      mapPreviewCameraSplines(0),
+      mapPreviewCameraSplineSegments(0),
+      mapPreviewScriptPolygonsDrawn(false),
+      mapPreviewScriptPolygons(0),
+      mapPreviewScriptPolygonTriangles(0),
+      mapPreviewPointLightsDrawn(false),
+      mapPreviewPointLights(0),
+      mapPreviewPointLightMarkers(0),
+      mapPreviewEngineStartSlotsDrawn(false),
+      mapPreviewEngineStartSlots(0),
+      mapPreviewEngineStartAssignedSlots(0),
+      mapPreviewEngineStartHumanSlots(0),
+      mapPreviewEngineStartBotSlots(0),
+      mapPreviewDynamicWorldMarkersDrawn(false),
+      mapPreviewDynamicWorldMarkers(0),
+      mapPreviewDynamicHeroMarkers(0),
+      mapPreviewDynamicCommonCreepMarkers(0),
+      mapPreviewDynamicNeutralCreepMarkers(0),
+      mapPreviewDynamicMovingMarkers(0),
+      mapPreviewDynamicHealthBars(0),
+      mapPreviewDynamicMoveDirectionArrows(0),
+      mapPreviewDynamicHeroMeshesDrawn(false),
+      mapPreviewDynamicHeroMeshes(0),
+      mapPreviewDynamicHeroMeshTriangles(0),
+      mapPreviewDynamicUnitMeshPreviewAssets(0),
+      mapPreviewDynamicUnitMeshPreviewReady(0),
+      mapPreviewDynamicCreepMeshesDrawn(false),
+      mapPreviewDynamicCreepMeshes(0),
+      mapPreviewDynamicCreepMeshTriangles(0),
+      mapPreviewDynamicSelectedHeroMarkerMatched(false),
+      mapPreviewDynamicSelectedHeroMarkerPlayerId(-1),
+      mapPreviewLineupHeroMeshPreviewSlots(0),
+      mapPreviewLineupHeroMeshPreviewReady(0),
+      mapPreviewHeroDiffuseTexturesCached(0),
+      mapPreviewHeroDiffuseTextureFailures(0),
+      mapPreviewTerrainElementMeshDrawn(false),
+      mapPreviewTerrainElementMeshPayloads(0),
+      mapPreviewTerrainElementMeshBatches(0),
+      mapPreviewTerrainElementMeshTriangles(0),
+      mapPreviewRendererAnimatedMeshDrawn(false),
+      mapPreviewRendererAnimatedMeshPayloads(0),
+      mapPreviewRendererAnimatedMeshBatches(0),
+      mapPreviewRendererAnimatedMeshTriangles(0),
+      mapPreviewYawDegrees(kLinuxMapPreviewDefaultYawDegrees),
+      mapPreviewRenderedYawDegrees(kLinuxMapPreviewDefaultYawDegrees),
+      mapPreviewPitchDegrees(kLinuxMapPreviewDefaultPitchDegrees),
+      mapPreviewRenderedPitchDegrees(kLinuxMapPreviewDefaultPitchDegrees),
+      mapPreviewZoom(kLinuxMapPreviewDefaultZoom),
+      mapPreviewPanX(0.0f),
+      mapPreviewPanZ(0.0f),
+      mapPreviewInputCount(0),
+      mapPreviewCommandMoveTargetDrawn(false),
+      mapPreviewCommandMoveProofSent(false),
+      mapPreviewCommandMoveCommandsSent(0),
+      mapPreviewCommandMoveSourceX(0.0f),
+      mapPreviewCommandMoveSourceY(0.0f),
+      mapPreviewCommandMoveTargetX(0.0f),
+      mapPreviewCommandMoveTargetY(0.0f),
+      mapPreviewCommandMovePlayerId(-1),
+      mapPreviewCommandMoveClientId(-1),
+      mapPreviewCommandMoveHeroTracking(false),
+      mapPreviewCommandMoveHeroMoving(false),
+      mapPreviewCommandMoveHeroMoved(false),
+      mapPreviewCommandMoveHeroReached(false),
+      mapPreviewCommandMoveHeroSamples(0),
+      mapPreviewCommandMoveHeroWorldStep(-1),
+      mapPreviewCommandMoveHeroCurrentX(0.0f),
+      mapPreviewCommandMoveHeroCurrentY(0.0f),
+      mapPreviewCommandMoveHeroDistance(0.0f),
+      mapPreviewCommandMoveHeroMaxDistance(0.0f),
+      mapPreviewCommandMoveHeroRemaining(0.0f),
+      mapPreviewCommandMoveHeroTargetDistance(0.0f),
+      mapPreviewCommandActionTargetDrawn(false),
+      mapPreviewCommandActionCommandsSent(0),
+      mapPreviewCommandActionSourceX(0.0f),
+      mapPreviewCommandActionSourceY(0.0f),
+      mapPreviewCommandActionTargetX(0.0f),
+      mapPreviewCommandActionTargetY(0.0f),
+      mapPreviewCommandActionPlayerId(-1),
+      mapPreviewCommandActionClientId(-1),
+      mapPreviewCommandActionTargetPlayerId(-1),
+      mapPreviewCommandActionTargetClientId(-1),
+      mapPreviewSelectedTargetDrawn(false),
+      mapPreviewSelectedTargetProofSent(false),
+      mapPreviewSelectedTargetAttackCommandSent(false),
+      mapPreviewSelectedTargetFollowCommandSent(false),
+      mapPreviewSelectedTargetUseUnitCommandSent(false),
+      mapPreviewSelectedTargetUseTalentCommandSent(false),
+      mapPreviewSelectedTargetUseConsumableCommandSent(false),
+      mapPreviewSelectedTargetAttackProofPrepared(false),
+      mapPreviewSelectedTargetAttackProofActive(false),
+      mapPreviewSelectedTargetAttackProofDamaged(false),
+      mapPreviewSelectedTargetAttackProofSustained(false),
+      mapPreviewSelectedTargetAttackProofKilled(false),
+      mapPreviewSelectedTargetAttackProofTargetIsHero(false),
+      mapPreviewSelectedTargetAttackProofRespawned(false),
+      mapPreviewSelectedTargetAttackProofReengaged(false),
+      mapPreviewSelectedTargetAttackProofObjectId(-1),
+      mapPreviewSelectedTargetAttackProofStartWorldStep(-1),
+      mapPreviewSelectedTargetAttackProofLastWorldStep(-1),
+      mapPreviewSelectedTargetAttackProofRespawnWorldStep(-1),
+      mapPreviewSelectedTargetAttackProofRequiredGold(0),
+      mapPreviewSelectedTargetAttackProofSamples(0),
+      mapPreviewSelectedTargetAttackProofHitCount(0),
+      mapPreviewSelectedTargetAttackProofKillCount(0),
+      mapPreviewSelectedTargetAttackProofLifeBefore(0.0f),
+      mapPreviewSelectedTargetAttackProofLifePrevious(0.0f),
+      mapPreviewSelectedTargetAttackProofLifeAfter(0.0f),
+      mapPreviewSelectedTargetAttackProofRespawnDelay(-1.0f),
+      mapPreviewSelectedTargetAttackProofRange(0.0f),
+      mapPreviewSelectedTargetAttackProofDistanceBefore(0.0f),
+      mapPreviewSelectedTargetAttackProofDistanceAfter(0.0f),
+      mapPreviewSelectedTargetAttackProofOriginalX(0.0f),
+      mapPreviewSelectedTargetAttackProofOriginalY(0.0f),
+      mapPreviewSelectedTargetAttackProofX(0.0f),
+      mapPreviewSelectedTargetAttackProofY(0.0f),
+      mapPreviewCreepDuelProofPrepared(false),
+      mapPreviewCreepDuelProofActive(false),
+      mapPreviewCreepDuelProofDamaged(false),
+      mapPreviewCreepDuelProofSustained(false),
+      mapPreviewCreepDuelProofKilled(false),
+      mapPreviewCreepDuelProofAttackerObjectId(-1),
+      mapPreviewCreepDuelProofTargetObjectId(-1),
+      mapPreviewCreepDuelProofStartWorldStep(-1),
+      mapPreviewCreepDuelProofLastWorldStep(-1),
+      mapPreviewCreepDuelProofSamples(0),
+      mapPreviewCreepDuelProofHitCount(0),
+      mapPreviewCreepDuelProofLifeBefore(0.0f),
+      mapPreviewCreepDuelProofLifePrevious(0.0f),
+      mapPreviewCreepDuelProofLifeAfter(0.0f),
+      mapPreviewCreepDuelProofRange(0.0f),
+      mapPreviewCreepDuelProofDistanceBefore(0.0f),
+      mapPreviewCreepDuelProofDistanceAfter(0.0f),
+      mapPreviewCreepDuelProofAttackerX(0.0f),
+      mapPreviewCreepDuelProofAttackerY(0.0f),
+      mapPreviewCreepDuelProofTargetX(0.0f),
+      mapPreviewCreepDuelProofTargetY(0.0f),
+      mapPreviewSelectedTargetChanges(0),
+      mapPreviewSelectedTargetObjectId(-1),
+      mapPreviewSelectedTargetKind(0),
+      mapPreviewSelectedTargetFaction(-1),
+      mapPreviewSelectedTargetPlayerId(-1),
+      mapPreviewSelectedTargetClientId(-1),
+      mapPreviewSelectedTargetX(0.0f),
+      mapPreviewSelectedTargetY(0.0f),
+      mapPreviewSelectedTargetDistance(0.0f),
+      liveHudSampleCount(0),
+      mapPreviewDragging(false),
+      mapPreviewPanning(false),
+      mapPreviewDragMoved(false),
+      mapPreviewPanMoved(false),
+      mapPreviewDragStartX(0),
+      mapPreviewDragStartY(0),
+      mapPreviewDragX(0),
+      mapPreviewDragY(0),
+      mapPreviewPanStartX(0),
+      mapPreviewPanStartY(0),
+      mapPreviewPanDragX(0),
+      mapPreviewPanDragY(0),
+      characterPreviewInputCount(0),
+      characterPreviewDragging(false),
+      characterPreviewDragX(0),
+      characterPreviewDragY(0),
+      replayWriterPath("inactive"),
+      mapPreviewLastAction("auto"),
+      mapPreviewCommandSource("none"),
+      mapPreviewCommandActionKind("none"),
+      mapPreviewCommandActionSource("none"),
+      mapPreviewSelectedTargetSource("none"),
+      characterPreviewLastAction("default"),
+      visibleMenuPath("inactive")
   {
   }
 };
@@ -3256,6 +5258,14 @@ bool ReadBootstrapCreateGameFlag(int argc, char** argv)
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-create-game");
 }
 
+bool ReadDiagnosticsOverlayFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--diagnostics-overlay") ||
+    CmdLineLite::Instance().IsKeyDefined("--debug-overlay");
+}
+
 const char* ReadStringArg(int argc, char** argv, const char* key)
 {
   (void)argc;
@@ -3374,6 +5384,28 @@ bool IsGameRootCandidate(const fs::path& root)
   return fs::exists(root / "Data") && fs::exists(root / "Src");
 }
 
+void AppendGameRootCandidateFamily(const fs::path& start, std::vector<fs::path>* candidates)
+{
+  if (!candidates || start.empty())
+  {
+    return;
+  }
+
+  fs::path probe = start;
+  for (int depth = 0; depth < 6 && !probe.empty(); ++depth)
+  {
+    candidates->push_back(probe);
+    candidates->push_back(probe / "pw" / "branches" / "r1117");
+
+    const fs::path parent = probe.parent_path();
+    if (parent.empty() || parent == probe)
+    {
+      break;
+    }
+    probe = parent;
+  }
+}
+
 fs::path DetectGameRoot(int argc, char** argv)
 {
   std::vector<fs::path> candidates;
@@ -3387,14 +5419,11 @@ fs::path DetectGameRoot(int argc, char** argv)
   const fs::path executablePath = ReadExecutablePath();
   const fs::path executableDir = executablePath.empty() ? fs::path() : executablePath.parent_path();
 
-  candidates.push_back(currentDir);
-  candidates.push_back(currentDir / "pw" / "branches" / "r1117");
+  AppendGameRootCandidateFamily(currentDir, &candidates);
 
   if (!executableDir.empty())
   {
-    candidates.push_back(executableDir);
-    candidates.push_back(executableDir.parent_path());
-    candidates.push_back(executableDir / "pw" / "branches" / "r1117");
+    AppendGameRootCandidateFamily(executableDir, &candidates);
   }
 
   for (size_t i = 0; i < candidates.size(); ++i)
@@ -5022,12 +7051,23 @@ std::string TruncateForOverlay(const std::string& value, size_t maxLength)
     return value;
   }
 
+  const auto SafeUtf8PrefixLength = [&value](size_t maxBytes) -> size_t
+  {
+    size_t cut = std::min(maxBytes, value.size());
+    while (cut > 0 && cut < value.size() &&
+           (static_cast<unsigned char>(value[cut]) & 0xc0) == 0x80)
+    {
+      --cut;
+    }
+    return cut;
+  };
+
   if (maxLength <= 3)
   {
-    return value.substr(0, maxLength);
+    return value.substr(0, SafeUtf8PrefixLength(maxLength));
   }
 
-  return value.substr(0, maxLength - 3) + "...";
+  return value.substr(0, SafeUtf8PrefixLength(maxLength - 3)) + "...";
 }
 
 void ProbeLoadingScreenAssets(
@@ -5271,6 +7311,42 @@ fs::path ResolveDataRefPath(
   }
 
   return baseRoot / "Data" / EnsurePathSuffix(NormalizeDataRefPath(reference), suffix);
+}
+
+std::string ResolveLinuxRootFileSystemDataPath(
+  const LinuxClientEnvironment& environment,
+  const std::string& fileName
+)
+{
+  if (fileName.empty())
+  {
+    return std::string();
+  }
+
+  const fs::path baseRoot = environment.baseDir.empty() ? environment.gameRoot : environment.baseDir;
+  const fs::path dataRoot = baseRoot / "Data";
+  const fs::path path(fileName);
+  if (path.is_absolute() && !dataRoot.empty())
+  {
+    std::error_code ec;
+    const fs::path relativePath = fs::relative(path, dataRoot, ec);
+    if (!ec && !relativePath.empty())
+    {
+      const std::string relative = NormalizeDataRefPath(relativePath.generic_string());
+      if (relative.find("..") != 0)
+      {
+        return NormalizeRootFileSystemPath(relative);
+      }
+    }
+  }
+
+  std::string normalized = NormalizeDataRefPath(fileName);
+  const std::string dataPrefix = "Data/";
+  if (normalized.compare(0, dataPrefix.size(), dataPrefix) == 0)
+  {
+    normalized.erase(0, dataPrefix.size());
+  }
+  return NormalizeRootFileSystemPath(normalized);
 }
 
 std::string CategorizeMapDescriptor(const fs::path& relativePath)
@@ -5631,13 +7707,49 @@ size_t CountNonEmptyTagValues(const std::string& text, const char* tag)
   return count;
 }
 
-int DetectTacticalMarkerTeam(const std::string& href, const std::string& scriptName)
+bool IsLinuxTacticalLaneTeamScriptName(const std::string& lowerScriptName, char teamPrefix)
+{
+  if (lowerScriptName.empty() || lowerScriptName[0] != teamPrefix)
+  {
+    return false;
+  }
+
+  if (lowerScriptName.size() == 1)
+  {
+    return true;
+  }
+
+  const std::string suffix = lowerScriptName.substr(1);
+  return
+    suffix == "up" ||
+    suffix == "down" ||
+    suffix == "mid" ||
+    suffix == "middle" ||
+    suffix == "top" ||
+    suffix == "bot" ||
+    suffix == "bottom" ||
+    suffix.find("up") == 0 ||
+    suffix.find("down") == 0 ||
+    suffix.find("mid") == 0;
+}
+
+int DetectTacticalMarkerTeam(
+  const std::string& href,
+  const std::string& scriptName,
+  const std::string& kind
+)
 {
   const std::string combined = ToAsciiLower(href + " " + scriptName);
+  const std::string lowerScriptName = ToAsciiLower(scriptName);
+  const std::string lowerHrefStem = ToAsciiLower(fs::path(NormalizeDataRefPath(href)).stem().string());
   if (combined.find("teama") != std::string::npos ||
       combined.find("_a.") != std::string::npos ||
       combined.find("_a_") != std::string::npos ||
-      combined.find("buildinga") != std::string::npos)
+      combined.find("/a.") != std::string::npos ||
+      combined.find("buildinga") != std::string::npos ||
+      combined.find("towera") != std::string::npos ||
+      combined.find("fountaina") != std::string::npos ||
+      combined.find("shopa") != std::string::npos)
   {
     return 1;
   }
@@ -5645,9 +7757,27 @@ int DetectTacticalMarkerTeam(const std::string& href, const std::string& scriptN
   if (combined.find("teamb") != std::string::npos ||
       combined.find("_b.") != std::string::npos ||
       combined.find("_b_") != std::string::npos ||
-      combined.find("buildingb") != std::string::npos)
+      combined.find("/b.") != std::string::npos ||
+      combined.find("buildingb") != std::string::npos ||
+      combined.find("towerb") != std::string::npos ||
+      combined.find("fountainb") != std::string::npos ||
+      combined.find("shopb") != std::string::npos)
   {
     return 2;
+  }
+
+  if (kind == "lane-spawner")
+  {
+    if (IsLinuxTacticalLaneTeamScriptName(lowerScriptName, 'a') ||
+        IsLinuxTacticalLaneTeamScriptName(lowerHrefStem, 'a'))
+    {
+      return 1;
+    }
+    if (IsLinuxTacticalLaneTeamScriptName(lowerScriptName, 'b') ||
+        IsLinuxTacticalLaneTeamScriptName(lowerHrefStem, 'b'))
+    {
+      return 2;
+    }
   }
 
   return 0;
@@ -5755,7 +7885,7 @@ void ProbeTacticalMapPreview(const std::string& mapXml, LinuxTacticalMapPreview*
 
     const float translateX = static_cast<float>(atof(ExtractTagValue(item, "translateX", 0).c_str()));
     const float translateY = static_cast<float>(atof(ExtractTagValue(item, "translateY", 0).c_str()));
-    const int team = DetectTacticalMarkerTeam(objectRef, scriptName);
+    const int team = DetectTacticalMarkerTeam(objectRef, scriptName, kind);
 
     if (kind == "tower")
     {
@@ -5896,6 +8026,181 @@ bool ParseMapCatalogEntry(
   return true;
 }
 
+void RecountMapCatalogEntries(LinuxMapCatalog* catalog)
+{
+  if (!catalog)
+  {
+    return;
+  }
+
+  catalog->descriptorCount = catalog->entries.size();
+  catalog->productionDescriptorCount = 0;
+  catalog->pvpCount = 0;
+  catalog->pveCount = 0;
+  catalog->tutorialCount = 0;
+
+  for (size_t i = 0; i < catalog->entries.size(); ++i)
+  {
+    const LinuxMapCatalogEntry& entry = catalog->entries[i];
+    if (entry.productionMode)
+    {
+      ++catalog->productionDescriptorCount;
+    }
+    if (entry.category == "Tutorial")
+    {
+      ++catalog->tutorialCount;
+    }
+    if (entry.category == "PvE")
+    {
+      ++catalog->pveCount;
+    }
+    if (entry.mapType == "PvP")
+    {
+      ++catalog->pvpCount;
+    }
+  }
+}
+
+const LinuxMapCatalogEntry* FindMapCatalogEntryByDescriptor(
+  const std::vector<LinuxMapCatalogEntry>& entries,
+  const std::string& descriptor
+)
+{
+  const std::string target = NormalizeMapSelector(descriptor);
+  if (target.empty())
+  {
+    return 0;
+  }
+
+  for (size_t i = 0; i < entries.size(); ++i)
+  {
+    if (NormalizeMapSelector(entries[i].descriptor) == target)
+    {
+      return &entries[i];
+    }
+  }
+
+  return 0;
+}
+
+std::string ReadAdvMapText(const CTextRef& textRef)
+{
+  return SanitizeLocalizedText(std::string(NStr::ToMBCS(textRef.GetText()).c_str()));
+}
+
+bool BuildCustomMapCatalogEntry(
+  const fs::path& dataRoot,
+  const std::vector<LinuxMapCatalogEntry>& scannedEntries,
+  const NDb::Ptr<NDb::AdvMapDescription>& mapDescription,
+  LinuxMapCatalogEntry* entry
+)
+{
+  if (!entry || !IsValid(mapDescription))
+  {
+    return false;
+  }
+
+  const std::string descriptor =
+    NormalizeDataRefPath(ToStdString(mapDescription->GetDBID().GetFileName()));
+  if (descriptor.empty())
+  {
+    return false;
+  }
+
+  const LinuxMapCatalogEntry* scannedEntry =
+    FindMapCatalogEntryByDescriptor(scannedEntries, descriptor);
+  if (scannedEntry)
+  {
+    *entry = *scannedEntry;
+  }
+  else
+  {
+    const fs::path descriptorPath = dataRoot / descriptor;
+    if (!fs::exists(descriptorPath) ||
+        !fs::is_regular_file(descriptorPath) ||
+        !ParseMapCatalogEntry(dataRoot, descriptorPath, entry))
+    {
+      *entry = LinuxMapCatalogEntry();
+      entry->descriptor = descriptor;
+      entry->category = CategorizeMapDescriptor(fs::path(descriptor));
+    }
+  }
+
+  entry->descriptor = descriptor;
+
+  const std::string title = ReadAdvMapText(mapDescription->title);
+  if (!title.empty())
+  {
+    entry->title = title;
+  }
+
+  const std::string description = ReadAdvMapText(mapDescription->description);
+  if (!description.empty())
+  {
+    entry->description = description;
+  }
+
+  if (entry->title.empty())
+  {
+    entry->title = fs::path(descriptor).stem().string();
+  }
+
+  return true;
+}
+
+bool ProjectMapCatalogToDefaultCustomList(
+  const fs::path& dataRoot,
+  const std::vector<LinuxMapCatalogEntry>& scannedEntries,
+  LinuxMapCatalog* catalog
+)
+{
+  NDb::Ptr<NDb::MapList> mapList =
+    NDb::Get<NDb::MapList>(NDb::DBID("\\Tech\\Default\\_.MAPLST.xdb"));
+  if (!IsValid(mapList))
+  {
+    return false;
+  }
+
+  catalog->customListCount = mapList->maps.size();
+
+  std::vector<LinuxMapCatalogEntry> customEntries;
+  std::set<std::string> emittedDescriptors;
+  size_t skippedMaps = 0;
+  for (int i = 0; i < mapList->maps.size(); ++i)
+  {
+    LinuxMapCatalogEntry entry;
+    if (!BuildCustomMapCatalogEntry(dataRoot, scannedEntries, mapList->maps[i], &entry))
+    {
+      ++skippedMaps;
+      continue;
+    }
+
+    const std::string descriptorKey = NormalizeMapSelector(entry.descriptor);
+    if (!emittedDescriptors.insert(descriptorKey).second)
+    {
+      continue;
+    }
+
+    customEntries.push_back(entry);
+  }
+
+  if (customEntries.empty())
+  {
+    catalog->warnings.push_back("Default custom map list was empty; using scanned map catalog");
+    return false;
+  }
+
+  catalog->entries.swap(customEntries);
+  catalog->customListMatchedCount = catalog->entries.size();
+  catalog->source = "Tech/Default/_.MAPLST.xdb";
+  if (skippedMaps > 0)
+  {
+    catalog->warnings.push_back(
+      NStr::StrFmt("Skipped %lu default custom map entries", static_cast<unsigned long>(skippedMaps)));
+  }
+  return true;
+}
+
 void ProbeMapCatalog(const LinuxClientEnvironment& environment, LinuxMapCatalog* catalog)
 {
   const fs::path baseRoot = environment.baseDir.empty() ? environment.gameRoot : environment.baseDir;
@@ -5934,24 +8239,6 @@ void ProbeMapCatalog(const LinuxClientEnvironment& environment, LinuxMapCatalog*
       continue;
     }
 
-    ++catalog->descriptorCount;
-    if (entry.productionMode)
-    {
-      ++catalog->productionDescriptorCount;
-    }
-    if (entry.category == "Tutorial")
-    {
-      ++catalog->tutorialCount;
-    }
-    if (entry.category == "PvE")
-    {
-      ++catalog->pveCount;
-    }
-    if (entry.mapType == "PvP")
-    {
-      ++catalog->pvpCount;
-    }
-
     entries.push_back(entry);
   }
 
@@ -5964,11 +8251,15 @@ void ProbeMapCatalog(const LinuxClientEnvironment& environment, LinuxMapCatalog*
   });
 
   catalog->entries = entries;
+  catalog->scannedDescriptorCount = entries.size();
+  catalog->source = "filesystem-scan";
+  ProjectMapCatalogToDefaultCustomList(dataRoot, entries, catalog);
+  RecountMapCatalogEntries(catalog);
 
   const size_t maxFeaturedEntries = 6;
-  for (size_t i = 0; i < entries.size() && i < maxFeaturedEntries; ++i)
+  for (size_t i = 0; i < catalog->entries.size() && i < maxFeaturedEntries; ++i)
   {
-    catalog->featuredEntries.push_back(entries[i]);
+    catalog->featuredEntries.push_back(catalog->entries[i]);
   }
 }
 
@@ -7144,6 +9435,45 @@ void ProbeTextureAsset(
   }
 }
 
+void ProbeTexturePayloadFile(
+  const LinuxClientEnvironment& environment,
+  const std::string& textureFileName,
+  LinuxTextureAssetPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  *preview = LinuxTextureAssetPreview();
+  preview->reference = textureFileName;
+  if (textureFileName.empty())
+  {
+    return;
+  }
+
+  const fs::path payloadPath = ResolveDataRefPath(environment, textureFileName, 0);
+  if (payloadPath.empty() || !fs::exists(payloadPath))
+  {
+    preview->warnings.push_back("Texture payload missing for " + textureFileName);
+    return;
+  }
+
+  preview->sourceResolved = true;
+  preview->sourceFile = payloadPath.string();
+  std::string error;
+  if (!LoadArtworkFile(payloadPath, &preview->artwork, &error))
+  {
+    preview->warnings.push_back("Texture payload load failed for " + textureFileName + ": " + error);
+    return;
+  }
+
+  preview->artworkLoaded = true;
+  preview->width = static_cast<unsigned long>(preview->artwork.width);
+  preview->height = static_cast<unsigned long>(preview->artwork.height);
+}
+
 void CopyArtwork(const LinuxLoadingArtwork& source, LinuxLoadingArtwork* target)
 {
   target->width = source.width;
@@ -7891,6 +10221,8 @@ void ProbeSelectedMapPreview(
     preview->warnings.push_back("Selected map file missing");
   }
 
+  ProbeSelectedMapStaticSceneObjects(environment, entry, preview);
+
   preview->settings.source = !entry.mapSettingsRef.empty() ? "descriptor" :
     (!mapSettingsRefFromMap.empty() ? "map" : "missing");
   preview->settings.reference = !entry.mapSettingsRef.empty() ? entry.mapSettingsRef : mapSettingsRefFromMap;
@@ -8185,6 +10517,7 @@ void BuildLinuxPreviewGameLineup(
   gameLineUp->reserve(localMatchPreview.lineup.size());
 
   int nextBotUserId = -1;
+  int nextSyntheticHumanUserId = 1984;
   size_t botIndex = 0;
   for (size_t i = 0; i < localMatchPreview.lineup.size(); ++i)
   {
@@ -8192,7 +10525,10 @@ void BuildLinuxPreviewGameLineup(
     lobby::SGameMember member;
 
     const bool human = slot.human;
-    member.user.userId = human && sessionPreview.currentUserId > 0 ? sessionPreview.currentUserId : nextBotUserId--;
+    member.user.userId =
+      human ?
+        (sessionPreview.currentUserId > 0 ? sessionPreview.currentUserId : nextSyntheticHumanUserId++) :
+        nextBotUserId--;
     member.user.zzimaSex = human ? lobby::ESex::Male : lobby::ESex::Male;
     member.user.nickname = BuildLinuxPreviewNickname(sessionPreview, human, botIndex);
     if (!human)
@@ -9742,6 +12078,4968 @@ void AddHeroTalentPreview(
   preview->defaultTalentPreviews.push_back(talentPreview);
 }
 
+std::string DescribeRawDbResource(const NDb::DbResource* resource)
+{
+  return resource ? ToStdString(resource->GetDBID().GetFormatted()) : std::string();
+}
+
+bool ResolveLinuxDataPayloadFile(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  std::string* resolvedFile
+)
+{
+  if (resolvedFile)
+  {
+    resolvedFile->clear();
+  }
+
+  if (reference.empty())
+  {
+    return false;
+  }
+
+  const fs::path payloadPath = ResolveDataRefPath(environment, reference, 0);
+  if (payloadPath.empty() || !fs::exists(payloadPath))
+  {
+    return false;
+  }
+
+  if (resolvedFile)
+  {
+    *resolvedFile = payloadPath.string();
+  }
+  return true;
+}
+
+void RecordHeroScenePayloadReference(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  std::string* firstResolvedFile,
+  LinuxHeroSceneAssetPreview* preview,
+  std::vector<std::string>* resolvedFiles = 0
+)
+{
+  if (!preview || reference.empty())
+  {
+    return;
+  }
+
+  ++preview->payloadReferenceCount;
+  std::string resolvedFile;
+  if (ResolveLinuxDataPayloadFile(environment, reference, &resolvedFile))
+  {
+    ++preview->payloadResolvedCount;
+    if (firstResolvedFile && (firstResolvedFile->empty() || *firstResolvedFile == reference))
+    {
+      *firstResolvedFile = resolvedFile;
+    }
+    if (resolvedFiles &&
+        std::find(resolvedFiles->begin(), resolvedFiles->end(), resolvedFile) == resolvedFiles->end())
+    {
+      resolvedFiles->push_back(resolvedFile);
+    }
+  }
+}
+
+const size_t kLinuxHeroMeshPreviewMaxSkinPayloadFiles = 32;
+const size_t kLinuxHeroMeshPreviewMaxStaticPayloadFiles = 48;
+const size_t kLinuxHeroMeshPreviewMaxTriangles = 48000;
+const size_t kLinuxHeroMeshPreviewMaxDiffuseTextures = 16;
+const size_t kLinuxMapStaticPreviewMaxObjects = 2048;
+const size_t kLinuxMapStaticPreviewMaxPayloadFiles = 256;
+const size_t kLinuxMapAnimatedPreviewMaxPayloadFiles = 48;
+const size_t kLinuxMapTerrainElementPreviewMaxPayloadFiles = 192;
+const size_t kLinuxMapStaticPreviewMaxDiffuseTextures = 96;
+const size_t kLinuxMapTerrainPreviewMaxSamplesPerAxis = 96;
+const size_t kLinuxMapScriptAreaCircleSegments = 32;
+const unsigned int kLinuxMapTerrainHeightmapVersion = 0x01004D48u;
+
+std::string ExtractLinuxTextureFileName(const NDb::TextureBase* texture)
+{
+  if (const NDb::Texture* texture2d = dynamic_cast<const NDb::Texture*>(texture))
+  {
+    return ToStdString(texture2d->textureFileName);
+  }
+
+  return std::string();
+}
+
+std::string ExtractLinuxSamplerTextureFileName(const NDb::Sampler& sampler)
+{
+  return ExtractLinuxTextureFileName(sampler.texture.GetPtr());
+}
+
+std::string ExtractLinuxSamplerExTextureFileName(const NDb::SamplerEx& sampler)
+{
+  return ExtractLinuxTextureFileName(sampler.texture.GetPtr());
+}
+
+std::string ExtractLinuxMaterialDiffuseTextureFileName(const NDb::Material* material)
+{
+  if (!material)
+  {
+    return std::string();
+  }
+
+  if (const NDb::BasicMaterial* basicMaterial = dynamic_cast<const NDb::BasicMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(basicMaterial->DiffuseMap);
+  }
+  if (const NDb::DropMaterial* dropMaterial = dynamic_cast<const NDb::DropMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(dropMaterial->DiffuseMap);
+  }
+  if (const NDb::BasicFXMaterial* basicFxMaterial = dynamic_cast<const NDb::BasicFXMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(basicFxMaterial->DiffuseMap);
+  }
+  if (const NDb::BasicMaskMaterial* basicMaskMaterial = dynamic_cast<const NDb::BasicMaskMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(basicMaskMaterial->Diffuse);
+  }
+  if (const NDb::DecalMaterial* decalMaterial = dynamic_cast<const NDb::DecalMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(decalMaterial->DiffuseMap);
+  }
+  if (const NDb::DecalTerrainMaterial* decalTerrainMaterial = dynamic_cast<const NDb::DecalTerrainMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(decalTerrainMaterial->DiffuseMap);
+  }
+  if (const NDb::TerrainMaterial* terrainMaterial = dynamic_cast<const NDb::TerrainMaterial*>(material))
+  {
+    std::string textureFileName = ExtractLinuxSamplerExTextureFileName(terrainMaterial->N_DiffuseMap);
+    if (!textureFileName.empty())
+    {
+      return textureFileName;
+    }
+    textureFileName = ExtractLinuxSamplerExTextureFileName(terrainMaterial->A_DiffuseMap);
+    if (!textureFileName.empty())
+    {
+      return textureFileName;
+    }
+    return ExtractLinuxSamplerExTextureFileName(terrainMaterial->B_DiffuseMap);
+  }
+  if (const NDb::ParticleFXMaterial* particleMaterial = dynamic_cast<const NDb::ParticleFXMaterial*>(material))
+  {
+    return ExtractLinuxSamplerExTextureFileName(particleMaterial->DiffuseMap);
+  }
+  if (const NDb::TestTownMaterial* testTownMaterial = dynamic_cast<const NDb::TestTownMaterial*>(material))
+  {
+    return ExtractLinuxSamplerTextureFileName(testTownMaterial->DiffuseMap);
+  }
+
+  return std::string();
+}
+
+size_t RecordHeroSceneSkinDiffuseTexture(
+  const LinuxClientEnvironment& environment,
+  const std::string& textureFileName,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!preview || textureFileName.empty())
+  {
+    return kLinuxHeroPreviewNoDiffuseTexture;
+  }
+
+  for (size_t i = 0; i < preview->skinDiffuseTextureFiles.size(); ++i)
+  {
+    if (preview->skinDiffuseTextureFiles[i] == textureFileName)
+    {
+      return i;
+    }
+  }
+
+  if (preview->skinDiffuseTextureFiles.size() >= kLinuxHeroMeshPreviewMaxDiffuseTextures)
+  {
+    return kLinuxHeroPreviewNoDiffuseTexture;
+  }
+
+  const size_t textureIndex = preview->skinDiffuseTextureFiles.size();
+  preview->skinDiffuseTextureFiles.push_back(textureFileName);
+
+  LinuxTextureAssetPreview texturePreview;
+  ProbeTexturePayloadFile(environment, textureFileName, &texturePreview);
+  preview->skinDiffuseTextures.push_back(texturePreview);
+  if (!preview->skinDiffuseTexture.artworkLoaded && texturePreview.artworkLoaded)
+  {
+    preview->skinDiffuseTexture = texturePreview;
+  }
+
+  return textureIndex;
+}
+
+void RecordHeroSceneSkinGeometryPayload(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!preview || reference.empty())
+  {
+    return;
+  }
+
+  ++preview->payloadReferenceCount;
+  std::string resolvedFile;
+  if (!ResolveLinuxDataPayloadFile(environment, reference, &resolvedFile))
+  {
+    return;
+  }
+
+  ++preview->payloadResolvedCount;
+  if (preview->firstSkinGeometryFile.empty() || preview->firstSkinGeometryFile == reference)
+  {
+    preview->firstSkinGeometryFile = resolvedFile;
+  }
+
+  for (size_t i = 0; i < preview->skinGeometryFiles.size(); ++i)
+  {
+    if (preview->skinGeometryFiles[i] == resolvedFile)
+    {
+      if (i < preview->skinGeometryPayloads.size())
+      {
+        if (preview->skinGeometryPayloads[i].rootGeometryFile.empty())
+        {
+          preview->skinGeometryPayloads[i].rootGeometryFile =
+            ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+        }
+        if (preview->skinGeometryPayloads[i].materialDiffuseTextureIndices.empty() &&
+            !materialDiffuseTextureIndices.empty())
+        {
+          preview->skinGeometryPayloads[i].materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+        }
+      }
+      return;
+    }
+  }
+
+  if (preview->skinGeometryFiles.size() < kLinuxHeroMeshPreviewMaxSkinPayloadFiles)
+  {
+    preview->skinGeometryFiles.push_back(resolvedFile);
+    LinuxHeroSkinGeometryPayloadPreview payloadPreview;
+    payloadPreview.geometryFile = resolvedFile;
+    payloadPreview.rootGeometryFile =
+      ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+    payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+    preview->skinGeometryPayloads.push_back(payloadPreview);
+  }
+}
+
+void RecordHeroSceneStaticGeometryPayload(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  const Placement& placement,
+  const Placement& originalPlacement,
+  const Placement& locatorParentPlacement,
+  bool locatorJointPlacement,
+  const std::string& locatorJointName,
+  const Placement& locatorOffset,
+  unsigned int locatorFlags,
+  unsigned int attachFlags,
+  NDb::ESCOrientation orientation,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!preview || reference.empty())
+  {
+    return;
+  }
+
+  ++preview->payloadReferenceCount;
+  std::string resolvedFile;
+  if (!ResolveLinuxDataPayloadFile(environment, reference, &resolvedFile))
+  {
+    return;
+  }
+
+  ++preview->payloadResolvedCount;
+  if (preview->staticGeometryFile.empty() || preview->staticGeometryFile == reference)
+  {
+    preview->staticGeometryFile = resolvedFile;
+  }
+
+  if (preview->staticGeometryPayloads.size() >= kLinuxHeroMeshPreviewMaxStaticPayloadFiles)
+  {
+    return;
+  }
+
+  LinuxHeroStaticGeometryPayloadPreview payloadPreview;
+  payloadPreview.geometryFile = resolvedFile;
+  payloadPreview.rootGeometryFile =
+    ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+  payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.placement = placement;
+  payloadPreview.originalPlacement = originalPlacement;
+  payloadPreview.locatorParentPlacement = locatorParentPlacement;
+  payloadPreview.locatorJointPlacement = locatorJointPlacement;
+  payloadPreview.locatorJointName = locatorJointName;
+  payloadPreview.locatorOffset = locatorOffset;
+  payloadPreview.locatorFlags = locatorFlags;
+  payloadPreview.attachFlags = attachFlags;
+  payloadPreview.orientation = orientation;
+  preview->staticGeometryPayloads.push_back(payloadPreview);
+}
+
+void AppendHeroSceneAssetSample(
+  LinuxHeroSceneAssetPreview* preview,
+  const std::string& sample
+)
+{
+  if (!preview || sample.empty() || preview->samples.size() >= 8)
+  {
+    return;
+  }
+
+  preview->samples.push_back(sample);
+}
+
+bool IsValidHeroSceneAabb(const NDb::AABB& aabb)
+{
+  return
+    aabb.minX < aabb.maxX &&
+    aabb.minY < aabb.maxY &&
+    aabb.minZ < aabb.maxZ;
+}
+
+void MergeHeroSceneAabb(
+  const NDb::AABB& aabb,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!preview || !IsValidHeroSceneAabb(aabb))
+  {
+    return;
+  }
+
+  if (!preview->boundsValid)
+  {
+    preview->minX = aabb.minX;
+    preview->maxX = aabb.maxX;
+    preview->minY = aabb.minY;
+    preview->maxY = aabb.maxY;
+    preview->minZ = aabb.minZ;
+    preview->maxZ = aabb.maxZ;
+    preview->boundsValid = true;
+    return;
+  }
+
+  preview->minX = std::min(preview->minX, aabb.minX);
+  preview->maxX = std::max(preview->maxX, aabb.maxX);
+  preview->minY = std::min(preview->minY, aabb.minY);
+  preview->maxY = std::max(preview->maxY, aabb.maxY);
+  preview->minZ = std::min(preview->minZ, aabb.minZ);
+  preview->maxZ = std::max(preview->maxZ, aabb.maxZ);
+}
+
+template <typename T>
+bool StaticVectorPayloadRangeValid(
+  const StaticVector<T>& values,
+  const unsigned char* payload,
+  size_t payloadSize
+)
+{
+  const size_t count = values.size();
+  if (count == 0)
+  {
+    return true;
+  }
+
+  const uintptr_t payloadBegin = reinterpret_cast<uintptr_t>(payload);
+  const uintptr_t payloadEnd = payloadBegin + payloadSize;
+  const uintptr_t valuesBegin = reinterpret_cast<uintptr_t>(values.begin());
+  if (valuesBegin < payloadBegin || valuesBegin > payloadEnd)
+  {
+    return false;
+  }
+
+  return count <= (payloadEnd - valuesBegin) / sizeof(T);
+}
+
+bool ReadLinuxStaticStringPreview(
+  const StaticString& value,
+  const unsigned char* payload,
+  size_t payloadSize,
+  std::string* result
+)
+{
+  if (result)
+  {
+    result->clear();
+  }
+  if (!payload)
+  {
+    return false;
+  }
+
+  const unsigned int* fields = reinterpret_cast<const unsigned int*>(&value);
+  const unsigned int offset = fields[0];
+  const unsigned int length = fields[1];
+  if (offset == 0 || length == 0 || length > 512)
+  {
+    return false;
+  }
+
+  const uintptr_t payloadBegin = reinterpret_cast<uintptr_t>(payload);
+  const uintptr_t payloadEnd = payloadBegin + payloadSize;
+  const uintptr_t stringBegin = reinterpret_cast<uintptr_t>(&value) + offset;
+  if (stringBegin < payloadBegin || stringBegin > payloadEnd || length > payloadEnd - stringBegin)
+  {
+    return false;
+  }
+
+  const char* text = reinterpret_cast<const char*>(stringBegin);
+  if (text[length - 1] != '\0')
+  {
+    return false;
+  }
+
+  if (result)
+  {
+    result->assign(text, text + length - 1);
+  }
+  return true;
+}
+
+bool LinuxSkeletonMatrixFinite(const Matrix43& matrix)
+{
+  const float* values = reinterpret_cast<const float*>(&matrix);
+  for (size_t i = 0; i < 12; ++i)
+  {
+    if (!std::isfinite(values[i]) || fabsf(values[i]) > 1000000.0f)
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool LinuxFloatVectorFinite(const float* values, size_t count, float absLimit)
+{
+  if (!values)
+  {
+    return false;
+  }
+
+  for (size_t i = 0; i < count; ++i)
+  {
+    if (!std::isfinite(values[i]) || fabsf(values[i]) > absLimit)
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool LinuxAnimationVec3Finite(const CVec3& value, float absLimit)
+{
+  return LinuxFloatVectorFinite(reinterpret_cast<const float*>(&value), 3, absLimit);
+}
+
+bool LinuxAnimationVec4Finite(const CVec4& value, float absLimit)
+{
+  return LinuxFloatVectorFinite(reinterpret_cast<const float*>(&value), 4, absLimit);
+}
+
+std::string LinuxAnimationSignatureString(const char signature[4])
+{
+  std::string result;
+  result.reserve(4);
+  for (size_t i = 0; i < 4; ++i)
+  {
+    const unsigned char value = static_cast<unsigned char>(signature[i]);
+    result.push_back(isprint(value) ? static_cast<char>(value) : '.');
+  }
+  return result;
+}
+
+bool IsFiniteLinuxMeshPreviewVertex(const LinuxHeroMeshPreviewVertex& vertex)
+{
+  return
+    std::isfinite(vertex.x) &&
+    std::isfinite(vertex.y) &&
+    std::isfinite(vertex.z) &&
+    fabs(vertex.x) < 100000.0f &&
+    fabs(vertex.y) < 100000.0f &&
+    fabs(vertex.z) < 100000.0f;
+}
+
+bool ReadLinuxMeshFloat3(
+  const char* data,
+  size_t dataSize,
+  size_t offset,
+  LinuxHeroMeshPreviewVertex* vertex
+)
+{
+  if (!data || !vertex || offset > dataSize || dataSize - offset < sizeof(float) * 3)
+  {
+    return false;
+  }
+
+  float values[3] = {0.0f, 0.0f, 0.0f};
+  memcpy(values, data + offset, sizeof(values));
+  *vertex = LinuxHeroMeshPreviewVertex(values[0], values[1], values[2]);
+  return IsFiniteLinuxMeshPreviewVertex(*vertex);
+}
+
+bool ReadLinuxMeshFloat2(
+  const char* data,
+  size_t dataSize,
+  size_t offset,
+  float* first,
+  float* second
+)
+{
+  if (!data || !first || !second || offset > dataSize || dataSize - offset < sizeof(float) * 2)
+  {
+    return false;
+  }
+
+  float values[2] = {0.0f, 0.0f};
+  memcpy(values, data + offset, sizeof(values));
+  if (!std::isfinite(values[0]) || !std::isfinite(values[1]))
+  {
+    return false;
+  }
+
+  *first = values[0];
+  *second = values[1];
+  return true;
+}
+
+bool ReadLinuxMeshFloat4(
+  const char* data,
+  size_t dataSize,
+  size_t offset,
+  float values[4]
+)
+{
+  if (!data || !values || offset > dataSize || dataSize - offset < sizeof(float) * 4)
+  {
+    return false;
+  }
+
+  memcpy(values, data + offset, sizeof(float) * 4);
+  for (size_t i = 0; i < 4; ++i)
+  {
+    if (!std::isfinite(values[i]) || values[i] < -0.001f || values[i] > 1.001f)
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool ReadLinuxMeshBytes4(
+  const char* data,
+  size_t dataSize,
+  size_t offset,
+  unsigned char values[4]
+)
+{
+  if (!data || !values || offset > dataSize || dataSize - offset < 4)
+  {
+    return false;
+  }
+
+  memcpy(values, data + offset, 4);
+  return true;
+}
+
+bool FindLinuxMeshPositionElement(
+  const H6FragmentHeader& fragment,
+  const unsigned char* payload,
+  size_t payloadSize,
+  unsigned int* positionOffset
+)
+{
+  if (!positionOffset ||
+      !StaticVectorPayloadRangeValid(fragment.vertexElementDescriptor, payload, payloadSize))
+  {
+    return false;
+  }
+
+  for (unsigned int i = 0; i < fragment.vertexElementDescriptor.size(); ++i)
+  {
+    const Render::VertexElementDescriptor& descriptor = fragment.vertexElementDescriptor[i];
+    if (descriptor.stream == 0 &&
+        descriptor.usage == Render::VERETEXELEMENTUSAGE_POSITION &&
+        descriptor.type == Render::VERTEXELEMENTTYPE_FLOAT3)
+    {
+      *positionOffset = descriptor.offset;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool FindLinuxMeshTexCoordElement(
+  const H6FragmentHeader& fragment,
+  const unsigned char* payload,
+  size_t payloadSize,
+  unsigned int* texCoordOffset
+)
+{
+  if (!texCoordOffset ||
+      !StaticVectorPayloadRangeValid(fragment.vertexElementDescriptor, payload, payloadSize))
+  {
+    return false;
+  }
+
+  for (unsigned int i = 0; i < fragment.vertexElementDescriptor.size(); ++i)
+  {
+    const Render::VertexElementDescriptor& descriptor = fragment.vertexElementDescriptor[i];
+    if (descriptor.stream == 0 &&
+        descriptor.usage == Render::VERETEXELEMENTUSAGE_TEXCOORD &&
+        descriptor.usageIndex == 0 &&
+        descriptor.type == Render::VERTEXELEMENTTYPE_FLOAT2)
+    {
+      *texCoordOffset = descriptor.offset;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool FindLinuxMeshNormalElement(
+  const H6FragmentHeader& fragment,
+  const unsigned char* payload,
+  size_t payloadSize,
+  unsigned int* normalOffset
+)
+{
+  if (!normalOffset ||
+      !StaticVectorPayloadRangeValid(fragment.vertexElementDescriptor, payload, payloadSize))
+  {
+    return false;
+  }
+
+  for (unsigned int i = 0; i < fragment.vertexElementDescriptor.size(); ++i)
+  {
+    const Render::VertexElementDescriptor& descriptor = fragment.vertexElementDescriptor[i];
+    if (descriptor.stream == 0 &&
+        descriptor.usage == Render::VERETEXELEMENTUSAGE_NORMAL &&
+        descriptor.usageIndex == 0 &&
+        descriptor.type == Render::VERTEXELEMENTTYPE_FLOAT3)
+    {
+      *normalOffset = descriptor.offset;
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool FindLinuxMeshSkinningElements(
+  const H6FragmentHeader& fragment,
+  const unsigned char* payload,
+  size_t payloadSize,
+  unsigned int* blendWeightOffset,
+  unsigned int* blendIndicesOffset
+)
+{
+  if (!blendWeightOffset ||
+      !blendIndicesOffset ||
+      !StaticVectorPayloadRangeValid(fragment.vertexElementDescriptor, payload, payloadSize))
+  {
+    return false;
+  }
+
+  bool foundWeights = false;
+  bool foundIndices = false;
+  for (unsigned int i = 0; i < fragment.vertexElementDescriptor.size(); ++i)
+  {
+    const Render::VertexElementDescriptor& descriptor = fragment.vertexElementDescriptor[i];
+    if (descriptor.stream == 0 &&
+        descriptor.usage == Render::VERETEXELEMENTUSAGE_BLENDWEIGHT &&
+        descriptor.usageIndex == 0 &&
+        descriptor.type == Render::VERTEXELEMENTTYPE_FLOAT4)
+    {
+      *blendWeightOffset = descriptor.offset;
+      foundWeights = true;
+    }
+    else if (descriptor.stream == 0 &&
+             descriptor.usage == Render::VERETEXELEMENTUSAGE_BLENDINDICES &&
+             descriptor.usageIndex == 0 &&
+             (descriptor.type == Render::VERTEXELEMENTTYPE_D3DCOLOR ||
+              descriptor.type == Render::VERTEXELEMENTTYPE_UBYTE4))
+    {
+      *blendIndicesOffset = descriptor.offset;
+      foundIndices = true;
+    }
+  }
+
+  return foundWeights && foundIndices;
+}
+
+bool ReadLinuxHeroMeshPreviewVertex(
+  const H6FragmentHeader& fragment,
+  unsigned int localVertexIndex,
+  unsigned int positionOffset,
+  const char* vertexBuffer,
+  size_t vertexBufferSize,
+  LinuxHeroMeshPreviewVertex* vertex
+)
+{
+  if (!vertexBuffer || !vertex || fragment.vertexStrideSizeInBytes == 0)
+  {
+    return false;
+  }
+
+  const long long effectiveVertex =
+    static_cast<long long>(fragment.baseVertexIndex) + static_cast<long long>(localVertexIndex);
+  if (effectiveVertex < 0)
+  {
+    return false;
+  }
+
+  const unsigned long long stride = fragment.vertexStrideSizeInBytes;
+  const unsigned long long streamOffset = fragment.streamOffset;
+  const unsigned long long vertexOffset =
+    streamOffset + static_cast<unsigned long long>(effectiveVertex) * stride + positionOffset;
+  if (vertexOffset > static_cast<unsigned long long>(vertexBufferSize))
+  {
+    return false;
+  }
+
+  return ReadLinuxMeshFloat3(
+    vertexBuffer,
+    vertexBufferSize,
+    static_cast<size_t>(vertexOffset),
+    vertex);
+}
+
+bool ReadLinuxHeroMeshPreviewTexCoord(
+  const H6FragmentHeader& fragment,
+  unsigned int localVertexIndex,
+  unsigned int texCoordOffset,
+  const char* vertexBuffer,
+  size_t vertexBufferSize,
+  LinuxHeroMeshPreviewVertex* vertex
+)
+{
+  if (!vertexBuffer || !vertex || fragment.vertexStrideSizeInBytes == 0)
+  {
+    return false;
+  }
+
+  const long long effectiveVertex =
+    static_cast<long long>(fragment.baseVertexIndex) + static_cast<long long>(localVertexIndex);
+  if (effectiveVertex < 0)
+  {
+    return false;
+  }
+
+  const unsigned long long stride = fragment.vertexStrideSizeInBytes;
+  const unsigned long long streamOffset = fragment.streamOffset;
+  const unsigned long long vertexOffset =
+    streamOffset + static_cast<unsigned long long>(effectiveVertex) * stride + texCoordOffset;
+  float u = 0.0f;
+  float v = 0.0f;
+  if (!ReadLinuxMeshFloat2(vertexBuffer, vertexBufferSize, static_cast<size_t>(vertexOffset), &u, &v))
+  {
+    return false;
+  }
+
+  vertex->u = u;
+  vertex->v = v;
+  vertex->texCoordValid = true;
+  return true;
+}
+
+bool ReadLinuxHeroMeshPreviewNormal(
+  const H6FragmentHeader& fragment,
+  unsigned int localVertexIndex,
+  unsigned int normalOffset,
+  const char* vertexBuffer,
+  size_t vertexBufferSize,
+  LinuxHeroMeshPreviewVertex* vertex
+)
+{
+  if (!vertexBuffer || !vertex || fragment.vertexStrideSizeInBytes == 0)
+  {
+    return false;
+  }
+
+  const long long effectiveVertex =
+    static_cast<long long>(fragment.baseVertexIndex) + static_cast<long long>(localVertexIndex);
+  if (effectiveVertex < 0)
+  {
+    return false;
+  }
+
+  const unsigned long long stride = fragment.vertexStrideSizeInBytes;
+  const unsigned long long streamOffset = fragment.streamOffset;
+  const unsigned long long vertexOffset =
+    streamOffset + static_cast<unsigned long long>(effectiveVertex) * stride + normalOffset;
+
+  LinuxHeroMeshPreviewVertex normal;
+  if (!ReadLinuxMeshFloat3(vertexBuffer, vertexBufferSize, static_cast<size_t>(vertexOffset), &normal))
+  {
+    return false;
+  }
+
+  const float lengthSq = normal.x * normal.x + normal.y * normal.y + normal.z * normal.z;
+  if (lengthSq < 0.000001f)
+  {
+    return false;
+  }
+
+  const float invLength = 1.0f / sqrtf(lengthSq);
+  vertex->nx = normal.x * invLength;
+  vertex->ny = normal.y * invLength;
+  vertex->nz = normal.z * invLength;
+  vertex->normalValid = true;
+  return true;
+}
+
+bool ReadLinuxHeroMeshPreviewSkinning(
+  const H6FragmentHeader& fragment,
+  unsigned int localVertexIndex,
+  unsigned int blendWeightOffset,
+  unsigned int blendIndicesOffset,
+  const StaticVector<unsigned short>* fragmentReindex,
+  unsigned int skeletonJointsCount,
+  const char* vertexBuffer,
+  size_t vertexBufferSize,
+  LinuxHeroMeshPreviewVertex* vertex,
+  bool* reindexedVertex,
+  size_t* invalidInfluenceCount
+)
+{
+  if (!vertexBuffer || !vertex || fragment.vertexStrideSizeInBytes == 0)
+  {
+    return false;
+  }
+
+  const long long effectiveVertex =
+    static_cast<long long>(fragment.baseVertexIndex) + static_cast<long long>(localVertexIndex);
+  if (effectiveVertex < 0)
+  {
+    return false;
+  }
+
+  const unsigned long long stride = fragment.vertexStrideSizeInBytes;
+  const unsigned long long streamOffset = fragment.streamOffset;
+  const unsigned long long vertexBase =
+    streamOffset + static_cast<unsigned long long>(effectiveVertex) * stride;
+
+  float weights[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+  unsigned char indices[4] = {0, 0, 0, 0};
+  if (!ReadLinuxMeshFloat4(
+        vertexBuffer,
+        vertexBufferSize,
+        static_cast<size_t>(vertexBase + blendWeightOffset),
+        weights) ||
+      !ReadLinuxMeshBytes4(
+        vertexBuffer,
+        vertexBufferSize,
+        static_cast<size_t>(vertexBase + blendIndicesOffset),
+        indices))
+  {
+    return false;
+  }
+
+  const float weightSum = weights[0] + weights[1] + weights[2] + weights[3];
+  if (weightSum < 0.000001f || weightSum > 1.25f)
+  {
+    return false;
+  }
+
+  for (size_t i = 0; i < 4; ++i)
+  {
+    vertex->blendWeights[i] = weights[i];
+    unsigned int mappedIndex = indices[i];
+    if (fragmentReindex)
+    {
+      if (mappedIndex >= fragmentReindex->size())
+      {
+        if (weights[i] > 0.0001f && invalidInfluenceCount)
+        {
+          ++(*invalidInfluenceCount);
+        }
+        return false;
+      }
+      mappedIndex = (*fragmentReindex)[mappedIndex];
+      if (reindexedVertex)
+      {
+        *reindexedVertex = true;
+      }
+    }
+    if (skeletonJointsCount > 0 && mappedIndex >= skeletonJointsCount)
+    {
+      if (weights[i] > 0.0001f && invalidInfluenceCount)
+      {
+        ++(*invalidInfluenceCount);
+      }
+      return false;
+    }
+    vertex->blendIndices[i] = static_cast<unsigned short>(mappedIndex);
+  }
+  vertex->skinningValid = true;
+  return true;
+}
+
+void MergeLinuxHeroMeshPreviewBounds(
+  const LinuxHeroMeshPreviewVertex& vertex,
+  LinuxHeroMeshPreview* meshPreview,
+  size_t* validVertexCount
+)
+{
+  if (!meshPreview || !validVertexCount)
+  {
+    return;
+  }
+
+  if (*validVertexCount == 0)
+  {
+    meshPreview->minX = vertex.x;
+    meshPreview->maxX = vertex.x;
+    meshPreview->minY = vertex.y;
+    meshPreview->maxY = vertex.y;
+    meshPreview->minZ = vertex.z;
+    meshPreview->maxZ = vertex.z;
+  }
+  else
+  {
+    meshPreview->minX = std::min(meshPreview->minX, vertex.x);
+    meshPreview->maxX = std::max(meshPreview->maxX, vertex.x);
+    meshPreview->minY = std::min(meshPreview->minY, vertex.y);
+    meshPreview->maxY = std::max(meshPreview->maxY, vertex.y);
+    meshPreview->minZ = std::min(meshPreview->minZ, vertex.z);
+    meshPreview->maxZ = std::max(meshPreview->maxZ, vertex.z);
+  }
+
+  ++(*validVertexCount);
+  meshPreview->boundsValid = true;
+}
+
+void MergeLinuxHeroMeshPreviewBounds(
+  const LinuxHeroMeshPreview& source,
+  LinuxHeroMeshPreview* destination
+)
+{
+  if (!destination || !source.boundsValid)
+  {
+    return;
+  }
+
+  if (!destination->boundsValid)
+  {
+    destination->minX = source.minX;
+    destination->maxX = source.maxX;
+    destination->minY = source.minY;
+    destination->maxY = source.maxY;
+    destination->minZ = source.minZ;
+    destination->maxZ = source.maxZ;
+    destination->boundsValid = true;
+    return;
+  }
+
+  destination->minX = std::min(destination->minX, source.minX);
+  destination->maxX = std::max(destination->maxX, source.maxX);
+  destination->minY = std::min(destination->minY, source.minY);
+  destination->maxY = std::max(destination->maxY, source.maxY);
+  destination->minZ = std::min(destination->minZ, source.minZ);
+  destination->maxZ = std::max(destination->maxZ, source.maxZ);
+}
+
+void AppendLinuxHeroMeshPreviewWarning(
+  std::vector<std::string>* warnings,
+  const std::string& sourceFile,
+  const std::string& message
+)
+{
+  if (!warnings || message.empty())
+  {
+    return;
+  }
+
+  if (sourceFile.empty())
+  {
+    warnings->push_back(message);
+    return;
+  }
+
+  warnings->push_back(message + ": " + fs::path(sourceFile).filename().string());
+}
+
+bool ResolveLinuxHeroMeshFragmentReindex(
+  const GeometryReindex* geometryReindex,
+  size_t fragmentIndex,
+  const unsigned char* payload,
+  size_t payloadSize,
+  const StaticVector<unsigned short>** fragmentReindex
+)
+{
+  if (fragmentReindex)
+  {
+    *fragmentReindex = 0;
+  }
+  if (!geometryReindex || !fragmentReindex ||
+      !StaticVectorPayloadRangeValid(geometryReindex->reindex, payload, payloadSize) ||
+      fragmentIndex >= geometryReindex->reindex.size())
+  {
+    return false;
+  }
+
+  const StaticVector<unsigned short>& candidate = geometryReindex->reindex[fragmentIndex];
+  if (!StaticVectorPayloadRangeValid(candidate, payload, payloadSize) || candidate.size() == 0)
+  {
+    return false;
+  }
+
+  *fragmentReindex = &candidate;
+  return true;
+}
+
+unsigned int ReadLinuxMeshUInt32(const char* data, size_t offset)
+{
+  unsigned int value = 0;
+  memcpy(&value, data + offset, sizeof(value));
+  return value;
+}
+
+bool ProbeLinuxHeroSkinMeshRendererGeometry(
+  const std::vector<char>& payload,
+  const std::string& skinGeometryFile,
+  LinuxHeroMeshPreview* meshPreview,
+  std::vector<std::string>* warnings
+)
+{
+  if (!meshPreview || payload.empty())
+  {
+    return false;
+  }
+
+  Render::MeshGeometry* rendererGeometry =
+    Render::RenderResourceManager::LoadMeshGeometry(&payload[0], true, false);
+  if (!rendererGeometry)
+  {
+    AppendLinuxHeroMeshPreviewWarning(
+      warnings,
+      skinGeometryFile,
+      "Maintained Render::LoadMeshGeometry rejected selected hero skin payload");
+    return false;
+  }
+
+  meshPreview->rendererGeometryReady = true;
+  meshPreview->rendererGeometryReindexReady = rendererGeometry->pReindex != 0;
+  meshPreview->rendererGeometryPayloadReadyCount = 1;
+  meshPreview->rendererGeometryReindexPayloadReadyCount =
+    rendererGeometry->pReindex != 0 ? 1 : 0;
+  meshPreview->rendererGeometryFragmentCount = rendererGeometry->fragmentCount;
+  meshPreview->rendererGeometryMaterialCount = rendererGeometry->materialCount;
+  meshPreview->rendererGeometryTriangleCount = rendererGeometry->triangleCount;
+
+  delete rendererGeometry;
+  return true;
+}
+
+bool ProbeLinuxHeroSkinMeshPayloadFile(
+  const std::string& skinGeometryFile,
+  const std::vector<size_t>* materialDiffuseTextureIndices,
+  size_t maxPreviewTriangles,
+  LinuxHeroMeshPreview* meshPreview,
+  std::vector<std::string>* warnings
+)
+{
+  if (!meshPreview)
+  {
+    return false;
+  }
+
+  *meshPreview = LinuxHeroMeshPreview();
+  meshPreview->attempted = true;
+  meshPreview->payloadCount = skinGeometryFile.empty() ? 0 : 1;
+  meshPreview->sourceFile = skinGeometryFile;
+  if (!skinGeometryFile.empty())
+  {
+    meshPreview->sourceFiles.push_back(skinGeometryFile);
+  }
+
+  if (skinGeometryFile.empty())
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero has no resolved skin geometry payload");
+    return false;
+  }
+
+  std::ifstream input(skinGeometryFile.c_str(), std::ios::binary);
+  if (!input)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Cannot open selected hero skin geometry payload");
+    return false;
+  }
+
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSize = input.tellg();
+  if (fileSize <= 0)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload is empty");
+    return false;
+  }
+
+  input.seekg(0, std::ios::beg);
+  std::vector<char> payload(static_cast<size_t>(fileSize));
+  input.read(&payload[0], payload.size());
+  if (!input)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Failed to read selected hero skin geometry payload");
+    return false;
+  }
+
+  meshPreview->sourceFileSize = payload.size();
+  if (payload.size() < sizeof(H6GeometryFileHeader))
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload is smaller than an H6 header");
+    return false;
+  }
+
+  const unsigned char* payloadBytes = reinterpret_cast<const unsigned char*>(&payload[0]);
+  const H6GeometryFileHeader* header =
+    reinterpret_cast<const H6GeometryFileHeader*>(&payload[0]);
+  if (header->signature != Signs::skinSIGN && header->signature != Signs::skinSIGNOld)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload has an unexpected signature");
+    return false;
+  }
+
+  if (!StaticVectorPayloadRangeValid(header->fragments, payloadBytes, payload.size()))
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry fragment table is outside the payload");
+    return false;
+  }
+
+  const size_t fragmentCount = std::min<size_t>(header->fragmentCount, header->fragments.size());
+  if (fragmentCount == 0)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload has no fragments");
+    return false;
+  }
+
+  const unsigned long long vertexEnd =
+    static_cast<unsigned long long>(header->vbOffset) + header->commonVertexBufferSizeInBytes;
+  const unsigned long long indexEnd =
+    static_cast<unsigned long long>(header->ibOffset) + header->commonIndexBufferSizeInBytes;
+  if (header->vbOffset >= payload.size() ||
+      header->ibOffset >= payload.size() ||
+      header->vbOffset >= header->ibOffset ||
+      vertexEnd > payload.size() ||
+      indexEnd > payload.size())
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload has invalid VB/IB offsets");
+    return false;
+  }
+
+  meshPreview->headerValid = true;
+  meshPreview->fragmentCount = header->fragmentCount;
+  meshPreview->materialCount = header->materialCount;
+  meshPreview->jointsCount = header->jointsCount;
+  meshPreview->vertexBufferBytes = header->commonVertexBufferSizeInBytes;
+  meshPreview->indexBufferBytes = header->commonIndexBufferSizeInBytes;
+  meshPreview->indexCount = header->commonIndexBufferSizeInBytes / sizeof(unsigned int);
+
+  ProbeLinuxHeroSkinMeshRendererGeometry(payload, skinGeometryFile, meshPreview, warnings);
+
+  const char* vertexBuffer = &payload[0] + header->vbOffset;
+  const char* indexBuffer = &payload[0] + header->ibOffset;
+  const GeometryReindex* geometryReindex = 0;
+  if (header->jointsCount > 0 &&
+      header->reindexOffset > 0 &&
+      header->reindexOffset < payload.size() &&
+      payload.size() - header->reindexOffset >= sizeof(GeometryReindex))
+  {
+    geometryReindex = reinterpret_cast<const GeometryReindex*>(&payload[0] + header->reindexOffset);
+    meshPreview->skinningReindexValid =
+      StaticVectorPayloadRangeValid(geometryReindex->reindex, payloadBytes, payload.size()) &&
+      geometryReindex->reindex.size() >= fragmentCount;
+  }
+  size_t validVertexCount = 0;
+  size_t totalTriangles = 0;
+
+  for (size_t i = 0; i < fragmentCount; ++i)
+  {
+    const H6FragmentHeader& fragment = header->fragments[i];
+    unsigned int positionOffset = 0;
+    if (!FindLinuxMeshPositionElement(fragment, payloadBytes, payload.size(), &positionOffset))
+    {
+      AppendLinuxHeroMeshPreviewWarning(
+        warnings,
+        skinGeometryFile,
+        NStr::StrFmt("Selected hero skin fragment %lu has no FLOAT3 POSITION stream", static_cast<unsigned long>(i)));
+      continue;
+    }
+
+    if (meshPreview->vertexStrideBytes == 0)
+    {
+      meshPreview->vertexStrideBytes = fragment.vertexStrideSizeInBytes;
+      meshPreview->positionOffsetBytes = positionOffset;
+    }
+
+    meshPreview->vertexCount += fragment.numVertices;
+    totalTriangles += fragment.primitiveCount;
+
+    for (unsigned int vertexIndex = 0; vertexIndex < fragment.numVertices; ++vertexIndex)
+    {
+      LinuxHeroMeshPreviewVertex vertex;
+      if (ReadLinuxHeroMeshPreviewVertex(
+            fragment,
+            vertexIndex,
+            positionOffset,
+            vertexBuffer,
+            meshPreview->vertexBufferBytes,
+            &vertex))
+      {
+        MergeLinuxHeroMeshPreviewBounds(vertex, meshPreview, &validVertexCount);
+      }
+    }
+  }
+
+  meshPreview->triangleCount = totalTriangles;
+  if (validVertexCount == 0 || totalTriangles == 0)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload did not expose drawable vertices");
+    return false;
+  }
+
+  if (maxPreviewTriangles > 0)
+  {
+    const size_t triangleStep =
+      totalTriangles > maxPreviewTriangles ?
+      (totalTriangles + maxPreviewTriangles - 1) / maxPreviewTriangles :
+      1;
+    meshPreview->triangleVertices.reserve(std::min(totalTriangles, maxPreviewTriangles) * 3);
+
+    size_t triangleSerial = 0;
+    for (size_t fragmentIndex = 0; fragmentIndex < fragmentCount; ++fragmentIndex)
+    {
+      const H6FragmentHeader& fragment = header->fragments[fragmentIndex];
+      unsigned int positionOffset = 0;
+      if (!FindLinuxMeshPositionElement(fragment, payloadBytes, payload.size(), &positionOffset))
+      {
+        triangleSerial += fragment.primitiveCount;
+        continue;
+      }
+      unsigned int texCoordOffset = 0;
+      const bool fragmentHasTexCoord =
+        FindLinuxMeshTexCoordElement(fragment, payloadBytes, payload.size(), &texCoordOffset);
+      unsigned int normalOffset = 0;
+      const bool fragmentHasNormal =
+        FindLinuxMeshNormalElement(fragment, payloadBytes, payload.size(), &normalOffset);
+      if (meshPreview->normalOffsetBytes == 0 && fragmentHasNormal)
+      {
+        meshPreview->normalOffsetBytes = normalOffset;
+      }
+      unsigned int blendWeightOffset = 0;
+      unsigned int blendIndicesOffset = 0;
+      const bool fragmentHasSkinning =
+        FindLinuxMeshSkinningElements(
+          fragment,
+          payloadBytes,
+          payload.size(),
+          &blendWeightOffset,
+          &blendIndicesOffset);
+      const StaticVector<unsigned short>* fragmentReindex = 0;
+      const bool fragmentHasSkinningReindex =
+        fragmentHasSkinning &&
+        ResolveLinuxHeroMeshFragmentReindex(
+          geometryReindex,
+          fragmentIndex,
+          payloadBytes,
+          payload.size(),
+          &fragmentReindex);
+      if (meshPreview->blendWeightOffsetBytes == 0 && fragmentHasSkinning)
+      {
+        meshPreview->blendWeightOffsetBytes = blendWeightOffset;
+        meshPreview->blendIndicesOffsetBytes = blendIndicesOffset;
+      }
+      const size_t diffuseTextureIndex =
+        materialDiffuseTextureIndices &&
+        fragment.materialID < materialDiffuseTextureIndices->size() ?
+        (*materialDiffuseTextureIndices)[fragment.materialID] :
+        kLinuxHeroPreviewNoDiffuseTexture;
+
+      const size_t fragmentStartIndex = fragment.startIndex;
+      const size_t requestedIndexCount = static_cast<size_t>(fragment.primitiveCount) * 3;
+      if (fragmentStartIndex >= meshPreview->indexCount)
+      {
+        AppendLinuxHeroMeshPreviewWarning(
+          warnings,
+          skinGeometryFile,
+          NStr::StrFmt("Selected hero skin fragment %lu starts past the index buffer", static_cast<unsigned long>(fragmentIndex)));
+        triangleSerial += fragment.primitiveCount;
+        continue;
+      }
+
+      size_t availableIndexCount =
+        std::min(requestedIndexCount, meshPreview->indexCount - fragmentStartIndex);
+      availableIndexCount -= availableIndexCount % 3;
+
+      for (size_t localIndex = 0; localIndex + 2 < availableIndexCount; localIndex += 3)
+      {
+        const bool drawTriangle =
+          triangleSerial % triangleStep == 0 &&
+          meshPreview->drawnTriangleCount < maxPreviewTriangles;
+
+        if (drawTriangle)
+        {
+          LinuxHeroMeshPreviewVertex vertices[3];
+          bool triangleValid = true;
+          for (size_t corner = 0; corner < 3; ++corner)
+          {
+            const size_t indexOffset =
+              (fragmentStartIndex + localIndex + corner) * sizeof(unsigned int);
+            const unsigned int vertexIndex = ReadLinuxMeshUInt32(indexBuffer, indexOffset);
+            if (!ReadLinuxHeroMeshPreviewVertex(
+                  fragment,
+                  vertexIndex,
+                  positionOffset,
+                  vertexBuffer,
+                  meshPreview->vertexBufferBytes,
+                  &vertices[corner]))
+            {
+              triangleValid = false;
+              break;
+            }
+            if (fragmentHasTexCoord)
+            {
+              ReadLinuxHeroMeshPreviewTexCoord(
+                fragment,
+                vertexIndex,
+                texCoordOffset,
+                vertexBuffer,
+                meshPreview->vertexBufferBytes,
+                &vertices[corner]);
+            }
+            if (fragmentHasNormal)
+            {
+              ReadLinuxHeroMeshPreviewNormal(
+                fragment,
+                vertexIndex,
+                normalOffset,
+                vertexBuffer,
+                meshPreview->vertexBufferBytes,
+                &vertices[corner]);
+            }
+            if (fragmentHasSkinning)
+            {
+              bool reindexedVertex = false;
+              ReadLinuxHeroMeshPreviewSkinning(
+                fragment,
+                vertexIndex,
+                blendWeightOffset,
+                blendIndicesOffset,
+                fragmentHasSkinningReindex ? fragmentReindex : 0,
+                header->jointsCount,
+                vertexBuffer,
+                meshPreview->vertexBufferBytes,
+                &vertices[corner],
+                &reindexedVertex,
+                &meshPreview->skinningInvalidInfluenceCount);
+              if (reindexedVertex)
+              {
+                ++meshPreview->skinningReindexedVertexCount;
+              }
+            }
+            vertices[corner].diffuseTextureIndex = diffuseTextureIndex;
+          }
+
+          if (triangleValid)
+          {
+            meshPreview->triangleVertices.push_back(vertices[0]);
+            meshPreview->triangleVertices.push_back(vertices[1]);
+            meshPreview->triangleVertices.push_back(vertices[2]);
+            if (vertices[0].texCoordValid &&
+                vertices[1].texCoordValid &&
+                vertices[2].texCoordValid)
+            {
+              ++meshPreview->texCoordTriangleCount;
+              meshPreview->texCoordValid = true;
+            }
+            if (vertices[0].normalValid &&
+                vertices[1].normalValid &&
+                vertices[2].normalValid)
+            {
+              ++meshPreview->normalTriangleCount;
+              meshPreview->normalValid = true;
+            }
+            for (size_t corner = 0; corner < 3; ++corner)
+            {
+              if (vertices[corner].skinningValid)
+              {
+                ++meshPreview->skinningVertexCount;
+              }
+            }
+            if (vertices[0].skinningValid &&
+                vertices[1].skinningValid &&
+                vertices[2].skinningValid)
+            {
+              ++meshPreview->skinningTriangleCount;
+              meshPreview->skinningValid = true;
+            }
+            ++meshPreview->drawnTriangleCount;
+          }
+        }
+
+        ++triangleSerial;
+      }
+    }
+  }
+
+  meshPreview->triangleLimitHit = meshPreview->drawnTriangleCount < totalTriangles;
+  meshPreview->ready = meshPreview->drawnTriangleCount > 0 && meshPreview->boundsValid;
+  if (!meshPreview->ready && maxPreviewTriangles > 0)
+  {
+    AppendLinuxHeroMeshPreviewWarning(warnings, skinGeometryFile, "Selected hero skin geometry payload had no previewable triangles");
+  }
+
+  return meshPreview->ready;
+}
+
+void MergeLinuxHeroMeshPayloadPreview(
+  const LinuxHeroMeshPreview& payloadPreview,
+  LinuxHeroMeshPreview* meshPreview
+)
+{
+  if (!meshPreview)
+  {
+    return;
+  }
+
+  meshPreview->sourceFileSize += payloadPreview.sourceFileSize;
+  meshPreview->triangleLimitHit = meshPreview->triangleLimitHit || payloadPreview.triangleLimitHit;
+  if (!payloadPreview.headerValid)
+  {
+    return;
+  }
+
+  meshPreview->headerValid = true;
+  meshPreview->fragmentCount += payloadPreview.fragmentCount;
+  meshPreview->materialCount += payloadPreview.materialCount;
+  meshPreview->rendererGeometryPayloadReadyCount += payloadPreview.rendererGeometryPayloadReadyCount;
+  meshPreview->rendererGeometryReindexPayloadReadyCount += payloadPreview.rendererGeometryReindexPayloadReadyCount;
+  meshPreview->rendererGeometryFragmentCount += payloadPreview.rendererGeometryFragmentCount;
+  meshPreview->rendererGeometryMaterialCount += payloadPreview.rendererGeometryMaterialCount;
+  meshPreview->rendererGeometryTriangleCount += payloadPreview.rendererGeometryTriangleCount;
+  meshPreview->jointsCount = std::max(meshPreview->jointsCount, payloadPreview.jointsCount);
+  meshPreview->vertexBufferBytes += payloadPreview.vertexBufferBytes;
+  meshPreview->indexBufferBytes += payloadPreview.indexBufferBytes;
+  meshPreview->vertexCount += payloadPreview.vertexCount;
+  meshPreview->indexCount += payloadPreview.indexCount;
+  meshPreview->triangleCount += payloadPreview.triangleCount;
+  meshPreview->drawnTriangleCount += payloadPreview.drawnTriangleCount;
+  meshPreview->texCoordTriangleCount += payloadPreview.texCoordTriangleCount;
+  meshPreview->normalTriangleCount += payloadPreview.normalTriangleCount;
+  meshPreview->skinningTriangleCount += payloadPreview.skinningTriangleCount;
+  meshPreview->skinningVertexCount += payloadPreview.skinningVertexCount;
+  meshPreview->texCoordValid =
+    meshPreview->texCoordValid || payloadPreview.texCoordValid;
+  meshPreview->normalValid =
+    meshPreview->normalValid || payloadPreview.normalValid;
+  meshPreview->skinningValid =
+    meshPreview->skinningValid || payloadPreview.skinningValid;
+  meshPreview->skinningReindexValid =
+    meshPreview->skinningReindexValid || payloadPreview.skinningReindexValid;
+  meshPreview->rendererGeometryReady =
+    meshPreview->rendererGeometryReady || payloadPreview.rendererGeometryReady;
+  meshPreview->rendererGeometryReindexReady =
+    meshPreview->rendererGeometryReindexReady || payloadPreview.rendererGeometryReindexReady;
+  meshPreview->skinningReindexedVertexCount += payloadPreview.skinningReindexedVertexCount;
+  meshPreview->skinningInvalidInfluenceCount += payloadPreview.skinningInvalidInfluenceCount;
+  if (meshPreview->vertexStrideBytes == 0 && payloadPreview.vertexStrideBytes != 0)
+  {
+    meshPreview->vertexStrideBytes = payloadPreview.vertexStrideBytes;
+    meshPreview->positionOffsetBytes = payloadPreview.positionOffsetBytes;
+    meshPreview->normalOffsetBytes = payloadPreview.normalOffsetBytes;
+    meshPreview->blendWeightOffsetBytes = payloadPreview.blendWeightOffsetBytes;
+    meshPreview->blendIndicesOffsetBytes = payloadPreview.blendIndicesOffsetBytes;
+  }
+  if (meshPreview->blendWeightOffsetBytes == 0 && payloadPreview.blendWeightOffsetBytes != 0)
+  {
+    meshPreview->blendWeightOffsetBytes = payloadPreview.blendWeightOffsetBytes;
+    meshPreview->blendIndicesOffsetBytes = payloadPreview.blendIndicesOffsetBytes;
+  }
+
+  MergeLinuxHeroMeshPreviewBounds(payloadPreview, meshPreview);
+  meshPreview->triangleVertices.insert(
+    meshPreview->triangleVertices.end(),
+    payloadPreview.triangleVertices.begin(),
+    payloadPreview.triangleVertices.end());
+}
+
+bool ProbeLinuxHeroSkinMeshPayloads(LinuxHeroSceneAssetPreview* preview)
+{
+  if (!preview)
+  {
+    return false;
+  }
+
+  LinuxHeroMeshPreview meshPreview;
+  meshPreview.attempted = true;
+
+  std::vector<LinuxHeroSkinGeometryPayloadPreview> payloads = preview->skinGeometryPayloads;
+  if (payloads.empty())
+  {
+    for (size_t i = 0; i < preview->skinGeometryFiles.size(); ++i)
+    {
+      LinuxHeroSkinGeometryPayloadPreview payload;
+      payload.geometryFile = preview->skinGeometryFiles[i];
+      payloads.push_back(payload);
+    }
+  }
+  if (payloads.empty() && !preview->firstSkinGeometryFile.empty())
+  {
+    LinuxHeroSkinGeometryPayloadPreview payload;
+    payload.geometryFile = preview->firstSkinGeometryFile;
+    payloads.push_back(payload);
+  }
+
+  meshPreview.payloadCount = payloads.size();
+  if (!payloads.empty())
+  {
+    for (size_t i = 0; i < payloads.size(); ++i)
+    {
+      meshPreview.sourceFiles.push_back(payloads[i].geometryFile);
+    }
+    meshPreview.sourceFile = payloads[0].geometryFile;
+    meshPreview.triangleVertices.reserve(kLinuxHeroMeshPreviewMaxTriangles * 3);
+  }
+  else
+  {
+    preview->warnings.push_back("Selected hero has no resolved skin geometry payload");
+    preview->meshPreview = meshPreview;
+    return false;
+  }
+
+  for (size_t i = 0; i < payloads.size(); ++i)
+  {
+    LinuxHeroMeshPreview payloadPreview;
+    const size_t remainingTriangles =
+      meshPreview.drawnTriangleCount < kLinuxHeroMeshPreviewMaxTriangles ?
+      kLinuxHeroMeshPreviewMaxTriangles - meshPreview.drawnTriangleCount :
+      0;
+    ProbeLinuxHeroSkinMeshPayloadFile(
+      payloads[i].geometryFile,
+      &payloads[i].materialDiffuseTextureIndices,
+      remainingTriangles,
+      &payloadPreview,
+      &preview->warnings);
+
+    MergeLinuxHeroMeshPayloadPreview(payloadPreview, &meshPreview);
+    const bool payloadReady =
+      payloadPreview.headerValid &&
+      payloadPreview.boundsValid &&
+      payloadPreview.triangleCount > 0;
+    if (payloadReady)
+    {
+      ++meshPreview.payloadReadyCount;
+    }
+  }
+
+  meshPreview.triangleLimitHit =
+    meshPreview.triangleLimitHit ||
+    meshPreview.drawnTriangleCount < meshPreview.triangleCount;
+  meshPreview.rendererGeometryReady =
+    meshPreview.payloadCount > 0 &&
+    meshPreview.rendererGeometryPayloadReadyCount == meshPreview.payloadCount;
+  meshPreview.rendererGeometryReindexReady =
+    meshPreview.rendererGeometryReady &&
+    meshPreview.rendererGeometryReindexPayloadReadyCount == meshPreview.payloadCount;
+  meshPreview.ready =
+    meshPreview.payloadReadyCount > 0 &&
+    meshPreview.drawnTriangleCount > 0 &&
+    meshPreview.boundsValid;
+
+  preview->meshPreview = meshPreview;
+  if (preview->meshPreview.ready)
+  {
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "mesh:payloads=%lu/%lu fragments=%lu vertices=%lu triangles=%lu drawn=%lu uv=%lu normals=%lu skin=%lu renderGeom=%lu/%lu stride=%lu",
+        static_cast<unsigned long>(preview->meshPreview.payloadReadyCount),
+        static_cast<unsigned long>(preview->meshPreview.payloadCount),
+        static_cast<unsigned long>(preview->meshPreview.fragmentCount),
+        static_cast<unsigned long>(preview->meshPreview.vertexCount),
+        static_cast<unsigned long>(preview->meshPreview.triangleCount),
+        static_cast<unsigned long>(preview->meshPreview.drawnTriangleCount),
+        static_cast<unsigned long>(preview->meshPreview.texCoordTriangleCount),
+        static_cast<unsigned long>(preview->meshPreview.normalTriangleCount),
+        static_cast<unsigned long>(preview->meshPreview.skinningTriangleCount),
+        static_cast<unsigned long>(preview->meshPreview.rendererGeometryPayloadReadyCount),
+        static_cast<unsigned long>(preview->meshPreview.payloadCount),
+        static_cast<unsigned long>(preview->meshPreview.vertexStrideBytes)));
+  }
+  else
+  {
+    preview->warnings.push_back("Selected hero skin geometry payloads had no previewable triangles");
+  }
+
+  return preview->meshPreview.ready;
+}
+
+bool ProbeLinuxHeroSkeletonPayload(LinuxHeroSceneAssetPreview* preview)
+{
+  if (!preview)
+  {
+    return false;
+  }
+
+  LinuxHeroSkeletonPreview skeletonPreview;
+  skeletonPreview.attempted = true;
+  skeletonPreview.sourceFile = preview->skeletonFile;
+
+  if (preview->skeletonFile.empty())
+  {
+    preview->warnings.push_back("Selected hero has no resolved skeleton payload");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  std::ifstream input(preview->skeletonFile.c_str(), std::ios::binary);
+  if (!input)
+  {
+    preview->warnings.push_back("Cannot open selected hero skeleton payload");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  skeletonPreview.fileExists = true;
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSize = input.tellg();
+  if (fileSize <= 0)
+  {
+    preview->warnings.push_back("Selected hero skeleton payload is empty");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  input.seekg(0, std::ios::beg);
+  std::vector<char> payload(static_cast<size_t>(fileSize));
+  input.read(&payload[0], payload.size());
+  if (!input)
+  {
+    preview->warnings.push_back("Failed to read selected hero skeleton payload");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  skeletonPreview.sourceFileSize = payload.size();
+  if (payload.size() < sizeof(SkeletonData))
+  {
+    preview->warnings.push_back("Selected hero skeleton payload is smaller than a SkeletonData header");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  const unsigned char* payloadBytes = reinterpret_cast<const unsigned char*>(&payload[0]);
+  const SkeletonData* skeleton = reinterpret_cast<const SkeletonData*>(&payload[0]);
+  skeletonPreview.jointsCount = skeleton->jointsCount;
+  if (skeleton->jointsCount == 0 || skeleton->jointsCount > 512)
+  {
+    preview->warnings.push_back("Selected hero skeleton payload has an invalid joint count");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  if (!StaticVectorPayloadRangeValid(skeleton->invertedBindPoseBones, payloadBytes, payload.size()) ||
+      !StaticVectorPayloadRangeValid(skeleton->parentsIDs, payloadBytes, payload.size()) ||
+      !StaticVectorPayloadRangeValid(skeleton->jointsNames, payloadBytes, payload.size()) ||
+      !StaticVectorPayloadRangeValid(skeleton->namesOrder, payloadBytes, payload.size()))
+  {
+    preview->warnings.push_back("Selected hero skeleton payload has vector data outside the payload");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  if (skeleton->invertedBindPoseBones.size() != skeleton->jointsCount ||
+      skeleton->parentsIDs.size() != skeleton->jointsCount ||
+      skeleton->jointsNames.size() != skeleton->jointsCount ||
+      skeleton->namesOrder.size() != skeleton->jointsCount)
+  {
+    preview->warnings.push_back("Selected hero skeleton payload vector sizes do not match joint count");
+    preview->skeletonPreview = skeletonPreview;
+    return false;
+  }
+
+  skeletonPreview.jointsValid = true;
+  skeletonPreview.parentCount = skeleton->parentsIDs.size();
+
+  const unsigned int* parents = skeleton->parentsIDs.begin();
+  skeletonPreview.parentTreeValid = true;
+  skeletonPreview.rootCount = 1;
+  for (unsigned int i = 1; i < skeleton->jointsCount; ++i)
+  {
+    if (parents[i] >= skeleton->jointsCount || parents[i] == i)
+    {
+      skeletonPreview.parentTreeValid = false;
+      ++skeletonPreview.rootCount;
+      continue;
+    }
+
+    unsigned int current = i;
+    size_t depth = 0;
+    for (size_t guard = 0; guard < skeleton->jointsCount && current != 0; ++guard)
+    {
+      const unsigned int parent = parents[current];
+      if (parent >= skeleton->jointsCount || parent == current)
+      {
+        skeletonPreview.parentTreeValid = false;
+        break;
+      }
+      current = parent;
+      ++depth;
+    }
+    if (current != 0)
+    {
+      skeletonPreview.parentTreeValid = false;
+    }
+    skeletonPreview.maxDepth = std::max(skeletonPreview.maxDepth, depth);
+  }
+
+  skeletonPreview.bindPoseValid = true;
+  for (unsigned int i = 0; i < skeleton->jointsCount; ++i)
+  {
+    if (!LinuxSkeletonMatrixFinite(skeleton->invertedBindPoseBones[i]))
+    {
+      skeletonPreview.bindPoseValid = false;
+      break;
+    }
+  }
+
+  std::vector<char> seenNamesOrder(skeleton->jointsCount, 0);
+  bool namesValid = true;
+  for (unsigned int i = 0; i < skeleton->jointsCount; ++i)
+  {
+    const unsigned int order = skeleton->namesOrder[i];
+    if (order >= skeleton->jointsCount || seenNamesOrder[order])
+    {
+      namesValid = false;
+      continue;
+    }
+    seenNamesOrder[order] = 1;
+
+    std::string jointName;
+    if (!ReadLinuxStaticStringPreview(skeleton->jointsNames[i], payloadBytes, payload.size(), &jointName))
+    {
+      namesValid = false;
+      continue;
+    }
+    if (order == 0)
+    {
+      skeletonPreview.rootJointName = jointName;
+    }
+    if (skeletonPreview.firstSortedJointName.empty())
+    {
+      skeletonPreview.firstSortedJointName = jointName;
+    }
+  }
+
+  if (!namesValid)
+  {
+    preview->warnings.push_back("Selected hero skeleton payload has invalid joint name/order data");
+  }
+
+  skeletonPreview.ready =
+    skeletonPreview.jointsValid &&
+    skeletonPreview.parentTreeValid &&
+    skeletonPreview.bindPoseValid &&
+    namesValid;
+
+  preview->skeletonPreview = skeletonPreview;
+  if (preview->skeletonPreview.ready)
+  {
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "skeleton:joints=%lu roots=%lu depth=%lu root=%s",
+        static_cast<unsigned long>(preview->skeletonPreview.jointsCount),
+        static_cast<unsigned long>(preview->skeletonPreview.rootCount),
+        static_cast<unsigned long>(preview->skeletonPreview.maxDepth),
+        preview->skeletonPreview.rootJointName.empty() ?
+          "<none>" :
+          preview->skeletonPreview.rootJointName.c_str()));
+  }
+
+  return preview->skeletonPreview.ready;
+}
+
+bool ProbeLinuxHeroAnimationPayloadFile(
+  const std::string& animationFile,
+  size_t expectedJointsCount,
+  LinuxHeroAnimationPreview* animationPreview,
+  std::vector<std::string>* warnings
+)
+{
+  if (!animationPreview)
+  {
+    return false;
+  }
+
+  *animationPreview = LinuxHeroAnimationPreview();
+  animationPreview->attempted = true;
+  animationPreview->sourceFile = animationFile;
+  if (animationFile.empty())
+  {
+    if (warnings)
+    {
+      warnings->push_back("Selected hero has an empty animation payload reference");
+    }
+    return false;
+  }
+
+  std::ifstream input(animationFile.c_str(), std::ios::binary);
+  if (!input)
+  {
+    if (warnings)
+    {
+      warnings->push_back("Cannot open selected hero animation payload");
+    }
+    return false;
+  }
+
+  animationPreview->fileExists = true;
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSize = input.tellg();
+  if (fileSize <= 0)
+  {
+    if (warnings)
+    {
+      warnings->push_back("Selected hero animation payload is empty");
+    }
+    return false;
+  }
+
+  input.seekg(0, std::ios::beg);
+  std::vector<char> payload(static_cast<size_t>(fileSize));
+  input.read(&payload[0], payload.size());
+  if (!input)
+  {
+    if (warnings)
+    {
+      warnings->push_back("Failed to read selected hero animation payload");
+    }
+    return false;
+  }
+
+  animationPreview->sourceFileSize = payload.size();
+  if (payload.size() < sizeof(SkeletalAnimationData))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Selected hero animation payload is smaller than a SkeletalAnimationData header");
+    }
+    return false;
+  }
+
+  const unsigned char* payloadBytes = reinterpret_cast<const unsigned char*>(&payload[0]);
+  const SkeletalAnimationData* animation = reinterpret_cast<const SkeletalAnimationData*>(&payload[0]);
+  animationPreview->signature = LinuxAnimationSignatureString(animation->signature);
+  animationPreview->minTime = animation->minTime;
+  animationPreview->maxTime = animation->maxTime;
+  animationPreview->timeValid =
+    std::isfinite(animation->minTime) &&
+    std::isfinite(animation->maxTime) &&
+    animation->maxTime >= animation->minTime &&
+    animation->maxTime - animation->minTime <= 3600.0f;
+
+  if (!animationPreview->timeValid && warnings)
+  {
+    warnings->push_back("Selected hero animation payload has invalid time bounds");
+  }
+
+  if (!StaticVectorPayloadRangeValid(animation->tracks, payloadBytes, payload.size()))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Selected hero animation payload track table is outside the payload");
+    }
+    return false;
+  }
+
+  animationPreview->jointsCount = animation->tracks.size();
+  if (animationPreview->jointsCount == 0 || animationPreview->jointsCount > 512)
+  {
+    if (warnings)
+    {
+      warnings->push_back("Selected hero animation payload has an invalid joint count");
+    }
+    return false;
+  }
+
+  animationPreview->headerValid = true;
+  animationPreview->skeletonJointMatch =
+    expectedJointsCount == 0 || animationPreview->jointsCount == expectedJointsCount;
+  if (!animationPreview->skeletonJointMatch && warnings)
+  {
+    warnings->push_back("Selected hero animation joint count does not match the resolved skeleton");
+  }
+
+  animationPreview->tracksValid = true;
+  for (unsigned int jointIndex = 0; jointIndex < animation->tracks.size(); ++jointIndex)
+  {
+    const TBoneTracks& tracks = animation->tracks[jointIndex];
+    if (!StaticVectorPayloadRangeValid(tracks.positionTrack.trackData, payloadBytes, payload.size()) ||
+        !StaticVectorPayloadRangeValid(tracks.rotationTrack.trackData, payloadBytes, payload.size()) ||
+        !StaticVectorPayloadRangeValid(tracks.scaleTrack.trackData, payloadBytes, payload.size()))
+    {
+      animationPreview->tracksValid = false;
+      continue;
+    }
+
+    const unsigned int positionKeys = tracks.positionTrack.trackData.size();
+    const unsigned int rotationKeys = tracks.rotationTrack.trackData.size();
+    const unsigned int scaleKeys = tracks.scaleTrack.trackData.size();
+    if (positionKeys == 0 || rotationKeys == 0 || scaleKeys == 0 ||
+        positionKeys > 10000 || rotationKeys > 10000 || scaleKeys > 10000)
+    {
+      animationPreview->tracksValid = false;
+      continue;
+    }
+
+    ++animationPreview->positionTrackCount;
+    ++animationPreview->rotationTrackCount;
+    ++animationPreview->scaleTrackCount;
+    animationPreview->positionKeyCount += positionKeys;
+    animationPreview->rotationKeyCount += rotationKeys;
+    animationPreview->scaleKeyCount += scaleKeys;
+    animationPreview->maxTrackKeys =
+      std::max(animationPreview->maxTrackKeys, static_cast<size_t>(positionKeys));
+    animationPreview->maxTrackKeys =
+      std::max(animationPreview->maxTrackKeys, static_cast<size_t>(rotationKeys));
+    animationPreview->maxTrackKeys =
+      std::max(animationPreview->maxTrackKeys, static_cast<size_t>(scaleKeys));
+    if (positionKeys == 1)
+    {
+      ++animationPreview->constantPositionTrackCount;
+    }
+    if (rotationKeys == 1)
+    {
+      ++animationPreview->constantRotationTrackCount;
+    }
+    if (scaleKeys == 1)
+    {
+      ++animationPreview->constantScaleTrackCount;
+    }
+
+    for (unsigned int keyIndex = 0; keyIndex < positionKeys; ++keyIndex)
+    {
+      if (!LinuxAnimationVec3Finite(tracks.positionTrack.trackData[keyIndex], 100000.0f))
+      {
+        animationPreview->tracksValid = false;
+        break;
+      }
+    }
+    for (unsigned int keyIndex = 0; keyIndex < rotationKeys; ++keyIndex)
+    {
+      if (!LinuxAnimationVec4Finite(tracks.rotationTrack.trackData[keyIndex], 10.0f))
+      {
+        animationPreview->tracksValid = false;
+        break;
+      }
+    }
+    for (unsigned int keyIndex = 0; keyIndex < scaleKeys; ++keyIndex)
+    {
+      if (!LinuxAnimationVec3Finite(tracks.scaleTrack.trackData[keyIndex], 1000.0f))
+      {
+        animationPreview->tracksValid = false;
+        break;
+      }
+    }
+  }
+
+  if (!animationPreview->tracksValid && warnings)
+  {
+    warnings->push_back("Selected hero animation payload has invalid track data");
+  }
+
+  const float duration = animationPreview->maxTime - animationPreview->minTime;
+  animationPreview->minDurationSeconds = duration;
+  animationPreview->maxDurationSeconds = duration;
+  animationPreview->ready =
+    animationPreview->headerValid &&
+    animationPreview->timeValid &&
+    animationPreview->tracksValid &&
+    animationPreview->skeletonJointMatch;
+  return animationPreview->ready;
+}
+
+bool ProbeLinuxHeroAnimationPayloads(LinuxHeroSceneAssetPreview* preview)
+{
+  if (!preview)
+  {
+    return false;
+  }
+
+  LinuxHeroAnimationPreview aggregate;
+  aggregate.attempted = true;
+  aggregate.sourceFiles = preview->animationFiles;
+  if (aggregate.sourceFiles.empty() && !preview->firstAnimationFile.empty())
+  {
+    aggregate.sourceFiles.push_back(preview->firstAnimationFile);
+  }
+  aggregate.payloadCount = aggregate.sourceFiles.size();
+  if (aggregate.sourceFiles.empty())
+  {
+    preview->warnings.push_back("Selected hero has no resolved animation payloads");
+    preview->animationPreview = aggregate;
+    return false;
+  }
+
+  aggregate.sourceFile = aggregate.sourceFiles[0];
+  aggregate.fileExists = true;
+  aggregate.headerValid = true;
+  aggregate.timeValid = true;
+  aggregate.tracksValid = true;
+  aggregate.skeletonJointMatch = true;
+
+  const size_t expectedJointsCount =
+    preview->skeletonPreview.jointsValid ? preview->skeletonPreview.jointsCount : 0;
+  bool durationInitialized = false;
+  for (size_t i = 0; i < aggregate.sourceFiles.size(); ++i)
+  {
+    LinuxHeroAnimationPreview payloadPreview;
+    ProbeLinuxHeroAnimationPayloadFile(
+      aggregate.sourceFiles[i],
+      expectedJointsCount,
+      &payloadPreview,
+      &preview->warnings);
+
+    aggregate.fileExists = aggregate.fileExists && payloadPreview.fileExists;
+    aggregate.headerValid = aggregate.headerValid && payloadPreview.headerValid;
+    aggregate.timeValid = aggregate.timeValid && payloadPreview.timeValid;
+    aggregate.tracksValid = aggregate.tracksValid && payloadPreview.tracksValid;
+    aggregate.skeletonJointMatch =
+      aggregate.skeletonJointMatch && payloadPreview.skeletonJointMatch;
+    aggregate.sourceFileSize += payloadPreview.sourceFileSize;
+    aggregate.jointsCount = std::max(aggregate.jointsCount, payloadPreview.jointsCount);
+    aggregate.positionTrackCount += payloadPreview.positionTrackCount;
+    aggregate.rotationTrackCount += payloadPreview.rotationTrackCount;
+    aggregate.scaleTrackCount += payloadPreview.scaleTrackCount;
+    aggregate.positionKeyCount += payloadPreview.positionKeyCount;
+    aggregate.rotationKeyCount += payloadPreview.rotationKeyCount;
+    aggregate.scaleKeyCount += payloadPreview.scaleKeyCount;
+    aggregate.constantPositionTrackCount += payloadPreview.constantPositionTrackCount;
+    aggregate.constantRotationTrackCount += payloadPreview.constantRotationTrackCount;
+    aggregate.constantScaleTrackCount += payloadPreview.constantScaleTrackCount;
+    aggregate.maxTrackKeys = std::max(aggregate.maxTrackKeys, payloadPreview.maxTrackKeys);
+    if (!payloadPreview.signature.empty() && aggregate.signature.empty())
+    {
+      aggregate.signature = payloadPreview.signature;
+    }
+
+    if (payloadPreview.ready)
+    {
+      ++aggregate.payloadReadyCount;
+      if (!durationInitialized)
+      {
+        aggregate.minTime = payloadPreview.minTime;
+        aggregate.maxTime = payloadPreview.maxTime;
+        aggregate.minDurationSeconds = payloadPreview.minDurationSeconds;
+        aggregate.maxDurationSeconds = payloadPreview.maxDurationSeconds;
+        durationInitialized = true;
+      }
+      else
+      {
+        aggregate.minTime = std::min(aggregate.minTime, payloadPreview.minTime);
+        aggregate.maxTime = std::max(aggregate.maxTime, payloadPreview.maxTime);
+        aggregate.minDurationSeconds =
+          std::min(aggregate.minDurationSeconds, payloadPreview.minDurationSeconds);
+        aggregate.maxDurationSeconds =
+          std::max(aggregate.maxDurationSeconds, payloadPreview.maxDurationSeconds);
+      }
+    }
+  }
+
+  aggregate.ready =
+    aggregate.payloadCount > 0 &&
+    aggregate.payloadReadyCount == aggregate.payloadCount &&
+    aggregate.headerValid &&
+    aggregate.timeValid &&
+    aggregate.tracksValid &&
+    aggregate.skeletonJointMatch;
+
+  preview->animationPreview = aggregate;
+  if (preview->animationPreview.ready)
+  {
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "animations:payloads=%lu/%lu joints=%lu duration=%.2f..%.2f posKeys=%lu rotKeys=%lu scaleKeys=%lu",
+        static_cast<unsigned long>(preview->animationPreview.payloadReadyCount),
+        static_cast<unsigned long>(preview->animationPreview.payloadCount),
+        static_cast<unsigned long>(preview->animationPreview.jointsCount),
+        static_cast<double>(preview->animationPreview.minDurationSeconds),
+        static_cast<double>(preview->animationPreview.maxDurationSeconds),
+        static_cast<unsigned long>(preview->animationPreview.positionKeyCount),
+        static_cast<unsigned long>(preview->animationPreview.rotationKeyCount),
+        static_cast<unsigned long>(preview->animationPreview.scaleKeyCount)));
+  }
+
+  return preview->animationPreview.ready;
+}
+
+bool ReadLinuxPreviewBinaryPayload(
+  const std::string& sourceFile,
+  std::vector<char>* payload,
+  std::vector<std::string>* warnings,
+  const char* missingMessage,
+  const char* openMessage,
+  const char* emptyMessage,
+  const char* readMessage
+)
+{
+  if (!payload)
+  {
+    return false;
+  }
+
+  payload->clear();
+  if (sourceFile.empty())
+  {
+    if (warnings && missingMessage)
+    {
+      warnings->push_back(missingMessage);
+    }
+    return false;
+  }
+
+  std::ifstream input(sourceFile.c_str(), std::ios::binary);
+  if (!input)
+  {
+    if (warnings && openMessage)
+    {
+      warnings->push_back(openMessage);
+    }
+    return false;
+  }
+
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSize = input.tellg();
+  if (fileSize <= 0)
+  {
+    if (warnings && emptyMessage)
+    {
+      warnings->push_back(emptyMessage);
+    }
+    return false;
+  }
+
+  input.seekg(0, std::ios::beg);
+  payload->resize(static_cast<size_t>(fileSize));
+  input.read(&(*payload)[0], payload->size());
+  if (!input)
+  {
+    payload->clear();
+    if (warnings && readMessage)
+    {
+      warnings->push_back(readMessage);
+    }
+    return false;
+  }
+
+  return true;
+}
+
+bool ProbeLinuxHeroAnimationSkinningPayloads(
+  const LinuxClientEnvironment& environment,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!preview)
+  {
+    return false;
+  }
+
+  LinuxHeroAnimationSkinningPreview skinningPreview;
+  skinningPreview.attempted = true;
+  skinningPreview.skeletonFile = preview->skeletonFile;
+  skinningPreview.animationFile =
+    preview->animationPreview.sourceFile.empty() ?
+      preview->firstAnimationFile :
+      preview->animationPreview.sourceFile;
+  skinningPreview.skeletonRootFile =
+    ResolveLinuxRootFileSystemDataPath(environment, skinningPreview.skeletonFile);
+  skinningPreview.animationRootFile =
+    ResolveLinuxRootFileSystemDataPath(environment, skinningPreview.animationFile);
+  skinningPreview.skinningStreamsReady =
+    preview->meshPreview.ready &&
+    preview->meshPreview.skinningValid &&
+    preview->meshPreview.skinningReindexValid &&
+    preview->meshPreview.skinningTriangleCount > 0;
+  skinningPreview.previewTriangleCount = preview->meshPreview.skinningTriangleCount;
+  skinningPreview.previewVertexCount = preview->meshPreview.skinningVertexCount;
+
+  if (!skinningPreview.skinningStreamsReady)
+  {
+    preview->warnings.push_back("Selected hero mesh skinning streams are not ready for animated preview deformation");
+    preview->animationSkinningPreview = skinningPreview;
+    return false;
+  }
+
+  skinningPreview.skeletonPayloadReady =
+    ReadLinuxPreviewBinaryPayload(
+      skinningPreview.skeletonFile,
+      &skinningPreview.skeletonPayload,
+      &preview->warnings,
+      "Selected hero animated preview has no skeleton payload",
+      "Cannot open selected hero animated preview skeleton payload",
+      "Selected hero animated preview skeleton payload is empty",
+      "Failed to read selected hero animated preview skeleton payload");
+  skinningPreview.animationPayloadReady =
+    ReadLinuxPreviewBinaryPayload(
+      skinningPreview.animationFile,
+      &skinningPreview.animationPayload,
+      &preview->warnings,
+      "Selected hero animated preview has no animation payload",
+      "Cannot open selected hero animated preview animation payload",
+      "Selected hero animated preview animation payload is empty",
+      "Failed to read selected hero animated preview animation payload");
+  skinningPreview.skeletonPayloadBytes = skinningPreview.skeletonPayload.size();
+  skinningPreview.animationPayloadBytes = skinningPreview.animationPayload.size();
+
+  if (!skinningPreview.skeletonPayloadReady ||
+      !skinningPreview.animationPayloadReady ||
+      skinningPreview.skeletonPayload.size() < sizeof(SkeletonData) ||
+      skinningPreview.animationPayload.size() < sizeof(SkeletalAnimationData))
+  {
+    preview->animationSkinningPreview = skinningPreview;
+    return false;
+  }
+
+  const unsigned char* skeletonBytes =
+    reinterpret_cast<const unsigned char*>(&skinningPreview.skeletonPayload[0]);
+  const unsigned char* animationBytes =
+    reinterpret_cast<const unsigned char*>(&skinningPreview.animationPayload[0]);
+  const SkeletonData* skeleton =
+    reinterpret_cast<const SkeletonData*>(&skinningPreview.skeletonPayload[0]);
+  const SkeletalAnimationData* animation =
+    reinterpret_cast<const SkeletalAnimationData*>(&skinningPreview.animationPayload[0]);
+
+  const bool skeletonPayloadValid =
+    skeleton->jointsCount > 0 &&
+    skeleton->jointsCount <= 512 &&
+    StaticVectorPayloadRangeValid(skeleton->invertedBindPoseBones, skeletonBytes, skinningPreview.skeletonPayload.size()) &&
+    StaticVectorPayloadRangeValid(skeleton->parentsIDs, skeletonBytes, skinningPreview.skeletonPayload.size()) &&
+    skeleton->invertedBindPoseBones.size() == skeleton->jointsCount &&
+    skeleton->parentsIDs.size() == skeleton->jointsCount;
+  const bool animationPayloadValid =
+    StaticVectorPayloadRangeValid(animation->tracks, animationBytes, skinningPreview.animationPayload.size()) &&
+    animation->tracks.size() > 0 &&
+    animation->tracks.size() <= 512 &&
+    std::isfinite(animation->minTime) &&
+    std::isfinite(animation->maxTime) &&
+    animation->maxTime >= animation->minTime;
+  skinningPreview.skeletonJointMatch =
+    skeletonPayloadValid &&
+    animationPayloadValid &&
+    skeleton->jointsCount == animation->tracks.size();
+  skinningPreview.jointsCount = skeletonPayloadValid ? skeleton->jointsCount : 0;
+  skinningPreview.minTime = animationPayloadValid ? animation->minTime : 0.0f;
+  skinningPreview.maxTime = animationPayloadValid ? animation->maxTime : 0.0f;
+  skinningPreview.durationSeconds =
+    animationPayloadValid ? animation->maxTime - animation->minTime : 0.0f;
+
+  if (!skinningPreview.skeletonJointMatch)
+  {
+    preview->warnings.push_back("Selected hero animated preview skeleton and animation payloads do not match");
+  }
+  else
+  {
+    const SkeletonDataWrapper* rendererSkeletonData =
+      Render::RenderResourceManager::LoadSkeletonData(nstl::string(skinningPreview.skeletonRootFile.c_str()));
+    const SkeletalAnimationDataWrapper* rendererAnimationData =
+      Render::RenderResourceManager::LoadSkeletalAnimation(nstl::string(skinningPreview.animationRootFile.c_str()));
+    skinningPreview.rendererResourceSkeletonReady =
+      rendererSkeletonData &&
+      rendererSkeletonData->GetData() &&
+      rendererSkeletonData->GetData()->jointsCount == skeleton->jointsCount;
+    skinningPreview.rendererResourceAnimationReady =
+      rendererAnimationData &&
+      rendererAnimationData->GetData() &&
+      rendererAnimationData->GetData()->tracks.size() == animation->tracks.size();
+
+    SkeletonDataWrapper fallbackSkeletonWrapperData(skeleton);
+    SkeletalAnimationDataWrapper fallbackAnimationWrapperData(animation);
+    const SkeletonDataWrapper* skeletonData =
+      skinningPreview.rendererResourceSkeletonReady ? rendererSkeletonData : &fallbackSkeletonWrapperData;
+    const SkeletalAnimationDataWrapper* animationData =
+      skinningPreview.rendererResourceAnimationReady ? rendererAnimationData : &fallbackAnimationWrapperData;
+    Render::SkeletonWrapper skeletonWrapper(skeletonData);
+    Render::SkeletalAnimationSampler sampler(0.0f, animationData);
+    sampler.SetVPar(0.0f);
+    sampler.Sample(skeletonWrapper.GetSampledMatrix());
+    skeletonWrapper.SetActiveBones(skeleton->jointsCount);
+    for (unsigned int jointIndex = 0; jointIndex < skeleton->jointsCount; ++jointIndex)
+    {
+      skeletonWrapper.SetReindex(jointIndex, jointIndex);
+    }
+    Matrix43 identity;
+    Identity(&identity);
+    skeletonWrapper.Update(identity);
+    skinningPreview.rendererSamplerReady = true;
+    skinningPreview.rendererSkeletonReady = skeletonWrapper.GetSkinWorldMatrices() != 0;
+  }
+
+  skinningPreview.ready =
+    skinningPreview.skeletonPayloadReady &&
+    skinningPreview.animationPayloadReady &&
+    skinningPreview.skeletonJointMatch &&
+    skinningPreview.skinningStreamsReady &&
+    skinningPreview.rendererSamplerReady &&
+    skinningPreview.rendererSkeletonReady;
+
+  preview->animationSkinningPreview = skinningPreview;
+  if (preview->animationSkinningPreview.ready)
+  {
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "anim-skin:animation=%s joints=%lu vertices=%lu duration=%.2f",
+        fs::path(preview->animationSkinningPreview.animationFile).filename().string().c_str(),
+        static_cast<unsigned long>(preview->animationSkinningPreview.jointsCount),
+        static_cast<unsigned long>(preview->animationSkinningPreview.previewVertexCount),
+        static_cast<double>(preview->animationSkinningPreview.durationSeconds)));
+  }
+
+  return preview->animationSkinningPreview.ready;
+}
+
+size_t CountLinuxRenderBatchQueueBatches(Render::BatchQueue& queue)
+{
+  size_t total = 0;
+  for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
+  {
+    total += queue.GetSubQueue(priority).numBatches;
+  }
+  return total;
+}
+
+bool ProbeLinuxHeroRendererSkeletalMeshComponent(
+  const NDb::DBAnimatedSceneComponent* animated,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!animated || !preview)
+  {
+    return false;
+  }
+
+  preview->rendererSkeletalMeshAttempted = true;
+  ++preview->rendererSkeletalMeshComponentCount;
+  preview->rendererSkeletalMeshSkinPartCount += animated->skins.size();
+
+  if (animated->skins.empty())
+  {
+    preview->rendererSkeletalMeshReady = false;
+    return false;
+  }
+
+  Matrix43 identity;
+  Identity(&identity);
+  Render::SkeletalMesh skeletalMesh;
+  skeletalMesh.Initialize(identity, animated->skeletonFileName);
+  const bool skeletonReady = skeletalMesh.GetSkeletonWrapper() != 0;
+  if (skeletonReady)
+  {
+    ++preview->rendererSkeletalMeshSkeletonReadyCount;
+  }
+
+  size_t componentSkinPartsReady = 0;
+  size_t componentSlots = 0;
+  std::vector<unsigned int> componentSlotIndexes;
+  for (int i = 0; i < animated->skins.size(); ++i)
+  {
+    unsigned int partIndexes[16] = {0};
+    unsigned int partsCount = 0;
+    skeletalMesh.AddSkinPart(&animated->skins[i], partIndexes, &partsCount);
+    if (partsCount > 0)
+    {
+      ++componentSkinPartsReady;
+      componentSlots += partsCount;
+      for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
+      {
+        componentSlotIndexes.push_back(partIndexes[partIndex]);
+      }
+    }
+  }
+
+  bool disabledQueueEmpty = false;
+  bool removedQueueEmpty = false;
+  size_t queuedBatches = 0;
+  unsigned int renderedTriangles = 0;
+  unsigned int renderedDips = 0;
+  int materialSwitches = 0;
+  if (!componentSlotIndexes.empty())
+  {
+    skeletalMesh.SetEnableSkinPart(
+      static_cast<unsigned int>(componentSlotIndexes.size()),
+      &componentSlotIndexes[0],
+      false);
+
+    Render::BatchQueueSorter disabledSorter(16, true);
+    Render::BatchQueue disabledQueue(Render::BatchQueue::INDEX_MAIN, disabledSorter, 32);
+    skeletalMesh.RenderToQueue(disabledQueue);
+    disabledQueueEmpty = CountLinuxRenderBatchQueueBatches(disabledQueue) == 0;
+
+    skeletalMesh.SetEnableSkinPart(
+      static_cast<unsigned int>(componentSlotIndexes.size()),
+      &componentSlotIndexes[0],
+      true);
+    skeletalMesh.Update(false);
+
+    Render::BatchQueueSorter sorter(32, true);
+    Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 64);
+    Render::SmartRenderer::ResetTriangleAndDipCount();
+    Render::BatchQueue::DropMaterialSwitchCounter();
+    skeletalMesh.RenderToQueue(queue);
+    queuedBatches = CountLinuxRenderBatchQueueBatches(queue);
+    queue.Render();
+    Render::SmartRenderer::GetTriangleAndDipCount(renderedTriangles, renderedDips);
+    materialSwitches = Render::BatchQueue::GetMaterialSwitchCounter();
+
+    skeletalMesh.RemoveSkinPart(
+      static_cast<unsigned int>(componentSlotIndexes.size()),
+      &componentSlotIndexes[0]);
+    Render::BatchQueueSorter removedSorter(16, true);
+    Render::BatchQueue removedQueue(Render::BatchQueue::INDEX_MAIN, removedSorter, 32);
+    skeletalMesh.RenderToQueue(removedQueue);
+    removedQueueEmpty = CountLinuxRenderBatchQueueBatches(removedQueue) == 0;
+  }
+
+  preview->rendererSkeletalMeshSkinPartReadyCount += componentSkinPartsReady;
+  preview->rendererSkeletalMeshSlotCount += componentSlots;
+  preview->rendererSkeletalMeshQueuedBatchCount += queuedBatches;
+  preview->rendererSkeletalMeshRenderedTriangleCount += renderedTriangles;
+  preview->rendererSkeletalMeshRenderedDipCount += renderedDips;
+  preview->rendererSkeletalMeshMaterialSwitchCount += materialSwitches > 0 ? materialSwitches : 0;
+  preview->rendererSkeletalMeshDisableCullReady =
+    preview->rendererSkeletalMeshDisableCullReady || disabledQueueEmpty;
+  preview->rendererSkeletalMeshRemoveReady =
+    preview->rendererSkeletalMeshRemoveReady || removedQueueEmpty;
+  preview->rendererSkeletalMeshReady =
+    preview->rendererSkeletalMeshSkinPartCount > 0 &&
+    preview->rendererSkeletalMeshSkinPartReadyCount == preview->rendererSkeletalMeshSkinPartCount &&
+    preview->rendererSkeletalMeshSkeletonReadyCount > 0 &&
+    preview->rendererSkeletalMeshQueuedBatchCount >= preview->rendererSkeletalMeshSlotCount &&
+    preview->rendererSkeletalMeshRenderedDipCount >= preview->rendererSkeletalMeshSlotCount &&
+    preview->rendererSkeletalMeshDisableCullReady &&
+    preview->rendererSkeletalMeshRemoveReady;
+
+  if (skeletonReady &&
+      componentSkinPartsReady == static_cast<size_t>(animated->skins.size()) &&
+      queuedBatches >= componentSlots &&
+      renderedDips >= componentSlots)
+  {
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "render-skeletal-mesh:skins=%lu slots=%lu batches=%lu dips=%lu tris=%lu skeleton=%s",
+        static_cast<unsigned long>(componentSkinPartsReady),
+        static_cast<unsigned long>(componentSlots),
+        static_cast<unsigned long>(queuedBatches),
+        static_cast<unsigned long>(renderedDips),
+        static_cast<unsigned long>(renderedTriangles),
+        fs::path(ToStdString(animated->skeletonFileName)).filename().string().c_str()));
+  }
+  else if (!skeletonReady)
+  {
+    preview->warnings.push_back("Selected hero renderer-owned SkeletalMesh could not load its skeleton through RenderResourceManager");
+  }
+
+  return
+    skeletonReady &&
+    componentSkinPartsReady == static_cast<size_t>(animated->skins.size()) &&
+    queuedBatches >= componentSlots &&
+    renderedDips >= componentSlots;
+}
+
+Placement BuildLinuxSceneComponentLocalPlacement(const NDb::AttachedSceneComponent* attached)
+{
+  Placement localPlacement = NULLPLACEMENT;
+  if (!attached)
+  {
+    return localPlacement;
+  }
+
+  localPlacement.pos = attached->placement.pos.GetValue(0.0f);
+  localPlacement.rot = attached->placement.rot.GetValue(0.0f);
+  localPlacement.scale = attached->placement.scale.GetValue(0.0f);
+  return localPlacement;
+}
+
+unsigned int GetLinuxSceneComponentAttachFlags(const NDb::AttachedSceneComponent* attached)
+{
+  if (!attached)
+  {
+    return
+      NDb::ATTACHFLAGS_USEPARENTSCALE |
+      NDb::ATTACHFLAGS_USEPARENTROTATION |
+      NDb::ATTACHFLAGS_USEPARENTTIME |
+      NDb::ATTACHFLAGS_USEAGSPEEDCOEFF;
+  }
+
+  return static_cast<unsigned int>(attached->attachFlags);
+}
+
+const NDb::Locator* FindLinuxSceneComponentLocator(
+  const NDb::DBSceneComponent* parentComponent,
+  const std::string& locatorName
+)
+{
+  if (!parentComponent || locatorName.empty() || parentComponent->locatorList.IsEmpty())
+  {
+    return 0;
+  }
+
+  for (int i = 0; i < parentComponent->locatorList->locators.size(); ++i)
+  {
+    const NDb::Locator& locator = parentComponent->locatorList->locators[i];
+    if (ToStdString(locator.name) == locatorName)
+    {
+      return &locator;
+    }
+  }
+
+  return 0;
+}
+
+Placement BuildLinuxSceneComponentOffsetPlacement(
+  const NDb::Locator* locator,
+  const Placement& originalPlacement,
+  unsigned int attachFlags
+)
+{
+  Placement offsetPlacement = originalPlacement;
+  if (!locator)
+  {
+    return offsetPlacement;
+  }
+
+  Placement locatorPlacement = locator->offset2.GetPlace();
+  if (!(attachFlags & NDb::ATTACHFLAGS_USEPARENTROTATION))
+  {
+    locatorPlacement.rot = QNULL;
+  }
+  if (!(attachFlags & NDb::ATTACHFLAGS_USEPARENTSCALE))
+  {
+    locatorPlacement.scale = CVec3(1.0f, 1.0f, 1.0f);
+  }
+
+  return locatorPlacement + originalPlacement;
+}
+
+Placement ResolveLinuxAttachedSceneComponentWorldPlacement(
+  const Placement& parentPlacement,
+  const Placement& offsetPlacement,
+  const Placement& originalPlacement,
+  unsigned int attachFlags,
+  unsigned int locatorFlags,
+  NDb::ESCOrientation orientation
+)
+{
+  Placement worldPlacement = NULLPLACEMENT;
+  worldPlacement.rot = offsetPlacement.rot;
+
+  if (attachFlags & NDb::ATTACHFLAGS_CANCELOFFSETSCALING)
+  {
+    CVec3 original;
+    parentPlacement.rot.Rotate(&original, originalPlacement.pos);
+
+    CVec3 position = offsetPlacement.pos - originalPlacement.pos;
+    parentPlacement.rot.Rotate(&worldPlacement.pos, position);
+    worldPlacement.pos.Mul(worldPlacement.pos, parentPlacement.scale);
+    worldPlacement.pos += parentPlacement.pos;
+    worldPlacement.pos += original;
+
+    if (locatorFlags & NDb::LOCATORATTACHFLAGS_CANCELNORMALLEVELLING)
+    {
+      worldPlacement.pos = parentPlacement.pos;
+      CVec3 parentOffset;
+      parentOffset.Mul(parentPlacement.scale, position);
+      worldPlacement.pos += parentOffset;
+      worldPlacement.pos += originalPlacement.pos;
+    }
+  }
+  else
+  {
+    parentPlacement.Transform(offsetPlacement.pos, worldPlacement.pos);
+
+    if (locatorFlags & NDb::LOCATORATTACHFLAGS_CANCELNORMALLEVELLING)
+    {
+      worldPlacement.pos = parentPlacement.pos;
+      CVec3 parentOffset;
+      parentOffset.Mul(parentPlacement.scale, offsetPlacement.pos);
+      worldPlacement.pos += parentOffset;
+    }
+  }
+
+  if (orientation == NDb::SCORIENTATION_DEFAULT &&
+      (attachFlags & NDb::ATTACHFLAGS_USEPARENTROTATION))
+  {
+    worldPlacement.rot = parentPlacement.rot * offsetPlacement.rot;
+  }
+
+  if (attachFlags & NDb::ATTACHFLAGS_USEPARENTSCALE)
+  {
+    worldPlacement.scale.Mul(parentPlacement.scale, offsetPlacement.scale);
+  }
+  else
+  {
+    worldPlacement.scale = offsetPlacement.scale;
+  }
+
+  return worldPlacement;
+}
+
+Placement ResolveLinuxSceneComponentPlacement(
+  const NDb::DBSceneComponent* component,
+  const NDb::DBSceneComponent* parentComponent,
+  const NDb::AttachedSceneComponent* attached,
+  const Placement& parentPlacement,
+  const NDb::Locator** matchedLocator
+)
+{
+  if (matchedLocator)
+  {
+    *matchedLocator = 0;
+  }
+  if (!attached)
+  {
+    return parentPlacement;
+  }
+
+  Placement resolvedParentPlacement = parentPlacement;
+  const NDb::Locator* locator = FindLinuxSceneComponentLocator(
+    parentComponent,
+    ToStdString(attached->locatorName));
+  if (locator)
+  {
+    if (matchedLocator)
+    {
+      *matchedLocator = locator;
+    }
+  }
+
+  const unsigned int attachFlags = GetLinuxSceneComponentAttachFlags(attached);
+  const Placement localPlacement = BuildLinuxSceneComponentLocalPlacement(attached);
+  const Placement offsetPlacement =
+    BuildLinuxSceneComponentOffsetPlacement(locator, localPlacement, attachFlags);
+  const unsigned int locatorFlags =
+    locator ? static_cast<unsigned int>(locator->flags) : 0;
+  const NDb::ESCOrientation orientation =
+    component ? component->orientation : NDb::SCORIENTATION_DEFAULT;
+  return ResolveLinuxAttachedSceneComponentWorldPlacement(
+    resolvedParentPlacement,
+    offsetPlacement,
+    localPlacement,
+    attachFlags,
+    locatorFlags,
+    orientation);
+}
+
+Placement ResolveLinuxStaticPayloadLocalPlacement(
+  const NDb::Locator* locator,
+  const NDb::AttachedSceneComponent* attached,
+  const Placement& componentPlacement
+)
+{
+  if (!locator || locator->jointName.empty())
+  {
+    return componentPlacement;
+  }
+
+  const Placement localPlacement = BuildLinuxSceneComponentLocalPlacement(attached);
+  return BuildLinuxSceneComponentOffsetPlacement(
+    locator,
+    localPlacement,
+    GetLinuxSceneComponentAttachFlags(attached));
+}
+
+void ResolveLinuxStaticPayloadLocator(
+  const NDb::Locator* locator,
+  bool* locatorJointPlacement,
+  std::string* locatorJointName,
+  Placement* locatorOffset,
+  unsigned int* locatorFlags
+)
+{
+  if (locatorJointPlacement)
+  {
+    *locatorJointPlacement = false;
+  }
+  if (locatorJointName)
+  {
+    locatorJointName->clear();
+  }
+  if (locatorOffset)
+  {
+    *locatorOffset = NULLPLACEMENT;
+  }
+  if (locatorFlags)
+  {
+    *locatorFlags = 0;
+  }
+
+  if (!locator || locator->jointName.empty())
+  {
+    return;
+  }
+
+  if (locatorJointPlacement)
+  {
+    *locatorJointPlacement = true;
+  }
+  if (locatorJointName)
+  {
+    *locatorJointName = ToStdString(locator->jointName);
+  }
+  if (locatorOffset)
+  {
+    *locatorOffset = locator->offset2.GetPlace();
+  }
+  if (locatorFlags)
+  {
+    *locatorFlags = static_cast<unsigned int>(locator->flags);
+  }
+}
+
+bool ResolveLinuxHeroSkeletonLocatorPlacement(
+  const Render::SkeletonWrapper* skeletonWrapper,
+  const std::string& jointName,
+  unsigned int locatorFlags,
+  const Placement& fallbackParentPlacement,
+  Placement* placement
+)
+{
+  if (!skeletonWrapper || jointName.empty() || !placement)
+  {
+    return false;
+  }
+
+  unsigned int jointIndex = 0;
+  if (!skeletonWrapper->GetJointIndexByName(jointName.c_str(), jointIndex) ||
+      jointIndex >= skeletonWrapper->GetBonesCount())
+  {
+    return false;
+  }
+
+  const Matrix43* boneMatrices = skeletonWrapper->GetBoneWorldMatrices();
+  if (!boneMatrices)
+  {
+    return false;
+  }
+
+  placement->FromMatrix(boneMatrices[jointIndex]);
+  if (!(locatorFlags & NDb::LOCATORATTACHFLAGS_USEJOINTPOSITION))
+  {
+    placement->pos = fallbackParentPlacement.pos;
+  }
+  if (!(locatorFlags & NDb::LOCATORATTACHFLAGS_USEJOINTROTATION))
+  {
+    placement->rot = fallbackParentPlacement.rot;
+  }
+  if (!(locatorFlags & NDb::LOCATORATTACHFLAGS_USEJOINTSCALE))
+  {
+    placement->scale = fallbackParentPlacement.scale;
+  }
+
+  return true;
+}
+
+Placement ResolveLinuxHeroStaticPayloadPlacement(
+  const LinuxHeroStaticGeometryPayloadPreview& payload,
+  const Render::SkeletonWrapper* skeletonWrapper
+)
+{
+  if (!payload.locatorJointPlacement)
+  {
+    return payload.placement;
+  }
+
+  Placement jointPlacement;
+  if (!ResolveLinuxHeroSkeletonLocatorPlacement(
+        skeletonWrapper,
+        payload.locatorJointName,
+        payload.locatorFlags,
+        payload.locatorParentPlacement,
+        &jointPlacement))
+  {
+    return ResolveLinuxAttachedSceneComponentWorldPlacement(
+      payload.locatorParentPlacement,
+      payload.placement,
+      payload.originalPlacement,
+      payload.attachFlags,
+      payload.locatorFlags,
+      payload.orientation);
+  }
+
+  return ResolveLinuxAttachedSceneComponentWorldPlacement(
+    jointPlacement,
+    payload.placement,
+    payload.originalPlacement,
+    payload.attachFlags,
+    payload.locatorFlags,
+    payload.orientation);
+}
+
+size_t RecordLinuxMapStaticDiffuseTexture(
+  const LinuxClientEnvironment& environment,
+  const std::string& textureFileName,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || textureFileName.empty())
+  {
+    return kLinuxHeroPreviewNoDiffuseTexture;
+  }
+
+  for (size_t i = 0; i < preview->staticDiffuseTextureFiles.size(); ++i)
+  {
+    if (preview->staticDiffuseTextureFiles[i] == textureFileName)
+    {
+      return i;
+    }
+  }
+
+  if (preview->staticDiffuseTextureFiles.size() >= kLinuxMapStaticPreviewMaxDiffuseTextures)
+  {
+    return kLinuxHeroPreviewNoDiffuseTexture;
+  }
+
+  const size_t textureIndex = preview->staticDiffuseTextureFiles.size();
+  preview->staticDiffuseTextureFiles.push_back(textureFileName);
+
+  LinuxTextureAssetPreview texturePreview;
+  ProbeTexturePayloadFile(environment, textureFileName, &texturePreview);
+  preview->staticDiffuseTextures.push_back(texturePreview);
+  return textureIndex;
+}
+
+unsigned char ClampLinuxPreviewColorChannel(unsigned int value)
+{
+  return static_cast<unsigned char>(std::min(255U, value));
+}
+
+void ResolveLinuxTerrainLayerFallbackColor(
+  size_t layerIndex,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  static const unsigned char palette[][3] =
+  {
+    {74, 119, 75},
+    {93, 129, 83},
+    {105, 99, 68},
+    {129, 118, 93},
+    {92, 105, 94},
+    {57, 106, 74},
+    {63, 122, 88},
+    {111, 105, 100},
+    {96, 86, 66},
+    {92, 75, 65},
+    {83, 83, 72},
+    {72, 102, 110}
+  };
+  const size_t paletteIndex = layerIndex % (sizeof(palette) / sizeof(palette[0]));
+  if (red) *red = palette[paletteIndex][0];
+  if (green) *green = palette[paletteIndex][1];
+  if (blue) *blue = palette[paletteIndex][2];
+}
+
+bool ComputeLinuxTextureAverageColor(
+  const LinuxTextureAssetPreview& texturePreview,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  if (!texturePreview.artworkLoaded ||
+      !texturePreview.artwork.ready ||
+      texturePreview.artwork.width <= 0 ||
+      texturePreview.artwork.height <= 0 ||
+      texturePreview.artwork.rgba.empty())
+  {
+    return false;
+  }
+
+  const int width = texturePreview.artwork.width;
+  const int height = texturePreview.artwork.height;
+  const size_t expectedBytes = static_cast<size_t>(width) * static_cast<size_t>(height) * 4U;
+  if (texturePreview.artwork.rgba.size() < expectedBytes)
+  {
+    return false;
+  }
+
+  const int stepX = std::max(1, width / 64);
+  const int stepY = std::max(1, height / 64);
+  unsigned long long redSum = 0;
+  unsigned long long greenSum = 0;
+  unsigned long long blueSum = 0;
+  unsigned long long weightSum = 0;
+  for (int y = 0; y < height; y += stepY)
+  {
+    for (int x = 0; x < width; x += stepX)
+    {
+      const size_t pixelIndex = static_cast<size_t>(y * width + x) * 4U;
+      const unsigned int alpha = texturePreview.artwork.rgba[pixelIndex + 3];
+      const unsigned int weight = alpha > 0 ? alpha : 255U;
+      redSum += static_cast<unsigned long long>(texturePreview.artwork.rgba[pixelIndex + 0]) * weight;
+      greenSum += static_cast<unsigned long long>(texturePreview.artwork.rgba[pixelIndex + 1]) * weight;
+      blueSum += static_cast<unsigned long long>(texturePreview.artwork.rgba[pixelIndex + 2]) * weight;
+      weightSum += weight;
+    }
+  }
+
+  if (weightSum == 0)
+  {
+    return false;
+  }
+
+  if (red) *red = ClampLinuxPreviewColorChannel(static_cast<unsigned int>(redSum / weightSum));
+  if (green) *green = ClampLinuxPreviewColorChannel(static_cast<unsigned int>(greenSum / weightSum));
+  if (blue) *blue = ClampLinuxPreviewColorChannel(static_cast<unsigned int>(blueSum / weightSum));
+  return true;
+}
+
+void RecordLinuxMapStaticGeometryPayload(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  const Placement& placement,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || reference.empty())
+  {
+    return;
+  }
+
+  ++preview->staticScenePayloadReferenceCount;
+  std::string resolvedFile;
+  if (!ResolveLinuxDataPayloadFile(environment, reference, &resolvedFile))
+  {
+    return;
+  }
+
+  ++preview->staticScenePayloadResolvedCount;
+  if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
+  {
+    preview->staticScenePayloadLimitHit = true;
+    return;
+  }
+
+  LinuxMapStaticGeometryPayloadPreview payloadPreview;
+  payloadPreview.geometryFile = resolvedFile;
+  payloadPreview.rootGeometryFile =
+    ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+  payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.placement = placement;
+  preview->staticGeometryPayloads.push_back(payloadPreview);
+}
+
+bool ResolveLinuxMapAnimatedPayloadFile(
+  const LinuxClientEnvironment& environment,
+  const std::string& reference,
+  LinuxSelectedMapPreview* preview,
+  std::string* resolvedFile,
+  std::string* rootFile
+)
+{
+  if (resolvedFile)
+  {
+    resolvedFile->clear();
+  }
+  if (rootFile)
+  {
+    rootFile->clear();
+  }
+  if (!preview || reference.empty())
+  {
+    return false;
+  }
+
+  ++preview->animatedScenePayloadReferenceCount;
+  std::string resolved;
+  if (!ResolveLinuxDataPayloadFile(environment, reference, &resolved))
+  {
+    return false;
+  }
+
+  ++preview->animatedScenePayloadResolvedCount;
+  if (resolvedFile)
+  {
+    *resolvedFile = resolved;
+  }
+  if (rootFile)
+  {
+    *rootFile = ResolveLinuxRootFileSystemDataPath(environment, resolved);
+  }
+  return true;
+}
+
+std::string FindLinuxMapAnimatedComponentAnimationFile(
+  const NDb::DBAnimatedSceneComponent* animated
+)
+{
+  if (!animated)
+  {
+    return std::string();
+  }
+
+  for (int i = 0; i < animated->animations.size(); ++i)
+  {
+    const std::string animationFileName =
+      ToStdString(animated->animations[i].animationFileName);
+    if (!animationFileName.empty())
+    {
+      return animationFileName;
+    }
+  }
+
+  return std::string();
+}
+
+void RecordLinuxMapAnimatedGeometryPayload(
+  const LinuxClientEnvironment& environment,
+  const NDb::DBAnimatedSceneComponent* animated,
+  const Placement& placement,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!animated || !preview || animated->skins.empty())
+  {
+    return;
+  }
+
+  if (preview->animatedGeometryPayloads.size() >= kLinuxMapAnimatedPreviewMaxPayloadFiles)
+  {
+    preview->animatedScenePayloadLimitHit = true;
+    return;
+  }
+
+  std::string skeletonFile;
+  std::string skeletonRootFile;
+  if (!ResolveLinuxMapAnimatedPayloadFile(
+        environment,
+        ToStdString(animated->skeletonFileName),
+        preview,
+        &skeletonFile,
+        &skeletonRootFile) ||
+      skeletonRootFile.empty())
+  {
+    return;
+  }
+
+  const std::string animationReference =
+    FindLinuxMapAnimatedComponentAnimationFile(animated);
+  std::string animationFile;
+  std::string animationRootFile;
+  if (!ResolveLinuxMapAnimatedPayloadFile(
+        environment,
+        animationReference,
+        preview,
+        &animationFile,
+        &animationRootFile) ||
+      animationRootFile.empty())
+  {
+    return;
+  }
+
+  LinuxMapAnimatedGeometryPayloadPreview payloadPreview;
+  payloadPreview.skeletonFile = skeletonFile;
+  payloadPreview.skeletonRootFile = skeletonRootFile;
+  payloadPreview.animationFile = animationFile;
+  payloadPreview.animationRootFile = animationRootFile;
+  payloadPreview.placement = placement;
+
+  for (int skinIndex = 0; skinIndex < animated->skins.size(); ++skinIndex)
+  {
+    const NDb::SkinPart& skinPart = animated->skins[skinIndex];
+    LinuxMapSkinGeometryPayloadPreview skinPreview;
+    if (!ResolveLinuxMapAnimatedPayloadFile(
+          environment,
+          ToStdString(skinPart.geometryFileName),
+          preview,
+          &skinPreview.geometryFile,
+          &skinPreview.rootGeometryFile) ||
+        skinPreview.rootGeometryFile.empty())
+    {
+      continue;
+    }
+
+    skinPreview.materialDiffuseTextureIndices.reserve(skinPart.materialsReferences.size());
+    for (int materialIndex = 0; materialIndex < skinPart.materialsReferences.size(); ++materialIndex)
+    {
+      const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
+        skinPart.materialsReferences[materialIndex].GetPtr());
+      skinPreview.materialDiffuseTextureIndices.push_back(
+        RecordLinuxMapStaticDiffuseTexture(environment, textureFileName, preview));
+    }
+    payloadPreview.skinGeometryPayloads.push_back(skinPreview);
+  }
+
+  if (payloadPreview.skinGeometryPayloads.empty())
+  {
+    return;
+  }
+
+  preview->animatedGeometryPayloads.push_back(payloadPreview);
+}
+
+struct LinuxMapTerrainRawSample
+{
+  float height;
+  float normalX;
+  float normalY;
+  float reserved;
+};
+
+size_t ResolveLinuxTerrainPreviewSourceIndex(
+  size_t sampleIndex,
+  size_t sampleCount,
+  size_t sourceCount
+)
+{
+  if (sourceCount <= 1 || sampleCount <= 1)
+  {
+    return 0;
+  }
+
+  const size_t numerator =
+    sampleIndex * (sourceCount - 1) + (sampleCount - 1) / 2;
+  return std::min(sourceCount - 1, numerator / (sampleCount - 1));
+}
+
+void ProbeSelectedMapTerrainHeightmap(
+  const LinuxClientEnvironment& environment,
+  const NDb::Terrain* terrain,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || !terrain)
+  {
+    return;
+  }
+
+  LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
+  heightmap.dbid = DescribeRawDbResource(terrain);
+
+  const std::string heightmapReference =
+    ToStdString(terrain->geometry.heightmapFileName);
+  if (heightmapReference.empty())
+  {
+    preview->warnings.push_back("Selected map terrain has no heightmap file");
+    return;
+  }
+
+  const fs::path heightmapPath = ResolveDataRefPath(environment, heightmapReference, 0);
+  heightmap.heightmapFile = heightmapPath.string();
+  if (heightmapPath.empty() || !fs::exists(heightmapPath))
+  {
+    preview->warnings.push_back("Selected map terrain heightmap file missing: " + heightmapReference);
+    return;
+  }
+
+  std::ifstream input(heightmapPath.string().c_str(), std::ios::binary);
+  if (!input)
+  {
+    preview->warnings.push_back("Selected map terrain heightmap file unreadable: " + heightmapPath.string());
+    return;
+  }
+
+  unsigned int header[4] = {0, 0, 0, 0};
+  input.read(reinterpret_cast<char*>(header), sizeof(header));
+  if (!input ||
+      header[0] != kLinuxMapTerrainHeightmapVersion ||
+      header[1] == 0 ||
+      header[2] == 0)
+  {
+    preview->warnings.push_back("Selected map terrain heightmap header invalid");
+    return;
+  }
+
+  const size_t sourceWidth = header[1];
+  const size_t sourceHeight = header[2];
+  if (sourceHeight != 0 && sourceWidth > static_cast<size_t>(-1) / sourceHeight)
+  {
+    preview->warnings.push_back("Selected map terrain heightmap dimensions overflow");
+    return;
+  }
+
+  const size_t sampleCount = sourceWidth * sourceHeight;
+  if (sourceWidth > 4096 ||
+      sourceHeight > 4096 ||
+      sampleCount == 0 ||
+      sampleCount > static_cast<size_t>(-1) / sizeof(LinuxMapTerrainRawSample) ||
+      static_cast<size_t>(header[3]) != sampleCount * sizeof(LinuxMapTerrainRawSample))
+  {
+    preview->warnings.push_back("Selected map terrain heightmap dimensions invalid");
+    return;
+  }
+
+  std::vector<LinuxMapTerrainRawSample> rawSamples(sampleCount);
+  input.read(
+    reinterpret_cast<char*>(&rawSamples[0]),
+    static_cast<std::streamsize>(header[3]));
+  if (!input)
+  {
+    preview->warnings.push_back("Selected map terrain heightmap payload truncated");
+    return;
+  }
+
+  float minHeight = rawSamples[0].height;
+  float maxHeight = rawSamples[0].height;
+  for (size_t i = 0; i < rawSamples.size(); ++i)
+  {
+    const float height = rawSamples[i].height;
+    if (!std::isfinite(height))
+    {
+      preview->warnings.push_back("Selected map terrain heightmap contains non-finite height values");
+      return;
+    }
+    minHeight = std::min(minHeight, height);
+    maxHeight = std::max(maxHeight, height);
+  }
+
+  const size_t sampledWidth =
+    std::min(sourceWidth, kLinuxMapTerrainPreviewMaxSamplesPerAxis);
+  const size_t sampledHeight =
+    std::min(sourceHeight, kLinuxMapTerrainPreviewMaxSamplesPerAxis);
+  if (sampledWidth < 2 || sampledHeight < 2)
+  {
+    preview->warnings.push_back("Selected map terrain heightmap is too small to draw");
+    return;
+  }
+
+  heightmap.sampledHeights.clear();
+  heightmap.sampledHeights.resize(sampledWidth * sampledHeight);
+  for (size_t y = 0; y < sampledHeight; ++y)
+  {
+    const size_t sourceY =
+      ResolveLinuxTerrainPreviewSourceIndex(y, sampledHeight, sourceHeight);
+    for (size_t x = 0; x < sampledWidth; ++x)
+    {
+      const size_t sourceX =
+        ResolveLinuxTerrainPreviewSourceIndex(x, sampledWidth, sourceWidth);
+      heightmap.sampledHeights[y * sampledWidth + x] =
+        rawSamples[sourceY * sourceWidth + sourceX].height;
+    }
+  }
+
+  heightmap.ready = true;
+  heightmap.sourceWidth = sourceWidth;
+  heightmap.sourceHeight = sourceHeight;
+  heightmap.sampledWidth = sampledWidth;
+  heightmap.sampledHeight = sampledHeight;
+  heightmap.sampledVertices = sampledWidth * sampledHeight;
+  heightmap.sampledTriangles = (sampledWidth - 1) * (sampledHeight - 1) * 2;
+  heightmap.worldWidth = static_cast<float>(std::max(0, terrain->elemXCount)) * 10.0f;
+  heightmap.worldHeight = static_cast<float>(std::max(0, terrain->elemYCount)) * 10.0f;
+  heightmap.minHeight = minHeight;
+  heightmap.maxHeight = maxHeight;
+}
+
+void ProbeSelectedMapTerrainLayers(
+  const LinuxClientEnvironment& environment,
+  const NDb::Terrain* terrain,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || !terrain)
+  {
+    return;
+  }
+
+  LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
+  heightmap.layerMaskFile.clear();
+  heightmap.layerMaskReady = false;
+  heightmap.layerMaskWidth = 0;
+  heightmap.layerMaskHeight = 0;
+  heightmap.layerMaskBytes = 0;
+  heightmap.terrainLayerCount = terrain->layers.terrainLayers.size();
+  heightmap.terrainLayerMaterialCount = 0;
+  heightmap.terrainLayerTextureCount = 0;
+  heightmap.terrainLayerTextureLoadedCount = 0;
+  heightmap.terrainLayerSampledUniqueCount = 0;
+  heightmap.terrainLayers.clear();
+  heightmap.terrainLayers.reserve(heightmap.terrainLayerCount);
+
+  for (int layerIndex = 0; layerIndex < terrain->layers.terrainLayers.size(); ++layerIndex)
+  {
+    LinuxMapTerrainLayerPreview layerPreview;
+    ResolveLinuxTerrainLayerFallbackColor(
+      static_cast<size_t>(layerIndex),
+      &layerPreview.red,
+      &layerPreview.green,
+      &layerPreview.blue);
+
+    const NDb::TerrainLayer& layer = terrain->layers.terrainLayers[layerIndex];
+    if (IsValid(layer.pTerrainType))
+    {
+      layerPreview.terrainTypeDbid = DescribeRawDbResource(layer.pTerrainType.GetPtr());
+      const NDb::TerrainTypeInfo* terrainType = layer.pTerrainType.GetPtr();
+      if (terrainType && IsValid(terrainType->pDBMaterial))
+      {
+        const NDb::TerrainMaterial* material = terrainType->pDBMaterial.GetPtr();
+        layerPreview.materialResolved = true;
+        layerPreview.materialDbid = DescribeRawDbResource(material);
+        ++heightmap.terrainLayerMaterialCount;
+
+        layerPreview.diffuseTextureFile = ExtractLinuxMaterialDiffuseTextureFileName(material);
+        if (!layerPreview.diffuseTextureFile.empty())
+        {
+          ++heightmap.terrainLayerTextureCount;
+          layerPreview.diffuseTextureIndex =
+            RecordLinuxMapStaticDiffuseTexture(environment, layerPreview.diffuseTextureFile, preview);
+          if (layerPreview.diffuseTextureIndex != kLinuxHeroPreviewNoDiffuseTexture &&
+              layerPreview.diffuseTextureIndex < preview->staticDiffuseTextures.size())
+          {
+            layerPreview.textureLoaded =
+              preview->staticDiffuseTextures[layerPreview.diffuseTextureIndex].artworkLoaded;
+            if (layerPreview.textureLoaded)
+            {
+              ++heightmap.terrainLayerTextureLoadedCount;
+              ComputeLinuxTextureAverageColor(
+                preview->staticDiffuseTextures[layerPreview.diffuseTextureIndex],
+                &layerPreview.red,
+                &layerPreview.green,
+                &layerPreview.blue);
+            }
+          }
+        }
+      }
+    }
+
+    heightmap.terrainLayers.push_back(layerPreview);
+  }
+
+  heightmap.sampledLayerIds.clear();
+  const std::string layerMaskReference = ToStdString(terrain->layerMaskFile);
+  if (layerMaskReference.empty())
+  {
+    return;
+  }
+
+  const size_t maskWidth = static_cast<size_t>(std::max(0, terrain->elemXCount)) * 16U;
+  const size_t maskHeight = static_cast<size_t>(std::max(0, terrain->elemYCount)) * 16U;
+  if (maskWidth == 0 || maskHeight == 0 || maskHeight > static_cast<size_t>(-1) / maskWidth)
+  {
+    preview->warnings.push_back("Selected map terrain layer mask dimensions invalid");
+    return;
+  }
+
+  const size_t expectedBytes = maskWidth * maskHeight;
+  const fs::path maskPath = ResolveDataRefPath(environment, layerMaskReference, 0);
+  heightmap.layerMaskFile = maskPath.string();
+  heightmap.layerMaskWidth = maskWidth;
+  heightmap.layerMaskHeight = maskHeight;
+  if (maskPath.empty() || !fs::exists(maskPath))
+  {
+    preview->warnings.push_back("Selected map terrain layer mask missing: " + layerMaskReference);
+    return;
+  }
+
+  std::ifstream input(maskPath.string().c_str(), std::ios::binary);
+  if (!input)
+  {
+    preview->warnings.push_back("Selected map terrain layer mask unreadable: " + maskPath.string());
+    return;
+  }
+
+  std::vector<unsigned char> layerMask(expectedBytes);
+  input.read(reinterpret_cast<char*>(&layerMask[0]), static_cast<std::streamsize>(expectedBytes));
+  const std::streamsize bytesRead = input.gcount();
+  heightmap.layerMaskBytes = bytesRead > 0 ? static_cast<size_t>(bytesRead) : 0;
+  if (bytesRead != static_cast<std::streamsize>(expectedBytes))
+  {
+    preview->warnings.push_back("Selected map terrain layer mask truncated: " + maskPath.string());
+    return;
+  }
+
+  heightmap.layerMaskReady = true;
+  if (!heightmap.ready ||
+      heightmap.sampledWidth < 2 ||
+      heightmap.sampledHeight < 2)
+  {
+    return;
+  }
+
+  heightmap.sampledLayerIds.resize(heightmap.sampledWidth * heightmap.sampledHeight, 1);
+  std::set<unsigned char> sampledLayers;
+  for (size_t y = 0; y < heightmap.sampledHeight; ++y)
+  {
+    const size_t sourceY =
+      ResolveLinuxTerrainPreviewSourceIndex(y, heightmap.sampledHeight, maskHeight);
+    for (size_t x = 0; x < heightmap.sampledWidth; ++x)
+    {
+      const size_t sourceX =
+        ResolveLinuxTerrainPreviewSourceIndex(x, heightmap.sampledWidth, maskWidth);
+      const unsigned char layerId = layerMask[sourceY * maskWidth + sourceX];
+      heightmap.sampledLayerIds[y * heightmap.sampledWidth + x] = layerId;
+      sampledLayers.insert(layerId);
+    }
+  }
+  heightmap.terrainLayerSampledUniqueCount = sampledLayers.size();
+}
+
+void RecordLinuxMapNatureRoad(
+  const NDb::DBNatureMapRoad& road,
+  bool attackRoad,
+  int roadIndex,
+  LinuxMapTerrainHeightmapPreview* heightmap
+)
+{
+  if (!heightmap || road.nodes.size() < 2)
+  {
+    return;
+  }
+
+  LinuxMapNatureRoadPreview roadPreview;
+  roadPreview.attackRoad = attackRoad;
+  roadPreview.roadIndex = roadIndex;
+  roadPreview.width = std::max(road.centerWidth, road.leftWidth + road.centerWidth + road.rightWidth);
+  for (int nodeIndex = 0; nodeIndex < road.nodes.size(); ++nodeIndex)
+  {
+    roadPreview.nodes.push_back(road.nodes[nodeIndex]);
+  }
+
+  ++heightmap->natureRoadCount;
+  heightmap->natureRoadNodeCount += roadPreview.nodes.size();
+  heightmap->natureRoadSegmentCount += roadPreview.nodes.size() - 1;
+  heightmap->natureRoads.push_back(roadPreview);
+}
+
+void ProbeSelectedMapTerrainNatureRoads(
+  const NDb::Terrain* terrain,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || !terrain)
+  {
+    return;
+  }
+
+  LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
+  heightmap.natureRoadCount = 0;
+  heightmap.natureRoadNodeCount = 0;
+  heightmap.natureRoadSegmentCount = 0;
+  heightmap.natureRoads.clear();
+  for (int roadIndex = 0; roadIndex < terrain->natureMap.attackSpaceRoads.size(); ++roadIndex)
+  {
+    RecordLinuxMapNatureRoad(
+      terrain->natureMap.attackSpaceRoads[roadIndex],
+      true,
+      roadIndex,
+      &heightmap);
+  }
+  for (int roadIndex = 0; roadIndex < terrain->natureMap.logicRoads.size(); ++roadIndex)
+  {
+    RecordLinuxMapNatureRoad(
+      terrain->natureMap.logicRoads[roadIndex],
+      false,
+      roadIndex,
+      &heightmap);
+  }
+}
+
+void RecordLinuxMapTerrainElementPayload(
+  const LinuxClientEnvironment& environment,
+  const NDb::TerrainElementInstance& terrainElement,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || !IsValid(terrainElement.terrainObject))
+  {
+    return;
+  }
+
+  LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
+  ++heightmap.terrainElementPayloadReferenceCount;
+
+  const std::string geometryReference =
+    ToStdString(terrainElement.terrainObject->geometryFileName);
+  std::string resolvedFile;
+  if (geometryReference.empty() ||
+      !ResolveLinuxDataPayloadFile(environment, geometryReference, &resolvedFile))
+  {
+    return;
+  }
+
+  ++heightmap.terrainElementPayloadResolvedCount;
+  if (preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
+  {
+    heightmap.terrainElementPayloadLimitHit = true;
+    return;
+  }
+
+  std::vector<size_t> materialDiffuseTextureIndices;
+  if (IsValid(terrainElement.material))
+  {
+    materialDiffuseTextureIndices.push_back(
+      RecordLinuxMapStaticDiffuseTexture(
+        environment,
+        ExtractLinuxMaterialDiffuseTextureFileName(terrainElement.material.GetPtr()),
+        preview));
+  }
+
+  const vector<NDb::Ptr<NDb::Material> >& meshMaterials =
+    terrainElement.terrainObject->materialsReferences;
+  for (int materialIndex = 0; materialIndex < meshMaterials.size(); ++materialIndex)
+  {
+    const std::string textureFileName =
+      ExtractLinuxMaterialDiffuseTextureFileName(meshMaterials[materialIndex].GetPtr());
+    materialDiffuseTextureIndices.push_back(
+      RecordLinuxMapStaticDiffuseTexture(environment, textureFileName, preview));
+  }
+
+  Placement placement;
+  placement.pos = terrainElement.position;
+  placement.rot = CQuat(ToRadian(terrainElement.angle), 0.0f, 0.0f);
+  placement.scale = terrainElement.scale;
+
+  LinuxMapStaticGeometryPayloadPreview payloadPreview;
+  payloadPreview.geometryFile = resolvedFile;
+  payloadPreview.rootGeometryFile =
+    ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
+  payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.placement = placement;
+  preview->terrainElementPayloads.push_back(payloadPreview);
+}
+
+void ProbeSelectedMapTerrainElements(
+  const LinuxClientEnvironment& environment,
+  const NDb::Terrain* terrain,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || !terrain)
+  {
+    return;
+  }
+
+  LinuxMapTerrainHeightmapPreview& heightmap = preview->terrainHeightmap;
+  heightmap.terrainElementCount = terrain->geometry.terrainElements.size();
+  for (int i = 0; i < terrain->geometry.terrainElements.size(); ++i)
+  {
+    if (preview->terrainElementPayloads.size() >= kLinuxMapTerrainElementPreviewMaxPayloadFiles)
+    {
+      heightmap.terrainElementPayloadLimitHit = true;
+      break;
+    }
+
+    RecordLinuxMapTerrainElementPayload(
+      environment,
+      terrain->geometry.terrainElements[i],
+      preview);
+  }
+}
+
+void AppendFirstValidLinuxMapSceneObject(
+  const vector<NDb::Ptr<NDb::DBSceneObject> >& sceneObjects,
+  std::vector<const NDb::DBSceneObject*>* candidates
+)
+{
+  if (!candidates)
+  {
+    return;
+  }
+
+  if (NDb::NATURETYPE_N >= 0 &&
+      NDb::NATURETYPE_N < sceneObjects.size() &&
+      IsValid(sceneObjects[NDb::NATURETYPE_N]))
+  {
+    candidates->push_back(sceneObjects[NDb::NATURETYPE_N].GetPtr());
+    return;
+  }
+
+  for (int i = 0; i < sceneObjects.size(); ++i)
+  {
+    if (IsValid(sceneObjects[i]))
+    {
+      candidates->push_back(sceneObjects[i].GetPtr());
+      return;
+    }
+  }
+}
+
+void CollectLinuxMapGameObjectSceneObjects(
+  const NDb::GameObject* gameObject,
+  std::vector<const NDb::DBSceneObject*>* candidates
+)
+{
+  if (!gameObject || !candidates)
+  {
+    return;
+  }
+
+  if (const NDb::SingleStateObject* singleState =
+      dynamic_cast<const NDb::SingleStateObject*>(gameObject))
+  {
+    if (IsValid(singleState->sceneObject))
+    {
+      candidates->push_back(singleState->sceneObject.GetPtr());
+    }
+    return;
+  }
+
+  if (const NDb::MultiStateObject* multiState =
+      dynamic_cast<const NDb::MultiStateObject*>(gameObject))
+  {
+    AppendFirstValidLinuxMapSceneObject(multiState->sceneObjects, candidates);
+  }
+}
+
+void RecordLinuxMapWaterZonePreview(
+  const NDb::AdvMapWaterZone* waterZone,
+  const Placement& rootPlacement,
+  const std::string& scriptName,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!waterZone || !preview)
+  {
+    return;
+  }
+
+  LinuxMapWaterZonePreview zonePreview;
+  zonePreview.dbid = DescribeRawDbResource(waterZone);
+  zonePreview.scriptName = scriptName;
+  zonePreview.absolutePosition = waterZone->area.AbsolutePosition;
+  zonePreview.circle = waterZone->area.IsCircle;
+
+  const float offsetX = waterZone->area.AbsolutePosition ? 0.0f : rootPlacement.pos.x;
+  const float offsetY = waterZone->area.AbsolutePosition ? 0.0f : rootPlacement.pos.y;
+  if (waterZone->area.IsCircle && waterZone->area.points.size() > 0)
+  {
+    const NDb::FlatSplineControlPointDesc& centerPoint = waterZone->area.points[0];
+    const float radius = std::max(1.0f, centerPoint.width);
+    const float centerX = centerPoint.location.x + offsetX;
+    const float centerY = centerPoint.location.y + offsetY;
+    const int circleSegments = 24;
+    for (int segment = 0; segment < circleSegments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(circleSegments);
+      zonePreview.points.push_back(CVec2(
+        centerX + cosf(angle) * radius,
+        centerY + sinf(angle) * radius));
+    }
+  }
+  else
+  {
+    for (int pointIndex = 0; pointIndex < waterZone->area.points.size(); ++pointIndex)
+    {
+      const NDb::FlatSplineControlPointDesc& point = waterZone->area.points[pointIndex];
+      zonePreview.points.push_back(CVec2(
+        point.location.x + offsetX,
+        point.location.y + offsetY));
+    }
+  }
+
+  if (zonePreview.points.size() < 3)
+  {
+    preview->warnings.push_back("Selected map water zone has fewer than 3 points");
+    return;
+  }
+
+  ++preview->waterZoneCount;
+  preview->waterZonePointCount += zonePreview.points.size();
+  preview->waterZoneTriangleCount += zonePreview.points.size() - 2;
+  preview->waterZones.push_back(zonePreview);
+}
+
+void ProbeSelectedMapWaterZones(
+  const NDb::AdvMap* dbMap,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!dbMap || !preview)
+  {
+    return;
+  }
+
+  preview->waterZoneCount = 0;
+  preview->waterZonePointCount = 0;
+  preview->waterZoneTriangleCount = 0;
+  preview->waterZones.clear();
+
+  for (int objectIndex = 0; objectIndex < dbMap->objects.size(); ++objectIndex)
+  {
+    const NDb::AdvMapObject& mapObject = dbMap->objects[objectIndex];
+    if (!IsValid(mapObject.gameObject))
+    {
+      continue;
+    }
+
+    const NDb::AdvMapWaterZone* waterZone =
+      dynamic_cast<const NDb::AdvMapWaterZone*>(mapObject.gameObject.GetPtr());
+    if (!waterZone)
+    {
+      continue;
+    }
+
+    RecordLinuxMapWaterZonePreview(
+      waterZone,
+      mapObject.offset.GetPlace(),
+      ToStdString(mapObject.scriptName),
+      preview);
+  }
+}
+
+void ProbeSelectedMapScriptAreas(
+  const NDb::AdvMap* dbMap,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!dbMap || !preview)
+  {
+    return;
+  }
+
+  preview->scriptAreaCount = 0;
+  preview->scriptAreaSegmentCount = 0;
+  preview->scriptAreas.clear();
+
+  for (int areaIndex = 0; areaIndex < dbMap->scriptAreas.size(); ++areaIndex)
+  {
+    const NDb::ScriptArea& area = dbMap->scriptAreas[areaIndex];
+    LinuxMapScriptAreaPreview areaPreview;
+    areaPreview.name = ToStdString(area.name);
+    areaPreview.position = area.position;
+    areaPreview.radius = area.radius;
+    areaPreview.targetType = static_cast<int>(area.targetType);
+
+    ++preview->scriptAreaCount;
+    if (areaPreview.radius > 0.0f)
+    {
+      preview->scriptAreaSegmentCount += kLinuxMapScriptAreaCircleSegments;
+    }
+    else
+    {
+      preview->warnings.push_back("Selected map script area has non-positive radius");
+    }
+    preview->scriptAreas.push_back(areaPreview);
+  }
+}
+
+void RecordLinuxMapScriptPathPreview(
+  const NDb::ScriptPath* scriptPath,
+  const std::string& scriptName,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!scriptPath || !preview)
+  {
+    return;
+  }
+
+  LinuxMapScriptPathPreview pathPreview;
+  pathPreview.dbid = DescribeRawDbResource(scriptPath);
+  pathPreview.scriptName = scriptName;
+  for (int pointIndex = 0; pointIndex < scriptPath->path.size(); ++pointIndex)
+  {
+    pathPreview.points.push_back(scriptPath->path[pointIndex]);
+  }
+
+  ++preview->scriptPathCount;
+  preview->scriptPathPointCount += pathPreview.points.size();
+  if (pathPreview.points.size() < 2)
+  {
+    preview->warnings.push_back("Selected map script path has fewer than 2 points");
+    return;
+  }
+
+  preview->scriptPathSegmentCount += pathPreview.points.size() - 1;
+  preview->scriptPaths.push_back(pathPreview);
+}
+
+void RecordLinuxMapCameraSplinePreview(
+  const NDb::AdvMapCameraSpline* cameraSpline,
+  const Placement& rootPlacement,
+  const std::string& scriptName,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!cameraSpline || !preview)
+  {
+    return;
+  }
+
+  LinuxMapCameraSplinePreview splinePreview;
+  splinePreview.dbid = DescribeRawDbResource(cameraSpline);
+  splinePreview.scriptName = scriptName;
+  for (int pointIndex = 0; pointIndex < cameraSpline->points.size(); ++pointIndex)
+  {
+    CVec3 correctedPosition =
+      rootPlacement.rot.Rotate(cameraSpline->points[pointIndex].position);
+    correctedPosition += rootPlacement.pos;
+    splinePreview.points.push_back(correctedPosition);
+  }
+
+  ++preview->cameraSplineCount;
+  preview->cameraSplinePointCount += splinePreview.points.size();
+  if (splinePreview.points.size() < 2)
+  {
+    preview->warnings.push_back("Selected map camera spline has fewer than 2 points");
+    return;
+  }
+
+  preview->cameraSplineSegmentCount += splinePreview.points.size() - 1;
+  preview->cameraSplines.push_back(splinePreview);
+}
+
+void RecordLinuxMapScriptPolygonPreview(
+  const NDb::ScriptPolygonArea* polygonArea,
+  const std::string& scriptName,
+  const std::string& polygonName,
+  const std::vector<CVec2>& points,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!polygonArea || !preview)
+  {
+    return;
+  }
+  if (points.size() < 3)
+  {
+    preview->warnings.push_back("Selected map script polygon has fewer than 3 points");
+    return;
+  }
+
+  LinuxMapScriptPolygonPreview polygonPreview;
+  polygonPreview.dbid = DescribeRawDbResource(polygonArea);
+  polygonPreview.scriptName = scriptName;
+  polygonPreview.polygonName = polygonName;
+  polygonPreview.points = points;
+
+  ++preview->scriptPolygonCount;
+  preview->scriptPolygonPointCount += polygonPreview.points.size();
+  preview->scriptPolygonTriangleCount += polygonPreview.points.size() - 2;
+  preview->scriptPolygons.push_back(polygonPreview);
+}
+
+void RecordLinuxMapScriptPolygonAreaPreview(
+  const NDb::ScriptPolygonArea* polygonArea,
+  const std::string& scriptName,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!polygonArea || !preview)
+  {
+    return;
+  }
+
+  ++preview->scriptPolygonAreaCount;
+  if (polygonArea->polygons.empty())
+  {
+    std::vector<CVec2> points;
+    for (int pointIndex = 0; pointIndex < polygonArea->points.size(); ++pointIndex)
+    {
+      points.push_back(polygonArea->points[pointIndex]);
+    }
+    RecordLinuxMapScriptPolygonPreview(
+      polygonArea,
+      scriptName,
+      std::string(),
+      points,
+      preview);
+    return;
+  }
+
+  for (int polygonIndex = 0; polygonIndex < polygonArea->polygons.size(); ++polygonIndex)
+  {
+    const NDb::ScriptPolygonAreaPolygon& polygon = polygonArea->polygons[polygonIndex];
+    std::vector<CVec2> points;
+    bool valid = true;
+    for (int indexIndex = 0; indexIndex < polygon.indexes.size(); ++indexIndex)
+    {
+      const int pointIndex = polygon.indexes[indexIndex];
+      if (pointIndex < 0 || pointIndex >= polygonArea->points.size())
+      {
+        valid = false;
+        continue;
+      }
+      points.push_back(polygonArea->points[pointIndex]);
+    }
+
+    if (!valid)
+    {
+      preview->warnings.push_back("Selected map script polygon references an invalid point index");
+    }
+
+    RecordLinuxMapScriptPolygonPreview(
+      polygonArea,
+      scriptName,
+      ToStdString(polygon.name),
+      points,
+      preview);
+  }
+}
+
+void ProbeSelectedMapAuthoredGuides(
+  const NDb::AdvMap* dbMap,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!dbMap || !preview)
+  {
+    return;
+  }
+
+  ProbeSelectedMapScriptAreas(dbMap, preview);
+  preview->scriptPathCount = 0;
+  preview->scriptPathPointCount = 0;
+  preview->scriptPathSegmentCount = 0;
+  preview->cameraSplineCount = 0;
+  preview->cameraSplinePointCount = 0;
+  preview->cameraSplineSegmentCount = 0;
+  preview->scriptPolygonAreaCount = 0;
+  preview->scriptPolygonCount = 0;
+  preview->scriptPolygonPointCount = 0;
+  preview->scriptPolygonTriangleCount = 0;
+  preview->scriptPaths.clear();
+  preview->cameraSplines.clear();
+  preview->scriptPolygons.clear();
+
+  for (int objectIndex = 0; objectIndex < dbMap->objects.size(); ++objectIndex)
+  {
+    const NDb::AdvMapObject& mapObject = dbMap->objects[objectIndex];
+    if (!IsValid(mapObject.gameObject))
+    {
+      continue;
+    }
+
+    const std::string scriptName = ToStdString(mapObject.scriptName);
+    if (const NDb::AdvMapCameraSpline* cameraSpline =
+        dynamic_cast<const NDb::AdvMapCameraSpline*>(mapObject.gameObject.GetPtr()))
+    {
+      RecordLinuxMapCameraSplinePreview(
+        cameraSpline,
+        mapObject.offset.GetPlace(),
+        scriptName,
+        preview);
+      continue;
+    }
+
+    if (const NDb::ScriptPath* scriptPath =
+        dynamic_cast<const NDb::ScriptPath*>(mapObject.gameObject.GetPtr()))
+    {
+      RecordLinuxMapScriptPathPreview(scriptPath, scriptName, preview);
+      continue;
+    }
+
+    if (const NDb::ScriptPolygonArea* polygonArea =
+        dynamic_cast<const NDb::ScriptPolygonArea*>(mapObject.gameObject.GetPtr()))
+    {
+      RecordLinuxMapScriptPolygonAreaPreview(polygonArea, scriptName, preview);
+      continue;
+    }
+  }
+}
+
+float ComputeLinuxHdrColorLuminance(const Render::HDRColor& color)
+{
+  return std::max(0.0f, color.R) * 0.2126f +
+    std::max(0.0f, color.G) * 0.7152f +
+    std::max(0.0f, color.B) * 0.0722f;
+}
+
+void RecordLinuxMapLightEnvironmentPreview(
+  const NDb::LightEnvironment* environment,
+  LinuxMapLightEnvironmentPreview* preview
+)
+{
+  if (!environment || !preview)
+  {
+    return;
+  }
+
+  preview->ready = true;
+  preview->dbid = DescribeRawDbResource(environment);
+  preview->ambient = environment->AmbientColor;
+  preview->light1Diffuse = environment->Light1DiffuseColor;
+  preview->light2Diffuse = environment->Light2DiffuseColor;
+  preview->light1Yaw = environment->Light1Direction.Yaw;
+  preview->light1Pitch = environment->Light1Direction.Pitch;
+  preview->light2Yaw = environment->Light2Direction.Yaw;
+  preview->light2Pitch = environment->Light2Direction.Pitch;
+  preview->shadowMode = static_cast<int>(environment->shadowMode);
+  preview->warFogType = static_cast<int>(environment->warFogType);
+  preview->lightingCubeMapCoeffCount = environment->lightingCubeMapSHCoeffs.size();
+}
+
+void ProbeSelectedMapLighting(
+  const NDb::AdvMap* dbMap,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!dbMap || !preview)
+  {
+    return;
+  }
+
+  preview->pointLightCount = 0;
+  preview->pointLightDayCount = 0;
+  preview->pointLightNightCount = 0;
+  preview->pointLightNeutralCount = 0;
+  preview->pointLightMarkerCount = 0;
+  preview->lightEnvironmentResolved = false;
+  preview->nightLightEnvironmentResolved = false;
+  preview->lightEnvironment = LinuxMapLightEnvironmentPreview();
+  preview->nightLightEnvironment = LinuxMapLightEnvironmentPreview();
+  preview->pointLights.clear();
+
+  if (IsValid(dbMap->lightEnvironment))
+  {
+    preview->lightEnvironmentResolved = true;
+    RecordLinuxMapLightEnvironmentPreview(
+      dbMap->lightEnvironment.GetPtr(),
+      &preview->lightEnvironment);
+  }
+
+  if (IsValid(dbMap->nightLightEnvironment))
+  {
+    preview->nightLightEnvironmentResolved = true;
+    RecordLinuxMapLightEnvironmentPreview(
+      dbMap->nightLightEnvironment.GetPtr(),
+      &preview->nightLightEnvironment);
+  }
+
+  for (int lightIndex = 0; lightIndex < dbMap->pointLights.size(); ++lightIndex)
+  {
+    const NDb::PointLightInfo& light = dbMap->pointLights[lightIndex];
+    LinuxMapPointLightPreview lightPreview;
+    lightPreview.location = light.location;
+    lightPreview.range = light.range;
+    lightPreview.diffuse = light.diffuse;
+    lightPreview.diffuseIntensity = light.diffuseIntensity;
+    lightPreview.attenuation = static_cast<int>(light.attenuation);
+    lightPreview.flags = static_cast<int>(light.flags);
+
+    ++preview->pointLightCount;
+    const bool day =
+      (lightPreview.flags & static_cast<int>(NDb::POINTLIGHTFLAGS_DAY)) != 0;
+    const bool night =
+      (lightPreview.flags & static_cast<int>(NDb::POINTLIGHTFLAGS_NIGHT)) != 0;
+    if (day)
+    {
+      ++preview->pointLightDayCount;
+    }
+    if (night)
+    {
+      ++preview->pointLightNightCount;
+    }
+    if (!day && !night)
+    {
+      ++preview->pointLightNeutralCount;
+    }
+
+    if (lightPreview.range > 0.0f)
+    {
+      ++preview->pointLightMarkerCount;
+      preview->pointLights.push_back(lightPreview);
+    }
+    else
+    {
+      preview->warnings.push_back("Selected map point light has non-positive range");
+    }
+  }
+}
+
+void ProbeLinuxMapSceneComponentStaticPayloads(
+  const LinuxClientEnvironment& environment,
+  const NDb::DBSceneComponent* component,
+  const NDb::DBSceneComponent* parentComponent,
+  const NDb::AttachedSceneComponent* attached,
+  const Placement& parentPlacement,
+  int depth,
+  std::set<std::string>* visitedComponents,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!component || !preview || depth > 16)
+  {
+    return;
+  }
+
+  const std::string componentDbid = DescribeRawDbResource(component);
+  if (visitedComponents && !componentDbid.empty())
+  {
+    if (visitedComponents->find(componentDbid) != visitedComponents->end())
+    {
+      return;
+    }
+    visitedComponents->insert(componentDbid);
+  }
+
+  const NDb::Locator* matchedLocator = 0;
+  const Placement componentPlacement =
+    ResolveLinuxSceneComponentPlacement(
+      component,
+      parentComponent,
+      attached,
+      parentPlacement,
+      &matchedLocator);
+
+  if (const NDb::DBAnimatedSceneComponent* animatedComponent =
+      dynamic_cast<const NDb::DBAnimatedSceneComponent*>(component))
+  {
+    ++preview->animatedSceneComponentCount;
+    preview->animatedSceneSkinPartCount += animatedComponent->skins.size();
+    RecordLinuxMapAnimatedGeometryPayload(
+      environment,
+      animatedComponent,
+      componentPlacement,
+      preview);
+  }
+
+  if (const NDb::DBStaticSceneComponent* staticComponent =
+      dynamic_cast<const NDb::DBStaticSceneComponent*>(component))
+  {
+    ++preview->staticSceneComponentCount;
+    std::vector<size_t> materialDiffuseTextureIndices;
+    materialDiffuseTextureIndices.reserve(staticComponent->materialsReferences.size());
+    for (int materialIndex = 0; materialIndex < staticComponent->materialsReferences.size(); ++materialIndex)
+    {
+      const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
+        staticComponent->materialsReferences[materialIndex].GetPtr());
+      materialDiffuseTextureIndices.push_back(
+        RecordLinuxMapStaticDiffuseTexture(environment, textureFileName, preview));
+    }
+
+    RecordLinuxMapStaticGeometryPayload(
+      environment,
+      ToStdString(staticComponent->geometryFileName),
+      materialDiffuseTextureIndices,
+      componentPlacement,
+      preview);
+  }
+
+  for (int i = 0; i < component->attached.size(); ++i)
+  {
+    if (!component->attached[i].component)
+    {
+      continue;
+    }
+
+    ProbeLinuxMapSceneComponentStaticPayloads(
+      environment,
+      component->attached[i].component.GetPtr(),
+      component,
+      &component->attached[i],
+      componentPlacement,
+      depth + 1,
+      visitedComponents,
+      preview);
+  }
+}
+
+void ProbeLinuxMapSceneObjectStaticPayloads(
+  const LinuxClientEnvironment& environment,
+  const NDb::DBSceneObject* sceneObject,
+  const Placement& rootPlacement,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!sceneObject || !preview)
+  {
+    return;
+  }
+
+  ++preview->staticSceneObjectResolvedCount;
+  std::set<std::string> visitedComponents;
+  for (int i = 0; i < sceneObject->attached.size(); ++i)
+  {
+    if (!sceneObject->attached[i].component)
+    {
+      continue;
+    }
+
+    ProbeLinuxMapSceneComponentStaticPayloads(
+      environment,
+      sceneObject->attached[i].component.GetPtr(),
+      0,
+      &sceneObject->attached[i],
+      rootPlacement,
+      0,
+      &visitedComponents,
+      preview);
+  }
+}
+
+void ProbeSelectedMapStaticSceneObjects(
+  const LinuxClientEnvironment& environment,
+  const LinuxMapCatalogEntry& entry,
+  LinuxSelectedMapPreview* preview
+)
+{
+  if (!preview || entry.descriptor.empty())
+  {
+    return;
+  }
+
+  NDb::Ptr<NDb::AdvMapDescription> dbMapDescription =
+    NDb::Get<NDb::AdvMapDescription>(NDb::DBID(entry.descriptor.c_str()));
+  if (!IsValid(dbMapDescription))
+  {
+    preview->warnings.push_back("Selected map static scene preview could not resolve map descriptor from DB");
+    return;
+  }
+
+  NDb::Ptr<NDb::AdvMap> dbMap = dbMapDescription->map;
+  if (!IsValid(dbMap))
+  {
+    preview->warnings.push_back("Selected map static scene preview could not resolve map resource from DB");
+    return;
+  }
+
+  if (IsValid(dbMap->terrain))
+  {
+    ProbeSelectedMapTerrainHeightmap(environment, dbMap->terrain.GetPtr(), preview);
+    ProbeSelectedMapTerrainLayers(environment, dbMap->terrain.GetPtr(), preview);
+    ProbeSelectedMapTerrainNatureRoads(dbMap->terrain.GetPtr(), preview);
+    ProbeSelectedMapTerrainElements(environment, dbMap->terrain.GetPtr(), preview);
+  }
+  else
+  {
+    preview->warnings.push_back("Selected map has no DB terrain resource");
+  }
+
+  ProbeSelectedMapWaterZones(dbMap.GetPtr(), preview);
+  ProbeSelectedMapAuthoredGuides(dbMap.GetPtr(), preview);
+  ProbeSelectedMapLighting(dbMap.GetPtr(), preview);
+
+  const size_t objectLimit =
+    std::min(static_cast<size_t>(dbMap->objects.size()), kLinuxMapStaticPreviewMaxObjects);
+
+  for (size_t objectIndex = 0; objectIndex < objectLimit; ++objectIndex)
+  {
+    ++preview->staticSceneObjectScanCount;
+    if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles &&
+        preview->animatedGeometryPayloads.size() >= kLinuxMapAnimatedPreviewMaxPayloadFiles)
+    {
+      preview->staticScenePayloadLimitHit = true;
+      preview->animatedScenePayloadLimitHit = true;
+      break;
+    }
+
+    const NDb::AdvMapObject& mapObject = dbMap->objects[objectIndex];
+    if (!IsValid(mapObject.gameObject))
+    {
+      continue;
+    }
+
+    if (const NDb::AdvMapWaterZone* waterZone =
+        dynamic_cast<const NDb::AdvMapWaterZone*>(mapObject.gameObject.GetPtr()))
+    {
+      (void)waterZone;
+      continue;
+    }
+
+    std::vector<const NDb::DBSceneObject*> sceneObjects;
+    CollectLinuxMapGameObjectSceneObjects(mapObject.gameObject.GetPtr(), &sceneObjects);
+    preview->staticSceneObjectCandidateCount += sceneObjects.size();
+    for (size_t sceneObjectIndex = 0; sceneObjectIndex < sceneObjects.size(); ++sceneObjectIndex)
+    {
+      ProbeLinuxMapSceneObjectStaticPayloads(
+        environment,
+        sceneObjects[sceneObjectIndex],
+        mapObject.offset.GetPlace(),
+        preview);
+      if (preview->staticGeometryPayloads.size() >= kLinuxMapStaticPreviewMaxPayloadFiles)
+      {
+        preview->staticScenePayloadLimitHit = true;
+        break;
+      }
+    }
+  }
+
+  preview->staticSceneObjectScanLimitHit =
+    preview->staticSceneObjectScanCount >= objectLimit &&
+    objectLimit < static_cast<size_t>(dbMap->objects.size());
+}
+
+void ProbeHeroSceneComponentAsset(
+  const LinuxClientEnvironment& environment,
+  const NDb::DBSceneComponent* component,
+  const NDb::DBSceneComponent* parentComponent,
+  const NDb::AttachedSceneComponent* attached,
+  const Placement& parentPlacement,
+  int depth,
+  std::set<std::string>* visitedComponents,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!component || !preview || depth > 16)
+  {
+    return;
+  }
+
+  const std::string componentDbid = DescribeRawDbResource(component);
+  if (visitedComponents && !componentDbid.empty())
+  {
+    if (visitedComponents->find(componentDbid) != visitedComponents->end())
+    {
+      return;
+    }
+    visitedComponents->insert(componentDbid);
+  }
+
+  ++preview->componentCount;
+  const NDb::Locator* matchedLocator = 0;
+  const Placement componentPlacement =
+    ResolveLinuxSceneComponentPlacement(
+      component,
+      parentComponent,
+      attached,
+      parentPlacement,
+      &matchedLocator);
+
+  if (const NDb::DBAnimatedSceneComponent* animated =
+      dynamic_cast<const NDb::DBAnimatedSceneComponent*>(component))
+  {
+    ++preview->animatedComponentCount;
+    MergeHeroSceneAabb(animated->aabb, preview);
+
+    if (preview->animatedSrcFile.empty())
+    {
+      preview->animatedSrcFile = ToStdString(animated->srcFileName);
+    }
+    RecordHeroScenePayloadReference(environment, ToStdString(animated->srcFileName), &preview->animatedSrcFile, preview);
+
+    if (preview->skeletonFile.empty())
+    {
+      preview->skeletonFile = ToStdString(animated->skeletonFileName);
+    }
+    RecordHeroScenePayloadReference(environment, ToStdString(animated->skeletonFileName), &preview->skeletonFile, preview);
+
+    if (animated->animGraph && preview->animGraphDbid.empty())
+    {
+      preview->animGraphDbid = DescribeDbResource(animated->animGraph);
+    }
+
+    preview->animationCount += animated->animations.size();
+    for (int i = 0; i < animated->animations.size(); ++i)
+    {
+      const NDb::Animation& animation = animated->animations[i];
+      if (!animation.name.empty())
+      {
+        AppendHeroSceneAssetSample(preview, "anim:" + ToStdString(animation.name));
+      }
+      RecordHeroScenePayloadReference(
+        environment,
+        ToStdString(animation.animationFileName),
+        &preview->firstAnimationFile,
+        preview,
+        &preview->animationFiles);
+    }
+
+    preview->skinPartCount += animated->skins.size();
+    for (int i = 0; i < animated->skins.size(); ++i)
+    {
+      const NDb::SkinPart& skinPart = animated->skins[i];
+      preview->materialReferenceCount += skinPart.materialsReferences.size();
+      std::vector<size_t> materialDiffuseTextureIndices;
+      materialDiffuseTextureIndices.reserve(skinPart.materialsReferences.size());
+      for (int materialIndex = 0; materialIndex < skinPart.materialsReferences.size(); ++materialIndex)
+      {
+        const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
+          skinPart.materialsReferences[materialIndex].GetPtr());
+        materialDiffuseTextureIndices.push_back(
+          RecordHeroSceneSkinDiffuseTexture(environment, textureFileName, preview));
+      }
+      if (!skinPart.skinPartName.empty())
+      {
+        AppendHeroSceneAssetSample(preview, "skin:" + ToStdString(skinPart.skinPartName));
+      }
+      RecordHeroScenePayloadReference(
+        environment,
+        ToStdString(skinPart.srcFileName),
+        &preview->firstSkinPartFile,
+        preview);
+      RecordHeroSceneSkinGeometryPayload(
+        environment,
+        ToStdString(skinPart.geometryFileName),
+        materialDiffuseTextureIndices,
+        preview);
+    }
+
+    ProbeLinuxHeroRendererSkeletalMeshComponent(animated, preview);
+
+    preview->faceFxCount += animated->faceFXAnims.size();
+    preview->faceFxCount += animated->anims.size();
+  }
+  else if (const NDb::DBStaticSceneComponent* staticComponent =
+      dynamic_cast<const NDb::DBStaticSceneComponent*>(component))
+  {
+    ++preview->staticComponentCount;
+    MergeHeroSceneAabb(staticComponent->aabb, preview);
+    preview->materialReferenceCount += staticComponent->materialsReferences.size();
+    std::vector<size_t> materialDiffuseTextureIndices;
+    materialDiffuseTextureIndices.reserve(staticComponent->materialsReferences.size());
+    for (int materialIndex = 0; materialIndex < staticComponent->materialsReferences.size(); ++materialIndex)
+    {
+      const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
+        staticComponent->materialsReferences[materialIndex].GetPtr());
+      materialDiffuseTextureIndices.push_back(
+        RecordHeroSceneSkinDiffuseTexture(environment, textureFileName, preview));
+    }
+    RecordHeroScenePayloadReference(
+      environment,
+      ToStdString(staticComponent->srcFileName),
+      &preview->staticSrcFile,
+      preview);
+    bool locatorJointPlacement = false;
+    std::string locatorJointName;
+    Placement locatorOffset;
+    unsigned int locatorFlags = 0;
+    ResolveLinuxStaticPayloadLocator(
+      matchedLocator,
+      &locatorJointPlacement,
+      &locatorJointName,
+      &locatorOffset,
+      &locatorFlags);
+    const Placement payloadPlacement = ResolveLinuxStaticPayloadLocalPlacement(
+      matchedLocator,
+      attached,
+      componentPlacement);
+    const Placement originalPlacement =
+      BuildLinuxSceneComponentLocalPlacement(attached);
+    RecordHeroSceneStaticGeometryPayload(
+      environment,
+      ToStdString(staticComponent->geometryFileName),
+      materialDiffuseTextureIndices,
+      payloadPlacement,
+      originalPlacement,
+      parentPlacement,
+      locatorJointPlacement,
+      locatorJointName,
+      locatorOffset,
+      locatorFlags,
+      GetLinuxSceneComponentAttachFlags(attached),
+      component->orientation,
+      preview);
+  }
+  else if (const NDb::DBParticleSceneComponent* particleComponent =
+      dynamic_cast<const NDb::DBParticleSceneComponent*>(component))
+  {
+    ++preview->particleComponentCount;
+    MergeHeroSceneAabb(particleComponent->aabb, preview);
+    RecordHeroScenePayloadReference(
+      environment,
+      ToStdString(particleComponent->fxFileName),
+      &preview->particleFxFile,
+      preview);
+    RecordHeroScenePayloadReference(
+      environment,
+      ToStdString(particleComponent->srcFileName),
+      0,
+      preview);
+  }
+  else
+  {
+    ++preview->otherComponentCount;
+  }
+
+  for (int i = 0; i < component->attached.size(); ++i)
+  {
+    if (!component->attached[i].component)
+    {
+      continue;
+    }
+
+    ++preview->nestedAttachedCount;
+    ProbeHeroSceneComponentAsset(
+      environment,
+      component->attached[i].component.GetPtr(),
+      component,
+      &component->attached[i],
+      componentPlacement,
+      depth + 1,
+      visitedComponents,
+      preview);
+  }
+}
+
+void ProbeHeroSceneObjectAsset(
+  const LinuxClientEnvironment& environment,
+  const NDb::DBSceneObject* sceneObject,
+  const std::string& source,
+  LinuxHeroSceneAssetPreview* preview
+)
+{
+  if (!sceneObject || !preview || preview->sceneObjectResolved)
+  {
+    return;
+  }
+
+  preview->sceneObjectResolved = true;
+  preview->source = source;
+  preview->dbid = DescribeRawDbResource(sceneObject);
+
+  const fs::path descriptorPath = ResolveDataRefPath(environment, preview->dbid, ".xdb");
+  preview->descriptorFile = descriptorPath.string();
+  preview->descriptorResolved = !descriptorPath.empty() && fs::exists(descriptorPath);
+
+  if (sceneObject->collisionGeometry)
+  {
+    preview->collisionGeometryDbid = DescribeDbResource(sceneObject->collisionGeometry);
+    RecordHeroScenePayloadReference(
+      environment,
+      ToStdString(sceneObject->collisionGeometry->srcFileName),
+      &preview->collisionGeometryFile,
+      preview);
+  }
+
+  preview->rootAttachedCount = sceneObject->attached.size();
+  std::set<std::string> visitedComponents;
+  for (int i = 0; i < sceneObject->attached.size(); ++i)
+  {
+    if (!sceneObject->attached[i].component)
+    {
+      continue;
+    }
+
+    ProbeHeroSceneComponentAsset(
+      environment,
+      sceneObject->attached[i].component.GetPtr(),
+      0,
+      &sceneObject->attached[i],
+      NULLPLACEMENT,
+      0,
+      &visitedComponents,
+      preview);
+  }
+
+  if (!preview->descriptorResolved)
+  {
+    preview->warnings.push_back("Selected hero scene object descriptor was not found on disk");
+  }
+  if (preview->componentCount == 0)
+  {
+    preview->warnings.push_back("Selected hero scene object has no resolved scene components");
+  }
+
+  if (!preview->skeletonFile.empty())
+  {
+    ProbeLinuxHeroSkeletonPayload(preview);
+  }
+
+  if (!preview->animationFiles.empty() || !preview->firstAnimationFile.empty())
+  {
+    ProbeLinuxHeroAnimationPayloads(preview);
+  }
+
+  if (!preview->skinGeometryFiles.empty() || !preview->firstSkinGeometryFile.empty())
+  {
+    ProbeLinuxHeroSkinMeshPayloads(preview);
+  }
+
+  if (preview->meshPreview.ready &&
+      preview->skeletonPreview.ready &&
+      preview->animationPreview.ready)
+  {
+    ProbeLinuxHeroAnimationSkinningPayloads(environment, preview);
+  }
+}
+
+void ProbeSelectedHeroSceneAsset(
+  const LinuxClientEnvironment& environment,
+  const NDb::Hero* hero,
+  LinuxSelectedHeroDbPreview* preview
+)
+{
+  if (!hero || !preview)
+  {
+    return;
+  }
+
+  LinuxHeroSceneAssetPreview& sceneAsset = preview->sceneAsset;
+  sceneAsset.ready = true;
+  sceneAsset.sceneObjectCandidateCount = hero->heroSceneObjects.size();
+  sceneAsset.skinSceneObjectCount = hero->heroSkins.size();
+
+  for (int i = 0; i < hero->heroSceneObjects.size(); ++i)
+  {
+    if (!hero->heroSceneObjects[i])
+    {
+      continue;
+    }
+
+    ProbeHeroSceneObjectAsset(
+      environment,
+      hero->heroSceneObjects[i].GetPtr(),
+      "heroSceneObjects[" + std::to_string(i) + "]",
+      &sceneAsset);
+    if (sceneAsset.sceneObjectResolved)
+    {
+      return;
+    }
+  }
+
+  if (hero->sceneObject)
+  {
+    ProbeHeroSceneObjectAsset(
+      environment,
+      hero->sceneObject.GetPtr(),
+      "baseHero.sceneObject",
+      &sceneAsset);
+    if (sceneAsset.sceneObjectResolved)
+    {
+      return;
+    }
+  }
+
+  for (int i = 0; i < hero->heroSkins.size(); ++i)
+  {
+    if (!hero->heroSkins[i] || !hero->heroSkins[i]->sceneObject)
+    {
+      continue;
+    }
+
+    ProbeHeroSceneObjectAsset(
+      environment,
+      hero->heroSkins[i]->sceneObject.GetPtr(),
+      "heroSkins[" + std::to_string(i) + "].sceneObject",
+      &sceneAsset);
+    if (sceneAsset.sceneObjectResolved)
+    {
+      return;
+    }
+  }
+
+  sceneAsset.warnings.push_back("Selected hero has no usable DBSceneObject candidate");
+}
+
+bool IsLinuxHeroMeshDbPreviewRenderableForMap(const LinuxSelectedHeroDbPreview& preview)
+{
+  return
+    preview.sceneAsset.meshPreview.ready &&
+    preview.sceneAsset.meshPreview.boundsValid &&
+    !preview.sceneAsset.meshPreview.triangleVertices.empty();
+}
+
+bool IsLinuxDynamicWorldCreepMarker(const NWorld::LinuxDynamicWorldMarker& marker)
+{
+  return
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+}
+
+std::string BuildLinuxDynamicWorldUnitMeshPreviewKey(const NWorld::LinuxDynamicWorldMarker& marker)
+{
+  if (!marker.sceneObjectDbid.empty())
+  {
+    return ToStdString(marker.sceneObjectDbid);
+  }
+  return std::string();
+}
+
+void ProbeLinuxDynamicWorldUnitMeshPreview(
+  const LinuxClientEnvironment& environment,
+  const std::string& unitDbid,
+  const std::string& sceneObjectDbid,
+  int kind,
+  int creepType,
+  LinuxSelectedHeroDbPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  *preview = LinuxSelectedHeroDbPreview();
+  preview->ready = true;
+  preview->found = false;
+  preview->dbid = unitDbid.empty() ? sceneObjectDbid : unitDbid;
+  preview->persistentId = sceneObjectDbid;
+  preview->title =
+    fs::path(NormalizeDataRefPath(sceneObjectDbid)).stem().string();
+  if (preview->title.empty())
+  {
+    preview->title =
+      kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ?
+      "Neutral creep" :
+      "Common creep";
+  }
+  if (creepType >= 0)
+  {
+    preview->heroRace = NDb::EnumToString(static_cast<NDb::ECreepType>(creepType));
+  }
+  preview->sceneObjectCount = sceneObjectDbid.empty() ? 0 : 1;
+  preview->sceneAsset.ready = true;
+  preview->sceneAsset.sceneObjectCandidateCount = sceneObjectDbid.empty() ? 0 : 1;
+
+  if (sceneObjectDbid.empty())
+  {
+    preview->warnings.push_back("Dynamic world unit marker has no DBSceneObject id");
+    return;
+  }
+
+  NDb::Ptr<NDb::DBSceneObject> sceneObject =
+    NDb::Get<NDb::DBSceneObject>(NDb::DBID(sceneObjectDbid.c_str()));
+  if (!IsValid(sceneObject))
+  {
+    preview->warnings.push_back("Dynamic world unit DBSceneObject could not be resolved: " + sceneObjectDbid);
+    return;
+  }
+
+  ProbeHeroSceneObjectAsset(
+    environment,
+    sceneObject.GetPtr(),
+    "dynamicWorld.unit.sceneObject",
+    &preview->sceneAsset);
+  preview->found = preview->sceneAsset.sceneObjectResolved;
+  if (!IsLinuxHeroMeshDbPreviewRenderableForMap(*preview))
+  {
+    preview->warnings.push_back("Dynamic world unit scene object has no renderable OpenGL mesh payload");
+  }
+}
+
+size_t CountLinuxDynamicWorldUnitMeshPreviewsReady(
+  const std::map<std::string, LinuxSelectedHeroDbPreview>& previews
+)
+{
+  size_t ready = 0;
+  for (std::map<std::string, LinuxSelectedHeroDbPreview>::const_iterator it = previews.begin();
+       it != previews.end();
+       ++it)
+  {
+    if (IsLinuxHeroMeshDbPreviewRenderableForMap(it->second))
+    {
+      ++ready;
+    }
+  }
+  return ready;
+}
+
+size_t ProbeLinuxDynamicWorldUnitMeshPreviews(
+  const LinuxClientEnvironment& environment,
+  NWorld::PFWorld* world,
+  std::map<std::string, LinuxSelectedHeroDbPreview>* previews,
+  size_t* readyCount
+)
+{
+  if (readyCount)
+  {
+    *readyCount = 0;
+  }
+  if (!world || !previews)
+  {
+    return 0;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  if (markers.empty())
+  {
+    if (readyCount)
+    {
+      *readyCount = CountLinuxDynamicWorldUnitMeshPreviewsReady(*previews);
+    }
+    return previews->size();
+  }
+
+  const size_t previewLimit = 32;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
+    {
+      continue;
+    }
+
+    const std::string key = BuildLinuxDynamicWorldUnitMeshPreviewKey(marker);
+    if (key.empty() || previews->find(key) != previews->end())
+    {
+      continue;
+    }
+    if (previews->size() >= previewLimit)
+    {
+      break;
+    }
+
+    LinuxSelectedHeroDbPreview preview;
+    ProbeLinuxDynamicWorldUnitMeshPreview(
+      environment,
+      ToStdString(marker.unitDbid),
+      key,
+      marker.kind,
+      marker.creepType,
+      &preview);
+    (*previews)[key] = preview;
+  }
+
+  if (readyCount)
+  {
+    *readyCount = CountLinuxDynamicWorldUnitMeshPreviewsReady(*previews);
+  }
+  return previews->size();
+}
+
+void ProbeHeroMeshDbPreviewForCatalogIndex(
+  const LinuxClientEnvironment& environment,
+  const LinuxSessionRootPreview& sessionRootPreview,
+  const LinuxHeroCatalog& heroCatalog,
+  size_t heroIndex,
+  LinuxSelectedHeroDbPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  *preview = LinuxSelectedHeroDbPreview();
+  if (heroIndex >= heroCatalog.entries.size())
+  {
+    preview->warnings.push_back("Lineup hero catalog index is out of range");
+    return;
+  }
+
+  const LinuxHeroCatalogEntry& entry = heroCatalog.entries[heroIndex];
+  preview->ready = true;
+  preview->persistentId = ResolveHeroCatalogId(entry);
+  preview->title = entry.title;
+  preview->description = entry.description;
+
+  if (!sessionRootPreview.ready || !sessionRootPreview.logicRootReady || !sessionRootPreview.heroesDbReady)
+  {
+    preview->warnings.push_back("SessionRoot hero DB is unavailable");
+    return;
+  }
+
+  const NDb::Ptr<NDb::SessionRoot>& sessionRoot = NDb::SessionRoot::GetRoot();
+  if (!sessionRoot || !sessionRoot->logicRoot || !sessionRoot->logicRoot->heroes)
+  {
+    preview->warnings.push_back("SessionRoot::GetRoot() returned no hero list");
+    return;
+  }
+
+  NDb::Ptr<NDb::Hero> hero;
+  const vector<NDb::Ptr<NDb::Hero>>& heroes = sessionRoot->logicRoot->heroes->heroes;
+  for (int i = 0; i < heroes.size(); ++i)
+  {
+    if (heroes[i] && IsMatchingSessionRootHero(*heroes[i], entry))
+    {
+      hero = heroes[i];
+      break;
+    }
+  }
+
+  if (!hero)
+  {
+    preview->warnings.push_back("Lineup hero was not found in SessionRoot->logicRoot->heroes");
+    return;
+  }
+
+  preview->found = true;
+  preview->dbid = ToStdString(hero->GetDBID().GetFormatted());
+  const std::string heroPersistentId = ToStdString(hero->persistentId);
+  if (!heroPersistentId.empty())
+  {
+    preview->persistentId = heroPersistentId;
+  }
+  preview->heroRace = NDb::EnumToString(hero->heroRace);
+
+  const std::string heroTitle = ReadDbLocalizedText(hero->heroNameA);
+  const std::string heroAlternateTitle = ReadDbLocalizedText(hero->heroNameB);
+  if (!heroTitle.empty())
+  {
+    preview->title = heroTitle;
+  }
+  else if (!heroAlternateTitle.empty())
+  {
+    preview->title = heroAlternateTitle;
+  }
+
+  preview->sceneObjectCount = hero->heroSceneObjects.size();
+  preview->summonedUnitGroupCount = hero->summonedUnits.size();
+  preview->skinCount = hero->heroSkins.size();
+  ProbeSelectedHeroSceneAsset(environment, hero.GetPtr(), preview);
+}
+
+void ProbeLocalMatchHeroMeshPreviews(
+  const LinuxClientEnvironment& environment,
+  const LinuxSessionRootPreview& sessionRootPreview,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxSelectedHeroDbPreview& selectedHeroPreview,
+  std::vector<LinuxSelectedHeroDbPreview>* previews,
+  size_t* readyCount
+)
+{
+  if (readyCount)
+  {
+    *readyCount = 0;
+  }
+  if (!previews)
+  {
+    return;
+  }
+
+  previews->clear();
+  if (!localMatchPreview.ready || localMatchPreview.lineup.empty())
+  {
+    return;
+  }
+
+  previews->resize(localMatchPreview.lineup.size());
+  std::map<size_t, LinuxSelectedHeroDbPreview> heroPreviewCache;
+  for (size_t i = 0; i < localMatchPreview.lineup.size(); ++i)
+  {
+    const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
+    if (slot.heroIndex >= heroCatalog.entries.size())
+    {
+      continue;
+    }
+
+    if (i == localMatchPreview.selectedSlotIndex && selectedHeroPreview.found)
+    {
+      (*previews)[i] = selectedHeroPreview;
+    }
+    else
+    {
+      std::map<size_t, LinuxSelectedHeroDbPreview>::const_iterator cached =
+        heroPreviewCache.find(slot.heroIndex);
+      if (cached != heroPreviewCache.end())
+      {
+        (*previews)[i] = cached->second;
+      }
+      else
+      {
+        LinuxSelectedHeroDbPreview preview;
+        ProbeHeroMeshDbPreviewForCatalogIndex(
+          environment,
+          sessionRootPreview,
+          heroCatalog,
+          slot.heroIndex,
+          &preview);
+        (*previews)[i] = preview;
+        heroPreviewCache[slot.heroIndex] = preview;
+      }
+    }
+
+    if (readyCount && IsLinuxHeroMeshDbPreviewRenderableForMap((*previews)[i]))
+    {
+      ++(*readyCount);
+    }
+  }
+}
+
 void ProbeSelectedHeroDbPreview(
   const LinuxClientEnvironment& environment,
   const LinuxSessionRootPreview& sessionRootPreview,
@@ -9829,6 +17127,7 @@ void ProbeSelectedHeroDbPreview(
   preview->summonedUnitGroupCount = hero->summonedUnits.size();
   preview->skinCount = hero->heroSkins.size();
   preview->recommendedStatCount = hero->recommendedStats.size();
+  ProbeSelectedHeroSceneAsset(environment, hero.GetPtr(), preview);
 
   if (hero->heroImageA)
   {
@@ -10762,6 +18061,73 @@ public:
     return GetDB().applicators.size();
   }
 };
+
+static const int linuxBootstrapWorldRuntimeCommandToken = 20260530;
+static const DWORD linuxBootstrapKeepAliveCommandTypeId = 0x229AD400;
+static const DWORD linuxBootstrapTimescaleCommandTypeId = 0x228DA404;
+static const DWORD linuxBootstrapCombatMoveHeroCommandTypeId = 0x2C5B9CC0;
+static const DWORD linuxBootstrapMoveHeroCommandTypeId = 0x2C59C380;
+static const DWORD linuxBootstrapStopHeroCommandTypeId = 0x2C5B9481;
+static const DWORD linuxBootstrapAttackTargetCommandTypeId = 0x2C5B9480;
+static const DWORD linuxBootstrapFollowUnitCommandTypeId = 0x2C6A2BC0;
+static const DWORD linuxBootstrapHoldCommandTypeId = 0x2C6BBB40;
+static const DWORD linuxBootstrapCancelChannellingCommandTypeId = 0xE78854C0;
+static const DWORD linuxBootstrapMinimapSignalCommandTypeId = 0x0B622CC0;
+static const DWORD linuxBootstrapUseUnitCommandTypeId = 0xE78B5B00;
+static const DWORD linuxBootstrapActivateTalentCommandTypeId = 0x0B695200;
+static const DWORD linuxBootstrapUseTalentCommandTypeId = 0x0B695201;
+static const DWORD linuxBootstrapUsePortalCommandTypeId = 0x6294CD01;
+static const DWORD linuxBootstrapUseConsumableCommandTypeId = 0x0F5CC401;
+static const DWORD linuxBootstrapBuyConsumableCommandTypeId = 0x2C61F340;
+static const DWORD linuxBootstrapRaiseFlagCommandTypeId = 0x0B76AAC0;
+static const DWORD linuxBootstrapInitMinigameCommandTypeId = 0x9D62D440;
+static const DWORD linuxBootstrapPickupObjectCommandTypeId = 0xA05CCB40;
+static const float linuxBootstrapTimescaleCommandValue = 1.05f;
+
+class LinuxBootstrapWorldRuntimeCommand : public NCore::WorldCommand
+{
+  OBJECT_METHODS(0x9E6A1193, LinuxBootstrapWorldRuntimeCommand)
+
+public:
+  LinuxBootstrapWorldRuntimeCommand()
+    : token(0),
+      value(0.0f)
+  {
+  }
+
+  LinuxBootstrapWorldRuntimeCommand(int token_, float value_)
+    : token(token_),
+      value(value_)
+  {
+  }
+
+  int operator&(IBinSaver& f)
+  {
+    f.Add(2, &token);
+    f.Add(3, &value);
+    return 0;
+  }
+
+  virtual bool CanExecute() const
+  {
+    return true;
+  }
+
+  virtual void Execute(NCore::IWorldBase* pWorld)
+  {
+    NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(pWorld);
+    if (world)
+    {
+      world->RegisterLinuxBootstrapRuntimeCommand(GetId(), token, value);
+    }
+  }
+
+private:
+  int token;
+  float value;
+};
+
+REGISTER_SAVELOAD_CLASS(LinuxBootstrapWorldRuntimeCommand);
 
 class LinuxBounceApplicatorProbe : public NWorld::PFApplBounce
 {
@@ -12313,6 +19679,7 @@ void ProbeEffectsPoolRuntime(
         NDb::BaseAttack* baseAttack = new NDb::BaseAttack();
         baseAttack->type = NDb::ABILITYTYPE_ACTIVE;
         baseAttack->targetType = NDb::SPELLTARGET_ALL;
+        baseAttack->useRange.sString = "5.0";
         baseAttack->applicators.push_back(attackChildDbPtr);
         NDb::Ptr<NDb::BaseAttack> baseAttackDb(baseAttack);
 
@@ -12639,6 +20006,7 @@ void ProbeEffectsPoolRuntime(
         NDb::BaseAttack* damageBaseAttack = new NDb::BaseAttack();
         damageBaseAttack->type = NDb::ABILITYTYPE_ACTIVE;
         damageBaseAttack->targetType = NDb::SPELLTARGET_ALL;
+        damageBaseAttack->useRange.sString = "8.0";
         damageBaseAttack->applicators.push_back(attackDamageDbPtr);
         NDb::Ptr<NDb::BaseAttack> damageBaseAttackDb(damageBaseAttack);
         CObj<NWorld::PFBaseAttackData> damageBaseAttackData(
@@ -14009,9 +21377,11 @@ void ProbeEffectsPoolRuntime(
     NDb::FlyApplicator* unitMoveFlyDb = new NDb::FlyApplicator();
     NDb::AttractApplicator* unitMoveAttractDb = new NDb::AttractApplicator();
     NDb::AttackTargetApplicator* unitMoveAttackTargetDb = new NDb::AttackTargetApplicator();
+    NDb::DamageApplicator* unitMoveAttackDamageDb = new NDb::DamageApplicator();
     NDb::TeleportApplicator* unitMoveTeleportDb = new NDb::TeleportApplicator();
     NDb::GhostMoveApplicator* unitMoveGhostDb = new NDb::GhostMoveApplicator();
     NDb::PointTargetSelector* unitMovePointSelectorDb = new NDb::PointTargetSelector();
+    NDb::PointTargetSelector* unitMoveThrowTargetSelectorDb = new NDb::PointTargetSelector();
     NDb::Unit* unitMoveUnitDb =
       static_cast<NDb::Unit*>(
         NDb::Unit::NewUnit(
@@ -14033,9 +21403,11 @@ void ProbeEffectsPoolRuntime(
       unitMoveFlyDb &&
       unitMoveAttractDb &&
       unitMoveAttackTargetDb &&
+      unitMoveAttackDamageDb &&
       unitMoveTeleportDb &&
       unitMoveGhostDb &&
       unitMovePointSelectorDb &&
+      unitMoveThrowTargetSelectorDb &&
       unitMoveUnitDb &&
       unitMoveCreatureDb;
     bool unitMoveUnitsReady = false;
@@ -14049,6 +21421,17 @@ void ProbeEffectsPoolRuntime(
     bool unitMoveFlyApplied = false;
     bool unitMoveThrowApplied = false;
     bool unitMoveAttackApplied = false;
+    bool unitMoveTrackApplied = false;
+    bool unitMoveFollowApplied = false;
+    bool unitMoveAttachApplied = false;
+    bool unitMovePushApplied = false;
+    bool unitMoveFindApplied = false;
+    bool unitMoveTickApplied = false;
+    bool unitMoveTraceApplied = false;
+    bool unitMoveBlockApplied = false;
+    bool unitMoveResolveApplied = false;
+    bool unitMoveTunnelApplied = false;
+    bool unitMoveResolveSearchApplied = false;
     float unitMoveTeleportBefore = 0.0f;
     float unitMoveTeleportAfter = 0.0f;
     float unitMoveKickBefore = 0.0f;
@@ -14075,6 +21458,38 @@ void ProbeEffectsPoolRuntime(
     bool unitMoveThrowFlagsAfter = false;
     size_t unitMoveAttackBeforeRemove = 0;
     size_t unitMoveAttackAfterRemove = 0;
+    float unitMoveThrowBefore = 0.0f;
+    float unitMoveThrowAfter = 0.0f;
+    float unitMoveAttackBefore = 0.0f;
+    float unitMoveAttackAfter = 0.0f;
+    bool unitMoveAttackReady = false;
+    bool unitMoveAttackRange = false;
+    bool unitMoveAttackCan = false;
+    bool unitMoveAttackTargetAssigned = false;
+    bool unitMoveAttackDirectDone = false;
+    float unitMoveTrackAfter = 0.0f;
+    float unitMoveFollowBefore = 0.0f;
+    float unitMoveFollowAfter = 0.0f;
+    float unitMoveAttachBefore = 0.0f;
+    float unitMoveAttachParentAfter = 0.0f;
+    float unitMoveAttachChildAfter = 0.0f;
+    float unitMovePushBlockerBefore = 0.0f;
+    float unitMovePushBlockerAfter = 0.0f;
+    float unitMovePushMoverAfter = 0.0f;
+    float unitMoveFindAfter = 0.0f;
+    float unitMoveTickBefore = 0.0f;
+    float unitMoveTickAfter = 0.0f;
+    float unitMoveTraceFull = 0.0f;
+    float unitMoveTraceDistance = 0.0f;
+    float unitMoveBlockBefore = 0.0f;
+    float unitMoveBlockAfter = 0.0f;
+    float unitMoveResolveBefore = 0.0f;
+    float unitMoveResolveAfter = 0.0f;
+    float unitMoveTunnelBefore = 0.0f;
+    float unitMoveTunnelAfter = 0.0f;
+    float unitMoveResolveSearchBefore = 0.0f;
+    float unitMoveResolveSearchAfter = 0.0f;
+    float unitMoveResolveSearchYAfter = 0.0f;
 
     if (unitMoveDbReady)
     {
@@ -14087,14 +21502,23 @@ void ProbeEffectsPoolRuntime(
       unitMoveAttractDb->distance = 1.0f;
 
       unitMovePointSelectorDb->mode = NDb::POINTTARGETSELECTORMODE_TOOWNER;
+      unitMovePointSelectorDb->offset = CVec2(0.0f, 0.0f);
       unitMoveShiftDb->targetSelector =
         NDb::Ptr<NDb::SingleTargetSelector>(unitMovePointSelectorDb);
 
+      unitMoveThrowTargetSelectorDb->mode = NDb::POINTTARGETSELECTORMODE_RANGEFROMOWNER;
+      unitMoveThrowTargetSelectorDb->range.sString = "6.0";
+      unitMoveThrowTargetSelectorDb->checkMinRange = false;
+
       unitMoveMoveToDb->lifeTime.sString = "-1.0";
       unitMoveMoveToDb->moveTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveMoveToDb->offset = CVec2(0.0f, 0.0f);
       unitMoveMoveToDb->moveSpeed.sString = "4.0";
       unitMoveMoveToDb->moveRange.sString = "0.01";
       unitMoveMoveToDb->isMoveDirect.sString = "1";
+      unitMoveMoveToDb->pushUnits = false;
+      unitMoveMoveToDb->justRotate = false;
+      unitMoveMoveToDb->isNotStackable = false;
 
       unitMoveGhostDb->lifeTime.sString = "-1.0";
       unitMoveGhostDb->collisionFlags = NDb::GHOSTMOVEMODE_IGNOREDYNAMIC;
@@ -14106,14 +21530,20 @@ void ProbeEffectsPoolRuntime(
       unitMoveFlyDb->animatedStopTime = 0.0f;
       unitMoveFlyDb->radiusFixObstacle = 1.0f;
 
-      unitMoveThrowDb->flightType = NDb::THROWTYPE_FLIP;
+      unitMoveThrowDb->flightType = NDb::THROWTYPE_THROW;
+      unitMoveThrowDb->targetSelector =
+        NDb::Ptr<NDb::SingleTargetSelector>(unitMoveThrowTargetSelectorDb);
+      unitMoveThrowDb->moveSpeed.sString = "4.0";
       unitMoveThrowDb->flipTime.sString = "0.25";
       unitMoveThrowDb->collisionFlags = NDb::GHOSTMOVEMODE_IGNOREDYNAMIC;
       unitMoveThrowDb->surfaceSpeedFromAG = false;
 
       unitMoveAttackTargetDb->lifeTime.sString = "-1.0";
-      unitMoveAttackTargetDb->attackTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveAttackTargetDb->applyTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
+      unitMoveAttackTargetDb->attackTarget = NDb::APPLICATORAPPLYTARGET_ABILITYTARGET;
       unitMoveAttackTargetDb->ignoreVisibility = true;
+      unitMoveAttackDamageDb->damage.sString = "0.18";
+      unitMoveAttackDamageDb->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
 
       CObj<NWorld::PFBaseMovingUnit> moveTeleportOwner(
         new NWorld::PFBaseMovingUnit(
@@ -14223,7 +21653,161 @@ void ProbeEffectsPoolRuntime(
       CObj<NWorld::PFBaseMovingUnit> moveAttackReceiver(
         new NWorld::PFBaseMovingUnit(
           0,
-          CVec3(275.0f, 32.0f, 0.0f),
+          CVec3(274.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTrackTarget(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(280.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTrackFollower(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(290.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveFollowLeader(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(302.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveFollowFollower(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(308.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttachParent(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(314.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveAttachChild(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(318.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> movePushMover(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(330.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> movePushBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(332.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveFindMover(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(340.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveFindBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(342.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTickUnit(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(354.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTraceMover(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(360.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTraceBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(366.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveBlockMover(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(380.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveBlockBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(386.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveResolveAnchor(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(420.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveResolvePushed(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(422.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTunnelMover(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(440.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveTunnelBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(446.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveResolveSearchAnchor(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(460.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveResolveSearchPushed(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(462.0f, 32.0f, 0.0f),
+          CVec2(1.0f, 0.0f),
+          *unitMoveUnitDb)
+      );
+      CObj<NWorld::PFBaseMovingUnit> moveResolveSearchBlocker(
+        new NWorld::PFBaseMovingUnit(
+          0,
+          CVec3(464.0f, 32.0f, 0.0f),
           CVec2(1.0f, 0.0f),
           *unitMoveUnitDb)
       );
@@ -14244,7 +21828,29 @@ void ProbeEffectsPoolRuntime(
         moveFlyReceiver &&
         moveThrowReceiver &&
         moveAttackOwner &&
-        moveAttackReceiver;
+        moveAttackReceiver &&
+        moveTrackTarget &&
+        moveTrackFollower &&
+        moveFollowLeader &&
+        moveFollowFollower &&
+        moveAttachParent &&
+        moveAttachChild &&
+        movePushMover &&
+        movePushBlocker &&
+        moveFindMover &&
+        moveFindBlocker &&
+        moveTickUnit &&
+        moveTraceMover &&
+        moveTraceBlocker &&
+        moveBlockMover &&
+        moveBlockBlocker &&
+        moveResolveAnchor &&
+        moveResolvePushed &&
+        moveTunnelMover &&
+        moveTunnelBlocker &&
+        moveResolveSearchAnchor &&
+        moveResolveSearchPushed &&
+        moveResolveSearchBlocker;
 
       if (unitMoveUnitsReady)
       {
@@ -14257,7 +21863,18 @@ void ProbeEffectsPoolRuntime(
           moveToOwner.GetPtr(), moveToReceiver.GetPtr(),
           moveGhostOwner.GetPtr(), moveGhostReceiver.GetPtr(),
           moveFlyReceiver.GetPtr(), moveThrowReceiver.GetPtr(),
-          moveAttackOwner.GetPtr(), moveAttackReceiver.GetPtr()
+          moveAttackOwner.GetPtr(), moveAttackReceiver.GetPtr(),
+          moveTrackTarget.GetPtr(), moveTrackFollower.GetPtr(),
+          moveFollowLeader.GetPtr(), moveFollowFollower.GetPtr(),
+          moveAttachParent.GetPtr(), moveAttachChild.GetPtr(),
+          movePushMover.GetPtr(), movePushBlocker.GetPtr(),
+          moveFindMover.GetPtr(), moveFindBlocker.GetPtr(),
+          moveTickUnit.GetPtr(),
+          moveTraceMover.GetPtr(), moveTraceBlocker.GetPtr(),
+          moveBlockMover.GetPtr(), moveBlockBlocker.GetPtr(),
+          moveResolveAnchor.GetPtr(), moveResolvePushed.GetPtr(),
+          moveTunnelMover.GetPtr(), moveTunnelBlocker.GetPtr(),
+          moveResolveSearchAnchor.GetPtr(), moveResolveSearchPushed.GetPtr(), moveResolveSearchBlocker.GetPtr()
         };
         for (int i = 0; i < ARRAY_SIZE(moveUnits); ++i)
         {
@@ -14357,9 +21974,12 @@ void ProbeEffectsPoolRuntime(
             NWorld::Target(moveToReceiver.GetPtr()));
         unitMoveMoveToBeforeRemove =
           countUnitMove(moveToReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::moveTos);
-        moveToReceiver->Step(0.016f);
-        if (moveToInstance)
-          moveToInstance->Update(0.016f);
+        for (int moveStep = 0; moveStep < 80; ++moveStep)
+        {
+          moveToReceiver->Step(0.016f);
+          if (moveToInstance)
+            moveToInstance->Update(0.016f);
+        }
         unitMoveToAfter = moveToReceiver->GetPosition().x;
         if (moveToInstance)
         {
@@ -14371,7 +21991,153 @@ void ProbeEffectsPoolRuntime(
         unitMoveMoveToApplied =
           moveToInstance &&
           unitMoveMoveToBeforeRemove == 1 &&
-          unitMoveMoveToAfterRemove == 0;
+          unitMoveMoveToAfterRemove == 0 &&
+          unitMoveToBefore > 268.9f &&
+          unitMoveToAfter > 263.8f &&
+          unitMoveToAfter < 264.1f;
+
+        moveTrackFollower->SetUnitSpeed(4.0f);
+        moveTrackFollower->MoveTo(moveTrackTarget.GetPtr(), 1.0f);
+        for (int moveStep = 0; moveStep < 20; ++moveStep)
+          moveTrackFollower->Step(0.016f);
+        moveTrackTarget->TeleportTo(CVec2(284.0f, 32.0f), false, false);
+        for (int moveStep = 0; moveStep < 120; ++moveStep)
+          moveTrackFollower->Step(0.016f);
+        unitMoveTrackAfter = moveTrackFollower->GetPosition().x;
+        unitMoveTrackApplied =
+          unitMoveTrackAfter > 284.8f &&
+          unitMoveTrackAfter < 285.2f &&
+          !moveTrackFollower->IsMoving();
+
+        moveFollowFollower->SetUnitSpeed(4.0f);
+        unitMoveFollowBefore = moveFollowFollower->GetPosition().x;
+        moveFollowFollower->FollowTo(CPtr<NWorld::PFBaseMovingUnit>(moveFollowLeader.GetPtr()));
+        moveFollowLeader->TeleportTo(CVec2(296.0f, 32.0f), false, false);
+        for (int moveStep = 0; moveStep < 120; ++moveStep)
+          moveFollowFollower->Step(0.016f);
+        unitMoveFollowAfter = moveFollowFollower->GetPosition().x;
+        unitMoveFollowApplied =
+          unitMoveFollowBefore > 307.9f &&
+          unitMoveFollowAfter > 301.8f &&
+          unitMoveFollowAfter < 302.2f;
+
+        moveAttachParent->SetUnitSpeed(4.0f);
+        unitMoveAttachBefore = moveAttachChild->GetPosition().x;
+        moveAttachParent->AttachUnit(CPtr<NWorld::PFBaseMovingUnit>(moveAttachChild.GetPtr()));
+        moveAttachParent->MoveTo(CVec2(310.0f, 32.0f));
+        for (int moveStep = 0; moveStep < 80; ++moveStep)
+          moveAttachParent->Step(0.016f);
+        unitMoveAttachParentAfter = moveAttachParent->GetPosition().x;
+        unitMoveAttachChildAfter = moveAttachChild->GetPosition().x;
+        unitMoveAttachApplied =
+          unitMoveAttachBefore > 317.9f &&
+          unitMoveAttachParentAfter > 309.8f &&
+          unitMoveAttachParentAfter < 310.2f &&
+          unitMoveAttachChildAfter > 309.8f &&
+          unitMoveAttachChildAfter < 310.2f &&
+          moveAttachChild->IsMounted();
+        moveAttachParent->DetachUnit();
+
+        unitMovePushBlockerBefore = movePushBlocker->GetPosition().x;
+        movePushMover->PlaceUnitWithPush(CVec2(332.0f, 32.0f), 4.0f, true, false);
+        unitMovePushMoverAfter = movePushMover->GetPosition().x;
+        unitMovePushBlockerAfter = movePushBlocker->GetPosition().x;
+        unitMovePushApplied =
+          movePushMover->GetObjectSize() > 1.9f &&
+          unitMovePushBlockerBefore > 331.9f &&
+          unitMovePushMoverAfter > 331.9f &&
+          unitMovePushMoverAfter < 332.1f &&
+          unitMovePushBlockerAfter > 335.8f &&
+          unitMovePushBlockerAfter < 336.2f;
+
+        CVec2 unitMoveFoundPosition = moveFindBlocker->GetPosition().AsVec2D();
+        unitMoveFindApplied =
+          moveFindMover->FindFreePlace(
+            moveFindBlocker->GetPosition().AsVec2D(),
+            6.0f,
+            unitMoveFoundPosition,
+            false,
+            false) &&
+          unitMoveFoundPosition.x > 345.8f &&
+          unitMoveFoundPosition.x < 346.2f;
+        unitMoveFindAfter = unitMoveFoundPosition.x;
+
+        moveTickUnit->SetUnitSpeed(4.0f);
+        unitMoveTickBefore = moveTickUnit->GetPosition().x;
+        moveTickUnit->MoveTo(CVec2(350.0f, 32.0f));
+        for (int moveStep = 0; moveStep < 80; ++moveStep)
+          NWorld::MovingUnit::UpdateMovements(0, 0, 0, 0.016f);
+        unitMoveTickAfter = moveTickUnit->GetPosition().x;
+        unitMoveTickApplied =
+          unitMoveTickBefore > 353.9f &&
+          unitMoveTickAfter > 349.8f &&
+          unitMoveTickAfter < 350.2f &&
+          !moveTickUnit->IsMoving();
+
+        unitMoveTraceFull = fabs(CVec2(370.0f, 32.0f) - moveTraceMover->GetPosition().AsVec2D());
+        unitMoveTraceDistance =
+          moveTraceMover->CheckStraightMove(CVec2(370.0f, 32.0f), NWorld::MAP_MODE_DYNAMIC);
+        unitMoveTraceApplied =
+          unitMoveTraceFull > 9.9f &&
+          unitMoveTraceFull < 10.1f &&
+          unitMoveTraceDistance > 1.8f &&
+          unitMoveTraceDistance < 2.2f;
+
+        moveBlockMover->SetUnitSpeed(4.0f);
+        unitMoveBlockBefore = moveBlockMover->GetPosition().x;
+        moveBlockMover->MoveTo(CVec2(390.0f, 32.0f));
+        for (int moveStep = 0; moveStep < 80; ++moveStep)
+          moveBlockMover->Step(0.016f);
+        unitMoveBlockAfter = moveBlockMover->GetPosition().x;
+        unitMoveBlockApplied =
+          unitMoveBlockBefore > 379.9f &&
+          unitMoveBlockAfter > 381.8f &&
+          unitMoveBlockAfter < 382.2f &&
+          !moveBlockMover->IsMoving();
+
+        unitMoveResolveBefore =
+          fabs(moveResolvePushed->GetPosition().AsVec2D() - moveResolveAnchor->GetPosition().AsVec2D());
+        vector<NWorld::PFBaseMovingUnit*> unitMoveResolveUnits;
+        unitMoveResolveUnits.push_back(moveResolveAnchor.GetPtr());
+        unitMoveResolveUnits.push_back(moveResolvePushed.GetPtr());
+        NWorld::CollisionResolver unitMoveResolver(0);
+        unitMoveResolver.Resolve(unitMoveResolveUnits, 0.016f);
+        unitMoveResolveAfter =
+          fabs(moveResolvePushed->GetPosition().AsVec2D() - moveResolveAnchor->GetPosition().AsVec2D());
+        unitMoveResolveApplied =
+          unitMoveResolveBefore > 1.8f &&
+          unitMoveResolveBefore < 2.2f &&
+          unitMoveResolveAfter > 3.8f &&
+          unitMoveResolveAfter < 4.2f;
+
+        moveTunnelMover->SetUnitSpeed(100.0f);
+        unitMoveTunnelBefore = moveTunnelMover->GetPosition().x;
+        moveTunnelMover->MoveTo(CVec2(455.0f, 32.0f));
+        moveTunnelMover->Step(0.1f);
+        unitMoveTunnelAfter = moveTunnelMover->GetPosition().x;
+        unitMoveTunnelApplied =
+          unitMoveTunnelBefore > 439.9f &&
+          unitMoveTunnelAfter > 441.8f &&
+          unitMoveTunnelAfter < 442.2f &&
+          !moveTunnelMover->IsMoving();
+
+        unitMoveResolveSearchBefore =
+          fabs(moveResolveSearchPushed->GetPosition().AsVec2D() - moveResolveSearchAnchor->GetPosition().AsVec2D());
+        vector<NWorld::PFBaseMovingUnit*> unitMoveResolveSearchUnits;
+        unitMoveResolveSearchUnits.push_back(moveResolveSearchAnchor.GetPtr());
+        unitMoveResolveSearchUnits.push_back(moveResolveSearchPushed.GetPtr());
+        unitMoveResolveSearchUnits.push_back(moveResolveSearchBlocker.GetPtr());
+        unitMoveResolver.Resolve(unitMoveResolveSearchUnits, 0.016f);
+        unitMoveResolveSearchAfter =
+          fabs(moveResolveSearchPushed->GetPosition().AsVec2D() - moveResolveSearchAnchor->GetPosition().AsVec2D());
+        unitMoveResolveSearchYAfter = moveResolveSearchPushed->GetPosition().y;
+        unitMoveResolveSearchApplied =
+          unitMoveResolveSearchBefore > 1.8f &&
+          unitMoveResolveSearchBefore < 2.2f &&
+          unitMoveResolveSearchAfter > 3.8f &&
+          unitMoveResolveSearchAfter < 4.3f &&
+          unitMoveResolveSearchYAfter > 35.8f &&
+          unitMoveResolveSearchYAfter < 36.2f;
 
         CObj<NWorld::PFAbilityInstance> ghostInstance =
           applyUnitMoveApplicator(
@@ -14429,6 +22195,14 @@ void ProbeEffectsPoolRuntime(
         unitMoveThrowFlagsDuring =
           moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDMOVE) &&
           moveThrowReceiver->CheckFlag(NDb::UNITFLAG_FORBIDATTACK);
+        unitMoveThrowBefore = moveThrowReceiver->GetPosition().x;
+        for (int moveStep = 0; moveStep < 80; ++moveStep)
+        {
+          NWorld::MovingUnit::UpdateMovements(0, 0, 0, 0.016f);
+          if (throwInstance)
+            throwInstance->Update(0.016f);
+        }
+        unitMoveThrowAfter = moveThrowReceiver->GetPosition().x;
         if (throwInstance)
         {
           throwInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveThrowReceiver.GetPtr()));
@@ -14444,26 +22218,75 @@ void ProbeEffectsPoolRuntime(
           unitMoveThrowBeforeRemove == 1 &&
           unitMoveThrowAfterRemove == 0 &&
           unitMoveThrowFlagsDuring &&
-          !unitMoveThrowFlagsAfter;
+          !unitMoveThrowFlagsAfter &&
+          unitMoveThrowBefore > 272.9f &&
+          unitMoveThrowAfter > 275.8f &&
+          unitMoveThrowAfter < 276.2f;
 
+        NDb::Ptr<NDb::BaseApplicator> moveAttackDamageDbPtr(unitMoveAttackDamageDb);
+        NDb::BaseAttack* moveAttackBaseAttack = new NDb::BaseAttack();
+        moveAttackBaseAttack->type = NDb::ABILITYTYPE_ACTIVE;
+        moveAttackBaseAttack->targetType = NDb::SPELLTARGET_ALL;
+        moveAttackBaseAttack->useRange.sString = "3.0";
+        moveAttackBaseAttack->applicators.push_back(moveAttackDamageDbPtr);
+        NDb::Ptr<NDb::BaseAttack> moveAttackBaseAttackDb(moveAttackBaseAttack);
+        moveAttackOwner->ChangeFaction(NDb::FACTION_FREEZE);
+        moveAttackReceiver->ChangeFaction(NDb::FACTION_BURN);
+        moveAttackOwner->TeleportTo(CVec2(274.0f, 32.0f), false, false);
+        moveAttackReceiver->TeleportTo(CVec2(278.0f, 32.0f), false, false);
+        moveAttackReceiver->SetVulnerable(true);
+        CObj<NWorld::PFBaseAttackData> moveAttackBaseAttackData(
+          new NWorld::PFBaseAttackData(
+            CPtr<NWorld::PFBaseUnit>(moveAttackOwner.GetPtr()),
+            moveAttackBaseAttackDb
+          )
+        );
+        moveAttackOwner->ReplaceBaseAttack(moveAttackBaseAttackData, false);
+        unitMoveAttackReady = moveAttackOwner->IsReadyToAttack();
+        unitMoveAttackRange =
+          moveAttackOwner->IsTargetInAttackRange(moveAttackReceiver.GetPtr(), true);
+        unitMoveAttackCan =
+          moveAttackOwner->CanAttackTarget(moveAttackReceiver.GetPtr(), false);
+
+        unitMoveAttackBefore = moveAttackReceiver->GetHealth();
         CObj<NWorld::PFAbilityInstance> attackInstance =
           applyUnitMoveApplicator(
             moveAttackOwner.GetPtr(),
             unitMoveAttackTargetDb,
             NWorld::Target(moveAttackReceiver.GetPtr()));
+        for (int attackStep = 0; attackStep < 16 && moveAttackReceiver->GetHealth() >= unitMoveAttackBefore - EPS_VALUE; ++attackStep)
+        {
+          moveAttackOwner->Step(0.016f);
+          if (attackInstance)
+            attackInstance->Update(0.016f);
+        }
+        unitMoveAttackTargetAssigned =
+          moveAttackOwner->GetCurrentTarget().GetPtr() == moveAttackReceiver.GetPtr();
+        if (attackInstance &&
+            unitMoveAttackTargetAssigned &&
+            moveAttackReceiver->GetHealth() >= unitMoveAttackBefore - EPS_VALUE)
+        {
+          unitMoveAttackDirectDone = moveAttackOwner->DoAttack(false);
+        }
+        unitMoveAttackAfter = moveAttackReceiver->GetHealth();
         unitMoveAttackBeforeRemove =
-          countUnitMove(moveAttackReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
+          countUnitMove(moveAttackOwner.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
         if (attackInstance)
         {
-          attackInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveAttackReceiver.GetPtr()));
+          attackInstance->RemoveApplicatorsFrom(CPtr<NWorld::PFBaseUnit>(moveAttackOwner.GetPtr()));
           attackInstance->Cancel();
         }
+        if (moveAttackBaseAttackData)
+          moveAttackBaseAttackData->Cancel();
         unitMoveAttackAfterRemove =
-          countUnitMove(moveAttackReceiver.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
+          countUnitMove(moveAttackOwner.GetPtr(), &LinuxUnitModApplicatorCollector::attackTargets);
         unitMoveAttackApplied =
           attackInstance &&
           unitMoveAttackBeforeRemove == 1 &&
-          unitMoveAttackAfterRemove == 0;
+          unitMoveAttackAfterRemove == 0 &&
+          unitMoveAttackBefore > unitMoveAttackAfter &&
+          unitMoveAttackAfter > 0.81f &&
+          unitMoveAttackAfter < 0.83f;
 
         CObj<NWorld::PFAbilityInstance> proofInstance =
           ghostInstance ? ghostInstance :
@@ -14516,7 +22339,7 @@ void ProbeEffectsPoolRuntime(
 
     fprintf(
       stdout,
-      "Session effects unit-move runtime: db=%s units=%s factory=%s teleport=%s/%.1f->%.1f kick=%s/%.1f->%.1f attract=%s/%.1f->%.1f shift=%s/%.1f->%.1f moveto=%s/%lu->%lu/%.1f->%.1f ghost=%s/%lu->%lu/%d->%d fly=%s/%lu->%lu/%d->%d throw=%s/%lu->%lu/%s->%s attack=%s/%lu->%lu\n",
+      "Session effects unit-move runtime: db=%s units=%s factory=%s teleport=%s/%.1f->%.1f kick=%s/%.1f->%.1f attract=%s/%.1f->%.1f shift=%s/%.1f->%.1f moveto=%s/%lu->%lu/%.1f->%.1f track=%s/%.1f follow=%s/%.1f->%.1f attach=%s/%.1f->%.1f/%.1f push=%s/%.1f->%.1f/%.1f find=%s/%.1f tick=%s/%.1f->%.1f trace=%s/%.1f->%.1f block=%s/%.1f->%.1f resolve=%s/%.1f->%.1f tunnel=%s/%.1f->%.1f search=%s/%.1f->%.1f/%.1f ghost=%s/%lu->%lu/%d->%d fly=%s/%lu->%lu/%d->%d throw=%s/%lu->%lu/%s->%s/%.1f->%.1f attack=%s/%lu->%lu/%.2f->%.2f ready=%s range=%s can=%s target=%s direct=%s\n",
       unitMoveDbReady ? "yes" : "no",
       unitMoveUnitsReady ? "yes" : "no",
       unitMoveFactoryReady ? "yes" : "no",
@@ -14537,6 +22360,40 @@ void ProbeEffectsPoolRuntime(
       static_cast<unsigned long>(unitMoveMoveToAfterRemove),
       unitMoveToBefore,
       unitMoveToAfter,
+      unitMoveTrackApplied ? "yes" : "no",
+      unitMoveTrackAfter,
+      unitMoveFollowApplied ? "yes" : "no",
+      unitMoveFollowBefore,
+      unitMoveFollowAfter,
+      unitMoveAttachApplied ? "yes" : "no",
+      unitMoveAttachBefore,
+      unitMoveAttachParentAfter,
+      unitMoveAttachChildAfter,
+      unitMovePushApplied ? "yes" : "no",
+      unitMovePushBlockerBefore,
+      unitMovePushBlockerAfter,
+      unitMovePushMoverAfter,
+      unitMoveFindApplied ? "yes" : "no",
+      unitMoveFindAfter,
+      unitMoveTickApplied ? "yes" : "no",
+      unitMoveTickBefore,
+      unitMoveTickAfter,
+      unitMoveTraceApplied ? "yes" : "no",
+      unitMoveTraceFull,
+      unitMoveTraceDistance,
+      unitMoveBlockApplied ? "yes" : "no",
+      unitMoveBlockBefore,
+      unitMoveBlockAfter,
+      unitMoveResolveApplied ? "yes" : "no",
+      unitMoveResolveBefore,
+      unitMoveResolveAfter,
+      unitMoveTunnelApplied ? "yes" : "no",
+      unitMoveTunnelBefore,
+      unitMoveTunnelAfter,
+      unitMoveResolveSearchApplied ? "yes" : "no",
+      unitMoveResolveSearchBefore,
+      unitMoveResolveSearchAfter,
+      unitMoveResolveSearchYAfter,
       unitMoveGhostApplied ? "yes" : "no",
       static_cast<unsigned long>(unitMoveGhostBeforeRemove),
       static_cast<unsigned long>(unitMoveGhostAfterRemove),
@@ -14552,9 +22409,18 @@ void ProbeEffectsPoolRuntime(
       static_cast<unsigned long>(unitMoveThrowAfterRemove),
       unitMoveThrowFlagsDuring ? "yes" : "no",
       unitMoveThrowFlagsAfter ? "yes" : "no",
+      unitMoveThrowBefore,
+      unitMoveThrowAfter,
       unitMoveAttackApplied ? "yes" : "no",
       static_cast<unsigned long>(unitMoveAttackBeforeRemove),
-      static_cast<unsigned long>(unitMoveAttackAfterRemove));
+      static_cast<unsigned long>(unitMoveAttackAfterRemove),
+      unitMoveAttackBefore,
+      unitMoveAttackAfter,
+      unitMoveAttackReady ? "yes" : "no",
+      unitMoveAttackRange ? "yes" : "no",
+      unitMoveAttackCan ? "yes" : "no",
+      unitMoveAttackTargetAssigned ? "yes" : "no",
+      unitMoveAttackDirectDone ? "yes" : "no");
 
     NDb::SummonApplicator* unitSummonDb =
       static_cast<NDb::SummonApplicator*>(
@@ -18456,47 +26322,77 @@ unsigned char BlendChannel(unsigned char source, unsigned char destination, unsi
   );
 }
 
+bool UploadOpenGlTexture(
+  LinuxWindowOverlay* overlay,
+  const LinuxLoadingArtwork& artwork,
+  GLuint* texture,
+  unsigned int* textureWidth,
+  unsigned int* textureHeight
+)
+{
+  if (!overlay || !texture || !textureWidth || !textureHeight ||
+      !overlay->ready || !overlay->openglReady ||
+      !artwork.ready || artwork.width <= 0 || artwork.height <= 0 || artwork.rgba.empty())
+  {
+    return false;
+  }
+
+  if (!NMainFrame::MakeOpenGLContextCurrent())
+  {
+    return false;
+  }
+
+  if (!*texture)
+  {
+    glGenTextures(1, texture);
+  }
+  if (!*texture)
+  {
+    return false;
+  }
+
+  glBindTexture(GL_TEXTURE_2D, *texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(
+    GL_TEXTURE_2D,
+    0,
+    GL_RGBA,
+    artwork.width,
+    artwork.height,
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_BYTE,
+    &artwork.rgba[0]
+  );
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  *textureWidth = static_cast<unsigned int>(artwork.width);
+  *textureHeight = static_cast<unsigned int>(artwork.height);
+  return true;
+}
+
 bool UploadArtworkPixmap(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork& artwork)
 {
-  if (!overlay->ready || !artwork.ready || artwork.width <= 0 || artwork.height <= 0)
+  if (!overlay || !overlay->ready || !artwork.ready || artwork.width <= 0 || artwork.height <= 0)
   {
     return false;
   }
 
   if (overlay->openglReady)
   {
-    if (!NMainFrame::MakeOpenGLContextCurrent())
+    if (!UploadOpenGlTexture(
+          overlay,
+          artwork,
+          &overlay->artworkTexture,
+          &overlay->artworkWidth,
+          &overlay->artworkHeight))
     {
       return false;
     }
-
-    if (!overlay->artworkTexture)
-    {
-      glGenTextures(1, &overlay->artworkTexture);
-    }
-    if (!overlay->artworkTexture)
-    {
-      return false;
-    }
-
-    glBindTexture(GL_TEXTURE_2D, overlay->artworkTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    glTexImage2D(
-      GL_TEXTURE_2D,
-      0,
-      GL_RGBA,
-      artwork.width,
-      artwork.height,
-      0,
-      GL_RGBA,
-      GL_UNSIGNED_BYTE,
-      &artwork.rgba[0]
-    );
-    glBindTexture(GL_TEXTURE_2D, 0);
 
     if (overlay->artworkPixmap)
     {
@@ -18504,8 +26400,6 @@ bool UploadArtworkPixmap(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork&
       overlay->artworkPixmap = 0;
     }
 
-    overlay->artworkWidth = static_cast<unsigned int>(artwork.width);
-    overlay->artworkHeight = static_cast<unsigned int>(artwork.height);
     return true;
   }
 
@@ -18605,6 +26499,286 @@ bool UploadArtworkPixmap(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork&
   return true;
 }
 
+bool UploadLobbyBackgroundTexture(LinuxWindowOverlay* overlay, const LinuxLoadingArtwork& artwork)
+{
+  return UploadOpenGlTexture(
+    overlay,
+    artwork,
+    &overlay->lobbyBackgroundTexture,
+    &overlay->lobbyBackgroundWidth,
+    &overlay->lobbyBackgroundHeight
+  );
+}
+
+bool UploadOpenGlTexture(
+  LinuxWindowOverlay* overlay,
+  const LinuxLoadingArtwork& artwork,
+  LinuxWindowOverlay::OpenGlTexture* texture
+)
+{
+  if (!texture)
+  {
+    return false;
+  }
+
+  return UploadOpenGlTexture(overlay, artwork, &texture->texture, &texture->width, &texture->height);
+}
+
+void DeleteOpenGlTexture(LinuxWindowOverlay::OpenGlTexture* texture)
+{
+  if (!texture || !texture->texture)
+  {
+    return;
+  }
+
+  glDeleteTextures(1, &texture->texture);
+  texture->texture = 0;
+  texture->width = 0;
+  texture->height = 0;
+}
+
+bool UploadUiMaterialTexture(
+  const LinuxClientEnvironment& environment,
+  LinuxWindowOverlay* overlay,
+  const std::string& materialReference,
+  LinuxWindowOverlay::OpenGlTexture* texture,
+  std::vector<std::string>* warnings
+)
+{
+  if (!texture || materialReference.empty())
+  {
+    return false;
+  }
+
+  const fs::path materialPath = ResolveDataRefPath(environment, materialReference, ".xdb");
+  if (materialPath.empty() || !fs::exists(materialPath))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux lobby UI material missing: " + materialReference);
+    }
+    return false;
+  }
+
+  std::string materialXml;
+  if (!ReadTextFile(materialPath, &materialXml))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux lobby UI material unreadable: " + materialReference);
+    }
+    return false;
+  }
+
+  const std::string textureReference = ExtractTagHref(materialXml, "texture", 0);
+  if (textureReference.empty())
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux lobby UI material has no diffuse texture: " + materialReference);
+    }
+    return false;
+  }
+
+  LinuxTextureAssetPreview texturePreview;
+  ProbeTextureAsset(environment, textureReference, &texturePreview);
+  if (!texturePreview.artworkLoaded)
+  {
+    if (warnings)
+    {
+      for (size_t i = 0; i < texturePreview.warnings.size(); ++i)
+      {
+        warnings->push_back(texturePreview.warnings[i]);
+      }
+      if (texturePreview.warnings.empty())
+      {
+        warnings->push_back("Linux lobby UI texture load failed: " + textureReference);
+      }
+    }
+    return false;
+  }
+
+  if (!UploadOpenGlTexture(overlay, texturePreview.artwork, texture))
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux lobby UI texture upload failed: " + textureReference);
+    }
+    return false;
+  }
+
+  return true;
+}
+
+std::string DescribeFreeTypeError(FT_Error error)
+{
+  char buffer[64] = {0};
+  snprintf(buffer, sizeof(buffer), "FreeType error %ld", static_cast<long>(error));
+  return std::string(buffer);
+}
+
+bool TryInitializeLinuxOverlayFreeTypeFace(
+  LinuxWindowOverlay* overlay,
+  const fs::path& fontPath,
+  int pixelSize,
+  std::string* error
+)
+{
+  if (!overlay || fontPath.empty() || !fs::exists(fontPath))
+  {
+    return false;
+  }
+
+  FT_Face face = 0;
+  FT_Error ftError = FT_New_Face(overlay->ftLibrary, fontPath.string().c_str(), 0, &face);
+  if (ftError)
+  {
+    if (error)
+    {
+      *error = DescribeFreeTypeError(ftError);
+    }
+    return false;
+  }
+
+  ftError = FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(pixelSize));
+  if (ftError)
+  {
+    if (error)
+    {
+      *error = DescribeFreeTypeError(ftError);
+    }
+    FT_Done_Face(face);
+    return false;
+  }
+
+  overlay->ftFace = face;
+  overlay->freetypeReady = true;
+  overlay->freetypePixelSize = pixelSize;
+  overlay->freetypeFontPath = fontPath.string();
+  return true;
+}
+
+bool InitializeLinuxOverlayFreeType(
+  const LinuxClientEnvironment& environment,
+  LinuxWindowOverlay* overlay,
+  std::vector<std::string>* warnings
+)
+{
+  if (!overlay || !overlay->openglReady || overlay->freetypeReady || environment.gameRoot.empty())
+  {
+    return false;
+  }
+
+  FT_Error ftError = FT_Init_FreeType(&overlay->ftLibrary);
+  if (ftError)
+  {
+    if (warnings)
+    {
+      warnings->push_back("Linux overlay FreeType init failed: " + DescribeFreeTypeError(ftError));
+    }
+    overlay->ftLibrary = 0;
+    return false;
+  }
+
+  const int pixelSize = 16;
+  const fs::path primeWorldFont =
+    environment.gameRoot / "Data" / "UI" / "Fonts" / "PrimeWorld" / "PrimeWorld-export03.ttf";
+  const fs::path fallbackFont =
+    environment.gameRoot / "Data" / "UI" / "Fonts" / "DejaVu_book" / "DejaVuLGCSans.ttf";
+  std::string primeWorldError;
+  std::string fallbackError;
+
+  if (TryInitializeLinuxOverlayFreeTypeFace(overlay, primeWorldFont, pixelSize, &primeWorldError) ||
+      TryInitializeLinuxOverlayFreeTypeFace(overlay, fallbackFont, pixelSize, &fallbackError))
+  {
+    return true;
+  }
+
+  if (warnings)
+  {
+    std::string message = "Linux overlay FreeType font init failed";
+    if (!primeWorldError.empty())
+    {
+      message += ": " + primeWorldFont.string() + " (" + primeWorldError + ")";
+    }
+    if (!fallbackError.empty())
+    {
+      message += "; fallback " + fallbackFont.string() + " (" + fallbackError + ")";
+    }
+    warnings->push_back(message);
+  }
+
+  FT_Done_FreeType(overlay->ftLibrary);
+  overlay->ftLibrary = 0;
+  return false;
+}
+
+void LoadLinuxLobbyTextRef(const fs::path& dataRoot, const char* textRef, std::string* target)
+{
+  if (!target || !textRef || !*textRef)
+  {
+    return;
+  }
+
+  std::string value;
+  if (ReadTextRefFromDataRoot(dataRoot, textRef, &value) && !value.empty())
+  {
+    *target = value;
+  }
+}
+
+void LoadLinuxLobbyTextResources(const LinuxClientEnvironment& environment, LinuxWindowOverlay* overlay)
+{
+  if (!overlay)
+  {
+    return;
+  }
+
+  const fs::path baseRoot = environment.baseDir.empty() ? environment.gameRoot : environment.baseDir;
+  if (baseRoot.empty())
+  {
+    return;
+  }
+
+  const fs::path dataRoot = baseRoot / "Data";
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_c9e1f5cae79c400fb9485bd8b2b3e3af_captionText.txt", &overlay->lobbyText.createGameHeader);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_7a36facf65284aae9a8268e988cd6acf_captionText.txt", &overlay->lobbyText.joinGameHeader);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_9b9475e265574d5eb448791b6d43bfb5_captionText.txt", &overlay->lobbyText.mapsListHeader);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_994cbba01cd74fc19de654f48b60c9e7_captionText.txt", &overlay->lobbyText.playerCountLabel);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_b12e7cf069634405937c54b5cbcec346_captionText.txt", &overlay->lobbyText.startSessionButton);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_b702d0a9147341da9a968090f21889d9_captionText.txt", &overlay->lobbyText.createGameButton);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_8dea1c4aa437432cb0a1377662e644ed_captionText.txt", &overlay->lobbyText.refreshButton);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_d9fc9f2d508045edbadfa57284d6e6e2_captionText.txt", &overlay->lobbyText.developerMale);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_7dc47569b1094ba4a4bfb01682d01a44_captionText.txt", &overlay->lobbyText.developerFemale);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_3686ba5d12084a48ac244c043819157b_captionText.txt", &overlay->lobbyText.joinNormal);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_cf42151e28f4471695fd9d300791861f_captionText.txt", &overlay->lobbyText.joinReconnect);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/Lobby_SelectGameMode_55b5f3d370aa42bdb0193d0182834c7d_captionText.txt", &overlay->lobbyText.joinSpectate);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/SessionSlot_2656a90973fd48e9af8570bca1ccb63d_captionText.txt", &overlay->lobbyText.sessionName);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/SessionSlot_05a55e7bb91a4ea8beccbaf85b7e8ab0_captionText.txt", &overlay->lobbyText.sessionPlayers);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/SessionSlot_7c0ea1dcf6a24a7ba3df333c16aa33ac_captionText.txt", &overlay->lobbyText.sessionMap);
+  LoadLinuxLobbyTextRef(dataRoot, "/UI/Screens/Lobby/SessionSlot_8e3179217b144ed79da8572465583131_captionText.txt", &overlay->lobbyText.sessionStarted);
+}
+
+void DeleteLinuxOverlayGlyphTextures(LinuxWindowOverlay* overlay)
+{
+  if (!overlay)
+  {
+    return;
+  }
+
+  for (std::map<unsigned long, LinuxWindowOverlay::OpenGlGlyph>::iterator it = overlay->fontGlyphs.begin();
+       it != overlay->fontGlyphs.end();
+       ++it)
+  {
+    if (it->second.texture)
+    {
+      glDeleteTextures(1, &it->second.texture);
+      it->second.texture = 0;
+    }
+  }
+  overlay->fontGlyphs.clear();
+}
+
 void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
 {
   if (overlay->openglReady && NMainFrame::MakeOpenGLContextCurrent())
@@ -18615,6 +26789,48 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
       overlay->artworkTexture = 0;
     }
 
+    if (overlay->lobbyBackgroundTexture)
+    {
+      glDeleteTextures(1, &overlay->lobbyBackgroundTexture);
+      overlay->lobbyBackgroundTexture = 0;
+    }
+
+    DeleteOpenGlTexture(&overlay->lobbyButtonUp);
+    DeleteOpenGlTexture(&overlay->lobbyButtonOver);
+    DeleteOpenGlTexture(&overlay->lobbyPanel);
+    DeleteOpenGlTexture(&overlay->lobbyHeader);
+    DeleteOpenGlTexture(&overlay->lobbyFrame);
+    DeleteOpenGlTexture(&overlay->lobbySelectionFrame);
+    DeleteOpenGlTexture(&overlay->lobbyRadioNormal);
+    DeleteOpenGlTexture(&overlay->lobbyRadioSelected);
+    DeleteOpenGlTexture(&overlay->lobbyScrollArea);
+    DeleteOpenGlTexture(&overlay->lobbyScrollLever);
+    DeleteOpenGlTexture(&overlay->lobbyScrollHorizontalFirst);
+    DeleteOpenGlTexture(&overlay->lobbyScrollHorizontalSecond);
+    for (std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator it =
+           overlay->heroPreviewDiffuseTextureCache.begin();
+         it != overlay->heroPreviewDiffuseTextureCache.end();
+         ++it)
+    {
+      DeleteOpenGlTexture(&it->second);
+    }
+    overlay->heroPreviewDiffuseTextureCache.clear();
+    for (size_t i = 0; i < overlay->heroPreviewDiffuseTextures.size(); ++i)
+    {
+      DeleteOpenGlTexture(&overlay->heroPreviewDiffuseTextures[i]);
+    }
+    overlay->heroPreviewDiffuseTextures.clear();
+    overlay->heroPreviewDiffuseTextureSourceFiles.clear();
+    overlay->heroPreviewDiffuseTextureFailedSourceFiles.clear();
+    for (size_t i = 0; i < overlay->mapPreviewDiffuseTextures.size(); ++i)
+    {
+      DeleteOpenGlTexture(&overlay->mapPreviewDiffuseTextures[i]);
+    }
+    overlay->mapPreviewDiffuseTextures.clear();
+    overlay->mapPreviewDiffuseTextureSourceFiles.clear();
+    overlay->mapPreviewDiffuseTextureFailedSourceFiles.clear();
+    DeleteLinuxOverlayGlyphTextures(overlay);
+
     if (overlay->fontDisplayListsReady && overlay->fontDisplayListBase != 0)
     {
       glDeleteLists(overlay->fontDisplayListBase, 256);
@@ -18622,6 +26838,20 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
       overlay->fontDisplayListsReady = false;
     }
   }
+
+  if (overlay->ftFace)
+  {
+    FT_Done_Face(overlay->ftFace);
+    overlay->ftFace = 0;
+  }
+  if (overlay->ftLibrary)
+  {
+    FT_Done_FreeType(overlay->ftLibrary);
+    overlay->ftLibrary = 0;
+  }
+  overlay->freetypeReady = false;
+  overlay->freetypePixelSize = 0;
+  overlay->freetypeFontPath.clear();
 
   if (overlay->display && overlay->artworkPixmap)
   {
@@ -18869,6 +27099,324 @@ const char* DescribeLinuxBootstrapReadyState(lobby::EGameMemberReadiness::Enum r
     default:
       return "not-ready";
   }
+}
+
+bool IsLinuxDiagnosticsOverlayActive(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxBootstrapScreenRuntime* runtime
+)
+{
+  return settings.diagnosticsOverlay || (runtime && runtime->diagnosticsOverlayActive);
+}
+
+bool IsLinuxVisibleMenuActive(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxBootstrapScreenRuntime* runtime
+)
+{
+  return runtime &&
+    runtime->visibleMenuReady &&
+    !IsLinuxBootstrapLoadingScreenActive(runtime) &&
+    !IsLinuxDiagnosticsOverlayActive(settings, runtime);
+}
+
+struct LinuxScreenRect
+{
+  int x;
+  int y;
+  int width;
+  int height;
+
+  LinuxScreenRect()
+    : x(0),
+      y(0),
+      width(0),
+      height(0)
+  {
+  }
+};
+
+LinuxScreenRect ResolveLinuxCharacterPreviewRect(
+  int screenWidth,
+  int screenHeight,
+  bool loadingActive
+)
+{
+  LinuxScreenRect rect;
+  if (screenWidth <= 0 || screenHeight <= 0)
+  {
+    return rect;
+  }
+
+  if (loadingActive)
+  {
+    rect.width = std::min(320, std::max(240, screenWidth / 4));
+    rect.height = std::min(260, std::max(190, screenHeight / 3));
+    rect.x = std::max(16, screenWidth - rect.width - 42);
+    rect.y = std::max(64, screenHeight - rect.height - 62);
+    return rect;
+  }
+
+  rect.width = std::min(380, std::max(280, screenWidth / 3));
+  rect.height = std::min(260, std::max(190, screenHeight / 3));
+  rect.x = std::max(16, screenWidth - rect.width - 74);
+  rect.y = std::max(58, screenHeight / 11);
+  return rect;
+}
+
+bool IsPointInsideLinuxScreenRect(const LinuxScreenRect& rect, int x, int y)
+{
+  return rect.width > 0 &&
+    rect.height > 0 &&
+    x >= rect.x &&
+    y >= rect.y &&
+    x < rect.x + rect.width &&
+    y < rect.y + rect.height;
+}
+
+void NormalizeLinuxCharacterPreviewYaw(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  while (runtime->characterPreviewYawDegrees < 0.0f)
+  {
+    runtime->characterPreviewYawDegrees += 360.0f;
+  }
+  while (runtime->characterPreviewYawDegrees >= 360.0f)
+  {
+    runtime->characterPreviewYawDegrees -= 360.0f;
+  }
+}
+
+void RotateLinuxCharacterPreview(
+  LinuxBootstrapScreenRuntime* runtime,
+  float deltaDegrees,
+  const char* action
+)
+{
+  if (!runtime || deltaDegrees == 0.0f)
+  {
+    return;
+  }
+
+  runtime->characterPreviewYawDegrees += deltaDegrees;
+  NormalizeLinuxCharacterPreviewYaw(runtime);
+  runtime->characterPreviewLastAction = action ? action : "rotate";
+  ++runtime->characterPreviewInputCount;
+}
+
+void NormalizeLinuxMapPreviewYaw(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  while (runtime->mapPreviewYawDegrees < 0.0f)
+  {
+    runtime->mapPreviewYawDegrees += 360.0f;
+  }
+  while (runtime->mapPreviewYawDegrees >= 360.0f)
+  {
+    runtime->mapPreviewYawDegrees -= 360.0f;
+  }
+}
+
+void ClampLinuxMapPreviewCamera(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->mapPreviewPitchDegrees =
+    std::max(35.0f, std::min(72.0f, runtime->mapPreviewPitchDegrees));
+  runtime->mapPreviewZoom =
+    std::max(0.55f, std::min(2.25f, runtime->mapPreviewZoom));
+  runtime->mapPreviewPanX =
+    std::max(-48.0f, std::min(48.0f, runtime->mapPreviewPanX));
+  runtime->mapPreviewPanZ =
+    std::max(-48.0f, std::min(48.0f, runtime->mapPreviewPanZ));
+}
+
+float NormalizeLinuxPreviewYawValue(float yawDegrees)
+{
+  while (yawDegrees < 0.0f)
+  {
+    yawDegrees += 360.0f;
+  }
+  while (yawDegrees >= 360.0f)
+  {
+    yawDegrees -= 360.0f;
+  }
+  return yawDegrees;
+}
+
+void RotateLinuxMapPreview(
+  LinuxBootstrapScreenRuntime* runtime,
+  float deltaDegrees,
+  const char* action
+)
+{
+  if (!runtime || deltaDegrees == 0.0f)
+  {
+    return;
+  }
+
+  runtime->mapPreviewYawDegrees += deltaDegrees;
+  NormalizeLinuxMapPreviewYaw(runtime);
+  runtime->mapPreviewLastAction = action ? action : "rotate";
+  ++runtime->mapPreviewInputCount;
+}
+
+void ZoomLinuxMapPreview(
+  LinuxBootstrapScreenRuntime* runtime,
+  float scaleFactor,
+  const char* action
+)
+{
+  if (!runtime || scaleFactor <= 0.0f)
+  {
+    return;
+  }
+
+  runtime->mapPreviewZoom *= scaleFactor;
+  ClampLinuxMapPreviewCamera(runtime);
+  runtime->mapPreviewLastAction = action ? action : "zoom";
+  ++runtime->mapPreviewInputCount;
+}
+
+void TiltLinuxMapPreview(
+  LinuxBootstrapScreenRuntime* runtime,
+  float deltaDegrees,
+  const char* action
+)
+{
+  if (!runtime || deltaDegrees == 0.0f)
+  {
+    return;
+  }
+
+  runtime->mapPreviewPitchDegrees += deltaDegrees;
+  ClampLinuxMapPreviewCamera(runtime);
+  runtime->mapPreviewLastAction = action ? action : "tilt";
+  ++runtime->mapPreviewInputCount;
+}
+
+void PanLinuxMapPreview(
+  LinuxBootstrapScreenRuntime* runtime,
+  float deltaX,
+  float deltaZ,
+  const char* action
+)
+{
+  if (!runtime || (deltaX == 0.0f && deltaZ == 0.0f))
+  {
+    return;
+  }
+
+  runtime->mapPreviewPanX += deltaX;
+  runtime->mapPreviewPanZ += deltaZ;
+  ClampLinuxMapPreviewCamera(runtime);
+  runtime->mapPreviewLastAction = action ? action : "pan";
+  ++runtime->mapPreviewInputCount;
+}
+
+void ResetLinuxMapPreviewCamera(LinuxBootstrapScreenRuntime* runtime, const char* action)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->mapPreviewYawDegrees = kLinuxMapPreviewDefaultYawDegrees;
+  runtime->mapPreviewPitchDegrees = kLinuxMapPreviewDefaultPitchDegrees;
+  runtime->mapPreviewZoom = kLinuxMapPreviewDefaultZoom;
+  runtime->mapPreviewPanX = 0.0f;
+  runtime->mapPreviewPanZ = 0.0f;
+  NormalizeLinuxMapPreviewYaw(runtime);
+  ClampLinuxMapPreviewCamera(runtime);
+  runtime->mapPreviewLastAction = action ? action : "reset";
+  ++runtime->mapPreviewInputCount;
+}
+
+std::string DescribeLinuxVisibleMenuAction(
+  const LinuxBootstrapScreenRuntime* runtime,
+  size_t actionIndex
+)
+{
+  switch (actionIndex)
+  {
+    case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
+      if (IsLinuxBootstrapLoadingScreenActive(runtime))
+      {
+        return "Loading";
+      }
+      if (runtime && IsValid(runtime->gameContext) &&
+          runtime->gameContext->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby)
+      {
+        return runtime->gameContext->GetReadyState() == lobby::EGameMemberReadiness::NotReady ?
+          "Ready and load" :
+          "Loading";
+      }
+      return "Create custom game";
+
+    case LINUX_VISIBLE_MENU_ACTION_MAP:
+      return "Cycle map";
+
+    case LINUX_VISIBLE_MENU_ACTION_HERO:
+      return "Cycle hero";
+
+    case LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS:
+      return runtime && runtime->diagnosticsOverlayActive ?
+        "Hide diagnostics" :
+        "Show diagnostics";
+
+    default:
+      return "<unknown>";
+  }
+}
+
+const char* DescribeLinuxLobbyJoinMode(size_t joinMode)
+{
+  switch (joinMode)
+  {
+    case LINUX_LOBBY_JOIN_MODE_NORMAL:
+      return "normal";
+
+    case LINUX_LOBBY_JOIN_MODE_RECONNECT:
+      return "reconnect";
+
+    case LINUX_LOBBY_JOIN_MODE_SPECTATE:
+      return "spectate";
+
+    default:
+      return "unknown";
+  }
+}
+
+void UpdateLinuxVisibleMenuRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->visibleMenuReady = runtime->initialized && !IsLinuxBootstrapLoadingScreenActive(runtime);
+  if (runtime->visibleMenuSelectedAction >= LINUX_VISIBLE_MENU_ACTION_COUNT)
+  {
+    runtime->visibleMenuSelectedAction = 0;
+  }
+  if (runtime->visibleLobbyJoinMode >= LINUX_LOBBY_JOIN_MODE_COUNT)
+  {
+    runtime->visibleLobbyJoinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
+  }
+  runtime->visibleMenuPath = runtime->visibleMenuReady ?
+    "Linux visible lobby overlay + NGameX::SelectGameModeScreen" :
+    "inactive";
 }
 
 int ResolveLinuxBootstrapCreateGamePlayers(
@@ -19371,7 +27919,54 @@ void UpdateLinuxBootstrapGameSchedulerPreview(
   preview->runtimeGameTransceiverBufferLimit = runtime.transceiverBufferLimit;
   preview->runtimeGameTransceiverCommandBatches = runtime.transceiverCommandBatches;
   preview->runtimeGameTransceiverCommands = runtime.transceiverCommands;
+  preview->runtimeGameTransceiverRuntimeCommandsSent = runtime.transceiverRuntimeCommandsSent;
+  preview->runtimeGameTransceiverProductionCommandsSent = runtime.transceiverProductionRuntimeCommandsSent;
+  preview->runtimeGameTransceiverTimescaleCommandsSent = runtime.transceiverTimescaleRuntimeCommandsSent;
+  preview->runtimeGameTransceiverHeroMoveCommandSent = runtime.transceiverHeroMoveRuntimeCommandSent;
+  preview->runtimeGameTransceiverHeroMoveCommandsSent = runtime.transceiverHeroMoveRuntimeCommandsSent;
+  preview->runtimeGameTransceiverHeroMoveSourceX = runtime.transceiverHeroMoveSourceX;
+  preview->runtimeGameTransceiverHeroMoveSourceY = runtime.transceiverHeroMoveSourceY;
+  preview->runtimeGameTransceiverHeroMoveTargetX = runtime.transceiverHeroMoveTargetX;
+  preview->runtimeGameTransceiverHeroMoveTargetY = runtime.transceiverHeroMoveTargetY;
+  preview->runtimeGameTransceiverHeroMovePlayerId = runtime.transceiverHeroMovePlayerId;
+  preview->runtimeGameTransceiverHeroMoveClientId = runtime.transceiverHeroMoveClientId;
+  preview->runtimeGameTransceiverHeroStopCommandSent = runtime.transceiverHeroStopRuntimeCommandSent;
+  preview->runtimeGameTransceiverHeroStopCommandsSent = runtime.transceiverHeroStopRuntimeCommandsSent;
+  preview->runtimeGameTransceiverHeroStopX = runtime.transceiverHeroStopX;
+  preview->runtimeGameTransceiverHeroStopY = runtime.transceiverHeroStopY;
+  preview->runtimeGameTransceiverHeroStopPlayerId = runtime.transceiverHeroStopPlayerId;
+  preview->runtimeGameTransceiverHeroStopClientId = runtime.transceiverHeroStopClientId;
+  preview->runtimeGameTransceiverHeroAttackCommandSent = runtime.transceiverHeroAttackRuntimeCommandSent;
+  preview->runtimeGameTransceiverHeroAttackCommandsSent = runtime.transceiverHeroAttackRuntimeCommandsSent;
+  preview->runtimeGameTransceiverHeroAttackSourceX = runtime.transceiverHeroAttackSourceX;
+  preview->runtimeGameTransceiverHeroAttackSourceY = runtime.transceiverHeroAttackSourceY;
+  preview->runtimeGameTransceiverHeroAttackTargetX = runtime.transceiverHeroAttackTargetX;
+  preview->runtimeGameTransceiverHeroAttackTargetY = runtime.transceiverHeroAttackTargetY;
+  preview->runtimeGameTransceiverHeroAttackPlayerId = runtime.transceiverHeroAttackPlayerId;
+  preview->runtimeGameTransceiverHeroAttackClientId = runtime.transceiverHeroAttackClientId;
+  preview->runtimeGameTransceiverHeroAttackTargetPlayerId = runtime.transceiverHeroAttackTargetPlayerId;
+  preview->runtimeGameTransceiverHeroAttackTargetClientId = runtime.transceiverHeroAttackTargetClientId;
+  preview->runtimeGameTransceiverHeroFollowCommandSent = runtime.transceiverHeroFollowRuntimeCommandSent;
+  preview->runtimeGameTransceiverHeroFollowCommandsSent = runtime.transceiverHeroFollowRuntimeCommandsSent;
+  preview->runtimeGameTransceiverHeroFollowSourceX = runtime.transceiverHeroFollowSourceX;
+  preview->runtimeGameTransceiverHeroFollowSourceY = runtime.transceiverHeroFollowSourceY;
+  preview->runtimeGameTransceiverHeroFollowTargetX = runtime.transceiverHeroFollowTargetX;
+  preview->runtimeGameTransceiverHeroFollowTargetY = runtime.transceiverHeroFollowTargetY;
+  preview->runtimeGameTransceiverHeroFollowPlayerId = runtime.transceiverHeroFollowPlayerId;
+  preview->runtimeGameTransceiverHeroFollowClientId = runtime.transceiverHeroFollowClientId;
+  preview->runtimeGameTransceiverHeroFollowTargetPlayerId = runtime.transceiverHeroFollowTargetPlayerId;
+  preview->runtimeGameTransceiverHeroFollowTargetClientId = runtime.transceiverHeroFollowTargetClientId;
   preview->runtimeGameTransceiverStatusUpdates = runtime.transceiverStatusUpdates;
+  preview->runtimeGameTransceiverCommandQueuedBeforePrime = runtime.transceiverRuntimeCommandQueuedBeforePrime;
+  preview->runtimeGameReplayWriterReady = runtime.replayWriterReady;
+  preview->runtimeGameReplayWriterOpen = runtime.replayWriterOpen;
+  preview->runtimeGameReplayWriterStartWrites = runtime.replayWriterStartWrites;
+  preview->runtimeGameReplayWriterStepWrites = runtime.replayWriterStepWrites;
+  preview->runtimeGameReplayWriterCommandWrites = runtime.replayWriterCommandWrites;
+  preview->runtimeGameReplayWriterStatusWrites = runtime.replayWriterStatusWrites;
+  preview->runtimeGameReplayWriterBytesWritten = runtime.replayWriterBytesWritten;
+  preview->runtimeGameReplayWriterFailures = runtime.replayWriterFailures;
+  preview->runtimeGameReplayWriterPath = runtime.replayWriterPath;
   preview->runtimeGameWorldPlayers = runtime.worldPlayers;
   preview->runtimeGameWorldPresentPlayers = runtime.worldPresentPlayers;
   preview->runtimeGameWorldFogWidth = runtime.worldFogWidth;
@@ -19384,6 +27979,8 @@ void UpdateLinuxBootstrapGameSchedulerPreview(
   preview->runtimeGameWorldGlyphSpawnerObjects = runtime.worldGlyphSpawnerObjects;
   preview->runtimeGameWorldAdvMapObstacleObjects = runtime.worldAdvMapObstacleObjects;
   preview->runtimeGameWorldHeroPlaceHolderObjects = runtime.worldHeroPlaceHolderObjects;
+  preview->runtimeGameWorldSpawnedHeroObjects = runtime.worldSpawnedHeroObjects;
+  preview->runtimeGameWorldPlayersWithHeroObjects = runtime.worldPlayersWithHeroObjects;
   preview->runtimeGameWorldCreepSpawnerObjects = runtime.worldCreepSpawnerObjects;
   preview->runtimeGameWorldNeutralCreepSpawnerObjects = runtime.worldNeutralCreepSpawnerObjects;
   preview->runtimeGameWorldSimpleBuildingObjects = runtime.worldSimpleBuildingObjects;
@@ -19400,17 +27997,3670 @@ void UpdateLinuxBootstrapGameSchedulerPreview(
   preview->runtimeGameWorldCameraSplineObjects = runtime.worldCameraSplineObjects;
   preview->runtimeGameWorldScriptPathObjects = runtime.worldScriptPathObjects;
   preview->runtimeGameWorldScriptPolygonAreaObjects = runtime.worldScriptPolygonAreaObjects;
+  preview->runtimeGameWorldExecutedPackedCommands = runtime.worldExecutedPackedCommands;
+  preview->runtimeGameWorldBootstrapRuntimeCommands = runtime.worldBootstrapRuntimeCommands;
   preview->runtimeGameWorldLocalUserId = runtime.worldLocalUserId;
+  preview->runtimeGameWorldLastPackedCommandClientId = runtime.worldLastPackedCommandClientId;
+  preview->runtimeGameWorldLastPackedCommandTypeId = runtime.worldLastPackedCommandTypeId;
+  preview->runtimeGameWorldLastBootstrapCommandClientId = runtime.worldLastBootstrapCommandClientId;
+  preview->runtimeGameWorldLastBootstrapCommandToken = runtime.worldLastBootstrapCommandToken;
+  preview->runtimeGameWorldLastBootstrapCommandValue = runtime.worldLastBootstrapCommandValue;
+  preview->runtimeGameWorldTimeScale = runtime.worldTimeScale;
   preview->runtimeGameSchedulerPath = preview->runtimeGameSchedulerReady ?
     (runtime.schedulerSegmentReady ?
       "Game::LocalCmdScheduler::StartGame/Step/GetSyncSegment" :
       "Game::LocalCmdScheduler::StartGame/Step") :
     "inactive";
-  preview->runtimeGameTransceiverPath = preview->runtimeGameTransceiverReady ?
-    (preview->runtimeGameTransceiverWorldAttached ?
-      "NCore::Transceiver::Transceiver/SetWorld(PFWorld)/Step" :
-      "NCore::Transceiver::Transceiver/Step") :
+	  preview->runtimeGameTransceiverPath = preview->runtimeGameTransceiverReady ?
+	    (preview->runtimeGameTransceiverWorldAttached ?
+	      "NCore::Transceiver::Transceiver/SetWorld(PFWorld)/Step" :
+	      "NCore::Transceiver::Transceiver/Step") :
+	    "inactive";
+	}
+
+void UpdateLinuxBootstrapReplayWriterRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->replayWriterReady = runtime->replayWriter != 0;
+  runtime->replayWriterOpen = runtime->replayWriter ?
+    runtime->replayWriter->IsLinuxReplayOpen() :
+    false;
+  runtime->replayWriterStartWrites = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayStartWrites() :
+    0;
+  runtime->replayWriterStepWrites = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayStepWrites() :
+    0;
+  runtime->replayWriterCommandWrites = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayCommandWrites() :
+    0;
+  runtime->replayWriterStatusWrites = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayStatusWrites() :
+    0;
+  runtime->replayWriterBytesWritten = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayBytesWritten() :
+    0;
+  runtime->replayWriterFailures = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayWriteFailures() :
+    0;
+  runtime->replayWriterPath = runtime->replayWriter ?
+    runtime->replayWriter->GetLinuxReplayFilePath().c_str() :
     "inactive";
+}
+
+NWorld::PFBaseHero* FindLinuxBootstrapControlledHero(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int* outPlayerId,
+  int* outClientId
+)
+{
+  if (outPlayerId)
+  {
+    *outPlayerId = -1;
+  }
+  if (outClientId)
+  {
+    *outClientId = -1;
+  }
+
+  if (!runtime || !world)
+  {
+    return 0;
+  }
+
+  for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
+       it != runtime->loadingMapStartInfo.playersInfo.end();
+       ++it)
+  {
+    if (it->playerType != NCore::EPlayerType::Human || it->userID <= 0)
+    {
+      continue;
+    }
+
+    NWorld::PFPlayer* player = world->GetPlayer(it->playerID);
+    if (!player)
+    {
+      player = world->GetPlayerByUID(it->userID);
+    }
+
+    if (player && player->GetHero())
+    {
+      if (outPlayerId)
+      {
+        *outPlayerId = player->GetPlayerID();
+      }
+      if (outClientId)
+      {
+        *outClientId = player->GetUserID();
+      }
+      return player->GetHero();
+    }
+  }
+
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    if (player && player->GetHero())
+    {
+      if (outPlayerId)
+      {
+        *outPlayerId = player->GetPlayerID();
+      }
+      if (outClientId)
+      {
+        *outClientId = player->GetUserID();
+      }
+      return player->GetHero();
+    }
+  }
+
+  return 0;
+}
+
+NWorld::PFBaseHero* FindLinuxBootstrapEnemyHero(
+  NWorld::PFWorld* world,
+  const NWorld::PFBaseHero* sourceHero,
+  int* outPlayerId,
+  int* outClientId
+)
+{
+  if (outPlayerId)
+  {
+    *outPlayerId = -1;
+  }
+  if (outClientId)
+  {
+    *outClientId = -1;
+  }
+
+  if (!world || !sourceHero)
+  {
+    return 0;
+  }
+
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    NWorld::PFBaseHero* hero = player ? player->GetHero() : 0;
+    if (!hero || hero == sourceHero || hero->GetFaction() == sourceHero->GetFaction())
+    {
+      continue;
+    }
+
+    if (outPlayerId)
+    {
+      *outPlayerId = player->GetPlayerID();
+    }
+    if (outClientId)
+    {
+      *outClientId = player->GetUserID();
+    }
+    return hero;
+  }
+
+  return 0;
+}
+
+NWorld::PFBaseHero* FindLinuxBootstrapEnemyHeroNear(
+  NWorld::PFWorld* world,
+  const NWorld::PFBaseHero* sourceHero,
+  const CVec2& point,
+  float maxDistance,
+  int* outPlayerId,
+  int* outClientId
+)
+{
+  if (outPlayerId)
+  {
+    *outPlayerId = -1;
+  }
+  if (outClientId)
+  {
+    *outClientId = -1;
+  }
+
+  if (!world || !sourceHero || maxDistance <= 0.0f)
+  {
+    return 0;
+  }
+
+  NWorld::PFBaseHero* bestHero = 0;
+  NWorld::PFPlayer* bestPlayer = 0;
+  float bestDistance = maxDistance;
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    NWorld::PFBaseHero* hero = player ? player->GetHero() : 0;
+    if (!hero || hero == sourceHero || hero->GetFaction() == sourceHero->GetFaction())
+    {
+      continue;
+    }
+
+    const float distance = fabs(hero->GetPosition().AsVec2D() - point);
+    if (distance <= bestDistance)
+    {
+      bestDistance = distance;
+      bestHero = hero;
+      bestPlayer = player;
+    }
+  }
+
+  if (bestHero && bestPlayer)
+  {
+    if (outPlayerId)
+    {
+      *outPlayerId = bestPlayer->GetPlayerID();
+    }
+    if (outClientId)
+    {
+      *outClientId = bestPlayer->GetUserID();
+    }
+  }
+
+  return bestHero;
+}
+
+NWorld::PFWorld* GetLinuxBootstrapRuntimeWorld(
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  return runtime ?
+    dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()) :
+    0;
+}
+
+float ResolveLinuxMapPreviewMarkerPickRadius(
+  const NWorld::LinuxDynamicWorldMarker& marker
+)
+{
+  if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+  {
+    return std::max(13.5f, marker.objectSize * 1.35f);
+  }
+  if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP)
+  {
+    return std::max(marker.moving ? 7.5f : 6.0f, marker.objectSize * 1.55f);
+  }
+  if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+  {
+    return std::max(7.5f, marker.objectSize * 1.55f);
+  }
+  return 0.0f;
+}
+
+bool FindLinuxMapPreviewMarkerNearWorld(
+  NWorld::PFWorld* world,
+  const CVec2& point,
+  const NWorld::PFBaseHero* controlledHero,
+  bool enemiesOnly,
+  NWorld::LinuxDynamicWorldMarker* outMarker,
+  float* outDistance
+)
+{
+  if (outDistance)
+  {
+    *outDistance = 0.0f;
+  }
+  if (!world)
+  {
+    return false;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+
+  bool found = false;
+  float bestScore = 1.0f;
+  float bestDistance = 0.0f;
+  NWorld::LinuxDynamicWorldMarker bestMarker;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead || marker.objectId < 0)
+    {
+      continue;
+    }
+    if (enemiesOnly &&
+        controlledHero &&
+        marker.faction == static_cast<int>(controlledHero->GetFaction()))
+    {
+      continue;
+    }
+
+    const float radius = ResolveLinuxMapPreviewMarkerPickRadius(marker);
+    if (radius <= 0.0f)
+    {
+      continue;
+    }
+
+    const float distance = fabs(CVec2(marker.x, marker.y) - point);
+    const float score = distance / radius;
+    if (score <= bestScore)
+    {
+      found = true;
+      bestScore = score;
+      bestDistance = distance;
+      bestMarker = marker;
+    }
+  }
+
+  if (!found)
+  {
+    return false;
+  }
+
+  if (outMarker)
+  {
+    *outMarker = bestMarker;
+  }
+  if (outDistance)
+  {
+    *outDistance = bestDistance;
+  }
+  return true;
+}
+
+bool FindLinuxMapPreviewNearestMarkerToWorld(
+  NWorld::PFWorld* world,
+  const CVec2& point,
+  const NWorld::PFBaseHero* controlledHero,
+  bool enemiesOnly,
+  NWorld::LinuxDynamicWorldMarker* outMarker,
+  float* outDistance
+)
+{
+  if (outDistance)
+  {
+    *outDistance = 0.0f;
+  }
+  if (!world)
+  {
+    return false;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+
+  bool found = false;
+  float bestDistance = 0.0f;
+  NWorld::LinuxDynamicWorldMarker bestMarker;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead || marker.objectId < 0)
+    {
+      continue;
+    }
+    if (enemiesOnly &&
+        controlledHero &&
+        marker.faction == static_cast<int>(controlledHero->GetFaction()))
+    {
+      continue;
+    }
+    if (ResolveLinuxMapPreviewMarkerPickRadius(marker) <= 0.0f)
+    {
+      continue;
+    }
+
+    const float distance = fabs(CVec2(marker.x, marker.y) - point);
+    if (!found || distance < bestDistance)
+    {
+      found = true;
+      bestDistance = distance;
+      bestMarker = marker;
+    }
+  }
+
+  if (!found)
+  {
+    return false;
+  }
+
+  if (outMarker)
+  {
+    *outMarker = bestMarker;
+  }
+  if (outDistance)
+  {
+    *outDistance = bestDistance;
+  }
+  return true;
+}
+
+bool FindLinuxMapPreviewNearestEnemyHeroMarkerToWorld(
+  NWorld::PFWorld* world,
+  const CVec2& point,
+  const NWorld::PFBaseHero* controlledHero,
+  NWorld::LinuxDynamicWorldMarker* outMarker,
+  float* outDistance
+)
+{
+  if (outDistance)
+  {
+    *outDistance = 0.0f;
+  }
+  if (!world)
+  {
+    return false;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+
+  bool found = false;
+  float bestDistance = 0.0f;
+  NWorld::LinuxDynamicWorldMarker bestMarker;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead ||
+        marker.objectId < 0 ||
+        marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+    {
+      continue;
+    }
+    if (controlledHero &&
+        marker.faction == static_cast<int>(controlledHero->GetFaction()))
+    {
+      continue;
+    }
+
+    const float distance = fabs(CVec2(marker.x, marker.y) - point);
+    if (!found || distance < bestDistance)
+    {
+      found = true;
+      bestDistance = distance;
+      bestMarker = marker;
+    }
+  }
+
+  if (!found)
+  {
+    return false;
+  }
+
+  if (outMarker)
+  {
+    *outMarker = bestMarker;
+  }
+  if (outDistance)
+  {
+    *outDistance = bestDistance;
+  }
+  return true;
+}
+
+void ClearLinuxMapPreviewSelectedTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  if (runtime->mapPreviewSelectedTargetObjectId >= 0)
+  {
+    ++runtime->mapPreviewSelectedTargetChanges;
+  }
+  runtime->mapPreviewSelectedTargetDrawn = false;
+  runtime->mapPreviewSelectedTargetObjectId = -1;
+  runtime->mapPreviewSelectedTargetKind = 0;
+  runtime->mapPreviewSelectedTargetFaction = -1;
+  runtime->mapPreviewSelectedTargetPlayerId = -1;
+  runtime->mapPreviewSelectedTargetClientId = -1;
+  runtime->mapPreviewSelectedTargetX = 0.0f;
+  runtime->mapPreviewSelectedTargetY = 0.0f;
+  runtime->mapPreviewSelectedTargetDistance = 0.0f;
+  runtime->mapPreviewSelectedTargetSource = source && *source ? source : "selection-clear";
+  runtime->mapPreviewLastAction = runtime->mapPreviewSelectedTargetSource;
+}
+
+void RecordLinuxMapPreviewSelectedTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const char* source,
+  float distance
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  if (runtime->mapPreviewSelectedTargetObjectId != marker.objectId)
+  {
+    ++runtime->mapPreviewSelectedTargetChanges;
+  }
+  runtime->mapPreviewSelectedTargetDrawn = false;
+  runtime->mapPreviewSelectedTargetObjectId = marker.objectId;
+  runtime->mapPreviewSelectedTargetKind = marker.kind;
+  runtime->mapPreviewSelectedTargetFaction = marker.faction;
+  runtime->mapPreviewSelectedTargetPlayerId = marker.playerId;
+  runtime->mapPreviewSelectedTargetClientId = marker.userId;
+  runtime->mapPreviewSelectedTargetX = marker.x;
+  runtime->mapPreviewSelectedTargetY = marker.y;
+  runtime->mapPreviewSelectedTargetDistance = distance;
+  runtime->mapPreviewSelectedTargetSource = source && *source ? source : "selection";
+  runtime->mapPreviewLastAction = runtime->mapPreviewSelectedTargetSource;
+}
+
+NWorld::PFBaseUnit* ResolveLinuxMapPreviewSelectedTargetUnit(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || runtime->mapPreviewSelectedTargetObjectId < 0)
+  {
+    return 0;
+  }
+
+  NWorld::PFBaseUnit* unit =
+    world->FindLinuxUnitByObjectId(runtime->mapPreviewSelectedTargetObjectId);
+  if (!unit || unit->IsDead())
+  {
+    ClearLinuxMapPreviewSelectedTarget(runtime, "selected-target-expired");
+    return 0;
+  }
+
+  runtime->mapPreviewSelectedTargetX = unit->GetPosition().x;
+  runtime->mapPreviewSelectedTargetY = unit->GetPosition().y;
+  runtime->mapPreviewSelectedTargetFaction = static_cast<int>(unit->GetFaction());
+  return unit;
+}
+
+NWorld::PFBaseUnit* ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  bool requireEnemy,
+  int* targetPlayerId,
+  int* targetClientId,
+  bool* selectedTarget
+);
+
+struct LinuxBootstrapTalentCommandSelection
+{
+  LinuxBootstrapTalentCommandSelection() :
+    level(0),
+    slot(0),
+    found(false),
+    targetUnit(0),
+    targetPlayerId(-1),
+    targetClientId(-1),
+    selectedTarget(false),
+    targetPosition(0.0f, 0.0f)
+  {
+  }
+
+  int level;
+  int slot;
+  bool found;
+  NWorld::PFBaseUnit* targetUnit;
+  int targetPlayerId;
+  int targetClientId;
+  bool selectedTarget;
+  CVec2 targetPosition;
+};
+
+bool IsLinuxBootstrapTalentCompatibleWithUnit(
+  const NWorld::PFTalent* talent,
+  const NWorld::PFBaseHero* hero,
+  const NWorld::PFBaseUnit* unit
+)
+{
+  if (!talent || !hero || !unit)
+  {
+    return false;
+  }
+
+  const unsigned targetTypes = talent->GetTargetType();
+  if (!targetTypes)
+  {
+    return true;
+  }
+
+  if (unit == hero)
+  {
+    return (targetTypes & NDb::SPELLTARGET_SELF) != 0;
+  }
+
+  const unsigned unitKindMask = 1u << unit->GetUnitKind();
+  if ((targetTypes & unitKindMask) == 0)
+  {
+    return false;
+  }
+
+  if (unit->GetUnitKind() == NDb::UNITTYPE_FLAGPOLE &&
+      unit->GetFaction() == NDb::FACTION_NEUTRAL)
+  {
+    return false;
+  }
+
+  const bool sameFaction = hero->GetFaction() == unit->GetFaction();
+  return (sameFaction && (targetTypes & NDb::SPELLTARGET_ALLY)) ||
+    (!sameFaction && (targetTypes & NDb::SPELLTARGET_ENEMY));
+}
+
+int ResolveLinuxBootstrapMinimumProgressTalentCost(
+  NWorld::PFBaseMaleHero* maleHero
+)
+{
+  if (!maleHero || !maleHero->GetTalentsSet())
+  {
+    return -1;
+  }
+
+  int minimumCost = -1;
+  const int maxLevel = maleHero->GetTalentsSet()->GetLevelOfDevelopmentCapped();
+  for (int level = 0; level < NWorld::PFTalentsSet::LEVELS_COUNT && level <= maxLevel; ++level)
+  {
+    for (int slot = 0; slot < NWorld::PFTalentsSet::SLOTS_COUNT; ++slot)
+    {
+      const NWorld::PFTalent* talent = maleHero->GetTalent(level, slot);
+      if (!talent ||
+          talent->IsActivated() ||
+          !talent->CanBeActivated() ||
+          talent->GetDevPoints() <= 0)
+      {
+        continue;
+      }
+
+      const int cost = talent->GetNaftaCost();
+      if (cost <= 0)
+      {
+        continue;
+      }
+
+      if (minimumCost < 0 || cost < minimumCost)
+      {
+        minimumCost = cost;
+      }
+    }
+  }
+
+  return minimumCost;
+}
+
+int FindLinuxBootstrapFirstUsableConsumableSlot(const NWorld::PFBaseHero* hero)
+{
+  if (!hero)
+  {
+    return -1;
+  }
+
+  const int slotCount = hero->GetSlotCount();
+  for (int slot = 0; slot < slotCount; ++slot)
+  {
+    if (hero->CanUseConsumable(slot))
+    {
+      return slot;
+    }
+  }
+
+  return -1;
+}
+
+LinuxBootstrapTalentCommandSelection ResolveLinuxBootstrapTalentCommandSelection(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseMaleHero* maleHero,
+  bool requireUsableTalent
+)
+{
+  LinuxBootstrapTalentCommandSelection selection;
+  if (!runtime || !world || !maleHero)
+  {
+    return selection;
+  }
+
+  NWorld::PFBaseHero* hero = maleHero;
+  int selectedPlayerId = -1;
+  int selectedClientId = -1;
+  bool selectedTarget = false;
+  NWorld::PFBaseUnit* selectedUnit =
+    ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+      runtime,
+      world,
+      hero,
+      false,
+      &selectedPlayerId,
+      &selectedClientId,
+      &selectedTarget);
+
+  int enemyPlayerId = -1;
+  int enemyClientId = -1;
+  NWorld::PFBaseUnit* enemyUnit =
+    FindLinuxBootstrapEnemyHero(world, hero, &enemyPlayerId, &enemyClientId);
+
+  for (int level = 0; level < NWorld::PFTalentsSet::LEVELS_COUNT; ++level)
+  {
+    for (int slot = 0; slot < NWorld::PFTalentsSet::SLOTS_COUNT; ++slot)
+    {
+      NWorld::PFTalent* talent = maleHero->GetTalent(level, slot);
+      if (!talent)
+      {
+        continue;
+      }
+      if (requireUsableTalent)
+      {
+        if (!maleHero->CanUseTalent(talent))
+        {
+          continue;
+        }
+      }
+      else
+      {
+        if (talent->IsActivated() ||
+            talent->GetDevPoints() <= 0 ||
+            talent->GetNaftaCost() <= 0 ||
+            maleHero->CanActivateTalent(level, slot) != NWorld::ETalentActivation::Ok)
+        {
+          continue;
+        }
+      }
+
+      selection.level = level;
+      selection.slot = slot;
+      selection.found = true;
+      selection.targetPosition = hero->GetPosition().AsVec2D();
+
+      const unsigned targetTypes = talent->GetTargetType();
+      if (!targetTypes)
+      {
+        return selection;
+      }
+      if ((targetTypes & NDb::SPELLTARGET_SELF) != 0)
+      {
+        selection.targetUnit = hero;
+        selection.targetPosition = hero->GetPosition().AsVec2D();
+        return selection;
+      }
+      if (selectedUnit &&
+          IsLinuxBootstrapTalentCompatibleWithUnit(talent, hero, selectedUnit))
+      {
+        selection.targetUnit = selectedUnit;
+        selection.targetPlayerId = selectedPlayerId;
+        selection.targetClientId = selectedClientId;
+        selection.selectedTarget = selectedTarget;
+        selection.targetPosition = selectedUnit->GetPosition().AsVec2D();
+        return selection;
+      }
+      if (enemyUnit &&
+          IsLinuxBootstrapTalentCompatibleWithUnit(talent, hero, enemyUnit))
+      {
+        selection.targetUnit = enemyUnit;
+        selection.targetPlayerId = enemyPlayerId;
+        selection.targetClientId = enemyClientId;
+        selection.targetPosition = enemyUnit->GetPosition().AsVec2D();
+        return selection;
+      }
+    }
+  }
+
+  selection.level = 0;
+  selection.slot = 0;
+  selection.targetUnit = selectedUnit;
+  selection.targetPlayerId = selectedPlayerId;
+  selection.targetClientId = selectedClientId;
+  selection.selectedTarget = selectedTarget;
+  selection.targetPosition =
+    selectedUnit ? selectedUnit->GetPosition().AsVec2D() : hero->GetPosition().AsVec2D();
+  return selection;
+}
+
+void RecordLinuxMapPreviewActionCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* kind,
+  const char* source,
+  const CVec2& sourcePosition,
+  const CVec2& targetPosition,
+  int playerId,
+  int clientId,
+  int targetPlayerId,
+  int targetClientId
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  ++runtime->mapPreviewCommandActionCommandsSent;
+  runtime->mapPreviewCommandActionTargetDrawn = true;
+  runtime->mapPreviewCommandActionSourceX = sourcePosition.x;
+  runtime->mapPreviewCommandActionSourceY = sourcePosition.y;
+  runtime->mapPreviewCommandActionTargetX = targetPosition.x;
+  runtime->mapPreviewCommandActionTargetY = targetPosition.y;
+  runtime->mapPreviewCommandActionPlayerId = playerId;
+  runtime->mapPreviewCommandActionClientId = clientId;
+  runtime->mapPreviewCommandActionTargetPlayerId = targetPlayerId;
+  runtime->mapPreviewCommandActionTargetClientId = targetClientId;
+  runtime->mapPreviewCommandActionKind = kind && *kind ? kind : "command";
+  runtime->mapPreviewCommandActionSource = source && *source ? source : "map-preview";
+  runtime->mapPreviewLastAction = runtime->mapPreviewCommandActionSource;
+}
+
+CVec2 ClampLinuxBootstrapMoveTargetToMap(
+  NWorld::PFWorld* world,
+  const CVec2& target
+)
+{
+  CVec2 clamped = target;
+  const CVec2 mapSize = world ? world->GetMapSize() : CVec2(0.0f, 0.0f);
+  if (mapSize.x > 16.0f)
+  {
+    clamped.x = std::max(8.0f, std::min(mapSize.x - 8.0f, clamped.x));
+  }
+  if (mapSize.y > 16.0f)
+  {
+    clamped.y = std::max(8.0f, std::min(mapSize.y - 8.0f, clamped.y));
+  }
+  return clamped;
+}
+
+CVec2 ResolveLinuxBootstrapReachableHeroMoveTarget(
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  const CVec2& requestedTarget
+)
+{
+  NWorld::PFBaseMovingUnit* movingHero =
+    dynamic_cast<NWorld::PFBaseMovingUnit*>(hero);
+  if (!hero || !movingHero)
+  {
+    return requestedTarget;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 requested = ClampLinuxBootstrapMoveTargetToMap(world, requestedTarget);
+  const CVec2 requestedDelta = requested - source;
+  const float requestedDistance = fabs(requestedDelta);
+  if (requestedDistance <= EPS_VALUE)
+  {
+    return requested;
+  }
+
+  float requestedSafe =
+    movingHero->CheckStraightMove(requested, NWorld::MAP_MODE_ALL);
+  if (requestedSafe <= EPS_VALUE)
+  {
+    requestedSafe =
+      movingHero->CheckStraightMove(requested, NWorld::MAP_MODE_ALL_STATICS);
+  }
+  if (requestedSafe >= requestedDistance - 0.5f)
+  {
+    return requested;
+  }
+
+  CVec2 bestTarget = requestedSafe > 0.35f ?
+    source + requestedDelta / requestedDistance * requestedSafe :
+    requested;
+  float bestDistance = requestedSafe;
+
+  std::vector<CVec2> directions;
+  directions.reserve(12);
+  const auto addDirection = [&directions](const CVec2& direction)
+  {
+    const float length = fabs(direction);
+    if (length > EPS_VALUE)
+    {
+      directions.push_back(direction / length);
+    }
+  };
+
+  addDirection(requestedDelta);
+  addDirection(CVec2(requestedDelta.y, -requestedDelta.x));
+  addDirection(CVec2(-requestedDelta.y, requestedDelta.x));
+  addDirection(CVec2(1.0f, 0.0f));
+  addDirection(CVec2(-1.0f, 0.0f));
+  addDirection(CVec2(0.0f, 1.0f));
+  addDirection(CVec2(0.0f, -1.0f));
+  addDirection(CVec2(1.0f, 1.0f));
+  addDirection(CVec2(-1.0f, 1.0f));
+  addDirection(CVec2(1.0f, -1.0f));
+  addDirection(CVec2(-1.0f, -1.0f));
+
+  static const float searchDistances[] =
+  {
+    3.0f, 5.0f, 8.0f, 12.0f, 18.0f, 26.0f, 34.0f
+  };
+
+  for (size_t directionIndex = 0; directionIndex < directions.size(); ++directionIndex)
+  {
+    const CVec2 direction = directions[directionIndex];
+    for (size_t distanceIndex = 0;
+         distanceIndex < sizeof(searchDistances) / sizeof(searchDistances[0]);
+         ++distanceIndex)
+    {
+      const CVec2 candidate =
+        ClampLinuxBootstrapMoveTargetToMap(
+          world,
+          source + direction * searchDistances[distanceIndex]);
+      const float candidateDistance = fabs(candidate - source);
+      if (candidateDistance <= EPS_VALUE)
+      {
+        continue;
+      }
+
+      float safeDistance =
+        movingHero->CheckStraightMove(candidate, NWorld::MAP_MODE_ALL);
+      if (safeDistance <= EPS_VALUE)
+      {
+        safeDistance =
+          movingHero->CheckStraightMove(candidate, NWorld::MAP_MODE_ALL_STATICS);
+      }
+
+      if (safeDistance > bestDistance)
+      {
+        bestDistance = safeDistance;
+        bestTarget = source + direction * std::min(safeDistance, candidateDistance);
+      }
+    }
+  }
+
+  return bestDistance > 0.35f ?
+    ClampLinuxBootstrapMoveTargetToMap(world, bestTarget) :
+    requested;
+}
+
+float ResolveLinuxBootstrapAttackProofRange(
+  NWorld::PFBaseHero* hero,
+  NWorld::PFBaseUnit* targetUnit
+)
+{
+  if (!hero)
+  {
+    return 4.0f;
+  }
+
+  float range = 0.0f;
+  if (const NWorld::PFBaseAttackData* attackData = hero->GetAttackAbility())
+  {
+    range = attackData->GetUseRange(targetUnit);
+  }
+  if (range <= EPS_VALUE)
+  {
+    range = hero->GetAttackRange();
+  }
+  return range > EPS_VALUE ? range : 4.0f;
+}
+
+void UpdateLinuxBootstrapSelectedTargetAttackProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->mapPreviewSelectedTargetAttackProofPrepared)
+  {
+    return;
+  }
+
+  NWorld::PFBaseUnit* targetUnit =
+    world->FindLinuxUnitByObjectId(runtime->mapPreviewSelectedTargetAttackProofObjectId);
+  if (!targetUnit)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofActive = false;
+    return;
+  }
+
+  ++runtime->mapPreviewSelectedTargetAttackProofSamples;
+  const float previousLife = runtime->mapPreviewSelectedTargetAttackProofLifeAfter;
+  const float currentLife = targetUnit->GetLife();
+  runtime->mapPreviewSelectedTargetAttackProofLifePrevious = previousLife;
+  runtime->mapPreviewSelectedTargetAttackProofLifeAfter = currentLife;
+  runtime->mapPreviewSelectedTargetAttackProofX = targetUnit->GetPosition().x;
+  runtime->mapPreviewSelectedTargetAttackProofY = targetUnit->GetPosition().y;
+  NWorld::PFBaseHero* targetHero = dynamic_cast<NWorld::PFBaseHero*>(targetUnit);
+  runtime->mapPreviewSelectedTargetAttackProofTargetIsHero = targetHero != 0;
+  runtime->mapPreviewSelectedTargetAttackProofRespawnDelay =
+    targetHero ? targetHero->GetTimeToRespawn() : -1.0f;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, 0, 0);
+  const int currentWorldStep = world->GetStepNumber();
+  if (runtime->mapPreviewSelectedTargetAttackProofKilled &&
+      targetHero &&
+      !targetHero->IsDead() &&
+      currentLife > EPS_VALUE)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofRespawned = true;
+    if (runtime->mapPreviewSelectedTargetAttackProofRespawnWorldStep < 0)
+    {
+      runtime->mapPreviewSelectedTargetAttackProofRespawnWorldStep =
+        world->GetStepNumber();
+    }
+
+    NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+    const int requiredGold =
+      ResolveLinuxBootstrapMinimumProgressTalentCost(maleHero);
+    if (requiredGold > 0)
+    {
+      runtime->mapPreviewSelectedTargetAttackProofRequiredGold = requiredGold;
+    }
+    if (hero &&
+        !hero->IsDead() &&
+        requiredGold > 0 &&
+        hero->GetGold() < requiredGold)
+    {
+      targetUnit->SetVulnerable(true);
+      targetUnit->DropTarget();
+      runtime->mapPreviewSelectedTargetAttackProofActive = true;
+      runtime->mapPreviewSelectedTargetAttackProofKilled = false;
+      runtime->mapPreviewSelectedTargetAttackProofReengaged = true;
+      runtime->mapPreviewSelectedTargetAttackProofStartWorldStep = currentWorldStep;
+      runtime->mapPreviewSelectedTargetAttackProofLifeBefore = currentLife;
+      runtime->mapPreviewSelectedTargetAttackProofLifePrevious = currentLife;
+      runtime->mapPreviewSelectedTargetAttackProofLifeAfter = currentLife;
+    }
+  }
+
+  if (hero)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofDistanceAfter =
+      fabs(targetUnit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D());
+    if (runtime->mapPreviewSelectedTargetAttackProofActive &&
+        !targetUnit->IsDead())
+    {
+      hero->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), true);
+
+      NWorld::PFBaseMovingUnit* movingTarget =
+        dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit);
+      if (movingTarget)
+      {
+        const CVec2 heroPosition = hero->GetPosition().AsVec2D();
+        CVec2 direction = targetUnit->GetPosition().AsVec2D() - heroPosition;
+        const float distance = fabs(direction);
+        if (distance > EPS_VALUE)
+        {
+          direction = direction / distance;
+        }
+        else
+        {
+          direction = CVec2(1.0f, 0.0f);
+        }
+
+        const float attackRange =
+          ResolveLinuxBootstrapAttackProofRange(hero, targetUnit);
+        const float keepDistance =
+          std::max(1.5f, std::min(4.0f, attackRange * 0.55f));
+        if (!hero->IsTargetInAttackRange(targetUnit, true) ||
+            distance > std::max(keepDistance + 1.0f, attackRange * 0.85f))
+        {
+          movingTarget->Stop(false);
+          movingTarget->TeleportTo(
+            ClampLinuxBootstrapMoveTargetToMap(
+              world,
+              heroPosition + direction * keepDistance),
+            false,
+            false);
+          runtime->mapPreviewSelectedTargetAttackProofX = targetUnit->GetPosition().x;
+          runtime->mapPreviewSelectedTargetAttackProofY = targetUnit->GetPosition().y;
+          runtime->mapPreviewSelectedTargetAttackProofDistanceAfter =
+            fabs(targetUnit->GetPosition().AsVec2D() - heroPosition);
+        }
+        else
+        {
+          movingTarget->Stop(false);
+        }
+      }
+    }
+  }
+
+  runtime->mapPreviewSelectedTargetAttackProofLastWorldStep = currentWorldStep;
+  if (runtime->mapPreviewSelectedTargetAttackProofActive &&
+      currentLife + 0.25f < previousLife)
+  {
+    ++runtime->mapPreviewSelectedTargetAttackProofHitCount;
+  }
+
+  if (currentLife + 0.25f <
+      runtime->mapPreviewSelectedTargetAttackProofLifeBefore)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofDamaged = true;
+  }
+  if (targetUnit->IsDead() || currentLife <= EPS_VALUE)
+  {
+    if (!runtime->mapPreviewSelectedTargetAttackProofKilled)
+    {
+      ++runtime->mapPreviewSelectedTargetAttackProofKillCount;
+    }
+    runtime->mapPreviewSelectedTargetAttackProofKilled = true;
+  }
+
+  if (runtime->mapPreviewSelectedTargetAttackProofHitCount >= 2)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofSustained =
+      true;
+  }
+
+  if (runtime->mapPreviewSelectedTargetAttackProofKilled)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofActive = false;
+  }
+
+  static const int kLinuxSelectedTargetAttackProofMaxWaitSteps = 520;
+  if (runtime->mapPreviewSelectedTargetAttackProofActive &&
+      runtime->mapPreviewSelectedTargetAttackProofStartWorldStep >= 0 &&
+      currentWorldStep - runtime->mapPreviewSelectedTargetAttackProofStartWorldStep >=
+        kLinuxSelectedTargetAttackProofMaxWaitSteps)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofActive = false;
+  }
+}
+
+bool PrepareLinuxBootstrapSelectedTargetAttackProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  NWorld::PFBaseUnit* targetUnit
+)
+{
+  if (!runtime ||
+      !world ||
+      !hero ||
+      !targetUnit ||
+      runtime->mapPreviewSelectedTargetAttackProofPrepared)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseMovingUnit* movingTarget =
+    dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit);
+  if (!movingTarget)
+  {
+    return false;
+  }
+
+  const CVec2 heroPosition = hero->GetPosition().AsVec2D();
+  const CVec2 originalTargetPosition = targetUnit->GetPosition().AsVec2D();
+  CVec2 direction = originalTargetPosition - heroPosition;
+  const float distanceBefore = fabs(direction);
+  if (distanceBefore > EPS_VALUE)
+  {
+    direction = direction / distanceBefore;
+  }
+  else
+  {
+    direction = CVec2(1.0f, 0.0f);
+  }
+
+  const float attackRange = ResolveLinuxBootstrapAttackProofRange(hero, targetUnit);
+  const float proofDistance = std::max(1.5f, std::min(4.0f, attackRange * 0.55f));
+  const CVec2 proofPosition =
+    ClampLinuxBootstrapMoveTargetToMap(world, heroPosition + direction * proofDistance);
+  if (!movingTarget->TeleportTo(proofPosition, false, false))
+  {
+    return false;
+  }
+
+  targetUnit->SetVulnerable(true);
+  targetUnit->DropTarget();
+  NWorld::PFBaseHero* targetHero = dynamic_cast<NWorld::PFBaseHero*>(targetUnit);
+  runtime->mapPreviewSelectedTargetAttackProofPrepared = true;
+  runtime->mapPreviewSelectedTargetAttackProofActive = true;
+  runtime->mapPreviewSelectedTargetAttackProofDamaged = false;
+  runtime->mapPreviewSelectedTargetAttackProofSustained = false;
+  runtime->mapPreviewSelectedTargetAttackProofKilled = false;
+  runtime->mapPreviewSelectedTargetAttackProofTargetIsHero = targetHero != 0;
+  runtime->mapPreviewSelectedTargetAttackProofRespawned = false;
+  runtime->mapPreviewSelectedTargetAttackProofReengaged = false;
+  runtime->mapPreviewSelectedTargetAttackProofObjectId = targetUnit->GetObjectId();
+  runtime->mapPreviewSelectedTargetAttackProofStartWorldStep = world->GetStepNumber();
+  runtime->mapPreviewSelectedTargetAttackProofLastWorldStep = world->GetStepNumber();
+  runtime->mapPreviewSelectedTargetAttackProofRespawnWorldStep = -1;
+  runtime->mapPreviewSelectedTargetAttackProofRequiredGold = 0;
+  runtime->mapPreviewSelectedTargetAttackProofSamples = 0;
+  runtime->mapPreviewSelectedTargetAttackProofHitCount = 0;
+  runtime->mapPreviewSelectedTargetAttackProofKillCount = 0;
+  runtime->mapPreviewSelectedTargetAttackProofLifeBefore = targetUnit->GetLife();
+  runtime->mapPreviewSelectedTargetAttackProofLifePrevious = targetUnit->GetLife();
+  runtime->mapPreviewSelectedTargetAttackProofLifeAfter = targetUnit->GetLife();
+  runtime->mapPreviewSelectedTargetAttackProofRespawnDelay =
+    targetHero ? targetHero->GetTimeToRespawn() : -1.0f;
+  runtime->mapPreviewSelectedTargetAttackProofRange = attackRange;
+  runtime->mapPreviewSelectedTargetAttackProofDistanceBefore = distanceBefore;
+  runtime->mapPreviewSelectedTargetAttackProofDistanceAfter =
+    fabs(targetUnit->GetPosition().AsVec2D() - heroPosition);
+  runtime->mapPreviewSelectedTargetAttackProofOriginalX = originalTargetPosition.x;
+  runtime->mapPreviewSelectedTargetAttackProofOriginalY = originalTargetPosition.y;
+  runtime->mapPreviewSelectedTargetAttackProofX = targetUnit->GetPosition().x;
+  runtime->mapPreviewSelectedTargetAttackProofY = targetUnit->GetPosition().y;
+  runtime->mapPreviewSelectedTargetX = runtime->mapPreviewSelectedTargetAttackProofX;
+  runtime->mapPreviewSelectedTargetY = runtime->mapPreviewSelectedTargetAttackProofY;
+  runtime->mapPreviewSelectedTargetDistance =
+    runtime->mapPreviewSelectedTargetAttackProofDistanceAfter;
+  return true;
+}
+
+float ResolveLinuxBootstrapUnitAttackProofRange(
+  NWorld::PFBaseUnit* attacker,
+  NWorld::PFBaseUnit* targetUnit
+)
+{
+  if (!attacker)
+  {
+    return 4.0f;
+  }
+
+  float range = 0.0f;
+  if (const NWorld::PFBaseAttackData* attackData = attacker->GetAttackAbility())
+  {
+    range = attackData->GetUseRange(targetUnit);
+  }
+  if (range <= EPS_VALUE)
+  {
+    range = attacker->GetAttackRange();
+  }
+  return range > EPS_VALUE ? range : 4.0f;
+}
+
+bool FindLinuxBootstrapCreepDuelPair(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit** outAttacker,
+  NWorld::PFBaseUnit** outTarget
+)
+{
+  if (outAttacker)
+  {
+    *outAttacker = 0;
+  }
+  if (outTarget)
+  {
+    *outTarget = 0;
+  }
+  if (!runtime || !world || !outAttacker || !outTarget)
+  {
+    return false;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 512);
+
+  NWorld::LinuxDynamicWorldMarker bestA;
+  NWorld::LinuxDynamicWorldMarker bestB;
+  bool found = false;
+  float bestDistance2 = FLT_MAX;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& a = markers[i];
+    if (a.kind != NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+        a.dead ||
+        a.objectId == runtime->mapPreviewSelectedTargetAttackProofObjectId ||
+        a.objectId == runtime->mapPreviewSelectedTargetObjectId)
+    {
+      continue;
+    }
+
+    for (size_t j = 0; j < markers.size(); ++j)
+    {
+      const NWorld::LinuxDynamicWorldMarker& b = markers[j];
+      if (i == j ||
+          b.kind != NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+          b.dead ||
+          b.objectId == runtime->mapPreviewSelectedTargetAttackProofObjectId ||
+          b.objectId == runtime->mapPreviewSelectedTargetObjectId ||
+          b.faction == a.faction)
+      {
+        continue;
+      }
+
+      const float dx = b.x - a.x;
+      const float dy = b.y - a.y;
+      const float distance2 = dx * dx + dy * dy;
+      if (distance2 < bestDistance2)
+      {
+        bestA = a;
+        bestB = b;
+        bestDistance2 = distance2;
+        found = true;
+      }
+    }
+  }
+
+  if (!found)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* attacker = world->FindLinuxUnitByObjectId(bestA.objectId);
+  NWorld::PFBaseUnit* targetUnit = world->FindLinuxUnitByObjectId(bestB.objectId);
+  if (!attacker ||
+      !targetUnit ||
+      attacker == targetUnit ||
+      attacker->IsDead() ||
+      targetUnit->IsDead())
+  {
+    return false;
+  }
+
+  if (!dynamic_cast<NWorld::PFBaseMovingUnit*>(attacker) ||
+      !dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit))
+  {
+    return false;
+  }
+
+  *outAttacker = attacker;
+  *outTarget = targetUnit;
+  return true;
+}
+
+bool PrepareLinuxBootstrapCreepDuelProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      !runtime->mapPreviewSelectedTargetAttackProofPrepared ||
+      runtime->mapPreviewCreepDuelProofPrepared)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* attacker = 0;
+  NWorld::PFBaseUnit* targetUnit = 0;
+  if (!FindLinuxBootstrapCreepDuelPair(runtime, world, &attacker, &targetUnit))
+  {
+    return false;
+  }
+
+  NWorld::PFBaseMovingUnit* movingAttacker =
+    dynamic_cast<NWorld::PFBaseMovingUnit*>(attacker);
+  NWorld::PFBaseMovingUnit* movingTarget =
+    dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit);
+  if (!movingAttacker || !movingTarget)
+  {
+    return false;
+  }
+
+  const CVec2 attackerPosition = attacker->GetPosition().AsVec2D();
+  const CVec2 originalTargetPosition = targetUnit->GetPosition().AsVec2D();
+  CVec2 direction = originalTargetPosition - attackerPosition;
+  const float distanceBefore = fabs(direction);
+  if (distanceBefore > EPS_VALUE)
+  {
+    direction = direction / distanceBefore;
+  }
+  else
+  {
+    direction = CVec2(1.0f, 0.0f);
+  }
+
+  const float attackRange =
+    ResolveLinuxBootstrapUnitAttackProofRange(attacker, targetUnit);
+  const float proofDistance =
+    std::max(1.5f, std::min(3.5f, attackRange * 0.45f));
+  const CVec2 targetProofPosition =
+    ClampLinuxBootstrapMoveTargetToMap(
+      world,
+      attackerPosition + direction * proofDistance);
+
+  movingAttacker->Stop(false);
+  movingTarget->Stop(false);
+  if (!movingTarget->TeleportTo(targetProofPosition, false, false))
+  {
+    return false;
+  }
+
+  attacker->SetVulnerable(true);
+  targetUnit->SetVulnerable(true);
+  attacker->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), false);
+  targetUnit->AssignTarget(CPtr<NWorld::PFBaseUnit>(attacker), false);
+
+  runtime->mapPreviewCreepDuelProofPrepared = true;
+  runtime->mapPreviewCreepDuelProofActive = true;
+  runtime->mapPreviewCreepDuelProofDamaged = false;
+  runtime->mapPreviewCreepDuelProofSustained = false;
+  runtime->mapPreviewCreepDuelProofKilled = false;
+  runtime->mapPreviewCreepDuelProofAttackerObjectId = attacker->GetObjectId();
+  runtime->mapPreviewCreepDuelProofTargetObjectId = targetUnit->GetObjectId();
+  runtime->mapPreviewCreepDuelProofStartWorldStep = world->GetStepNumber();
+  runtime->mapPreviewCreepDuelProofLastWorldStep = world->GetStepNumber();
+  runtime->mapPreviewCreepDuelProofSamples = 0;
+  runtime->mapPreviewCreepDuelProofHitCount = 0;
+  runtime->mapPreviewCreepDuelProofLifeBefore = targetUnit->GetLife();
+  runtime->mapPreviewCreepDuelProofLifePrevious = targetUnit->GetLife();
+  runtime->mapPreviewCreepDuelProofLifeAfter = targetUnit->GetLife();
+  runtime->mapPreviewCreepDuelProofRange = attackRange;
+  runtime->mapPreviewCreepDuelProofDistanceBefore = distanceBefore;
+  runtime->mapPreviewCreepDuelProofDistanceAfter =
+    fabs(targetUnit->GetPosition().AsVec2D() - attacker->GetPosition().AsVec2D());
+  runtime->mapPreviewCreepDuelProofAttackerX = attacker->GetPosition().x;
+  runtime->mapPreviewCreepDuelProofAttackerY = attacker->GetPosition().y;
+  runtime->mapPreviewCreepDuelProofTargetX = targetUnit->GetPosition().x;
+  runtime->mapPreviewCreepDuelProofTargetY = targetUnit->GetPosition().y;
+  return true;
+}
+
+void UpdateLinuxBootstrapCreepDuelProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world)
+  {
+    return;
+  }
+
+  if (!runtime->mapPreviewCreepDuelProofPrepared &&
+      runtime->mapPreviewSelectedTargetAttackProofPrepared)
+  {
+    PrepareLinuxBootstrapCreepDuelProof(runtime, world);
+  }
+  if (!runtime->mapPreviewCreepDuelProofPrepared)
+  {
+    return;
+  }
+
+  NWorld::PFBaseUnit* attacker =
+    world->FindLinuxUnitByObjectId(runtime->mapPreviewCreepDuelProofAttackerObjectId);
+  NWorld::PFBaseUnit* targetUnit =
+    world->FindLinuxUnitByObjectId(runtime->mapPreviewCreepDuelProofTargetObjectId);
+  if (!attacker || !targetUnit)
+  {
+    runtime->mapPreviewCreepDuelProofActive = false;
+    return;
+  }
+
+  ++runtime->mapPreviewCreepDuelProofSamples;
+  const float previousLife = runtime->mapPreviewCreepDuelProofLifeAfter;
+  const float currentLife = targetUnit->GetLife();
+  runtime->mapPreviewCreepDuelProofLifePrevious = previousLife;
+  runtime->mapPreviewCreepDuelProofLifeAfter = currentLife;
+  runtime->mapPreviewCreepDuelProofAttackerX = attacker->GetPosition().x;
+  runtime->mapPreviewCreepDuelProofAttackerY = attacker->GetPosition().y;
+  runtime->mapPreviewCreepDuelProofTargetX = targetUnit->GetPosition().x;
+  runtime->mapPreviewCreepDuelProofTargetY = targetUnit->GetPosition().y;
+  runtime->mapPreviewCreepDuelProofDistanceAfter =
+    fabs(targetUnit->GetPosition().AsVec2D() - attacker->GetPosition().AsVec2D());
+
+  if (runtime->mapPreviewCreepDuelProofActive &&
+      !attacker->IsDead() &&
+      !targetUnit->IsDead())
+  {
+    attacker->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), false);
+    targetUnit->AssignTarget(CPtr<NWorld::PFBaseUnit>(attacker), false);
+
+    NWorld::PFBaseMovingUnit* movingTarget =
+      dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit);
+    if (movingTarget)
+    {
+      const CVec2 attackerPosition = attacker->GetPosition().AsVec2D();
+      CVec2 direction = targetUnit->GetPosition().AsVec2D() - attackerPosition;
+      const float distance = fabs(direction);
+      if (distance > EPS_VALUE)
+      {
+        direction = direction / distance;
+      }
+      else
+      {
+        direction = CVec2(1.0f, 0.0f);
+      }
+
+      const float attackRange =
+        ResolveLinuxBootstrapUnitAttackProofRange(attacker, targetUnit);
+      const float keepDistance =
+        std::max(1.5f, std::min(3.5f, attackRange * 0.45f));
+      if (!attacker->IsTargetInAttackRange(targetUnit, true) ||
+          distance > std::max(keepDistance + 0.75f, attackRange * 0.8f))
+      {
+        movingTarget->Stop(false);
+        movingTarget->TeleportTo(
+          ClampLinuxBootstrapMoveTargetToMap(
+            world,
+            attackerPosition + direction * keepDistance),
+          false,
+          false);
+      }
+      else
+      {
+        movingTarget->Stop(false);
+      }
+    }
+
+    if (attacker->IsTargetInAttackRange(targetUnit, true) &&
+        attacker->IsReadyToAttack())
+    {
+      attacker->DoAttack(false);
+    }
+  }
+
+  const int currentWorldStep = world->GetStepNumber();
+  runtime->mapPreviewCreepDuelProofLastWorldStep = currentWorldStep;
+  if (runtime->mapPreviewCreepDuelProofActive &&
+      currentLife + 0.25f < previousLife)
+  {
+    ++runtime->mapPreviewCreepDuelProofHitCount;
+  }
+  if (currentLife + 0.25f < runtime->mapPreviewCreepDuelProofLifeBefore)
+  {
+    runtime->mapPreviewCreepDuelProofDamaged = true;
+  }
+  if (targetUnit->IsDead() || currentLife <= EPS_VALUE)
+  {
+    runtime->mapPreviewCreepDuelProofKilled = true;
+  }
+  if (runtime->mapPreviewCreepDuelProofHitCount >= 2)
+  {
+    runtime->mapPreviewCreepDuelProofSustained = true;
+  }
+  if (runtime->mapPreviewCreepDuelProofKilled)
+  {
+    runtime->mapPreviewCreepDuelProofActive = false;
+    return;
+  }
+
+  static const int kLinuxCreepDuelProofMaxWaitSteps = 260;
+  if (runtime->mapPreviewCreepDuelProofActive &&
+      runtime->mapPreviewCreepDuelProofStartWorldStep >= 0 &&
+      currentWorldStep - runtime->mapPreviewCreepDuelProofStartWorldStep >=
+        kLinuxCreepDuelProofMaxWaitSteps)
+  {
+    runtime->mapPreviewCreepDuelProofActive = false;
+  }
+}
+
+bool SendLinuxBootstrapHeroMoveCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const CVec2& target,
+  const char* source,
+  bool recordMapPreviewCommand
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!hero || !maleHero)
+  {
+    return false;
+  }
+
+  const CVec2 heroPosition = hero->GetPosition().AsVec2D();
+  const CVec2 commandTarget =
+    ResolveLinuxBootstrapReachableHeroMoveTarget(world, hero, target);
+  NCore::WorldCommand* moveCommand =
+    NWorld::CreateCmdMoveHero(hero, commandTarget, true);
+  if (!moveCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(moveCommand, true);
+  runtime->transceiverHeroMoveRuntimeCommandSent = true;
+  ++runtime->transceiverHeroMoveRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroMoveSourceX = heroPosition.x;
+  runtime->transceiverHeroMoveSourceY = heroPosition.y;
+  runtime->transceiverHeroMoveTargetX = commandTarget.x;
+  runtime->transceiverHeroMoveTargetY = commandTarget.y;
+  runtime->transceiverHeroMovePlayerId = playerId;
+  runtime->transceiverHeroMoveClientId = clientId;
+
+  if (recordMapPreviewCommand)
+  {
+    ++runtime->mapPreviewCommandMoveCommandsSent;
+    runtime->mapPreviewCommandMoveTargetDrawn = true;
+    runtime->mapPreviewCommandMoveSourceX = heroPosition.x;
+    runtime->mapPreviewCommandMoveSourceY = heroPosition.y;
+    runtime->mapPreviewCommandMoveTargetX = commandTarget.x;
+    runtime->mapPreviewCommandMoveTargetY = commandTarget.y;
+    runtime->mapPreviewCommandMovePlayerId = playerId;
+    runtime->mapPreviewCommandMoveClientId = clientId;
+    runtime->mapPreviewCommandSource = source && *source ? source : "map-preview";
+    runtime->mapPreviewCommandMoveHeroTracking = true;
+    runtime->mapPreviewCommandMoveHeroMoving = false;
+    runtime->mapPreviewCommandMoveHeroMoved = false;
+    runtime->mapPreviewCommandMoveHeroReached = false;
+    runtime->mapPreviewCommandMoveHeroSamples = 0;
+    runtime->mapPreviewCommandMoveHeroWorldStep = world->GetStepNumber();
+    runtime->mapPreviewCommandMoveHeroCurrentX = heroPosition.x;
+    runtime->mapPreviewCommandMoveHeroCurrentY = heroPosition.y;
+    runtime->mapPreviewCommandMoveHeroDistance = 0.0f;
+    runtime->mapPreviewCommandMoveHeroMaxDistance = 0.0f;
+    runtime->mapPreviewCommandMoveHeroRemaining =
+      fabs(commandTarget - heroPosition);
+    runtime->mapPreviewCommandMoveHeroTargetDistance = runtime->mapPreviewCommandMoveHeroRemaining;
+  }
+
+  return true;
+}
+
+bool SendLinuxBootstrapHeroStopCommandNow(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* stopCommand = NWorld::CreateCmdStopHero(hero);
+  if (!stopCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(stopCommand, true);
+  runtime->transceiverHeroStopRuntimeCommandSent = true;
+  ++runtime->transceiverHeroStopRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroStopX = position.x;
+  runtime->transceiverHeroStopY = position.y;
+  runtime->transceiverHeroStopPlayerId = playerId;
+  runtime->transceiverHeroStopClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "stop",
+    source,
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroAttackUnitCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit* targetUnit,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted || !targetUnit)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero || hero == targetUnit || targetUnit->IsDead() || targetUnit->GetFaction() == hero->GetFaction())
+  {
+    return false;
+  }
+
+  const bool selectedTargetAttackProof =
+    source &&
+    strcmp(source, "bootstrap-selected-target-attack-proof") == 0 &&
+    runtime->mapPreviewSelectedTargetAttackProofPrepared &&
+    runtime->mapPreviewSelectedTargetAttackProofObjectId == targetUnit->GetObjectId();
+  if (selectedTargetAttackProof)
+  {
+    hero->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), true);
+  }
+
+  NCore::WorldCommand* attackCommand = NWorld::CreateCmdAttackTarget(hero, targetUnit, true);
+  if (!attackCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  const CVec2 targetPosition = targetUnit->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(attackCommand, true);
+  if (selectedTargetAttackProof)
+  {
+    hero->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), true);
+  }
+  runtime->transceiverHeroAttackRuntimeCommandSent = true;
+  ++runtime->transceiverHeroAttackRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroAttackSourceX = sourcePosition.x;
+  runtime->transceiverHeroAttackSourceY = sourcePosition.y;
+  runtime->transceiverHeroAttackTargetX = targetPosition.x;
+  runtime->transceiverHeroAttackTargetY = targetPosition.y;
+  runtime->transceiverHeroAttackPlayerId = playerId;
+  runtime->transceiverHeroAttackClientId = clientId;
+  runtime->transceiverHeroAttackTargetPlayerId = targetPlayerId;
+  runtime->transceiverHeroAttackTargetClientId = targetClientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "attack",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroAttackCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* targetHero,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  return SendLinuxBootstrapHeroAttackUnitCommandToTarget(
+    runtime,
+    world,
+    targetHero,
+    targetPlayerId,
+    targetClientId,
+    source);
+}
+
+bool SendLinuxBootstrapHeroAttackNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseHero* targetHero = FindLinuxBootstrapEnemyHero(world, hero, &targetPlayerId, &targetClientId);
+  return SendLinuxBootstrapHeroAttackCommandToTarget(
+    runtime,
+    world,
+    targetHero,
+    targetPlayerId,
+    targetClientId,
+    source);
+}
+
+bool SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* selectedSource,
+  const char* fallbackSource
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* selectedTarget =
+    ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
+  if (selectedTarget)
+  {
+    int playerId = -1;
+    int clientId = -1;
+    NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+    if (hero &&
+        selectedTarget != hero &&
+        selectedTarget->GetFaction() != hero->GetFaction())
+    {
+      if (selectedSource &&
+          strcmp(selectedSource, "bootstrap-selected-target-attack-proof") == 0)
+      {
+        PrepareLinuxBootstrapSelectedTargetAttackProof(
+          runtime,
+          world,
+          hero,
+          selectedTarget);
+      }
+
+      if (SendLinuxBootstrapHeroAttackUnitCommandToTarget(
+            runtime,
+            world,
+            selectedTarget,
+            runtime->mapPreviewSelectedTargetPlayerId,
+            runtime->mapPreviewSelectedTargetClientId,
+            selectedSource))
+      {
+        runtime->mapPreviewSelectedTargetAttackCommandSent = true;
+        (void)playerId;
+        (void)clientId;
+        return true;
+      }
+    }
+  }
+
+  return SendLinuxBootstrapHeroAttackNearestCommand(
+    runtime,
+    world,
+    fallbackSource);
+}
+
+bool SendLinuxBootstrapHeroFollowUnitCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit* targetUnit,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted || !targetUnit)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero || hero == targetUnit || targetUnit->IsDead())
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* followCommand = NWorld::CreateCmdFollowUnit(hero, targetUnit, 2.0f, 0.0f, true);
+  if (!followCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  const CVec2 targetPosition = targetUnit->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(followCommand, true);
+  runtime->transceiverHeroFollowRuntimeCommandSent = true;
+  ++runtime->transceiverHeroFollowRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroFollowSourceX = sourcePosition.x;
+  runtime->transceiverHeroFollowSourceY = sourcePosition.y;
+  runtime->transceiverHeroFollowTargetX = targetPosition.x;
+  runtime->transceiverHeroFollowTargetY = targetPosition.y;
+  runtime->transceiverHeroFollowPlayerId = playerId;
+  runtime->transceiverHeroFollowClientId = clientId;
+  runtime->transceiverHeroFollowTargetPlayerId = targetPlayerId;
+  runtime->transceiverHeroFollowTargetClientId = targetClientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "follow",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroFollowCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* targetHero,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  return SendLinuxBootstrapHeroFollowUnitCommandToTarget(
+    runtime,
+    world,
+    targetHero,
+    targetPlayerId,
+    targetClientId,
+    source);
+}
+
+bool SendLinuxBootstrapHeroFollowNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseHero* targetHero = FindLinuxBootstrapEnemyHero(world, hero, &targetPlayerId, &targetClientId);
+  return SendLinuxBootstrapHeroFollowCommandToTarget(
+    runtime,
+    world,
+    targetHero,
+    targetPlayerId,
+    targetClientId,
+    source);
+}
+
+bool SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* selectedSource,
+  const char* fallbackSource
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* selectedTarget =
+    ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
+  if (selectedTarget &&
+      SendLinuxBootstrapHeroFollowUnitCommandToTarget(
+        runtime,
+        world,
+        selectedTarget,
+        runtime->mapPreviewSelectedTargetPlayerId,
+        runtime->mapPreviewSelectedTargetClientId,
+        selectedSource))
+  {
+    runtime->mapPreviewSelectedTargetFollowCommandSent = true;
+    return true;
+  }
+
+  return SendLinuxBootstrapHeroFollowNearestCommand(
+    runtime,
+    world,
+    fallbackSource);
+}
+
+NWorld::PFBaseUnit* ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  bool requireEnemy,
+  int* targetPlayerId,
+  int* targetClientId,
+  bool* selectedTarget
+)
+{
+  if (targetPlayerId)
+  {
+    *targetPlayerId = -1;
+  }
+  if (targetClientId)
+  {
+    *targetClientId = -1;
+  }
+  if (selectedTarget)
+  {
+    *selectedTarget = false;
+  }
+
+  if (!runtime || !world || !hero)
+  {
+    return 0;
+  }
+
+  NWorld::PFBaseUnit* selectedUnit =
+    ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
+  if (selectedUnit &&
+      selectedUnit != hero &&
+      !selectedUnit->IsDead() &&
+      (!requireEnemy || selectedUnit->GetFaction() != hero->GetFaction()))
+  {
+    if (targetPlayerId)
+    {
+      *targetPlayerId = runtime->mapPreviewSelectedTargetPlayerId;
+    }
+    if (targetClientId)
+    {
+      *targetClientId = runtime->mapPreviewSelectedTargetClientId;
+    }
+    if (selectedTarget)
+    {
+      *selectedTarget = true;
+    }
+    return selectedUnit;
+  }
+
+  int fallbackPlayerId = -1;
+  int fallbackClientId = -1;
+  NWorld::PFBaseHero* fallbackHero =
+    FindLinuxBootstrapEnemyHero(world, hero, &fallbackPlayerId, &fallbackClientId);
+  if (fallbackHero)
+  {
+    if (targetPlayerId)
+    {
+      *targetPlayerId = fallbackPlayerId;
+    }
+    if (targetClientId)
+    {
+      *targetClientId = fallbackClientId;
+    }
+  }
+  return fallbackHero;
+}
+
+bool SendLinuxBootstrapHeroUseUnitCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit* targetUnit,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted || !targetUnit)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero || hero == targetUnit || targetUnit->IsDead())
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* useUnitCommand = NWorld::CreateCmdUseUnit(hero, targetUnit);
+  if (!useUnitCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  const CVec2 targetPosition = targetUnit->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(useUnitCommand, true);
+  runtime->transceiverHeroUseUnitRuntimeCommandSent = true;
+  ++runtime->transceiverHeroUseUnitRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroUseUnitPlayerId = playerId;
+  runtime->transceiverHeroUseUnitClientId = clientId;
+  runtime->transceiverHeroUseUnitTargetPlayerId = targetPlayerId;
+  runtime->transceiverHeroUseUnitTargetClientId = targetClientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "use-unit",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* selectedSource,
+  const char* fallbackSource
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  bool selectedTarget = false;
+  NWorld::PFBaseUnit* targetUnit =
+    ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+      runtime,
+      world,
+      hero,
+      false,
+      &targetPlayerId,
+      &targetClientId,
+      &selectedTarget);
+  if (!targetUnit || !targetUnit->CanBeUsedBy(hero))
+  {
+    NWorld::PFBaseUnit* usableUnit = world->FindLinuxFirstUsableUnitForHero(hero);
+    if (usableUnit)
+    {
+      targetUnit = usableUnit;
+      targetPlayerId = -1;
+      targetClientId = -1;
+      selectedTarget = false;
+    }
+  }
+  if (!targetUnit)
+  {
+    return false;
+  }
+
+  const bool sent =
+    SendLinuxBootstrapHeroUseUnitCommandToTarget(
+      runtime,
+      world,
+      targetUnit,
+      targetPlayerId,
+      targetClientId,
+      selectedTarget ? selectedSource : fallbackSource);
+  if (sent && selectedTarget)
+  {
+    runtime->mapPreviewSelectedTargetUseUnitCommandSent = true;
+  }
+  (void)playerId;
+  (void)clientId;
+  return sent;
+}
+
+bool SendLinuxBootstrapHeroActivateTalentCommandNow(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int talentLevel,
+  int talentSlot,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* activateTalentCommand =
+    NWorld::CreateCmdActivateTalent(maleHero, talentLevel, talentSlot);
+  if (!activateTalentCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(activateTalentCommand, true);
+  runtime->transceiverHeroActivateTalentRuntimeCommandSent = true;
+  ++runtime->transceiverHeroActivateTalentRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroActivateTalentPlayerId = playerId;
+  runtime->transceiverHeroActivateTalentClientId = clientId;
+  runtime->transceiverHeroActivateTalentLevel = talentLevel;
+  runtime->transceiverHeroActivateTalentSlot = talentSlot;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "activate-talent",
+    source,
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroUseTalentCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit* targetUnit,
+  const CVec2& targetPosition,
+  int targetPlayerId,
+  int targetClientId,
+  int talentLevel,
+  int talentSlot,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  NWorld::Target target =
+    targetUnit ? NWorld::Target(targetUnit) : NWorld::Target(targetPosition);
+  NCore::WorldCommand* useTalentCommand =
+    NWorld::CreateCmdUseTalent(maleHero, talentLevel, talentSlot, target, true);
+  if (!useTalentCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(useTalentCommand, true);
+  runtime->transceiverHeroUseTalentRuntimeCommandSent = true;
+  ++runtime->transceiverHeroUseTalentRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroUseTalentPlayerId = playerId;
+  runtime->transceiverHeroUseTalentClientId = clientId;
+  runtime->transceiverHeroUseTalentLevel = talentLevel;
+  runtime->transceiverHeroUseTalentSlot = talentSlot;
+  runtime->transceiverHeroUseTalentTargetX = targetPosition.x;
+  runtime->transceiverHeroUseTalentTargetY = targetPosition.y;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "use-talent",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* selectedSource,
+  const char* fallbackSource
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!hero || !maleHero)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapTalentCommandSelection talentSelection =
+    ResolveLinuxBootstrapTalentCommandSelection(runtime, world, maleHero, true);
+  if (!talentSelection.found)
+  {
+    return false;
+  }
+
+  const bool sent =
+    SendLinuxBootstrapHeroUseTalentCommandToTarget(
+      runtime,
+      world,
+      talentSelection.targetUnit,
+      talentSelection.targetPosition,
+      talentSelection.targetPlayerId,
+      talentSelection.targetClientId,
+      talentSelection.level,
+      talentSelection.slot,
+      talentSelection.selectedTarget ? selectedSource : fallbackSource);
+  if (sent && talentSelection.selectedTarget)
+  {
+    runtime->mapPreviewSelectedTargetUseTalentCommandSent = true;
+  }
+  (void)playerId;
+  (void)clientId;
+  return sent;
+}
+
+bool SendLinuxBootstrapHeroUseConsumableCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseUnit* targetUnit,
+  const CVec2& targetPosition,
+  int targetPlayerId,
+  int targetClientId,
+  int consumableSlot,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  NWorld::Target target =
+    targetUnit ? NWorld::Target(targetUnit) : NWorld::Target(targetPosition);
+  NCore::WorldCommand* useConsumableCommand =
+    NWorld::CreateCmdUseConsumable(maleHero, consumableSlot, target);
+  if (!useConsumableCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(useConsumableCommand, true);
+  runtime->transceiverHeroUseConsumableRuntimeCommandSent = true;
+  ++runtime->transceiverHeroUseConsumableRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroUseConsumablePlayerId = playerId;
+  runtime->transceiverHeroUseConsumableClientId = clientId;
+  runtime->transceiverHeroUseConsumableSlot = consumableSlot;
+  runtime->transceiverHeroUseConsumableTargetX = targetPosition.x;
+  runtime->transceiverHeroUseConsumableTargetY = targetPosition.y;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "use-consumable",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroUseConsumableSelectedOrPointCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const CVec2& fallbackTarget,
+  const char* selectedSource,
+  const char* fallbackSource
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  bool selectedTarget = false;
+  NWorld::PFBaseUnit* targetUnit =
+    ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+      runtime,
+      world,
+      hero,
+      false,
+      &targetPlayerId,
+      &targetClientId,
+      &selectedTarget);
+  const CVec2 targetPosition =
+    targetUnit ? targetUnit->GetPosition().AsVec2D() : fallbackTarget;
+  int consumableSlot = FindLinuxBootstrapFirstUsableConsumableSlot(hero);
+  if (consumableSlot < 0)
+  {
+    consumableSlot = 0;
+  }
+  const bool sent =
+    SendLinuxBootstrapHeroUseConsumableCommandToTarget(
+      runtime,
+      world,
+      targetUnit,
+      targetPosition,
+      targetUnit ? targetPlayerId : -1,
+      targetUnit ? targetClientId : -1,
+      consumableSlot,
+      targetUnit ? selectedSource : fallbackSource);
+  if (sent && selectedTarget)
+  {
+    runtime->mapPreviewSelectedTargetUseConsumableCommandSent = true;
+  }
+  (void)playerId;
+  (void)clientId;
+  return sent;
+}
+
+bool SendLinuxBootstrapHeroHoldCommandNow(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* holdCommand = NWorld::CreateCmdHold(hero);
+  if (!holdCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(holdCommand, true);
+  runtime->transceiverHeroHoldRuntimeCommandSent = true;
+  ++runtime->transceiverHeroHoldRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroHoldX = position.x;
+  runtime->transceiverHeroHoldY = position.y;
+  runtime->transceiverHeroHoldPlayerId = playerId;
+  runtime->transceiverHeroHoldClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "hold",
+    source,
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroCancelChannellingCommandNow(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* cancelCommand = NWorld::CreateCmdCancelChannelling(hero);
+  if (!cancelCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(cancelCommand, true);
+  runtime->transceiverHeroCancelChannellingRuntimeCommandSent = true;
+  ++runtime->transceiverHeroCancelChannellingRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroCancelChannellingPlayerId = playerId;
+  runtime->transceiverHeroCancelChannellingClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "cancel",
+    source,
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool SendLinuxBootstrapHeroMinimapSignalCommandToTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const CVec2& targetPosition,
+  NWorld::PFBaseUnit* selectedTarget,
+  int targetPlayerId,
+  int targetClientId,
+  const char* source
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NWorld::Target target(targetPosition);
+  NCore::WorldCommand* signalCommand =
+    NWorld::CreateCmdMinimapSignal(hero, selectedTarget, target, hero->GetFaction(), true);
+  if (!signalCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(signalCommand, true);
+  runtime->transceiverHeroMinimapSignalRuntimeCommandSent = true;
+  ++runtime->transceiverHeroMinimapSignalRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroMinimapSignalSourceX = sourcePosition.x;
+  runtime->transceiverHeroMinimapSignalSourceY = sourcePosition.y;
+  runtime->transceiverHeroMinimapSignalTargetX = targetPosition.x;
+  runtime->transceiverHeroMinimapSignalTargetY = targetPosition.y;
+  runtime->transceiverHeroMinimapSignalPlayerId = playerId;
+  runtime->transceiverHeroMinimapSignalClientId = clientId;
+  runtime->transceiverHeroMinimapSignalTargetPlayerId = targetPlayerId;
+  runtime->transceiverHeroMinimapSignalTargetClientId = targetClientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "signal",
+    source,
+    sourcePosition,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+void UpdateLinuxMapPreviewCommandMoveHeroProgress(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      runtime->mapPreviewCommandMoveCommandsSent == 0 ||
+      !runtime->mapPreviewCommandMoveHeroTracking)
+  {
+    return;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return;
+  }
+
+  const CVec2 current = hero->GetPosition().AsVec2D();
+  const CVec2 source(
+    runtime->mapPreviewCommandMoveSourceX,
+    runtime->mapPreviewCommandMoveSourceY);
+  const CVec2 target(
+    runtime->mapPreviewCommandMoveTargetX,
+    runtime->mapPreviewCommandMoveTargetY);
+  const float targetDistance = fabs(target - source);
+  const float movedDistance = fabs(current - source);
+  const float remainingDistance = fabs(target - current);
+  const float movedThreshold = std::max(0.35f, std::min(1.25f, targetDistance * 0.025f));
+  const float reachedThreshold = std::max(1.25f, std::min(4.0f, targetDistance * 0.08f));
+  NWorld::PFBaseMovingUnit* movingHero = dynamic_cast<NWorld::PFBaseMovingUnit*>(hero);
+
+  runtime->mapPreviewCommandMoveHeroCurrentX = current.x;
+  runtime->mapPreviewCommandMoveHeroCurrentY = current.y;
+  runtime->mapPreviewCommandMoveHeroDistance = movedDistance;
+  runtime->mapPreviewCommandMoveHeroMaxDistance =
+    std::max(runtime->mapPreviewCommandMoveHeroMaxDistance, movedDistance);
+  runtime->mapPreviewCommandMoveHeroRemaining = remainingDistance;
+  runtime->mapPreviewCommandMoveHeroTargetDistance = targetDistance;
+  runtime->mapPreviewCommandMoveHeroMoving = movingHero ? movingHero->IsMoving() : false;
+  runtime->mapPreviewCommandMoveHeroMoved =
+    runtime->mapPreviewCommandMoveHeroMoved || movedDistance >= movedThreshold;
+  runtime->mapPreviewCommandMoveHeroReached =
+    runtime->mapPreviewCommandMoveHeroReached ||
+    (targetDistance <= EPS_VALUE || remainingDistance <= reachedThreshold);
+  runtime->mapPreviewCommandMoveHeroWorldStep = world->GetStepNumber();
+  ++runtime->mapPreviewCommandMoveHeroSamples;
+
+  (void)playerId;
+  (void)clientId;
+}
+
+CVec2 ResolveLinuxBootstrapMapPreviewProofMoveTarget(
+  NWorld::PFWorld* world,
+  const CVec2& source
+)
+{
+  CVec2 target = source;
+  const CVec2 mapSize = world ? world->GetMapSize() : CVec2(0.0f, 0.0f);
+  if (mapSize.x > 0.0f || mapSize.y > 0.0f)
+  {
+    const float centerX = mapSize.x * 0.5f;
+    const float centerY = mapSize.y * 0.5f;
+    target.x += source.x < centerX ? 26.0f : -26.0f;
+    target.y += source.y < centerY ? 18.0f : -18.0f;
+    if (mapSize.x > 16.0f)
+    {
+      target.x = std::max(8.0f, std::min(mapSize.x - 8.0f, target.x));
+    }
+    if (mapSize.y > 16.0f)
+    {
+      target.y = std::max(8.0f, std::min(mapSize.y - 8.0f, target.y));
+    }
+  }
+  else
+  {
+    target.x += 26.0f;
+    target.y += 18.0f;
+  }
+  return target;
+}
+
+bool MaybeSendLinuxBootstrapHeroMoveCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroMoveRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->mapLoadingJobCompleted || world->GetLinuxPlayersWithHeroObjectsCount() <= 0)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 mapSize = world->GetMapSize();
+  CVec2 target = source;
+  if (mapSize.x > 0.0f || mapSize.y > 0.0f)
+  {
+    const float centerX = mapSize.x * 0.5f;
+    const float centerY = mapSize.y * 0.5f;
+    target.x += source.x < centerX ? 12.0f : -12.0f;
+    target.y += source.y < centerY ? 12.0f : -12.0f;
+  }
+  else
+  {
+    target.x += 12.0f;
+  }
+
+  (void)playerId;
+  (void)clientId;
+  return SendLinuxBootstrapHeroMoveCommandToTarget(
+    runtime,
+    world,
+    target,
+    "bootstrap-command-chain",
+    false);
+}
+
+bool MaybeSendLinuxBootstrapHeroStopCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroStopRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroMoveRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapMoveHeroCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* stopCommand = NWorld::CreateCmdStopHero(hero);
+  if (!stopCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(stopCommand, true);
+  runtime->transceiverHeroStopRuntimeCommandSent = true;
+  ++runtime->transceiverHeroStopRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroStopX = position.x;
+  runtime->transceiverHeroStopY = position.y;
+  runtime->transceiverHeroStopPlayerId = playerId;
+  runtime->transceiverHeroStopClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "stop",
+    "bootstrap-command-chain",
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroAttackCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroAttackRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroStopRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapStopHeroCommandTypeId)
+  {
+    return false;
+  }
+
+  return SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
+    runtime,
+    world,
+    "bootstrap-selected-target-attack-proof",
+    "bootstrap-command-chain");
+}
+
+bool MaybeSendLinuxBootstrapHeroFollowCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroFollowRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroAttackRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapAttackTargetCommandTypeId)
+  {
+    return false;
+  }
+
+  UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
+  if (runtime->mapPreviewSelectedTargetAttackProofActive)
+  {
+    return false;
+  }
+
+  return SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
+    runtime,
+    world,
+    "bootstrap-selected-target-follow-proof",
+    "bootstrap-command-chain");
+}
+
+bool MaybeSendLinuxBootstrapHeroCombatMoveCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroCombatMoveRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroFollowRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapFollowUnitCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 mapSize = world->GetMapSize();
+  CVec2 target = source;
+  if (mapSize.x > 0.0f || mapSize.y > 0.0f)
+  {
+    const float centerX = mapSize.x * 0.5f;
+    const float centerY = mapSize.y * 0.5f;
+    target.x += source.x < centerX ? 18.0f : -18.0f;
+    target.y += source.y < centerY ? -10.0f : 10.0f;
+  }
+  else
+  {
+    target.x += 18.0f;
+    target.y -= 10.0f;
+  }
+
+  NCore::WorldCommand* combatMoveCommand = NWorld::CreateCmdCombatMoveHero(hero, target);
+  if (!combatMoveCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(combatMoveCommand, true);
+  runtime->transceiverHeroCombatMoveRuntimeCommandSent = true;
+  ++runtime->transceiverHeroCombatMoveRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroCombatMoveSourceX = source.x;
+  runtime->transceiverHeroCombatMoveSourceY = source.y;
+  runtime->transceiverHeroCombatMoveTargetX = target.x;
+  runtime->transceiverHeroCombatMoveTargetY = target.y;
+  runtime->transceiverHeroCombatMovePlayerId = playerId;
+  runtime->transceiverHeroCombatMoveClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "combat-move",
+    "bootstrap-command-chain",
+    source,
+    target,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroHoldCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroHoldRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroCombatMoveRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapCombatMoveHeroCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* holdCommand = NWorld::CreateCmdHold(hero);
+  if (!holdCommand)
+  {
+    return false;
+  }
+
+  const CVec2 position = hero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(holdCommand, true);
+  runtime->transceiverHeroHoldRuntimeCommandSent = true;
+  ++runtime->transceiverHeroHoldRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroHoldX = position.x;
+  runtime->transceiverHeroHoldY = position.y;
+  runtime->transceiverHeroHoldPlayerId = playerId;
+  runtime->transceiverHeroHoldClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "hold",
+    "bootstrap-command-chain",
+    position,
+    position,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroCancelChannellingCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroCancelChannellingRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroHoldRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapHoldCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* cancelCommand = NWorld::CreateCmdCancelChannelling(hero);
+  if (!cancelCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(cancelCommand, true);
+  runtime->transceiverHeroCancelChannellingRuntimeCommandSent = true;
+  ++runtime->transceiverHeroCancelChannellingRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroCancelChannellingPlayerId = playerId;
+  runtime->transceiverHeroCancelChannellingClientId = clientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "cancel",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    hero->GetPosition().AsVec2D(),
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroMinimapSignalCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroMinimapSignalRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroCancelChannellingRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapCancelChannellingCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseHero* targetHero = FindLinuxBootstrapEnemyHero(world, hero, &targetPlayerId, &targetClientId);
+  if (!targetHero)
+  {
+    return false;
+  }
+
+  NWorld::Target target(targetHero);
+  NCore::WorldCommand* signalCommand = NWorld::CreateCmdMinimapSignal(hero, targetHero, target, hero->GetFaction(), true);
+  if (!signalCommand)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 targetPosition = targetHero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(signalCommand, true);
+  runtime->transceiverHeroMinimapSignalRuntimeCommandSent = true;
+  ++runtime->transceiverHeroMinimapSignalRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroMinimapSignalSourceX = source.x;
+  runtime->transceiverHeroMinimapSignalSourceY = source.y;
+  runtime->transceiverHeroMinimapSignalTargetX = targetPosition.x;
+  runtime->transceiverHeroMinimapSignalTargetY = targetPosition.y;
+  runtime->transceiverHeroMinimapSignalPlayerId = playerId;
+  runtime->transceiverHeroMinimapSignalClientId = clientId;
+  runtime->transceiverHeroMinimapSignalTargetPlayerId = targetPlayerId;
+  runtime->transceiverHeroMinimapSignalTargetClientId = targetClientId;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "signal",
+    "bootstrap-command-chain",
+    source,
+    targetPosition,
+    playerId,
+    clientId,
+    targetPlayerId,
+    targetClientId);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroUseUnitCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroUseUnitRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroMinimapSignalRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapMinimapSignalCommandTypeId)
+  {
+    return false;
+  }
+
+  return SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
+    runtime,
+    world,
+    "bootstrap-selected-target-use-unit-proof",
+    "bootstrap-command-chain");
+}
+
+struct LinuxBootstrapCommandGate
+{
+  bool sent;
+  DWORD typeId;
+};
+
+bool IsLinuxBootstrapLatestSentCommandPacked(
+  NWorld::PFWorld* world,
+  const LinuxBootstrapCommandGate* gates,
+  size_t gateCount
+)
+{
+  if (!world || !gates || gateCount == 0)
+  {
+    return false;
+  }
+
+  const DWORD lastPackedTypeId = world->GetLinuxLastPackedWorldCommandTypeId();
+  for (size_t gateIndex = gateCount; gateIndex > 0; --gateIndex)
+  {
+    const LinuxBootstrapCommandGate& gate = gates[gateIndex - 1];
+    if (gate.sent)
+    {
+      return lastPackedTypeId == gate.typeId;
+    }
+  }
+
+  return false;
+}
+
+bool MaybeSendLinuxBootstrapHeroActivateTalentCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroActivateTalentRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  if (!runtime->transceiverHeroUseUnitRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapUseUnitCommandTypeId)
+  {
+    return false;
+  }
+
+  int talentLevel = 0;
+  int talentSlot = 0;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, 0, 0);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  const int requiredGold =
+    ResolveLinuxBootstrapMinimumProgressTalentCost(maleHero);
+  if (requiredGold > 0)
+  {
+    runtime->mapPreviewSelectedTargetAttackProofRequiredGold = requiredGold;
+    if (maleHero->GetGold() < requiredGold)
+    {
+      return false;
+    }
+  }
+
+  const LinuxBootstrapTalentCommandSelection talentSelection =
+    ResolveLinuxBootstrapTalentCommandSelection(runtime, world, maleHero, false);
+  if (!talentSelection.found)
+  {
+    return false;
+  }
+
+  talentLevel = talentSelection.level;
+  talentSlot = talentSelection.slot;
+  return SendLinuxBootstrapHeroActivateTalentCommandNow(
+    runtime,
+    world,
+    talentLevel,
+    talentSlot,
+    "bootstrap-command-chain");
+}
+
+bool MaybeSendLinuxBootstrapHeroUseTalentCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroUseTalentRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  return SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
+    runtime,
+    world,
+    "bootstrap-selected-target-use-talent-proof",
+    "bootstrap-command-chain");
+}
+
+bool MaybeSendLinuxBootstrapHeroUsePortalCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroUsePortalRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  CVec2 targetPosition = hero->GetPosition().AsVec2D();
+  const CVec2 mapSize = world->GetMapSize();
+  if (mapSize.x > 0.0f || mapSize.y > 0.0f)
+  {
+    targetPosition.x = mapSize.x * 0.5f;
+    targetPosition.y = mapSize.y * 0.5f;
+  }
+
+  NWorld::Target target(targetPosition);
+  NCore::WorldCommand* usePortalCommand = NWorld::CreateCmdUsePortal(maleHero, target, true);
+  if (!usePortalCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(usePortalCommand, true);
+  runtime->transceiverHeroUsePortalRuntimeCommandSent = true;
+  ++runtime->transceiverHeroUsePortalRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroUsePortalPlayerId = playerId;
+  runtime->transceiverHeroUsePortalClientId = clientId;
+  runtime->transceiverHeroUsePortalTargetX = targetPosition.x;
+  runtime->transceiverHeroUsePortalTargetY = targetPosition.y;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "use-portal",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    targetPosition,
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroUseConsumableCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroUseConsumableRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  CVec2 targetPosition = hero->GetPosition().AsVec2D();
+  targetPosition.x += 3.0f;
+  targetPosition.y += 3.0f;
+  (void)playerId;
+  (void)clientId;
+  return SendLinuxBootstrapHeroUseConsumableSelectedOrPointCommand(
+    runtime,
+    world,
+    targetPosition,
+    "bootstrap-selected-target-use-consumable-proof",
+    "bootstrap-command-chain");
+}
+
+bool MaybeSendLinuxBootstrapHeroBuyConsumableCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroBuyConsumableRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int consumableIndex = -1;
+  NWorld::PFShop* shop = world->FindLinuxFirstShopForHero(hero, &consumableIndex);
+  if (!shop || consumableIndex < 0)
+  {
+    return false;
+  }
+
+  const int slotIndex = -1;
+  NCore::WorldCommand* buyCommand = NWorld::CreateCmdBuyConsumable(hero, shop, consumableIndex, slotIndex);
+  if (!buyCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(buyCommand, true);
+  runtime->transceiverHeroBuyConsumableRuntimeCommandSent = true;
+  ++runtime->transceiverHeroBuyConsumableRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroBuyConsumablePlayerId = playerId;
+  runtime->transceiverHeroBuyConsumableClientId = clientId;
+  runtime->transceiverHeroBuyConsumableShopObjectId = shop->GetObjectId();
+  runtime->transceiverHeroBuyConsumableIndex = consumableIndex;
+  runtime->transceiverHeroBuyConsumableSlotIndex = slotIndex;
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "buy-consumable",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    shop->GetPosition().AsVec2D(),
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroRaiseFlagCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroRaiseFlagRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
+    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NWorld::PFFlagpole* flagpole = world->FindLinuxFirstRaisableFlagpoleForHero(hero);
+  if (!flagpole)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* raiseFlagCommand = NWorld::CreateCmdRaiseFlag(hero, flagpole, true);
+  if (!raiseFlagCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(raiseFlagCommand, true);
+  runtime->transceiverHeroRaiseFlagRuntimeCommandSent = true;
+  ++runtime->transceiverHeroRaiseFlagRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroRaiseFlagPlayerId = playerId;
+  runtime->transceiverHeroRaiseFlagClientId = clientId;
+  runtime->transceiverHeroRaiseFlagObjectId = flagpole->GetObjectId();
+  runtime->transceiverHeroRaiseFlagFaction = flagpole->GetFaction();
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "raise-flag",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    flagpole->GetPosition().AsVec2D(),
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroInitMinigameCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroInitMinigameRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
+    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
+    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFEaselPlayer* easelPlayer = dynamic_cast<NWorld::PFEaselPlayer*>(hero);
+  if (!easelPlayer)
+  {
+    return false;
+  }
+
+  NWorld::PFMinigamePlace* minigamePlace = world->FindLinuxFirstAvailableMinigamePlaceForHero(easelPlayer);
+  if (!minigamePlace)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* initMinigameCommand = NWorld::CreateCmdInitMinigame(easelPlayer, minigamePlace->GetObjectId());
+  if (!initMinigameCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(initMinigameCommand, true);
+  runtime->transceiverHeroInitMinigameRuntimeCommandSent = true;
+  ++runtime->transceiverHeroInitMinigameRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroInitMinigamePlayerId = playerId;
+  runtime->transceiverHeroInitMinigameClientId = clientId;
+  runtime->transceiverHeroInitMinigameObjectId = minigamePlace->GetObjectId();
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "init-minigame",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    minigamePlace->GetPosition().AsVec2D(),
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapHeroPickupObjectCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->transceiverHeroPickupObjectRuntimeCommandSent)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
+    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
+    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
+    { runtime->transceiverHeroInitMinigameRuntimeCommandSent, linuxBootstrapInitMinigameCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NWorld::PFPickupableObjectBase* pickupable = world->FindLinuxFirstPickupableForHero(hero);
+  if (!pickupable)
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* pickupCommand = NWorld::CreateCmdPickupObject(hero, pickupable->GetObjectId());
+  if (!pickupCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(pickupCommand, true);
+  runtime->transceiverHeroPickupObjectRuntimeCommandSent = true;
+  ++runtime->transceiverHeroPickupObjectRuntimeCommandsSent;
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  runtime->transceiverHeroPickupObjectPlayerId = playerId;
+  runtime->transceiverHeroPickupObjectClientId = clientId;
+  runtime->transceiverHeroPickupObjectId = pickupable->GetObjectId();
+  RecordLinuxMapPreviewActionCommand(
+    runtime,
+    "pickup",
+    "bootstrap-command-chain",
+    hero->GetPosition().AsVec2D(),
+    pickupable->GetPosition().AsVec2D(),
+    playerId,
+    clientId,
+    -1,
+    -1);
+  return true;
+}
+
+bool MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      runtime->mapPreviewCommandMoveProofSent ||
+      runtime->mapPreviewCommandMoveCommandsSent > 0)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
+    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
+    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
+    { runtime->transceiverHeroInitMinigameRuntimeCommandSent, linuxBootstrapInitMinigameCommandTypeId },
+    { runtime->transceiverHeroPickupObjectRuntimeCommandSent, linuxBootstrapPickupObjectCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 target = ResolveLinuxBootstrapMapPreviewProofMoveTarget(world, source);
+  if (SendLinuxBootstrapHeroMoveCommandToTarget(
+        runtime,
+        world,
+        target,
+        "bootstrap-map-click-proof",
+        true))
+  {
+    runtime->mapPreviewCommandMoveProofSent = true;
+    (void)playerId;
+    (void)clientId;
+    return true;
+  }
+
+  return false;
+}
+
+bool MaybeSelectLinuxBootstrapMapPreviewProofTarget(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      runtime->mapPreviewSelectedTargetProofSent ||
+      runtime->mapPreviewSelectedTargetObjectId >= 0 ||
+      !runtime->transceiverHeroStopRuntimeCommandSent ||
+      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapStopHeroCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  NWorld::LinuxDynamicWorldMarker marker;
+  float targetDistance = 0.0f;
+  if (!FindLinuxMapPreviewNearestEnemyHeroMarkerToWorld(
+        world,
+        hero->GetPosition().AsVec2D(),
+        hero,
+        &marker,
+        &targetDistance) &&
+      !FindLinuxMapPreviewNearestMarkerToWorld(
+        world,
+        hero->GetPosition().AsVec2D(),
+        hero,
+        true,
+        &marker,
+        &targetDistance))
+  {
+    return false;
+  }
+
+  RecordLinuxMapPreviewSelectedTarget(
+    runtime,
+    marker,
+    "bootstrap-target-select-proof",
+    targetDistance);
+  runtime->mapPreviewSelectedTargetProofSent = true;
+  (void)playerId;
+  (void)clientId;
+  return true;
 }
 
 void UpdateLinuxBootstrapNetworkStatusPreview(
@@ -19575,6 +31825,16 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->schedulerSegmentStep = -1;
     runtime->schedulerSegmentCommandCount = 0;
     runtime->schedulerSegmentStatusCount = 0;
+    runtime->replayWriter = 0;
+    runtime->replayWriterReady = false;
+    runtime->replayWriterOpen = false;
+    runtime->replayWriterStartWrites = 0;
+    runtime->replayWriterStepWrites = 0;
+    runtime->replayWriterCommandWrites = 0;
+    runtime->replayWriterStatusWrites = 0;
+    runtime->replayWriterBytesWritten = 0;
+    runtime->replayWriterFailures = 0;
+    runtime->replayWriterPath = "inactive";
     runtime->transceiver = 0;
     runtime->transceiverWorld = 0;
     runtime->transceiverStepped = false;
@@ -19588,6 +31848,289 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->transceiverCommandBatches = 0;
     runtime->transceiverCommands = 0;
     runtime->transceiverStatusUpdates = 0;
+    runtime->transceiverStepCalls = 0;
+    runtime->transceiverProcessedSteps = 0;
+    runtime->transceiverRuntimeCommandSent = false;
+    runtime->transceiverRuntimeCommandsSent = 0;
+    runtime->transceiverProductionRuntimeCommandsSent = 0;
+    runtime->transceiverTimescaleRuntimeCommandsSent = 0;
+    runtime->transceiverHeroMoveRuntimeCommandSent = false;
+    runtime->transceiverHeroMoveRuntimeCommandsSent = 0;
+    runtime->transceiverHeroMoveSourceX = 0.0f;
+    runtime->transceiverHeroMoveSourceY = 0.0f;
+    runtime->transceiverHeroMoveTargetX = 0.0f;
+    runtime->transceiverHeroMoveTargetY = 0.0f;
+    runtime->transceiverHeroMovePlayerId = -1;
+    runtime->transceiverHeroMoveClientId = -1;
+    runtime->transceiverHeroStopRuntimeCommandSent = false;
+    runtime->transceiverHeroStopRuntimeCommandsSent = 0;
+    runtime->transceiverHeroStopX = 0.0f;
+    runtime->transceiverHeroStopY = 0.0f;
+    runtime->transceiverHeroStopPlayerId = -1;
+    runtime->transceiverHeroStopClientId = -1;
+    runtime->transceiverHeroAttackRuntimeCommandSent = false;
+    runtime->transceiverHeroAttackRuntimeCommandsSent = 0;
+    runtime->transceiverHeroAttackSourceX = 0.0f;
+    runtime->transceiverHeroAttackSourceY = 0.0f;
+    runtime->transceiverHeroAttackTargetX = 0.0f;
+    runtime->transceiverHeroAttackTargetY = 0.0f;
+    runtime->transceiverHeroAttackPlayerId = -1;
+    runtime->transceiverHeroAttackClientId = -1;
+    runtime->transceiverHeroAttackTargetPlayerId = -1;
+    runtime->transceiverHeroAttackTargetClientId = -1;
+    runtime->transceiverHeroFollowRuntimeCommandSent = false;
+    runtime->transceiverHeroFollowRuntimeCommandsSent = 0;
+    runtime->transceiverHeroFollowSourceX = 0.0f;
+    runtime->transceiverHeroFollowSourceY = 0.0f;
+    runtime->transceiverHeroFollowTargetX = 0.0f;
+    runtime->transceiverHeroFollowTargetY = 0.0f;
+    runtime->transceiverHeroFollowPlayerId = -1;
+    runtime->transceiverHeroFollowClientId = -1;
+    runtime->transceiverHeroFollowTargetPlayerId = -1;
+    runtime->transceiverHeroFollowTargetClientId = -1;
+    runtime->transceiverHeroCombatMoveRuntimeCommandSent = false;
+    runtime->transceiverHeroCombatMoveRuntimeCommandsSent = 0;
+    runtime->transceiverHeroCombatMoveSourceX = 0.0f;
+    runtime->transceiverHeroCombatMoveSourceY = 0.0f;
+    runtime->transceiverHeroCombatMoveTargetX = 0.0f;
+    runtime->transceiverHeroCombatMoveTargetY = 0.0f;
+    runtime->transceiverHeroCombatMovePlayerId = -1;
+    runtime->transceiverHeroCombatMoveClientId = -1;
+    runtime->transceiverHeroHoldRuntimeCommandSent = false;
+    runtime->transceiverHeroHoldRuntimeCommandsSent = 0;
+    runtime->transceiverHeroHoldX = 0.0f;
+    runtime->transceiverHeroHoldY = 0.0f;
+    runtime->transceiverHeroHoldPlayerId = -1;
+    runtime->transceiverHeroHoldClientId = -1;
+    runtime->transceiverHeroCancelChannellingRuntimeCommandSent = false;
+    runtime->transceiverHeroCancelChannellingRuntimeCommandsSent = 0;
+    runtime->transceiverHeroCancelChannellingPlayerId = -1;
+    runtime->transceiverHeroCancelChannellingClientId = -1;
+    runtime->transceiverHeroMinimapSignalRuntimeCommandSent = false;
+    runtime->transceiverHeroMinimapSignalRuntimeCommandsSent = 0;
+    runtime->transceiverHeroMinimapSignalSourceX = 0.0f;
+    runtime->transceiverHeroMinimapSignalSourceY = 0.0f;
+    runtime->transceiverHeroMinimapSignalTargetX = 0.0f;
+    runtime->transceiverHeroMinimapSignalTargetY = 0.0f;
+    runtime->transceiverHeroMinimapSignalPlayerId = -1;
+    runtime->transceiverHeroMinimapSignalClientId = -1;
+    runtime->transceiverHeroMinimapSignalTargetPlayerId = -1;
+    runtime->transceiverHeroMinimapSignalTargetClientId = -1;
+    runtime->transceiverHeroUseUnitRuntimeCommandSent = false;
+    runtime->transceiverHeroUseUnitRuntimeCommandsSent = 0;
+    runtime->transceiverHeroUseUnitPlayerId = -1;
+    runtime->transceiverHeroUseUnitClientId = -1;
+    runtime->transceiverHeroUseUnitTargetPlayerId = -1;
+    runtime->transceiverHeroUseUnitTargetClientId = -1;
+    runtime->transceiverHeroActivateTalentRuntimeCommandSent = false;
+    runtime->transceiverHeroActivateTalentRuntimeCommandsSent = 0;
+    runtime->transceiverHeroActivateTalentPlayerId = -1;
+    runtime->transceiverHeroActivateTalentClientId = -1;
+    runtime->transceiverHeroActivateTalentLevel = -1;
+    runtime->transceiverHeroActivateTalentSlot = -1;
+    runtime->transceiverHeroUseTalentRuntimeCommandSent = false;
+    runtime->transceiverHeroUseTalentRuntimeCommandsSent = 0;
+    runtime->transceiverHeroUseTalentPlayerId = -1;
+    runtime->transceiverHeroUseTalentClientId = -1;
+    runtime->transceiverHeroUseTalentLevel = -1;
+    runtime->transceiverHeroUseTalentSlot = -1;
+    runtime->transceiverHeroUseTalentTargetX = 0.0f;
+    runtime->transceiverHeroUseTalentTargetY = 0.0f;
+    runtime->transceiverHeroUsePortalRuntimeCommandSent = false;
+    runtime->transceiverHeroUsePortalRuntimeCommandsSent = 0;
+    runtime->transceiverHeroUsePortalPlayerId = -1;
+    runtime->transceiverHeroUsePortalClientId = -1;
+    runtime->transceiverHeroUsePortalTargetX = 0.0f;
+    runtime->transceiverHeroUsePortalTargetY = 0.0f;
+    runtime->transceiverHeroUseConsumableRuntimeCommandSent = false;
+    runtime->transceiverHeroUseConsumableRuntimeCommandsSent = 0;
+    runtime->transceiverHeroUseConsumablePlayerId = -1;
+    runtime->transceiverHeroUseConsumableClientId = -1;
+    runtime->transceiverHeroUseConsumableSlot = -1;
+    runtime->transceiverHeroUseConsumableTargetX = 0.0f;
+    runtime->transceiverHeroUseConsumableTargetY = 0.0f;
+    runtime->transceiverHeroBuyConsumableRuntimeCommandSent = false;
+    runtime->transceiverHeroBuyConsumableRuntimeCommandsSent = 0;
+    runtime->transceiverHeroBuyConsumablePlayerId = -1;
+    runtime->transceiverHeroBuyConsumableClientId = -1;
+    runtime->transceiverHeroBuyConsumableShopObjectId = -1;
+    runtime->transceiverHeroBuyConsumableIndex = -1;
+    runtime->transceiverHeroBuyConsumableSlotIndex = -1;
+    runtime->transceiverHeroRaiseFlagRuntimeCommandSent = false;
+    runtime->transceiverHeroRaiseFlagRuntimeCommandsSent = 0;
+    runtime->transceiverHeroRaiseFlagPlayerId = -1;
+    runtime->transceiverHeroRaiseFlagClientId = -1;
+    runtime->transceiverHeroRaiseFlagObjectId = -1;
+    runtime->transceiverHeroRaiseFlagFaction = -1;
+    runtime->transceiverHeroInitMinigameRuntimeCommandSent = false;
+    runtime->transceiverHeroInitMinigameRuntimeCommandsSent = 0;
+    runtime->transceiverHeroInitMinigamePlayerId = -1;
+    runtime->transceiverHeroInitMinigameClientId = -1;
+    runtime->transceiverHeroInitMinigameObjectId = -1;
+    runtime->transceiverHeroPickupObjectRuntimeCommandSent = false;
+    runtime->transceiverHeroPickupObjectRuntimeCommandsSent = 0;
+    runtime->transceiverHeroPickupObjectPlayerId = -1;
+    runtime->transceiverHeroPickupObjectClientId = -1;
+    runtime->transceiverHeroPickupObjectId = -1;
+    runtime->mapPreviewCommandMoveTargetDrawn = false;
+    runtime->mapPreviewCommandMoveProofSent = false;
+    runtime->mapPreviewCommandMoveCommandsSent = 0;
+    runtime->mapPreviewCommandMoveSourceX = 0.0f;
+    runtime->mapPreviewCommandMoveSourceY = 0.0f;
+    runtime->mapPreviewCommandMoveTargetX = 0.0f;
+    runtime->mapPreviewCommandMoveTargetY = 0.0f;
+    runtime->mapPreviewCommandMovePlayerId = -1;
+    runtime->mapPreviewCommandMoveClientId = -1;
+    runtime->mapPreviewCommandSource = "none";
+    runtime->mapPreviewCommandMoveHeroTracking = false;
+    runtime->mapPreviewCommandMoveHeroMoving = false;
+    runtime->mapPreviewCommandMoveHeroMoved = false;
+    runtime->mapPreviewCommandMoveHeroReached = false;
+    runtime->mapPreviewCommandMoveHeroSamples = 0;
+    runtime->mapPreviewCommandMoveHeroWorldStep = -1;
+    runtime->mapPreviewCommandMoveHeroCurrentX = 0.0f;
+    runtime->mapPreviewCommandMoveHeroCurrentY = 0.0f;
+    runtime->mapPreviewCommandMoveHeroDistance = 0.0f;
+    runtime->mapPreviewCommandMoveHeroMaxDistance = 0.0f;
+    runtime->mapPreviewCommandMoveHeroRemaining = 0.0f;
+    runtime->mapPreviewCommandMoveHeroTargetDistance = 0.0f;
+    runtime->mapPreviewCommandActionTargetDrawn = false;
+    runtime->mapPreviewCommandActionCommandsSent = 0;
+    runtime->mapPreviewCommandActionSourceX = 0.0f;
+    runtime->mapPreviewCommandActionSourceY = 0.0f;
+    runtime->mapPreviewCommandActionTargetX = 0.0f;
+    runtime->mapPreviewCommandActionTargetY = 0.0f;
+    runtime->mapPreviewCommandActionPlayerId = -1;
+    runtime->mapPreviewCommandActionClientId = -1;
+    runtime->mapPreviewCommandActionTargetPlayerId = -1;
+    runtime->mapPreviewCommandActionTargetClientId = -1;
+    runtime->mapPreviewCommandActionKind = "none";
+    runtime->mapPreviewCommandActionSource = "none";
+    runtime->mapPreviewSelectedTargetDrawn = false;
+    runtime->mapPreviewSelectedTargetProofSent = false;
+    runtime->mapPreviewSelectedTargetAttackCommandSent = false;
+    runtime->mapPreviewSelectedTargetFollowCommandSent = false;
+    runtime->mapPreviewSelectedTargetUseUnitCommandSent = false;
+    runtime->mapPreviewSelectedTargetUseTalentCommandSent = false;
+    runtime->mapPreviewSelectedTargetUseConsumableCommandSent = false;
+    runtime->mapPreviewSelectedTargetAttackProofPrepared = false;
+    runtime->mapPreviewSelectedTargetAttackProofActive = false;
+    runtime->mapPreviewSelectedTargetAttackProofDamaged = false;
+    runtime->mapPreviewSelectedTargetAttackProofSustained = false;
+    runtime->mapPreviewSelectedTargetAttackProofKilled = false;
+    runtime->mapPreviewSelectedTargetAttackProofTargetIsHero = false;
+    runtime->mapPreviewSelectedTargetAttackProofRespawned = false;
+    runtime->mapPreviewSelectedTargetAttackProofReengaged = false;
+    runtime->mapPreviewSelectedTargetAttackProofObjectId = -1;
+    runtime->mapPreviewSelectedTargetAttackProofStartWorldStep = -1;
+    runtime->mapPreviewSelectedTargetAttackProofLastWorldStep = -1;
+    runtime->mapPreviewSelectedTargetAttackProofRespawnWorldStep = -1;
+    runtime->mapPreviewSelectedTargetAttackProofRequiredGold = 0;
+    runtime->mapPreviewSelectedTargetAttackProofSamples = 0;
+    runtime->mapPreviewSelectedTargetAttackProofHitCount = 0;
+    runtime->mapPreviewSelectedTargetAttackProofKillCount = 0;
+    runtime->mapPreviewSelectedTargetAttackProofLifeBefore = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofLifePrevious = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofLifeAfter = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofRespawnDelay = -1.0f;
+    runtime->mapPreviewSelectedTargetAttackProofRange = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofDistanceBefore = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofDistanceAfter = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofOriginalX = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofOriginalY = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofX = 0.0f;
+    runtime->mapPreviewSelectedTargetAttackProofY = 0.0f;
+    runtime->mapPreviewCreepDuelProofPrepared = false;
+    runtime->mapPreviewCreepDuelProofActive = false;
+    runtime->mapPreviewCreepDuelProofDamaged = false;
+    runtime->mapPreviewCreepDuelProofSustained = false;
+    runtime->mapPreviewCreepDuelProofKilled = false;
+    runtime->mapPreviewCreepDuelProofAttackerObjectId = -1;
+    runtime->mapPreviewCreepDuelProofTargetObjectId = -1;
+    runtime->mapPreviewCreepDuelProofStartWorldStep = -1;
+    runtime->mapPreviewCreepDuelProofLastWorldStep = -1;
+    runtime->mapPreviewCreepDuelProofSamples = 0;
+    runtime->mapPreviewCreepDuelProofHitCount = 0;
+    runtime->mapPreviewCreepDuelProofLifeBefore = 0.0f;
+    runtime->mapPreviewCreepDuelProofLifePrevious = 0.0f;
+    runtime->mapPreviewCreepDuelProofLifeAfter = 0.0f;
+    runtime->mapPreviewCreepDuelProofRange = 0.0f;
+    runtime->mapPreviewCreepDuelProofDistanceBefore = 0.0f;
+    runtime->mapPreviewCreepDuelProofDistanceAfter = 0.0f;
+    runtime->mapPreviewCreepDuelProofAttackerX = 0.0f;
+    runtime->mapPreviewCreepDuelProofAttackerY = 0.0f;
+    runtime->mapPreviewCreepDuelProofTargetX = 0.0f;
+    runtime->mapPreviewCreepDuelProofTargetY = 0.0f;
+    runtime->mapPreviewSelectedTargetChanges = 0;
+    runtime->mapPreviewSelectedTargetObjectId = -1;
+    runtime->mapPreviewSelectedTargetKind = 0;
+    runtime->mapPreviewSelectedTargetFaction = -1;
+    runtime->mapPreviewSelectedTargetPlayerId = -1;
+    runtime->mapPreviewSelectedTargetClientId = -1;
+    runtime->mapPreviewSelectedTargetX = 0.0f;
+    runtime->mapPreviewSelectedTargetY = 0.0f;
+    runtime->mapPreviewSelectedTargetDistance = 0.0f;
+    runtime->mapPreviewSelectedTargetSource = "none";
+    runtime->transceiverRuntimeCommandQueuedBeforePrime = false;
+    runtime->worldExecutedPackedCommands = 0;
+    runtime->worldBootstrapRuntimeCommands = 0;
+    runtime->worldLastPackedCommandClientId = -1;
+    runtime->worldLastPackedCommandTypeId = 0;
+    runtime->worldLastBootstrapCommandClientId = -1;
+    runtime->worldLastBootstrapCommandToken = 0;
+    runtime->worldLastBootstrapCommandValue = 0.0f;
+    runtime->worldTimeScale = 1.0f;
+    runtime->worldSpawnedHeroObjects = 0;
+    runtime->worldPlayersWithHeroObjects = 0;
+    runtime->worldSteppedSpawnerObjects = 0;
+    runtime->worldSteppedCreepSpawnerObjects = 0;
+    runtime->worldSteppedNeutralCreepSpawnerObjects = 0;
+    runtime->worldReadyCreepSpawnerObjects = 0;
+    runtime->worldReadyNeutralCreepSpawnerObjects = 0;
+    runtime->worldEnabledCreepSpawnerObjects = 0;
+    runtime->worldEnabledNeutralCreepSpawnerObjects = 0;
+    runtime->worldContentCreepSpawnerObjects = 0;
+    runtime->worldContentNeutralCreepSpawnerObjects = 0;
+    runtime->worldRegisteredCreepObjects = 0;
+    runtime->worldSpawnedNeutralCreepObjects = 0;
+    runtime->worldMovingCommonCreepObjects = 0;
+    runtime->worldMovedCommonCreepObjects = 0;
+    runtime->worldCreepSpawnerWaves = 0;
+    runtime->worldNeutralCreepSpawnerWaves = 0;
+    runtime->worldStoredDeadUnits = 0;
+    runtime->worldCleanedDeadUnits = 0;
+    runtime->worldPendingDeadUnits = 0;
+    runtime->worldLastStoredDeadUnitObjectId = -1;
+    runtime->worldLastCleanedDeadUnitObjectId = -1;
+    runtime->worldAwardKillersCalls = 0;
+    runtime->worldAwardKillersRejected = 0;
+    runtime->worldAwardKillersApplied = 0;
+    runtime->worldLastAwardRejectCode = 0;
+    runtime->worldLastAwardVictimObjectId = -1;
+    runtime->worldLastAwardKillerObjectId = -1;
+    runtime->worldLastAwardHeroObjectId = -1;
+    runtime->worldLastAwardVictimNaftaForKill = 0.0f;
+    runtime->worldLastAwardKillerAmount = 0.0f;
+    runtime->worldLastAwardTeamAmount = 0.0f;
+    runtime->worldLastAwardHeroGoldBefore = 0;
+    runtime->worldLastAwardHeroGoldAfter = 0;
+    runtime->worldLastAppliedAwardVictimObjectId = -1;
+    runtime->worldLastAppliedAwardKillerObjectId = -1;
+    runtime->worldLastAppliedAwardHeroObjectId = -1;
+    runtime->worldLastAppliedAwardAmount = 0.0f;
+    runtime->worldLastAppliedAwardHeroGoldBefore = 0;
+    runtime->worldLastAppliedAwardHeroGoldAfter = 0;
+    runtime->worldAICreepSpawnEnabled = 0;
+    runtime->worldAINeutralCreepSpawnEnabled = 0;
+    runtime->worldAIMaxCreepsCount = 0;
+    runtime->worldMinCreepSpawnerSpawnDelay = 0.0f;
+    runtime->worldMinNeutralCreepSpawnerSpawnDelay = 0.0f;
+    runtime->worldCommonCreepMovementDistance = 0.0f;
+
+    runtime->replayWriter = new NCore::ReplayWriter();
+    runtime->replayWriter->WriteStartGame(0, 0);
+    runtime->localScheduler->SetReplayWriter(runtime->replayWriter);
+    UpdateLinuxBootstrapReplayWriterRuntime(runtime);
   }
 
   if (!runtime->schedulerStarted)
@@ -19612,10 +32155,40 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->transceiverNextStep = runtime->transceiver->GetNextStep();
     runtime->transceiverWorldStep = runtime->transceiver->GetWorldStep();
     runtime->transceiverBufferLimit = runtime->transceiver->GetBufferLimit();
+
+    if (!runtime->transceiverRuntimeCommandSent)
+    {
+      runtime->transceiverRuntimeCommandQueuedBeforePrime = runtime->transceiverStepCalls == 0;
+      runtime->transceiver->SendCommand(
+        new LinuxBootstrapWorldRuntimeCommand(linuxBootstrapWorldRuntimeCommandToken, 1.0f),
+        true);
+      ++runtime->transceiverRuntimeCommandsSent;
+
+      NCore::WorldCommand* keepAliveCommand = NWorld::CreateCmdKeepAlive();
+      if (keepAliveCommand)
+      {
+        runtime->transceiver->SendCommand(keepAliveCommand, true);
+        ++runtime->transceiverRuntimeCommandsSent;
+        ++runtime->transceiverProductionRuntimeCommandsSent;
+      }
+
+      NCore::WorldCommand* timescaleCommand =
+        NWorld::CreateCmdSetTimescale(linuxBootstrapTimescaleCommandValue);
+      if (timescaleCommand)
+      {
+        runtime->transceiver->SendCommand(timescaleCommand, true);
+        ++runtime->transceiverRuntimeCommandsSent;
+        ++runtime->transceiverProductionRuntimeCommandsSent;
+        ++runtime->transceiverTimescaleRuntimeCommandsSent;
+      }
+
+      runtime->transceiverRuntimeCommandSent = true;
+    }
   }
 }
 
 void DriveLinuxBootstrapGameScheduler(
+  const LinuxClientLaunchSettings& settings,
   LinuxBootstrapScreenRuntime* runtime
 )
 {
@@ -19624,36 +32197,103 @@ void DriveLinuxBootstrapGameScheduler(
     return;
   }
 
-  const bool primeTransceiverBuffer = runtime->transceiver && !runtime->transceiverStepped;
-  const int schedulerSteps = primeTransceiverBuffer ? 3 : 1;
-  for (int i = 0; i < schedulerSteps; ++i)
+  const bool finiteBootstrapRun = settings.runSeconds > 0.0;
+  size_t maxBootstrapTransceiverSteps = static_cast<size_t>(-1);
+  if (finiteBootstrapRun)
+  {
+    maxBootstrapTransceiverSteps = static_cast<size_t>(
+      ceil((settings.runSeconds + 5.0) * 1000.0 / static_cast<double>(DEFAULT_GAME_STEP_LENGTH)));
+    if (maxBootstrapTransceiverSteps < 160)
+      maxBootstrapTransceiverSteps = 160;
+  }
+  const size_t maxBootstrapTransceiverStepsPerDrive = finiteBootstrapRun ? 3 : 1;
+  bool schedulerStepped = false;
+
+  if (runtime->transceiver && runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps)
+  {
+    if (runtime->transceiverWorld)
+    {
+      NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+      UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
+      MaybeSendLinuxBootstrapHeroMoveCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroStopCommand(runtime, world);
+      MaybeSelectLinuxBootstrapMapPreviewProofTarget(runtime, world);
+      MaybeSendLinuxBootstrapHeroAttackCommand(runtime, world);
+      UpdateLinuxBootstrapCreepDuelProof(runtime, world);
+      MaybeSendLinuxBootstrapHeroFollowCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroCombatMoveCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroHoldCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroCancelChannellingCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroMinimapSignalCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroUseUnitCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroActivateTalentCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroUseTalentCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroUsePortalCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroBuyConsumableCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroUseConsumableCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroRaiseFlagCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroInitMinigameCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroPickupObjectCommand(runtime, world);
+      MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(runtime, world);
+    }
+
+    for (size_t stepIndex = 0;
+      stepIndex < maxBootstrapTransceiverStepsPerDrive &&
+        runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps;
+      ++stepIndex)
+    {
+      const bool primeTransceiverBuffer = runtime->transceiverStepCalls == 0;
+      const int schedulerSteps = primeTransceiverBuffer ? 3 : 1;
+      for (int i = 0; i < schedulerSteps; ++i)
+      {
+        ++runtime->schedulerTickCount;
+        runtime->localScheduler->Step(finiteBootstrapRun ? 0.1f : NMainLoop::GetTimeDelta());
+        schedulerStepped = true;
+      }
+
+      const int beforeWorldStep = runtime->transceiver->GetWorldStep();
+      runtime->transceiver->Step(static_cast<float>(DEFAULT_GAME_STEP_LENGTH));
+      const int afterWorldStep = runtime->transceiver->GetWorldStep();
+      ++runtime->transceiverStepCalls;
+      runtime->transceiverStepped = true;
+      runtime->transceiverReady = true;
+      runtime->transceiverWorldAttached = runtime->transceiver->GetWorld() != 0;
+      runtime->transceiverNoData = runtime->transceiver->GetNoData();
+      runtime->transceiverAsynced = runtime->transceiver->IsAsynced();
+      runtime->transceiverNextStep = runtime->transceiver->GetNextStep();
+      runtime->transceiverWorldStep = afterWorldStep;
+      runtime->transceiverBufferLimit = runtime->transceiver->GetBufferLimit();
+      if (afterWorldStep > beforeWorldStep)
+      {
+        const size_t processedSteps = static_cast<size_t>(afterWorldStep - beforeWorldStep);
+        runtime->transceiverProcessedSteps += processedSteps;
+        runtime->transceiverCommandBatches += processedSteps;
+        runtime->transceiverStatusUpdates += processedSteps;
+      }
+      else
+      {
+        break;
+      }
+      runtime->transceiverCommands = 0;
+    }
+  }
+
+  if (!schedulerStepped)
   {
     ++runtime->schedulerTickCount;
-    runtime->localScheduler->Step(primeTransceiverBuffer ? 0.1f : NMainLoop::GetTimeDelta());
+    runtime->localScheduler->Step(NMainLoop::GetTimeDelta());
   }
+  UpdateLinuxBootstrapReplayWriterRuntime(runtime);
   runtime->schedulerNextStep = runtime->localScheduler->GetNextStep(false);
-
-  if (runtime->transceiver && !runtime->transceiverStepped)
-  {
-    runtime->transceiver->Step(static_cast<float>(DEFAULT_GAME_STEP_LENGTH));
-    runtime->transceiverStepped = true;
-    runtime->transceiverReady = true;
-    runtime->transceiverWorldAttached = runtime->transceiver->GetWorld() != 0;
-    runtime->transceiverNoData = runtime->transceiver->GetNoData();
-    runtime->transceiverAsynced = runtime->transceiver->IsAsynced();
-    runtime->transceiverNextStep = runtime->transceiver->GetNextStep();
-    runtime->transceiverWorldStep = runtime->transceiver->GetWorldStep();
-    runtime->transceiverBufferLimit = runtime->transceiver->GetBufferLimit();
-    runtime->transceiverCommandBatches = runtime->transceiverWorldAttached ? 1 : 0;
-    runtime->transceiverCommands = 0;
-    runtime->transceiverStatusUpdates = runtime->transceiverWorldAttached ? 1 : 0;
-  }
 
   if (runtime->transceiverWorld)
   {
-    NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
-    if (world)
-    {
+      NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+      if (world)
+      {
+        UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
+        UpdateLinuxBootstrapCreepDuelProof(runtime, world);
+        UpdateLinuxMapPreviewCommandMoveHeroProgress(runtime, world);
       runtime->worldPlayers = world->GetPlayersCount();
       runtime->worldPresentPlayers = world->GetPresentPlayersCount();
       runtime->worldFogWidth = world->GetFogOfWar() ? world->GetFogOfWar()->GetWidth() : 0;
@@ -19666,8 +32306,57 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldGlyphSpawnerObjects = world->GetLinuxLoadedGlyphSpawnerObjectsCount();
       runtime->worldAdvMapObstacleObjects = world->GetLinuxLoadedAdvMapObstacleObjectsCount();
       runtime->worldHeroPlaceHolderObjects = world->GetLinuxLoadedHeroPlaceHolderObjectsCount();
+      runtime->worldSpawnedHeroObjects = world->GetLinuxSpawnedHeroObjectsCount();
+      runtime->worldPlayersWithHeroObjects = world->GetLinuxPlayersWithHeroObjectsCount();
       runtime->worldCreepSpawnerObjects = world->GetLinuxLoadedCreepSpawnerObjectsCount();
       runtime->worldNeutralCreepSpawnerObjects = world->GetLinuxLoadedNeutralCreepSpawnerObjectsCount();
+      runtime->worldSteppedSpawnerObjects = world->GetLinuxLastSteppedSpawnerObjectsCount();
+      runtime->worldSteppedCreepSpawnerObjects = world->GetLinuxLastSteppedCreepSpawnerObjectsCount();
+      runtime->worldSteppedNeutralCreepSpawnerObjects = world->GetLinuxLastSteppedNeutralCreepSpawnerObjectsCount();
+      runtime->worldReadyCreepSpawnerObjects = world->GetLinuxReadyCreepSpawnerObjectsCount();
+      runtime->worldReadyNeutralCreepSpawnerObjects = world->GetLinuxReadyNeutralCreepSpawnerObjectsCount();
+      runtime->worldEnabledCreepSpawnerObjects = world->GetLinuxEnabledCreepSpawnerObjectsCount();
+      runtime->worldEnabledNeutralCreepSpawnerObjects = world->GetLinuxEnabledNeutralCreepSpawnerObjectsCount();
+      runtime->worldContentCreepSpawnerObjects = world->GetLinuxContentCreepSpawnerObjectsCount();
+      runtime->worldContentNeutralCreepSpawnerObjects = world->GetLinuxContentNeutralCreepSpawnerObjectsCount();
+      runtime->worldRegisteredCreepObjects = world->GetLinuxRegisteredCreepObjectsCount();
+      runtime->worldSpawnedNeutralCreepObjects = world->GetLinuxSpawnedNeutralCreepObjectsCount();
+      runtime->worldMovingCommonCreepObjects = world->GetLinuxMovingCommonCreepObjectsCount();
+      runtime->worldMovedCommonCreepObjects = world->GetLinuxMovedCommonCreepObjectsCount();
+      runtime->worldCommonCreepMovementDistance = world->GetLinuxCommonCreepMovementDistance();
+      runtime->worldCreepSpawnerWaves = world->GetLinuxCreepSpawnerWavesCount();
+      runtime->worldNeutralCreepSpawnerWaves = world->GetLinuxNeutralCreepSpawnerWavesCount();
+      runtime->worldStoredDeadUnits = world->GetLinuxStoredDeadUnitsCount();
+      runtime->worldCleanedDeadUnits = world->GetLinuxCleanedDeadUnitsCount();
+      runtime->worldPendingDeadUnits = world->GetLinuxPendingDeadUnitsCount();
+      runtime->worldLastStoredDeadUnitObjectId = world->GetLinuxLastStoredDeadUnitObjectId();
+      runtime->worldLastCleanedDeadUnitObjectId = world->GetLinuxLastCleanedDeadUnitObjectId();
+      if (NWorld::PFAIWorld* aiWorld = world->GetAIWorld())
+      {
+        runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
+        runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
+        runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
+        runtime->worldLastAwardRejectCode = aiWorld->GetLinuxLastAwardRejectCode();
+        runtime->worldLastAwardVictimObjectId = aiWorld->GetLinuxLastAwardVictimObjectId();
+        runtime->worldLastAwardKillerObjectId = aiWorld->GetLinuxLastAwardKillerObjectId();
+        runtime->worldLastAwardHeroObjectId = aiWorld->GetLinuxLastAwardHeroObjectId();
+        runtime->worldLastAwardVictimNaftaForKill = aiWorld->GetLinuxLastAwardVictimNaftaForKill();
+        runtime->worldLastAwardKillerAmount = aiWorld->GetLinuxLastAwardKillerAmount();
+        runtime->worldLastAwardTeamAmount = aiWorld->GetLinuxLastAwardTeamAmount();
+        runtime->worldLastAwardHeroGoldBefore = aiWorld->GetLinuxLastAwardHeroGoldBefore();
+        runtime->worldLastAwardHeroGoldAfter = aiWorld->GetLinuxLastAwardHeroGoldAfter();
+        runtime->worldLastAppliedAwardVictimObjectId = aiWorld->GetLinuxLastAppliedAwardVictimObjectId();
+        runtime->worldLastAppliedAwardKillerObjectId = aiWorld->GetLinuxLastAppliedAwardKillerObjectId();
+        runtime->worldLastAppliedAwardHeroObjectId = aiWorld->GetLinuxLastAppliedAwardHeroObjectId();
+        runtime->worldLastAppliedAwardAmount = aiWorld->GetLinuxLastAppliedAwardAmount();
+        runtime->worldLastAppliedAwardHeroGoldBefore = aiWorld->GetLinuxLastAppliedAwardHeroGoldBefore();
+        runtime->worldLastAppliedAwardHeroGoldAfter = aiWorld->GetLinuxLastAppliedAwardHeroGoldAfter();
+      }
+      runtime->worldAICreepSpawnEnabled = world->GetLinuxAICreepSpawnEnabled();
+      runtime->worldAINeutralCreepSpawnEnabled = world->GetLinuxAINeutralCreepSpawnEnabled();
+      runtime->worldAIMaxCreepsCount = world->GetLinuxAIMaxCreepsCount();
+      runtime->worldMinCreepSpawnerSpawnDelay = world->GetLinuxMinCreepSpawnerSpawnDelay();
+      runtime->worldMinNeutralCreepSpawnerSpawnDelay = world->GetLinuxMinNeutralCreepSpawnerSpawnDelay();
       runtime->worldSimpleBuildingObjects = world->GetLinuxLoadedSimpleBuildingObjectsCount();
       runtime->worldUsableBuildingObjects = world->GetLinuxLoadedUsableBuildingObjectsCount();
       runtime->worldShopObjects = world->GetLinuxLoadedShopObjectsCount();
@@ -19682,6 +32371,15 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldCameraSplineObjects = world->GetLinuxLoadedCameraSplineObjectsCount();
       runtime->worldScriptPathObjects = world->GetLinuxLoadedScriptPathObjectsCount();
       runtime->worldScriptPolygonAreaObjects = world->GetLinuxLoadedScriptPolygonAreaObjectsCount();
+      runtime->worldExecutedPackedCommands = world->GetLinuxExecutedPackedWorldCommandsCount();
+      runtime->worldBootstrapRuntimeCommands = world->GetLinuxBootstrapRuntimeCommandsCount();
+      runtime->worldLastPackedCommandClientId = world->GetLinuxLastPackedWorldCommandClientId();
+      runtime->worldLastPackedCommandTypeId = world->GetLinuxLastPackedWorldCommandTypeId();
+      runtime->worldLastBootstrapCommandClientId = world->GetLinuxLastBootstrapRuntimeCommandClientId();
+      runtime->worldLastBootstrapCommandToken = world->GetLinuxLastBootstrapRuntimeCommandToken();
+      runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
+      runtime->worldTimeScale = world->GetTimeScale();
+      runtime->transceiverCommands = runtime->worldExecutedPackedCommands;
       runtime->worldLocalUserId = 0;
       for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
            it != runtime->loadingMapStartInfo.playersInfo.end();
@@ -19752,8 +32450,57 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldGlyphSpawnerObjects = world->GetLinuxLoadedGlyphSpawnerObjectsCount();
         runtime->worldAdvMapObstacleObjects = world->GetLinuxLoadedAdvMapObstacleObjectsCount();
         runtime->worldHeroPlaceHolderObjects = world->GetLinuxLoadedHeroPlaceHolderObjectsCount();
+        runtime->worldSpawnedHeroObjects = world->GetLinuxSpawnedHeroObjectsCount();
+        runtime->worldPlayersWithHeroObjects = world->GetLinuxPlayersWithHeroObjectsCount();
         runtime->worldCreepSpawnerObjects = world->GetLinuxLoadedCreepSpawnerObjectsCount();
         runtime->worldNeutralCreepSpawnerObjects = world->GetLinuxLoadedNeutralCreepSpawnerObjectsCount();
+        runtime->worldSteppedSpawnerObjects = world->GetLinuxLastSteppedSpawnerObjectsCount();
+        runtime->worldSteppedCreepSpawnerObjects = world->GetLinuxLastSteppedCreepSpawnerObjectsCount();
+        runtime->worldSteppedNeutralCreepSpawnerObjects = world->GetLinuxLastSteppedNeutralCreepSpawnerObjectsCount();
+        runtime->worldReadyCreepSpawnerObjects = world->GetLinuxReadyCreepSpawnerObjectsCount();
+        runtime->worldReadyNeutralCreepSpawnerObjects = world->GetLinuxReadyNeutralCreepSpawnerObjectsCount();
+        runtime->worldEnabledCreepSpawnerObjects = world->GetLinuxEnabledCreepSpawnerObjectsCount();
+        runtime->worldEnabledNeutralCreepSpawnerObjects = world->GetLinuxEnabledNeutralCreepSpawnerObjectsCount();
+        runtime->worldContentCreepSpawnerObjects = world->GetLinuxContentCreepSpawnerObjectsCount();
+        runtime->worldContentNeutralCreepSpawnerObjects = world->GetLinuxContentNeutralCreepSpawnerObjectsCount();
+        runtime->worldRegisteredCreepObjects = world->GetLinuxRegisteredCreepObjectsCount();
+        runtime->worldSpawnedNeutralCreepObjects = world->GetLinuxSpawnedNeutralCreepObjectsCount();
+        runtime->worldMovingCommonCreepObjects = world->GetLinuxMovingCommonCreepObjectsCount();
+        runtime->worldMovedCommonCreepObjects = world->GetLinuxMovedCommonCreepObjectsCount();
+        runtime->worldCommonCreepMovementDistance = world->GetLinuxCommonCreepMovementDistance();
+        runtime->worldCreepSpawnerWaves = world->GetLinuxCreepSpawnerWavesCount();
+        runtime->worldNeutralCreepSpawnerWaves = world->GetLinuxNeutralCreepSpawnerWavesCount();
+        runtime->worldStoredDeadUnits = world->GetLinuxStoredDeadUnitsCount();
+        runtime->worldCleanedDeadUnits = world->GetLinuxCleanedDeadUnitsCount();
+        runtime->worldPendingDeadUnits = world->GetLinuxPendingDeadUnitsCount();
+        runtime->worldLastStoredDeadUnitObjectId = world->GetLinuxLastStoredDeadUnitObjectId();
+        runtime->worldLastCleanedDeadUnitObjectId = world->GetLinuxLastCleanedDeadUnitObjectId();
+        if (NWorld::PFAIWorld* aiWorld = world->GetAIWorld())
+        {
+          runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
+          runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
+          runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
+          runtime->worldLastAwardRejectCode = aiWorld->GetLinuxLastAwardRejectCode();
+          runtime->worldLastAwardVictimObjectId = aiWorld->GetLinuxLastAwardVictimObjectId();
+          runtime->worldLastAwardKillerObjectId = aiWorld->GetLinuxLastAwardKillerObjectId();
+          runtime->worldLastAwardHeroObjectId = aiWorld->GetLinuxLastAwardHeroObjectId();
+          runtime->worldLastAwardVictimNaftaForKill = aiWorld->GetLinuxLastAwardVictimNaftaForKill();
+          runtime->worldLastAwardKillerAmount = aiWorld->GetLinuxLastAwardKillerAmount();
+          runtime->worldLastAwardTeamAmount = aiWorld->GetLinuxLastAwardTeamAmount();
+          runtime->worldLastAwardHeroGoldBefore = aiWorld->GetLinuxLastAwardHeroGoldBefore();
+          runtime->worldLastAwardHeroGoldAfter = aiWorld->GetLinuxLastAwardHeroGoldAfter();
+          runtime->worldLastAppliedAwardVictimObjectId = aiWorld->GetLinuxLastAppliedAwardVictimObjectId();
+          runtime->worldLastAppliedAwardKillerObjectId = aiWorld->GetLinuxLastAppliedAwardKillerObjectId();
+          runtime->worldLastAppliedAwardHeroObjectId = aiWorld->GetLinuxLastAppliedAwardHeroObjectId();
+          runtime->worldLastAppliedAwardAmount = aiWorld->GetLinuxLastAppliedAwardAmount();
+          runtime->worldLastAppliedAwardHeroGoldBefore = aiWorld->GetLinuxLastAppliedAwardHeroGoldBefore();
+          runtime->worldLastAppliedAwardHeroGoldAfter = aiWorld->GetLinuxLastAppliedAwardHeroGoldAfter();
+        }
+        runtime->worldAICreepSpawnEnabled = world->GetLinuxAICreepSpawnEnabled();
+        runtime->worldAINeutralCreepSpawnEnabled = world->GetLinuxAINeutralCreepSpawnEnabled();
+        runtime->worldAIMaxCreepsCount = world->GetLinuxAIMaxCreepsCount();
+        runtime->worldMinCreepSpawnerSpawnDelay = world->GetLinuxMinCreepSpawnerSpawnDelay();
+        runtime->worldMinNeutralCreepSpawnerSpawnDelay = world->GetLinuxMinNeutralCreepSpawnerSpawnDelay();
         runtime->worldSimpleBuildingObjects = world->GetLinuxLoadedSimpleBuildingObjectsCount();
         runtime->worldUsableBuildingObjects = world->GetLinuxLoadedUsableBuildingObjectsCount();
         runtime->worldShopObjects = world->GetLinuxLoadedShopObjectsCount();
@@ -19768,6 +32515,15 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldCameraSplineObjects = world->GetLinuxLoadedCameraSplineObjectsCount();
         runtime->worldScriptPathObjects = world->GetLinuxLoadedScriptPathObjectsCount();
         runtime->worldScriptPolygonAreaObjects = world->GetLinuxLoadedScriptPolygonAreaObjectsCount();
+        runtime->worldExecutedPackedCommands = world->GetLinuxExecutedPackedWorldCommandsCount();
+        runtime->worldBootstrapRuntimeCommands = world->GetLinuxBootstrapRuntimeCommandsCount();
+        runtime->worldLastPackedCommandClientId = world->GetLinuxLastPackedWorldCommandClientId();
+        runtime->worldLastPackedCommandTypeId = world->GetLinuxLastPackedWorldCommandTypeId();
+        runtime->worldLastBootstrapCommandClientId = world->GetLinuxLastBootstrapRuntimeCommandClientId();
+        runtime->worldLastBootstrapCommandToken = world->GetLinuxLastBootstrapRuntimeCommandToken();
+        runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
+        runtime->worldTimeScale = world->GetTimeScale();
+        runtime->transceiverCommands = runtime->worldExecutedPackedCommands;
         runtime->worldLocalUserId = 0;
         for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
              it != runtime->loadingMapStartInfo.playersInfo.end();
@@ -19936,7 +32692,7 @@ void EnsureLinuxBootstrapLoadingScreen(
   }
 
   EnsureLinuxBootstrapGameScheduler(runtime);
-  DriveLinuxBootstrapGameScheduler(runtime);
+  DriveLinuxBootstrapGameScheduler(settings, runtime);
   DriveLinuxBootstrapLoadingRuntime(runtime);
   UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
 }
@@ -19979,6 +32735,14 @@ void UpdateLinuxBootstrapScreenPreview(
   preview->runtimeBootstrapMapsReady = false;
   preview->runtimeBootstrapGameEntryCount = 0;
   preview->runtimeBootstrapMapEntryCount = 0;
+  preview->runtimeVisibleMenuReady = runtime.initialized && !IsLinuxBootstrapLoadingScreenActive(&runtime);
+  preview->runtimeVisibleMenuActionCount = LINUX_VISIBLE_MENU_ACTION_COUNT;
+  preview->runtimeVisibleMenuSelectedAction = runtime.visibleMenuSelectedAction;
+  preview->runtimeVisibleMenuActivatedCount = runtime.visibleMenuActivatedCount;
+  preview->runtimeVisibleMenuAction = DescribeLinuxVisibleMenuAction(&runtime, runtime.visibleMenuSelectedAction);
+  preview->runtimeVisibleMenuPath = preview->runtimeVisibleMenuReady ?
+    (runtime.visibleMenuPath.empty() ? "Linux visible lobby overlay + NGameX::SelectGameModeScreen" : runtime.visibleMenuPath) :
+    "inactive";
   preview->runtimeBootstrapScreenWindow.clear();
   preview->runtimeBootstrapJoinResult = "<inactive>";
   preview->runtimeBootstrapScreenPath = preview->runtimeBootstrapScreenReady ?
@@ -20040,6 +32804,11 @@ void UpdateLinuxBootstrapScreenPreview(
     {
       preview->runtimeBootstrapGameEntryCount = static_cast<size_t>(gamesList->GetChildrenCount());
     }
+  }
+  if (IsValid(runtime.gameContext) && runtime.gameContext->GetVisibleGameCount() > 0)
+  {
+    preview->runtimeBootstrapGamesReady = true;
+    preview->runtimeBootstrapGameEntryCount = runtime.gameContext->GetVisibleGameCount();
   }
 
   UI::Window* mapsWindow = mainWindow->FindChild("Maps");
@@ -20114,6 +32883,7 @@ void InitializeLinuxBootstrapScreenRuntime(
     }
   }
 
+  UpdateLinuxVisibleMenuRuntime(runtime);
   EnsureLinuxBootstrapNetworkStatusScreen(runtime, preview);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
@@ -20132,6 +32902,7 @@ void InitializeLinuxBootstrapScreenRuntime(
     runtime,
     preview
   );
+  UpdateLinuxVisibleMenuRuntime(runtime);
   UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
 
@@ -20154,6 +32925,7 @@ void DriveLinuxBootstrapScreenRuntime(
     return;
   }
 
+  UpdateLinuxVisibleMenuRuntime(runtime);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
   HandleLinuxBootstrapHeroScreenHotkeys(inputState, runtime);
@@ -20183,10 +32955,11 @@ void DriveLinuxBootstrapScreenRuntime(
     }
 
     EnsureLinuxBootstrapGameScheduler(runtime);
-    DriveLinuxBootstrapGameScheduler(runtime);
+    DriveLinuxBootstrapGameScheduler(settings, runtime);
     DriveLinuxBootstrapLoadingRuntime(runtime);
     runtime->loadingScreen->Step(NMainFrame::IsAppActive());
     preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+    UpdateLinuxVisibleMenuRuntime(runtime);
     UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
     return;
   }
@@ -20202,6 +32975,7 @@ void DriveLinuxBootstrapScreenRuntime(
     runtime->heroScreen->CommonStep(NMainFrame::IsAppActive());
     preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
     UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
+    UpdateLinuxVisibleMenuRuntime(runtime);
     UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
     return;
   }
@@ -20214,6 +32988,7 @@ void DriveLinuxBootstrapScreenRuntime(
   runtime->gameModeScreen->Step(NMainFrame::IsAppActive());
   runtime->gameModeScreen->CommonStep(NMainFrame::IsAppActive());
   preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+  UpdateLinuxVisibleMenuRuntime(runtime);
   UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
 
@@ -20254,6 +33029,7 @@ void DrawLinuxBootstrapScreenRuntime(
 void UpdateMapBrowserState(
   const LinuxInputState& inputState,
   const LinuxMapCatalog& catalog,
+  bool reserveArrowKeysForVisibleMenu,
   LinuxMapBrowserState* browser
 )
 {
@@ -20288,10 +33064,18 @@ void UpdateMapBrowserState(
     switch (message.nKey)
     {
       case XK_Up:
+        if (reserveArrowKeysForVisibleMenu)
+        {
+          break;
+        }
         MoveMapSelection(catalog, browser, -1, "keyboard");
         break;
 
       case XK_Down:
+        if (reserveArrowKeysForVisibleMenu)
+        {
+          break;
+        }
         MoveMapSelection(catalog, browser, 1, "keyboard");
         break;
 
@@ -20639,6 +33423,7 @@ bool UpdateLocalMatchPreviewState(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  bool reserveActivationForVisibleMenu,
   LinuxLocalMatchPreview* preview
 )
 {
@@ -20706,6 +33491,10 @@ bool UpdateLocalMatchPreviewState(
 
       case XK_Return:
       case XK_KP_Enter:
+        if (reserveActivationForVisibleMenu)
+        {
+          break;
+        }
         ++preview->shuffleOffset;
         preview->generationSource = "keyboard-shuffle";
         changed = true;
@@ -20719,6 +33508,1683 @@ bool UpdateLocalMatchPreviewState(
   if (changed)
   {
     RegenerateLocalMatchPreview(heroCatalog, mapCatalog, mapBrowserState, preview, preview->generationSource.c_str());
+  }
+
+  return changed;
+}
+
+bool ActivateLinuxVisibleMenuAction(
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  const LinuxHeroCatalog& heroCatalog,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !localMatchPreview)
+  {
+    return false;
+  }
+
+  if (runtime->visibleMenuSelectedAction >= LINUX_VISIBLE_MENU_ACTION_COUNT)
+  {
+    runtime->visibleMenuSelectedAction = 0;
+  }
+
+  bool changed = false;
+  switch (runtime->visibleMenuSelectedAction)
+  {
+    case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
+    {
+      if (!IsValid(runtime->gameContext) || IsLinuxBootstrapLoadingScreenActive(runtime))
+      {
+        break;
+      }
+
+      const string desiredHeroId = ResolveLinuxBootstrapSelectedHeroId(heroCatalog, *localMatchPreview);
+      const int desiredTeam = localMatchPreview->humanTeam == 1 || localMatchPreview->humanTeam == 2 ?
+        localMatchPreview->humanTeam :
+        1;
+
+      if (runtime->gameContext->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby)
+      {
+        runtime->gameContext->ChangeCustomGameSettings(
+          ConvertDisplayTeamToLobbyTeam(desiredTeam),
+          ConvertDisplayTeamToLobbyTeam(desiredTeam),
+          desiredHeroId
+        );
+        runtime->gameContext->SetReady(lobby::EGameMemberReadiness::ReadyForAnything);
+        runtime->visibleMenuLastAction = "ready-and-load";
+        changed = true;
+        break;
+      }
+
+      if (mapBrowserState &&
+          !mapCatalog.entries.empty() &&
+          mapBrowserState->selectedIndex < mapCatalog.entries.size())
+      {
+        const std::string& descriptor = mapCatalog.entries[mapBrowserState->selectedIndex].descriptor;
+        if (!descriptor.empty())
+        {
+          runtime->gameContext->CreateGame(
+            descriptor.c_str(),
+            ResolveLinuxBootstrapCreateGamePlayers(*runtime, *localMatchPreview)
+          );
+          runtime->createGameRequested = true;
+          runtime->visibleMenuLastAction = "create-game";
+          changed = true;
+        }
+      }
+      break;
+    }
+
+    case LINUX_VISIBLE_MENU_ACTION_MAP:
+      if (mapBrowserState)
+      {
+        const size_t previousIndex = mapBrowserState->selectedIndex;
+        MoveMapSelection(mapCatalog, mapBrowserState, 1, "visible-menu");
+        if (previousIndex != mapBrowserState->selectedIndex)
+        {
+          RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu");
+        }
+        runtime->visibleMenuLastAction = "cycle-map";
+        changed = true;
+      }
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_HERO:
+      if (mapBrowserState)
+      {
+        StepSelectedSlotHero(heroCatalog, localMatchPreview, 1, "visible-menu");
+        RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu");
+        runtime->visibleMenuLastAction = "cycle-hero";
+        changed = true;
+      }
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS:
+      runtime->diagnosticsOverlayActive = !runtime->diagnosticsOverlayActive;
+      runtime->visibleMenuLastAction = runtime->diagnosticsOverlayActive ?
+        "show-diagnostics" :
+        "hide-diagnostics";
+      changed = true;
+      break;
+
+    default:
+      break;
+  }
+
+  if (changed)
+  {
+    ++runtime->visibleMenuActivatedCount;
+    UpdateLinuxVisibleMenuRuntime(runtime);
+  }
+
+  return changed;
+}
+
+bool HandleLinuxVisibleMenuHotkeys(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxInputState& inputState,
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  const LinuxHeroCatalog& heroCatalog,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  bool* consumedNavigation
+)
+{
+  if (consumedNavigation)
+  {
+    *consumedNavigation = false;
+  }
+
+  if (!runtime)
+  {
+    return false;
+  }
+
+  bool changed = false;
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
+    {
+      continue;
+    }
+
+    if (message.nKey == XK_F10)
+    {
+      runtime->diagnosticsOverlayActive = !runtime->diagnosticsOverlayActive;
+      runtime->visibleMenuLastAction = runtime->diagnosticsOverlayActive ?
+        "show-diagnostics" :
+        "hide-diagnostics";
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
+      continue;
+    }
+
+    if (!IsLinuxVisibleMenuActive(settings, runtime))
+    {
+      continue;
+    }
+
+    switch (message.nKey)
+    {
+      case XK_Up:
+      case XK_w:
+      case XK_W:
+        runtime->visibleMenuSelectedAction =
+          runtime->visibleMenuSelectedAction == 0 ?
+            LINUX_VISIBLE_MENU_ACTION_COUNT - 1 :
+            runtime->visibleMenuSelectedAction - 1;
+        runtime->visibleMenuLastAction = "select-menu";
+        changed = true;
+        if (consumedNavigation)
+        {
+          *consumedNavigation = true;
+        }
+        break;
+
+      case XK_Down:
+      case XK_s:
+      case XK_S:
+        runtime->visibleMenuSelectedAction =
+          (runtime->visibleMenuSelectedAction + 1) % LINUX_VISIBLE_MENU_ACTION_COUNT;
+        runtime->visibleMenuLastAction = "select-menu";
+        changed = true;
+        if (consumedNavigation)
+        {
+          *consumedNavigation = true;
+        }
+        break;
+
+      case XK_Return:
+      case XK_KP_Enter:
+      case XK_space:
+        changed = ActivateLinuxVisibleMenuAction(
+          mapCatalog,
+          mapBrowserState,
+          heroCatalog,
+          localMatchPreview,
+          runtime
+        ) || changed;
+        if (consumedNavigation)
+        {
+          *consumedNavigation = true;
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return changed;
+}
+
+bool HandleLinuxCharacterPreviewInput(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxInputState& inputState,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || IsLinuxDiagnosticsOverlayActive(settings, runtime))
+  {
+    return false;
+  }
+
+  bool changed = false;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const LinuxScreenRect previewRect = ResolveLinuxCharacterPreviewRect(
+    settings.width,
+    settings.height,
+    loadingActive
+  );
+
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    switch (message.msg)
+    {
+      case NMainFrame::SWindowsMsg::KEY_DOWN:
+        switch (message.nKey)
+        {
+          case XK_a:
+          case XK_A:
+            RotateLinuxCharacterPreview(runtime, -15.0f, "keyboard-left");
+            changed = true;
+            break;
+
+          case XK_d:
+          case XK_D:
+            RotateLinuxCharacterPreview(runtime, 15.0f, "keyboard-right");
+            changed = true;
+            break;
+
+          case XK_c:
+          case XK_C:
+            runtime->characterPreviewYawDegrees = 28.0f;
+            runtime->characterPreviewLastAction = "keyboard-reset";
+            ++runtime->characterPreviewInputCount;
+            changed = true;
+            break;
+
+          default:
+            break;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+        if (IsPointInsideLinuxScreenRect(previewRect, message.x, message.y))
+        {
+          runtime->characterPreviewDragging = true;
+          runtime->characterPreviewDragX = message.x;
+          runtime->characterPreviewDragY = message.y;
+          runtime->characterPreviewLastAction = "mouse-start";
+          changed = true;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_MOVE:
+        if (runtime->characterPreviewDragging)
+        {
+          const int deltaX = message.x - runtime->characterPreviewDragX;
+          runtime->characterPreviewDragX = message.x;
+          runtime->characterPreviewDragY = message.y;
+          if (deltaX != 0)
+          {
+            RotateLinuxCharacterPreview(
+              runtime,
+              static_cast<float>(deltaX) * 0.45f,
+              "mouse-drag"
+            );
+            changed = true;
+          }
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_LB_UP:
+      case NMainFrame::SWindowsMsg::MOUSE_OUT:
+        if (runtime->characterPreviewDragging)
+        {
+          runtime->characterPreviewDragging = false;
+          runtime->characterPreviewLastAction = "mouse-stop";
+          changed = true;
+        }
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return changed;
+}
+
+void TransformLinuxMapPreviewEyeVectorToMap(
+  float pitchDegrees,
+  float yawDegrees,
+  float* x,
+  float* y,
+  float* z
+)
+{
+  if (!x || !y || !z)
+  {
+    return;
+  }
+
+  const float toRadians = 0.0174532925199f;
+  const float pitch = pitchDegrees * toRadians;
+  const float yaw = yawDegrees * toRadians;
+  const float cp = cosf(pitch);
+  const float sp = sinf(pitch);
+  const float cy = cosf(yaw);
+  const float sy = sinf(yaw);
+
+  const float rx = *x;
+  const float ry = (*y) * cp + (*z) * sp;
+  const float rz = -(*y) * sp + (*z) * cp;
+
+  *x = rx * cy - rz * sy;
+  *y = ry;
+  *z = rx * sy + rz * cy;
+}
+
+bool ProjectLinuxMapPreviewScreenToWorld(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxBootstrapScreenRuntime& runtime,
+  int mouseX,
+  int mouseY,
+  float* worldX,
+  float* worldY
+)
+{
+  if (worldX) *worldX = 0.0f;
+  if (worldY) *worldY = 0.0f;
+  if (settings.width <= 0 || settings.height <= 0 || !selectedMapPreview.tactical.ready)
+  {
+    return false;
+  }
+
+  const LinuxTacticalMapPreview& tactical = selectedMapPreview.tactical;
+  const float rangeX = std::max(1.0f, tactical.maxX - tactical.minX);
+  const float rangeY = std::max(1.0f, tactical.maxY - tactical.minY);
+  const float mapRange = std::max(rangeX, rangeY);
+  const float scale = 92.0f / mapRange;
+  const float extentX = std::max(14.0f, rangeX * scale * 0.5f + 8.0f);
+  const float extentZ = std::max(14.0f, rangeY * scale * 0.5f + 8.0f);
+  const float previewZoom = std::max(0.55f, std::min(2.25f, runtime.mapPreviewZoom));
+  const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
+  const float aspect = static_cast<float>(settings.width) / static_cast<float>(settings.height);
+  const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
+  const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
+
+  const float ndcX =
+    static_cast<float>(mouseX) * 2.0f / static_cast<float>(settings.width) - 1.0f;
+  const float ndcY =
+    1.0f - static_cast<float>(mouseY) * 2.0f / static_cast<float>(settings.height);
+  float originX = ndcX * viewExtent * aspect;
+  float originY = ndcY * viewExtent + 8.0f;
+  float originZ = 210.0f;
+  float dirX = 0.0f;
+  float dirY = 0.0f;
+  float dirZ = -1.0f;
+
+  TransformLinuxMapPreviewEyeVectorToMap(
+    runtime.mapPreviewRenderedPitchDegrees,
+    runtime.mapPreviewRenderedYawDegrees,
+    &originX,
+    &originY,
+    &originZ);
+  TransformLinuxMapPreviewEyeVectorToMap(
+    runtime.mapPreviewRenderedPitchDegrees,
+    runtime.mapPreviewRenderedYawDegrees,
+    &dirX,
+    &dirY,
+    &dirZ);
+
+  originX -= runtime.mapPreviewPanX;
+  originZ -= runtime.mapPreviewPanZ;
+  if (dirY > -0.0001f && dirY < 0.0001f)
+  {
+    return false;
+  }
+
+  const float t = -originY / dirY;
+  if (t < 0.0f)
+  {
+    return false;
+  }
+
+  const float mapX = originX + dirX * t;
+  const float mapZ = originZ + dirZ * t;
+  float projectedX = centerX + mapX / scale;
+  float projectedY = centerY + mapZ / scale;
+  projectedX = std::max(tactical.minX, std::min(tactical.maxX, projectedX));
+  projectedY = std::max(tactical.minY, std::min(tactical.maxY, projectedY));
+
+  if (worldX) *worldX = projectedX;
+  if (worldY) *worldY = projectedY;
+  return true;
+}
+
+bool SendLinuxMapPreviewMoveCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world =
+    dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        mouseX,
+        mouseY,
+        &targetX,
+        &targetY))
+  {
+    return false;
+  }
+
+  return SendLinuxBootstrapHeroMoveCommandToTarget(
+    runtime,
+    world,
+    CVec2(targetX, targetY),
+      "right-click-map",
+      true);
+}
+
+bool SendLinuxMapPreviewAttackCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        mouseX,
+        mouseY,
+        &targetX,
+        &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::LinuxDynamicWorldMarker marker;
+  float targetDistance = 0.0f;
+  if (!FindLinuxMapPreviewMarkerNearWorld(
+    world,
+    CVec2(targetX, targetY),
+    hero,
+    true,
+    &marker,
+    &targetDistance))
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* targetUnit = world->FindLinuxUnitByObjectId(marker.objectId);
+  if (!targetUnit)
+  {
+    return false;
+  }
+
+  targetPlayerId = marker.playerId;
+  targetClientId = marker.userId;
+  RecordLinuxMapPreviewSelectedTarget(
+    runtime,
+    marker,
+    "right-click-target",
+    targetDistance);
+  (void)playerId;
+  (void)clientId;
+  return SendLinuxBootstrapHeroAttackUnitCommandToTarget(
+    runtime,
+    world,
+    targetUnit,
+    targetPlayerId,
+    targetClientId,
+    "right-click-attack");
+}
+
+bool SendLinuxMapPreviewMoveOrAttackCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (SendLinuxMapPreviewAttackCommandFromScreen(
+      settings,
+      selectedMapPreview,
+      mouseX,
+      mouseY,
+      runtime))
+  {
+    return true;
+  }
+
+  if (SendLinuxMapPreviewMoveCommandFromScreen(
+      settings,
+      selectedMapPreview,
+      mouseX,
+      mouseY,
+      runtime))
+  {
+    if (runtime)
+    {
+      runtime->mapPreviewLastAction = "right-click-move";
+    }
+    return true;
+  }
+
+  return false;
+}
+
+bool SendLinuxMapPreviewMinimapSignalCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        mouseX,
+        mouseY,
+        &targetX,
+        &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseUnit* selectedUnit = 0;
+  NWorld::LinuxDynamicWorldMarker marker;
+  float markerDistance = 0.0f;
+  if (FindLinuxMapPreviewMarkerNearWorld(
+    world,
+    CVec2(targetX, targetY),
+    hero,
+    false,
+    &marker,
+    &markerDistance))
+  {
+    selectedUnit = world->FindLinuxUnitByObjectId(marker.objectId);
+    if (selectedUnit)
+    {
+      targetPlayerId = marker.playerId;
+      targetClientId = marker.userId;
+    }
+  }
+
+  (void)playerId;
+  (void)clientId;
+  return SendLinuxBootstrapHeroMinimapSignalCommandToTarget(
+    runtime,
+    world,
+    CVec2(targetX, targetY),
+    selectedUnit,
+    selectedUnit ? targetPlayerId : -1,
+    selectedUnit ? targetClientId : -1,
+    "middle-click-signal");
+}
+
+bool SelectLinuxMapPreviewTargetFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        mouseX,
+        mouseY,
+        &targetX,
+        &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::LinuxDynamicWorldMarker marker;
+  float markerDistance = 0.0f;
+  if (!FindLinuxMapPreviewMarkerNearWorld(
+        world,
+        CVec2(targetX, targetY),
+        hero,
+        false,
+        &marker,
+        &markerDistance))
+  {
+    ClearLinuxMapPreviewSelectedTarget(runtime, "left-click-clear");
+    (void)playerId;
+    (void)clientId;
+    return false;
+  }
+
+  RecordLinuxMapPreviewSelectedTarget(
+    runtime,
+    marker,
+    "left-click-select",
+    markerDistance);
+  (void)playerId;
+  (void)clientId;
+  return true;
+}
+
+bool HandleLinuxMapPreviewInput(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxInputState& inputState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime ||
+      IsLinuxDiagnosticsOverlayActive(settings, runtime) ||
+      !IsLinuxBootstrapLoadingScreenActive(runtime) ||
+      !selectedMapPreview.tactical.ready)
+  {
+    return false;
+  }
+
+  bool changed = false;
+  const LinuxScreenRect heroPreviewRect = ResolveLinuxCharacterPreviewRect(
+    settings.width,
+    settings.height,
+    true
+  );
+
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    switch (message.msg)
+    {
+      case NMainFrame::SWindowsMsg::KEY_DOWN:
+        switch (message.nKey)
+        {
+          case XK_q:
+          case XK_Q:
+            RotateLinuxMapPreview(runtime, -15.0f, "keyboard-left");
+            changed = true;
+            break;
+
+          case XK_e:
+          case XK_E:
+            RotateLinuxMapPreview(runtime, 15.0f, "keyboard-right");
+            changed = true;
+            break;
+
+          case XK_z:
+          case XK_Z:
+            ZoomLinuxMapPreview(runtime, 0.88f, "keyboard-zoom-out");
+            changed = true;
+            break;
+
+          case XK_x:
+          case XK_X:
+            ZoomLinuxMapPreview(runtime, 1.14f, "keyboard-zoom-in");
+            changed = true;
+            break;
+
+          case XK_i:
+          case XK_I:
+            TiltLinuxMapPreview(runtime, -4.0f, "keyboard-tilt-up");
+            changed = true;
+            break;
+
+          case XK_k:
+          case XK_K:
+            TiltLinuxMapPreview(runtime, 4.0f, "keyboard-tilt-down");
+            changed = true;
+            break;
+
+          case XK_r:
+          case XK_R:
+            ResetLinuxMapPreviewCamera(runtime, "keyboard-reset");
+            changed = true;
+            break;
+
+          case XK_s:
+          case XK_S:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            runtime->mapPreviewLastAction =
+              SendLinuxBootstrapHeroStopCommandNow(runtime, world, "keyboard-stop") ?
+                "keyboard-stop" :
+                "keyboard-stop-failed";
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_a:
+          case XK_A:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            if (!SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
+                  runtime,
+                  world,
+                  "keyboard-attack-selected",
+                  "keyboard-attack"))
+            {
+              runtime->mapPreviewLastAction = "keyboard-attack-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_f:
+          case XK_F:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            if (!SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
+                  runtime,
+                  world,
+                  "keyboard-follow-selected",
+                  "keyboard-follow"))
+            {
+              runtime->mapPreviewLastAction = "keyboard-follow-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_h:
+          case XK_H:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            runtime->mapPreviewLastAction =
+              SendLinuxBootstrapHeroHoldCommandNow(runtime, world, "keyboard-hold") ?
+                "keyboard-hold" :
+                "keyboard-hold-failed";
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_c:
+          case XK_C:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            runtime->mapPreviewLastAction =
+              SendLinuxBootstrapHeroCancelChannellingCommandNow(runtime, world, "keyboard-cancel") ?
+                "keyboard-cancel" :
+                "keyboard-cancel-failed";
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_1:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            int talentLevel = 0;
+            int talentSlot = 0;
+            if (world)
+            {
+              NWorld::PFBaseHero* hero =
+                FindLinuxBootstrapControlledHero(runtime, world, 0, 0);
+              NWorld::PFBaseMaleHero* maleHero =
+                dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+              const LinuxBootstrapTalentCommandSelection talentSelection =
+                ResolveLinuxBootstrapTalentCommandSelection(runtime, world, maleHero, false);
+              if (talentSelection.found)
+              {
+                talentLevel = talentSelection.level;
+                talentSlot = talentSelection.slot;
+              }
+            }
+            runtime->mapPreviewLastAction =
+              SendLinuxBootstrapHeroActivateTalentCommandNow(
+                runtime,
+                world,
+                talentLevel,
+                talentSlot,
+                "keyboard-activate-talent") ?
+                "keyboard-activate-talent" :
+                "keyboard-activate-talent-failed";
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_2:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            if (!SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
+                  runtime,
+                  world,
+                  "keyboard-use-talent-selected",
+                  "keyboard-use-talent"))
+            {
+              runtime->mapPreviewLastAction = "keyboard-use-talent-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_3:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            CVec2 targetPosition(0.0f, 0.0f);
+            bool sent = false;
+            if (world)
+            {
+              int playerId = -1;
+              int clientId = -1;
+              NWorld::PFBaseHero* hero =
+                FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+              if (hero)
+              {
+                targetPosition = hero->GetPosition().AsVec2D();
+                targetPosition.x += 3.0f;
+                targetPosition.y += 3.0f;
+                sent =
+                  SendLinuxBootstrapHeroUseConsumableSelectedOrPointCommand(
+                    runtime,
+                    world,
+                    targetPosition,
+                    "keyboard-use-consumable-selected",
+                    "keyboard-use-consumable");
+              }
+            }
+            if (!sent)
+            {
+              runtime->mapPreviewLastAction = "keyboard-use-consumable-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          case XK_4:
+          {
+            NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+            if (!SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
+                  runtime,
+                  world,
+                  "keyboard-use-unit-selected",
+                  "keyboard-use-unit"))
+            {
+              runtime->mapPreviewLastAction = "keyboard-use-unit-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+            changed = true;
+            break;
+          }
+
+          default:
+            break;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
+        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        {
+          const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
+          if (wheelDelta > 0)
+          {
+            ZoomLinuxMapPreview(runtime, 1.10f, "mouse-wheel-zoom-in");
+            changed = true;
+          }
+          else if (wheelDelta < 0)
+          {
+            ZoomLinuxMapPreview(runtime, 0.91f, "mouse-wheel-zoom-out");
+            changed = true;
+          }
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        {
+          runtime->mapPreviewDragging = true;
+          runtime->mapPreviewDragMoved = false;
+          runtime->mapPreviewDragStartX = message.x;
+          runtime->mapPreviewDragStartY = message.y;
+          runtime->mapPreviewDragX = message.x;
+          runtime->mapPreviewDragY = message.y;
+          runtime->mapPreviewLastAction = "mouse-start";
+          changed = true;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_MOVE:
+        if (runtime->mapPreviewDragging)
+        {
+          const int deltaX = message.x - runtime->mapPreviewDragX;
+          const int totalX = message.x - runtime->mapPreviewDragStartX;
+          const int totalY = message.y - runtime->mapPreviewDragStartY;
+          runtime->mapPreviewDragX = message.x;
+          runtime->mapPreviewDragY = message.y;
+          if (!runtime->mapPreviewDragMoved &&
+              (totalX * totalX + totalY * totalY) > 16)
+          {
+            runtime->mapPreviewDragMoved = true;
+          }
+          if (deltaX != 0)
+          {
+            RotateLinuxMapPreview(
+              runtime,
+              static_cast<float>(deltaX) * 0.28f,
+              "mouse-drag"
+            );
+            changed = true;
+          }
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_LB_UP:
+      case NMainFrame::SWindowsMsg::MOUSE_OUT:
+        if (runtime->mapPreviewDragging)
+        {
+          const bool selectClick =
+            message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_UP &&
+            !runtime->mapPreviewDragMoved;
+          runtime->mapPreviewDragging = false;
+          if (selectClick)
+          {
+            runtime->mapPreviewLastAction =
+              SelectLinuxMapPreviewTargetFromScreen(
+                settings,
+                selectedMapPreview,
+                message.x,
+                message.y,
+                runtime) ?
+                  "left-click-select" :
+                  "left-click-clear";
+            ++runtime->mapPreviewInputCount;
+          }
+          else
+          {
+            runtime->mapPreviewLastAction = "mouse-stop";
+          }
+          changed = true;
+        }
+        if (runtime->mapPreviewPanning)
+        {
+          runtime->mapPreviewPanning = false;
+          runtime->mapPreviewLastAction = "mouse-pan-stop";
+          changed = true;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
+        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        {
+          runtime->mapPreviewPanning = true;
+          runtime->mapPreviewPanMoved = false;
+          runtime->mapPreviewPanStartX = message.x;
+          runtime->mapPreviewPanStartY = message.y;
+          runtime->mapPreviewPanDragX = message.x;
+          runtime->mapPreviewPanDragY = message.y;
+          runtime->mapPreviewLastAction = "mouse-pan-start";
+          changed = true;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_RB_UP:
+        if (runtime->mapPreviewPanning)
+        {
+          const bool commandClick = !runtime->mapPreviewPanMoved;
+          runtime->mapPreviewPanning = false;
+          if (commandClick)
+          {
+            if (SendLinuxMapPreviewMoveOrAttackCommandFromScreen(
+                  settings,
+                  selectedMapPreview,
+                  message.x,
+                  message.y,
+                  runtime))
+            {
+              if (runtime->mapPreviewLastAction.empty())
+              {
+                runtime->mapPreviewLastAction = "right-click-command";
+              }
+            }
+            else
+            {
+              runtime->mapPreviewLastAction = "right-click-move-failed";
+            }
+            ++runtime->mapPreviewInputCount;
+          }
+          else
+          {
+            runtime->mapPreviewLastAction = "mouse-pan-stop";
+          }
+          changed = true;
+        }
+        break;
+
+      case NMainFrame::SWindowsMsg::MOUSE_MB_UP:
+        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        {
+          runtime->mapPreviewLastAction =
+            SendLinuxMapPreviewMinimapSignalCommandFromScreen(
+              settings,
+              selectedMapPreview,
+              message.x,
+              message.y,
+              runtime) ?
+                "middle-click-signal" :
+                "middle-click-signal-failed";
+          ++runtime->mapPreviewInputCount;
+          changed = true;
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_MOVE && runtime->mapPreviewPanning)
+    {
+      const int deltaX = message.x - runtime->mapPreviewPanDragX;
+      const int deltaY = message.y - runtime->mapPreviewPanDragY;
+      runtime->mapPreviewPanDragX = message.x;
+      runtime->mapPreviewPanDragY = message.y;
+      const int totalX = message.x - runtime->mapPreviewPanStartX;
+      const int totalY = message.y - runtime->mapPreviewPanStartY;
+      if (!runtime->mapPreviewPanMoved &&
+          (totalX * totalX + totalY * totalY) > 16)
+      {
+        runtime->mapPreviewPanMoved = true;
+      }
+      if (runtime->mapPreviewPanMoved && (deltaX != 0 || deltaY != 0))
+      {
+        const float panScale = 0.105f / std::max(0.55f, runtime->mapPreviewZoom);
+        PanLinuxMapPreview(
+          runtime,
+          static_cast<float>(deltaX) * panScale,
+          static_cast<float>(-deltaY) * panScale,
+          "mouse-pan"
+        );
+        changed = true;
+      }
+    }
+  }
+
+  return changed;
+}
+
+size_t ResolveLinuxLobbyFirstVisibleRow(size_t selectedIndex, size_t totalRows, size_t visibleRows);
+
+bool ProjectLinuxLobbyMouseToBase(
+  const LinuxClientLaunchSettings& settings,
+  int mouseX,
+  int mouseY,
+  int* baseX,
+  int* baseY
+)
+{
+  if (!baseX || !baseY || settings.width <= 0 || settings.height <= 0)
+  {
+    return false;
+  }
+
+  *baseX = static_cast<int>(
+    static_cast<double>(mouseX) * 1280.0 / static_cast<double>(settings.width) + 0.5
+  );
+  *baseY = static_cast<int>(
+    static_cast<double>(mouseY) * 1024.0 / static_cast<double>(settings.height) + 0.5
+  );
+  return true;
+}
+
+bool HitLinuxLobbyBaseRect(int baseX, int baseY, int x, int y, int width, int height)
+{
+  return baseX >= x && baseX < x + width && baseY >= y && baseY < y + height;
+}
+
+bool SelectLinuxLobbyMapRowAt(
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  int baseY,
+  const char* source
+)
+{
+  if (!mapBrowserState || mapCatalog.entries.empty())
+  {
+    return false;
+  }
+
+  const int panelY = 455;
+  const int panelH = 368;
+  const int rowH = 130;
+  if (baseY < panelY || baseY >= panelY + panelH)
+  {
+    return false;
+  }
+
+  const size_t visibleRows = static_cast<size_t>(std::max(1, (panelH + rowH - 1) / rowH));
+  const size_t firstRow = ResolveLinuxLobbyFirstVisibleRow(
+    mapBrowserState->selectedIndex,
+    mapCatalog.entries.size(),
+    visibleRows
+  );
+  const size_t row = static_cast<size_t>((baseY - panelY) / rowH);
+  if (row >= visibleRows || firstRow + row >= mapCatalog.entries.size())
+  {
+    return false;
+  }
+
+  const size_t previousIndex = mapBrowserState->selectedIndex;
+  SelectAbsoluteMapIndex(mapCatalog, mapBrowserState, firstRow + row, source);
+  return previousIndex != mapBrowserState->selectedIndex;
+}
+
+bool SelectLinuxLobbyMapFromScrollAt(
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  int baseY,
+  const char* source
+)
+{
+  if (!mapBrowserState || mapCatalog.entries.empty())
+  {
+    return false;
+  }
+
+  const int scrollY = 455;
+  const int scrollH = 368;
+  if (baseY < scrollY || baseY >= scrollY + scrollH)
+  {
+    return false;
+  }
+
+  const size_t targetIndex = mapCatalog.entries.size() <= 1 ? 0 : static_cast<size_t>(
+    static_cast<long long>(baseY - scrollY) * static_cast<long long>(mapCatalog.entries.size() - 1) /
+    static_cast<long long>(std::max(1, scrollH - 1))
+  );
+
+  const size_t previousIndex = mapBrowserState->selectedIndex;
+  SelectAbsoluteMapIndex(mapCatalog, mapBrowserState, targetIndex, source);
+  return previousIndex != mapBrowserState->selectedIndex;
+}
+
+bool SetLinuxLobbyPlayerCountFromSliderAt(
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  LinuxLocalMatchPreview* localMatchPreview,
+  int baseX,
+  const char* source
+)
+{
+  if (!localMatchPreview)
+  {
+    return false;
+  }
+
+  const size_t maxTeamSize = ResolveSelectedMapMaxTeamSize(mapCatalog, mapBrowserState);
+  if (maxTeamSize == 0)
+  {
+    return false;
+  }
+
+  const int sliderX = 69;
+  const int sliderW = 247;
+  const int clampedX = std::max(0, std::min(sliderW, baseX - sliderX));
+  const size_t nextTeamSize = maxTeamSize <= 1 ? 1 : static_cast<size_t>(
+    1 + (static_cast<long long>(clampedX) * static_cast<long long>(maxTeamSize - 1) +
+      static_cast<long long>(sliderW / 2)) / static_cast<long long>(sliderW)
+  );
+
+  if (localMatchPreview->requestedTeamSize == nextTeamSize)
+  {
+    return false;
+  }
+
+  localMatchPreview->requestedTeamSize = nextTeamSize;
+  localMatchPreview->generationSource = source ? source : "visible-menu-mouse";
+  return true;
+}
+
+size_t ResolveLinuxLobbyVisibleGameCount(
+  const LinuxUiRootPreview& uiRootPreview,
+  const LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (runtime && IsValid(runtime->gameContext) && runtime->gameContext->GetVisibleGameCount() > 0)
+  {
+    return runtime->gameContext->GetVisibleGameCount();
+  }
+
+  return uiRootPreview.runtimeBootstrapGameEntryCount;
+}
+
+const lobby::SDevGameInfo* ResolveLinuxLobbyVisibleGameInfo(
+  const LinuxBootstrapScreenRuntime* runtime,
+  size_t row
+)
+{
+  return runtime && IsValid(runtime->gameContext) ?
+    runtime->gameContext->GetVisibleGameByRow(row) :
+    0;
+}
+
+bool SetLinuxLobbyJoinMode(
+  LinuxBootstrapScreenRuntime* runtime,
+  size_t joinMode
+)
+{
+  if (!runtime || joinMode >= LINUX_LOBBY_JOIN_MODE_COUNT)
+  {
+    return false;
+  }
+
+  const bool changed = runtime->visibleLobbyJoinMode != joinMode;
+  runtime->visibleLobbyJoinMode = joinMode;
+  runtime->visibleMenuLastAction =
+    std::string("select-join-mode-") + DescribeLinuxLobbyJoinMode(joinMode);
+  ++runtime->visibleMenuActivatedCount;
+  UpdateLinuxVisibleMenuRuntime(runtime);
+  return changed;
+}
+
+bool SelectLinuxLobbyGameRowAt(
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  int baseY
+)
+{
+  const size_t gameCount = ResolveLinuxLobbyVisibleGameCount(uiRootPreview, runtime);
+  if (!runtime || gameCount == 0)
+  {
+    return false;
+  }
+
+  const int panelY = 454;
+  const int panelH = 449;
+  const int rowH = 80;
+  if (baseY < panelY || baseY >= panelY + panelH)
+  {
+    return false;
+  }
+
+  const size_t row = static_cast<size_t>((baseY - panelY) / rowH);
+  const size_t visibleRows = static_cast<size_t>(std::max(1, (panelH + rowH - 1) / rowH));
+  const size_t firstRow = ResolveLinuxLobbyFirstVisibleRow(
+    runtime->visibleLobbySelectedGameRow,
+    gameCount,
+    visibleRows
+  );
+  const size_t selectedRow = firstRow + row;
+  if (row >= visibleRows || selectedRow >= gameCount)
+  {
+    return false;
+  }
+
+  const bool changed = runtime->visibleLobbySelectedGameRow != selectedRow;
+  runtime->visibleLobbySelectedGameRow = selectedRow;
+  runtime->visibleMenuLastAction = changed ? "select-game-row" : "focus-game-row";
+  return changed;
+}
+
+bool SelectLinuxLobbyGameFromScrollAt(
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  int baseY
+)
+{
+  const size_t gameCount = ResolveLinuxLobbyVisibleGameCount(uiRootPreview, runtime);
+  if (!runtime || gameCount == 0)
+  {
+    return false;
+  }
+
+  const int scrollY = 454;
+  const int scrollH = 449;
+  if (baseY < scrollY || baseY >= scrollY + scrollH)
+  {
+    return false;
+  }
+
+  const size_t targetRow = gameCount <= 1 ? 0 : static_cast<size_t>(
+    static_cast<long long>(baseY - scrollY) *
+      static_cast<long long>(gameCount - 1) /
+    static_cast<long long>(std::max(1, scrollH - 1))
+  );
+
+  const bool changed = runtime->visibleLobbySelectedGameRow != targetRow;
+  runtime->visibleLobbySelectedGameRow = targetRow;
+  runtime->visibleMenuLastAction = changed ? "select-game-scrollbar" : "focus-game-scrollbar";
+  return changed;
+}
+
+bool ActivateLinuxLobbySelectedGame(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  const size_t gameCount = ResolveLinuxLobbyVisibleGameCount(uiRootPreview, runtime);
+  if (!runtime || !IsValid(runtime->gameContext) || gameCount == 0)
+  {
+    return false;
+  }
+
+  const size_t selectedRow = std::min(
+    runtime->visibleLobbySelectedGameRow,
+    gameCount - 1
+  );
+  runtime->visibleLobbySelectedGameRow = selectedRow;
+  const lobby::SDevGameInfo* gameInfo = ResolveLinuxLobbyVisibleGameInfo(runtime, selectedRow);
+  const int gameId = gameInfo ? static_cast<int>(gameInfo->gameId) : 1001 + static_cast<int>(selectedRow);
+
+  switch (runtime->visibleLobbyJoinMode)
+  {
+    case LINUX_LOBBY_JOIN_MODE_RECONNECT:
+    {
+      const int desiredTeam = localMatchPreview.humanTeam == 1 || localMatchPreview.humanTeam == 2 ?
+        localMatchPreview.humanTeam :
+        1;
+      runtime->gameContext->Reconnect(
+        gameId,
+        static_cast<int>(ConvertDisplayTeamToLobbyTeam(desiredTeam)),
+        ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview)
+      );
+      runtime->visibleMenuLastAction = "reconnect-game";
+      break;
+    }
+
+    case LINUX_LOBBY_JOIN_MODE_SPECTATE:
+      runtime->gameContext->Spectate(gameId);
+      runtime->visibleMenuLastAction = "spectate-game";
+      break;
+
+    case LINUX_LOBBY_JOIN_MODE_NORMAL:
+    default:
+      runtime->gameContext->JoinGame(gameId);
+      runtime->visibleMenuLastAction = "join-game";
+      break;
+  }
+
+  ++runtime->visibleMenuActivatedCount;
+  UpdateLinuxVisibleMenuRuntime(runtime);
+  return true;
+}
+
+bool ToggleLinuxLobbyDeveloperSex(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime || !IsValid(runtime->gameContext))
+  {
+    return false;
+  }
+
+  const lobby::ESex::Enum nextSex =
+    runtime->gameContext->GetDeveloperSex() == lobby::ESex::Female ?
+      lobby::ESex::Male :
+      lobby::ESex::Female;
+  runtime->gameContext->SetDeveloperSex(nextSex);
+  runtime->visibleMenuLastAction =
+    nextSex == lobby::ESex::Female ? "developer-sex-female" : "developer-sex-male";
+  ++runtime->visibleMenuActivatedCount;
+  UpdateLinuxVisibleMenuRuntime(runtime);
+  return true;
+}
+
+bool HandleLinuxVisibleLobbyMouse(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxInputState& inputState,
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  const LinuxHeroCatalog& heroCatalog,
+  LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  bool* consumedNavigation
+)
+{
+  if (!runtime || !mapBrowserState || !localMatchPreview || !IsLinuxVisibleMenuActive(settings, runtime))
+  {
+    return false;
+  }
+
+  bool changed = false;
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg != NMainFrame::SWindowsMsg::MOUSE_LB_DOWN &&
+        message.msg != NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
+    {
+      continue;
+    }
+
+    int baseX = 0;
+    int baseY = 0;
+    if (!ProjectLinuxLobbyMouseToBase(settings, message.x, message.y, &baseX, &baseY))
+    {
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 975, 14, 289, 53))
+    {
+      changed = ToggleLinuxLobbyDeveloperSex(runtime) || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 679, 399, 561, 57))
+    {
+      size_t joinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
+      if (baseX >= 1053)
+      {
+        joinMode = LINUX_LOBBY_JOIN_MODE_SPECTATE;
+      }
+      else if (baseX >= 866)
+      {
+        joinMode = LINUX_LOBBY_JOIN_MODE_RECONNECT;
+      }
+
+      changed = SetLinuxLobbyJoinMode(runtime, joinMode) || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 65, 455, 518, 368))
+    {
+      const bool mapChanged = SelectLinuxLobbyMapRowAt(
+        mapCatalog,
+        mapBrowserState,
+        baseY,
+        "visible-menu-click-map"
+      );
+      if (mapChanged)
+      {
+        RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu-click-map");
+      }
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_MAP;
+      runtime->visibleMenuLastAction = mapChanged ? "select-map-row" : "focus-map-row";
+      changed = mapChanged || changed;
+      if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
+      {
+        runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PRIMARY;
+        changed = ActivateLinuxVisibleMenuAction(
+          mapCatalog,
+          mapBrowserState,
+          heroCatalog,
+          localMatchPreview,
+          runtime
+        ) || changed;
+      }
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 583, 455, 28, 368))
+    {
+      const bool mapChanged = SelectLinuxLobbyMapFromScrollAt(
+        mapCatalog,
+        mapBrowserState,
+        baseY,
+        "visible-menu-click-scrollbar"
+      );
+      if (mapChanged)
+      {
+        RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu-click-scrollbar");
+      }
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_MAP;
+      runtime->visibleMenuLastAction = mapChanged ? "select-map-scrollbar" : "focus-map-scrollbar";
+      changed = mapChanged || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 689, 454, 518, 449))
+    {
+      const bool gameChanged = SelectLinuxLobbyGameRowAt(uiRootPreview, runtime, baseY);
+      changed = gameChanged || changed;
+      if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
+      {
+        changed = ActivateLinuxLobbySelectedGame(
+          heroCatalog,
+          *localMatchPreview,
+          uiRootPreview,
+          runtime
+        ) || changed;
+      }
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 1207, 454, 28, 449))
+    {
+      changed = SelectLinuxLobbyGameFromScrollAt(uiRootPreview, runtime, baseY) || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 69, 883, 247, 32))
+    {
+      const bool playerCountChanged = SetLinuxLobbyPlayerCountFromSliderAt(
+        mapCatalog,
+        *mapBrowserState,
+        localMatchPreview,
+        baseX,
+        "visible-menu-click-player-count"
+      );
+      if (playerCountChanged)
+      {
+        RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu-click-player-count");
+      }
+      runtime->visibleMenuLastAction = playerCountChanged ? "set-player-count" : "focus-player-count";
+      changed = playerCountChanged || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 418, 849, 192, 59) ||
+        HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
+    {
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PRIMARY;
+      changed = ActivateLinuxVisibleMenuAction(
+        mapCatalog,
+        mapBrowserState,
+        heroCatalog,
+        localMatchPreview,
+        runtime
+      ) || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 807, 935, 324, 59))
+    {
+      if (IsValid(runtime->gameContext))
+      {
+        runtime->gameContext->RefreshGamesList();
+      }
+      runtime->visibleMenuLastAction = "refresh-games";
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
   }
 
   return changed;
@@ -20960,6 +35426,23 @@ std::vector<std::string> BuildOverlayLines(
           static_cast<unsigned long>(selectedMapPreview.tactical.flagCount)
         );
         lines.push_back(buffer);
+
+        snprintf(
+          buffer,
+          sizeof(buffer),
+          "Bootstrap 3D preview: %s active=%s markers=%lu terrain=%lu water=%lu roads=%lu elements=%lu starts=%lu source=layered terrain+water+team routes+scene objects",
+          (selectedMapPreview.tactical.ready && !selectedMapPreview.tactical.markers.empty()) ? "ready" : "not-ready",
+          (uiRootPreview.runtimeLoadingScreenReady &&
+            selectedMapPreview.tactical.ready &&
+            !selectedMapPreview.tactical.markers.empty()) ? "yes" : "no",
+          static_cast<unsigned long>(selectedMapPreview.tactical.markers.size()),
+          static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sampledTriangles),
+          static_cast<unsigned long>(selectedMapPreview.waterZoneTriangleCount),
+          static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.natureRoadSegmentCount),
+          static_cast<unsigned long>(selectedMapPreview.terrainElementPayloads.size()),
+          static_cast<unsigned long>(engineMapStartPreview.ready ? engineMapStartPreview.slots.size() : 0)
+        );
+        lines.push_back(buffer);
       }
 
       if (selectedMapPreview.settings.resolved)
@@ -21171,6 +35654,29 @@ std::vector<std::string> BuildOverlayLines(
           lines.push_back(buffer);
         }
 
+        if (selectedHeroPreview.sceneAsset.ready)
+        {
+          snprintf(
+            buffer,
+            sizeof(buffer),
+            "Hero scene asset: %s components=%lu animated=%lu skins=%lu anims=%lu payloads=%lu/%lu",
+            selectedHeroPreview.sceneAsset.sceneObjectResolved ? "ready" : "missing",
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.componentCount),
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animatedComponentCount),
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.skinPartCount),
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animationCount),
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.payloadResolvedCount),
+            static_cast<unsigned long>(selectedHeroPreview.sceneAsset.payloadReferenceCount)
+          );
+          lines.push_back(buffer);
+          if (!selectedHeroPreview.sceneAsset.dbid.empty())
+          {
+            lines.push_back(
+              "Hero scene DBID: " +
+              TruncateForOverlay(selectedHeroPreview.sceneAsset.dbid, 92));
+          }
+        }
+
         if (!selectedHeroPreview.featuredAbilities.empty())
         {
           std::vector<std::string> abilitySamples;
@@ -21203,6 +35709,10 @@ std::vector<std::string> BuildOverlayLines(
         for (size_t i = 0; i < selectedHeroPreview.warnings.size(); ++i)
         {
           lines.push_back("Hero DB warning: " + selectedHeroPreview.warnings[i]);
+        }
+        for (size_t i = 0; i < selectedHeroPreview.sceneAsset.warnings.size(); ++i)
+        {
+          lines.push_back("Hero scene warning: " + selectedHeroPreview.sceneAsset.warnings[i]);
         }
       }
     }
@@ -21684,8 +36194,12 @@ std::vector<std::string> BuildOverlayLines(
   snprintf(
     buffer,
     sizeof(buffer),
-    "Map catalog: total=%lu production=%lu pvp=%lu pve=%lu tutorial=%lu",
+    "Map catalog: total=%lu source=%s scanned=%lu custom=%lu/%lu production=%lu pvp=%lu pve=%lu tutorial=%lu",
     static_cast<unsigned long>(mapCatalog.descriptorCount),
+    mapCatalog.source.empty() ? "<none>" : mapCatalog.source.c_str(),
+    static_cast<unsigned long>(mapCatalog.scannedDescriptorCount),
+    static_cast<unsigned long>(mapCatalog.customListMatchedCount),
+    static_cast<unsigned long>(mapCatalog.customListCount),
     static_cast<unsigned long>(mapCatalog.productionDescriptorCount),
     static_cast<unsigned long>(mapCatalog.pvpCount),
     static_cast<unsigned long>(mapCatalog.pveCount),
@@ -21830,6 +36344,19 @@ std::vector<std::string> BuildOverlayLines(
       uiRootPreview.runtimeBootstrapScreenReady ? "yes" : "no",
       uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow.c_str(),
       static_cast<unsigned long>(uiRootPreview.runtimeBootstrapScreenEventCount)
+    );
+    lines.push_back(buffer);
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Visible menu runtime: %s selected=%lu/%lu action=%s activations=%lu path=%s",
+      uiRootPreview.runtimeVisibleMenuReady ? "yes" : "no",
+      static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuSelectedAction + 1),
+      static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuActionCount),
+      uiRootPreview.runtimeVisibleMenuAction.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuAction.c_str(),
+      static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuActivatedCount),
+      uiRootPreview.runtimeVisibleMenuPath.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuPath.c_str()
     );
     lines.push_back(buffer);
 
@@ -22348,6 +36875,16 @@ void SetOpenGlColor(unsigned char red, unsigned char green, unsigned char blue, 
   );
 }
 
+void ApplyOpenGl2DProjection(int width, int height)
+{
+  glViewport(0, 0, width, height);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(0.0, static_cast<double>(width), static_cast<double>(height), 0.0, -1.0, 1.0);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+}
+
 void DrawOpenGlRect(int x, int y, int width, int height)
 {
   glBegin(GL_QUADS);
@@ -22358,9 +36895,167 @@ void DrawOpenGlRect(int x, int y, int width, int height)
   glEnd();
 }
 
+wstring DecodeOpenGlOverlayText(const std::string& text)
+{
+  wstring result;
+  if (!text.empty())
+  {
+    const string nstlText(text.c_str());
+    NStr::UTF8ToUnicode(&result, nstlText);
+  }
+  return result;
+}
+
+LinuxWindowOverlay::OpenGlGlyph* LoadLinuxOverlayGlyph(LinuxWindowOverlay* overlay, unsigned long codepoint)
+{
+  if (!overlay || !overlay->freetypeReady || !overlay->ftFace)
+  {
+    return nullptr;
+  }
+
+  std::map<unsigned long, LinuxWindowOverlay::OpenGlGlyph>::iterator cached = overlay->fontGlyphs.find(codepoint);
+  if (cached != overlay->fontGlyphs.end())
+  {
+    return cached->second.loaded ? &cached->second : nullptr;
+  }
+
+  if (FT_Load_Char(overlay->ftFace, static_cast<FT_ULong>(codepoint), FT_LOAD_RENDER))
+  {
+    if (codepoint != static_cast<unsigned long>('?'))
+    {
+      return LoadLinuxOverlayGlyph(overlay, static_cast<unsigned long>('?'));
+    }
+
+    LinuxWindowOverlay::OpenGlGlyph failedGlyph;
+    overlay->fontGlyphs[codepoint] = failedGlyph;
+    return nullptr;
+  }
+
+  FT_GlyphSlot slot = overlay->ftFace->glyph;
+  LinuxWindowOverlay::OpenGlGlyph glyph;
+  glyph.width = static_cast<int>(slot->bitmap.width);
+  glyph.height = static_cast<int>(slot->bitmap.rows);
+  glyph.bearingX = slot->bitmap_left;
+  glyph.bearingY = slot->bitmap_top;
+  glyph.advance = static_cast<int>(slot->advance.x >> 6);
+  glyph.loaded = true;
+
+  if (glyph.width > 0 && glyph.height > 0 && slot->bitmap.buffer)
+  {
+    glGenTextures(1, &glyph.texture);
+    if (glyph.texture)
+    {
+      std::vector<unsigned char> tightBitmap;
+      const unsigned char* bitmapPixels = slot->bitmap.buffer;
+      if (slot->bitmap.pitch != glyph.width)
+      {
+        const int pitch = slot->bitmap.pitch;
+        const int absPitch = pitch < 0 ? -pitch : pitch;
+        tightBitmap.resize(static_cast<size_t>(glyph.width) * static_cast<size_t>(glyph.height));
+        for (int row = 0; row < glyph.height; ++row)
+        {
+          const int sourceRow = pitch < 0 ? glyph.height - row - 1 : row;
+          const unsigned char* source = slot->bitmap.buffer + static_cast<size_t>(sourceRow) * static_cast<size_t>(absPitch);
+          memcpy(&tightBitmap[static_cast<size_t>(row) * static_cast<size_t>(glyph.width)], source, static_cast<size_t>(glyph.width));
+        }
+        bitmapPixels = &tightBitmap[0];
+      }
+
+      glBindTexture(GL_TEXTURE_2D, glyph.texture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+      glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+      glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_ALPHA,
+        glyph.width,
+        glyph.height,
+        0,
+        GL_ALPHA,
+        GL_UNSIGNED_BYTE,
+        bitmapPixels
+      );
+      glBindTexture(GL_TEXTURE_2D, 0);
+    }
+  }
+
+  overlay->fontGlyphs[codepoint] = glyph;
+  return &overlay->fontGlyphs.find(codepoint)->second;
+}
+
+int EstimateOpenGlFreeTypeTextWidth(LinuxWindowOverlay* overlay, const std::string& text)
+{
+  const wstring decoded = DecodeOpenGlOverlayText(text);
+  int width = 0;
+  for (size_t i = 0; i < decoded.size(); ++i)
+  {
+    LinuxWindowOverlay::OpenGlGlyph* glyph =
+      LoadLinuxOverlayGlyph(overlay, static_cast<unsigned long>(decoded[i]));
+    if (glyph)
+    {
+      width += glyph->advance;
+    }
+  }
+  return width;
+}
+
+void DrawOpenGlFreeTypeText(LinuxWindowOverlay* overlay, int x, int y, const std::string& text)
+{
+  const wstring decoded = DecodeOpenGlOverlayText(text);
+  if (decoded.empty())
+  {
+    return;
+  }
+
+  glEnable(GL_TEXTURE_2D);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+  int penX = x;
+  for (size_t i = 0; i < decoded.size(); ++i)
+  {
+    LinuxWindowOverlay::OpenGlGlyph* glyph =
+      LoadLinuxOverlayGlyph(overlay, static_cast<unsigned long>(decoded[i]));
+    if (!glyph)
+    {
+      continue;
+    }
+
+    if (glyph->texture && glyph->width > 0 && glyph->height > 0)
+    {
+      const int glyphX = penX + glyph->bearingX;
+      const int glyphY = y - glyph->bearingY;
+      glBindTexture(GL_TEXTURE_2D, glyph->texture);
+      glBegin(GL_QUADS);
+      glTexCoord2f(0.0f, 0.0f); glVertex2i(glyphX, glyphY);
+      glTexCoord2f(1.0f, 0.0f); glVertex2i(glyphX + glyph->width, glyphY);
+      glTexCoord2f(1.0f, 1.0f); glVertex2i(glyphX + glyph->width, glyphY + glyph->height);
+      glTexCoord2f(0.0f, 1.0f); glVertex2i(glyphX, glyphY + glyph->height);
+      glEnd();
+    }
+    penX += glyph->advance;
+  }
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
+}
+
 void DrawOpenGlText(LinuxWindowOverlay* overlay, int x, int y, const std::string& text)
 {
-  if (!overlay->fontDisplayListsReady || text.empty())
+  if (!overlay || text.empty())
+  {
+    return;
+  }
+
+  if (overlay->freetypeReady)
+  {
+    DrawOpenGlFreeTypeText(overlay, x, y, text);
+    return;
+  }
+
+  if (!overlay->fontDisplayListsReady)
   {
     return;
   }
@@ -22368,6 +37063,3795 @@ void DrawOpenGlText(LinuxWindowOverlay* overlay, int x, int y, const std::string
   glRasterPos2i(x, y);
   glListBase(overlay->fontDisplayListBase);
   glCallLists(static_cast<GLsizei>(text.size()), GL_UNSIGNED_BYTE, text.c_str());
+}
+
+void DrawOpenGlBorderRect(int x, int y, int width, int height)
+{
+  if (width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  glBegin(GL_LINE_LOOP);
+  glVertex2i(x, y);
+  glVertex2i(x + width - 1, y);
+  glVertex2i(x + width - 1, y + height - 1);
+  glVertex2i(x, y + height - 1);
+  glEnd();
+}
+
+void DrawOpenGlTextureCover(
+  GLuint texture,
+  unsigned int textureWidth,
+  unsigned int textureHeight,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  if (!texture || textureWidth == 0 || textureHeight == 0 ||
+      width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  float u0 = 0.0f;
+  float u1 = 1.0f;
+  float v0 = 0.0f;
+  float v1 = 1.0f;
+  const float sourceAspect =
+    static_cast<float>(textureWidth) / static_cast<float>(textureHeight);
+  const float targetAspect = static_cast<float>(width) / static_cast<float>(height);
+  if (targetAspect > sourceAspect)
+  {
+    const float visibleHeight = sourceAspect / targetAspect;
+    v0 = (1.0f - visibleHeight) * 0.5f;
+    v1 = 1.0f - v0;
+  }
+  else if (targetAspect < sourceAspect)
+  {
+    const float visibleWidth = targetAspect / sourceAspect;
+    u0 = (1.0f - visibleWidth) * 0.5f;
+    u1 = 1.0f - u0;
+  }
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  SetOpenGlColor(255, 255, 255);
+  glBegin(GL_QUADS);
+  glTexCoord2f(u0, v0); glVertex2i(x, y);
+  glTexCoord2f(u1, v0); glVertex2i(x + width, y);
+  glTexCoord2f(u1, v1); glVertex2i(x + width, y + height);
+  glTexCoord2f(u0, v1); glVertex2i(x, y + height);
+  glEnd();
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
+}
+
+void DrawOpenGlTextureCover(LinuxWindowOverlay* overlay, int x, int y, int width, int height)
+{
+  if (!overlay)
+  {
+    return;
+  }
+
+  DrawOpenGlTextureCover(
+    overlay->artworkTexture,
+    overlay->artworkWidth,
+    overlay->artworkHeight,
+    x,
+    y,
+    width,
+    height
+  );
+}
+
+void DrawOpenGlTextureStretch(
+  const LinuxWindowOverlay::OpenGlTexture& texture,
+  int x,
+  int y,
+  int width,
+  int height,
+  unsigned char alpha = 255
+)
+{
+  if (!texture.texture || texture.width == 0 || texture.height == 0 || width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture.texture);
+  SetOpenGlColor(255, 255, 255, alpha);
+  glBegin(GL_QUADS);
+  glTexCoord2f(0.0f, 0.0f); glVertex2i(x, y);
+  glTexCoord2f(1.0f, 0.0f); glVertex2i(x + width, y);
+  glTexCoord2f(1.0f, 1.0f); glVertex2i(x + width, y + height);
+  glTexCoord2f(0.0f, 1.0f); glVertex2i(x, y + height);
+  glEnd();
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
+}
+
+bool IsLinuxBootstrap3DPreviewReady(const LinuxSelectedMapPreview* selectedMapPreview)
+{
+  return selectedMapPreview &&
+    selectedMapPreview->tactical.ready &&
+    !selectedMapPreview->tactical.markers.empty();
+}
+
+bool IsLinuxBootstrap3DPreviewActive(
+  const LinuxBootstrapScreenRuntime* runtime,
+  const LinuxSelectedMapPreview* selectedMapPreview
+)
+{
+  return IsLinuxBootstrapLoadingScreenActive(runtime) &&
+    IsLinuxBootstrap3DPreviewReady(selectedMapPreview);
+}
+
+void ResolveLinuxBootstrap3DMarkerStyle(
+  const LinuxTacticalMapMarker& marker,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue,
+  float* halfSize,
+  float* height
+)
+{
+  unsigned char r = 206;
+  unsigned char g = 214;
+  unsigned char b = 220;
+  float size = 0.9f;
+  float h = 2.8f;
+
+  if (marker.team == 1)
+  {
+    r = 75;
+    g = 148;
+    b = 232;
+  }
+  else if (marker.team == 2)
+  {
+    r = 224;
+    g = 83;
+    b = 73;
+  }
+
+  if (marker.kind == "tower")
+  {
+    size = 1.2f;
+    h = 6.0f;
+  }
+  else if (marker.kind == "main-building")
+  {
+    size = 2.2f;
+    h = 8.0f;
+  }
+  else if (marker.kind == "hero-spawn")
+  {
+    size = 1.4f;
+    h = 2.0f;
+  }
+  else if (marker.kind == "lane-spawner")
+  {
+    r = 92;
+    g = 184;
+    b = 120;
+    size = 1.1f;
+    h = 3.6f;
+  }
+  else if (marker.kind == "neutral-spawner")
+  {
+    r = 135;
+    g = 172;
+    b = 91;
+    size = 1.0f;
+    h = 3.0f;
+  }
+  else if (marker.kind == "boss")
+  {
+    r = 210;
+    g = 158;
+    b = 73;
+    size = 1.9f;
+    h = 6.6f;
+  }
+  else if (marker.kind == "shop")
+  {
+    r = 212;
+    g = 181;
+    b = 88;
+    size = 1.2f;
+    h = 3.2f;
+  }
+  else if (marker.kind == "fountain")
+  {
+    r = 95;
+    g = 201;
+    b = 221;
+    size = 1.4f;
+    h = 3.8f;
+  }
+  else if (marker.kind == "glyph")
+  {
+    r = 185;
+    g = 126;
+    b = 231;
+    size = 0.9f;
+    h = 2.4f;
+  }
+  else if (marker.kind == "minigame")
+  {
+    r = 184;
+    g = 134;
+    b = 91;
+    size = 1.5f;
+    h = 4.2f;
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+  if (halfSize) *halfSize = size;
+  if (height) *height = h;
+}
+
+void DrawLinuxBootstrap3DBox(
+  float x,
+  float z,
+  float halfSize,
+  float height,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue
+)
+{
+  const float y0 = 0.0f;
+  const float y1 = height;
+  const float x0 = x - halfSize;
+  const float x1 = x + halfSize;
+  const float z0 = z - halfSize;
+  const float z1 = z + halfSize;
+
+  SetOpenGlColor(red, green, blue, 230);
+  glBegin(GL_QUADS);
+  glVertex3f(x0, y1, z0); glVertex3f(x1, y1, z0); glVertex3f(x1, y1, z1); glVertex3f(x0, y1, z1);
+  glVertex3f(x0, y0, z0); glVertex3f(x1, y0, z0); glVertex3f(x1, y1, z0); glVertex3f(x0, y1, z0);
+  glVertex3f(x1, y0, z0); glVertex3f(x1, y0, z1); glVertex3f(x1, y1, z1); glVertex3f(x1, y1, z0);
+  glVertex3f(x1, y0, z1); glVertex3f(x0, y0, z1); glVertex3f(x0, y1, z1); glVertex3f(x1, y1, z1);
+  glVertex3f(x0, y0, z1); glVertex3f(x0, y0, z0); glVertex3f(x0, y1, z0); glVertex3f(x0, y1, z1);
+  glEnd();
+
+  SetOpenGlColor(8, 13, 18, 190);
+  glBegin(GL_LINE_LOOP);
+  glVertex3f(x0, y1, z0); glVertex3f(x1, y1, z0); glVertex3f(x1, y1, z1); glVertex3f(x0, y1, z1);
+  glEnd();
+}
+
+unsigned char ScaleOpenGlColorByte(unsigned char value, float scale)
+{
+  const int scaled = static_cast<int>(static_cast<float>(value) * scale + 0.5f);
+  return static_cast<unsigned char>(std::max(0, std::min(255, scaled)));
+}
+
+unsigned char BlendOpenGlColorByte(unsigned char first, unsigned char second, float t)
+{
+  const float clamped = std::max(0.0f, std::min(1.0f, t));
+  const int blended = static_cast<int>(
+    static_cast<float>(first) +
+    (static_cast<float>(second) - static_cast<float>(first)) * clamped +
+    0.5f);
+  return static_cast<unsigned char>(std::max(0, std::min(255, blended)));
+}
+
+bool ResolveLinuxMapTerrainLayerColor(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  size_t sampleX,
+  size_t sampleY,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  if (!terrain.layerMaskReady ||
+      terrain.sampledLayerIds.size() != terrain.sampledWidth * terrain.sampledHeight ||
+      sampleX >= terrain.sampledWidth ||
+      sampleY >= terrain.sampledHeight)
+  {
+    return false;
+  }
+
+  const unsigned char layerId = terrain.sampledLayerIds[sampleY * terrain.sampledWidth + sampleX];
+  if (layerId < 2)
+  {
+    return false;
+  }
+
+  const size_t layerIndex = static_cast<size_t>(layerId - 2);
+  if (layerIndex >= terrain.terrainLayers.size())
+  {
+    return false;
+  }
+
+  const LinuxMapTerrainLayerPreview& layer = terrain.terrainLayers[layerIndex];
+  if (red) *red = layer.red;
+  if (green) *green = layer.green;
+  if (blue) *blue = layer.blue;
+  return true;
+}
+
+void ApplyLinuxMapTerrainHeightShade(
+  float height,
+  float minHeight,
+  float maxHeight,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  const float range = std::max(0.001f, maxHeight - minHeight);
+  const float t = std::max(0.0f, std::min(1.0f, (height - minHeight) / range));
+  const float shade = 0.78f + t * 0.34f;
+  if (red)
+  {
+    *red = static_cast<unsigned char>(
+      std::max(0.0f, std::min(255.0f, static_cast<float>(*red) * shade)));
+  }
+  if (green)
+  {
+    *green = static_cast<unsigned char>(
+      std::max(0.0f, std::min(255.0f, static_cast<float>(*green) * shade)));
+  }
+  if (blue)
+  {
+    *blue = static_cast<unsigned char>(
+      std::max(0.0f, std::min(255.0f, static_cast<float>(*blue) * shade)));
+  }
+}
+
+void ResolveLinuxMapTerrainColor(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  size_t sampleX,
+  size_t sampleY,
+  float height,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  if (ResolveLinuxMapTerrainLayerColor(terrain, sampleX, sampleY, red, green, blue))
+  {
+    ApplyLinuxMapTerrainHeightShade(
+      height,
+      terrain.minHeight,
+      terrain.maxHeight,
+      red,
+      green,
+      blue);
+    return;
+  }
+
+  const float range = std::max(0.001f, terrain.maxHeight - terrain.minHeight);
+  const float t = std::max(0.0f, std::min(1.0f, (height - terrain.minHeight) / range));
+  unsigned char low[3] = {42, 76, 91};
+  unsigned char mid[3] = {75, 116, 82};
+  unsigned char high[3] = {158, 148, 111};
+  if (t < 0.55f)
+  {
+    const float local = t / 0.55f;
+    if (red) *red = BlendOpenGlColorByte(low[0], mid[0], local);
+    if (green) *green = BlendOpenGlColorByte(low[1], mid[1], local);
+    if (blue) *blue = BlendOpenGlColorByte(low[2], mid[2], local);
+    return;
+  }
+
+  const float local = (t - 0.55f) / 0.45f;
+  if (red) *red = BlendOpenGlColorByte(mid[0], high[0], local);
+  if (green) *green = BlendOpenGlColorByte(mid[1], high[1], local);
+  if (blue) *blue = BlendOpenGlColorByte(mid[2], high[2], local);
+}
+
+void EmitLinuxMapTerrainVertex(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  size_t sampleX,
+  size_t sampleY,
+  float centerX,
+  float centerY,
+  float scale
+)
+{
+  if (terrain.sampledWidth < 2 ||
+      terrain.sampledHeight < 2 ||
+      sampleX >= terrain.sampledWidth ||
+      sampleY >= terrain.sampledHeight)
+  {
+    return;
+  }
+
+  const size_t sampleIndex = sampleY * terrain.sampledWidth + sampleX;
+  if (sampleIndex >= terrain.sampledHeights.size())
+  {
+    return;
+  }
+
+  const float worldWidth = terrain.worldWidth > 0.0f ?
+    terrain.worldWidth :
+    static_cast<float>(terrain.sourceWidth);
+  const float worldHeight = terrain.worldHeight > 0.0f ?
+    terrain.worldHeight :
+    static_cast<float>(terrain.sourceHeight);
+  const float worldX =
+    static_cast<float>(sampleX) * worldWidth /
+    static_cast<float>(terrain.sampledWidth - 1);
+  const float worldY =
+    static_cast<float>(sampleY) * worldHeight /
+    static_cast<float>(terrain.sampledHeight - 1);
+  const float height = terrain.sampledHeights[sampleIndex];
+
+  unsigned char red = 0;
+  unsigned char green = 0;
+  unsigned char blue = 0;
+  ResolveLinuxMapTerrainColor(
+    terrain,
+    sampleX,
+    sampleY,
+    height,
+    &red,
+    &green,
+    &blue);
+
+  SetOpenGlColor(red, green, blue, 154);
+  glVertex3f(
+    (worldX - centerX) * scale,
+    0.04f + height * scale,
+    (worldY - centerY) * scale);
+}
+
+bool DrawLinuxMapTerrainHeightmapPreview(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnVertices,
+  size_t* drawnTriangles
+)
+{
+  if (drawnVertices)
+  {
+    *drawnVertices = 0;
+  }
+  if (drawnTriangles)
+  {
+    *drawnTriangles = 0;
+  }
+  if (!terrain.ready ||
+      terrain.sampledWidth < 2 ||
+      terrain.sampledHeight < 2 ||
+      terrain.sampledHeights.size() != terrain.sampledWidth * terrain.sampledHeight)
+  {
+    return false;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glBegin(GL_TRIANGLES);
+  for (size_t y = 0; y + 1 < terrain.sampledHeight; ++y)
+  {
+    for (size_t x = 0; x + 1 < terrain.sampledWidth; ++x)
+    {
+      EmitLinuxMapTerrainVertex(terrain, x, y, centerX, centerY, scale);
+      EmitLinuxMapTerrainVertex(terrain, x + 1, y, centerX, centerY, scale);
+      EmitLinuxMapTerrainVertex(terrain, x, y + 1, centerX, centerY, scale);
+
+      EmitLinuxMapTerrainVertex(terrain, x + 1, y, centerX, centerY, scale);
+      EmitLinuxMapTerrainVertex(terrain, x + 1, y + 1, centerX, centerY, scale);
+      EmitLinuxMapTerrainVertex(terrain, x, y + 1, centerX, centerY, scale);
+    }
+  }
+  glEnd();
+
+  glEnable(GL_DEPTH_TEST);
+  if (drawnVertices)
+  {
+    *drawnVertices = terrain.sampledVertices;
+  }
+  if (drawnTriangles)
+  {
+    *drawnTriangles = terrain.sampledTriangles;
+  }
+  return terrain.sampledTriangles > 0;
+}
+
+float SampleLinuxMapTerrainHeightAtWorld(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  float worldX,
+  float worldY
+)
+{
+  if (!terrain.ready ||
+      terrain.sampledWidth < 2 ||
+      terrain.sampledHeight < 2 ||
+      terrain.sampledHeights.size() != terrain.sampledWidth * terrain.sampledHeight)
+  {
+    return 0.0f;
+  }
+
+  const float worldWidth = terrain.worldWidth > 0.0f ?
+    terrain.worldWidth :
+    static_cast<float>(terrain.sourceWidth);
+  const float worldHeight = terrain.worldHeight > 0.0f ?
+    terrain.worldHeight :
+    static_cast<float>(terrain.sourceHeight);
+  if (worldWidth <= 0.0f || worldHeight <= 0.0f)
+  {
+    return 0.0f;
+  }
+
+  const float sampleX =
+    std::max(0.0f, std::min(1.0f, worldX / worldWidth)) *
+    static_cast<float>(terrain.sampledWidth - 1);
+  const float sampleY =
+    std::max(0.0f, std::min(1.0f, worldY / worldHeight)) *
+    static_cast<float>(terrain.sampledHeight - 1);
+  const size_t x0 = static_cast<size_t>(std::floor(sampleX));
+  const size_t y0 = static_cast<size_t>(std::floor(sampleY));
+  const size_t x1 = std::min(terrain.sampledWidth - 1, x0 + 1);
+  const size_t y1 = std::min(terrain.sampledHeight - 1, y0 + 1);
+  const float tx = sampleX - static_cast<float>(x0);
+  const float ty = sampleY - static_cast<float>(y0);
+
+  const float h00 = terrain.sampledHeights[y0 * terrain.sampledWidth + x0];
+  const float h10 = terrain.sampledHeights[y0 * terrain.sampledWidth + x1];
+  const float h01 = terrain.sampledHeights[y1 * terrain.sampledWidth + x0];
+  const float h11 = terrain.sampledHeights[y1 * terrain.sampledWidth + x1];
+  const float h0 = h00 + (h10 - h00) * tx;
+  const float h1 = h01 + (h11 - h01) * tx;
+  return h0 + (h1 - h0) * ty;
+}
+
+float ResolveLinuxMapWaterZonePreviewHeight(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const LinuxMapWaterZonePreview& waterZone
+)
+{
+  if (waterZone.points.empty())
+  {
+    return 0.0f;
+  }
+
+  float heightSum = 0.0f;
+  for (size_t pointIndex = 0; pointIndex < waterZone.points.size(); ++pointIndex)
+  {
+    heightSum += SampleLinuxMapTerrainHeightAtWorld(
+      terrain,
+      waterZone.points[pointIndex].x,
+      waterZone.points[pointIndex].y);
+  }
+  return heightSum / static_cast<float>(waterZone.points.size());
+}
+
+void EmitLinuxMapWaterZoneVertex(
+  const CVec2& point,
+  float waterHeight,
+  float centerX,
+  float centerY,
+  float scale
+)
+{
+  glVertex3f(
+    (point.x - centerX) * scale,
+    0.22f + waterHeight * scale,
+    (point.y - centerY) * scale);
+}
+
+size_t DrawLinuxMapWaterZonePreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnZones
+)
+{
+  if (drawnZones)
+  {
+    *drawnZones = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->waterZones.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t zoneCount = 0;
+  size_t triangleCount = 0;
+  for (size_t zoneIndex = 0; zoneIndex < selectedMapPreview->waterZones.size(); ++zoneIndex)
+  {
+    const LinuxMapWaterZonePreview& waterZone = selectedMapPreview->waterZones[zoneIndex];
+    if (waterZone.points.size() < 3)
+    {
+      continue;
+    }
+
+    const float waterHeight =
+      ResolveLinuxMapWaterZonePreviewHeight(selectedMapPreview->terrainHeightmap, waterZone);
+
+    SetOpenGlColor(58, 154, 208, 112);
+    glBegin(GL_TRIANGLES);
+    for (size_t pointIndex = 1; pointIndex + 1 < waterZone.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapWaterZoneVertex(waterZone.points[0], waterHeight, centerX, centerY, scale);
+      EmitLinuxMapWaterZoneVertex(waterZone.points[pointIndex], waterHeight, centerX, centerY, scale);
+      EmitLinuxMapWaterZoneVertex(waterZone.points[pointIndex + 1], waterHeight, centerX, centerY, scale);
+      ++triangleCount;
+    }
+    glEnd();
+
+    SetOpenGlColor(124, 211, 236, 210);
+    glLineWidth(1.6f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t pointIndex = 0; pointIndex < waterZone.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapWaterZoneVertex(waterZone.points[pointIndex], waterHeight, centerX, centerY, scale);
+    }
+    glEnd();
+    ++zoneCount;
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnZones)
+  {
+    *drawnZones = zoneCount;
+  }
+  return triangleCount;
+}
+
+void ResolveLinuxMapNatureRoadColor(
+  const LinuxMapNatureRoadPreview& road,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue,
+  unsigned char* alpha
+)
+{
+  static const unsigned char attackPalette[][3] =
+  {
+    {88, 151, 219},
+    {219, 180, 83},
+    {215, 93, 83}
+  };
+  static const unsigned char logicPalette[][3] =
+  {
+    {60, 205, 141},
+    {77, 189, 206},
+    {159, 188, 88}
+  };
+  const unsigned char (*palette)[3] = road.attackRoad ? attackPalette : logicPalette;
+  const size_t paletteSize = 3;
+  const size_t paletteIndex =
+    static_cast<size_t>(std::max(0, road.roadIndex)) % paletteSize;
+
+  if (red) *red = palette[paletteIndex][0];
+  if (green) *green = palette[paletteIndex][1];
+  if (blue) *blue = palette[paletteIndex][2];
+  if (alpha) *alpha = road.attackRoad ? 218 : 142;
+}
+
+size_t DrawLinuxMapTerrainRoadPreview(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnRoads
+)
+{
+  if (drawnRoads)
+  {
+    *drawnRoads = 0;
+  }
+  if (terrain.natureRoads.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t roadCount = 0;
+  size_t segmentCount = 0;
+  for (size_t roadIndex = 0; roadIndex < terrain.natureRoads.size(); ++roadIndex)
+  {
+    const LinuxMapNatureRoadPreview& road = terrain.natureRoads[roadIndex];
+    if (road.nodes.size() < 2)
+    {
+      continue;
+    }
+
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    unsigned char alpha = 0;
+    ResolveLinuxMapNatureRoadColor(road, &red, &green, &blue, &alpha);
+    SetOpenGlColor(red, green, blue, alpha);
+    const float lineWidth = std::max(1.5f, std::min(7.5f, road.width * scale * 0.95f));
+    glLineWidth(lineWidth);
+    glBegin(GL_LINE_STRIP);
+    for (size_t nodeIndex = 0; nodeIndex < road.nodes.size(); ++nodeIndex)
+    {
+      const CVec2& node = road.nodes[nodeIndex];
+      const float height = SampleLinuxMapTerrainHeightAtWorld(terrain, node.x, node.y);
+      glVertex3f(
+        (node.x - centerX) * scale,
+        0.55f + height * scale,
+        (node.y - centerY) * scale);
+    }
+    glEnd();
+
+    ++roadCount;
+    segmentCount += road.nodes.size() - 1;
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnRoads)
+  {
+    *drawnRoads = roadCount;
+  }
+  return segmentCount;
+}
+
+void EmitLinuxMapGuideVertex(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const CVec2& point,
+  float centerX,
+  float centerY,
+  float scale,
+  float verticalOffset
+)
+{
+  const float height =
+    SampleLinuxMapTerrainHeightAtWorld(terrain, point.x, point.y);
+  glVertex3f(
+    (point.x - centerX) * scale,
+    verticalOffset + height * scale,
+    (point.y - centerY) * scale);
+}
+
+void EmitLinuxMapCameraSplineGuideVertex(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const CVec3& point,
+  float centerX,
+  float centerY,
+  float scale
+)
+{
+  const float terrainHeight =
+    SampleLinuxMapTerrainHeightAtWorld(terrain, point.x, point.y);
+  const float height = std::max(point.z, terrainHeight + 2.0f);
+  glVertex3f(
+    (point.x - centerX) * scale,
+    0.92f + height * scale,
+    (point.y - centerY) * scale);
+}
+
+std::string ResolveLinuxTeamRouteLaneKey(const LinuxTacticalMapMarker& marker)
+{
+  std::string label = ToAsciiLower(marker.scriptName.empty() ? marker.label : marker.scriptName);
+  while (!label.empty() && (label[0] == '_' || label[0] == '-' || label[0] == ' '))
+  {
+    label.erase(label.begin());
+  }
+  if (!label.empty() && (label[0] == 'a' || label[0] == 'b'))
+  {
+    label.erase(label.begin());
+  }
+  while (!label.empty() && (label[0] == '_' || label[0] == '-' || label[0] == ' '))
+  {
+    label.erase(label.begin());
+  }
+
+  if (label.find("down") != std::string::npos ||
+      label.find("bot") != std::string::npos ||
+      label.find("bottom") != std::string::npos)
+  {
+    return "down";
+  }
+  if (label.find("up") != std::string::npos ||
+      label.find("top") != std::string::npos)
+  {
+    return "up";
+  }
+  if (label.empty() ||
+      label.find("mid") != std::string::npos ||
+      label.find("middle") != std::string::npos)
+  {
+    return "mid";
+  }
+  return label;
+}
+
+bool IsLinuxTeamRouteMarkerKind(
+  const LinuxTacticalMapMarker& marker,
+  const char* primaryKind,
+  const char* secondaryKind,
+  const char* tertiaryKind,
+  const char* quaternaryKind
+)
+{
+  return
+    (primaryKind && marker.kind == primaryKind) ||
+    (secondaryKind && marker.kind == secondaryKind) ||
+    (tertiaryKind && marker.kind == tertiaryKind) ||
+    (quaternaryKind && marker.kind == quaternaryKind);
+}
+
+const LinuxTacticalMapMarker* FindNearestLinuxTeamRouteMarker(
+  const LinuxTacticalMapPreview& tactical,
+  int team,
+  float worldX,
+  float worldY,
+  const char* primaryKind,
+  const char* secondaryKind = 0,
+  const char* tertiaryKind = 0,
+  const char* quaternaryKind = 0,
+  bool allowNeutralTeam = false
+)
+{
+  const LinuxTacticalMapMarker* bestMarker = 0;
+  float bestDistanceSq = 0.0f;
+  for (size_t pass = 0; pass < (allowNeutralTeam ? 2u : 1u); ++pass)
+  {
+    const int expectedTeam = pass == 0 ? team : 0;
+    for (size_t markerIndex = 0; markerIndex < tactical.markers.size(); ++markerIndex)
+    {
+      const LinuxTacticalMapMarker& marker = tactical.markers[markerIndex];
+      if (marker.team != expectedTeam ||
+          !IsLinuxTeamRouteMarkerKind(
+            marker,
+            primaryKind,
+            secondaryKind,
+            tertiaryKind,
+            quaternaryKind))
+      {
+        continue;
+      }
+
+      const float dx = marker.translateX - worldX;
+      const float dy = marker.translateY - worldY;
+      const float distanceSq = dx * dx + dy * dy;
+      if (!bestMarker || distanceSq < bestDistanceSq)
+      {
+        bestMarker = &marker;
+        bestDistanceSq = distanceSq;
+      }
+    }
+    if (bestMarker)
+    {
+      return bestMarker;
+    }
+  }
+  return bestMarker;
+}
+
+void ResolveLinuxTeamRouteColor(
+  int team,
+  bool laneConnection,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue,
+  unsigned char* alpha
+)
+{
+  unsigned char r = 226;
+  unsigned char g = 190;
+  unsigned char b = 96;
+  unsigned char a = laneConnection ? 190 : 138;
+  if (!laneConnection && team == 1)
+  {
+    r = 92;
+    g = 151;
+    b = 234;
+  }
+  else if (!laneConnection && team == 2)
+  {
+    r = 226;
+    g = 96;
+    b = 86;
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+  if (alpha) *alpha = a;
+}
+
+size_t DrawLinuxMapTeamRouteLine(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const CVec2& start,
+  const CVec2& end,
+  float centerX,
+  float centerY,
+  float scale,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  unsigned char alpha,
+  float lineWidth,
+  float verticalOffset
+)
+{
+  const float dx = end.x - start.x;
+  const float dy = end.y - start.y;
+  const float distance = sqrtf(dx * dx + dy * dy);
+  if (distance < 1.0f)
+  {
+    return 0;
+  }
+
+  const size_t segmentCount =
+    static_cast<size_t>(std::max(6.0f, std::min(18.0f, distance / 42.0f)));
+  SetOpenGlColor(red, green, blue, alpha);
+  glLineWidth(lineWidth);
+  glBegin(GL_LINE_STRIP);
+  for (size_t segment = 0; segment <= segmentCount; ++segment)
+  {
+    const float t =
+      static_cast<float>(segment) /
+      static_cast<float>(segmentCount);
+    const CVec2 point(
+      start.x + dx * t,
+      start.y + dy * t);
+    EmitLinuxMapGuideVertex(
+      terrain,
+      point,
+      centerX,
+      centerY,
+      scale,
+      verticalOffset);
+  }
+  glEnd();
+  return segmentCount;
+}
+
+size_t DrawLinuxMapTeamRoutePreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnRouteLines,
+  size_t* drawnStartRouteLines,
+  size_t* drawnLaneRouteLines
+)
+{
+  if (drawnRouteLines) *drawnRouteLines = 0;
+  if (drawnStartRouteLines) *drawnStartRouteLines = 0;
+  if (drawnLaneRouteLines) *drawnLaneRouteLines = 0;
+  if (!selectedMapPreview || !selectedMapPreview->tactical.ready)
+  {
+    return 0;
+  }
+
+  std::vector<const LinuxTacticalMapMarker*> teamALanes;
+  std::vector<const LinuxTacticalMapMarker*> teamBLanes;
+  for (size_t markerIndex = 0; markerIndex < selectedMapPreview->tactical.markers.size(); ++markerIndex)
+  {
+    const LinuxTacticalMapMarker& marker = selectedMapPreview->tactical.markers[markerIndex];
+    if (marker.kind != "lane-spawner")
+    {
+      continue;
+    }
+    if (marker.team == 1)
+    {
+      teamALanes.push_back(&marker);
+    }
+    else if (marker.team == 2)
+    {
+      teamBLanes.push_back(&marker);
+    }
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t routeLines = 0;
+  size_t startRouteLines = 0;
+  size_t laneRouteLines = 0;
+  size_t routeSegments = 0;
+
+  std::vector<bool> usedTeamBLanes(teamBLanes.size(), false);
+  for (size_t laneAIndex = 0; laneAIndex < teamALanes.size(); ++laneAIndex)
+  {
+    const LinuxTacticalMapMarker* laneA = teamALanes[laneAIndex];
+    if (!laneA)
+    {
+      continue;
+    }
+
+    const std::string laneKey = ResolveLinuxTeamRouteLaneKey(*laneA);
+    size_t bestBIndex = static_cast<size_t>(-1);
+    float bestDistanceSq = 0.0f;
+    for (size_t laneBIndex = 0; laneBIndex < teamBLanes.size(); ++laneBIndex)
+    {
+      if (usedTeamBLanes[laneBIndex] || !teamBLanes[laneBIndex])
+      {
+        continue;
+      }
+
+      const LinuxTacticalMapMarker& laneB = *teamBLanes[laneBIndex];
+      const bool sameLaneKey = ResolveLinuxTeamRouteLaneKey(laneB) == laneKey;
+      const float dx = laneB.translateX - laneA->translateX;
+      const float dy = laneB.translateY - laneA->translateY;
+      const float distanceSq = dx * dx + dy * dy;
+      if (sameLaneKey)
+      {
+        bestBIndex = laneBIndex;
+        break;
+      }
+      if (bestBIndex == static_cast<size_t>(-1) || distanceSq < bestDistanceSq)
+      {
+        bestBIndex = laneBIndex;
+        bestDistanceSq = distanceSq;
+      }
+    }
+
+    if (bestBIndex == static_cast<size_t>(-1))
+    {
+      continue;
+    }
+
+    usedTeamBLanes[bestBIndex] = true;
+    const LinuxTacticalMapMarker* laneB = teamBLanes[bestBIndex];
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    unsigned char alpha = 0;
+    ResolveLinuxTeamRouteColor(0, true, &red, &green, &blue, &alpha);
+    const size_t segments = DrawLinuxMapTeamRouteLine(
+      selectedMapPreview->terrainHeightmap,
+      CVec2(laneA->translateX, laneA->translateY),
+      CVec2(laneB->translateX, laneB->translateY),
+      centerX,
+      centerY,
+      scale,
+      red,
+      green,
+      blue,
+      alpha,
+      2.8f,
+      1.22f);
+    if (segments > 0)
+    {
+      ++routeLines;
+      ++laneRouteLines;
+      routeSegments += segments;
+    }
+  }
+
+  if (engineMapStartPreview && engineMapStartPreview->ready)
+  {
+    for (size_t slotIndex = 0; slotIndex < engineMapStartPreview->slots.size(); ++slotIndex)
+    {
+      const LinuxEngineMapStartSlot& slot = engineMapStartPreview->slots[slotIndex];
+      if (!slot.filled || (slot.team != 1 && slot.team != 2))
+      {
+        continue;
+      }
+
+      const LinuxTacticalMapMarker* destination = FindNearestLinuxTeamRouteMarker(
+        selectedMapPreview->tactical,
+        slot.team,
+        slot.translateX,
+        slot.translateY,
+        "lane-spawner");
+      if (!destination)
+      {
+        destination = FindNearestLinuxTeamRouteMarker(
+          selectedMapPreview->tactical,
+          slot.team,
+          slot.translateX,
+          slot.translateY,
+          "main-building",
+          "fountain",
+          "shop",
+          "tower");
+      }
+      if (!destination)
+      {
+        destination = FindNearestLinuxTeamRouteMarker(
+          selectedMapPreview->tactical,
+          slot.team,
+          slot.translateX,
+          slot.translateY,
+          "lane-spawner",
+          0,
+          0,
+          0,
+          true);
+      }
+      if (!destination)
+      {
+        continue;
+      }
+
+      unsigned char red = 0;
+      unsigned char green = 0;
+      unsigned char blue = 0;
+      unsigned char alpha = 0;
+      ResolveLinuxTeamRouteColor(slot.team, false, &red, &green, &blue, &alpha);
+      const size_t segments = DrawLinuxMapTeamRouteLine(
+        selectedMapPreview->terrainHeightmap,
+        CVec2(slot.translateX, slot.translateY),
+        CVec2(destination->translateX, destination->translateY),
+        centerX,
+        centerY,
+        scale,
+        red,
+        green,
+        blue,
+        slot.human ? static_cast<unsigned char>(190) : alpha,
+        slot.human ? 2.15f : 1.35f,
+        slot.human ? 1.48f : 1.10f);
+      if (segments > 0)
+      {
+        ++routeLines;
+        ++startRouteLines;
+        routeSegments += segments;
+      }
+    }
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+
+  if (drawnRouteLines) *drawnRouteLines = routeLines;
+  if (drawnStartRouteLines) *drawnStartRouteLines = startRouteLines;
+  if (drawnLaneRouteLines) *drawnLaneRouteLines = laneRouteLines;
+  return routeSegments;
+}
+
+size_t DrawLinuxMapScriptAreaPreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnAreas
+)
+{
+  if (drawnAreas)
+  {
+    *drawnAreas = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->scriptAreas.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t areaCount = 0;
+  size_t segmentCount = 0;
+  for (size_t areaIndex = 0; areaIndex < selectedMapPreview->scriptAreas.size(); ++areaIndex)
+  {
+    const LinuxMapScriptAreaPreview& area = selectedMapPreview->scriptAreas[areaIndex];
+    if (area.radius <= 0.0f)
+    {
+      continue;
+    }
+
+    SetOpenGlColor(183, 117, 222, 48);
+    glBegin(GL_TRIANGLE_FAN);
+    EmitLinuxMapGuideVertex(
+      selectedMapPreview->terrainHeightmap,
+      area.position,
+      centerX,
+      centerY,
+      scale,
+      0.68f);
+    for (size_t segment = 0; segment <= kLinuxMapScriptAreaCircleSegments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(kLinuxMapScriptAreaCircleSegments);
+      const CVec2 point(
+        area.position.x + cosf(angle) * area.radius,
+        area.position.y + sinf(angle) * area.radius);
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        point,
+        centerX,
+        centerY,
+        scale,
+        0.68f);
+    }
+    glEnd();
+
+    SetOpenGlColor(224, 174, 246, 205);
+    glLineWidth(1.45f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t segment = 0; segment < kLinuxMapScriptAreaCircleSegments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(kLinuxMapScriptAreaCircleSegments);
+      const CVec2 point(
+        area.position.x + cosf(angle) * area.radius,
+        area.position.y + sinf(angle) * area.radius);
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        point,
+        centerX,
+        centerY,
+        scale,
+        0.72f);
+    }
+    glEnd();
+
+    ++areaCount;
+    segmentCount += kLinuxMapScriptAreaCircleSegments;
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnAreas)
+  {
+    *drawnAreas = areaCount;
+  }
+  return segmentCount;
+}
+
+size_t DrawLinuxMapScriptPathPreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnPaths
+)
+{
+  if (drawnPaths)
+  {
+    *drawnPaths = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->scriptPaths.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t pathCount = 0;
+  size_t segmentCount = 0;
+  SetOpenGlColor(244, 191, 77, 220);
+  glLineWidth(2.15f);
+  for (size_t pathIndex = 0; pathIndex < selectedMapPreview->scriptPaths.size(); ++pathIndex)
+  {
+    const LinuxMapScriptPathPreview& path = selectedMapPreview->scriptPaths[pathIndex];
+    if (path.points.size() < 2)
+    {
+      continue;
+    }
+
+    glBegin(GL_LINE_STRIP);
+    for (size_t pointIndex = 0; pointIndex < path.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        path.points[pointIndex],
+        centerX,
+        centerY,
+        scale,
+        0.82f);
+    }
+    glEnd();
+
+    ++pathCount;
+    segmentCount += path.points.size() - 1;
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnPaths)
+  {
+    *drawnPaths = pathCount;
+  }
+  return segmentCount;
+}
+
+size_t DrawLinuxMapCameraSplinePreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnSplines
+)
+{
+  if (drawnSplines)
+  {
+    *drawnSplines = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->cameraSplines.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t splineCount = 0;
+  size_t segmentCount = 0;
+  SetOpenGlColor(122, 201, 255, 230);
+  glLineWidth(2.35f);
+  for (size_t splineIndex = 0; splineIndex < selectedMapPreview->cameraSplines.size(); ++splineIndex)
+  {
+    const LinuxMapCameraSplinePreview& spline = selectedMapPreview->cameraSplines[splineIndex];
+    if (spline.points.size() < 2)
+    {
+      continue;
+    }
+
+    glBegin(GL_LINE_STRIP);
+    for (size_t pointIndex = 0; pointIndex < spline.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapCameraSplineGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        spline.points[pointIndex],
+        centerX,
+        centerY,
+        scale);
+    }
+    glEnd();
+
+    SetOpenGlColor(235, 249, 255, 225);
+    glPointSize(5.0f);
+    glBegin(GL_POINTS);
+    for (size_t pointIndex = 0; pointIndex < spline.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapCameraSplineGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        spline.points[pointIndex],
+        centerX,
+        centerY,
+        scale);
+    }
+    glEnd();
+    SetOpenGlColor(122, 201, 255, 230);
+
+    ++splineCount;
+    segmentCount += spline.points.size() - 1;
+  }
+
+  glPointSize(1.0f);
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnSplines)
+  {
+    *drawnSplines = splineCount;
+  }
+  return segmentCount;
+}
+
+size_t DrawLinuxMapScriptPolygonPreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnPolygons
+)
+{
+  if (drawnPolygons)
+  {
+    *drawnPolygons = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->scriptPolygons.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t polygonCount = 0;
+  size_t triangleCount = 0;
+  for (size_t polygonIndex = 0; polygonIndex < selectedMapPreview->scriptPolygons.size(); ++polygonIndex)
+  {
+    const LinuxMapScriptPolygonPreview& polygon = selectedMapPreview->scriptPolygons[polygonIndex];
+    if (polygon.points.size() < 3)
+    {
+      continue;
+    }
+
+    SetOpenGlColor(239, 133, 76, 58);
+    glBegin(GL_TRIANGLES);
+    for (size_t pointIndex = 1; pointIndex + 1 < polygon.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        polygon.points[0],
+        centerX,
+        centerY,
+        scale,
+        0.76f);
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        polygon.points[pointIndex],
+        centerX,
+        centerY,
+        scale,
+        0.76f);
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        polygon.points[pointIndex + 1],
+        centerX,
+        centerY,
+        scale,
+        0.76f);
+      ++triangleCount;
+    }
+    glEnd();
+
+    SetOpenGlColor(250, 167, 107, 215);
+    glLineWidth(1.55f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t pointIndex = 0; pointIndex < polygon.points.size(); ++pointIndex)
+    {
+      EmitLinuxMapGuideVertex(
+        selectedMapPreview->terrainHeightmap,
+        polygon.points[pointIndex],
+        centerX,
+        centerY,
+        scale,
+        0.82f);
+    }
+    glEnd();
+
+    ++polygonCount;
+  }
+
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnPolygons)
+  {
+    *drawnPolygons = polygonCount;
+  }
+  return triangleCount;
+}
+
+unsigned char ResolveLinuxPreviewHdrChannel(float channel, float intensity)
+{
+  const float scaled = std::max(0.0f, channel) * std::max(0.0f, intensity);
+  const int value = static_cast<int>(std::min(1.0f, scaled) * 255.0f + 0.5f);
+  return static_cast<unsigned char>(std::max(0, std::min(255, value)));
+}
+
+void ResolveLinuxMapPointLightPreviewColor(
+  const LinuxMapPointLightPreview& light,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  const float intensity = light.diffuseIntensity > 0.0f ? light.diffuseIntensity : 1.0f;
+  unsigned char r = ResolveLinuxPreviewHdrChannel(light.diffuse.R, intensity);
+  unsigned char g = ResolveLinuxPreviewHdrChannel(light.diffuse.G, intensity);
+  unsigned char b = ResolveLinuxPreviewHdrChannel(light.diffuse.B, intensity);
+
+  if (r == 0 && g == 0 && b == 0)
+  {
+    r = 244;
+    g = 203;
+    b = 104;
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+}
+
+float ResolveLinuxMapPointLightPreviewHeight(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const LinuxMapPointLightPreview& light
+)
+{
+  const float terrainHeight =
+    SampleLinuxMapTerrainHeightAtWorld(terrain, light.location.x, light.location.y);
+  return std::max(light.location.z, terrainHeight + 2.0f);
+}
+
+void EmitLinuxMapPointLightRingVertex(
+  const LinuxMapTerrainHeightmapPreview& terrain,
+  const CVec3& location,
+  float radius,
+  size_t segment,
+  size_t segmentCount,
+  float centerX,
+  float centerY,
+  float scale
+)
+{
+  const float angle =
+    6.28318530718f * static_cast<float>(segment) /
+    static_cast<float>(segmentCount);
+  const CVec2 point(
+    location.x + cosf(angle) * radius,
+    location.y + sinf(angle) * radius);
+  EmitLinuxMapGuideVertex(
+    terrain,
+    point,
+    centerX,
+    centerY,
+    scale,
+    0.96f);
+}
+
+size_t DrawLinuxMapPointLightPreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnLights
+)
+{
+  if (drawnLights)
+  {
+    *drawnLights = 0;
+  }
+  if (!selectedMapPreview || selectedMapPreview->pointLights.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t lightCount = 0;
+  size_t markerCount = 0;
+  const size_t ringSegments = 36;
+  for (size_t lightIndex = 0; lightIndex < selectedMapPreview->pointLights.size(); ++lightIndex)
+  {
+    const LinuxMapPointLightPreview& light = selectedMapPreview->pointLights[lightIndex];
+    if (light.range <= 0.0f)
+    {
+      continue;
+    }
+
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    ResolveLinuxMapPointLightPreviewColor(light, &red, &green, &blue);
+
+    const float terrainHeight =
+      SampleLinuxMapTerrainHeightAtWorld(
+        selectedMapPreview->terrainHeightmap,
+        light.location.x,
+        light.location.y);
+    const float lightHeight =
+      ResolveLinuxMapPointLightPreviewHeight(
+        selectedMapPreview->terrainHeightmap,
+        light);
+    const float x = (light.location.x - centerX) * scale;
+    const float z = (light.location.y - centerY) * scale;
+    const float y0 = 0.98f + terrainHeight * scale;
+    const float y1 = 0.98f + lightHeight * scale;
+
+    SetOpenGlColor(red, green, blue, 116);
+    glLineWidth(1.2f);
+    glBegin(GL_LINE_LOOP);
+    const float ringRadius = std::max(3.0f, std::min(90.0f, light.range));
+    for (size_t segment = 0; segment < ringSegments; ++segment)
+    {
+      EmitLinuxMapPointLightRingVertex(
+        selectedMapPreview->terrainHeightmap,
+        light.location,
+        ringRadius,
+        segment,
+        ringSegments,
+        centerX,
+        centerY,
+        scale);
+    }
+    glEnd();
+
+    SetOpenGlColor(red, green, blue, 210);
+    glBegin(GL_LINES);
+    glVertex3f(x, y0, z);
+    glVertex3f(x, y1 + 1.2f, z);
+    glEnd();
+
+    glPointSize(6.0f);
+    SetOpenGlColor(red, green, blue, 236);
+    glBegin(GL_POINTS);
+    glVertex3f(x, y1 + 1.2f, z);
+    glEnd();
+
+    ++lightCount;
+    ++markerCount;
+  }
+
+  glPointSize(1.0f);
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+  if (drawnLights)
+  {
+    *drawnLights = lightCount;
+  }
+  return markerCount;
+}
+
+void DrawLinuxBootstrap3DCuboid(
+  float centerX,
+  float baseY,
+  float centerZ,
+  float halfX,
+  float halfZ,
+  float height,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  unsigned char alpha = 240
+)
+{
+  if (halfX <= 0.0f || halfZ <= 0.0f || height <= 0.0f)
+  {
+    return;
+  }
+
+  const float x0 = centerX - halfX;
+  const float x1 = centerX + halfX;
+  const float z0 = centerZ - halfZ;
+  const float z1 = centerZ + halfZ;
+  const float y0 = baseY;
+  const float y1 = baseY + height;
+
+  glBegin(GL_QUADS);
+  SetOpenGlColor(
+    ScaleOpenGlColorByte(red, 1.16f),
+    ScaleOpenGlColorByte(green, 1.16f),
+    ScaleOpenGlColorByte(blue, 1.16f),
+    alpha
+  );
+  glVertex3f(x0, y1, z0); glVertex3f(x1, y1, z0); glVertex3f(x1, y1, z1); glVertex3f(x0, y1, z1);
+
+  SetOpenGlColor(red, green, blue, alpha);
+  glVertex3f(x0, y0, z0); glVertex3f(x1, y0, z0); glVertex3f(x1, y1, z0); glVertex3f(x0, y1, z0);
+  glVertex3f(x1, y0, z0); glVertex3f(x1, y0, z1); glVertex3f(x1, y1, z1); glVertex3f(x1, y1, z0);
+
+  SetOpenGlColor(
+    ScaleOpenGlColorByte(red, 0.76f),
+    ScaleOpenGlColorByte(green, 0.76f),
+    ScaleOpenGlColorByte(blue, 0.76f),
+    alpha
+  );
+  glVertex3f(x1, y0, z1); glVertex3f(x0, y0, z1); glVertex3f(x0, y1, z1); glVertex3f(x1, y1, z1);
+  glVertex3f(x0, y0, z1); glVertex3f(x0, y0, z0); glVertex3f(x0, y1, z0); glVertex3f(x0, y1, z1);
+  glEnd();
+
+  SetOpenGlColor(7, 10, 13, 150);
+  glBegin(GL_LINE_LOOP);
+  glVertex3f(x0, y1, z0); glVertex3f(x1, y1, z0); glVertex3f(x1, y1, z1); glVertex3f(x0, y1, z1);
+  glEnd();
+}
+
+void ResolveLinuxEngineStartSlotColor(
+  const LinuxEngineMapStartSlot& slot,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  unsigned char r = 118;
+  unsigned char g = 130;
+  unsigned char b = 132;
+  if (slot.team == 1)
+  {
+    r = 92;
+    g = 151;
+    b = 234;
+  }
+  else if (slot.team == 2)
+  {
+    r = 226;
+    g = 96;
+    b = 86;
+  }
+
+  if (!slot.filled)
+  {
+    r = ScaleOpenGlColorByte(r, 0.58f);
+    g = ScaleOpenGlColorByte(g, 0.58f);
+    b = ScaleOpenGlColorByte(b, 0.58f);
+  }
+  else if (slot.human)
+  {
+    r = BlendOpenGlColorByte(r, 255, 0.30f);
+    g = BlendOpenGlColorByte(g, 221, 0.30f);
+    b = BlendOpenGlColorByte(b, 120, 0.30f);
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+}
+
+size_t DrawLinuxMapEngineStartSlotPreview(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* assignedSlots,
+  size_t* humanSlots,
+  size_t* botSlots
+)
+{
+  if (assignedSlots) *assignedSlots = 0;
+  if (humanSlots) *humanSlots = 0;
+  if (botSlots) *botSlots = 0;
+
+  if (!selectedMapPreview ||
+      !engineMapStartPreview ||
+      !engineMapStartPreview->ready ||
+      engineMapStartPreview->slots.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  const size_t ringSegments = 28;
+  size_t drawnSlots = 0;
+  size_t assigned = 0;
+  size_t humans = 0;
+  size_t bots = 0;
+
+  for (size_t slotIndex = 0; slotIndex < engineMapStartPreview->slots.size(); ++slotIndex)
+  {
+    const LinuxEngineMapStartSlot& slot = engineMapStartPreview->slots[slotIndex];
+    const float x = (slot.translateX - centerX) * scale;
+    const float z = (slot.translateY - centerY) * scale;
+    const float terrainHeight = SampleLinuxMapTerrainHeightAtWorld(
+      selectedMapPreview->terrainHeightmap,
+      slot.translateX,
+      slot.translateY);
+    const float baseY = 0.92f + terrainHeight * scale;
+    const float ringRadius = (slot.human ? 21.0f : (slot.filled ? 17.0f : 12.0f)) * scale;
+    const float columnHalf = slot.human ? 1.14f : (slot.filled ? 0.92f : 0.64f);
+    const float columnHeight = slot.human ? 5.4f : (slot.filled ? 3.8f : 1.45f);
+
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    ResolveLinuxEngineStartSlotColor(slot, &red, &green, &blue);
+
+    SetOpenGlColor(red, green, blue, slot.filled ? 222 : 132);
+    glLineWidth(slot.human ? 2.4f : 1.45f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t segment = 0; segment < ringSegments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(ringSegments);
+      glVertex3f(
+        x + cosf(angle) * ringRadius,
+        baseY + 0.16f,
+        z + sinf(angle) * ringRadius);
+    }
+    glEnd();
+
+    DrawLinuxBootstrap3DCuboid(
+      x,
+      baseY,
+      z,
+      columnHalf,
+      columnHalf,
+      columnHeight,
+      red,
+      green,
+      blue,
+      slot.filled ? 224 : 130);
+
+    if (slot.human)
+    {
+      glPointSize(8.0f);
+      SetOpenGlColor(255, 235, 148, 246);
+      glBegin(GL_POINTS);
+      glVertex3f(x, baseY + columnHeight + 0.9f, z);
+      glEnd();
+    }
+
+    ++drawnSlots;
+    if (slot.filled)
+    {
+      ++assigned;
+      if (slot.human)
+      {
+        ++humans;
+      }
+      else
+      {
+        ++bots;
+      }
+    }
+  }
+
+  glPointSize(1.0f);
+  glLineWidth(1.0f);
+  glEnable(GL_DEPTH_TEST);
+
+  if (assignedSlots) *assignedSlots = assigned;
+  if (humanSlots) *humanSlots = humans;
+  if (botSlots) *botSlots = bots;
+  return drawnSlots;
+}
+
+void ResolveLinuxDynamicWorldMarkerColor(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  unsigned char r = 156;
+  unsigned char g = 164;
+  unsigned char b = 166;
+
+  if (marker.faction == NDb::FACTION_FREEZE)
+  {
+    r = 91;
+    g = 157;
+    b = 238;
+  }
+  else if (marker.faction == NDb::FACTION_BURN)
+  {
+    r = 228;
+    g = 93;
+    b = 82;
+  }
+  else if (marker.faction == NDb::FACTION_NEUTRAL)
+  {
+    r = 188;
+    g = 169;
+    b = 83;
+  }
+
+  if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+  {
+    r = BlendOpenGlColorByte(r, 255, 0.24f);
+    g = BlendOpenGlColorByte(g, 236, 0.24f);
+    b = BlendOpenGlColorByte(b, 144, 0.24f);
+  }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP)
+  {
+    r = BlendOpenGlColorByte(r, 96, 0.18f);
+    g = BlendOpenGlColorByte(g, 215, 0.18f);
+    b = BlendOpenGlColorByte(b, 145, 0.18f);
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+}
+
+bool DrawLinuxHeroMeshPreview(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  unsigned char accentR,
+  unsigned char accentG,
+  unsigned char accentB,
+  double elapsedSeconds,
+  bool drawWireframe
+);
+
+bool IsLinuxMapHeroMeshPreviewReady(const LinuxSelectedHeroDbPreview* heroPreview)
+{
+  return
+    heroPreview &&
+    heroPreview->sceneAsset.meshPreview.ready &&
+    heroPreview->sceneAsset.meshPreview.boundsValid &&
+    !heroPreview->sceneAsset.meshPreview.triangleVertices.empty();
+}
+
+size_t ResolveLinuxDynamicHeroLineupIndex(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  int* matchedPlayerId
+)
+{
+  if (matchedPlayerId)
+  {
+    *matchedPlayerId = -1;
+  }
+  if (marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO ||
+      !localMatchPreview ||
+      !localMatchPreview->ready)
+  {
+    return static_cast<size_t>(-1);
+  }
+
+  if (engineMapStartPreview)
+  {
+    for (size_t i = 0; i < engineMapStartPreview->slots.size(); ++i)
+    {
+      const LinuxEngineMapStartSlot& slot = engineMapStartPreview->slots[i];
+      if (!slot.filled || slot.lineupIndex >= localMatchPreview->lineup.size())
+      {
+        continue;
+      }
+
+      bool matched = false;
+      if (slot.playerId >= 0 && marker.playerId >= 0)
+      {
+        matched = marker.playerId == slot.playerId;
+      }
+      else if (slot.userId != -1 && marker.userId == slot.userId)
+      {
+        matched = true;
+      }
+
+      if (matched)
+      {
+        if (matchedPlayerId)
+        {
+          *matchedPlayerId = slot.playerId;
+        }
+        return slot.lineupIndex;
+      }
+    }
+  }
+
+  if (marker.playerId >= 0 &&
+      marker.playerId < static_cast<int>(localMatchPreview->lineup.size()))
+  {
+    if (matchedPlayerId)
+    {
+      *matchedPlayerId = marker.playerId;
+    }
+    return static_cast<size_t>(marker.playerId);
+  }
+
+  return static_cast<size_t>(-1);
+}
+
+bool IsLinuxDynamicMarkerForSelectedHero(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  int* selectedPlayerId
+)
+{
+  if (selectedPlayerId)
+  {
+    *selectedPlayerId = -1;
+  }
+  if (!localMatchPreview ||
+      !localMatchPreview->ready ||
+      localMatchPreview->selectedSlotIndex >= localMatchPreview->lineup.size())
+  {
+    return false;
+  }
+
+  int matchedPlayerId = -1;
+  const size_t lineupIndex = ResolveLinuxDynamicHeroLineupIndex(
+    marker,
+    localMatchPreview,
+    engineMapStartPreview,
+    &matchedPlayerId);
+  if (lineupIndex != localMatchPreview->selectedSlotIndex)
+  {
+    return false;
+  }
+  if (selectedPlayerId)
+  {
+    *selectedPlayerId = matchedPlayerId;
+  }
+  return true;
+}
+
+size_t FindLinuxSelectedHeroDynamicMarker(
+  const vector<NWorld::LinuxDynamicWorldMarker>& markers,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  int* selectedPlayerId
+)
+{
+  if (selectedPlayerId)
+  {
+    *selectedPlayerId = -1;
+  }
+
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead || marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+    {
+      continue;
+    }
+
+    int matchedPlayerId = -1;
+    if (IsLinuxDynamicMarkerForSelectedHero(
+          marker,
+          localMatchPreview,
+          engineMapStartPreview,
+          &matchedPlayerId))
+    {
+      if (selectedPlayerId)
+      {
+        *selectedPlayerId = matchedPlayerId >= 0 ? matchedPlayerId : marker.playerId;
+      }
+      return i;
+    }
+  }
+
+  return static_cast<size_t>(-1);
+}
+
+const LinuxSelectedHeroDbPreview* ResolveLinuxMapHeroPreviewForMarker(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  const std::vector<LinuxSelectedHeroDbPreview>* lineupHeroPreviews,
+  const LinuxSelectedHeroDbPreview* selectedHeroPreview
+)
+{
+  const size_t lineupIndex = ResolveLinuxDynamicHeroLineupIndex(
+    marker,
+    localMatchPreview,
+    engineMapStartPreview,
+    0);
+  if (lineupHeroPreviews &&
+      lineupIndex < lineupHeroPreviews->size() &&
+      IsLinuxMapHeroMeshPreviewReady(&(*lineupHeroPreviews)[lineupIndex]))
+  {
+    return &(*lineupHeroPreviews)[lineupIndex];
+  }
+  if (IsLinuxDynamicMarkerForSelectedHero(marker, localMatchPreview, engineMapStartPreview, 0) &&
+      IsLinuxMapHeroMeshPreviewReady(selectedHeroPreview))
+  {
+    return selectedHeroPreview;
+  }
+  return 0;
+}
+
+const LinuxSelectedHeroDbPreview* ResolveLinuxDynamicUnitMeshPreviewForMarker(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const std::map<std::string, LinuxSelectedHeroDbPreview>* dynamicUnitMeshPreviews
+)
+{
+  if (!dynamicUnitMeshPreviews || !IsLinuxDynamicWorldCreepMarker(marker))
+  {
+    return 0;
+  }
+
+  const std::string key = BuildLinuxDynamicWorldUnitMeshPreviewKey(marker);
+  if (key.empty())
+  {
+    return 0;
+  }
+
+  std::map<std::string, LinuxSelectedHeroDbPreview>::const_iterator it =
+    dynamicUnitMeshPreviews->find(key);
+  if (it == dynamicUnitMeshPreviews->end() ||
+      !IsLinuxHeroMeshDbPreviewRenderableForMap(it->second))
+  {
+    return 0;
+  }
+  return &it->second;
+}
+
+float ClampLinuxDynamicMarkerPercent(float value)
+{
+  if (value < 0.0f)
+    return 0.0f;
+  if (value > 1.0f)
+    return 1.0f;
+  return value;
+}
+
+const char* DescribeLinuxLiveHudUnitKind(int kind)
+{
+  switch (kind)
+  {
+  case NWorld::LinuxDynamicWorldMarker::KIND_HERO:
+    return "hero";
+  case NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP:
+    return "creep";
+  case NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP:
+    return "neutral";
+  default:
+    return "unit";
+  }
+}
+
+void PopulateLinuxLiveUnitHudState(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const std::string& source,
+  NWorld::PFWorld* world,
+  const LinuxLiveUnitHudState* heroState,
+  LinuxLiveUnitHudState* state
+)
+{
+  if (!state)
+  {
+    return;
+  }
+
+  *state = LinuxLiveUnitHudState();
+  state->ready = true;
+  state->objectId = marker.objectId;
+  state->kind = marker.kind;
+  state->faction = marker.faction;
+  state->playerId = marker.playerId;
+  state->userId = marker.userId;
+  state->x = marker.x;
+  state->y = marker.y;
+  state->lifePercent = ClampLinuxDynamicMarkerPercent(marker.healthPercent);
+  state->energyPercent = ClampLinuxDynamicMarkerPercent(marker.energyPercent);
+  state->moveDirX = marker.moveDirX;
+  state->moveDirY = marker.moveDirY;
+  state->hasMoveDirection = marker.hasMoveDirection;
+  state->moving = marker.moving;
+  state->dead = marker.dead;
+  state->unitDbid = marker.unitDbid.empty() ? std::string() : std::string(marker.unitDbid.c_str());
+  state->sceneObjectDbid = marker.sceneObjectDbid.empty() ? std::string() : std::string(marker.sceneObjectDbid.c_str());
+  state->source = source;
+
+  if (heroState && heroState->ready)
+  {
+    const float dx = marker.x - heroState->x;
+    const float dy = marker.y - heroState->y;
+    state->distance = sqrtf(dx * dx + dy * dy);
+  }
+
+  NWorld::PFBaseUnit* unit = world ? world->FindLinuxUnitByObjectId(marker.objectId) : 0;
+  if (!unit)
+  {
+    return;
+  }
+
+  state->life = unit->GetLife();
+  state->maxLife = unit->GetMaxLife();
+  state->energy = unit->GetEnergy();
+  state->maxEnergy = unit->GetMaxEnergy();
+  state->level = unit->GetNaftaLevel();
+  state->gold = unit->GetGold();
+  state->lifeRegen = unit->GetStatValue(NDb::DERIVATIVESTAT_LIFEREGENTOTAL);
+  state->energyRegen = unit->GetStatValue(NDb::DERIVATIVESTAT_ENERGYREGENTOTAL);
+  state->damageMin = unit->GetStatValue(NDb::DERIVATIVESTAT_DAMAGEMIN);
+  state->damageMax = unit->GetStatValue(NDb::DERIVATIVESTAT_DAMAGEMAX);
+  state->moveSpeedMps = unit->GetStatValue(NDb::DERIVATIVESTAT_MOVESPEEDMPS);
+  state->attacksPerSecond = unit->GetStatValue(NDb::DERIVATIVESTAT_ATTACKSPERSECOND);
+  if (state->maxLife > 0.0001f)
+  {
+    state->lifePercent = ClampLinuxDynamicMarkerPercent(state->life / state->maxLife);
+  }
+  if (state->maxEnergy > 0.0001f)
+  {
+    state->energyPercent = ClampLinuxDynamicMarkerPercent(state->energy / state->maxEnergy);
+  }
+}
+
+bool IsLinuxLiveHudPreferredTarget(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const LinuxLiveUnitHudState& heroState
+)
+{
+  if (marker.dead || marker.objectId == heroState.objectId)
+  {
+    return false;
+  }
+  if (heroState.ready && heroState.faction >= 0 && marker.faction == heroState.faction)
+  {
+    return false;
+  }
+  return marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ||
+         marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+         marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+}
+
+void UpdateLinuxLiveHudState(
+  NWorld::PFWorld* world,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHeroState = LinuxLiveUnitHudState();
+  runtime->liveTargetState = LinuxLiveUnitHudState();
+  if (!world)
+  {
+    return;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  if (markers.empty())
+  {
+    return;
+  }
+
+  int selectedPlayerId = -1;
+  size_t selectedHeroIndex = FindLinuxSelectedHeroDynamicMarker(
+    markers,
+    localMatchPreview,
+    engineMapStartPreview,
+    &selectedPlayerId);
+  if (selectedHeroIndex == static_cast<size_t>(-1))
+  {
+    for (size_t i = 0; i < markers.size(); ++i)
+    {
+      if (!markers[i].dead &&
+          markers[i].kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+      {
+        selectedHeroIndex = i;
+        break;
+      }
+    }
+  }
+
+  if (selectedHeroIndex == static_cast<size_t>(-1))
+  {
+    return;
+  }
+
+  PopulateLinuxLiveUnitHudState(
+    markers[selectedHeroIndex],
+    "selected-hero",
+    world,
+    0,
+    &runtime->liveHeroState);
+  if (selectedPlayerId >= 0)
+  {
+    runtime->liveHeroState.playerId = selectedPlayerId;
+  }
+
+  const int selectedTargetObjectId = runtime->mapPreviewSelectedTargetObjectId;
+  size_t targetIndex = static_cast<size_t>(-1);
+  std::string targetSource = "none";
+  if (selectedTargetObjectId >= 0)
+  {
+    for (size_t i = 0; i < markers.size(); ++i)
+    {
+      if (markers[i].objectId == selectedTargetObjectId)
+      {
+        targetIndex = i;
+        targetSource = "selected-target";
+        break;
+      }
+    }
+  }
+
+  if (targetIndex == static_cast<size_t>(-1))
+  {
+    float bestDistanceSq = 0.0f;
+    for (size_t i = 0; i < markers.size(); ++i)
+    {
+      if (!IsLinuxLiveHudPreferredTarget(markers[i], runtime->liveHeroState))
+      {
+        continue;
+      }
+
+      const float dx = markers[i].x - runtime->liveHeroState.x;
+      const float dy = markers[i].y - runtime->liveHeroState.y;
+      const float distanceSq = dx * dx + dy * dy;
+      if (targetIndex == static_cast<size_t>(-1) || distanceSq < bestDistanceSq)
+      {
+        targetIndex = i;
+        bestDistanceSq = distanceSq;
+      }
+    }
+    if (targetIndex != static_cast<size_t>(-1))
+    {
+      targetSource = "nearest-enemy";
+    }
+  }
+
+  if (targetIndex != static_cast<size_t>(-1))
+  {
+    PopulateLinuxLiveUnitHudState(
+      markers[targetIndex],
+      targetSource,
+      world,
+      &runtime->liveHeroState,
+      &runtime->liveTargetState);
+  }
+
+  ++runtime->liveHudSampleCount;
+}
+
+bool ResolveLinuxDynamicWorldMarkerMoveDirection(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  float* outX,
+  float* outZ
+)
+{
+  if (outX) *outX = 0.0f;
+  if (outZ) *outZ = 0.0f;
+  if (!marker.hasMoveDirection)
+  {
+    return false;
+  }
+
+  const float lenSq = marker.moveDirX * marker.moveDirX + marker.moveDirY * marker.moveDirY;
+  if (lenSq <= 0.0001f)
+  {
+    return false;
+  }
+
+  const float invLen = 1.0f / sqrtf(lenSq);
+  if (outX) *outX = marker.moveDirX * invLen;
+  if (outZ) *outZ = marker.moveDirY * invLen;
+  return true;
+}
+
+float ResolveLinuxDynamicWorldMarkerMeshYaw(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  double elapsedSeconds,
+  double idleSpinDegreesPerSecond,
+  double xPhase,
+  double yPhase
+)
+{
+  float dirX = 0.0f;
+  float dirZ = 0.0f;
+  if (ResolveLinuxDynamicWorldMarkerMoveDirection(marker, &dirX, &dirZ))
+  {
+    return atan2f(dirX, dirZ) * 57.2957795131f;
+  }
+
+  return static_cast<float>(
+    fmod(
+      std::max(0.0, elapsedSeconds) * idleSpinDegreesPerSecond +
+        static_cast<double>(marker.x) * xPhase +
+        static_cast<double>(marker.y) * yPhase,
+      360.0));
+}
+
+void DrawLinuxMapDynamicWorldMarkerStatus(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  float x,
+  float z,
+  float baseY,
+  float ringRadius,
+  size_t* healthBars,
+  size_t* moveDirectionArrows
+)
+{
+  const float health = ClampLinuxDynamicMarkerPercent(marker.healthPercent);
+  const float energy = ClampLinuxDynamicMarkerPercent(marker.energyPercent);
+  const bool hero = marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO;
+  const float lift = hero ? 4.35f : 2.10f;
+  const float barHalf = std::max(hero ? 0.95f : 0.62f, ringRadius * (hero ? 1.18f : 1.36f));
+  const float barDepth = hero ? 0.18f : 0.12f;
+  const float barZ = z + ringRadius + (hero ? 0.54f : 0.34f);
+  const float barY = baseY + lift;
+
+  unsigned char healthRed = 84;
+  unsigned char healthGreen = 218;
+  unsigned char healthBlue = 96;
+  if (health < 0.28f)
+  {
+    healthRed = 232;
+    healthGreen = 74;
+    healthBlue = 66;
+  }
+  else if (health < 0.58f)
+  {
+    healthRed = 232;
+    healthGreen = 192;
+    healthBlue = 72;
+  }
+
+  SetOpenGlColor(12, 16, 18, 226);
+  glBegin(GL_QUADS);
+  glVertex3f(x - barHalf, barY, barZ - barDepth);
+  glVertex3f(x + barHalf, barY, barZ - barDepth);
+  glVertex3f(x + barHalf, barY, barZ + barDepth);
+  glVertex3f(x - barHalf, barY, barZ + barDepth);
+  glEnd();
+
+  const float fillRight = x - barHalf + barHalf * 2.0f * health;
+  SetOpenGlColor(healthRed, healthGreen, healthBlue, 232);
+  glBegin(GL_QUADS);
+  glVertex3f(x - barHalf, barY + 0.01f, barZ - barDepth);
+  glVertex3f(fillRight, barY + 0.01f, barZ - barDepth);
+  glVertex3f(fillRight, barY + 0.01f, barZ + barDepth);
+  glVertex3f(x - barHalf, barY + 0.01f, barZ + barDepth);
+  glEnd();
+  if (healthBars)
+  {
+    ++(*healthBars);
+  }
+
+  if (hero && energy > 0.01f)
+  {
+    const float energyDepth = std::max(0.055f, barDepth * 0.42f);
+    const float energyZ = barZ + barDepth + energyDepth + 0.05f;
+    const float energyRight = x - barHalf + barHalf * 2.0f * energy;
+    SetOpenGlColor(10, 18, 30, 214);
+    glBegin(GL_QUADS);
+    glVertex3f(x - barHalf, barY, energyZ - energyDepth);
+    glVertex3f(x + barHalf, barY, energyZ - energyDepth);
+    glVertex3f(x + barHalf, barY, energyZ + energyDepth);
+    glVertex3f(x - barHalf, barY, energyZ + energyDepth);
+    glEnd();
+    SetOpenGlColor(69, 154, 236, 228);
+    glBegin(GL_QUADS);
+    glVertex3f(x - barHalf, barY + 0.012f, energyZ - energyDepth);
+    glVertex3f(energyRight, barY + 0.012f, energyZ - energyDepth);
+    glVertex3f(energyRight, barY + 0.012f, energyZ + energyDepth);
+    glVertex3f(x - barHalf, barY + 0.012f, energyZ + energyDepth);
+    glEnd();
+  }
+
+  float dirX = 0.0f;
+  float dirZ = 0.0f;
+  if (marker.moving &&
+      ResolveLinuxDynamicWorldMarkerMoveDirection(marker, &dirX, &dirZ))
+  {
+    const float arrowY = baseY + 0.42f;
+    const float arrowLen = std::max(1.05f, ringRadius * (hero ? 1.55f : 1.85f));
+    const float headX = x + dirX * arrowLen;
+    const float headZ = z + dirZ * arrowLen;
+    const float sideX = -dirZ;
+    const float sideZ = dirX;
+    const float headBack = std::max(0.28f, arrowLen * 0.22f);
+    const float headSide = std::max(0.18f, arrowLen * 0.13f);
+
+    SetOpenGlColor(244, 248, 222, 226);
+    glLineWidth(hero ? 2.2f : 1.7f);
+    glBegin(GL_LINES);
+    glVertex3f(x, arrowY, z);
+    glVertex3f(headX, arrowY, headZ);
+    glVertex3f(headX, arrowY, headZ);
+    glVertex3f(
+      headX - dirX * headBack + sideX * headSide,
+      arrowY,
+      headZ - dirZ * headBack + sideZ * headSide);
+    glVertex3f(headX, arrowY, headZ);
+    glVertex3f(
+      headX - dirX * headBack - sideX * headSide,
+      arrowY,
+      headZ - dirZ * headBack - sideZ * headSide);
+    glEnd();
+    if (moveDirectionArrows)
+    {
+      ++(*moveDirectionArrows);
+    }
+  }
+}
+
+bool DrawLinuxMapHeroMeshReplica(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue
+)
+{
+  if (!overlay ||
+      !selectedMapPreview ||
+      !IsLinuxMapHeroMeshPreviewReady(heroPreview))
+  {
+    return false;
+  }
+
+  const float x = (marker.x - centerX) * scale;
+  const float z = (marker.y - centerY) * scale;
+  const float terrainHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    marker.x,
+    marker.y);
+  const float baseY = 1.10f + terrainHeight * scale;
+  const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(marker, elapsedSeconds, 17.0, 0.037, 0.019);
+
+  glPushMatrix();
+  glTranslatef(x, baseY, z);
+  glRotatef(yaw, 0.0f, 1.0f, 0.0f);
+  glScalef(0.72f, 0.72f, 0.72f);
+  const bool drawn = DrawLinuxHeroMeshPreview(
+    overlay,
+    heroPreview,
+    red,
+    green,
+    blue,
+    elapsedSeconds,
+    false);
+  glPopMatrix();
+  return drawn;
+}
+
+bool DrawLinuxMapUnitMeshReplica(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxSelectedHeroDbPreview* unitPreview,
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue
+)
+{
+  if (!overlay ||
+      !selectedMapPreview ||
+      !IsLinuxMapHeroMeshPreviewReady(unitPreview))
+  {
+    return false;
+  }
+
+  const float x = (marker.x - centerX) * scale;
+  const float z = (marker.y - centerY) * scale;
+  const float terrainHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    marker.x,
+    marker.y);
+  const float baseY = 1.04f + terrainHeight * scale;
+  const float yaw = ResolveLinuxDynamicWorldMarkerMeshYaw(
+    marker,
+    elapsedSeconds,
+    marker.moving ? 24.0 : 9.0,
+    0.051,
+    0.027);
+  const float meshScale =
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? 0.50f : 0.42f;
+
+  glPushMatrix();
+  glTranslatef(x, baseY, z);
+  glRotatef(yaw, 0.0f, 1.0f, 0.0f);
+  glScalef(meshScale, meshScale, meshScale);
+  const bool drawn = DrawLinuxHeroMeshPreview(
+    overlay,
+    unitPreview,
+    red,
+    green,
+    blue,
+    elapsedSeconds,
+    false);
+  glPopMatrix();
+  return drawn;
+}
+
+bool DrawLinuxMapPreviewCommandMoveTarget(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds
+)
+{
+  if (!selectedMapPreview || !runtime || runtime->mapPreviewCommandMoveCommandsSent == 0)
+  {
+    return false;
+  }
+
+  const float sourceX = (runtime->mapPreviewCommandMoveSourceX - centerX) * scale;
+  const float sourceZ = (runtime->mapPreviewCommandMoveSourceY - centerY) * scale;
+  const float targetX = (runtime->mapPreviewCommandMoveTargetX - centerX) * scale;
+  const float targetZ = (runtime->mapPreviewCommandMoveTargetY - centerY) * scale;
+  const float sourceHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    runtime->mapPreviewCommandMoveSourceX,
+    runtime->mapPreviewCommandMoveSourceY);
+  const float targetHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    runtime->mapPreviewCommandMoveTargetX,
+    runtime->mapPreviewCommandMoveTargetY);
+  const float sourceY = 1.38f + sourceHeight * scale;
+  const float targetY = 1.38f + targetHeight * scale;
+  const bool drawHeroProgress =
+    runtime->mapPreviewCommandMoveHeroTracking &&
+    runtime->mapPreviewCommandMoveHeroSamples > 0;
+  const float heroX = (runtime->mapPreviewCommandMoveHeroCurrentX - centerX) * scale;
+  const float heroZ = (runtime->mapPreviewCommandMoveHeroCurrentY - centerY) * scale;
+  const float heroHeight = drawHeroProgress ?
+    SampleLinuxMapTerrainHeightAtWorld(
+      selectedMapPreview->terrainHeightmap,
+      runtime->mapPreviewCommandMoveHeroCurrentX,
+      runtime->mapPreviewCommandMoveHeroCurrentY) :
+    0.0f;
+  const float heroY = 1.55f + heroHeight * scale;
+  const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(elapsedSeconds * 6.0));
+  const float ringRadius = std::max(0.72f, 8.5f * scale + pulse * 0.22f);
+  const float heroRingRadius = std::max(0.62f, 7.2f * scale);
+  const size_t segments = 28;
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  SetOpenGlColor(252, 233, 114, 232);
+  glLineWidth(2.2f);
+  glBegin(GL_LINES);
+  glVertex3f(sourceX, sourceY, sourceZ);
+  glVertex3f(targetX, targetY, targetZ);
+  glEnd();
+
+  if (drawHeroProgress)
+  {
+    SetOpenGlColor(
+      runtime->mapPreviewCommandMoveHeroReached ? 118 : 88,
+      runtime->mapPreviewCommandMoveHeroReached ? 246 : 226,
+      runtime->mapPreviewCommandMoveHeroReached ? 148 : 255,
+      232);
+    glLineWidth(3.0f);
+    glBegin(GL_LINES);
+    glVertex3f(sourceX, sourceY + 0.06f, sourceZ);
+    glVertex3f(heroX, heroY + 0.06f, heroZ);
+    glEnd();
+
+    SetOpenGlColor(88, 226, 255, 226);
+    glLineWidth(2.0f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t segment = 0; segment < segments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(segments);
+      glVertex3f(
+        heroX + cosf(angle) * heroRingRadius,
+        heroY + 0.08f,
+        heroZ + sinf(angle) * heroRingRadius);
+    }
+    glEnd();
+
+    SetOpenGlColor(88, 226, 255, 182);
+    DrawLinuxBootstrap3DCuboid(
+      heroX,
+      heroY,
+      heroZ,
+      0.32f,
+      0.32f,
+      0.92f,
+      88,
+      226,
+      255,
+      182);
+  }
+
+  SetOpenGlColor(252, 233, 114, 238);
+  glLineWidth(2.5f);
+  glBegin(GL_LINE_LOOP);
+  for (size_t segment = 0; segment < segments; ++segment)
+  {
+    const float angle =
+      6.28318530718f * static_cast<float>(segment) /
+      static_cast<float>(segments);
+    glVertex3f(
+      targetX + cosf(angle) * ringRadius,
+      targetY + 0.04f,
+      targetZ + sinf(angle) * ringRadius);
+  }
+  glEnd();
+
+  SetOpenGlColor(255, 248, 180, 162);
+  glBegin(GL_TRIANGLES);
+  glVertex3f(targetX, targetY + 0.88f + pulse * 0.22f, targetZ);
+  glVertex3f(targetX - ringRadius * 0.34f, targetY + 0.16f, targetZ - ringRadius * 0.20f);
+  glVertex3f(targetX + ringRadius * 0.34f, targetY + 0.16f, targetZ - ringRadius * 0.20f);
+  glVertex3f(targetX, targetY + 0.88f + pulse * 0.22f, targetZ);
+  glVertex3f(targetX + ringRadius * 0.20f, targetY + 0.16f, targetZ - ringRadius * 0.34f);
+  glVertex3f(targetX + ringRadius * 0.20f, targetY + 0.16f, targetZ + ringRadius * 0.34f);
+  glVertex3f(targetX, targetY + 0.88f + pulse * 0.22f, targetZ);
+  glVertex3f(targetX + ringRadius * 0.34f, targetY + 0.16f, targetZ + ringRadius * 0.20f);
+  glVertex3f(targetX - ringRadius * 0.34f, targetY + 0.16f, targetZ + ringRadius * 0.20f);
+  glVertex3f(targetX, targetY + 0.88f + pulse * 0.22f, targetZ);
+  glVertex3f(targetX - ringRadius * 0.20f, targetY + 0.16f, targetZ + ringRadius * 0.34f);
+  glVertex3f(targetX - ringRadius * 0.20f, targetY + 0.16f, targetZ - ringRadius * 0.34f);
+  glEnd();
+
+  glLineWidth(1.0f);
+  runtime->mapPreviewCommandMoveTargetDrawn = true;
+  return true;
+}
+
+void ResolveLinuxMapPreviewActionColor(
+  const std::string& kind,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  unsigned char r = 186;
+  unsigned char g = 168;
+  unsigned char b = 246;
+  if (kind == "attack")
+  {
+    r = 238;
+    g = 94;
+    b = 84;
+  }
+  else if (kind == "follow")
+  {
+    r = 94;
+    g = 188;
+    b = 238;
+  }
+  else if (kind == "signal")
+  {
+    r = 255;
+    g = 206;
+    b = 91;
+  }
+  else if (kind == "hold")
+  {
+    r = 119;
+    g = 224;
+    b = 148;
+  }
+  else if (kind == "cancel")
+  {
+    r = 190;
+    g = 196;
+    b = 205;
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+}
+
+bool DrawLinuxMapPreviewCommandActionTarget(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds
+)
+{
+  if (!selectedMapPreview || !runtime || runtime->mapPreviewCommandActionCommandsSent == 0)
+  {
+    return false;
+  }
+
+  const float sourceX = (runtime->mapPreviewCommandActionSourceX - centerX) * scale;
+  const float sourceZ = (runtime->mapPreviewCommandActionSourceY - centerY) * scale;
+  const float targetX = (runtime->mapPreviewCommandActionTargetX - centerX) * scale;
+  const float targetZ = (runtime->mapPreviewCommandActionTargetY - centerY) * scale;
+  const float sourceHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    runtime->mapPreviewCommandActionSourceX,
+    runtime->mapPreviewCommandActionSourceY);
+  const float targetHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    runtime->mapPreviewCommandActionTargetX,
+    runtime->mapPreviewCommandActionTargetY);
+  const float sourceY = 1.50f + sourceHeight * scale;
+  const float targetY = 1.50f + targetHeight * scale;
+  const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(elapsedSeconds * 7.0));
+  const float ringRadius = std::max(0.62f, 9.8f * scale + pulse * 0.18f);
+  const size_t segments = 24;
+
+  unsigned char red = 0;
+  unsigned char green = 0;
+  unsigned char blue = 0;
+  ResolveLinuxMapPreviewActionColor(runtime->mapPreviewCommandActionKind, &red, &green, &blue);
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  if (fabs(CVec2(runtime->mapPreviewCommandActionTargetX, runtime->mapPreviewCommandActionTargetY) -
+           CVec2(runtime->mapPreviewCommandActionSourceX, runtime->mapPreviewCommandActionSourceY)) > 0.25f)
+  {
+    SetOpenGlColor(red, green, blue, 214);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    glVertex3f(sourceX, sourceY, sourceZ);
+    glVertex3f(targetX, targetY, targetZ);
+    glEnd();
+  }
+
+  SetOpenGlColor(red, green, blue, 238);
+  glLineWidth(2.4f);
+  glBegin(GL_LINE_LOOP);
+  for (size_t segment = 0; segment < segments; ++segment)
+  {
+    const float angle =
+      6.28318530718f * static_cast<float>(segment) /
+      static_cast<float>(segments);
+    glVertex3f(
+      targetX + cosf(angle) * ringRadius,
+      targetY + 0.08f,
+      targetZ + sinf(angle) * ringRadius);
+  }
+  glEnd();
+
+  SetOpenGlColor(red, green, blue, 196);
+  glLineWidth(2.0f);
+  glBegin(GL_LINES);
+  glVertex3f(targetX - ringRadius * 0.72f, targetY + 0.12f, targetZ);
+  glVertex3f(targetX + ringRadius * 0.72f, targetY + 0.12f, targetZ);
+  glVertex3f(targetX, targetY + 0.12f, targetZ - ringRadius * 0.72f);
+  glVertex3f(targetX, targetY + 0.12f, targetZ + ringRadius * 0.72f);
+  glEnd();
+
+  DrawLinuxBootstrap3DCuboid(
+    targetX,
+    targetY,
+    targetZ,
+    0.28f,
+    0.28f,
+    1.05f + pulse * 0.18f,
+    red,
+    green,
+    blue,
+    156);
+
+  glLineWidth(1.0f);
+  runtime->mapPreviewCommandActionTargetDrawn = true;
+  return true;
+}
+
+bool DrawLinuxMapPreviewSelectedTarget(
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  NWorld::PFWorld* world,
+  LinuxBootstrapScreenRuntime* runtime,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds
+)
+{
+  if (!selectedMapPreview ||
+      !runtime ||
+      runtime->mapPreviewSelectedTargetObjectId < 0)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseUnit* unit = ResolveLinuxMapPreviewSelectedTargetUnit(runtime, world);
+  if (!unit)
+  {
+    return false;
+  }
+
+  const float targetX = (runtime->mapPreviewSelectedTargetX - centerX) * scale;
+  const float targetZ = (runtime->mapPreviewSelectedTargetY - centerY) * scale;
+  const float targetHeight = SampleLinuxMapTerrainHeightAtWorld(
+    selectedMapPreview->terrainHeightmap,
+    runtime->mapPreviewSelectedTargetX,
+    runtime->mapPreviewSelectedTargetY);
+  const float targetY = 1.62f + targetHeight * scale;
+  const bool hero =
+    runtime->mapPreviewSelectedTargetKind == NWorld::LinuxDynamicWorldMarker::KIND_HERO;
+  const float pulse = 0.5f + 0.5f * sinf(static_cast<float>(elapsedSeconds * 8.5));
+  const float ringRadius =
+    std::max(hero ? 0.98f : 0.72f, (hero ? 15.0f : 8.8f) * scale + pulse * 0.22f);
+
+  unsigned char red = 246;
+  unsigned char green = 246;
+  unsigned char blue = 226;
+  if (runtime->mapPreviewSelectedTargetFaction == NDb::FACTION_FREEZE)
+  {
+    red = 118;
+    green = 190;
+    blue = 255;
+  }
+  else if (runtime->mapPreviewSelectedTargetFaction == NDb::FACTION_BURN)
+  {
+    red = 255;
+    green = 112;
+    blue = 96;
+  }
+  else if (runtime->mapPreviewSelectedTargetFaction == NDb::FACTION_NEUTRAL)
+  {
+    red = 226;
+    green = 202;
+    blue = 108;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  const size_t segments = 32;
+  SetOpenGlColor(255, 255, 238, 242);
+  glLineWidth(3.0f);
+  glBegin(GL_LINE_LOOP);
+  for (size_t segment = 0; segment < segments; ++segment)
+  {
+    const float angle =
+      6.28318530718f * static_cast<float>(segment) /
+      static_cast<float>(segments);
+    glVertex3f(
+      targetX + cosf(angle) * ringRadius,
+      targetY + 0.14f,
+      targetZ + sinf(angle) * ringRadius);
+  }
+  glEnd();
+
+  SetOpenGlColor(red, green, blue, 224);
+  glLineWidth(2.2f);
+  glBegin(GL_LINES);
+  glVertex3f(targetX - ringRadius * 0.92f, targetY + 0.18f, targetZ - ringRadius * 0.92f);
+  glVertex3f(targetX - ringRadius * 0.45f, targetY + 0.18f, targetZ - ringRadius * 0.45f);
+  glVertex3f(targetX + ringRadius * 0.92f, targetY + 0.18f, targetZ - ringRadius * 0.92f);
+  glVertex3f(targetX + ringRadius * 0.45f, targetY + 0.18f, targetZ - ringRadius * 0.45f);
+  glVertex3f(targetX + ringRadius * 0.92f, targetY + 0.18f, targetZ + ringRadius * 0.92f);
+  glVertex3f(targetX + ringRadius * 0.45f, targetY + 0.18f, targetZ + ringRadius * 0.45f);
+  glVertex3f(targetX - ringRadius * 0.92f, targetY + 0.18f, targetZ + ringRadius * 0.92f);
+  glVertex3f(targetX - ringRadius * 0.45f, targetY + 0.18f, targetZ + ringRadius * 0.45f);
+  glEnd();
+
+  DrawLinuxBootstrap3DCuboid(
+    targetX,
+    targetY,
+    targetZ,
+    hero ? 0.34f : 0.24f,
+    hero ? 0.34f : 0.24f,
+    hero ? 1.25f : 0.82f,
+    red,
+    green,
+    blue,
+    154);
+
+  glLineWidth(1.0f);
+  runtime->mapPreviewSelectedTargetDrawn = true;
+  return true;
+}
+
+size_t DrawLinuxMapDynamicWorldMarkerPreview(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxSelectedHeroDbPreview* selectedHeroPreview,
+  const std::vector<LinuxSelectedHeroDbPreview>* lineupHeroPreviews,
+  const std::map<std::string, LinuxSelectedHeroDbPreview>* dynamicUnitMeshPreviews,
+  const LinuxEngineMapStartPreview* engineMapStartPreview,
+  NWorld::PFWorld* world,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds,
+  size_t* heroMarkers,
+  size_t* commonCreepMarkers,
+  size_t* neutralCreepMarkers,
+  size_t* movingMarkers,
+  size_t* healthBars,
+  size_t* moveDirectionArrows,
+  size_t* heroMeshReplicas,
+  size_t* heroMeshTriangles,
+  size_t* creepMeshReplicas,
+  size_t* creepMeshTriangles,
+  bool* selectedHeroMarkerMatched,
+  int* selectedHeroMarkerPlayerId
+)
+{
+  if (heroMarkers) *heroMarkers = 0;
+  if (commonCreepMarkers) *commonCreepMarkers = 0;
+  if (neutralCreepMarkers) *neutralCreepMarkers = 0;
+  if (movingMarkers) *movingMarkers = 0;
+  if (healthBars) *healthBars = 0;
+  if (moveDirectionArrows) *moveDirectionArrows = 0;
+  if (heroMeshReplicas) *heroMeshReplicas = 0;
+  if (heroMeshTriangles) *heroMeshTriangles = 0;
+  if (creepMeshReplicas) *creepMeshReplicas = 0;
+  if (creepMeshTriangles) *creepMeshTriangles = 0;
+  if (selectedHeroMarkerMatched) *selectedHeroMarkerMatched = false;
+  if (selectedHeroMarkerPlayerId) *selectedHeroMarkerPlayerId = -1;
+  if (!selectedMapPreview || !world)
+  {
+    return 0;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  if (markers.empty())
+  {
+    return 0;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  size_t drawn = 0;
+  size_t heroes = 0;
+  size_t commonCreeps = 0;
+  size_t neutralCreeps = 0;
+  size_t moving = 0;
+  size_t statusBars = 0;
+  size_t directionArrows = 0;
+  size_t heroMeshCandidates = 0;
+  size_t creepMeshCandidates = 0;
+  size_t heroMeshes = 0;
+  size_t heroMeshTriangleCount = 0;
+  size_t creepMeshes = 0;
+  size_t creepMeshTriangleCount = 0;
+  const size_t ringSegments = 18;
+  const size_t heroMeshLimit = 10;
+  const size_t creepMeshLimit = 48;
+  const bool heroMeshLayerReady = overlay != 0;
+  int matchedSelectedPlayerId = -1;
+  const size_t selectedHeroMarkerIndex = FindLinuxSelectedHeroDynamicMarker(
+    markers,
+    localMatchPreview,
+    engineMapStartPreview,
+    &matchedSelectedPlayerId);
+  const bool selectedHeroMatched = selectedHeroMarkerIndex != static_cast<size_t>(-1);
+  if (selectedHeroMarkerMatched)
+  {
+    *selectedHeroMarkerMatched = selectedHeroMatched;
+  }
+  if (selectedHeroMarkerPlayerId)
+  {
+    *selectedHeroMarkerPlayerId = matchedSelectedPlayerId;
+  }
+
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead)
+    {
+      continue;
+    }
+
+    float radiusWorld = 4.0f;
+    float columnHalf = 0.38f;
+    float columnHeight = 1.15f;
+    if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+    {
+      radiusWorld = 13.5f;
+      columnHalf = 0.78f;
+      columnHeight = 3.5f;
+      ++heroes;
+    }
+    else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP)
+    {
+      radiusWorld = marker.moving ? 7.0f : 5.2f;
+      columnHalf = 0.42f;
+      columnHeight = marker.moving ? 2.15f : 1.55f;
+      ++commonCreeps;
+    }
+    else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+    {
+      radiusWorld = 6.8f;
+      columnHalf = 0.52f;
+      columnHeight = 2.25f;
+      ++neutralCreeps;
+    }
+    else
+    {
+      continue;
+    }
+
+    if (marker.moving)
+    {
+      ++moving;
+    }
+
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+
+    const float x = (marker.x - centerX) * scale;
+    const float z = (marker.y - centerY) * scale;
+    const float terrainHeight = SampleLinuxMapTerrainHeightAtWorld(
+      selectedMapPreview->terrainHeightmap,
+      marker.x,
+      marker.y);
+    const float baseY = 1.08f + terrainHeight * scale;
+    const float ringRadius = std::max(0.45f, radiusWorld * scale);
+    const LinuxSelectedHeroDbPreview* markerHeroPreview = ResolveLinuxMapHeroPreviewForMarker(
+      marker,
+      localMatchPreview,
+      engineMapStartPreview,
+      lineupHeroPreviews,
+      selectedHeroPreview);
+    const LinuxSelectedHeroDbPreview* markerUnitPreview =
+      ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews);
+    const bool drawHeroMesh =
+      heroMeshLayerReady &&
+      markerHeroPreview &&
+      marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
+      heroMeshCandidates < heroMeshLimit;
+    if (drawHeroMesh)
+    {
+      ++heroMeshCandidates;
+    }
+    const bool drawUnitMesh =
+      heroMeshLayerReady &&
+      markerUnitPreview &&
+      IsLinuxDynamicWorldCreepMarker(marker) &&
+      creepMeshCandidates < creepMeshLimit;
+    if (drawUnitMesh)
+    {
+      ++creepMeshCandidates;
+    }
+
+    SetOpenGlColor(red, green, blue, marker.moving ? 238 : 178);
+    glLineWidth(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ? 2.0f : 1.25f);
+    glBegin(GL_LINE_LOOP);
+    for (size_t segment = 0; segment < ringSegments; ++segment)
+    {
+      const float angle =
+        6.28318530718f * static_cast<float>(segment) /
+        static_cast<float>(ringSegments);
+      glVertex3f(
+        x + cosf(angle) * ringRadius,
+        baseY + 0.22f,
+        z + sinf(angle) * ringRadius);
+    }
+    glEnd();
+
+    if (drawHeroMesh || drawUnitMesh)
+    {
+      DrawLinuxBootstrap3DCuboid(
+        x,
+        baseY,
+        z,
+        std::max(0.32f, columnHalf * 0.58f),
+        std::max(0.32f, columnHalf * 0.58f),
+        0.26f,
+        red,
+        green,
+        blue,
+        marker.moving ? 118 : 92);
+    }
+    else
+    {
+      DrawLinuxBootstrap3DCuboid(
+        x,
+        baseY,
+        z,
+        columnHalf,
+        columnHalf,
+        columnHeight,
+        red,
+        green,
+        blue,
+        marker.moving ? 232 : 188);
+    }
+
+    DrawLinuxMapDynamicWorldMarkerStatus(
+      marker,
+      x,
+      z,
+      baseY,
+      ringRadius,
+      &statusBars,
+      &directionArrows);
+    ++drawn;
+  }
+
+  if (heroMeshLayerReady && heroMeshCandidates > 0)
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for (size_t i = 0; i < markers.size() && heroMeshes < heroMeshLimit; ++i)
+    {
+      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+      if (marker.dead ||
+          marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+      {
+        continue;
+      }
+      const LinuxSelectedHeroDbPreview* markerHeroPreview = ResolveLinuxMapHeroPreviewForMarker(
+        marker,
+        localMatchPreview,
+        engineMapStartPreview,
+        lineupHeroPreviews,
+        selectedHeroPreview);
+      if (!markerHeroPreview)
+      {
+        continue;
+      }
+
+      unsigned char red = 0;
+      unsigned char green = 0;
+      unsigned char blue = 0;
+      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+      if (DrawLinuxMapHeroMeshReplica(
+            overlay,
+            selectedMapPreview,
+            markerHeroPreview,
+            marker,
+            centerX,
+            centerY,
+            scale,
+            elapsedSeconds,
+            red,
+            green,
+            blue))
+      {
+        ++heroMeshes;
+        heroMeshTriangleCount += markerHeroPreview->sceneAsset.meshPreview.drawnTriangleCount;
+      }
+    }
+  }
+
+  if (heroMeshLayerReady && creepMeshCandidates > 0)
+  {
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    for (size_t i = 0; i < markers.size() && creepMeshes < creepMeshLimit; ++i)
+    {
+      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+      if (marker.dead || !IsLinuxDynamicWorldCreepMarker(marker))
+      {
+        continue;
+      }
+
+      const LinuxSelectedHeroDbPreview* markerUnitPreview =
+        ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews);
+      if (!markerUnitPreview)
+      {
+        continue;
+      }
+
+      unsigned char red = 0;
+      unsigned char green = 0;
+      unsigned char blue = 0;
+      ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+      if (DrawLinuxMapUnitMeshReplica(
+            overlay,
+            selectedMapPreview,
+            markerUnitPreview,
+            marker,
+            centerX,
+            centerY,
+            scale,
+            elapsedSeconds,
+            red,
+            green,
+            blue))
+      {
+        ++creepMeshes;
+        creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
+      }
+    }
+  }
+
+  glLineWidth(1.0f);
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_DEPTH_TEST);
+  if (heroMarkers) *heroMarkers = heroes;
+  if (commonCreepMarkers) *commonCreepMarkers = commonCreeps;
+  if (neutralCreepMarkers) *neutralCreepMarkers = neutralCreeps;
+  if (movingMarkers) *movingMarkers = moving;
+  if (healthBars) *healthBars = statusBars;
+  if (moveDirectionArrows) *moveDirectionArrows = directionArrows;
+  if (heroMeshReplicas) *heroMeshReplicas = heroMeshes;
+  if (heroMeshTriangles) *heroMeshTriangles = heroMeshTriangleCount;
+  if (creepMeshReplicas) *creepMeshReplicas = creepMeshes;
+  if (creepMeshTriangles) *creepMeshTriangles = creepMeshTriangleCount;
+  return drawn;
+}
+
+GLuint ResolveLinuxMapPreviewDiffuseTexture(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  size_t textureIndex
+)
+{
+  if (!overlay || !selectedMapPreview ||
+      textureIndex == kLinuxHeroPreviewNoDiffuseTexture ||
+      textureIndex >= selectedMapPreview->staticDiffuseTextures.size())
+  {
+    return 0;
+  }
+
+  const LinuxTextureAssetPreview& texturePreview =
+    selectedMapPreview->staticDiffuseTextures[textureIndex];
+  if (!texturePreview.artworkLoaded || texturePreview.sourceFile.empty())
+  {
+    return 0;
+  }
+
+  const std::string& sourceFile = texturePreview.sourceFile;
+  if (overlay->mapPreviewDiffuseTextureFailedSourceFiles.find(sourceFile) !=
+      overlay->mapPreviewDiffuseTextureFailedSourceFiles.end())
+  {
+    return 0;
+  }
+
+  if (overlay->mapPreviewDiffuseTextures.size() <= textureIndex)
+  {
+    overlay->mapPreviewDiffuseTextures.resize(textureIndex + 1);
+  }
+  if (overlay->mapPreviewDiffuseTextureSourceFiles.size() <= textureIndex)
+  {
+    overlay->mapPreviewDiffuseTextureSourceFiles.resize(textureIndex + 1);
+  }
+
+  if (overlay->mapPreviewDiffuseTextureSourceFiles[textureIndex] == sourceFile)
+  {
+    return overlay->mapPreviewDiffuseTextures[textureIndex].texture;
+  }
+
+  DeleteOpenGlTexture(&overlay->mapPreviewDiffuseTextures[textureIndex]);
+  overlay->mapPreviewDiffuseTextureSourceFiles[textureIndex].clear();
+  if (!UploadOpenGlTexture(
+        overlay,
+        texturePreview.artwork,
+        &overlay->mapPreviewDiffuseTextures[textureIndex]))
+  {
+    overlay->mapPreviewDiffuseTextureFailedSourceFiles.insert(sourceFile);
+    return 0;
+  }
+
+  overlay->mapPreviewDiffuseTextureSourceFiles[textureIndex] = sourceFile;
+  overlay->mapPreviewDiffuseTextureFailedSourceFiles.erase(sourceFile);
+  return overlay->mapPreviewDiffuseTextures[textureIndex].texture;
+}
+
+size_t ResolveLinuxMapRendererMaterialTextureIndex(
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  unsigned int partIndex
+)
+{
+  if (partIndex < materialDiffuseTextureIndices.size() &&
+      materialDiffuseTextureIndices[partIndex] != kLinuxHeroPreviewNoDiffuseTexture)
+  {
+    return materialDiffuseTextureIndices[partIndex];
+  }
+
+  for (size_t i = 0; i < materialDiffuseTextureIndices.size(); ++i)
+  {
+    if (materialDiffuseTextureIndices[i] != kLinuxHeroPreviewNoDiffuseTexture)
+    {
+      return materialDiffuseTextureIndices[i];
+    }
+  }
+
+  return kLinuxHeroPreviewNoDiffuseTexture;
+}
+
+size_t DrawLinuxMapRendererStaticMeshPayloadList(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const std::vector<LinuxMapStaticGeometryPayloadPreview>& payloads,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnPayloads,
+  size_t* renderedTriangles
+)
+{
+  if (drawnPayloads)
+  {
+    *drawnPayloads = 0;
+  }
+  if (renderedTriangles)
+  {
+    *renderedTriangles = 0;
+  }
+  if (!overlay || !selectedMapPreview || payloads.empty())
+  {
+    return 0;
+  }
+
+  Render::SmartRenderer::SetOpenGLImmediateMeshPreviewTransform(centerX, centerY, 0.0f, scale);
+  Render::SmartRenderer::ResetTriangleAndDipCount();
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
+
+  bool textureEnabled = false;
+  size_t totalPayloads = 0;
+  size_t totalBatches = 0;
+  for (size_t payloadIndex = 0; payloadIndex < payloads.size(); ++payloadIndex)
+  {
+    const LinuxMapStaticGeometryPayloadPreview& payload = payloads[payloadIndex];
+    if (payload.rootGeometryFile.empty())
+    {
+      continue;
+    }
+
+    const Render::MeshGeometry* meshGeometry =
+      Render::RenderResourceManager::LoadStaticMeshGeometry(
+        nstl::string(payload.rootGeometryFile.c_str()),
+        false);
+    if (!meshGeometry || meshGeometry->primitives.empty())
+    {
+      continue;
+    }
+
+    Matrix43 worldMatrix;
+    payload.placement.GetMatrix(&worldMatrix);
+    vector<Render::BaseMaterial*> emptyMaterials;
+    Render::StaticMesh staticMesh;
+    staticMesh.Initialize(worldMatrix, meshGeometry, emptyMaterials);
+
+    Render::BatchQueueSorter sorter(16, true);
+    Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
+    staticMesh.RenderToQueue(queue);
+    if (CountLinuxRenderBatchQueueBatches(queue) == 0)
+    {
+      continue;
+    }
+
+    size_t payloadBatches = 0;
+    for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
+    {
+      for (Render::Batch* batch = queue.GetBatches(priority); batch; batch = batch->pNextBatch)
+      {
+        const size_t textureIndex = ResolveLinuxMapRendererMaterialTextureIndex(
+          payload.materialDiffuseTextureIndices,
+          batch->elementNumber);
+        const GLuint diffuseTexture =
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
+          ResolveLinuxMapPreviewDiffuseTexture(overlay, selectedMapPreview, textureIndex) :
+          0;
+        if (diffuseTexture)
+        {
+          if (!textureEnabled)
+          {
+            glEnable(GL_TEXTURE_2D);
+            textureEnabled = true;
+          }
+          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+        }
+        else if (textureEnabled)
+        {
+          glBindTexture(GL_TEXTURE_2D, 0);
+          glDisable(GL_TEXTURE_2D);
+          textureEnabled = false;
+        }
+
+        batch->Prepare();
+        batch->Draw();
+        ++payloadBatches;
+      }
+    }
+
+    if (payloadBatches > 0)
+    {
+      ++totalPayloads;
+      totalBatches += payloadBatches;
+    }
+  }
+
+  if (textureEnabled)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
+
+  unsigned int triangles = 0;
+  unsigned int dips = 0;
+  Render::SmartRenderer::GetTriangleAndDipCount(triangles, dips);
+  (void)dips;
+  if (renderedTriangles)
+  {
+    *renderedTriangles = triangles;
+  }
+  if (drawnPayloads)
+  {
+    *drawnPayloads = totalPayloads;
+  }
+  return totalBatches;
+}
+
+size_t DrawLinuxMapRendererTerrainElementPayloads(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnPayloads,
+  size_t* renderedTriangles
+)
+{
+  if (!selectedMapPreview)
+  {
+    if (drawnPayloads)
+    {
+      *drawnPayloads = 0;
+    }
+    if (renderedTriangles)
+    {
+      *renderedTriangles = 0;
+    }
+    return 0;
+  }
+
+  return DrawLinuxMapRendererStaticMeshPayloadList(
+    overlay,
+    selectedMapPreview,
+    selectedMapPreview->terrainElementPayloads,
+    centerX,
+    centerY,
+    scale,
+    drawnPayloads,
+    renderedTriangles);
+}
+
+size_t DrawLinuxMapRendererStaticMeshPayloads(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  size_t* drawnPayloads,
+  size_t* renderedTriangles
+)
+{
+  if (!selectedMapPreview)
+  {
+    if (drawnPayloads)
+    {
+      *drawnPayloads = 0;
+    }
+    if (renderedTriangles)
+    {
+      *renderedTriangles = 0;
+    }
+    return 0;
+  }
+
+  return DrawLinuxMapRendererStaticMeshPayloadList(
+    overlay,
+    selectedMapPreview,
+    selectedMapPreview->staticGeometryPayloads,
+    centerX,
+    centerY,
+    scale,
+    drawnPayloads,
+    renderedTriangles);
+}
+
+size_t DrawLinuxMapRendererAnimatedMeshPayloads(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  float centerX,
+  float centerY,
+  float scale,
+  double elapsedSeconds,
+  size_t* drawnPayloads,
+  size_t* renderedTriangles
+)
+{
+  if (drawnPayloads)
+  {
+    *drawnPayloads = 0;
+  }
+  if (renderedTriangles)
+  {
+    *renderedTriangles = 0;
+  }
+  if (!overlay || !selectedMapPreview || selectedMapPreview->animatedGeometryPayloads.empty())
+  {
+    return 0;
+  }
+
+  Render::SmartRenderer::SetOpenGLImmediateMeshPreviewTransform(centerX, centerY, 0.0f, scale);
+  Render::SmartRenderer::ResetTriangleAndDipCount();
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
+
+  bool textureEnabled = false;
+  size_t totalPayloads = 0;
+  size_t totalBatches = 0;
+  const std::vector<LinuxMapAnimatedGeometryPayloadPreview>& payloads =
+    selectedMapPreview->animatedGeometryPayloads;
+  for (size_t payloadIndex = 0; payloadIndex < payloads.size(); ++payloadIndex)
+  {
+    const LinuxMapAnimatedGeometryPayloadPreview& payload = payloads[payloadIndex];
+    if (payload.skeletonRootFile.empty() ||
+        payload.animationRootFile.empty() ||
+        payload.skinGeometryPayloads.empty())
+    {
+      continue;
+    }
+
+    const SkeletalAnimationDataWrapper* animationData =
+      Render::RenderResourceManager::LoadSkeletalAnimation(
+        nstl::string(payload.animationRootFile.c_str()));
+    if (!animationData || !animationData->GetData())
+    {
+      continue;
+    }
+
+    Matrix43 worldMatrix;
+    payload.placement.GetMatrix(&worldMatrix);
+    Render::SkeletalMesh skeletalMesh;
+    skeletalMesh.Initialize(
+      worldMatrix,
+      nstl::string(payload.skeletonRootFile.c_str()));
+    if (!skeletalMesh.GetSkeletonWrapper())
+    {
+      continue;
+    }
+
+    std::vector<unsigned int> slotIndexes;
+    std::vector<size_t> slotTextureIndices(16, kLinuxHeroPreviewNoDiffuseTexture);
+    for (size_t skinIndex = 0; skinIndex < payload.skinGeometryPayloads.size(); ++skinIndex)
+    {
+      const LinuxMapSkinGeometryPayloadPreview& skinPayload =
+        payload.skinGeometryPayloads[skinIndex];
+      if (skinPayload.rootGeometryFile.empty())
+      {
+        continue;
+      }
+
+      NDb::SkinPartBase skinPart;
+      skinPart.geometryFileName = nstl::string(skinPayload.rootGeometryFile.c_str());
+
+      unsigned int partIndexes[16] = {0};
+      unsigned int partsCount = 0;
+      skeletalMesh.AddSkinPart(&skinPart, partIndexes, &partsCount);
+      for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
+      {
+        slotIndexes.push_back(partIndexes[partIndex]);
+        if (partIndexes[partIndex] < slotTextureIndices.size())
+        {
+          slotTextureIndices[partIndexes[partIndex]] =
+            ResolveLinuxMapRendererMaterialTextureIndex(
+              skinPayload.materialDiffuseTextureIndices,
+              partIndex);
+        }
+      }
+    }
+
+    if (slotIndexes.empty())
+    {
+      continue;
+    }
+
+    Render::SkeletalAnimationSampler sampler(0.0f, animationData);
+    const SkeletalAnimationData* animation = animationData->GetData();
+    const float duration = std::max(0.0f, animation->maxTime - animation->minTime);
+    const float vpar =
+      duration > 0.0001f ?
+      static_cast<float>(
+        fmod(std::max(0.0, elapsedSeconds), static_cast<double>(duration)) /
+        static_cast<double>(duration)) :
+      0.0f;
+    sampler.SetVPar(vpar);
+    sampler.Sample(skeletalMesh.GetSkeletonWrapper()->GetSampledMatrix());
+    skeletalMesh.Update(false);
+
+    Render::BatchQueueSorter sorter(32, true);
+    Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 64);
+    skeletalMesh.RenderToQueue(queue);
+    if (CountLinuxRenderBatchQueueBatches(queue) == 0)
+    {
+      continue;
+    }
+
+    size_t payloadBatches = 0;
+    for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
+    {
+      for (Render::Batch* batch = queue.GetBatches(priority); batch; batch = batch->pNextBatch)
+      {
+        const size_t textureIndex =
+          batch->elementNumber < slotTextureIndices.size() ?
+          slotTextureIndices[batch->elementNumber] :
+          kLinuxHeroPreviewNoDiffuseTexture;
+        const GLuint diffuseTexture =
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
+          ResolveLinuxMapPreviewDiffuseTexture(overlay, selectedMapPreview, textureIndex) :
+          0;
+        if (diffuseTexture)
+        {
+          if (!textureEnabled)
+          {
+            glEnable(GL_TEXTURE_2D);
+            textureEnabled = true;
+          }
+          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+        }
+        else if (textureEnabled)
+        {
+          glBindTexture(GL_TEXTURE_2D, 0);
+          glDisable(GL_TEXTURE_2D);
+          textureEnabled = false;
+        }
+
+        batch->Prepare();
+        batch->Draw();
+        ++payloadBatches;
+      }
+    }
+
+    if (payloadBatches > 0)
+    {
+      ++totalPayloads;
+      totalBatches += payloadBatches;
+    }
+  }
+
+  if (textureEnabled)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
+
+  unsigned int triangles = 0;
+  unsigned int dips = 0;
+  Render::SmartRenderer::GetTriangleAndDipCount(triangles, dips);
+  (void)dips;
+  if (renderedTriangles)
+  {
+    *renderedTriangles = triangles;
+  }
+  if (drawnPayloads)
+  {
+    *drawnPayloads = totalPayloads;
+  }
+  return totalBatches;
+}
+
+std::string DescribeVisibleMenuPhase(const LinuxBootstrapScreenRuntime* runtime)
+{
+  if (IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    return "Loading match";
+  }
+  if (IsLinuxBootstrapHeroScreenActive(runtime))
+  {
+    return runtime->gameContext->GetReadyState() == lobby::EGameMemberReadiness::NotReady ?
+      "Hero lobby" :
+      "Hero lobby ready";
+  }
+  return "Main menu";
 }
 
 struct LinuxOverlayUiRenderContext
@@ -22392,6 +40876,8 @@ struct LinuxOverlayUiRenderContext
   const LinuxHeroCatalog* heroCatalog;
   const LinuxLocalMatchPreview* localMatchPreview;
   const LinuxSelectedHeroDbPreview* selectedHeroPreview;
+  const std::vector<LinuxSelectedHeroDbPreview>* lineupHeroPreviews;
+  const std::map<std::string, LinuxSelectedHeroDbPreview>* dynamicUnitMeshPreviews;
   const LinuxEngineMapStartPreview* engineMapStartPreview;
   const LinuxRootFileSystemPreview* rootFileSystemPreview;
   const LinuxUiRootPreview* uiRootPreview;
@@ -22424,6 +40910,8 @@ struct LinuxOverlayUiRenderContext
       heroCatalog(nullptr),
       localMatchPreview(nullptr),
       selectedHeroPreview(nullptr),
+      lineupHeroPreviews(nullptr),
+      dynamicUnitMeshPreviews(nullptr),
       engineMapStartPreview(nullptr),
       rootFileSystemPreview(nullptr),
       uiRootPreview(nullptr),
@@ -22438,6 +40926,3254 @@ struct LinuxOverlayUiRenderContext
   }
 };
 
+void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContext)
+{
+  const LinuxSelectedMapPreview* selectedMapPreview = renderContext.selectedMapPreview;
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDrawn = false;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshPayloads = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshBatches = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceDrawn = false;
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceVertices = 0;
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceTriangles = 0;
+    renderContext.screenRuntime->mapPreviewWaterZonesDrawn = false;
+    renderContext.screenRuntime->mapPreviewWaterZones = 0;
+    renderContext.screenRuntime->mapPreviewWaterZoneTriangles = 0;
+    renderContext.screenRuntime->mapPreviewTerrainRoadsDrawn = false;
+    renderContext.screenRuntime->mapPreviewTerrainRoads = 0;
+    renderContext.screenRuntime->mapPreviewTerrainRoadSegments = 0;
+    renderContext.screenRuntime->mapPreviewTeamRoutesDrawn = false;
+    renderContext.screenRuntime->mapPreviewTeamRouteLines = 0;
+    renderContext.screenRuntime->mapPreviewTeamRouteSegments = 0;
+    renderContext.screenRuntime->mapPreviewTeamStartRouteLines = 0;
+    renderContext.screenRuntime->mapPreviewTeamLaneRouteLines = 0;
+    renderContext.screenRuntime->mapPreviewScriptAreasDrawn = false;
+    renderContext.screenRuntime->mapPreviewScriptAreas = 0;
+    renderContext.screenRuntime->mapPreviewScriptAreaSegments = 0;
+    renderContext.screenRuntime->mapPreviewScriptPathsDrawn = false;
+    renderContext.screenRuntime->mapPreviewScriptPaths = 0;
+    renderContext.screenRuntime->mapPreviewScriptPathSegments = 0;
+    renderContext.screenRuntime->mapPreviewCameraSplinesDrawn = false;
+    renderContext.screenRuntime->mapPreviewCameraSplines = 0;
+    renderContext.screenRuntime->mapPreviewCameraSplineSegments = 0;
+    renderContext.screenRuntime->mapPreviewScriptPolygonsDrawn = false;
+    renderContext.screenRuntime->mapPreviewScriptPolygons = 0;
+    renderContext.screenRuntime->mapPreviewScriptPolygonTriangles = 0;
+    renderContext.screenRuntime->mapPreviewPointLightsDrawn = false;
+    renderContext.screenRuntime->mapPreviewPointLights = 0;
+    renderContext.screenRuntime->mapPreviewPointLightMarkers = 0;
+    renderContext.screenRuntime->mapPreviewEngineStartSlotsDrawn = false;
+    renderContext.screenRuntime->mapPreviewEngineStartSlots = 0;
+    renderContext.screenRuntime->mapPreviewEngineStartAssignedSlots = 0;
+    renderContext.screenRuntime->mapPreviewEngineStartHumanSlots = 0;
+    renderContext.screenRuntime->mapPreviewEngineStartBotSlots = 0;
+    renderContext.screenRuntime->mapPreviewDynamicWorldMarkersDrawn = false;
+    renderContext.screenRuntime->mapPreviewDynamicWorldMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicCommonCreepMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicNeutralCreepMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicMovingMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicHealthBars = 0;
+    renderContext.screenRuntime->mapPreviewDynamicMoveDirectionArrows = 0;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshesDrawn = false;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshes = 0;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewDynamicUnitMeshPreviewAssets = 0;
+    renderContext.screenRuntime->mapPreviewDynamicUnitMeshPreviewReady = 0;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshesDrawn = false;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshes = 0;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerMatched = false;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerPlayerId = -1;
+    renderContext.screenRuntime->mapPreviewHeroDiffuseTexturesCached = 0;
+    renderContext.screenRuntime->mapPreviewHeroDiffuseTextureFailures = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDrawn = false;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshDrawn = false;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshPayloads = 0;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshBatches = 0;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewCommandMoveTargetDrawn = false;
+  }
+
+  if (!IsLinuxBootstrap3DPreviewReady(selectedMapPreview))
+  {
+    return;
+  }
+
+  const LinuxTacticalMapPreview& tactical = selectedMapPreview->tactical;
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const float rangeX = std::max(1.0f, tactical.maxX - tactical.minX);
+  const float rangeY = std::max(1.0f, tactical.maxY - tactical.minY);
+  const float mapRange = std::max(rangeX, rangeY);
+  const float scale = 92.0f / mapRange;
+  const float extentX = std::max(14.0f, rangeX * scale * 0.5f + 8.0f);
+  const float extentZ = std::max(14.0f, rangeY * scale * 0.5f + 8.0f);
+  const float previewZoom = renderContext.screenRuntime ?
+    std::max(0.55f, std::min(2.25f, renderContext.screenRuntime->mapPreviewZoom)) :
+    1.0f;
+  const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
+  const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
+  const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
+  const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
+
+  glViewport(0, 0, width, height);
+  glClear(GL_DEPTH_BUFFER_BIT);
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL);
+  glDisable(GL_CULL_FACE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(
+    -viewExtent * aspect,
+    viewExtent * aspect,
+    -viewExtent,
+    viewExtent,
+    -220.0,
+    220.0);
+
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glTranslatef(0.0f, -8.0f, 0.0f);
+  const float previewPitch = renderContext.screenRuntime ?
+    std::max(35.0f, std::min(72.0f, renderContext.screenRuntime->mapPreviewPitchDegrees)) :
+    kLinuxMapPreviewDefaultPitchDegrees;
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRenderedPitchDegrees = previewPitch;
+  }
+  glRotatef(previewPitch, 1.0f, 0.0f, 0.0f);
+  const float baseYaw = renderContext.screenRuntime ?
+    renderContext.screenRuntime->mapPreviewYawDegrees :
+    kLinuxMapPreviewDefaultYawDegrees;
+  const float mapYaw = NormalizeLinuxPreviewYawValue(
+    baseYaw + static_cast<float>(renderContext.elapsedSeconds * 4.5)
+  );
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRenderedYawDegrees = mapYaw;
+  }
+  glRotatef(mapYaw, 0.0f, 1.0f, 0.0f);
+  if (renderContext.screenRuntime)
+  {
+    glTranslatef(
+      renderContext.screenRuntime->mapPreviewPanX,
+      0.0f,
+      renderContext.screenRuntime->mapPreviewPanZ);
+  }
+
+  SetOpenGlColor(18, 37, 42, 210);
+  glBegin(GL_QUADS);
+  glVertex3f(-extentX, 0.0f, -extentZ);
+  glVertex3f(extentX, 0.0f, -extentZ);
+  glVertex3f(extentX, 0.0f, extentZ);
+  glVertex3f(-extentX, 0.0f, extentZ);
+  glEnd();
+
+  size_t terrainVertices = 0;
+  size_t terrainTriangles = 0;
+  const bool terrainDrawn = DrawLinuxMapTerrainHeightmapPreview(
+    selectedMapPreview->terrainHeightmap,
+    centerX,
+    centerY,
+    scale,
+    &terrainVertices,
+    &terrainTriangles);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceDrawn = terrainDrawn;
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceVertices = terrainVertices;
+    renderContext.screenRuntime->mapPreviewTerrainSurfaceTriangles = terrainTriangles;
+  }
+
+  size_t waterZones = 0;
+  const size_t waterZoneTriangles = DrawLinuxMapWaterZonePreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &waterZones);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewWaterZonesDrawn = waterZoneTriangles > 0;
+    renderContext.screenRuntime->mapPreviewWaterZones = waterZones;
+    renderContext.screenRuntime->mapPreviewWaterZoneTriangles = waterZoneTriangles;
+  }
+
+  size_t terrainRoads = 0;
+  const size_t terrainRoadSegments = DrawLinuxMapTerrainRoadPreview(
+    selectedMapPreview->terrainHeightmap,
+    centerX,
+    centerY,
+    scale,
+    &terrainRoads);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewTerrainRoadsDrawn = terrainRoadSegments > 0;
+    renderContext.screenRuntime->mapPreviewTerrainRoads = terrainRoads;
+    renderContext.screenRuntime->mapPreviewTerrainRoadSegments = terrainRoadSegments;
+  }
+
+  size_t terrainElementPayloads = 0;
+  size_t terrainElementTriangles = 0;
+  const size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
+    renderContext.overlay,
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &terrainElementPayloads,
+    &terrainElementTriangles);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDrawn =
+      terrainElementBatches > 0 && terrainElementTriangles > 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = terrainElementPayloads;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = terrainElementBatches;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = terrainElementTriangles;
+  }
+
+  SetOpenGlColor(54, 83, 88, 150);
+  glBegin(GL_LINES);
+  const int gridLines = 12;
+  for (int i = -gridLines; i <= gridLines; ++i)
+  {
+    const float tx = extentX * static_cast<float>(i) / static_cast<float>(gridLines);
+    glVertex3f(tx, 0.05f, -extentZ);
+    glVertex3f(tx, 0.05f, extentZ);
+
+    const float tz = extentZ * static_cast<float>(i) / static_cast<float>(gridLines);
+    glVertex3f(-extentX, 0.05f, tz);
+    glVertex3f(extentX, 0.05f, tz);
+  }
+  glEnd();
+
+  SetOpenGlColor(108, 139, 141, 210);
+  glBegin(GL_LINE_LOOP);
+  glVertex3f(-extentX, 0.1f, -extentZ);
+  glVertex3f(extentX, 0.1f, -extentZ);
+  glVertex3f(extentX, 0.1f, extentZ);
+  glVertex3f(-extentX, 0.1f, extentZ);
+  glEnd();
+
+  size_t staticPayloads = 0;
+  size_t staticTriangles = 0;
+  const size_t staticBatches = DrawLinuxMapRendererStaticMeshPayloads(
+    renderContext.overlay,
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &staticPayloads,
+    &staticTriangles);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDrawn =
+      staticBatches > 0 && staticTriangles > 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshPayloads = staticPayloads;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshBatches = staticBatches;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshTriangles = staticTriangles;
+  }
+
+  size_t animatedPayloads = 0;
+  size_t animatedTriangles = 0;
+  const size_t animatedBatches = DrawLinuxMapRendererAnimatedMeshPayloads(
+    renderContext.overlay,
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    renderContext.elapsedSeconds,
+    &animatedPayloads,
+    &animatedTriangles);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshDrawn =
+      animatedBatches > 0 && animatedTriangles > 0;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshPayloads = animatedPayloads;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshBatches = animatedBatches;
+    renderContext.screenRuntime->mapPreviewRendererAnimatedMeshTriangles = animatedTriangles;
+  }
+
+  size_t scriptAreas = 0;
+  const size_t scriptAreaSegments = DrawLinuxMapScriptAreaPreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &scriptAreas);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewScriptAreasDrawn = scriptAreaSegments > 0;
+    renderContext.screenRuntime->mapPreviewScriptAreas = scriptAreas;
+    renderContext.screenRuntime->mapPreviewScriptAreaSegments = scriptAreaSegments;
+  }
+
+  size_t scriptPaths = 0;
+  const size_t scriptPathSegments = DrawLinuxMapScriptPathPreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &scriptPaths);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewScriptPathsDrawn = scriptPathSegments > 0;
+    renderContext.screenRuntime->mapPreviewScriptPaths = scriptPaths;
+    renderContext.screenRuntime->mapPreviewScriptPathSegments = scriptPathSegments;
+  }
+
+  size_t cameraSplines = 0;
+  const size_t cameraSplineSegments = DrawLinuxMapCameraSplinePreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &cameraSplines);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewCameraSplinesDrawn = cameraSplineSegments > 0;
+    renderContext.screenRuntime->mapPreviewCameraSplines = cameraSplines;
+    renderContext.screenRuntime->mapPreviewCameraSplineSegments = cameraSplineSegments;
+  }
+
+  size_t scriptPolygons = 0;
+  const size_t scriptPolygonTriangles = DrawLinuxMapScriptPolygonPreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &scriptPolygons);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewScriptPolygonsDrawn = scriptPolygonTriangles > 0;
+    renderContext.screenRuntime->mapPreviewScriptPolygons = scriptPolygons;
+    renderContext.screenRuntime->mapPreviewScriptPolygonTriangles = scriptPolygonTriangles;
+  }
+
+  size_t pointLights = 0;
+  const size_t pointLightMarkers = DrawLinuxMapPointLightPreview(
+    selectedMapPreview,
+    centerX,
+    centerY,
+    scale,
+    &pointLights);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewPointLightsDrawn = pointLightMarkers > 0;
+    renderContext.screenRuntime->mapPreviewPointLights = pointLights;
+    renderContext.screenRuntime->mapPreviewPointLightMarkers = pointLightMarkers;
+  }
+
+  size_t teamRouteLines = 0;
+  size_t teamStartRouteLines = 0;
+  size_t teamLaneRouteLines = 0;
+  const size_t teamRouteSegments = DrawLinuxMapTeamRoutePreview(
+    selectedMapPreview,
+    renderContext.engineMapStartPreview,
+    centerX,
+    centerY,
+    scale,
+    &teamRouteLines,
+    &teamStartRouteLines,
+    &teamLaneRouteLines);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewTeamRoutesDrawn = teamRouteSegments > 0;
+    renderContext.screenRuntime->mapPreviewTeamRouteLines = teamRouteLines;
+    renderContext.screenRuntime->mapPreviewTeamRouteSegments = teamRouteSegments;
+    renderContext.screenRuntime->mapPreviewTeamStartRouteLines = teamStartRouteLines;
+    renderContext.screenRuntime->mapPreviewTeamLaneRouteLines = teamLaneRouteLines;
+  }
+
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  const size_t markerLimit = std::min<size_t>(tactical.markers.size(), 512);
+  for (size_t i = 0; i < markerLimit; ++i)
+  {
+    const LinuxTacticalMapMarker& marker = tactical.markers[i];
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    float halfSize = 1.0f;
+    float markerHeight = 2.0f;
+    ResolveLinuxBootstrap3DMarkerStyle(marker, &red, &green, &blue, &halfSize, &markerHeight);
+
+    const float x = (marker.translateX - centerX) * scale;
+    const float z = (marker.translateY - centerY) * scale;
+    DrawLinuxBootstrap3DBox(x, z, halfSize, markerHeight, red, green, blue);
+  }
+
+  size_t engineAssignedSlots = 0;
+  size_t engineHumanSlots = 0;
+  size_t engineBotSlots = 0;
+  const size_t engineStartSlots = DrawLinuxMapEngineStartSlotPreview(
+    selectedMapPreview,
+    renderContext.engineMapStartPreview,
+    centerX,
+    centerY,
+    scale,
+    &engineAssignedSlots,
+    &engineHumanSlots,
+    &engineBotSlots);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewEngineStartSlotsDrawn = engineStartSlots > 0;
+    renderContext.screenRuntime->mapPreviewEngineStartSlots = engineStartSlots;
+    renderContext.screenRuntime->mapPreviewEngineStartAssignedSlots = engineAssignedSlots;
+    renderContext.screenRuntime->mapPreviewEngineStartHumanSlots = engineHumanSlots;
+    renderContext.screenRuntime->mapPreviewEngineStartBotSlots = engineBotSlots;
+  }
+
+  NWorld::PFWorld* dynamicWorld = renderContext.screenRuntime ?
+    dynamic_cast<NWorld::PFWorld*>(renderContext.screenRuntime->transceiverWorld.GetPtr()) :
+    0;
+  size_t dynamicHeroMarkers = 0;
+  size_t dynamicCommonCreepMarkers = 0;
+  size_t dynamicNeutralCreepMarkers = 0;
+  size_t dynamicMovingMarkers = 0;
+  size_t dynamicHealthBars = 0;
+  size_t dynamicMoveDirectionArrows = 0;
+  size_t dynamicHeroMeshes = 0;
+  size_t dynamicHeroMeshTriangles = 0;
+  size_t dynamicCreepMeshes = 0;
+  size_t dynamicCreepMeshTriangles = 0;
+  bool dynamicSelectedHeroMarkerMatched = false;
+  int dynamicSelectedHeroMarkerPlayerId = -1;
+  const size_t dynamicWorldMarkers = DrawLinuxMapDynamicWorldMarkerPreview(
+    renderContext.overlay,
+    selectedMapPreview,
+    renderContext.localMatchPreview,
+    renderContext.selectedHeroPreview,
+    renderContext.lineupHeroPreviews,
+    renderContext.dynamicUnitMeshPreviews,
+    renderContext.engineMapStartPreview,
+    dynamicWorld,
+    centerX,
+    centerY,
+    scale,
+    renderContext.elapsedSeconds,
+    &dynamicHeroMarkers,
+    &dynamicCommonCreepMarkers,
+    &dynamicNeutralCreepMarkers,
+    &dynamicMovingMarkers,
+    &dynamicHealthBars,
+    &dynamicMoveDirectionArrows,
+    &dynamicHeroMeshes,
+    &dynamicHeroMeshTriangles,
+    &dynamicCreepMeshes,
+    &dynamicCreepMeshTriangles,
+    &dynamicSelectedHeroMarkerMatched,
+    &dynamicSelectedHeroMarkerPlayerId);
+  if (renderContext.screenRuntime)
+  {
+    renderContext.screenRuntime->mapPreviewDynamicWorldMarkersDrawn = dynamicWorldMarkers > 0;
+    renderContext.screenRuntime->mapPreviewDynamicWorldMarkers = dynamicWorldMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMarkers = dynamicHeroMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicCommonCreepMarkers = dynamicCommonCreepMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicNeutralCreepMarkers = dynamicNeutralCreepMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicMovingMarkers = dynamicMovingMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicHealthBars = dynamicHealthBars;
+    renderContext.screenRuntime->mapPreviewDynamicMoveDirectionArrows = dynamicMoveDirectionArrows;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshesDrawn = dynamicHeroMeshes > 0;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshes = dynamicHeroMeshes;
+    renderContext.screenRuntime->mapPreviewDynamicHeroMeshTriangles = dynamicHeroMeshTriangles;
+    renderContext.screenRuntime->mapPreviewDynamicUnitMeshPreviewAssets =
+      dynamicWorld && renderContext.dynamicUnitMeshPreviews ? renderContext.dynamicUnitMeshPreviews->size() : 0;
+    renderContext.screenRuntime->mapPreviewDynamicUnitMeshPreviewReady =
+      dynamicWorld && renderContext.dynamicUnitMeshPreviews ?
+      CountLinuxDynamicWorldUnitMeshPreviewsReady(*renderContext.dynamicUnitMeshPreviews) :
+      0;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshesDrawn = dynamicCreepMeshes > 0;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshes = dynamicCreepMeshes;
+    renderContext.screenRuntime->mapPreviewDynamicCreepMeshTriangles = dynamicCreepMeshTriangles;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerMatched = dynamicSelectedHeroMarkerMatched;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerPlayerId = dynamicSelectedHeroMarkerPlayerId;
+    renderContext.screenRuntime->mapPreviewHeroDiffuseTexturesCached =
+      renderContext.overlay ? renderContext.overlay->heroPreviewDiffuseTextureCache.size() : 0;
+    renderContext.screenRuntime->mapPreviewHeroDiffuseTextureFailures =
+      renderContext.overlay ? renderContext.overlay->heroPreviewDiffuseTextureFailedSourceFiles.size() : 0;
+  }
+
+  DrawLinuxMapPreviewSelectedTarget(
+    selectedMapPreview,
+    dynamicWorld,
+    renderContext.screenRuntime,
+    centerX,
+    centerY,
+    scale,
+    renderContext.elapsedSeconds);
+  UpdateLinuxLiveHudState(
+    dynamicWorld,
+    renderContext.localMatchPreview,
+    renderContext.engineMapStartPreview,
+    renderContext.screenRuntime);
+  DrawLinuxMapPreviewCommandMoveTarget(
+    selectedMapPreview,
+    renderContext.screenRuntime,
+    centerX,
+    centerY,
+    scale,
+    renderContext.elapsedSeconds);
+  DrawLinuxMapPreviewCommandActionTarget(
+    selectedMapPreview,
+    renderContext.screenRuntime,
+    centerX,
+    centerY,
+    scale,
+    renderContext.elapsedSeconds);
+
+  glDisable(GL_DEPTH_TEST);
+}
+
+unsigned int HashLinuxHeroPreviewString(const std::string& value)
+{
+  unsigned int hash = 2166136261u;
+  for (size_t i = 0; i < value.size(); ++i)
+  {
+    hash ^= static_cast<unsigned char>(value[i]);
+    hash *= 16777619u;
+  }
+  return hash;
+}
+
+void ResolveLinuxCharacterPreviewAccent(
+  const LinuxHeroCatalogEntry* heroEntry,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  std::string seed;
+  if (heroEntry)
+  {
+    seed = ResolveHeroCatalogId(*heroEntry);
+  }
+  if (seed.empty() && heroPreview)
+  {
+    seed = heroPreview->persistentId.empty() ? heroPreview->dbid : heroPreview->persistentId;
+  }
+  const unsigned int hash = HashLinuxHeroPreviewString(seed.empty() ? std::string("prime-world-hero") : seed);
+
+  static const unsigned char palette[][3] =
+  {
+    {78, 142, 220},
+    {197, 87, 78},
+    {90, 171, 124},
+    {204, 158, 76},
+    {151, 111, 215},
+    {91, 188, 204}
+  };
+  const size_t paletteIndex = static_cast<size_t>(hash % (sizeof(palette) / sizeof(palette[0])));
+  if (red) *red = palette[paletteIndex][0];
+  if (green) *green = palette[paletteIndex][1];
+  if (blue) *blue = palette[paletteIndex][2];
+}
+
+void DrawLinuxCharacterPreviewBase()
+{
+  SetOpenGlColor(19, 29, 36, 230);
+  glBegin(GL_QUADS);
+  glVertex3f(-3.2f, -0.02f, -3.2f);
+  glVertex3f(3.2f, -0.02f, -3.2f);
+  glVertex3f(3.2f, -0.02f, 3.2f);
+  glVertex3f(-3.2f, -0.02f, 3.2f);
+  glEnd();
+
+  SetOpenGlColor(84, 116, 128, 210);
+  glBegin(GL_LINE_LOOP);
+  glVertex3f(-3.2f, 0.02f, -3.2f);
+  glVertex3f(3.2f, 0.02f, -3.2f);
+  glVertex3f(3.2f, 0.02f, 3.2f);
+  glVertex3f(-3.2f, 0.02f, 3.2f);
+  glEnd();
+}
+
+void DrawLinuxHeroAssetBounds(const LinuxSelectedHeroDbPreview* heroPreview)
+{
+  if (!heroPreview || !heroPreview->sceneAsset.boundsValid)
+  {
+    return;
+  }
+
+  const LinuxHeroSceneAssetPreview& sceneAsset = heroPreview->sceneAsset;
+  const float assetWidth = std::max(0.1f, sceneAsset.maxX - sceneAsset.minX);
+  const float assetDepth = std::max(0.1f, sceneAsset.maxY - sceneAsset.minY);
+  const float assetHeight = std::max(0.1f, sceneAsset.maxZ - sceneAsset.minZ);
+  const float scale = 5.2f / assetHeight;
+  const float xHalf = std::max(0.25f, assetWidth * scale * 0.5f);
+  const float zHalf = std::max(0.25f, assetDepth * scale * 0.5f);
+  const float yMin = 0.04f;
+  const float yMax = yMin + assetHeight * scale;
+
+  SetOpenGlColor(223, 205, 126, 220);
+  glBegin(GL_LINES);
+  glVertex3f(-xHalf, yMin, -zHalf); glVertex3f(xHalf, yMin, -zHalf);
+  glVertex3f(xHalf, yMin, -zHalf); glVertex3f(xHalf, yMin, zHalf);
+  glVertex3f(xHalf, yMin, zHalf); glVertex3f(-xHalf, yMin, zHalf);
+  glVertex3f(-xHalf, yMin, zHalf); glVertex3f(-xHalf, yMin, -zHalf);
+
+  glVertex3f(-xHalf, yMax, -zHalf); glVertex3f(xHalf, yMax, -zHalf);
+  glVertex3f(xHalf, yMax, -zHalf); glVertex3f(xHalf, yMax, zHalf);
+  glVertex3f(xHalf, yMax, zHalf); glVertex3f(-xHalf, yMax, zHalf);
+  glVertex3f(-xHalf, yMax, zHalf); glVertex3f(-xHalf, yMax, -zHalf);
+
+  glVertex3f(-xHalf, yMin, -zHalf); glVertex3f(-xHalf, yMax, -zHalf);
+  glVertex3f(xHalf, yMin, -zHalf); glVertex3f(xHalf, yMax, -zHalf);
+  glVertex3f(xHalf, yMin, zHalf); glVertex3f(xHalf, yMax, zHalf);
+  glVertex3f(-xHalf, yMin, zHalf); glVertex3f(-xHalf, yMax, zHalf);
+  glEnd();
+}
+
+float ResolveLinuxHeroAnimationSampleTime(
+  const LinuxHeroAnimationSkinningPreview& animationPreview,
+  double elapsedSeconds
+)
+{
+  if (animationPreview.durationSeconds <= 0.0001f)
+  {
+    return animationPreview.minTime;
+  }
+
+  const double cycle = fmod(std::max(0.0, elapsedSeconds), static_cast<double>(animationPreview.durationSeconds));
+  return animationPreview.minTime + static_cast<float>(cycle);
+}
+
+void ResolveLinuxAnimationTrackIndices(
+  unsigned int keyCount,
+  float currentTime,
+  unsigned int* previousIndex,
+  unsigned int* nextIndex,
+  float* alpha
+)
+{
+  if (!previousIndex || !nextIndex || !alpha || keyCount == 0)
+  {
+    return;
+  }
+
+  if (keyCount == 1)
+  {
+    *previousIndex = 0;
+    *nextIndex = 0;
+    *alpha = 0.0f;
+    return;
+  }
+
+  const float frame = std::max(0.0f, currentTime) * 30.0f;
+  const unsigned int baseFrame = static_cast<unsigned int>(floorf(frame));
+  *previousIndex = baseFrame % keyCount;
+  *nextIndex = (*previousIndex + 1) % keyCount;
+  *alpha = frame - floorf(frame);
+}
+
+CVec3 SampleLinuxAnimationVec3Track(const StaticVector<CVec3>& trackData, float currentTime, const CVec3& fallback)
+{
+  const unsigned int keyCount = trackData.size();
+  if (keyCount == 0)
+  {
+    return fallback;
+  }
+  if (keyCount == 1)
+  {
+    return trackData[0];
+  }
+
+  unsigned int previousIndex = 0;
+  unsigned int nextIndex = 0;
+  float alpha = 0.0f;
+  ResolveLinuxAnimationTrackIndices(keyCount, currentTime, &previousIndex, &nextIndex, &alpha);
+  const CVec3& previous = trackData[previousIndex];
+  const CVec3& next = trackData[nextIndex];
+  return previous * (1.0f - alpha) + next * alpha;
+}
+
+CQuat SampleLinuxAnimationQuatTrack(const StaticVector<CVec4>& trackData, float currentTime)
+{
+  const unsigned int keyCount = trackData.size();
+  if (keyCount == 0)
+  {
+    return QNULL;
+  }
+  if (keyCount == 1)
+  {
+    CQuat rotation(trackData[0]);
+    rotation.Normalize();
+    return rotation;
+  }
+
+  unsigned int previousIndex = 0;
+  unsigned int nextIndex = 0;
+  float alpha = 0.0f;
+  ResolveLinuxAnimationTrackIndices(keyCount, currentTime, &previousIndex, &nextIndex, &alpha);
+  CQuat rotation;
+  rotation.Slerp(alpha, CQuat(trackData[previousIndex]), CQuat(trackData[nextIndex]));
+  return rotation;
+}
+
+bool ComputeLinuxHeroAnimationSkinMatrices(
+  const LinuxHeroSceneAssetPreview& sceneAsset,
+  double elapsedSeconds,
+  std::vector<Matrix43>* skinMatrices
+)
+{
+  if (!skinMatrices)
+  {
+    return false;
+  }
+  skinMatrices->clear();
+
+  const LinuxHeroAnimationSkinningPreview& runtime = sceneAsset.animationSkinningPreview;
+  if (!runtime.ready ||
+      runtime.skeletonPayload.size() < sizeof(SkeletonData) ||
+      runtime.animationPayload.size() < sizeof(SkeletalAnimationData))
+  {
+    return false;
+  }
+
+  const unsigned char* skeletonBytes =
+    reinterpret_cast<const unsigned char*>(&runtime.skeletonPayload[0]);
+  const unsigned char* animationBytes =
+    reinterpret_cast<const unsigned char*>(&runtime.animationPayload[0]);
+  const SkeletonData* skeleton =
+    reinterpret_cast<const SkeletonData*>(&runtime.skeletonPayload[0]);
+  const SkeletalAnimationData* animation =
+    reinterpret_cast<const SkeletalAnimationData*>(&runtime.animationPayload[0]);
+
+  if (skeleton->jointsCount == 0 ||
+      skeleton->jointsCount > 512 ||
+      animation->tracks.size() != skeleton->jointsCount ||
+      !StaticVectorPayloadRangeValid(skeleton->invertedBindPoseBones, skeletonBytes, runtime.skeletonPayload.size()) ||
+      !StaticVectorPayloadRangeValid(skeleton->parentsIDs, skeletonBytes, runtime.skeletonPayload.size()) ||
+      !StaticVectorPayloadRangeValid(animation->tracks, animationBytes, runtime.animationPayload.size()))
+  {
+    return false;
+  }
+
+  const unsigned int jointsCount = skeleton->jointsCount;
+  {
+    const std::string& skeletonResourceFile =
+      runtime.skeletonRootFile.empty() ? runtime.skeletonFile : runtime.skeletonRootFile;
+    const std::string& animationResourceFile =
+      runtime.animationRootFile.empty() ? runtime.animationFile : runtime.animationRootFile;
+    const SkeletonDataWrapper* rendererSkeletonData =
+      Render::RenderResourceManager::LoadSkeletonData(nstl::string(skeletonResourceFile.c_str()));
+    const SkeletalAnimationDataWrapper* rendererAnimationData =
+      Render::RenderResourceManager::LoadSkeletalAnimation(nstl::string(animationResourceFile.c_str()));
+    if (rendererSkeletonData &&
+        rendererAnimationData &&
+        rendererSkeletonData->GetData() &&
+        rendererAnimationData->GetData() &&
+        rendererSkeletonData->GetData()->jointsCount == jointsCount &&
+        rendererAnimationData->GetData()->tracks.size() == jointsCount)
+    {
+      Render::SkeletonWrapper skeletonWrapper(rendererSkeletonData);
+      Render::SkeletalAnimationSampler sampler(0.0f, rendererAnimationData);
+      const SkeletalAnimationData* rendererAnimation = rendererAnimationData->GetData();
+
+      const float duration = std::max(0.0f, rendererAnimation->maxTime - rendererAnimation->minTime);
+      const float vpar =
+        duration > 0.0001f ?
+        static_cast<float>(
+          fmod(std::max(0.0, elapsedSeconds), static_cast<double>(duration)) /
+          static_cast<double>(duration)) :
+        0.0f;
+      sampler.SetVPar(vpar);
+      sampler.Sample(skeletonWrapper.GetSampledMatrix());
+      skeletonWrapper.SetActiveBones(jointsCount);
+      for (unsigned int jointIndex = 0; jointIndex < jointsCount; ++jointIndex)
+      {
+        skeletonWrapper.SetReindex(jointIndex, jointIndex);
+      }
+
+      Matrix43 identity;
+      Identity(&identity);
+      skeletonWrapper.Update(identity);
+      const Matrix43* rendererSkinMatrices = skeletonWrapper.GetSkinWorldMatrices();
+      if (rendererSkinMatrices)
+      {
+        skinMatrices->assign(rendererSkinMatrices, rendererSkinMatrices + jointsCount);
+        return true;
+      }
+    }
+  }
+
+  {
+    SkeletonDataWrapper skeletonWrapperData(skeleton);
+    SkeletalAnimationDataWrapper animationWrapperData(animation);
+    Render::SkeletonWrapper skeletonWrapper(&skeletonWrapperData);
+    Render::SkeletalAnimationSampler sampler(0.0f, &animationWrapperData);
+
+    const float duration = std::max(0.0f, animation->maxTime - animation->minTime);
+    const float vpar =
+      duration > 0.0001f ?
+      static_cast<float>(
+        fmod(std::max(0.0, elapsedSeconds), static_cast<double>(duration)) /
+        static_cast<double>(duration)) :
+      0.0f;
+    sampler.SetVPar(vpar);
+    sampler.Sample(skeletonWrapper.GetSampledMatrix());
+    skeletonWrapper.SetActiveBones(jointsCount);
+    for (unsigned int jointIndex = 0; jointIndex < jointsCount; ++jointIndex)
+    {
+      skeletonWrapper.SetReindex(jointIndex, jointIndex);
+    }
+
+    Matrix43 identity;
+    Identity(&identity);
+    skeletonWrapper.Update(identity);
+    const Matrix43* rendererSkinMatrices = skeletonWrapper.GetSkinWorldMatrices();
+    if (rendererSkinMatrices)
+    {
+      skinMatrices->assign(rendererSkinMatrices, rendererSkinMatrices + jointsCount);
+      return true;
+    }
+  }
+
+  std::vector<Matrix43> sampled(jointsCount);
+  std::vector<Matrix43> boneWorld(jointsCount);
+  skinMatrices->resize(jointsCount);
+
+  const float sampleTime = ResolveLinuxHeroAnimationSampleTime(runtime, elapsedSeconds);
+  for (unsigned int jointIndex = 0; jointIndex < jointsCount; ++jointIndex)
+  {
+    const TBoneTracks& tracks = animation->tracks[jointIndex];
+    if (!StaticVectorPayloadRangeValid(tracks.positionTrack.trackData, animationBytes, runtime.animationPayload.size()) ||
+        !StaticVectorPayloadRangeValid(tracks.rotationTrack.trackData, animationBytes, runtime.animationPayload.size()) ||
+        !StaticVectorPayloadRangeValid(tracks.scaleTrack.trackData, animationBytes, runtime.animationPayload.size()))
+    {
+      return false;
+    }
+
+    const CVec3 translation =
+      SampleLinuxAnimationVec3Track(tracks.positionTrack.trackData, sampleTime, VNULL3);
+    const CQuat rotation =
+      SampleLinuxAnimationQuatTrack(tracks.rotationTrack.trackData, sampleTime);
+    const CVec3 scale =
+      SampleLinuxAnimationVec3Track(tracks.scaleTrack.trackData, sampleTime, CVec3(1.0f, 1.0f, 1.0f));
+    sampled[jointIndex].Set(rotation, translation, scale);
+  }
+
+  Matrix43 identity;
+  Identity(&identity);
+  boneWorld[0] = identity * sampled[0];
+  for (unsigned int jointIndex = 1; jointIndex < jointsCount; ++jointIndex)
+  {
+    const unsigned int parentIndex = skeleton->parentsIDs[jointIndex];
+    if (parentIndex >= jointsCount)
+    {
+      return false;
+    }
+    boneWorld[jointIndex] = boneWorld[parentIndex] * sampled[jointIndex];
+  }
+
+  for (unsigned int jointIndex = 0; jointIndex < jointsCount; ++jointIndex)
+  {
+    (*skinMatrices)[jointIndex] = boneWorld[jointIndex] * skeleton->invertedBindPoseBones[jointIndex];
+  }
+
+  return true;
+}
+
+LinuxHeroMeshPreviewVertex BuildLinuxHeroMeshPreviewRenderVertex(
+  const LinuxHeroMeshPreviewVertex& vertex,
+  const std::vector<Matrix43>* skinMatrices
+)
+{
+  if (!skinMatrices || skinMatrices->empty() || !vertex.skinningValid)
+  {
+    return vertex;
+  }
+
+  LinuxHeroMeshPreviewVertex result = vertex;
+  CVec3 skinnedPosition(0.0f, 0.0f, 0.0f);
+  CVec3 skinnedNormal(0.0f, 0.0f, 0.0f);
+  float totalWeight = 0.0f;
+  const CVec3 sourcePosition(vertex.x, vertex.y, vertex.z);
+  const CVec3 sourceNormal(vertex.nx, vertex.ny, vertex.nz);
+  for (size_t influence = 0; influence < 4; ++influence)
+  {
+    const float weight = vertex.blendWeights[influence];
+    const unsigned int jointIndex = vertex.blendIndices[influence];
+    if (weight <= 0.0001f || jointIndex >= skinMatrices->size())
+    {
+      continue;
+    }
+
+    const Matrix43& matrix = (*skinMatrices)[jointIndex];
+    skinnedPosition += Transform(sourcePosition, matrix) * weight;
+    if (vertex.normalValid)
+    {
+      skinnedNormal += Rotate(sourceNormal, matrix) * weight;
+    }
+    totalWeight += weight;
+  }
+
+  if (totalWeight <= 0.0001f)
+  {
+    return vertex;
+  }
+
+  if (fabs(totalWeight - 1.0f) > 0.02f)
+  {
+    skinnedPosition /= totalWeight;
+    if (vertex.normalValid)
+    {
+      skinnedNormal /= totalWeight;
+    }
+  }
+
+  result.x = skinnedPosition.x;
+  result.y = skinnedPosition.y;
+  result.z = skinnedPosition.z;
+  if (vertex.normalValid)
+  {
+    const float normalLengthSq = skinnedNormal.LengthSqr();
+    if (normalLengthSq > 0.000001f)
+    {
+      const float invLength = 1.0f / sqrtf(normalLengthSq);
+      result.nx = skinnedNormal.x * invLength;
+      result.ny = skinnedNormal.y * invLength;
+      result.nz = skinnedNormal.z * invLength;
+    }
+  }
+
+  return result;
+}
+
+void EmitLinuxHeroMeshPreviewVertex(
+  const LinuxHeroMeshPreview& meshPreview,
+  const LinuxHeroMeshPreviewVertex& vertex,
+  float scale
+)
+{
+  const float centerX = (meshPreview.minX + meshPreview.maxX) * 0.5f;
+  const float centerY = (meshPreview.minY + meshPreview.maxY) * 0.5f;
+  glVertex3f(
+    (vertex.x - centerX) * scale,
+    0.04f + (vertex.z - meshPreview.minZ) * scale,
+    (vertex.y - centerY) * scale);
+}
+
+float ComputeLinuxHeroPreviewNormalLight(const LinuxHeroMeshPreviewVertex& vertex)
+{
+  if (!vertex.normalValid)
+  {
+    return 1.0f;
+  }
+
+  const float mappedX = vertex.nx;
+  const float mappedY = vertex.nz;
+  const float mappedZ = vertex.ny;
+  const float lightX = -0.38f;
+  const float lightY = 0.72f;
+  const float lightZ = 0.58f;
+  const float dot =
+    mappedX * lightX +
+    mappedY * lightY +
+    mappedZ * lightZ;
+  const float diffuse = std::max(0.0f, dot);
+  return std::min(1.18f, 0.54f + diffuse * 0.64f);
+}
+
+unsigned char ScaleHeroPreviewColor(unsigned char value, float scale)
+{
+  return static_cast<unsigned char>(
+    std::max(0, std::min(255, static_cast<int>(static_cast<float>(value) * scale + 0.5f))));
+}
+
+void ApplyLinuxHeroPreviewVertexColor(
+  const LinuxHeroMeshPreviewVertex& vertex,
+  bool textured,
+  unsigned char accentR,
+  unsigned char accentG,
+  unsigned char accentB
+)
+{
+  const float light = ComputeLinuxHeroPreviewNormalLight(vertex);
+  if (textured)
+  {
+    const unsigned char color = ScaleHeroPreviewColor(255, light);
+    SetOpenGlColor(color, color, color, 238);
+    return;
+  }
+
+  SetOpenGlColor(
+    ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentR, 0.95f), light),
+    ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentG, 0.95f), light),
+    ScaleHeroPreviewColor(ScaleOpenGlColorByte(accentB, 0.95f), light),
+    232);
+}
+
+GLuint ResolveLinuxHeroPreviewDiffuseTexture(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  size_t textureIndex
+)
+{
+  if (!overlay || !heroPreview ||
+      textureIndex == kLinuxHeroPreviewNoDiffuseTexture ||
+      textureIndex >= heroPreview->sceneAsset.skinDiffuseTextures.size())
+  {
+    return 0;
+  }
+
+  const LinuxTextureAssetPreview& texturePreview =
+    heroPreview->sceneAsset.skinDiffuseTextures[textureIndex];
+  if (!texturePreview.artworkLoaded || texturePreview.sourceFile.empty())
+  {
+    return 0;
+  }
+
+  const std::string& sourceFile = texturePreview.sourceFile;
+  if (overlay->heroPreviewDiffuseTextureFailedSourceFiles.find(sourceFile) !=
+      overlay->heroPreviewDiffuseTextureFailedSourceFiles.end())
+  {
+    return 0;
+  }
+
+  std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator cachedTexture =
+    overlay->heroPreviewDiffuseTextureCache.find(sourceFile);
+  if (cachedTexture != overlay->heroPreviewDiffuseTextureCache.end())
+  {
+    return cachedTexture->second.texture;
+  }
+
+  LinuxWindowOverlay::OpenGlTexture uploadedTexture;
+  if (!UploadOpenGlTexture(overlay, texturePreview.artwork, &uploadedTexture))
+  {
+    return 0;
+  }
+
+  const GLuint textureId = uploadedTexture.texture;
+  overlay->heroPreviewDiffuseTextureCache[sourceFile] = uploadedTexture;
+  overlay->heroPreviewDiffuseTextureFailedSourceFiles.erase(sourceFile);
+  return textureId;
+}
+
+bool DrawLinuxHeroMeshPreview(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  unsigned char accentR,
+  unsigned char accentG,
+  unsigned char accentB,
+  double elapsedSeconds,
+  bool drawWireframe
+)
+{
+  if (!heroPreview ||
+      !heroPreview->sceneAsset.meshPreview.ready ||
+      !heroPreview->sceneAsset.meshPreview.boundsValid ||
+      heroPreview->sceneAsset.meshPreview.triangleVertices.empty())
+  {
+    return false;
+  }
+
+  const LinuxHeroMeshPreview& meshPreview = heroPreview->sceneAsset.meshPreview;
+  const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
+  const float scale = 5.2f / assetHeight;
+  std::vector<Matrix43> skinMatrices;
+  const bool animatedSkinning =
+    ComputeLinuxHeroAnimationSkinMatrices(heroPreview->sceneAsset, elapsedSeconds, &skinMatrices);
+  const std::vector<Matrix43>* skinMatricesPtr = animatedSkinning ? &skinMatrices : 0;
+  GLuint currentTexture = 0;
+  bool batchOpen = false;
+  bool textureEnabled = false;
+  for (size_t i = 0; i + 2 < meshPreview.triangleVertices.size(); i += 3)
+  {
+    const LinuxHeroMeshPreviewVertex a =
+      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i], skinMatricesPtr);
+    const LinuxHeroMeshPreviewVertex b =
+      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 1], skinMatricesPtr);
+    const LinuxHeroMeshPreviewVertex c =
+      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 2], skinMatricesPtr);
+    size_t textureIndex = a.diffuseTextureIndex;
+    if (textureIndex == kLinuxHeroPreviewNoDiffuseTexture ||
+        textureIndex != b.diffuseTextureIndex ||
+        textureIndex != c.diffuseTextureIndex ||
+        !a.texCoordValid ||
+        !b.texCoordValid ||
+        !c.texCoordValid)
+    {
+      textureIndex = kLinuxHeroPreviewNoDiffuseTexture;
+    }
+
+    const GLuint diffuseTexture =
+      textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
+      ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
+      0;
+    if (!batchOpen || currentTexture != diffuseTexture)
+    {
+      if (batchOpen)
+      {
+        glEnd();
+      }
+
+      currentTexture = diffuseTexture;
+      if (currentTexture)
+      {
+        if (!textureEnabled)
+        {
+          glEnable(GL_TEXTURE_2D);
+          textureEnabled = true;
+        }
+        glBindTexture(GL_TEXTURE_2D, currentTexture);
+      }
+      else
+      {
+        if (textureEnabled)
+        {
+          glBindTexture(GL_TEXTURE_2D, 0);
+          glDisable(GL_TEXTURE_2D);
+          textureEnabled = false;
+        }
+      }
+      glBegin(GL_TRIANGLES);
+      batchOpen = true;
+    }
+
+    ApplyLinuxHeroPreviewVertexColor(a, currentTexture != 0, accentR, accentG, accentB);
+    if (currentTexture)
+    {
+      glTexCoord2f(a.u, a.v);
+    }
+    EmitLinuxHeroMeshPreviewVertex(meshPreview, a, scale);
+    ApplyLinuxHeroPreviewVertexColor(b, currentTexture != 0, accentR, accentG, accentB);
+    if (currentTexture)
+    {
+      glTexCoord2f(b.u, b.v);
+    }
+    EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
+    ApplyLinuxHeroPreviewVertexColor(c, currentTexture != 0, accentR, accentG, accentB);
+    if (currentTexture)
+    {
+      glTexCoord2f(c.u, c.v);
+    }
+    EmitLinuxHeroMeshPreviewVertex(meshPreview, c, scale);
+  }
+  if (batchOpen)
+  {
+    glEnd();
+  }
+  if (textureEnabled)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
+
+  if (drawWireframe)
+  {
+    SetOpenGlColor(238, 226, 174, meshPreview.drawnTriangleCount > 24000 ? 42 : 64);
+    glBegin(GL_LINES);
+    for (size_t i = 0; i + 2 < meshPreview.triangleVertices.size(); i += 3)
+    {
+      const LinuxHeroMeshPreviewVertex a =
+        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i], skinMatricesPtr);
+      const LinuxHeroMeshPreviewVertex b =
+        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 1], skinMatricesPtr);
+      const LinuxHeroMeshPreviewVertex c =
+        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 2], skinMatricesPtr);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, a, scale);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, c, scale);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, c, scale);
+      EmitLinuxHeroMeshPreviewVertex(meshPreview, a, scale);
+    }
+    glEnd();
+  }
+
+  return true;
+}
+
+size_t ResolveLinuxHeroRendererMaterialTextureIndex(
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  unsigned int partIndex
+)
+{
+  if (partIndex < materialDiffuseTextureIndices.size() &&
+      materialDiffuseTextureIndices[partIndex] != kLinuxHeroPreviewNoDiffuseTexture)
+  {
+    return materialDiffuseTextureIndices[partIndex];
+  }
+
+  for (size_t i = 0; i < materialDiffuseTextureIndices.size(); ++i)
+  {
+    if (materialDiffuseTextureIndices[i] != kLinuxHeroPreviewNoDiffuseTexture)
+    {
+      return materialDiffuseTextureIndices[i];
+    }
+  }
+
+  return kLinuxHeroPreviewNoDiffuseTexture;
+}
+
+size_t ResolveLinuxHeroRendererPayloadTextureIndex(
+  const LinuxHeroSkinGeometryPayloadPreview& payload,
+  unsigned int partIndex
+)
+{
+  return ResolveLinuxHeroRendererMaterialTextureIndex(
+    payload.materialDiffuseTextureIndices,
+    partIndex);
+}
+
+size_t DrawLinuxHeroRendererStaticMeshPayloads(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  const Render::SkeletonWrapper* skeletonWrapper,
+  bool* textureEnabled,
+  size_t* drawnPayloads,
+  size_t* renderedTriangles
+)
+{
+  if (drawnPayloads)
+  {
+    *drawnPayloads = 0;
+  }
+  if (renderedTriangles)
+  {
+    *renderedTriangles = 0;
+  }
+
+  if (!overlay || !heroPreview || !textureEnabled)
+  {
+    return 0;
+  }
+
+  const std::vector<LinuxHeroStaticGeometryPayloadPreview>& payloads =
+    heroPreview->sceneAsset.staticGeometryPayloads;
+  if (payloads.empty())
+  {
+    return 0;
+  }
+
+  unsigned int beforeTriangles = 0;
+  unsigned int beforeDips = 0;
+  Render::SmartRenderer::GetTriangleAndDipCount(beforeTriangles, beforeDips);
+
+  size_t totalBatches = 0;
+  size_t totalPayloads = 0;
+  for (size_t payloadIndex = 0; payloadIndex < payloads.size(); ++payloadIndex)
+  {
+    const LinuxHeroStaticGeometryPayloadPreview& payload = payloads[payloadIndex];
+    if (payload.rootGeometryFile.empty())
+    {
+      continue;
+    }
+
+    const Render::MeshGeometry* meshGeometry =
+      Render::RenderResourceManager::LoadStaticMeshGeometry(
+        nstl::string(payload.rootGeometryFile.c_str()),
+        false);
+    if (!meshGeometry || meshGeometry->primitives.empty())
+    {
+      continue;
+    }
+
+    Matrix43 worldMatrix;
+    ResolveLinuxHeroStaticPayloadPlacement(payload, skeletonWrapper).GetMatrix(&worldMatrix);
+    vector<Render::BaseMaterial*> emptyMaterials;
+    Render::StaticMesh staticMesh;
+    staticMesh.Initialize(worldMatrix, meshGeometry, emptyMaterials);
+
+    Render::BatchQueueSorter sorter(16, true);
+    Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
+    staticMesh.RenderToQueue(queue);
+    if (CountLinuxRenderBatchQueueBatches(queue) == 0)
+    {
+      continue;
+    }
+
+    size_t payloadBatches = 0;
+    for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
+    {
+      for (Render::Batch* batch = queue.GetBatches(priority); batch; batch = batch->pNextBatch)
+      {
+        const size_t textureIndex = ResolveLinuxHeroRendererMaterialTextureIndex(
+          payload.materialDiffuseTextureIndices,
+          batch->elementNumber);
+        const GLuint diffuseTexture =
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
+          ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
+          0;
+        if (diffuseTexture)
+        {
+          if (!*textureEnabled)
+          {
+            glEnable(GL_TEXTURE_2D);
+            *textureEnabled = true;
+          }
+          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+        }
+        else if (*textureEnabled)
+        {
+          glBindTexture(GL_TEXTURE_2D, 0);
+          glDisable(GL_TEXTURE_2D);
+          *textureEnabled = false;
+        }
+
+        batch->Prepare();
+        batch->Draw();
+        ++payloadBatches;
+      }
+    }
+
+    if (payloadBatches > 0)
+    {
+      ++totalPayloads;
+      totalBatches += payloadBatches;
+    }
+  }
+
+  unsigned int afterTriangles = 0;
+  unsigned int afterDips = 0;
+  Render::SmartRenderer::GetTriangleAndDipCount(afterTriangles, afterDips);
+  if (renderedTriangles)
+  {
+    *renderedTriangles =
+      afterTriangles >= beforeTriangles ?
+      afterTriangles - beforeTriangles :
+      0;
+  }
+  if (drawnPayloads)
+  {
+    *drawnPayloads = totalPayloads;
+  }
+  return totalBatches;
+}
+
+bool DrawLinuxHeroRendererSkeletalMeshPreview(
+  LinuxWindowOverlay* overlay,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  LinuxBootstrapScreenRuntime* screenRuntime,
+  double elapsedSeconds
+)
+{
+  if (screenRuntime)
+  {
+    screenRuntime->characterPreviewRendererMeshDrawn = false;
+    screenRuntime->characterPreviewRendererMeshBatches = 0;
+    screenRuntime->characterPreviewRendererMeshTriangles = 0;
+    screenRuntime->characterPreviewRendererStaticMeshDrawn = false;
+    screenRuntime->characterPreviewRendererStaticMeshPayloads = 0;
+    screenRuntime->characterPreviewRendererStaticMeshBatches = 0;
+    screenRuntime->characterPreviewRendererStaticMeshTriangles = 0;
+  }
+
+  if (!overlay ||
+      !heroPreview ||
+      !heroPreview->sceneAsset.rendererSkeletalMeshReady ||
+      !heroPreview->sceneAsset.meshPreview.ready ||
+      !heroPreview->sceneAsset.meshPreview.boundsValid ||
+      heroPreview->sceneAsset.animationSkinningPreview.skeletonRootFile.empty() ||
+      heroPreview->sceneAsset.animationSkinningPreview.animationRootFile.empty() ||
+      heroPreview->sceneAsset.skinGeometryPayloads.empty())
+  {
+    return false;
+  }
+
+  const LinuxHeroSceneAssetPreview& sceneAsset = heroPreview->sceneAsset;
+  const LinuxHeroMeshPreview& meshPreview = sceneAsset.meshPreview;
+  const SkeletalAnimationDataWrapper* animationData =
+    Render::RenderResourceManager::LoadSkeletalAnimation(
+      nstl::string(sceneAsset.animationSkinningPreview.animationRootFile.c_str()));
+  if (!animationData || !animationData->GetData())
+  {
+    return false;
+  }
+
+  Matrix43 identity;
+  Identity(&identity);
+  Render::SkeletalMesh skeletalMesh;
+  skeletalMesh.Initialize(
+    identity,
+    nstl::string(sceneAsset.animationSkinningPreview.skeletonRootFile.c_str()));
+  if (!skeletalMesh.GetSkeletonWrapper())
+  {
+    return false;
+  }
+
+  std::vector<unsigned int> slotIndexes;
+  std::vector<size_t> slotTextureIndices(16, kLinuxHeroPreviewNoDiffuseTexture);
+  for (size_t payloadIndex = 0; payloadIndex < sceneAsset.skinGeometryPayloads.size(); ++payloadIndex)
+  {
+    const LinuxHeroSkinGeometryPayloadPreview& payload =
+      sceneAsset.skinGeometryPayloads[payloadIndex];
+    if (payload.rootGeometryFile.empty())
+    {
+      continue;
+    }
+
+    NDb::SkinPartBase skinPart;
+    skinPart.geometryFileName = nstl::string(payload.rootGeometryFile.c_str());
+
+    unsigned int partIndexes[16] = {0};
+    unsigned int partsCount = 0;
+    skeletalMesh.AddSkinPart(&skinPart, partIndexes, &partsCount);
+    for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
+    {
+      slotIndexes.push_back(partIndexes[partIndex]);
+      if (partIndexes[partIndex] < slotTextureIndices.size())
+      {
+        slotTextureIndices[partIndexes[partIndex]] =
+          ResolveLinuxHeroRendererPayloadTextureIndex(payload, partIndex);
+      }
+    }
+  }
+
+  if (slotIndexes.empty())
+  {
+    return false;
+  }
+
+  Render::SkeletalAnimationSampler sampler(0.0f, animationData);
+  const SkeletalAnimationData* animation = animationData->GetData();
+  const float duration = std::max(0.0f, animation->maxTime - animation->minTime);
+  const float vpar =
+    duration > 0.0001f ?
+    static_cast<float>(
+      fmod(std::max(0.0, elapsedSeconds), static_cast<double>(duration)) /
+      static_cast<double>(duration)) :
+    0.0f;
+  sampler.SetVPar(vpar);
+  sampler.Sample(skeletalMesh.GetSkeletonWrapper()->GetSampledMatrix());
+  skeletalMesh.Update(false);
+
+  Render::BatchQueueSorter sorter(32, true);
+  Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 64);
+  skeletalMesh.RenderToQueue(queue);
+  const size_t queuedBatches = CountLinuxRenderBatchQueueBatches(queue);
+  if (queuedBatches == 0)
+  {
+    return false;
+  }
+
+  const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
+  const float scale = 5.2f / assetHeight;
+  Render::SmartRenderer::SetOpenGLImmediateMeshPreviewTransform(
+    (meshPreview.minX + meshPreview.maxX) * 0.5f,
+    (meshPreview.minY + meshPreview.maxY) * 0.5f,
+    meshPreview.minZ,
+    scale);
+  Render::SmartRenderer::ResetTriangleAndDipCount();
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
+
+  bool textureEnabled = false;
+  size_t drawnBatches = 0;
+  for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
+  {
+    for (Render::Batch* batch = queue.GetBatches(priority); batch; batch = batch->pNextBatch)
+    {
+      const size_t textureIndex =
+        batch->elementNumber < slotTextureIndices.size() ?
+        slotTextureIndices[batch->elementNumber] :
+        kLinuxHeroPreviewNoDiffuseTexture;
+      const GLuint diffuseTexture =
+        textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
+        ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
+        0;
+      if (diffuseTexture)
+      {
+        if (!textureEnabled)
+        {
+          glEnable(GL_TEXTURE_2D);
+          textureEnabled = true;
+        }
+        glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+      }
+      else if (textureEnabled)
+      {
+        glBindTexture(GL_TEXTURE_2D, 0);
+        glDisable(GL_TEXTURE_2D);
+        textureEnabled = false;
+      }
+
+      batch->Prepare();
+      batch->Draw();
+      ++drawnBatches;
+    }
+  }
+
+  size_t staticPayloads = 0;
+  size_t staticTriangles = 0;
+  const size_t staticBatches = DrawLinuxHeroRendererStaticMeshPayloads(
+    overlay,
+    heroPreview,
+    skeletalMesh.GetSkeletonWrapper(),
+    &textureEnabled,
+    &staticPayloads,
+    &staticTriangles);
+  drawnBatches += staticBatches;
+
+  Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
+  if (textureEnabled)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
+
+  unsigned int renderedTriangles = 0;
+  unsigned int renderedDips = 0;
+  Render::SmartRenderer::GetTriangleAndDipCount(renderedTriangles, renderedDips);
+  if (screenRuntime)
+  {
+    screenRuntime->characterPreviewRendererMeshDrawn =
+      drawnBatches > 0 && renderedTriangles > 0 && renderedDips > 0;
+    screenRuntime->characterPreviewRendererMeshBatches = drawnBatches;
+    screenRuntime->characterPreviewRendererMeshTriangles = renderedTriangles;
+    screenRuntime->characterPreviewRendererStaticMeshDrawn =
+      staticBatches > 0 && staticTriangles > 0;
+    screenRuntime->characterPreviewRendererStaticMeshPayloads = staticPayloads;
+    screenRuntime->characterPreviewRendererStaticMeshBatches = staticBatches;
+    screenRuntime->characterPreviewRendererStaticMeshTriangles = staticTriangles;
+  }
+
+  return drawnBatches > 0 && renderedTriangles > 0 && renderedDips > 0;
+}
+
+void DrawLinuxCharacterPreviewMannequin(
+  LinuxWindowOverlay* overlay,
+  const LinuxHeroCatalogEntry* heroEntry,
+  const LinuxSelectedHeroDbPreview* heroPreview,
+  LinuxBootstrapScreenRuntime* screenRuntime,
+  double elapsedSeconds
+)
+{
+  unsigned char accentR = 78;
+  unsigned char accentG = 142;
+  unsigned char accentB = 220;
+  ResolveLinuxCharacterPreviewAccent(heroEntry, heroPreview, &accentR, &accentG, &accentB);
+
+  const bool feminine =
+    heroEntry &&
+    (heroEntry->gender == "Female" || heroEntry->gender == "female" || heroEntry->gender == "FEMALE");
+  const float torsoHalf = feminine ? 0.62f : 0.76f;
+
+  DrawLinuxCharacterPreviewBase();
+  if (DrawLinuxHeroRendererSkeletalMeshPreview(
+        overlay,
+        heroPreview,
+        screenRuntime,
+        elapsedSeconds))
+  {
+    DrawLinuxHeroAssetBounds(heroPreview);
+    return;
+  }
+
+  if (DrawLinuxHeroMeshPreview(overlay, heroPreview, accentR, accentG, accentB, elapsedSeconds, true))
+  {
+    DrawLinuxHeroAssetBounds(heroPreview);
+    return;
+  }
+
+  DrawLinuxHeroAssetBounds(heroPreview);
+  DrawLinuxBootstrap3DCuboid(-0.42f, 0.0f, 0.0f, 0.22f, 0.24f, 1.65f, 66, 78, 91);
+  DrawLinuxBootstrap3DCuboid(0.42f, 0.0f, 0.0f, 0.22f, 0.24f, 1.65f, 66, 78, 91);
+  DrawLinuxBootstrap3DCuboid(0.0f, 1.55f, 0.0f, 0.78f, 0.42f, 0.45f, 80, 88, 98);
+  DrawLinuxBootstrap3DCuboid(0.0f, 1.95f, 0.0f, torsoHalf, 0.46f, 2.05f, accentR, accentG, accentB);
+  DrawLinuxBootstrap3DCuboid(0.0f, 3.95f, 0.0f, 0.92f, 0.48f, 0.38f, 185, 151, 83);
+  DrawLinuxBootstrap3DCuboid(-1.02f, 2.05f, 0.0f, 0.22f, 0.22f, 1.75f, 76, 88, 101);
+  DrawLinuxBootstrap3DCuboid(1.02f, 2.05f, 0.0f, 0.22f, 0.22f, 1.75f, 76, 88, 101);
+  DrawLinuxBootstrap3DCuboid(0.0f, 4.35f, 0.0f, 0.42f, 0.38f, 0.82f, 199, 171, 139);
+  DrawLinuxBootstrap3DCuboid(0.0f, 5.15f, 0.02f, 0.54f, 0.44f, 0.24f, 56, 48, 42);
+
+  DrawLinuxBootstrap3DCuboid(1.42f, 0.65f, -0.28f, 0.06f, 0.06f, 4.2f, 181, 143, 67);
+  DrawLinuxBootstrap3DCuboid(1.42f, 4.65f, -0.28f, 0.22f, 0.08f, 0.42f, 212, 186, 104);
+}
+
+void DrawLinuxBootstrapCharacterPreview(const LinuxOverlayUiRenderContext& renderContext)
+{
+  if (!renderContext.overlay ||
+      !renderContext.screenRuntime ||
+      !renderContext.heroCatalog ||
+      !renderContext.localMatchPreview)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(renderContext.screenRuntime);
+  const LinuxScreenRect rect = ResolveLinuxCharacterPreviewRect(width, height, loadingActive);
+  if (rect.width <= 0 || rect.height <= 0)
+  {
+    return;
+  }
+
+  const LinuxHeroCatalogEntry* heroEntry = 0;
+  const size_t selectedHeroIndex = ResolveSelectedHeroCatalogIndex(
+    *renderContext.heroCatalog,
+    *renderContext.localMatchPreview
+  );
+  if (selectedHeroIndex != static_cast<size_t>(-1) &&
+      selectedHeroIndex < renderContext.heroCatalog->entries.size())
+  {
+    heroEntry = &renderContext.heroCatalog->entries[selectedHeroIndex];
+  }
+
+  SetOpenGlColor(9, 14, 19, loadingActive ? 166 : 196);
+  DrawOpenGlRect(rect.x, rect.y, rect.width, rect.height);
+  SetOpenGlColor(83, 108, 127, 220);
+  DrawOpenGlBorderRect(rect.x, rect.y, rect.width, rect.height);
+
+  glViewport(rect.x, height - rect.y - rect.height, rect.width, rect.height);
+  glClear(GL_DEPTH_BUFFER_BIT);
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_DEPTH_TEST);
+  glDepthFunc(GL_LEQUAL);
+  glDisable(GL_CULL_FACE);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  const float aspect = rect.height > 0 ?
+    static_cast<float>(rect.width) / static_cast<float>(rect.height) :
+    1.0f;
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glOrtho(-5.4f * aspect, 5.4f * aspect, -1.2f, 7.0f, -30.0f, 30.0f);
+
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+  glTranslatef(0.0f, -0.25f, 0.0f);
+  glRotatef(16.0f, 1.0f, 0.0f, 0.0f);
+  const float yaw =
+    renderContext.screenRuntime->characterPreviewYawDegrees +
+    static_cast<float>(renderContext.elapsedSeconds * 8.0);
+  glRotatef(yaw, 0.0f, 1.0f, 0.0f);
+  DrawLinuxCharacterPreviewMannequin(
+    renderContext.overlay,
+    heroEntry,
+    renderContext.selectedHeroPreview,
+    renderContext.screenRuntime,
+    renderContext.elapsedSeconds);
+  glDisable(GL_DEPTH_TEST);
+
+  ApplyOpenGl2DProjection(width, height);
+  const std::string heroTitle = heroEntry ?
+    (heroEntry->title.empty() ? ResolveHeroCatalogId(*heroEntry) : heroEntry->title) :
+    std::string("Selected hero");
+  SetOpenGlColor(235, 231, 215, 245);
+  DrawOpenGlText(
+    renderContext.overlay,
+    rect.x + 12,
+    rect.y + rect.height - 16,
+    "3D hero preview: " + TruncateForOverlay(heroTitle, 38)
+  );
+  if (renderContext.selectedHeroPreview &&
+      renderContext.selectedHeroPreview->sceneAsset.sceneObjectResolved)
+  {
+    DrawOpenGlText(
+      renderContext.overlay,
+      rect.x + 12,
+      rect.y + rect.height - 34,
+      "asset: " + TruncateForOverlay(
+        renderContext.selectedHeroPreview->sceneAsset.dbid,
+        42)
+    );
+  }
+}
+
+struct LinuxLobbyLayoutTransform
+{
+  float scaleX;
+  float scaleY;
+
+  LinuxLobbyLayoutTransform(int width, int height)
+    : scaleX(width > 0 ? static_cast<float>(width) / 1280.0f : 1.0f),
+      scaleY(height > 0 ? static_cast<float>(height) / 1024.0f : 1.0f)
+  {
+  }
+
+  int X(int value) const
+  {
+    return static_cast<int>(static_cast<float>(value) * scaleX + (value >= 0 ? 0.5f : -0.5f));
+  }
+
+  int Y(int value) const
+  {
+    return static_cast<int>(static_cast<float>(value) * scaleY + (value >= 0 ? 0.5f : -0.5f));
+  }
+
+  int W(int value) const
+  {
+    return std::max(1, static_cast<int>(static_cast<float>(value) * scaleX + 0.5f));
+  }
+
+  int H(int value) const
+  {
+    return std::max(1, static_cast<int>(static_cast<float>(value) * scaleY + 0.5f));
+  }
+};
+
+int EstimateOpenGlTextWidth(LinuxWindowOverlay* overlay, const std::string& text)
+{
+  if (text.empty())
+  {
+    return 0;
+  }
+
+  if (overlay && overlay->freetypeReady)
+  {
+    return EstimateOpenGlFreeTypeTextWidth(overlay, text);
+  }
+
+  if (overlay && overlay->fontStruct)
+  {
+    return XTextWidth(overlay->fontStruct, text.c_str(), static_cast<int>(text.size()));
+  }
+
+  return static_cast<int>(text.size()) * 9;
+}
+
+int ResolveOpenGlTextBaseline(LinuxWindowOverlay* overlay, int y, int height)
+{
+  if (overlay && overlay->freetypeReady && overlay->ftFace && overlay->ftFace->size)
+  {
+    const int ascent = static_cast<int>(overlay->ftFace->size->metrics.ascender >> 6);
+    const int descent = static_cast<int>((-overlay->ftFace->size->metrics.descender) >> 6);
+    return y + (height + ascent - descent) / 2;
+  }
+
+  const int ascent = overlay && overlay->fontStruct ? overlay->fontStruct->ascent : 11;
+  const int descent = overlay && overlay->fontStruct ? overlay->fontStruct->descent : 4;
+  return y + (height + ascent - descent) / 2;
+}
+
+int GetOpenGlTextAscent(LinuxWindowOverlay* overlay)
+{
+  if (overlay && overlay->freetypeReady && overlay->ftFace && overlay->ftFace->size)
+  {
+    return std::max(1, static_cast<int>(overlay->ftFace->size->metrics.ascender >> 6));
+  }
+
+  return overlay && overlay->fontStruct ? overlay->fontStruct->ascent : 11;
+}
+
+int ResolveOpenGlTextLineHeight(LinuxWindowOverlay* overlay)
+{
+  if (overlay && overlay->freetypeReady && overlay->ftFace && overlay->ftFace->size)
+  {
+    const int height = static_cast<int>(overlay->ftFace->size->metrics.height >> 6);
+    if (height > 0)
+    {
+      return height;
+    }
+  }
+
+  if (overlay && overlay->fontStruct)
+  {
+    return std::max(1, overlay->fontStruct->ascent + overlay->fontStruct->descent);
+  }
+
+  return 15;
+}
+
+size_t SafeUtf8PrefixLengthForOverlay(const std::string& value, size_t maxBytes)
+{
+  size_t cut = std::min(maxBytes, value.size());
+  while (cut > 0 && cut < value.size() &&
+         (static_cast<unsigned char>(value[cut]) & 0xc0) == 0x80)
+  {
+    --cut;
+  }
+  return cut;
+}
+
+std::string TruncateOpenGlTextToWidth(LinuxWindowOverlay* overlay, const std::string& value, int maxWidth)
+{
+  if (value.empty() || maxWidth <= 0)
+  {
+    return "";
+  }
+
+  if (EstimateOpenGlTextWidth(overlay, value) <= maxWidth)
+  {
+    return value;
+  }
+
+  const std::string ellipsis = "...";
+  if (EstimateOpenGlTextWidth(overlay, ellipsis) > maxWidth)
+  {
+    return "";
+  }
+
+  size_t cut = SafeUtf8PrefixLengthForOverlay(value, value.size() - 1);
+  while (cut > 0)
+  {
+    const std::string candidate = value.substr(0, cut) + ellipsis;
+    if (EstimateOpenGlTextWidth(overlay, candidate) <= maxWidth)
+    {
+      return candidate;
+    }
+
+    const size_t nextCut = SafeUtf8PrefixLengthForOverlay(value, cut - 1);
+    if (nextCut >= cut)
+    {
+      break;
+    }
+    cut = nextCut;
+  }
+
+  return ellipsis;
+}
+
+std::vector<std::string> SplitOpenGlOverlayWords(const std::string& text)
+{
+  std::vector<std::string> words;
+  size_t pos = 0;
+  while (pos < text.size())
+  {
+    while (pos < text.size() && isspace(static_cast<unsigned char>(text[pos])))
+    {
+      ++pos;
+    }
+
+    const size_t begin = pos;
+    while (pos < text.size() && !isspace(static_cast<unsigned char>(text[pos])))
+    {
+      ++pos;
+    }
+
+    if (begin < pos)
+    {
+      words.push_back(text.substr(begin, pos - begin));
+    }
+  }
+
+  return words;
+}
+
+std::vector<std::string> WrapOpenGlTextToWidth(
+  LinuxWindowOverlay* overlay,
+  const std::string& text,
+  int maxWidth,
+  size_t maxLines
+)
+{
+  std::vector<std::string> lines;
+  if (text.empty() || maxWidth <= 0 || maxLines == 0)
+  {
+    return lines;
+  }
+
+  const std::vector<std::string> words = SplitOpenGlOverlayWords(text);
+  std::string line;
+  for (size_t i = 0; i < words.size(); ++i)
+  {
+    const std::string candidate = line.empty() ? words[i] : line + " " + words[i];
+    if (EstimateOpenGlTextWidth(overlay, candidate) <= maxWidth)
+    {
+      line = candidate;
+      continue;
+    }
+
+    if (!line.empty())
+    {
+      lines.push_back(line);
+      if (lines.size() >= maxLines)
+      {
+        lines.back() = TruncateOpenGlTextToWidth(overlay, lines.back() + " ...", maxWidth);
+        return lines;
+      }
+    }
+
+    line = EstimateOpenGlTextWidth(overlay, words[i]) <= maxWidth ?
+      words[i] :
+      TruncateOpenGlTextToWidth(overlay, words[i], maxWidth);
+  }
+
+  if (!line.empty() && lines.size() < maxLines)
+  {
+    lines.push_back(line);
+  }
+
+  return lines;
+}
+
+enum LinuxOpenGlTextAlign
+{
+  LINUX_OPENGL_TEXT_ALIGN_LEFT,
+  LINUX_OPENGL_TEXT_ALIGN_CENTER,
+  LINUX_OPENGL_TEXT_ALIGN_RIGHT
+};
+
+enum LinuxOpenGlTextVAlign
+{
+  LINUX_OPENGL_TEXT_VALIGN_TOP,
+  LINUX_OPENGL_TEXT_VALIGN_CENTER
+};
+
+void DrawOpenGlTextInBox(
+  LinuxWindowOverlay* overlay,
+  int x,
+  int y,
+  int width,
+  int height,
+  const std::string& text,
+  LinuxOpenGlTextAlign align,
+  LinuxOpenGlTextVAlign valign,
+  bool wordWrap
+)
+{
+  if (width <= 0 || height <= 0 || text.empty())
+  {
+    return;
+  }
+
+  const int lineHeight = std::max(1, ResolveOpenGlTextLineHeight(overlay));
+  const size_t maxLines = std::max<size_t>(1, static_cast<size_t>(std::max(1, height) / lineHeight));
+  std::vector<std::string> lines = wordWrap ?
+    WrapOpenGlTextToWidth(overlay, text, width, maxLines) :
+    std::vector<std::string>(1, TruncateOpenGlTextToWidth(overlay, text, width));
+  if (lines.empty())
+  {
+    return;
+  }
+
+  const int totalTextHeight = lineHeight * static_cast<int>(lines.size());
+  const int ascent = GetOpenGlTextAscent(overlay);
+  int baseline = valign == LINUX_OPENGL_TEXT_VALIGN_CENTER ?
+    y + std::max(0, (height - totalTextHeight) / 2) + ascent :
+    y + ascent;
+
+  for (size_t i = 0; i < lines.size(); ++i)
+  {
+    if (lines[i].empty())
+    {
+      baseline += lineHeight;
+      continue;
+    }
+
+    const int textWidth = EstimateOpenGlTextWidth(overlay, lines[i]);
+    int textX = x;
+    if (align == LINUX_OPENGL_TEXT_ALIGN_CENTER)
+    {
+      textX = x + std::max(0, (width - textWidth) / 2);
+    }
+    else if (align == LINUX_OPENGL_TEXT_ALIGN_RIGHT)
+    {
+      textX = x + std::max(0, width - textWidth);
+    }
+
+    DrawOpenGlText(overlay, textX, baseline, lines[i]);
+    baseline += lineHeight;
+  }
+}
+
+bool IsOpenGlOverlaySafeAscii(const std::string& text)
+{
+  for (size_t i = 0; i < text.size(); ++i)
+  {
+    const unsigned char ch = static_cast<unsigned char>(text[i]);
+    if (ch < 32 || ch > 126)
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+std::string ResolveDataRefOverlayName(const std::string& reference)
+{
+  const std::string normalized = NormalizeDataRefPath(reference);
+  fs::path path(normalized);
+  std::string name = path.filename().string();
+
+  const char* descriptorSuffix = ".ADMPDSCR.xdb";
+  const size_t descriptorSuffixLength = strlen(descriptorSuffix);
+  if (name.size() > descriptorSuffixLength &&
+      name.compare(name.size() - descriptorSuffixLength, descriptorSuffixLength, descriptorSuffix) == 0)
+  {
+    name.erase(name.size() - descriptorSuffixLength);
+  }
+  else if (fs::path(name).extension() == ".xdb")
+  {
+    name = fs::path(name).stem().string();
+  }
+
+  if (name.empty() || name == "_" || name == "_.ADMPDSCR")
+  {
+    name = path.parent_path().filename().string();
+  }
+
+  return name;
+}
+
+std::string MakeOpenGlOverlayText(
+  const LinuxWindowOverlay* overlay,
+  const std::string& preferred,
+  const std::string& fallback
+)
+{
+  if (overlay && overlay->freetypeReady && !preferred.empty())
+  {
+    return preferred;
+  }
+
+  if (!preferred.empty() && IsOpenGlOverlaySafeAscii(preferred))
+  {
+    return preferred;
+  }
+
+  if (!fallback.empty() && IsOpenGlOverlaySafeAscii(fallback))
+  {
+    return fallback;
+  }
+
+  return preferred.empty() ? fallback : preferred;
+}
+
+std::string ResolveLinuxLobbyMapTitle(
+  const LinuxWindowOverlay* overlay,
+  const LinuxMapCatalogEntry& entry,
+  size_t entryIndex
+)
+{
+  std::string fallback = ResolveDataRefOverlayName(entry.descriptor);
+  if (fallback.empty())
+  {
+    fallback = NStr::StrFmt("Map %lu", static_cast<unsigned long>(entryIndex + 1));
+  }
+
+  return MakeOpenGlOverlayText(overlay, entry.title, fallback);
+}
+
+std::string ResolveLinuxLobbyMapDetails(const LinuxWindowOverlay* overlay, const LinuxMapCatalogEntry& entry)
+{
+  std::string details = MakeOpenGlOverlayText(overlay, entry.mapType, entry.category);
+  if (details.empty())
+  {
+    details = "PvP";
+  }
+
+  if (entry.teamSize > 0)
+  {
+    details += NStr::StrFmt("  %dx%d", entry.teamSize, entry.teamSize);
+  }
+
+  return details;
+}
+
+std::string ResolveLinuxLobbyMapDescription(const LinuxWindowOverlay* overlay, const LinuxMapCatalogEntry& entry)
+{
+  std::string fallback = ResolveDataRefOverlayName(entry.descriptor);
+  if (!entry.category.empty())
+  {
+    fallback = fallback.empty() ? entry.category : fallback + " / " + entry.category;
+  }
+
+  return MakeOpenGlOverlayText(overlay, entry.description, fallback);
+}
+
+std::string ConvertLinuxLobbyWideText(const wstring& text)
+{
+  return SanitizeLocalizedText(std::string(NStr::ToMBCS(text).c_str()));
+}
+
+std::string ResolveLinuxLobbyGameMapTitle(
+  const LinuxWindowOverlay* overlay,
+  const LinuxMapCatalog& mapCatalog,
+  const lobby::SDevGameInfo* gameInfo,
+  const std::string& fallbackMapTitle
+)
+{
+  if (gameInfo && !gameInfo->mapId.empty())
+  {
+    const std::string mapId = std::string(gameInfo->mapId.c_str());
+    const size_t mapIndex = FindMapCatalogIndex(mapCatalog, mapId);
+    if (mapIndex != static_cast<size_t>(-1) && mapIndex < mapCatalog.entries.size())
+    {
+      return ResolveLinuxLobbyMapTitle(overlay, mapCatalog.entries[mapIndex], mapIndex);
+    }
+
+    const std::string mapName = ResolveDataRefOverlayName(mapId);
+    if (!mapName.empty())
+    {
+      return MakeOpenGlOverlayText(overlay, mapName, mapName);
+    }
+  }
+
+  return fallbackMapTitle.empty() ? std::string("Selected map") : fallbackMapTitle;
+}
+
+void DrawOpenGlTextCentered(LinuxWindowOverlay* overlay, int x, int y, int width, int height, const std::string& text)
+{
+  const int textWidth = EstimateOpenGlTextWidth(overlay, text);
+  const int textX = x + std::max(4, (width - textWidth) / 2);
+  DrawOpenGlText(overlay, textX, ResolveOpenGlTextBaseline(overlay, y, height), text);
+}
+
+void DrawOpenGlTextRight(LinuxWindowOverlay* overlay, int rightX, int baseline, const std::string& text)
+{
+  const int textWidth = EstimateOpenGlTextWidth(overlay, text);
+  DrawOpenGlText(overlay, std::max(0, rightX - textWidth), baseline, text);
+}
+
+void DrawLinuxLobbyPanel(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+
+  if (overlay && overlay->lobbyPanel.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyPanel, rx, ry, rw, rh, 232);
+  }
+  else
+  {
+    SetOpenGlColor(9, 13, 17, 218);
+    DrawOpenGlRect(rx, ry, rw, rh);
+  }
+
+  SetOpenGlColor(105, 90, 62, 210);
+  DrawOpenGlBorderRect(rx, ry, rw, rh);
+  SetOpenGlColor(31, 40, 45, 180);
+  DrawOpenGlBorderRect(rx + 1, ry + 1, rw - 2, rh - 2);
+}
+
+void DrawLinuxLobbyHeader(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  int x,
+  int y,
+  int width,
+  int height,
+  const std::string& text
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+
+  if (overlay && overlay->lobbyHeader.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyHeader, rx, ry, rw, rh, 230);
+  }
+  else
+  {
+    SetOpenGlColor(4, 6, 8, 210);
+    DrawOpenGlRect(rx, ry, rw, rh);
+  }
+
+  SetOpenGlColor(91, 73, 47, 160);
+  DrawOpenGlBorderRect(rx, ry, rw, rh);
+  SetOpenGlColor(232, 212, 160);
+  DrawOpenGlText(overlay, rx + layout.W(16), ResolveOpenGlTextBaseline(overlay, ry, rh), text);
+}
+
+void DrawLinuxLobbyButton(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  int x,
+  int y,
+  int width,
+  int height,
+  const std::string& text,
+  bool selected
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+
+  const LinuxWindowOverlay::OpenGlTexture& texture = selected && overlay->lobbyButtonOver.texture ?
+    overlay->lobbyButtonOver :
+    overlay->lobbyButtonUp;
+  if (texture.texture)
+  {
+    DrawOpenGlTextureStretch(texture, rx, ry, rw, rh);
+  }
+  else
+  {
+    SetOpenGlColor(selected ? 234 : 177, selected ? 184 : 127, selected ? 75 : 50, 245);
+    DrawOpenGlRect(rx, ry, rw, rh);
+    SetOpenGlColor(selected ? 255 : 215, selected ? 222 : 171, selected ? 119 : 76, 235);
+    DrawOpenGlRect(rx + 2, ry + 2, std::max(1, rw - 4), std::max(1, rh / 2 - 2));
+    SetOpenGlColor(selected ? 87 : 63, selected ? 58 : 41, selected ? 29 : 21, 245);
+    DrawOpenGlRect(rx + 2, ry + rh / 2, std::max(1, rw - 4), std::max(1, rh / 2 - 2));
+    SetOpenGlColor(37, 27, 18, 255);
+    DrawOpenGlBorderRect(rx, ry, rw, rh);
+    SetOpenGlColor(255, 239, 187, 230);
+    DrawOpenGlBorderRect(rx + 1, ry + 1, rw - 2, rh - 2);
+  }
+
+  SetOpenGlColor(selected ? 255 : 244, selected ? 239 : 226, selected ? 190 : 183, 255);
+  DrawOpenGlTextCentered(overlay, rx, ry, rw, rh, text);
+}
+
+void DrawLinuxLobbyRadio(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  int x,
+  int y,
+  const std::string& text,
+  bool selected
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int size = std::max(12, layout.H(32));
+  const LinuxWindowOverlay::OpenGlTexture& texture = selected && overlay->lobbyRadioSelected.texture ?
+    overlay->lobbyRadioSelected :
+    overlay->lobbyRadioNormal;
+
+  if (texture.texture)
+  {
+    DrawOpenGlTextureStretch(texture, rx, ry, size, size);
+  }
+  else
+  {
+    SetOpenGlColor(13, 18, 21, 235);
+    DrawOpenGlRect(rx, ry, size, size);
+    SetOpenGlColor(138, 118, 74, 230);
+    DrawOpenGlBorderRect(rx, ry, size, size);
+    if (selected)
+    {
+      SetOpenGlColor(224, 178, 75, 245);
+      DrawOpenGlRect(rx + 4, ry + 4, std::max(1, size - 8), std::max(1, size - 8));
+    }
+  }
+
+  SetOpenGlColor(212, 220, 220, 235);
+  DrawOpenGlText(overlay, rx + size + layout.W(12), ry + ResolveOpenGlTextBaseline(overlay, 0, size), text);
+}
+
+size_t ResolveLinuxLobbyFirstVisibleRow(size_t selectedIndex, size_t totalRows, size_t visibleRows)
+{
+  if (totalRows == 0 || visibleRows == 0 || selectedIndex < visibleRows)
+  {
+    return 0;
+  }
+
+  const size_t maxFirst = totalRows > visibleRows ? totalRows - visibleRows : 0;
+  return std::min(selectedIndex - visibleRows + 1, maxFirst);
+}
+
+void DrawLinuxLobbyScrollBar(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  int x,
+  int y,
+  int width,
+  int height,
+  size_t totalRows,
+  size_t visibleRows,
+  size_t firstRow
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+  if (rw <= 0 || rh <= 0)
+  {
+    return;
+  }
+
+  if (overlay && overlay->lobbyScrollArea.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyScrollArea, rx, ry, rw, rh, 218);
+  }
+  else
+  {
+    SetOpenGlColor(7, 9, 11, 214);
+    DrawOpenGlRect(rx, ry, rw, rh);
+  }
+
+  SetOpenGlColor(80, 67, 43, 170);
+  DrawOpenGlBorderRect(rx, ry, rw, rh);
+
+  if (totalRows == 0)
+  {
+    return;
+  }
+
+  const size_t clampedVisible = std::max<size_t>(1, std::min(totalRows, visibleRows));
+  int leverH = rh;
+  if (totalRows > clampedVisible)
+  {
+    leverH = std::max(layout.H(42), static_cast<int>(
+      static_cast<long long>(rh) * static_cast<long long>(clampedVisible) / static_cast<long long>(totalRows)
+    ));
+    leverH = std::min(rh, leverH);
+  }
+
+  const size_t maxFirst = totalRows > clampedVisible ? totalRows - clampedVisible : 0;
+  const int leverRange = std::max(0, rh - leverH);
+  const int leverY = ry + (maxFirst > 0 ? static_cast<int>(
+    static_cast<long long>(leverRange) * static_cast<long long>(std::min(firstRow, maxFirst)) /
+    static_cast<long long>(maxFirst)
+  ) : 0);
+
+  if (overlay && overlay->lobbyScrollLever.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyScrollLever, rx, leverY, rw, leverH, 240);
+  }
+  else
+  {
+    SetOpenGlColor(164, 119, 52, 225);
+    DrawOpenGlRect(rx + 3, leverY + 3, std::max(1, rw - 6), std::max(1, leverH - 6));
+    SetOpenGlColor(226, 194, 103, 230);
+    DrawOpenGlBorderRect(rx + 3, leverY + 3, std::max(1, rw - 6), std::max(1, leverH - 6));
+  }
+}
+
+void DrawLinuxLobbyMapRows(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState
+)
+{
+  const int panelX = layout.X(65);
+  const int panelY = layout.Y(455);
+  const int panelH = layout.H(368);
+  const int rowX = panelX;
+  const int rowW = layout.W(518);
+  const int rowH = std::max(64, layout.H(130));
+  const size_t visibleRows = static_cast<size_t>(std::max(1, (panelH + rowH - 1) / rowH));
+
+  if (mapCatalog.entries.empty())
+  {
+    SetOpenGlColor(201, 210, 213, 220);
+    DrawOpenGlText(overlay, rowX + layout.W(12), panelY + layout.H(40), "No maps found");
+    DrawLinuxLobbyScrollBar(overlay, layout, 583, 455, 28, 368, 0, visibleRows, 0);
+    return;
+  }
+
+  const size_t firstRow = ResolveLinuxLobbyFirstVisibleRow(
+    mapBrowserState.selectedIndex,
+    mapCatalog.entries.size(),
+    visibleRows
+  );
+
+  for (size_t row = 0; row < visibleRows && firstRow + row < mapCatalog.entries.size(); ++row)
+  {
+    const size_t entryIndex = firstRow + row;
+    const LinuxMapCatalogEntry& entry = mapCatalog.entries[entryIndex];
+    const bool selected = entryIndex == mapBrowserState.selectedIndex;
+    const int rowY = panelY + static_cast<int>(row) * rowH;
+    const int rowVisibleH = std::max(0, std::min(rowH, panelY + panelH - rowY));
+    if (rowVisibleH <= 0)
+    {
+      break;
+    }
+
+    if (overlay && overlay->lobbyPanel.texture)
+    {
+      DrawOpenGlTextureStretch(overlay->lobbyPanel, rowX, rowY, rowW, rowVisibleH, selected ? 178 : 116);
+    }
+    else
+    {
+      SetOpenGlColor(selected ? 49 : 13, selected ? 59 : 18, selected ? 43 : 23, selected ? 210 : 148);
+      DrawOpenGlRect(rowX, rowY, rowW, rowVisibleH);
+    }
+    if (selected && overlay && overlay->lobbySelectionFrame.texture)
+    {
+      DrawOpenGlTextureStretch(overlay->lobbySelectionFrame, rowX, rowY, rowW, rowVisibleH, 230);
+    }
+    else
+    {
+      SetOpenGlColor(selected ? 213 : 60, selected ? 174 : 72, selected ? 82 : 58, selected ? 220 : 140);
+      DrawOpenGlBorderRect(rowX, rowY, rowW, rowVisibleH);
+    }
+
+    const std::string title = ResolveLinuxLobbyMapTitle(overlay, entry, entryIndex);
+    const std::string details = ResolveLinuxLobbyMapDetails(overlay, entry);
+    const std::string description = ResolveLinuxLobbyMapDescription(overlay, entry);
+    const std::string id = ResolveDataRefOverlayName(entry.descriptor);
+    std::string body = details;
+    if (!description.empty())
+    {
+      if (!body.empty())
+      {
+        body += "  ";
+      }
+      body += description;
+    }
+
+    SetOpenGlColor(selected ? 255 : 229, selected ? 235 : 224, selected ? 182 : 216, 245);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(4),
+      rowY + layout.H(4),
+      layout.W(510),
+      std::min(layout.H(24), rowVisibleH),
+      title,
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    if (rowVisibleH > layout.H(34) && !body.empty())
+    {
+      SetOpenGlColor(151, 166, 166, 210);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(4),
+        rowY + layout.H(30),
+        layout.W(510),
+        std::min(layout.H(78), std::max(1, rowVisibleH - layout.H(30))),
+        body,
+        LINUX_OPENGL_TEXT_ALIGN_LEFT,
+        LINUX_OPENGL_TEXT_VALIGN_TOP,
+        true
+      );
+    }
+    if (rowVisibleH > layout.H(112) && !id.empty())
+    {
+      SetOpenGlColor(213, 195, 132, 225);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(3),
+        rowY + layout.H(111),
+        layout.W(512),
+        std::min(layout.H(16), std::max(1, rowVisibleH - layout.H(111))),
+        id,
+        LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+    }
+  }
+
+  DrawLinuxLobbyScrollBar(
+    overlay,
+    layout,
+    583,
+    455,
+    28,
+    368,
+    mapCatalog.entries.size(),
+    visibleRows,
+    firstRow
+  );
+}
+
+void DrawLinuxLobbyGameRows(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxUiRootPreview& uiRootPreview,
+  const LinuxBootstrapScreenRuntime* runtime
+)
+{
+  const int panelX = layout.X(689);
+  const int panelY = layout.Y(454);
+  const int panelH = layout.H(449);
+  const int rowX = panelX;
+  const int rowW = layout.W(518);
+  const int rowH = std::max(50, layout.H(80));
+  const size_t visibleRows = static_cast<size_t>(std::max(1, (panelH + rowH - 1) / rowH));
+  const size_t gameCount = ResolveLinuxLobbyVisibleGameCount(uiRootPreview, runtime);
+  const size_t rowCount = gameCount > 0 ? gameCount : static_cast<size_t>(1);
+  const size_t selectedRow = gameCount > 0 && runtime ?
+    std::min(runtime->visibleLobbySelectedGameRow, gameCount - 1) :
+    static_cast<size_t>(0);
+  const size_t firstRow = ResolveLinuxLobbyFirstVisibleRow(selectedRow, rowCount, visibleRows);
+
+  std::string mapTitle = "Selected map";
+  int players = 10;
+  if (!mapCatalog.entries.empty() && mapBrowserState.selectedIndex < mapCatalog.entries.size())
+  {
+    const LinuxMapCatalogEntry& entry = mapCatalog.entries[mapBrowserState.selectedIndex];
+    mapTitle = ResolveLinuxLobbyMapTitle(overlay, entry, mapBrowserState.selectedIndex);
+    if (entry.teamSize > 0)
+    {
+      players = entry.teamSize * 2;
+    }
+  }
+
+  for (size_t row = 0; row < visibleRows && firstRow + row < rowCount; ++row)
+  {
+    const size_t gameRow = firstRow + row;
+    const int rowY = panelY + static_cast<int>(row) * rowH;
+    const int rowVisibleH = std::max(0, std::min(rowH, panelY + panelH - rowY));
+    if (rowVisibleH <= 0)
+    {
+      break;
+    }
+
+    const bool selected =
+      gameCount > 0 &&
+      runtime &&
+      gameRow == selectedRow;
+
+    if (overlay && overlay->lobbyPanel.texture)
+    {
+      DrawOpenGlTextureStretch(overlay->lobbyPanel, rowX, rowY, rowW, rowVisibleH, selected ? 178 : 126);
+    }
+    else
+    {
+      SetOpenGlColor(selected ? 45 : 15, selected ? 55 : 22, selected ? 43 : 27, selected ? 204 : 174);
+      DrawOpenGlRect(rowX, rowY, rowW, rowVisibleH);
+    }
+    if (selected && overlay && overlay->lobbySelectionFrame.texture)
+    {
+      DrawOpenGlTextureStretch(overlay->lobbySelectionFrame, rowX, rowY, rowW, rowVisibleH, 226);
+    }
+    else
+    {
+      SetOpenGlColor(selected ? 213 : 65, selected ? 174 : 79, selected ? 82 : 78, selected ? 220 : 155);
+      DrawOpenGlBorderRect(rowX, rowY, rowW, rowVisibleH);
+    }
+
+    const bool emptyList = gameCount == 0;
+    const lobby::SDevGameInfo* gameInfo = emptyList ? 0 : ResolveLinuxLobbyVisibleGameInfo(runtime, gameRow);
+    std::string title = emptyList ? "No open games found" : overlay->lobbyText.sessionName;
+    if (gameInfo && !gameInfo->name.empty())
+    {
+      const std::string gameName = ConvertLinuxLobbyWideText(gameInfo->name);
+      title = MakeOpenGlOverlayText(overlay, gameName, title);
+    }
+    else if (!emptyList && gameRow > 0)
+    {
+      title += NStr::StrFmt(" %lu", static_cast<unsigned long>(gameRow + 1));
+    }
+    const std::string sessionId = emptyList ?
+      std::string("") :
+      NStr::StrFmt("# %d", gameInfo ? static_cast<int>(gameInfo->gameId) : 1001 + static_cast<int>(gameRow));
+    const std::string slots = emptyList ?
+      "Refresh the list" :
+      NStr::StrFmt(
+        "%d / %d",
+        gameInfo ? gameInfo->playersCount : static_cast<int>(gameRow + 1),
+        gameInfo && gameInfo->maxPlayers > 0 ? gameInfo->maxPlayers : players
+      );
+    const std::string rowMapTitle = ResolveLinuxLobbyGameMapTitle(overlay, mapCatalog, gameInfo, mapTitle);
+
+    SetOpenGlColor(226, 226, 216, 240);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(4),
+      rowY + layout.H(6),
+      layout.W(510),
+      std::min(layout.H(44), rowVisibleH),
+      title,
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    if (emptyList)
+    {
+      SetOpenGlColor(214, 194, 136, 225);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(4),
+        rowY + layout.H(50),
+        layout.W(510),
+        std::min(layout.H(24), std::max(1, rowVisibleH - layout.H(50))),
+        slots,
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      continue;
+    }
+
+    SetOpenGlColor(119, 133, 136, 195);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(2),
+      rowY + layout.H(2),
+      layout.W(90),
+      std::min(layout.H(18), rowVisibleH),
+      sessionId,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    if (rowVisibleH > layout.H(54))
+    {
+      SetOpenGlColor(133, 149, 150, 205);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(4),
+        rowY + layout.H(36),
+        layout.W(88),
+        layout.H(18),
+        overlay->lobbyText.sessionPlayers,
+        LINUX_OPENGL_TEXT_ALIGN_LEFT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(420),
+        rowY + layout.H(36),
+        layout.W(94),
+        layout.H(18),
+        overlay->lobbyText.sessionMap,
+        LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+    }
+
+    SetOpenGlColor(214, 194, 136, 225);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(4),
+      rowY + layout.H(58),
+      layout.W(80),
+      std::min(layout.H(18), std::max(1, rowVisibleH - layout.H(58))),
+      slots,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    SetOpenGlColor(164, 179, 181, 220);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(88),
+      rowY + layout.H(58),
+      layout.W(426),
+      std::min(layout.H(18), std::max(1, rowVisibleH - layout.H(58))),
+      rowMapTitle,
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  DrawLinuxLobbyScrollBar(
+    overlay,
+    layout,
+    1207,
+    454,
+    28,
+    449,
+    rowCount,
+    visibleRows,
+    firstRow
+  );
+}
+
+void DrawLinuxLobbyPlayerCount(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  const LinuxLocalMatchPreview& localMatchPreview
+)
+{
+  const int labelX = layout.X(68);
+  const int labelY = layout.Y(844);
+  SetOpenGlColor(220, 223, 216, 230);
+  DrawOpenGlText(overlay, labelX, labelY + layout.H(24), overlay->lobbyText.playerCountLabel);
+
+  const int sliderX = layout.X(69);
+  const int sliderY = layout.Y(883);
+  const int sliderW = layout.W(247);
+  const int sliderH = layout.H(32);
+
+  int players = localMatchPreview.requestedTeamSize > 0 ?
+    static_cast<int>(localMatchPreview.requestedTeamSize * 2) :
+    10;
+  players = std::max(2, std::min(10, players));
+
+  const int buttonW = std::max(14, layout.W(24));
+  const int leverW = std::max(18, layout.W(32));
+  const int trackX = sliderX + buttonW;
+  const int trackW = std::max(1, sliderW - buttonW * 2);
+  if (overlay->lobbyScrollHorizontalFirst.texture &&
+      overlay->lobbyScrollHorizontalSecond.texture &&
+      overlay->lobbyScrollArea.texture &&
+      overlay->lobbyScrollLever.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyScrollHorizontalFirst, sliderX, sliderY, buttonW, sliderH, 235);
+    DrawOpenGlTextureStretch(overlay->lobbyScrollArea, trackX, sliderY, trackW, sliderH, 218);
+    DrawOpenGlTextureStretch(
+      overlay->lobbyScrollHorizontalSecond,
+      sliderX + sliderW - buttonW,
+      sliderY,
+      buttonW,
+      sliderH,
+      235
+    );
+    const int leverRange = std::max(0, trackW - leverW);
+    const int leverX = trackX + (players - 2) * leverRange / 8;
+    DrawOpenGlTextureStretch(overlay->lobbyScrollLever, leverX, sliderY, leverW, sliderH, 245);
+  }
+  else
+  {
+    SetOpenGlColor(8, 11, 13, 220);
+    DrawOpenGlRect(sliderX, sliderY + sliderH / 2 - 3, sliderW, 6);
+    SetOpenGlColor(122, 100, 58, 225);
+    DrawOpenGlBorderRect(sliderX, sliderY + sliderH / 2 - 5, sliderW, 10);
+
+    const int knobW = std::max(14, layout.W(18));
+    const int knobX = sliderX + (players - 2) * std::max(1, sliderW - knobW) / 8;
+    SetOpenGlColor(221, 176, 73, 245);
+    DrawOpenGlRect(knobX, sliderY + layout.H(4), knobW, std::max(12, sliderH - layout.H(8)));
+    SetOpenGlColor(55, 38, 22, 245);
+    DrawOpenGlBorderRect(knobX, sliderY + layout.H(4), knobW, std::max(12, sliderH - layout.H(8)));
+  }
+
+  const int valueX = layout.X(331);
+  const int valueY = layout.Y(878);
+  const int valueW = layout.W(68);
+  const int valueH = layout.H(40);
+  if (overlay->lobbyFrame.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbyFrame, valueX, valueY, valueW, valueH, 220);
+    SetOpenGlColor(105, 90, 62, 210);
+    DrawOpenGlBorderRect(valueX, valueY, valueW, valueH);
+  }
+  else
+  {
+    DrawLinuxLobbyPanel(overlay, layout, 331, 878, 68, 40);
+  }
+  SetOpenGlColor(237, 226, 181, 245);
+  DrawOpenGlTextCentered(overlay, valueX, valueY, valueW, valueH, NStr::StrFmt("%d", players));
+}
+
+void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  if (!overlay)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const LinuxMapCatalog& mapCatalog = *renderContext.mapCatalog;
+  const LinuxMapBrowserState& mapBrowserState = *renderContext.mapBrowserState;
+  const LinuxLocalMatchPreview& localMatchPreview = *renderContext.localMatchPreview;
+  const LinuxUiRootPreview& uiRootPreview = *renderContext.uiRootPreview;
+  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLobbyLayoutTransform layout(width, height);
+
+  if (overlay->lobbyBackgroundTexture)
+  {
+    DrawOpenGlTextureCover(
+      overlay->lobbyBackgroundTexture,
+      overlay->lobbyBackgroundWidth,
+      overlay->lobbyBackgroundHeight,
+      0,
+      0,
+      width,
+      height
+    );
+  }
+  else if (overlay->artworkTexture)
+  {
+    DrawOpenGlTextureCover(overlay, 0, 0, width, height);
+  }
+  else
+  {
+    SetOpenGlColor(13, 17, 21);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+
+  SetOpenGlColor(0, 0, 0, 34);
+  DrawOpenGlRect(0, 0, width, height);
+
+  DrawLinuxBootstrapCharacterPreview(renderContext);
+
+  DrawLinuxLobbyHeader(overlay, layout, 71, 344, 535, 60, overlay->lobbyText.createGameHeader);
+  DrawLinuxLobbyHeader(overlay, layout, 694, 342, 535, 60, overlay->lobbyText.joinGameHeader);
+  DrawLinuxLobbyHeader(overlay, layout, 109, 428, 455, 23, overlay->lobbyText.mapsListHeader);
+
+  DrawLinuxLobbyPanel(overlay, layout, 65, 455, 546, 368);
+  DrawLinuxLobbyPanel(overlay, layout, 689, 454, 546, 449);
+  DrawLinuxLobbyMapRows(overlay, layout, mapCatalog, mapBrowserState);
+  DrawLinuxLobbyGameRows(overlay, layout, mapCatalog, mapBrowserState, uiRootPreview, runtime);
+
+  DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
+  const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
+  DrawLinuxLobbyRadio(
+    overlay,
+    layout,
+    705,
+    411,
+    overlay->lobbyText.joinNormal,
+    joinMode == LINUX_LOBBY_JOIN_MODE_NORMAL
+  );
+  DrawLinuxLobbyRadio(
+    overlay,
+    layout,
+    888,
+    411,
+    overlay->lobbyText.joinReconnect,
+    joinMode == LINUX_LOBBY_JOIN_MODE_RECONNECT
+  );
+  DrawLinuxLobbyRadio(
+    overlay,
+    layout,
+    1074,
+    411,
+    overlay->lobbyText.joinSpectate,
+    joinMode == LINUX_LOBBY_JOIN_MODE_SPECTATE
+  );
+
+  if (overlay->lobbySelectionFrame.texture)
+  {
+    DrawOpenGlTextureStretch(
+      overlay->lobbySelectionFrame,
+      layout.X(975),
+      layout.Y(14),
+      layout.W(289),
+      layout.H(53),
+      230
+    );
+  }
+  else
+  {
+    DrawLinuxLobbyPanel(overlay, layout, 975, 14, 289, 53);
+  }
+  SetOpenGlColor(225, 219, 195, 235);
+  const bool developerFemale =
+    runtime &&
+    IsValid(runtime->gameContext) &&
+    runtime->gameContext->GetDeveloperSex() == lobby::ESex::Female;
+  DrawOpenGlTextCentered(
+    overlay,
+    layout.X(975),
+    layout.Y(14),
+    layout.W(289),
+    layout.H(53),
+    developerFemale ? overlay->lobbyText.developerFemale : overlay->lobbyText.developerMale
+  );
+
+  DrawLinuxLobbyPlayerCount(overlay, layout, localMatchPreview);
+
+  SetOpenGlColor(205, 213, 211, 220);
+  DrawOpenGlText(overlay, layout.X(697), layout.Y(905) + layout.H(24),
+    uiRootPreview.runtimeBootstrapJoinResultReady && !uiRootPreview.runtimeBootstrapJoinResult.empty() ?
+      TruncateForOverlay(uiRootPreview.runtimeBootstrapJoinResult, 54) :
+      std::string(""));
+
+  const bool primarySelected = runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_PRIMARY;
+  DrawLinuxLobbyButton(overlay, layout, 186, 935, 309, 59, overlay->lobbyText.startSessionButton, false);
+  DrawLinuxLobbyButton(overlay, layout, 418, 849, 192, 59, overlay->lobbyText.createGameButton, primarySelected);
+  DrawLinuxLobbyButton(overlay, layout, 807, 935, 324, 59, overlay->lobbyText.refreshButton, false);
+}
+
+void DrawLinuxLiveHudPercentBar(
+  LinuxWindowOverlay* overlay,
+  int x,
+  int y,
+  int width,
+  int height,
+  float percent,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  const std::string& text
+)
+{
+  const float clamped = ClampLinuxDynamicMarkerPercent(percent);
+  const int fillWidth = std::max(1, static_cast<int>(static_cast<float>(width) * clamped));
+
+  SetOpenGlColor(12, 16, 20, 228);
+  DrawOpenGlRect(x, y, width, height);
+  SetOpenGlColor(red, green, blue, 232);
+  DrawOpenGlRect(x + 1, y + 1, std::max(1, fillWidth - 2), std::max(1, height - 2));
+  SetOpenGlColor(92, 111, 124, 230);
+  DrawOpenGlBorderRect(x, y, width, height);
+  SetOpenGlColor(241, 244, 239, 238);
+  DrawOpenGlText(overlay, x + 8, y + height - 6, text);
+}
+
+void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (!overlay || !runtime || !runtime->liveHeroState.ready)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const LinuxLiveUnitHudState& hero = runtime->liveHeroState;
+  const LinuxLiveUnitHudState& target = runtime->liveTargetState;
+  const bool hasTarget = target.ready;
+  const int panelWidth = std::min(std::max(430, width / 3), std::max(360, width - 88));
+  const int panelHeight = hasTarget ? 154 : 112;
+  const int panelLeft = std::max(44, width / 18);
+  const int panelTop = std::max(72, height - 38 - panelHeight - 18);
+  const int barWidth = std::max(220, panelWidth - 28);
+  char buffer[512] = {0};
+
+  SetOpenGlColor(9, 13, 17, 224);
+  DrawOpenGlRect(panelLeft, panelTop, panelWidth, panelHeight);
+  SetOpenGlColor(88, 112, 124, 220);
+  DrawOpenGlBorderRect(panelLeft, panelTop, panelWidth, panelHeight);
+
+  SetOpenGlColor(244, 239, 230, 246);
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "Hero #%d P%d U%d level %d gold %d",
+    hero.objectId,
+    hero.playerId,
+    hero.userId,
+    hero.level,
+    hero.gold);
+  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 24, buffer);
+
+  SetOpenGlColor(188, 205, 216, 232);
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "%s  %.1f,%.1f  %s",
+    DescribeLinuxLiveHudUnitKind(hero.kind),
+    static_cast<double>(hero.x),
+    static_cast<double>(hero.y),
+    hero.moving ? "moving" : (hero.dead ? "dead" : "ready"));
+  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 46, buffer);
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "HP %.0f/%.0f %.0f%%",
+    static_cast<double>(hero.life),
+    static_cast<double>(hero.maxLife),
+    static_cast<double>(hero.lifePercent * 100.0f));
+  DrawLinuxLiveHudPercentBar(
+    overlay,
+    panelLeft + 14,
+    panelTop + 58,
+    barWidth,
+    18,
+    hero.lifePercent,
+    hero.lifePercent < 0.28f ? 224 : 76,
+    hero.lifePercent < 0.28f ? 72 : 205,
+    84,
+    buffer);
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "EN %.0f/%.0f %.0f%%",
+    static_cast<double>(hero.energy),
+    static_cast<double>(hero.maxEnergy),
+    static_cast<double>(hero.energyPercent * 100.0f));
+  DrawLinuxLiveHudPercentBar(
+    overlay,
+    panelLeft + 14,
+    panelTop + 80,
+    barWidth,
+    18,
+    hero.energyPercent,
+    72,
+    139,
+    222,
+    buffer);
+
+  if (!hasTarget)
+  {
+    return;
+  }
+
+  SetOpenGlColor(217, 225, 221, 238);
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "Target #%d %s F%d dist %.1f  %s",
+    target.objectId,
+    DescribeLinuxLiveHudUnitKind(target.kind),
+    target.faction,
+    static_cast<double>(target.distance),
+    target.source.empty() ? "none" : target.source.c_str());
+  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 124, buffer);
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "HP %.0f/%.0f %.0f%%",
+    static_cast<double>(target.life),
+    static_cast<double>(target.maxLife),
+    static_cast<double>(target.lifePercent * 100.0f));
+  DrawLinuxLiveHudPercentBar(
+    overlay,
+    panelLeft + 14,
+    panelTop + 134,
+    std::max(180, panelWidth - 28),
+    16,
+    target.lifePercent,
+    target.lifePercent < 0.28f ? 224 : 215,
+    target.lifePercent < 0.28f ? 72 : 184,
+    target.lifePercent < 0.28f ? 84 : 82,
+    buffer);
+}
+
+void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  if (!overlay)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxMapCatalog& mapCatalog = *renderContext.mapCatalog;
+  const LinuxMapBrowserState& mapBrowserState = *renderContext.mapBrowserState;
+  const LinuxHeroCatalog& heroCatalog = *renderContext.heroCatalog;
+  const LinuxLocalMatchPreview& localMatchPreview = *renderContext.localMatchPreview;
+  const LinuxUiRootPreview& uiRootPreview = *renderContext.uiRootPreview;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+
+  if (overlay->artworkTexture)
+  {
+    DrawOpenGlTextureCover(overlay, 0, 0, width, height);
+  }
+  else
+  {
+    SetOpenGlColor(14, 18, 24);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+
+  if (IsLinuxBootstrap3DPreviewActive(runtime, renderContext.selectedMapPreview))
+  {
+    DrawLinuxBootstrap3DPreview(renderContext);
+    ApplyOpenGl2DProjection(width, height);
+    SetOpenGlColor(7, 10, 14, 92);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+  else if (overlay->artworkTexture)
+  {
+    SetOpenGlColor(7, 10, 14, 150);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+
+  const int menuLeft = std::max(44, width / 18);
+  const int menuTop = std::max(72, height / 8);
+  const int menuWidth = std::min(std::max(340, width / 4), std::max(280, width - 88));
+  const int itemHeight = 42;
+  const size_t renderedActionCount = loadingActive ? 1 : LINUX_VISIBLE_MENU_ACTION_COUNT;
+  const int menuPanelHeight = 168 + itemHeight * static_cast<int>(renderedActionCount);
+
+  SetOpenGlColor(11, 16, 22, 220);
+  DrawOpenGlRect(menuLeft - 24, menuTop - 48, menuWidth + 48, menuPanelHeight);
+  SetOpenGlColor(89, 111, 130, 210);
+  DrawOpenGlBorderRect(menuLeft - 24, menuTop - 48, menuWidth + 48, menuPanelHeight);
+
+  SetOpenGlColor(244, 239, 230);
+  DrawOpenGlText(overlay, menuLeft, menuTop, "Prime World");
+  SetOpenGlColor(188, 205, 219);
+  DrawOpenGlText(overlay, menuLeft, menuTop + 24, "Native Linux client");
+  SetOpenGlColor(136, 165, 187);
+  DrawOpenGlText(overlay, menuLeft, menuTop + 48, DescribeVisibleMenuPhase(runtime));
+
+  const int actionsTop = menuTop + 84;
+  for (size_t actionIndex = 0; actionIndex < renderedActionCount; ++actionIndex)
+  {
+    const bool selected = runtime && runtime->visibleMenuSelectedAction == actionIndex;
+    const int itemTop = actionsTop + static_cast<int>(actionIndex) * itemHeight;
+    if (selected)
+    {
+      SetOpenGlColor(209, 172, 91, 230);
+      DrawOpenGlRect(menuLeft - 8, itemTop - 22, menuWidth + 16, 32);
+      SetOpenGlColor(23, 27, 31);
+    }
+    else
+    {
+      SetOpenGlColor(214, 224, 232);
+    }
+
+    std::string label = selected ? "> " : "  ";
+    label += DescribeLinuxVisibleMenuAction(runtime, actionIndex);
+    DrawOpenGlText(overlay, menuLeft, itemTop, label);
+  }
+
+  SetOpenGlColor(170, 186, 198);
+  DrawOpenGlText(overlay, menuLeft, actionsTop + itemHeight * static_cast<int>(renderedActionCount) + 16,
+    loadingActive ?
+      "Loading screen active  F10 diagnostics" :
+      "Up/Down select  Enter activate  F10 diagnostics");
+
+  const int detailsLeft = std::min(width - 360, menuLeft + menuWidth + 56);
+  const int detailsTop = menuTop - 24;
+  const int detailsWidth = std::max(320, width - detailsLeft - 44);
+  const int detailsHeight = std::min(420, height - detailsTop - 72);
+  if (detailsLeft > menuLeft + menuWidth && detailsHeight > 160)
+  {
+    SetOpenGlColor(11, 16, 22, 196);
+    DrawOpenGlRect(detailsLeft, detailsTop, detailsWidth, detailsHeight);
+    SetOpenGlColor(79, 101, 122, 210);
+    DrawOpenGlBorderRect(detailsLeft, detailsTop, detailsWidth, detailsHeight);
+
+    int y = detailsTop + 34;
+    SetOpenGlColor(244, 239, 230);
+    DrawOpenGlText(overlay, detailsLeft + 18, y, "Lobby status");
+    y += 30;
+
+    char buffer[512] = {0};
+    std::string mapTitle = "<none>";
+    std::string mapType = "<none>";
+    int teamSize = 0;
+    if (!mapCatalog.entries.empty() && mapBrowserState.selectedIndex < mapCatalog.entries.size())
+    {
+      const LinuxMapCatalogEntry& mapEntry = mapCatalog.entries[mapBrowserState.selectedIndex];
+      mapTitle = mapEntry.title.empty() ? mapEntry.descriptor : mapEntry.title;
+      mapType = mapEntry.mapType.empty() ? mapEntry.category : mapEntry.mapType;
+      teamSize = mapEntry.teamSize;
+    }
+
+    SetOpenGlColor(202, 214, 224);
+    snprintf(buffer, sizeof(buffer), "Map: %s", TruncateForOverlay(mapTitle, 48).c_str());
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 22;
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Mode: %s  team size: %d  maps: %lu",
+      mapType.empty() ? "<none>" : mapType.c_str(),
+      teamSize,
+      static_cast<unsigned long>(mapCatalog.entries.size())
+    );
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 28;
+
+    size_t selectedHeroIndex = ResolveSelectedHeroCatalogIndex(heroCatalog, localMatchPreview);
+    std::string heroTitle = "<none>";
+    std::string heroId = "<none>";
+    if (selectedHeroIndex != static_cast<size_t>(-1) && selectedHeroIndex < heroCatalog.entries.size())
+    {
+      const LinuxHeroCatalogEntry& heroEntry = heroCatalog.entries[selectedHeroIndex];
+      heroTitle = heroEntry.title.empty() ? ResolveHeroCatalogId(heroEntry) : heroEntry.title;
+      heroId = ResolveHeroCatalogId(heroEntry);
+    }
+    snprintf(buffer, sizeof(buffer), "Hero: %s (%s)",
+      TruncateForOverlay(heroTitle, 38).c_str(),
+      heroId.c_str());
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 22;
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Lineup: %lu slots  human team: %d  generated: %lu",
+      static_cast<unsigned long>(localMatchPreview.lineup.size()),
+      localMatchPreview.humanTeam,
+      static_cast<unsigned long>(localMatchPreview.generationCount)
+    );
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 28;
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Real UI: %s  window: %s",
+      uiRootPreview.runtimeBootstrapScreenReady ? "ready" : "missing",
+      uiRootPreview.runtimeBootstrapScreenWindow.empty() ?
+        "<none>" :
+        uiRootPreview.runtimeBootstrapScreenWindow.c_str()
+    );
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 22;
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Hero screen: %s  loading: %s",
+      uiRootPreview.runtimeHeroScreenReady ? "ready" : "inactive",
+      uiRootPreview.runtimeLoadingScreenReady ? "ready" : "inactive"
+    );
+    DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    y += 28;
+
+    if (runtime && IsValid(runtime->gameContext))
+    {
+      snprintf(
+        buffer,
+        sizeof(buffer),
+        "Ready: %s  selected hero: %s",
+        DescribeLinuxBootstrapReadyState(runtime->gameContext->GetReadyState()),
+        runtime->gameContext->GetSelectedHeroId().empty() ?
+          "<none>" :
+          runtime->gameContext->GetSelectedHeroId().c_str()
+      );
+      DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+      y += 22;
+    }
+
+    if (uiRootPreview.runtimeLoadingScreenReady)
+    {
+      snprintf(
+        buffer,
+        sizeof(buffer),
+        "Loading: %.0f%%  %s",
+        static_cast<double>(uiRootPreview.runtimeLoadingProgress * 100.0f),
+        uiRootPreview.runtimeLoadingStatusText.empty() ?
+          "<status pending>" :
+          TruncateForOverlay(uiRootPreview.runtimeLoadingStatusText, 42).c_str()
+      );
+      DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+      y += 22;
+    }
+
+    if (IsLinuxBootstrap3DPreviewActive(runtime, renderContext.selectedMapPreview))
+    {
+      snprintf(
+        buffer,
+        sizeof(buffer),
+        "3D preview: native OpenGL map markers=%lu terrain=%lu water=%lu roads=%lu elem=%lu/%lu static=%lu/%lu anim=%lu/%lu",
+        static_cast<unsigned long>(renderContext.selectedMapPreview->tactical.markers.size()),
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewTerrainSurfaceTriangles) :
+          0UL,
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewWaterZoneTriangles) :
+          0UL,
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewTerrainRoadSegments) :
+          0UL,
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewTerrainElementMeshBatches) :
+          0UL,
+        static_cast<unsigned long>(renderContext.selectedMapPreview->terrainElementPayloads.size()),
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewRendererStaticMeshBatches) :
+          0UL,
+        static_cast<unsigned long>(renderContext.selectedMapPreview->staticGeometryPayloads.size()),
+        runtime ?
+          static_cast<unsigned long>(runtime->mapPreviewRendererAnimatedMeshBatches) :
+          0UL,
+        static_cast<unsigned long>(renderContext.selectedMapPreview->animatedGeometryPayloads.size())
+      );
+      DrawOpenGlText(overlay, detailsLeft + 18, y, buffer);
+    }
+  }
+
+  DrawLinuxBootstrapCharacterPreview(renderContext);
+  DrawLinuxLiveHudOverlay(renderContext);
+
+  SetOpenGlColor(8, 12, 16, 210);
+  DrawOpenGlRect(0, height - 38, width, 38);
+  SetOpenGlColor(199, 208, 216);
+  DrawOpenGlText(overlay, 20, height - 15,
+    "Native OpenGL/Linux port in progress. This menu is Linux-only and leaves the Windows client path unchanged.");
+}
+
 void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -22448,6 +44184,36 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 
   const int width = renderContext.width;
   const int height = renderContext.height;
+
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_SCISSOR_TEST);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  ApplyOpenGl2DProjection(width, height);
+
+  if (renderContext.screenRuntime && renderContext.uiRootPreview)
+  {
+    DrawLinuxBootstrapScreenRuntime(*renderContext.loadingUiPreview,
+      renderContext.screenRuntime,
+      const_cast<LinuxUiRootPreview*>(renderContext.uiRootPreview));
+  }
+
+  if (!IsLinuxDiagnosticsOverlayActive(*renderContext.settings, renderContext.screenRuntime))
+  {
+    if (IsLinuxBootstrapLoadingScreenActive(renderContext.screenRuntime))
+    {
+      RenderWindowOverlayOpenGlVisibleMenu(renderContext);
+    }
+    else
+    {
+      RenderWindowOverlayOpenGlLobbySelectGameMode(renderContext);
+    }
+    return;
+  }
+
   const std::vector<std::string> lines = BuildOverlayLines(
     *renderContext.environment,
     *renderContext.settings,
@@ -22479,26 +44245,6 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 
   const int headerHeight = 56;
   int panelTop = headerHeight + 24;
-
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_CULL_FACE);
-  glDisable(GL_LIGHTING);
-  glDisable(GL_SCISSOR_TEST);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  glOrtho(0.0, static_cast<double>(width), static_cast<double>(height), 0.0, -1.0, 1.0);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-
-  if (renderContext.screenRuntime && renderContext.uiRootPreview)
-  {
-    DrawLinuxBootstrapScreenRuntime(*renderContext.loadingUiPreview,
-      renderContext.screenRuntime,
-      const_cast<LinuxUiRootPreview*>(renderContext.uiRootPreview));
-  }
 
   SetOpenGlColor(27, 38, 49);
   DrawOpenGlRect(0, 0, width, headerHeight);
@@ -22637,6 +44383,8 @@ bool DrawWindowOverlayOpenGl(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
   const LinuxSelectedHeroDbPreview& selectedHeroPreview,
+  const std::vector<LinuxSelectedHeroDbPreview>& lineupHeroPreviews,
+  const std::map<std::string, LinuxSelectedHeroDbPreview>& dynamicUnitMeshPreviews,
   const LinuxEngineMapStartPreview& engineMapStartPreview,
   const LinuxRootFileSystemPreview& rootFileSystemPreview,
   const LinuxUiRootPreview& uiRootPreview,
@@ -22687,6 +44435,8 @@ bool DrawWindowOverlayOpenGl(
   renderContext.heroCatalog = &heroCatalog;
   renderContext.localMatchPreview = &localMatchPreview;
   renderContext.selectedHeroPreview = &selectedHeroPreview;
+  renderContext.lineupHeroPreviews = &lineupHeroPreviews;
+  renderContext.dynamicUnitMeshPreviews = &dynamicUnitMeshPreviews;
   renderContext.engineMapStartPreview = &engineMapStartPreview;
   renderContext.rootFileSystemPreview = &rootFileSystemPreview;
   renderContext.uiRootPreview = &uiRootPreview;
@@ -22743,6 +44493,8 @@ void DrawWindowOverlay(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
   const LinuxSelectedHeroDbPreview& selectedHeroPreview,
+  const std::vector<LinuxSelectedHeroDbPreview>& lineupHeroPreviews,
+  const std::map<std::string, LinuxSelectedHeroDbPreview>& dynamicUnitMeshPreviews,
   const LinuxEngineMapStartPreview& engineMapStartPreview,
   const LinuxRootFileSystemPreview& rootFileSystemPreview,
   const LinuxUiRootPreview& uiRootPreview,
@@ -22816,6 +44568,8 @@ void DrawWindowOverlay(
         heroCatalog,
         localMatchPreview,
         selectedHeroPreview,
+        lineupHeroPreviews,
+        dynamicUnitMeshPreviews,
         engineMapStartPreview,
         rootFileSystemPreview,
         uiRootPreview,
@@ -22957,6 +44711,7 @@ void WriteStartupLog(
   const LinuxLoadingRuntimeDriver& loadingRuntimeDriver,
   const LinuxLoadingHeroesRuntimePreview& loadingHeroesRuntimePreview,
   const LinuxLoadingUiState& loadingUiState,
+  const LinuxBootstrapScreenRuntime& screenRuntime,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -22998,6 +44753,10 @@ void WriteStartupLog(
   logFile << "  logs=" << logsDir.string() << "\n";
   logFile << "  cwd=" << (resolvedCurrentDir.empty() ? "<unknown>" : resolvedCurrentDir.string()) << "\n";
   logFile << "  overlayBackend=" << (overlay.openglReady ? "OpenGL" : "X11") << "\n";
+  logFile << "  overlayFontBackend="
+          << (overlay.freetypeReady ? "FreeType" : (overlay.fontDisplayListsReady ? "X11 display lists" : "<none>"))
+          << "\n";
+  logFile << "  overlayFontFile=" << (overlay.freetypeFontPath.empty() ? "<none>" : overlay.freetypeFontPath) << "\n";
   logFile << "  renderBootstrapReady=" << (renderBootstrap.started ? "yes" : "no") << "\n";
   logFile << "  renderBootstrapType=" << (renderBootstrap.started ? "PF_Render::Interface" : "<none>") << "\n";
   logFile << "  renderBootstrapFramePath="
@@ -23220,7 +44979,12 @@ void WriteStartupLog(
   logFile << "  launchHeroSelector=" << (settings.heroSelector.empty() ? "<none>" : settings.heroSelector) << "\n";
   logFile << "  demoCycleSeconds=" << settings.demoCycleSeconds << "\n";
   logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
+  logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
   logFile << "  mapCatalogCount=" << mapCatalog.descriptorCount << "\n";
+  logFile << "  mapCatalogSource=" << (mapCatalog.source.empty() ? "<none>" : mapCatalog.source) << "\n";
+  logFile << "  mapCatalogScannedCount=" << mapCatalog.scannedDescriptorCount << "\n";
+  logFile << "  mapCatalogCustomCount=" << mapCatalog.customListCount << "\n";
+  logFile << "  mapCatalogCustomMatchedCount=" << mapCatalog.customListMatchedCount << "\n";
   logFile << "  mapCatalogProductionCount=" << mapCatalog.productionDescriptorCount << "\n";
   logFile << "  mapCatalogPvpCount=" << mapCatalog.pvpCount << "\n";
   logFile << "  mapCatalogPveCount=" << mapCatalog.pveCount << "\n";
@@ -23248,6 +45012,117 @@ void WriteStartupLog(
   logFile << "  mapObjectCount=" << selectedMapPreview.objectCount << "\n";
   logFile << "  mapLockObjectCount=" << selectedMapPreview.lockMapObjectCount << "\n";
   logFile << "  mapScriptedObjectCount=" << selectedMapPreview.scriptedObjectCount << "\n";
+  logFile << "  mapStaticSceneObjectsScanned=" << selectedMapPreview.staticSceneObjectScanCount << "\n";
+  logFile << "  mapStaticSceneObjectScanLimitHit="
+          << (selectedMapPreview.staticSceneObjectScanLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapStaticSceneObjectCandidates=" << selectedMapPreview.staticSceneObjectCandidateCount << "\n";
+  logFile << "  mapStaticSceneObjectsResolved=" << selectedMapPreview.staticSceneObjectResolvedCount << "\n";
+  logFile << "  mapStaticSceneComponents=" << selectedMapPreview.staticSceneComponentCount << "\n";
+  logFile << "  mapStaticScenePayloadReferences=" << selectedMapPreview.staticScenePayloadReferenceCount << "\n";
+  logFile << "  mapStaticScenePayloadsResolved=" << selectedMapPreview.staticScenePayloadResolvedCount << "\n";
+  logFile << "  mapStaticSceneGeometryPayloads=" << selectedMapPreview.staticGeometryPayloads.size() << "\n";
+  logFile << "  mapStaticSceneDiffuseTextures=" << selectedMapPreview.staticDiffuseTextureFiles.size() << "\n";
+  logFile << "  mapStaticScenePayloadLimitHit="
+          << (selectedMapPreview.staticScenePayloadLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapAnimatedSceneComponents=" << selectedMapPreview.animatedSceneComponentCount << "\n";
+  logFile << "  mapAnimatedSceneSkinParts=" << selectedMapPreview.animatedSceneSkinPartCount << "\n";
+  logFile << "  mapAnimatedScenePayloadReferences=" << selectedMapPreview.animatedScenePayloadReferenceCount << "\n";
+  logFile << "  mapAnimatedScenePayloadsResolved=" << selectedMapPreview.animatedScenePayloadResolvedCount << "\n";
+  logFile << "  mapAnimatedSceneGeometryPayloads=" << selectedMapPreview.animatedGeometryPayloads.size() << "\n";
+  logFile << "  mapAnimatedScenePayloadLimitHit="
+          << (selectedMapPreview.animatedScenePayloadLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapWaterZones=" << selectedMapPreview.waterZoneCount << "\n";
+  logFile << "  mapWaterZonePoints=" << selectedMapPreview.waterZonePointCount << "\n";
+  logFile << "  mapWaterZoneTriangles=" << selectedMapPreview.waterZoneTriangleCount << "\n";
+  logFile << "  mapScriptAreas=" << selectedMapPreview.scriptAreaCount << "\n";
+  logFile << "  mapScriptAreaSegments=" << selectedMapPreview.scriptAreaSegmentCount << "\n";
+  logFile << "  mapScriptPaths=" << selectedMapPreview.scriptPathCount << "\n";
+  logFile << "  mapScriptPathPoints=" << selectedMapPreview.scriptPathPointCount << "\n";
+  logFile << "  mapScriptPathSegments=" << selectedMapPreview.scriptPathSegmentCount << "\n";
+  logFile << "  mapCameraSplines=" << selectedMapPreview.cameraSplineCount << "\n";
+  logFile << "  mapCameraSplinePoints=" << selectedMapPreview.cameraSplinePointCount << "\n";
+  logFile << "  mapCameraSplineSegments=" << selectedMapPreview.cameraSplineSegmentCount << "\n";
+  logFile << "  mapScriptPolygonAreas=" << selectedMapPreview.scriptPolygonAreaCount << "\n";
+  logFile << "  mapScriptPolygons=" << selectedMapPreview.scriptPolygonCount << "\n";
+  logFile << "  mapScriptPolygonPoints=" << selectedMapPreview.scriptPolygonPointCount << "\n";
+  logFile << "  mapScriptPolygonTriangles=" << selectedMapPreview.scriptPolygonTriangleCount << "\n";
+  logFile << "  mapLightEnvironmentResolved="
+          << (selectedMapPreview.lightEnvironmentResolved ? "yes" : "no") << "\n";
+  logFile << "  mapLightEnvironmentDbid="
+          << (selectedMapPreview.lightEnvironment.dbid.empty() ? "<none>" : selectedMapPreview.lightEnvironment.dbid) << "\n";
+  logFile << "  mapLightEnvironmentAmbientLuminance="
+          << ComputeLinuxHdrColorLuminance(selectedMapPreview.lightEnvironment.ambient) << "\n";
+  logFile << "  mapLightEnvironmentDirectionalLuminance="
+          << (ComputeLinuxHdrColorLuminance(selectedMapPreview.lightEnvironment.light1Diffuse) +
+              ComputeLinuxHdrColorLuminance(selectedMapPreview.lightEnvironment.light2Diffuse)) << "\n";
+  logFile << "  mapLightEnvironmentSHCoeffs="
+          << selectedMapPreview.lightEnvironment.lightingCubeMapCoeffCount << "\n";
+  logFile << "  mapNightLightEnvironmentResolved="
+          << (selectedMapPreview.nightLightEnvironmentResolved ? "yes" : "no") << "\n";
+  logFile << "  mapNightLightEnvironmentDbid="
+          << (selectedMapPreview.nightLightEnvironment.dbid.empty() ? "<none>" : selectedMapPreview.nightLightEnvironment.dbid) << "\n";
+  logFile << "  mapNightLightEnvironmentAmbientLuminance="
+          << ComputeLinuxHdrColorLuminance(selectedMapPreview.nightLightEnvironment.ambient) << "\n";
+  logFile << "  mapPointLights=" << selectedMapPreview.pointLightCount << "\n";
+  logFile << "  mapPointLightsDay=" << selectedMapPreview.pointLightDayCount << "\n";
+  logFile << "  mapPointLightsNight=" << selectedMapPreview.pointLightNightCount << "\n";
+  logFile << "  mapPointLightsNeutral=" << selectedMapPreview.pointLightNeutralCount << "\n";
+  logFile << "  mapPointLightMarkers=" << selectedMapPreview.pointLightMarkerCount << "\n";
+  logFile << "  mapTerrainHeightmapReady="
+          << (selectedMapPreview.terrainHeightmap.ready ? "yes" : "no") << "\n";
+  logFile << "  mapTerrainHeightmapDbid="
+          << (selectedMapPreview.terrainHeightmap.dbid.empty() ? "<none>" : selectedMapPreview.terrainHeightmap.dbid)
+          << "\n";
+  logFile << "  mapTerrainHeightmapFile="
+          << (selectedMapPreview.terrainHeightmap.heightmapFile.empty() ? "<none>" : selectedMapPreview.terrainHeightmap.heightmapFile)
+          << "\n";
+  logFile << "  mapTerrainHeightmapSourceSize="
+          << selectedMapPreview.terrainHeightmap.sourceWidth << "x"
+          << selectedMapPreview.terrainHeightmap.sourceHeight << "\n";
+  logFile << "  mapTerrainHeightmapSampledSize="
+          << selectedMapPreview.terrainHeightmap.sampledWidth << "x"
+          << selectedMapPreview.terrainHeightmap.sampledHeight << "\n";
+  logFile << "  mapTerrainHeightmapSampledTriangles="
+          << selectedMapPreview.terrainHeightmap.sampledTriangles << "\n";
+  logFile << "  mapTerrainHeightmapRange="
+          << selectedMapPreview.terrainHeightmap.minHeight << " -> "
+          << selectedMapPreview.terrainHeightmap.maxHeight << "\n";
+  logFile << "  mapTerrainLayerMaskReady="
+          << (selectedMapPreview.terrainHeightmap.layerMaskReady ? "yes" : "no") << "\n";
+  logFile << "  mapTerrainLayerMaskFile="
+          << (selectedMapPreview.terrainHeightmap.layerMaskFile.empty() ? "<none>" : selectedMapPreview.terrainHeightmap.layerMaskFile)
+          << "\n";
+  logFile << "  mapTerrainLayerMaskSize="
+          << selectedMapPreview.terrainHeightmap.layerMaskWidth << "x"
+          << selectedMapPreview.terrainHeightmap.layerMaskHeight << "\n";
+  logFile << "  mapTerrainLayerMaskBytes="
+          << selectedMapPreview.terrainHeightmap.layerMaskBytes << "\n";
+  logFile << "  mapTerrainLayers="
+          << selectedMapPreview.terrainHeightmap.terrainLayerCount << "\n";
+  logFile << "  mapTerrainLayerMaterials="
+          << selectedMapPreview.terrainHeightmap.terrainLayerMaterialCount << "\n";
+  logFile << "  mapTerrainLayerDiffuseTextures="
+          << selectedMapPreview.terrainHeightmap.terrainLayerTextureCount << "\n";
+  logFile << "  mapTerrainLayerDiffuseTexturesLoaded="
+          << selectedMapPreview.terrainHeightmap.terrainLayerTextureLoadedCount << "\n";
+  logFile << "  mapTerrainLayerSampledUnique="
+          << selectedMapPreview.terrainHeightmap.terrainLayerSampledUniqueCount << "\n";
+  logFile << "  mapTerrainNatureRoads="
+          << selectedMapPreview.terrainHeightmap.natureRoadCount << "\n";
+  logFile << "  mapTerrainNatureRoadNodes="
+          << selectedMapPreview.terrainHeightmap.natureRoadNodeCount << "\n";
+  logFile << "  mapTerrainNatureRoadSegments="
+          << selectedMapPreview.terrainHeightmap.natureRoadSegmentCount << "\n";
+  logFile << "  mapTerrainElementCount="
+          << selectedMapPreview.terrainHeightmap.terrainElementCount << "\n";
+  logFile << "  mapTerrainElementGeometryPayloads="
+          << selectedMapPreview.terrainElementPayloads.size() << "\n";
+  logFile << "  mapTerrainElementPayloadReferences="
+          << selectedMapPreview.terrainHeightmap.terrainElementPayloadReferenceCount << "\n";
+  logFile << "  mapTerrainElementPayloadsResolved="
+          << selectedMapPreview.terrainHeightmap.terrainElementPayloadResolvedCount << "\n";
+  logFile << "  mapTerrainElementPayloadLimitHit="
+          << (selectedMapPreview.terrainHeightmap.terrainElementPayloadLimitHit ? "yes" : "no") << "\n";
   logFile << "  mapTacticalReady=" << (selectedMapPreview.tactical.ready ? "yes" : "no") << "\n";
   logFile << "  mapTacticalBounds=" << selectedMapPreview.tactical.minX << "," << selectedMapPreview.tactical.minY
           << " -> " << selectedMapPreview.tactical.maxX << "," << selectedMapPreview.tactical.maxY << "\n";
@@ -23262,6 +45137,25 @@ void WriteStartupLog(
   logFile << "  mapTacticalMainBuildingCount=" << selectedMapPreview.tactical.mainBuildingCount << "\n";
   logFile << "  mapTacticalMinigameCount=" << selectedMapPreview.tactical.minigameCount << "\n";
   logFile << "  mapTacticalFlagCount=" << selectedMapPreview.tactical.flagCount << "\n";
+  logFile << "  bootstrap3DPreviewReady=" << (IsLinuxBootstrap3DPreviewReady(&selectedMapPreview) ? "yes" : "no") << "\n";
+  logFile << "  bootstrap3DPreviewActive="
+          << ((uiRootPreview.runtimeLoadingScreenReady && IsLinuxBootstrap3DPreviewReady(&selectedMapPreview)) ? "yes" : "no")
+          << "\n";
+  logFile << "  bootstrap3DPreviewMarkers=" << selectedMapPreview.tactical.markers.size() << "\n";
+  logFile << "  bootstrap3DPreviewTerrainTriangles=" << selectedMapPreview.terrainHeightmap.sampledTriangles << "\n";
+  logFile << "  bootstrap3DPreviewTerrainLayeredSurface="
+          << (selectedMapPreview.terrainHeightmap.layerMaskReady ? "yes" : "no") << "\n";
+  logFile << "  bootstrap3DPreviewTerrainRoadSegments=" << selectedMapPreview.terrainHeightmap.natureRoadSegmentCount << "\n";
+  logFile << "  bootstrap3DPreviewWaterZoneTriangles=" << selectedMapPreview.waterZoneTriangleCount << "\n";
+  logFile << "  bootstrap3DPreviewScriptAreaSegments=" << selectedMapPreview.scriptAreaSegmentCount << "\n";
+  logFile << "  bootstrap3DPreviewScriptPathSegments=" << selectedMapPreview.scriptPathSegmentCount << "\n";
+  logFile << "  bootstrap3DPreviewCameraSplineSegments=" << selectedMapPreview.cameraSplineSegmentCount << "\n";
+  logFile << "  bootstrap3DPreviewScriptPolygonTriangles=" << selectedMapPreview.scriptPolygonTriangleCount << "\n";
+  logFile << "  bootstrap3DPreviewPointLightMarkers=" << selectedMapPreview.pointLightMarkerCount << "\n";
+  logFile << "  bootstrap3DPreviewTerrainElementPayloads=" << selectedMapPreview.terrainElementPayloads.size() << "\n";
+  logFile << "  bootstrap3DPreviewStaticGeometryPayloads=" << selectedMapPreview.staticGeometryPayloads.size() << "\n";
+  logFile << "  bootstrap3DPreviewAnimatedGeometryPayloads=" << selectedMapPreview.animatedGeometryPayloads.size() << "\n";
+  logFile << "  bootstrap3DPreviewSource=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-and-scene-objects\n";
   logFile << "  mapTerrainRef=" << (selectedMapPreview.terrainRef.empty() ? "<none>" : selectedMapPreview.terrainRef) << "\n";
   logFile << "  mapCameraSettingsRef=" << (selectedMapPreview.cameraSettingsRef.empty() ? "<none>" : selectedMapPreview.cameraSettingsRef) << "\n";
   logFile << "  mapLightEnvironmentRef=" << (selectedMapPreview.lightEnvironmentRef.empty() ? "<none>" : selectedMapPreview.lightEnvironmentRef) << "\n";
@@ -23345,6 +45239,298 @@ void WriteStartupLog(
   logFile << "  selectedHeroTalentSetsReady=" << selectedHeroPreview.defaultTalentReadyCount << "\n";
   logFile << "  selectedHeroTalentIconsLoaded=" << selectedHeroPreview.defaultTalentIconCount << "\n";
   logFile << "  selectedHeroSceneObjects=" << selectedHeroPreview.sceneObjectCount << "\n";
+  logFile << "  selectedHeroSceneAssetReady="
+          << (selectedHeroPreview.sceneAsset.ready ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetResolved="
+          << (selectedHeroPreview.sceneAsset.sceneObjectResolved ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSource="
+          << (selectedHeroPreview.sceneAsset.source.empty() ? "<none>" : selectedHeroPreview.sceneAsset.source) << "\n";
+  logFile << "  selectedHeroSceneAssetDbid="
+          << (selectedHeroPreview.sceneAsset.dbid.empty() ? "<none>" : selectedHeroPreview.sceneAsset.dbid) << "\n";
+  logFile << "  selectedHeroSceneAssetDescriptorResolved="
+          << (selectedHeroPreview.sceneAsset.descriptorResolved ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetDescriptorFile="
+          << (selectedHeroPreview.sceneAsset.descriptorFile.empty() ? "<none>" : selectedHeroPreview.sceneAsset.descriptorFile) << "\n";
+  logFile << "  selectedHeroSceneAssetCandidates=" << selectedHeroPreview.sceneAsset.sceneObjectCandidateCount << "\n";
+  logFile << "  selectedHeroSceneAssetSkinCandidates=" << selectedHeroPreview.sceneAsset.skinSceneObjectCount << "\n";
+  logFile << "  selectedHeroSceneAssetRootAttached=" << selectedHeroPreview.sceneAsset.rootAttachedCount << "\n";
+  logFile << "  selectedHeroSceneAssetNestedAttached=" << selectedHeroPreview.sceneAsset.nestedAttachedCount << "\n";
+  logFile << "  selectedHeroSceneAssetComponents=" << selectedHeroPreview.sceneAsset.componentCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimatedComponents=" << selectedHeroPreview.sceneAsset.animatedComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetStaticComponents=" << selectedHeroPreview.sceneAsset.staticComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetParticleComponents=" << selectedHeroPreview.sceneAsset.particleComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetOtherComponents=" << selectedHeroPreview.sceneAsset.otherComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetSkinParts=" << selectedHeroPreview.sceneAsset.skinPartCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimations=" << selectedHeroPreview.sceneAsset.animationCount << "\n";
+  logFile << "  selectedHeroSceneAssetFaceFx=" << selectedHeroPreview.sceneAsset.faceFxCount << "\n";
+  logFile << "  selectedHeroSceneAssetMaterialRefs=" << selectedHeroPreview.sceneAsset.materialReferenceCount << "\n";
+  logFile << "  selectedHeroSceneAssetPayloadRefs=" << selectedHeroPreview.sceneAsset.payloadReferenceCount << "\n";
+  logFile << "  selectedHeroSceneAssetPayloadResolved=" << selectedHeroPreview.sceneAsset.payloadResolvedCount << "\n";
+  logFile << "  selectedHeroSceneAssetBoundsReady="
+          << (selectedHeroPreview.sceneAsset.boundsValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetBounds="
+          << selectedHeroPreview.sceneAsset.minX << "," << selectedHeroPreview.sceneAsset.minY << ","
+          << selectedHeroPreview.sceneAsset.minZ << " -> "
+          << selectedHeroPreview.sceneAsset.maxX << "," << selectedHeroPreview.sceneAsset.maxY << ","
+          << selectedHeroPreview.sceneAsset.maxZ << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonFile="
+          << (selectedHeroPreview.sceneAsset.skeletonFile.empty() ? "<none>" : selectedHeroPreview.sceneAsset.skeletonFile) << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonAttempted="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.attempted ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonReady="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonExists="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.fileExists ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonFileSize="
+          << selectedHeroPreview.sceneAsset.skeletonPreview.sourceFileSize << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonJoints="
+          << selectedHeroPreview.sceneAsset.skeletonPreview.jointsCount << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonParents="
+          << selectedHeroPreview.sceneAsset.skeletonPreview.parentCount << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonRoots="
+          << selectedHeroPreview.sceneAsset.skeletonPreview.rootCount << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonMaxDepth="
+          << selectedHeroPreview.sceneAsset.skeletonPreview.maxDepth << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonParentTreeReady="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.parentTreeValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonBindPoseReady="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.bindPoseValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonRootJoint="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.rootJointName.empty() ?
+              "<none>" : selectedHeroPreview.sceneAsset.skeletonPreview.rootJointName) << "\n";
+  logFile << "  selectedHeroSceneAssetSkeletonFirstJoint="
+          << (selectedHeroPreview.sceneAsset.skeletonPreview.firstSortedJointName.empty() ?
+              "<none>" : selectedHeroPreview.sceneAsset.skeletonPreview.firstSortedJointName) << "\n";
+  logFile << "  selectedHeroSceneAssetSkinGeometryFile="
+          << (selectedHeroPreview.sceneAsset.firstSkinGeometryFile.empty() ? "<none>" : selectedHeroPreview.sceneAsset.firstSkinGeometryFile) << "\n";
+  logFile << "  selectedHeroSceneAssetSkinGeometryFiles="
+          << selectedHeroPreview.sceneAsset.skinGeometryFiles.size() << "\n";
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.skinGeometryFiles.size() && i < 8; ++i)
+  {
+    logFile << "  selectedHeroSceneAssetSkinGeometryFile[" << i << "]="
+            << selectedHeroPreview.sceneAsset.skinGeometryFiles[i] << "\n";
+  }
+  logFile << "  selectedHeroSceneAssetStaticGeometryPayloads="
+          << selectedHeroPreview.sceneAsset.staticGeometryPayloads.size() << "\n";
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.staticGeometryPayloads.size() && i < 8; ++i)
+  {
+    logFile << "  selectedHeroSceneAssetStaticGeometryFile[" << i << "]="
+            << selectedHeroPreview.sceneAsset.staticGeometryPayloads[i].geometryFile << "\n";
+  }
+  logFile << "  selectedHeroSceneAssetSkinDiffuseTextures="
+          << selectedHeroPreview.sceneAsset.skinDiffuseTextureFiles.size() << "\n";
+  size_t selectedHeroLoadedDiffuseTextures = 0;
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.skinDiffuseTextures.size(); ++i)
+  {
+    if (selectedHeroPreview.sceneAsset.skinDiffuseTextures[i].artworkLoaded)
+    {
+      ++selectedHeroLoadedDiffuseTextures;
+    }
+  }
+  logFile << "  selectedHeroSceneAssetSkinDiffuseTexturesLoaded="
+          << selectedHeroLoadedDiffuseTextures << "\n";
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.skinDiffuseTextureFiles.size() && i < 8; ++i)
+  {
+    logFile << "  selectedHeroSceneAssetSkinDiffuseTexture[" << i << "]="
+            << selectedHeroPreview.sceneAsset.skinDiffuseTextureFiles[i] << "\n";
+  }
+  logFile << "  selectedHeroSceneAssetSkinDiffuseTextureLoaded="
+          << (selectedHeroPreview.sceneAsset.skinDiffuseTexture.artworkLoaded ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetSkinDiffuseTextureFile="
+          << (selectedHeroPreview.sceneAsset.skinDiffuseTexture.sourceFile.empty() ?
+              "<none>" : selectedHeroPreview.sceneAsset.skinDiffuseTexture.sourceFile) << "\n";
+  logFile << "  selectedHeroSceneAssetSkinDiffuseTextureSize="
+          << selectedHeroPreview.sceneAsset.skinDiffuseTexture.width << "x"
+          << selectedHeroPreview.sceneAsset.skinDiffuseTexture.height << "\n";
+  logFile << "  selectedHeroSceneAssetMeshAttempted="
+          << (selectedHeroPreview.sceneAsset.meshPreview.attempted ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshHeaderValid="
+          << (selectedHeroPreview.sceneAsset.meshPreview.headerValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshPayloads="
+          << selectedHeroPreview.sceneAsset.meshPreview.payloadReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.meshPreview.payloadCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryPayloads="
+          << selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryPayloadReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.meshPreview.payloadCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryReindexReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryReindexReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryReindexPayloads="
+          << selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryReindexPayloadReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.meshPreview.payloadCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshFile="
+          << (selectedHeroPreview.sceneAsset.meshPreview.sourceFile.empty() ? "<none>" : selectedHeroPreview.sceneAsset.meshPreview.sourceFile) << "\n";
+  logFile << "  selectedHeroSceneAssetMeshFiles="
+          << selectedHeroPreview.sceneAsset.meshPreview.sourceFiles.size() << "\n";
+  logFile << "  selectedHeroSceneAssetMeshFragments=" << selectedHeroPreview.sceneAsset.meshPreview.fragmentCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshMaterials=" << selectedHeroPreview.sceneAsset.meshPreview.materialCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryFragments=" << selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryFragmentCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryMaterials=" << selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryMaterialCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshRendererGeometryTriangles=" << selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshAttempted="
+          << (selectedHeroPreview.sceneAsset.rendererSkeletalMeshAttempted ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshReady="
+          << (selectedHeroPreview.sceneAsset.rendererSkeletalMeshReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshComponents="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshSkeletons="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshSkeletonReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshComponentCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshSkinParts="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshSkinPartReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshSkinPartCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshSlots="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshSlotCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshQueuedBatches="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshQueuedBatchCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshRenderedDips="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshRenderedDipCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshRenderedTriangles="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshRenderedTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshMaterialSwitches="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshMaterialSwitchCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshDisableCullReady="
+          << (selectedHeroPreview.sceneAsset.rendererSkeletalMeshDisableCullReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshRemoveReady="
+          << (selectedHeroPreview.sceneAsset.rendererSkeletalMeshRemoveReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshJoints=" << selectedHeroPreview.sceneAsset.meshPreview.jointsCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshVBBytes=" << selectedHeroPreview.sceneAsset.meshPreview.vertexBufferBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshIBBytes=" << selectedHeroPreview.sceneAsset.meshPreview.indexBufferBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshVertices=" << selectedHeroPreview.sceneAsset.meshPreview.vertexCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshIndices=" << selectedHeroPreview.sceneAsset.meshPreview.indexCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshTriangles=" << selectedHeroPreview.sceneAsset.meshPreview.triangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshDrawTriangles=" << selectedHeroPreview.sceneAsset.meshPreview.drawnTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshTexCoordReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.texCoordValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshTexCoordTriangles="
+          << selectedHeroPreview.sceneAsset.meshPreview.texCoordTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshNormalReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.normalValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshNormalTriangles="
+          << selectedHeroPreview.sceneAsset.meshPreview.normalTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.skinningValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningTriangles="
+          << selectedHeroPreview.sceneAsset.meshPreview.skinningTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningVertices="
+          << selectedHeroPreview.sceneAsset.meshPreview.skinningVertexCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningReindexReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.skinningReindexValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningReindexedVertices="
+          << selectedHeroPreview.sceneAsset.meshPreview.skinningReindexedVertexCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshSkinningInvalidInfluences="
+          << selectedHeroPreview.sceneAsset.meshPreview.skinningInvalidInfluenceCount << "\n";
+  logFile << "  selectedHeroSceneAssetMeshStride=" << selectedHeroPreview.sceneAsset.meshPreview.vertexStrideBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshPositionOffset=" << selectedHeroPreview.sceneAsset.meshPreview.positionOffsetBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshNormalOffset=" << selectedHeroPreview.sceneAsset.meshPreview.normalOffsetBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshBlendWeightOffset=" << selectedHeroPreview.sceneAsset.meshPreview.blendWeightOffsetBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshBlendIndicesOffset=" << selectedHeroPreview.sceneAsset.meshPreview.blendIndicesOffsetBytes << "\n";
+  logFile << "  selectedHeroSceneAssetMeshBoundsReady="
+          << (selectedHeroPreview.sceneAsset.meshPreview.boundsValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshTriangleLimitHit="
+          << (selectedHeroPreview.sceneAsset.meshPreview.triangleLimitHit ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetMeshBounds="
+          << selectedHeroPreview.sceneAsset.meshPreview.minX << "," << selectedHeroPreview.sceneAsset.meshPreview.minY << ","
+          << selectedHeroPreview.sceneAsset.meshPreview.minZ << " -> "
+          << selectedHeroPreview.sceneAsset.meshPreview.maxX << "," << selectedHeroPreview.sceneAsset.meshPreview.maxY << ","
+          << selectedHeroPreview.sceneAsset.meshPreview.maxZ << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationFile="
+          << (selectedHeroPreview.sceneAsset.firstAnimationFile.empty() ? "<none>" : selectedHeroPreview.sceneAsset.firstAnimationFile) << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationFiles="
+          << selectedHeroPreview.sceneAsset.animationFiles.size() << "\n";
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.animationFiles.size() && i < 8; ++i)
+  {
+    logFile << "  selectedHeroSceneAssetAnimationFile[" << i << "]="
+            << selectedHeroPreview.sceneAsset.animationFiles[i] << "\n";
+  }
+  logFile << "  selectedHeroSceneAssetAnimationAttempted="
+          << (selectedHeroPreview.sceneAsset.animationPreview.attempted ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationReady="
+          << (selectedHeroPreview.sceneAsset.animationPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationExists="
+          << (selectedHeroPreview.sceneAsset.animationPreview.fileExists ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationHeaderReady="
+          << (selectedHeroPreview.sceneAsset.animationPreview.headerValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationTimeReady="
+          << (selectedHeroPreview.sceneAsset.animationPreview.timeValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationTracksReady="
+          << (selectedHeroPreview.sceneAsset.animationPreview.tracksValid ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkeletonJointsMatch="
+          << (selectedHeroPreview.sceneAsset.animationPreview.skeletonJointMatch ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationPayloads="
+          << selectedHeroPreview.sceneAsset.animationPreview.payloadReadyCount << "/"
+          << selectedHeroPreview.sceneAsset.animationPreview.payloadCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationFileSize="
+          << selectedHeroPreview.sceneAsset.animationPreview.sourceFileSize << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSignature="
+          << (selectedHeroPreview.sceneAsset.animationPreview.signature.empty() ?
+              "<none>" : selectedHeroPreview.sceneAsset.animationPreview.signature) << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationJoints="
+          << selectedHeroPreview.sceneAsset.animationPreview.jointsCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationMinTime="
+          << selectedHeroPreview.sceneAsset.animationPreview.minTime << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationMaxTime="
+          << selectedHeroPreview.sceneAsset.animationPreview.maxTime << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationDurationMin="
+          << selectedHeroPreview.sceneAsset.animationPreview.minDurationSeconds << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationDurationMax="
+          << selectedHeroPreview.sceneAsset.animationPreview.maxDurationSeconds << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationPositionTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.positionTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationRotationTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.rotationTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationScaleTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.scaleTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationPositionKeys="
+          << selectedHeroPreview.sceneAsset.animationPreview.positionKeyCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationRotationKeys="
+          << selectedHeroPreview.sceneAsset.animationPreview.rotationKeyCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationScaleKeys="
+          << selectedHeroPreview.sceneAsset.animationPreview.scaleKeyCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationConstantPositionTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.constantPositionTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationConstantRotationTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.constantRotationTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationConstantScaleTracks="
+          << selectedHeroPreview.sceneAsset.animationPreview.constantScaleTrackCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationMaxTrackKeys="
+          << selectedHeroPreview.sceneAsset.animationPreview.maxTrackKeys << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningAttempted="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.attempted ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningSkeletonPayloadReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.skeletonPayloadReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningAnimationPayloadReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.animationPayloadReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningSkeletonJointsMatch="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.skeletonJointMatch ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningStreamsReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.skinningStreamsReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningRendererSamplerReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererSamplerReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningRendererSkeletonReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererSkeletonReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningRendererResourceSkeletonReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererResourceSkeletonReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningRendererResourceAnimationReady="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererResourceAnimationReady ? "yes" : "no") << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningJoints="
+          << selectedHeroPreview.sceneAsset.animationSkinningPreview.jointsCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningTriangles="
+          << selectedHeroPreview.sceneAsset.animationSkinningPreview.previewTriangleCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningVertices="
+          << selectedHeroPreview.sceneAsset.animationSkinningPreview.previewVertexCount << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningDuration="
+          << selectedHeroPreview.sceneAsset.animationSkinningPreview.durationSeconds << "\n";
+  logFile << "  selectedHeroSceneAssetAnimationSkinningAnimationFile="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.animationFile.empty() ?
+              "<none>" : selectedHeroPreview.sceneAsset.animationSkinningPreview.animationFile) << "\n";
+  logFile << "  selectedHeroSceneAssetAnimGraph="
+          << (selectedHeroPreview.sceneAsset.animGraphDbid.empty() ? "<none>" : selectedHeroPreview.sceneAsset.animGraphDbid) << "\n";
   logFile << "  selectedHeroSummonedGroups=" << selectedHeroPreview.summonedUnitGroupCount << "\n";
   logFile << "  selectedHeroSkinDbCount=" << selectedHeroPreview.skinCount << "\n";
   logFile << "  selectedHeroUniqueResourceReady=" << (selectedHeroPreview.uniqueResourceReady ? "yes" : "no") << "\n";
@@ -23356,6 +45542,333 @@ void WriteStartupLog(
           << (selectedHeroPreview.portrait.reference.empty() ? "<none>" : selectedHeroPreview.portrait.reference) << "\n";
   logFile << "  selectedHeroPortraitFile="
           << (selectedHeroPreview.portrait.sourceFile.empty() ? "<none>" : selectedHeroPreview.portrait.sourceFile) << "\n";
+  logFile << "  hero3DPreviewReady=" << (!heroCatalog.entries.empty() ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewSource="
+          << (screenRuntime.characterPreviewRendererMeshDrawn ?
+              "linux-opengl-renderer-owned-skeletal-mesh-batch-preview" :
+              (selectedHeroPreview.sceneAsset.animationSkinningPreview.ready ?
+              "linux-opengl-hero-render-sampler-cpu-skin-preview" :
+              (selectedHeroPreview.sceneAsset.meshPreview.ready ?
+                "linux-opengl-hero-skin-payload-mesh" :
+                "linux-opengl-hero-scene-metadata-primitive"))) << "\n";
+  logFile << "  hero3DPreviewAssetRendering="
+          << (selectedHeroPreview.sceneAsset.meshPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewRendererMeshDrawn="
+          << (screenRuntime.characterPreviewRendererMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewRendererMeshBatches="
+          << screenRuntime.characterPreviewRendererMeshBatches << "\n";
+  logFile << "  hero3DPreviewRendererMeshTriangles="
+          << screenRuntime.characterPreviewRendererMeshTriangles << "\n";
+  logFile << "  hero3DPreviewRendererStaticMeshDrawn="
+          << (screenRuntime.characterPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewRendererStaticMeshPayloads="
+          << screenRuntime.characterPreviewRendererStaticMeshPayloads << "\n";
+  logFile << "  hero3DPreviewRendererStaticMeshBatches="
+          << screenRuntime.characterPreviewRendererStaticMeshBatches << "\n";
+  logFile << "  hero3DPreviewRendererStaticMeshTriangles="
+          << screenRuntime.characterPreviewRendererStaticMeshTriangles << "\n";
+  logFile << "  map3DPreviewRendererStaticMeshDrawn="
+          << (screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewRendererStaticMeshPayloads="
+          << screenRuntime.mapPreviewRendererStaticMeshPayloads << "\n";
+  logFile << "  map3DPreviewRendererStaticMeshBatches="
+          << screenRuntime.mapPreviewRendererStaticMeshBatches << "\n";
+  logFile << "  map3DPreviewRendererStaticMeshTriangles="
+          << screenRuntime.mapPreviewRendererStaticMeshTriangles << "\n";
+  logFile << "  map3DPreviewTerrainSurfaceDrawn="
+          << (screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewTerrainSurfaceVertices="
+          << screenRuntime.mapPreviewTerrainSurfaceVertices << "\n";
+  logFile << "  map3DPreviewTerrainSurfaceTriangles="
+          << screenRuntime.mapPreviewTerrainSurfaceTriangles << "\n";
+  logFile << "  map3DPreviewWaterZonesDrawn="
+          << (screenRuntime.mapPreviewWaterZonesDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewWaterZones="
+          << screenRuntime.mapPreviewWaterZones << "\n";
+  logFile << "  map3DPreviewWaterZoneTriangles="
+          << screenRuntime.mapPreviewWaterZoneTriangles << "\n";
+  logFile << "  map3DPreviewTerrainRoadsDrawn="
+          << (screenRuntime.mapPreviewTerrainRoadsDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewTerrainRoads="
+          << screenRuntime.mapPreviewTerrainRoads << "\n";
+  logFile << "  map3DPreviewTerrainRoadSegments="
+          << screenRuntime.mapPreviewTerrainRoadSegments << "\n";
+  logFile << "  map3DPreviewTeamRoutesDrawn="
+          << (screenRuntime.mapPreviewTeamRoutesDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewTeamRouteLines="
+          << screenRuntime.mapPreviewTeamRouteLines << "\n";
+  logFile << "  map3DPreviewTeamRouteSegments="
+          << screenRuntime.mapPreviewTeamRouteSegments << "\n";
+  logFile << "  map3DPreviewTeamStartRouteLines="
+          << screenRuntime.mapPreviewTeamStartRouteLines << "\n";
+  logFile << "  map3DPreviewTeamLaneRouteLines="
+          << screenRuntime.mapPreviewTeamLaneRouteLines << "\n";
+  logFile << "  map3DPreviewScriptAreasDrawn="
+          << (screenRuntime.mapPreviewScriptAreasDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewScriptAreas="
+          << screenRuntime.mapPreviewScriptAreas << "\n";
+  logFile << "  map3DPreviewScriptAreaSegments="
+          << screenRuntime.mapPreviewScriptAreaSegments << "\n";
+  logFile << "  map3DPreviewScriptPathsDrawn="
+          << (screenRuntime.mapPreviewScriptPathsDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewScriptPaths="
+          << screenRuntime.mapPreviewScriptPaths << "\n";
+  logFile << "  map3DPreviewScriptPathSegments="
+          << screenRuntime.mapPreviewScriptPathSegments << "\n";
+  logFile << "  map3DPreviewCameraSplinesDrawn="
+          << (screenRuntime.mapPreviewCameraSplinesDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCameraSplines="
+          << screenRuntime.mapPreviewCameraSplines << "\n";
+  logFile << "  map3DPreviewCameraSplineSegments="
+          << screenRuntime.mapPreviewCameraSplineSegments << "\n";
+  logFile << "  map3DPreviewScriptPolygonsDrawn="
+          << (screenRuntime.mapPreviewScriptPolygonsDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewScriptPolygons="
+          << screenRuntime.mapPreviewScriptPolygons << "\n";
+  logFile << "  map3DPreviewScriptPolygonTriangles="
+          << screenRuntime.mapPreviewScriptPolygonTriangles << "\n";
+  logFile << "  map3DPreviewPointLightsDrawn="
+          << (screenRuntime.mapPreviewPointLightsDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewPointLights="
+          << screenRuntime.mapPreviewPointLights << "\n";
+  logFile << "  map3DPreviewPointLightMarkers="
+          << screenRuntime.mapPreviewPointLightMarkers << "\n";
+  logFile << "  map3DPreviewEngineStartSlotsDrawn="
+          << (screenRuntime.mapPreviewEngineStartSlotsDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewEngineStartSlots="
+          << screenRuntime.mapPreviewEngineStartSlots << "\n";
+  logFile << "  map3DPreviewEngineStartAssignedSlots="
+          << screenRuntime.mapPreviewEngineStartAssignedSlots << "\n";
+  logFile << "  map3DPreviewEngineStartHumanSlots="
+          << screenRuntime.mapPreviewEngineStartHumanSlots << "\n";
+  logFile << "  map3DPreviewEngineStartBotSlots="
+          << screenRuntime.mapPreviewEngineStartBotSlots << "\n";
+  logFile << "  map3DPreviewDynamicWorldMarkersDrawn="
+          << (screenRuntime.mapPreviewDynamicWorldMarkersDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewDynamicWorldMarkers="
+          << screenRuntime.mapPreviewDynamicWorldMarkers << "\n";
+  logFile << "  map3DPreviewDynamicHeroMarkers="
+          << screenRuntime.mapPreviewDynamicHeroMarkers << "\n";
+  logFile << "  map3DPreviewDynamicCommonCreepMarkers="
+          << screenRuntime.mapPreviewDynamicCommonCreepMarkers << "\n";
+  logFile << "  map3DPreviewDynamicNeutralCreepMarkers="
+          << screenRuntime.mapPreviewDynamicNeutralCreepMarkers << "\n";
+  logFile << "  map3DPreviewDynamicMovingMarkers="
+          << screenRuntime.mapPreviewDynamicMovingMarkers << "\n";
+  logFile << "  map3DPreviewDynamicHealthBars="
+          << screenRuntime.mapPreviewDynamicHealthBars << "\n";
+  logFile << "  map3DPreviewDynamicMoveDirectionArrows="
+          << screenRuntime.mapPreviewDynamicMoveDirectionArrows << "\n";
+  logFile << "  map3DPreviewDynamicHeroMeshesDrawn="
+          << (screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewDynamicHeroMeshes="
+          << screenRuntime.mapPreviewDynamicHeroMeshes << "\n";
+  logFile << "  map3DPreviewDynamicHeroMeshTriangles="
+          << screenRuntime.mapPreviewDynamicHeroMeshTriangles << "\n";
+  logFile << "  map3DPreviewDynamicUnitMeshPreviewAssets="
+          << screenRuntime.mapPreviewDynamicUnitMeshPreviewAssets << "\n";
+  logFile << "  map3DPreviewDynamicUnitMeshPreviewReady="
+          << screenRuntime.mapPreviewDynamicUnitMeshPreviewReady << "\n";
+  logFile << "  map3DPreviewDynamicCreepMeshesDrawn="
+          << (screenRuntime.mapPreviewDynamicCreepMeshesDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewDynamicCreepMeshes="
+          << screenRuntime.mapPreviewDynamicCreepMeshes << "\n";
+  logFile << "  map3DPreviewDynamicCreepMeshTriangles="
+          << screenRuntime.mapPreviewDynamicCreepMeshTriangles << "\n";
+  logFile << "  map3DPreviewDynamicSelectedHeroMarkerMatched="
+          << (screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewDynamicSelectedHeroMarkerPlayerId="
+          << screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId << "\n";
+  logFile << "  map3DPreviewCommandMoveTargetDrawn="
+          << (screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandMoveCommands="
+          << screenRuntime.mapPreviewCommandMoveCommandsSent << "\n";
+  logFile << "  map3DPreviewCommandMovePlayerId="
+          << screenRuntime.mapPreviewCommandMovePlayerId << "\n";
+  logFile << "  map3DPreviewCommandMoveClientId="
+          << screenRuntime.mapPreviewCommandMoveClientId << "\n";
+  logFile << "  map3DPreviewCommandMoveSource="
+          << screenRuntime.mapPreviewCommandMoveSourceX << ","
+          << screenRuntime.mapPreviewCommandMoveSourceY << "\n";
+  logFile << "  map3DPreviewCommandMoveTarget="
+          << screenRuntime.mapPreviewCommandMoveTargetX << ","
+          << screenRuntime.mapPreviewCommandMoveTargetY << "\n";
+  logFile << "  map3DPreviewCommandMoveInputSource="
+          << (screenRuntime.mapPreviewCommandSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandSource)
+          << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroTracking="
+          << (screenRuntime.mapPreviewCommandMoveHeroTracking ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroMoving="
+          << (screenRuntime.mapPreviewCommandMoveHeroMoving ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroMoved="
+          << (screenRuntime.mapPreviewCommandMoveHeroMoved ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroReached="
+          << (screenRuntime.mapPreviewCommandMoveHeroReached ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroSamples="
+          << screenRuntime.mapPreviewCommandMoveHeroSamples << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroWorldStep="
+          << screenRuntime.mapPreviewCommandMoveHeroWorldStep << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroCurrent="
+          << screenRuntime.mapPreviewCommandMoveHeroCurrentX << ","
+          << screenRuntime.mapPreviewCommandMoveHeroCurrentY << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroDistance << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroMaxDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroMaxDistance << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroRemaining="
+          << screenRuntime.mapPreviewCommandMoveHeroRemaining << "\n";
+  logFile << "  map3DPreviewCommandMoveHeroTargetDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroTargetDistance << "\n";
+  logFile << "  map3DPreviewCommandActionTargetDrawn="
+          << (screenRuntime.mapPreviewCommandActionTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewCommandActionCommands="
+          << screenRuntime.mapPreviewCommandActionCommandsSent << "\n";
+  logFile << "  map3DPreviewCommandActionKind="
+          << (screenRuntime.mapPreviewCommandActionKind.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionKind) << "\n";
+  logFile << "  map3DPreviewCommandActionInputSource="
+          << (screenRuntime.mapPreviewCommandActionSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionSource) << "\n";
+  logFile << "  map3DPreviewCommandActionPlayerId="
+          << screenRuntime.mapPreviewCommandActionPlayerId << "\n";
+  logFile << "  map3DPreviewCommandActionClientId="
+          << screenRuntime.mapPreviewCommandActionClientId << "\n";
+  logFile << "  map3DPreviewCommandActionTargetPlayerId="
+          << screenRuntime.mapPreviewCommandActionTargetPlayerId << "\n";
+  logFile << "  map3DPreviewCommandActionTargetClientId="
+          << screenRuntime.mapPreviewCommandActionTargetClientId << "\n";
+  logFile << "  map3DPreviewCommandActionSource="
+          << screenRuntime.mapPreviewCommandActionSourceX << ","
+          << screenRuntime.mapPreviewCommandActionSourceY << "\n";
+  logFile << "  map3DPreviewCommandActionTarget="
+          << screenRuntime.mapPreviewCommandActionTargetX << ","
+          << screenRuntime.mapPreviewCommandActionTargetY << "\n";
+  logFile << "  map3DPreviewSelectedTargetDrawn="
+          << (screenRuntime.mapPreviewSelectedTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetChanges="
+          << screenRuntime.mapPreviewSelectedTargetChanges << "\n";
+  logFile << "  map3DPreviewSelectedTargetObjectId="
+          << screenRuntime.mapPreviewSelectedTargetObjectId << "\n";
+  logFile << "  map3DPreviewSelectedTargetKind="
+          << screenRuntime.mapPreviewSelectedTargetKind << "\n";
+  logFile << "  map3DPreviewSelectedTargetFaction="
+          << screenRuntime.mapPreviewSelectedTargetFaction << "\n";
+  logFile << "  map3DPreviewSelectedTargetPlayerId="
+          << screenRuntime.mapPreviewSelectedTargetPlayerId << "\n";
+  logFile << "  map3DPreviewSelectedTargetClientId="
+          << screenRuntime.mapPreviewSelectedTargetClientId << "\n";
+  logFile << "  map3DPreviewSelectedTargetPosition="
+          << screenRuntime.mapPreviewSelectedTargetX << ","
+          << screenRuntime.mapPreviewSelectedTargetY << "\n";
+  logFile << "  map3DPreviewSelectedTargetDistance="
+          << screenRuntime.mapPreviewSelectedTargetDistance << "\n";
+  logFile << "  map3DPreviewSelectedTargetInputSource="
+          << (screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource)
+          << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetAttackCommandSent ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofPrepared="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofPrepared ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofActive="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofActive ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofDamaged="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofDamaged ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofSustained="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofSustained ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofKilled="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofKilled ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofTargetIsHero="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofTargetIsHero ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofRespawned="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofRespawned ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofReengaged="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofReengaged ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofObjectId="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofObjectId << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofSteps="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
+              screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep) << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofRespawnWorldStep="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRespawnWorldStep << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofRespawnDelay="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRespawnDelay << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofSamples="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofSamples << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofHits="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofHitCount << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofKills="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofKillCount << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofRequiredGold="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRequiredGold << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofLife="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifeBefore << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifePrevious << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifeAfter << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofRange="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRange << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofDistance="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofDistanceBefore << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofDistanceAfter << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofOriginalPosition="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofOriginalX << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofOriginalY << "\n";
+  logFile << "  map3DPreviewSelectedTargetAttackProofPosition="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofX << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofY << "\n";
+  logFile << "  map3DPreviewSelectedTargetFollowCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetFollowCommandSent ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetUseUnitCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseUnitCommandSent ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetUseTalentCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseTalentCommandSent ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewSelectedTargetUseConsumableCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseConsumableCommandSent ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewLineupHeroMeshPreviewSlots="
+          << screenRuntime.mapPreviewLineupHeroMeshPreviewSlots << "\n";
+  logFile << "  map3DPreviewLineupHeroMeshPreviewReady="
+          << screenRuntime.mapPreviewLineupHeroMeshPreviewReady << "\n";
+  logFile << "  map3DPreviewHeroDiffuseTexturesCached="
+          << screenRuntime.mapPreviewHeroDiffuseTexturesCached << "\n";
+  logFile << "  map3DPreviewHeroDiffuseTextureFailures="
+          << screenRuntime.mapPreviewHeroDiffuseTextureFailures << "\n";
+  logFile << "  map3DPreviewTerrainElementMeshDrawn="
+          << (screenRuntime.mapPreviewTerrainElementMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewTerrainElementMeshPayloads="
+          << screenRuntime.mapPreviewTerrainElementMeshPayloads << "\n";
+  logFile << "  map3DPreviewTerrainElementMeshBatches="
+          << screenRuntime.mapPreviewTerrainElementMeshBatches << "\n";
+  logFile << "  map3DPreviewTerrainElementMeshTriangles="
+          << screenRuntime.mapPreviewTerrainElementMeshTriangles << "\n";
+  logFile << "  map3DPreviewRendererAnimatedMeshDrawn="
+          << (screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  map3DPreviewRendererAnimatedMeshPayloads="
+          << screenRuntime.mapPreviewRendererAnimatedMeshPayloads << "\n";
+  logFile << "  map3DPreviewRendererAnimatedMeshBatches="
+          << screenRuntime.mapPreviewRendererAnimatedMeshBatches << "\n";
+  logFile << "  map3DPreviewRendererAnimatedMeshTriangles="
+          << screenRuntime.mapPreviewRendererAnimatedMeshTriangles << "\n";
+  logFile << "  map3DPreviewBaseYaw=" << screenRuntime.mapPreviewYawDegrees << "\n";
+  logFile << "  map3DPreviewRenderedYaw=" << screenRuntime.mapPreviewRenderedYawDegrees << "\n";
+  logFile << "  map3DPreviewPitch=" << screenRuntime.mapPreviewPitchDegrees << "\n";
+  logFile << "  map3DPreviewRenderedPitch=" << screenRuntime.mapPreviewRenderedPitchDegrees << "\n";
+  logFile << "  map3DPreviewZoom=" << screenRuntime.mapPreviewZoom << "\n";
+  logFile << "  map3DPreviewPan=" << screenRuntime.mapPreviewPanX << "," << screenRuntime.mapPreviewPanZ << "\n";
+  logFile << "  map3DPreviewInputCount=" << screenRuntime.mapPreviewInputCount << "\n";
+  logFile << "  map3DPreviewLastAction="
+          << (screenRuntime.mapPreviewLastAction.empty() ? "<none>" : screenRuntime.mapPreviewLastAction)
+          << "\n";
+  logFile << "  hero3DPreviewAnimationSkinning="
+          << (selectedHeroPreview.sceneAsset.animationSkinningPreview.ready ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewAnimationSkinningRenderer="
+          << ((selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererSamplerReady &&
+               selectedHeroPreview.sceneAsset.animationSkinningPreview.rendererSkeletonReady) ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewAssetResolved="
+          << (selectedHeroPreview.sceneAsset.sceneObjectResolved ? "yes" : "no") << "\n";
+  logFile << "  hero3DPreviewAssetDbid="
+          << (selectedHeroPreview.sceneAsset.dbid.empty() ? "<none>" : selectedHeroPreview.sceneAsset.dbid) << "\n";
+  logFile << "  hero3DPreviewYaw=" << screenRuntime.characterPreviewYawDegrees << "\n";
+  logFile << "  hero3DPreviewInputCount=" << screenRuntime.characterPreviewInputCount << "\n";
+  logFile << "  hero3DPreviewLastAction="
+          << (screenRuntime.characterPreviewLastAction.empty() ? "<none>" : screenRuntime.characterPreviewLastAction)
+          << "\n";
   logFile << "  localMatchReady=" << (localMatchPreview.ready ? "yes" : "no") << "\n";
   logFile << "  localMatchHumanTeam=" << localMatchPreview.humanTeam << "\n";
   logFile << "  localMatchSelectedSlot=" << localMatchPreview.selectedSlotIndex << "\n";
@@ -23512,6 +46025,12 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeBootstrapScreenId=" << (uiRootPreview.runtimeBootstrapScreenId.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenId) << "\n";
   logFile << "  uiRootRuntimeBootstrapScreenPath=" << (uiRootPreview.runtimeBootstrapScreenPath.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenPath) << "\n";
   logFile << "  uiRootRuntimeBootstrapScreenWindow=" << (uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow) << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuReady=" << (uiRootPreview.runtimeVisibleMenuReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuPath=" << (uiRootPreview.runtimeVisibleMenuPath.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuPath) << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuSelectedAction=" << uiRootPreview.runtimeVisibleMenuSelectedAction << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuActionCount=" << uiRootPreview.runtimeVisibleMenuActionCount << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuAction=" << (uiRootPreview.runtimeVisibleMenuAction.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuAction) << "\n";
+  logFile << "  uiRootRuntimeVisibleMenuActivations=" << uiRootPreview.runtimeVisibleMenuActivatedCount << "\n";
   logFile << "  uiRootRuntimeHeroScreenReady=" << (uiRootPreview.runtimeHeroScreenReady ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeHeroScreenWindowReady=" << (uiRootPreview.runtimeHeroScreenWindowReady ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeHeroScreenPath=" << (uiRootPreview.runtimeHeroScreenPath.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenPath) << "\n";
@@ -23555,7 +46074,94 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeGameTransceiverBufferLimit=" << uiRootPreview.runtimeGameTransceiverBufferLimit << "\n";
   logFile << "  uiRootRuntimeGameTransceiverCommandBatches=" << uiRootPreview.runtimeGameTransceiverCommandBatches << "\n";
   logFile << "  uiRootRuntimeGameTransceiverCommands=" << uiRootPreview.runtimeGameTransceiverCommands << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverRuntimeCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverRuntimeCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverProductionCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverProductionCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverTimescaleCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverTimescaleCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMoveSent="
+          << (uiRootPreview.runtimeGameTransceiverHeroMoveCommandSent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMoveCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverHeroMoveCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMovePlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroMovePlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMoveClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroMoveClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMoveSource="
+          << uiRootPreview.runtimeGameTransceiverHeroMoveSourceX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroMoveSourceY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroMoveTarget="
+          << uiRootPreview.runtimeGameTransceiverHeroMoveTargetX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroMoveTargetY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroStopSent="
+          << (uiRootPreview.runtimeGameTransceiverHeroStopCommandSent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroStopCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverHeroStopCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroStopPlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroStopPlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroStopClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroStopClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroStopPosition="
+          << uiRootPreview.runtimeGameTransceiverHeroStopX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroStopY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackSent="
+          << (uiRootPreview.runtimeGameTransceiverHeroAttackCommandSent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackPlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackPlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackTargetPlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackTargetPlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackTargetClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackTargetClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackSource="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackSourceX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroAttackSourceY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroAttackTarget="
+          << uiRootPreview.runtimeGameTransceiverHeroAttackTargetX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroAttackTargetY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowSent="
+          << (uiRootPreview.runtimeGameTransceiverHeroFollowCommandSent ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowCommandsSent="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowCommandsSent << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowPlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowPlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowTargetPlayerId="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowTargetPlayerId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowTargetClientId="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowTargetClientId << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowSource="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowSourceX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroFollowSourceY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverHeroFollowTarget="
+          << uiRootPreview.runtimeGameTransceiverHeroFollowTargetX << ","
+          << uiRootPreview.runtimeGameTransceiverHeroFollowTargetY << "\n";
+  logFile << "  uiRootRuntimeGameTransceiverCommandQueuedBeforePrime="
+          << (uiRootPreview.runtimeGameTransceiverCommandQueuedBeforePrime ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeGameTransceiverStatusUpdates=" << uiRootPreview.runtimeGameTransceiverStatusUpdates << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterReady="
+          << (uiRootPreview.runtimeGameReplayWriterReady ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterOpen="
+          << (uiRootPreview.runtimeGameReplayWriterOpen ? "yes" : "no") << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterStartWrites="
+          << uiRootPreview.runtimeGameReplayWriterStartWrites << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterStepWrites="
+          << uiRootPreview.runtimeGameReplayWriterStepWrites << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterCommandWrites="
+          << uiRootPreview.runtimeGameReplayWriterCommandWrites << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterStatusWrites="
+          << uiRootPreview.runtimeGameReplayWriterStatusWrites << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterBytesWritten="
+          << uiRootPreview.runtimeGameReplayWriterBytesWritten << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterFailures="
+          << uiRootPreview.runtimeGameReplayWriterFailures << "\n";
+  logFile << "  uiRootRuntimeGameReplayWriterPath="
+          << (uiRootPreview.runtimeGameReplayWriterPath.empty() ? "<none>" : uiRootPreview.runtimeGameReplayWriterPath) << "\n";
   logFile << "  uiRootRuntimeGameWorldPlayers=" << uiRootPreview.runtimeGameWorldPlayers << "\n";
   logFile << "  uiRootRuntimeGameWorldPresentPlayers=" << uiRootPreview.runtimeGameWorldPresentPlayers << "\n";
   logFile << "  uiRootRuntimeGameWorldFogWidth=" << uiRootPreview.runtimeGameWorldFogWidth << "\n";
@@ -23568,6 +46174,8 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeGameWorldGlyphSpawnerObjects=" << uiRootPreview.runtimeGameWorldGlyphSpawnerObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldAdvMapObstacleObjects=" << uiRootPreview.runtimeGameWorldAdvMapObstacleObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldHeroPlaceHolderObjects=" << uiRootPreview.runtimeGameWorldHeroPlaceHolderObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldSpawnedHeroObjects=" << uiRootPreview.runtimeGameWorldSpawnedHeroObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldPlayersWithHeroObjects=" << uiRootPreview.runtimeGameWorldPlayersWithHeroObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldCreepSpawnerObjects=" << uiRootPreview.runtimeGameWorldCreepSpawnerObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldNeutralCreepSpawnerObjects=" << uiRootPreview.runtimeGameWorldNeutralCreepSpawnerObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldSimpleBuildingObjects=" << uiRootPreview.runtimeGameWorldSimpleBuildingObjects << "\n";
@@ -23584,7 +46192,23 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeGameWorldCameraSplineObjects=" << uiRootPreview.runtimeGameWorldCameraSplineObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldScriptPathObjects=" << uiRootPreview.runtimeGameWorldScriptPathObjects << "\n";
   logFile << "  uiRootRuntimeGameWorldScriptPolygonAreaObjects=" << uiRootPreview.runtimeGameWorldScriptPolygonAreaObjects << "\n";
+  logFile << "  uiRootRuntimeGameWorldExecutedPackedCommands="
+          << uiRootPreview.runtimeGameWorldExecutedPackedCommands << "\n";
+  logFile << "  uiRootRuntimeGameWorldBootstrapRuntimeCommands="
+          << uiRootPreview.runtimeGameWorldBootstrapRuntimeCommands << "\n";
   logFile << "  uiRootRuntimeGameWorldLocalUserId=" << uiRootPreview.runtimeGameWorldLocalUserId << "\n";
+  logFile << "  uiRootRuntimeGameWorldLastPackedCommandClientId="
+          << uiRootPreview.runtimeGameWorldLastPackedCommandClientId << "\n";
+  logFile << "  uiRootRuntimeGameWorldLastPackedCommandTypeId="
+          << NStr::StrFmt("0x%08X", uiRootPreview.runtimeGameWorldLastPackedCommandTypeId) << "\n";
+  logFile << "  uiRootRuntimeGameWorldLastBootstrapCommandClientId="
+          << uiRootPreview.runtimeGameWorldLastBootstrapCommandClientId << "\n";
+  logFile << "  uiRootRuntimeGameWorldLastBootstrapCommandToken="
+          << uiRootPreview.runtimeGameWorldLastBootstrapCommandToken << "\n";
+  logFile << "  uiRootRuntimeGameWorldLastBootstrapCommandValue="
+          << uiRootPreview.runtimeGameWorldLastBootstrapCommandValue << "\n";
+  logFile << "  uiRootRuntimeGameWorldTimeScale="
+          << uiRootPreview.runtimeGameWorldTimeScale << "\n";
   logFile << "  uiRootRuntimeGameTransceiverNoData=" << (uiRootPreview.runtimeGameTransceiverNoData ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeGameTransceiverAsynced=" << (uiRootPreview.runtimeGameTransceiverAsynced ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeGameTransceiverPath="
@@ -24340,6 +46964,15 @@ void WriteStartupLog(
   {
     logFile << "  selectedHeroWarning=" << selectedHeroPreview.warnings[i] << "\n";
   }
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.samples.size(); ++i)
+  {
+    logFile << "  selectedHeroSceneAssetSample[" << i << "]="
+            << selectedHeroPreview.sceneAsset.samples[i] << "\n";
+  }
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.warnings.size(); ++i)
+  {
+    logFile << "  selectedHeroSceneAssetWarning=" << selectedHeroPreview.sceneAsset.warnings[i] << "\n";
+  }
 
   for (size_t i = 0; i < engineMapStartPreview.warnings.size(); ++i)
   {
@@ -24349,6 +46982,45 @@ void WriteStartupLog(
   {
     logFile << "  loadingHeroesRuntimeWarning=" << loadingHeroesRuntimePreview.warnings[i] << "\n";
   }
+}
+
+void WriteLinuxLiveHudStateLog(
+  std::ofstream& logFile,
+  const char* prefix,
+  const LinuxLiveUnitHudState& state
+)
+{
+  if (!prefix)
+  {
+    prefix = "liveUnit";
+  }
+
+  logFile << "  " << prefix << "Ready=" << (state.ready ? "yes" : "no") << "\n";
+  logFile << "  " << prefix << "ObjectId=" << state.objectId << "\n";
+  logFile << "  " << prefix << "Kind=" << DescribeLinuxLiveHudUnitKind(state.kind) << "\n";
+  logFile << "  " << prefix << "Faction=" << state.faction << "\n";
+  logFile << "  " << prefix << "PlayerId=" << state.playerId << "\n";
+  logFile << "  " << prefix << "UserId=" << state.userId << "\n";
+  logFile << "  " << prefix << "Level=" << state.level << "\n";
+  logFile << "  " << prefix << "Gold=" << state.gold << "\n";
+  logFile << "  " << prefix << "Position=" << state.x << "," << state.y << "\n";
+  logFile << "  " << prefix << "Distance=" << state.distance << "\n";
+  logFile << "  " << prefix << "Life=" << state.life << "/" << state.maxLife << "\n";
+  logFile << "  " << prefix << "LifePercent=" << state.lifePercent << "\n";
+  logFile << "  " << prefix << "Energy=" << state.energy << "/" << state.maxEnergy << "\n";
+  logFile << "  " << prefix << "EnergyPercent=" << state.energyPercent << "\n";
+  logFile << "  " << prefix << "Regen=" << state.lifeRegen << "/" << state.energyRegen << "\n";
+  logFile << "  " << prefix << "Damage=" << state.damageMin << "-" << state.damageMax << "\n";
+  logFile << "  " << prefix << "MoveSpeedMps=" << state.moveSpeedMps << "\n";
+  logFile << "  " << prefix << "AttacksPerSecond=" << state.attacksPerSecond << "\n";
+  logFile << "  " << prefix << "Moving=" << (state.moving ? "yes" : "no") << "\n";
+  logFile << "  " << prefix << "Dead=" << (state.dead ? "yes" : "no") << "\n";
+  logFile << "  " << prefix << "UnitDbid="
+          << (state.unitDbid.empty() ? "<none>" : state.unitDbid) << "\n";
+  logFile << "  " << prefix << "SceneObjectDbid="
+          << (state.sceneObjectDbid.empty() ? "<none>" : state.sceneObjectDbid) << "\n";
+  logFile << "  " << prefix << "Source="
+          << (state.source.empty() ? "<none>" : state.source) << "\n";
 }
 
 void AppendRuntimeInputLog(
@@ -24362,7 +47034,8 @@ void AppendRuntimeInputLog(
   const LinuxArtworkSelectionState& artworkState,
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
-  const LinuxEngineMapStartPreview& engineMapStartPreview
+  const LinuxEngineMapStartPreview& engineMapStartPreview,
+  const LinuxBootstrapScreenRuntime& screenRuntime
 )
 {
   const fs::path logFilePath = ResolveLogsDir(environment) / "linux-client-shell.log";
@@ -24385,6 +47058,809 @@ void AppendRuntimeInputLog(
   logFile << "  sessionPlayersCount=" << sessionPreview.players.size() << "\n";
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  logFile << "  finalGameSchedulerTicks=" << screenRuntime.schedulerTickCount << "\n";
+  logFile << "  finalGameSchedulerNextStep=" << screenRuntime.schedulerNextStep << "\n";
+  logFile << "  finalGameSchedulerSegmentReady="
+          << (screenRuntime.schedulerSegmentReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameSchedulerSegmentStep=" << screenRuntime.schedulerSegmentStep << "\n";
+  logFile << "  finalGameTransceiverReady="
+          << (screenRuntime.transceiverReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverWorldAttached="
+          << (screenRuntime.transceiverWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverStepCalls=" << screenRuntime.transceiverStepCalls << "\n";
+  logFile << "  finalGameTransceiverProcessedSteps=" << screenRuntime.transceiverProcessedSteps << "\n";
+  logFile << "  finalGameTransceiverNextStep=" << screenRuntime.transceiverNextStep << "\n";
+  logFile << "  finalGameTransceiverWorldStep=" << screenRuntime.transceiverWorldStep << "\n";
+  logFile << "  finalGameTransceiverCommandBatches=" << screenRuntime.transceiverCommandBatches << "\n";
+  logFile << "  finalGameTransceiverCommands=" << screenRuntime.transceiverCommands << "\n";
+  logFile << "  finalGameTransceiverRuntimeCommandsSent="
+          << screenRuntime.transceiverRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverProductionCommandsSent="
+          << screenRuntime.transceiverProductionRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverTimescaleCommandsSent="
+          << screenRuntime.transceiverTimescaleRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroMoveSent="
+          << (screenRuntime.transceiverHeroMoveRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroMoveCommandsSent="
+          << screenRuntime.transceiverHeroMoveRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroMoveTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapMoveHeroCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroMovePlayerId="
+          << screenRuntime.transceiverHeroMovePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroMoveClientId="
+          << screenRuntime.transceiverHeroMoveClientId << "\n";
+  logFile << "  finalGameTransceiverHeroMoveSource="
+          << screenRuntime.transceiverHeroMoveSourceX << ","
+          << screenRuntime.transceiverHeroMoveSourceY << "\n";
+  logFile << "  finalGameTransceiverHeroMoveTarget="
+          << screenRuntime.transceiverHeroMoveTargetX << ","
+          << screenRuntime.transceiverHeroMoveTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroStopSent="
+          << (screenRuntime.transceiverHeroStopRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroStopCommandsSent="
+          << screenRuntime.transceiverHeroStopRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroStopTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapStopHeroCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroStopPlayerId="
+          << screenRuntime.transceiverHeroStopPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroStopClientId="
+          << screenRuntime.transceiverHeroStopClientId << "\n";
+  logFile << "  finalGameTransceiverHeroStopPosition="
+          << screenRuntime.transceiverHeroStopX << ","
+          << screenRuntime.transceiverHeroStopY << "\n";
+  logFile << "  finalGameTransceiverHeroAttackSent="
+          << (screenRuntime.transceiverHeroAttackRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroAttackCommandsSent="
+          << screenRuntime.transceiverHeroAttackRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroAttackTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapAttackTargetCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroAttackPlayerId="
+          << screenRuntime.transceiverHeroAttackPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroAttackClientId="
+          << screenRuntime.transceiverHeroAttackClientId << "\n";
+  logFile << "  finalGameTransceiverHeroAttackTargetPlayerId="
+          << screenRuntime.transceiverHeroAttackTargetPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroAttackTargetClientId="
+          << screenRuntime.transceiverHeroAttackTargetClientId << "\n";
+  logFile << "  finalGameTransceiverHeroAttackSource="
+          << screenRuntime.transceiverHeroAttackSourceX << ","
+          << screenRuntime.transceiverHeroAttackSourceY << "\n";
+  logFile << "  finalGameTransceiverHeroAttackTarget="
+          << screenRuntime.transceiverHeroAttackTargetX << ","
+          << screenRuntime.transceiverHeroAttackTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroFollowSent="
+          << (screenRuntime.transceiverHeroFollowRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroFollowCommandsSent="
+          << screenRuntime.transceiverHeroFollowRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroFollowTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapFollowUnitCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroFollowPlayerId="
+          << screenRuntime.transceiverHeroFollowPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroFollowClientId="
+          << screenRuntime.transceiverHeroFollowClientId << "\n";
+  logFile << "  finalGameTransceiverHeroFollowTargetPlayerId="
+          << screenRuntime.transceiverHeroFollowTargetPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroFollowTargetClientId="
+          << screenRuntime.transceiverHeroFollowTargetClientId << "\n";
+  logFile << "  finalGameTransceiverHeroFollowSource="
+          << screenRuntime.transceiverHeroFollowSourceX << ","
+          << screenRuntime.transceiverHeroFollowSourceY << "\n";
+  logFile << "  finalGameTransceiverHeroFollowTarget="
+          << screenRuntime.transceiverHeroFollowTargetX << ","
+          << screenRuntime.transceiverHeroFollowTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveSent="
+          << (screenRuntime.transceiverHeroCombatMoveRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveCommandsSent="
+          << screenRuntime.transceiverHeroCombatMoveRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapCombatMoveHeroCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMovePlayerId="
+          << screenRuntime.transceiverHeroCombatMovePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveClientId="
+          << screenRuntime.transceiverHeroCombatMoveClientId << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveSource="
+          << screenRuntime.transceiverHeroCombatMoveSourceX << ","
+          << screenRuntime.transceiverHeroCombatMoveSourceY << "\n";
+  logFile << "  finalGameTransceiverHeroCombatMoveTarget="
+          << screenRuntime.transceiverHeroCombatMoveTargetX << ","
+          << screenRuntime.transceiverHeroCombatMoveTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroHoldSent="
+          << (screenRuntime.transceiverHeroHoldRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroHoldCommandsSent="
+          << screenRuntime.transceiverHeroHoldRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroHoldTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapHoldCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroHoldPlayerId="
+          << screenRuntime.transceiverHeroHoldPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroHoldClientId="
+          << screenRuntime.transceiverHeroHoldClientId << "\n";
+  logFile << "  finalGameTransceiverHeroHoldPosition="
+          << screenRuntime.transceiverHeroHoldX << ","
+          << screenRuntime.transceiverHeroHoldY << "\n";
+  logFile << "  finalGameTransceiverHeroCancelChannellingSent="
+          << (screenRuntime.transceiverHeroCancelChannellingRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroCancelChannellingCommandsSent="
+          << screenRuntime.transceiverHeroCancelChannellingRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroCancelChannellingTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapCancelChannellingCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroCancelChannellingPlayerId="
+          << screenRuntime.transceiverHeroCancelChannellingPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroCancelChannellingClientId="
+          << screenRuntime.transceiverHeroCancelChannellingClientId << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalSent="
+          << (screenRuntime.transceiverHeroMinimapSignalRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalCommandsSent="
+          << screenRuntime.transceiverHeroMinimapSignalRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapMinimapSignalCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalPlayerId="
+          << screenRuntime.transceiverHeroMinimapSignalPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalClientId="
+          << screenRuntime.transceiverHeroMinimapSignalClientId << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalTargetPlayerId="
+          << screenRuntime.transceiverHeroMinimapSignalTargetPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalTargetClientId="
+          << screenRuntime.transceiverHeroMinimapSignalTargetClientId << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalSource="
+          << screenRuntime.transceiverHeroMinimapSignalSourceX << ","
+          << screenRuntime.transceiverHeroMinimapSignalSourceY << "\n";
+  logFile << "  finalGameTransceiverHeroMinimapSignalTarget="
+          << screenRuntime.transceiverHeroMinimapSignalTargetX << ","
+          << screenRuntime.transceiverHeroMinimapSignalTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitSent="
+          << (screenRuntime.transceiverHeroUseUnitRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitCommandsSent="
+          << screenRuntime.transceiverHeroUseUnitRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapUseUnitCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitPlayerId="
+          << screenRuntime.transceiverHeroUseUnitPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitClientId="
+          << screenRuntime.transceiverHeroUseUnitClientId << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitTargetPlayerId="
+          << screenRuntime.transceiverHeroUseUnitTargetPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroUseUnitTargetClientId="
+          << screenRuntime.transceiverHeroUseUnitTargetClientId << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentSent="
+          << (screenRuntime.transceiverHeroActivateTalentRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentCommandsSent="
+          << screenRuntime.transceiverHeroActivateTalentRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapActivateTalentCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentPlayerId="
+          << screenRuntime.transceiverHeroActivateTalentPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentClientId="
+          << screenRuntime.transceiverHeroActivateTalentClientId << "\n";
+  logFile << "  finalGameTransceiverHeroActivateTalentSlot="
+          << screenRuntime.transceiverHeroActivateTalentLevel << ","
+          << screenRuntime.transceiverHeroActivateTalentSlot << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentSent="
+          << (screenRuntime.transceiverHeroUseTalentRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentCommandsSent="
+          << screenRuntime.transceiverHeroUseTalentRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapUseTalentCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentPlayerId="
+          << screenRuntime.transceiverHeroUseTalentPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentClientId="
+          << screenRuntime.transceiverHeroUseTalentClientId << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentSlot="
+          << screenRuntime.transceiverHeroUseTalentLevel << ","
+          << screenRuntime.transceiverHeroUseTalentSlot << "\n";
+  logFile << "  finalGameTransceiverHeroUseTalentTarget="
+          << screenRuntime.transceiverHeroUseTalentTargetX << ","
+          << screenRuntime.transceiverHeroUseTalentTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalSent="
+          << (screenRuntime.transceiverHeroUsePortalRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalCommandsSent="
+          << screenRuntime.transceiverHeroUsePortalRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapUsePortalCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalPlayerId="
+          << screenRuntime.transceiverHeroUsePortalPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalClientId="
+          << screenRuntime.transceiverHeroUsePortalClientId << "\n";
+  logFile << "  finalGameTransceiverHeroUsePortalTarget="
+          << screenRuntime.transceiverHeroUsePortalTargetX << ","
+          << screenRuntime.transceiverHeroUsePortalTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableSent="
+          << (screenRuntime.transceiverHeroUseConsumableRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableCommandsSent="
+          << screenRuntime.transceiverHeroUseConsumableRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapUseConsumableCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumablePlayerId="
+          << screenRuntime.transceiverHeroUseConsumablePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableClientId="
+          << screenRuntime.transceiverHeroUseConsumableClientId << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableSlot="
+          << screenRuntime.transceiverHeroUseConsumableSlot << "\n";
+  logFile << "  finalGameTransceiverHeroUseConsumableTarget="
+          << screenRuntime.transceiverHeroUseConsumableTargetX << ","
+          << screenRuntime.transceiverHeroUseConsumableTargetY << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableSent="
+          << (screenRuntime.transceiverHeroBuyConsumableRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableCommandsSent="
+          << screenRuntime.transceiverHeroBuyConsumableRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapBuyConsumableCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumablePlayerId="
+          << screenRuntime.transceiverHeroBuyConsumablePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableClientId="
+          << screenRuntime.transceiverHeroBuyConsumableClientId << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableShopObjectId="
+          << screenRuntime.transceiverHeroBuyConsumableShopObjectId << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableIndex="
+          << screenRuntime.transceiverHeroBuyConsumableIndex << "\n";
+  logFile << "  finalGameTransceiverHeroBuyConsumableSlotIndex="
+          << screenRuntime.transceiverHeroBuyConsumableSlotIndex << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagSent="
+          << (screenRuntime.transceiverHeroRaiseFlagRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagCommandsSent="
+          << screenRuntime.transceiverHeroRaiseFlagRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapRaiseFlagCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagPlayerId="
+          << screenRuntime.transceiverHeroRaiseFlagPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagClientId="
+          << screenRuntime.transceiverHeroRaiseFlagClientId << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagObjectId="
+          << screenRuntime.transceiverHeroRaiseFlagObjectId << "\n";
+  logFile << "  finalGameTransceiverHeroRaiseFlagFaction="
+          << screenRuntime.transceiverHeroRaiseFlagFaction << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigameSent="
+          << (screenRuntime.transceiverHeroInitMinigameRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigameCommandsSent="
+          << screenRuntime.transceiverHeroInitMinigameRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigameTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapInitMinigameCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigamePlayerId="
+          << screenRuntime.transceiverHeroInitMinigamePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigameClientId="
+          << screenRuntime.transceiverHeroInitMinigameClientId << "\n";
+  logFile << "  finalGameTransceiverHeroInitMinigameObjectId="
+          << screenRuntime.transceiverHeroInitMinigameObjectId << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectSent="
+          << (screenRuntime.transceiverHeroPickupObjectRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectCommandsSent="
+          << screenRuntime.transceiverHeroPickupObjectRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapPickupObjectCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectPlayerId="
+          << screenRuntime.transceiverHeroPickupObjectPlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectClientId="
+          << screenRuntime.transceiverHeroPickupObjectClientId << "\n";
+  logFile << "  finalGameTransceiverHeroPickupObjectId="
+          << screenRuntime.transceiverHeroPickupObjectId << "\n";
+  logFile << "  finalGameTransceiverCommandQueuedBeforePrime="
+          << (screenRuntime.transceiverRuntimeCommandQueuedBeforePrime ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverStatusUpdates=" << screenRuntime.transceiverStatusUpdates << "\n";
+  logFile << "  finalGameTransceiverNoData="
+          << (screenRuntime.transceiverNoData ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayWriterReady="
+          << (screenRuntime.replayWriterReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayWriterOpen="
+          << (screenRuntime.replayWriterOpen ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayWriterStartWrites="
+          << screenRuntime.replayWriterStartWrites << "\n";
+  logFile << "  finalGameReplayWriterStepWrites="
+          << screenRuntime.replayWriterStepWrites << "\n";
+  logFile << "  finalGameReplayWriterCommandWrites="
+          << screenRuntime.replayWriterCommandWrites << "\n";
+  logFile << "  finalGameReplayWriterStatusWrites="
+          << screenRuntime.replayWriterStatusWrites << "\n";
+  logFile << "  finalGameReplayWriterBytesWritten="
+          << screenRuntime.replayWriterBytesWritten << "\n";
+  logFile << "  finalGameReplayWriterFailures="
+          << screenRuntime.replayWriterFailures << "\n";
+  logFile << "  finalGameReplayWriterPath="
+          << (screenRuntime.replayWriterPath.empty() ? "<none>" : screenRuntime.replayWriterPath) << "\n";
+  logFile << "  finalGameWorldPlayers=" << screenRuntime.worldPlayers << "\n";
+  logFile << "  finalGameWorldPresentPlayers=" << screenRuntime.worldPresentPlayers << "\n";
+  logFile << "  finalGameWorldFog=" << screenRuntime.worldFogWidth << "x" << screenRuntime.worldFogHeight << "\n";
+  logFile << "  finalGameWorldMapObjects=" << screenRuntime.worldMapObjects << "\n";
+  logFile << "  finalGameWorldExecutedPackedCommands="
+          << screenRuntime.worldExecutedPackedCommands << "\n";
+  logFile << "  finalGameWorldBootstrapRuntimeCommands="
+          << screenRuntime.worldBootstrapRuntimeCommands << "\n";
+  logFile << "  finalGameWorldLastPackedCommandClientId="
+          << screenRuntime.worldLastPackedCommandClientId << "\n";
+  logFile << "  finalGameWorldLastPackedCommandTypeId="
+          << NStr::StrFmt("0x%08X", screenRuntime.worldLastPackedCommandTypeId) << "\n";
+  logFile << "  finalGameWorldLastBootstrapCommandClientId="
+          << screenRuntime.worldLastBootstrapCommandClientId << "\n";
+  logFile << "  finalGameWorldLastBootstrapCommandToken="
+          << screenRuntime.worldLastBootstrapCommandToken << "\n";
+  logFile << "  finalGameWorldLastBootstrapCommandValue="
+          << screenRuntime.worldLastBootstrapCommandValue << "\n";
+  logFile << "  finalGameWorldTimeScale="
+          << screenRuntime.worldTimeScale << "\n";
+  logFile << "  finalGameWorldSpawnedHeroes=" << screenRuntime.worldSpawnedHeroObjects << "\n";
+  logFile << "  finalGameWorldPlayersWithHeroes=" << screenRuntime.worldPlayersWithHeroObjects << "\n";
+  logFile << "  finalGameWorldSimpleObjects=" << screenRuntime.worldSimpleObjects << "\n";
+  logFile << "  finalGameWorldMultiStateObjects=" << screenRuntime.worldMultiStateObjects << "\n";
+  logFile << "  finalGameWorldTreeObjects=" << screenRuntime.worldTreeObjects << "\n";
+  logFile << "  finalGameWorldCreepSpawners=" << screenRuntime.worldCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldNeutralSpawners=" << screenRuntime.worldNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldSteppedSpawners=" << screenRuntime.worldSteppedSpawnerObjects << "\n";
+  logFile << "  finalGameWorldSteppedCreepSpawners=" << screenRuntime.worldSteppedCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldSteppedNeutralSpawners=" << screenRuntime.worldSteppedNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldReadyCreepSpawners=" << screenRuntime.worldReadyCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldReadyNeutralSpawners=" << screenRuntime.worldReadyNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldEnabledCreepSpawners=" << screenRuntime.worldEnabledCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldEnabledNeutralSpawners=" << screenRuntime.worldEnabledNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldContentCreepSpawners=" << screenRuntime.worldContentCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldContentNeutralSpawners=" << screenRuntime.worldContentNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldAICreepSpawnEnabled=" << screenRuntime.worldAICreepSpawnEnabled << "\n";
+  logFile << "  finalGameWorldAINeutralSpawnEnabled=" << screenRuntime.worldAINeutralCreepSpawnEnabled << "\n";
+  logFile << "  finalGameWorldAIMaxCreeps=" << screenRuntime.worldAIMaxCreepsCount << "\n";
+  logFile << "  finalGameWorldMinCreepSpawnerDelay=" << screenRuntime.worldMinCreepSpawnerSpawnDelay << "\n";
+  logFile << "  finalGameWorldMinNeutralSpawnerDelay=" << screenRuntime.worldMinNeutralCreepSpawnerSpawnDelay << "\n";
+  logFile << "  finalGameWorldRegisteredCreeps=" << screenRuntime.worldRegisteredCreepObjects << "\n";
+  logFile << "  finalGameWorldSpawnedNeutralCreeps=" << screenRuntime.worldSpawnedNeutralCreepObjects << "\n";
+  logFile << "  finalGameWorldMovingCommonCreeps=" << screenRuntime.worldMovingCommonCreepObjects << "\n";
+  logFile << "  finalGameWorldMovedCommonCreeps=" << screenRuntime.worldMovedCommonCreepObjects << "\n";
+  logFile << "  finalGameWorldCommonCreepMovementDistance=" << screenRuntime.worldCommonCreepMovementDistance << "\n";
+  logFile << "  finalGameWorldCreepSpawnerWaves=" << screenRuntime.worldCreepSpawnerWaves << "\n";
+  logFile << "  finalGameWorldNeutralSpawnerWaves=" << screenRuntime.worldNeutralCreepSpawnerWaves << "\n";
+  logFile << "  finalGameWorldStoredDeadUnits=" << screenRuntime.worldStoredDeadUnits << "\n";
+  logFile << "  finalGameWorldCleanedDeadUnits=" << screenRuntime.worldCleanedDeadUnits << "\n";
+  logFile << "  finalGameWorldPendingDeadUnits=" << screenRuntime.worldPendingDeadUnits << "\n";
+  logFile << "  finalGameWorldLastStoredDeadUnitObjectId=" << screenRuntime.worldLastStoredDeadUnitObjectId << "\n";
+  logFile << "  finalGameWorldLastCleanedDeadUnitObjectId=" << screenRuntime.worldLastCleanedDeadUnitObjectId << "\n";
+  logFile << "  finalGameWorldAwardKillersCalls=" << screenRuntime.worldAwardKillersCalls << "\n";
+  logFile << "  finalGameWorldAwardKillersRejected=" << screenRuntime.worldAwardKillersRejected << "\n";
+  logFile << "  finalGameWorldAwardKillersApplied=" << screenRuntime.worldAwardKillersApplied << "\n";
+  logFile << "  finalGameWorldLastAwardRejectCode=" << screenRuntime.worldLastAwardRejectCode << "\n";
+  logFile << "  finalGameWorldLastAwardVictimObjectId=" << screenRuntime.worldLastAwardVictimObjectId << "\n";
+  logFile << "  finalGameWorldLastAwardKillerObjectId=" << screenRuntime.worldLastAwardKillerObjectId << "\n";
+  logFile << "  finalGameWorldLastAwardHeroObjectId=" << screenRuntime.worldLastAwardHeroObjectId << "\n";
+  logFile << "  finalGameWorldLastAwardVictimNaftaForKill=" << screenRuntime.worldLastAwardVictimNaftaForKill << "\n";
+  logFile << "  finalGameWorldLastAwardKillerAmount=" << screenRuntime.worldLastAwardKillerAmount << "\n";
+  logFile << "  finalGameWorldLastAwardTeamAmount=" << screenRuntime.worldLastAwardTeamAmount << "\n";
+  logFile << "  finalGameWorldLastAwardHeroGoldBefore=" << screenRuntime.worldLastAwardHeroGoldBefore << "\n";
+  logFile << "  finalGameWorldLastAwardHeroGoldAfter=" << screenRuntime.worldLastAwardHeroGoldAfter << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardVictimObjectId=" << screenRuntime.worldLastAppliedAwardVictimObjectId << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardKillerObjectId=" << screenRuntime.worldLastAppliedAwardKillerObjectId << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardHeroObjectId=" << screenRuntime.worldLastAppliedAwardHeroObjectId << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardAmount=" << screenRuntime.worldLastAppliedAwardAmount << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardHeroGoldBefore=" << screenRuntime.worldLastAppliedAwardHeroGoldBefore << "\n";
+  logFile << "  finalGameWorldLastAppliedAwardHeroGoldAfter=" << screenRuntime.worldLastAppliedAwardHeroGoldAfter << "\n";
+  logFile << "  finalGameWorldTowers=" << screenRuntime.worldTowerObjects << "\n";
+  logFile << "  finalGameWorldMainBuildings=" << screenRuntime.worldMainBuildingObjects << "\n";
+  logFile << "  finalHero3DPreviewRendererMeshDrawn="
+          << (screenRuntime.characterPreviewRendererMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalHero3DPreviewRendererMeshBatches="
+          << screenRuntime.characterPreviewRendererMeshBatches << "\n";
+  logFile << "  finalHero3DPreviewRendererMeshTriangles="
+          << screenRuntime.characterPreviewRendererMeshTriangles << "\n";
+  logFile << "  finalHero3DPreviewRendererStaticMeshDrawn="
+          << (screenRuntime.characterPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalHero3DPreviewRendererStaticMeshPayloads="
+          << screenRuntime.characterPreviewRendererStaticMeshPayloads << "\n";
+  logFile << "  finalHero3DPreviewRendererStaticMeshBatches="
+          << screenRuntime.characterPreviewRendererStaticMeshBatches << "\n";
+  logFile << "  finalHero3DPreviewRendererStaticMeshTriangles="
+          << screenRuntime.characterPreviewRendererStaticMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewRendererStaticMeshDrawn="
+          << (screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewRendererStaticMeshPayloads="
+          << screenRuntime.mapPreviewRendererStaticMeshPayloads << "\n";
+  logFile << "  finalMap3DPreviewRendererStaticMeshBatches="
+          << screenRuntime.mapPreviewRendererStaticMeshBatches << "\n";
+  logFile << "  finalMap3DPreviewRendererStaticMeshTriangles="
+          << screenRuntime.mapPreviewRendererStaticMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewTerrainSurfaceDrawn="
+          << (screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewTerrainSurfaceVertices="
+          << screenRuntime.mapPreviewTerrainSurfaceVertices << "\n";
+  logFile << "  finalMap3DPreviewTerrainSurfaceTriangles="
+          << screenRuntime.mapPreviewTerrainSurfaceTriangles << "\n";
+  logFile << "  finalMap3DPreviewWaterZonesDrawn="
+          << (screenRuntime.mapPreviewWaterZonesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewWaterZones="
+          << screenRuntime.mapPreviewWaterZones << "\n";
+  logFile << "  finalMap3DPreviewWaterZoneTriangles="
+          << screenRuntime.mapPreviewWaterZoneTriangles << "\n";
+  logFile << "  finalMap3DPreviewTerrainRoadsDrawn="
+          << (screenRuntime.mapPreviewTerrainRoadsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewTerrainRoads="
+          << screenRuntime.mapPreviewTerrainRoads << "\n";
+  logFile << "  finalMap3DPreviewTerrainRoadSegments="
+          << screenRuntime.mapPreviewTerrainRoadSegments << "\n";
+  logFile << "  finalMap3DPreviewTeamRoutesDrawn="
+          << (screenRuntime.mapPreviewTeamRoutesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewTeamRouteLines="
+          << screenRuntime.mapPreviewTeamRouteLines << "\n";
+  logFile << "  finalMap3DPreviewTeamRouteSegments="
+          << screenRuntime.mapPreviewTeamRouteSegments << "\n";
+  logFile << "  finalMap3DPreviewTeamStartRouteLines="
+          << screenRuntime.mapPreviewTeamStartRouteLines << "\n";
+  logFile << "  finalMap3DPreviewTeamLaneRouteLines="
+          << screenRuntime.mapPreviewTeamLaneRouteLines << "\n";
+  logFile << "  finalMap3DPreviewScriptAreasDrawn="
+          << (screenRuntime.mapPreviewScriptAreasDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewScriptAreas="
+          << screenRuntime.mapPreviewScriptAreas << "\n";
+  logFile << "  finalMap3DPreviewScriptAreaSegments="
+          << screenRuntime.mapPreviewScriptAreaSegments << "\n";
+  logFile << "  finalMap3DPreviewScriptPathsDrawn="
+          << (screenRuntime.mapPreviewScriptPathsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewScriptPaths="
+          << screenRuntime.mapPreviewScriptPaths << "\n";
+  logFile << "  finalMap3DPreviewScriptPathSegments="
+          << screenRuntime.mapPreviewScriptPathSegments << "\n";
+  logFile << "  finalMap3DPreviewCameraSplinesDrawn="
+          << (screenRuntime.mapPreviewCameraSplinesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCameraSplines="
+          << screenRuntime.mapPreviewCameraSplines << "\n";
+  logFile << "  finalMap3DPreviewCameraSplineSegments="
+          << screenRuntime.mapPreviewCameraSplineSegments << "\n";
+  logFile << "  finalMap3DPreviewScriptPolygonsDrawn="
+          << (screenRuntime.mapPreviewScriptPolygonsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewScriptPolygons="
+          << screenRuntime.mapPreviewScriptPolygons << "\n";
+  logFile << "  finalMap3DPreviewScriptPolygonTriangles="
+          << screenRuntime.mapPreviewScriptPolygonTriangles << "\n";
+  logFile << "  finalMap3DPreviewPointLightsDrawn="
+          << (screenRuntime.mapPreviewPointLightsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewPointLights="
+          << screenRuntime.mapPreviewPointLights << "\n";
+  logFile << "  finalMap3DPreviewPointLightMarkers="
+          << screenRuntime.mapPreviewPointLightMarkers << "\n";
+  logFile << "  finalMap3DPreviewEngineStartSlotsDrawn="
+          << (screenRuntime.mapPreviewEngineStartSlotsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewEngineStartSlots="
+          << screenRuntime.mapPreviewEngineStartSlots << "\n";
+  logFile << "  finalMap3DPreviewEngineStartAssignedSlots="
+          << screenRuntime.mapPreviewEngineStartAssignedSlots << "\n";
+  logFile << "  finalMap3DPreviewEngineStartHumanSlots="
+          << screenRuntime.mapPreviewEngineStartHumanSlots << "\n";
+  logFile << "  finalMap3DPreviewEngineStartBotSlots="
+          << screenRuntime.mapPreviewEngineStartBotSlots << "\n";
+  logFile << "  finalMap3DPreviewDynamicWorldMarkersDrawn="
+          << (screenRuntime.mapPreviewDynamicWorldMarkersDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewDynamicWorldMarkers="
+          << screenRuntime.mapPreviewDynamicWorldMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicHeroMarkers="
+          << screenRuntime.mapPreviewDynamicHeroMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicCommonCreepMarkers="
+          << screenRuntime.mapPreviewDynamicCommonCreepMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicNeutralCreepMarkers="
+          << screenRuntime.mapPreviewDynamicNeutralCreepMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicMovingMarkers="
+          << screenRuntime.mapPreviewDynamicMovingMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicHealthBars="
+          << screenRuntime.mapPreviewDynamicHealthBars << "\n";
+  logFile << "  finalMap3DPreviewDynamicMoveDirectionArrows="
+          << screenRuntime.mapPreviewDynamicMoveDirectionArrows << "\n";
+  logFile << "  finalMap3DPreviewDynamicHeroMeshesDrawn="
+          << (screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewDynamicHeroMeshes="
+          << screenRuntime.mapPreviewDynamicHeroMeshes << "\n";
+  logFile << "  finalMap3DPreviewDynamicHeroMeshTriangles="
+          << screenRuntime.mapPreviewDynamicHeroMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewDynamicUnitMeshPreviewAssets="
+          << screenRuntime.mapPreviewDynamicUnitMeshPreviewAssets << "\n";
+  logFile << "  finalMap3DPreviewDynamicUnitMeshPreviewReady="
+          << screenRuntime.mapPreviewDynamicUnitMeshPreviewReady << "\n";
+  logFile << "  finalMap3DPreviewDynamicCreepMeshesDrawn="
+          << (screenRuntime.mapPreviewDynamicCreepMeshesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewDynamicCreepMeshes="
+          << screenRuntime.mapPreviewDynamicCreepMeshes << "\n";
+  logFile << "  finalMap3DPreviewDynamicCreepMeshTriangles="
+          << screenRuntime.mapPreviewDynamicCreepMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewDynamicSelectedHeroMarkerMatched="
+          << (screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewDynamicSelectedHeroMarkerPlayerId="
+          << screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId << "\n";
+  logFile << "  finalLiveHudSamples="
+          << screenRuntime.liveHudSampleCount << "\n";
+  WriteLinuxLiveHudStateLog(logFile, "finalLiveHero", screenRuntime.liveHeroState);
+  WriteLinuxLiveHudStateLog(logFile, "finalLiveTarget", screenRuntime.liveTargetState);
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofPrepared="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofPrepared ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofActive="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofActive ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofDamaged="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofDamaged ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofSustained="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofSustained ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofKilled="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofKilled ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofTargetIsHero="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofTargetIsHero ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofRespawned="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofRespawned ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofReengaged="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofReengaged ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofObjectId="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofObjectId << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofSteps="
+          << (screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
+              screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep) << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofRespawnWorldStep="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRespawnWorldStep << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofRespawnDelay="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRespawnDelay << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofSamples="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofSamples << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofHits="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofHitCount << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofKills="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofKillCount << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofRequiredGold="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRequiredGold << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofLife="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifeBefore << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifePrevious << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofLifeAfter << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofRange="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofRange << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofDistance="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofDistanceBefore << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofDistanceAfter << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofOriginalPosition="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofOriginalX << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofOriginalY << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackProofPosition="
+          << screenRuntime.mapPreviewSelectedTargetAttackProofX << ","
+          << screenRuntime.mapPreviewSelectedTargetAttackProofY << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofPrepared="
+          << (screenRuntime.mapPreviewCreepDuelProofPrepared ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofActive="
+          << (screenRuntime.mapPreviewCreepDuelProofActive ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofDamaged="
+          << (screenRuntime.mapPreviewCreepDuelProofDamaged ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofSustained="
+          << (screenRuntime.mapPreviewCreepDuelProofSustained ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofKilled="
+          << (screenRuntime.mapPreviewCreepDuelProofKilled ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofAttackerObjectId="
+          << screenRuntime.mapPreviewCreepDuelProofAttackerObjectId << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofTargetObjectId="
+          << screenRuntime.mapPreviewCreepDuelProofTargetObjectId << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofSteps="
+          << (screenRuntime.mapPreviewCreepDuelProofLastWorldStep -
+              screenRuntime.mapPreviewCreepDuelProofStartWorldStep) << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofSamples="
+          << screenRuntime.mapPreviewCreepDuelProofSamples << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofHits="
+          << screenRuntime.mapPreviewCreepDuelProofHitCount << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofLife="
+          << screenRuntime.mapPreviewCreepDuelProofLifeBefore << ","
+          << screenRuntime.mapPreviewCreepDuelProofLifePrevious << ","
+          << screenRuntime.mapPreviewCreepDuelProofLifeAfter << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofRange="
+          << screenRuntime.mapPreviewCreepDuelProofRange << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofDistance="
+          << screenRuntime.mapPreviewCreepDuelProofDistanceBefore << ","
+          << screenRuntime.mapPreviewCreepDuelProofDistanceAfter << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofAttackerPosition="
+          << screenRuntime.mapPreviewCreepDuelProofAttackerX << ","
+          << screenRuntime.mapPreviewCreepDuelProofAttackerY << "\n";
+  logFile << "  finalMap3DPreviewCreepDuelProofTargetPosition="
+          << screenRuntime.mapPreviewCreepDuelProofTargetX << ","
+          << screenRuntime.mapPreviewCreepDuelProofTargetY << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveTargetDrawn="
+          << (screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveCommands="
+          << screenRuntime.mapPreviewCommandMoveCommandsSent << "\n";
+  logFile << "  finalMap3DPreviewCommandMovePlayerId="
+          << screenRuntime.mapPreviewCommandMovePlayerId << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveClientId="
+          << screenRuntime.mapPreviewCommandMoveClientId << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveSource="
+          << screenRuntime.mapPreviewCommandMoveSourceX << ","
+          << screenRuntime.mapPreviewCommandMoveSourceY << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveTarget="
+          << screenRuntime.mapPreviewCommandMoveTargetX << ","
+          << screenRuntime.mapPreviewCommandMoveTargetY << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveInputSource="
+          << (screenRuntime.mapPreviewCommandSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandSource)
+          << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroTracking="
+          << (screenRuntime.mapPreviewCommandMoveHeroTracking ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroMoving="
+          << (screenRuntime.mapPreviewCommandMoveHeroMoving ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroMoved="
+          << (screenRuntime.mapPreviewCommandMoveHeroMoved ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroReached="
+          << (screenRuntime.mapPreviewCommandMoveHeroReached ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroSamples="
+          << screenRuntime.mapPreviewCommandMoveHeroSamples << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroWorldStep="
+          << screenRuntime.mapPreviewCommandMoveHeroWorldStep << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroCurrent="
+          << screenRuntime.mapPreviewCommandMoveHeroCurrentX << ","
+          << screenRuntime.mapPreviewCommandMoveHeroCurrentY << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroDistance << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroMaxDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroMaxDistance << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroRemaining="
+          << screenRuntime.mapPreviewCommandMoveHeroRemaining << "\n";
+  logFile << "  finalMap3DPreviewCommandMoveHeroTargetDistance="
+          << screenRuntime.mapPreviewCommandMoveHeroTargetDistance << "\n";
+  logFile << "  finalMap3DPreviewCommandActionTargetDrawn="
+          << (screenRuntime.mapPreviewCommandActionTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewCommandActionCommands="
+          << screenRuntime.mapPreviewCommandActionCommandsSent << "\n";
+  logFile << "  finalMap3DPreviewCommandActionKind="
+          << (screenRuntime.mapPreviewCommandActionKind.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionKind) << "\n";
+  logFile << "  finalMap3DPreviewCommandActionInputSource="
+          << (screenRuntime.mapPreviewCommandActionSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionSource) << "\n";
+  logFile << "  finalMap3DPreviewCommandActionPlayerId="
+          << screenRuntime.mapPreviewCommandActionPlayerId << "\n";
+  logFile << "  finalMap3DPreviewCommandActionClientId="
+          << screenRuntime.mapPreviewCommandActionClientId << "\n";
+  logFile << "  finalMap3DPreviewCommandActionTargetPlayerId="
+          << screenRuntime.mapPreviewCommandActionTargetPlayerId << "\n";
+  logFile << "  finalMap3DPreviewCommandActionTargetClientId="
+          << screenRuntime.mapPreviewCommandActionTargetClientId << "\n";
+  logFile << "  finalMap3DPreviewCommandActionSource="
+          << screenRuntime.mapPreviewCommandActionSourceX << ","
+          << screenRuntime.mapPreviewCommandActionSourceY << "\n";
+  logFile << "  finalMap3DPreviewCommandActionTarget="
+          << screenRuntime.mapPreviewCommandActionTargetX << ","
+          << screenRuntime.mapPreviewCommandActionTargetY << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetDrawn="
+          << (screenRuntime.mapPreviewSelectedTargetDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetChanges="
+          << screenRuntime.mapPreviewSelectedTargetChanges << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetObjectId="
+          << screenRuntime.mapPreviewSelectedTargetObjectId << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetKind="
+          << screenRuntime.mapPreviewSelectedTargetKind << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetFaction="
+          << screenRuntime.mapPreviewSelectedTargetFaction << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetPlayerId="
+          << screenRuntime.mapPreviewSelectedTargetPlayerId << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetClientId="
+          << screenRuntime.mapPreviewSelectedTargetClientId << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetPosition="
+          << screenRuntime.mapPreviewSelectedTargetX << ","
+          << screenRuntime.mapPreviewSelectedTargetY << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetDistance="
+          << screenRuntime.mapPreviewSelectedTargetDistance << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetInputSource="
+          << (screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource)
+          << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetAttackCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetAttackCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetFollowCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetFollowCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetUseUnitCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseUnitCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetUseTalentCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseTalentCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewSelectedTargetUseConsumableCommandSent="
+          << (screenRuntime.mapPreviewSelectedTargetUseConsumableCommandSent ? "yes" : "no") << "\n";
+#if defined(PW_LINUX_NULL_RENDER)
+  {
+    const NWorld::LinuxHeroGameplayCommandDiagnostics finalHeroGameplayCommandDiagnostics =
+      NWorld::GetLinuxHeroGameplayCommandDiagnostics();
+    logFile << "  finalHeroGameplayUseUnit="
+            << finalHeroGameplayCommandDiagnostics.useUnitCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitCanBeUsed << " target="
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetKind << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetFaction << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetPlayerId << "\n";
+    logFile << "  finalHeroGameplayTalent="
+            << finalHeroGameplayCommandDiagnostics.activateTalentCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.activateTalentCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.activateTalentExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.activateTalentActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.activateTalentCanActivate << " slot="
+            << finalHeroGameplayCommandDiagnostics.activateTalentLevel << ","
+            << finalHeroGameplayCommandDiagnostics.activateTalentSlot << " progress="
+            << finalHeroGameplayCommandDiagnostics.activateTalentHeroLevelBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.activateTalentHeroLevelAfter << " dev="
+            << finalHeroGameplayCommandDiagnostics.activateTalentDevPointsBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.activateTalentDevPointsAfter << " gold="
+            << finalHeroGameplayCommandDiagnostics.activateTalentGoldBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.activateTalentGoldAfter << " use="
+            << finalHeroGameplayCommandDiagnostics.useTalentCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentCanUse << " target="
+            << finalHeroGameplayCommandDiagnostics.useTalentTargetType << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentTargetObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentTargetFaction << "\n";
+    logFile << "  finalHeroGameplayPortal="
+            << finalHeroGameplayCommandDiagnostics.usePortalCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.usePortalCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.usePortalExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.usePortalActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.usePortalCanUse << " target="
+            << finalHeroGameplayCommandDiagnostics.usePortalTargetX << ","
+            << finalHeroGameplayCommandDiagnostics.usePortalTargetY << "\n";
+    logFile << "  finalHeroGameplayConsumable="
+            << finalHeroGameplayCommandDiagnostics.useConsumableCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableCanUse << " slot="
+            << finalHeroGameplayCommandDiagnostics.useConsumableSlot << " target="
+            << finalHeroGameplayCommandDiagnostics.useConsumableTargetType << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableTargetObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableTargetFaction << " buy="
+            << finalHeroGameplayCommandDiagnostics.buyConsumableCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableCanBuy << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableTook << " item="
+            << finalHeroGameplayCommandDiagnostics.buyConsumableShopObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableIndex << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableSlotIndex << "\n";
+    logFile << "  finalHeroGameplayWorldActions=raise="
+            << finalHeroGameplayCommandDiagnostics.raiseFlagCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.raiseFlagCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.raiseFlagExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.raiseFlagActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.raiseFlagCanRaise << " flag="
+            << finalHeroGameplayCommandDiagnostics.raiseFlagObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.raiseFlagFaction << " init="
+            << finalHeroGameplayCommandDiagnostics.initMinigameCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameAvailable << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameCanUse << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameBattleReady << " object="
+            << finalHeroGameplayCommandDiagnostics.initMinigameObjectId << " pickup="
+            << finalHeroGameplayCommandDiagnostics.pickupObjectCanChecks << "/"
+            << finalHeroGameplayCommandDiagnostics.pickupObjectCanAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.pickupObjectExecuteCalls << "/"
+            << finalHeroGameplayCommandDiagnostics.pickupObjectActionAccepted << "/"
+            << finalHeroGameplayCommandDiagnostics.pickupObjectCanPickup << " object="
+            << finalHeroGameplayCommandDiagnostics.pickupObjectId << "\n";
+  }
+#endif
+  logFile << "  finalMap3DPreviewLineupHeroMeshPreviewSlots="
+          << screenRuntime.mapPreviewLineupHeroMeshPreviewSlots << "\n";
+  logFile << "  finalMap3DPreviewLineupHeroMeshPreviewReady="
+          << screenRuntime.mapPreviewLineupHeroMeshPreviewReady << "\n";
+  logFile << "  finalMap3DPreviewHeroDiffuseTexturesCached="
+          << screenRuntime.mapPreviewHeroDiffuseTexturesCached << "\n";
+  logFile << "  finalMap3DPreviewHeroDiffuseTextureFailures="
+          << screenRuntime.mapPreviewHeroDiffuseTextureFailures << "\n";
+  logFile << "  finalMap3DPreviewTerrainElementMeshDrawn="
+          << (screenRuntime.mapPreviewTerrainElementMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewTerrainElementMeshPayloads="
+          << screenRuntime.mapPreviewTerrainElementMeshPayloads << "\n";
+  logFile << "  finalMap3DPreviewTerrainElementMeshBatches="
+          << screenRuntime.mapPreviewTerrainElementMeshBatches << "\n";
+  logFile << "  finalMap3DPreviewTerrainElementMeshTriangles="
+          << screenRuntime.mapPreviewTerrainElementMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewRendererAnimatedMeshDrawn="
+          << (screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalMap3DPreviewRendererAnimatedMeshPayloads="
+          << screenRuntime.mapPreviewRendererAnimatedMeshPayloads << "\n";
+  logFile << "  finalMap3DPreviewRendererAnimatedMeshBatches="
+          << screenRuntime.mapPreviewRendererAnimatedMeshBatches << "\n";
+  logFile << "  finalMap3DPreviewRendererAnimatedMeshTriangles="
+          << screenRuntime.mapPreviewRendererAnimatedMeshTriangles << "\n";
+  logFile << "  finalMap3DPreviewBaseYaw=" << screenRuntime.mapPreviewYawDegrees << "\n";
+  logFile << "  finalMap3DPreviewRenderedYaw=" << screenRuntime.mapPreviewRenderedYawDegrees << "\n";
+  logFile << "  finalMap3DPreviewPitch=" << screenRuntime.mapPreviewPitchDegrees << "\n";
+  logFile << "  finalMap3DPreviewRenderedPitch=" << screenRuntime.mapPreviewRenderedPitchDegrees << "\n";
+  logFile << "  finalMap3DPreviewZoom=" << screenRuntime.mapPreviewZoom << "\n";
+  logFile << "  finalMap3DPreviewPan=" << screenRuntime.mapPreviewPanX << "," << screenRuntime.mapPreviewPanZ << "\n";
+  logFile << "  finalMap3DPreviewInputCount=" << screenRuntime.mapPreviewInputCount << "\n";
+  logFile << "  finalMap3DPreviewLastAction="
+          << (screenRuntime.mapPreviewLastAction.empty() ? "<none>" : screenRuntime.mapPreviewLastAction)
+          << "\n";
+  logFile << "  finalHero3DPreviewYaw=" << screenRuntime.characterPreviewYawDegrees << "\n";
+  logFile << "  finalHero3DPreviewLastAction="
+          << (screenRuntime.characterPreviewLastAction.empty() ? "<none>" : screenRuntime.characterPreviewLastAction)
+          << "\n";
 
   for (size_t i = 0; i < inputState.recentEvents.size(); ++i)
   {
@@ -24411,6 +47887,17 @@ void AppendRuntimeInputLog(
   logFile << "  mapTacticalBossCount=" << selectedMapPreview.tactical.bossCount << "\n";
   logFile << "  mapTacticalShopCount=" << selectedMapPreview.tactical.shopCount << "\n";
   logFile << "  mapTacticalGlyphCount=" << selectedMapPreview.tactical.glyphCount << "\n";
+  logFile << "  mapStaticSceneObjectsScanned=" << selectedMapPreview.staticSceneObjectScanCount << "\n";
+  logFile << "  mapStaticSceneObjectScanLimitHit="
+          << (selectedMapPreview.staticSceneObjectScanLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapStaticSceneGeometryPayloads=" << selectedMapPreview.staticGeometryPayloads.size() << "\n";
+  logFile << "  mapStaticSceneDiffuseTextures=" << selectedMapPreview.staticDiffuseTextureFiles.size() << "\n";
+  logFile << "  mapStaticScenePayloadLimitHit="
+          << (selectedMapPreview.staticScenePayloadLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapAnimatedSceneGeometryPayloads=" << selectedMapPreview.animatedGeometryPayloads.size() << "\n";
+  logFile << "  mapAnimatedScenePayloadLimitHit="
+          << (selectedMapPreview.animatedScenePayloadLimitHit ? "yes" : "no") << "\n";
+  logFile << "  mapWaterZoneTriangles=" << selectedMapPreview.waterZoneTriangleCount << "\n";
   logFile << "  mapSelectedLoadingBackFile=" << (selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile) << "\n";
   logFile << "  mapSelectedLoadingLogoFile=" << (selectedMapPreview.loadingLogo.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingLogo.sourceFile) << "\n";
   logFile << "  artworkMode=" << DescribeArtworkMode(artworkState.mode) << "\n";
@@ -24485,6 +47972,7 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
+  settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
   settings.width = ReadWindowSize(argc, argv, "--width", 1280);
   settings.height = ReadWindowSize(argc, argv, "--height", 720);
   settings.spectator = CmdLineLite::Instance().IsKeyDefined("spectator");
@@ -24559,6 +48047,17 @@ int main(int argc, char** argv)
   ApplySessionSelections(&sessionPreview, heroCatalog, mapCatalog, &mapBrowserState, &localMatchPreview);
   LinuxSelectedHeroDbPreview selectedHeroPreview;
   ProbeSelectedHeroDbPreview(environment, sessionRootPreview, heroCatalog, localMatchPreview, &selectedHeroPreview);
+  std::vector<LinuxSelectedHeroDbPreview> lineupHeroPreviews;
+  size_t lineupHeroMeshPreviewReadyCount = 0;
+  ProbeLocalMatchHeroMeshPreviews(
+    environment,
+    sessionRootPreview,
+    heroCatalog,
+    localMatchPreview,
+    selectedHeroPreview,
+    &lineupHeroPreviews,
+    &lineupHeroMeshPreviewReadyCount);
+  std::map<std::string, LinuxSelectedHeroDbPreview> dynamicUnitMeshPreviews;
   LinuxSelectedMapPreview selectedMapPreview;
   ProbeSelectedMapPreview(environment, mapCatalog, mapBrowserState, &selectedMapPreview);
   LinuxEngineMapStartPreview engineMapStartPreview;
@@ -24603,9 +48102,13 @@ int main(int argc, char** argv)
   LinuxWindowOverlay overlay;
   LinuxRenderBootstrap renderBootstrap;
   LinuxBootstrapScreenRuntime screenRuntime;
+  screenRuntime.mapPreviewLineupHeroMeshPreviewSlots = lineupHeroPreviews.size();
+  screenRuntime.mapPreviewLineupHeroMeshPreviewReady = lineupHeroMeshPreviewReadyCount;
   NDb::Ptr<NDb::UIRoot> runtimeUiRoot;
   bool uiInitialized = false;
   InitializeWindowOverlay(&overlay);
+  InitializeLinuxOverlayFreeType(environment, &overlay, &loadingPreview.warnings);
+  LoadLinuxLobbyTextResources(environment, &overlay);
   const bool renderBootstrapReady = StartLinuxRenderBootstrap(
     &renderBootstrap,
     static_cast<unsigned int>(settings.width),
@@ -24706,6 +48209,115 @@ int main(int argc, char** argv)
     loadingPreview.warnings.push_back("Linux artwork upload failed");
   }
 
+  LinuxLoadingArtwork lobbyBackgroundArtwork;
+  std::string lobbyBackgroundError;
+  const fs::path lobbyBackgroundPath =
+    environment.gameRoot / "Data" / "UI" / "Styles" / "Lobby" / "Lobby.dds";
+  const bool lobbyBackgroundReady =
+    !environment.gameRoot.empty() &&
+    fs::exists(lobbyBackgroundPath) &&
+    LoadArtworkFile(lobbyBackgroundPath, &lobbyBackgroundArtwork, &lobbyBackgroundError);
+  if (lobbyBackgroundReady)
+  {
+    if (!UploadLobbyBackgroundTexture(&overlay, lobbyBackgroundArtwork))
+    {
+      loadingPreview.warnings.push_back("Linux lobby background upload failed: " + lobbyBackgroundPath.string());
+    }
+  }
+  else if (!environment.gameRoot.empty() && fs::exists(lobbyBackgroundPath))
+  {
+    loadingPreview.warnings.push_back(
+      "Linux lobby background load failed: " +
+      lobbyBackgroundPath.string() +
+      (lobbyBackgroundError.empty() ? std::string() : " (" + lobbyBackgroundError + ")")
+    );
+  }
+
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/ASSETS_UI/button/_BigButton_up.MTRL",
+    &overlay.lobbyButtonUp,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/ASSETS_UI/button/_BigButton_over.MTRL",
+    &overlay.lobbyButtonOver,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Tooltips/Tooltip_Background.MTRL",
+    &overlay.lobbyPanel,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Minigame02/BlackBackground.MTRL",
+    &overlay.lobbyHeader,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Frame_test.MTRL",
+    &overlay.lobbyFrame,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Selection_Frame.MTRL",
+    &overlay.lobbySelectionFrame,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Radio_Normal.MTRL",
+    &overlay.lobbyRadioNormal,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Radio_Selected.MTRL",
+    &overlay.lobbyRadioSelected,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Scroll_Area_Normal.MTRL",
+    &overlay.lobbyScrollArea,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/Scroll_Area_Leaver_Normal.MTRL",
+    &overlay.lobbyScrollLever,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/ScrollArea_Horiz_Btn2_Normal.MTRL",
+    &overlay.lobbyScrollHorizontalFirst,
+    &loadingPreview.warnings
+  );
+  UploadUiMaterialTexture(
+    environment,
+    &overlay,
+    "/UI/Styles/Shared/ScrollArea_Horiz_Btn1_Normal.MTRL",
+    &overlay.lobbyScrollHorizontalSecond,
+    &loadingPreview.warnings
+  );
+
   WriteStartupLog(
     environment,
     settings,
@@ -24720,6 +48332,7 @@ int main(int argc, char** argv)
     loadingRuntimeDriver,
     loadingHeroesRuntimePreview,
     loadingUiState,
+    screenRuntime,
     mapCatalog,
     mapBrowserState,
     selectedMapPreview,
@@ -24947,8 +48560,13 @@ int main(int argc, char** argv)
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
   fprintf(stdout, "Bootstrap create game: %s\n", settings.bootstrapCreateGame ? "yes" : "no");
-  fprintf(stdout, "Map catalog: %lu maps (%lu PvP, %lu PvE, %lu tutorial)\n",
+  fprintf(stdout, "Diagnostics overlay: %s\n", settings.diagnosticsOverlay ? "yes" : "no");
+  fprintf(stdout, "Map catalog: %lu maps source=%s scanned=%lu custom=%lu/%lu (%lu PvP, %lu PvE, %lu tutorial)\n",
     static_cast<unsigned long>(mapCatalog.descriptorCount),
+    mapCatalog.source.empty() ? "<none>" : mapCatalog.source.c_str(),
+    static_cast<unsigned long>(mapCatalog.scannedDescriptorCount),
+    static_cast<unsigned long>(mapCatalog.customListMatchedCount),
+    static_cast<unsigned long>(mapCatalog.customListCount),
     static_cast<unsigned long>(mapCatalog.pvpCount),
     static_cast<unsigned long>(mapCatalog.pveCount),
     static_cast<unsigned long>(mapCatalog.tutorialCount));
@@ -24960,6 +48578,43 @@ int main(int argc, char** argv)
   fprintf(stdout, "Selected map objects/scripted: %lu/%lu\n",
     static_cast<unsigned long>(selectedMapPreview.objectCount),
     static_cast<unsigned long>(selectedMapPreview.scriptedObjectCount));
+  fprintf(stdout, "Selected map static scene: scanned=%lu/%lu objects=%lu components=%lu payloads=%lu textures=%lu limit=%s scanLimit=%s\n",
+    static_cast<unsigned long>(selectedMapPreview.staticSceneObjectScanCount),
+    static_cast<unsigned long>(selectedMapPreview.objectCount),
+    static_cast<unsigned long>(selectedMapPreview.staticSceneObjectResolvedCount),
+    static_cast<unsigned long>(selectedMapPreview.staticSceneComponentCount),
+    static_cast<unsigned long>(selectedMapPreview.staticGeometryPayloads.size()),
+    static_cast<unsigned long>(selectedMapPreview.staticDiffuseTextureFiles.size()),
+    selectedMapPreview.staticScenePayloadLimitHit ? "yes" : "no",
+    selectedMapPreview.staticSceneObjectScanLimitHit ? "yes" : "no");
+  fprintf(stdout, "Selected map animated scene: components=%lu skinParts=%lu payloads=%lu refs=%lu/%lu limit=%s\n",
+    static_cast<unsigned long>(selectedMapPreview.animatedSceneComponentCount),
+    static_cast<unsigned long>(selectedMapPreview.animatedSceneSkinPartCount),
+    static_cast<unsigned long>(selectedMapPreview.animatedGeometryPayloads.size()),
+    static_cast<unsigned long>(selectedMapPreview.animatedScenePayloadResolvedCount),
+    static_cast<unsigned long>(selectedMapPreview.animatedScenePayloadReferenceCount),
+    selectedMapPreview.animatedScenePayloadLimitHit ? "yes" : "no");
+  fprintf(stdout, "Selected map water: zones=%lu points=%lu triangles=%lu\n",
+    static_cast<unsigned long>(selectedMapPreview.waterZoneCount),
+    static_cast<unsigned long>(selectedMapPreview.waterZonePointCount),
+    static_cast<unsigned long>(selectedMapPreview.waterZoneTriangleCount));
+  fprintf(stdout, "Selected map authored guides: areas=%lu/%lu paths=%lu/%lu camera=%lu/%lu polygons=%lu/%lu\n",
+    static_cast<unsigned long>(selectedMapPreview.scriptAreaCount),
+    static_cast<unsigned long>(selectedMapPreview.scriptAreaSegmentCount),
+    static_cast<unsigned long>(selectedMapPreview.scriptPathCount),
+    static_cast<unsigned long>(selectedMapPreview.scriptPathSegmentCount),
+    static_cast<unsigned long>(selectedMapPreview.cameraSplineCount),
+    static_cast<unsigned long>(selectedMapPreview.cameraSplineSegmentCount),
+    static_cast<unsigned long>(selectedMapPreview.scriptPolygonCount),
+    static_cast<unsigned long>(selectedMapPreview.scriptPolygonTriangleCount));
+  fprintf(stdout, "Selected map lighting: dayEnv=%s nightEnv=%s pointLights=%lu day=%lu night=%lu neutral=%lu markers=%lu\n",
+    selectedMapPreview.lightEnvironmentResolved ? "yes" : "no",
+    selectedMapPreview.nightLightEnvironmentResolved ? "yes" : "no",
+    static_cast<unsigned long>(selectedMapPreview.pointLightCount),
+    static_cast<unsigned long>(selectedMapPreview.pointLightDayCount),
+    static_cast<unsigned long>(selectedMapPreview.pointLightNightCount),
+    static_cast<unsigned long>(selectedMapPreview.pointLightNeutralCount),
+    static_cast<unsigned long>(selectedMapPreview.pointLightMarkerCount));
   fprintf(stdout, "Selected map settings: %s source=%s chain=%lu\n",
     selectedMapPreview.mapSettingsResolved ? "resolved" : "missing",
     selectedMapPreview.settings.source.empty() ? "<none>" : selectedMapPreview.settings.source.c_str(),
@@ -24980,6 +48635,113 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(selectedMapPreview.tactical.bossCount),
     static_cast<unsigned long>(selectedMapPreview.tactical.shopCount),
     static_cast<unsigned long>(selectedMapPreview.tactical.glyphCount));
+  fprintf(stdout, "Selected map terrain: ready=%s source=%lux%lu sampled=%lux%lu triangles=%lu range=%.2f..%.2f layers=%lu/%lu mask=%s unique=%lu roads=%lu/%lu elements=%lu payloads=%lu/%lu limit=%s\n",
+    selectedMapPreview.terrainHeightmap.ready ? "yes" : "no",
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sourceWidth),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sourceHeight),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sampledWidth),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sampledHeight),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.sampledTriangles),
+    selectedMapPreview.terrainHeightmap.minHeight,
+    selectedMapPreview.terrainHeightmap.maxHeight,
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainLayerMaterialCount),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainLayerCount),
+    selectedMapPreview.terrainHeightmap.layerMaskReady ? "yes" : "no",
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainLayerSampledUniqueCount),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.natureRoadCount),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.natureRoadSegmentCount),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainElementCount),
+    static_cast<unsigned long>(selectedMapPreview.terrainElementPayloads.size()),
+    static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainElementPayloadResolvedCount),
+    selectedMapPreview.terrainHeightmap.terrainElementPayloadLimitHit ? "yes" : "no");
+  fprintf(stdout, "Bootstrap 3D preview: ready=%s active=%s yaw=%.1f baseYaw=%.1f pitch=%.1f zoom=%.2f pan=%.1f,%.1f input=%lu markers=%lu terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu routes=%s/%lu/%lu/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu starts=%s/%lu/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d moveCmd=%s/%lu moveProgress=%s/%s/%s/%.1f/%.1f lineupHeroMeshes=%lu/%lu heroTextures=%lu/%lu source=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-scene-objects-loaded-world-units-status-bars-map-click-move-command-and-texture-cached-lineup-hero-and-creep-meshes\n",
+    IsLinuxBootstrap3DPreviewReady(&selectedMapPreview) ? "yes" : "no",
+    (uiRootPreview.runtimeLoadingScreenReady && IsLinuxBootstrap3DPreviewReady(&selectedMapPreview)) ? "yes" : "no",
+    static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
+    static_cast<double>(screenRuntime.mapPreviewYawDegrees),
+    static_cast<double>(screenRuntime.mapPreviewRenderedPitchDegrees),
+    static_cast<double>(screenRuntime.mapPreviewZoom),
+    static_cast<double>(screenRuntime.mapPreviewPanX),
+    static_cast<double>(screenRuntime.mapPreviewPanZ),
+    static_cast<unsigned long>(screenRuntime.mapPreviewInputCount),
+    static_cast<unsigned long>(selectedMapPreview.tactical.markers.size()),
+    screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceVertices),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceTriangles),
+    screenRuntime.mapPreviewWaterZonesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewWaterZones),
+    static_cast<unsigned long>(screenRuntime.mapPreviewWaterZoneTriangles),
+    screenRuntime.mapPreviewTerrainRoadsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainRoads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainRoadSegments),
+    screenRuntime.mapPreviewTeamRoutesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTeamRouteLines),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTeamRouteSegments),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTeamStartRouteLines),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTeamLaneRouteLines),
+    screenRuntime.mapPreviewTerrainElementMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshTriangles),
+    screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshTriangles),
+    screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshTriangles),
+    screenRuntime.mapPreviewEngineStartSlotsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewEngineStartSlots),
+    static_cast<unsigned long>(screenRuntime.mapPreviewEngineStartAssignedSlots),
+    static_cast<unsigned long>(screenRuntime.mapPreviewEngineStartHumanSlots),
+    static_cast<unsigned long>(screenRuntime.mapPreviewEngineStartBotSlots),
+    screenRuntime.mapPreviewDynamicWorldMarkersDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicWorldMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCommonCreepMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicNeutralCreepMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMovingMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHealthBars),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMoveDirectionArrows),
+    screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMeshes),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMeshTriangles),
+    screenRuntime.mapPreviewDynamicCreepMeshesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCreepMeshes),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCreepMeshTriangles),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewAssets),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewReady),
+    screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no",
+    screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId,
+    screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCommandMoveCommandsSent),
+    screenRuntime.mapPreviewCommandMoveHeroTracking ? "yes" : "no",
+    screenRuntime.mapPreviewCommandMoveHeroMoved ? "yes" : "no",
+    screenRuntime.mapPreviewCommandMoveHeroReached ? "yes" : "no",
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroMaxDistance),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroRemaining),
+    static_cast<unsigned long>(screenRuntime.mapPreviewLineupHeroMeshPreviewReady),
+    static_cast<unsigned long>(screenRuntime.mapPreviewLineupHeroMeshPreviewSlots),
+    static_cast<unsigned long>(screenRuntime.mapPreviewHeroDiffuseTexturesCached),
+    static_cast<unsigned long>(screenRuntime.mapPreviewHeroDiffuseTextureFailures));
+  fprintf(stdout, "Bootstrap 3D authored guides: areas=%s/%lu/%lu paths=%s/%lu/%lu camera=%s/%lu/%lu polygons=%s/%lu/%lu\n",
+    screenRuntime.mapPreviewScriptAreasDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptAreas),
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptAreaSegments),
+    screenRuntime.mapPreviewScriptPathsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptPaths),
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptPathSegments),
+    screenRuntime.mapPreviewCameraSplinesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCameraSplines),
+    static_cast<unsigned long>(screenRuntime.mapPreviewCameraSplineSegments),
+    screenRuntime.mapPreviewScriptPolygonsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptPolygons),
+    static_cast<unsigned long>(screenRuntime.mapPreviewScriptPolygonTriangles));
+  fprintf(stdout, "Bootstrap 3D point lights: drawn=%s lights=%lu markers=%lu\n",
+    screenRuntime.mapPreviewPointLightsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewPointLights),
+    static_cast<unsigned long>(screenRuntime.mapPreviewPointLightMarkers));
   fprintf(stdout, "Selected map back art: %s\n",
     selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile.c_str());
   fprintf(stdout, "Selected map logo art: %s\n",
@@ -25011,6 +48773,85 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(selectedHeroPreview.defaultTalentSlotCount),
     static_cast<unsigned long>(selectedHeroPreview.statsCount),
     static_cast<unsigned long>(selectedHeroPreview.levelUpgradeCount));
+  fprintf(stdout, "Selected hero scene asset: resolved=%s dbid=%s components=%lu animated=%lu skinParts=%lu animations=%lu payloads=%lu/%lu bounds=%s skeleton=%s joints=%lu animation=%s anims=%lu/%lu animJoints=%lu maxDur=%.2f animSkin=%s\n",
+    selectedHeroPreview.sceneAsset.sceneObjectResolved ? "yes" : "no",
+    selectedHeroPreview.sceneAsset.dbid.empty() ? "<none>" : selectedHeroPreview.sceneAsset.dbid.c_str(),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.componentCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animatedComponentCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.skinPartCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animationCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.payloadResolvedCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.payloadReferenceCount),
+    selectedHeroPreview.sceneAsset.boundsValid ? "yes" : "no",
+    selectedHeroPreview.sceneAsset.skeletonPreview.ready ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.skeletonPreview.jointsCount),
+    selectedHeroPreview.sceneAsset.animationPreview.ready ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animationPreview.payloadReadyCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animationPreview.payloadCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.animationPreview.jointsCount),
+    static_cast<double>(selectedHeroPreview.sceneAsset.animationPreview.maxDurationSeconds),
+    selectedHeroPreview.sceneAsset.animationSkinningPreview.ready ? "yes" : "no");
+  size_t selectedHeroLoadedDiffuseTextures = 0;
+  for (size_t i = 0; i < selectedHeroPreview.sceneAsset.skinDiffuseTextures.size(); ++i)
+  {
+    if (selectedHeroPreview.sceneAsset.skinDiffuseTextures[i].artworkLoaded)
+    {
+      ++selectedHeroLoadedDiffuseTextures;
+    }
+  }
+  fprintf(stdout, "Selected hero mesh payload: ready=%s payloads=%lu/%lu renderGeom=%s/%lu renderReindex=%s renderSkel=%s/%lu batches=%lu dips=%lu tris=%lu fragments=%lu vertices=%lu triangles=%lu drawn=%lu uv=%lu normals=%lu skin=%lu skinReindex=%s texture=%s textures=%lu file=%s\n",
+    selectedHeroPreview.sceneAsset.meshPreview.ready ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.payloadReadyCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.payloadCount),
+    selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryReady ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryPayloadReadyCount),
+    selectedHeroPreview.sceneAsset.meshPreview.rendererGeometryReindexReady ? "yes" : "no",
+    selectedHeroPreview.sceneAsset.rendererSkeletalMeshReady ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshSlotCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshQueuedBatchCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshRenderedDipCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshRenderedTriangleCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.fragmentCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.vertexCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.triangleCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.drawnTriangleCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.texCoordTriangleCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.normalTriangleCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.meshPreview.skinningTriangleCount),
+    selectedHeroPreview.sceneAsset.meshPreview.skinningReindexValid ? "yes" : "no",
+    selectedHeroPreview.sceneAsset.skinDiffuseTexture.artworkLoaded ? "yes" : "no",
+    static_cast<unsigned long>(selectedHeroLoadedDiffuseTextures),
+    selectedHeroPreview.sceneAsset.meshPreview.sourceFile.empty() ?
+      "<none>" :
+      selectedHeroPreview.sceneAsset.meshPreview.sourceFile.c_str());
+  if (selectedHeroPreview.sceneAsset.skinDiffuseTexture.artworkLoaded)
+  {
+    fprintf(stdout, "Selected hero diffuse texture: %s size=%lux%lu\n",
+      selectedHeroPreview.sceneAsset.skinDiffuseTexture.sourceFile.empty() ?
+        "<none>" :
+        selectedHeroPreview.sceneAsset.skinDiffuseTexture.sourceFile.c_str(),
+      selectedHeroPreview.sceneAsset.skinDiffuseTexture.width,
+      selectedHeroPreview.sceneAsset.skinDiffuseTexture.height);
+  }
+  fprintf(stdout, "Hero 3D preview: ready=%s source=%s yaw=%.1f assetRendering=%s rendererMesh=%s/%lu/%lu static=%s/%lu/%lu/%lu assetResolved=%s\n",
+    heroCatalog.entries.empty() ? "no" : "yes",
+    screenRuntime.characterPreviewRendererMeshDrawn ?
+      "linux-opengl-renderer-owned-skeletal-mesh-batch-preview" :
+      (selectedHeroPreview.sceneAsset.animationSkinningPreview.ready ?
+      "linux-opengl-hero-render-sampler-cpu-skin-preview" :
+      (selectedHeroPreview.sceneAsset.meshPreview.ready ?
+        "linux-opengl-hero-skin-payload-mesh" :
+        "linux-opengl-hero-scene-metadata-primitive")),
+    static_cast<double>(screenRuntime.characterPreviewYawDegrees),
+    selectedHeroPreview.sceneAsset.meshPreview.ready ? "yes" : "no",
+    screenRuntime.characterPreviewRendererMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshBatches),
+    static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshTriangles),
+    screenRuntime.characterPreviewRendererStaticMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.characterPreviewRendererStaticMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.characterPreviewRendererStaticMeshBatches),
+    static_cast<unsigned long>(screenRuntime.characterPreviewRendererStaticMeshTriangles),
+    selectedHeroPreview.sceneAsset.sceneObjectResolved ? "yes" : "no");
   fprintf(stdout, "Selected hero talent icons: %lu/%lu\n",
     static_cast<unsigned long>(selectedHeroPreview.defaultTalentIconCount),
     static_cast<unsigned long>(selectedHeroPreview.defaultTalentPreviews.size()));
@@ -25087,6 +48928,13 @@ int main(int argc, char** argv)
     uiRootPreview.runtimeBootstrapScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenWindow.c_str(),
     static_cast<unsigned long>(uiRootPreview.runtimeBootstrapScreenEventCount),
     uiRootPreview.runtimeBootstrapScreenPath.empty() ? "<none>" : uiRootPreview.runtimeBootstrapScreenPath.c_str());
+  fprintf(stdout, "Visible menu runtime: ready=%s selected=%lu/%lu action=%s activations=%lu path=%s\n",
+    uiRootPreview.runtimeVisibleMenuReady ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuSelectedAction + 1),
+    static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuActionCount),
+    uiRootPreview.runtimeVisibleMenuAction.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuAction.c_str(),
+    static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuActivatedCount),
+    uiRootPreview.runtimeVisibleMenuPath.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuPath.c_str());
   fprintf(stdout, "UI hero runtime: ready=%s window=%s players=%lu path=%s\n",
     uiRootPreview.runtimeHeroScreenReady ? "yes" : "no",
     uiRootPreview.runtimeHeroScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenWindow.c_str(),
@@ -25115,7 +48963,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerSegmentCommands),
     static_cast<unsigned long>(uiRootPreview.runtimeGameSchedulerSegmentStatuses),
     uiRootPreview.runtimeGameSchedulerPath.empty() ? "<none>" : uiRootPreview.runtimeGameSchedulerPath.c_str());
-  fprintf(stdout, "Game transceiver runtime: ready=%s world=%s next=%d step=%d buffer=%d batches=%lu commands=%lu statuses=%lu players=%lu present=%lu fog=%lux%lu mapObjects=%lu simple=%lu multi=%lu trees=%lu glyphSpawners=%lu obstacles=%lu heroPlaceholders=%lu creepSpawners=%lu neutralSpawners=%lu simpleBuildings=%lu usableBuildings=%lu shops=%lu quarters=%lu towers=%lu controllableTowers=%lu fountains=%lu roadFlagpoles=%lu scriptedFlagpoles=%lu mainBuildings=%lu minigamePlaces=%lu cameraSplines=%lu scriptPaths=%lu scriptPolygons=%lu warfog=%lu localUid=%d noData=%s asynced=%s path=%s\n",
+  fprintf(stdout, "Game transceiver runtime: ready=%s world=%s next=%d step=%d buffer=%d batches=%lu commands=%lu runtimeSent=%lu productionSent=%lu timescaleSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroMovePlayer=%d heroMoveClient=%d heroMove=%.1f,%.1f->%.1f,%.1f heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroStopPlayer=%d heroStopClient=%d heroStop=%.1f,%.1f heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroAttackPlayer=%d heroAttackClient=%d heroAttackTargetPlayer=%d heroAttackTargetClient=%d heroAttack=%.1f,%.1f->%.1f,%.1f heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroFollowPlayer=%d heroFollowClient=%d heroFollowTargetPlayer=%d heroFollowTargetClient=%d heroFollow=%.1f,%.1f->%.1f,%.1f queuedBeforePrime=%s executed=%lu bootstrap=%lu token=%d cmdClient=%d cmdType=0x%08X keepAliveType=0x%08X timescaleType=0x%08X worldScale=%.2f bootClient=%d bootValue=%.2f replayOpen=%s replayStarts=%lu replaySteps=%lu replayCommands=%lu replayBytes=%lu replayFailures=%lu replayPath=%s statuses=%lu players=%lu present=%lu fog=%lux%lu mapObjects=%lu simple=%lu multi=%lu trees=%lu glyphSpawners=%lu obstacles=%lu heroPlaceholders=%lu spawnedHeroes=%lu playerHeroes=%lu creepSpawners=%lu neutralSpawners=%lu simpleBuildings=%lu usableBuildings=%lu shops=%lu quarters=%lu towers=%lu controllableTowers=%lu fountains=%lu roadFlagpoles=%lu scriptedFlagpoles=%lu mainBuildings=%lu minigamePlaces=%lu cameraSplines=%lu scriptPaths=%lu scriptPolygons=%lu warfog=%lu localUid=%d noData=%s asynced=%s path=%s\n",
     uiRootPreview.runtimeGameTransceiverReady ? "yes" : "no",
     uiRootPreview.runtimeGameTransceiverWorldAttached ? "yes" : "no",
     uiRootPreview.runtimeGameTransceiverNextStep,
@@ -25123,6 +48971,65 @@ int main(int argc, char** argv)
     uiRootPreview.runtimeGameTransceiverBufferLimit,
     static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverCommandBatches),
     static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverCommands),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverRuntimeCommandsSent),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverProductionCommandsSent),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverTimescaleCommandsSent),
+    uiRootPreview.runtimeGameTransceiverHeroMoveCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverHeroMoveCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapMoveHeroCommandTypeId),
+    uiRootPreview.runtimeGameTransceiverHeroMovePlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroMoveClientId,
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroMoveSourceX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroMoveSourceY),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroMoveTargetX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroMoveTargetY),
+    uiRootPreview.runtimeGameTransceiverHeroStopCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverHeroStopCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapStopHeroCommandTypeId),
+    uiRootPreview.runtimeGameTransceiverHeroStopPlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroStopClientId,
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroStopX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroStopY),
+    uiRootPreview.runtimeGameTransceiverHeroAttackCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverHeroAttackCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapAttackTargetCommandTypeId),
+    uiRootPreview.runtimeGameTransceiverHeroAttackPlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroAttackClientId,
+    uiRootPreview.runtimeGameTransceiverHeroAttackTargetPlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroAttackTargetClientId,
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroAttackSourceX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroAttackSourceY),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroAttackTargetX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroAttackTargetY),
+    uiRootPreview.runtimeGameTransceiverHeroFollowCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverHeroFollowCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapFollowUnitCommandTypeId),
+    uiRootPreview.runtimeGameTransceiverHeroFollowPlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroFollowClientId,
+    uiRootPreview.runtimeGameTransceiverHeroFollowTargetPlayerId,
+    uiRootPreview.runtimeGameTransceiverHeroFollowTargetClientId,
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroFollowSourceX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroFollowSourceY),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroFollowTargetX),
+    static_cast<double>(uiRootPreview.runtimeGameTransceiverHeroFollowTargetY),
+    uiRootPreview.runtimeGameTransceiverCommandQueuedBeforePrime ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldExecutedPackedCommands),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldBootstrapRuntimeCommands),
+    uiRootPreview.runtimeGameWorldLastBootstrapCommandToken,
+    uiRootPreview.runtimeGameWorldLastPackedCommandClientId,
+    static_cast<unsigned int>(uiRootPreview.runtimeGameWorldLastPackedCommandTypeId),
+    static_cast<unsigned int>(linuxBootstrapKeepAliveCommandTypeId),
+    static_cast<unsigned int>(linuxBootstrapTimescaleCommandTypeId),
+    static_cast<double>(uiRootPreview.runtimeGameWorldTimeScale),
+    uiRootPreview.runtimeGameWorldLastBootstrapCommandClientId,
+    static_cast<double>(uiRootPreview.runtimeGameWorldLastBootstrapCommandValue),
+    uiRootPreview.runtimeGameReplayWriterOpen ? "yes" : "no",
+    static_cast<unsigned long>(uiRootPreview.runtimeGameReplayWriterStartWrites),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameReplayWriterStepWrites),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameReplayWriterCommandWrites),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameReplayWriterBytesWritten),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameReplayWriterFailures),
+    uiRootPreview.runtimeGameReplayWriterPath.empty() ? "<none>" : uiRootPreview.runtimeGameReplayWriterPath.c_str(),
     static_cast<unsigned long>(uiRootPreview.runtimeGameTransceiverStatusUpdates),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldPlayers),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldPresentPlayers),
@@ -25135,6 +49042,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldGlyphSpawnerObjects),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldAdvMapObstacleObjects),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldHeroPlaceHolderObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldSpawnedHeroObjects),
+    static_cast<unsigned long>(uiRootPreview.runtimeGameWorldPlayersWithHeroObjects),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldCreepSpawnerObjects),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldNeutralCreepSpawnerObjects),
     static_cast<unsigned long>(uiRootPreview.runtimeGameWorldSimpleBuildingObjects),
@@ -25514,16 +49423,51 @@ int main(int argc, char** argv)
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;
-    UpdateArtworkSelectionState(inputState, &artworkState);
-    UpdateMapBrowserState(inputState, mapCatalog, &mapBrowserState);
-    UpdateLoadingUiState(inputState, loadingUiPreview, &loadingRuntimeDriver, &loadingUiState);
-    bool localMatchChanged = UpdateLocalMatchPreviewState(
+    bool visibleMenuConsumedNavigation = false;
+    bool visibleMenuChanged = HandleLinuxVisibleMenuHotkeys(
+      settings,
       inputState,
-      heroCatalog,
       mapCatalog,
-      mapBrowserState,
-      &localMatchPreview
+      &mapBrowserState,
+      heroCatalog,
+      &localMatchPreview,
+      &screenRuntime,
+      &visibleMenuConsumedNavigation
     );
+    visibleMenuChanged = HandleLinuxVisibleLobbyMouse(
+      settings,
+      inputState,
+      mapCatalog,
+      &mapBrowserState,
+      heroCatalog,
+      &localMatchPreview,
+      uiRootPreview,
+      &screenRuntime,
+      &visibleMenuConsumedNavigation
+    ) || visibleMenuChanged;
+    HandleLinuxCharacterPreviewInput(settings, inputState, &screenRuntime);
+    HandleLinuxMapPreviewInput(settings, inputState, selectedMapPreview, &screenRuntime);
+    UpdateArtworkSelectionState(inputState, &artworkState);
+    const bool browserNavigationLocked =
+      IsLinuxBootstrapHeroScreenActive(&screenRuntime) ||
+      IsLinuxBootstrapLoadingScreenActive(&screenRuntime);
+    if (!browserNavigationLocked)
+    {
+      UpdateMapBrowserState(inputState, mapCatalog, visibleMenuConsumedNavigation, &mapBrowserState);
+    }
+    UpdateLoadingUiState(inputState, loadingUiPreview, &loadingRuntimeDriver, &loadingUiState);
+    bool localMatchChanged = visibleMenuChanged;
+    if (!browserNavigationLocked)
+    {
+      localMatchChanged = UpdateLocalMatchPreviewState(
+        inputState,
+        heroCatalog,
+        mapCatalog,
+        mapBrowserState,
+        visibleMenuConsumedNavigation,
+        &localMatchPreview
+      ) || localMatchChanged;
+    }
 
     NHPTimer::STime now = 0;
     NHPTimer::GetTime(now);
@@ -25554,6 +49498,16 @@ int main(int argc, char** argv)
     if (previousSelectedIndex != mapBrowserState.selectedIndex || localMatchChanged || demoChanged)
     {
       ProbeSelectedHeroDbPreview(environment, sessionRootPreview, heroCatalog, localMatchPreview, &selectedHeroPreview);
+      ProbeLocalMatchHeroMeshPreviews(
+        environment,
+        sessionRootPreview,
+        heroCatalog,
+        localMatchPreview,
+        selectedHeroPreview,
+        &lineupHeroPreviews,
+        &lineupHeroMeshPreviewReadyCount);
+      screenRuntime.mapPreviewLineupHeroMeshPreviewSlots = lineupHeroPreviews.size();
+      screenRuntime.mapPreviewLineupHeroMeshPreviewReady = lineupHeroMeshPreviewReadyCount;
       ProbeEngineMapStartPreview(
         sessionPreview,
         heroCatalog,
@@ -25570,6 +49524,7 @@ int main(int argc, char** argv)
         engineMapStartPreview,
         &loadingHeroesRuntimePreview
       );
+      dynamicUnitMeshPreviews.clear();
     }
 
     if (previousSelectedIndex != mapBrowserState.selectedIndex ||
@@ -25600,6 +49555,12 @@ int main(int argc, char** argv)
       }
     }
 
+    ProbeLinuxDynamicWorldUnitMeshPreviews(
+      environment,
+      dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()),
+      &dynamicUnitMeshPreviews,
+      0);
+
     DrawWindowOverlay(
       &overlay,
       &renderBootstrap,
@@ -25622,6 +49583,8 @@ int main(int argc, char** argv)
       heroCatalog,
       localMatchPreview,
       selectedHeroPreview,
+      lineupHeroPreviews,
+      dynamicUnitMeshPreviews,
       engineMapStartPreview,
       rootFileSystemPreview,
       uiRootPreview,
@@ -25654,8 +49617,438 @@ int main(int argc, char** argv)
     artworkState,
     heroCatalog,
     localMatchPreview,
-    engineMapStartPreview
+    engineMapStartPreview,
+    screenRuntime
   );
+  fprintf(stdout, "Final game transceiver runtime: ready=%s world=%s step=%d commands=%lu runtimeSent=%lu productionSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroCombatMoveSent=%s heroCombatMoveCommands=%lu heroCombatMoveType=0x%08X heroHoldSent=%s heroHoldCommands=%lu heroHoldType=0x%08X heroCancelSent=%s heroCancelCommands=%lu heroCancelType=0x%08X heroMinimapSignalSent=%s heroMinimapSignalCommands=%lu heroMinimapSignalType=0x%08X heroUseUnitSent=%s heroUseUnitCommands=%lu heroUseUnitType=0x%08X heroActivateTalentSent=%s heroActivateTalentCommands=%lu heroActivateTalentType=0x%08X heroUseTalentSent=%s heroUseTalentCommands=%lu heroUseTalentType=0x%08X heroUsePortalSent=%s heroUsePortalCommands=%lu heroUsePortalType=0x%08X heroUseConsumableSent=%s heroUseConsumableCommands=%lu heroUseConsumableType=0x%08X heroBuyConsumableSent=%s heroBuyConsumableCommands=%lu heroBuyConsumableType=0x%08X heroRaiseFlagSent=%s heroRaiseFlagCommands=%lu heroRaiseFlagType=0x%08X heroInitMinigameSent=%s heroInitMinigameCommands=%lu heroInitMinigameType=0x%08X heroPickupObjectSent=%s heroPickupObjectCommands=%lu heroPickupObjectType=0x%08X cmdType=0x%08X spawnedHeroes=%lu playerHeroes=%lu replayCommands=%lu replayBytes=%lu path=%s\n",
+    screenRuntime.transceiverReady ? "yes" : "no",
+    screenRuntime.transceiverWorldAttached ? "yes" : "no",
+    screenRuntime.transceiverWorldStep,
+    static_cast<unsigned long>(screenRuntime.transceiverCommands),
+    static_cast<unsigned long>(screenRuntime.transceiverRuntimeCommandsSent),
+    static_cast<unsigned long>(screenRuntime.transceiverProductionRuntimeCommandsSent),
+    screenRuntime.transceiverHeroMoveRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroMoveRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapMoveHeroCommandTypeId),
+    screenRuntime.transceiverHeroStopRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroStopRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapStopHeroCommandTypeId),
+    screenRuntime.transceiverHeroAttackRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroAttackRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapAttackTargetCommandTypeId),
+    screenRuntime.transceiverHeroFollowRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroFollowRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapFollowUnitCommandTypeId),
+    screenRuntime.transceiverHeroCombatMoveRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroCombatMoveRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapCombatMoveHeroCommandTypeId),
+    screenRuntime.transceiverHeroHoldRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroHoldRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapHoldCommandTypeId),
+    screenRuntime.transceiverHeroCancelChannellingRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroCancelChannellingRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapCancelChannellingCommandTypeId),
+    screenRuntime.transceiverHeroMinimapSignalRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroMinimapSignalRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapMinimapSignalCommandTypeId),
+    screenRuntime.transceiverHeroUseUnitRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroUseUnitRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapUseUnitCommandTypeId),
+    screenRuntime.transceiverHeroActivateTalentRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroActivateTalentRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapActivateTalentCommandTypeId),
+    screenRuntime.transceiverHeroUseTalentRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroUseTalentRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapUseTalentCommandTypeId),
+    screenRuntime.transceiverHeroUsePortalRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroUsePortalRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapUsePortalCommandTypeId),
+    screenRuntime.transceiverHeroUseConsumableRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroUseConsumableRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapUseConsumableCommandTypeId),
+    screenRuntime.transceiverHeroBuyConsumableRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroBuyConsumableRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapBuyConsumableCommandTypeId),
+    screenRuntime.transceiverHeroRaiseFlagRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroRaiseFlagRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapRaiseFlagCommandTypeId),
+    screenRuntime.transceiverHeroInitMinigameRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroInitMinigameRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapInitMinigameCommandTypeId),
+    screenRuntime.transceiverHeroPickupObjectRuntimeCommandSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.transceiverHeroPickupObjectRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapPickupObjectCommandTypeId),
+    static_cast<unsigned int>(screenRuntime.worldLastPackedCommandTypeId),
+    static_cast<unsigned long>(screenRuntime.worldSpawnedHeroObjects),
+    static_cast<unsigned long>(screenRuntime.worldPlayersWithHeroObjects),
+    static_cast<unsigned long>(screenRuntime.replayWriterCommandWrites),
+    static_cast<unsigned long>(screenRuntime.replayWriterBytesWritten),
+    screenRuntime.replayWriterPath.empty() ? "<none>" : screenRuntime.replayWriterPath.c_str());
+  fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d yaw=%.1f pitch=%.1f zoom=%.2f\n",
+    screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceVertices),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceTriangles),
+    screenRuntime.mapPreviewWaterZonesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewWaterZones),
+    static_cast<unsigned long>(screenRuntime.mapPreviewWaterZoneTriangles),
+    screenRuntime.mapPreviewTerrainRoadsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainRoads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainRoadSegments),
+    screenRuntime.mapPreviewTerrainElementMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewTerrainElementMeshTriangles),
+    screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererStaticMeshTriangles),
+    screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshPayloads),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshBatches),
+    static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshTriangles),
+    screenRuntime.mapPreviewDynamicWorldMarkersDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicWorldMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCommonCreepMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicNeutralCreepMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMovingMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHealthBars),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMoveDirectionArrows),
+    screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMeshes),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHeroMeshTriangles),
+    screenRuntime.mapPreviewDynamicCreepMeshesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCreepMeshes),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCreepMeshTriangles),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewAssets),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewReady),
+    screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no",
+    screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId,
+    static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
+    static_cast<double>(screenRuntime.mapPreviewRenderedPitchDegrees),
+    static_cast<double>(screenRuntime.mapPreviewZoom));
+  fprintf(stdout, "Final map command move: targetDrawn=%s commands=%lu tracking=%s moving=%s moved=%s reached=%s samples=%lu step=%d source=%.1f,%.1f target=%.1f,%.1f current=%.1f,%.1f distance=%.2f maxDistance=%.2f remaining=%.2f targetDistance=%.2f input=%s\n",
+    screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCommandMoveCommandsSent),
+    screenRuntime.mapPreviewCommandMoveHeroTracking ? "yes" : "no",
+    screenRuntime.mapPreviewCommandMoveHeroMoving ? "yes" : "no",
+    screenRuntime.mapPreviewCommandMoveHeroMoved ? "yes" : "no",
+    screenRuntime.mapPreviewCommandMoveHeroReached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCommandMoveHeroSamples),
+    screenRuntime.mapPreviewCommandMoveHeroWorldStep,
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveSourceX),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveSourceY),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveTargetX),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveTargetY),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroCurrentX),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroCurrentY),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroDistance),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroMaxDistance),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroRemaining),
+    static_cast<double>(screenRuntime.mapPreviewCommandMoveHeroTargetDistance),
+    screenRuntime.mapPreviewCommandSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandSource.c_str());
+  fprintf(stdout, "Final map command action: targetDrawn=%s commands=%lu kind=%s input=%s player=%d client=%d targetPlayer=%d targetClient=%d source=%.1f,%.1f target=%.1f,%.1f last=%s\n",
+    screenRuntime.mapPreviewCommandActionTargetDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCommandActionCommandsSent),
+    screenRuntime.mapPreviewCommandActionKind.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionKind.c_str(),
+    screenRuntime.mapPreviewCommandActionSource.empty() ? "<none>" : screenRuntime.mapPreviewCommandActionSource.c_str(),
+    screenRuntime.mapPreviewCommandActionPlayerId,
+    screenRuntime.mapPreviewCommandActionClientId,
+    screenRuntime.mapPreviewCommandActionTargetPlayerId,
+    screenRuntime.mapPreviewCommandActionTargetClientId,
+    static_cast<double>(screenRuntime.mapPreviewCommandActionSourceX),
+    static_cast<double>(screenRuntime.mapPreviewCommandActionSourceY),
+    static_cast<double>(screenRuntime.mapPreviewCommandActionTargetX),
+    static_cast<double>(screenRuntime.mapPreviewCommandActionTargetY),
+    screenRuntime.mapPreviewLastAction.empty() ? "<none>" : screenRuntime.mapPreviewLastAction.c_str());
+  fprintf(stdout, "Final map selected target: drawn=%s changes=%lu object=%d kind=%d faction=%d player=%d client=%d position=%.1f,%.1f distance=%.2f attack=%s follow=%s useUnit=%s useTalent=%s useConsumable=%s attackProof=%s damage=%s sustained=%s hits=%lu kills=%lu killed=%s hero=%s respawn=%s reengaged=%s requiredGold=%d respawnStep=%d respawnDelay=%.1f hp=%.0f->%.0f range=%.2f dist=%.1f->%.1f wait=%d input=%s\n",
+    screenRuntime.mapPreviewSelectedTargetDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewSelectedTargetChanges),
+    screenRuntime.mapPreviewSelectedTargetObjectId,
+    screenRuntime.mapPreviewSelectedTargetKind,
+    screenRuntime.mapPreviewSelectedTargetFaction,
+    screenRuntime.mapPreviewSelectedTargetPlayerId,
+    screenRuntime.mapPreviewSelectedTargetClientId,
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetX),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetY),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetDistance),
+    screenRuntime.mapPreviewSelectedTargetAttackCommandSent ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetFollowCommandSent ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetUseUnitCommandSent ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetUseTalentCommandSent ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetUseConsumableCommandSent ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofPrepared ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofDamaged ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofSustained ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewSelectedTargetAttackProofHitCount),
+    static_cast<unsigned long>(screenRuntime.mapPreviewSelectedTargetAttackProofKillCount),
+    screenRuntime.mapPreviewSelectedTargetAttackProofKilled ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofTargetIsHero ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofRespawned ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofReengaged ? "yes" : "no",
+    screenRuntime.mapPreviewSelectedTargetAttackProofRequiredGold,
+    screenRuntime.mapPreviewSelectedTargetAttackProofRespawnWorldStep,
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofRespawnDelay),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofLifeBefore),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofLifeAfter),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofRange),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofDistanceBefore),
+    static_cast<double>(screenRuntime.mapPreviewSelectedTargetAttackProofDistanceAfter),
+    screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
+      screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
+    screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
+  fprintf(stdout, "Final live HUD state: samples=%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
+    static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
+    screenRuntime.liveHeroState.ready ? "yes" : "no",
+    screenRuntime.liveHeroState.objectId,
+    DescribeLinuxLiveHudUnitKind(screenRuntime.liveHeroState.kind),
+    screenRuntime.liveHeroState.faction,
+    screenRuntime.liveHeroState.playerId,
+    screenRuntime.liveHeroState.userId,
+    screenRuntime.liveHeroState.level,
+    screenRuntime.liveHeroState.gold,
+    static_cast<double>(screenRuntime.liveHeroState.x),
+    static_cast<double>(screenRuntime.liveHeroState.y),
+    static_cast<double>(screenRuntime.liveHeroState.life),
+    static_cast<double>(screenRuntime.liveHeroState.maxLife),
+    static_cast<double>(screenRuntime.liveHeroState.lifePercent * 100.0f),
+    static_cast<double>(screenRuntime.liveHeroState.energy),
+    static_cast<double>(screenRuntime.liveHeroState.maxEnergy),
+    static_cast<double>(screenRuntime.liveHeroState.energyPercent * 100.0f),
+    static_cast<double>(screenRuntime.liveHeroState.damageMin),
+    static_cast<double>(screenRuntime.liveHeroState.damageMax),
+    static_cast<double>(screenRuntime.liveHeroState.attacksPerSecond),
+    static_cast<double>(screenRuntime.liveHeroState.moveSpeedMps),
+    static_cast<double>(screenRuntime.liveHeroState.lifeRegen),
+    static_cast<double>(screenRuntime.liveHeroState.energyRegen),
+    screenRuntime.liveHeroState.moving ? "yes" : "no",
+    screenRuntime.liveHeroState.dead ? "yes" : "no",
+    screenRuntime.liveTargetState.ready ? "yes" : "no",
+    screenRuntime.liveTargetState.objectId,
+    DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind),
+    screenRuntime.liveTargetState.faction,
+    screenRuntime.liveTargetState.playerId,
+    screenRuntime.liveTargetState.userId,
+    screenRuntime.liveTargetState.source.empty() ? "<none>" : screenRuntime.liveTargetState.source.c_str(),
+    static_cast<double>(screenRuntime.liveTargetState.distance),
+    static_cast<double>(screenRuntime.liveTargetState.x),
+    static_cast<double>(screenRuntime.liveTargetState.y),
+    static_cast<double>(screenRuntime.liveTargetState.life),
+    static_cast<double>(screenRuntime.liveTargetState.maxLife),
+    static_cast<double>(screenRuntime.liveTargetState.lifePercent * 100.0f),
+    static_cast<double>(screenRuntime.liveTargetState.energy),
+    static_cast<double>(screenRuntime.liveTargetState.maxEnergy),
+    static_cast<double>(screenRuntime.liveTargetState.energyPercent * 100.0f),
+    static_cast<double>(screenRuntime.liveTargetState.damageMin),
+    static_cast<double>(screenRuntime.liveTargetState.damageMax),
+    static_cast<double>(screenRuntime.liveTargetState.attacksPerSecond),
+    static_cast<double>(screenRuntime.liveTargetState.moveSpeedMps),
+    static_cast<double>(screenRuntime.liveTargetState.lifeRegen),
+    static_cast<double>(screenRuntime.liveTargetState.energyRegen),
+    screenRuntime.liveTargetState.moving ? "yes" : "no",
+    screenRuntime.liveTargetState.dead ? "yes" : "no");
+#if defined(PW_LINUX_NULL_RENDER)
+  const NWorld::LinuxHeroMoveCommandDiagnostics heroMoveCommandDiagnostics =
+    NWorld::GetLinuxHeroMoveCommandDiagnostics();
+  fprintf(stdout, "Final hero move command execution: canChecks=%d accepted=%d executed=%d cmdClient=%d heroPlayer=%d heroUser=%d local=%d bot=%d playing=%d script=%d checks=%d/%d/%d resolved=%d clientMatch=%d moving=%d->%d flags=0x%X->0x%X speed=%.2f->%.2f source=%.1f,%.1f target=%.1f,%.1f after=%.1f,%.1f\n",
+    heroMoveCommandDiagnostics.canExecuteChecks,
+    heroMoveCommandDiagnostics.canExecuteAccepted,
+    heroMoveCommandDiagnostics.executeCalls,
+    heroMoveCommandDiagnostics.lastCommandId,
+    heroMoveCommandDiagnostics.lastHeroPlayerId,
+    heroMoveCommandDiagnostics.lastHeroUserId,
+    heroMoveCommandDiagnostics.lastHeroIsLocal,
+    heroMoveCommandDiagnostics.lastHeroIsBot,
+    heroMoveCommandDiagnostics.lastHeroIsPlaying,
+    heroMoveCommandDiagnostics.lastIssuedByScript,
+    heroMoveCommandDiagnostics.lastHeroCheck,
+    heroMoveCommandDiagnostics.lastControlsCheck,
+    heroMoveCommandDiagnostics.lastCanMoveCheck,
+    heroMoveCommandDiagnostics.lastResolvedFromWorld,
+    heroMoveCommandDiagnostics.lastResolvedByClientId,
+    heroMoveCommandDiagnostics.lastIsMovingBefore,
+    heroMoveCommandDiagnostics.lastIsMovingAfter,
+    heroMoveCommandDiagnostics.lastMoveFlagsBefore,
+    heroMoveCommandDiagnostics.lastMoveFlagsAfter,
+    static_cast<double>(heroMoveCommandDiagnostics.lastSpeedBefore),
+    static_cast<double>(heroMoveCommandDiagnostics.lastSpeedAfter),
+    static_cast<double>(heroMoveCommandDiagnostics.lastSourceX),
+    static_cast<double>(heroMoveCommandDiagnostics.lastSourceY),
+    static_cast<double>(heroMoveCommandDiagnostics.lastTargetX),
+    static_cast<double>(heroMoveCommandDiagnostics.lastTargetY),
+    static_cast<double>(heroMoveCommandDiagnostics.lastAfterX),
+    static_cast<double>(heroMoveCommandDiagnostics.lastAfterY));
+  const NWorld::LinuxHeroGameplayCommandDiagnostics heroGameplayCommandDiagnostics =
+    NWorld::GetLinuxHeroGameplayCommandDiagnostics();
+  fprintf(stdout, "Final hero attack command execution: can=%d/%d executed=%d accepted=%d script=%d target=%d/%d/%d/%d current=%d canAttack=%d range=%d->%d ready=%d->%d doAttack=%d fallback=%d hp=%.0f->%.0f rangeValue=%.2f dist=%.1f->%.1f\n",
+    heroGameplayCommandDiagnostics.attackCanChecks,
+    heroGameplayCommandDiagnostics.attackCanAccepted,
+    heroGameplayCommandDiagnostics.attackExecuteCalls,
+    heroGameplayCommandDiagnostics.attackActionAccepted,
+    heroGameplayCommandDiagnostics.attackIssuedByScript,
+    heroGameplayCommandDiagnostics.attackTargetObjectId,
+    heroGameplayCommandDiagnostics.attackTargetKind,
+    heroGameplayCommandDiagnostics.attackTargetFaction,
+    heroGameplayCommandDiagnostics.attackTargetPlayerId,
+    heroGameplayCommandDiagnostics.attackCurrentTargetObjectId,
+    heroGameplayCommandDiagnostics.attackCanAttack,
+    heroGameplayCommandDiagnostics.attackInRangeBeforePrime,
+    heroGameplayCommandDiagnostics.attackInRangeAfterPrime,
+    heroGameplayCommandDiagnostics.attackReadyBeforeDrop,
+    heroGameplayCommandDiagnostics.attackReadyAfterDrop,
+    heroGameplayCommandDiagnostics.attackDoAttackResult,
+    heroGameplayCommandDiagnostics.attackFallbackDamageApplied,
+    static_cast<double>(heroGameplayCommandDiagnostics.attackLifeBefore),
+    static_cast<double>(heroGameplayCommandDiagnostics.attackLifeAfter),
+    static_cast<double>(heroGameplayCommandDiagnostics.attackRange),
+    static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceBeforePrime),
+    static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceAfterPrime));
+  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d pickup=%d/%d/%d/%d can=%d object=%d\n",
+    heroGameplayCommandDiagnostics.useUnitCanChecks,
+    heroGameplayCommandDiagnostics.useUnitCanAccepted,
+    heroGameplayCommandDiagnostics.useUnitExecuteCalls,
+    heroGameplayCommandDiagnostics.useUnitActionAccepted,
+    heroGameplayCommandDiagnostics.useUnitCanBeUsed,
+    heroGameplayCommandDiagnostics.useUnitTargetObjectId,
+    heroGameplayCommandDiagnostics.useUnitTargetKind,
+    heroGameplayCommandDiagnostics.useUnitTargetFaction,
+    heroGameplayCommandDiagnostics.useUnitTargetPlayerId,
+    heroGameplayCommandDiagnostics.activateTalentCanChecks,
+    heroGameplayCommandDiagnostics.activateTalentCanAccepted,
+    heroGameplayCommandDiagnostics.activateTalentExecuteCalls,
+    heroGameplayCommandDiagnostics.activateTalentActionAccepted,
+    heroGameplayCommandDiagnostics.activateTalentCanActivate,
+    heroGameplayCommandDiagnostics.activateTalentLevel,
+    heroGameplayCommandDiagnostics.activateTalentSlot,
+    heroGameplayCommandDiagnostics.activateTalentHeroLevelBefore,
+    heroGameplayCommandDiagnostics.activateTalentHeroLevelAfter,
+    heroGameplayCommandDiagnostics.activateTalentDevPointsBefore,
+    heroGameplayCommandDiagnostics.activateTalentDevPointsAfter,
+    heroGameplayCommandDiagnostics.activateTalentGoldBefore,
+    heroGameplayCommandDiagnostics.activateTalentGoldAfter,
+    heroGameplayCommandDiagnostics.useTalentCanChecks,
+    heroGameplayCommandDiagnostics.useTalentCanAccepted,
+    heroGameplayCommandDiagnostics.useTalentExecuteCalls,
+    heroGameplayCommandDiagnostics.useTalentActionAccepted,
+    heroGameplayCommandDiagnostics.useTalentCanUse,
+    heroGameplayCommandDiagnostics.useTalentTargetType,
+    heroGameplayCommandDiagnostics.useTalentTargetObjectId,
+    heroGameplayCommandDiagnostics.useTalentTargetFaction,
+    heroGameplayCommandDiagnostics.usePortalCanChecks,
+    heroGameplayCommandDiagnostics.usePortalCanAccepted,
+    heroGameplayCommandDiagnostics.usePortalExecuteCalls,
+    heroGameplayCommandDiagnostics.usePortalActionAccepted,
+    heroGameplayCommandDiagnostics.usePortalCanUse,
+    static_cast<double>(heroGameplayCommandDiagnostics.usePortalTargetX),
+    static_cast<double>(heroGameplayCommandDiagnostics.usePortalTargetY),
+    heroGameplayCommandDiagnostics.useConsumableCanChecks,
+    heroGameplayCommandDiagnostics.useConsumableCanAccepted,
+    heroGameplayCommandDiagnostics.useConsumableExecuteCalls,
+    heroGameplayCommandDiagnostics.useConsumableActionAccepted,
+    heroGameplayCommandDiagnostics.useConsumableCanUse,
+    heroGameplayCommandDiagnostics.useConsumableSlot,
+    heroGameplayCommandDiagnostics.useConsumableTargetType,
+    heroGameplayCommandDiagnostics.useConsumableTargetObjectId,
+    heroGameplayCommandDiagnostics.useConsumableTargetFaction,
+    heroGameplayCommandDiagnostics.buyConsumableCanChecks,
+    heroGameplayCommandDiagnostics.buyConsumableCanAccepted,
+    heroGameplayCommandDiagnostics.buyConsumableExecuteCalls,
+    heroGameplayCommandDiagnostics.buyConsumableActionAccepted,
+    heroGameplayCommandDiagnostics.buyConsumableCanBuy,
+    heroGameplayCommandDiagnostics.buyConsumableTook,
+    heroGameplayCommandDiagnostics.buyConsumableShopObjectId,
+    heroGameplayCommandDiagnostics.buyConsumableIndex,
+    heroGameplayCommandDiagnostics.buyConsumableSlotIndex,
+    heroGameplayCommandDiagnostics.raiseFlagCanChecks,
+    heroGameplayCommandDiagnostics.raiseFlagCanAccepted,
+    heroGameplayCommandDiagnostics.raiseFlagExecuteCalls,
+    heroGameplayCommandDiagnostics.raiseFlagActionAccepted,
+    heroGameplayCommandDiagnostics.raiseFlagCanRaise,
+    heroGameplayCommandDiagnostics.raiseFlagObjectId,
+    heroGameplayCommandDiagnostics.raiseFlagFaction,
+    heroGameplayCommandDiagnostics.initMinigameCanChecks,
+    heroGameplayCommandDiagnostics.initMinigameCanAccepted,
+    heroGameplayCommandDiagnostics.initMinigameExecuteCalls,
+    heroGameplayCommandDiagnostics.initMinigameActionAccepted,
+    heroGameplayCommandDiagnostics.initMinigameAvailable,
+    heroGameplayCommandDiagnostics.initMinigameCanUse,
+    heroGameplayCommandDiagnostics.initMinigameBattleReady,
+    heroGameplayCommandDiagnostics.initMinigameObjectId,
+    heroGameplayCommandDiagnostics.pickupObjectCanChecks,
+    heroGameplayCommandDiagnostics.pickupObjectCanAccepted,
+    heroGameplayCommandDiagnostics.pickupObjectExecuteCalls,
+    heroGameplayCommandDiagnostics.pickupObjectActionAccepted,
+    heroGameplayCommandDiagnostics.pickupObjectCanPickup,
+    heroGameplayCommandDiagnostics.pickupObjectId);
+#endif
+  fprintf(stdout, "Final Linux creep combat: prepared=%s active=%s damage=%s sustained=%s hits=%lu killed=%s attacker=%d target=%d hp=%.0f->%.0f range=%.2f dist=%.1f->%.1f pos=%.1f,%.1f->%.1f,%.1f wait=%d samples=%lu\n",
+    screenRuntime.mapPreviewCreepDuelProofPrepared ? "yes" : "no",
+    screenRuntime.mapPreviewCreepDuelProofActive ? "yes" : "no",
+    screenRuntime.mapPreviewCreepDuelProofDamaged ? "yes" : "no",
+    screenRuntime.mapPreviewCreepDuelProofSustained ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.mapPreviewCreepDuelProofHitCount),
+    screenRuntime.mapPreviewCreepDuelProofKilled ? "yes" : "no",
+    screenRuntime.mapPreviewCreepDuelProofAttackerObjectId,
+    screenRuntime.mapPreviewCreepDuelProofTargetObjectId,
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofLifeBefore),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofLifeAfter),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofRange),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofDistanceBefore),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofDistanceAfter),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofAttackerX),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofAttackerY),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofTargetX),
+    static_cast<double>(screenRuntime.mapPreviewCreepDuelProofTargetY),
+    screenRuntime.mapPreviewCreepDuelProofLastWorldStep -
+      screenRuntime.mapPreviewCreepDuelProofStartWorldStep,
+    static_cast<unsigned long>(screenRuntime.mapPreviewCreepDuelProofSamples));
+  fprintf(stdout, "Final Linux creep runtime: creepSpawners=%lu neutralSpawners=%lu steppedSpawners=%lu steppedCreepSpawners=%lu steppedNeutralSpawners=%lu readyCreepSpawners=%lu readyNeutralSpawners=%lu enabledCreepSpawners=%lu enabledNeutralSpawners=%lu contentCreepSpawners=%lu contentNeutralSpawners=%lu aiCreeps=%d aiNeutral=%d maxCreeps=%d minCreepDelay=%.2f minNeutralDelay=%.2f registeredCreeps=%lu spawnedNeutralCreeps=%lu movingCommonCreeps=%lu movedCommonCreeps=%lu commonCreepDistance=%.2f creepWaves=%lu neutralWaves=%lu dead=%lu/%lu pending=%lu last=%d/%d awards=%d/%d/%d reject=%d victim=%d killer=%d hero=%d nafta=%.0f amount=%.0f+%.0f gold=%d->%d applied=%d/%d/%d amount=%.0f gold=%d->%d\n",
+    static_cast<unsigned long>(screenRuntime.worldCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldNeutralCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldSteppedSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldSteppedCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldSteppedNeutralCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldReadyCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldReadyNeutralCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldEnabledCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldEnabledNeutralCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldContentCreepSpawnerObjects),
+    static_cast<unsigned long>(screenRuntime.worldContentNeutralCreepSpawnerObjects),
+    screenRuntime.worldAICreepSpawnEnabled,
+    screenRuntime.worldAINeutralCreepSpawnEnabled,
+    screenRuntime.worldAIMaxCreepsCount,
+    screenRuntime.worldMinCreepSpawnerSpawnDelay,
+    screenRuntime.worldMinNeutralCreepSpawnerSpawnDelay,
+    static_cast<unsigned long>(screenRuntime.worldRegisteredCreepObjects),
+    static_cast<unsigned long>(screenRuntime.worldSpawnedNeutralCreepObjects),
+    static_cast<unsigned long>(screenRuntime.worldMovingCommonCreepObjects),
+    static_cast<unsigned long>(screenRuntime.worldMovedCommonCreepObjects),
+    screenRuntime.worldCommonCreepMovementDistance,
+    static_cast<unsigned long>(screenRuntime.worldCreepSpawnerWaves),
+    static_cast<unsigned long>(screenRuntime.worldNeutralCreepSpawnerWaves),
+    static_cast<unsigned long>(screenRuntime.worldStoredDeadUnits),
+    static_cast<unsigned long>(screenRuntime.worldCleanedDeadUnits),
+    static_cast<unsigned long>(screenRuntime.worldPendingDeadUnits),
+    screenRuntime.worldLastStoredDeadUnitObjectId,
+    screenRuntime.worldLastCleanedDeadUnitObjectId,
+    screenRuntime.worldAwardKillersCalls,
+    screenRuntime.worldAwardKillersRejected,
+    screenRuntime.worldAwardKillersApplied,
+    screenRuntime.worldLastAwardRejectCode,
+    screenRuntime.worldLastAwardVictimObjectId,
+    screenRuntime.worldLastAwardKillerObjectId,
+    screenRuntime.worldLastAwardHeroObjectId,
+    screenRuntime.worldLastAwardVictimNaftaForKill,
+    screenRuntime.worldLastAwardKillerAmount,
+    screenRuntime.worldLastAwardTeamAmount,
+    screenRuntime.worldLastAwardHeroGoldBefore,
+    screenRuntime.worldLastAwardHeroGoldAfter,
+    screenRuntime.worldLastAppliedAwardVictimObjectId,
+    screenRuntime.worldLastAppliedAwardKillerObjectId,
+    screenRuntime.worldLastAppliedAwardHeroObjectId,
+    screenRuntime.worldLastAppliedAwardAmount,
+    screenRuntime.worldLastAppliedAwardHeroGoldBefore,
+    screenRuntime.worldLastAppliedAwardHeroGoldAfter);
   if (uiInitialized)
   {
     UI::Release();

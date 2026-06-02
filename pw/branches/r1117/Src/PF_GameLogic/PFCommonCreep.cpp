@@ -113,19 +113,72 @@ vector<CVec2> GetRelativeTargets(const vector<CVec2>& targets, CVec3 const& unit
 
 bool PFCreepSpawner::CanSpawnWave() const
 {
-  return false;
+  if (!GetWorld() || !GetWorld()->GetAIWorld() || !IsValid(spawnerDesc))
+    return false;
+
+  int maxCreepCount = GetWorld()->GetAIWorld()->GetAIParameters().maxCreepsCount;
+  if (g_maxCreepsTotalCount > 0)
+    maxCreepCount = g_maxCreepsTotalCount;
+
+  return GetWorld()->GetAIWorld()->GetSpawnCreeps()
+    && PFBaseSpawner::CanSpawnWave()
+    && GetSpawnDelay() < 0.0f
+    && GetWorld()->GetRegisteredCreepsCount() < maxCreepCount;
 }
 
 void PFCreepSpawner::SpawnCreeps()
 {
   if (GetWorld() && GetWorld()->GetAIWorld())
     SetSpawnDelay(g_fCreepForceSpawnDelay > 0.0f ? g_fCreepForceSpawnDelay : GetWorld()->GetAIWorld()->GetAIParameters().creepsWavesDelay);
+
+  if (!IsValid(spawnerDesc))
+    return;
+
+  for (vector<NDb::SpawnObject>::const_iterator iCreep = spawnerDesc->creeps.begin();
+       iCreep != spawnerDesc->creeps.end();
+       ++iCreep)
+  {
+    int waveSpawnedCount = g_nCreepForceWaveNum > 0 ? g_nCreepForceWaveNum : GetSpawnWaveCounter();
+    int startDelay = iCreep->timer ? iCreep->timer->startDelay : 0;
+    int spawnDelay = iCreep->timer ? iCreep->timer->spawnDelay : 1;
+
+    bool spawnBeforeBarracksDestroy = iCreep->timer ? (iCreep->timer->spawnType & NDb::SPAWNTYPE_BEFORE) != 0 : true;
+    bool spawnAfterBarracksDestroy = iCreep->timer ? (iCreep->timer->spawnType & NDb::SPAWNTYPE_AFTER) != 0 : true;
+
+    bool timeCheck = waveSpawnedCount >= startDelay;
+    bool modulusCheck = (spawnDelay <= 0) || (((waveSpawnedCount - startDelay) % spawnDelay) == 0);
+    bool barracksCheck =
+      (!isOppositeBarracksDestroyed && spawnBeforeBarracksDestroy) ||
+      (isOppositeBarracksDestroyed && spawnAfterBarracksDestroy);
+
+    if (!timeCheck || !modulusCheck || !barracksCheck || !iCreep->creep)
+      continue;
+
+    PFCommonCreep* pCreep = new PFCommonCreep(
+      GetWorld(),
+      *iCreep->creep,
+      spawnerDesc->faction,
+      GetCreepPosition(iCreep->place.GetPlace()),
+      GetRelativeTargets(targets, iCreep->place.GetPlace().pos),
+      GetLifeTimeLevelUpInterval(),
+      GetLifeTimeLevelUpIncrement(),
+      this);
+
+    InitializeCreep(pCreep, iCreep->creep->recolor);
+    RegisterCreep(pCreep);
+  }
 }
 
 void PFCreepSpawner::InitializeCreep(PFCommonCreep* pCreep, const Render::HDRColor& recolor)
 {
-  (void)pCreep;
   (void)recolor;
+  ApplyStatModifiers(pCreep);
+
+  if (!pCreep)
+    return;
+
+  creepsRing.addLast(pCreep);
+  pCreep->SetPower(GetCreepsLevel(), statFactors);
 }
 
 bool PFCreepSpawner::Step(float dtInSeconds)
@@ -140,8 +193,26 @@ void PFCreepSpawner::StepFarestCreepPosition(float dtInSeconds)
   farestCreepPositionUpdateOffset -= dtInSeconds;
   if (farestCreepPositionUpdateOffset < 0.0f)
   {
+    const CVec2& startPos = GetSpawnPosition().pos.AsVec2D();
     farestCreepPositionUpdateOffset = g_farestCreepPositionUpdateInterval;
-    farestCreepPosition = GetSpawnPosition().pos.AsVec2D();
+    farestCreepPosition = startPos;
+
+    if (!creepsRing.empty() && !targets.empty())
+    {
+      CVec2 const& lastTarget = targets.back();
+      float minDistance2 = fabs2(lastTarget - startPos);
+      for (ring::Range<PFCommonCreep::CreepsRing> it(creepsRing); it; ++it)
+      {
+        PFCommonCreep* creep = &(*it);
+        CVec2 const& creepPosition = creep->GetPosition().AsVec2D();
+        float distance2 = fabs2(creepPosition - lastTarget);
+        if (minDistance2 > distance2)
+        {
+          farestCreepPosition = creepPosition;
+          minDistance2 = distance2;
+        }
+      }
+    }
   }
 }
 
@@ -156,12 +227,28 @@ PFCommonCreep::PFCommonCreep(PFWorld* pWorld, const NDb::AdvMapCreep& creepObj, 
   , walkLimit(-1.0f)
   , initialPlacement(position)
 {
-  (void)targets;
   InitializeSummonBehavior();
+  if (GetWorld())
+    GetWorld()->RegisterCreep(this);
+
   if (IsValid(spawner))
   {
     if (NDb::AdvMapCreepSpawner const* pSpawnerDesc = spawner->GetDBDesc())
       walkLimit = pSpawnerDesc->limitWalkDistance;
+  }
+
+  if (IsValid(spawner) && targets.empty())
+  {
+    if (GetBaseMoveSpeed() == 0.0f)
+      initialPlacement.pos = GetPosition();
+
+    CObj<PFBaseBehaviour> pB(new PFEvadeCreepBehaviour(this, initialPlacement));
+    AddBehaviourOnTop(pB);
+  }
+  else
+  {
+    CObj<PFBaseBehaviour> pB(new PFCommonCreepBehaviour(this, targets));
+    AddBehaviourOnTop(pB);
   }
 }
 
@@ -174,11 +261,70 @@ void PFCommonCreep::SetPower(int level, const vector<float>& statFactors)
 void PFCommonCreep::OnInvalidPath() {}
 void PFCommonCreep::RotateIfNeeded() { SetNeedRotate(false); }
 const NDb::DBID* PFCommonCreep::GetSpawnerDBID() const { return GetSpawner() && GetSpawner()->GetDBDesc() ? &(GetSpawner()->GetDBDesc()->GetDBID()) : 0; }
-void PFCommonCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseCreep::OnUnitDie(pKiller, flags, pDamageDesc); if (creepsRingPart.isLinked()) CreepsRing::remove(this); }
+void PFCommonCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
+{
+  const bool wasRegisteredCreep = creepsRingPart.isLinked();
+  PFBaseCreep::OnUnitDie(pKiller, flags, pDamageDesc);
+  if (wasRegisteredCreep)
+  {
+    if (GetWorld())
+      GetWorld()->UnregisterCreep(this);
+    CreepsRing::remove(this);
+  }
+}
 void PFCommonCreep::OnDestroyContents() { if (creepsRingPart.isLinked()) CreepsRing::remove(this); PFBaseCreep::OnDestroyContents(); }
 
-bool PFCommonCreepBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
-void PFCommonCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { (void)pTarget; (void)bStrongTarget; }
+bool PFCommonCreepBehaviour::OnStep(float dtInSeconds)
+{
+  (void)dtInSeconds;
+  if (!pUnit || pUnit->IsDead())
+    return true;
+
+  CPtr<PFBaseUnit> currentTarget = pUnit->GetCurrentTarget();
+  if (IsValid(currentTarget))
+  {
+    if (!pUnit->IsTargetInRange(currentTarget, pUnit->GetAttackRange()))
+    {
+      if (!pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+        pUnit->MoveTo(currentTarget.GetPtr(), pUnit->GetAttackRange(), 0);
+    }
+    else
+    {
+      pUnit->Stop(false);
+      pUnit->DoAttack();
+    }
+    return true;
+  }
+
+  CPtr<PFBaseUnit> target = pUnit->FindTarget(pUnit->GetTargetingRange());
+  if (IsValid(target))
+  {
+    OnTarget(target, false);
+    return true;
+  }
+
+  const float waypointRadius = Max(0.5f, g_fCreepWayPointRadius);
+  const float waypointRadius2 = waypointRadius * waypointRadius;
+  while (!wayPoints.empty() && fabs2(pUnit->GetPosition().AsVec2D() - wayPoints.front()) <= waypointRadius2)
+    wayPoints.erase(wayPoints.begin());
+
+  if (!wayPoints.empty() && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE) && !pUnit->IsMoving())
+    pUnit->MoveTo(wayPoints.front(), waypointRadius, 0);
+
+  return true;
+}
+
+void PFCommonCreepBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
+{
+  if (!pUnit || !IsValid(pTarget) || !pTarget->IsVulnerable())
+    return;
+  if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+    return;
+
+  pUnit->AssignTarget(pTarget, bStrongTarget);
+  if (!pUnit->IsTargetInRange(pTarget, pUnit->GetAttackRange()) && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+    pUnit->MoveTo(pTarget.GetPtr(), pUnit->GetAttackRange(), 0);
+}
 
 PFEvadeCreepBehaviour::PFEvadeCreepBehaviour(PFCommonCreep* pCreep, const Placement& placement)
   : PFBaseBehaviour(pCreep)

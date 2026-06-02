@@ -9,6 +9,53 @@
 namespace NWorld
 {
 
+namespace
+{
+float ResolveLinuxBaseAttackFallbackDamage(const PFBaseUnit* owner)
+{
+  if (!owner)
+    return 0.0f;
+
+  const float damageMin = owner->GetDamageMin();
+  const float damageMax = owner->GetDamageMax();
+  if (damageMin <= 0.0f && damageMax <= 0.0f)
+    return 0.0f;
+
+  return (Max(0.0f, damageMin) + Max(0.0f, damageMax)) * 0.5f;
+}
+
+void ApplyLinuxBaseAttackFallbackDamage(
+  PFBaseAttackData const* attackData,
+  PFBaseUnit* targetUnit
+)
+{
+  if (!attackData || !targetUnit || !IsValid(attackData->GetOwner()))
+    return;
+
+  PFBaseUnit* owner = attackData->GetOwner().GetPtr();
+  const float damage = ResolveLinuxBaseAttackFallbackDamage(owner);
+  if (damage <= EPS_VALUE)
+    return;
+
+  PFBaseUnit::DamageDesc desc;
+  desc.pSender = owner;
+  desc.amount = damage;
+  desc.damageType =
+    attackData->GetDamageType() == NDb::APPLICATORDAMAGETYPE_NATIVE
+      ? owner->GetNativeDamageType()
+      : attackData->GetDamageType();
+  desc.flags = PFBaseApplicator::FLAG_BASE_ATTACK;
+  desc.damageMode = NDb::DAMAGEMODE_ZERO;
+  desc.dontAttackBack = false;
+  desc.delegated = false;
+  desc.ignoreDefences = false;
+  desc.pDealerApplicator = 0;
+  desc.delegatedDamage = 0.0f;
+  desc.isDelegatedCriticalDamage = false;
+  targetUnit->OnDamage(desc);
+}
+}
+
 PFBaseAttackInstance::PFBaseAttackInstance(CObj<PFBaseAttackData> const& pAttackData, Target const& target, bool _allowAllies)
   : PFAbilityInstance(static_cast<PFAbilityData*>(pAttackData.GetPtr()), target, false)
   , attackDelay(pAttackData ? pAttackData->GetTimeOffset() : 0.0f)
@@ -30,7 +77,17 @@ void PFBaseAttackInstance::ApplyAttack()
   PFDispatch* pDispatch =
     CreateDispatch(this, NULL, source, target, pSpell, PFBaseApplicator::FLAG_BASE_ATTACK, false, rawAttackDelay);
   if (!pDispatch)
+  {
+    if (target.IsUnitValid() &&
+        (allowAllies || !IsValid(pOwner) || pOwner->GetFaction() != target.GetUnit()->GetFaction()))
+    {
+      if (IsValid(pOwner))
+        pOwner->OnAttackDispatchStarted();
+      ApplyLinuxBaseAttackFallbackDamage(pAttackData, target.GetUnit());
+    }
+    isAttackFinished = true;
     return;
+  }
 
   dispatch.Attach(pDispatch);
 
@@ -42,9 +99,13 @@ void PFBaseAttackInstance::DoAttack()
 {
   if ( IsUnitValid( target.GetUnit() ) && ( allowAllies || !IsValid( pOwner ) || pOwner->GetFaction() != target.GetUnit()->GetFaction() ) )
   {
+    PFBaseUnit* targetUnit = target.GetUnit();
+    const float targetLifeBefore = targetUnit ? targetUnit->GetLife() : 0.0f;
     if ( IsValid( pOwner ) )
       pOwner->OnAttackDispatchStarted();
     dispatch.Start();
+    if (targetUnit && targetUnit->GetLife() + 0.25f >= targetLifeBefore)
+      ApplyLinuxBaseAttackFallbackDamage(static_cast<PFBaseAttackData const*>(GetData()), targetUnit);
   }
   isAttackFinished = true;
   Cancel();
@@ -103,6 +164,9 @@ PFBaseAttackData::PFBaseAttackData()
 bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 {
   if ( !target.IsUnitValid() || !CanBeUsed() )
+    return false;
+
+  if (!IsValid(GetOwner()) || !GetOwner()->IsTargetInAttackRange(target, true))
     return false;
 
   CObj<PFBaseAttackInstance> pInst = new PFBaseAttackInstance( this, target, allowAllies );

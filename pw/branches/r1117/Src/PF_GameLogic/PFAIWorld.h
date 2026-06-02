@@ -200,6 +200,27 @@ public:
 
   const NDb::Ptr<NDb::BehaviourTrackerParams>& GetBahaviourTrackerParams() const { return pAILogicParameters->behaviourTrackerParams; }
 
+#if defined( PW_LINUX_NULL_RENDER )
+  int GetLinuxAwardKillersCalls() const { return linuxAwardKillersCalls; }
+  int GetLinuxAwardKillersRejected() const { return linuxAwardKillersRejected; }
+  int GetLinuxAwardKillersApplied() const { return linuxAwardKillersApplied; }
+  int GetLinuxLastAwardRejectCode() const { return linuxLastAwardRejectCode; }
+  int GetLinuxLastAwardVictimObjectId() const { return linuxLastAwardVictimObjectId; }
+  int GetLinuxLastAwardKillerObjectId() const { return linuxLastAwardKillerObjectId; }
+  int GetLinuxLastAwardHeroObjectId() const { return linuxLastAwardHeroObjectId; }
+  float GetLinuxLastAwardVictimNaftaForKill() const { return linuxLastAwardVictimNaftaForKill; }
+  float GetLinuxLastAwardKillerAmount() const { return linuxLastAwardKillerAmount; }
+  float GetLinuxLastAwardTeamAmount() const { return linuxLastAwardTeamAmount; }
+  int GetLinuxLastAwardHeroGoldBefore() const { return linuxLastAwardHeroGoldBefore; }
+  int GetLinuxLastAwardHeroGoldAfter() const { return linuxLastAwardHeroGoldAfter; }
+  int GetLinuxLastAppliedAwardVictimObjectId() const { return linuxLastAppliedAwardVictimObjectId; }
+  int GetLinuxLastAppliedAwardKillerObjectId() const { return linuxLastAppliedAwardKillerObjectId; }
+  int GetLinuxLastAppliedAwardHeroObjectId() const { return linuxLastAppliedAwardHeroObjectId; }
+  float GetLinuxLastAppliedAwardAmount() const { return linuxLastAppliedAwardAmount; }
+  int GetLinuxLastAppliedAwardHeroGoldBefore() const { return linuxLastAppliedAwardHeroGoldBefore; }
+  int GetLinuxLastAppliedAwardHeroGoldAfter() const { return linuxLastAppliedAwardHeroGoldAfter; }
+#endif
+
 private:
 	explicit PFAIWorld() {}
   virtual void OnDestroyContents();
@@ -260,6 +281,27 @@ private:
   NDb::Ptr<NDb::HeroNaftaParams> heroNaftaParams;
   NDb::Ptr<NDb::CreepAnnounceList> creepAnnounceList; // no need to serialize it
   NDb::Ptr<NDb::Talent> portalTalent; // no need to serialize it
+
+#if defined( PW_LINUX_NULL_RENDER )
+  mutable int linuxAwardKillersCalls;
+  mutable int linuxAwardKillersRejected;
+  mutable int linuxAwardKillersApplied;
+  mutable int linuxLastAwardRejectCode;
+  mutable int linuxLastAwardVictimObjectId;
+  mutable int linuxLastAwardKillerObjectId;
+  mutable int linuxLastAwardHeroObjectId;
+  mutable float linuxLastAwardVictimNaftaForKill;
+  mutable float linuxLastAwardKillerAmount;
+  mutable float linuxLastAwardTeamAmount;
+  mutable int linuxLastAwardHeroGoldBefore;
+  mutable int linuxLastAwardHeroGoldAfter;
+  mutable int linuxLastAppliedAwardVictimObjectId;
+  mutable int linuxLastAppliedAwardKillerObjectId;
+  mutable int linuxLastAppliedAwardHeroObjectId;
+  mutable float linuxLastAppliedAwardAmount;
+  mutable int linuxLastAppliedAwardHeroGoldBefore;
+  mutable int linuxLastAppliedAwardHeroGoldAfter;
+#endif
 
 #ifndef _SHIPPING
   float mapForce; // used for cheat only

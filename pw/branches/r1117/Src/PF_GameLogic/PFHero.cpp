@@ -17,10 +17,13 @@ template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatisti
 
 #include "PFHero.h"
 #include "PFMaleHero.h"
+#include "PFBaseUnitStates.h"
 #include "PFTalent.h"
 #include "PFConsumable.h"
 #include "PFStatistics.h"
 #include "PFWorld.h"
+#include "PFAIWorld.h"
+#include "PFPredefinedUnitVariables.h"
 #include "../Game/PF/Audit/ClientStubs.h"
 
 namespace
@@ -78,13 +81,63 @@ void PFBaseHero::PlayAskSound( int id, NWorld::PFBaseHero const * pTarget, int a
 void PFBaseHero::OnDestroyContents() { consumables.clear(); clones.clear(); pStatistics = 0; pProfile = 0; PFCreature::OnDestroyContents(); }
 void PFBaseHero::Reset() { PFCreature::Reset(); }
 void PFBaseHero::ClientAttachToPlayer() {}
-void PFBaseHero::AttachToPlayer(CPtr<PFPlayer> const& pNewPlayer) { pPlayer = pNewPlayer; }
+void PFBaseHero::AttachToPlayer(CPtr<PFPlayer> const& pNewPlayer)
+{
+  if (IsValid(pPlayer))
+    pPlayer->DetachHero();
+
+  pPlayer = pNewPlayer;
+  playerId = IsValid(pPlayer) ? pPlayer->GetPlayerID() : -1;
+  if (IsValid(pPlayer))
+  {
+    faction = NWorld::GetFaction(pPlayer);
+    if (!pPlayer->IsBot() && !g_zzSexSameAsGender)
+      playerGender = pPlayer->GetZZimaSex();
+    else
+      playerGender = PlayerGenderFromDbGender();
+    pPlayer->AttachHero(this);
+  }
+  else
+  {
+    playerGender = PlayerGenderFromDbGender();
+  }
+
+  ClientAttachToPlayer();
+}
 void PFBaseHero::DetachFromPlayer() { pPlayer = 0; }
 bool PFBaseHero::UpdateClientColor() { return false; }
 int PFBaseHero::GetStatisticsUid() const { return IsValid(pPlayer) ? pPlayer->GetUserID() : 0; }
 void PFBaseHero::Initialize(InitData const& data) { PFBaseUnit::Initialize(data); }
 void PFBaseHero::InitHero(const NDb::BaseHero *pDesc) { pDbHero = pDesc; InitializeCustomEnergyVariables(); }
-bool PFBaseHero::Step(float dtInSeconds) { (void)dtInSeconds; return PFCreature::Step(dtInSeconds); }
+bool PFBaseHero::Step(float dtInSeconds)
+{
+  if (IsDead())
+  {
+    if (advanceRespawnDelay >= 0.0f)
+    {
+      advanceRespawnDelay -= dtInSeconds;
+      if (advanceRespawnDelay < EPS_VALUE)
+        AdvanceResurrect();
+    }
+
+    if (respawnDelay >= 0.0f)
+    {
+      ripTime += dtInSeconds;
+      respawnDelay -= dtInSeconds;
+      if (respawnDelay < EPS_VALUE)
+        DoResurrect();
+    }
+
+    if (redeemCostRecalculateDelay > 0.0f)
+    {
+      redeemCostRecalculateDelay -= dtInSeconds;
+      if (redeemCostRecalculateDelay < EPS_VALUE)
+        RecalculateRedeemCost();
+    }
+  }
+
+  return PFCreature::Step(dtInSeconds);
+}
 int PFBaseHero::GetTotalNaftaEarned() const { return GetGold(); }
 int PFBaseHero::GetKillStreak() const { return 0; }
 int PFBaseHero::GetDeathStreak() const { return 0; }
@@ -99,17 +152,84 @@ bool PFHeroBehaviour::OnStep( float dtInSeconds ) { (void)dtInSeconds; return fa
 void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget ) { (void)pTarget; (void)bStrongTarget; }
 
 bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; return true; }
-float PFBaseHero::OnBeforeDamage(const DamageDesc &desc) { (void)desc; return 0.0f; }
-float PFBaseHero::OnDamage(const DamageDesc &desc) { (void)desc; return 0.0f; }
-void PFBaseHero::OnAddGold(CPtr<PFBaseUnit> pSender, float amount, bool showGold) { (void)pSender; (void)showGold; AddGold(amount, false); }
+float PFBaseHero::OnBeforeDamage(const DamageDesc &desc) { return PFCreature::OnBeforeDamage(desc); }
+float PFBaseHero::OnDamage(const DamageDesc &desc) { return PFCreature::OnDamage(desc); }
+void PFBaseHero::OnAddGold(CPtr<PFBaseUnit> pSender, float amount, bool showGold) { PFBaseUnit::OnAddGold(pSender, amount, showGold); }
 float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods) { (void)pSender; (void)ignoreHealingMods; return amount; }
 float PFBaseHero::GetTimeToRespawn() const { return respawnDelay; }
 void PFBaseHero::RecalculateRedeemCost() { redeemCost = 0.0f; }
 void PFBaseHero::RemoveCorpse() {}
-void PFBaseHero::StartRespawnTimer() { respawnDelay = 0.0f; }
-void PFBaseHero::AdvanceResurrect() { DoResurrect(); }
+void PFBaseHero::StartRespawnTimer()
+{
+  if (forbidRespawn)
+    return;
+
+  float delay = 5.0f;
+  float advanceDelay = 1.0f;
+  if (GetWorld() && GetWorld()->GetAIWorld())
+  {
+    NDb::Ptr<NDb::HeroRespawnParams> const& heroRespawnParams =
+      GetWorld()->GetAIWorld()->GetHeroRespawnParams();
+    if (IsValid(heroRespawnParams))
+    {
+      const float sessionElapsedTime = GetWorld()->GetTimeElapsed() / 60.0f;
+      delay =
+        heroRespawnParams->heroBaseRespawnTime +
+        GetNaftaLevel() * heroRespawnParams->heroRespawnDelayMultiplier;
+      if (heroRespawnParams->overtimeRespawnParams.overtime < sessionElapsedTime)
+      {
+        delay +=
+          heroRespawnParams->overtimeRespawnParams.respawnDelayForOvertime *
+          ceil(sessionElapsedTime - heroRespawnParams->overtimeRespawnParams.overtime);
+      }
+      delay = Max(delay, heroRespawnParams->heroMinRespawnTime);
+    }
+
+    advanceDelay = Max(GetWorld()->GetAIWorld()->GetAIParameters().heroAdvanceRespawnTime, 0.0f);
+  }
+
+  delay *= 1.0f + GetVariable(UnitVariables::szReviveTimeScale);
+  delay += GetVariable(UnitVariables::szReviveTimeShift);
+  delay = Max(delay, advanceDelay);
+
+  if (const NDb::UnitDeathParameters* deathParams = GetDeathParams())
+    delay = Max(delay, deathParams->deathTime);
+
+  respawnDelay = Max(delay, EPS_VALUE);
+  advanceRespawnDelay = Max(respawnDelay - advanceDelay, EPS_VALUE);
+  resurrectParams = ResurrectParams();
+}
+void PFBaseHero::AdvanceResurrect()
+{
+  RemoveCorpse();
+  PFFsm::Cleanup();
+  TeleportTo(ResurrectParams::Base == resurrectParams.resurrectAt ? spawnPos.AsVec2D() : GetPosition().AsVec2D(), false, false);
+  UpdateHiddenState(true);
+  advanceRespawnDelay = -1.0f;
+}
 void PFBaseHero::AddTalentActivatedWhileDead( CPtr<PFTalent> pTalent ) { activatedWhileLastDeathtime.push_back(pTalent); }
-void PFBaseHero::DoResurrect() { respawnDelay = -1.0f; advanceRespawnDelay = -1.0f; }
+void PFBaseHero::DoResurrect()
+{
+  if (!ringField.isLinked())
+    RegisterInAIWorld();
+
+  maxHealth = Max(GetStatValue(NDb::STAT_LIFE), 1.0f);
+  maxEnergy = Max(GetStatValue(NDb::STAT_ENERGY), 0.0f);
+  health = maxHealth * resurrectParams.healthPercent;
+  energy = maxEnergy * resurrectParams.energyPercent;
+  if (health <= EPS_VALUE)
+    health = maxHealth;
+  if (energy < 0.0f)
+    energy = 0.0f;
+
+  TeleportTo(ResurrectParams::Base == resurrectParams.resurrectAt ? spawnPos.AsVec2D() : GetPosition().AsVec2D(), false, false);
+  DropTarget();
+  Stop(false);
+  OnRessurect();
+  activatedWhileLastDeathtime.clear();
+  respawnDelay = -1.0f;
+  advanceRespawnDelay = -1.0f;
+}
 void PFBaseHero::DoStop() { Stop(); }
 int PFBaseHero::GetOriginalTeamId() const { return inTeamId; }
 int PFBaseHero::GetZZimaSex() const { return playerGender; }
@@ -124,12 +244,58 @@ const NDb::Texture * PFBaseHero::GetUiMinimapImage() const { return 0; }
 void PFBaseHero::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
 void PFBaseHero::DropImpulsesCooldowns() {}
 const int & PFBaseHero::GetLevelMaxExperienceRef() const { static int v = 0; return v; }
-const int PFBaseHero::GetLevelMaxDevPoints() const { return 0; }
-const int & PFBaseHero::GetLevelMaxDevPointsRef() const { static int v = 0; return v; }
-const float PFBaseHero::GetLevelDevPointsPercent() const { return 0.0f; }
-int PFBaseHero::CountLevelups() { return 0; }
-void PFBaseHero::OnLevelUp() {}
-void PFBaseHero::AwardForKill(CPtr<PFBaseUnit> const& pVictim, const float money, bool fromVictim ) { (void)pVictim; (void)money; (void)fromVictim; }
+const int PFBaseHero::GetLevelMaxDevPoints() const
+{
+  if (!GetWorld() || !GetWorld()->GetAIWorld())
+    return 0;
+
+  const int level = GetNaftaLevel();
+  const int maxLevel = GetWorld()->GetAIWorld()->GetMaxHeroLevel();
+  if (maxLevel <= 0)
+    return 0;
+
+  return GetWorld()->GetAIWorld()->GetHeroDevPoints4Level((level < maxLevel) ? level + 1 : level);
+}
+const int & PFBaseHero::GetLevelMaxDevPointsRef() const { static int v = 0; v = GetLevelMaxDevPoints(); return v; }
+const float PFBaseHero::GetLevelDevPointsPercent() const
+{
+  if (!GetWorld() || !GetWorld()->GetAIWorld())
+    return 0.0f;
+
+  const int levelDevPoints = GetWorld()->GetAIWorld()->GetHeroDevPoints4Level(GetNaftaLevel());
+  const int maxDevPoints = GetLevelMaxDevPoints() - levelDevPoints;
+  if (maxDevPoints <= 0)
+    return 1.0f;
+
+  const int devPointsValue = Clamp(GetDevPoints() - levelDevPoints, 0, GetLevelMaxDevPoints());
+  return 1.0f * devPointsValue / maxDevPoints;
+}
+int PFBaseHero::CountLevelups()
+{
+  if (!GetWorld() || !GetWorld()->GetAIWorld())
+    return 0;
+
+  CPtr<PFAIWorld> pAIWorld = GetWorld()->GetAIWorld();
+  const int currentLevel = GetNaftaLevel();
+  const int maxLevel = pAIWorld->GetMaxHeroLevel();
+  const int currentDevPoints = GetDevPoints();
+
+  int levelUps = 0;
+  for (int level = currentLevel + 1; level <= maxLevel; ++level)
+  {
+    if (pAIWorld->GetHeroDevPoints4Level(level) <= currentDevPoints)
+      ++levelUps;
+  }
+
+  return levelUps;
+}
+void PFBaseHero::OnLevelUp() { PFCreature::OnLevelUp(); }
+void PFBaseHero::AwardForKill(CPtr<PFBaseUnit> const& pVictim, const float money, bool fromVictim )
+{
+  if (money <= 0.0f)
+    return;
+  OnAddGold(fromVictim ? pVictim : CPtr<PFBaseUnit>(this), money, true);
+}
 void PFBaseHero::OnKill( CPtr<PFBaseUnit> const& pVictim, bool lastHit ) { (void)pVictim; (void)lastHit; }
 void PFBaseHero::DebugDie() { OnDie(); }
 void PFBaseHero::Resurrect( const ResurrectParams& params) { resurrectParams = params; DoResurrect(); }
@@ -178,7 +344,26 @@ void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const N
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, int intParam1) { (void)eventType; (void)intParam1; }
 void PFBaseHero::LoggTimeSliceIfNeeded( float deltaTime ) { (void)deltaTime; }
 void PFBaseHero::ForAllClones( CloneFunc& cloneFunc ) { for (int i = 0; i < clones.size(); ++i) if (clones[i].clone) cloneFunc(clones[i].clone); }
-void PFBaseHero::DoLevelups( int count, float statsBonusBudget ) { (void)count; (void)statsBonusBudget; }
+void PFBaseHero::DoLevelups( int count, float statsBonusBudget )
+{
+  if ( IsClone() )
+    return;
+
+  PFBaseUnit::DoLevelups( count, statsBonusBudget );
+
+  struct LevelSynchronizer: CloneFunc, ISummonAction
+  {
+    int level;
+
+    LevelSynchronizer( int _level ) : level( _level ) {}
+    void operator()( PFBaseUnit* pUnit ) { if ( pUnit ) pUnit->SetNaftaLevel( level ); }
+    void operator()( PFBaseHero* pClone ) { operator()( static_cast<PFBaseUnit*>( pClone ) ); }
+  } f( naftaLevel );
+
+  ForAllSummons( f, NDb::SUMMONTYPE_PRIMARY );
+  ForAllSummons( f, NDb::SUMMONTYPE_SECONDARY );
+  ForAllClones( f );
+}
 float PFBaseHero::GetUltimateCD() const { return 0.0f; }
 IMiscFormulaPars const* PFBaseHero::GetTalent(const char* id) const { (void)id; return 0; }
 PFTalent* PFBaseHero::GetTalentById(const char* id) const { (void)id; return 0; }
@@ -193,13 +378,46 @@ void PFBaseHero::OnGlyphPickUp( const PFGlyph* pGlyph ) { (void)pGlyph; }
 float PFBaseHero::GetHeroStatisticsValue( HeroStatisticsId heroStatId ) const { (void)heroStatId; return 0.0f; }
 int PFBaseHero::GetHeroAchievementCount( const char* achievId ) const { (void)achievId; return 0; }
 bool PFBaseHero::CanMove() const { return true; }
-void PFBaseHero::Move(const CVec2 & target) { TeleportTo(target); }
+void PFBaseHero::Move(const CVec2 & target)
+{
+  CPtr<PFBaseMovingUnit> pHeroOrMount = ControlsMount() ? GetMount() : this;
+  if (!IsValid(pHeroOrMount))
+  {
+    return;
+  }
+
+  pHeroOrMount->SetMoveFlags(pHeroOrMount->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED);
+  pHeroOrMount->SetUnitSpeed(6.0f);
+
+  if (pHeroOrMount->IsPositionInRange(target, 1.0f))
+  {
+    pHeroOrMount->EventHappened(NWorld::PFBaseUnitEvent(NDb::BASEUNITEVENT_MOVE));
+  }
+
+  // PW_LINUX_NULL_RENDER stubs PFFsm/EnqueueState, so arm the bootstrap movement primitive directly.
+  pHeroOrMount->MoveToSpecial(target, false);
+  pHeroOrMount->SetMoveFlags(pHeroOrMount->GetMoveFlags() | MOVE_FLAG_NO_COLLIDE | MOVE_FLAG_OVERRIDE_SPEED);
+  pHeroOrMount->SetUnitSpeed(6.0f);
+}
 float PFBaseHero::GetCustomEnergyValue() const { return customEnergyValue ? customEnergyValue->GetValue() : 0.0f; }
 float PFBaseHero::GetCustomEnergyMaximum() const { return customEnergyMaximum ? customEnergyMaximum->GetValue() : 0.0f; }
 float PFBaseHero::GetCustomEnergyRegeneration() const { return customEnergyRegeneration ? customEnergyRegeneration->GetValue() : 0.0f; }
 void PFBaseHero::OnIdle() {}
 void PFBaseHero::OnAfterSuspend(bool isLongSuspend) { (void)isLongSuspend; }
-void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc ) { PFCreature::OnUnitDie(pKiller, flags, pDamageDesc); }
+void PFBaseHero::OnUnitDie( CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc )
+{
+  const bool isDeathDeferred = (flags & UNITDIEFLAGS_DEFERREDDEATH) != 0;
+  DismountSpecial();
+  respawnDelay = -1.0f;
+  advanceRespawnDelay = -1.0f;
+  PFCreature::OnUnitDie(pKiller, flags, pDamageDesc);
+  DropTarget();
+  if (!isDeathDeferred)
+  {
+    RecalculateRedeemCost();
+    StartRespawnTimer();
+  }
+}
 PFBaseHero* PFBaseHero::Clone( const CloneParams& params, float takeModDmg, NDb::ESpellTarget takeTypeUnit, const string& summonGroupName )
 {
   (void)params;

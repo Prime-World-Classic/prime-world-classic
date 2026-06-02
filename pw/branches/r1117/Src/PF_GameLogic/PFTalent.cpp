@@ -16,6 +16,7 @@ template<> NWorld::PFBaseMaleHero* CastToUserObjectImpl<NWorld::PFBaseMaleHero>(
 
 #include "PFTalent.h"
 #include "PFMaleHero.h"
+#include "PFAIWorld.h"
 
 namespace
 {
@@ -72,13 +73,23 @@ PFTalent::PFTalent( CPtr<PFBaseMaleHero> const& _pOwner, NDb::Ptr<NDb::Talent> c
 
 bool PFTalent::CanBeActivated() const
 {
-  return !bActivated && IsValid( pDBTalentDesc );
+  return !bActivated && IsValid( pDBTalentDesc ) && IsValid( pOwner );
 }
 
 bool PFTalent::Activate()
 {
   if ( !CanBeActivated() )
     return false;
+
+  const int naftaCost = GetNaftaCost();
+  if ( pOwner->GetGold() < naftaCost )
+    return false;
+
+  if ( naftaCost > 0 )
+    pOwner->OnRemoveGold( pOwner.GetPtr(), naftaCost );
+
+  if ( pOwner->IsDead() )
+    pOwner->AddTalentActivatedWhileDead( this );
 
   bActivated = true;
   if ( pTalentKit && IsValid( pOwner ) && pOwner->GetTalentsSet() )
@@ -257,8 +268,17 @@ CObj<PFTalent> const& PFTalentsSet::GetTalent(int level, int slot) const
 
 ETalentActivation::Enum PFTalentsSet::CanActivateTalent(int level, int slot) const
 {
+  if ( !IsValid( pOwner ) || level > GetLevelOfDevelopment() )
+    return ETalentActivation::Denied;
+
   CObj<PFTalent> const& pTalent = GetTalent( level, slot );
-  return pTalent && pTalent->CanBeActivated() ? ETalentActivation::Ok : ETalentActivation::Denied;
+  if ( !pTalent || pTalent->IsActivated() || !pTalent->CanBeActivated() )
+    return ETalentActivation::Denied;
+
+  if ( pTalent->GetNaftaCost() > pOwner->GetGold() )
+    return ETalentActivation::NoMoney;
+
+  return ETalentActivation::Ok;
 }
 
 bool PFTalentsSet::HasFreshTalentsToBuy() const
@@ -276,9 +296,38 @@ bool PFTalentsSet::ActivateTalent(int level, int slot)
   if ( !pTalent || !pTalent->Activate() )
     return false;
 
-  devPoints += pTalent->GetDevPoints();
-  (void)level;
-  (void)slot;
+  const int talentDevPoints = pTalent->GetDevPoints();
+  devPoints += talentDevPoints;
+
+  int devpointsPerLevel = 0;
+  for ( int s = 0; s < SLOTS_COUNT; ++s )
+  {
+    PFTalent const* talent = GetTalent( level, s );
+    if ( talent )
+      devpointsPerLevel += talent->GetDevPoints();
+  }
+
+  float statsIncrementFraction = 0.0f;
+  if ( IsValid( pOwner ) && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld() )
+  {
+    const NDb::AILogicParameters& aiParams = pOwner->GetWorld()->GetAIWorld()->GetAIParameters();
+    if ( IsValid( aiParams.forceParameters ) &&
+         level >= 0 &&
+         level < aiParams.forceParameters->talentLevelBonusPercent.size() &&
+         devpointsPerLevel > 0 )
+    {
+      statsIncrementFraction =
+        aiParams.forceParameters->talentLevelBonusPercent[level] /
+        static_cast<float>(devpointsPerLevel) *
+        0.01f;
+    }
+  }
+
+  acquiredBudgetPercent += statsIncrementFraction * talentDevPoints;
+
+  if ( IsValid( pOwner ) )
+    pOwner->OnTalentActivated( level, slot, statsIncrementFraction );
+
   return true;
 }
 
@@ -286,40 +335,107 @@ float PFTalentsSet::PreloadTalentsSetAndCalcForce(const NDb::AILogicParameters* 
                                                   bool usePlayerInfoTalentSet, const NWorld::PFResourcesCollection* collection,
                                                   const NCore::PlayerInfo& playerInfo, PFTalentsSet::SetInfo& info)
 {
-  (void)pAIParams;
-  (void)pDBHero;
-  (void)usePlayerInfoTalentSet;
-  (void)collection;
-  (void)playerInfo;
-  (void)info;
+  struct LinuxNullTalentCalculator : ITalentCalculator
+  {
+    virtual void operator()( NDb::Ptr<NDb::Talent> const&, int, const PFTalentsSet::SlotInfo& ) {}
+  } calculator;
+
+  if (!usePlayerInfoTalentSet)
+    PFTalentsSet::PreparePredefinedSet(pAIParams, pDBHero, "", calculator, info, playerInfo.heroRating == 0);
+  else
+    PFTalentsSet::PrepareCustomSet(&playerInfo.talents, collection, calculator, info);
+
   return 0.0f;
 }
 
 void PFTalentsSet::PreparePredefinedSet(const NDb::AILogicParameters* pAIParams, const NDb::BaseHero* pDBHero, string const& forceSetName,
                                         ITalentCalculator& calculator, SetInfo& info, bool isBot)
 {
-  (void)pAIParams;
-  (void)pDBHero;
-  (void)forceSetName;
-  (void)calculator;
-  (void)info;
-  (void)isBot;
+  NDb::Ptr<NDb::TalentsSet> pDefaultSet;
+
+  if ( !forceSetName.empty() )
+    pDefaultSet = NDb::Get<NDb::TalentsSet>( NDb::DBID(forceSetName) );
+  if ( !pDefaultSet && !g_strTalentSetToLoad.empty() )
+    pDefaultSet = NDb::Get<NDb::TalentsSet>( NDb::DBID(g_strTalentSetToLoad) );
+  if ( !pDefaultSet )
+  {
+    if ( NDb::Ptr<NDb::Hero> pHero = dynamic_cast<NDb::Hero const*>(pDBHero) )
+      pDefaultSet = pHero->defaultTalentsSets[0];
+  }
+  if ( !pDefaultSet && pAIParams )
+    pDefaultSet = pAIParams->defaultTalentsSet;
+  if ( !pDefaultSet )
+    return;
+
+  vector<NDb::Ptr<NDb::Talent> > usedTalents;
+  for ( int level = 0; level < LEVELS_COUNT; ++level )
+  {
+    for ( int slot = 0; slot < SLOTS_COUNT; ++slot )
+    {
+      SlotInfo& slotInfo = info[level][slot];
+      NDb::TalentSlot const& dbSlot = pDefaultSet->levels[level].talents[slot];
+      slotInfo.status = dbSlot.status;
+      if ( !dbSlot.talent || dbSlot.status != NDb::TALENTSLOTSTATUS_NORMAL || dbSlot.talent->minLevel != level )
+        continue;
+      if ( find( usedTalents.begin(), usedTalents.end(), dbSlot.talent ) != usedTalents.end() )
+        continue;
+
+      usedTalents.push_back(dbSlot.talent);
+      slotInfo.pTalentDesc = dbSlot.talent;
+#ifdef _SHIPPING
+      slotInfo.refineRate = isBot ? 5 : dbSlot.refineRate;
+#else
+      slotInfo.refineRate = isBot ? 9 : dbSlot.refineRate;
+#endif
+      slotInfo.aIPriority = dbSlot.aIPriority;
+      slotInfo.actionBarIndex = -1;
+      slotInfo.isInstaCast = dbSlot.talent->flags & NDb::ABILITYFLAGS_INSTACAST;
+      calculator( slotInfo.pTalentDesc, level, slotInfo );
+    }
+  }
 }
 
 void PFTalentsSet::LoadPredefinedSet(CPtr<PFBaseMaleHero> const& _pOwner, string const& forceSetName, ITalentCalculator& calculator)
 {
-  (void)forceSetName;
   SetInfo info;
+  PreparePredefinedSet(
+    &_pOwner->GetWorld()->GetAIWorld()->GetAIParameters(),
+    _pOwner->GetDbHero(),
+    forceSetName,
+    calculator,
+    info);
   LoadSet( _pOwner, info );
   CalculateForce( calculator );
 }
 
 void PFTalentsSet::PrepareCustomSet(const NCore::PlayerTalentSet* talentSet, const NWorld::PFResourcesCollection* collection, ITalentCalculator& calculator, SetInfo& info)
 {
-  (void)talentSet;
-  (void)collection;
-  (void)calculator;
-  (void)info;
+  if (!talentSet || !collection)
+    return;
+
+  for (NCore::PlayerTalentSet::iterator it = talentSet->begin(); it != talentSet->end(); ++it)
+  {
+    int index = it->first - 1;
+    if (index < 0)
+      continue;
+    int level = index / SLOTS_COUNT;
+    int slot = index % SLOTS_COUNT;
+    if (level < 0 || level >= LEVELS_COUNT || slot < 0 || slot >= SLOTS_COUNT)
+      continue;
+
+    const NCore::TalentInfo& talent = it->second;
+    SlotInfo& slotInfo = info[level][slot];
+    slotInfo.pTalentDesc = collection->FindTalentById(talent.id);
+    if (!slotInfo.pTalentDesc)
+      continue;
+
+    slotInfo.status = NDb::TALENTSLOTSTATUS_NORMAL;
+    slotInfo.refineRate = talent.refineRate;
+    slotInfo.aIPriority = 0;
+    slotInfo.actionBarIndex = talent.actionBarIdx;
+    slotInfo.isInstaCast = talent.isInstaCast;
+    calculator( slotInfo.pTalentDesc, level, slotInfo );
+  }
 }
 
 void PFTalentsSet::CalculateForce(ITalentCalculator& calculator)

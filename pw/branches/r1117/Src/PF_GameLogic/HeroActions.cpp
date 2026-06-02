@@ -5,7 +5,9 @@
 #include "PFBuildings.h"//для доступа к позиции здания
 #include "PFMinigamePlace.h"
 
+#ifndef VISUAL_CUTTED
 #include "Minimap.h"
+#endif
 #include "PFAbilityData.h"
 #include "PFAIWorld.h"
 #include "PFTalent.h"
@@ -39,6 +41,86 @@ namespace
   bool g_bDisableImmHeroMove = false;
   bool g_disableHeroCheck = false;
 
+#if defined(PW_LINUX_NULL_RENDER)
+  NWorld::LinuxHeroMoveCommandDiagnostics g_linuxHeroMoveCommandDiagnostics = {};
+  NWorld::LinuxHeroGameplayCommandDiagnostics g_linuxHeroGameplayCommandDiagnostics = {};
+
+  void CaptureLinuxHeroMoveCommandContext(
+    NWorld::LinuxHeroMoveCommandDiagnostics* diagnostics,
+    const NWorld::PFBaseHero* hero,
+    int commandId,
+    const CVec2& target,
+    bool issuedByScript)
+  {
+    if (!diagnostics)
+      return;
+
+    diagnostics->lastCommandId = commandId;
+    diagnostics->lastIssuedByScript = issuedByScript ? 1 : 0;
+    diagnostics->lastTargetX = target.x;
+    diagnostics->lastTargetY = target.y;
+    diagnostics->lastHeroPlayerId = -1;
+    diagnostics->lastHeroUserId = -1;
+    diagnostics->lastHeroIsLocal = 0;
+    diagnostics->lastHeroIsBot = 0;
+    diagnostics->lastHeroIsPlaying = 0;
+    diagnostics->lastSourceX = 0.0f;
+    diagnostics->lastSourceY = 0.0f;
+    diagnostics->lastSpeedBefore = 0.0f;
+    diagnostics->lastMoveFlagsBefore = 0;
+    diagnostics->lastIsMovingBefore = 0;
+
+    if (!hero)
+      return;
+
+    const CVec2 position = hero->GetPosition().AsVec2D();
+    diagnostics->lastSourceX = position.x;
+    diagnostics->lastSourceY = position.y;
+    diagnostics->lastHeroPlayerId = hero->GetPlayerId();
+    diagnostics->lastHeroIsLocal = hero->IsLocal() ? 1 : 0;
+    diagnostics->lastSpeedBefore = hero->GetUnitSpeed();
+    diagnostics->lastMoveFlagsBefore = hero->GetMoveFlags();
+    diagnostics->lastIsMovingBefore = hero->IsMoving() ? 1 : 0;
+
+    if (const NWorld::PFPlayer* player = hero->GetPlayer())
+    {
+      diagnostics->lastHeroUserId = player->GetUserID();
+      diagnostics->lastHeroIsBot = player->IsBot() ? 1 : 0;
+      diagnostics->lastHeroIsPlaying = player->IsPlaying() ? 1 : 0;
+    }
+  }
+  int GetLinuxCommandTargetObjectId(const NWorld::Target& target)
+  {
+    if (target.IsObjectValid(true))
+      return target.GetObject()->GetObjectId();
+    return -1;
+  }
+
+  int GetLinuxCommandTargetFaction(const NWorld::Target& target)
+  {
+    if (target.IsObjectValid(true))
+      return static_cast<int>(target.GetObject()->GetFaction());
+    return -1;
+  }
+
+  void CaptureLinuxGameplayTargetUnit(
+    int* objectId,
+    int* kind,
+    int* faction,
+    int* playerId,
+    const NWorld::PFBaseUnit* target)
+  {
+    if (objectId)
+      *objectId = target ? target->GetObjectId() : -1;
+    if (kind)
+      *kind = target ? static_cast<int>(target->GetUnitKind()) : -1;
+    if (faction)
+      *faction = target ? static_cast<int>(target->GetFaction()) : -1;
+    if (playerId)
+      *playerId = target ? target->GetPlayerId() : -1;
+  }
+#endif
+
   inline bool CheckHero(const NWorld::PFBaseHero* pHero, int userId)
   {
     if (g_disableHeroCheck)
@@ -63,15 +145,15 @@ namespace
     return !pHero->CheckFlagType( NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL ) && !pHero->CheckFlagType( NDb::UNITFLAGTYPE_INMINIGAME );
   }
 
-  void UseTalent( NWorld::PFBaseMaleHero * pHero, NWorld::PFTalent * talent,  NWorld::Target const & target )
+  bool UseTalent( NWorld::PFBaseMaleHero * pHero, NWorld::PFTalent * talent,  NWorld::Target const & target )
   {
     if ( pHero->IsDead() )
-      return;
+      return false;
 
-    NI_VERIFY( talent, "Wrong talent", return );
+    NI_VERIFY( talent, "Wrong talent", return false; );
 
     if ( !talent->CanBeUsed() )
-      return;
+      return false;
 
     //Redunant target type check to prevent crashes in formulas (NUM_TASK)
     unsigned targetTypes = talent->GetTargetType();
@@ -79,43 +161,44 @@ namespace
     {
       const float useRange = talent->GetUseRange(target);
       if ( !useRange && !target.IsObject() ) //Ability wants an onject as a target
-        return;
+        return false;
 
       if ( target.IsObject() || target.IsUnit() )
       {
         if ( !target.IsObjectValid(true) )
-          return;
+          return false;
 
         // NUM_TASK
         if (!NWorld::CheckValidAbilityTargetCondition()(target, talent))
-          return;
+          return false;
 
         const bool bSelf = pHero == target.GetObject();
         if ( bSelf )
         {
           if ( (targetTypes & NDb::SPELLTARGET_SELF) == 0 && !( talent->IsMultiState() && talent->IsOn() ) )
-            return;
+            return false;
         }
         else
         {
           if ( (targetTypes & (1 << target.GetObject()->GetUnitKind())) == 0 )
-            return;
+            return false;
 
           if ( target.GetObject()->GetUnitKind() == NDb::UNITTYPE_FLAGPOLE )
             if ( target.GetObject()->GetFaction() == NDb::FACTION_NEUTRAL )
-              return;
+              return false;
 
           const bool bSameFaction = pHero->GetFaction() == target.GetObject()->GetFaction();
           if ( !(bSameFaction && (targetTypes & NDb::SPELLTARGET_ALLY)
             || !bSameFaction && (targetTypes & NDb::SPELLTARGET_ENEMY)) )
           {
-            return;
+            return false;
           }
         }
       }
     }
 
     pHero->EnqueueState( new NWorld::PFHeroUseTalentState( pHero, talent, target ), true );
+    return true;
   }
 
 } // namespace
@@ -123,6 +206,28 @@ namespace
 
 namespace NWorld
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  LinuxHeroMoveCommandDiagnostics GetLinuxHeroMoveCommandDiagnostics()
+  {
+    return g_linuxHeroMoveCommandDiagnostics;
+  }
+
+  void ResetLinuxHeroMoveCommandDiagnostics()
+  {
+    g_linuxHeroMoveCommandDiagnostics = LinuxHeroMoveCommandDiagnostics();
+  }
+
+  LinuxHeroGameplayCommandDiagnostics GetLinuxHeroGameplayCommandDiagnostics()
+  {
+    return g_linuxHeroGameplayCommandDiagnostics;
+  }
+
+  void ResetLinuxHeroGameplayCommandDiagnostics()
+  {
+    g_linuxHeroGameplayCommandDiagnostics = LinuxHeroGameplayCommandDiagnostics();
+  }
+#endif
+
   DEFINE_2_PARAM_CMD_CHECK( 0x2C5B9CC0, CmdCombatMoveHero, CPtr<PFBaseHero>, pHero, CVec2, target);
   DEFINE_3_PARAM_CMD_CHECK( 0x2C59C380, CmdMoveHero,       CPtr<PFBaseHero>, pHero, CVec2, target, bool, issuedByScript);
   DEFINE_1_PARAM_CMD_CHECK( 0x2C5B9481, CmdStopHero,       CPtr<PFBaseHero>, pHero);
@@ -170,14 +275,53 @@ namespace NWorld
   {
     pHero->EventHappened( NWorld::PFHeroEventWantMoveTo( target ) );
 
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroMoveCommandDiagnostics.canExecuteChecks;
+    CaptureLinuxHeroMoveCommandContext(
+      &g_linuxHeroMoveCommandDiagnostics,
+      pHero,
+      GetId(),
+      target,
+      issuedByScript);
+    const bool heroCheck = CheckHero(pHero, GetId());
+    const bool controlsCheck = heroCheck && CheckAdventureControls( pHero, issuedByScript );
+    const bool canMoveCheck = controlsCheck && pHero->CanMove();
+    g_linuxHeroMoveCommandDiagnostics.lastHeroCheck = heroCheck ? 1 : 0;
+    g_linuxHeroMoveCommandDiagnostics.lastControlsCheck = controlsCheck ? 1 : 0;
+    g_linuxHeroMoveCommandDiagnostics.lastCanMoveCheck = canMoveCheck ? 1 : 0;
+    if (heroCheck && controlsCheck && canMoveCheck)
+      ++g_linuxHeroMoveCommandDiagnostics.canExecuteAccepted;
+    return heroCheck && controlsCheck && canMoveCheck;
+#else
     return CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && pHero->CanMove();
+#endif
   }
 
   void CmdMoveHero::Execute( NCore::IWorldBase* /*pHolder*/)
   {
     LogLogicObject(pHero, NStr::StrFmt("CMD MOVE to (%f %f)", target.x, target.y), false);
 
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroMoveCommandDiagnostics.executeCalls;
+    CaptureLinuxHeroMoveCommandContext(
+      &g_linuxHeroMoveCommandDiagnostics,
+      pHero,
+      GetId(),
+      target,
+      issuedByScript);
+#endif
+#if defined(PW_LINUX_NULL_RENDER)
+    pHero->DropTarget();
+#endif
     pHero->Move(target);
+#if defined(PW_LINUX_NULL_RENDER)
+    const CVec2 afterPosition = pHero->GetPosition().AsVec2D();
+    g_linuxHeroMoveCommandDiagnostics.lastAfterX = afterPosition.x;
+    g_linuxHeroMoveCommandDiagnostics.lastAfterY = afterPosition.y;
+    g_linuxHeroMoveCommandDiagnostics.lastSpeedAfter = pHero->GetUnitSpeed();
+    g_linuxHeroMoveCommandDiagnostics.lastMoveFlagsAfter = pHero->GetMoveFlags();
+    g_linuxHeroMoveCommandDiagnostics.lastIsMovingAfter = pHero->IsMoving() ? 1 : 0;
+#endif
   }
 
   NCore::WorldCommand* CreateCmdStopHero(PFBaseHero* pHero)
@@ -200,6 +344,9 @@ namespace NWorld
     {
       LogLogicObject(pHero, "CMD STOP", false);
       pHero->EventHappened( NWorld::PFHeroEventWantMoveTo( VNULL2 ) );
+#if defined(PW_LINUX_NULL_RENDER)
+      pHero->DropTarget();
+#endif
       pHero->DoStop();
     }
   }
@@ -262,11 +409,18 @@ namespace NWorld
     if ( !pHero->ControlsMount() )
     {
       LogLogicObject(pHero, "CMD COMBAT MOVE", false);
+#if defined(PW_LINUX_NULL_RENDER)
+      pHero->DropTarget();
+#endif
       pHero->EnqueueState( new PFBaseUnitCombatMoveState( dynamic_cast<PFWorld*>( pWorld ), CPtr<PFBaseMovingUnit>( pHero ), target ), true );
     }
     else
     {
       CPtr<PFBaseMovingUnit> const& pMount = pHero->GetMount();
+#if defined(PW_LINUX_NULL_RENDER)
+      if (IsValid(pMount))
+        pMount->DropTarget();
+#endif
       pMount->EnqueueState( new PFBaseUnitCombatMoveState( dynamic_cast<PFWorld*>( pWorld ), pMount, target ), true );
     }
   }
@@ -317,6 +471,15 @@ namespace NWorld
 
       LogLogicObject(pHero, "CMD ATTACT TARGET", false);
       pHero->OnTarget(pTarget, true);
+#if defined(PW_LINUX_NULL_RENDER)
+      pHero->AssignTarget(pTarget, true);
+      if (pHero->CanAttackTarget(pTarget) &&
+          pHero->IsTargetInAttackRange(pTarget, true) &&
+          pHero->IsReadyToAttack())
+      {
+        pHero->DoAttack(false);
+      }
+#endif
     }
     else
     {
@@ -339,15 +502,40 @@ namespace NWorld
 
   bool CmdUseConsumable::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.useConsumableCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableSlot = slot;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetType = static_cast<int>(target.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetObjectId = GetLinuxCommandTargetObjectId(target);
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetFaction = GetLinuxCommandTargetFaction(target);
+#endif
+    return accepted;
   }
 
   void CmdUseConsumable::Execute( NCore::IWorldBase* /*pHolder*/)
   {
     LogLogicObject(pHero, "CMD USE ARTEFACT", false);
-    
-    if( !pHero->IsDead() && pHero->CanUseConsumable(slot) )
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useConsumableExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableSlot = slot;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetType = static_cast<int>(target.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetObjectId = GetLinuxCommandTargetObjectId(target);
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetFaction = GetLinuxCommandTargetFaction(target);
+#endif
+    const bool canUseConsumable = !pHero->IsDead() && pHero->CanUseConsumable(slot);
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableCanUse = canUseConsumable ? 1 : 0;
+#endif
+    if( canUseConsumable )
+    {
+#if defined(PW_LINUX_NULL_RENDER)
+      ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
+#endif
       pHero->EnqueueState( new PFHeroUseConsumableState( pHero, slot, target ), true );
+    }
   }
 
   NCore::WorldCommand* CreateCmdPickupObject( PFBaseHero* pHero, INT32 objId )
@@ -370,15 +558,33 @@ namespace NWorld
 
   bool CmdPickupObject::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.pickupObjectCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.pickupObjectCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.pickupObjectId = IsValid(pPickupable) ? pPickupable->GetObjectId() : -1;
+#endif
+    return accepted;
   }
 
   void CmdPickupObject::Execute( NCore::IWorldBase* pWorld )
   {
-    if( !IsUnitValid(pHero) || !IsValid(pPickupable) || !pPickupable->CanBePickedUpBy( pHero ) )
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.pickupObjectExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.pickupObjectId = IsValid(pPickupable) ? pPickupable->GetObjectId() : -1;
+#endif
+    const bool canPickup = IsUnitValid(pHero) && IsValid(pPickupable) && pPickupable->CanBePickedUpBy( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.pickupObjectCanPickup = canPickup ? 1 : 0;
+#endif
+    if( !canPickup )
       return;  // dead or invalid heroes can not pickup objects
 
     LogLogicObject(pHero, "CMD PICKUP", false);
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.pickupObjectActionAccepted;
+#endif
     pHero->EnqueueState( new PFHeroPickupObjectState( pHero, pPickupable ), true );
   }
 
@@ -391,6 +597,9 @@ namespace NWorld
   {
     if( IsUnitValid(pHero) && IsUnitValid(pUnit) && pUnit != pHero)
     {
+#if defined(PW_LINUX_NULL_RENDER)
+      pHero->DropTarget();
+#endif
       pHero->EnqueueState(new PFHeroFollowUnitState(pHero, pUnit, followRange, forceFollowRange), true);
     }
   }
@@ -446,13 +655,35 @@ namespace NWorld
 
   bool CmdRaiseFlag::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.raiseFlagCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.raiseFlagCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.raiseFlagObjectId = IsValid(pFlagpole) ? pFlagpole->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.raiseFlagFaction = IsValid(pFlagpole) ? static_cast<int>(pFlagpole->GetFaction()) : -1;
+#endif
+    return accepted;
   }
 
   void CmdRaiseFlag::Execute( NCore::IWorldBase * pWorld)
   {
-    if (IsUnitValid(pHero) && IsUnitValid(pFlagpole) && pFlagpole->CanRaise( pHero->GetFaction() ) && pHero->CheckFlag(NDb::UNITFLAG_FORBIDINTERACT) == false )
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.raiseFlagExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.raiseFlagObjectId = IsValid(pFlagpole) ? pFlagpole->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.raiseFlagFaction = IsValid(pFlagpole) ? static_cast<int>(pFlagpole->GetFaction()) : -1;
+#endif
+    const bool canRaise = IsUnitValid(pHero) && IsUnitValid(pFlagpole) && pFlagpole->CanRaise( pHero->GetFaction() ) && pHero->CheckFlag(NDb::UNITFLAG_FORBIDINTERACT) == false;
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.raiseFlagCanRaise = canRaise ? 1 : 0;
+#endif
+    if (canRaise)
+    {
+#if defined(PW_LINUX_NULL_RENDER)
+      ++g_linuxHeroGameplayCommandDiagnostics.raiseFlagActionAccepted;
+#endif
       pHero->EnqueueState( new PFCreatureRaiseFlagState(pHero, pFlagpole), true );
+    }
   }
 
   NCore::WorldCommand* CreateCmdRaiseFlag(PFBaseHero *pHero, PFFlagpole *pFlagpole, bool issuedByScript)
@@ -475,12 +706,23 @@ namespace NWorld
 
   bool CmdInitMinigame::CanExecute() const
   {
-    return CheckHero(dynamic_cast<PFBaseHero*>(easelPlayer.GetPtr()), GetId()) 
+    const bool accepted = CheckHero(dynamic_cast<PFBaseHero*>(easelPlayer.GetPtr()), GetId())
              && !easelPlayer->CheckFlagType( NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.initMinigameCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.initMinigameCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameObjectId = objId;
+#endif
+    return accepted;
   }
 
   void CmdInitMinigame::Execute( NCore::IWorldBase* pWorld )
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.initMinigameExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameObjectId = objId;
+#endif
     PFWorld* pPFWorld = dynamic_cast<PFWorld*>(pWorld);
     NI_VERIFY( pPFWorld, "Another paranoid validity check ... ", return; );
 
@@ -494,13 +736,24 @@ namespace NWorld
 
       NI_VERIFY(minigamePlace, "Object is not minigame place!", return; );
 
-      if ( minigamePlace->IsAvailable() && minigamePlace->CanBeUsedBy( easelPlayer ) && pPFWorld->GetAIWorld()->GetBattleStartDelay() <= 0 )
+      const bool available = minigamePlace->IsAvailable();
+      const bool canUse = minigamePlace->CanBeUsedBy( easelPlayer );
+      const bool battleReady = pPFWorld->GetAIWorld()->GetBattleStartDelay() <= 0;
+#if defined(PW_LINUX_NULL_RENDER)
+      g_linuxHeroGameplayCommandDiagnostics.initMinigameAvailable = available ? 1 : 0;
+      g_linuxHeroGameplayCommandDiagnostics.initMinigameCanUse = canUse ? 1 : 0;
+      g_linuxHeroGameplayCommandDiagnostics.initMinigameBattleReady = battleReady ? 1 : 0;
+#endif
+      if ( available && canUse && battleReady )
       {
         LogLogicObject(easelPlayer, "CMD MGLOBBY ENTER", false);
         if ( PFInteractObjectState* st = dynamic_cast<PFInteractObjectState*>(easelPlayer->GetCurrentState()) )
         {
           st->NeedStopOnLeave( false );
         }
+#if defined(PW_LINUX_NULL_RENDER)
+        ++g_linuxHeroGameplayCommandDiagnostics.initMinigameActionAccepted;
+#endif
         easelPlayer->EnqueueState( new PFHeroUseUnitState( easelPlayer, minigamePlace), true );
       }
 #endif
@@ -516,28 +769,54 @@ namespace NWorld
 
   bool CmdBuyConsumable::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
+#endif
+    return accepted;
   }
 
   void CmdBuyConsumable::Execute( NCore::IWorldBase* pWorld )
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
+#endif
     if (!pShop)
       return;
     if ( !IsValid(pHero) )
       return;
 
-    if (pShop->CanBuyConsumable(pHero, index))
+    const bool canBuy = pShop->CanBuyConsumable(pHero, index);
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanBuy = canBuy ? 1 : 0;
+#endif
+    if (canBuy)
     {
       NDb::Ptr<NDb::Consumable> pConsumableDesc = pShop->GetConsumableDesc(index);
 
       LogLogicObject(pHero, "CMD BUY ARTEFACT", false);
       
-      if ( !pHero->TakeConsumable( pConsumableDesc, 1, NDb::CONSUMABLEORIGIN_SHOP, slotIndex ) )
+      const bool took = pHero->TakeConsumable( pConsumableDesc, 1, NDb::CONSUMABLEORIGIN_SHOP, slotIndex );
+#if defined(PW_LINUX_NULL_RENDER)
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableTook = took ? 1 : 0;
+#endif
+      if ( !took )
       {
         pHero->GetWorld()->GetIAdventureScreen()->NotifyOfSimpleUIEvent( pHero, NDb::ERRORMESSAGETYPE_OUTOFINVENTORY);
         return;
       }
 
+#if defined(PW_LINUX_NULL_RENDER)
+      ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableActionAccepted;
+#endif
       int cost = pHero->GetConsumableCost(pConsumableDesc);
       pHero->TakeGold( cost);
 
@@ -550,13 +829,50 @@ namespace NWorld
 
   bool CmdActivateTalent::CanExecute() const
   {
-    return CheckHero(pHero, GetId());
+    const bool accepted = CheckHero(pHero, GetId());
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.activateTalentCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.activateTalentCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.activateTalentLevel = level;
+    g_linuxHeroGameplayCommandDiagnostics.activateTalentSlot = slot;
+#endif
+    return accepted;
   }
 
   void CmdActivateTalent::Execute( NCore::IWorldBase * pWorld)
   {
-    if ( IsValid(pHero) && pHero->CanActivateTalent(level, slot) == ETalentActivation::Ok )
-      pHero->ActivateTalent(level, slot);
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.activateTalentExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.activateTalentLevel = level;
+    g_linuxHeroGameplayCommandDiagnostics.activateTalentSlot = slot;
+    if (IsValid(pHero))
+    {
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentHeroLevelBefore = pHero->GetNaftaLevel();
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentDevPointsBefore = pHero->GetDevPoints();
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentGoldBefore = pHero->GetGold();
+    }
+#endif
+    const bool canActivate = IsValid(pHero) && pHero->CanActivateTalent(level, slot) == ETalentActivation::Ok;
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.activateTalentCanActivate = canActivate ? 1 : 0;
+#endif
+    if ( canActivate )
+    {
+      const bool activated = pHero->ActivateTalent(level, slot);
+#if defined(PW_LINUX_NULL_RENDER)
+      if (activated)
+        ++g_linuxHeroGameplayCommandDiagnostics.activateTalentActionAccepted;
+#endif
+    }
+#if defined(PW_LINUX_NULL_RENDER)
+    if (IsValid(pHero))
+    {
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentHeroLevelAfter = pHero->GetNaftaLevel();
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentDevPointsAfter = pHero->GetDevPoints();
+      g_linuxHeroGameplayCommandDiagnostics.activateTalentGoldAfter = pHero->GetGold();
+    }
+#endif
   }
 
   NCore::WorldCommand* CreateCmdActivateTalent( PFBaseMaleHero *pHero, INT32 level, INT32 slot )
@@ -576,18 +892,42 @@ namespace NWorld
   bool CmdUseTalent::CanExecute() const
   {
     TempDebugTrace(NStr::StrFmt("CmdUseTalent::CanExecute() level=%d, slot=%d", level, slot));
-    return CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentLevel = level;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentSlot = slot;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetType = static_cast<int>(target.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetObjectId = GetLinuxCommandTargetObjectId(target);
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetFaction = GetLinuxCommandTargetFaction(target);
+#endif
+    return accepted;
   }
 
   void CmdUseTalent::Execute( NCore::IWorldBase * pWorld)
   {
     TempDebugTrace(NStr::StrFmt("CmdUseTalent::Execute() level=%d, slot=%d", level, slot));
     LogLogicObject(pHero, "CMD USE ARTEFACT", false);
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useTalentExecuteCalls;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentLevel = level;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentSlot = slot;
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetType = static_cast<int>(target.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetObjectId = GetLinuxCommandTargetObjectId(target);
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetFaction = GetLinuxCommandTargetFaction(target);
+#endif
 
     if ( pHero->IsDead() )
       return;
    
-    UseTalent(pHero, pHero->GetTalent( level, slot ), target );
+    const bool used = UseTalent(pHero, pHero->GetTalent( level, slot ), target );
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = used ? 1 : 0;
+    if (used)
+      ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
+#endif
   }
 
   NCore::WorldCommand* CreateCmdUsePortal( PFBaseMaleHero *pHero, Target const & target, bool issuedByScript )
@@ -600,16 +940,35 @@ namespace NWorld
   bool CmdUsePortal::CanExecute() const
   {
     TempDebugTrace(NStr::StrFmt("CmdUsePortal::CanExecute() "));
-    return CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckAdventureControls( pHero, issuedByScript ) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanAccepted;
+    const CVec3 portalTarget = target.AcquirePosition();
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetX = portalTarget.x;
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetY = portalTarget.y;
+#endif
+    return accepted;
   }
 
   void CmdUsePortal::Execute( NCore::IWorldBase * pWorld)
   {
     TempDebugTrace(NStr::StrFmt("CmdUsePortal::Execute()"));
     LogLogicObject(pHero, "CMD USE PORTAL", false);
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.usePortalExecuteCalls;
+    const CVec3 portalTarget = target.AcquirePosition();
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetX = portalTarget.x;
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetY = portalTarget.y;
+#endif
 
-
-    UseTalent(pHero, pHero->GetPortal(), target );
+    const bool used = UseTalent(pHero, pHero->GetPortal(), target );
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.usePortalCanUse = used ? 1 : 0;
+    if (used)
+      ++g_linuxHeroGameplayCommandDiagnostics.usePortalActionAccepted;
+#endif
   }
 
   bool CmdMinimapSignal::CanExecute() const
@@ -721,16 +1080,44 @@ namespace NWorld
   //////////////////////////////////////////////////////////////////////////
   bool CmdUseUnit::CanExecute() const
   {
-    return CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+    const bool accepted = CheckHero(pHero, GetId()) && CheckPlayerControlAndMinigame( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useUnitCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.useUnitCanAccepted;
+    CaptureLinuxGameplayTargetUnit(
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetObjectId,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetKind,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetFaction,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetPlayerId,
+      pUnit);
+#endif
+    return accepted;
   }
 
   void CmdUseUnit::Execute( NCore::IWorldBase * pWorld)
   {
-    if ( IsUnitValid( pHero ) && IsUnitValid( pUnit ) && pUnit->CanBeUsedBy( pHero ) )
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.useUnitExecuteCalls;
+    CaptureLinuxGameplayTargetUnit(
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetObjectId,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetKind,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetFaction,
+      &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetPlayerId,
+      pUnit);
+#endif
+    const bool canUseUnit = IsUnitValid( pHero ) && IsUnitValid( pUnit ) && pUnit->CanBeUsedBy( pHero );
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.useUnitCanBeUsed = canUseUnit ? 1 : 0;
+#endif
+    if ( canUseUnit )
     {
       if ( PFHeroUseUnitState* st = dynamic_cast<PFHeroUseUnitState*>( pHero->GetCurrentState() ) )
         if (st->GetUnit() == pUnit)
           return; // Ignore concurrent use command for the same unit
+#if defined(PW_LINUX_NULL_RENDER)
+      ++g_linuxHeroGameplayCommandDiagnostics.useUnitActionAccepted;
+#endif
       pHero->EnqueueState( new PFHeroUseUnitState( pHero, pUnit ), true );
     }
   }

@@ -53,6 +53,9 @@ class ReplayWriter : public BaseObjectMT
 public:
 
   ReplayWriter();
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  ~ReplayWriter();
+#endif
 
   // Methods below appear in a right order of replay format writing
 
@@ -64,6 +67,16 @@ public:
   void WriteStartGameInfo(const NGameX::ReplayInfo & _replayInfo);
   void WriteFinishGame(int step, const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
   void WriteSessionInfoToFile(const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  bool IsLinuxReplayOpen() const { return linuxReplayFile != 0; }
+  const string& GetLinuxReplayFilePath() const { return replayFilePath; }
+  size_t GetLinuxReplayStartWrites() const { return linuxReplayStartWrites; }
+  size_t GetLinuxReplayStepWrites() const { return linuxReplayStepWrites; }
+  size_t GetLinuxReplayCommandWrites() const { return linuxReplayCommandWrites; }
+  size_t GetLinuxReplayStatusWrites() const { return linuxReplayStatusWrites; }
+  size_t GetLinuxReplayBytesWritten() const { return linuxReplayBytesWritten; }
+  size_t GetLinuxReplayWriteFailures() const { return linuxReplayWriteFailures; }
+#endif
 
 private:
   bool versionWritten;
@@ -79,6 +92,18 @@ private:
   string replaysFolderPath;
   string replayFilePath;
   std::string separator;
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  void LinuxEnsureReplayFile();
+  void LinuxWriteReplay(const void* data, size_t size);
+
+  FILE* linuxReplayFile;
+  size_t linuxReplayStartWrites;
+  size_t linuxReplayStepWrites;
+  size_t linuxReplayCommandWrites;
+  size_t linuxReplayStatusWrites;
+  size_t linuxReplayBytesWritten;
+  size_t linuxReplayWriteFailures;
+#endif
 };
 
 } // namespace NCore

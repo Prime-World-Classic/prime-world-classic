@@ -8,11 +8,17 @@
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFConsumable.h"
+#include "PFAIWorld.h"
 #include "../Game/PF/Audit/ClientStubs.h"
 
 namespace
 {
 static int g_current_pet = 0;
+
+struct LinuxNullTalentCalculator : public NWorld::ITalentCalculator
+{
+  virtual void operator()( NDb::Ptr<NDb::Talent> const&, int, const NWorld::PFTalentsSet::SlotInfo& ) {}
+};
 }
 
 namespace NWorld
@@ -30,28 +36,211 @@ PFBaseMaleHero::PFBaseMaleHero(PFWorld* pWorld, const PFBaseHero::SpawnInfo &inf
   for (unsigned int i = 0; i < persistentStats.capacity(); ++i) persistentStats[i] = 0.0f;
 }
 
+inline CObj<PFTalent> CreatePortalTalent( CPtr<PFBaseMaleHero> const& pOwner )
+{
+  if (!IsValid(pOwner) || !pOwner->GetWorld() || !pOwner->GetWorld()->GetAIWorld())
+    return 0;
+
+  CObj<PFTalent> pPortal = new PFTalent( pOwner, pOwner->GetWorld()->GetAIWorld()->GetPortalTalent(), 0, -1, -2, false );
+  pPortal->abilityType = NDb::ABILITYTYPEID_PORTAL;
+  return pPortal;
+}
+
 void PFBaseMaleHero::OnDie() { if (pTalents) pTalents->CleanSet(); pTalents = 0; portal = 0; PFBaseHero::OnDie(); }
 bool PFBaseMaleHero::Step(float dtInSeconds) { if (pTalents) pTalents->Update(dtInSeconds); if (portal) portal->Update(dtInSeconds, true); return PFEaselPlayer::Step(dtInSeconds); }
-void PFBaseMaleHero::InitHero( NDb::BaseHero const* pDesc, bool initTalents, bool usePlayerInfoTalentSet, const NCore::PlayerInfo& playerInfo, bool initInventory ) { (void)usePlayerInfoTalentSet; (void)initInventory; PFBaseHero::InitHero(pDesc); FillPersistentStats(playerInfo, persistentStats); FillPersistentBuffs(playerInfo, persistentBuffs); if (initTalents) pTalents = new PFTalentsSet(GetWorld()); }
-void PFBaseMaleHero::FillPersistentStats( const NCore::PlayerInfo playerInfo, TPersistentStats& stats ) { for (unsigned int i = 0; i < stats.capacity(); ++i) stats[i] = 0.0f; stats[NDb::STAT_LIFE] = playerInfo.hsHealth; stats[NDb::STAT_ENERGY] = playerInfo.hsMana; }
-void PFBaseMaleHero::DoLevelups(int count, float statsBonusBudget) { PFBaseHero::DoLevelups(count, statsBonusBudget); }
-void PFBaseMaleHero::DoHeroLevelups(const int count, const float statsBonusBudget, const float fraction) { (void)fraction; PFBaseHero::DoLevelups(count, statsBonusBudget); }
-void PFBaseMaleHero::FillPersistentBuffs( const NCore::PlayerInfo playerInfo, TPersistentBuffs& buffs ) { (void)playerInfo; for (unsigned int i = 0; i < buffs.capacity(); ++i) buffs[i] = PersistentBuff(); }
+void PFBaseMaleHero::InitHero( NDb::BaseHero const* pDesc, bool initTalents, bool usePlayerInfoTalentSet, const NCore::PlayerInfo& playerInfo, bool initInventory )
+{
+  (void)initInventory;
+  PFBaseHero::InitHero(pDesc);
+
+  if (!isClone)
+  {
+    FillPersistentStats(playerInfo, persistentStats);
+    FillPersistentBuffs(playerInfo, persistentBuffs);
+    portal = CreatePortalTalent(this);
+    if (portal)
+    {
+      portal->Activate();
+      portal->ApplyPassivePart(true);
+    }
+  }
+
+  if (initTalents)
+  {
+    pTalents = new PFTalentsSet(GetWorld());
+    PFTalentsSet::SetInfo info;
+    LinuxNullTalentCalculator calculator;
+    const float talentsForce = PFTalentsSet::PreloadTalentsSetAndCalcForce(
+      GetWorld() && GetWorld()->GetAIWorld() ? &GetWorld()->GetAIWorld()->GetAIParameters() : 0,
+      GetDbHero(),
+      usePlayerInfoTalentSet,
+      GetWorld() ? GetWorld()->GetResourcesCollection() : 0,
+      playerInfo,
+      info);
+    if (!isClone)
+      force += talentsForce;
+    pTalents->LoadSet(this, info);
+    pTalents->CalculateForce(calculator);
+    pTalents->ActivateTakenOnStart();
+  }
+}
+void PFBaseMaleHero::FillPersistentStats( const NCore::PlayerInfo playerInfo, TPersistentStats& stats )
+{
+  for (unsigned int i = 0; i < stats.capacity(); ++i)
+    stats[i] = 0.0f;
+
+  stats[NDb::STAT_LIFE] = playerInfo.hsHealth;
+  stats[NDb::STAT_ENERGY] = playerInfo.hsMana;
+  stats[NDb::STAT_STRENGTH] = playerInfo.hsStrength;
+  stats[NDb::STAT_INTELLECT] = playerInfo.hsIntellect;
+  stats[NDb::STAT_ATTACKSPEED] = playerInfo.hsAgility;
+  stats[NDb::STAT_DEXTERITY] = playerInfo.hsCunning;
+  stats[NDb::STAT_STAMINA] = playerInfo.hsFortitude;
+  stats[NDb::STAT_WILL] = playerInfo.hsWill;
+  stats[NDb::STAT_LIFEREGENERATIONABSOLUTE] = playerInfo.hsLifeRegen;
+  stats[NDb::STAT_ENERGYREGENERATIONABSOLUTE] = playerInfo.hsManaRegen;
+}
+void PFBaseMaleHero::DoLevelups(int count, float statsBonusBudget)
+{
+  if (count < 1)
+    return;
+
+  float maxLevel = 1.0f;
+  if (GetWorld() && GetWorld()->GetAIWorld())
+    maxLevel = static_cast<float>(Max(1, GetWorld()->GetAIWorld()->GetMaxHeroLevel()));
+
+  for (unsigned int i = 0; i < persistentStats.capacity(); ++i)
+  {
+    NDb::EStat stat = static_cast<NDb::EStat>(i);
+    float statValue = persistentStats[stat] * count / maxLevel;
+
+    PersistentBuff* buff = &persistentBuffs[stat];
+    if (buff && !buff->applied)
+    {
+      statValue = statValue * buff->buffVal.mul + buff->buffVal.add;
+      buff->applied = true;
+    }
+
+    AddStat(stat, statValue);
+  }
+
+  PFEaselPlayer::DoLevelups(count, statsBonusBudget);
+}
+void PFBaseMaleHero::DoHeroLevelups(const int count, const float statsBonusBudget, const float fraction)
+{
+  if (count < 1)
+    return;
+
+  const float mod = static_cast<float>(count) * fraction;
+
+  for (unsigned int i = 0; i < persistentStats.capacity(); ++i)
+  {
+    const NDb::EStat stat = static_cast<NDb::EStat>(i);
+    const PersistentBuff& buff = persistentBuffs[stat];
+    float statValue = persistentStats[stat] * buff.buffVal.mul + buff.buffVal.add;
+    statValue *= mod;
+    AddStat(stat, statValue);
+  }
+
+  UpgradeHeroStats(count, statsBonusBudget, fraction);
+  naftaLevel += count;
+  timeSinceLevelUp = 0.0f;
+  OnLevelUp();
+
+  struct LevelSynchronizer: CloneFunc, ISummonAction
+  {
+    int level;
+
+    LevelSynchronizer(int _level) : level(_level) {}
+    void operator()(PFBaseUnit* pUnit) { if (pUnit) pUnit->SetNaftaLevel(level); }
+    void operator()(PFBaseHero* pClone) { operator()(static_cast<PFBaseUnit*>(pClone)); }
+  } f(naftaLevel);
+
+  ForAllSummons(f, NDb::SUMMONTYPE_PRIMARY);
+  ForAllSummons(f, NDb::SUMMONTYPE_SECONDARY);
+  ForAllClones(f);
+}
+void PFBaseMaleHero::FillPersistentBuffs( const NCore::PlayerInfo playerInfo, TPersistentBuffs& buffs )
+{
+  for (unsigned int i = 0; i < buffs.capacity(); ++i)
+    buffs[i] = PersistentBuff();
+
+  for (NCore::TPlayerBuffs::const_iterator it = playerInfo.hBuffs.begin(); it != playerInfo.hBuffs.end(); ++it)
+  {
+    if (it->first < 0 || it->first >= static_cast<int>(buffs.capacity()))
+      continue;
+    buffs[static_cast<NDb::EStat>(it->first)] = PersistentBuff(it->second);
+  }
+}
 void PFBaseMaleHero::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { PFBaseHero::DropCooldowns(dropCooldownParams); if ((dropCooldownParams.flags & NDb::ABILITYIDFLAGS_TALENTS) != 0) DropTalentsCooldowns(dropCooldownParams); }
-void PFBaseMaleHero::LoadTalents(string const& strTalentsSetPath) { (void)strTalentsSetPath; if (!pTalents) pTalents = new PFTalentsSet(GetWorld()); }
+void PFBaseMaleHero::LoadTalents(string const& strTalentsSetPath)
+{
+  if (!pTalents)
+    pTalents = new PFTalentsSet(GetWorld());
+
+  LinuxNullTalentCalculator calculator;
+  pTalents->LoadPredefinedSet(this, strTalentsSetPath, calculator);
+  pTalents->ActivateTakenOnStart();
+}
 PFTalent* PFBaseMaleHero::GetTalent(int level, int slot) const { return pTalents ? pTalents->GetTalent(level, slot).GetPtr() : 0; }
 ETalentActivation::Enum PFBaseMaleHero::CanActivateTalent(int level, int slot) const { return pTalents ? pTalents->CanActivateTalent(level, slot) : ETalentActivation::Denied; }
 bool PFBaseMaleHero::HasFreshTalentsToBuy() const { return pTalents && pTalents->HasFreshTalentsToBuy(); }
 bool PFBaseMaleHero::ActivateTalent(int level, int slot) { return pTalents && pTalents->ActivateTalent(level, slot); }
-void PFBaseMaleHero::OnTalentActivated( const int level, const int slot, const float statsIncrementFraction ) { (void)level; (void)slot; (void)statsIncrementFraction; }
+void PFBaseMaleHero::OnTalentActivated( const int level, const int slot, const float statsIncrementFraction )
+{
+  (void)level;
+  (void)slot;
+
+  const int levelUps = CountLevelups();
+  if (levelUps < 1)
+  {
+    RecalculateManaCostModifier();
+    return;
+  }
+
+  if (!isClone)
+    DoHeroLevelups(levelUps, 0.0f, statsIncrementFraction);
+  else
+    DoLevelups(levelUps);
+
+  RecalculateManaCostModifier();
+}
 bool PFBaseMaleHero::CanUseTalent(int level, int slot) const { return CanUseTalent(GetTalent(level, slot)); }
 bool PFBaseMaleHero::CanUseTalent( PFTalent * talent ) const { return IsValid(talent) && talent->CanBeUsed(); }
 CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( int level, int slot, Target const& target ) { return UseTalent(GetTalent(level, slot), target); }
-CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( PFTalent* talent, Target const& target ) { (void)talent; (void)target; return 0; }
+CObj<PFAbilityInstance> PFBaseMaleHero::UseTalent( PFTalent* talent, Target const& target )
+{
+  if (!CanUseTalent(talent))
+    return 0;
+  CObj<PFAbilityInstance> instance = talent->ApplyToTarget(target);
+  if (instance)
+    talent->SetLastUseStep(GetWorld() ? GetWorld()->GetStepNumber() : -1);
+  return instance;
+}
 int PFBaseMaleHero::GetDevPoints() const { return IsValid(pTalents) ? pTalents->GetDevPoints() : 0; }
 int const &PFBaseMaleHero::GetDevPointsRef() const { static int zero = 0; return IsValid(pTalents) ? pTalents->GetDevPoints() : zero; }
-void PFBaseMaleHero::ModifyForceByStats( const PFBaseMaleHero::TPersistentStats& stats, const NDb::AILogicParameters* pAIParams, float& force ) { (void)stats; (void)pAIParams; (void)force; }
-float PFBaseMaleHero::GetForce( bool countPersistentStats ) const { (void)countPersistentStats; return PFBaseHero::GetForce(false); }
+void PFBaseMaleHero::ModifyForceByStats( const PFBaseMaleHero::TPersistentStats& stats, const NDb::AILogicParameters* pAIParams, float& force )
+{
+  if (!pAIParams || pAIParams->forceParameters.IsEmpty())
+    return;
+
+  float statsPoints = 0.0f;
+  for (unsigned int i = 0; i < stats.capacity(); ++i)
+  {
+    NDb::StatBudget const* statBudget = PFStatContainer::GetStatBudget(pAIParams, static_cast<NDb::EStat>(i));
+    if (statBudget && statBudget->budget > EPS_VALUE)
+      statsPoints += stats[i] / statBudget->budget;
+  }
+
+  force += statsPoints * pAIParams->forceParameters->masteryPointForce;
+}
+float PFBaseMaleHero::GetForce( bool countPersistentStats ) const
+{
+  float result = PFBaseHero::GetForce(countPersistentStats);
+  if (countPersistentStats && GetWorld() && GetWorld()->GetAIWorld())
+    ModifyForceByStats(persistentStats, &GetWorld()->GetAIWorld()->GetAIParameters(), result);
+  return result;
+}
 float PFBaseMaleHero::GetManaCostModifier( bool altCost ) const { return altCost ? lifeCostForceModifier : manaCostForceModifier; }
 void PFBaseMaleHero::RecalculateManaCostModifier() { manaCostForceModifier = 1.0f; lifeCostForceModifier = 1.0f; }
 float PFBaseMaleHero::GetTalentsAcquiredBudgetPercent() const { return pTalents ? pTalents->GetAcquiredBudgetPercent() : 0.0f; }

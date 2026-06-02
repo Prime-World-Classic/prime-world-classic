@@ -4,6 +4,7 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFConsumable.h"
+#include "PFAbilityData.h"
 #include "DBConsumable.h"
 
 namespace NWorld
@@ -29,9 +30,9 @@ PFConsumable::PFConsumable(CPtr<PFWorld> const& pWorld, CPtr<PFBaseUnit> const& 
 , actionBarIndex(-1)
 , isPet(false)
 , pDBDesc(dbDesc)
+, pAbilityData(new PFConsumableAbilityData(pOwner, dbDesc.GetPtr(), NDb::ABILITYTYPEID_CONSUMABLE, pWorld ? true : false))
 , quantity(1)
 {
-  (void)pOwner;
 }
 
 PFConsumable::PFConsumable()
@@ -62,7 +63,7 @@ void PFConsumable::AddQuantity(int adds)
 
 bool PFConsumable::CanBeUsed() const
 {
-  return false;
+  return pAbilityData && pAbilityData->CanBeUsed();
 }
 
 bool PFConsumable::IsSpendable() const

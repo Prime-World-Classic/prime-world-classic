@@ -15,6 +15,28 @@
 namespace NWorld
 {
 
+namespace
+{
+float GetLinuxBaseAttackDamageFallback(
+  const ExecutableFloatString& formula,
+  const CPtr<PFBaseUnit>& sender)
+{
+  if (!IsValid(sender))
+    return 0.0f;
+
+  const char* text = formula.sString.c_str();
+  if (!text || !strstr(text, "sDamageMin") || !strstr(text, "sDamageMax"))
+    return 0.0f;
+
+  const float damageMin = sender->GetDamageMin();
+  const float damageMax = sender->GetDamageMax();
+  if (damageMin <= 0.0f && damageMax <= 0.0f)
+    return 0.0f;
+
+  return (Max(0.0f, damageMin) + Max(0.0f, damageMax)) * 0.5f;
+}
+}
+
 PFApplDamage::PFApplDamage(PFApplCreatePars const &cp)
   : Base(cp)
   , damage(0.0f)
@@ -32,6 +54,8 @@ bool PFApplDamage::Start()
   if (IsValid(pReceiver))
   {
     damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : RetrieveParam(GetDB().damage, 0.0f);
+    if (damage <= 0.0f && !IsDelegated())
+      damage = GetLinuxBaseAttackDamageFallback(GetDB().damage, GetAbilityOwner());
     PFBaseUnit::DamageDesc desc;
     desc.pSender = GetAbilityOwner();
     desc.amount = damage;

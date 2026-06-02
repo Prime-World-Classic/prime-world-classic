@@ -6,6 +6,7 @@
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFBaseUnit.h"
+#include "PFHero.h"
 #include "PFMicroAI.h"
 #include "PFTargetSelector.h"
 #include "PFUniTarget.h"
@@ -97,7 +98,17 @@ PFMicroAI* PFAbilityData::CreateMicroAI() const
   const PFMicroAICreateParams cp(pDBDesc->microAI, this);
   return pDBDesc->microAI->Create(cp);
 }
-void PFAbilityData::Update(float dt, bool fullUpdate) { (void)dt; (void)fullUpdate; }
+void PFAbilityData::Update(float dt, bool fullUpdate)
+{
+  (void)fullUpdate;
+  for (int i = 0; i < EAbilityState::_Count; ++i)
+  {
+    if (cooldown[i] > 0.0f)
+      cooldown[i] = max(0.0f, cooldown[i] - dt);
+    if (cooldown[i] < dt / 2.0f)
+      cooldown[i] = 0.0f;
+  }
+}
 float PFAbilityData::GetScale() const { return 1.0f; }
 bool PFAbilityData::FindAutoTarget(Target & target)
 {
@@ -234,8 +245,16 @@ float PFAbilityData::GetUseRange() const
     return 0.0f;
   return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
 }
-float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const { (void)pTarget; return GetUseRange(); }
-float PFAbilityData::GetUseRange(const NWorld::Target & target) const { (void)target; return GetUseRange(); }
+float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const
+{
+  if (!pDBDesc || !IsValid(pOwner))
+    return 0.0f;
+  return pDBDesc->useRange(pOwner, pTarget ? pTarget : pOwner.GetPtr(), this, 0.0f);
+}
+float PFAbilityData::GetUseRange(const NWorld::Target & target) const
+{
+  return target.IsUnit() ? GetUseRange(target.GetUnit()) : GetUseRange();
+}
 NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const { (void)bFromMinimap; altTarget = origTarget; return 0; }
 void PFAbilityData::AddInstance(CObj<PFAbilityInstance> const& inst) { if (inst) rgInstances.push_back( inst ); }
 void PFAbilityData::SwitchOff() { isOn = false; }
@@ -335,7 +354,7 @@ NDb::UnitConstant const* PFAbilityConstantsMap::Get(const char *name) const
 PFConsumableAbilityData::PFConsumableAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Ability> const& pDBDesc, NDb::EAbilityTypeId abilityType, bool needRegisterInWorld, bool isInteractionAbility )
   : PFAbilityData( pOwner_, pDBDesc, abilityType, needRegisterInWorld, isInteractionAbility )
   , pDBGroup( 0 )
-  , pOwner( 0 )
+  , pOwner( dynamic_cast<PFBaseHero*>(pOwner_.GetPtr()) )
 {
 }
 

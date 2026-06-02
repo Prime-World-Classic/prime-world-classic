@@ -2,16 +2,192 @@
 
 #if defined( PW_LINUX_OPENGL_BOOTSTRAP ) && defined( PW_LINUX_NULL_RENDER )
 
+#include "PFBaseMovingUnit.h"
+#include "TileMap.h"
 #include "PFWorldObjectBase.h"
 #include "CollisionResolver.h"
+
+namespace
+{
+float LinuxResolverCollisionSize(const NWorld::PFBaseMovingUnit* unit)
+{
+  return unit ? Max(unit->GetObjectSize(), 1.0f) : 1.0f;
+}
+
+CVec2 LinuxResolverSafeDirection(const CVec2& direction, const CVec2& fallback)
+{
+  CVec2 result = direction;
+  if (fabs2(result) <= EPS_VALUE)
+    result = fallback;
+  if (fabs2(result) <= EPS_VALUE)
+    result = CVec2(1.0f, 0.0f);
+  Normalize(&result);
+  return result;
+}
+
+bool LinuxResolverIgnoresDynamic(const NWorld::PFBaseMovingUnit* unit)
+{
+  return
+    !unit ||
+    unit->IsDead() ||
+    unit->IsMounted() ||
+    unit->IsMovingSpecial() ||
+    (unit->GetMoveFlags() & NWorld::MOVE_FLAG_NO_COLLIDE) != 0 ||
+    (unit->GetGhostMode() & NDb::GHOSTMOVEMODE_IGNOREDYNAMIC) != 0;
+}
+
+bool LinuxResolverMapAllows(const NWorld::PFBaseMovingUnit* unit, const CVec2& position)
+{
+  if (!unit)
+    return false;
+
+  NWorld::TileMap* map = unit->GetTileMap();
+  if (!map || map->GetSizeX() <= 0 || map->GetSizeY() <= 0)
+    return true;
+
+  const SVector tile = map->GetTile(position);
+  return
+    !map->IsPointOutsideMap(tile.x, tile.y) &&
+    map->CanUnitGo(Max(1, unit->GetObjectTileSize()), tile);
+}
+
+bool LinuxResolverOverlaps(
+  const NWorld::PFBaseMovingUnit* a,
+  const NWorld::PFBaseMovingUnit* b,
+  const CVec2& positionA,
+  const CVec2& positionB)
+{
+  const float minDistance = LinuxResolverCollisionSize(a) + LinuxResolverCollisionSize(b);
+  return fabs2(positionB - positionA) < minDistance * minDistance - EPS_VALUE;
+}
+
+bool LinuxResolverCanStand(
+  const NWorld::PFBaseMovingUnit* unit,
+  const CVec2& position,
+  const NWorld::PFBaseMovingUnit* skipUnit,
+  const vector<NWorld::PFBaseMovingUnit*>& units)
+{
+  if (!LinuxResolverMapAllows(unit, position))
+    return false;
+
+  for (vector<NWorld::PFBaseMovingUnit*>::const_iterator it = units.begin(), end = units.end(); it != end; ++it)
+  {
+    const NWorld::PFBaseMovingUnit* other = *it;
+    if (other == unit || other == skipUnit || LinuxResolverIgnoresDynamic(other))
+      continue;
+    if (LinuxResolverOverlaps(unit, other, position, other->GetPosition().AsVec2D()))
+      return false;
+  }
+
+  return true;
+}
+
+bool LinuxResolverTryPlace(
+  NWorld::PFBaseMovingUnit* unit,
+  const CVec2& position,
+  const NWorld::PFBaseMovingUnit* skipUnit,
+  const vector<NWorld::PFBaseMovingUnit*>& units)
+{
+  if (!LinuxResolverCanStand(unit, position, skipUnit, units))
+    return false;
+
+  return unit->PlaceUnit(position, true, false, false);
+}
+
+bool LinuxResolverTryPlaceAround(
+  NWorld::PFBaseMovingUnit* unit,
+  const CVec2& anchorPosition,
+  const CVec2& preferredDirection,
+  float minDistance,
+  const NWorld::PFBaseMovingUnit* skipUnit,
+  const vector<NWorld::PFBaseMovingUnit*>& units)
+{
+  const CVec2 baseDir =
+    LinuxResolverSafeDirection(preferredDirection, unit ? unit->GetMoveDirection() : CVec2(1.0f, 0.0f));
+  const CVec2 perpDir(-baseDir.y, baseDir.x);
+  const CVec2 reverseDir(-baseDir.x, -baseDir.y);
+  const CVec2 reversePerpDir(-perpDir.x, -perpDir.y);
+  const CVec2 directions[] =
+  {
+    baseDir,
+    LinuxResolverSafeDirection(baseDir + perpDir, baseDir),
+    LinuxResolverSafeDirection(baseDir + reversePerpDir, baseDir),
+    perpDir,
+    reversePerpDir,
+    LinuxResolverSafeDirection(reverseDir + perpDir, reverseDir),
+    LinuxResolverSafeDirection(reverseDir + reversePerpDir, reverseDir),
+    reverseDir
+  };
+
+  const float step = Max(0.5f, LinuxResolverCollisionSize(unit) * 0.5f);
+  const float maxDistance = minDistance + Max(step * 4.0f, LinuxResolverCollisionSize(unit) * 2.0f);
+  for (float distance = minDistance; distance <= maxDistance + EPS_VALUE; distance += step)
+  {
+    for (int i = 0; i < ARRAY_SIZE(directions); ++i)
+    {
+      const CVec2 candidate = anchorPosition + directions[i] * distance;
+      if (LinuxResolverTryPlace(unit, candidate, skipUnit, units))
+        return true;
+    }
+  }
+
+  return false;
+}
+}
 
 namespace NWorld
 {
 
 void CollisionResolver::Resolve( const vector<PFBaseMovingUnit*> units, float timeDelta ) const
 {
-  (void)units;
-  (void)timeDelta;
+  if (timeDelta <= 0.0f || units.size() < 2)
+    return;
+
+  for (int pass = 0; pass < 2; ++pass)
+  {
+    for (int i = 0; i < units.size(); ++i)
+    {
+      PFBaseMovingUnit* unitA = units[i];
+      if (LinuxResolverIgnoresDynamic(unitA))
+        continue;
+
+      for (int j = i + 1; j < units.size(); ++j)
+      {
+        PFBaseMovingUnit* unitB = units[j];
+        if (LinuxResolverIgnoresDynamic(unitB))
+          continue;
+
+        const CVec2 positionA = unitA->GetPosition().AsVec2D();
+        const CVec2 positionB = unitB->GetPosition().AsVec2D();
+        if (!LinuxResolverOverlaps(unitA, unitB, positionA, positionB))
+          continue;
+
+        CVec2 dir = positionB - positionA;
+        if (fabs2(dir) <= EPS_VALUE)
+          dir = unitB->GetMoveDirection();
+        if (fabs2(dir) <= EPS_VALUE)
+          dir = CVec2(1.0f, 0.0f);
+        Normalize(&dir);
+
+        const float minDistance = LinuxResolverCollisionSize(unitA) + LinuxResolverCollisionSize(unitB);
+        PFBaseMovingUnit* pushed = unitB;
+        PFBaseMovingUnit* anchor = unitA;
+
+        if (!LinuxResolverTryPlaceAround(pushed, positionA, dir, minDistance, anchor, units))
+        {
+          pushed = unitA;
+          anchor = unitB;
+          LinuxResolverTryPlaceAround(
+            pushed,
+            positionB,
+            CVec2(-dir.x, -dir.y),
+            minDistance,
+            anchor,
+            units);
+        }
+      }
+    }
+  }
 }
 
 } // namespace NWorld
