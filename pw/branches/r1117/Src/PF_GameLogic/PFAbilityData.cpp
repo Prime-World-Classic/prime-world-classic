@@ -6,6 +6,7 @@
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 #include "PFBaseUnit.h"
+#include "PFConsumable.h"
 #include "PFHero.h"
 #include "PFMicroAI.h"
 #include "PFTargetSelector.h"
@@ -360,6 +361,15 @@ PFConsumableAbilityData::PFConsumableAbilityData( CPtr<PFBaseUnit> const& pOwner
 
 void PFConsumableAbilityData::NotifyCastProcessed()
 {
+  if ( IsValid(pUsingConsumable) )
+  {
+    pUsingConsumable->AddQuantity( -1 );
+    if ( pUsingConsumable->GetQuantity() <= 0 && IsValid(GetOwner()) )
+    {
+      GetOwner()->RemoveConsumable( pUsingConsumable );
+    }
+  }
+
   pUsingConsumable = 0;
 }
 

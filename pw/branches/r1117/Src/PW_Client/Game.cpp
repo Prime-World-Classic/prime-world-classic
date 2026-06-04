@@ -47771,7 +47771,13 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.useTalentCanUse << " target="
             << finalHeroGameplayCommandDiagnostics.useTalentTargetType << "/"
             << finalHeroGameplayCommandDiagnostics.useTalentTargetObjectId << "/"
-            << finalHeroGameplayCommandDiagnostics.useTalentTargetFaction << "\n";
+            << finalHeroGameplayCommandDiagnostics.useTalentTargetFaction << " state="
+            << finalHeroGameplayCommandDiagnostics.useTalentLastUseStepBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useTalentLastUseStepAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentActiveInstancesBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useTalentActiveInstancesAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useTalentCooldownBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useTalentCooldownAfter << "\n";
     logFile << "  finalHeroGameplayPortal="
             << finalHeroGameplayCommandDiagnostics.usePortalCanChecks << "/"
             << finalHeroGameplayCommandDiagnostics.usePortalCanAccepted << "/"
@@ -47789,7 +47795,13 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.useConsumableSlot << " target="
             << finalHeroGameplayCommandDiagnostics.useConsumableTargetType << "/"
             << finalHeroGameplayCommandDiagnostics.useConsumableTargetObjectId << "/"
-            << finalHeroGameplayCommandDiagnostics.useConsumableTargetFaction << " buy="
+            << finalHeroGameplayCommandDiagnostics.useConsumableTargetFaction << " state="
+            << finalHeroGameplayCommandDiagnostics.useConsumableQuantityBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useConsumableQuantityAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableSlotOccupiedBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useConsumableSlotOccupiedAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useConsumableCooldownBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useConsumableCooldownAfter << " buy="
             << finalHeroGameplayCommandDiagnostics.buyConsumableCanChecks << "/"
             << finalHeroGameplayCommandDiagnostics.buyConsumableCanAccepted << "/"
             << finalHeroGameplayCommandDiagnostics.buyConsumableExecuteCalls << "/"
@@ -49903,7 +49915,7 @@ int main(int argc, char** argv)
     static_cast<double>(heroGameplayCommandDiagnostics.attackRange),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceBeforePrime),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceAfterPrime));
-  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d pickup=%d/%d/%d/%d can=%d object=%d\n",
+  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d qty=%d->%d occupied=%d->%d cd=%.2f->%.2f buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d pickup=%d/%d/%d/%d can=%d object=%d\n",
     heroGameplayCommandDiagnostics.useUnitCanChecks,
     heroGameplayCommandDiagnostics.useUnitCanAccepted,
     heroGameplayCommandDiagnostics.useUnitExecuteCalls,
@@ -49934,6 +49946,12 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.useTalentTargetType,
     heroGameplayCommandDiagnostics.useTalentTargetObjectId,
     heroGameplayCommandDiagnostics.useTalentTargetFaction,
+    heroGameplayCommandDiagnostics.useTalentLastUseStepBefore,
+    heroGameplayCommandDiagnostics.useTalentLastUseStepAfter,
+    heroGameplayCommandDiagnostics.useTalentActiveInstancesBefore,
+    heroGameplayCommandDiagnostics.useTalentActiveInstancesAfter,
+    static_cast<double>(heroGameplayCommandDiagnostics.useTalentCooldownBefore),
+    static_cast<double>(heroGameplayCommandDiagnostics.useTalentCooldownAfter),
     heroGameplayCommandDiagnostics.usePortalCanChecks,
     heroGameplayCommandDiagnostics.usePortalCanAccepted,
     heroGameplayCommandDiagnostics.usePortalExecuteCalls,
@@ -49950,6 +49968,12 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.useConsumableTargetType,
     heroGameplayCommandDiagnostics.useConsumableTargetObjectId,
     heroGameplayCommandDiagnostics.useConsumableTargetFaction,
+    heroGameplayCommandDiagnostics.useConsumableQuantityBefore,
+    heroGameplayCommandDiagnostics.useConsumableQuantityAfter,
+    heroGameplayCommandDiagnostics.useConsumableSlotOccupiedBefore,
+    heroGameplayCommandDiagnostics.useConsumableSlotOccupiedAfter,
+    static_cast<double>(heroGameplayCommandDiagnostics.useConsumableCooldownBefore),
+    static_cast<double>(heroGameplayCommandDiagnostics.useConsumableCooldownAfter),
     heroGameplayCommandDiagnostics.buyConsumableCanChecks,
     heroGameplayCommandDiagnostics.buyConsumableCanAccepted,
     heroGameplayCommandDiagnostics.buyConsumableExecuteCalls,

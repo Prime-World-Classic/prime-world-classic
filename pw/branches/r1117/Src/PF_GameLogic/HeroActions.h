@@ -110,6 +110,12 @@ namespace NWorld
     int useTalentTargetType;
     int useTalentTargetObjectId;
     int useTalentTargetFaction;
+    int useTalentLastUseStepBefore;
+    int useTalentLastUseStepAfter;
+    int useTalentActiveInstancesBefore;
+    int useTalentActiveInstancesAfter;
+    float useTalentCooldownBefore;
+    float useTalentCooldownAfter;
 
     int usePortalCanChecks;
     int usePortalCanAccepted;
@@ -128,6 +134,12 @@ namespace NWorld
     int useConsumableTargetType;
     int useConsumableTargetObjectId;
     int useConsumableTargetFaction;
+    int useConsumableQuantityBefore;
+    int useConsumableQuantityAfter;
+    int useConsumableSlotOccupiedBefore;
+    int useConsumableSlotOccupiedAfter;
+    float useConsumableCooldownBefore;
+    float useConsumableCooldownAfter;
 
     int buyConsumableCanChecks;
     int buyConsumableCanAccepted;

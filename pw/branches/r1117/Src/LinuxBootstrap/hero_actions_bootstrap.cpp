@@ -3,6 +3,8 @@
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #include "PF_GameLogic/PFHero.h"
 #include "PF_GameLogic/PFMaleHero.h"
+#include "PF_GameLogic/PFAbilityInstance.h"
+#include "PF_GameLogic/PFConsumable.h"
 #include "PF_GameLogic/PFTalent.h"
 #include "PF_GameLogic/PFBaseAttackData.h"
 #include "PF_GameLogic/PFBaseMovingUnit.h"
@@ -870,6 +872,17 @@ namespace NWorld
 #else
     hero = pHero;
 #endif
+#if defined(PW_LINUX_NULL_RENDER)
+    const PFConsumable* beforeConsumable =
+      IsValid(hero) ? hero->GetConsumable(slot) : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableSlotOccupiedBefore =
+      beforeConsumable ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableQuantityBefore =
+      beforeConsumable ? beforeConsumable->GetQuantity() : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableCooldownBefore =
+      beforeConsumable && beforeConsumable->GetAbility() ?
+        beforeConsumable->GetAbility()->GetCurrentCooldown() : 0.0f;
+#endif
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseConsumable(slot);
 #if defined(PW_LINUX_NULL_RENDER)
     g_linuxHeroGameplayCommandDiagnostics.useConsumableCanUse = canUse ? 1 : 0;
@@ -877,10 +890,25 @@ namespace NWorld
     if (canUse)
     {
 #if defined(PW_LINUX_NULL_RENDER)
-      ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
-#endif
+      CObj<PFAbilityInstance> instance =
+        hero->UseConsumable(slot, target, hero->IsLocal());
+      if (instance)
+        ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
+#else
       hero->EnqueueState(new PFHeroUseConsumableState(hero, slot, target), true);
+#endif
     }
+#if defined(PW_LINUX_NULL_RENDER)
+    const PFConsumable* afterConsumable =
+      IsValid(hero) ? hero->GetConsumable(slot) : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableSlotOccupiedAfter =
+      afterConsumable ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableQuantityAfter =
+      afterConsumable ? afterConsumable->GetQuantity() : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableCooldownAfter =
+      afterConsumable && afterConsumable->GetAbility() ?
+        afterConsumable->GetAbility()->GetCurrentCooldown() : 0.0f;
+#endif
   }
 
   NCore::WorldCommand* CreateCmdActivateTalent(PFBaseMaleHero* pHero, INT32 level, INT32 slot)
@@ -1003,17 +1031,42 @@ namespace NWorld
 #else
     hero = pHero;
 #endif
-    const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(level, slot);
 #if defined(PW_LINUX_NULL_RENDER)
+    PFTalent* talent = IsValid(hero) ? hero->GetTalent(level, slot) : 0;
+    if (talent)
+    {
+      g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepBefore =
+        talent->GetLastUseStep();
+      g_linuxHeroGameplayCommandDiagnostics.useTalentActiveInstancesBefore =
+        talent->GetActiveInstancesCount();
+      g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownBefore =
+        talent->GetCurrentCooldown();
+    }
+    const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(talent);
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
-#endif
     if (canUse)
     {
-#if defined(PW_LINUX_NULL_RENDER)
-      ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
-#endif
+      CObj<PFAbilityInstance> instance = hero->UseTalent(talent, target);
+      if (instance)
+        ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
+    }
+    talent = IsValid(hero) ? hero->GetTalent(level, slot) : 0;
+    if (talent)
+    {
+      g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepAfter =
+        talent->GetLastUseStep();
+      g_linuxHeroGameplayCommandDiagnostics.useTalentActiveInstancesAfter =
+        talent->GetActiveInstancesCount();
+      g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownAfter =
+        talent->GetCurrentCooldown();
+    }
+#else
+    const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(level, slot);
+    if (canUse)
+    {
       hero->UseTalent(level, slot, target);
     }
+#endif
   }
 
   NCore::WorldCommand* CreateCmdUsePortal(PFBaseMaleHero* pHero, Target const& target, bool issuedByScript)

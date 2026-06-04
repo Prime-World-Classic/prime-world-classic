@@ -18,6 +18,7 @@ template<> NWorld::PFHeroStatistics* CastToUserObjectImpl<NWorld::PFHeroStatisti
 #include "PFHero.h"
 #include "PFMaleHero.h"
 #include "PFBaseUnitStates.h"
+#include "PFAbilityInstance.h"
 #include "PFTalent.h"
 #include "PFConsumable.h"
 #include "PFStatistics.h"
@@ -316,11 +317,19 @@ void PFBaseHero::DropConsumable( int slot, const CVec2& target) { (void)target; 
 void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& pConsumable) { (void)pConsumable; }
 void PFBaseHero::OnSerialize(IBinSaver& f) { (void)f; }
 void PFBaseHero::InitializeCustomEnergyVariables() { customEnergy = false; customEnergyValue = 0; customEnergyMaximum = 0; customEnergyRegeneration = 0; }
-bool PFBaseHero::CanUseConsumable(int slot) const { return IsSlotValid(slot) && consumables[slot] && consumables[slot]->CanBeUsed(); }
+bool PFBaseHero::CanUseConsumable(int slot) const { return IsSlotValid(slot) && consumables[slot] && consumables[slot]->GetQuantity() > 0 && consumables[slot]->CanBeUsed(); }
 bool PFBaseHero::CanUseConsumables() const { return true; }
-CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumable, const Target& target, bool isLocal ) { (void)pConsumable; (void)target; (void)isLocal; return 0; }
+CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumable, const Target& target, bool isLocal )
+{
+  (void)isLocal;
+  if ( !pConsumable || !pConsumable->GetAbility() || pConsumable->GetQuantity() <= 0 )
+    return CObj<PFAbilityInstance>(0);
+
+  pConsumable->GetAbility()->SetUsingConsumable( pConsumable );
+  return CreateAbilityInstance( pConsumable->GetAbility(), target );
+}
 CObj<PFAbilityInstance> PFBaseHero::UseConsumable( int slot, const Target& target, bool isLocal ) { CObj<PFConsumable> c = IsSlotValid(slot) ? consumables[slot] : 0; return UseConsumable(c, target, isLocal); }
-bool PFBaseHero::TakeConsumable( const NDb::Consumable * pDBDesc, int quantity, NDb::EConsumableOrigin origin, int slot ) { (void)origin; if (!pDBDesc || quantity <= 0) return false; CObj<PFConsumable> c = new PFConsumable(CPtr<PFWorld>(GetWorld()), CPtr<PFBaseUnit>(this), pDBDesc); if (slot >= 0 && slot < consumables.size()) consumables[slot] = c; else consumables.push_back(c); return true; }
+bool PFBaseHero::TakeConsumable( const NDb::Consumable * pDBDesc, int quantity, NDb::EConsumableOrigin origin, int slot ) { (void)origin; if (!pDBDesc || quantity <= 0) return false; CObj<PFConsumable> c = new PFConsumable(CPtr<PFWorld>(GetWorld()), CPtr<PFBaseUnit>(this), pDBDesc); c->SetQuantity(quantity); if (slot >= 0 && slot < consumables.size()) consumables[slot] = c; else consumables.push_back(c); return true; }
 void PFBaseHero::SwapConsumables(int id1, int id2) { if (IsSlotValid(id1) && IsSlotValid(id2)) nstl::swap(consumables[id1], consumables[id2]); }
 bool PFBaseHero::RemoveConsumable(int slot) { if (!IsSlotValid(slot)) return false; consumables[slot] = 0; return true; }
 void PFBaseHero::RemoveConsumable( PFConsumable const* pConsumable ) { for (int i = 0; i < consumables.size(); ++i) if (consumables[i] == pConsumable) consumables[i] = 0; }
