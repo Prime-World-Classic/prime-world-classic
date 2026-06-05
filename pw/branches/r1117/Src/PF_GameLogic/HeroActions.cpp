@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "HeroActions.h"
+#include "PFAbilityInstance.h"
 
 #include "PFBaseUnitStates.h"
 #include "PFBuildings.h"//для доступа к позиции здания
@@ -247,6 +248,7 @@ namespace NWorld
   DEFINE_5_PARAM_CMD_CHECK( 0xB622CC0,  CmdMinimapSignal,  CPtr<PFBaseHero>, pHero, CPtr<PFBaseUnit>, pSelected, Target, target, NDb::EFaction, faction, bool, issuedByScript);
 
   DEFINE_2_PARAM_CMD_CHECK( 0x9D62D440, CmdInitMinigame,   CPtr<PFEaselPlayer>, easelPlayer, INT32, objId );
+  DEFINE_1_PARAM_CMD_CHECK( 0x9D62D441, CmdLeaveMinigame,  CPtr<PFEaselPlayer>, easelPlayer );
 
   //DEFINE_2_PARAM_CMD_CHECK( 0xF659340,  CmdDenyBuilding,   CPtr<PFBaseHero>, pHero, CPtr<PFBuilding>, pBuilding );
   //DEFINE_2_PARAM_CMD_CHECK( 0x2C6614C0, CmdEmote,          CPtr<PFBaseHero>, pHero, NDb::EEmotion, emotion );
@@ -729,6 +731,56 @@ namespace NWorld
     if( !IsUnitValid(easelPlayer) )
       return;
 
+#if defined(PW_LINUX_NULL_RENDER)
+    PFMinigamePlace* minigamePlace = dynamic_cast<PFMinigamePlace*>(pPFWorld->GetObjectById(objId));
+    if (!minigamePlace)
+      minigamePlace = pPFWorld->FindLinuxFirstAvailableMinigamePlaceForHero(easelPlayer.GetPtr());
+
+    const bool available = minigamePlace && minigamePlace->IsAvailable();
+    const bool canUse = available && minigamePlace->CanBeUsedBy(easelPlayer.GetPtr());
+    PFAIWorld* aiWorld = pPFWorld->GetAIWorld();
+    const bool battleReady = !aiWorld || aiWorld->GetBattleStartDelay() <= 0;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameAvailable = available ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameCanUse = canUse ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameBattleReady = battleReady ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameObjectId =
+      minigamePlace ? minigamePlace->GetObjectId() : -1;
+    if (!available || !canUse || !battleReady)
+      return;
+
+    PFMinigamePlace* heroMinigameBefore = easelPlayer->GetMinigamePlace();
+    PFEaselPlayer* placeUserBefore = minigamePlace->CurrentEaselPlayer();
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroPlaceBefore =
+      heroMinigameBefore ? heroMinigameBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigamePlaceUserBefore =
+      placeUserBefore ? placeUserBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedBefore =
+      easelPlayer->IsIsolated() ? 1 : 0;
+
+    if ( PFInteractObjectState* st = dynamic_cast<PFInteractObjectState*>(easelPlayer->GetCurrentState()) )
+    {
+      st->NeedStopOnLeave( false );
+    }
+
+    minigamePlace->Use(easelPlayer.GetPtr());
+    PFMinigamePlace* heroMinigameAfter = easelPlayer->GetMinigamePlace();
+    PFEaselPlayer* placeUserAfter = minigamePlace->CurrentEaselPlayer();
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroPlaceAfter =
+      heroMinigameAfter ? heroMinigameAfter->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigamePlaceUserAfter =
+      placeUserAfter ? placeUserAfter->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedAfter =
+      easelPlayer->IsIsolated() ? 1 : 0;
+    if (g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroPlaceBefore !=
+          g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroPlaceAfter ||
+        g_linuxHeroGameplayCommandDiagnostics.initMinigamePlaceUserBefore !=
+          g_linuxHeroGameplayCommandDiagnostics.initMinigamePlaceUserAfter ||
+        g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedBefore !=
+          g_linuxHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedAfter)
+    {
+      ++g_linuxHeroGameplayCommandDiagnostics.initMinigameActionAccepted;
+    }
+#else
     if ( PF_Core::WorldObjectBase* pWO = pPFWorld->GetObjectById( objId ) )
     {
 #ifndef VISUAL_CUTTED
@@ -739,11 +791,6 @@ namespace NWorld
       const bool available = minigamePlace->IsAvailable();
       const bool canUse = minigamePlace->CanBeUsedBy( easelPlayer );
       const bool battleReady = pPFWorld->GetAIWorld()->GetBattleStartDelay() <= 0;
-#if defined(PW_LINUX_NULL_RENDER)
-      g_linuxHeroGameplayCommandDiagnostics.initMinigameAvailable = available ? 1 : 0;
-      g_linuxHeroGameplayCommandDiagnostics.initMinigameCanUse = canUse ? 1 : 0;
-      g_linuxHeroGameplayCommandDiagnostics.initMinigameBattleReady = battleReady ? 1 : 0;
-#endif
       if ( available && canUse && battleReady )
       {
         LogLogicObject(easelPlayer, "CMD MGLOBBY ENTER", false);
@@ -751,13 +798,106 @@ namespace NWorld
         {
           st->NeedStopOnLeave( false );
         }
-#if defined(PW_LINUX_NULL_RENDER)
-        ++g_linuxHeroGameplayCommandDiagnostics.initMinigameActionAccepted;
-#endif
         easelPlayer->EnqueueState( new PFHeroUseUnitState( easelPlayer, minigamePlace), true );
       }
 #endif
     }
+#endif
+  }
+
+  NCore::WorldCommand* CreateCmdLeaveMinigame( PFEaselPlayer* easelPlayer )
+  {
+    if( NULL == easelPlayer )
+    {
+      NI_ALWAYS_ASSERT("Priestess object must exist!");
+      return 0;
+    }
+
+    return new CmdLeaveMinigame( easelPlayer );
+  }
+
+  bool CmdLeaveMinigame::CanExecute() const
+  {
+    PFBaseHero* hero = dynamic_cast<PFBaseHero*>(easelPlayer.GetPtr());
+    const bool accepted = CheckHero(hero, GetId())
+      && IsValid(easelPlayer)
+      && !easelPlayer->IsDead()
+      && (easelPlayer->GetMinigamePlace()
+        || easelPlayer->IsIsolated()
+        || easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME));
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.leaveMinigameCanChecks;
+    if (accepted)
+      ++g_linuxHeroGameplayCommandDiagnostics.leaveMinigameCanAccepted;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroObjectId =
+      IsValid(easelPlayer) ? easelPlayer->GetObjectId() : -1;
+#endif
+    return accepted;
+  }
+
+  void CmdLeaveMinigame::Execute( NCore::IWorldBase* pWorld )
+  {
+#if defined(PW_LINUX_NULL_RENDER)
+    ++g_linuxHeroGameplayCommandDiagnostics.leaveMinigameExecuteCalls;
+#endif
+    if( !IsUnitValid(easelPlayer) )
+      return;
+
+    PFMinigamePlace* minigamePlaceBefore = easelPlayer->GetMinigamePlace();
+#if defined(PW_LINUX_NULL_RENDER)
+    PFEaselPlayer* placeUserBefore =
+      minigamePlaceBefore ? minigamePlaceBefore->CurrentEaselPlayer() : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroObjectId =
+      easelPlayer->GetObjectId();
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroPlaceBefore =
+      minigamePlaceBefore ? minigamePlaceBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigamePlaceUserBefore =
+      placeUserBefore ? placeUserBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroIsolatedBefore =
+      easelPlayer->IsIsolated() ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroFlagBefore =
+      easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameVisualStateBefore =
+      minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetVisualState()) : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigamePlacementApplyBefore =
+      minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetPlacementApplyType()) : -1;
+    const bool hadMinigame =
+      minigamePlaceBefore ||
+      easelPlayer->IsIsolated() ||
+      easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME);
+#endif
+
+    const bool leftMinigame = easelPlayer->OnLeaveMinigameCmd();
+#if !defined(PW_LINUX_NULL_RENDER)
+    (void)leftMinigame;
+#endif
+
+#if defined(PW_LINUX_NULL_RENDER)
+    PFMinigamePlace* minigamePlaceAfter = easelPlayer->GetMinigamePlace();
+    PFEaselPlayer* placeUserAfter =
+      minigamePlaceBefore ? minigamePlaceBefore->CurrentEaselPlayer() : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroPlaceAfter =
+      minigamePlaceAfter ? minigamePlaceAfter->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigamePlaceUserAfter =
+      placeUserAfter ? placeUserAfter->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroIsolatedAfter =
+      easelPlayer->IsIsolated() ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroFlagAfter =
+      easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigameVisualStateAfter =
+      minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetVisualState()) : -1;
+    g_linuxHeroGameplayCommandDiagnostics.leaveMinigamePlacementApplyAfter =
+      minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetPlacementApplyType()) : -1;
+    if (hadMinigame &&
+        leftMinigame &&
+        g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroPlaceAfter < 0 &&
+        g_linuxHeroGameplayCommandDiagnostics.leaveMinigamePlaceUserAfter < 0 &&
+        g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroIsolatedAfter == 0 &&
+        g_linuxHeroGameplayCommandDiagnostics.leaveMinigameHeroFlagAfter == 0)
+    {
+      ++g_linuxHeroGameplayCommandDiagnostics.leaveMinigameActionAccepted;
+    }
+#endif
   }
 
   NCore::WorldCommand* CreateCmdBuyConsumable( PFBaseHero* pHero, PFShop* pShop, int index, int slotIndex)
@@ -1105,6 +1245,18 @@ namespace NWorld
       &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetFaction,
       &g_linuxHeroGameplayCommandDiagnostics.useUnitTargetPlayerId,
       pUnit);
+    PFEaselPlayer* easelPlayer = dynamic_cast<PFEaselPlayer*>(pHero);
+    PFMinigamePlace* minigamePlace = dynamic_cast<PFMinigamePlace*>(pUnit);
+    PFMinigamePlace* heroMinigameBefore =
+      easelPlayer ? easelPlayer->GetMinigamePlace() : 0;
+    PFEaselPlayer* targetMinigameUserBefore =
+      minigamePlace ? minigamePlace->CurrentEaselPlayer() : 0;
+    g_linuxHeroGameplayCommandDiagnostics.useUnitHeroMinigameBefore =
+      heroMinigameBefore ? heroMinigameBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserBefore =
+      targetMinigameUserBefore ? targetMinigameUserBefore->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.useUnitHeroIsolatedBefore =
+      IsValid(pHero) && pHero->IsIsolated() ? 1 : 0;
 #endif
     const bool canUseUnit = IsUnitValid( pHero ) && IsUnitValid( pUnit ) && pUnit->CanBeUsedBy( pHero );
 #if defined(PW_LINUX_NULL_RENDER)
@@ -1112,13 +1264,36 @@ namespace NWorld
 #endif
     if ( canUseUnit )
     {
+#if defined(PW_LINUX_NULL_RENDER)
+      CObj<PFAbilityInstance> instance = pUnit->Use(pHero);
+      PFMinigamePlace* heroMinigameAfter =
+        easelPlayer ? easelPlayer->GetMinigamePlace() : 0;
+      PFEaselPlayer* targetMinigameUserAfter =
+        minigamePlace ? minigamePlace->CurrentEaselPlayer() : 0;
+      g_linuxHeroGameplayCommandDiagnostics.useUnitAbilityInstanceCreated =
+        instance ? 1 : 0;
+      g_linuxHeroGameplayCommandDiagnostics.useUnitHeroMinigameAfter =
+        heroMinigameAfter ? heroMinigameAfter->GetObjectId() : -1;
+      g_linuxHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserAfter =
+        targetMinigameUserAfter ? targetMinigameUserAfter->GetObjectId() : -1;
+      g_linuxHeroGameplayCommandDiagnostics.useUnitHeroIsolatedAfter =
+        IsValid(pHero) && pHero->IsIsolated() ? 1 : 0;
+      if (instance ||
+          g_linuxHeroGameplayCommandDiagnostics.useUnitHeroMinigameBefore !=
+            g_linuxHeroGameplayCommandDiagnostics.useUnitHeroMinigameAfter ||
+          g_linuxHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserBefore !=
+            g_linuxHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserAfter ||
+          g_linuxHeroGameplayCommandDiagnostics.useUnitHeroIsolatedBefore !=
+            g_linuxHeroGameplayCommandDiagnostics.useUnitHeroIsolatedAfter)
+      {
+        ++g_linuxHeroGameplayCommandDiagnostics.useUnitActionAccepted;
+      }
+#else
       if ( PFHeroUseUnitState* st = dynamic_cast<PFHeroUseUnitState*>( pHero->GetCurrentState() ) )
         if (st->GetUnit() == pUnit)
           return; // Ignore concurrent use command for the same unit
-#if defined(PW_LINUX_NULL_RENDER)
-      ++g_linuxHeroGameplayCommandDiagnostics.useUnitActionAccepted;
-#endif
       pHero->EnqueueState( new PFHeroUseUnitState( pHero, pUnit ), true );
+#endif
     }
   }
 
@@ -1152,6 +1327,7 @@ REGISTER_SAVELOAD_CLASS_NM( CmdRaiseFlag, NWorld );
 REGISTER_SAVELOAD_CLASS_NM( CmdBuyConsumable, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdMinimapSignal, NWorld)
 REGISTER_SAVELOAD_CLASS_NM( CmdInitMinigame, NWorld )
+REGISTER_SAVELOAD_CLASS_NM( CmdLeaveMinigame, NWorld )
 //REGISTER_SAVELOAD_CLASS_NM( CmdDenyBuilding, NWorld )
 //REGISTER_SAVELOAD_CLASS_NM( CmdEmote, NWorld )
 REGISTER_SAVELOAD_CLASS_NM( CmdCancelChannelling, NWorld )

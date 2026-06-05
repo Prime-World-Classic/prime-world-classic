@@ -85,6 +85,13 @@ namespace NWorld
     int useUnitTargetKind;
     int useUnitTargetFaction;
     int useUnitTargetPlayerId;
+    int useUnitAbilityInstanceCreated;
+    int useUnitHeroMinigameBefore;
+    int useUnitHeroMinigameAfter;
+    int useUnitTargetMinigameUserBefore;
+    int useUnitTargetMinigameUserAfter;
+    int useUnitHeroIsolatedBefore;
+    int useUnitHeroIsolatedAfter;
 
     int activateTalentCanChecks;
     int activateTalentCanAccepted;
@@ -167,6 +174,30 @@ namespace NWorld
     int initMinigameCanUse;
     int initMinigameBattleReady;
     int initMinigameObjectId;
+    int initMinigameHeroPlaceBefore;
+    int initMinigameHeroPlaceAfter;
+    int initMinigamePlaceUserBefore;
+    int initMinigamePlaceUserAfter;
+    int initMinigameHeroIsolatedBefore;
+    int initMinigameHeroIsolatedAfter;
+
+    int leaveMinigameCanChecks;
+    int leaveMinigameCanAccepted;
+    int leaveMinigameExecuteCalls;
+    int leaveMinigameActionAccepted;
+    int leaveMinigameHeroObjectId;
+    int leaveMinigameHeroPlaceBefore;
+    int leaveMinigameHeroPlaceAfter;
+    int leaveMinigamePlaceUserBefore;
+    int leaveMinigamePlaceUserAfter;
+    int leaveMinigameHeroIsolatedBefore;
+    int leaveMinigameHeroIsolatedAfter;
+    int leaveMinigameHeroFlagBefore;
+    int leaveMinigameHeroFlagAfter;
+    int leaveMinigameVisualStateBefore;
+    int leaveMinigameVisualStateAfter;
+    int leaveMinigamePlacementApplyBefore;
+    int leaveMinigamePlacementApplyAfter;
 
     int pickupObjectCanChecks;
     int pickupObjectCanAccepted;
@@ -203,6 +234,7 @@ namespace NWorld
   NCore::WorldCommand* CreateCmdMinimapSignal( PFBaseHero *pHero, PFBaseUnit* pSelected, Target const & target, NDb::EFaction faction, bool issuedByScript = false );
 
   NCore::WorldCommand* CreateCmdInitMinigame( PFEaselPlayer* easelPlayer, INT32 objId );
+  NCore::WorldCommand* CreateCmdLeaveMinigame( PFEaselPlayer* easelPlayer );
 
   //NCore::WorldCommand* CreateCmdDenyBuilding( PFBaseHero * pHero, PFBuilding* pBuilding );
   //NCore::WorldCommand* CreateCmdEmote( PFBaseHero* pHero, NDb::EEmotion emotion );

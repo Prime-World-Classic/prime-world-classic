@@ -45,6 +45,8 @@ public:
   const Placement& GetMinigamePlacement() const;
 
 	  const NDb::Ptr<NDb::MinigamePlace>& GetMinigamePlaceDB() const { return minigamePlaceDB; }
+  NDb::MinigameVisualState GetVisualState() const { return visualState; }
+  NDb::ChangesApplyType GetPlacementApplyType() const { return placementApplyType; }
 
   const string & MinigameId() const { return minigameId; }
 

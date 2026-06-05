@@ -6,6 +6,7 @@
 #include "PFMinigamePlace.h"
 #include "PFWorld.h"
 #include "PFHero.h"
+#include "PFEaselPlayer.h"
 
 namespace NWorld
 {
@@ -39,14 +40,18 @@ PFMinigamePlace::~PFMinigamePlace()
 {
 }
 
-CObj<PFAbilityInstance> PFMinigamePlace::Use(PFBaseUnit*)
+CObj<PFAbilityInstance> PFMinigamePlace::Use(PFBaseUnit* pUser)
 {
+  PFEaselPlayer* easelPlayer = dynamic_cast<PFEaselPlayer*>(pUser);
+  if (easelPlayer && CanBeUsedBy(easelPlayer))
+    easelPlayer->StartMinigame(this);
+
   return 0;
 }
 
-bool PFMinigamePlace::CanBeUsedBy(PFBaseHero const*) const
+bool PFMinigamePlace::CanBeUsedBy(PFBaseHero const* pHero) const
 {
-  return CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT) == false;
+  return pHero && !pHero->IsMounted() && CheckFlagType(NDb::UNITFLAGTYPE_FORBIDINTERACT) == false;
 }
 
 bool PFMinigamePlace::CanBeUsedBy(PFBaseUnit const* pUnit) const
@@ -61,10 +66,12 @@ void PFMinigamePlace::Reset()
 
 void PFMinigamePlace::OnPlayerEnter()
 {
+  ChangeVisualState(NDb::MINIGAMEVISUALSTATE_EASEL_LOBBY, NDb::MINIGAMECLIENTTYPE_ANY);
 }
 
 void PFMinigamePlace::OnPlayerLeave()
 {
+  ChangeVisualState(NDb::MINIGAMEVISUALSTATE_SESSION, NDb::MINIGAMECLIENTTYPE_ANY);
 }
 
 const Placement& PFMinigamePlace::GetMinigamePlacement() const

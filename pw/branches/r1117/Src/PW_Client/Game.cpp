@@ -3954,6 +3954,48 @@ struct LinuxBootstrapScreenRuntime
   int transceiverHeroInitMinigamePlayerId;
   int transceiverHeroInitMinigameClientId;
   int transceiverHeroInitMinigameObjectId;
+  bool transceiverHeroLeaveMinigameRuntimeCommandSent;
+  size_t transceiverHeroLeaveMinigameRuntimeCommandsSent;
+  int transceiverHeroLeaveMinigamePlayerId;
+  int transceiverHeroLeaveMinigameClientId;
+  int transceiverHeroLeaveMinigameObjectId;
+  bool minigameLeaveProofAttempted;
+  bool minigameLeaveProofCompleted;
+  int minigameLeaveProofHeroObjectId;
+  int minigameLeaveProofHeroPlaceBefore;
+  int minigameLeaveProofHeroPlaceAfter;
+  int minigameLeaveProofPlaceUserBefore;
+  int minigameLeaveProofPlaceUserAfter;
+  int minigameLeaveProofHeroIsolatedBefore;
+  int minigameLeaveProofHeroIsolatedAfter;
+  int minigameLeaveProofHeroFlagBefore;
+  int minigameLeaveProofHeroFlagAfter;
+  int minigameLeaveProofVisualStateBefore;
+  int minigameLeaveProofVisualStateAfter;
+  int minigameLeaveProofPlacementApplyBefore;
+  int minigameLeaveProofPlacementApplyAfter;
+  int minigameLeaveProofMinigamesBefore;
+  int minigameLeaveProofMinigamesAfter;
+  int minigameLeaveProofMinigamesLocalBefore;
+  int minigameLeaveProofMinigamesLocalAfter;
+  int minigameLeaveProofMinigamesSessionBefore;
+  int minigameLeaveProofMinigamesSessionAfter;
+  int minigameLeaveProofMinigamesMainBefore;
+  int minigameLeaveProofMinigamesMainAfter;
+  int minigameLeaveProofMinigamesMainWorldBefore;
+  int minigameLeaveProofMinigamesMainWorldAfter;
+  float minigameLeaveProofMinigamesOpacityBefore;
+  float minigameLeaveProofMinigamesOpacityAfter;
+  int minigameLeaveProofSingleCountBefore;
+  int minigameLeaveProofSingleCountAfter;
+  int minigameLeaveProofCurrentSingleBefore;
+  int minigameLeaveProofCurrentSingleAfter;
+  int minigameLeaveProofIndexedSingleBefore;
+  int minigameLeaveProofIndexedSingleAfter;
+  int minigameLeaveProofNamedSingleBefore;
+  int minigameLeaveProofNamedSingleAfter;
+  int minigameLeaveProofSingleIdBefore;
+  int minigameLeaveProofSingleIdAfter;
   bool transceiverHeroPickupObjectRuntimeCommandSent;
   size_t transceiverHeroPickupObjectRuntimeCommandsSent;
   int transceiverHeroPickupObjectPlayerId;
@@ -4417,6 +4459,48 @@ struct LinuxBootstrapScreenRuntime
       transceiverHeroInitMinigamePlayerId(-1),
       transceiverHeroInitMinigameClientId(-1),
       transceiverHeroInitMinigameObjectId(-1),
+      transceiverHeroLeaveMinigameRuntimeCommandSent(false),
+      transceiverHeroLeaveMinigameRuntimeCommandsSent(0),
+      transceiverHeroLeaveMinigamePlayerId(-1),
+      transceiverHeroLeaveMinigameClientId(-1),
+      transceiverHeroLeaveMinigameObjectId(-1),
+      minigameLeaveProofAttempted(false),
+      minigameLeaveProofCompleted(false),
+      minigameLeaveProofHeroObjectId(-1),
+      minigameLeaveProofHeroPlaceBefore(-1),
+      minigameLeaveProofHeroPlaceAfter(-1),
+      minigameLeaveProofPlaceUserBefore(-1),
+      minigameLeaveProofPlaceUserAfter(-1),
+      minigameLeaveProofHeroIsolatedBefore(0),
+      minigameLeaveProofHeroIsolatedAfter(0),
+      minigameLeaveProofHeroFlagBefore(0),
+      minigameLeaveProofHeroFlagAfter(0),
+      minigameLeaveProofVisualStateBefore(-1),
+      minigameLeaveProofVisualStateAfter(-1),
+      minigameLeaveProofPlacementApplyBefore(-1),
+      minigameLeaveProofPlacementApplyAfter(-1),
+      minigameLeaveProofMinigamesBefore(0),
+      minigameLeaveProofMinigamesAfter(0),
+      minigameLeaveProofMinigamesLocalBefore(0),
+      minigameLeaveProofMinigamesLocalAfter(0),
+      minigameLeaveProofMinigamesSessionBefore(0),
+      minigameLeaveProofMinigamesSessionAfter(0),
+      minigameLeaveProofMinigamesMainBefore(0),
+      minigameLeaveProofMinigamesMainAfter(0),
+      minigameLeaveProofMinigamesMainWorldBefore(0),
+      minigameLeaveProofMinigamesMainWorldAfter(0),
+      minigameLeaveProofMinigamesOpacityBefore(-1.0f),
+      minigameLeaveProofMinigamesOpacityAfter(-1.0f),
+      minigameLeaveProofSingleCountBefore(-1),
+      minigameLeaveProofSingleCountAfter(-1),
+      minigameLeaveProofCurrentSingleBefore(0),
+      minigameLeaveProofCurrentSingleAfter(0),
+      minigameLeaveProofIndexedSingleBefore(0),
+      minigameLeaveProofIndexedSingleAfter(0),
+      minigameLeaveProofNamedSingleBefore(0),
+      minigameLeaveProofNamedSingleAfter(0),
+      minigameLeaveProofSingleIdBefore(0),
+      minigameLeaveProofSingleIdAfter(0),
       transceiverHeroPickupObjectRuntimeCommandSent(false),
       transceiverHeroPickupObjectRuntimeCommandsSent(0),
       transceiverHeroPickupObjectPlayerId(-1),
@@ -18081,6 +18165,7 @@ static const DWORD linuxBootstrapUseConsumableCommandTypeId = 0x0F5CC401;
 static const DWORD linuxBootstrapBuyConsumableCommandTypeId = 0x2C61F340;
 static const DWORD linuxBootstrapRaiseFlagCommandTypeId = 0x0B76AAC0;
 static const DWORD linuxBootstrapInitMinigameCommandTypeId = 0x9D62D440;
+static const DWORD linuxBootstrapLeaveMinigameCommandTypeId = 0x9D62D441;
 static const DWORD linuxBootstrapPickupObjectCommandTypeId = 0xA05CCB40;
 static const float linuxBootstrapTimescaleCommandValue = 1.05f;
 
@@ -31433,16 +31518,14 @@ bool MaybeSendLinuxBootstrapHeroInitMinigameCommand(
     return false;
   }
 
-  const LinuxBootstrapCommandGate gates[] =
-  {
-    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
-    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
-    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
-    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
-    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
-    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId }
-  };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!runtime->transceiverHeroActivateTalentRuntimeCommandSent ||
+      !runtime->transceiverHeroUseTalentRuntimeCommandSent ||
+      !runtime->transceiverHeroUsePortalRuntimeCommandSent ||
+      !runtime->transceiverHeroBuyConsumableRuntimeCommandSent ||
+      !runtime->transceiverHeroUseConsumableRuntimeCommandSent ||
+      !runtime->transceiverHeroRaiseFlagRuntimeCommandSent ||
+      !runtime->transceiverHeroPickupObjectRuntimeCommandSent ||
+      !runtime->mapPreviewCommandMoveProofSent)
   {
     return false;
   }
@@ -31458,6 +31541,12 @@ bool MaybeSendLinuxBootstrapHeroInitMinigameCommand(
 
   NWorld::PFMinigamePlace* minigamePlace = world->FindLinuxFirstAvailableMinigamePlaceForHero(easelPlayer);
   if (!minigamePlace)
+  {
+    return false;
+  }
+
+  NWorld::PFAIWorld* aiWorld = world->GetAIWorld();
+  if (aiWorld && aiWorld->GetBattleStartDelay() > 0.0f)
   {
     return false;
   }
@@ -31489,6 +31578,204 @@ bool MaybeSendLinuxBootstrapHeroInitMinigameCommand(
   return true;
 }
 
+bool MaybeRunLinuxBootstrapMinigameLeaveProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || runtime->minigameLeaveProofCompleted)
+  {
+    return false;
+  }
+
+  if (!runtime->minigameLeaveProofAttempted)
+  {
+    if (!runtime->transceiver ||
+        !runtime->transceiverHeroInitMinigameRuntimeCommandSent ||
+        world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapInitMinigameCommandTypeId)
+    {
+      return false;
+    }
+
+    int playerId = -1;
+    int clientId = -1;
+    NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+    NWorld::PFEaselPlayer* easelPlayer = dynamic_cast<NWorld::PFEaselPlayer*>(hero);
+    if (!easelPlayer)
+    {
+      return false;
+    }
+
+    NWorld::PFMinigamePlace* minigamePlaceBefore = easelPlayer->GetMinigamePlace();
+    if (!minigamePlaceBefore)
+    {
+      return false;
+    }
+
+    NCore::WorldCommand* leaveMinigameCommand = NWorld::CreateCmdLeaveMinigame(easelPlayer);
+    if (!leaveMinigameCommand)
+    {
+      return false;
+    }
+
+    NWorld::PFEaselPlayer* placeUserBefore = minigamePlaceBefore->CurrentEaselPlayer();
+    runtime->minigameLeaveProofAttempted = true;
+    runtime->minigameLeaveProofHeroObjectId = easelPlayer->GetObjectId();
+    runtime->minigameLeaveProofHeroPlaceBefore = minigamePlaceBefore->GetObjectId();
+    runtime->minigameLeaveProofPlaceUserBefore =
+      placeUserBefore ? placeUserBefore->GetObjectId() : -1;
+    runtime->minigameLeaveProofHeroIsolatedBefore = easelPlayer->IsIsolated() ? 1 : 0;
+    runtime->minigameLeaveProofHeroFlagBefore =
+      easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
+    runtime->minigameLeaveProofVisualStateBefore =
+      static_cast<int>(minigamePlaceBefore->GetVisualState());
+    runtime->minigameLeaveProofPlacementApplyBefore =
+      static_cast<int>(minigamePlaceBefore->GetPlacementApplyType());
+    PF_Minigames::IMinigames* minigamesBefore = easelPlayer->GetMinigames();
+    runtime->minigameLeaveProofMinigamesBefore = minigamesBefore ? 1 : 0;
+    runtime->minigameLeaveProofMinigamesLocalBefore =
+      minigamesBefore && minigamesBefore->IsLocal() ? 1 : 0;
+    runtime->minigameLeaveProofMinigamesSessionBefore =
+      minigamesBefore && minigamesBefore->GetWorldSessionInterface() == easelPlayer ? 1 : 0;
+    PF_Minigames::IMinigamesMain* minigamesMainBefore =
+      minigamesBefore ? minigamesBefore->GetMain() : 0;
+    runtime->minigameLeaveProofMinigamesMainBefore =
+      minigamesMainBefore ? 1 : 0;
+    runtime->minigameLeaveProofMinigamesMainWorldBefore =
+      minigamesMainBefore && minigamesMainBefore->GetWorld() == world ? 1 : 0;
+    runtime->minigameLeaveProofMinigamesOpacityBefore =
+      minigamesBefore ? minigamesBefore->GetMinigamePlaceOpacity() : -1.0f;
+    runtime->minigameLeaveProofSingleCountBefore =
+      minigamesBefore ? minigamesBefore->MinigamesCount() : -1;
+    PF_Minigames::ISingleMinigame* currentSingleBefore =
+      minigamesBefore ? minigamesBefore->GetCurrentMinigame() : 0;
+    PF_Minigames::ISingleMinigame* indexedSingleBefore =
+      minigamesBefore ? minigamesBefore->GetMinigame(0) : 0;
+    PF_Minigames::ISingleMinigame* namedSingleBefore =
+      minigamesBefore ? minigamesBefore->GetMinigame(minigamePlaceBefore->MinigameId().c_str()) : 0;
+    const char* minigameIdBefore =
+      minigamesBefore ? minigamesBefore->GetMinigameId(0) : 0;
+    runtime->minigameLeaveProofCurrentSingleBefore = currentSingleBefore ? 1 : 0;
+    runtime->minigameLeaveProofIndexedSingleBefore = indexedSingleBefore ? 1 : 0;
+    runtime->minigameLeaveProofNamedSingleBefore = namedSingleBefore ? 1 : 0;
+    runtime->minigameLeaveProofSingleIdBefore =
+      minigameIdBefore && strcmp(minigameIdBefore, minigamePlaceBefore->MinigameId().c_str()) == 0 ? 1 : 0;
+
+    runtime->transceiver->SendCommand(leaveMinigameCommand, true);
+    runtime->transceiverHeroLeaveMinigameRuntimeCommandSent = true;
+    ++runtime->transceiverHeroLeaveMinigameRuntimeCommandsSent;
+    ++runtime->transceiverRuntimeCommandsSent;
+    ++runtime->transceiverProductionRuntimeCommandsSent;
+    runtime->transceiverHeroLeaveMinigamePlayerId = playerId;
+    runtime->transceiverHeroLeaveMinigameClientId = clientId;
+    runtime->transceiverHeroLeaveMinigameObjectId = minigamePlaceBefore->GetObjectId();
+    RecordLinuxMapPreviewActionCommand(
+      runtime,
+      "leave-minigame",
+      "bootstrap-command-chain",
+      hero->GetPosition().AsVec2D(),
+      minigamePlaceBefore->GetPosition().AsVec2D(),
+      playerId,
+      clientId,
+      -1,
+      -1);
+    return true;
+  }
+
+  if (world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapLeaveMinigameCommandTypeId)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFEaselPlayer* easelPlayer = dynamic_cast<NWorld::PFEaselPlayer*>(hero);
+  if (!easelPlayer)
+  {
+    return false;
+  }
+
+  NWorld::PFMinigamePlace* minigamePlaceBefore =
+    dynamic_cast<NWorld::PFMinigamePlace*>(
+      world->GetObjectById(runtime->minigameLeaveProofHeroPlaceBefore));
+
+  NWorld::PFMinigamePlace* minigamePlaceAfter = easelPlayer->GetMinigamePlace();
+  NWorld::PFEaselPlayer* placeUserAfter =
+    minigamePlaceBefore ? minigamePlaceBefore->CurrentEaselPlayer() : 0;
+  runtime->minigameLeaveProofHeroPlaceAfter =
+    minigamePlaceAfter ? minigamePlaceAfter->GetObjectId() : -1;
+  runtime->minigameLeaveProofPlaceUserAfter =
+    placeUserAfter ? placeUserAfter->GetObjectId() : -1;
+  runtime->minigameLeaveProofHeroIsolatedAfter = easelPlayer->IsIsolated() ? 1 : 0;
+  runtime->minigameLeaveProofHeroFlagAfter =
+    easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
+  runtime->minigameLeaveProofVisualStateAfter =
+    minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetVisualState()) : -1;
+  runtime->minigameLeaveProofPlacementApplyAfter =
+    minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetPlacementApplyType()) : -1;
+  PF_Minigames::IMinigames* minigamesAfter = easelPlayer->GetMinigames();
+  runtime->minigameLeaveProofMinigamesAfter = minigamesAfter ? 1 : 0;
+  runtime->minigameLeaveProofMinigamesLocalAfter =
+    minigamesAfter && minigamesAfter->IsLocal() ? 1 : 0;
+  runtime->minigameLeaveProofMinigamesSessionAfter =
+    minigamesAfter && minigamesAfter->GetWorldSessionInterface() == easelPlayer ? 1 : 0;
+  PF_Minigames::IMinigamesMain* minigamesMainAfter =
+    minigamesAfter ? minigamesAfter->GetMain() : 0;
+  runtime->minigameLeaveProofMinigamesMainAfter =
+    minigamesMainAfter ? 1 : 0;
+  runtime->minigameLeaveProofMinigamesMainWorldAfter =
+    minigamesMainAfter && minigamesMainAfter->GetWorld() == world ? 1 : 0;
+  runtime->minigameLeaveProofMinigamesOpacityAfter =
+    minigamesAfter ? minigamesAfter->GetMinigamePlaceOpacity() : -1.0f;
+  runtime->minigameLeaveProofSingleCountAfter =
+    minigamesAfter ? minigamesAfter->MinigamesCount() : -1;
+  PF_Minigames::ISingleMinigame* currentSingleAfter =
+    minigamesAfter ? minigamesAfter->GetCurrentMinigame() : 0;
+  PF_Minigames::ISingleMinigame* indexedSingleAfter =
+    minigamesAfter ? minigamesAfter->GetMinigame(0) : 0;
+  PF_Minigames::ISingleMinigame* namedSingleAfter =
+    minigamesAfter && minigamePlaceBefore ? minigamesAfter->GetMinigame(minigamePlaceBefore->MinigameId().c_str()) : 0;
+  const char* minigameIdAfter =
+    minigamesAfter ? minigamesAfter->GetMinigameId(0) : 0;
+  runtime->minigameLeaveProofCurrentSingleAfter = currentSingleAfter ? 1 : 0;
+  runtime->minigameLeaveProofIndexedSingleAfter = indexedSingleAfter ? 1 : 0;
+  runtime->minigameLeaveProofNamedSingleAfter = namedSingleAfter ? 1 : 0;
+  runtime->minigameLeaveProofSingleIdAfter =
+    minigameIdAfter && minigamePlaceBefore && strcmp(minigameIdAfter, minigamePlaceBefore->MinigameId().c_str()) == 0 ? 1 : 0;
+  runtime->minigameLeaveProofCompleted =
+    runtime->minigameLeaveProofHeroPlaceAfter < 0 &&
+    runtime->minigameLeaveProofPlaceUserAfter < 0 &&
+    runtime->minigameLeaveProofHeroIsolatedAfter == 0 &&
+    runtime->minigameLeaveProofHeroFlagAfter == 0 &&
+    runtime->minigameLeaveProofMinigamesBefore == 1 &&
+    runtime->minigameLeaveProofMinigamesAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesSessionBefore == 1 &&
+    runtime->minigameLeaveProofMinigamesSessionAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesMainBefore == 1 &&
+    runtime->minigameLeaveProofMinigamesMainAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesMainWorldBefore == 1 &&
+    runtime->minigameLeaveProofMinigamesMainWorldAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesOpacityBefore > 0.5f &&
+    runtime->minigameLeaveProofMinigamesOpacityAfter <= 0.0f &&
+    runtime->minigameLeaveProofSingleCountBefore == 1 &&
+    runtime->minigameLeaveProofSingleCountAfter == 1 &&
+    runtime->minigameLeaveProofCurrentSingleBefore == 1 &&
+    runtime->minigameLeaveProofCurrentSingleAfter == 0 &&
+    runtime->minigameLeaveProofIndexedSingleBefore == 1 &&
+    runtime->minigameLeaveProofIndexedSingleAfter == 1 &&
+    runtime->minigameLeaveProofNamedSingleBefore == 1 &&
+    runtime->minigameLeaveProofNamedSingleAfter == 1 &&
+    runtime->minigameLeaveProofSingleIdBefore == 1 &&
+    runtime->minigameLeaveProofSingleIdAfter == 1 &&
+    runtime->minigameLeaveProofVisualStateAfter ==
+      static_cast<int>(NDb::MINIGAMEVISUALSTATE_SESSION);
+
+  (void)playerId;
+  (void)clientId;
+  return runtime->minigameLeaveProofCompleted;
+}
+
 bool MaybeSendLinuxBootstrapHeroPickupObjectCommand(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world
@@ -31506,8 +31793,7 @@ bool MaybeSendLinuxBootstrapHeroPickupObjectCommand(
     { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
     { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
     { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
-    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
-    { runtime->transceiverHeroInitMinigameRuntimeCommandSent, linuxBootstrapInitMinigameCommandTypeId }
+    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId }
   };
   if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
   {
@@ -31576,7 +31862,6 @@ bool MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(
     { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
     { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
     { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
-    { runtime->transceiverHeroInitMinigameRuntimeCommandSent, linuxBootstrapInitMinigameCommandTypeId },
     { runtime->transceiverHeroPickupObjectRuntimeCommandSent, linuxBootstrapPickupObjectCommandTypeId }
   };
   if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
@@ -31967,6 +32252,48 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->transceiverHeroInitMinigamePlayerId = -1;
     runtime->transceiverHeroInitMinigameClientId = -1;
     runtime->transceiverHeroInitMinigameObjectId = -1;
+    runtime->transceiverHeroLeaveMinigameRuntimeCommandSent = false;
+    runtime->transceiverHeroLeaveMinigameRuntimeCommandsSent = 0;
+    runtime->transceiverHeroLeaveMinigamePlayerId = -1;
+    runtime->transceiverHeroLeaveMinigameClientId = -1;
+    runtime->transceiverHeroLeaveMinigameObjectId = -1;
+    runtime->minigameLeaveProofAttempted = false;
+    runtime->minigameLeaveProofCompleted = false;
+    runtime->minigameLeaveProofHeroObjectId = -1;
+    runtime->minigameLeaveProofHeroPlaceBefore = -1;
+    runtime->minigameLeaveProofHeroPlaceAfter = -1;
+    runtime->minigameLeaveProofPlaceUserBefore = -1;
+    runtime->minigameLeaveProofPlaceUserAfter = -1;
+    runtime->minigameLeaveProofHeroIsolatedBefore = 0;
+    runtime->minigameLeaveProofHeroIsolatedAfter = 0;
+    runtime->minigameLeaveProofHeroFlagBefore = 0;
+    runtime->minigameLeaveProofHeroFlagAfter = 0;
+    runtime->minigameLeaveProofVisualStateBefore = -1;
+    runtime->minigameLeaveProofVisualStateAfter = -1;
+    runtime->minigameLeaveProofPlacementApplyBefore = -1;
+    runtime->minigameLeaveProofPlacementApplyAfter = -1;
+    runtime->minigameLeaveProofMinigamesBefore = 0;
+    runtime->minigameLeaveProofMinigamesAfter = 0;
+    runtime->minigameLeaveProofMinigamesLocalBefore = 0;
+    runtime->minigameLeaveProofMinigamesLocalAfter = 0;
+    runtime->minigameLeaveProofMinigamesSessionBefore = 0;
+    runtime->minigameLeaveProofMinigamesSessionAfter = 0;
+    runtime->minigameLeaveProofMinigamesMainBefore = 0;
+    runtime->minigameLeaveProofMinigamesMainAfter = 0;
+    runtime->minigameLeaveProofMinigamesMainWorldBefore = 0;
+    runtime->minigameLeaveProofMinigamesMainWorldAfter = 0;
+    runtime->minigameLeaveProofMinigamesOpacityBefore = -1.0f;
+    runtime->minigameLeaveProofMinigamesOpacityAfter = -1.0f;
+    runtime->minigameLeaveProofSingleCountBefore = -1;
+    runtime->minigameLeaveProofSingleCountAfter = -1;
+    runtime->minigameLeaveProofCurrentSingleBefore = 0;
+    runtime->minigameLeaveProofCurrentSingleAfter = 0;
+    runtime->minigameLeaveProofIndexedSingleBefore = 0;
+    runtime->minigameLeaveProofIndexedSingleAfter = 0;
+    runtime->minigameLeaveProofNamedSingleBefore = 0;
+    runtime->minigameLeaveProofNamedSingleAfter = 0;
+    runtime->minigameLeaveProofSingleIdBefore = 0;
+    runtime->minigameLeaveProofSingleIdAfter = 0;
     runtime->transceiverHeroPickupObjectRuntimeCommandSent = false;
     runtime->transceiverHeroPickupObjectRuntimeCommandsSent = 0;
     runtime->transceiverHeroPickupObjectPlayerId = -1;
@@ -32232,9 +32559,10 @@ void DriveLinuxBootstrapGameScheduler(
       MaybeSendLinuxBootstrapHeroBuyConsumableCommand(runtime, world);
       MaybeSendLinuxBootstrapHeroUseConsumableCommand(runtime, world);
       MaybeSendLinuxBootstrapHeroRaiseFlagCommand(runtime, world);
-      MaybeSendLinuxBootstrapHeroInitMinigameCommand(runtime, world);
       MaybeSendLinuxBootstrapHeroPickupObjectCommand(runtime, world);
       MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(runtime, world);
+      MaybeSendLinuxBootstrapHeroInitMinigameCommand(runtime, world);
+      MaybeRunLinuxBootstrapMinigameLeaveProof(runtime, world);
     }
 
     for (size_t stepIndex = 0;
@@ -47320,6 +47648,75 @@ void AppendRuntimeInputLog(
           << screenRuntime.transceiverHeroInitMinigameClientId << "\n";
   logFile << "  finalGameTransceiverHeroInitMinigameObjectId="
           << screenRuntime.transceiverHeroInitMinigameObjectId << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigameSent="
+          << (screenRuntime.transceiverHeroLeaveMinigameRuntimeCommandSent ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigameCommandsSent="
+          << screenRuntime.transceiverHeroLeaveMinigameRuntimeCommandsSent << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigameTypeId="
+          << NStr::StrFmt("0x%08X", linuxBootstrapLeaveMinigameCommandTypeId) << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigamePlayerId="
+          << screenRuntime.transceiverHeroLeaveMinigamePlayerId << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigameClientId="
+          << screenRuntime.transceiverHeroLeaveMinigameClientId << "\n";
+  logFile << "  finalGameTransceiverHeroLeaveMinigameObjectId="
+          << screenRuntime.transceiverHeroLeaveMinigameObjectId << "\n";
+  logFile << "  finalGameMinigameLeaveProofAttempted="
+          << (screenRuntime.minigameLeaveProofAttempted ? "yes" : "no") << "\n";
+  logFile << "  finalGameMinigameLeaveProofCompleted="
+          << (screenRuntime.minigameLeaveProofCompleted ? "yes" : "no") << "\n";
+  logFile << "  finalGameMinigameLeaveProofHeroObjectId="
+          << screenRuntime.minigameLeaveProofHeroObjectId << "\n";
+  logFile << "  finalGameMinigameLeaveProofHeroPlace="
+          << screenRuntime.minigameLeaveProofHeroPlaceBefore << "->"
+          << screenRuntime.minigameLeaveProofHeroPlaceAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofPlaceUser="
+          << screenRuntime.minigameLeaveProofPlaceUserBefore << "->"
+          << screenRuntime.minigameLeaveProofPlaceUserAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofHeroIsolated="
+          << screenRuntime.minigameLeaveProofHeroIsolatedBefore << "->"
+          << screenRuntime.minigameLeaveProofHeroIsolatedAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofHeroFlag="
+          << screenRuntime.minigameLeaveProofHeroFlagBefore << "->"
+          << screenRuntime.minigameLeaveProofHeroFlagAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofVisualState="
+          << screenRuntime.minigameLeaveProofVisualStateBefore << "->"
+          << screenRuntime.minigameLeaveProofVisualStateAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofPlacementApply="
+          << screenRuntime.minigameLeaveProofPlacementApplyBefore << "->"
+          << screenRuntime.minigameLeaveProofPlacementApplyAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigames="
+          << screenRuntime.minigameLeaveProofMinigamesBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesLocal="
+          << screenRuntime.minigameLeaveProofMinigamesLocalBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesLocalAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesSession="
+          << screenRuntime.minigameLeaveProofMinigamesSessionBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesSessionAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesMain="
+          << screenRuntime.minigameLeaveProofMinigamesMainBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesMainAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesMainWorld="
+          << screenRuntime.minigameLeaveProofMinigamesMainWorldBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesMainWorldAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesOpacity="
+          << screenRuntime.minigameLeaveProofMinigamesOpacityBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesOpacityAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofSingleCount="
+          << screenRuntime.minigameLeaveProofSingleCountBefore << "->"
+          << screenRuntime.minigameLeaveProofSingleCountAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofCurrentSingle="
+          << screenRuntime.minigameLeaveProofCurrentSingleBefore << "->"
+          << screenRuntime.minigameLeaveProofCurrentSingleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofIndexedSingle="
+          << screenRuntime.minigameLeaveProofIndexedSingleBefore << "->"
+          << screenRuntime.minigameLeaveProofIndexedSingleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofNamedSingle="
+          << screenRuntime.minigameLeaveProofNamedSingleBefore << "->"
+          << screenRuntime.minigameLeaveProofNamedSingleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofSingleId="
+          << screenRuntime.minigameLeaveProofSingleIdBefore << "->"
+          << screenRuntime.minigameLeaveProofSingleIdAfter << "\n";
   logFile << "  finalGameTransceiverHeroPickupObjectSent="
           << (screenRuntime.transceiverHeroPickupObjectRuntimeCommandSent ? "yes" : "no") << "\n";
   logFile << "  finalGameTransceiverHeroPickupObjectCommandsSent="
@@ -47749,7 +48146,14 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.useUnitTargetObjectId << "/"
             << finalHeroGameplayCommandDiagnostics.useUnitTargetKind << "/"
             << finalHeroGameplayCommandDiagnostics.useUnitTargetFaction << "/"
-            << finalHeroGameplayCommandDiagnostics.useUnitTargetPlayerId << "\n";
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetPlayerId << " state="
+            << finalHeroGameplayCommandDiagnostics.useUnitAbilityInstanceCreated << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitHeroMinigameBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useUnitHeroMinigameAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useUnitTargetMinigameUserAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.useUnitHeroIsolatedBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.useUnitHeroIsolatedAfter << "\n";
     logFile << "  finalHeroGameplayTalent="
             << finalHeroGameplayCommandDiagnostics.activateTalentCanChecks << "/"
             << finalHeroGameplayCommandDiagnostics.activateTalentCanAccepted << "/"
@@ -47826,7 +48230,13 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.initMinigameAvailable << "/"
             << finalHeroGameplayCommandDiagnostics.initMinigameCanUse << "/"
             << finalHeroGameplayCommandDiagnostics.initMinigameBattleReady << " object="
-            << finalHeroGameplayCommandDiagnostics.initMinigameObjectId << " pickup="
+            << finalHeroGameplayCommandDiagnostics.initMinigameObjectId << " state="
+            << finalHeroGameplayCommandDiagnostics.initMinigameHeroPlaceBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.initMinigameHeroPlaceAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigamePlaceUserBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.initMinigamePlaceUserAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.initMinigameHeroIsolatedAfter << " pickup="
             << finalHeroGameplayCommandDiagnostics.pickupObjectCanChecks << "/"
             << finalHeroGameplayCommandDiagnostics.pickupObjectCanAccepted << "/"
             << finalHeroGameplayCommandDiagnostics.pickupObjectExecuteCalls << "/"
@@ -49892,6 +50302,104 @@ int main(int argc, char** argv)
     static_cast<double>(heroMoveCommandDiagnostics.lastAfterY));
   const NWorld::LinuxHeroGameplayCommandDiagnostics heroGameplayCommandDiagnostics =
     NWorld::GetLinuxHeroGameplayCommandDiagnostics();
+  {
+    NWorld::PFWorld* finalWorld =
+      dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr());
+    int minigameGatePlayerId = -1;
+    int minigameGateClientId = -1;
+    NWorld::PFBaseHero* minigameGateHero =
+      FindLinuxBootstrapControlledHero(&screenRuntime, finalWorld, &minigameGatePlayerId, &minigameGateClientId);
+    NWorld::PFEaselPlayer* minigameGateEasel =
+      dynamic_cast<NWorld::PFEaselPlayer*>(minigameGateHero);
+    NWorld::PFMinigamePlace* minigameGatePlace =
+      finalWorld && minigameGateEasel
+        ? finalWorld->FindLinuxFirstAvailableMinigamePlaceForHero(minigameGateEasel)
+        : 0;
+    NWorld::PFAIWorld* minigameGateAIWorld = finalWorld ? finalWorld->GetAIWorld() : 0;
+    const float minigameGateBattleDelay =
+      minigameGateAIWorld ? minigameGateAIWorld->GetBattleStartDelay() : -1.0f;
+    fprintf(stdout, "Final minigame send gate: prereq=%d/%d/%d/%d/%d/%d/%d/%d hero=%d/%d easel=%d battleDelay=%.2f place=%d available=%d canUse=%d sent=%d commands=%lu\n",
+      screenRuntime.transceiverHeroActivateTalentRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroUseTalentRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroUsePortalRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroBuyConsumableRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroUseConsumableRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroRaiseFlagRuntimeCommandSent ? 1 : 0,
+      screenRuntime.transceiverHeroPickupObjectRuntimeCommandSent ? 1 : 0,
+      screenRuntime.mapPreviewCommandMoveProofSent ? 1 : 0,
+      minigameGateHero ? minigameGateHero->GetObjectId() : -1,
+      minigameGatePlayerId,
+      minigameGateEasel ? 1 : 0,
+      static_cast<double>(minigameGateBattleDelay),
+      minigameGatePlace ? minigameGatePlace->GetObjectId() : -1,
+      minigameGatePlace && minigameGatePlace->IsAvailable() ? 1 : 0,
+      minigameGatePlace && minigameGatePlace->CanBeUsedBy(minigameGateEasel) ? 1 : 0,
+      screenRuntime.transceiverHeroInitMinigameRuntimeCommandSent ? 1 : 0,
+      static_cast<unsigned long>(screenRuntime.transceiverHeroInitMinigameRuntimeCommandsSent));
+  }
+  fprintf(stdout, "Final minigame leave command: sent=%d commands=%lu type=0x%08X player=%d client=%d object=%d\n",
+    screenRuntime.transceiverHeroLeaveMinigameRuntimeCommandSent ? 1 : 0,
+    static_cast<unsigned long>(screenRuntime.transceiverHeroLeaveMinigameRuntimeCommandsSent),
+    static_cast<unsigned int>(linuxBootstrapLeaveMinigameCommandTypeId),
+    screenRuntime.transceiverHeroLeaveMinigamePlayerId,
+    screenRuntime.transceiverHeroLeaveMinigameClientId,
+    screenRuntime.transceiverHeroLeaveMinigameObjectId);
+  fprintf(stdout, "Final minigame leave proof: attempted=%d completed=%d hero=%d state=%d->%d/%d->%d/%d->%d flag=%d->%d visual=%d->%d placement=%d->%d minigames=%d->%d local=%d->%d session=%d->%d main=%d->%d/%d->%d opacity=%.2f->%.2f single=count:%d->%d/current:%d->%d/index:%d->%d/name:%d->%d/id:%d->%d\n",
+    screenRuntime.minigameLeaveProofAttempted ? 1 : 0,
+    screenRuntime.minigameLeaveProofCompleted ? 1 : 0,
+    screenRuntime.minigameLeaveProofHeroObjectId,
+    screenRuntime.minigameLeaveProofHeroPlaceBefore,
+    screenRuntime.minigameLeaveProofHeroPlaceAfter,
+    screenRuntime.minigameLeaveProofPlaceUserBefore,
+    screenRuntime.minigameLeaveProofPlaceUserAfter,
+    screenRuntime.minigameLeaveProofHeroIsolatedBefore,
+    screenRuntime.minigameLeaveProofHeroIsolatedAfter,
+    screenRuntime.minigameLeaveProofHeroFlagBefore,
+    screenRuntime.minigameLeaveProofHeroFlagAfter,
+    screenRuntime.minigameLeaveProofVisualStateBefore,
+    screenRuntime.minigameLeaveProofVisualStateAfter,
+    screenRuntime.minigameLeaveProofPlacementApplyBefore,
+    screenRuntime.minigameLeaveProofPlacementApplyAfter,
+    screenRuntime.minigameLeaveProofMinigamesBefore,
+    screenRuntime.minigameLeaveProofMinigamesAfter,
+    screenRuntime.minigameLeaveProofMinigamesLocalBefore,
+    screenRuntime.minigameLeaveProofMinigamesLocalAfter,
+    screenRuntime.minigameLeaveProofMinigamesSessionBefore,
+    screenRuntime.minigameLeaveProofMinigamesSessionAfter,
+    screenRuntime.minigameLeaveProofMinigamesMainBefore,
+    screenRuntime.minigameLeaveProofMinigamesMainAfter,
+    screenRuntime.minigameLeaveProofMinigamesMainWorldBefore,
+    screenRuntime.minigameLeaveProofMinigamesMainWorldAfter,
+    static_cast<double>(screenRuntime.minigameLeaveProofMinigamesOpacityBefore),
+    static_cast<double>(screenRuntime.minigameLeaveProofMinigamesOpacityAfter),
+    screenRuntime.minigameLeaveProofSingleCountBefore,
+    screenRuntime.minigameLeaveProofSingleCountAfter,
+    screenRuntime.minigameLeaveProofCurrentSingleBefore,
+    screenRuntime.minigameLeaveProofCurrentSingleAfter,
+    screenRuntime.minigameLeaveProofIndexedSingleBefore,
+    screenRuntime.minigameLeaveProofIndexedSingleAfter,
+    screenRuntime.minigameLeaveProofNamedSingleBefore,
+    screenRuntime.minigameLeaveProofNamedSingleAfter,
+    screenRuntime.minigameLeaveProofSingleIdBefore,
+    screenRuntime.minigameLeaveProofSingleIdAfter);
+  fprintf(stdout, "Final minigame leave command execution: can=%d/%d executed=%d accepted=%d hero=%d state=%d->%d/%d->%d/%d->%d flag=%d->%d visual=%d->%d placement=%d->%d\n",
+    heroGameplayCommandDiagnostics.leaveMinigameCanChecks,
+    heroGameplayCommandDiagnostics.leaveMinigameCanAccepted,
+    heroGameplayCommandDiagnostics.leaveMinigameExecuteCalls,
+    heroGameplayCommandDiagnostics.leaveMinigameActionAccepted,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroObjectId,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroPlaceBefore,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroPlaceAfter,
+    heroGameplayCommandDiagnostics.leaveMinigamePlaceUserBefore,
+    heroGameplayCommandDiagnostics.leaveMinigamePlaceUserAfter,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroIsolatedBefore,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroIsolatedAfter,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroFlagBefore,
+    heroGameplayCommandDiagnostics.leaveMinigameHeroFlagAfter,
+    heroGameplayCommandDiagnostics.leaveMinigameVisualStateBefore,
+    heroGameplayCommandDiagnostics.leaveMinigameVisualStateAfter,
+    heroGameplayCommandDiagnostics.leaveMinigamePlacementApplyBefore,
+    heroGameplayCommandDiagnostics.leaveMinigamePlacementApplyAfter);
   fprintf(stdout, "Final hero attack command execution: can=%d/%d executed=%d accepted=%d script=%d target=%d/%d/%d/%d current=%d canAttack=%d range=%d->%d ready=%d->%d doAttack=%d fallback=%d hp=%.0f->%.0f rangeValue=%.2f dist=%.1f->%.1f\n",
     heroGameplayCommandDiagnostics.attackCanChecks,
     heroGameplayCommandDiagnostics.attackCanAccepted,
@@ -49915,7 +50423,7 @@ int main(int argc, char** argv)
     static_cast<double>(heroGameplayCommandDiagnostics.attackRange),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceBeforePrime),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceAfterPrime));
-  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d qty=%d->%d occupied=%d->%d cd=%.2f->%.2f buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d pickup=%d/%d/%d/%d can=%d object=%d\n",
+  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d unitState=%d/%d->%d/%d->%d/%d->%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d qty=%d->%d occupied=%d->%d cd=%.2f->%.2f buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d initState=%d->%d/%d->%d/%d->%d pickup=%d/%d/%d/%d can=%d object=%d\n",
     heroGameplayCommandDiagnostics.useUnitCanChecks,
     heroGameplayCommandDiagnostics.useUnitCanAccepted,
     heroGameplayCommandDiagnostics.useUnitExecuteCalls,
@@ -49925,6 +50433,13 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.useUnitTargetKind,
     heroGameplayCommandDiagnostics.useUnitTargetFaction,
     heroGameplayCommandDiagnostics.useUnitTargetPlayerId,
+    heroGameplayCommandDiagnostics.useUnitAbilityInstanceCreated,
+    heroGameplayCommandDiagnostics.useUnitHeroMinigameBefore,
+    heroGameplayCommandDiagnostics.useUnitHeroMinigameAfter,
+    heroGameplayCommandDiagnostics.useUnitTargetMinigameUserBefore,
+    heroGameplayCommandDiagnostics.useUnitTargetMinigameUserAfter,
+    heroGameplayCommandDiagnostics.useUnitHeroIsolatedBefore,
+    heroGameplayCommandDiagnostics.useUnitHeroIsolatedAfter,
     heroGameplayCommandDiagnostics.activateTalentCanChecks,
     heroGameplayCommandDiagnostics.activateTalentCanAccepted,
     heroGameplayCommandDiagnostics.activateTalentExecuteCalls,
@@ -49998,6 +50513,12 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.initMinigameCanUse,
     heroGameplayCommandDiagnostics.initMinigameBattleReady,
     heroGameplayCommandDiagnostics.initMinigameObjectId,
+    heroGameplayCommandDiagnostics.initMinigameHeroPlaceBefore,
+    heroGameplayCommandDiagnostics.initMinigameHeroPlaceAfter,
+    heroGameplayCommandDiagnostics.initMinigamePlaceUserBefore,
+    heroGameplayCommandDiagnostics.initMinigamePlaceUserAfter,
+    heroGameplayCommandDiagnostics.initMinigameHeroIsolatedBefore,
+    heroGameplayCommandDiagnostics.initMinigameHeroIsolatedAfter,
     heroGameplayCommandDiagnostics.pickupObjectCanChecks,
     heroGameplayCommandDiagnostics.pickupObjectCanAccepted,
     heroGameplayCommandDiagnostics.pickupObjectExecuteCalls,

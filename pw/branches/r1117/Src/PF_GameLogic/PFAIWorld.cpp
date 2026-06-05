@@ -177,7 +177,25 @@ void PFAIWorld::UnregisterObjectOrUnit(PFLogicObject* pObject)
   if (pObject)
     RemoveObject(*pObject);
 }
-void PFAIWorld::Update(float dtInSeconds) { (void)dtInSeconds; }
+void PFAIWorld::Update(float dtInSeconds)
+{
+  if (dtInSeconds <= 0.0f)
+    return;
+
+  if (battleStartDelay > 0.0f)
+  {
+    battleStartDelay -= dtInSeconds;
+    if (battleStartDelay < 0.0f)
+      battleStartDelay = 0.0f;
+  }
+
+  if (towersVulnerabilityDelay > 0.0f)
+  {
+    towersVulnerabilityDelay -= dtInSeconds;
+    if (towersVulnerabilityDelay < 0.0f)
+      towersVulnerabilityDelay = 0.0f;
+  }
+}
 
 vector<PFAIWorld::BuildingsRoute>::const_iterator PFAIWorld::FindRoute( NDb::EFaction faction, NDb::ERoute routeID ) const
 {
