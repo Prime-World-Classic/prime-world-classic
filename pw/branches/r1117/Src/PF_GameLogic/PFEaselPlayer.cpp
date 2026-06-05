@@ -3,6 +3,7 @@
 #if defined(PW_LINUX_NULL_RENDER)
 
 #include "PFEaselPlayer.h"
+#include "HeroActions.h"
 #include "PFMinigamePlace.h"
 #include "PFAbilityData.h"
 #include "SessionEventType.h"
@@ -157,6 +158,9 @@ public:
     return routeIt == it->second.end() ? -1 : routeIt->second;
   }
 
+  bool CanSendWorldCommands() const { return IsValid(transceiver); }
+  int GetSentCommandsCount() const { return sentCommands; }
+
   virtual const NDb::DBMinigamesCommon* GetCommonDBData() const { return commonDBData; }
 };
 
@@ -284,6 +288,21 @@ public:
   virtual void SendLeaveMinigameCommand(PF_Minigames::IWorldSessionInterface* worldInterface)
   {
     ++leaveCommandCalls;
+
+    PFEaselPlayer* player = dynamic_cast<PFEaselPlayer*>(worldInterface);
+    PF_Minigames::IMinigames* minigames = player ? player->GetMinigames() : 0;
+    PF_Minigames::IMinigamesMain* main = minigames ? minigames->GetMain() : 0;
+    LinuxNullMinigamesMain* nativeMain = dynamic_cast<LinuxNullMinigamesMain*>(main);
+    if (player && main && (!nativeMain || nativeMain->CanSendWorldCommands()))
+    {
+      NCore::WorldCommand* command = CreateCmdLeaveMinigame(player);
+      if (command)
+      {
+        main->SendWorldCommand(command);
+        return;
+      }
+    }
+
     if (worldInterface)
       worldInterface->OnLeaveMinigameCmd();
     else

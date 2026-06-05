@@ -31612,11 +31612,19 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
       return false;
     }
 
-    NCore::WorldCommand* leaveMinigameCommand = NWorld::CreateCmdLeaveMinigame(easelPlayer);
-    if (!leaveMinigameCommand)
+    PF_Minigames::IMinigames* minigamesBefore = easelPlayer->GetMinigames();
+    if (!minigamesBefore)
     {
       return false;
     }
+
+    PF_Minigames::IMinigamesMain* minigamesMainBefore = minigamesBefore->GetMain();
+    if (!minigamesMainBefore)
+    {
+      return false;
+    }
+
+    minigamesMainBefore->SetTransceiver(runtime->transceiver);
 
     NWorld::PFEaselPlayer* placeUserBefore = minigamePlaceBefore->CurrentEaselPlayer();
     runtime->minigameLeaveProofAttempted = true;
@@ -31631,14 +31639,11 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
       static_cast<int>(minigamePlaceBefore->GetVisualState());
     runtime->minigameLeaveProofPlacementApplyBefore =
       static_cast<int>(minigamePlaceBefore->GetPlacementApplyType());
-    PF_Minigames::IMinigames* minigamesBefore = easelPlayer->GetMinigames();
     runtime->minigameLeaveProofMinigamesBefore = minigamesBefore ? 1 : 0;
     runtime->minigameLeaveProofMinigamesLocalBefore =
       minigamesBefore && minigamesBefore->IsLocal() ? 1 : 0;
     runtime->minigameLeaveProofMinigamesSessionBefore =
       minigamesBefore && minigamesBefore->GetWorldSessionInterface() == easelPlayer ? 1 : 0;
-    PF_Minigames::IMinigamesMain* minigamesMainBefore =
-      minigamesBefore ? minigamesBefore->GetMain() : 0;
     runtime->minigameLeaveProofMinigamesMainBefore =
       minigamesMainBefore ? 1 : 0;
     runtime->minigameLeaveProofMinigamesMainWorldBefore =
@@ -31661,7 +31666,7 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     runtime->minigameLeaveProofSingleIdBefore =
       minigameIdBefore && strcmp(minigameIdBefore, minigamePlaceBefore->MinigameId().c_str()) == 0 ? 1 : 0;
 
-    runtime->transceiver->SendCommand(leaveMinigameCommand, true);
+    minigamesBefore->ForceLeaveMinigame();
     runtime->transceiverHeroLeaveMinigameRuntimeCommandSent = true;
     ++runtime->transceiverHeroLeaveMinigameRuntimeCommandsSent;
     ++runtime->transceiverRuntimeCommandsSent;
