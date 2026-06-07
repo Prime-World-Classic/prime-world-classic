@@ -10,4 +10,9 @@
 	<fadeOut>0.1</fadeOut>
 	<groupFlags>0</groupFlags>
 	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="bomber_S2">
+			<component href="" />
+		</state>
+	</__states>
 </BasicEffectAttached>
