@@ -17,7 +17,7 @@ cd ..
 cd content-test
 # gilab and github mirrors (test laucher)
 git remote set-url --add origin https://gitlab.com/prime-world-classic/content-test.git
-git remote set-url --add origin https://github.com/Prime-World-Classic/pw-git-updates-test.git
+git remote set-url --add origin https://github.com/Prime-World-Classic/content-test.git
 cd ..
 
 cd pwc-gitupdates
