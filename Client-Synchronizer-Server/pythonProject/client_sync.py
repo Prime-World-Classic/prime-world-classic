@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 import json
 from datetime import datetime as dt
 import requests
+from urllib.parse import quote
 import threading
 import hashlib
 from logging.handlers import TimedRotatingFileHandler
@@ -428,6 +429,67 @@ def api():
                 'error': '',
                 'data': True
             }            
+            return jsonify(response)
+
+
+        if method == 'spectate':
+            key = reqJson['key'] if 'key' in reqJson else ''
+            if key != api_key:
+                return jsonify({'error': 'Invalid API key'})
+
+            if not data or 'uid' not in data or 'targetUserId' not in data:
+                return jsonify({'error': 'Invalid spectate request'})
+
+            uid = data['uid']
+            login = data['login'] if 'login' in data else str(uid)
+            targetUserId = data['targetUserId']
+
+            uidStr = str(uid)
+            pvxUrl = 'http://127.0.0.1:34000/?action=mm'
+            pvxVer = '1.8.116'
+
+            spectatePayload = {
+                'ver': pvxVer,
+                'spectate': {
+                    uidStr: {
+                        'zz_uid': uid,
+                        'zz_login': str(login) + str(uid),
+                        'mmid': str(uid),
+                        'nick': quote(str(login)),
+                        'target_uid': str(targetUserId)
+                    }
+                }
+            }
+
+            try:
+                requests.post(pvxUrl, json=spectatePayload, timeout=10)
+            except Exception as e:
+                logger.info('Spectate PvX request failed: ' + str(e))
+                return jsonify({'error': 'PvX spectate request failed'})
+
+            pingPayload = {'ver': pvxVer, 'ping': {uidStr: 1}}
+            sessionKey = None
+            for i in range(5):
+                time.sleep(1)
+                try:
+                    pingResp = requests.post(pvxUrl, json=pingPayload, timeout=5)
+                    pingJson = pingResp.json()
+                    pvxData = pingJson.get('response', pingJson)
+                    pingEntry = pvxData.get('pvx', {}).get('ping', {}).get(uidStr)
+                    if isinstance(pingEntry, list) and len(pingEntry) >= 2 and pingEntry[0] == 102:
+                        sessionKey = pingEntry[1]
+                        break
+                except Exception as e:
+                    logger.info('Spectate ping failed: ' + str(e))
+
+            if not sessionKey:
+                return jsonify({'error': 'PvX did not return spectator session key'})
+
+            response = {
+                'error': '',
+                'sessionKey': sessionKey
+            }
+            logger.info('Response!!!      spectate: ' + str(json.dumps(response)))
             return jsonify(response)
 
 
