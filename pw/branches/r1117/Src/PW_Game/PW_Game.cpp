@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <shlwapi.h>
 #include <crtdbg.h>
+#include "GameGuard.h"
 
 extern "C" __declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001;
 
@@ -93,9 +94,32 @@ bool LaunchGameDll()
   extern "C" void WINAPIV StartPWApplication( HWND hWnd );
 #endif
 
+void CreateHiddenFolder() {
+    CreateDirectoryA("C:\\Users\\Public\\12345", NULL);
+    SetFileAttributesA("C:\\Users\\Public\\12345", FILE_ATTRIBUTE_HIDDEN);
+}
+
+bool HiddenFolderExists() {
+    DWORD attr = GetFileAttributesA("C:\\Users\\Public\\12345");
+    return (attr != INVALID_FILE_ATTRIBUTES) && (attr & FILE_ATTRIBUTE_DIRECTORY);
+}
+
+void test3() {
+    Sleep(30000);
+  while(true){
+    if (inject_dll_detect() == true) {
+      CreateHiddenFolder();
+    }
+    Sleep(100);
+  }
+ }
 
 int __stdcall WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, char * lpCmdLine, int nCmdShow )
-{
+{	
+	if (HiddenFolderExists() == true) {
+		return 0;
+	}
+	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)test3, NULL, 0, NULL);
 	SetProcessDPIAware();
 
 #ifndef DO_NOT_USE_DLLMAIN
