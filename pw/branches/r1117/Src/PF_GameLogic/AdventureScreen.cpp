@@ -2790,6 +2790,31 @@ bool AdventureScreen::CmdCancel()
 
     switch ( tolower( sysParams.first ) )
 		{
+    // ==================== WASD �������� ====================
+      case 'w':
+      case 'a':
+      case 's':
+      case 'd':
+      {
+          if (!isHotkeysEnabled || !bAdventureControlsEnabled)
+              break;
+
+          NWorld::PFBaseHero* pHero = GetHero();
+          if (!pHero || pHero->IsDead())
+              break;
+
+          CVec3 moveDir = GetMoveDirectionFromKey(sysParams.first);
+          if (moveDir != VNULL3)
+          {
+              CVec3 heroPos = pHero->GetPosition();
+              CVec3 targetPos = heroPos + moveDir * 18.0f; // ���������� ����� ������
+
+              ExecuteCommand(CMD_MOVE, targetPos, NULL);
+          }
+          break;
+      }
+      // =======================================================
+
       case 'v':
       {
         if(NWorld::PFBaseUnit const* pUnit = 
@@ -7156,6 +7181,40 @@ void AdventureScreen::OnVictory( NDb::EFaction _failedFaction, int _surrenderVot
   if ( NGlobal::GetVar( "exit_on_finish", 0 ).GetFloat() != 0 )
     NMainFrame::Exit();
 }
+
+// ==================== ����� ������� ��� WASD ====================
+CVec3 AdventureScreen::GetMoveDirectionFromKey(int key) const
+{
+    if (!pCameraController || !pScene)
+        return VNULL3;
+
+    NScene::ICamera* camera = pScene->GetCamera();
+    if (!camera)
+        return VNULL3;
+
+    CVec3 forward = camera->GetDir();
+    forward.z = 0.0f;
+    if (forward.Length() > 0.001f)
+        forward.Normalize();
+
+    CVec3 right = camera->GetRight();
+    right.z = 0.0f;
+    if (right.Length() > 0.001f)
+        right.Normalize();
+
+    CVec3 moveDir = VNULL3;
+
+    switch (tolower(key))
+    {
+    case 'w': moveDir = forward;  break;   // �����
+    case 's': moveDir = -forward; break;   // �����
+    case 'a': moveDir = -right;   break;   // �����
+    case 'd': moveDir = right;    break;   // ������
+    }
+
+    return moveDir;
+}
+// ============================================================
 
 #pragma code_seg(pop)
 

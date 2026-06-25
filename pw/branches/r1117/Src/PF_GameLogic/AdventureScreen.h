@@ -1067,5 +1067,9 @@ struct GSClientSettings
     bool UseSmartChat();
 
     void OnToggleSharedVision();
+
+    // ==================== ����� ������� ��� WASD ====================
+    CVec3 GetMoveDirectionFromKey(int key) const;
+    // ============================================================
   };
 }
