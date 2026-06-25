@@ -24,6 +24,50 @@ Game::LoadingFlashHeroState* FindLoadingFlashHeroState(vector<Game::LoadingFlash
   heroes->back().slotId = slotId;
   return &heroes->back();
 }
+
+Game::LoadingFlashChatChannelState* FindLoadingFlashChatChannelState(
+  vector<Game::LoadingFlashChatChannelState>* channels,
+  NDb::EChatChannel channel)
+{
+  if (!channels)
+  {
+    return 0;
+  }
+
+  for (size_t i = 0; i < channels->size(); ++i)
+  {
+    if ((*channels)[i].channel == channel)
+    {
+      return &(*channels)[i];
+    }
+  }
+
+  channels->push_back(Game::LoadingFlashChatChannelState());
+  channels->back().channel = channel;
+  return &channels->back();
+}
+
+Game::LoadingFlashPlayerBindingState* FindLoadingFlashPlayerBindingState(
+  vector<Game::LoadingFlashPlayerBindingState>* bindings,
+  int playerId)
+{
+  if (!bindings)
+  {
+    return 0;
+  }
+
+  for (size_t i = 0; i < bindings->size(); ++i)
+  {
+    if ((*bindings)[i].playerId == playerId)
+    {
+      return &(*bindings)[i];
+    }
+  }
+
+  bindings->push_back(Game::LoadingFlashPlayerBindingState());
+  bindings->back().playerId = playerId;
+  return &bindings->back();
+}
 }
 
 namespace Game
@@ -32,6 +76,9 @@ namespace Game
 LoadingFlashInterface::LoadingFlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className )
   : preloading(false),
     spectatorMode(false),
+    chatVisible(true),
+    chatOff(false),
+    defaultChannel(NDb::CHATCHANNEL_GLOBAL),
     ourHeroId(-1),
     ourFaction(NDb::FACTION_NEUTRAL),
     leftFaction(NDb::FACTION_NEUTRAL),
@@ -101,10 +148,14 @@ void LoadingFlashInterface::SetMapBack( const char* back, const char* logo )
 
 void LoadingFlashInterface::SetForceColorTable( const vector<int> & forceTable,const vector<uint> & colorTable )
 {
+  this->forceTable = forceTable;
+  this->colorTable = colorTable;
 }
 
 void LoadingFlashInterface::SetTeamForce(const wstring & forceLeft,const wstring & forceRight)
 {
+  leftTeamForce = forceLeft;
+  rightTeamForce = forceRight;
 }
 
 void LoadingFlashInterface::SetHeroForce( int heroId, int force )
@@ -152,6 +203,10 @@ void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EF
 
 void LoadingFlashInterface::AddModeDescription( const char * modeImage, int id )
 {
+  LoadingFlashModeDescriptionState state;
+  state.modeImage = modeImage ? modeImage : "";
+  state.id = id;
+  modeDescriptions.push_back(state);
 }
 
 void LoadingFlashInterface::SetLoadingStatusText( const wstring & statusText )
@@ -161,6 +216,10 @@ void LoadingFlashInterface::SetLoadingStatusText( const wstring & statusText )
 
 void LoadingFlashInterface::SetLocales( const char* imageLeft,const wstring & toolTipLeft, const char* imageRight, const wstring & toolTipRight )
 {
+  leftLocaleImage = imageLeft ? imageLeft : "";
+  rightLocaleImage = imageRight ? imageRight : "";
+  leftLocaleTooltip = toolTipLeft;
+  rightLocaleTooltip = toolTipRight;
 }
 
 void LoadingFlashInterface::SetLoadingState( bool isPreloading )
@@ -180,38 +239,87 @@ void LoadingFlashInterface::SwitchToSpectatorMode()
 
 void LoadingFlashInterface::AddChannel( NDb::EChatChannel channel, const wstring & channelName, uint channelColor, bool showChannelName, bool showPlayerName, bool canWrite2Channel )
 {
+  LoadingFlashChatChannelState* state = FindLoadingFlashChatChannelState(&chatChannels, channel);
+  if (!state)
+  {
+    return;
+  }
+
+  state->channelName = channelName;
+  state->channelColor = channelColor;
+  state->showChannelName = showChannelName;
+  state->showPlayerName = showPlayerName;
+  state->canWrite2Channel = canWrite2Channel;
 }
 
 void LoadingFlashInterface::AddChannelShortCut( NDb::EChatChannel channel, const wstring & shortcut )
 {
+  LoadingFlashChatChannelState* state = FindLoadingFlashChatChannelState(&chatChannels, channel);
+  if (state)
+  {
+    state->shortcut = shortcut;
+  }
 }
 
 void LoadingFlashInterface::AddMessage( NDb::EChatChannel channel, const wstring & playerName, const wstring & message )
 {
+  LoadingFlashChatMessageState state;
+  state.channel = channel;
+  state.playerName = playerName;
+  state.message = message;
+  state.hasPlayerId = false;
+  chatMessages.push_back(state);
 }
 
 void LoadingFlashInterface::AddMessage(NDb::EChatChannel channel, const wstring & playerName, const wstring & message, const int playerId)
 {
+  LoadingFlashChatMessageState state;
+  state.channel = channel;
+  state.playerName = playerName;
+  state.message = message;
+  state.playerId = playerId;
+  state.hasPlayerId = true;
+  chatMessages.push_back(state);
 }
 
 void LoadingFlashInterface::SetDefaultChannel( NDb::EChatChannel channelID )
 {
+  defaultChannel = channelID;
 }
 
 void LoadingFlashInterface::SetChatVisible( bool visible )
 {
+  chatVisible = visible;
 }
 
 void LoadingFlashInterface::SetChatOff( bool isChatOff )
 {
+  chatOff = isChatOff;
 }
 
 void LoadingFlashInterface::SetPlayerIcon(const int playerId, const string& path)
 {
+  LoadingFlashPlayerBindingState* state = FindLoadingFlashPlayerBindingState(&playerBindings, playerId);
+  if (!state)
+  {
+    return;
+  }
+
+  state->iconPath = path;
+  state->hasIcon = true;
 }
 
 void LoadingFlashInterface::SetPlayerHeroId(const int playerId, const int heroId, const int teamId)
 {
+  LoadingFlashPlayerBindingState* state = FindLoadingFlashPlayerBindingState(&playerBindings, playerId);
+  if (!state)
+  {
+    return;
+  }
+
+  state->heroId = heroId;
+  state->teamId = teamId;
+  state->hasHero = true;
 }
 
 void LoadingFlashInterface::IgnoreUser( const int playerId )

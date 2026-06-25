@@ -3,11 +3,378 @@
 
 #if defined(PW_LINUX_DB_BOOTSTRAP)
 
+#include "Core/CommandSerializer.h"
+#include "Core/GameCommand.h"
+#include "Core/WorldBase.h"
+#include "HybridServer/PeeredTypes.h"
+#include "System/MemoryStream.h"
+#include "System/StrProc.h"
+
+#include <fstream>
+#include <vector>
+#include <string>
+#include <cstring>
+#include <cstdlib>
+
+namespace
+{
+static const char kLinuxReplayMagic[] = "PWLXREPLAY1\n";
+static const char kLinuxReplayInfoMagic[] = "PWLXREPLAYINFO1";
+
+bool ReadLinuxReplayBytes(std::ifstream* input, void* data, size_t size, size_t* bytesRead)
+{
+  if (!input || !data || size == 0)
+    return false;
+
+  input->read(reinterpret_cast<char*>(data), static_cast<std::streamsize>(size));
+  if (input->gcount() != static_cast<std::streamsize>(size))
+    return false;
+
+  if (bytesRead)
+    *bytesRead += size;
+  return true;
+}
+
+int ParseLinuxReplayInt(const std::string& value, int fallback)
+{
+  if (value.empty())
+    return fallback;
+  return atoi(value.c_str());
+}
+
+std::vector<std::string> SplitLinuxReplayLine(const std::string& line)
+{
+  std::vector<std::string> parts;
+  size_t start = 0;
+  for (;;)
+  {
+    const size_t tab = line.find('\t', start);
+    if (tab == std::string::npos)
+    {
+      parts.push_back(line.substr(start));
+      break;
+    }
+
+    parts.push_back(line.substr(start, tab - start));
+    start = tab + 1;
+  }
+  return parts;
+}
+}
+
 namespace NWorld
 {
 
-ReplayStorage2::ReplayStorage2( NCore::ReplayBufferMode, const char *, NWorld::IMapCollection *, NGameX::LoadingStatusHandler * )
+ReplayStorage2::ReplayStorage2()
+  : linuxReplayCursor(0),
+    linuxSyncCursor(0),
+    linuxOk(false),
+    linuxStartStep(-1),
+    linuxFirstStep(-1),
+    linuxLastStep(-1),
+    linuxLoadedCommands(0),
+    linuxLoadedStatuses(0),
+    linuxDecodeFailures(0),
+    linuxHeaderReady(false),
+    linuxHeaderClientId(-1),
+    linuxHeaderStepLength(DEFAULT_GAME_STEP_LENGTH),
+    linuxError("inactive")
 {
+}
+
+ReplayStorage2::ReplayStorage2( NCore::ReplayBufferMode mode, const char * fileName, NWorld::IMapCollection *, NGameX::LoadingStatusHandler * )
+  : linuxReplayCursor(0),
+    linuxSyncCursor(0),
+    linuxOk(false),
+    linuxStartStep(-1),
+    linuxFirstStep(-1),
+    linuxLastStep(-1),
+    linuxLoadedCommands(0),
+    linuxLoadedStatuses(0),
+    linuxDecodeFailures(0),
+    linuxHeaderReady(false),
+    linuxHeaderClientId(-1),
+    linuxHeaderStepLength(DEFAULT_GAME_STEP_LENGTH),
+    linuxError("inactive")
+{
+  if (mode != NCore::REPLAY_BUFFER_READ)
+  {
+    LinuxFail("write-unsupported");
+    return;
+  }
+
+  LinuxLoad(fileName);
+  LinuxLoadHeader(fileName);
+}
+
+bool ReplayStorage2::LinuxFail(const char* message)
+{
+  linuxOk = false;
+  linuxError = message ? message : "failed";
+  return false;
+}
+
+bool ReplayStorage2::LinuxLoad(const char* fileName)
+{
+  if (!fileName || !fileName[0])
+    return LinuxFail("inactive");
+
+  std::ifstream input(fileName, std::ios::binary);
+  if (!input)
+    return LinuxFail("open-failed");
+
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSizeStream = input.tellg();
+  if (fileSizeStream <= 0)
+    return LinuxFail("empty");
+
+  const size_t fileSize = static_cast<size_t>(fileSizeStream);
+  size_t bytesRead = 0;
+  input.seekg(0, std::ios::beg);
+
+  char magic[sizeof(kLinuxReplayMagic) - 1] = {0};
+  if (!ReadLinuxReplayBytes(&input, magic, sizeof(magic), &bytesRead) ||
+      memcmp(magic, kLinuxReplayMagic, sizeof(magic)) != 0)
+    return LinuxFail("bad-magic");
+
+  long long serverId = 0;
+  (void)serverId;
+  if (!ReadLinuxReplayBytes(&input, &serverId, sizeof(serverId), &bytesRead) ||
+      !ReadLinuxReplayBytes(&input, &linuxStartStep, sizeof(linuxStartStep), &bytesRead))
+    return LinuxFail("truncated-start");
+
+  while (bytesRead < fileSize)
+  {
+    if (fileSize - bytesRead < sizeof(int) + sizeof(unsigned short) + sizeof(unsigned short))
+      return LinuxFail("truncated-record-header");
+
+    int step = -1;
+    unsigned short commandsCount = 0;
+    unsigned short statusesCount = 0;
+    if (!ReadLinuxReplayBytes(&input, &step, sizeof(step), &bytesRead) ||
+        !ReadLinuxReplayBytes(&input, &commandsCount, sizeof(commandsCount), &bytesRead) ||
+        !ReadLinuxReplayBytes(&input, &statusesCount, sizeof(statusesCount), &bytesRead))
+      return LinuxFail("truncated-record");
+
+    NCore::ReplaySegment segment;
+    segment.deltaTime = 0.0f;
+    segment.crc = 0;
+    segment.seg.reserve(commandsCount);
+    NCore::SyncSegment::TStatuses statuses;
+    statuses.reserve(statusesCount);
+
+    for (unsigned int i = 0; i < commandsCount; ++i)
+    {
+      unsigned short commandSize = 0;
+      if (fileSize - bytesRead < sizeof(commandSize) ||
+          !ReadLinuxReplayBytes(&input, &commandSize, sizeof(commandSize), &bytesRead))
+        return LinuxFail("truncated-command-size");
+
+      if (commandSize == 0)
+        return LinuxFail("empty-command");
+
+      if (fileSize - bytesRead < commandSize)
+        return LinuxFail("truncated-command");
+
+      std::vector<char> commandBytes(commandSize);
+      if (!ReadLinuxReplayBytes(&input, &commandBytes[0], commandSize, &bytesRead))
+        return LinuxFail("truncated-command");
+
+      MemoryStream commandStream(static_cast<int>(commandBytes.size()));
+      commandStream.Write(&commandBytes[0], commandSize);
+      commandStream.Seek(0, SEEKORIGIN_BEGIN);
+      CObj<CObjectBase> commandObject = NCore::ReadCommandFromStream(
+        static_cast<Stream*>(&commandStream),
+        0);
+      CDynamicCast<NCore::PackedWorldCommand> packedCommand(commandObject);
+      if (!packedCommand)
+      {
+        ++linuxDecodeFailures;
+        return LinuxFail("decode-failed");
+      }
+
+      segment.seg.push_back(packedCommand.GetPtr());
+      ++linuxLoadedCommands;
+    }
+
+    for (unsigned int i = 0; i < statusesCount; ++i)
+    {
+      unsigned short statusSize = 0;
+      if (fileSize - bytesRead < sizeof(statusSize) ||
+          !ReadLinuxReplayBytes(&input, &statusSize, sizeof(statusSize), &bytesRead))
+        return LinuxFail("truncated-status-size");
+
+      if (fileSize - bytesRead < statusSize)
+        return LinuxFail("truncated-status");
+
+      if (statusSize != sizeof(Peered::BriefClientInfo))
+        return LinuxFail("bad-status-size");
+
+      Peered::BriefClientInfo briefStatus;
+      if (!ReadLinuxReplayBytes(&input, &briefStatus, sizeof(briefStatus), &bytesRead))
+        return LinuxFail("truncated-status");
+
+      NCore::ClientStatus status;
+      status.clientId = briefStatus.clientId;
+      status.status = static_cast<int>(briefStatus.status);
+      status.step = briefStatus.step - linuxStartStep;
+      statuses.push_back(status);
+      ++linuxLoadedStatuses;
+    }
+
+    if (linuxFirstStep < 0)
+      linuxFirstStep = step;
+    linuxLastStep = step;
+    linuxSegmentSteps.push_back(step);
+    linuxSegmentStatuses.push_back(statuses);
+    linuxSegments.push_back(segment);
+  }
+
+  if (bytesRead != fileSize)
+    return LinuxFail("bounds-mismatch");
+
+  linuxOk = true;
+  linuxError = "none";
+  return true;
+}
+
+void ReplayStorage2::LinuxLoadHeader(const char* fileName)
+{
+  linuxHeaderReady = false;
+  linuxHeaderMapStartInfo = NCore::MapStartInfo();
+  linuxHeaderClientSettings = NCore::ClientSettings();
+  linuxHeaderClientId = -1;
+  linuxHeaderStepLength = DEFAULT_GAME_STEP_LENGTH;
+
+  if (!fileName || !fileName[0])
+    return;
+
+  const std::string infoFileName = std::string(fileName) + ".info";
+  std::ifstream input(infoFileName.c_str());
+  if (!input)
+    return;
+
+  std::string line;
+  if (!std::getline(input, line) || line != kLinuxReplayInfoMagic)
+    return;
+
+  size_t expectedPlayers = 0;
+  while (std::getline(input, line))
+  {
+    std::vector<std::string> parts = SplitLinuxReplayLine(line);
+    if (parts.empty())
+      continue;
+
+    const std::string& key = parts[0];
+    const std::string value = parts.size() > 1 ? parts[1] : std::string();
+    if (key == "clientId")
+      linuxHeaderClientId = ParseLinuxReplayInt(value, -1);
+    else if (key == "stepLength")
+      linuxHeaderStepLength = ParseLinuxReplayInt(value, DEFAULT_GAME_STEP_LENGTH);
+    else if (key == "mapDescName")
+      linuxHeaderMapStartInfo.mapDescName = value.c_str();
+    else if (key == "replayName")
+      linuxHeaderMapStartInfo.replayName = value.c_str();
+    else if (key == "randomSeed")
+      linuxHeaderMapStartInfo.randomSeed = ParseLinuxReplayInt(value, 0);
+    else if (key == "isCustomGame")
+      linuxHeaderMapStartInfo.isCustomGame = ParseLinuxReplayInt(value, 0) != 0;
+    else if (key == "minigameEnabled")
+      linuxHeaderClientSettings.minigameEnabled = ParseLinuxReplayInt(value, 0) != 0;
+    else if (key == "logicParam1")
+      linuxHeaderClientSettings.logicParam1 = static_cast<float>(atof(value.c_str()));
+    else if (key == "aiForLeaversEnabled")
+      linuxHeaderClientSettings.aiForLeaversEnabled = ParseLinuxReplayInt(value, 0) != 0;
+    else if (key == "aiForLeaversThreshold")
+      linuxHeaderClientSettings.aiForLeaversThreshold = ParseLinuxReplayInt(value, 0);
+    else if (key == "playerCount")
+      expectedPlayers = static_cast<size_t>(ParseLinuxReplayInt(value, 0));
+    else if (key == "player" && parts.size() >= 8)
+    {
+      NCore::PlayerStartInfo player;
+      player.playerID = ParseLinuxReplayInt(parts[1], 0);
+      player.teamID = static_cast<NCore::ETeam::Enum>(ParseLinuxReplayInt(parts[2], static_cast<int>(NCore::ETeam::None)));
+      player.originalTeamID = static_cast<NCore::ETeam::Enum>(ParseLinuxReplayInt(parts[3], static_cast<int>(NCore::ETeam::None)));
+      player.playerType = static_cast<NCore::EPlayerType::Enum>(ParseLinuxReplayInt(parts[4], static_cast<int>(NCore::EPlayerType::Invalid)));
+      player.userID = ParseLinuxReplayInt(parts[5], -1);
+      player.zzimaSex = static_cast<NCore::ESex::Enum>(ParseLinuxReplayInt(parts[6], static_cast<int>(NCore::ESex::Undefined)));
+      player.nickname = NStr::ToUnicode(string(parts[7].c_str()));
+      // Columns after nickname were added after the initial Linux replay sidecar format.
+      if (parts.size() > 8)
+        player.playerInfo.heroId = static_cast<uint>(ParseLinuxReplayInt(parts[8], 0));
+      if (parts.size() > 9)
+        player.playerInfo.heroSkin = parts[9].c_str();
+      if (parts.size() > 10)
+        player.playerInfo.locale = parts[10].c_str();
+      if (parts.size() > 11)
+        player.playerInfo.heroLevel = static_cast<uint>(ParseLinuxReplayInt(parts[11], 0));
+      if (parts.size() > 12)
+        player.playerInfo.heroExp = ParseLinuxReplayInt(parts[12], 0);
+      if (parts.size() > 13)
+        player.playerInfo.heroRating = static_cast<float>(atof(parts[13].c_str()));
+      if (parts.size() > 14)
+        player.playerInfo.hasPremium = ParseLinuxReplayInt(parts[14], 0) != 0;
+      if (parts.size() > 15)
+        player.playerInfo.basket = static_cast<NCore::EBasket::Enum>(ParseLinuxReplayInt(parts[15], static_cast<int>(NCore::EBasket::Undefined)));
+      if (parts.size() > 16)
+        player.playerInfo.isAnimatedAvatar = ParseLinuxReplayInt(parts[16], 1) != 0;
+      if (parts.size() > 17)
+        player.playerInfo.partyId = static_cast<uint>(ParseLinuxReplayInt(parts[17], 0));
+      linuxHeaderMapStartInfo.playersInfo.push_back(player);
+    }
+  }
+
+  linuxHeaderReady =
+    linuxHeaderStepLength > 0 &&
+    !linuxHeaderMapStartInfo.mapDescName.empty() &&
+    expectedPlayers == linuxHeaderMapStartInfo.playersInfo.size();
+}
+
+bool ReplayStorage2::GetNextSegment( NCore::ReplaySegment& segOut )
+{
+  if (linuxReplayCursor >= linuxSegments.size())
+    return false;
+
+  segOut = linuxSegments[linuxReplayCursor];
+  ++linuxReplayCursor;
+  return true;
+}
+
+bool ReplayStorage2::GetNextSegment( NCore::SyncSegment & segOut )
+{
+  if (linuxSyncCursor >= linuxSegments.size() ||
+      linuxSyncCursor >= linuxSegmentSteps.size() ||
+      linuxSyncCursor >= linuxSegmentStatuses.size())
+    return false;
+
+  segOut.commands = linuxSegments[linuxSyncCursor].seg;
+  segOut.statuses = linuxSegmentStatuses[linuxSyncCursor];
+  segOut.step = static_cast<uint>(linuxSegmentSteps[linuxSyncCursor]);
+  ++linuxSyncCursor;
+  return true;
+}
+
+bool ReplayStorage2::GetHeader( NCore::MapStartInfo * info, int * clientId, int * stepLength, NCore::ClientSettings * clientSettings, lobby::SGameParameters* gameParams )
+{
+  if (!linuxHeaderReady)
+    return false;
+
+  if (info)
+    *info = linuxHeaderMapStartInfo;
+  if (clientId)
+    *clientId = linuxHeaderClientId;
+  if (stepLength)
+    *stepLength = linuxHeaderStepLength;
+  if (clientSettings)
+    *clientSettings = linuxHeaderClientSettings;
+  if (gameParams)
+  {
+    gameParams->mapId = linuxHeaderMapStartInfo.mapDescName;
+    gameParams->randomSeed = linuxHeaderMapStartInfo.randomSeed;
+    gameParams->slotsCount = static_cast<int>(linuxHeaderMapStartInfo.playersInfo.size());
+    gameParams->customGame = linuxHeaderMapStartInfo.isCustomGame;
+  }
+  return true;
 }
 
 void ReplayStorage2::SetLoadingStatus( Game::EReplayStatus::Enum )
@@ -29,13 +396,44 @@ void ReplayTransceiver::OnDestroyContent()
 {
 }
 
-void ReplayTransceiver::Step( float )
+void ReplayTransceiver::Step( float dt )
 {
+  StepReplayMessage( dt );
+
+  if ( isPaused )
+    return;
+
+  time += dt;
+
+  if ( time < stepLength || !world || !replay )
+    return;
+
+  time = time - stepLength;
+
+  if ( useServerReplay )
+  {
+    NCore::SyncSegment segment;
+    if ( replay->GetNextSegment( segment ) )
+    {
+      world->ExecuteCommands( segment.commands );
+      world->UpdatePlayerStatuses( segment.statuses );
+      world->Step( stepLengthInSeconds, stepLengthInSeconds );
+    }
+  }
+  else
+  {
+    NCore::ReplaySegment segment;
+    if ( replay->GetNextSegment( segment ) )
+    {
+      world->ExecuteCommands( segment.seg );
+      world->Step( stepLengthInSeconds, stepLengthInSeconds );
+    }
+  }
 }
 
 int ReplayTransceiver::GetWorldStep() const
 {
-  return 0;
+  return world ? world->GetStepNumber() : 0;
 }
 
 void ReplayTransceiver::SetWorld( NCore::IWorldBase * _world )

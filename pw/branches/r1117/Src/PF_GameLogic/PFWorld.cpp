@@ -39,6 +39,7 @@ template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(C
 #include "Scene/DBSceneBase.h"
 #include "Core/GameCommand.h"
 #include "Core/WorldCommand.h"
+#include "HybridServer/PeeredTypes.h"
 #include "System/Crc32Checksum.h"
 #include "System/LoadingProgress.h"
 
@@ -51,6 +52,7 @@ int PFWorld::instanceCount = 0;
 
 PFStatistics* CreateLinuxPFStatistics(PFWorld* pWorld);
 bool StepLinuxPFStatistics(PFStatistics* pStatistics, float dtInSeconds);
+void NotifyLinuxItemTransfer(PFStatistics* pStatistics, PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem);
 
 PFWorld::PFWorld() :
 step( -1 ),
@@ -103,7 +105,50 @@ linuxLastBootstrapRuntimeCommandValue(0.0f),
 linuxStoredDeadUnits(0),
 linuxCleanedDeadUnits(0),
 linuxLastStoredDeadUnitObjectId(-1),
-linuxLastCleanedDeadUnitObjectId(-1)
+linuxLastCleanedDeadUnitObjectId(-1),
+linuxPlayerStatusUpdates(0),
+linuxPlayerStatusMissing(0),
+linuxPlayerStatusActiveUpdates(0),
+linuxPlayerStatusAwayUpdates(0),
+linuxPlayerStatusPlayingUpdates(0),
+linuxPlayerStatusDisconnectedUpdates(0),
+linuxPlayerStatusReconnectedUpdates(0),
+linuxPlayerStatusLeaverUpdates(0),
+linuxLastPlayerStatusClientId(-1),
+linuxLastPlayerStatusValue(-1),
+linuxLastPlayerStatusStep(-1),
+linuxLastPlayerStatusPlaying(-1),
+linuxLastPlayerStatusActive(-1),
+linuxLastPlayerStatusDisconnected(-1),
+linuxLastPlayerStatusLeaver(-1),
+linuxAIAutoStartAttempts(0),
+linuxAIAutoStartSuccesses(0),
+linuxAIAddRequests(0),
+linuxAIAddSuccesses(0),
+linuxAIRemoveRequests(0),
+linuxAIRemoveSuccesses(0),
+linuxAIStepCalls(0),
+linuxAIControllerCount(0),
+linuxAIBotsSettingsAvailable(0),
+linuxAIBotsEnabled(-1),
+linuxAILastHeroObjectId(-1),
+linuxAILastPlayerId(-1),
+linuxAILastUserId(-1),
+linuxAILastLine(-1),
+linuxAICommandAttempts(0),
+linuxAICommandsSent(0),
+linuxAICommandDirectFallbacks(0),
+linuxAICommandMoveSent(0),
+linuxAICommandCombatMoveSent(0),
+linuxAICommandAttackSent(0),
+linuxAICommandOtherSent(0),
+linuxAILastCommandKind(0),
+linuxAILastCommandHeroObjectId(-1),
+linuxAILastCommandPlayerId(-1),
+linuxAILastCommandUserId(-1),
+linuxAILastCommandTargetObjectId(-1),
+linuxAILastCommandSent(0),
+linuxAutoAIEnabled(false)
 {
 }
 
@@ -161,7 +206,50 @@ linuxLastBootstrapRuntimeCommandValue(0.0f),
 linuxStoredDeadUnits(0),
 linuxCleanedDeadUnits(0),
 linuxLastStoredDeadUnitObjectId(-1),
-linuxLastCleanedDeadUnitObjectId(-1)
+linuxLastCleanedDeadUnitObjectId(-1),
+linuxPlayerStatusUpdates(0),
+linuxPlayerStatusMissing(0),
+linuxPlayerStatusActiveUpdates(0),
+linuxPlayerStatusAwayUpdates(0),
+linuxPlayerStatusPlayingUpdates(0),
+linuxPlayerStatusDisconnectedUpdates(0),
+linuxPlayerStatusReconnectedUpdates(0),
+linuxPlayerStatusLeaverUpdates(0),
+linuxLastPlayerStatusClientId(-1),
+linuxLastPlayerStatusValue(-1),
+linuxLastPlayerStatusStep(-1),
+linuxLastPlayerStatusPlaying(-1),
+linuxLastPlayerStatusActive(-1),
+linuxLastPlayerStatusDisconnected(-1),
+linuxLastPlayerStatusLeaver(-1),
+linuxAIAutoStartAttempts(0),
+linuxAIAutoStartSuccesses(0),
+linuxAIAddRequests(0),
+linuxAIAddSuccesses(0),
+linuxAIRemoveRequests(0),
+linuxAIRemoveSuccesses(0),
+linuxAIStepCalls(0),
+linuxAIControllerCount(0),
+linuxAIBotsSettingsAvailable(0),
+linuxAIBotsEnabled(-1),
+linuxAILastHeroObjectId(-1),
+linuxAILastPlayerId(-1),
+linuxAILastUserId(-1),
+linuxAILastLine(-1),
+linuxAICommandAttempts(0),
+linuxAICommandsSent(0),
+linuxAICommandDirectFallbacks(0),
+linuxAICommandMoveSent(0),
+linuxAICommandCombatMoveSent(0),
+linuxAICommandAttackSent(0),
+linuxAICommandOtherSent(0),
+linuxAILastCommandKind(0),
+linuxAILastCommandHeroObjectId(-1),
+linuxAILastCommandPlayerId(-1),
+linuxAILastCommandUserId(-1),
+linuxAILastCommandTargetObjectId(-1),
+linuxAILastCommandSent(0),
+linuxAutoAIEnabled(false)
 {
 }
 
@@ -255,6 +343,28 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
   if (pAIWorld)
     pAIWorld->SetMapData(advMapDescription, advMapSettings);
 
+  const NDb::BotsSettings* botsSettings = GetBotsSettings();
+  linuxAIBotsSettingsAvailable = botsSettings ? 1 : 0;
+  linuxAIBotsEnabled = botsSettings ? (botsSettings->enableBotsAI ? 1 : 0) : -1;
+  if (linuxAutoAIEnabled && (!botsSettings || botsSettings->enableBotsAI))
+  {
+    for (NCore::TPlayersStartInfo::const_iterator it = playersInfo.begin(); it != playersInfo.end(); ++it)
+    {
+      if (it->playerType != NCore::EPlayerType::Computer || it->playerID < 0 || it->playerID >= players.size())
+        continue;
+
+      PFPlayer* player = players[it->playerID];
+      if (!player || !player->GetHero())
+        continue;
+
+      const int successesBefore = linuxAIAddSuccesses;
+      ++linuxAIAutoStartAttempts;
+      AddAI(player->GetHero(), it->playerID % 3);
+      if (linuxAIAddSuccesses > successesBefore)
+        ++linuxAIAutoStartSuccesses;
+    }
+  }
+
   if (!protection)
     protection = PFWorldProtection::Create(this);
   if (!dayNightController)
@@ -286,7 +396,56 @@ PFPlayer* PFWorld::GetPlayerByUID(int userId) const
 }
 const int PFWorld::GetPresentPlayersCount() const { return humanPlayersCount; }
 const int PFWorld::GetPresentPlayersCount(NDb::EFaction) const { return humanPlayersCount; }
-void PFWorld::UpdatePlayerStatuses(const NCore::TStatuses&) {}
+void PFWorld::UpdatePlayerStatuses(const NCore::TStatuses& statuses)
+{
+  for (int i = 0; i < statuses.size(); ++i)
+  {
+    const NCore::ClientStatus& clientStatus = statuses[i];
+    ++linuxPlayerStatusUpdates;
+    linuxLastPlayerStatusClientId = clientStatus.clientId;
+    linuxLastPlayerStatusValue = clientStatus.status;
+    linuxLastPlayerStatusStep = clientStatus.step;
+
+    PFPlayer* player = GetPlayerByUID(clientStatus.clientId);
+    if (!player)
+    {
+      ++linuxPlayerStatusMissing;
+      linuxLastPlayerStatusPlaying = -1;
+      linuxLastPlayerStatusActive = -1;
+      linuxLastPlayerStatusDisconnected = -1;
+      linuxLastPlayerStatusLeaver = -1;
+      continue;
+    }
+
+    const bool playing = Peered::IsPlayingStatus(clientStatus.status);
+    const bool active = (clientStatus.status == Peered::Active);
+    const bool away = (clientStatus.status == Peered::Away);
+    const bool disconnected = Peered::IsDisconnectedStatus(clientStatus.status);
+    const bool leaver = (clientStatus.status == Peered::RefusedToReconnect);
+    const bool wasDisconnected = player->IsDisconnected();
+    if (active)
+      ++linuxPlayerStatusActiveUpdates;
+    if (away)
+      ++linuxPlayerStatusAwayUpdates;
+    if (playing)
+      ++linuxPlayerStatusPlayingUpdates;
+    if (disconnected)
+      ++linuxPlayerStatusDisconnectedUpdates;
+    else if (wasDisconnected)
+      ++linuxPlayerStatusReconnectedUpdates;
+    if (leaver)
+      ++linuxPlayerStatusLeaverUpdates;
+    // Null-render bootstrap has no AdventureScreen status callback yet.
+    player->SetDisconnected(disconnected, leaver);
+    player->SetIsPlaying(playing);
+    player->SetIsActive(active);
+
+    linuxLastPlayerStatusPlaying = player->IsPlaying() ? 1 : 0;
+    linuxLastPlayerStatusActive = player->IsActive() ? 1 : 0;
+    linuxLastPlayerStatusDisconnected = player->IsDisconnected() ? 1 : 0;
+    linuxLastPlayerStatusLeaver = player->IsLeaver() ? 1 : 0;
+  }
+}
 void PFWorld::ExecuteCommands(const NCore::TPackedCommands& commands)
 {
   SyncFPUStart(nfpu::AT_CMD_EXECUTE);
@@ -387,7 +546,11 @@ bool PFWorld::Step(float dtInSeconds, float)
   if (triggerMarkerHandler)
     triggerMarkerHandler->Step(dtInSeconds);
   if (pAIContainer)
+  {
     pAIContainer->Step(dtInSeconds);
+    ++linuxAIStepCalls;
+    linuxAIControllerCount = pAIContainer->GetLinuxControllerCount();
+  }
   return true;
 }
 void PFWorld::CalcCRC(IBinSaver&, bool) {}
@@ -826,7 +989,32 @@ PFMinigamePlace* PFWorld::FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero
   for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
   {
     PFMinigamePlace* minigamePlace = dynamic_cast<PFMinigamePlace*>(it->second.GetPtr());
-    if (minigamePlace && minigamePlace->IsAvailable() && minigamePlace->CanBeUsedBy(hero))
+    if (minigamePlace &&
+        minigamePlace->IsAvailable() &&
+        minigamePlace->CanBeUsedBy(hero) &&
+        minigamePlace->GetFaction() == hero->GetFaction())
+    {
+      return minigamePlace;
+    }
+  }
+
+  return 0;
+}
+PFMinigamePlace* PFWorld::FindLinuxFirstForeignMinigamePlaceForHero(PFBaseHero const* hero)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFMinigamePlace* minigamePlace = dynamic_cast<PFMinigamePlace*>(it->second.GetPtr());
+    if (minigamePlace &&
+        minigamePlace->IsAvailable() &&
+        minigamePlace->CanBeUsedBy(hero) &&
+        minigamePlace->GetFaction() != hero->GetFaction())
     {
       return minigamePlace;
     }
@@ -853,9 +1041,103 @@ PFPickupableObjectBase* PFWorld::FindLinuxFirstPickupableForHero(PFBaseHero cons
 
   return 0;
 }
-void PFWorld::AddAI(PFBaseHero*, int) {}
-void PFWorld::RemoveAI(PFBaseHero*) {}
-const NDb::BotsSettings* PFWorld::GetBotsSettings() const { return 0; }
+void PFWorld::AddAI(PFBaseHero* hero, int line)
+{
+  ++linuxAIAddRequests;
+  linuxAILastHeroObjectId = hero ? hero->GetObjectId() : -1;
+  linuxAILastPlayerId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetPlayerID() : -1;
+  linuxAILastUserId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetUserID() : -1;
+  linuxAILastLine = line;
+
+  const NDb::BotsSettings* botsSettings = GetBotsSettings();
+  linuxAIBotsSettingsAvailable = botsSettings ? 1 : 0;
+  linuxAIBotsEnabled = botsSettings ? (botsSettings->enableBotsAI ? 1 : 0) : -1;
+
+  if (!hero)
+    return;
+
+  if (!pAIContainer)
+    pAIContainer = new PFAIContainer(this, 0);
+
+  const int controllersBefore = pAIContainer->GetLinuxControllerCount();
+  IPFAIController* controller = pAIContainer->Add(hero, line);
+  linuxAIControllerCount = pAIContainer->GetLinuxControllerCount();
+  if (controller && linuxAIControllerCount > controllersBefore)
+    ++linuxAIAddSuccesses;
+}
+
+void PFWorld::RemoveAI(PFBaseHero* hero)
+{
+  ++linuxAIRemoveRequests;
+  linuxAILastHeroObjectId = hero ? hero->GetObjectId() : -1;
+  linuxAILastPlayerId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetPlayerID() : -1;
+  linuxAILastUserId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetUserID() : -1;
+  if (pAIContainer && pAIContainer->Remove(hero))
+    ++linuxAIRemoveSuccesses;
+  linuxAIControllerCount = pAIContainer ? pAIContainer->GetLinuxControllerCount() : 0;
+}
+
+void PFWorld::RecordLinuxAICommand(LinuxAICommandKind kind, const PFBaseHero* hero, const PFLogicObject* target, bool sent)
+{
+  ++linuxAICommandAttempts;
+  linuxAILastCommandKind = static_cast<int>(kind);
+  linuxAILastCommandHeroObjectId = hero ? hero->GetObjectId() : -1;
+  linuxAILastCommandPlayerId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetPlayerID() : -1;
+  linuxAILastCommandUserId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetUserID() : -1;
+  linuxAILastCommandTargetObjectId = target ? target->GetObjectId() : -1;
+  linuxAILastCommandSent = sent ? 1 : 0;
+
+  if (!sent)
+    return;
+
+  ++linuxAICommandsSent;
+  switch (kind)
+  {
+  case LinuxAICommandMove:
+    ++linuxAICommandMoveSent;
+    break;
+  case LinuxAICommandCombatMove:
+    ++linuxAICommandCombatMoveSent;
+    break;
+  case LinuxAICommandAttack:
+    ++linuxAICommandAttackSent;
+    break;
+  default:
+    ++linuxAICommandOtherSent;
+    break;
+  }
+}
+
+void PFWorld::RecordLinuxAICommandDirectFallback(LinuxAICommandKind kind, const PFBaseHero* hero, const PFLogicObject* target)
+{
+  ++linuxAICommandDirectFallbacks;
+  linuxAILastCommandKind = static_cast<int>(kind);
+  linuxAILastCommandHeroObjectId = hero ? hero->GetObjectId() : -1;
+  linuxAILastCommandPlayerId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetPlayerID() : -1;
+  linuxAILastCommandUserId = hero && hero->GetPlayer() ? hero->GetPlayer()->GetUserID() : -1;
+  linuxAILastCommandTargetObjectId = target ? target->GetObjectId() : -1;
+  linuxAILastCommandSent = 0;
+}
+
+const NDb::BotsSettings* PFWorld::GetBotsSettings() const
+{
+  const NDb::AdvMapSettings* desc = 0;
+  if (IsValid(advMapDescription))
+  {
+    if (IsValid(advMapDescription->mapSettings))
+      desc = advMapDescription->mapSettings;
+    else if (IsValid(advMapDescription->map) && IsValid(advMapDescription->map->mapSettings))
+      desc = advMapDescription->map->mapSettings;
+  }
+
+  if (desc && IsValid(desc->overrideBotsSettings))
+    return desc->overrideBotsSettings;
+
+  if (pAIWorld && IsValid(pAIWorld->GetAIParameters().botsSettings))
+    return pAIWorld->GetAIParameters().botsSettings;
+
+  return 0;
+}
 void PFWorld::NotifyTalentCastProcessed(const NWorld::PFTalent*) {}
 void PFWorld::NotifyConsumableProcessed(const NWorld::PFConsumableAbilityData*) {}
 void PFWorld::NotifyCreepSpawnerCleaned(const NWorld::PFNeutralCreepSpawner*, const NWorld::PFBaseUnit*) {}
@@ -1065,6 +1347,11 @@ bool PFWorld::LoadSceneMapObjects(const NDb::AdvMapDescription* advMapDesc, cons
   return true;
 }
 bool PFWorld::CanTrackPlayersBehaviour(const NCore::MapStartInfo&) const { return false; }
+
+void PFWorld::NotifyItemTransferForLinuxBootstrap(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem)
+{
+  NotifyLinuxItemTransfer(pStatistics, from, to, dbItem);
+}
 
 } // namespace NWorld
 #else
@@ -1508,7 +1795,7 @@ void PFWorld::InitMinigames()
 
   NI_ASSERT( pScene, "" );
 
-  NDb::Ptr<NDb::MinigamesBasic> ptr = NDb::Get<NDb::MinigamesBasic>( NDb::DBID( "Minigames/MinigameCommon.xdb" ) );
+  NDb::Ptr<NDb::MinigamesBasic> ptr = NDb::Get<NDb::MinigamesBasic>( NDb::DBID( "MiniGames/MinigameCommon.xdb" ) );
   minigamesMain = ptr->Construct();
   if (IsValid(minigamesMain))
     minigamesMain->Set( pScene, this );

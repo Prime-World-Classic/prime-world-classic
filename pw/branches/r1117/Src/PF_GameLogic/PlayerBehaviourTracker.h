@@ -185,6 +185,12 @@ namespace NWorld
     {
       return marks;
     }
+#if defined(PW_LINUX_NULL_RENDER)
+    int GetLinuxDispatchEventCalls() const { return linuxDispatchEventCalls; }
+    int GetLinuxTookScrollEvents() const { return linuxTookScrollEvents; }
+    int GetLinuxGaveScrollEvents() const { return linuxGaveScrollEvents; }
+    int GetLinuxLastEvent() const { return linuxLastEvent; }
+#endif
   protected:
     PlayerBehaviourTracker();
   private:
@@ -266,6 +272,12 @@ namespace NWorld
     CPtr<PFPlayer> player;
     list<float> spamDetectedHistory;
     unsigned insultComplaints;
+#if defined(PW_LINUX_NULL_RENDER)
+    int linuxDispatchEventCalls;
+    int linuxTookScrollEvents;
+    int linuxGaveScrollEvents;
+    int linuxLastEvent;
+#endif
   public:
 
     ZEND int operator&( IBinSaver &f ) { 
@@ -285,6 +297,12 @@ namespace NWorld
       f.Add(14, &firstDetectedMark); 
       f.Add(15,&spamDetectedHistory); 
       f.Add(16,&insultComplaints);
+#if defined(PW_LINUX_NULL_RENDER)
+      f.Add(17,&linuxDispatchEventCalls);
+      f.Add(18,&linuxTookScrollEvents);
+      f.Add(19,&linuxGaveScrollEvents);
+      f.Add(20,&linuxLastEvent);
+#endif
       return 0; }
   };
 }

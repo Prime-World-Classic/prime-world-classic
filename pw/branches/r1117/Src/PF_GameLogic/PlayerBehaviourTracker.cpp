@@ -117,6 +117,12 @@ namespace NWorld
     , deathTimeHistory()
     , spamDetectedHistory()
     , state(EState::Idle)
+#if defined(PW_LINUX_NULL_RENDER)
+    , linuxDispatchEventCalls(0)
+    , linuxTookScrollEvents(0)
+    , linuxGaveScrollEvents(0)
+    , linuxLastEvent(-1)
+#endif
     
   {
 
@@ -140,6 +146,12 @@ namespace NWorld
     , state(EState::Idle)
     , firstDetectedMark(EMark::None)
     , player(player)
+#if defined(PW_LINUX_NULL_RENDER)
+    , linuxDispatchEventCalls(0)
+    , linuxTookScrollEvents(0)
+    , linuxGaveScrollEvents(0)
+    , linuxLastEvent(-1)
+#endif
   {
     if (!IsValid(params))
       return;
@@ -402,6 +414,15 @@ namespace NWorld
 
   void PlayerBehaviourTracker::HandleEvent(const EPlayerBehaviourEvent::Enum event)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    ++linuxDispatchEventCalls;
+    linuxLastEvent = static_cast<int>(event);
+    if (event == EPlayerBehaviourEvent::TookScroll)
+      ++linuxTookScrollEvents;
+    else if (event == EPlayerBehaviourEvent::GaveScroll)
+      ++linuxGaveScrollEvents;
+#endif
+
     if (IsDisabled())
       return;
 

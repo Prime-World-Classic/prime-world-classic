@@ -68,8 +68,11 @@ public:
   void WriteFinishGame(int step, const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
   void WriteSessionInfoToFile(const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+  void WriteLinuxBootstrapHeader(const MapStartInfo & mapStartInfo, int clientId, int stepLength, const ClientSettings & clientSettings);
   bool IsLinuxReplayOpen() const { return linuxReplayFile != 0; }
   const string& GetLinuxReplayFilePath() const { return replayFilePath; }
+  const string& GetLinuxReplayInfoFilePath() const { return linuxReplayInfoFilePath; }
+  bool HasLinuxReplayInfoHeader() const { return linuxReplayInfoHeaderWritten; }
   size_t GetLinuxReplayStartWrites() const { return linuxReplayStartWrites; }
   size_t GetLinuxReplayStepWrites() const { return linuxReplayStepWrites; }
   size_t GetLinuxReplayCommandWrites() const { return linuxReplayCommandWrites; }
@@ -97,6 +100,8 @@ private:
   void LinuxWriteReplay(const void* data, size_t size);
 
   FILE* linuxReplayFile;
+  string linuxReplayInfoFilePath;
+  bool linuxReplayInfoHeaderWritten;
   size_t linuxReplayStartWrites;
   size_t linuxReplayStepWrites;
   size_t linuxReplayCommandWrites;

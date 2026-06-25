@@ -3,6 +3,9 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFAIContainer.h"
+#include "PFAIController.h"
+#include "PFHero.h"
+#include "PFMaleHero.h"
 namespace NWorld
 {
 
@@ -25,21 +28,48 @@ PFAIContainer::PFAIContainer( PFWorld* pWorld, NCore::ITransceiver *pTransceiver
 
 bool PFAIContainer::Step( float timeDelta )
 {
-  (void)timeDelta;
+  for( vector<CObj<IPFAIController>>::iterator it = controllers.begin(); it != controllers.end(); ++it )
+  {
+    if ( IsValid(*it) )
+      (*it)->Step( timeDelta );
+  }
   return true;
 }
 
 IPFAIController* PFAIContainer::Find( const PFBaseHero* pUnit ) const
 {
-  (void)pUnit;
+  for ( int i = 0; i < controllers.size(); ++i )
+  {
+    if ( IsValid(controllers[i]) && static_cast<const PFBaseHero*>(controllers[i]->GetHero()) == pUnit )
+      return controllers[i];
+  }
   return 0;
 }
 
 IPFAIController* PFAIContainer::Add( PFBaseHero* pUnit, int lineNumber )
 {
-  (void)pUnit;
-  (void)lineNumber;
-  return 0;
+  if ( !IsValid(pUnit) )
+    return 0;
+
+  IPFAIController* ctl = Find( pUnit );
+  if ( ctl )
+    return ctl;
+
+  int shift = 0;
+  for ( int i = 0; i < controllers.size(); ++i )
+  {
+    if ( IsValid(controllers[i]) &&
+         controllers[i]->GetLineNumber() == lineNumber &&
+         controllers[i]->GetHero() &&
+         pUnit->GetFaction() == controllers[i]->GetHero()->GetFaction() )
+    {
+      shift = ((shift + 2) % 3) - 1;
+    }
+  }
+
+  ctl = new PFAIController( pUnit, transceiver, lineNumber, shift );
+  controllers.push_back( ctl );
+  return ctl;
 }
 
 IPFSeriesAIController* PFAIContainer::AddSeriesController( PFBaseHero* pUnit, bool lvlUpAvailable )
@@ -58,7 +88,15 @@ void PFAIContainer::OnMinimapSignal( PFBaseHero* pSender, PFBaseUnit* pSelected,
 
 bool PFAIContainer::Remove( PFBaseHero* pUnit )
 {
-  (void)pUnit;
+  for ( int i = 0; i < controllers.size(); ++i )
+  {
+    if ( IsValid(controllers[i]) && static_cast<PFBaseHero*>(controllers[i]->GetHero()) == pUnit )
+    {
+      controllers[i]->StopHero();
+      controllers.eraseByIndex(i);
+      return true;
+    }
+  }
   return false;
 }
 

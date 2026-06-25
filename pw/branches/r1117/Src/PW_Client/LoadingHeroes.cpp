@@ -52,7 +52,6 @@ void LoadingHeroes::AddUser( int userId, const wstring & playerName,
   // ѕытаемс€ ипользовать heroId из PlayerInfo. http://SITE
   
   //int newHeroId = heroInfo.heroId != 0 ? heroInfo.heroId : Crc32Checksum().AddString(heroId).Get();
-#if !defined(PW_LINUX_DB_BOOTSTRAP)
   NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( heroDb, advMapDescription,  heroInfo.heroId);
   DebugTrace(" AddUser: %d %s", heroInfo.heroId, hero.GetPtr() == 0 ? "not found" : hero->persistentId );
 
@@ -73,7 +72,6 @@ void LoadingHeroes::AddUser( int userId, const wstring & playerName,
       classIcon = hero->minimapIconB ? hero->minimapIconB->textureFileName.c_str(): "";
     }
   }
-#endif
 
   NDb::EFaction faction = ConvertToFaction(team);
 

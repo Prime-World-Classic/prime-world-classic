@@ -86,6 +86,9 @@ public:
 
   bool Remove( PFBaseHero* pUnit );
   void RemoveAll();
+#if defined( PW_LINUX_NULL_RENDER )
+  int GetLinuxControllerCount() const { return controllers.size(); }
+#endif
 
   void LoadScript( const vector<string>& script );
   bool LoadScript( const string & scriptName, const vector<NDb::ResourceDesc> & res, bool isReconnecting );

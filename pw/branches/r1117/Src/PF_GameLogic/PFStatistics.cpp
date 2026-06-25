@@ -24,6 +24,7 @@ template<> NWorld::PFStatistics* CastToUserObjectImpl<NWorld::PFStatistics>(CObj
 
 #include "PFStatistics.h"
 #include "DBSessionRoots.h"
+#include "PFHero.h"
 
 REGISTER_WORLD_OBJECT_NM(PFStatistics, NWorld)
 
@@ -39,6 +40,12 @@ PFStatistics::PFStatistics(const CPtr<PFWorld> pWorld)
 , firstMerciless(-1)
 , firstMGAllLevelsWinner(-1)
 , wasFirstAssault(false)
+, linuxItemTransferCalls(0)
+, linuxItemTransferSelfCalls(0)
+, linuxItemTransferAllyCalls(0)
+, linuxLastItemTransferFromObjectId(-1)
+, linuxLastItemTransferToObjectId(-1)
+, linuxLastItemTransferHadItem(0)
 {
   if (NDb::SessionRoot::GetRoot() && NDb::SessionRoot::GetRoot()->logicRoot)
     scoring = NDb::SessionRoot::GetRoot()->logicRoot->scoringTable;
@@ -61,9 +68,21 @@ bool StepLinuxPFStatistics(PFStatistics* pStatistics, float dtInSeconds)
   return pStatistics ? pStatistics->OnStep(dtInSeconds) : true;
 }
 
+void NotifyLinuxItemTransfer(PFStatistics* pStatistics, PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem)
+{
+  if (pStatistics)
+    pStatistics->NotifyItemTransfer(from, to, dbItem);
+}
+
 void PFStatistics::Reset()
 {
   PFWorldObjectBase::Reset();
+  linuxItemTransferCalls = 0;
+  linuxItemTransferSelfCalls = 0;
+  linuxItemTransferAllyCalls = 0;
+  linuxLastItemTransferFromObjectId = -1;
+  linuxLastItemTransferToObjectId = -1;
+  linuxLastItemTransferHadItem = 0;
   ResetUiEvents();
 }
 
@@ -83,6 +102,19 @@ void PFStatistics::ResetUiEvents()
 
 void PFStatistics::NotifyTeleportByAbility(PFBaseMovingUnit*, NDb::Ability const*)
 {
+}
+
+void PFStatistics::NotifyItemTransfer(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem)
+{
+  ++linuxItemTransferCalls;
+  if (from && to && from == to)
+    ++linuxItemTransferSelfCalls;
+  else if (from && to)
+    ++linuxItemTransferAllyCalls;
+
+  linuxLastItemTransferFromObjectId = from ? from->GetObjectId() : -1;
+  linuxLastItemTransferToObjectId = to ? to->GetObjectId() : -1;
+  linuxLastItemTransferHadItem = dbItem ? 1 : 0;
 }
 
 } // namespace NWorld

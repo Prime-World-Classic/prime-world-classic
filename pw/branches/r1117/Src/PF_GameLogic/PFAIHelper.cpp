@@ -10,6 +10,7 @@
 #include "PFPickupable.h"
 #include "PFFlagpole.h"
 #include "PFBuildings.h"
+#include "HeroActions.h"
 
 namespace NWorld
 {
@@ -100,9 +101,43 @@ PFAIHelper::PFAIHelper( PFBaseHero* unit, NCore::ITransceiver* pTransceiver )
   pDBBots = IsValid(pUnit) && pUnit->GetWorld() ? pUnit->GetWorld()->GetBotsSettings() : 0;
 }
 
-void PFAIHelper::SendGameCommand( NCore::WorldCommand* _command )
+bool PFAIHelper::SendGameCommand( NCore::WorldCommand* _command, int kind, const PFLogicObject* target )
 {
   CObj<NCore::WorldCommand> command(_command);
+  const bool sent = command && IsValid(transceiver);
+  if (sent)
+  {
+    const bool isPlayerCommand = IsValid(pUnit) && pUnit->IsLocal();
+    transceiver->SendCommand(command, isPlayerCommand);
+  }
+
+  if (PFWorld* world = GetWorld())
+  {
+    world->RecordLinuxAICommand(
+      static_cast<PFWorld::LinuxAICommandKind>(kind),
+      pUnit,
+      target,
+      sent);
+  }
+  return sent;
+}
+
+void RecordLinuxAIDirectFallback(PFBaseMaleHero* hero, int kind, const PFLogicObject* target)
+{
+  if (IsValid(hero) && hero->GetWorld())
+  {
+    hero->GetWorld()->RecordLinuxAICommandDirectFallback(
+      static_cast<PFWorld::LinuxAICommandKind>(kind),
+      hero,
+      target);
+  }
+}
+
+PFLogicObject* ResolveLinuxAITargetObject(const Target& target)
+{
+  if (!target.IsObject())
+    return 0;
+  return target.GetObject();
 }
 
 void PFAIHelper::GetLife( float& current, float& maximal ) { current = IsValid(pUnit) ? pUnit->GetLife() : 0.0f; maximal = IsValid(pUnit) ? pUnit->GetMaxLife() : 0.0f; }
@@ -110,20 +145,97 @@ void PFAIHelper::GetMana( float& current, float& maximal ) { current = IsValid(p
 PFWorld* PFAIHelper::GetWorld() { return IsValid(pUnit) ? pUnit->GetWorld() : 0; }
 bool PFAIHelper::IsMoving() const { return IsValid(pUnit) && pUnit->IsMoving(); }
 bool PFAIHelper::IsHolding() const { return IsValid(pUnit) && pUnit->IsHoldingPosition(); }
-void PFAIHelper::MoveTo( const CVec2& pos ) { if (IsValid(pUnit)) pUnit->Move(pos); }
-void PFAIHelper::CombatMoveTo( const CVec2& pos ) { MoveTo(pos); }
-void PFAIHelper::Stop() { if (IsValid(pUnit)) pUnit->Stop(); }
-void PFAIHelper::Follow( PFBaseUnit* target, float followRange, float forceFollowRange ) { (void)followRange; (void)forceFollowRange; if (IsValid(pUnit) && IsValid(target)) pUnit->Move(target->GetPosition().AsVec2D()); }
-void PFAIHelper::Attack( PFBaseUnit* target ) { if (IsValid(pUnit) && IsValid(target)) pUnit->AssignTarget(target, true); }
-void PFAIHelper::ActivateTalent( int level, int slot ) { if (IsValid(pUnit)) pUnit->ActivateTalent(level, slot); }
+void PFAIHelper::MoveTo( const CVec2& pos )
+{
+  if (!SendGameCommand(CreateCmdMoveHero(pUnit, pos, false), PFWorld::LinuxAICommandMove) && IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandMove, 0);
+    pUnit->Move(pos);
+  }
+}
+void PFAIHelper::CombatMoveTo( const CVec2& pos )
+{
+  if (!SendGameCommand(CreateCmdCombatMoveHero(pUnit, pos), PFWorld::LinuxAICommandCombatMove) && IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandCombatMove, 0);
+    pUnit->Move(pos);
+  }
+}
+void PFAIHelper::Stop()
+{
+  if (!SendGameCommand(CreateCmdStopHero(pUnit), PFWorld::LinuxAICommandStop) && IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandStop, 0);
+    pUnit->Stop();
+  }
+}
+void PFAIHelper::Follow( PFBaseUnit* target, float followRange, float forceFollowRange )
+{
+  if (!SendGameCommand(CreateCmdFollowUnit(pUnit, target, followRange, forceFollowRange, false), PFWorld::LinuxAICommandFollow, target) &&
+      IsValid(pUnit) &&
+      IsValid(target))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandFollow, target);
+    pUnit->Move(target->GetPosition().AsVec2D());
+  }
+}
+void PFAIHelper::Attack( PFBaseUnit* target )
+{
+  if (!SendGameCommand(CreateCmdAttackTarget(pUnit, target, false), PFWorld::LinuxAICommandAttack, target) &&
+      IsValid(pUnit) &&
+      IsValid(target))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandAttack, target);
+    pUnit->AssignTarget(target, true);
+  }
+}
+void PFAIHelper::ActivateTalent( int level, int slot )
+{
+  if (!SendGameCommand(CreateCmdActivateTalent(pUnit, level, slot), PFWorld::LinuxAICommandActivateTalent) &&
+      IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandActivateTalent, 0);
+    pUnit->ActivateTalent(level, slot);
+  }
+}
 void PFAIHelper::ActivateTalent( const TalentWrapper& iTalent ) { ActivateTalent(iTalent.GetLevel(), iTalent.GetSlot()); }
-void PFAIHelper::UseTalent( int level, int slot, const Target& target ) { if (IsValid(pUnit)) pUnit->UseTalent(level, slot, target); }
+void PFAIHelper::UseTalent( int level, int slot, const Target& target )
+{
+  PFLogicObject* targetUnit = ResolveLinuxAITargetObject(target);
+  if (!SendGameCommand(CreateCmdUseTalent(pUnit, level, slot, target, false), PFWorld::LinuxAICommandUseTalent, targetUnit) &&
+      IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandUseTalent, targetUnit);
+    pUnit->UseTalent(level, slot, target);
+  }
+}
 void PFAIHelper::UseTalent( const TalentWrapper& iTalent, const Target& target ) { UseTalent(iTalent.GetLevel(), iTalent.GetSlot(), target); }
-void PFAIHelper::BuyConsumable( PFShop* pShop, int index ) { (void)pShop; (void)index; }
-void PFAIHelper::UseConsumable( int slot, const Target& target ) { if (IsValid(pUnit)) pUnit->ExecuteCommandUseConsumable(slot, target, false); }
-void PFAIHelper::UsePortal( const Target& target ) { (void)target; }
-void PFAIHelper::PickupObject( PFPickupableObjectBase* pObject ) { (void)pObject; }
-void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole ) { (void)pFlagpole; }
+void PFAIHelper::BuyConsumable( PFShop* pShop, int index )
+{
+  SendGameCommand(CreateCmdBuyConsumable(pUnit, pShop, index, -1), PFWorld::LinuxAICommandBuyConsumable);
+}
+void PFAIHelper::UseConsumable( int slot, const Target& target )
+{
+  PFLogicObject* targetUnit = ResolveLinuxAITargetObject(target);
+  if (!SendGameCommand(CreateCmdUseConsumable(pUnit, slot, target), PFWorld::LinuxAICommandUseConsumable, targetUnit) &&
+      IsValid(pUnit))
+  {
+    RecordLinuxAIDirectFallback(pUnit, PFWorld::LinuxAICommandUseConsumable, targetUnit);
+    pUnit->ExecuteCommandUseConsumable(slot, target, false);
+  }
+}
+void PFAIHelper::UsePortal( const Target& target )
+{
+  SendGameCommand(CreateCmdUsePortal(pUnit, target, false), PFWorld::LinuxAICommandUsePortal);
+}
+void PFAIHelper::PickupObject( PFPickupableObjectBase* pObject )
+{
+  SendGameCommand(CreateCmdPickupObject(pUnit, pObject ? pObject->GetObjectId() : -1), PFWorld::LinuxAICommandPickupObject, pObject);
+}
+void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole )
+{
+  SendGameCommand(CreateCmdRaiseFlag(pUnit, pFlagpole, false), PFWorld::LinuxAICommandRaiseFlag, pFlagpole);
+}
 int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex ) { (void)type; if (firstIndex) *firstIndex = -1; return 0; }
 PFBaseUnit* PFAIHelper::FindEnemyNear() { return 0; }
 
@@ -405,14 +517,17 @@ PFAIHelper::PFAIHelper( PFBaseHero* unit, NCore::ITransceiver* pTransceiver )
   pDBBots = pUnit->GetWorld()->GetBotsSettings();
 }
 
-void PFAIHelper::SendGameCommand( NCore::WorldCommand* _command )
+bool PFAIHelper::SendGameCommand( NCore::WorldCommand* _command, int kind, const PFLogicObject* target )
 {
-  NI_VERIFY( IsValid( transceiver ), "Transceiver is not provided to client. Cannot send command", return );
+  (void)kind;
+  (void)target;
+  NI_VERIFY( IsValid( transceiver ), "Transceiver is not provided to client. Cannot send command", return false );
   if ( !_command )
-    return;
+    return false;
   CObj<NCore::WorldCommand> command( _command );
   bool isPlayerCommand = IsValid(pUnit) && pUnit->IsLocal();
   transceiver->SendCommand( command, isPlayerCommand );
+  return true;
 }
 void PFAIHelper::GetLife( float& current, float& maximal )
 {
@@ -433,16 +548,16 @@ bool  PFAIHelper::IsHolding() const    { return pUnit->IsHoldingPosition(); }
 // low level commands (wrappers around HeroActions.cpp CreateCmd...())
 /////////////////////////////////////////////////////////////////////////////
 
-void PFAIHelper::MoveTo(       const CVec2& pos ) { SendGameCommand( CreateCmdMoveHero(       pUnit, pos, false ) ); }
-void PFAIHelper::CombatMoveTo( const CVec2& pos ) { SendGameCommand( CreateCmdCombatMoveHero( pUnit, pos ) ); }
-void PFAIHelper::Stop()	{	SendGameCommand( CreateCmdStopHero( pUnit ) ); }
-void PFAIHelper::Follow( PFBaseUnit* target, float followRange, float forceFollowRange ) { SendGameCommand( CreateCmdFollowUnit( pUnit, target, followRange, forceFollowRange, false ) ); }
-void PFAIHelper::Attack( PFBaseUnit* target ) { SendGameCommand( CreateCmdAttackTarget( pUnit, target, false ) ); }
-void PFAIHelper::ActivateTalent( int level, int slot ) { SendGameCommand( CreateCmdActivateTalent( pUnit, level, slot ) ); }
+void PFAIHelper::MoveTo(       const CVec2& pos ) { SendGameCommand( CreateCmdMoveHero(       pUnit, pos, false ), 0 ); }
+void PFAIHelper::CombatMoveTo( const CVec2& pos ) { SendGameCommand( CreateCmdCombatMoveHero( pUnit, pos ), 0 ); }
+void PFAIHelper::Stop()	{	SendGameCommand( CreateCmdStopHero( pUnit ), 0 ); }
+void PFAIHelper::Follow( PFBaseUnit* target, float followRange, float forceFollowRange ) { SendGameCommand( CreateCmdFollowUnit( pUnit, target, followRange, forceFollowRange, false ), 0, target ); }
+void PFAIHelper::Attack( PFBaseUnit* target ) { SendGameCommand( CreateCmdAttackTarget( pUnit, target, false ), 0, target ); }
+void PFAIHelper::ActivateTalent( int level, int slot ) { SendGameCommand( CreateCmdActivateTalent( pUnit, level, slot ), 0 ); }
 void PFAIHelper::ActivateTalent( const TalentWrapper& iTalent ) { ActivateTalent( iTalent.GetLevel(), iTalent.GetSlot() ); }
 void PFAIHelper::UseTalent( const TalentWrapper& iTalent, const Target& target ) { UseTalent( iTalent.GetLevel(), iTalent.GetSlot(), target ); }
-void PFAIHelper::BuyConsumable( PFShop* pShop, int index ) { SendGameCommand( CreateCmdBuyConsumable( pUnit, pShop, index, -1 ) ); }
-void PFAIHelper::UseConsumable( int slot, const Target& target ){ SendGameCommand( CreateCmdUseConsumable( pUnit, slot, target ) ); }
+void PFAIHelper::BuyConsumable( PFShop* pShop, int index ) { SendGameCommand( CreateCmdBuyConsumable( pUnit, pShop, index, -1 ), 0 ); }
+void PFAIHelper::UseConsumable( int slot, const Target& target ){ SendGameCommand( CreateCmdUseConsumable( pUnit, slot, target ), 0 ); }
 void PFAIHelper::UseTalent( int level, int slot, const Target& target )
 {
 #if LOG_AI
@@ -458,15 +573,15 @@ void PFAIHelper::UseTalent( int level, int slot, const Target& target )
     DBG( "UseTalent %s", name );
   }
 #endif //LOG_AI
-  SendGameCommand( CreateCmdUseTalent( pUnit, level, slot, target, false ) );
+  SendGameCommand( CreateCmdUseTalent( pUnit, level, slot, target, false ), 0 );
 }
 void PFAIHelper::UsePortal( const Target& target )
 {
-  SendGameCommand( CreateCmdUsePortal( pUnit, target) );
+  SendGameCommand( CreateCmdUsePortal( pUnit, target), 0 );
 }
 void PFAIHelper::PickupObject( PFPickupableObjectBase* pObject )
 {
-  SendGameCommand( CreateCmdPickupObject( pUnit, pObject->GetObjectId() ) );
+  SendGameCommand( CreateCmdPickupObject( pUnit, pObject->GetObjectId() ), 0, pObject );
 }
 int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex )
 {
@@ -501,7 +616,7 @@ int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex )
 
 void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole )
 {
-  SendGameCommand( CreateCmdRaiseFlag(pUnit, pFlagpole) );
+  SendGameCommand( CreateCmdRaiseFlag(pUnit, pFlagpole), 0, pFlagpole );
 }
 
 PFBaseUnit* PFAIHelper::FindEnemyNear()

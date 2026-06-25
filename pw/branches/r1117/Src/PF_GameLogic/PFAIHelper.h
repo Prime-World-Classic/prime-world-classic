@@ -171,7 +171,7 @@ namespace NWorld
     Weak<NCore::ITransceiver>	transceiver;
     bool needResetHealing;
 
-    void SendGameCommand( NCore::WorldCommand* pCommands );
+    bool SendGameCommand( NCore::WorldCommand* pCommands, int kind, const PFLogicObject* target = 0 );
   };
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

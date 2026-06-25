@@ -63,6 +63,72 @@ struct LoadingFlashHeroState
   }
 };
 
+struct LoadingFlashModeDescriptionState
+{
+  string modeImage;
+  int id;
+
+  LoadingFlashModeDescriptionState()
+    : id(-1)
+  {
+  }
+};
+
+struct LoadingFlashChatChannelState
+{
+  NDb::EChatChannel channel;
+  wstring channelName;
+  uint channelColor;
+  bool showChannelName;
+  bool showPlayerName;
+  bool canWrite2Channel;
+  wstring shortcut;
+
+  LoadingFlashChatChannelState()
+    : channel(NDb::CHATCHANNEL_GLOBAL),
+      channelColor(0),
+      showChannelName(false),
+      showPlayerName(false),
+      canWrite2Channel(false)
+  {
+  }
+};
+
+struct LoadingFlashChatMessageState
+{
+  NDb::EChatChannel channel;
+  wstring playerName;
+  wstring message;
+  int playerId;
+  bool hasPlayerId;
+
+  LoadingFlashChatMessageState()
+    : channel(NDb::CHATCHANNEL_GLOBAL),
+      playerId(-1),
+      hasPlayerId(false)
+  {
+  }
+};
+
+struct LoadingFlashPlayerBindingState
+{
+  int playerId;
+  string iconPath;
+  int heroId;
+  int teamId;
+  bool hasIcon;
+  bool hasHero;
+
+  LoadingFlashPlayerBindingState()
+    : playerId(-1),
+      heroId(-1),
+      teamId(-1),
+      hasIcon(false),
+      hasHero(false)
+  {
+  }
+};
+
 class LoadingFlashInterface : public BaseObjectST, public NGameX::IFlashChat
 {
   NI_DECLARE_REFCOUNT_CLASS_2( LoadingFlashInterface, BaseObjectST, NGameX::IFlashChat );
@@ -109,22 +175,52 @@ public:
   const wstring& GetTipText() const { return tipText; }
   const string& GetMapBackground() const { return mapBackground; }
   const string& GetMapLogo() const { return mapLogo; }
+  const vector<int>& GetForceTable() const { return forceTable; }
+  const vector<uint>& GetColorTable() const { return colorTable; }
+  const wstring& GetLeftTeamForce() const { return leftTeamForce; }
+  const wstring& GetRightTeamForce() const { return rightTeamForce; }
+  const string& GetLeftLocaleImage() const { return leftLocaleImage; }
+  const string& GetRightLocaleImage() const { return rightLocaleImage; }
+  const wstring& GetLeftLocaleTooltip() const { return leftLocaleTooltip; }
+  const wstring& GetRightLocaleTooltip() const { return rightLocaleTooltip; }
   bool IsPreloading() const { return preloading; }
   bool IsSpectatorMode() const { return spectatorMode; }
+  bool IsChatVisible() const { return chatVisible; }
+  bool IsChatOff() const { return chatOff; }
+  NDb::EChatChannel GetDefaultChannel() const { return defaultChannel; }
   int GetOurHeroId() const { return ourHeroId; }
   NDb::EFaction GetOurFaction() const { return ourFaction; }
   NDb::EFaction GetLeftFaction() const { return leftFaction; }
   NDb::EFaction GetRightFaction() const { return rightFaction; }
   const vector<LoadingFlashHeroState>& GetHeroes() const { return heroes; }
+  const vector<LoadingFlashModeDescriptionState>& GetModeDescriptions() const { return modeDescriptions; }
+  const vector<LoadingFlashChatChannelState>& GetChatChannels() const { return chatChannels; }
+  const vector<LoadingFlashChatMessageState>& GetChatMessages() const { return chatMessages; }
+  const vector<LoadingFlashPlayerBindingState>& GetPlayerBindings() const { return playerBindings; }
 
 private:
   wstring loadingStatusText;
   wstring tipText;
   string mapBackground;
   string mapLogo;
+  vector<int> forceTable;
+  vector<uint> colorTable;
+  wstring leftTeamForce;
+  wstring rightTeamForce;
+  string leftLocaleImage;
+  string rightLocaleImage;
+  wstring leftLocaleTooltip;
+  wstring rightLocaleTooltip;
   vector<LoadingFlashHeroState> heroes;
+  vector<LoadingFlashModeDescriptionState> modeDescriptions;
+  vector<LoadingFlashChatChannelState> chatChannels;
+  vector<LoadingFlashChatMessageState> chatMessages;
+  vector<LoadingFlashPlayerBindingState> playerBindings;
   bool preloading;
   bool spectatorMode;
+  bool chatVisible;
+  bool chatOff;
+  NDb::EChatChannel defaultChannel;
   int ourHeroId;
   NDb::EFaction ourFaction;
   NDb::EFaction leftFaction;

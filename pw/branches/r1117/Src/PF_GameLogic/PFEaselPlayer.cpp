@@ -6,6 +6,9 @@
 #include "HeroActions.h"
 #include "PFMinigamePlace.h"
 #include "PFAbilityData.h"
+#include "PFPlayer.h"
+#include "PFPredefinedUnitVariables.h"
+#include "PlayerBehaviourTracking.h"
 #include "SessionEventType.h"
 #include "../Core/GameCommand.h"
 #include "../Core/Scheduler.h"
@@ -15,6 +18,21 @@ namespace NWorld
 
 class LinuxNullMinigames;
 
+namespace
+{
+  void HideLinuxMinigameUnit(PFBaseUnit* unit, bool hide)
+  {
+    if (!IsValid(unit))
+      return;
+
+    unit->Hide(hide);
+    unit->StopAttackingMe();
+
+    if (hide)
+      unit->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_ISOLATE));
+  }
+}
+
 class LinuxNullMinigamesMain : public PF_Minigames::IMinigamesMain, public CObjectBase
 {
   OBJECT_METHODS( 0x9D62D444, LinuxNullMinigamesMain );
@@ -22,7 +40,8 @@ class LinuxNullMinigamesMain : public PF_Minigames::IMinigamesMain, public CObje
   CPtr<NScene::IScene> scene;
   CPtr<NCore::IWorldBase> world;
   Weak<NCore::ITransceiver> transceiver;
-  const NDb::DBMinigamesCommon* commonDBData;
+  mutable NDb::Ptr<NDb::DBMinigamesCommon> commonDBData;
+  mutable bool commonDBDataLoaded;
 
   typedef nstl::hash_map<int, PF_Minigames::MinigameCreepDesc> PersonalCreeps;
   PersonalCreeps personalCreepStack;
@@ -39,6 +58,7 @@ class LinuxNullMinigamesMain : public PF_Minigames::IMinigamesMain, public CObje
 public:
   LinuxNullMinigamesMain()
     : commonDBData(0)
+    , commonDBDataLoaded(false)
     , nextCreepID(1)
     , sessionTime(0.0f)
     , producedObjects(0)
@@ -48,6 +68,7 @@ public:
 
   explicit LinuxNullMinigamesMain(PFWorld* pWorld)
     : commonDBData(0)
+    , commonDBDataLoaded(false)
     , nextCreepID(1)
     , sessionTime(0.0f)
     , producedObjects(0)
@@ -161,7 +182,15 @@ public:
   bool CanSendWorldCommands() const { return IsValid(transceiver); }
   int GetSentCommandsCount() const { return sentCommands; }
 
-  virtual const NDb::DBMinigamesCommon* GetCommonDBData() const { return commonDBData; }
+  virtual const NDb::DBMinigamesCommon* GetCommonDBData() const
+  {
+    if (!commonDBDataLoaded)
+    {
+      commonDBDataLoaded = true;
+      commonDBData = NDb::Get<NDb::DBMinigamesCommon>(NDb::DBID("MiniGames/MinigameCommon.xdb"));
+    }
+    return commonDBData;
+  }
 };
 
 class LinuxNullSingleMinigame
@@ -383,6 +412,19 @@ public:
   int mapLoadedCalls;
   int initCalls;
   int reinitCalls;
+  int playerDropCooldownForwardCalls;
+  int playerDropCooldownForwardHadCurrent;
+  int playerDropCooldownForwardSingleCallsBefore;
+  int playerDropCooldownForwardSingleCallsAfter;
+  int playerGameFinishedForwardCalls;
+  int playerGameFinishedForwardHadCurrent;
+  int playerGameFinishedForwardSingleCallsBefore;
+  int playerGameFinishedForwardSingleCallsAfter;
+  int playerMinigameEventCalls;
+  int playerMinigameStartedEvents;
+  int playerMinigameExitEvents;
+  int playerMinigameLastEventType;
+  int playerMinigameLastEventUnitObjectId;
   ZEND int operator&(IBinSaver& f)
   {
     f.Add(2, &currentPlace);
@@ -398,6 +440,19 @@ public:
     f.Add(12, &mapLoadedCalls);
     f.Add(13, &initCalls);
     f.Add(14, &reinitCalls);
+    f.Add(15, &playerDropCooldownForwardCalls);
+    f.Add(16, &playerDropCooldownForwardHadCurrent);
+    f.Add(17, &playerDropCooldownForwardSingleCallsBefore);
+    f.Add(18, &playerDropCooldownForwardSingleCallsAfter);
+    f.Add(19, &playerGameFinishedForwardCalls);
+    f.Add(20, &playerGameFinishedForwardHadCurrent);
+    f.Add(21, &playerGameFinishedForwardSingleCallsBefore);
+    f.Add(22, &playerGameFinishedForwardSingleCallsAfter);
+    f.Add(23, &playerMinigameEventCalls);
+    f.Add(24, &playerMinigameStartedEvents);
+    f.Add(25, &playerMinigameExitEvents);
+    f.Add(26, &playerMinigameLastEventType);
+    f.Add(27, &playerMinigameLastEventUnitObjectId);
     return 0;
   }
 
@@ -411,6 +466,19 @@ public:
     , mapLoadedCalls(0)
     , initCalls(0)
     , reinitCalls(0)
+    , playerDropCooldownForwardCalls(0)
+    , playerDropCooldownForwardHadCurrent(0)
+    , playerDropCooldownForwardSingleCallsBefore(-1)
+    , playerDropCooldownForwardSingleCallsAfter(-1)
+    , playerGameFinishedForwardCalls(0)
+    , playerGameFinishedForwardHadCurrent(0)
+    , playerGameFinishedForwardSingleCallsBefore(-1)
+    , playerGameFinishedForwardSingleCallsAfter(-1)
+    , playerMinigameEventCalls(0)
+    , playerMinigameStartedEvents(0)
+    , playerMinigameExitEvents(0)
+    , playerMinigameLastEventType(-1)
+    , playerMinigameLastEventUnitObjectId(-1)
   {
     InitGames();
   }
@@ -426,6 +494,19 @@ public:
     , mapLoadedCalls(0)
     , initCalls(0)
     , reinitCalls(0)
+    , playerDropCooldownForwardCalls(0)
+    , playerDropCooldownForwardHadCurrent(0)
+    , playerDropCooldownForwardSingleCallsBefore(-1)
+    , playerDropCooldownForwardSingleCallsAfter(-1)
+    , playerGameFinishedForwardCalls(0)
+    , playerGameFinishedForwardHadCurrent(0)
+    , playerGameFinishedForwardSingleCallsBefore(-1)
+    , playerGameFinishedForwardSingleCallsAfter(-1)
+    , playerMinigameEventCalls(0)
+    , playerMinigameStartedEvents(0)
+    , playerMinigameExitEvents(0)
+    , playerMinigameLastEventType(-1)
+    , playerMinigameLastEventUnitObjectId(-1)
   {
     InitGames();
   }
@@ -565,6 +646,72 @@ PF_Minigames::IMinigames* LinuxNullMinigamesMain::ProduceMinigamesObject(
 }
 
 
+bool PFEaselPlayer::GetLinuxMinigameDiagnostics(LinuxMinigameDiagnostics& diagnostics) const
+{
+  memset(&diagnostics, 0, sizeof(diagnostics));
+
+  PF_Minigames::IMinigames* minigamesBase = minigames.GetPtr();
+  LinuxNullMinigames* nativeMinigames = dynamic_cast<LinuxNullMinigames*>(minigamesBase);
+  if (!nativeMinigames)
+    return false;
+
+  diagnostics.hasMinigames = 1;
+  diagnostics.minigamesStartCalls = nativeMinigames->startCalls;
+  diagnostics.minigamesLeaveCalls = nativeMinigames->leaveCalls;
+  diagnostics.minigamesForceLeaveCalls = nativeMinigames->forceLeaveCalls;
+  diagnostics.minigamesStepCalls = nativeMinigames->stepCalls;
+  diagnostics.minigamesUpdateCalls = nativeMinigames->updateCalls;
+  diagnostics.minigamesMapLoadedCalls = nativeMinigames->mapLoadedCalls;
+  diagnostics.minigamesInitCalls = nativeMinigames->initCalls;
+  diagnostics.minigamesReinitCalls = nativeMinigames->reinitCalls;
+  diagnostics.playerDropCooldownForwardCalls = nativeMinigames->playerDropCooldownForwardCalls;
+  diagnostics.playerDropCooldownForwardHadCurrent = nativeMinigames->playerDropCooldownForwardHadCurrent;
+  diagnostics.playerDropCooldownForwardSingleCallsBefore = nativeMinigames->playerDropCooldownForwardSingleCallsBefore;
+  diagnostics.playerDropCooldownForwardSingleCallsAfter = nativeMinigames->playerDropCooldownForwardSingleCallsAfter;
+  diagnostics.playerGameFinishedForwardCalls = nativeMinigames->playerGameFinishedForwardCalls;
+  diagnostics.playerGameFinishedForwardHadCurrent = nativeMinigames->playerGameFinishedForwardHadCurrent;
+  diagnostics.playerGameFinishedForwardSingleCallsBefore = nativeMinigames->playerGameFinishedForwardSingleCallsBefore;
+  diagnostics.playerGameFinishedForwardSingleCallsAfter = nativeMinigames->playerGameFinishedForwardSingleCallsAfter;
+  diagnostics.playerMinigameEventCalls = nativeMinigames->playerMinigameEventCalls;
+  diagnostics.playerMinigameStartedEvents = nativeMinigames->playerMinigameStartedEvents;
+  diagnostics.playerMinigameExitEvents = nativeMinigames->playerMinigameExitEvents;
+  diagnostics.playerMinigameLastEventType = nativeMinigames->playerMinigameLastEventType;
+  diagnostics.playerMinigameLastEventUnitObjectId = nativeMinigames->playerMinigameLastEventUnitObjectId;
+
+  if (IsValid(nativeMinigames->singleMinigame))
+  {
+    LinuxNullSingleMinigame* singleMinigame = nativeMinigames->singleMinigame.GetPtr();
+    diagnostics.hasSingleMinigame = 1;
+    diagnostics.singleRunning = singleMinigame->running ? 1 : 0;
+    diagnostics.singlePaused = singleMinigame->paused ? 1 : 0;
+    diagnostics.singleUnderFogOfWar = singleMinigame->underFogOfWar ? 1 : 0;
+    diagnostics.singleSessionFinished = singleMinigame->sessionFinished ? 1 : 0;
+    diagnostics.singleSessionVictory = singleMinigame->sessionVictory ? 1 : 0;
+    diagnostics.singleStartCalls = singleMinigame->startCalls;
+    diagnostics.singleStartClientCalls = singleMinigame->startClientCalls;
+    diagnostics.singleLeaveCalls = singleMinigame->leaveCalls;
+    diagnostics.singleLeaveCommandCalls = singleMinigame->leaveCommandCalls;
+    diagnostics.singlePauseCommandCalls = singleMinigame->pauseCommandCalls;
+    diagnostics.singleStepCalls = singleMinigame->stepCalls;
+    diagnostics.singleUpdateCalls = singleMinigame->updateCalls;
+    diagnostics.singlePauseCalls = singleMinigame->pauseCalls;
+    diagnostics.singleCheatDropCooldownCalls = singleMinigame->cheatDropCooldownCalls;
+    diagnostics.singleCheatWinCalls = singleMinigame->cheatWinCalls;
+    diagnostics.singleSessionFinishedCalls = singleMinigame->sessionFinishedCalls;
+    diagnostics.singleMapLoadedCalls = singleMinigame->mapLoadedCalls;
+    diagnostics.singleEjectCalls = singleMinigame->ejectCalls;
+  }
+
+  LinuxNullMinigamesMain* nativeMain = dynamic_cast<LinuxNullMinigamesMain*>(nativeMinigames->GetMain());
+  if (nativeMain)
+  {
+    diagnostics.hasMain = 1;
+    diagnostics.mainSentCommands = nativeMain->GetSentCommandsCount();
+  }
+
+  return true;
+}
+
 PFEaselPlayer::PFEaselPlayer(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType unitType, NDb::EFaction faction, NDb::EFaction _originalFaction)
   : PFBaseHero(pWorld, info, unitType, faction, _originalFaction)
   , bidon(NDb::BIDONTYPE_NONE)
@@ -592,17 +739,104 @@ bool PFEaselPlayer::Step(float dtInSeconds)
 
   return PFBaseHero::Step(dtInSeconds);
 }
-void PFEaselPlayer::OnGameFinished( const NDb::EFaction failedFaction ) { PFBaseHero::OnGameFinished(failedFaction); }
+void PFEaselPlayer::OnGameFinished( const NDb::EFaction failedFaction )
+{
+  PFBaseHero::OnGameFinished(failedFaction);
+
+  PF_Minigames::ISingleMinigame* currentMinigame =
+    IsValid(minigames) ? minigames->GetCurrentMinigame() : 0;
+  LinuxNullMinigames* nativeMinigames =
+    IsValid(minigames) ? dynamic_cast<LinuxNullMinigames*>(minigames.GetPtr()) : 0;
+  if (nativeMinigames)
+  {
+    ++nativeMinigames->playerGameFinishedForwardCalls;
+    nativeMinigames->playerGameFinishedForwardHadCurrent = currentMinigame ? 1 : 0;
+    nativeMinigames->playerGameFinishedForwardSingleCallsBefore =
+      IsValid(nativeMinigames->singleMinigame)
+        ? nativeMinigames->singleMinigame->sessionFinishedCalls
+        : -1;
+  }
+
+  if (currentMinigame)
+    currentMinigame->SessionFinished(failedFaction != GetFaction());
+
+  if (nativeMinigames)
+  {
+    nativeMinigames->playerGameFinishedForwardSingleCallsAfter =
+      IsValid(nativeMinigames->singleMinigame)
+        ? nativeMinigames->singleMinigame->sessionFinishedCalls
+        : -1;
+  }
+}
 void PFEaselPlayer::OnBeforeClose()
 {
   if (IsValid(minigamePlace) || IsIsolated() || CheckFlag(NDb::UNITFLAG_INMINIGAME))
     OnLeaveMinigameCmd();
 }
-void PFEaselPlayer::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { PFBaseHero::DropCooldowns(dropCooldownParams); }
-void PFEaselPlayer::Isolate( bool isolate ) { isolated = isolate; }
+void PFEaselPlayer::DropCooldowns( DropCooldownParams const& dropCooldownParams )
+{
+  PFBaseHero::DropCooldowns(dropCooldownParams);
+
+  PF_Minigames::ISingleMinigame* currentMinigame =
+    IsValid(minigames) ? minigames->GetCurrentMinigame() : 0;
+  LinuxNullMinigames* nativeMinigames =
+    IsValid(minigames) ? dynamic_cast<LinuxNullMinigames*>(minigames.GetPtr()) : 0;
+  if (nativeMinigames)
+  {
+    ++nativeMinigames->playerDropCooldownForwardCalls;
+    nativeMinigames->playerDropCooldownForwardHadCurrent = currentMinigame ? 1 : 0;
+    nativeMinigames->playerDropCooldownForwardSingleCallsBefore =
+      IsValid(nativeMinigames->singleMinigame)
+        ? nativeMinigames->singleMinigame->cheatDropCooldownCalls
+        : -1;
+  }
+
+  if (currentMinigame)
+    currentMinigame->CheatDropCooldowns();
+
+  if (nativeMinigames)
+  {
+    nativeMinigames->playerDropCooldownForwardSingleCallsAfter =
+      IsValid(nativeMinigames->singleMinigame)
+        ? nativeMinigames->singleMinigame->cheatDropCooldownCalls
+        : -1;
+  }
+}
+void PFEaselPlayer::Isolate( bool isolate )
+{
+  if (isolated == isolate)
+    return;
+
+  isolated = isolate;
+  HideLinuxMinigameUnit(this, isolate);
+
+  struct LinuxMinigameSummonHider : public ISummonAction
+  {
+    bool hide;
+
+    explicit LinuxMinigameSummonHider(bool value)
+      : hide(value)
+    {
+    }
+
+    virtual void operator()(PFBaseUnit* unit)
+    {
+      HideLinuxMinigameUnit(unit, hide);
+    }
+  } hider(isolate);
+
+  ForAllSummons(hider, NDb::SUMMONTYPE_PRIMARY);
+  ForAllSummons(hider, NDb::SUMMONTYPE_PET);
+}
 bool PFEaselPlayer::StartMinigame( PFMinigamePlace * pPlace )
 {
-  if (!pPlace || pPlace->CurrentEaselPlayer())
+  if (!pPlace || !pPlace->CanBeUsedBy(this))
+    return false;
+
+  if (pPlace->GetFaction() != GetFaction())
+    return false;
+
+  if (pPlace->CurrentEaselPlayer())
     return false;
 
   if (IsValid(minigamePlace) && minigamePlace != pPlace)
@@ -622,6 +856,8 @@ bool PFEaselPlayer::StartMinigame( PFMinigamePlace * pPlace )
   pPlace->OnPlayerEnter();
   LogMinigameEvent(SessionEventType::MG2Started, 0, 0);
   MinigameEvent(NDb::BASEUNITEVENT_MINIGAMESTARTED);
+  if (GetWorld())
+    GetWorld()->SetIgnoreSlowdownHint(true);
   return true;
 }
 bool PFEaselPlayer::OnLeaveMinigameCmd()
@@ -632,6 +868,8 @@ bool PFEaselPlayer::OnLeaveMinigameCmd()
   Isolate(false);
   if (IsValid(minigames))
     minigames->LeaveMinigame();
+  if (GetWorld())
+    GetWorld()->SetIgnoreSlowdownHint(false);
   if (IsValid(minigamePlace))
   {
     minigamePlace->OnPlayerLeave();
@@ -645,16 +883,114 @@ bool PFEaselPlayer::OnLeaveMinigameCmd()
   }
   return true;
 }
-void PFEaselPlayer::GetItemTransferTargets( vector<CPtr<PFBaseHero> > & targets ) { targets.clear(); }
-bool PFEaselPlayer::CanGetScrollDuplicate( PFBaseHero * target ) { (void)target; return false; }
-bool PFEaselPlayer::AddItemToHero( PFBaseHero * target, const NDb::Consumable * pDBDesc, int quantity ) { return target ? target->TakeConsumable(pDBDesc, quantity, NDb::CONSUMABLEORIGIN_MINIGAME) : false; }
-void PFEaselPlayer::SetCurrentBidon( NDb::EBidonType _bidon ) { bidon = _bidon; }
+void PFEaselPlayer::GetItemTransferTargets( vector<CPtr<PFBaseHero> > & targets )
+{
+  targets.clear();
+
+  NDb::EFaction faction = GetFaction();
+  const PFWorld* world = GetWorld();
+  if ( !world )
+    return;
+
+  for ( int i = 0; i < world->GetPlayersCount(); ++i )
+  {
+    PFPlayer* player = world->GetPlayer( i );
+    PFBaseHero* hero = player ? player->GetHero() : 0;
+    if ( hero && hero->GetFaction() == faction )
+      targets.push_back( hero );
+  }
+}
+bool PFEaselPlayer::CanGetScrollDuplicate( PFBaseHero * target )
+{
+  if (this == target)
+    return false;
+
+  PFWorld* world = GetWorld();
+  if (!world)
+    return false;
+
+  const float probability = GetVariableValue(UnitVariables::szScrollDuplicationProc);
+  return world->GetRndGen()->Roll(probability);
+}
+
+bool PFEaselPlayer::AddItemToHero( PFBaseHero * target, const NDb::Consumable * pDBDesc, int quantity )
+{
+  if (!target)
+    return false;
+
+  const EPlayerBehaviourEvent::Enum behaviourEvent = (this == target)
+    ? EPlayerBehaviourEvent::TookScroll
+    : EPlayerBehaviourEvent::GaveScroll;
+  PlayerBehaviourTracking::DispatchEvent(this, behaviourEvent);
+
+  if (CanGetScrollDuplicate(target))
+  {
+    if (TakeConsumable(pDBDesc, quantity, NDb::CONSUMABLEORIGIN_MINIGAME))
+    {
+      PFWorld* world = GetWorld();
+      if (world)
+        world->NotifyItemTransferForLinuxBootstrap(this, this, pDBDesc);
+    }
+  }
+
+  if (!target->TakeConsumable(pDBDesc, quantity, NDb::CONSUMABLEORIGIN_MINIGAME))
+    return false;
+
+  PFWorld* world = GetWorld();
+  if (world)
+    world->NotifyItemTransferForLinuxBootstrap(this, target, pDBDesc);
+  if (this != target && target->IsLocal())
+    target->OnScrollReceived();
+  return true;
+}
+void PFEaselPlayer::SetCurrentBidon( NDb::EBidonType _bidon )
+{
+  if ( _bidon < NDb::BIDONTYPE_NONE || NDb::BIDONTYPE_PALETTE < _bidon )
+    return;
+
+  bidon = _bidon;
+
+  if ( !IsValid( minigames ) )
+    return;
+
+  PF_Minigames::IMinigamesMain* minigamesMain = minigames->GetMain();
+  if ( !minigamesMain )
+    return;
+
+  const NDb::DBMinigamesCommon* commonData = minigamesMain->GetCommonDBData();
+  if ( !commonData || static_cast<size_t>(bidon) >= commonData->sessionBidonAbilities.size() )
+    return;
+
+  const NDb::Bidon& bidonDesc = commonData->sessionBidonAbilities[bidon];
+  if ( !bidonDesc.ability )
+    return;
+
+  PFAbilityData *pA = new PFAbilityData(this, bidonDesc.ability, NDb::ABILITYTYPEID_ABILITY2 );
+  SetAbility(NDb::ABILITY_ID_2, pA);
+}
 void PFEaselPlayer::SetNaftaInfoProvider( NGameX::INaftaInfoProvider * naftaInfoProvider ) { (void)naftaInfoProvider; }
 bool PFEaselPlayer::CanBuyZZBoost() { return false; }
 void PFEaselPlayer::BuyZZBoost() {}
 void PFEaselPlayer::LogMinigameEvent( SessionEventType::EventType eventType, int param1, int param2 ) { LogSessionEvent(eventType, param1); (void)param2; }
 void PFEaselPlayer::OnMapLoaded() { if (IsValid(minigames)) minigames->OnMapLoaded(); }
-void PFEaselPlayer::MinigameEvent( NDb::EBaseUnitEvent eventType) { (void)eventType; }
+void PFEaselPlayer::MinigameEvent( NDb::EBaseUnitEvent eventType)
+{
+  LinuxNullMinigames* nativeMinigames =
+    IsValid(minigames) ? dynamic_cast<LinuxNullMinigames*>(minigames.GetPtr()) : 0;
+  if (nativeMinigames)
+  {
+    ++nativeMinigames->playerMinigameEventCalls;
+    nativeMinigames->playerMinigameLastEventType = static_cast<int>(eventType);
+    nativeMinigames->playerMinigameLastEventUnitObjectId = GetObjectId();
+    if (eventType == NDb::BASEUNITEVENT_MINIGAMESTARTED)
+      ++nativeMinigames->playerMinigameStartedEvents;
+    else if (eventType == NDb::BASEUNITEVENT_MINIGAMEEXIT)
+      ++nativeMinigames->playerMinigameExitEvents;
+  }
+
+  PFBaseUnitMinigameEvent evt(eventType, this);
+  EventHappened(evt);
+}
 void PFEaselPlayer::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseHero::OnUnitDie(pKiller, flags, pDamageDesc); }
 
 } //namespace NWorld

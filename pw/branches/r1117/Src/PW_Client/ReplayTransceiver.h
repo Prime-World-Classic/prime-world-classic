@@ -4,7 +4,10 @@
 
 #if defined(PW_LINUX_DB_BOOTSTRAP)
 
+#include "Core/GameTypes.h"
 #include "LoadingStatusHandler.h"
+
+#include <string>
 
 namespace lobby
 {
@@ -85,19 +88,55 @@ class ReplayStorage2: public NCore::IReplayStorage
   OBJECT_BASIC_METHODS(ReplayStorage2)
 
 public:
-  ReplayStorage2() {}
+  ReplayStorage2();
   ReplayStorage2( NCore::ReplayBufferMode mode, const char * fileName, NWorld::IMapCollection * _mapCollection,
                   NGameX::LoadingStatusHandler * _loadingStatusHandler );
 
-  virtual bool GetNextSegment( NCore::ReplaySegment& segOut ) { return false; }
-  virtual bool GetNextSegment( NCore::SyncSegment & segOut ) { return false; }
+  virtual bool GetNextSegment( NCore::ReplaySegment& segOut );
+  virtual bool GetNextSegment( NCore::SyncSegment & segOut );
   virtual bool GetHeader( NCore::MapStartInfo * info, int * clientId, int * stepLength,
-                          NCore::ClientSettings * clientSettings, lobby::SGameParameters* gameParams ) { return false; }
+                          NCore::ClientSettings * clientSettings, lobby::SGameParameters* gameParams );
 
-  virtual bool IsOk() { return false; }
+  virtual bool IsOk() { return linuxOk; }
+
+  size_t GetLinuxReplayLoadedSegments() const { return linuxSegments.size(); }
+  size_t GetLinuxReplayLoadedCommands() const { return linuxLoadedCommands; }
+  size_t GetLinuxReplayLoadedStatuses() const { return linuxLoadedStatuses; }
+  size_t GetLinuxReplayDecodeFailures() const { return linuxDecodeFailures; }
+  bool GetLinuxReplayHeaderReady() const { return linuxHeaderReady; }
+  size_t GetLinuxReplayHeaderPlayers() const { return linuxHeaderMapStartInfo.playersInfo.size(); }
+  int GetLinuxReplayHeaderClientId() const { return linuxHeaderClientId; }
+  int GetLinuxReplayHeaderStepLength() const { return linuxHeaderStepLength; }
+  const char* GetLinuxReplayHeaderMap() const { return linuxHeaderMapStartInfo.mapDescName.c_str(); }
+  int GetLinuxReplayStartStep() const { return linuxStartStep; }
+  int GetLinuxReplayFirstStep() const { return linuxFirstStep; }
+  int GetLinuxReplayLastStep() const { return linuxLastStep; }
+  const char* GetLinuxReplayError() const { return linuxError.c_str(); }
 
 private:
   void SetLoadingStatus(Game::EReplayStatus::Enum status);
+  bool LinuxFail(const char* message);
+  bool LinuxLoad(const char* fileName);
+  void LinuxLoadHeader(const char* fileName);
+
+  vector<NCore::ReplaySegment> linuxSegments;
+  vector<int> linuxSegmentSteps;
+  vector<NCore::SyncSegment::TStatuses> linuxSegmentStatuses;
+  size_t linuxReplayCursor;
+  size_t linuxSyncCursor;
+  bool linuxOk;
+  int linuxStartStep;
+  int linuxFirstStep;
+  int linuxLastStep;
+  size_t linuxLoadedCommands;
+  size_t linuxLoadedStatuses;
+  size_t linuxDecodeFailures;
+  bool linuxHeaderReady;
+  int linuxHeaderClientId;
+  int linuxHeaderStepLength;
+  NCore::MapStartInfo linuxHeaderMapStartInfo;
+  NCore::ClientSettings linuxHeaderClientSettings;
+  std::string linuxError;
 };
 
 

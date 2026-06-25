@@ -59,25 +59,240 @@ template<> NWorld::PFBaseUnitEventListener* CastToUserObjectImpl<NWorld::PFBaseU
 namespace NWorld
 {
 PFHFSM::PFHFSM() {}
-PFHFSM::~PFHFSM() {}
-void PFHFSM::DumpAllStates(int) {}
-void PFHFSM::FSMStep(float) {}
-void PFHFSM::PushState(CObj<IPFState> const& pState) { (void)pState; }
-CObj<IPFState> PFHFSM::PopState() { return 0; }
-IPFState* PFHFSM::GetCurrentState() { return 0; }
-IPFState const* PFHFSM::GetCurrentState() const { return 0; }
-void PFHFSM::Cleanup(bool) {}
-void PFHFSM::RemoveState(IPFState*) {}
-const char* PFHFSM::GetCurrentStateName() { return ""; }
-bool PFHFSM::CanClearStack() const { return true; }
-void PFFsm::EnqueueState(CObj<IPFState> pState, bool flushQueue) { (void)pState; (void)flushQueue; }
-bool PFFsm::IsIdle() const { return true; }
-void PFFsm::PauseFSM(bool pause) { paused = pause; }
-void PFFsm::Cleanup(bool) {}
-PFFsm::~PFFsm() {}
-void PFFsm::FsmStep(float) {}
-void PFFsm::FlushStateQueue() {}
-void PFFsm::FlushStateQueue2() {}
+// Linux teardown may run after derived AI state objects are partially destroyed.
+// Explicit Cleanup() still performs normal DoLeave(); destructors only release refs.
+PFHFSM::~PFHFSM() { stateStack.clear(); }
+
+void PFHFSM::DumpAllStates(int depths)
+{
+  if (!depths)
+    DebugTrace("Stack Dump");
+
+  for (int i = stateStack.size() - 1; i >= 0; --i)
+    stateStack[i]->DumpStateToConsole(depths);
+}
+
+void PFHFSM::FSMStep(float dt)
+{
+  if (CObj<IPFState> pCurrent = GetCurrentState())
+  {
+    if (pCurrent->DoStep(dt))
+    {
+      CObj<IPFState> curState = PopState();
+      if (IsValid(curState))
+        curState->DoLeave();
+    }
+  }
+}
+
+void PFHFSM::PushState(CObj<IPFState> const& pState)
+{
+  NI_VERIFY(pState, "Trying to push invalid state!", return;);
+
+  if (!GetCurrentState() || !GetCurrentState()->IsBlocking())
+  {
+    if (GetCurrentState() && GetCurrentState()->IsEscaping())
+    {
+      CObj<IPFState> curState = PopState();
+      if (IsValid(curState))
+        curState->DoLeave(true);
+    }
+    stateStack.push_back(pState);
+    return;
+  }
+
+  vector<CObj<IPFState> >::iterator iState;
+  for (iState = stateStack.end() - 1; iState >= stateStack.begin(); --iState)
+  {
+    if ((*iState)->IsBlocking())
+    {
+      (*iState)->InformStatePassingThrough();
+    }
+    else
+    {
+      ++iState;
+      break;
+    }
+
+    if (iState == stateStack.begin())
+      break;
+  }
+
+  if ((iState >= stateStack.begin()) && (iState < stateStack.end()))
+    stateStack.insert(iState, pState);
+  else
+    stateStack.push_back(pState);
+}
+
+CObj<IPFState> PFHFSM::PopState()
+{
+  if (!stateStack.empty())
+  {
+    CObj<IPFState> st = stateStack.back();
+    stateStack.pop_back();
+    return st;
+  }
+  return 0;
+}
+
+IPFState* PFHFSM::GetCurrentState()
+{
+  return stateStack.empty() ? 0 : stateStack.back();
+}
+
+IPFState const* PFHFSM::GetCurrentState() const
+{
+  return stateStack.empty() ? 0 : stateStack.back();
+}
+
+void PFHFSM::Cleanup(bool bForced)
+{
+  if (!bForced && !CanClearStack())
+    return;
+
+  while (GetCurrentState() && (bForced || !GetCurrentState()->IsBlocking()))
+  {
+    CObj<IPFState> curState = PopState();
+    if (IsValid(curState))
+      curState->DoLeave(true);
+  }
+
+  while (!bForced && !stateStack.empty() && !stateStack.front()->IsBlocking())
+    stateStack.erase(stateStack.begin());
+}
+
+void PFHFSM::RemoveState(IPFState* pState)
+{
+  if (!pState)
+    return;
+
+  if (GetCurrentState() == pState)
+  {
+    CObj<IPFState> curState = PopState();
+    if (IsValid(curState))
+      curState->DoLeave();
+    return;
+  }
+
+  for (vector<CObj<IPFState> >::iterator it = stateStack.begin(); it != stateStack.end(); ++it)
+  {
+    if ((*it).GetPtr() == pState)
+    {
+      stateStack.erase(it);
+      return;
+    }
+  }
+}
+
+const char* PFHFSM::GetCurrentStateName()
+{
+  return GetCurrentState() ? GetCurrentState()->GetObjectTypeName() : "None";
+}
+
+bool PFHFSM::CanClearStack() const
+{
+  for (vector<CObj<IPFState> >::const_iterator it = stateStack.begin(); it != stateStack.end(); ++it)
+  {
+    if (*it && !(*it)->CanBeInterrupted())
+      return false;
+  }
+  return true;
+}
+
+void PFFsm::EnqueueState(CObj<IPFState> pState, bool flushQueue)
+{
+  NI_VERIFY(pState, "Trying to enqueue invalid state!", return;);
+
+  if (paused)
+  {
+    delayedStates.insert(delayedStates.end(), make_pair(pState, flushQueue));
+    return;
+  }
+
+  if (flushQueue)
+    FlushStateQueue2();
+
+  if (stateQueue.size() < 2)
+    stateQueue.insert(stateQueue.end(), pState);
+}
+
+bool PFFsm::IsIdle() const { return GetCurrentState() == 0; }
+
+void PFFsm::PauseFSM(bool pause)
+{
+  if (paused == pause)
+    return;
+
+  paused = pause;
+
+  if (!pause)
+  {
+    TDelayedStates delayed(delayedStates);
+    delayedStates.clear();
+    for (TDelayedStates::iterator it = delayed.begin(); it != delayed.end(); ++it)
+      EnqueueState(it->first.GetPtr(), it->second);
+  }
+}
+
+void PFFsm::Cleanup(bool bForced)
+{
+  FlushStateQueue();
+  PFHFSM::Cleanup(bForced);
+}
+
+PFFsm::~PFFsm() { stateQueue.clear(); delayedStates.clear(); }
+
+void PFFsm::FsmStep(float dtInSeconds)
+{
+  if (paused)
+    return;
+
+  bool const wasIdle = IsIdle();
+  FSMStep(dtInSeconds);
+
+  if (!stateQueue.empty() && (IsIdle() || !GetCurrentState()->IsBlocking()))
+  {
+    CObj<IPFState> pState = stateQueue.front();
+    stateQueue.pop_front();
+
+    if (pState->IsEjecting())
+      PFHFSM::Cleanup();
+
+    PushState(pState);
+    FSMStep(0.0f);
+  }
+
+  if (!wasIdle && IsIdle())
+    OnBecameIdle();
+}
+
+void PFFsm::FlushStateQueue()
+{
+  TStateQueue tempStateQueue(stateQueue);
+  stateQueue.clear();
+
+  for (TStateQueue::iterator it = tempStateQueue.begin(); it != tempStateQueue.end(); ++it)
+    (*it)->DoLeave(true);
+}
+
+void PFFsm::FlushStateQueue2()
+{
+  TStateQueue tempStateQueue(stateQueue);
+  stateQueue.clear();
+
+  for (TStateQueue::iterator it = tempStateQueue.begin(); it != tempStateQueue.end();)
+  {
+    TStateQueue::iterator itTmp = it;
+    ++it;
+    if ((*itTmp)->IsEjecting())
+    {
+      (*itTmp)->DoLeave(true);
+      tempStateQueue.erase(itTmp);
+    }
+  }
+
+  stateQueue = tempStateQueue;
+}
 
 static StatValueWithModifiers g_linuxDummyStat;
 typedef vector<StatValueWithModifiers> TLinuxUnitStats;

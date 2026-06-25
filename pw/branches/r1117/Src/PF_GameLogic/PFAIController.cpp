@@ -23,6 +23,7 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
   , lineNumber(0)
   , lineShift(0)
   , isRespawned(false)
+  , initialRouteIssued(false)
   , healing(HEAL_NONE)
   , healingTick(0)
   , warFrontTimeDist(0.0f)
@@ -169,14 +170,33 @@ void PFAIController::OnRespawn()
 void PFAIController::Step( float timeDelta )
 {
   PFBaseAIController::Step(timeDelta);
+  if (IsDead())
+    return;
+
+  if (isRespawned)
+  {
+    GoToEnemyBase();
+    initialRouteIssued = true;
+    isRespawned = false;
+  }
+
+  if (!initialRouteIssued && !CurrentState() && !road.empty())
+  {
+    GoToEnemyBase();
+    initialRouteIssued = true;
+  }
+
   ProcessHealing();
-  FSMStep(timeDelta);
+  FsmStep(timeDelta);
 }
 
 void PFAIController::OnBecameIdle()
 {
   if (IsValid(GetHero()) && !road.empty())
+  {
+    initialRouteIssued = true;
     WalkByRoad(false);
+  }
 }
 
 } // namespace NWorld

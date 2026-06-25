@@ -83,7 +83,16 @@ class PFStatistics : public PFWorldObjectBase
 {
   WORLD_OBJECT_METHODS(0xCF6283C0, PFStatistics);
 
-  PFStatistics() {};
+  PFStatistics()
+#if defined(PW_LINUX_NULL_RENDER)
+    : linuxItemTransferCalls(0)
+    , linuxItemTransferSelfCalls(0)
+    , linuxItemTransferAllyCalls(0)
+    , linuxLastItemTransferFromObjectId(-1)
+    , linuxLastItemTransferToObjectId(-1)
+    , linuxLastItemTransferHadItem(0)
+#endif
+  {};
 public:
   PFStatistics(const CPtr<PFWorld> pWorld);
 	virtual bool NeedToBeStepped() { return false; }
@@ -193,8 +202,40 @@ protected:
   int firstMerciless;         // Player ID of the first player, who killed all heroes from the oposite faction
   int firstMGAllLevelsWinner; // Player ID of the first player, who finished all minigame levels
   bool wasFirstAssault;
+#if defined(PW_LINUX_NULL_RENDER)
+  int linuxItemTransferCalls;
+  int linuxItemTransferSelfCalls;
+  int linuxItemTransferAllyCalls;
+  int linuxLastItemTransferFromObjectId;
+  int linuxLastItemTransferToObjectId;
+  int linuxLastItemTransferHadItem;
+#endif
 public:
-  ZEND int operator&( IBinSaver &f ) { f.Add(1,(PFWorldObjectBase*)this); f.Add(2,&pWorld); f.Add(3,&scoring); f.Add(4,&killInstances); f.Add(5,&assistInstances); f.Add(6,&perFactionStatistics); f.Add(7,&firstMiniGameWinner); f.Add(8,&towersDestroyedCnt); f.Add(9,&towersHitByTerrain); f.Add(10,&mainBuildingKiller); f.Add(11,&firstMerciless); f.Add(12,&firstMGAllLevelsWinner); f.Add(13,&wasFirstAssault); return 0; }
+  ZEND int operator&( IBinSaver &f )
+  {
+    f.Add(1,(PFWorldObjectBase*)this);
+    f.Add(2,&pWorld);
+    f.Add(3,&scoring);
+    f.Add(4,&killInstances);
+    f.Add(5,&assistInstances);
+    f.Add(6,&perFactionStatistics);
+    f.Add(7,&firstMiniGameWinner);
+    f.Add(8,&towersDestroyedCnt);
+    f.Add(9,&towersHitByTerrain);
+    f.Add(10,&mainBuildingKiller);
+    f.Add(11,&firstMerciless);
+    f.Add(12,&firstMGAllLevelsWinner);
+    f.Add(13,&wasFirstAssault);
+#if defined(PW_LINUX_NULL_RENDER)
+    f.Add(14,&linuxItemTransferCalls);
+    f.Add(15,&linuxItemTransferSelfCalls);
+    f.Add(16,&linuxItemTransferAllyCalls);
+    f.Add(17,&linuxLastItemTransferFromObjectId);
+    f.Add(18,&linuxLastItemTransferToObjectId);
+    f.Add(19,&linuxLastItemTransferHadItem);
+#endif
+    return 0;
+  }
 
   bool OnStep ( float dtInSeconds );
   void NotifyTeleport ( PFBaseMovingUnit &pUnit );
@@ -220,6 +261,14 @@ public:
 
   void SendCheatMessage( PFBaseHero * hero );
   void NotifyItemTransfer( PFBaseHero * from, PFBaseHero * to, const NDb::Consumable * dbItem );
+#if defined(PW_LINUX_NULL_RENDER)
+  int GetLinuxItemTransferCalls() const { return linuxItemTransferCalls; }
+  int GetLinuxItemTransferSelfCalls() const { return linuxItemTransferSelfCalls; }
+  int GetLinuxItemTransferAllyCalls() const { return linuxItemTransferAllyCalls; }
+  int GetLinuxLastItemTransferFromObjectId() const { return linuxLastItemTransferFromObjectId; }
+  int GetLinuxLastItemTransferToObjectId() const { return linuxLastItemTransferToObjectId; }
+  int GetLinuxLastItemTransferHadItem() const { return linuxLastItemTransferHadItem; }
+#endif
 
   static CPtr<NWorld::PFBaseHero> GetHeroById( const CPtr<NWorld::PFAIWorld>& pAIWorld, int id );
  

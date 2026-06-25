@@ -2,7 +2,9 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFPlayer.h"
+#include "PFHero.h"
 #include "PFWorld.h"
+#include "PlayerBehaviourTracker.h"
 
 namespace NWorld
 {
@@ -20,7 +22,7 @@ PFPlayer::PFPlayer( PFWorld * _world,
                     bool _aiForLeaversEnabled,
                     int _aiForLeaversThreshold,
                     const bool chatMuted,
-                    const bool )
+                    const bool enableBehaviourTracking)
 : PFWorldObjectBase( _world, 1 )
 , chatMuted(chatMuted)
 , isLocal(false)
@@ -37,7 +39,9 @@ PFPlayer::PFPlayer( PFWorld * _world,
 , aiStartTimer(0)
 , disconnected(false)
 , leaver(false)
+, behaviourTracker()
 {
+  behaviourTracker = new PlayerBehaviourTracker(_world, this, enableBehaviourTracking);
 }
 
 PFPlayer::PFPlayer()
@@ -56,6 +60,7 @@ PFPlayer::PFPlayer()
 , aiStartTimer(0)
 , disconnected(false)
 , leaver(false)
+, behaviourTracker()
 {
 }
 
@@ -71,17 +76,55 @@ void PFPlayer::DetachHero()
 
 void PFPlayer::SetIsPlaying(bool _isPlaying)
 {
-  isPlaying = _isPlaying;
+  if (isPlaying != _isPlaying)
+  {
+    isPlaying = _isPlaying;
+    if (aiForLeaversEnabled)
+    {
+      if (isPlaying)
+      {
+        if (aiStartTimer > 0)
+          aiStartTimer = 0;
+        else
+          GetWorld()->RemoveAI( GetHero() );
+      }
+      else
+      {
+        if (aiForLeaversThreshold > 0)
+          aiStartTimer = aiForLeaversThreshold;
+        else
+          GetWorld()->AddAI( GetHero(), GetPlayerID() % 3 );
+      }
+    }
+  }
 }
 
 bool PFPlayer::Step(float dtInSeconds)
 {
+  if (aiStartTimer > 0)
+  {
+    --aiStartTimer;
+    if (aiStartTimer == 0)
+      GetWorld()->AddAI( GetHero(), GetPlayerID() % 3 );
+  }
+
+  if (!IsPlaying() && (!aiForLeaversEnabled || aiStartTimer > 0) && IsValid(pHero) && pHero->CanMove())
+  {
+    const CVec2 & spawnPos = pHero->GetSpawnPosition().AsVec2D();
+    if (!pHero->IsPositionInRange(spawnPos, 1.0f))
+      pHero->Move(spawnPos);
+  }
+
+  if (IsValid(behaviourTracker))
+    behaviourTracker->Step(dtInSeconds);
+
   return PFWorldObjectBase::Step(dtInSeconds);
 }
 
 void PFPlayer::OnDestroyContents()
 {
   pHero = 0;
+  behaviourTracker = 0;
   PF_Core::WorldObjectBase::OnDestroyContents();
 }
 

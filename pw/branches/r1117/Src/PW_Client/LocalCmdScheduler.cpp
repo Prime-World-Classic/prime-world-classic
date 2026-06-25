@@ -17,6 +17,10 @@ localTime( 0 ),
 gameReady( false ),
 stepIndex( 0 ),
 nextStepTime( 0 )
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+, linuxProducedStatusCount( 0 )
+, linuxConsumedStatusCount( 0 )
+#endif
 {
   currentSegment = new NCore::SyncSegment( stepIndex );
 }
@@ -35,6 +39,20 @@ void LocalCmdScheduler::SendMessage( CObjectBase * pMsg, bool isPlayerCommand )
   currentSegment->commands.push_back( worldCmd );
 }
 
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+void LocalCmdScheduler::QueueLinuxClientStatus(int statusValue)
+{
+  if ( !gameReady || !currentSegment )
+    return;
+
+  // Queue this only after the bootstrap PFWorld has loaded players.
+  NCore::ClientStatus & status = currentSegment->statuses.push_back();
+  status.clientId = clientId;
+  status.status = statusValue;
+  status.step = stepIndex + 1;
+  ++linuxProducedStatusCount;
+}
+#endif
 
 
 CObj<NCore::SyncSegment> LocalCmdScheduler::GetSyncSegment()
@@ -44,6 +62,9 @@ CObj<NCore::SyncSegment> LocalCmdScheduler::GetSyncSegment()
 
   CObj<NCore::SyncSegment> result = readySegments.front();
   readySegments.pop_front();
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  linuxConsumedStatusCount += result->statuses.size();
+#endif
   return result;
 }
 
@@ -77,7 +98,8 @@ void LocalCmdScheduler::Step( float dt )
   if (StrongMT<NCore::ReplayWriter> lockedReplayWriter = replayWriter.Lock())
   {
     int commandsCount = segmentToWrite->commands.size();
-    if (commandsCount > 0)
+    int statusesCount = segmentToWrite->statuses.size();
+    if (commandsCount > 0 || statusesCount > 0)
     {
       vector<MemoryStream> commandsAsStreams(commandsCount);
       vector<rpc::MemoryBlock> commands(commandsCount);
@@ -88,6 +110,15 @@ void LocalCmdScheduler::Step( float dt )
         commands[i].size = commandsAsStreams[i].GetPosition();
       }
       vector<Peered::BriefClientInfo> statuses;
+      statuses.reserve(statusesCount);
+      for (int i = 0; i < statusesCount; ++i)
+      {
+        const NCore::ClientStatus& clientStatus = segmentToWrite->statuses[i];
+        Peered::BriefClientInfo& status = statuses.push_back();
+        status.clientId = clientStatus.clientId;
+        status.status = static_cast<Peered::Status>(clientStatus.status);
+        status.step = clientStatus.step;
+      }
       lockedReplayWriter->WriteStepData(stepIndex, commands, statuses);
     }
   }

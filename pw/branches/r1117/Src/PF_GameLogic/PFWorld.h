@@ -68,6 +68,7 @@ class TriggerMarkerHandler;
 class PFAIContainer;
 class PFBaseUnit;
 class PFBaseHero;
+class PFLogicObject;
 class FogOfWar;
 class PFCommonCreep;
 class PFTalent;
@@ -260,6 +261,49 @@ class PFWorld : public PF_Core::World
   int linuxCleanedDeadUnits;
   int linuxLastStoredDeadUnitObjectId;
   int linuxLastCleanedDeadUnitObjectId;
+  int linuxPlayerStatusUpdates;
+  int linuxPlayerStatusMissing;
+  int linuxPlayerStatusActiveUpdates;
+  int linuxPlayerStatusAwayUpdates;
+  int linuxPlayerStatusPlayingUpdates;
+  int linuxPlayerStatusDisconnectedUpdates;
+  int linuxPlayerStatusReconnectedUpdates;
+  int linuxPlayerStatusLeaverUpdates;
+  int linuxLastPlayerStatusClientId;
+  int linuxLastPlayerStatusValue;
+  int linuxLastPlayerStatusStep;
+  int linuxLastPlayerStatusPlaying;
+  int linuxLastPlayerStatusActive;
+  int linuxLastPlayerStatusDisconnected;
+  int linuxLastPlayerStatusLeaver;
+  int linuxAIAutoStartAttempts;
+  int linuxAIAutoStartSuccesses;
+  int linuxAIAddRequests;
+  int linuxAIAddSuccesses;
+  int linuxAIRemoveRequests;
+  int linuxAIRemoveSuccesses;
+  int linuxAIStepCalls;
+  int linuxAIControllerCount;
+  int linuxAIBotsSettingsAvailable;
+  int linuxAIBotsEnabled;
+  int linuxAILastHeroObjectId;
+  int linuxAILastPlayerId;
+  int linuxAILastUserId;
+  int linuxAILastLine;
+  int linuxAICommandAttempts;
+  int linuxAICommandsSent;
+  int linuxAICommandDirectFallbacks;
+  int linuxAICommandMoveSent;
+  int linuxAICommandCombatMoveSent;
+  int linuxAICommandAttackSent;
+  int linuxAICommandOtherSent;
+  int linuxAILastCommandKind;
+  int linuxAILastCommandHeroObjectId;
+  int linuxAILastCommandPlayerId;
+  int linuxAILastCommandUserId;
+  int linuxAILastCommandTargetObjectId;
+  int linuxAILastCommandSent;
+  bool linuxAutoAIEnabled;
 #endif
 
 public:
@@ -296,6 +340,9 @@ public:
   PFAIWorld         *GetAIWorld() const { return pAIWorld; }
   PFStatistics      *GetStatistics() { return pStatistics; }
   PFStatistics      *GetStatistics() const { return pStatistics; }
+#if defined(PW_LINUX_NULL_RENDER)
+  void NotifyItemTransferForLinuxBootstrap(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem);
+#endif
   FogOfWar          *GetFogOfWar() const {return warFog;}
   PFWorldNatureMap  *GetNatureMap()     { return pNatureMap; }
   PFAIContainer     *GetAIContainer() const { return pAIContainer; }
@@ -379,6 +426,68 @@ public:
   int GetLinuxPendingDeadUnitsCount() const { return deadUnits.size(); }
   int GetLinuxLastStoredDeadUnitObjectId() const { return linuxLastStoredDeadUnitObjectId; }
   int GetLinuxLastCleanedDeadUnitObjectId() const { return linuxLastCleanedDeadUnitObjectId; }
+  int GetLinuxPlayerStatusUpdatesCount() const { return linuxPlayerStatusUpdates; }
+  int GetLinuxPlayerStatusMissingCount() const { return linuxPlayerStatusMissing; }
+  int GetLinuxPlayerStatusActiveUpdatesCount() const { return linuxPlayerStatusActiveUpdates; }
+  int GetLinuxPlayerStatusAwayUpdatesCount() const { return linuxPlayerStatusAwayUpdates; }
+  int GetLinuxPlayerStatusPlayingUpdatesCount() const { return linuxPlayerStatusPlayingUpdates; }
+  int GetLinuxPlayerStatusDisconnectedUpdatesCount() const { return linuxPlayerStatusDisconnectedUpdates; }
+  int GetLinuxPlayerStatusReconnectedUpdatesCount() const { return linuxPlayerStatusReconnectedUpdates; }
+  int GetLinuxPlayerStatusLeaverUpdatesCount() const { return linuxPlayerStatusLeaverUpdates; }
+  int GetLinuxLastPlayerStatusClientId() const { return linuxLastPlayerStatusClientId; }
+  int GetLinuxLastPlayerStatusValue() const { return linuxLastPlayerStatusValue; }
+  int GetLinuxLastPlayerStatusStep() const { return linuxLastPlayerStatusStep; }
+  int GetLinuxLastPlayerStatusPlaying() const { return linuxLastPlayerStatusPlaying; }
+  int GetLinuxLastPlayerStatusActive() const { return linuxLastPlayerStatusActive; }
+  int GetLinuxLastPlayerStatusDisconnected() const { return linuxLastPlayerStatusDisconnected; }
+  int GetLinuxLastPlayerStatusLeaver() const { return linuxLastPlayerStatusLeaver; }
+  int GetLinuxAIAutoStartAttempts() const { return linuxAIAutoStartAttempts; }
+  int GetLinuxAIAutoStartSuccesses() const { return linuxAIAutoStartSuccesses; }
+  int GetLinuxAIAddRequests() const { return linuxAIAddRequests; }
+  int GetLinuxAIAddSuccesses() const { return linuxAIAddSuccesses; }
+  int GetLinuxAIRemoveRequests() const { return linuxAIRemoveRequests; }
+  int GetLinuxAIRemoveSuccesses() const { return linuxAIRemoveSuccesses; }
+  int GetLinuxAIStepCalls() const { return linuxAIStepCalls; }
+  int GetLinuxAIControllerCount() const { return linuxAIControllerCount; }
+  int GetLinuxAIBotsSettingsAvailable() const { return linuxAIBotsSettingsAvailable; }
+  int GetLinuxAIBotsEnabled() const { return linuxAIBotsEnabled; }
+  int GetLinuxAILastHeroObjectId() const { return linuxAILastHeroObjectId; }
+  int GetLinuxAILastPlayerId() const { return linuxAILastPlayerId; }
+  int GetLinuxAILastUserId() const { return linuxAILastUserId; }
+  int GetLinuxAILastLine() const { return linuxAILastLine; }
+  enum LinuxAICommandKind
+  {
+    LinuxAICommandUnknown = 0,
+    LinuxAICommandMove = 1,
+    LinuxAICommandCombatMove = 2,
+    LinuxAICommandStop = 3,
+    LinuxAICommandFollow = 4,
+    LinuxAICommandAttack = 5,
+    LinuxAICommandActivateTalent = 6,
+    LinuxAICommandUseTalent = 7,
+    LinuxAICommandBuyConsumable = 8,
+    LinuxAICommandUseConsumable = 9,
+    LinuxAICommandUsePortal = 10,
+    LinuxAICommandPickupObject = 11,
+    LinuxAICommandRaiseFlag = 12
+  };
+  void RecordLinuxAICommand(LinuxAICommandKind kind, const PFBaseHero* hero, const PFLogicObject* target, bool sent);
+  void RecordLinuxAICommandDirectFallback(LinuxAICommandKind kind, const PFBaseHero* hero, const PFLogicObject* target);
+  int GetLinuxAICommandAttempts() const { return linuxAICommandAttempts; }
+  int GetLinuxAICommandsSent() const { return linuxAICommandsSent; }
+  int GetLinuxAICommandDirectFallbacks() const { return linuxAICommandDirectFallbacks; }
+  int GetLinuxAICommandMoveSent() const { return linuxAICommandMoveSent; }
+  int GetLinuxAICommandCombatMoveSent() const { return linuxAICommandCombatMoveSent; }
+  int GetLinuxAICommandAttackSent() const { return linuxAICommandAttackSent; }
+  int GetLinuxAICommandOtherSent() const { return linuxAICommandOtherSent; }
+  int GetLinuxAILastCommandKind() const { return linuxAILastCommandKind; }
+  int GetLinuxAILastCommandHeroObjectId() const { return linuxAILastCommandHeroObjectId; }
+  int GetLinuxAILastCommandPlayerId() const { return linuxAILastCommandPlayerId; }
+  int GetLinuxAILastCommandUserId() const { return linuxAILastCommandUserId; }
+  int GetLinuxAILastCommandTargetObjectId() const { return linuxAILastCommandTargetObjectId; }
+  int GetLinuxAILastCommandSent() const { return linuxAILastCommandSent; }
+  void SetLinuxAutoAIEnabled(bool enabled) { linuxAutoAIEnabled = enabled; }
+  bool IsLinuxAutoAIEnabled() const { return linuxAutoAIEnabled; }
   int GetLinuxRegisteredCreepObjectsCount() const { return GetRegisteredCreepsCount(); }
   int GetLinuxSpawnedNeutralCreepObjectsCount();
   int GetLinuxMovingCommonCreepObjectsCount();
@@ -403,6 +512,7 @@ public:
   PFBaseUnit* FindLinuxFirstUsableUnitForHero(PFBaseHero const* hero);
   PFFlagpole* FindLinuxFirstRaisableFlagpoleForHero(PFBaseHero const* hero);
   PFMinigamePlace* FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero const* hero);
+  PFMinigamePlace* FindLinuxFirstForeignMinigamePlaceForHero(PFBaseHero const* hero);
   PFPickupableObjectBase* FindLinuxFirstPickupableForHero(PFBaseHero const* hero);
 #endif
   virtual int GetStepLength() const { return stepLength; }

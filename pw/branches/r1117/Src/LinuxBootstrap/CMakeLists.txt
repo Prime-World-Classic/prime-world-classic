@@ -21,6 +21,12 @@ list(
   "${CMAKE_CURRENT_SOURCE_DIR}/../PF_GameLogic/DBUIRoot.cpp"
 )
 
+list(
+  APPEND
+  PRIMEWORLD_LINUX_DB_SOURCES
+  ../PF_Minigames/DBMinigames.cpp
+)
+
 set(
   PRIMEWORLD_LINUX_LIBDB_SOURCES
   ../libdb/Checksum.cpp
@@ -207,6 +213,8 @@ add_executable(
   ../PF_GameLogic/MapCollection.cpp
   ../PF_GameLogic/PointersHolder.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PlayerBehaviourTracker.cpp
+  ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/PFWorldNatureMap.cpp
@@ -560,6 +568,8 @@ add_library(
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PlayerBehaviourTracker.cpp
+  ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
@@ -698,6 +708,8 @@ add_library(
   ../PF_GameLogic/PFPredefinedUnitVariables.cpp
   ../PF_GameLogic/PFUniTarget.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PlayerBehaviourTracker.cpp
+  ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/TriggerMarkerHandler.cpp
@@ -1109,6 +1121,8 @@ set_source_files_properties(
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PlayerBehaviourTracker.cpp
+  ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/CollisionResolver.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
   ../PF_GameLogic/PFScriptedFlagpole.cpp
@@ -1227,6 +1241,8 @@ set_source_files_properties(
   ../PF_GameLogic/PFPredefinedUnitVariables.cpp
   ../PF_GameLogic/PFUniTarget.cpp
   ../PF_GameLogic/PFPlayer.cpp
+  ../PF_GameLogic/PlayerBehaviourTracker.cpp
+  ../PF_GameLogic/PlayerBehaviourTracking.cpp
   ../PF_GameLogic/PFWorld.cpp
   ../PF_GameLogic/PFWorldProtection.cpp
   ../PF_GameLogic/TileMap.cpp

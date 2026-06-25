@@ -40,6 +40,7 @@
 #include "PF_GameLogic/MapCollection.h"
 #include "PF_GameLogic/MapStartup.h"
 #include "PF_GameLogic/PFAdvMap.h"
+#include "PF_GameLogic/PFAIContainer.h"
 #include "PF_GameLogic/PFAIWorld.h"
 #include "PF_GameLogic/PFWorld.h"
 #include "PF_GameLogic/PFWorldObjectBase.h"
@@ -49,6 +50,9 @@
 #include "PF_GameLogic/TileMap.h"
 #include "PF_GameLogic/WarFog.h"
 #include "PF_GameLogic/WebLauncher.h"
+#include "Core/CommandSerializer.h"
+#include "Core/GameCommand.h"
+#include "Core/WorldBase.h"
 #include "Core/WorldCommand.h"
 #define PW_LINUX_DB_BOOTSTRAP 1
 #include "PF_GameLogic/PFAuraEffect.h"
@@ -73,15 +77,18 @@
 #include "PF_GameLogic/PFDispatchFactory.h"
 #include "PF_GameLogic/PFFlagpole.h"
 #include "PF_GameLogic/PFEaselPlayer.h"
+#include "PF_GameLogic/PFConsumable.h"
 #include "PF_GameLogic/PFHero.h"
 #include "PF_GameLogic/PFMaleHero.h"
 #include "PF_GameLogic/PFMinigamePlace.h"
 #include "PF_GameLogic/PFMinimapEffect.h"
 #include "PF_GameLogic/PFMicroAI.h"
 #include "PF_GameLogic/PFPlayer.h"
+#include "PF_GameLogic/PlayerBehaviourTracker.h"
 #include "PF_GameLogic/PFPlayAnimEffect.h"
 #include "PF_GameLogic/PFPriestessSignEffect.h"
 #include "PF_GameLogic/PFPickupable.h"
+#include "PF_GameLogic/PFStatistics.h"
 #include "PF_GameLogic/PFTalent.h"
 #include "PF_GameLogic/PFTargetSelector.h"
 #include "PF_GameLogic/PFUnitSceneObjectModify.h"
@@ -106,7 +113,9 @@
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
+#include "HybridServer/PeeredTypes.h"
 #include "NetworkStatusScreen.h"
+#include "ReplayTransceiver.h"
 #include "SelectGameModeScreen.h"
 #include "SelectHeroScreen.h"
 #undef PW_LINUX_DB_BOOTSTRAP
@@ -142,6 +151,7 @@
 #include <functional>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <set>
@@ -191,6 +201,11 @@ struct LinuxClientLaunchSettings
   bool tutorial;
   bool bootstrapCreateGame;
   bool diagnosticsOverlay;
+  bool replayStartPaused;
+  size_t replayInitialStepBudget;
+  size_t replaySpeedMultiplier;
+  bool replayRealtimePacing;
+  size_t replayPaceMs;
   std::string localeOverride;
   std::string mapSelector;
   std::string heroSelector;
@@ -208,6 +223,11 @@ struct LinuxClientLaunchSettings
       tutorial(false),
       bootstrapCreateGame(false),
       diagnosticsOverlay(false),
+      replayStartPaused(false),
+      replayInitialStepBudget(0),
+      replaySpeedMultiplier(1),
+      replayRealtimePacing(false),
+      replayPaceMs(0),
       artworkMode(0)
   {
   }
@@ -322,6 +342,10 @@ struct LinuxWindowOverlay
   OpenGlTexture lobbyScrollLever;
   OpenGlTexture lobbyScrollHorizontalFirst;
   OpenGlTexture lobbyScrollHorizontalSecond;
+  OpenGlTexture lobbySelectedMapBack;
+  OpenGlTexture lobbySelectedMapLogo;
+  OpenGlTexture lobbySelectedMapMinimap;
+  std::map<std::string, OpenGlTexture> lobbyTextureCache;
   std::map<std::string, OpenGlTexture> heroPreviewDiffuseTextureCache;
   std::vector<OpenGlTexture> heroPreviewDiffuseTextures;
   std::vector<OpenGlTexture> mapPreviewDiffuseTextures;
@@ -334,6 +358,10 @@ struct LinuxWindowOverlay
   std::set<std::string> heroPreviewDiffuseTextureFailedSourceFiles;
   std::vector<std::string> mapPreviewDiffuseTextureSourceFiles;
   std::set<std::string> mapPreviewDiffuseTextureFailedSourceFiles;
+  std::set<std::string> lobbyTextureFailedSourceFiles;
+  std::string lobbySelectedMapBackSourceFile;
+  std::string lobbySelectedMapLogoSourceFile;
+  std::string lobbySelectedMapMinimapSourceFile;
   std::map<unsigned long, OpenGlGlyph> fontGlyphs;
   LobbyTextResources lobbyText;
   bool openglReady;
@@ -1019,10 +1047,49 @@ struct LinuxLoadingRuntimeDriver
   Strong<Game::LoadingFlashInterface> flashInterface;
   std::vector<LinuxLoadingRuntimeEvent> events;
   std::vector<std::string> samples;
+  std::vector<std::string> flashSamples;
   std::vector<std::string> warnings;
+  size_t flashForceColorCount;
+  size_t flashColorCount;
+  size_t flashModeDescriptionCount;
+  size_t flashChatChannelCount;
+  size_t flashChatShortcutCount;
+  size_t flashChatMessageCount;
+  size_t flashPlayerBindingCount;
+  size_t flashPlayerBindingIconCount;
+  size_t flashPlayerBindingHeroCount;
+  size_t flashHeroCount;
+  size_t flashHeroProgressCount;
+  size_t flashHeroPremiumCount;
+  bool flashLocalesReady;
+  bool flashTeamForceReady;
+  bool flashTipReady;
+  bool flashStatusReady;
+  bool flashChatVisible;
+  bool flashChatOff;
+  int flashDefaultChannel;
 
   LinuxLoadingRuntimeDriver()
-    : ready(false)
+    : ready(false),
+      flashForceColorCount(0),
+      flashColorCount(0),
+      flashModeDescriptionCount(0),
+      flashChatChannelCount(0),
+      flashChatShortcutCount(0),
+      flashChatMessageCount(0),
+      flashPlayerBindingCount(0),
+      flashPlayerBindingIconCount(0),
+      flashPlayerBindingHeroCount(0),
+      flashHeroCount(0),
+      flashHeroProgressCount(0),
+      flashHeroPremiumCount(0),
+      flashLocalesReady(false),
+      flashTeamForceReady(false),
+      flashTipReady(false),
+      flashStatusReady(false),
+      flashChatVisible(false),
+      flashChatOff(false),
+      flashDefaultChannel(-1)
   {
   }
 };
@@ -1045,6 +1112,8 @@ struct LinuxLoadingRuntimeHeroEntry
   std::string locale;
   std::string flagId;
   std::string flagIcon;
+  std::string rankIcon;
+  std::string rankAccIcon;
   std::string playerName;
   std::string heroTitle;
   std::string iconPath;
@@ -1103,6 +1172,7 @@ struct LinuxLoadingHeroesRuntimePreview
 };
 
 std::string ToStdString(const nstl::string& value);
+NCore::ETeam::Enum ConvertDisplayTeamToCoreTeam(int team);
 NDb::Ptr<NDb::DBUIData> ResolveLoadingUiDataResource();
 NDb::Ptr<NDb::DBUIData>& GetLoadingUiDataResourceCache();
 void ClearLoadingUiDataResourceCache();
@@ -3787,6 +3857,143 @@ struct LinuxLiveUnitHudState
   }
 };
 
+static const size_t LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS = 9;
+
+struct LinuxBootstrapReplayFileProof
+{
+  bool requested;
+  bool storageReady;
+  bool validated;
+  bool headerReady;
+  bool headerValidated;
+  bool segmentCountMatches;
+  bool commandCountMatches;
+  bool statusCountMatches;
+  bool playbackValidated;
+  bool playbackWorldAttached;
+  bool playbackStepCountMatches;
+  bool playbackCommandCountMatches;
+  bool serverPlaybackValidated;
+  bool serverPlaybackWorldAttached;
+  bool serverPlaybackStepCountMatches;
+  bool serverPlaybackCommandCountMatches;
+  bool serverPlaybackStatusCountMatches;
+  bool liveWorldCreated;
+  bool liveWorldLoaded;
+  bool liveWorldAttached;
+  bool liveWorldStepCountMatches;
+  bool liveWorldCommandCountMatches;
+  bool liveWorldValidated;
+  size_t loadedSegments;
+  size_t loadedCommands;
+  size_t loadedStatuses;
+  size_t consumedSegments;
+  size_t consumedCommands;
+  size_t consumedStatuses;
+  size_t decodeFailures;
+  size_t headerPlayers;
+  size_t playbackStepCalls;
+  size_t playbackWorldSteps;
+  size_t playbackCommandBatches;
+  size_t playbackCommands;
+  size_t serverPlaybackStepCalls;
+  size_t serverPlaybackWorldSteps;
+  size_t serverPlaybackCommandBatches;
+  size_t serverPlaybackCommands;
+  size_t serverPlaybackStatusUpdates;
+  size_t liveWorldStepCalls;
+  size_t liveWorldPlayers;
+  size_t liveWorldMapObjects;
+  size_t liveWorldSpawnedHeroes;
+  size_t liveWorldPlayerHeroes;
+  size_t liveWorldCommandsBefore;
+  size_t liveWorldCommandsAfter;
+  size_t liveWorldCommandsExecuted;
+  int firstStep;
+  int lastStep;
+  int headerClientId;
+  int headerStepLength;
+  int playbackFinalWorldStep;
+  int serverPlaybackFinalWorldStep;
+  int liveWorldFinalStep;
+  std::string path;
+  std::string headerMap;
+  std::string validationError;
+  std::string playbackValidationError;
+  std::string serverPlaybackValidationError;
+  std::string liveWorldValidationError;
+
+  LinuxBootstrapReplayFileProof()
+  {
+    Reset();
+  }
+
+  void Reset()
+  {
+    requested = false;
+    storageReady = false;
+    validated = false;
+    headerReady = false;
+    headerValidated = false;
+    segmentCountMatches = false;
+    commandCountMatches = false;
+    statusCountMatches = false;
+    playbackValidated = false;
+    playbackWorldAttached = false;
+    playbackStepCountMatches = false;
+    playbackCommandCountMatches = false;
+    serverPlaybackValidated = false;
+    serverPlaybackWorldAttached = false;
+    serverPlaybackStepCountMatches = false;
+    serverPlaybackCommandCountMatches = false;
+    serverPlaybackStatusCountMatches = false;
+    liveWorldCreated = false;
+    liveWorldLoaded = false;
+    liveWorldAttached = false;
+    liveWorldStepCountMatches = false;
+    liveWorldCommandCountMatches = false;
+    liveWorldValidated = false;
+    loadedSegments = 0;
+    loadedCommands = 0;
+    loadedStatuses = 0;
+    consumedSegments = 0;
+    consumedCommands = 0;
+    consumedStatuses = 0;
+    decodeFailures = 0;
+    headerPlayers = 0;
+    playbackStepCalls = 0;
+    playbackWorldSteps = 0;
+    playbackCommandBatches = 0;
+    playbackCommands = 0;
+    serverPlaybackStepCalls = 0;
+    serverPlaybackWorldSteps = 0;
+    serverPlaybackCommandBatches = 0;
+    serverPlaybackCommands = 0;
+    serverPlaybackStatusUpdates = 0;
+    liveWorldStepCalls = 0;
+    liveWorldPlayers = 0;
+    liveWorldMapObjects = 0;
+    liveWorldSpawnedHeroes = 0;
+    liveWorldPlayerHeroes = 0;
+    liveWorldCommandsBefore = 0;
+    liveWorldCommandsAfter = 0;
+    liveWorldCommandsExecuted = 0;
+    firstStep = -1;
+    lastStep = -1;
+    headerClientId = -1;
+    headerStepLength = 0;
+    playbackFinalWorldStep = -1;
+    serverPlaybackFinalWorldStep = -1;
+    liveWorldFinalStep = -1;
+    path = "<none>";
+    headerMap = "<none>";
+    validationError = "inactive";
+    playbackValidationError = "inactive";
+    serverPlaybackValidationError = "inactive";
+    liveWorldValidationError = "inactive";
+  }
+};
+
 struct LinuxBootstrapScreenRuntime
 {
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
@@ -3798,7 +4005,10 @@ struct LinuxBootstrapScreenRuntime
   Strong<Game::LoadingGameContext> loadingGameContext;
   StrongMT<Game::LocalCmdScheduler> localScheduler;
   StrongMT<NCore::ReplayWriter> replayWriter;
+  LinuxBootstrapReplayFileProof replayFileProof;
   Strong<NCore::Transceiver> transceiver;
+  CObj<NWorld::ReplayStorage2> replayInputStorage;
+  Strong<NWorld::ReplayTransceiver> replayInputTransceiver;
   CObj<NCore::IWorldBase> transceiverWorld;
   StrongMT<NWorld::MapLoadingJob> mapLoadingJob;
   CObj<LoadingProgress> loadingProgress;
@@ -3814,6 +4024,38 @@ struct LinuxBootstrapScreenRuntime
   bool mapLoadingJobCompleted;
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
+  bool replayFileInputActive;
+  bool replayInputReady;
+  bool replayInputHeaderReady;
+  bool replayInputWorldAttached;
+  bool replayInputStepCountMatches;
+  bool replayInputCommandCountMatches;
+  bool replayInputStatusCountMatches;
+  bool replayInputValidated;
+  bool replayInputPaused;
+  size_t replayInputLoadedSegments;
+  size_t replayInputLoadedCommands;
+  size_t replayInputLoadedStatuses;
+  size_t replayInputStepCalls;
+  size_t replayInputWorldSteps;
+  size_t replayInputCommandsExecuted;
+  size_t replayInputStatusesApplied;
+  size_t replayInputPlaybackRate;
+  size_t replayInputPendingManualSteps;
+  size_t replayInputManualStepRequests;
+  size_t replayInputManualStepsConsumed;
+  size_t replayInputPauseToggleCount;
+  size_t replayInputSpeedChangeCount;
+  size_t replayInputControlEvents;
+  bool replayInputRealtimePacing;
+  size_t replayInputPaceMs;
+  unsigned long replayInputNextStepTimeMs;
+  size_t replayInputPacingSkips;
+  int replayInputStepLength;
+  int replayInputFinalWorldStep;
+  std::string replayInputPath;
+  std::string replayInputError;
+  std::string replayInputControlSource;
   size_t loadingTickCount;
   size_t heroPlayerEntryCount;
   size_t loadingPlayerEntryCount;
@@ -3835,6 +4077,23 @@ struct LinuxBootstrapScreenRuntime
   size_t transceiverCommandBatches;
   size_t transceiverCommands;
   size_t transceiverStatusUpdates;
+  size_t transceiverStatusMissing;
+  size_t transceiverStatusActiveUpdates;
+  size_t transceiverStatusAwayUpdates;
+  size_t transceiverStatusPlayingUpdates;
+  size_t transceiverStatusDisconnectedUpdates;
+  size_t transceiverStatusReconnectedUpdates;
+  size_t transceiverStatusLeaverUpdates;
+  size_t transceiverStatusScriptQueued;
+  size_t transceiverStatusScriptApplied;
+  bool transceiverStatusScriptCompleted;
+  int transceiverLastStatusClientId;
+  int transceiverLastStatusValue;
+  int transceiverLastStatusStep;
+  int transceiverLastStatusPlaying;
+  int transceiverLastStatusActive;
+  int transceiverLastStatusDisconnected;
+  int transceiverLastStatusLeaver;
   size_t transceiverStepCalls;
   size_t transceiverProcessedSteps;
   bool transceiverRuntimeCommandSent;
@@ -3968,8 +4227,21 @@ struct LinuxBootstrapScreenRuntime
   int minigameLeaveProofPlaceUserAfter;
   int minigameLeaveProofHeroIsolatedBefore;
   int minigameLeaveProofHeroIsolatedAfter;
+  int minigameLeaveProofHeroHiddenBefore;
+  int minigameLeaveProofHeroHiddenAfter;
+  int minigameLeaveProofHeroInvisibleBefore;
+  int minigameLeaveProofHeroInvisibleAfter;
   int minigameLeaveProofHeroFlagBefore;
   int minigameLeaveProofHeroFlagAfter;
+  int minigameLeaveProofSummonAbilityCreated;
+  int minigameLeaveProofSummonFactoryCreated;
+  int minigameLeaveProofSummonObjectId;
+  int minigameLeaveProofSummonGroupCountBefore;
+  int minigameLeaveProofSummonActionCountBefore;
+  int minigameLeaveProofSummonHiddenBefore;
+  int minigameLeaveProofSummonHiddenAfter;
+  int minigameLeaveProofSummonInvisibleBefore;
+  int minigameLeaveProofSummonInvisibleAfter;
   int minigameLeaveProofVisualStateBefore;
   int minigameLeaveProofVisualStateAfter;
   int minigameLeaveProofPlacementApplyBefore;
@@ -3984,6 +4256,21 @@ struct LinuxBootstrapScreenRuntime
   int minigameLeaveProofMinigamesMainAfter;
   int minigameLeaveProofMinigamesMainWorldBefore;
   int minigameLeaveProofMinigamesMainWorldAfter;
+  int minigameLeaveProofMinigamesMainCommonBefore;
+  int minigameLeaveProofMinigamesMainCommonAfter;
+  int minigameLeaveProofMinigamesMainBidonsBefore;
+  int minigameLeaveProofMinigamesMainBidonsAfter;
+  int minigameLeaveProofBidonBefore;
+  int minigameLeaveProofBidonAfter;
+  int minigameLeaveProofMainSpawnerBefore;
+  int minigameLeaveProofMainSpawnerAfter;
+  int minigameLeaveProofMainCreepId;
+  int minigameLeaveProofMainCreepDescBeforeReturn;
+  int minigameLeaveProofMainCreepDescAfterReturn;
+  int minigameLeaveProofMainCreepOutBeforeReturn;
+  int minigameLeaveProofMainCreepOwner;
+  int minigameLeaveProofMainCreepInstant;
+  int minigameLeaveProofMainCreepType;
   float minigameLeaveProofMinigamesOpacityBefore;
   float minigameLeaveProofMinigamesOpacityAfter;
   int minigameLeaveProofSingleCountBefore;
@@ -3996,20 +4283,254 @@ struct LinuxBootstrapScreenRuntime
   int minigameLeaveProofNamedSingleAfter;
   int minigameLeaveProofSingleIdBefore;
   int minigameLeaveProofSingleIdAfter;
+  int minigameLeaveProofSingleDbidBefore;
+  int minigameLeaveProofSingleDbidAfter;
+  int minigameLeaveProofStartGuardPlace;
+  int minigameLeaveProofStartGuardFaction;
+  int minigameLeaveProofStartGuardHeroFaction;
+  int minigameLeaveProofStartGuardCanUse;
+  int minigameLeaveProofStartGuardAvailable;
+  int minigameLeaveProofStartGuardResult;
+  int minigameLeaveProofStartGuardHeroPlaceAfter;
+  int minigameLeaveProofStartGuardPlaceUserAfter;
+  int minigameLeaveProofStartGuardCurrentSingleAfter;
+  int minigameLeaveProofLifecycleBefore;
+  int minigameLeaveProofLifecycleAfter;
+  int minigameLeaveProofLifecycleRunningBefore;
+  int minigameLeaveProofLifecycleRunningAfter;
+  int minigameLeaveProofLifecyclePausedAfter;
+  int minigameLeaveProofLifecycleFogDuring;
+  int minigameLeaveProofLifecycleFogAfter;
+  int minigameLeaveProofLifecycleFinishedBefore;
+  int minigameLeaveProofLifecycleFinishedAfter;
+  int minigameLeaveProofLifecycleVictoryAfter;
+  int minigameLeaveProofMinigameEventCallsBefore;
+  int minigameLeaveProofMinigameEventCallsAfter;
+  int minigameLeaveProofMinigameStartedEventsBefore;
+  int minigameLeaveProofMinigameStartedEventsAfter;
+  int minigameLeaveProofMinigameExitEventsBefore;
+  int minigameLeaveProofMinigameExitEventsAfter;
+  int minigameLeaveProofMinigameLastEventBefore;
+  int minigameLeaveProofMinigameLastEventAfter;
+  int minigameLeaveProofMinigameLastEventUnitBefore;
+  int minigameLeaveProofMinigameLastEventUnitAfter;
+  float minigameLeaveProofSlowdownHintBefore;
+  float minigameLeaveProofSlowdownHintSentinel;
+  float minigameLeaveProofSlowdownHintDuring;
+  float minigameLeaveProofSlowdownHintAfter;
+  float minigameLeaveProofSlowdownHintRestored;
+  int minigameLeaveProofLifecycleSingleLeaveCalls;
+  int minigameLeaveProofLifecycleSinglePauseCommandCalls;
+  int minigameLeaveProofLifecycleSingleStepCalls;
+  int minigameLeaveProofLifecycleSingleUpdateCalls;
+  int minigameLeaveProofLifecycleSinglePauseCalls;
+  int minigameLeaveProofLifecycleSingleMapLoadedCalls;
+  int minigameLeaveProofLifecycleSingleCheatDropCalls;
+  int minigameLeaveProofLifecycleSingleCheatWinCalls;
+  int minigameLeaveProofLifecycleSingleSessionFinishedCalls;
+  int minigameLeaveProofLifecycleSingleEjectCalls;
+  int minigameLeaveProofLifecycleMinigamesLeaveCalls;
+  int minigameLeaveProofLifecycleMinigamesForceLeaveCalls;
+  int minigameLeaveProofLifecycleMinigamesStepCalls;
+  int minigameLeaveProofLifecycleMinigamesUpdateCalls;
+  int minigameLeaveProofLifecycleMinigamesMapLoadedCalls;
+  int minigameLeaveProofLifecycleMainSentCommands;
+  int minigameLeaveProofLifecycleDropForwardBefore;
+  int minigameLeaveProofLifecycleDropForwardAfter;
+  int minigameLeaveProofLifecycleFinishForwardBefore;
+  int minigameLeaveProofLifecycleFinishForwardAfter;
+  int minigameLeaveProofLifecyclePlayerDropCallsBefore;
+  int minigameLeaveProofLifecyclePlayerDropCallsAfter;
+  int minigameLeaveProofLifecyclePlayerDropHadCurrent;
+  int minigameLeaveProofLifecyclePlayerDropSingleBefore;
+  int minigameLeaveProofLifecyclePlayerDropSingleAfter;
+  int minigameLeaveProofLifecyclePlayerFinishCallsBefore;
+  int minigameLeaveProofLifecyclePlayerFinishCallsAfter;
+  int minigameLeaveProofLifecyclePlayerFinishHadCurrent;
+  int minigameLeaveProofLifecyclePlayerFinishSingleBefore;
+  int minigameLeaveProofLifecyclePlayerFinishSingleAfter;
+  int minigameLeaveProofWorldSessionTargets;
+  int minigameLeaveProofWorldSessionTargetsExpected;
+  int minigameLeaveProofWorldSessionTargetsAllied;
+  int minigameLeaveProofWorldSessionTargetsForeign;
+  int minigameLeaveProofWorldSessionTargetsSelf;
+  int minigameLeaveProofWorldSessionCanScrollDuplicate;
+  int minigameLeaveProofWorldSessionCanBuyZZBoostBefore;
+  int minigameLeaveProofWorldSessionCanBuyZZBoostAfter;
+  int minigameLeaveProofWorldSessionGoldBefore;
+  int minigameLeaveProofWorldSessionGoldAfterAdd;
+  int minigameLeaveProofWorldSessionGoldAfterTake;
+  int minigameLeaveProofWorldSessionGoldAfterZZBoost;
+  int minigameLeaveProofWorldSessionTotalNafta;
+  int minigameLeaveProofWorldSessionShop;
+  int minigameLeaveProofWorldSessionConsumable;
+  int minigameLeaveProofWorldSessionAddItem;
+  int minigameLeaveProofWorldSessionAllyTargetObjectId;
+  int minigameLeaveProofWorldSessionAllyTargetPlayerId;
+  int minigameLeaveProofWorldSessionAllyTargetAddItem;
+  int minigameLeaveProofWorldSessionAllyTargetSlotsBefore;
+  int minigameLeaveProofWorldSessionAllyTargetSlotsAfter;
+  int minigameLeaveProofWorldSessionAllyTargetAddedQuantity;
+  int minigameLeaveProofWorldSessionSlotsBefore;
+  int minigameLeaveProofWorldSessionSlotsAfter;
+  int minigameLeaveProofWorldSessionAddedQuantity;
+  int minigameLeaveProofWorldSessionStatsCallsBefore;
+  int minigameLeaveProofWorldSessionStatsCallsAfterAlly;
+  int minigameLeaveProofWorldSessionStatsCallsAfterSelf;
+  int minigameLeaveProofWorldSessionStatsSelfBefore;
+  int minigameLeaveProofWorldSessionStatsSelfAfter;
+  int minigameLeaveProofWorldSessionStatsAllyBefore;
+  int minigameLeaveProofWorldSessionStatsAllyAfter;
+  int minigameLeaveProofWorldSessionStatsAllyFrom;
+  int minigameLeaveProofWorldSessionStatsAllyTo;
+  int minigameLeaveProofWorldSessionStatsAllyItem;
+  int minigameLeaveProofWorldSessionStatsSelfFrom;
+  int minigameLeaveProofWorldSessionStatsSelfTo;
+  int minigameLeaveProofWorldSessionStatsSelfItem;
+  int minigameLeaveProofWorldSessionBehaviourCallsBefore;
+  int minigameLeaveProofWorldSessionBehaviourCallsAfterAlly;
+  int minigameLeaveProofWorldSessionBehaviourCallsAfterSelf;
+  int minigameLeaveProofWorldSessionBehaviourTookBefore;
+  int minigameLeaveProofWorldSessionBehaviourTookAfterAlly;
+  int minigameLeaveProofWorldSessionBehaviourTookAfterSelf;
+  int minigameLeaveProofWorldSessionBehaviourGaveBefore;
+  int minigameLeaveProofWorldSessionBehaviourGaveAfterAlly;
+  int minigameLeaveProofWorldSessionBehaviourGaveAfterSelf;
+  int minigameLeaveProofWorldSessionBehaviourLastAfterAlly;
+  int minigameLeaveProofWorldSessionBehaviourLastAfterSelf;
   bool transceiverHeroPickupObjectRuntimeCommandSent;
   size_t transceiverHeroPickupObjectRuntimeCommandsSent;
   int transceiverHeroPickupObjectPlayerId;
   int transceiverHeroPickupObjectClientId;
   int transceiverHeroPickupObjectId;
+  bool linuxBotCommandDriverActive;
+  bool linuxBotCommandDriverReady;
+  size_t linuxBotCommandTicks;
+  size_t linuxBotCommandHeroesConsidered;
+  size_t linuxBotCommandHeroesCommanded;
+  size_t linuxBotMoveRuntimeCommandsSent;
+  size_t linuxBotAttackRuntimeCommandsSent;
+  size_t linuxBotCommandSkippedTicks;
+  int linuxBotCommandNextWorldStep;
+  int linuxBotCommandLastWorldStep;
+  int linuxBotCommandLastPlayerId;
+  int linuxBotCommandLastClientId;
+  int linuxBotCommandLastTargetPlayerId;
+  int linuxBotCommandLastTargetClientId;
+  float linuxBotCommandSourceX;
+  float linuxBotCommandSourceY;
+  float linuxBotCommandTargetX;
+  float linuxBotCommandTargetY;
+  std::string linuxBotCommandLastAction;
+  int linuxAIAutoStartAttempts;
+  int linuxAIAutoStartSuccesses;
+  int linuxAIAddRequests;
+  int linuxAIAddSuccesses;
+  int linuxAIRemoveRequests;
+  int linuxAIRemoveSuccesses;
+  int linuxAIStepCalls;
+  int linuxAIControllerCount;
+  int linuxAIBotsSettingsAvailable;
+  int linuxAIBotsEnabled;
+  int linuxAILastHeroObjectId;
+  int linuxAILastPlayerId;
+  int linuxAILastUserId;
+  int linuxAILastLine;
+  int linuxAICommandAttempts;
+  int linuxAICommandsSent;
+  int linuxAICommandDirectFallbacks;
+  int linuxAICommandMoveSent;
+  int linuxAICommandCombatMoveSent;
+  int linuxAICommandAttackSent;
+  int linuxAICommandOtherSent;
+  int linuxAILastCommandKind;
+  int linuxAILastCommandHeroObjectId;
+  int linuxAILastCommandPlayerId;
+  int linuxAILastCommandUserId;
+  int linuxAILastCommandTargetObjectId;
+  int linuxAILastCommandSent;
   bool transceiverRuntimeCommandQueuedBeforePrime;
   bool replayWriterReady;
   bool replayWriterOpen;
+  bool replayCaptureValidated;
+  bool replayCaptureMagicReady;
+  bool replayCaptureBoundsOk;
+  bool replayCaptureByteCountMatches;
+  bool replayCaptureCommandCountMatches;
+  bool replayCaptureStatusCountMatches;
+  bool replayReadbackDecoded;
+  bool replayReadbackCommandCountMatches;
+  bool replayStorageValidated;
+  bool replayStorageSegmentCountMatches;
+  bool replayStorageCommandCountMatches;
+  bool replayStorageStatusCountMatches;
+  bool replayStorageHeaderValidated;
+  bool replayPlaybackHeaderValidated;
+  bool replayPlaybackValidated;
+  bool replayPlaybackWorldAttached;
+  bool replayPlaybackStepCountMatches;
+  bool replayPlaybackCommandCountMatches;
+  bool replayServerPlaybackHeaderValidated;
+  bool replayServerPlaybackValidated;
+  bool replayServerPlaybackWorldAttached;
+  bool replayServerPlaybackStepCountMatches;
+  bool replayServerPlaybackCommandCountMatches;
+  bool replayServerPlaybackStatusCountMatches;
   size_t replayWriterStartWrites;
   size_t replayWriterStepWrites;
   size_t replayWriterCommandWrites;
   size_t replayWriterStatusWrites;
   size_t replayWriterBytesWritten;
   size_t replayWriterFailures;
+  size_t replayCaptureRecords;
+  size_t replayCaptureCommandBlocks;
+  size_t replayCaptureStatusBlocks;
+  size_t replayCaptureStatusActiveBlocks;
+  size_t replayCaptureStatusAwayBlocks;
+  size_t replayCaptureStatusDisconnectedBlocks;
+  size_t replayCaptureStatusLeaverBlocks;
+  size_t replayCaptureBytesRead;
+  size_t replayCaptureLargestCommandBytes;
+  size_t replayReadbackPackedCommands;
+  size_t replayReadbackDecodeFailures;
+  size_t replayReadbackCommandBytes;
+  size_t replayReadbackDistinctCommandTypes;
+  size_t replayStorageLoadedSegments;
+  size_t replayStorageLoadedCommands;
+  size_t replayStorageLoadedStatuses;
+  size_t replayStorageConsumedSegments;
+  size_t replayStorageConsumedCommands;
+  size_t replayStorageConsumedStatuses;
+  size_t replayStorageDecodeFailures;
+  size_t replayStorageHeaderPlayers;
+  size_t replayPlaybackStepCalls;
+  size_t replayPlaybackWorldSteps;
+  size_t replayPlaybackCommandBatches;
+  size_t replayPlaybackCommands;
+  size_t replayServerPlaybackStepCalls;
+  size_t replayServerPlaybackWorldSteps;
+  size_t replayServerPlaybackCommandBatches;
+  size_t replayServerPlaybackCommands;
+  size_t replayServerPlaybackStatusUpdates;
+  int replayReadbackFirstClientId;
+  int replayReadbackLastClientId;
+  int replayReadbackMinClientId;
+  int replayReadbackMaxClientId;
+  DWORD replayReadbackFirstCommandTypeId;
+  DWORD replayReadbackLastCommandTypeId;
+  DWORD replayReadbackFirstCommandTime;
+  DWORD replayReadbackLastCommandTime;
+  int replayStorageHeaderClientId;
+  int replayStorageHeaderStepLength;
+  int replayPlaybackHeaderStepLength;
+  int replayServerPlaybackHeaderStepLength;
+  int replayCaptureStartStep;
+  int replayCaptureFirstStep;
+  int replayCaptureLastStep;
+  int replayStorageFirstStep;
+  int replayStorageLastStep;
+  int replayPlaybackFinalWorldStep;
+  int replayServerPlaybackFinalWorldStep;
   size_t visibleMenuSelectedAction;
   size_t visibleMenuActivatedCount;
   size_t worldPlayers;
@@ -4097,6 +4618,30 @@ struct LinuxBootstrapScreenRuntime
   float worldCommonCreepMovementDistance;
   size_t visibleLobbyJoinMode;
   size_t visibleLobbySelectedGameRow;
+  bool visibleLobbyDetailsDrawn;
+  bool visibleLobbyDetailsArtworkDrawn;
+  bool visibleLobbyDetailsMinimapDrawn;
+  size_t visibleLobbyDetailsLineupSlotsDrawn;
+  size_t visibleLobbyDetailsTextureCount;
+  bool visibleLobbyHeroDetailsDrawn;
+  bool visibleLobbyHeroPortraitDrawn;
+  size_t visibleLobbyHeroAbilityIconsDrawn;
+  size_t visibleLobbyHeroTalentIconsDrawn;
+  bool visibleLoadingRosterDrawn;
+  size_t visibleLoadingRosterRowsDrawn;
+  size_t visibleLoadingRosterPortraitsDrawn;
+  size_t visibleLoadingRosterFlagsDrawn;
+  size_t visibleLoadingRosterProgressBarsDrawn;
+  size_t visibleLoadingRosterForceBadgesDrawn;
+  size_t visibleLoadingRosterMetaLabelsDrawn;
+  size_t visibleLoadingRosterRankIconsDrawn;
+  size_t visibleLoadingRosterPremiumBadgesDrawn;
+  bool visibleLoadingInfoDrawn;
+  size_t visibleLoadingInfoLinesDrawn;
+  size_t visibleLoadingInfoIconsDrawn;
+  bool visibleLoadingChatDrawn;
+  size_t visibleLoadingChatChannelsDrawn;
+  size_t visibleLoadingChatMessagesDrawn;
   float characterPreviewYawDegrees;
   bool characterPreviewRendererMeshDrawn;
   size_t characterPreviewRendererMeshBatches;
@@ -4279,6 +4824,97 @@ struct LinuxBootstrapScreenRuntime
   LinuxLiveUnitHudState liveHeroState;
   LinuxLiveUnitHudState liveTargetState;
   size_t liveHudSampleCount;
+  bool visibleLiveHudDrawn;
+  bool visibleLiveHudPortraitDrawn;
+  size_t visibleLiveHudBarsDrawn;
+  size_t visibleLiveHudAbilitySlotsDrawn;
+  size_t visibleLiveHudAbilityIconsDrawn;
+  size_t visibleLiveHudTalentSlotsDrawn;
+  size_t visibleLiveHudTalentIconsDrawn;
+  bool visibleLiveHudTargetPanelDrawn;
+  bool liveHudCommandSurfaceReady;
+  bool liveHudActivateTalentProofSent;
+  bool liveHudCommandHighlightDrawn;
+  size_t liveHudInputCount;
+  size_t liveHudAttackCommandsSent;
+  size_t liveHudUseUnitCommandsSent;
+  size_t liveHudActivateTalentCommandsSent;
+  size_t liveHudUseTalentCommandsSent;
+  size_t liveHudFollowCommandsSent;
+  int liveHudAttackX;
+  int liveHudAttackY;
+  int liveHudAttackWidth;
+  int liveHudAttackHeight;
+  int liveHudTargetX;
+  int liveHudTargetY;
+  int liveHudTargetWidth;
+  int liveHudTargetHeight;
+  size_t liveHudTalentCommandSlots;
+  int liveHudTalentX[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudTalentY[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudTalentWidth[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudTalentHeight[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudTalentLevel[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudTalentSlot[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
+  int liveHudLastCommandSlot;
+  bool liveHotkeyCommandProofSent;
+  size_t liveHotkeyInputCount;
+  size_t liveHotkeyStopCommandsSent;
+  size_t liveHotkeyAttackCommandsSent;
+  size_t liveHotkeyFollowCommandsSent;
+  size_t liveHotkeyHoldCommandsSent;
+  size_t liveHotkeyCancelCommandsSent;
+  size_t liveHotkeyActivateTalentCommandsSent;
+  size_t liveHotkeyUseTalentCommandsSent;
+  size_t liveHotkeyUseUnitCommandsSent;
+  size_t liveHotkeyUseConsumableCommandsSent;
+  bool liveMapPreviewCommandSurfaceReady;
+  bool liveMapPreviewCommandProofSent;
+  size_t liveMapPreviewInputCount;
+  size_t liveMapPreviewMoveCommandsSent;
+  size_t liveMapPreviewAttackCommandsSent;
+  size_t liveMapPreviewSignalCommandsSent;
+  size_t liveMapPreviewSelectionCount;
+  float liveMapPreviewCommandTargetX;
+  float liveMapPreviewCommandTargetY;
+  bool visibleLiveMinimapDrawn;
+  bool visibleLiveMinimapTextureDrawn;
+  size_t visibleLiveMinimapMarkersDrawn;
+  size_t visibleLiveMinimapHeroMarkersDrawn;
+  size_t visibleLiveMinimapCreepMarkersDrawn;
+  size_t visibleLiveMinimapMovingMarkersDrawn;
+  bool visibleLiveMinimapTargetMarkerDrawn;
+  bool visibleLiveMinimapCommandMarkerDrawn;
+  bool liveMinimapCommandSurfaceReady;
+  int liveMinimapInnerX;
+  int liveMinimapInnerY;
+  int liveMinimapInnerSize;
+  float liveMinimapMinX;
+  float liveMinimapMaxX;
+  float liveMinimapMinY;
+  float liveMinimapMaxY;
+  bool liveMinimapCommandProofSent;
+  bool liveMinimapCommandTargetDrawn;
+  size_t liveMinimapInputCount;
+  size_t liveMinimapMoveCommandsSent;
+  size_t liveMinimapAttackCommandsSent;
+  size_t liveMinimapSignalCommandsSent;
+  size_t liveMinimapSelectionCount;
+  float liveMinimapCommandTargetX;
+  float liveMinimapCommandTargetY;
+  bool visibleLiveScoreboardDrawn;
+  size_t visibleLiveScoreboardTeamColumnsDrawn;
+  size_t visibleLiveScoreboardHeroMarkersDrawn;
+  size_t visibleLiveScoreboardObjectiveLinesDrawn;
+  size_t visibleLiveScoreboardCommandLinesDrawn;
+  bool visibleLiveEventFeedDrawn;
+  size_t visibleLiveEventFeedRowsDrawn;
+  size_t visibleLiveEventFeedCommandRowsDrawn;
+  size_t visibleLiveEventFeedCombatRowsDrawn;
+  size_t visibleLiveEventFeedObjectiveRowsDrawn;
+  bool visibleReplayControlsDrawn;
+  size_t visibleReplayControlsLinesDrawn;
+  bool visibleReplayProgressDrawn;
   bool mapPreviewDragging;
   bool mapPreviewPanning;
   bool mapPreviewDragMoved;
@@ -4303,6 +4939,15 @@ struct LinuxBootstrapScreenRuntime
   std::string mapPreviewCommandActionKind;
   std::string mapPreviewCommandActionSource;
   std::string mapPreviewSelectedTargetSource;
+  std::string liveHudLastAction;
+  std::string liveHotkeyLastAction;
+  std::string liveMapPreviewLastAction;
+  std::string liveMinimapLastAction;
+  std::string replayCaptureValidationError;
+  std::string replayStorageValidationError;
+  std::string replayStorageHeaderMap;
+  std::string replayPlaybackValidationError;
+  std::string replayServerPlaybackValidationError;
   std::string characterPreviewLastAction;
   std::string visibleMenuLastAction;
   std::string visibleMenuPath;
@@ -4319,6 +4964,38 @@ struct LinuxBootstrapScreenRuntime
       mapLoadingJobCompleted(false),
       visibleMenuReady(false),
       diagnosticsOverlayActive(false),
+      replayFileInputActive(false),
+      replayInputReady(false),
+      replayInputHeaderReady(false),
+      replayInputWorldAttached(false),
+      replayInputStepCountMatches(false),
+      replayInputCommandCountMatches(false),
+      replayInputStatusCountMatches(false),
+      replayInputValidated(false),
+      replayInputPaused(false),
+      replayInputLoadedSegments(0),
+      replayInputLoadedCommands(0),
+      replayInputLoadedStatuses(0),
+      replayInputStepCalls(0),
+      replayInputWorldSteps(0),
+      replayInputCommandsExecuted(0),
+      replayInputStatusesApplied(0),
+      replayInputPlaybackRate(1),
+      replayInputPendingManualSteps(0),
+      replayInputManualStepRequests(0),
+      replayInputManualStepsConsumed(0),
+      replayInputPauseToggleCount(0),
+      replayInputSpeedChangeCount(0),
+      replayInputControlEvents(0),
+      replayInputRealtimePacing(false),
+      replayInputPaceMs(0),
+      replayInputNextStepTimeMs(0),
+      replayInputPacingSkips(0),
+      replayInputStepLength(0),
+      replayInputFinalWorldStep(-1),
+      replayInputPath("inactive"),
+      replayInputError("inactive"),
+      replayInputControlSource("auto"),
       loadingTickCount(0),
       heroPlayerEntryCount(0),
       loadingPlayerEntryCount(0),
@@ -4340,6 +5017,23 @@ struct LinuxBootstrapScreenRuntime
       transceiverCommandBatches(0),
       transceiverCommands(0),
       transceiverStatusUpdates(0),
+      transceiverStatusMissing(0),
+      transceiverStatusActiveUpdates(0),
+      transceiverStatusAwayUpdates(0),
+      transceiverStatusPlayingUpdates(0),
+      transceiverStatusDisconnectedUpdates(0),
+      transceiverStatusReconnectedUpdates(0),
+      transceiverStatusLeaverUpdates(0),
+      transceiverStatusScriptQueued(0),
+      transceiverStatusScriptApplied(0),
+      transceiverStatusScriptCompleted(false),
+      transceiverLastStatusClientId(-1),
+      transceiverLastStatusValue(-1),
+      transceiverLastStatusStep(-1),
+      transceiverLastStatusPlaying(-1),
+      transceiverLastStatusActive(-1),
+      transceiverLastStatusDisconnected(-1),
+      transceiverLastStatusLeaver(-1),
       transceiverStepCalls(0),
       transceiverProcessedSteps(0),
       transceiverRuntimeCommandSent(false),
@@ -4473,8 +5167,21 @@ struct LinuxBootstrapScreenRuntime
       minigameLeaveProofPlaceUserAfter(-1),
       minigameLeaveProofHeroIsolatedBefore(0),
       minigameLeaveProofHeroIsolatedAfter(0),
+      minigameLeaveProofHeroHiddenBefore(0),
+      minigameLeaveProofHeroHiddenAfter(0),
+      minigameLeaveProofHeroInvisibleBefore(0),
+      minigameLeaveProofHeroInvisibleAfter(0),
       minigameLeaveProofHeroFlagBefore(0),
       minigameLeaveProofHeroFlagAfter(0),
+      minigameLeaveProofSummonAbilityCreated(0),
+      minigameLeaveProofSummonFactoryCreated(0),
+      minigameLeaveProofSummonObjectId(-1),
+      minigameLeaveProofSummonGroupCountBefore(-1),
+      minigameLeaveProofSummonActionCountBefore(-1),
+      minigameLeaveProofSummonHiddenBefore(0),
+      minigameLeaveProofSummonHiddenAfter(0),
+      minigameLeaveProofSummonInvisibleBefore(0),
+      minigameLeaveProofSummonInvisibleAfter(0),
       minigameLeaveProofVisualStateBefore(-1),
       minigameLeaveProofVisualStateAfter(-1),
       minigameLeaveProofPlacementApplyBefore(-1),
@@ -4489,6 +5196,21 @@ struct LinuxBootstrapScreenRuntime
       minigameLeaveProofMinigamesMainAfter(0),
       minigameLeaveProofMinigamesMainWorldBefore(0),
       minigameLeaveProofMinigamesMainWorldAfter(0),
+      minigameLeaveProofMinigamesMainCommonBefore(0),
+      minigameLeaveProofMinigamesMainCommonAfter(0),
+      minigameLeaveProofMinigamesMainBidonsBefore(-1),
+      minigameLeaveProofMinigamesMainBidonsAfter(-1),
+      minigameLeaveProofBidonBefore(-1),
+      minigameLeaveProofBidonAfter(-1),
+      minigameLeaveProofMainSpawnerBefore(-1),
+      minigameLeaveProofMainSpawnerAfter(-1),
+      minigameLeaveProofMainCreepId(-1),
+      minigameLeaveProofMainCreepDescBeforeReturn(0),
+      minigameLeaveProofMainCreepDescAfterReturn(-1),
+      minigameLeaveProofMainCreepOutBeforeReturn(0),
+      minigameLeaveProofMainCreepOwner(-1),
+      minigameLeaveProofMainCreepInstant(0),
+      minigameLeaveProofMainCreepType(-1),
       minigameLeaveProofMinigamesOpacityBefore(-1.0f),
       minigameLeaveProofMinigamesOpacityAfter(-1.0f),
       minigameLeaveProofSingleCountBefore(-1),
@@ -4501,20 +5223,254 @@ struct LinuxBootstrapScreenRuntime
       minigameLeaveProofNamedSingleAfter(0),
       minigameLeaveProofSingleIdBefore(0),
       minigameLeaveProofSingleIdAfter(0),
+      minigameLeaveProofSingleDbidBefore(0),
+      minigameLeaveProofSingleDbidAfter(0),
+      minigameLeaveProofStartGuardPlace(-1),
+      minigameLeaveProofStartGuardFaction(-1),
+      minigameLeaveProofStartGuardHeroFaction(-1),
+      minigameLeaveProofStartGuardCanUse(-1),
+      minigameLeaveProofStartGuardAvailable(-1),
+      minigameLeaveProofStartGuardResult(-1),
+      minigameLeaveProofStartGuardHeroPlaceAfter(-1),
+      minigameLeaveProofStartGuardPlaceUserAfter(-1),
+      minigameLeaveProofStartGuardCurrentSingleAfter(-1),
+      minigameLeaveProofLifecycleBefore(0),
+      minigameLeaveProofLifecycleAfter(0),
+      minigameLeaveProofLifecycleRunningBefore(-1),
+      minigameLeaveProofLifecycleRunningAfter(-1),
+      minigameLeaveProofLifecyclePausedAfter(-1),
+      minigameLeaveProofLifecycleFogDuring(-1),
+      minigameLeaveProofLifecycleFogAfter(-1),
+      minigameLeaveProofLifecycleFinishedBefore(-1),
+      minigameLeaveProofLifecycleFinishedAfter(-1),
+      minigameLeaveProofLifecycleVictoryAfter(-1),
+      minigameLeaveProofMinigameEventCallsBefore(-1),
+      minigameLeaveProofMinigameEventCallsAfter(-1),
+      minigameLeaveProofMinigameStartedEventsBefore(-1),
+      minigameLeaveProofMinigameStartedEventsAfter(-1),
+      minigameLeaveProofMinigameExitEventsBefore(-1),
+      minigameLeaveProofMinigameExitEventsAfter(-1),
+      minigameLeaveProofMinigameLastEventBefore(-1),
+      minigameLeaveProofMinigameLastEventAfter(-1),
+      minigameLeaveProofMinigameLastEventUnitBefore(-1),
+      minigameLeaveProofMinigameLastEventUnitAfter(-1),
+      minigameLeaveProofSlowdownHintBefore(-1.0f),
+      minigameLeaveProofSlowdownHintSentinel(-1.0f),
+      minigameLeaveProofSlowdownHintDuring(-1.0f),
+      minigameLeaveProofSlowdownHintAfter(-1.0f),
+      minigameLeaveProofSlowdownHintRestored(-1.0f),
+      minigameLeaveProofLifecycleSingleLeaveCalls(0),
+      minigameLeaveProofLifecycleSinglePauseCommandCalls(0),
+      minigameLeaveProofLifecycleSingleStepCalls(0),
+      minigameLeaveProofLifecycleSingleUpdateCalls(0),
+      minigameLeaveProofLifecycleSinglePauseCalls(0),
+      minigameLeaveProofLifecycleSingleMapLoadedCalls(0),
+      minigameLeaveProofLifecycleSingleCheatDropCalls(0),
+      minigameLeaveProofLifecycleSingleCheatWinCalls(0),
+      minigameLeaveProofLifecycleSingleSessionFinishedCalls(0),
+      minigameLeaveProofLifecycleSingleEjectCalls(0),
+      minigameLeaveProofLifecycleMinigamesLeaveCalls(0),
+      minigameLeaveProofLifecycleMinigamesForceLeaveCalls(0),
+      minigameLeaveProofLifecycleMinigamesStepCalls(0),
+      minigameLeaveProofLifecycleMinigamesUpdateCalls(0),
+      minigameLeaveProofLifecycleMinigamesMapLoadedCalls(0),
+      minigameLeaveProofLifecycleMainSentCommands(0),
+      minigameLeaveProofLifecycleDropForwardBefore(-1),
+      minigameLeaveProofLifecycleDropForwardAfter(-1),
+      minigameLeaveProofLifecycleFinishForwardBefore(-1),
+      minigameLeaveProofLifecycleFinishForwardAfter(-1),
+      minigameLeaveProofLifecyclePlayerDropCallsBefore(-1),
+      minigameLeaveProofLifecyclePlayerDropCallsAfter(-1),
+      minigameLeaveProofLifecyclePlayerDropHadCurrent(-1),
+      minigameLeaveProofLifecyclePlayerDropSingleBefore(-1),
+      minigameLeaveProofLifecyclePlayerDropSingleAfter(-1),
+      minigameLeaveProofLifecyclePlayerFinishCallsBefore(-1),
+      minigameLeaveProofLifecyclePlayerFinishCallsAfter(-1),
+      minigameLeaveProofLifecyclePlayerFinishHadCurrent(-1),
+      minigameLeaveProofLifecyclePlayerFinishSingleBefore(-1),
+      minigameLeaveProofLifecyclePlayerFinishSingleAfter(-1),
+      minigameLeaveProofWorldSessionTargets(-1),
+      minigameLeaveProofWorldSessionTargetsExpected(-1),
+      minigameLeaveProofWorldSessionTargetsAllied(-1),
+      minigameLeaveProofWorldSessionTargetsForeign(-1),
+      minigameLeaveProofWorldSessionTargetsSelf(-1),
+      minigameLeaveProofWorldSessionCanScrollDuplicate(-1),
+      minigameLeaveProofWorldSessionCanBuyZZBoostBefore(-1),
+      minigameLeaveProofWorldSessionCanBuyZZBoostAfter(-1),
+      minigameLeaveProofWorldSessionGoldBefore(-1),
+      minigameLeaveProofWorldSessionGoldAfterAdd(-1),
+      minigameLeaveProofWorldSessionGoldAfterTake(-1),
+      minigameLeaveProofWorldSessionGoldAfterZZBoost(-1),
+      minigameLeaveProofWorldSessionTotalNafta(-1),
+      minigameLeaveProofWorldSessionShop(0),
+      minigameLeaveProofWorldSessionConsumable(0),
+      minigameLeaveProofWorldSessionAddItem(0),
+      minigameLeaveProofWorldSessionAllyTargetObjectId(-1),
+      minigameLeaveProofWorldSessionAllyTargetPlayerId(-1),
+      minigameLeaveProofWorldSessionAllyTargetAddItem(0),
+      minigameLeaveProofWorldSessionAllyTargetSlotsBefore(-1),
+      minigameLeaveProofWorldSessionAllyTargetSlotsAfter(-1),
+      minigameLeaveProofWorldSessionAllyTargetAddedQuantity(-1),
+      minigameLeaveProofWorldSessionSlotsBefore(-1),
+      minigameLeaveProofWorldSessionSlotsAfter(-1),
+      minigameLeaveProofWorldSessionAddedQuantity(-1),
+      minigameLeaveProofWorldSessionStatsCallsBefore(-1),
+      minigameLeaveProofWorldSessionStatsCallsAfterAlly(-1),
+      minigameLeaveProofWorldSessionStatsCallsAfterSelf(-1),
+      minigameLeaveProofWorldSessionStatsSelfBefore(-1),
+      minigameLeaveProofWorldSessionStatsSelfAfter(-1),
+      minigameLeaveProofWorldSessionStatsAllyBefore(-1),
+      minigameLeaveProofWorldSessionStatsAllyAfter(-1),
+      minigameLeaveProofWorldSessionStatsAllyFrom(-1),
+      minigameLeaveProofWorldSessionStatsAllyTo(-1),
+      minigameLeaveProofWorldSessionStatsAllyItem(-1),
+      minigameLeaveProofWorldSessionStatsSelfFrom(-1),
+      minigameLeaveProofWorldSessionStatsSelfTo(-1),
+      minigameLeaveProofWorldSessionStatsSelfItem(-1),
+      minigameLeaveProofWorldSessionBehaviourCallsBefore(-1),
+      minigameLeaveProofWorldSessionBehaviourCallsAfterAlly(-1),
+      minigameLeaveProofWorldSessionBehaviourCallsAfterSelf(-1),
+      minigameLeaveProofWorldSessionBehaviourTookBefore(-1),
+      minigameLeaveProofWorldSessionBehaviourTookAfterAlly(-1),
+      minigameLeaveProofWorldSessionBehaviourTookAfterSelf(-1),
+      minigameLeaveProofWorldSessionBehaviourGaveBefore(-1),
+      minigameLeaveProofWorldSessionBehaviourGaveAfterAlly(-1),
+      minigameLeaveProofWorldSessionBehaviourGaveAfterSelf(-1),
+      minigameLeaveProofWorldSessionBehaviourLastAfterAlly(-1),
+      minigameLeaveProofWorldSessionBehaviourLastAfterSelf(-1),
       transceiverHeroPickupObjectRuntimeCommandSent(false),
       transceiverHeroPickupObjectRuntimeCommandsSent(0),
       transceiverHeroPickupObjectPlayerId(-1),
       transceiverHeroPickupObjectClientId(-1),
       transceiverHeroPickupObjectId(-1),
+      linuxBotCommandDriverActive(false),
+      linuxBotCommandDriverReady(false),
+      linuxBotCommandTicks(0),
+      linuxBotCommandHeroesConsidered(0),
+      linuxBotCommandHeroesCommanded(0),
+      linuxBotMoveRuntimeCommandsSent(0),
+      linuxBotAttackRuntimeCommandsSent(0),
+      linuxBotCommandSkippedTicks(0),
+      linuxBotCommandNextWorldStep(-1),
+      linuxBotCommandLastWorldStep(-1),
+      linuxBotCommandLastPlayerId(-1),
+      linuxBotCommandLastClientId(-1),
+      linuxBotCommandLastTargetPlayerId(-1),
+      linuxBotCommandLastTargetClientId(-1),
+      linuxBotCommandSourceX(0.0f),
+      linuxBotCommandSourceY(0.0f),
+      linuxBotCommandTargetX(0.0f),
+      linuxBotCommandTargetY(0.0f),
+      linuxBotCommandLastAction("none"),
+      linuxAIAutoStartAttempts(0),
+      linuxAIAutoStartSuccesses(0),
+      linuxAIAddRequests(0),
+      linuxAIAddSuccesses(0),
+      linuxAIRemoveRequests(0),
+      linuxAIRemoveSuccesses(0),
+      linuxAIStepCalls(0),
+      linuxAIControllerCount(0),
+      linuxAIBotsSettingsAvailable(0),
+      linuxAIBotsEnabled(-1),
+      linuxAILastHeroObjectId(-1),
+      linuxAILastPlayerId(-1),
+      linuxAILastUserId(-1),
+      linuxAILastLine(-1),
+      linuxAICommandAttempts(0),
+      linuxAICommandsSent(0),
+      linuxAICommandDirectFallbacks(0),
+      linuxAICommandMoveSent(0),
+      linuxAICommandCombatMoveSent(0),
+      linuxAICommandAttackSent(0),
+      linuxAICommandOtherSent(0),
+      linuxAILastCommandKind(0),
+      linuxAILastCommandHeroObjectId(-1),
+      linuxAILastCommandPlayerId(-1),
+      linuxAILastCommandUserId(-1),
+      linuxAILastCommandTargetObjectId(-1),
+      linuxAILastCommandSent(0),
       transceiverRuntimeCommandQueuedBeforePrime(false),
       replayWriterReady(false),
       replayWriterOpen(false),
+      replayCaptureValidated(false),
+      replayCaptureMagicReady(false),
+      replayCaptureBoundsOk(false),
+      replayCaptureByteCountMatches(false),
+      replayCaptureCommandCountMatches(false),
+      replayCaptureStatusCountMatches(false),
+      replayReadbackDecoded(false),
+      replayReadbackCommandCountMatches(false),
+      replayStorageValidated(false),
+      replayStorageSegmentCountMatches(false),
+      replayStorageCommandCountMatches(false),
+      replayStorageStatusCountMatches(false),
+      replayStorageHeaderValidated(false),
+      replayPlaybackHeaderValidated(false),
+      replayPlaybackValidated(false),
+      replayPlaybackWorldAttached(false),
+      replayPlaybackStepCountMatches(false),
+      replayPlaybackCommandCountMatches(false),
+      replayServerPlaybackHeaderValidated(false),
+      replayServerPlaybackValidated(false),
+      replayServerPlaybackWorldAttached(false),
+      replayServerPlaybackStepCountMatches(false),
+      replayServerPlaybackCommandCountMatches(false),
+      replayServerPlaybackStatusCountMatches(false),
       replayWriterStartWrites(0),
       replayWriterStepWrites(0),
       replayWriterCommandWrites(0),
       replayWriterStatusWrites(0),
       replayWriterBytesWritten(0),
       replayWriterFailures(0),
+      replayCaptureRecords(0),
+      replayCaptureCommandBlocks(0),
+      replayCaptureStatusBlocks(0),
+      replayCaptureStatusActiveBlocks(0),
+      replayCaptureStatusAwayBlocks(0),
+      replayCaptureStatusDisconnectedBlocks(0),
+      replayCaptureStatusLeaverBlocks(0),
+      replayCaptureBytesRead(0),
+      replayCaptureLargestCommandBytes(0),
+      replayReadbackPackedCommands(0),
+      replayReadbackDecodeFailures(0),
+      replayReadbackCommandBytes(0),
+      replayReadbackDistinctCommandTypes(0),
+      replayStorageLoadedSegments(0),
+      replayStorageLoadedCommands(0),
+      replayStorageLoadedStatuses(0),
+      replayStorageConsumedSegments(0),
+      replayStorageConsumedCommands(0),
+      replayStorageConsumedStatuses(0),
+      replayStorageDecodeFailures(0),
+      replayStorageHeaderPlayers(0),
+      replayPlaybackStepCalls(0),
+      replayPlaybackWorldSteps(0),
+      replayPlaybackCommandBatches(0),
+      replayPlaybackCommands(0),
+      replayServerPlaybackStepCalls(0),
+      replayServerPlaybackWorldSteps(0),
+      replayServerPlaybackCommandBatches(0),
+      replayServerPlaybackCommands(0),
+      replayServerPlaybackStatusUpdates(0),
+      replayReadbackFirstClientId(-1),
+      replayReadbackLastClientId(-1),
+      replayReadbackMinClientId(-1),
+      replayReadbackMaxClientId(-1),
+      replayReadbackFirstCommandTypeId(0),
+      replayReadbackLastCommandTypeId(0),
+      replayReadbackFirstCommandTime(0),
+      replayReadbackLastCommandTime(0),
+      replayStorageHeaderClientId(-1),
+      replayStorageHeaderStepLength(0),
+      replayPlaybackHeaderStepLength(0),
+      replayServerPlaybackHeaderStepLength(0),
+      replayCaptureStartStep(-1),
+      replayCaptureFirstStep(-1),
+      replayCaptureLastStep(-1),
+      replayStorageFirstStep(-1),
+      replayStorageLastStep(-1),
+      replayPlaybackFinalWorldStep(-1),
+      replayServerPlaybackFinalWorldStep(-1),
       visibleMenuSelectedAction(0),
       visibleMenuActivatedCount(0),
       worldPlayers(0),
@@ -4602,6 +5558,30 @@ struct LinuxBootstrapScreenRuntime
       worldCommonCreepMovementDistance(0.0f),
       visibleLobbyJoinMode(LINUX_LOBBY_JOIN_MODE_NORMAL),
       visibleLobbySelectedGameRow(0),
+      visibleLobbyDetailsDrawn(false),
+      visibleLobbyDetailsArtworkDrawn(false),
+      visibleLobbyDetailsMinimapDrawn(false),
+      visibleLobbyDetailsLineupSlotsDrawn(0),
+      visibleLobbyDetailsTextureCount(0),
+      visibleLobbyHeroDetailsDrawn(false),
+      visibleLobbyHeroPortraitDrawn(false),
+      visibleLobbyHeroAbilityIconsDrawn(0),
+      visibleLobbyHeroTalentIconsDrawn(0),
+      visibleLoadingRosterDrawn(false),
+      visibleLoadingRosterRowsDrawn(0),
+      visibleLoadingRosterPortraitsDrawn(0),
+      visibleLoadingRosterFlagsDrawn(0),
+      visibleLoadingRosterProgressBarsDrawn(0),
+      visibleLoadingRosterForceBadgesDrawn(0),
+      visibleLoadingRosterMetaLabelsDrawn(0),
+      visibleLoadingRosterRankIconsDrawn(0),
+      visibleLoadingRosterPremiumBadgesDrawn(0),
+      visibleLoadingInfoDrawn(false),
+      visibleLoadingInfoLinesDrawn(0),
+      visibleLoadingInfoIconsDrawn(0),
+      visibleLoadingChatDrawn(false),
+      visibleLoadingChatChannelsDrawn(0),
+      visibleLoadingChatMessagesDrawn(0),
       characterPreviewYawDegrees(28.0f),
       characterPreviewRendererMeshDrawn(false),
       characterPreviewRendererMeshBatches(0),
@@ -4782,6 +5762,91 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewSelectedTargetY(0.0f),
       mapPreviewSelectedTargetDistance(0.0f),
       liveHudSampleCount(0),
+      visibleLiveHudDrawn(false),
+      visibleLiveHudPortraitDrawn(false),
+      visibleLiveHudBarsDrawn(0),
+      visibleLiveHudAbilitySlotsDrawn(0),
+      visibleLiveHudAbilityIconsDrawn(0),
+      visibleLiveHudTalentSlotsDrawn(0),
+      visibleLiveHudTalentIconsDrawn(0),
+      visibleLiveHudTargetPanelDrawn(false),
+      liveHudCommandSurfaceReady(false),
+      liveHudActivateTalentProofSent(false),
+      liveHudCommandHighlightDrawn(false),
+      liveHudInputCount(0),
+      liveHudAttackCommandsSent(0),
+      liveHudUseUnitCommandsSent(0),
+      liveHudActivateTalentCommandsSent(0),
+      liveHudUseTalentCommandsSent(0),
+      liveHudFollowCommandsSent(0),
+      liveHudAttackX(0),
+      liveHudAttackY(0),
+      liveHudAttackWidth(0),
+      liveHudAttackHeight(0),
+      liveHudTargetX(0),
+      liveHudTargetY(0),
+      liveHudTargetWidth(0),
+      liveHudTargetHeight(0),
+      liveHudTalentCommandSlots(0),
+      liveHudLastCommandSlot(-1),
+      liveHotkeyCommandProofSent(false),
+      liveHotkeyInputCount(0),
+      liveHotkeyStopCommandsSent(0),
+      liveHotkeyAttackCommandsSent(0),
+      liveHotkeyFollowCommandsSent(0),
+      liveHotkeyHoldCommandsSent(0),
+      liveHotkeyCancelCommandsSent(0),
+      liveHotkeyActivateTalentCommandsSent(0),
+      liveHotkeyUseTalentCommandsSent(0),
+      liveHotkeyUseUnitCommandsSent(0),
+      liveHotkeyUseConsumableCommandsSent(0),
+      liveMapPreviewCommandSurfaceReady(false),
+      liveMapPreviewCommandProofSent(false),
+      liveMapPreviewInputCount(0),
+      liveMapPreviewMoveCommandsSent(0),
+      liveMapPreviewAttackCommandsSent(0),
+      liveMapPreviewSignalCommandsSent(0),
+      liveMapPreviewSelectionCount(0),
+      liveMapPreviewCommandTargetX(0.0f),
+      liveMapPreviewCommandTargetY(0.0f),
+      visibleLiveMinimapDrawn(false),
+      visibleLiveMinimapTextureDrawn(false),
+      visibleLiveMinimapMarkersDrawn(0),
+      visibleLiveMinimapHeroMarkersDrawn(0),
+      visibleLiveMinimapCreepMarkersDrawn(0),
+      visibleLiveMinimapMovingMarkersDrawn(0),
+      visibleLiveMinimapTargetMarkerDrawn(false),
+      visibleLiveMinimapCommandMarkerDrawn(false),
+      liveMinimapCommandSurfaceReady(false),
+      liveMinimapInnerX(0),
+      liveMinimapInnerY(0),
+      liveMinimapInnerSize(0),
+      liveMinimapMinX(0.0f),
+      liveMinimapMaxX(0.0f),
+      liveMinimapMinY(0.0f),
+      liveMinimapMaxY(0.0f),
+      liveMinimapCommandProofSent(false),
+      liveMinimapCommandTargetDrawn(false),
+      liveMinimapInputCount(0),
+      liveMinimapMoveCommandsSent(0),
+      liveMinimapAttackCommandsSent(0),
+      liveMinimapSignalCommandsSent(0),
+      liveMinimapSelectionCount(0),
+      liveMinimapCommandTargetX(0.0f),
+      liveMinimapCommandTargetY(0.0f),
+      visibleLiveScoreboardDrawn(false),
+      visibleLiveScoreboardTeamColumnsDrawn(0),
+      visibleLiveScoreboardHeroMarkersDrawn(0),
+      visibleLiveScoreboardObjectiveLinesDrawn(0),
+      visibleLiveScoreboardCommandLinesDrawn(0),
+      visibleLiveEventFeedDrawn(false),
+      visibleLiveEventFeedRowsDrawn(0),
+      visibleLiveEventFeedCommandRowsDrawn(0),
+      visibleLiveEventFeedCombatRowsDrawn(0),
+      visibleLiveEventFeedObjectiveRowsDrawn(0),
+      visibleReplayControlsDrawn(false),
+      visibleReplayControlsLinesDrawn(0),
+      visibleReplayProgressDrawn(false),
       mapPreviewDragging(false),
       mapPreviewPanning(false),
       mapPreviewDragMoved(false),
@@ -4804,9 +5869,27 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewCommandActionKind("none"),
       mapPreviewCommandActionSource("none"),
       mapPreviewSelectedTargetSource("none"),
+      liveHudLastAction("none"),
+      liveHotkeyLastAction("none"),
+      liveMapPreviewLastAction("none"),
+      liveMinimapLastAction("none"),
+      replayCaptureValidationError("inactive"),
+      replayStorageValidationError("inactive"),
+      replayStorageHeaderMap("<none>"),
+      replayPlaybackValidationError("inactive"),
+      replayServerPlaybackValidationError("inactive"),
       characterPreviewLastAction("default"),
       visibleMenuPath("inactive")
   {
+    for (size_t i = 0; i < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS; ++i)
+    {
+      liveHudTalentX[i] = 0;
+      liveHudTalentY[i] = 0;
+      liveHudTalentWidth[i] = 0;
+      liveHudTalentHeight[i] = 0;
+      liveHudTalentLevel[i] = -1;
+      liveHudTalentSlot[i] = -1;
+    }
   }
 };
 
@@ -5348,6 +6431,84 @@ bool ReadDiagnosticsOverlayFlag(int argc, char** argv)
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--diagnostics-overlay") ||
     CmdLineLite::Instance().IsKeyDefined("--debug-overlay");
+}
+
+bool ReadReplayStartPausedFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--replay-paused") ||
+    CmdLineLite::Instance().IsKeyDefined("--replay-start-paused");
+}
+
+size_t ReadReplayStepBudget(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const char* value = CmdLineLite::Instance().GetStringKey("--replay-steps", 0);
+  if (!value || !value[0])
+  {
+    return 0;
+  }
+
+  const long parsed = strtol(value, 0, 10);
+  if (parsed <= 0)
+  {
+    return 0;
+  }
+
+  return static_cast<size_t>(parsed > 256 ? 256 : parsed);
+}
+
+size_t ReadReplaySpeedMultiplier(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const char* value = CmdLineLite::Instance().GetStringKey("--replay-speed", 0);
+  if (!value || !value[0])
+  {
+    return 1;
+  }
+
+  const long parsed = strtol(value, 0, 10);
+  if (parsed <= 1)
+  {
+    return 1;
+  }
+  if (parsed >= 8)
+  {
+    return 8;
+  }
+  return static_cast<size_t>(parsed);
+}
+
+bool ReadReplayRealtimePacingFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--replay-realtime");
+}
+
+size_t ReadReplayPaceMs(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const char* value = CmdLineLite::Instance().GetStringKey("--replay-pace-ms", 0);
+  if (!value || !value[0])
+  {
+    return 0;
+  }
+
+  const long parsed = strtol(value, 0, 10);
+  if (parsed <= 0)
+  {
+    return 0;
+  }
+  if (parsed >= 5000)
+  {
+    return 5000;
+  }
+  return static_cast<size_t>(parsed);
 }
 
 const char* ReadStringArg(int argc, char** argv, const char* key)
@@ -7541,6 +8702,8 @@ size_t FindLoadingModeIndex(const LinuxLoadingUiPreview& preview, const char* id
   return static_cast<size_t>(-1);
 }
 
+std::string ReadDbLocalizedText(const CTextRef& textRef);
+
 void InitializeLoadingUiState(
   const LinuxContentProbe& contentProbe,
   const LinuxLoadingUiPreview& preview,
@@ -7664,8 +8827,259 @@ void SyncLoadingRuntimeState(
   }
 }
 
+void SnapshotLoadingRuntimeFlashCapture(LinuxLoadingRuntimeDriver* driver)
+{
+  if (!driver || !driver->flashInterface)
+  {
+    return;
+  }
+
+  const Game::LoadingFlashInterface* flashInterface = driver->flashInterface;
+  driver->flashSamples.clear();
+  driver->flashForceColorCount = flashInterface->GetForceTable().size();
+  driver->flashColorCount = flashInterface->GetColorTable().size();
+  driver->flashModeDescriptionCount = flashInterface->GetModeDescriptions().size();
+  driver->flashChatChannelCount = flashInterface->GetChatChannels().size();
+  driver->flashChatMessageCount = flashInterface->GetChatMessages().size();
+  driver->flashPlayerBindingCount = flashInterface->GetPlayerBindings().size();
+  driver->flashHeroCount = flashInterface->GetHeroes().size();
+  driver->flashLocalesReady =
+    !flashInterface->GetLeftLocaleImage().empty() ||
+    !flashInterface->GetRightLocaleImage().empty() ||
+    !flashInterface->GetLeftLocaleTooltip().empty() ||
+    !flashInterface->GetRightLocaleTooltip().empty();
+  driver->flashTeamForceReady =
+    !flashInterface->GetLeftTeamForce().empty() ||
+    !flashInterface->GetRightTeamForce().empty();
+  driver->flashTipReady = !flashInterface->GetTipText().empty();
+  driver->flashStatusReady = !flashInterface->GetLoadingStatusText().empty();
+  driver->flashChatVisible = flashInterface->IsChatVisible();
+  driver->flashChatOff = flashInterface->IsChatOff();
+  driver->flashDefaultChannel = static_cast<int>(flashInterface->GetDefaultChannel());
+
+  driver->flashChatShortcutCount = 0;
+  driver->flashPlayerBindingIconCount = 0;
+  driver->flashPlayerBindingHeroCount = 0;
+  driver->flashHeroProgressCount = 0;
+  driver->flashHeroPremiumCount = 0;
+  const vector<Game::LoadingFlashChatChannelState>& channels = flashInterface->GetChatChannels();
+  for (size_t i = 0; i < channels.size(); ++i)
+  {
+    if (!channels[i].shortcut.empty())
+    {
+      ++driver->flashChatShortcutCount;
+    }
+
+    if (driver->flashSamples.size() < 4)
+    {
+      const std::string name = ToStdString(NStr::ToMBCS(channels[i].channelName));
+      if (!name.empty())
+      {
+        driver->flashSamples.push_back(name);
+      }
+    }
+  }
+
+  for (size_t i = 0; i < channels.size() && driver->flashSamples.empty(); ++i)
+  {
+    driver->flashSamples.push_back(NStr::StrFmt("channel:%d", static_cast<int>(channels[i].channel)));
+  }
+
+  const vector<Game::LoadingFlashModeDescriptionState>& modes = flashInterface->GetModeDescriptions();
+  for (size_t i = 0; i < modes.size() && driver->flashSamples.size() < 6; ++i)
+  {
+    driver->flashSamples.push_back(NStr::StrFmt("mode:%d", modes[i].id));
+  }
+
+  const vector<Game::LoadingFlashChatMessageState>& messages = flashInterface->GetChatMessages();
+  for (size_t i = 0; i < messages.size() && driver->flashSamples.size() < 7; ++i)
+  {
+    const std::string message = ToStdString(NStr::ToMBCS(messages[i].message));
+    if (!message.empty())
+    {
+      driver->flashSamples.push_back("message:" + message);
+    }
+  }
+
+  const vector<Game::LoadingFlashPlayerBindingState>& bindings = flashInterface->GetPlayerBindings();
+  for (size_t i = 0; i < bindings.size(); ++i)
+  {
+    if (bindings[i].hasIcon)
+    {
+      ++driver->flashPlayerBindingIconCount;
+    }
+    if (bindings[i].hasHero)
+    {
+      ++driver->flashPlayerBindingHeroCount;
+    }
+  }
+
+  const vector<Game::LoadingFlashHeroState>& heroes = flashInterface->GetHeroes();
+  for (size_t i = 0; i < heroes.size(); ++i)
+  {
+    if (heroes[i].loadProgress > 0.0f)
+    {
+      ++driver->flashHeroProgressCount;
+    }
+    if (heroes[i].hasPremium)
+    {
+      ++driver->flashHeroPremiumCount;
+    }
+    if (driver->flashSamples.size() < 10)
+    {
+      const std::string heroName = ToStdString(NStr::ToMBCS(heroes[i].playerName));
+      if (!heroName.empty())
+      {
+        driver->flashSamples.push_back("hero:" + heroName);
+      }
+    }
+  }
+}
+
+void SeedLoadingRuntimeFlashCapture(
+  const LinuxLoadingUiPreview& preview,
+  const NDb::DBUIData* uiData,
+  Game::LoadingFlashInterface* flashInterface)
+{
+  if (!uiData || !flashInterface)
+  {
+    return;
+  }
+
+  const int forceColorCount = uiData->forceColors.forceColors.size();
+  vector<int> force(forceColorCount);
+  vector<uint> colors(forceColorCount);
+  for (int i = 0; i < forceColorCount; ++i)
+  {
+    force[i] = uiData->forceColors.forceColors[i].force;
+    colors[i] = uiData->forceColors.forceColors[i].color.Dummy;
+  }
+  flashInterface->SetForceColorTable(force, colors);
+
+  if (!preview.tips.empty())
+  {
+    flashInterface->SetTip(NStr::ToUnicode(string(preview.tips.front().c_str())));
+  }
+  else if (!uiData->tips.empty())
+  {
+    flashInterface->SetTip(uiData->tips.front().tipText.GetText());
+  }
+
+  if (preview.locales.size() >= 2)
+  {
+    flashInterface->SetLocales(
+      preview.locales[0].imageRef.c_str(),
+      NStr::ToUnicode(string(preview.locales[0].tooltip.c_str())),
+      preview.locales[1].imageRef.c_str(),
+      NStr::ToUnicode(string(preview.locales[1].tooltip.c_str())));
+  }
+
+  for (size_t i = 0; i < preview.modes.size(); ++i)
+  {
+    flashInterface->AddModeDescription(preview.modes[i].iconRef.c_str(), static_cast<int>(i));
+  }
+
+  const int chatCount = uiData->chatChannelDescriptions.size();
+  for (int i = 0; i < chatCount; ++i)
+  {
+    const NDb::ChatChannelDescription& channel = uiData->chatChannelDescriptions[i];
+    std::string localizedChannelName = ReadDbLocalizedText(channel.channelName);
+    if (localizedChannelName.empty())
+    {
+      localizedChannelName = ReadDbLocalizedText(channel.castleChannelName);
+    }
+
+    wstring channelName = NStr::ToUnicode(string(localizedChannelName.c_str()));
+    if (channelName.empty())
+    {
+      channelName = channel.castleChannelName.GetText();
+    }
+    const NDb::EChatChannel channelId =
+      static_cast<NDb::EChatChannel>(
+        std::min(i, static_cast<int>(NDb::CHATCHANNEL_SMARTCHAT)));
+    flashInterface->AddChannel(
+      channelId,
+      channelName,
+      channel.channelColor.Dummy,
+      channel.showChannelName,
+      channel.showPlayerName,
+      true);
+
+    if (!channel.shortcuts.empty())
+    {
+      std::string localizedShortcut = ReadDbLocalizedText(channel.shortcuts.front());
+      if (!localizedShortcut.empty())
+      {
+        flashInterface->AddChannelShortCut(
+          channelId,
+          NStr::ToUnicode(string(localizedShortcut.c_str())));
+      }
+      else
+      {
+        flashInterface->AddChannelShortCut(channelId, channel.shortcuts.front().GetText());
+      }
+    }
+  }
+
+  flashInterface->SetDefaultChannel(NDb::CHATCHANNEL_SYSTEM);
+  flashInterface->SetChatVisible(true);
+  flashInterface->SetChatOff(false);
+  flashInterface->SetTeamForce(L"0", L"0");
+  flashInterface->AddMessage(NDb::CHATCHANNEL_SYSTEM, L"Linux", L"Loading runtime ready", 0);
+}
+
+void SeedLoadingRuntimeFlashHeroes(
+  const LinuxLoadingHeroesRuntimePreview& heroesPreview,
+  Game::LoadingFlashInterface* flashInterface)
+{
+  if (!heroesPreview.ready || !flashInterface)
+  {
+    return;
+  }
+
+  for (size_t i = 0; i < heroesPreview.heroes.size(); ++i)
+  {
+    const LinuxLoadingRuntimeHeroEntry& hero = heroesPreview.heroes[i];
+    const int flashHeroId = static_cast<int>(i);
+    const int playerId = hero.slotId;
+
+    string iconPath(hero.iconPath.c_str());
+    string classIcon(hero.classIcon.c_str());
+    string flagIcon(hero.flagIcon.c_str());
+    wstring flagTooltip;
+    wstring playerName = NStr::ToUnicode(string(hero.playerName.c_str()));
+    const NDb::EFaction faction = Game::ConvertToFaction(ConvertDisplayTeamToCoreTeam(hero.team));
+
+    flashInterface->SetHeroIdentity(
+      flashHeroId,
+      faction,
+      playerName,
+      iconPath.c_str(),
+      hero.heroLevel,
+      true,
+      classIcon.c_str(),
+      hero.partyId,
+      flagIcon,
+      flagTooltip,
+      true,
+      hero.leagueIndex);
+    flashInterface->SetHeroLoadProgress(flashHeroId, hero.progress * 100.0f, hero.leftGame);
+    flashInterface->SetHeroLevel(flashHeroId, hero.heroLevel);
+    flashInterface->SetHeroForce(flashHeroId, hero.force);
+    flashInterface->SetHeroPremium(flashHeroId, hero.hasPremium, faction);
+    flashInterface->SetHeroRaiting(flashHeroId, hero.rating, 0.0f, 0.0f, hero.isNovice, "", L"");
+    flashInterface->SetHeroRaitingAcc(flashHeroId, hero.ratingAcc, 0.0f, 0.0f, hero.isNovice, "", L"");
+    if (!iconPath.empty())
+    {
+      flashInterface->SetPlayerIcon(playerId, iconPath);
+    }
+    flashInterface->SetPlayerHeroId(playerId, flashHeroId, hero.team);
+  }
+}
+
 void InitializeLoadingRuntimeDriver(
   const LinuxLoadingUiPreview& preview,
+  const LinuxLoadingHeroesRuntimePreview& heroesPreview,
   LinuxLoadingRuntimeDriver* driver,
   LinuxLoadingUiState* state
 )
@@ -7693,6 +9107,8 @@ void InitializeLoadingRuntimeDriver(
   driver->flashInterface = new Game::LoadingFlashInterface(0, "LinuxBootstrapLoading");
   driver->handler = new NGameX::LoadingStatusHandler(uiData);
   driver->handler->SetFlashInterface(driver->flashInterface);
+  SeedLoadingRuntimeFlashCapture(preview, uiData.GetPtr(), driver->flashInterface);
+  SeedLoadingRuntimeFlashHeroes(heroesPreview, driver->flashInterface);
 
   static const LinuxLoadingRuntimeEvent kRuntimeEvents[] =
   {
@@ -7718,6 +9134,7 @@ void InitializeLoadingRuntimeDriver(
 
   driver->ready = true;
   SyncLoadingRuntimeState(preview, driver, state, 0, "runtime-default");
+  SnapshotLoadingRuntimeFlashCapture(driver);
 }
 
 std::string NormalizeMapSelector(std::string value)
@@ -8856,6 +10273,7 @@ void ResolveLoadingBotFlagPresentation(
 
 void ProbeLoadingHeroesRuntimePreview(
   const LinuxSessionPreview& sessionPreview,
+  const LinuxHeroCatalog& heroCatalog,
   const LinuxSelectedMapPreview& selectedMapPreview,
   const LinuxEngineMapStartPreview& engineMapStartPreview,
   LinuxLoadingHeroesRuntimePreview* preview
@@ -9007,6 +10425,8 @@ void ProbeLoadingHeroesRuntimePreview(
     entry.leagueIndex = captured.leagueIndex;
     entry.partyId = captured.partyId;
     entry.flagIcon = ToStdString(captured.flagIcon);
+    entry.rankIcon = ToStdString(captured.rankIcon);
+    entry.rankAccIcon = ToStdString(captured.rankAccIcon);
     entry.playerName = ToStdString(NStr::ToMBCS(captured.playerName));
     entry.iconPath = ToStdString(captured.iconPath);
     entry.classIcon = ToStdString(captured.classIcon);
@@ -9019,6 +10439,14 @@ void ProbeLoadingHeroesRuntimePreview(
       entry.heroTitle = runtimeSlot->second->heroTitle;
       entry.locale = runtimeSlot->second->locale;
       entry.flagId = runtimeSlot->second->flagId;
+      if (entry.iconPath.empty())
+      {
+        const size_t heroIndex = FindHeroCatalogIndexByChecksum(heroCatalog, runtimeSlot->second->heroChecksum);
+        if (heroIndex != static_cast<size_t>(-1) && heroIndex < heroCatalog.entries.size())
+        {
+          entry.iconPath = heroCatalog.entries[heroIndex].iconRef;
+        }
+      }
     }
 
     if (entry.human)
@@ -10779,7 +12207,10 @@ bool TryBuildLinuxBootstrapLoadingContext(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const NCore::MapStartInfo* replayMapStartInfo,
+  int replayClientId,
   const std::string& defaultLocale,
   LinuxBootstrapScreenRuntime* runtime,
   std::vector<std::string>* warnings
@@ -10857,7 +12288,19 @@ bool TryBuildLinuxBootstrapLoadingContext(
   gameParams.customGame = true;
 
   runtime->loadingMapStartInfo = NCore::MapStartInfo();
-  if (!mapLoader->FillMapStartInfo(runtime->loadingMapStartInfo, gameLineUp, gameParams))
+  const bool useReplayMapStartInfo =
+    runtime->replayFileInputActive &&
+    replayMapStartInfo &&
+    std::string(replayMapStartInfo->mapDescName.c_str()) == selectedEntry.descriptor;
+  if (useReplayMapStartInfo)
+  {
+    runtime->loadingMapStartInfo = *replayMapStartInfo;
+    gameParams.randomSeed = replayMapStartInfo->randomSeed;
+    gameParams.mapId = replayMapStartInfo->mapDescName;
+    gameParams.slotsCount = static_cast<int>(replayMapStartInfo->playersInfo.size());
+    gameParams.customGame = replayMapStartInfo->isCustomGame;
+  }
+  else if (!mapLoader->FillMapStartInfo(runtime->loadingMapStartInfo, gameLineUp, gameParams))
   {
     if (warnings)
     {
@@ -10866,18 +12309,21 @@ bool TryBuildLinuxBootstrapLoadingContext(
     return false;
   }
 
-  for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
+  if (!useReplayMapStartInfo)
   {
-    NCore::PlayerStartInfo& player = runtime->loadingMapStartInfo.playersInfo[slotIndex];
-    if (player.playerType != NCore::EPlayerType::Human)
+    for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
     {
-      continue;
-    }
+      NCore::PlayerStartInfo& player = runtime->loadingMapStartInfo.playersInfo[slotIndex];
+      if (player.playerType != NCore::EPlayerType::Human)
+      {
+        continue;
+      }
 
-    const LinuxSyntheticClientInfo* clientInfo = FindLinuxPreviewClientInfo(player.userID, clientInfos);
-    if (clientInfo)
-    {
-      MergeLinuxPreviewPlayerInfoMetadata(&player.playerInfo, clientInfo->info);
+      const LinuxSyntheticClientInfo* clientInfo = FindLinuxPreviewClientInfo(player.userID, clientInfos);
+      if (clientInfo)
+      {
+        MergeLinuxPreviewPlayerInfoMetadata(&player.playerInfo, clientInfo->info);
+      }
     }
   }
 
@@ -10885,7 +12331,8 @@ bool TryBuildLinuxBootstrapLoadingContext(
   runtime->loadingGameContext->advMapDescription = dbMapDescription;
   runtime->loadingGameContext->advMapSettings = dbMapSettings;
   runtime->loadingGameContext->params = gameParams;
-  runtime->loadingGameContext->userId = sessionPreview.currentUserId;
+  runtime->loadingGameContext->userId =
+    useReplayMapStartInfo && replayClientId > 0 ? replayClientId : sessionPreview.currentUserId;
 
   for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
   {
@@ -11623,6 +13070,369 @@ size_t FindMapCatalogIndex(const LinuxMapCatalog& catalog, const std::string& se
   }
 
   return static_cast<size_t>(-1);
+}
+
+struct LinuxReplayFileHeaderPreview
+{
+  bool requested;
+  bool loaded;
+  bool usable;
+  bool adoptedMap;
+  bool adoptedLineup;
+  bool autoCreateGame;
+  size_t players;
+  size_t humanPlayers;
+  size_t botPlayers;
+  size_t team1Players;
+  size_t team2Players;
+  size_t unresolvedHeroes;
+  int clientId;
+  int clientTeam;
+  int clientHeroChecksum;
+  int stepLength;
+  fs::path path;
+  std::string mapDescName;
+  std::string source;
+  std::string error;
+  std::vector<std::string> warnings;
+  NCore::MapStartInfo mapStartInfo;
+
+  LinuxReplayFileHeaderPreview()
+    : requested(false),
+      loaded(false),
+      usable(false),
+      adoptedMap(false),
+      adoptedLineup(false),
+      autoCreateGame(false),
+      players(0),
+      humanPlayers(0),
+      botPlayers(0),
+      team1Players(0),
+      team2Players(0),
+      unresolvedHeroes(0),
+      clientId(-1),
+      clientTeam(0),
+      clientHeroChecksum(0),
+      stepLength(0),
+      source("ReplayStorage2"),
+      error("inactive")
+  {
+  }
+};
+
+int ResolveLinuxReplayHeaderPlayerTeam(const NCore::PlayerStartInfo& player)
+{
+  int team = ConvertCoreTeamToDisplayTeam(player.teamID);
+  if (team == 1 || team == 2)
+  {
+    return team;
+  }
+
+  team = ConvertCoreTeamToDisplayTeam(player.originalTeamID);
+  return (team == 1 || team == 2) ? team : 0;
+}
+
+void ProbeLinuxReplayFileHeader(
+  const fs::path& replayPath,
+  LinuxReplayFileHeaderPreview* preview
+)
+{
+  if (!preview)
+  {
+    return;
+  }
+
+  *preview = LinuxReplayFileHeaderPreview();
+  if (replayPath.empty())
+  {
+    return;
+  }
+
+  preview->requested = true;
+  preview->path = replayPath;
+
+  std::error_code fileError;
+  if (!fs::exists(replayPath, fileError) || fileError)
+  {
+    preview->error = "missing";
+    return;
+  }
+
+  NWorld::ReplayStorage2 storage(
+    NCore::REPLAY_BUFFER_READ,
+    replayPath.string().c_str(),
+    0,
+    0);
+  if (!storage.IsOk())
+  {
+    preview->error = storage.GetLinuxReplayError();
+    if (preview->error.empty())
+    {
+      preview->error = "storage-failed";
+    }
+    return;
+  }
+
+  NCore::ClientSettings clientSettings;
+  lobby::SGameParameters gameParams;
+  preview->loaded = storage.GetHeader(
+    &preview->mapStartInfo,
+    &preview->clientId,
+    &preview->stepLength,
+    &clientSettings,
+    &gameParams);
+  preview->players = preview->mapStartInfo.playersInfo.size();
+  preview->mapDescName = preview->mapStartInfo.mapDescName.c_str();
+
+  for (NCore::TPlayersStartInfo::const_iterator it = preview->mapStartInfo.playersInfo.begin();
+       it != preview->mapStartInfo.playersInfo.end();
+       ++it)
+  {
+    const bool human = it->playerType == NCore::EPlayerType::Human;
+    if (human)
+    {
+      ++preview->humanPlayers;
+    }
+    else if (it->playerType == NCore::EPlayerType::Computer)
+    {
+      ++preview->botPlayers;
+    }
+
+    const int displayTeam = ResolveLinuxReplayHeaderPlayerTeam(*it);
+    if (displayTeam == 1)
+    {
+      ++preview->team1Players;
+    }
+    else if (displayTeam == 2)
+    {
+      ++preview->team2Players;
+    }
+
+    if (it->userID == preview->clientId)
+    {
+      preview->clientTeam = displayTeam;
+      preview->clientHeroChecksum = it->playerInfo.heroId;
+    }
+  }
+
+  preview->usable = preview->loaded &&
+    preview->clientId > 0 &&
+    preview->stepLength > 0 &&
+    !preview->mapDescName.empty() &&
+    !preview->mapStartInfo.playersInfo.empty();
+  preview->error = preview->usable ? "none" : (preview->loaded ? "header-invalid" : "header-missing");
+}
+
+void ApplyLinuxReplayFileHeaderMapSelection(
+  LinuxReplayFileHeaderPreview* preview,
+  LinuxClientLaunchSettings* settings,
+  const LinuxMapCatalog& mapCatalog
+)
+{
+  if (!preview || !settings || !preview->usable)
+  {
+    return;
+  }
+
+  const size_t replayMapIndex = FindMapCatalogIndex(mapCatalog, preview->mapDescName);
+  if (replayMapIndex == static_cast<size_t>(-1))
+  {
+    preview->warnings.push_back("Replay map descriptor was not found in the Linux map catalog: " + preview->mapDescName);
+    return;
+  }
+
+  if (settings->mapSelector.empty())
+  {
+    settings->mapSelector = preview->mapDescName;
+    preview->adoptedMap = true;
+  }
+  else
+  {
+    const size_t selectedMapIndex = FindMapCatalogIndex(mapCatalog, settings->mapSelector);
+    preview->adoptedMap = selectedMapIndex == replayMapIndex;
+    if (!preview->adoptedMap)
+    {
+      preview->warnings.push_back("Replay map selection skipped because an explicit map selector points elsewhere");
+    }
+  }
+
+  settings->bootstrapCreateGame = true;
+  preview->autoCreateGame = true;
+}
+
+void AppendLinuxReplayHeaderHeroOverride(
+  const LinuxHeroCatalog& heroCatalog,
+  unsigned int heroChecksum,
+  std::vector<size_t>* heroes,
+  LinuxReplayFileHeaderPreview* preview
+)
+{
+  if (!heroes)
+  {
+    return;
+  }
+
+  const size_t heroIndex = FindHeroCatalogIndexByChecksum(heroCatalog, heroChecksum);
+  if (heroIndex == static_cast<size_t>(-1))
+  {
+    if (preview)
+    {
+      ++preview->unresolvedHeroes;
+    }
+    return;
+  }
+
+  heroes->push_back(heroIndex);
+}
+
+void ApplyLinuxReplayFileHeaderLineup(
+  LinuxReplayFileHeaderPreview* preview,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  LinuxLocalMatchPreview* localMatchPreview
+)
+{
+  if (!preview || !preview->usable || !localMatchPreview)
+  {
+    return;
+  }
+
+  const size_t replayMapIndex = FindMapCatalogIndex(mapCatalog, preview->mapDescName);
+  if (replayMapIndex == static_cast<size_t>(-1) ||
+      mapBrowserState.selectedIndex != replayMapIndex)
+  {
+    preview->warnings.push_back("Replay lineup skipped because the selected map does not match the replay header");
+    return;
+  }
+
+  if (heroCatalog.entries.empty())
+  {
+    preview->warnings.push_back("Replay lineup skipped because the Linux hero catalog is empty");
+    return;
+  }
+
+  int clientTeam = preview->clientTeam;
+  const NCore::PlayerStartInfo* clientPlayer = 0;
+  for (NCore::TPlayersStartInfo::const_iterator it = preview->mapStartInfo.playersInfo.begin();
+       it != preview->mapStartInfo.playersInfo.end();
+       ++it)
+  {
+    if (it->userID == preview->clientId)
+    {
+      clientPlayer = &(*it);
+      if (clientTeam != 1 && clientTeam != 2)
+      {
+        clientTeam = ResolveLinuxReplayHeaderPlayerTeam(*it);
+      }
+      break;
+    }
+  }
+
+  if (!clientPlayer)
+  {
+    for (NCore::TPlayersStartInfo::const_iterator it = preview->mapStartInfo.playersInfo.begin();
+         it != preview->mapStartInfo.playersInfo.end();
+         ++it)
+    {
+      if (it->playerType == NCore::EPlayerType::Human)
+      {
+        clientPlayer = &(*it);
+        clientTeam = ResolveLinuxReplayHeaderPlayerTeam(*it);
+        break;
+      }
+    }
+  }
+
+  if (clientTeam != 1 && clientTeam != 2)
+  {
+    clientTeam = 2;
+  }
+  localMatchPreview->humanTeam = clientTeam;
+
+  if (clientPlayer && clientPlayer->playerInfo.heroId != 0)
+  {
+    const size_t selectedHeroIndex =
+      FindHeroCatalogIndexByChecksum(heroCatalog, clientPlayer->playerInfo.heroId);
+    if (selectedHeroIndex != static_cast<size_t>(-1))
+    {
+      localMatchPreview->selectedHeroIndex = selectedHeroIndex;
+      preview->clientHeroChecksum = clientPlayer->playerInfo.heroId;
+    }
+    else
+    {
+      ++preview->unresolvedHeroes;
+      preview->warnings.push_back("Replay client hero checksum was not found in the Linux hero catalog");
+    }
+  }
+
+  const size_t maxTeamSize = ResolveSelectedMapMaxTeamSize(mapCatalog, mapBrowserState);
+  const size_t requestedTeamSize =
+    std::max(std::max(preview->team1Players, preview->team2Players), static_cast<size_t>(1));
+  localMatchPreview->requestedTeamSize = std::min(requestedTeamSize, maxTeamSize);
+  if (requestedTeamSize > maxTeamSize)
+  {
+    preview->warnings.push_back(
+      NStr::StrFmt(
+        "Replay team size exceeds selected map limit: %lu > %lu",
+        static_cast<unsigned long>(requestedTeamSize),
+        static_cast<unsigned long>(maxTeamSize)
+      )
+    );
+  }
+
+  const size_t teamSize = std::max(localMatchPreview->requestedTeamSize, static_cast<size_t>(1));
+  const size_t totalSlots = teamSize * 2;
+  localMatchPreview->slotHeroOverrides.assign(totalSlots, static_cast<size_t>(-1));
+
+  std::vector<size_t> team1Heroes;
+  std::vector<size_t> team2Heroes;
+  for (NCore::TPlayersStartInfo::const_iterator it = preview->mapStartInfo.playersInfo.begin();
+       it != preview->mapStartInfo.playersInfo.end();
+       ++it)
+  {
+    if (clientPlayer && it->playerID == clientPlayer->playerID)
+    {
+      continue;
+    }
+
+    const int displayTeam = ResolveLinuxReplayHeaderPlayerTeam(*it);
+    if (displayTeam == 1)
+    {
+      AppendLinuxReplayHeaderHeroOverride(heroCatalog, it->playerInfo.heroId, &team1Heroes, preview);
+    }
+    else if (displayTeam == 2)
+    {
+      AppendLinuxReplayHeaderHeroOverride(heroCatalog, it->playerInfo.heroId, &team2Heroes, preview);
+    }
+  }
+
+  if (localMatchPreview->humanTeam == 1)
+  {
+    for (size_t i = 0; i < team1Heroes.size() && i + 1 < teamSize; ++i)
+    {
+      localMatchPreview->slotHeroOverrides[i + 1] = team1Heroes[i];
+    }
+    for (size_t i = 0; i < team2Heroes.size() && teamSize + i < totalSlots; ++i)
+    {
+      localMatchPreview->slotHeroOverrides[teamSize + i] = team2Heroes[i];
+    }
+  }
+  else
+  {
+    for (size_t i = 0; i < team1Heroes.size() && i < teamSize; ++i)
+    {
+      localMatchPreview->slotHeroOverrides[i] = team1Heroes[i];
+    }
+    for (size_t i = 0; i < team2Heroes.size() && teamSize + i + 1 < totalSlots; ++i)
+    {
+      localMatchPreview->slotHeroOverrides[teamSize + i + 1] = team2Heroes[i];
+    }
+  }
+
+  RegenerateLocalMatchPreview(heroCatalog, mapCatalog, mapBrowserState, localMatchPreview, "replay-file");
+  localMatchPreview->selectedSlotIndex = ResolveHumanSlotIndex(*localMatchPreview);
+  preview->adoptedLineup = localMatchPreview->ready;
 }
 
 void InitializeMapBrowserState(
@@ -18590,6 +20400,99 @@ struct LinuxSummonCollector : public NWorld::ISummonAction
   size_t count;
   vector<CPtr<NWorld::PFBaseUnit> > units;
 };
+
+bool CreateLinuxBootstrapMinigameSummonProof(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFEaselPlayer* easelPlayer
+)
+{
+  if (!runtime || !easelPlayer)
+    return false;
+
+  NDb::SummonApplicator* summonDb =
+    static_cast<NDb::SummonApplicator*>(
+      NDb::SummonApplicator::NewSummonApplicator(
+        NDb::DBID("", "LinuxBootstrapMinigameSummonApplicator")
+      )
+    );
+  NDb::SummonBehaviourCommon* summonBehaviourDb = new NDb::SummonBehaviourCommon();
+  NDb::Summoned* summonCreatureDb =
+    static_cast<NDb::Summoned*>(
+      NDb::Summoned::NewSummoned(
+        NDb::DBID("", "LinuxBootstrapMinigameSummonedCreature")
+      )
+    );
+
+  if (!summonDb || !summonBehaviourDb || !summonCreatureDb)
+    return false;
+
+  summonBehaviourDb->summonType = NDb::SUMMONTYPE_PRIMARY;
+  summonBehaviourDb->maxCount.sString = "1";
+  summonBehaviourDb->maxThisCount.sString = "1";
+  summonBehaviourDb->lashRange.sString = "6.0";
+  summonBehaviourDb->responseRange = 6.0f;
+  summonBehaviourDb->responseTime = 0.05f;
+
+  summonDb->behaviour = NDb::Ptr<NDb::SummonBehaviourBase>(summonBehaviourDb);
+  summonDb->summonedUnits.push_back(NDb::Ptr<NDb::Summoned>(summonCreatureDb));
+  summonDb->summonedUnitsCount.sString = "1";
+  summonDb->summonedUnitIndex.sString = "0";
+  summonDb->lifeTime.sString = "120.0";
+  summonDb->placeMode = NDb::SUMMONPLACEMODE_BYAPPLICATOR;
+  summonDb->summonSource = NDb::SUMMONSOURCE_BYAPPLICATOR;
+  summonDb->summonGroupName = "linux-bootstrap-minigame-summon";
+
+  NDb::Ability* summonAbility = new NDb::Ability();
+  summonAbility->type = NDb::ABILITYTYPE_ACTIVE;
+  summonAbility->targetType = NDb::SPELLTARGET_ALL;
+  summonAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(summonDb));
+
+  CObj<NWorld::PFAbilityInstance> summonInstance =
+    easelPlayer->UseExternalAbility(
+      NDb::Ptr<NDb::Ability>(summonAbility),
+      NWorld::Target(easelPlayer)
+    );
+  runtime->minigameLeaveProofSummonAbilityCreated = summonInstance ? 1 : 0;
+
+  CObj<NWorld::PFBaseApplicator> summonFactoryProof;
+  if (summonInstance)
+  {
+    summonFactoryProof = summonDb->Create(
+      NWorld::PFApplCreatePars(
+        summonInstance,
+        NWorld::Target(easelPlayer),
+        static_cast<NWorld::PFBaseApplicator*>(0)));
+  }
+  runtime->minigameLeaveProofSummonFactoryCreated = summonFactoryProof ? 1 : 0;
+
+  runtime->minigameLeaveProofSummonGroupCountBefore =
+    easelPlayer->GetSummonsCount(
+      NDb::SUMMONTYPE_PRIMARY,
+      summonDb->summonGroupName);
+
+  LinuxSummonCollector summonCollector;
+  easelPlayer->ForAllSummons(summonCollector, NDb::SUMMONTYPE_PRIMARY);
+  runtime->minigameLeaveProofSummonActionCountBefore =
+    static_cast<int>(summonCollector.count);
+
+  if (!summonCollector.units.empty())
+  {
+    NWorld::PFBaseUnit* proofSummon = summonCollector.units.back().GetPtr();
+    runtime->minigameLeaveProofSummonObjectId =
+      proofSummon ? proofSummon->GetObjectId() : -1;
+    runtime->minigameLeaveProofSummonHiddenBefore =
+      proofSummon && proofSummon->CheckFlag(NDb::UNITFLAG_ISOLATED) ? 1 : 0;
+    runtime->minigameLeaveProofSummonInvisibleBefore =
+      proofSummon && proofSummon->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? 1 : 0;
+  }
+
+  return
+    runtime->minigameLeaveProofSummonAbilityCreated == 1 &&
+    runtime->minigameLeaveProofSummonFactoryCreated == 1 &&
+    runtime->minigameLeaveProofSummonGroupCountBefore >= 1 &&
+    runtime->minigameLeaveProofSummonActionCountBefore >= 1 &&
+    runtime->minigameLeaveProofSummonObjectId >= 0;
+}
 
 struct LinuxTargetSelectorCollector : public NWorld::ITargetAction
 {
@@ -26892,6 +28795,18 @@ void ShutdownWindowOverlay(LinuxWindowOverlay* overlay)
     DeleteOpenGlTexture(&overlay->lobbyScrollLever);
     DeleteOpenGlTexture(&overlay->lobbyScrollHorizontalFirst);
     DeleteOpenGlTexture(&overlay->lobbyScrollHorizontalSecond);
+    DeleteOpenGlTexture(&overlay->lobbySelectedMapBack);
+    DeleteOpenGlTexture(&overlay->lobbySelectedMapLogo);
+    DeleteOpenGlTexture(&overlay->lobbySelectedMapMinimap);
+    for (std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator it =
+           overlay->lobbyTextureCache.begin();
+         it != overlay->lobbyTextureCache.end();
+         ++it)
+    {
+      DeleteOpenGlTexture(&it->second);
+    }
+    overlay->lobbyTextureCache.clear();
+    overlay->lobbyTextureFailedSourceFiles.clear();
     for (std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator it =
            overlay->heroPreviewDiffuseTextureCache.begin();
          it != overlay->heroPreviewDiffuseTextureCache.end();
@@ -27257,6 +29172,427 @@ bool IsPointInsideLinuxScreenRect(const LinuxScreenRect& rect, int x, int y)
     y >= rect.y &&
     x < rect.x + rect.width &&
     y < rect.y + rect.height;
+}
+
+bool IsPointInsideLinuxRectValues(
+  int rectX,
+  int rectY,
+  int rectWidth,
+  int rectHeight,
+  int x,
+  int y
+)
+{
+  return rectWidth > 0 &&
+    rectHeight > 0 &&
+    x >= rectX &&
+    y >= rectY &&
+    x < rectX + rectWidth &&
+    y < rectY + rectHeight;
+}
+
+void ClearLinuxLiveHudCommandSurface(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHudCommandSurfaceReady = false;
+  runtime->liveHudCommandHighlightDrawn = false;
+  runtime->liveHudAttackX = 0;
+  runtime->liveHudAttackY = 0;
+  runtime->liveHudAttackWidth = 0;
+  runtime->liveHudAttackHeight = 0;
+  runtime->liveHudTargetX = 0;
+  runtime->liveHudTargetY = 0;
+  runtime->liveHudTargetWidth = 0;
+  runtime->liveHudTargetHeight = 0;
+  runtime->liveHudTalentCommandSlots = 0;
+  for (size_t i = 0; i < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS; ++i)
+  {
+    runtime->liveHudTalentX[i] = 0;
+    runtime->liveHudTalentY[i] = 0;
+    runtime->liveHudTalentWidth[i] = 0;
+    runtime->liveHudTalentHeight[i] = 0;
+    runtime->liveHudTalentLevel[i] = -1;
+    runtime->liveHudTalentSlot[i] = -1;
+  }
+}
+
+void ResetLinuxLiveHudCommandRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  ClearLinuxLiveHudCommandSurface(runtime);
+  runtime->liveHudActivateTalentProofSent = false;
+  runtime->liveHudInputCount = 0;
+  runtime->liveHudAttackCommandsSent = 0;
+  runtime->liveHudUseUnitCommandsSent = 0;
+  runtime->liveHudActivateTalentCommandsSent = 0;
+  runtime->liveHudUseTalentCommandsSent = 0;
+  runtime->liveHudFollowCommandsSent = 0;
+  runtime->liveHudLastCommandSlot = -1;
+  runtime->liveHudLastAction = "none";
+}
+
+void ResetLinuxLiveHotkeyCommandRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHotkeyCommandProofSent = false;
+  runtime->liveHotkeyInputCount = 0;
+  runtime->liveHotkeyStopCommandsSent = 0;
+  runtime->liveHotkeyAttackCommandsSent = 0;
+  runtime->liveHotkeyFollowCommandsSent = 0;
+  runtime->liveHotkeyHoldCommandsSent = 0;
+  runtime->liveHotkeyCancelCommandsSent = 0;
+  runtime->liveHotkeyActivateTalentCommandsSent = 0;
+  runtime->liveHotkeyUseTalentCommandsSent = 0;
+  runtime->liveHotkeyUseUnitCommandsSent = 0;
+  runtime->liveHotkeyUseConsumableCommandsSent = 0;
+  runtime->liveHotkeyLastAction = "none";
+}
+
+void ResetLinuxLiveMapPreviewCommandRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveMapPreviewCommandSurfaceReady = false;
+  runtime->liveMapPreviewCommandProofSent = false;
+  runtime->liveMapPreviewInputCount = 0;
+  runtime->liveMapPreviewMoveCommandsSent = 0;
+  runtime->liveMapPreviewAttackCommandsSent = 0;
+  runtime->liveMapPreviewSignalCommandsSent = 0;
+  runtime->liveMapPreviewSelectionCount = 0;
+  runtime->liveMapPreviewCommandTargetX = 0.0f;
+  runtime->liveMapPreviewCommandTargetY = 0.0f;
+  runtime->liveMapPreviewLastAction = "none";
+}
+
+void StoreLinuxLiveHudAttackCommandSurface(
+  LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  if (!runtime || width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  runtime->liveHudAttackX = x;
+  runtime->liveHudAttackY = y;
+  runtime->liveHudAttackWidth = width;
+  runtime->liveHudAttackHeight = height;
+  runtime->liveHudCommandSurfaceReady = true;
+}
+
+void StoreLinuxLiveHudTargetCommandSurface(
+  LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  if (!runtime || width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  runtime->liveHudTargetX = x;
+  runtime->liveHudTargetY = y;
+  runtime->liveHudTargetWidth = width;
+  runtime->liveHudTargetHeight = height;
+  runtime->liveHudCommandSurfaceReady = true;
+}
+
+void StoreLinuxLiveHudTalentCommandSurface(
+  LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y,
+  int width,
+  int height,
+  int talentLevel,
+  int talentSlot
+)
+{
+  if (!runtime ||
+      width <= 0 ||
+      height <= 0 ||
+      runtime->liveHudTalentCommandSlots >= LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS)
+  {
+    return;
+  }
+
+  const size_t index = runtime->liveHudTalentCommandSlots++;
+  runtime->liveHudTalentX[index] = x;
+  runtime->liveHudTalentY[index] = y;
+  runtime->liveHudTalentWidth[index] = width;
+  runtime->liveHudTalentHeight[index] = height;
+  runtime->liveHudTalentLevel[index] = talentLevel;
+  runtime->liveHudTalentSlot[index] = talentSlot;
+  runtime->liveHudCommandSurfaceReady = true;
+}
+
+int FindLinuxLiveHudTalentCommandSlot(
+  const LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y
+)
+{
+  if (!runtime)
+  {
+    return -1;
+  }
+
+  const size_t slotCount =
+    std::min(runtime->liveHudTalentCommandSlots, LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS);
+  for (size_t i = 0; i < slotCount; ++i)
+  {
+    if (IsPointInsideLinuxRectValues(
+          runtime->liveHudTalentX[i],
+          runtime->liveHudTalentY[i],
+          runtime->liveHudTalentWidth[i],
+          runtime->liveHudTalentHeight[i],
+          x,
+          y))
+    {
+      return static_cast<int>(i);
+    }
+  }
+
+  return -1;
+}
+
+bool IsPointInsideLinuxLiveHudCommandSurface(
+  const LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y
+)
+{
+  if (!runtime || !runtime->liveHudCommandSurfaceReady)
+  {
+    return false;
+  }
+
+  return IsPointInsideLinuxRectValues(
+      runtime->liveHudAttackX,
+      runtime->liveHudAttackY,
+      runtime->liveHudAttackWidth,
+      runtime->liveHudAttackHeight,
+      x,
+      y) ||
+    IsPointInsideLinuxRectValues(
+      runtime->liveHudTargetX,
+      runtime->liveHudTargetY,
+      runtime->liveHudTargetWidth,
+      runtime->liveHudTargetHeight,
+      x,
+      y) ||
+    FindLinuxLiveHudTalentCommandSlot(runtime, x, y) >= 0;
+}
+
+struct LinuxLiveMinimapLayout
+{
+  bool ready;
+  int panelX;
+  int panelY;
+  int mapSize;
+  int panelHeight;
+  int innerX;
+  int innerY;
+  int innerSize;
+  float minX;
+  float maxX;
+  float minY;
+  float maxY;
+
+  LinuxLiveMinimapLayout()
+    : ready(false),
+      panelX(0),
+      panelY(0),
+      mapSize(0),
+      panelHeight(0),
+      innerX(0),
+      innerY(0),
+      innerSize(0),
+      minX(0.0f),
+      maxX(0.0f),
+      minY(0.0f),
+      maxY(0.0f)
+  {
+  }
+};
+
+LinuxLiveMinimapLayout ResolveLinuxLiveMinimapLayout(
+  int screenWidth,
+  int screenHeight,
+  bool loadingActive,
+  const LinuxSelectedMapPreview* selectedMapPreview
+)
+{
+  LinuxLiveMinimapLayout layout;
+  if (screenWidth <= 0 ||
+      screenHeight <= 0 ||
+      !selectedMapPreview ||
+      !selectedMapPreview->tactical.ready)
+  {
+    return layout;
+  }
+
+  layout.mapSize = loadingActive ?
+    std::max(128, std::min(150, screenWidth / 8)) :
+    std::max(168, std::min(236, screenWidth / 6));
+  const int padding = 8;
+  layout.panelX = std::max(14, screenWidth - layout.mapSize - 24);
+  layout.panelY = 42;
+  if (loadingActive)
+  {
+    const int rosterH = std::max(150, std::min(188, screenHeight / 4 + 8));
+    const int rosterY = std::max(64, screenHeight - rosterH - 48);
+    const int chatY = std::max(164, std::min(186, rosterY - 188));
+    const int chatH = std::max(96, std::min(176, rosterY - chatY - 12));
+    layout.panelX = 42;
+    layout.panelY = std::max(
+      chatY + chatH + 8,
+      std::min(rosterY - layout.mapSize - 12, screenHeight - layout.mapSize - 46));
+  }
+  layout.panelY = std::max(
+    38,
+    std::min(layout.panelY, std::max(38, screenHeight - layout.mapSize - 46)));
+  layout.innerX = layout.panelX + padding;
+  layout.innerY = layout.panelY + padding + 18;
+  layout.innerSize = std::max(1, layout.mapSize - padding * 2);
+  layout.panelHeight = layout.innerSize + padding * 2 + 32;
+  layout.minX = selectedMapPreview->tactical.minX;
+  layout.maxX = selectedMapPreview->tactical.maxX;
+  layout.minY = selectedMapPreview->tactical.minY;
+  layout.maxY = selectedMapPreview->tactical.maxY;
+  layout.ready = true;
+  return layout;
+}
+
+void StoreLinuxLiveMinimapCommandSurface(
+  LinuxBootstrapScreenRuntime* runtime,
+  const LinuxLiveMinimapLayout& layout
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveMinimapCommandSurfaceReady = layout.ready;
+  runtime->liveMinimapInnerX = layout.innerX;
+  runtime->liveMinimapInnerY = layout.innerY;
+  runtime->liveMinimapInnerSize = layout.innerSize;
+  runtime->liveMinimapMinX = layout.minX;
+  runtime->liveMinimapMaxX = layout.maxX;
+  runtime->liveMinimapMinY = layout.minY;
+  runtime->liveMinimapMaxY = layout.maxY;
+}
+
+void ClearLinuxLiveMinimapCommandSurface(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveMinimapCommandSurfaceReady = false;
+  runtime->liveMinimapInnerX = 0;
+  runtime->liveMinimapInnerY = 0;
+  runtime->liveMinimapInnerSize = 0;
+  runtime->liveMinimapMinX = 0.0f;
+  runtime->liveMinimapMaxX = 0.0f;
+  runtime->liveMinimapMinY = 0.0f;
+  runtime->liveMinimapMaxY = 0.0f;
+}
+
+bool ProjectLinuxLiveMinimapScreenToWorld(
+  const LinuxBootstrapScreenRuntime& runtime,
+  int mouseX,
+  int mouseY,
+  float* worldX,
+  float* worldY
+)
+{
+  if (worldX) *worldX = 0.0f;
+  if (worldY) *worldY = 0.0f;
+  if (!runtime.liveMinimapCommandSurfaceReady || runtime.liveMinimapInnerSize <= 0)
+  {
+    return false;
+  }
+
+  const int innerX = runtime.liveMinimapInnerX;
+  const int innerY = runtime.liveMinimapInnerY;
+  const int innerSize = runtime.liveMinimapInnerSize;
+  if (mouseX < innerX ||
+      mouseY < innerY ||
+      mouseX >= innerX + innerSize ||
+      mouseY >= innerY + innerSize)
+  {
+    return false;
+  }
+
+  const float rangeX = std::max(1.0f, runtime.liveMinimapMaxX - runtime.liveMinimapMinX);
+  const float rangeY = std::max(1.0f, runtime.liveMinimapMaxY - runtime.liveMinimapMinY);
+  const float normalizedX =
+    static_cast<float>(mouseX - innerX) / static_cast<float>(std::max(1, innerSize - 1));
+  const float normalizedY =
+    1.0f - static_cast<float>(mouseY - innerY) / static_cast<float>(std::max(1, innerSize - 1));
+  const float projectedX = runtime.liveMinimapMinX + std::max(0.0f, std::min(1.0f, normalizedX)) * rangeX;
+  const float projectedY = runtime.liveMinimapMinY + std::max(0.0f, std::min(1.0f, normalizedY)) * rangeY;
+
+  if (worldX) *worldX = projectedX;
+  if (worldY) *worldY = projectedY;
+  return true;
+}
+
+bool ProjectLinuxLiveMinimapWorldToScreen(
+  const LinuxBootstrapScreenRuntime& runtime,
+  const CVec2& worldPosition,
+  int* screenX,
+  int* screenY
+)
+{
+  if (screenX) *screenX = 0;
+  if (screenY) *screenY = 0;
+  if (!runtime.liveMinimapCommandSurfaceReady || runtime.liveMinimapInnerSize <= 0)
+  {
+    return false;
+  }
+
+  const float rangeX = std::max(1.0f, runtime.liveMinimapMaxX - runtime.liveMinimapMinX);
+  const float rangeY = std::max(1.0f, runtime.liveMinimapMaxY - runtime.liveMinimapMinY);
+  const float normalizedX =
+    std::max(0.0f, std::min(1.0f, (worldPosition.x - runtime.liveMinimapMinX) / rangeX));
+  const float normalizedY =
+    std::max(0.0f, std::min(1.0f, (worldPosition.y - runtime.liveMinimapMinY) / rangeY));
+  if (screenX)
+  {
+    *screenX = runtime.liveMinimapInnerX +
+      static_cast<int>(normalizedX * static_cast<float>(runtime.liveMinimapInnerSize - 1));
+  }
+  if (screenY)
+  {
+    *screenY = runtime.liveMinimapInnerY + runtime.liveMinimapInnerSize -
+      1 - static_cast<int>(normalizedY * static_cast<float>(runtime.liveMinimapInnerSize - 1));
+  }
+  return true;
 }
 
 void NormalizeLinuxCharacterPreviewYaw(LinuxBootstrapScreenRuntime* runtime)
@@ -28092,16 +30428,24 @@ void UpdateLinuxBootstrapGameSchedulerPreview(
   preview->runtimeGameWorldLastBootstrapCommandValue = runtime.worldLastBootstrapCommandValue;
   preview->runtimeGameWorldTimeScale = runtime.worldTimeScale;
   preview->runtimeGameSchedulerPath = preview->runtimeGameSchedulerReady ?
-    (runtime.schedulerSegmentReady ?
-      "Game::LocalCmdScheduler::StartGame/Step/GetSyncSegment" :
-      "Game::LocalCmdScheduler::StartGame/Step") :
+    (runtime.replayFileInputActive ?
+      "NWorld::ReplayStorage2/ReplayTransceiver live replay input" :
+      (runtime.schedulerSegmentReady ?
+        "Game::LocalCmdScheduler::StartGame/Step/GetSyncSegment" :
+        "Game::LocalCmdScheduler::StartGame/Step")) :
     "inactive";
-	  preview->runtimeGameTransceiverPath = preview->runtimeGameTransceiverReady ?
-	    (preview->runtimeGameTransceiverWorldAttached ?
-	      "NCore::Transceiver::Transceiver/SetWorld(PFWorld)/Step" :
-	      "NCore::Transceiver::Transceiver/Step") :
-	    "inactive";
-	}
+  preview->runtimeGameTransceiverPath = preview->runtimeGameTransceiverReady ?
+    (runtime.replayFileInputActive ?
+      (preview->runtimeGameTransceiverWorldAttached ?
+        "NWorld::ReplayTransceiver(live input)/SetWorld(PFWorld)/Step" :
+        "NWorld::ReplayTransceiver(live input)/Step") :
+      (preview->runtimeGameTransceiverWorldAttached ?
+        "NCore::Transceiver::Transceiver/SetWorld(PFWorld)/Step" :
+        "NCore::Transceiver::Transceiver/Step")) :
+    "inactive";
+}
+
+void ValidateLinuxBootstrapReplayCapture(LinuxBootstrapScreenRuntime* runtime);
 
 void UpdateLinuxBootstrapReplayWriterRuntime(LinuxBootstrapScreenRuntime* runtime)
 {
@@ -28135,6 +30479,1121 @@ void UpdateLinuxBootstrapReplayWriterRuntime(LinuxBootstrapScreenRuntime* runtim
   runtime->replayWriterPath = runtime->replayWriter ?
     runtime->replayWriter->GetLinuxReplayFilePath().c_str() :
     "inactive";
+  ValidateLinuxBootstrapReplayCapture(runtime);
+}
+
+static const char kLinuxBootstrapReplayCaptureMagic[] = "PWLXREPLAY1\n";
+
+void ResetLinuxBootstrapReplayCaptureValidation(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->replayCaptureValidated = false;
+  runtime->replayCaptureMagicReady = false;
+  runtime->replayCaptureBoundsOk = false;
+  runtime->replayCaptureByteCountMatches = false;
+  runtime->replayCaptureCommandCountMatches = false;
+  runtime->replayCaptureStatusCountMatches = false;
+  runtime->replayReadbackDecoded = false;
+  runtime->replayReadbackCommandCountMatches = false;
+  runtime->replayStorageValidated = false;
+  runtime->replayStorageSegmentCountMatches = false;
+  runtime->replayStorageCommandCountMatches = false;
+  runtime->replayStorageStatusCountMatches = false;
+  runtime->replayStorageHeaderValidated = false;
+  runtime->replayPlaybackHeaderValidated = false;
+  runtime->replayPlaybackValidated = false;
+  runtime->replayPlaybackWorldAttached = false;
+  runtime->replayPlaybackStepCountMatches = false;
+  runtime->replayPlaybackCommandCountMatches = false;
+  runtime->replayServerPlaybackHeaderValidated = false;
+  runtime->replayServerPlaybackValidated = false;
+  runtime->replayServerPlaybackWorldAttached = false;
+  runtime->replayServerPlaybackStepCountMatches = false;
+  runtime->replayServerPlaybackCommandCountMatches = false;
+  runtime->replayServerPlaybackStatusCountMatches = false;
+  runtime->replayCaptureRecords = 0;
+  runtime->replayCaptureCommandBlocks = 0;
+  runtime->replayCaptureStatusBlocks = 0;
+  runtime->replayCaptureStatusActiveBlocks = 0;
+  runtime->replayCaptureStatusAwayBlocks = 0;
+  runtime->replayCaptureStatusDisconnectedBlocks = 0;
+  runtime->replayCaptureStatusLeaverBlocks = 0;
+  runtime->replayCaptureBytesRead = 0;
+  runtime->replayCaptureLargestCommandBytes = 0;
+  runtime->replayReadbackPackedCommands = 0;
+  runtime->replayReadbackDecodeFailures = 0;
+  runtime->replayReadbackCommandBytes = 0;
+  runtime->replayReadbackDistinctCommandTypes = 0;
+  runtime->replayStorageLoadedSegments = 0;
+  runtime->replayStorageLoadedCommands = 0;
+  runtime->replayStorageLoadedStatuses = 0;
+  runtime->replayStorageConsumedSegments = 0;
+  runtime->replayStorageConsumedCommands = 0;
+  runtime->replayStorageConsumedStatuses = 0;
+  runtime->replayStorageDecodeFailures = 0;
+  runtime->replayStorageHeaderPlayers = 0;
+  runtime->replayPlaybackStepCalls = 0;
+  runtime->replayPlaybackWorldSteps = 0;
+  runtime->replayPlaybackCommandBatches = 0;
+  runtime->replayPlaybackCommands = 0;
+  runtime->replayServerPlaybackStepCalls = 0;
+  runtime->replayServerPlaybackWorldSteps = 0;
+  runtime->replayServerPlaybackCommandBatches = 0;
+  runtime->replayServerPlaybackCommands = 0;
+  runtime->replayServerPlaybackStatusUpdates = 0;
+  runtime->replayReadbackFirstClientId = -1;
+  runtime->replayReadbackLastClientId = -1;
+  runtime->replayReadbackMinClientId = -1;
+  runtime->replayReadbackMaxClientId = -1;
+  runtime->replayReadbackFirstCommandTypeId = 0;
+  runtime->replayReadbackLastCommandTypeId = 0;
+  runtime->replayReadbackFirstCommandTime = 0;
+  runtime->replayReadbackLastCommandTime = 0;
+  runtime->replayStorageHeaderClientId = -1;
+  runtime->replayStorageHeaderStepLength = 0;
+  runtime->replayPlaybackHeaderStepLength = 0;
+  runtime->replayServerPlaybackHeaderStepLength = 0;
+  runtime->replayCaptureStartStep = -1;
+  runtime->replayCaptureFirstStep = -1;
+  runtime->replayCaptureLastStep = -1;
+  runtime->replayStorageFirstStep = -1;
+  runtime->replayStorageLastStep = -1;
+  runtime->replayPlaybackFinalWorldStep = -1;
+  runtime->replayServerPlaybackFinalWorldStep = -1;
+  runtime->replayCaptureValidationError.clear();
+  runtime->replayStorageValidationError.clear();
+  runtime->replayStorageHeaderMap = "<none>";
+  runtime->replayPlaybackValidationError.clear();
+  runtime->replayServerPlaybackValidationError.clear();
+}
+
+bool ReadLinuxBootstrapReplayCaptureBytes(
+  std::ifstream* input,
+  void* data,
+  size_t size,
+  size_t* bytesRead
+)
+{
+  if (!input || !data || size == 0)
+  {
+    return false;
+  }
+
+  input->read(reinterpret_cast<char*>(data), static_cast<std::streamsize>(size));
+  if (input->gcount() != static_cast<std::streamsize>(size))
+  {
+    return false;
+  }
+
+  if (bytesRead)
+  {
+    *bytesRead += size;
+  }
+  return true;
+}
+
+class LinuxBootstrapReplayProbeWorld : public NCore::IWorldBase
+{
+  OBJECT_BASIC_METHODS(LinuxBootstrapReplayProbeWorld)
+
+public:
+  LinuxBootstrapReplayProbeWorld(int _stepLength = DEFAULT_GAME_STEP_LENGTH)
+    : stepLength(_stepLength > 0 ? _stepLength : DEFAULT_GAME_STEP_LENGTH),
+      stepLengthInSeconds(static_cast<float>(_stepLength > 0 ? _stepLength : DEFAULT_GAME_STEP_LENGTH) / 1000.0f),
+      stepNumber(0),
+      commandBatches(0),
+      commands(0),
+      statusUpdates(0),
+      paused(false),
+      slowdownHint(1.0f)
+  {
+  }
+
+  virtual void ExecuteCommand(NCore::WorldCommand*)
+  {
+  }
+
+  virtual IPointerHolder* GetPointerSerialization()
+  {
+    return 0;
+  }
+
+  virtual void UpdatePlayerStatuses(const NCore::TStatuses& statuses)
+  {
+    statusUpdates += statuses.size();
+  }
+
+  virtual void ExecuteCommands(const NCore::TPackedCommands& packedCommands)
+  {
+    ++commandBatches;
+    commands += packedCommands.size();
+  }
+
+  virtual bool Step(float, float)
+  {
+    ++stepNumber;
+    return true;
+  }
+
+  virtual int GetStepLength() const
+  {
+    return stepLength;
+  }
+
+  virtual float GetStepLengthInSeconds() const
+  {
+    return stepLengthInSeconds;
+  }
+
+  virtual void CalcCRC(IBinSaver&, bool)
+  {
+  }
+
+  virtual int GetStepNumber() const
+  {
+    return stepNumber;
+  }
+
+  virtual void SetAccounting(lobby::AccountingGadget*)
+  {
+  }
+
+  virtual void SetPause(bool value, int)
+  {
+    paused = value;
+  }
+
+  virtual bool IsPaused() const
+  {
+    return paused;
+  }
+
+  virtual void SetSlowdownHint(float hintValue)
+  {
+    slowdownHint = hintValue;
+  }
+
+  virtual float GetSlowdownHint() const
+  {
+    return slowdownHint;
+  }
+
+  virtual void Save() const
+  {
+  }
+
+  virtual void Load()
+  {
+  }
+
+  virtual bool HasProtection() const
+  {
+    return false;
+  }
+
+  virtual bool PollProtectionResult(NCore::ProtectionResult&)
+  {
+    return false;
+  }
+
+  virtual void SetProtectionUpdateFrequency(const int, const int)
+  {
+  }
+
+  size_t GetCommandBatches() const { return commandBatches; }
+  size_t GetCommands() const { return commands; }
+  size_t GetStatusUpdates() const { return statusUpdates; }
+
+private:
+  int stepLength;
+  float stepLengthInSeconds;
+  int stepNumber;
+  size_t commandBatches;
+  size_t commands;
+  size_t statusUpdates;
+  bool paused;
+  float slowdownHint;
+};
+
+int GetLinuxBootstrapExpectedReplayClientId(const LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+    return -1;
+
+  if (runtime->loadingGameContext && runtime->loadingGameContext->userId > 0)
+    return runtime->loadingGameContext->userId;
+
+  for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
+       it != runtime->loadingMapStartInfo.playersInfo.end();
+       ++it)
+  {
+    if (it->playerType == NCore::EPlayerType::Human && it->userID > 0)
+      return it->userID;
+  }
+
+  return -1;
+}
+
+bool IsLinuxBootstrapReplayHeaderExpected(
+  const LinuxBootstrapScreenRuntime* runtime,
+  const NCore::MapStartInfo& replayHeaderInfo,
+  int replayHeaderClientId,
+  int replayHeaderStepLength
+)
+{
+  if (!runtime)
+    return false;
+
+  return
+    replayHeaderStepLength == DEFAULT_GAME_STEP_LENGTH &&
+    replayHeaderClientId == GetLinuxBootstrapExpectedReplayClientId(runtime) &&
+    replayHeaderInfo.mapDescName == runtime->loadingMapStartInfo.mapDescName &&
+    replayHeaderInfo.playersInfo.size() == runtime->loadingMapStartInfo.playersInfo.size();
+}
+
+bool IsLinuxBootstrapReplayFileHeaderUsable(
+  const NCore::MapStartInfo& replayHeaderInfo,
+  int replayHeaderClientId,
+  int replayHeaderStepLength
+)
+{
+  return
+    replayHeaderClientId > 0 &&
+    replayHeaderStepLength > 0 &&
+    !replayHeaderInfo.mapDescName.empty() &&
+    !replayHeaderInfo.playersInfo.empty();
+}
+
+void ValidateLinuxBootstrapReplayFileProof(
+  const fs::path& replayPath,
+  LinuxBootstrapReplayFileProof* proof
+)
+{
+  if (!proof)
+    return;
+
+  proof->Reset();
+  if (replayPath.empty())
+    return;
+
+  proof->requested = true;
+  proof->path = replayPath.string();
+
+  std::error_code fileError;
+  if (!fs::exists(replayPath, fileError) || fileError)
+  {
+    proof->validationError = "missing";
+    proof->playbackValidationError = "missing";
+    proof->serverPlaybackValidationError = "missing";
+    return;
+  }
+
+  NWorld::ReplayStorage2 storage(
+    NCore::REPLAY_BUFFER_READ,
+    proof->path.c_str(),
+    0,
+    0);
+  proof->loadedSegments = storage.GetLinuxReplayLoadedSegments();
+  proof->loadedCommands = storage.GetLinuxReplayLoadedCommands();
+  proof->loadedStatuses = storage.GetLinuxReplayLoadedStatuses();
+  proof->decodeFailures = storage.GetLinuxReplayDecodeFailures();
+  proof->firstStep = storage.GetLinuxReplayFirstStep();
+  proof->lastStep = storage.GetLinuxReplayLastStep();
+  proof->validationError = storage.GetLinuxReplayError();
+
+  if (!storage.IsOk())
+  {
+    proof->playbackValidationError = proof->validationError;
+    proof->serverPlaybackValidationError = proof->validationError;
+    return;
+  }
+  proof->storageReady = true;
+
+  NCore::MapStartInfo replayHeaderInfo;
+  NCore::ClientSettings replayHeaderClientSettings;
+  int replayHeaderClientId = -1;
+  int replayHeaderStepLength = 0;
+  proof->headerReady = storage.GetHeader(
+    &replayHeaderInfo,
+    &replayHeaderClientId,
+    &replayHeaderStepLength,
+    &replayHeaderClientSettings,
+    0);
+  proof->headerPlayers = replayHeaderInfo.playersInfo.size();
+  proof->headerClientId = replayHeaderClientId;
+  proof->headerStepLength = replayHeaderStepLength;
+  proof->headerMap = replayHeaderInfo.mapDescName.c_str();
+  proof->headerValidated =
+    proof->headerReady &&
+    IsLinuxBootstrapReplayFileHeaderUsable(
+      replayHeaderInfo,
+      replayHeaderClientId,
+      replayHeaderStepLength);
+
+  NCore::ReplaySegment segment;
+  while (storage.GetNextSegment(segment))
+  {
+    ++proof->consumedSegments;
+    proof->consumedCommands += segment.seg.size();
+  }
+
+  NCore::SyncSegment syncSegment;
+  while (storage.GetNextSegment(syncSegment))
+  {
+    proof->consumedStatuses += syncSegment.statuses.size();
+  }
+
+  proof->segmentCountMatches =
+    proof->loadedSegments == proof->consumedSegments &&
+    proof->loadedSegments > 0 &&
+    proof->firstStep >= 0 &&
+    proof->lastStep >= proof->firstStep;
+  proof->commandCountMatches = proof->loadedCommands == proof->consumedCommands;
+  proof->statusCountMatches = proof->loadedStatuses == proof->consumedStatuses;
+
+  const bool storageValidated =
+    proof->storageReady &&
+    proof->headerValidated &&
+    proof->segmentCountMatches &&
+    proof->commandCountMatches &&
+    proof->statusCountMatches &&
+    proof->decodeFailures == 0;
+  if (!storageValidated)
+  {
+    if (!proof->headerValidated)
+    {
+      proof->validationError = proof->headerReady ? "header-invalid" : "header-missing";
+    }
+    else if (proof->loadedSegments == 0)
+    {
+      proof->validationError = "empty";
+    }
+    else if (proof->decodeFailures != 0)
+    {
+      proof->validationError = "decode-failed";
+    }
+    else
+    {
+      proof->validationError = "counter-mismatch";
+    }
+    proof->playbackValidationError = proof->validationError;
+    proof->serverPlaybackValidationError = proof->validationError;
+    return;
+  }
+
+  CObj<NWorld::ReplayStorage2> playbackStorage =
+    new NWorld::ReplayStorage2(
+      NCore::REPLAY_BUFFER_READ,
+      proof->path.c_str(),
+      0,
+      0);
+  if (!playbackStorage || !playbackStorage->IsOk())
+  {
+    proof->validationError = "playback-storage-failed";
+    proof->playbackValidationError =
+      playbackStorage ? playbackStorage->GetLinuxReplayError() : "storage-create-failed";
+    proof->serverPlaybackValidationError = proof->playbackValidationError;
+    return;
+  }
+
+  CObj<LinuxBootstrapReplayProbeWorld> probeWorld =
+    new LinuxBootstrapReplayProbeWorld(proof->headerStepLength);
+  Strong<NWorld::ReplayTransceiver> replayTransceiver =
+    new NWorld::ReplayTransceiver(playbackStorage.GetPtr(), proof->headerStepLength);
+  replayTransceiver->SetWorld(probeWorld.GetPtr());
+  proof->playbackWorldAttached =
+    replayTransceiver->GetWorld() == static_cast<NCore::IWorldBase*>(probeWorld.GetPtr());
+
+  for (size_t i = 0; i <= playbackStorage->GetLinuxReplayLoadedSegments(); ++i)
+  {
+    ++proof->playbackStepCalls;
+    replayTransceiver->Step(static_cast<float>(probeWorld->GetStepLength()));
+  }
+
+  proof->playbackWorldSteps = static_cast<size_t>(probeWorld->GetStepNumber());
+  proof->playbackCommandBatches = probeWorld->GetCommandBatches();
+  proof->playbackCommands = probeWorld->GetCommands();
+  proof->playbackFinalWorldStep = replayTransceiver->GetWorldStep();
+  proof->playbackStepCountMatches =
+    proof->playbackWorldSteps == proof->loadedSegments &&
+    proof->playbackFinalWorldStep == static_cast<int>(proof->loadedSegments);
+  proof->playbackCommandCountMatches =
+    proof->playbackCommandBatches == proof->loadedSegments &&
+    proof->playbackCommands == proof->loadedCommands;
+  proof->playbackValidated =
+    proof->playbackWorldAttached &&
+    proof->playbackStepCountMatches &&
+    proof->playbackCommandCountMatches;
+  proof->playbackValidationError =
+    proof->playbackValidated ? "none" : "counter-mismatch";
+
+  CObj<NWorld::ReplayStorage2> serverStorage =
+    new NWorld::ReplayStorage2(
+      NCore::REPLAY_BUFFER_READ,
+      proof->path.c_str(),
+      0,
+      0);
+  if (!serverStorage || !serverStorage->IsOk())
+  {
+    proof->validationError = "server-playback-storage-failed";
+    proof->serverPlaybackValidationError =
+      serverStorage ? serverStorage->GetLinuxReplayError() : "storage-create-failed";
+    return;
+  }
+
+  CObj<LinuxBootstrapReplayProbeWorld> serverProbeWorld =
+    new LinuxBootstrapReplayProbeWorld(proof->headerStepLength);
+  Strong<NWorld::ReplayTransceiver> serverReplayTransceiver =
+    new NWorld::ReplayTransceiver(serverStorage.GetPtr(), proof->headerStepLength);
+  serverReplayTransceiver->SetUseServerReplay(true);
+  serverReplayTransceiver->SetWorld(serverProbeWorld.GetPtr());
+  proof->serverPlaybackWorldAttached =
+    serverReplayTransceiver->GetWorld() == static_cast<NCore::IWorldBase*>(serverProbeWorld.GetPtr());
+
+  for (size_t i = 0; i <= serverStorage->GetLinuxReplayLoadedSegments(); ++i)
+  {
+    ++proof->serverPlaybackStepCalls;
+    serverReplayTransceiver->Step(static_cast<float>(serverProbeWorld->GetStepLength()));
+  }
+
+  proof->serverPlaybackWorldSteps = static_cast<size_t>(serverProbeWorld->GetStepNumber());
+  proof->serverPlaybackCommandBatches = serverProbeWorld->GetCommandBatches();
+  proof->serverPlaybackCommands = serverProbeWorld->GetCommands();
+  proof->serverPlaybackStatusUpdates = serverProbeWorld->GetStatusUpdates();
+  proof->serverPlaybackFinalWorldStep = serverReplayTransceiver->GetWorldStep();
+  proof->serverPlaybackStepCountMatches =
+    proof->serverPlaybackWorldSteps == proof->loadedSegments &&
+    proof->serverPlaybackFinalWorldStep == static_cast<int>(proof->loadedSegments);
+  proof->serverPlaybackCommandCountMatches =
+    proof->serverPlaybackCommandBatches == proof->loadedSegments &&
+    proof->serverPlaybackCommands == proof->loadedCommands;
+  proof->serverPlaybackStatusCountMatches =
+    proof->serverPlaybackStatusUpdates == proof->loadedStatuses;
+  proof->serverPlaybackValidated =
+    proof->serverPlaybackWorldAttached &&
+    proof->serverPlaybackStepCountMatches &&
+    proof->serverPlaybackCommandCountMatches &&
+    proof->serverPlaybackStatusCountMatches;
+  proof->serverPlaybackValidationError =
+    proof->serverPlaybackValidated ? "none" : "counter-mismatch";
+
+  NDb::Ptr<NDb::AdvMapDescription> dbMapDescription =
+    NDb::Get<NDb::AdvMapDescription>(NDb::DBID(replayHeaderInfo.mapDescName.c_str()));
+  if (!IsValid(dbMapDescription))
+  {
+    proof->liveWorldValidationError = "map-desc-missing";
+  }
+  else
+  {
+    NDb::Ptr<NDb::AdvMap> dbMap = dbMapDescription->map;
+    NDb::Ptr<NDb::AdvMapSettings> dbMapSettings;
+    if (IsValid(dbMap))
+    {
+      dbMapSettings =
+        IsValid(dbMapDescription->mapSettings) ? dbMapDescription->mapSettings : dbMap->mapSettings;
+    }
+    if (!IsValid(dbMap) || !IsValid(dbMapSettings))
+    {
+      proof->liveWorldValidationError = "map-content-missing";
+    }
+    else
+    {
+      CObj<NCore::IWorldBase> liveWorldBase = NWorld::PFWorld::CreatePFWorld();
+      NWorld::PFWorld* liveWorld = dynamic_cast<NWorld::PFWorld*>(liveWorldBase.GetPtr());
+      proof->liveWorldCreated = liveWorld != 0;
+      if (!liveWorld)
+      {
+        proof->liveWorldValidationError = "world-create-failed";
+      }
+      else
+      {
+        StrongMT<NWorld::MapLoadingJob> liveMapLoadingJob =
+          new NWorld::MapLoadingJob(
+            liveWorldBase,
+            replayHeaderInfo,
+            dbMapDescription,
+            dbMapSettings,
+            dbMap,
+            false);
+        proof->liveWorldLoaded = liveMapLoadingJob->DoTheJob();
+        proof->liveWorldPlayers = static_cast<size_t>(std::max(0, liveWorld->GetPlayersCount()));
+        proof->liveWorldMapObjects = static_cast<size_t>(std::max(0, liveWorld->GetLinuxLoadedMapObjectsCount()));
+        proof->liveWorldSpawnedHeroes = static_cast<size_t>(std::max(0, liveWorld->GetLinuxSpawnedHeroObjectsCount()));
+        proof->liveWorldPlayerHeroes = static_cast<size_t>(std::max(0, liveWorld->GetLinuxPlayersWithHeroObjectsCount()));
+        proof->liveWorldCommandsBefore = static_cast<size_t>(std::max(0, liveWorld->GetLinuxExecutedPackedWorldCommandsCount()));
+
+        if (!proof->liveWorldLoaded)
+        {
+          proof->liveWorldValidationError = "map-load-failed";
+        }
+        else
+        {
+          CObj<NWorld::ReplayStorage2> liveStorage =
+            new NWorld::ReplayStorage2(
+              NCore::REPLAY_BUFFER_READ,
+              proof->path.c_str(),
+              0,
+              0);
+          if (!liveStorage || !liveStorage->IsOk())
+          {
+            proof->liveWorldValidationError =
+              liveStorage ? liveStorage->GetLinuxReplayError() : "storage-create-failed";
+          }
+          else
+          {
+            Strong<NWorld::ReplayTransceiver> liveReplayTransceiver =
+              new NWorld::ReplayTransceiver(liveStorage.GetPtr(), proof->headerStepLength);
+            liveReplayTransceiver->SetWorld(liveWorldBase.GetPtr());
+            proof->liveWorldAttached =
+              liveReplayTransceiver->GetWorld() == static_cast<NCore::IWorldBase*>(liveWorldBase.GetPtr());
+
+            for (size_t i = 0; i < liveStorage->GetLinuxReplayLoadedSegments(); ++i)
+            {
+              ++proof->liveWorldStepCalls;
+              liveReplayTransceiver->Step(static_cast<float>(proof->headerStepLength));
+            }
+
+            proof->liveWorldFinalStep = liveReplayTransceiver->GetWorldStep();
+            proof->liveWorldPlayers = static_cast<size_t>(std::max(0, liveWorld->GetPlayersCount()));
+            proof->liveWorldMapObjects = static_cast<size_t>(std::max(0, liveWorld->GetLinuxLoadedMapObjectsCount()));
+            proof->liveWorldSpawnedHeroes = static_cast<size_t>(std::max(0, liveWorld->GetLinuxSpawnedHeroObjectsCount()));
+            proof->liveWorldPlayerHeroes = static_cast<size_t>(std::max(0, liveWorld->GetLinuxPlayersWithHeroObjectsCount()));
+            proof->liveWorldCommandsAfter = static_cast<size_t>(std::max(0, liveWorld->GetLinuxExecutedPackedWorldCommandsCount()));
+            proof->liveWorldCommandsExecuted =
+              proof->liveWorldCommandsAfter >= proof->liveWorldCommandsBefore ?
+                proof->liveWorldCommandsAfter - proof->liveWorldCommandsBefore :
+                0;
+            proof->liveWorldStepCountMatches =
+              proof->liveWorldStepCalls == proof->loadedSegments &&
+              proof->liveWorldFinalStep >= 0 &&
+              (proof->liveWorldFinalStep == static_cast<int>(proof->loadedSegments) ||
+               proof->liveWorldFinalStep + 1 == static_cast<int>(proof->loadedSegments));
+            proof->liveWorldCommandCountMatches =
+              proof->liveWorldCommandsExecuted == proof->loadedCommands;
+            proof->liveWorldValidated =
+              proof->liveWorldCreated &&
+              proof->liveWorldLoaded &&
+              proof->liveWorldAttached &&
+              proof->liveWorldPlayers > 0 &&
+              proof->liveWorldMapObjects > 0 &&
+              proof->liveWorldStepCountMatches &&
+              proof->liveWorldCommandCountMatches;
+            proof->liveWorldValidationError =
+              proof->liveWorldValidated ? "none" : "counter-mismatch";
+          }
+        }
+      }
+    }
+  }
+
+  proof->validated =
+    storageValidated &&
+    proof->playbackValidated &&
+    proof->serverPlaybackValidated;
+  proof->validationError =
+    proof->validated ? "none" :
+      (proof->playbackValidated ? "server-playback-failed" : "playback-failed");
+}
+
+void ValidateLinuxBootstrapReplayStorage(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime ||
+      runtime->replayWriterPath.empty() ||
+      runtime->replayWriterPath == "inactive")
+  {
+    if (runtime)
+    {
+      runtime->replayStorageValidationError = "inactive";
+    }
+    return;
+  }
+
+  NWorld::ReplayStorage2 storage(
+    NCore::REPLAY_BUFFER_READ,
+    runtime->replayWriterPath.c_str(),
+    0,
+    0);
+  runtime->replayStorageLoadedSegments = storage.GetLinuxReplayLoadedSegments();
+  runtime->replayStorageLoadedCommands = storage.GetLinuxReplayLoadedCommands();
+  runtime->replayStorageLoadedStatuses = storage.GetLinuxReplayLoadedStatuses();
+  runtime->replayStorageDecodeFailures = storage.GetLinuxReplayDecodeFailures();
+  runtime->replayStorageFirstStep = storage.GetLinuxReplayFirstStep();
+  runtime->replayStorageLastStep = storage.GetLinuxReplayLastStep();
+  runtime->replayStorageValidationError = storage.GetLinuxReplayError();
+
+  if (!storage.IsOk())
+  {
+    return;
+  }
+
+  NCore::MapStartInfo replayHeaderInfo;
+  NCore::ClientSettings replayHeaderClientSettings;
+  int replayHeaderClientId = -1;
+  int replayHeaderStepLength = 0;
+  const bool replayHeaderReady = storage.GetHeader(
+    &replayHeaderInfo,
+    &replayHeaderClientId,
+    &replayHeaderStepLength,
+    &replayHeaderClientSettings,
+    0);
+  runtime->replayStorageHeaderPlayers = replayHeaderInfo.playersInfo.size();
+  runtime->replayStorageHeaderClientId = replayHeaderClientId;
+  runtime->replayStorageHeaderStepLength = replayHeaderStepLength;
+  runtime->replayStorageHeaderMap = replayHeaderInfo.mapDescName.c_str();
+
+  runtime->replayStorageHeaderValidated =
+    replayHeaderReady &&
+    IsLinuxBootstrapReplayHeaderExpected(
+      runtime,
+      replayHeaderInfo,
+      replayHeaderClientId,
+      replayHeaderStepLength);
+
+  NCore::ReplaySegment segment;
+  while (storage.GetNextSegment(segment))
+  {
+    ++runtime->replayStorageConsumedSegments;
+    runtime->replayStorageConsumedCommands += segment.seg.size();
+  }
+
+  NCore::SyncSegment syncSegment;
+  while (storage.GetNextSegment(syncSegment))
+  {
+    runtime->replayStorageConsumedStatuses += syncSegment.statuses.size();
+  }
+
+  runtime->replayStorageSegmentCountMatches =
+    runtime->replayStorageLoadedSegments == runtime->replayCaptureRecords &&
+    runtime->replayStorageConsumedSegments == runtime->replayCaptureRecords &&
+    runtime->replayStorageFirstStep == runtime->replayCaptureFirstStep &&
+    runtime->replayStorageLastStep == runtime->replayCaptureLastStep;
+  runtime->replayStorageCommandCountMatches =
+    runtime->replayStorageLoadedCommands == runtime->replayCaptureCommandBlocks &&
+    runtime->replayStorageConsumedCommands == runtime->replayCaptureCommandBlocks;
+  runtime->replayStorageStatusCountMatches =
+    runtime->replayStorageLoadedStatuses == runtime->replayCaptureStatusBlocks &&
+    runtime->replayStorageConsumedStatuses == runtime->replayCaptureStatusBlocks;
+  runtime->replayStorageValidated =
+    runtime->replayStorageSegmentCountMatches &&
+    runtime->replayStorageCommandCountMatches &&
+    runtime->replayStorageStatusCountMatches &&
+    runtime->replayStorageHeaderValidated &&
+    runtime->replayStorageDecodeFailures == 0;
+  if (runtime->replayStorageValidated)
+  {
+    runtime->replayStorageValidationError = "none";
+  }
+  else if (runtime->replayStorageSegmentCountMatches &&
+           runtime->replayStorageCommandCountMatches &&
+           runtime->replayStorageStatusCountMatches &&
+           runtime->replayStorageDecodeFailures == 0 &&
+           !runtime->replayStorageHeaderValidated)
+  {
+    runtime->replayStorageValidationError = "header-mismatch";
+  }
+  else
+  {
+    runtime->replayStorageValidationError = "counter-mismatch";
+  }
+}
+
+void ValidateLinuxBootstrapReplayTransceiverPlayback(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime ||
+      runtime->replayWriterPath.empty() ||
+      runtime->replayWriterPath == "inactive")
+  {
+    if (runtime)
+    {
+      runtime->replayPlaybackValidationError = "inactive";
+      runtime->replayServerPlaybackValidationError = "inactive";
+    }
+    return;
+  }
+
+  CObj<NWorld::ReplayStorage2> storage =
+    new NWorld::ReplayStorage2(
+      NCore::REPLAY_BUFFER_READ,
+      runtime->replayWriterPath.c_str(),
+      0,
+      0);
+  if (!storage || !storage->IsOk())
+  {
+    runtime->replayPlaybackValidationError =
+      storage ? storage->GetLinuxReplayError() : "storage-create-failed";
+    runtime->replayServerPlaybackValidationError = runtime->replayPlaybackValidationError;
+    return;
+  }
+
+  NCore::MapStartInfo replayHeaderInfo;
+  NCore::ClientSettings replayHeaderClientSettings;
+  int replayHeaderClientId = -1;
+  int replayHeaderStepLength = 0;
+  const bool replayHeaderReady = storage->GetHeader(
+    &replayHeaderInfo,
+    &replayHeaderClientId,
+    &replayHeaderStepLength,
+    &replayHeaderClientSettings,
+    0);
+  runtime->replayPlaybackHeaderStepLength = replayHeaderStepLength;
+  runtime->replayPlaybackHeaderValidated =
+    replayHeaderReady &&
+    IsLinuxBootstrapReplayHeaderExpected(
+      runtime,
+      replayHeaderInfo,
+      replayHeaderClientId,
+      replayHeaderStepLength);
+  if (!runtime->replayPlaybackHeaderValidated)
+  {
+    runtime->replayPlaybackValidationError = "header-mismatch";
+    runtime->replayServerPlaybackValidationError = "header-mismatch";
+    return;
+  }
+
+  CObj<LinuxBootstrapReplayProbeWorld> probeWorld = new LinuxBootstrapReplayProbeWorld(replayHeaderStepLength);
+  Strong<NWorld::ReplayTransceiver> replayTransceiver =
+    new NWorld::ReplayTransceiver(storage.GetPtr(), replayHeaderStepLength);
+  replayTransceiver->SetWorld(probeWorld.GetPtr());
+  runtime->replayPlaybackWorldAttached =
+    replayTransceiver->GetWorld() == static_cast<NCore::IWorldBase*>(probeWorld.GetPtr());
+
+  for (size_t i = 0; i <= storage->GetLinuxReplayLoadedSegments(); ++i)
+  {
+    ++runtime->replayPlaybackStepCalls;
+    replayTransceiver->Step(static_cast<float>(probeWorld->GetStepLength()));
+  }
+
+  runtime->replayPlaybackWorldSteps = static_cast<size_t>(probeWorld->GetStepNumber());
+  runtime->replayPlaybackCommandBatches = probeWorld->GetCommandBatches();
+  runtime->replayPlaybackCommands = probeWorld->GetCommands();
+  runtime->replayPlaybackFinalWorldStep = replayTransceiver->GetWorldStep();
+  runtime->replayPlaybackStepCountMatches =
+    runtime->replayPlaybackWorldSteps == storage->GetLinuxReplayLoadedSegments() &&
+    runtime->replayPlaybackFinalWorldStep == static_cast<int>(storage->GetLinuxReplayLoadedSegments());
+  runtime->replayPlaybackCommandCountMatches =
+    runtime->replayPlaybackCommandBatches == runtime->replayCaptureRecords &&
+    runtime->replayPlaybackCommands == runtime->replayCaptureCommandBlocks;
+  runtime->replayPlaybackValidated =
+    runtime->replayPlaybackHeaderValidated &&
+    runtime->replayPlaybackWorldAttached &&
+    runtime->replayPlaybackStepCountMatches &&
+    runtime->replayPlaybackCommandCountMatches;
+  runtime->replayPlaybackValidationError =
+    runtime->replayPlaybackValidated ? "none" : "counter-mismatch";
+
+  CObj<NWorld::ReplayStorage2> serverStorage =
+    new NWorld::ReplayStorage2(
+      NCore::REPLAY_BUFFER_READ,
+      runtime->replayWriterPath.c_str(),
+      0,
+      0);
+  if (!serverStorage || !serverStorage->IsOk())
+  {
+    runtime->replayServerPlaybackValidationError =
+      serverStorage ? serverStorage->GetLinuxReplayError() : "storage-create-failed";
+    return;
+  }
+
+  NCore::MapStartInfo serverReplayHeaderInfo;
+  NCore::ClientSettings serverReplayHeaderClientSettings;
+  int serverReplayHeaderClientId = -1;
+  int serverReplayHeaderStepLength = 0;
+  const bool serverReplayHeaderReady = serverStorage->GetHeader(
+    &serverReplayHeaderInfo,
+    &serverReplayHeaderClientId,
+    &serverReplayHeaderStepLength,
+    &serverReplayHeaderClientSettings,
+    0);
+  runtime->replayServerPlaybackHeaderStepLength = serverReplayHeaderStepLength;
+  runtime->replayServerPlaybackHeaderValidated =
+    serverReplayHeaderReady &&
+    IsLinuxBootstrapReplayHeaderExpected(
+      runtime,
+      serverReplayHeaderInfo,
+      serverReplayHeaderClientId,
+      serverReplayHeaderStepLength);
+  if (!runtime->replayServerPlaybackHeaderValidated)
+  {
+    runtime->replayServerPlaybackValidationError = "header-mismatch";
+    return;
+  }
+
+  CObj<LinuxBootstrapReplayProbeWorld> serverProbeWorld = new LinuxBootstrapReplayProbeWorld(serverReplayHeaderStepLength);
+  Strong<NWorld::ReplayTransceiver> serverReplayTransceiver =
+    new NWorld::ReplayTransceiver(serverStorage.GetPtr(), serverReplayHeaderStepLength);
+  serverReplayTransceiver->SetUseServerReplay(true);
+  serverReplayTransceiver->SetWorld(serverProbeWorld.GetPtr());
+  runtime->replayServerPlaybackWorldAttached =
+    serverReplayTransceiver->GetWorld() == static_cast<NCore::IWorldBase*>(serverProbeWorld.GetPtr());
+
+  for (size_t i = 0; i <= serverStorage->GetLinuxReplayLoadedSegments(); ++i)
+  {
+    ++runtime->replayServerPlaybackStepCalls;
+    serverReplayTransceiver->Step(static_cast<float>(serverProbeWorld->GetStepLength()));
+  }
+
+  runtime->replayServerPlaybackWorldSteps = static_cast<size_t>(serverProbeWorld->GetStepNumber());
+  runtime->replayServerPlaybackCommandBatches = serverProbeWorld->GetCommandBatches();
+  runtime->replayServerPlaybackCommands = serverProbeWorld->GetCommands();
+  runtime->replayServerPlaybackStatusUpdates = serverProbeWorld->GetStatusUpdates();
+  runtime->replayServerPlaybackFinalWorldStep = serverReplayTransceiver->GetWorldStep();
+  runtime->replayServerPlaybackStepCountMatches =
+    runtime->replayServerPlaybackWorldSteps == serverStorage->GetLinuxReplayLoadedSegments() &&
+    runtime->replayServerPlaybackFinalWorldStep == static_cast<int>(serverStorage->GetLinuxReplayLoadedSegments());
+  runtime->replayServerPlaybackCommandCountMatches =
+    runtime->replayServerPlaybackCommandBatches == runtime->replayCaptureRecords &&
+    runtime->replayServerPlaybackCommands == runtime->replayCaptureCommandBlocks;
+  runtime->replayServerPlaybackStatusCountMatches =
+    runtime->replayServerPlaybackStatusUpdates == runtime->replayCaptureStatusBlocks;
+  runtime->replayServerPlaybackValidated =
+    runtime->replayServerPlaybackHeaderValidated &&
+    runtime->replayServerPlaybackWorldAttached &&
+    runtime->replayServerPlaybackStepCountMatches &&
+    runtime->replayServerPlaybackCommandCountMatches &&
+    runtime->replayServerPlaybackStatusCountMatches;
+  runtime->replayServerPlaybackValidationError =
+    runtime->replayServerPlaybackValidated ? "none" : "counter-mismatch";
+}
+
+void ValidateLinuxBootstrapReplayCapture(LinuxBootstrapScreenRuntime* runtime)
+{
+  ResetLinuxBootstrapReplayCaptureValidation(runtime);
+  if (!runtime ||
+      !runtime->replayWriterReady ||
+      runtime->replayWriterPath.empty() ||
+      runtime->replayWriterPath == "inactive")
+  {
+    if (runtime)
+    {
+      runtime->replayCaptureValidationError = "inactive";
+      runtime->replayStorageValidationError = "inactive";
+      runtime->replayPlaybackValidationError = "inactive";
+      runtime->replayServerPlaybackValidationError = "inactive";
+    }
+    return;
+  }
+
+  std::ifstream input(runtime->replayWriterPath.c_str(), std::ios::binary);
+  if (!input)
+  {
+    runtime->replayCaptureValidationError = "open-failed";
+    return;
+  }
+
+  input.seekg(0, std::ios::end);
+  const std::streamoff fileSizeStream = input.tellg();
+  if (fileSizeStream <= 0)
+  {
+    runtime->replayCaptureValidationError = "empty";
+    return;
+  }
+
+  const size_t fileSize = static_cast<size_t>(fileSizeStream);
+  input.seekg(0, std::ios::beg);
+
+  char magic[sizeof(kLinuxBootstrapReplayCaptureMagic) - 1] = {0};
+  if (!ReadLinuxBootstrapReplayCaptureBytes(&input, magic, sizeof(magic), &runtime->replayCaptureBytesRead) ||
+      memcmp(magic, kLinuxBootstrapReplayCaptureMagic, sizeof(magic)) != 0)
+  {
+    runtime->replayCaptureValidationError = "bad-magic";
+    return;
+  }
+  runtime->replayCaptureMagicReady = true;
+
+  long long serverId = 0;
+  (void)serverId;
+  if (!ReadLinuxBootstrapReplayCaptureBytes(&input, &serverId, sizeof(serverId), &runtime->replayCaptureBytesRead) ||
+      !ReadLinuxBootstrapReplayCaptureBytes(&input, &runtime->replayCaptureStartStep, sizeof(runtime->replayCaptureStartStep), &runtime->replayCaptureBytesRead))
+  {
+    runtime->replayCaptureValidationError = "truncated-start";
+    return;
+  }
+
+  std::set<DWORD> replayReadbackCommandTypes;
+  while (runtime->replayCaptureBytesRead < fileSize)
+  {
+    const size_t remainingHeader = fileSize - runtime->replayCaptureBytesRead;
+    if (remainingHeader < sizeof(int) + sizeof(unsigned short) + sizeof(unsigned short))
+    {
+      runtime->replayCaptureValidationError = "truncated-record-header";
+      return;
+    }
+
+    int step = -1;
+    unsigned short commandsCount = 0;
+    unsigned short statusesCount = 0;
+    if (!ReadLinuxBootstrapReplayCaptureBytes(&input, &step, sizeof(step), &runtime->replayCaptureBytesRead) ||
+        !ReadLinuxBootstrapReplayCaptureBytes(&input, &commandsCount, sizeof(commandsCount), &runtime->replayCaptureBytesRead) ||
+        !ReadLinuxBootstrapReplayCaptureBytes(&input, &statusesCount, sizeof(statusesCount), &runtime->replayCaptureBytesRead))
+    {
+      runtime->replayCaptureValidationError = "truncated-record";
+      return;
+    }
+
+    if (runtime->replayCaptureFirstStep < 0)
+    {
+      runtime->replayCaptureFirstStep = step;
+    }
+    runtime->replayCaptureLastStep = step;
+    ++runtime->replayCaptureRecords;
+
+    for (unsigned int i = 0; i < commandsCount; ++i)
+    {
+      unsigned short commandSize = 0;
+      if (fileSize - runtime->replayCaptureBytesRead < sizeof(commandSize) ||
+          !ReadLinuxBootstrapReplayCaptureBytes(&input, &commandSize, sizeof(commandSize), &runtime->replayCaptureBytesRead))
+      {
+        runtime->replayCaptureValidationError = "truncated-command-size";
+        return;
+      }
+
+      if (commandSize == 0)
+      {
+        runtime->replayCaptureValidationError = "empty-command";
+        return;
+      }
+
+      if (fileSize - runtime->replayCaptureBytesRead < commandSize)
+      {
+        runtime->replayCaptureValidationError = "truncated-command";
+        return;
+      }
+
+      std::vector<char> commandBytes(commandSize);
+      if (!ReadLinuxBootstrapReplayCaptureBytes(&input, &commandBytes[0], commandSize, &runtime->replayCaptureBytesRead))
+      {
+        runtime->replayCaptureValidationError = "truncated-command";
+        return;
+      }
+
+      runtime->replayCaptureLargestCommandBytes =
+        std::max(runtime->replayCaptureLargestCommandBytes, static_cast<size_t>(commandSize));
+      ++runtime->replayCaptureCommandBlocks;
+
+      MemoryStream commandStream(static_cast<int>(commandBytes.size()));
+      commandStream.Write(&commandBytes[0], commandSize);
+      commandStream.Seek(0, SEEKORIGIN_BEGIN);
+      CPtr<CObjectBase> commandObject = NCore::ReadCommandFromStream(
+        static_cast<Stream*>(std::addressof(commandStream)),
+        0);
+      CDynamicCast<NCore::PackedWorldCommand> packedCommand(commandObject);
+      if (packedCommand)
+      {
+        const DWORD commandTypeId = packedCommand->GetCommandId();
+        const int clientId = packedCommand->ClientId();
+        const DWORD commandTime = packedCommand->TimeSent();
+        if (runtime->replayReadbackPackedCommands == 0)
+        {
+          runtime->replayReadbackFirstClientId = clientId;
+          runtime->replayReadbackMinClientId = clientId;
+          runtime->replayReadbackMaxClientId = clientId;
+          runtime->replayReadbackFirstCommandTypeId = commandTypeId;
+          runtime->replayReadbackFirstCommandTime = commandTime;
+        }
+        else
+        {
+          runtime->replayReadbackMinClientId = std::min(runtime->replayReadbackMinClientId, clientId);
+          runtime->replayReadbackMaxClientId = std::max(runtime->replayReadbackMaxClientId, clientId);
+        }
+
+        runtime->replayReadbackLastClientId = clientId;
+        runtime->replayReadbackLastCommandTypeId = commandTypeId;
+        runtime->replayReadbackLastCommandTime = commandTime;
+        runtime->replayReadbackCommandBytes += static_cast<size_t>(packedCommand->GetCommandSize());
+        replayReadbackCommandTypes.insert(commandTypeId);
+        ++runtime->replayReadbackPackedCommands;
+      }
+      else
+      {
+        ++runtime->replayReadbackDecodeFailures;
+      }
+    }
+
+    for (unsigned int i = 0; i < statusesCount; ++i)
+    {
+      unsigned short statusSize = 0;
+      if (fileSize - runtime->replayCaptureBytesRead < sizeof(statusSize) ||
+          !ReadLinuxBootstrapReplayCaptureBytes(&input, &statusSize, sizeof(statusSize), &runtime->replayCaptureBytesRead))
+      {
+        runtime->replayCaptureValidationError = "truncated-status-size";
+        return;
+      }
+
+      if (fileSize - runtime->replayCaptureBytesRead < statusSize)
+      {
+        runtime->replayCaptureValidationError = "truncated-status";
+        return;
+      }
+
+      if (statusSize != sizeof(Peered::BriefClientInfo))
+      {
+        runtime->replayCaptureValidationError = "bad-status-size";
+        return;
+      }
+
+      Peered::BriefClientInfo briefStatus;
+      if (!ReadLinuxBootstrapReplayCaptureBytes(&input, &briefStatus, sizeof(briefStatus), &runtime->replayCaptureBytesRead))
+      {
+        runtime->replayCaptureValidationError = "truncated-status";
+        return;
+      }
+
+      if (briefStatus.status == Peered::Active)
+        ++runtime->replayCaptureStatusActiveBlocks;
+      if (briefStatus.status == Peered::Away)
+        ++runtime->replayCaptureStatusAwayBlocks;
+      if (Peered::IsDisconnectedStatus(static_cast<int>(briefStatus.status)))
+        ++runtime->replayCaptureStatusDisconnectedBlocks;
+      if (briefStatus.status == Peered::RefusedToReconnect)
+        ++runtime->replayCaptureStatusLeaverBlocks;
+      ++runtime->replayCaptureStatusBlocks;
+    }
+  }
+
+  runtime->replayCaptureBoundsOk = runtime->replayCaptureBytesRead == fileSize;
+  runtime->replayCaptureByteCountMatches =
+    runtime->replayWriterBytesWritten == runtime->replayCaptureBytesRead;
+  runtime->replayCaptureCommandCountMatches =
+    runtime->replayWriterCommandWrites == runtime->replayCaptureCommandBlocks;
+  runtime->replayCaptureStatusCountMatches =
+    runtime->replayWriterStatusWrites == runtime->replayCaptureStatusBlocks;
+  runtime->replayReadbackDistinctCommandTypes = replayReadbackCommandTypes.size();
+  runtime->replayReadbackCommandCountMatches =
+    runtime->replayReadbackPackedCommands == runtime->replayCaptureCommandBlocks &&
+    runtime->replayReadbackPackedCommands == runtime->replayWriterCommandWrites;
+  runtime->replayReadbackDecoded =
+    runtime->replayReadbackCommandCountMatches &&
+    runtime->replayReadbackDecodeFailures == 0;
+
+  const bool structuralCaptureValid =
+    runtime->replayCaptureMagicReady &&
+    runtime->replayCaptureBoundsOk &&
+    runtime->replayCaptureByteCountMatches &&
+    runtime->replayCaptureCommandCountMatches &&
+    runtime->replayCaptureStatusCountMatches &&
+    runtime->replayWriterStartWrites > 0 &&
+    runtime->replayCaptureRecords >= runtime->replayWriterStepWrites;
+  ValidateLinuxBootstrapReplayStorage(runtime);
+  ValidateLinuxBootstrapReplayTransceiverPlayback(runtime);
+  runtime->replayCaptureValidated =
+    structuralCaptureValid &&
+    runtime->replayReadbackDecoded &&
+    runtime->replayStorageValidated &&
+    runtime->replayPlaybackValidated &&
+    runtime->replayServerPlaybackValidated;
+  runtime->replayCaptureValidationError =
+    runtime->replayCaptureValidated ? "none" :
+      (structuralCaptureValid ?
+        (runtime->replayReadbackDecoded ?
+          (runtime->replayStorageValidated ?
+            (runtime->replayPlaybackValidated ? "server-playback-failed" : "playback-failed") :
+            "storage-failed") :
+          "readback-failed") :
+        "counter-mismatch");
 }
 
 NWorld::PFBaseHero* FindLinuxBootstrapControlledHero(
@@ -28317,6 +31776,45 @@ NWorld::PFWorld* GetLinuxBootstrapRuntimeWorld(
   return runtime ?
     dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()) :
     0;
+}
+
+void CaptureLinuxBootstrapAIDiagnostics(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world)
+  {
+    return;
+  }
+
+  runtime->linuxAIAutoStartAttempts = world->GetLinuxAIAutoStartAttempts();
+  runtime->linuxAIAutoStartSuccesses = world->GetLinuxAIAutoStartSuccesses();
+  runtime->linuxAIAddRequests = world->GetLinuxAIAddRequests();
+  runtime->linuxAIAddSuccesses = world->GetLinuxAIAddSuccesses();
+  runtime->linuxAIRemoveRequests = world->GetLinuxAIRemoveRequests();
+  runtime->linuxAIRemoveSuccesses = world->GetLinuxAIRemoveSuccesses();
+  runtime->linuxAIStepCalls = world->GetLinuxAIStepCalls();
+  runtime->linuxAIControllerCount = world->GetLinuxAIControllerCount();
+  runtime->linuxAIBotsSettingsAvailable = world->GetLinuxAIBotsSettingsAvailable();
+  runtime->linuxAIBotsEnabled = world->GetLinuxAIBotsEnabled();
+  runtime->linuxAILastHeroObjectId = world->GetLinuxAILastHeroObjectId();
+  runtime->linuxAILastPlayerId = world->GetLinuxAILastPlayerId();
+  runtime->linuxAILastUserId = world->GetLinuxAILastUserId();
+  runtime->linuxAILastLine = world->GetLinuxAILastLine();
+  runtime->linuxAICommandAttempts = world->GetLinuxAICommandAttempts();
+  runtime->linuxAICommandsSent = world->GetLinuxAICommandsSent();
+  runtime->linuxAICommandDirectFallbacks = world->GetLinuxAICommandDirectFallbacks();
+  runtime->linuxAICommandMoveSent = world->GetLinuxAICommandMoveSent();
+  runtime->linuxAICommandCombatMoveSent = world->GetLinuxAICommandCombatMoveSent();
+  runtime->linuxAICommandAttackSent = world->GetLinuxAICommandAttackSent();
+  runtime->linuxAICommandOtherSent = world->GetLinuxAICommandOtherSent();
+  runtime->linuxAILastCommandKind = world->GetLinuxAILastCommandKind();
+  runtime->linuxAILastCommandHeroObjectId = world->GetLinuxAILastCommandHeroObjectId();
+  runtime->linuxAILastCommandPlayerId = world->GetLinuxAILastCommandPlayerId();
+  runtime->linuxAILastCommandUserId = world->GetLinuxAILastCommandUserId();
+  runtime->linuxAILastCommandTargetObjectId = world->GetLinuxAILastCommandTargetObjectId();
+  runtime->linuxAILastCommandSent = world->GetLinuxAILastCommandSent();
 }
 
 float ResolveLinuxMapPreviewMarkerPickRadius(
@@ -29090,7 +32588,8 @@ void UpdateLinuxBootstrapSelectedTargetAttackProof(
     if (hero &&
         !hero->IsDead() &&
         requiredGold > 0 &&
-        hero->GetGold() < requiredGold)
+        hero->GetGold() < requiredGold &&
+        !runtime->transceiverHeroActivateTalentRuntimeCommandSent)
     {
       targetUnit->SetVulnerable(true);
       targetUnit->DropTarget();
@@ -29851,6 +33350,382 @@ bool SendLinuxBootstrapHeroAttackNearestCommand(
     source);
 }
 
+NWorld::PFBaseHero* FindLinuxBootstrapCommandableBotHero(
+  NWorld::PFWorld* world,
+  size_t preferredOrdinal,
+  int* outPlayerId,
+  int* outClientId,
+  size_t* outCandidateCount
+)
+{
+  if (outPlayerId)
+  {
+    *outPlayerId = -1;
+  }
+  if (outClientId)
+  {
+    *outClientId = -1;
+  }
+  if (outCandidateCount)
+  {
+    *outCandidateCount = 0;
+  }
+  if (!world)
+  {
+    return 0;
+  }
+
+  size_t candidateCount = 0;
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    NWorld::PFBaseHero* hero = player ? player->GetHero() : 0;
+    if (!player || !hero || hero->IsDead() || player->GetUserID() > 0)
+    {
+      continue;
+    }
+    ++candidateCount;
+  }
+
+  if (outCandidateCount)
+  {
+    *outCandidateCount = candidateCount;
+  }
+  if (candidateCount == 0)
+  {
+    return 0;
+  }
+
+  const size_t selectedOrdinal = preferredOrdinal % candidateCount;
+  size_t currentOrdinal = 0;
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    NWorld::PFBaseHero* hero = player ? player->GetHero() : 0;
+    if (!player || !hero || hero->IsDead() || player->GetUserID() > 0)
+    {
+      continue;
+    }
+    if (currentOrdinal == selectedOrdinal)
+    {
+      if (outPlayerId)
+      {
+        *outPlayerId = player->GetPlayerID();
+      }
+      if (outClientId)
+      {
+        *outClientId = player->GetUserID();
+      }
+      return hero;
+    }
+    ++currentOrdinal;
+  }
+
+  return 0;
+}
+
+NWorld::PFBaseHero* FindLinuxBootstrapBotEnemyHero(
+  NWorld::PFWorld* world,
+  const NWorld::PFBaseHero* sourceHero,
+  int* outPlayerId,
+  int* outClientId
+)
+{
+  if (outPlayerId)
+  {
+    *outPlayerId = -1;
+  }
+  if (outClientId)
+  {
+    *outClientId = -1;
+  }
+  if (!world || !sourceHero)
+  {
+    return 0;
+  }
+
+  float bestDistance = FLT_MAX;
+  NWorld::PFPlayer* bestPlayer = 0;
+  NWorld::PFBaseHero* bestHero = 0;
+  const CVec2 sourcePosition = sourceHero->GetPosition().AsVec2D();
+  for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
+  {
+    NWorld::PFPlayer* player = world->GetPlayer(playerIndex);
+    NWorld::PFBaseHero* hero = player ? player->GetHero() : 0;
+    if (!player ||
+        !hero ||
+        hero == sourceHero ||
+        hero->IsDead() ||
+        hero->GetFaction() == sourceHero->GetFaction())
+    {
+      continue;
+    }
+
+    const float distance = fabs(hero->GetPosition().AsVec2D() - sourcePosition);
+    if (distance < bestDistance)
+    {
+      bestDistance = distance;
+      bestPlayer = player;
+      bestHero = hero;
+    }
+  }
+
+  if (bestPlayer)
+  {
+    if (outPlayerId)
+    {
+      *outPlayerId = bestPlayer->GetPlayerID();
+    }
+    if (outClientId)
+    {
+      *outClientId = bestPlayer->GetUserID();
+    }
+  }
+  return bestHero;
+}
+
+CVec2 ResolveLinuxBootstrapBotMoveTarget(
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  NWorld::PFBaseHero* targetHero,
+  size_t commandIndex
+)
+{
+  static const CVec2 fallbackOffsets[] =
+  {
+    CVec2(16.0f, 0.0f),
+    CVec2(11.0f, 11.0f),
+    CVec2(0.0f, 16.0f),
+    CVec2(-11.0f, 11.0f),
+    CVec2(-16.0f, 0.0f),
+    CVec2(-11.0f, -11.0f),
+    CVec2(0.0f, -16.0f),
+    CVec2(11.0f, -11.0f)
+  };
+
+  if (!world || !hero)
+  {
+    return CVec2(0.0f, 0.0f);
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  CVec2 requestedTarget = sourcePosition +
+    fallbackOffsets[commandIndex % (sizeof(fallbackOffsets) / sizeof(fallbackOffsets[0]))];
+  if (targetHero && !targetHero->IsDead())
+  {
+    CVec2 direction = targetHero->GetPosition().AsVec2D() - sourcePosition;
+    const float distance = fabs(direction);
+    if (distance > EPS_VALUE)
+    {
+      direction = direction / distance;
+      const float approachDistance = std::min(18.0f, std::max(4.0f, distance - 5.0f));
+      requestedTarget = sourcePosition + direction * approachDistance;
+    }
+  }
+
+  return ResolveLinuxBootstrapReachableHeroMoveTarget(
+    world,
+    hero,
+    ClampLinuxBootstrapMoveTargetToMap(world, requestedTarget));
+}
+
+bool SendLinuxBootstrapBotHeroMoveCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  int playerId,
+  int clientId,
+  NWorld::PFBaseHero* targetHero,
+  int targetPlayerId,
+  int targetClientId
+)
+{
+  if (!runtime || !world || !runtime->transceiver || !runtime->mapLoadingJobCompleted || !hero)
+  {
+    return false;
+  }
+
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero || hero->IsDead())
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  const CVec2 commandTarget = ResolveLinuxBootstrapBotMoveTarget(
+    world,
+    hero,
+    targetHero,
+    runtime->linuxBotCommandTicks);
+  NCore::WorldCommand* moveCommand = NWorld::CreateCmdMoveHero(hero, commandTarget, true);
+  if (!moveCommand)
+  {
+    return false;
+  }
+
+  runtime->transceiver->SendCommand(moveCommand, true);
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  ++runtime->linuxBotMoveRuntimeCommandsSent;
+  ++runtime->linuxBotCommandHeroesCommanded;
+  runtime->linuxBotCommandDriverReady = true;
+  runtime->linuxBotCommandLastWorldStep = world->GetStepNumber();
+  runtime->linuxBotCommandLastPlayerId = playerId;
+  runtime->linuxBotCommandLastClientId = clientId;
+  runtime->linuxBotCommandLastTargetPlayerId = targetPlayerId;
+  runtime->linuxBotCommandLastTargetClientId = targetClientId;
+  runtime->linuxBotCommandSourceX = sourcePosition.x;
+  runtime->linuxBotCommandSourceY = sourcePosition.y;
+  runtime->linuxBotCommandTargetX = commandTarget.x;
+  runtime->linuxBotCommandTargetY = commandTarget.y;
+  runtime->linuxBotCommandLastAction = "move";
+  return true;
+}
+
+bool SendLinuxBootstrapBotHeroAttackCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  NWorld::PFBaseHero* hero,
+  int playerId,
+  int clientId,
+  NWorld::PFBaseHero* targetHero,
+  int targetPlayerId,
+  int targetClientId
+)
+{
+  if (!runtime ||
+      !world ||
+      !runtime->transceiver ||
+      !runtime->mapLoadingJobCompleted ||
+      !hero ||
+      !targetHero ||
+      hero == targetHero ||
+      hero->IsDead() ||
+      targetHero->IsDead() ||
+      hero->GetFaction() == targetHero->GetFaction())
+  {
+    return false;
+  }
+
+  NCore::WorldCommand* attackCommand = NWorld::CreateCmdAttackTarget(hero, targetHero, true);
+  if (!attackCommand)
+  {
+    return false;
+  }
+
+  const CVec2 sourcePosition = hero->GetPosition().AsVec2D();
+  const CVec2 targetPosition = targetHero->GetPosition().AsVec2D();
+  runtime->transceiver->SendCommand(attackCommand, true);
+  ++runtime->transceiverRuntimeCommandsSent;
+  ++runtime->transceiverProductionRuntimeCommandsSent;
+  ++runtime->linuxBotAttackRuntimeCommandsSent;
+  ++runtime->linuxBotCommandHeroesCommanded;
+  runtime->linuxBotCommandDriverReady = true;
+  runtime->linuxBotCommandLastWorldStep = world->GetStepNumber();
+  runtime->linuxBotCommandLastPlayerId = playerId;
+  runtime->linuxBotCommandLastClientId = clientId;
+  runtime->linuxBotCommandLastTargetPlayerId = targetPlayerId;
+  runtime->linuxBotCommandLastTargetClientId = targetClientId;
+  runtime->linuxBotCommandSourceX = sourcePosition.x;
+  runtime->linuxBotCommandSourceY = sourcePosition.y;
+  runtime->linuxBotCommandTargetX = targetPosition.x;
+  runtime->linuxBotCommandTargetY = targetPosition.y;
+  runtime->linuxBotCommandLastAction = "attack";
+  return true;
+}
+
+bool MaybeDriveLinuxBootstrapBotCommandDriver(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime || !world || !runtime->transceiver || runtime->replayFileInputActive)
+  {
+    return false;
+  }
+
+  if (!runtime->minigameLeaveProofCompleted)
+  {
+    runtime->linuxBotCommandDriverActive = false;
+    return false;
+  }
+
+  runtime->linuxBotCommandDriverActive = true;
+  const int worldStep = world->GetStepNumber();
+  if (runtime->linuxBotCommandNextWorldStep < 0)
+  {
+    runtime->linuxBotCommandNextWorldStep = worldStep;
+  }
+  if (worldStep < runtime->linuxBotCommandNextWorldStep)
+  {
+    ++runtime->linuxBotCommandSkippedTicks;
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  size_t candidateCount = 0;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapCommandableBotHero(
+    world,
+    runtime->linuxBotCommandTicks,
+    &playerId,
+    &clientId,
+    &candidateCount);
+  runtime->linuxBotCommandHeroesConsidered += candidateCount;
+  runtime->linuxBotCommandDriverReady = candidateCount > 0;
+  if (!hero)
+  {
+    runtime->linuxBotCommandNextWorldStep = worldStep + 96;
+    ++runtime->linuxBotCommandSkippedTicks;
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseHero* targetHero = FindLinuxBootstrapBotEnemyHero(
+    world,
+    hero,
+    &targetPlayerId,
+    &targetClientId);
+
+  bool sent = false;
+  if (targetHero && (runtime->linuxBotCommandTicks % 3) == 2)
+  {
+    sent = SendLinuxBootstrapBotHeroAttackCommand(
+      runtime,
+      world,
+      hero,
+      playerId,
+      clientId,
+      targetHero,
+      targetPlayerId,
+      targetClientId);
+  }
+  if (!sent)
+  {
+    sent = SendLinuxBootstrapBotHeroMoveCommand(
+      runtime,
+      world,
+      hero,
+      playerId,
+      clientId,
+      targetHero,
+      targetPlayerId,
+      targetClientId);
+  }
+
+  runtime->linuxBotCommandNextWorldStep = worldStep + 96;
+  if (sent)
+  {
+    ++runtime->linuxBotCommandTicks;
+  }
+  else
+  {
+    ++runtime->linuxBotCommandSkippedTicks;
+  }
+  return sent;
+}
+
 bool SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
@@ -30389,6 +34264,242 @@ bool SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
   return sent;
 }
 
+int FindLinuxLiveHudTalentCommandSlotByTalent(
+  const LinuxBootstrapScreenRuntime* runtime,
+  int talentLevel,
+  int talentSlot
+)
+{
+  if (!runtime)
+  {
+    return -1;
+  }
+
+  const size_t slotCount =
+    std::min(runtime->liveHudTalentCommandSlots, LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS);
+  for (size_t i = 0; i < slotCount; ++i)
+  {
+    if (runtime->liveHudTalentLevel[i] == talentLevel &&
+        runtime->liveHudTalentSlot[i] == talentSlot)
+    {
+      return static_cast<int>(i);
+    }
+  }
+
+  return -1;
+}
+
+void RecordLinuxLiveHudCommandResult(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source,
+  int commandSlot
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHudLastAction = source && *source ? source : "live-hud-command";
+  runtime->liveHudLastCommandSlot = commandSlot;
+}
+
+bool SendLinuxLiveHudAttackCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hud-attack-selected",
+        source && *source ? source : "live-hud-attack"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHudAttackCommandsSent;
+  RecordLinuxLiveHudCommandResult(runtime, source, -2);
+  return true;
+}
+
+bool SendLinuxLiveHudUseUnitCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hud-use-unit-selected",
+        source && *source ? source : "live-hud-use-unit"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHudUseUnitCommandsSent;
+  RecordLinuxLiveHudCommandResult(runtime, source, -3);
+  return true;
+}
+
+bool SendLinuxLiveHudFollowCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hud-follow-selected",
+        source && *source ? source : "live-hud-follow"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHudFollowCommandsSent;
+  RecordLinuxLiveHudCommandResult(runtime, source, -3);
+  return true;
+}
+
+bool SendLinuxLiveHudActivateTalentSlotCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int hudSlotIndex,
+  const char* source
+)
+{
+  if (!runtime ||
+      !world ||
+      hudSlotIndex < 0 ||
+      static_cast<size_t>(hudSlotIndex) >= runtime->liveHudTalentCommandSlots ||
+      static_cast<size_t>(hudSlotIndex) >= LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS)
+  {
+    return false;
+  }
+
+  const int talentLevel = runtime->liveHudTalentLevel[hudSlotIndex];
+  const int talentSlot = runtime->liveHudTalentSlot[hudSlotIndex];
+  if (!SendLinuxBootstrapHeroActivateTalentCommandNow(
+        runtime,
+        world,
+        talentLevel,
+        talentSlot,
+        source && *source ? source : "live-hud-activate-talent"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHudActivateTalentCommandsSent;
+  RecordLinuxLiveHudCommandResult(runtime, source, hudSlotIndex);
+  return true;
+}
+
+bool SendLinuxLiveHudUseTalentSlotCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int hudSlotIndex,
+  const char* source
+)
+{
+  if (!runtime ||
+      !world ||
+      hudSlotIndex < 0 ||
+      static_cast<size_t>(hudSlotIndex) >= runtime->liveHudTalentCommandSlots ||
+      static_cast<size_t>(hudSlotIndex) >= LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!hero || !maleHero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  bool selectedTarget = false;
+  NWorld::PFBaseUnit* targetUnit =
+    ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+      runtime,
+      world,
+      hero,
+      true,
+      &targetPlayerId,
+      &targetClientId,
+      &selectedTarget);
+  const CVec2 targetPosition =
+    targetUnit ? targetUnit->GetPosition().AsVec2D() : hero->GetPosition().AsVec2D();
+  const bool sent =
+    SendLinuxBootstrapHeroUseTalentCommandToTarget(
+      runtime,
+      world,
+      targetUnit,
+      targetPosition,
+      targetUnit ? targetPlayerId : -1,
+      targetUnit ? targetClientId : -1,
+      runtime->liveHudTalentLevel[hudSlotIndex],
+      runtime->liveHudTalentSlot[hudSlotIndex],
+      source && *source ? source : "live-hud-use-talent");
+  if (!sent)
+  {
+    (void)playerId;
+    (void)clientId;
+    return false;
+  }
+
+  if (selectedTarget)
+  {
+    runtime->mapPreviewSelectedTargetUseTalentCommandSent = true;
+  }
+  ++runtime->liveHudUseTalentCommandsSent;
+  RecordLinuxLiveHudCommandResult(runtime, source, hudSlotIndex);
+  (void)playerId;
+  (void)clientId;
+  return true;
+}
+
+bool SendLinuxLiveHudActivateTalentProofCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int talentLevel,
+  int talentSlot
+)
+{
+  if (!runtime ||
+      !world ||
+      runtime->liveHudActivateTalentProofSent ||
+      !runtime->liveHudCommandSurfaceReady)
+  {
+    return false;
+  }
+
+  const int hudSlotIndex =
+    FindLinuxLiveHudTalentCommandSlotByTalent(runtime, talentLevel, talentSlot);
+  if (hudSlotIndex < 0)
+  {
+    return false;
+  }
+
+  if (!SendLinuxLiveHudActivateTalentSlotCommand(
+        runtime,
+        world,
+        hudSlotIndex,
+        "bootstrap-live-hud-activate-proof"))
+  {
+    return false;
+  }
+
+  runtime->liveHudActivateTalentProofSent = true;
+  return true;
+}
+
 bool SendLinuxBootstrapHeroUseConsumableCommandToTarget(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
@@ -30655,6 +34766,333 @@ bool SendLinuxBootstrapHeroMinimapSignalCommandToTarget(
     clientId,
     targetPlayerId,
     targetClientId);
+  return true;
+}
+
+void RecordLinuxLiveHotkeyCommandResult(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHotkeyLastAction =
+    source && *source ? source : "live-hotkey-command";
+}
+
+bool SendLinuxLiveHotkeyStopCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroStopCommandNow(
+        runtime,
+        world,
+        source && *source ? source : "live-hotkey-stop"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyStopCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyAttackCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hotkey-attack-selected",
+        source && *source ? source : "live-hotkey-attack"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyAttackCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyFollowCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hotkey-follow-selected",
+        source && *source ? source : "live-hotkey-follow"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyFollowCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyHoldCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroHoldCommandNow(
+        runtime,
+        world,
+        source && *source ? source : "live-hotkey-hold"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyHoldCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyCancelCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroCancelChannellingCommandNow(
+        runtime,
+        world,
+        source && *source ? source : "live-hotkey-cancel"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyCancelCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool ResolveLinuxLiveHotkeyTalentSlot(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int preferredHudSlotIndex,
+  int* talentLevel,
+  int* talentSlot
+)
+{
+  if (talentLevel) *talentLevel = 0;
+  if (talentSlot) *talentSlot = 0;
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  if (preferredHudSlotIndex >= 0 &&
+      static_cast<size_t>(preferredHudSlotIndex) < runtime->liveHudTalentCommandSlots &&
+      static_cast<size_t>(preferredHudSlotIndex) < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS)
+  {
+    if (talentLevel) *talentLevel = runtime->liveHudTalentLevel[preferredHudSlotIndex];
+    if (talentSlot) *talentSlot = runtime->liveHudTalentSlot[preferredHudSlotIndex];
+    return true;
+  }
+
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, 0, 0);
+  NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+  if (!maleHero)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapTalentCommandSelection talentSelection =
+    ResolveLinuxBootstrapTalentCommandSelection(runtime, world, maleHero, false);
+  if (!talentSelection.found)
+  {
+    return false;
+  }
+
+  if (talentLevel) *talentLevel = talentSelection.level;
+  if (talentSlot) *talentSlot = talentSelection.slot;
+  return true;
+}
+
+bool SendLinuxLiveHotkeyActivateTalentCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int preferredHudSlotIndex,
+  const char* source
+)
+{
+  int talentLevel = 0;
+  int talentSlot = 0;
+  if (!ResolveLinuxLiveHotkeyTalentSlot(
+        runtime,
+        world,
+        preferredHudSlotIndex,
+        &talentLevel,
+        &talentSlot))
+  {
+    return false;
+  }
+
+  if (!SendLinuxBootstrapHeroActivateTalentCommandNow(
+        runtime,
+        world,
+        talentLevel,
+        talentSlot,
+        source && *source ? source : "live-hotkey-activate-talent"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyActivateTalentCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyUseTalentCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  int preferredHudSlotIndex,
+  const char* source
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  bool sent = false;
+  if (preferredHudSlotIndex >= 0 &&
+      static_cast<size_t>(preferredHudSlotIndex) < runtime->liveHudTalentCommandSlots &&
+      static_cast<size_t>(preferredHudSlotIndex) < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS)
+  {
+    int playerId = -1;
+    int clientId = -1;
+    NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+    NWorld::PFBaseMaleHero* maleHero = dynamic_cast<NWorld::PFBaseMaleHero*>(hero);
+    if (!hero || !maleHero)
+    {
+      return false;
+    }
+
+    int targetPlayerId = -1;
+    int targetClientId = -1;
+    bool selectedTarget = false;
+    NWorld::PFBaseUnit* targetUnit =
+      ResolveLinuxBootstrapSelectedOrEnemyTargetUnit(
+        runtime,
+        world,
+        hero,
+        true,
+        &targetPlayerId,
+        &targetClientId,
+        &selectedTarget);
+    const CVec2 targetPosition =
+      targetUnit ? targetUnit->GetPosition().AsVec2D() : hero->GetPosition().AsVec2D();
+    sent =
+      SendLinuxBootstrapHeroUseTalentCommandToTarget(
+        runtime,
+        world,
+        targetUnit,
+        targetPosition,
+        targetUnit ? targetPlayerId : -1,
+        targetUnit ? targetClientId : -1,
+        runtime->liveHudTalentLevel[preferredHudSlotIndex],
+        runtime->liveHudTalentSlot[preferredHudSlotIndex],
+        source && *source ? source : "live-hotkey-use-talent");
+    if (sent && selectedTarget)
+    {
+      runtime->mapPreviewSelectedTargetUseTalentCommandSent = true;
+    }
+    (void)playerId;
+    (void)clientId;
+  }
+  else
+  {
+    sent =
+      SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hotkey-use-talent-selected",
+        source && *source ? source : "live-hotkey-use-talent");
+  }
+
+  if (!sent)
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyUseTalentCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyUseUnitCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
+        runtime,
+        world,
+        "live-hotkey-use-unit-selected",
+        source && *source ? source : "live-hotkey-use-unit"))
+  {
+    return false;
+  }
+
+  ++runtime->liveHotkeyUseUnitCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  return true;
+}
+
+bool SendLinuxLiveHotkeyUseConsumableCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world,
+  const char* source
+)
+{
+  if (!runtime || !world)
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  CVec2 targetPosition = hero->GetPosition().AsVec2D();
+  targetPosition.x += 3.0f;
+  targetPosition.y += 3.0f;
+  if (!SendLinuxBootstrapHeroUseConsumableSelectedOrPointCommand(
+        runtime,
+        world,
+        targetPosition,
+        "live-hotkey-use-consumable-selected",
+        source && *source ? source : "live-hotkey-use-consumable"))
+  {
+    (void)playerId;
+    (void)clientId;
+    return false;
+  }
+
+  ++runtime->liveHotkeyUseConsumableCommandsSent;
+  RecordLinuxLiveHotkeyCommandResult(runtime, source);
+  (void)playerId;
+  (void)clientId;
   return true;
 }
 
@@ -30990,6 +35428,18 @@ bool MaybeSendLinuxBootstrapHeroHoldCommand(
     return false;
   }
 
+  if (!runtime->liveHotkeyCommandProofSent &&
+      SendLinuxLiveHotkeyHoldCommand(
+        runtime,
+        world,
+        "bootstrap-live-hotkey-hold-proof"))
+  {
+    runtime->liveHotkeyCommandProofSent = true;
+    (void)playerId;
+    (void)clientId;
+    return true;
+  }
+
   NCore::WorldCommand* holdCommand = NWorld::CreateCmdHold(hero);
   if (!holdCommand)
   {
@@ -31234,6 +35684,15 @@ bool MaybeSendLinuxBootstrapHeroActivateTalentCommand(
 
   talentLevel = talentSelection.level;
   talentSlot = talentSelection.slot;
+  if (SendLinuxLiveHudActivateTalentProofCommand(
+        runtime,
+        world,
+        talentLevel,
+        talentSlot))
+  {
+    return true;
+  }
+
   return SendLinuxBootstrapHeroActivateTalentCommandNow(
     runtime,
     world,
@@ -31557,6 +36016,10 @@ bool MaybeSendLinuxBootstrapHeroInitMinigameCommand(
     return false;
   }
 
+  runtime->minigameLeaveProofSlowdownHintBefore = world->GetSlowdownHint();
+  world->SetSlowdownHint(0.25f);
+  runtime->minigameLeaveProofSlowdownHintSentinel = world->GetSlowdownHint();
+
   runtime->transceiver->SendCommand(initMinigameCommand, true);
   runtime->transceiverHeroInitMinigameRuntimeCommandSent = true;
   ++runtime->transceiverHeroInitMinigameRuntimeCommandsSent;
@@ -31633,6 +36096,10 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     runtime->minigameLeaveProofPlaceUserBefore =
       placeUserBefore ? placeUserBefore->GetObjectId() : -1;
     runtime->minigameLeaveProofHeroIsolatedBefore = easelPlayer->IsIsolated() ? 1 : 0;
+    runtime->minigameLeaveProofHeroHiddenBefore =
+      easelPlayer->CheckFlag(NDb::UNITFLAG_ISOLATED) ? 1 : 0;
+    runtime->minigameLeaveProofHeroInvisibleBefore =
+      easelPlayer->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? 1 : 0;
     runtime->minigameLeaveProofHeroFlagBefore =
       easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
     runtime->minigameLeaveProofVisualStateBefore =
@@ -31648,6 +36115,12 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
       minigamesMainBefore ? 1 : 0;
     runtime->minigameLeaveProofMinigamesMainWorldBefore =
       minigamesMainBefore && minigamesMainBefore->GetWorld() == world ? 1 : 0;
+    const NDb::DBMinigamesCommon* commonDataBefore =
+      minigamesMainBefore ? minigamesMainBefore->GetCommonDBData() : 0;
+    runtime->minigameLeaveProofMinigamesMainCommonBefore =
+      commonDataBefore ? 1 : 0;
+    runtime->minigameLeaveProofMinigamesMainBidonsBefore =
+      commonDataBefore ? static_cast<int>(commonDataBefore->sessionBidonAbilities.size()) : -1;
     runtime->minigameLeaveProofMinigamesOpacityBefore =
       minigamesBefore ? minigamesBefore->GetMinigamePlaceOpacity() : -1.0f;
     runtime->minigameLeaveProofSingleCountBefore =
@@ -31665,6 +36138,316 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     runtime->minigameLeaveProofNamedSingleBefore = namedSingleBefore ? 1 : 0;
     runtime->minigameLeaveProofSingleIdBefore =
       minigameIdBefore && strcmp(minigameIdBefore, minigamePlaceBefore->MinigameId().c_str()) == 0 ? 1 : 0;
+    runtime->minigameLeaveProofSingleDbidBefore =
+      currentSingleBefore && !currentSingleBefore->GetDBID().IsEmpty() ? 1 : 0;
+
+    NWorld::PFMinigamePlace* rejectedStartPlace =
+      world->FindLinuxFirstForeignMinigamePlaceForHero(easelPlayer);
+    runtime->minigameLeaveProofStartGuardPlace =
+      rejectedStartPlace ? rejectedStartPlace->GetObjectId() : -1;
+    runtime->minigameLeaveProofStartGuardFaction =
+      rejectedStartPlace ? static_cast<int>(rejectedStartPlace->GetFaction()) : -1;
+    runtime->minigameLeaveProofStartGuardHeroFaction =
+      static_cast<int>(easelPlayer->GetFaction());
+    runtime->minigameLeaveProofStartGuardCanUse =
+      rejectedStartPlace && rejectedStartPlace->CanBeUsedBy(easelPlayer) ? 1 : 0;
+    runtime->minigameLeaveProofStartGuardAvailable =
+      rejectedStartPlace && rejectedStartPlace->IsAvailable() ? 1 : 0;
+    if (rejectedStartPlace)
+    {
+      runtime->minigameLeaveProofStartGuardResult =
+        easelPlayer->StartMinigame(rejectedStartPlace) ? 1 : 0;
+    }
+    NWorld::PFMinigamePlace* guardedHeroPlace = easelPlayer->GetMinigamePlace();
+    NWorld::PFEaselPlayer* rejectedPlaceUser =
+      rejectedStartPlace ? rejectedStartPlace->CurrentEaselPlayer() : 0;
+    PF_Minigames::ISingleMinigame* guardedCurrentSingle =
+      minigamesBefore ? minigamesBefore->GetCurrentMinigame() : 0;
+    runtime->minigameLeaveProofStartGuardHeroPlaceAfter =
+      guardedHeroPlace ? guardedHeroPlace->GetObjectId() : -1;
+    runtime->minigameLeaveProofStartGuardPlaceUserAfter =
+      rejectedPlaceUser ? rejectedPlaceUser->GetObjectId() : -1;
+    runtime->minigameLeaveProofStartGuardCurrentSingleAfter =
+      guardedCurrentSingle && guardedCurrentSingle == currentSingleBefore ? 1 : 0;
+
+    NWorld::LinuxMinigameDiagnostics lifecycleBefore;
+    if (easelPlayer->GetLinuxMinigameDiagnostics(lifecycleBefore))
+    {
+      runtime->minigameLeaveProofLifecycleBefore = 1;
+      runtime->minigameLeaveProofLifecycleRunningBefore = lifecycleBefore.singleRunning;
+      runtime->minigameLeaveProofLifecycleFinishedBefore = lifecycleBefore.singleSessionFinished;
+      runtime->minigameLeaveProofMinigameEventCallsBefore =
+        lifecycleBefore.playerMinigameEventCalls;
+      runtime->minigameLeaveProofMinigameStartedEventsBefore =
+        lifecycleBefore.playerMinigameStartedEvents;
+      runtime->minigameLeaveProofMinigameExitEventsBefore =
+        lifecycleBefore.playerMinigameExitEvents;
+      runtime->minigameLeaveProofMinigameLastEventBefore =
+        lifecycleBefore.playerMinigameLastEventType;
+      runtime->minigameLeaveProofMinigameLastEventUnitBefore =
+        lifecycleBefore.playerMinigameLastEventUnitObjectId;
+    }
+    runtime->minigameLeaveProofSlowdownHintDuring = world->GetSlowdownHint();
+
+    runtime->minigameLeaveProofBidonBefore = static_cast<int>(easelPlayer->GetCurrentBidon());
+    easelPlayer->SetCurrentBidon(NDb::BIDONTYPE_SPEEDCLOCK);
+    runtime->minigameLeaveProofBidonAfter = static_cast<int>(easelPlayer->GetCurrentBidon());
+
+    const NDb::EFaction proofSpawnerFaction = NDb::FACTION_FREEZE;
+    const NDb::ERoute proofSpawnerRoute = NDb::ROUTE_TOP;
+    runtime->minigameLeaveProofMainSpawnerBefore =
+      minigamesMainBefore->GetSpawnerID(proofSpawnerFaction, proofSpawnerRoute);
+    minigamesMainBefore->RegisterCreepSpawner(
+      proofSpawnerFaction,
+      proofSpawnerRoute,
+      minigamePlaceBefore->GetObjectId());
+    runtime->minigameLeaveProofMainSpawnerAfter =
+      minigamesMainBefore->GetSpawnerID(proofSpawnerFaction, proofSpawnerRoute);
+
+    PF_Minigames::MinigameCreepDesc creepDesc;
+    minigamesMainBefore->GetFreeCreep(playerId, PF_Minigames::ECreepType::Melee, creepDesc);
+    runtime->minigameLeaveProofMainCreepId = creepDesc.creepID;
+    PF_Minigames::MinigameCreepDesc storedCreepDesc;
+    if (creepDesc.creepID >= 0 && minigamesMainBefore->GetCreepDesc(creepDesc.creepID, storedCreepDesc))
+    {
+      runtime->minigameLeaveProofMainCreepDescBeforeReturn = 1;
+      runtime->minigameLeaveProofMainCreepOutBeforeReturn = storedCreepDesc.isOut ? 1 : 0;
+      runtime->minigameLeaveProofMainCreepOwner = storedCreepDesc.ownerPlayerID;
+      runtime->minigameLeaveProofMainCreepInstant = storedCreepDesc.instant ? 1 : 0;
+      runtime->minigameLeaveProofMainCreepType = static_cast<int>(storedCreepDesc.type);
+    }
+    if (creepDesc.creepID >= 0)
+    {
+      minigamesMainBefore->ReturnCreep(creepDesc.creepID);
+      PF_Minigames::MinigameCreepDesc returnedCreepDesc;
+      runtime->minigameLeaveProofMainCreepDescAfterReturn =
+        minigamesMainBefore->GetCreepDesc(creepDesc.creepID, returnedCreepDesc) ? 1 : 0;
+    }
+
+    if (currentSingleBefore)
+    {
+      currentSingleBefore->SendPauseMinigameCommand(easelPlayer, true);
+      currentSingleBefore->PlaceUnderFogOfWar(true);
+      NWorld::LinuxMinigameDiagnostics fogDiagnostics;
+      if (easelPlayer->GetLinuxMinigameDiagnostics(fogDiagnostics))
+        runtime->minigameLeaveProofLifecycleFogDuring = fogDiagnostics.singleUnderFogOfWar;
+      currentSingleBefore->SendPauseMinigameCommand(easelPlayer, false);
+      currentSingleBefore->PlaceUnderFogOfWar(false);
+      NWorld::LinuxMinigameDiagnostics forwardBefore;
+      if (easelPlayer->GetLinuxMinigameDiagnostics(forwardBefore))
+      {
+        runtime->minigameLeaveProofLifecycleDropForwardBefore =
+          forwardBefore.singleCheatDropCooldownCalls;
+        runtime->minigameLeaveProofLifecycleFinishForwardBefore =
+          forwardBefore.singleSessionFinishedCalls;
+        runtime->minigameLeaveProofLifecyclePlayerDropCallsBefore =
+          forwardBefore.playerDropCooldownForwardCalls;
+        runtime->minigameLeaveProofLifecyclePlayerFinishCallsBefore =
+          forwardBefore.playerGameFinishedForwardCalls;
+      }
+      const NWorld::DropCooldownParams dropCooldownParams(NDb::ABILITYIDFLAGS_ALL);
+      easelPlayer->NWorld::PFEaselPlayer::DropCooldowns(dropCooldownParams);
+      const NDb::EFaction failedFactionForVictory =
+        easelPlayer->GetFaction() == NDb::FACTION_FREEZE
+          ? NDb::FACTION_BURN
+          : NDb::FACTION_FREEZE;
+      easelPlayer->OnGameFinished(failedFactionForVictory);
+      NWorld::LinuxMinigameDiagnostics forwardAfter;
+      if (easelPlayer->GetLinuxMinigameDiagnostics(forwardAfter))
+      {
+        runtime->minigameLeaveProofLifecycleDropForwardAfter =
+          forwardAfter.singleCheatDropCooldownCalls;
+        runtime->minigameLeaveProofLifecycleFinishForwardAfter =
+          forwardAfter.singleSessionFinishedCalls;
+        runtime->minigameLeaveProofLifecyclePlayerDropCallsAfter =
+          forwardAfter.playerDropCooldownForwardCalls;
+        runtime->minigameLeaveProofLifecyclePlayerDropHadCurrent =
+          forwardAfter.playerDropCooldownForwardHadCurrent;
+        runtime->minigameLeaveProofLifecyclePlayerDropSingleBefore =
+          forwardAfter.playerDropCooldownForwardSingleCallsBefore;
+        runtime->minigameLeaveProofLifecyclePlayerDropSingleAfter =
+          forwardAfter.playerDropCooldownForwardSingleCallsAfter;
+        runtime->minigameLeaveProofLifecyclePlayerFinishCallsAfter =
+          forwardAfter.playerGameFinishedForwardCalls;
+        runtime->minigameLeaveProofLifecyclePlayerFinishHadCurrent =
+          forwardAfter.playerGameFinishedForwardHadCurrent;
+        runtime->minigameLeaveProofLifecyclePlayerFinishSingleBefore =
+          forwardAfter.playerGameFinishedForwardSingleCallsBefore;
+        runtime->minigameLeaveProofLifecyclePlayerFinishSingleAfter =
+          forwardAfter.playerGameFinishedForwardSingleCallsAfter;
+      }
+      currentSingleBefore->CheatWinGame();
+    }
+    minigamesBefore->OnStep(0.016f);
+    minigamesBefore->UpdateM(0.016f);
+    minigamesBefore->OnMapLoaded();
+
+    CreateLinuxBootstrapMinigameSummonProof(runtime, easelPlayer);
+
+    vector<CPtr<NWorld::PFBaseHero> > transferTargets;
+    easelPlayer->GetItemTransferTargets(transferTargets);
+    runtime->minigameLeaveProofWorldSessionTargets =
+      static_cast<int>(transferTargets.size());
+    runtime->minigameLeaveProofWorldSessionTargetsExpected = 0;
+    runtime->minigameLeaveProofWorldSessionTargetsAllied = 0;
+    runtime->minigameLeaveProofWorldSessionTargetsForeign = 0;
+    runtime->minigameLeaveProofWorldSessionTargetsSelf = 0;
+    NWorld::PFBaseHero* allyTransferTarget = 0;
+    for (int i = 0; i < world->GetPlayersCount(); ++i)
+    {
+      NWorld::PFPlayer* proofPlayer = world->GetPlayer(i);
+      NWorld::PFBaseHero* proofHero = proofPlayer ? proofPlayer->GetHero() : 0;
+      if (proofHero && proofHero->GetFaction() == easelPlayer->GetFaction())
+        ++runtime->minigameLeaveProofWorldSessionTargetsExpected;
+    }
+    for (int i = 0; i < static_cast<int>(transferTargets.size()); ++i)
+    {
+      NWorld::PFBaseHero* transferTarget = transferTargets[i].GetPtr();
+      if (transferTarget == easelPlayer)
+        runtime->minigameLeaveProofWorldSessionTargetsSelf = 1;
+      if (transferTarget && transferTarget->GetFaction() == easelPlayer->GetFaction())
+        ++runtime->minigameLeaveProofWorldSessionTargetsAllied;
+      else
+        ++runtime->minigameLeaveProofWorldSessionTargetsForeign;
+      if (!allyTransferTarget &&
+          transferTarget &&
+          transferTarget != easelPlayer &&
+          transferTarget->GetFaction() == easelPlayer->GetFaction())
+      {
+        allyTransferTarget = transferTarget;
+      }
+    }
+    runtime->minigameLeaveProofWorldSessionCanScrollDuplicate =
+      easelPlayer->CanGetScrollDuplicate(easelPlayer) ? 1 : 0;
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostBefore =
+      easelPlayer->CanBuyZZBoost() ? 1 : 0;
+    runtime->minigameLeaveProofWorldSessionGoldBefore = easelPlayer->GetGold();
+    easelPlayer->AddGold(7);
+    runtime->minigameLeaveProofWorldSessionGoldAfterAdd = easelPlayer->GetGold();
+    easelPlayer->TakeGold(7);
+    runtime->minigameLeaveProofWorldSessionGoldAfterTake = easelPlayer->GetGold();
+    easelPlayer->BuyZZBoost();
+    runtime->minigameLeaveProofWorldSessionGoldAfterZZBoost = easelPlayer->GetGold();
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostAfter =
+      easelPlayer->CanBuyZZBoost() ? 1 : 0;
+    runtime->minigameLeaveProofWorldSessionTotalNafta =
+      easelPlayer->GetTotalNaftaEarned();
+
+    int proofConsumableIndex = -1;
+    NWorld::PFShop* proofShop =
+      world->FindLinuxFirstShopForHero(easelPlayer, &proofConsumableIndex);
+    const NDb::Consumable* proofConsumable =
+      proofShop && proofConsumableIndex >= 0
+        ? proofShop->GetConsumableDesc(proofConsumableIndex)
+        : 0;
+    runtime->minigameLeaveProofWorldSessionShop = proofShop ? 1 : 0;
+    runtime->minigameLeaveProofWorldSessionConsumable = proofConsumable ? 1 : 0;
+    runtime->minigameLeaveProofWorldSessionAllyTargetObjectId =
+      allyTransferTarget ? allyTransferTarget->GetObjectId() : -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetPlayerId =
+      allyTransferTarget ? allyTransferTarget->GetPlayerId() : -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore =
+      allyTransferTarget ? allyTransferTarget->GetSlotCount() : -1;
+    NWorld::PFStatistics* proofStatistics = world->GetStatistics();
+    NWorld::PlayerBehaviourTracker* proofBehaviourTracker = 0;
+    const CPtr<NWorld::PFPlayer>& proofPlayer = easelPlayer->GetPlayer();
+    if (IsValid(proofPlayer) && IsValid(proofPlayer->GetBehaviourTracker()))
+      proofBehaviourTracker = proofPlayer->GetBehaviourTracker().GetPtr();
+    if (proofStatistics)
+    {
+      runtime->minigameLeaveProofWorldSessionStatsCallsBefore =
+        proofStatistics->GetLinuxItemTransferCalls();
+      runtime->minigameLeaveProofWorldSessionStatsSelfBefore =
+        proofStatistics->GetLinuxItemTransferSelfCalls();
+      runtime->minigameLeaveProofWorldSessionStatsAllyBefore =
+        proofStatistics->GetLinuxItemTransferAllyCalls();
+    }
+    if (proofBehaviourTracker)
+    {
+      runtime->minigameLeaveProofWorldSessionBehaviourCallsBefore =
+        proofBehaviourTracker->GetLinuxDispatchEventCalls();
+      runtime->minigameLeaveProofWorldSessionBehaviourTookBefore =
+        proofBehaviourTracker->GetLinuxTookScrollEvents();
+      runtime->minigameLeaveProofWorldSessionBehaviourGaveBefore =
+        proofBehaviourTracker->GetLinuxGaveScrollEvents();
+    }
+    if (proofConsumable && allyTransferTarget)
+    {
+      runtime->minigameLeaveProofWorldSessionAllyTargetAddItem =
+        easelPlayer->AddItemToHero(allyTransferTarget, proofConsumable, 1) ? 1 : 0;
+    }
+    if (proofStatistics)
+    {
+      runtime->minigameLeaveProofWorldSessionStatsCallsAfterAlly =
+        proofStatistics->GetLinuxItemTransferCalls();
+      runtime->minigameLeaveProofWorldSessionStatsAllyAfter =
+        proofStatistics->GetLinuxItemTransferAllyCalls();
+      runtime->minigameLeaveProofWorldSessionStatsAllyFrom =
+        proofStatistics->GetLinuxLastItemTransferFromObjectId();
+      runtime->minigameLeaveProofWorldSessionStatsAllyTo =
+        proofStatistics->GetLinuxLastItemTransferToObjectId();
+      runtime->minigameLeaveProofWorldSessionStatsAllyItem =
+        proofStatistics->GetLinuxLastItemTransferHadItem();
+    }
+    if (proofBehaviourTracker)
+    {
+      runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterAlly =
+        proofBehaviourTracker->GetLinuxDispatchEventCalls();
+      runtime->minigameLeaveProofWorldSessionBehaviourTookAfterAlly =
+        proofBehaviourTracker->GetLinuxTookScrollEvents();
+      runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterAlly =
+        proofBehaviourTracker->GetLinuxGaveScrollEvents();
+      runtime->minigameLeaveProofWorldSessionBehaviourLastAfterAlly =
+        proofBehaviourTracker->GetLinuxLastEvent();
+    }
+    runtime->minigameLeaveProofWorldSessionAllyTargetSlotsAfter =
+      allyTransferTarget ? allyTransferTarget->GetSlotCount() : -1;
+    const NWorld::PFConsumable* allyAddedConsumable =
+      allyTransferTarget &&
+      runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore >= 0 &&
+      runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore < allyTransferTarget->GetSlotCount()
+        ? allyTransferTarget->GetConsumable(runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore)
+        : 0;
+    runtime->minigameLeaveProofWorldSessionAllyTargetAddedQuantity =
+      allyAddedConsumable ? allyAddedConsumable->GetQuantity() : -1;
+    runtime->minigameLeaveProofWorldSessionSlotsBefore = easelPlayer->GetSlotCount();
+    if (proofConsumable)
+    {
+      runtime->minigameLeaveProofWorldSessionAddItem =
+        easelPlayer->AddItemToHero(easelPlayer, proofConsumable, 1) ? 1 : 0;
+    }
+    if (proofStatistics)
+    {
+      runtime->minigameLeaveProofWorldSessionStatsCallsAfterSelf =
+        proofStatistics->GetLinuxItemTransferCalls();
+      runtime->minigameLeaveProofWorldSessionStatsSelfAfter =
+        proofStatistics->GetLinuxItemTransferSelfCalls();
+      runtime->minigameLeaveProofWorldSessionStatsSelfFrom =
+        proofStatistics->GetLinuxLastItemTransferFromObjectId();
+      runtime->minigameLeaveProofWorldSessionStatsSelfTo =
+        proofStatistics->GetLinuxLastItemTransferToObjectId();
+      runtime->minigameLeaveProofWorldSessionStatsSelfItem =
+        proofStatistics->GetLinuxLastItemTransferHadItem();
+    }
+    if (proofBehaviourTracker)
+    {
+      runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterSelf =
+        proofBehaviourTracker->GetLinuxDispatchEventCalls();
+      runtime->minigameLeaveProofWorldSessionBehaviourTookAfterSelf =
+        proofBehaviourTracker->GetLinuxTookScrollEvents();
+      runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterSelf =
+        proofBehaviourTracker->GetLinuxGaveScrollEvents();
+      runtime->minigameLeaveProofWorldSessionBehaviourLastAfterSelf =
+        proofBehaviourTracker->GetLinuxLastEvent();
+    }
+    runtime->minigameLeaveProofWorldSessionSlotsAfter = easelPlayer->GetSlotCount();
+    const NWorld::PFConsumable* addedConsumable =
+      runtime->minigameLeaveProofWorldSessionSlotsBefore >= 0 &&
+      runtime->minigameLeaveProofWorldSessionSlotsBefore < easelPlayer->GetSlotCount()
+        ? easelPlayer->GetConsumable(runtime->minigameLeaveProofWorldSessionSlotsBefore)
+        : 0;
+    runtime->minigameLeaveProofWorldSessionAddedQuantity =
+      addedConsumable ? addedConsumable->GetQuantity() : -1;
 
     minigamesBefore->ForceLeaveMinigame();
     runtime->transceiverHeroLeaveMinigameRuntimeCommandSent = true;
@@ -31713,8 +36496,19 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
   runtime->minigameLeaveProofPlaceUserAfter =
     placeUserAfter ? placeUserAfter->GetObjectId() : -1;
   runtime->minigameLeaveProofHeroIsolatedAfter = easelPlayer->IsIsolated() ? 1 : 0;
+  runtime->minigameLeaveProofHeroHiddenAfter =
+    easelPlayer->CheckFlag(NDb::UNITFLAG_ISOLATED) ? 1 : 0;
+  runtime->minigameLeaveProofHeroInvisibleAfter =
+    easelPlayer->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? 1 : 0;
   runtime->minigameLeaveProofHeroFlagAfter =
     easelPlayer->CheckFlag(NDb::UNITFLAG_INMINIGAME) ? 1 : 0;
+  NWorld::PFBaseUnit* proofSummonAfter =
+    dynamic_cast<NWorld::PFBaseUnit*>(
+      world->GetObjectById(runtime->minigameLeaveProofSummonObjectId));
+  runtime->minigameLeaveProofSummonHiddenAfter =
+    proofSummonAfter && proofSummonAfter->CheckFlag(NDb::UNITFLAG_ISOLATED) ? 1 : 0;
+  runtime->minigameLeaveProofSummonInvisibleAfter =
+    proofSummonAfter && proofSummonAfter->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? 1 : 0;
   runtime->minigameLeaveProofVisualStateAfter =
     minigamePlaceBefore ? static_cast<int>(minigamePlaceBefore->GetVisualState()) : -1;
   runtime->minigameLeaveProofPlacementApplyAfter =
@@ -31731,6 +36525,12 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     minigamesMainAfter ? 1 : 0;
   runtime->minigameLeaveProofMinigamesMainWorldAfter =
     minigamesMainAfter && minigamesMainAfter->GetWorld() == world ? 1 : 0;
+  const NDb::DBMinigamesCommon* commonDataAfter =
+    minigamesMainAfter ? minigamesMainAfter->GetCommonDBData() : 0;
+  runtime->minigameLeaveProofMinigamesMainCommonAfter =
+    commonDataAfter ? 1 : 0;
+  runtime->minigameLeaveProofMinigamesMainBidonsAfter =
+    commonDataAfter ? static_cast<int>(commonDataAfter->sessionBidonAbilities.size()) : -1;
   runtime->minigameLeaveProofMinigamesOpacityAfter =
     minigamesAfter ? minigamesAfter->GetMinigamePlaceOpacity() : -1.0f;
   runtime->minigameLeaveProofSingleCountAfter =
@@ -31748,11 +36548,69 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
   runtime->minigameLeaveProofNamedSingleAfter = namedSingleAfter ? 1 : 0;
   runtime->minigameLeaveProofSingleIdAfter =
     minigameIdAfter && minigamePlaceBefore && strcmp(minigameIdAfter, minigamePlaceBefore->MinigameId().c_str()) == 0 ? 1 : 0;
+  runtime->minigameLeaveProofSingleDbidAfter =
+    indexedSingleAfter && !indexedSingleAfter->GetDBID().IsEmpty() ? 1 : 0;
+  if (indexedSingleAfter)
+    indexedSingleAfter->Eject();
+  NWorld::LinuxMinigameDiagnostics lifecycleAfter;
+  if (easelPlayer->GetLinuxMinigameDiagnostics(lifecycleAfter))
+  {
+    runtime->minigameLeaveProofLifecycleAfter = 1;
+    runtime->minigameLeaveProofLifecycleRunningAfter = lifecycleAfter.singleRunning;
+    runtime->minigameLeaveProofLifecyclePausedAfter = lifecycleAfter.singlePaused;
+    runtime->minigameLeaveProofLifecycleFogAfter = lifecycleAfter.singleUnderFogOfWar;
+    runtime->minigameLeaveProofLifecycleFinishedAfter = lifecycleAfter.singleSessionFinished;
+    runtime->minigameLeaveProofLifecycleVictoryAfter = lifecycleAfter.singleSessionVictory;
+    runtime->minigameLeaveProofMinigameEventCallsAfter =
+      lifecycleAfter.playerMinigameEventCalls;
+    runtime->minigameLeaveProofMinigameStartedEventsAfter =
+      lifecycleAfter.playerMinigameStartedEvents;
+    runtime->minigameLeaveProofMinigameExitEventsAfter =
+      lifecycleAfter.playerMinigameExitEvents;
+    runtime->minigameLeaveProofMinigameLastEventAfter =
+      lifecycleAfter.playerMinigameLastEventType;
+    runtime->minigameLeaveProofMinigameLastEventUnitAfter =
+      lifecycleAfter.playerMinigameLastEventUnitObjectId;
+    runtime->minigameLeaveProofLifecycleSingleLeaveCalls = lifecycleAfter.singleLeaveCalls;
+    runtime->minigameLeaveProofLifecycleSinglePauseCommandCalls = lifecycleAfter.singlePauseCommandCalls;
+    runtime->minigameLeaveProofLifecycleSingleStepCalls = lifecycleAfter.singleStepCalls;
+    runtime->minigameLeaveProofLifecycleSingleUpdateCalls = lifecycleAfter.singleUpdateCalls;
+    runtime->minigameLeaveProofLifecycleSinglePauseCalls = lifecycleAfter.singlePauseCalls;
+    runtime->minigameLeaveProofLifecycleSingleMapLoadedCalls = lifecycleAfter.singleMapLoadedCalls;
+    runtime->minigameLeaveProofLifecycleSingleCheatDropCalls = lifecycleAfter.singleCheatDropCooldownCalls;
+    runtime->minigameLeaveProofLifecycleSingleCheatWinCalls = lifecycleAfter.singleCheatWinCalls;
+    runtime->minigameLeaveProofLifecycleSingleSessionFinishedCalls = lifecycleAfter.singleSessionFinishedCalls;
+    runtime->minigameLeaveProofLifecycleSingleEjectCalls = lifecycleAfter.singleEjectCalls;
+    runtime->minigameLeaveProofLifecycleMinigamesLeaveCalls = lifecycleAfter.minigamesLeaveCalls;
+    runtime->minigameLeaveProofLifecycleMinigamesForceLeaveCalls = lifecycleAfter.minigamesForceLeaveCalls;
+    runtime->minigameLeaveProofLifecycleMinigamesStepCalls = lifecycleAfter.minigamesStepCalls;
+    runtime->minigameLeaveProofLifecycleMinigamesUpdateCalls = lifecycleAfter.minigamesUpdateCalls;
+    runtime->minigameLeaveProofLifecycleMinigamesMapLoadedCalls = lifecycleAfter.minigamesMapLoadedCalls;
+    runtime->minigameLeaveProofLifecycleMainSentCommands = lifecycleAfter.mainSentCommands;
+  }
+  runtime->minigameLeaveProofSlowdownHintAfter = world->GetSlowdownHint();
+  world->SetSlowdownHint(1.0f);
+  runtime->minigameLeaveProofSlowdownHintRestored = world->GetSlowdownHint();
   runtime->minigameLeaveProofCompleted =
     runtime->minigameLeaveProofHeroPlaceAfter < 0 &&
     runtime->minigameLeaveProofPlaceUserAfter < 0 &&
+    runtime->minigameLeaveProofHeroIsolatedBefore == 1 &&
     runtime->minigameLeaveProofHeroIsolatedAfter == 0 &&
+    runtime->minigameLeaveProofHeroHiddenBefore == 1 &&
+    runtime->minigameLeaveProofHeroHiddenAfter == 0 &&
+    runtime->minigameLeaveProofHeroInvisibleBefore == 1 &&
+    runtime->minigameLeaveProofHeroInvisibleAfter == 0 &&
+    runtime->minigameLeaveProofHeroFlagBefore == 1 &&
     runtime->minigameLeaveProofHeroFlagAfter == 0 &&
+    runtime->minigameLeaveProofSummonAbilityCreated == 1 &&
+    runtime->minigameLeaveProofSummonFactoryCreated == 1 &&
+    runtime->minigameLeaveProofSummonObjectId >= 0 &&
+    runtime->minigameLeaveProofSummonGroupCountBefore >= 1 &&
+    runtime->minigameLeaveProofSummonActionCountBefore >= 1 &&
+    runtime->minigameLeaveProofSummonHiddenBefore == 1 &&
+    runtime->minigameLeaveProofSummonHiddenAfter == 0 &&
+    runtime->minigameLeaveProofSummonInvisibleBefore == 1 &&
+    runtime->minigameLeaveProofSummonInvisibleAfter == 0 &&
     runtime->minigameLeaveProofMinigamesBefore == 1 &&
     runtime->minigameLeaveProofMinigamesAfter == 1 &&
     runtime->minigameLeaveProofMinigamesSessionBefore == 1 &&
@@ -31761,6 +36619,21 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     runtime->minigameLeaveProofMinigamesMainAfter == 1 &&
     runtime->minigameLeaveProofMinigamesMainWorldBefore == 1 &&
     runtime->minigameLeaveProofMinigamesMainWorldAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesMainCommonBefore == 1 &&
+    runtime->minigameLeaveProofMinigamesMainCommonAfter == 1 &&
+    runtime->minigameLeaveProofMinigamesMainBidonsBefore >= (static_cast<int>(NDb::BIDONTYPE_PALETTE) + 1) &&
+    runtime->minigameLeaveProofMinigamesMainBidonsAfter >= (static_cast<int>(NDb::BIDONTYPE_PALETTE) + 1) &&
+    runtime->minigameLeaveProofBidonBefore == static_cast<int>(NDb::BIDONTYPE_NONE) &&
+    runtime->minigameLeaveProofBidonAfter == static_cast<int>(NDb::BIDONTYPE_SPEEDCLOCK) &&
+    runtime->minigameLeaveProofMainSpawnerBefore < 0 &&
+    runtime->minigameLeaveProofMainSpawnerAfter == runtime->minigameLeaveProofHeroPlaceBefore &&
+    runtime->minigameLeaveProofMainCreepId >= 0 &&
+    runtime->minigameLeaveProofMainCreepDescBeforeReturn == 1 &&
+    runtime->minigameLeaveProofMainCreepDescAfterReturn == 0 &&
+    runtime->minigameLeaveProofMainCreepOutBeforeReturn == 1 &&
+    runtime->minigameLeaveProofMainCreepOwner == playerId &&
+    runtime->minigameLeaveProofMainCreepInstant == 1 &&
+    runtime->minigameLeaveProofMainCreepType == static_cast<int>(PF_Minigames::ECreepType::Melee) &&
     runtime->minigameLeaveProofMinigamesOpacityBefore > 0.5f &&
     runtime->minigameLeaveProofMinigamesOpacityAfter <= 0.0f &&
     runtime->minigameLeaveProofSingleCountBefore == 1 &&
@@ -31773,6 +36646,155 @@ bool MaybeRunLinuxBootstrapMinigameLeaveProof(
     runtime->minigameLeaveProofNamedSingleAfter == 1 &&
     runtime->minigameLeaveProofSingleIdBefore == 1 &&
     runtime->minigameLeaveProofSingleIdAfter == 1 &&
+    runtime->minigameLeaveProofSingleDbidBefore == 1 &&
+    runtime->minigameLeaveProofSingleDbidAfter == 1 &&
+    runtime->minigameLeaveProofStartGuardPlace >= 0 &&
+    runtime->minigameLeaveProofStartGuardAvailable == 1 &&
+    runtime->minigameLeaveProofStartGuardCanUse == 1 &&
+    runtime->minigameLeaveProofStartGuardFaction !=
+      runtime->minigameLeaveProofStartGuardHeroFaction &&
+    runtime->minigameLeaveProofStartGuardResult == 0 &&
+    runtime->minigameLeaveProofStartGuardHeroPlaceAfter ==
+      runtime->minigameLeaveProofHeroPlaceBefore &&
+    runtime->minigameLeaveProofStartGuardPlaceUserAfter < 0 &&
+    runtime->minigameLeaveProofStartGuardCurrentSingleAfter == 1 &&
+    runtime->minigameLeaveProofLifecycleBefore == 1 &&
+    runtime->minigameLeaveProofLifecycleAfter == 1 &&
+    runtime->minigameLeaveProofLifecycleRunningBefore == 1 &&
+    runtime->minigameLeaveProofLifecycleRunningAfter == 0 &&
+    runtime->minigameLeaveProofLifecyclePausedAfter == 0 &&
+    runtime->minigameLeaveProofLifecycleFogDuring == 1 &&
+    runtime->minigameLeaveProofLifecycleFogAfter == 0 &&
+    runtime->minigameLeaveProofLifecycleFinishedBefore == 0 &&
+    runtime->minigameLeaveProofLifecycleFinishedAfter == 1 &&
+    runtime->minigameLeaveProofLifecycleVictoryAfter == 1 &&
+    runtime->minigameLeaveProofMinigameEventCallsBefore >= 1 &&
+    runtime->minigameLeaveProofMinigameEventCallsAfter ==
+      runtime->minigameLeaveProofMinigameEventCallsBefore + 1 &&
+    runtime->minigameLeaveProofMinigameStartedEventsBefore >= 1 &&
+    runtime->minigameLeaveProofMinigameStartedEventsAfter ==
+      runtime->minigameLeaveProofMinigameStartedEventsBefore &&
+    runtime->minigameLeaveProofMinigameExitEventsBefore == 0 &&
+    runtime->minigameLeaveProofMinigameExitEventsAfter == 1 &&
+    runtime->minigameLeaveProofMinigameLastEventBefore ==
+      static_cast<int>(NDb::BASEUNITEVENT_MINIGAMESTARTED) &&
+    runtime->minigameLeaveProofMinigameLastEventAfter ==
+      static_cast<int>(NDb::BASEUNITEVENT_MINIGAMEEXIT) &&
+    runtime->minigameLeaveProofMinigameLastEventUnitBefore ==
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofMinigameLastEventUnitAfter ==
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofSlowdownHintSentinel > 0.24f &&
+    runtime->minigameLeaveProofSlowdownHintSentinel < 0.26f &&
+    runtime->minigameLeaveProofSlowdownHintDuring > 0.99f &&
+    runtime->minigameLeaveProofSlowdownHintDuring < 1.01f &&
+    runtime->minigameLeaveProofSlowdownHintAfter > 0.24f &&
+    runtime->minigameLeaveProofSlowdownHintAfter < 0.26f &&
+    runtime->minigameLeaveProofSlowdownHintRestored > 0.99f &&
+    runtime->minigameLeaveProofSlowdownHintRestored < 1.01f &&
+    runtime->minigameLeaveProofLifecycleDropForwardBefore >= 0 &&
+    runtime->minigameLeaveProofLifecycleDropForwardAfter ==
+      runtime->minigameLeaveProofLifecycleDropForwardBefore + 1 &&
+    runtime->minigameLeaveProofLifecycleFinishForwardBefore >= 0 &&
+    runtime->minigameLeaveProofLifecycleFinishForwardAfter ==
+      runtime->minigameLeaveProofLifecycleFinishForwardBefore + 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerDropCallsBefore >= 0 &&
+    runtime->minigameLeaveProofLifecyclePlayerDropCallsAfter ==
+      runtime->minigameLeaveProofLifecyclePlayerDropCallsBefore + 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerDropHadCurrent == 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerDropSingleBefore >= 0 &&
+    runtime->minigameLeaveProofLifecyclePlayerDropSingleAfter ==
+      runtime->minigameLeaveProofLifecyclePlayerDropSingleBefore + 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerFinishCallsBefore >= 0 &&
+    runtime->minigameLeaveProofLifecyclePlayerFinishCallsAfter ==
+      runtime->minigameLeaveProofLifecyclePlayerFinishCallsBefore + 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerFinishHadCurrent == 1 &&
+    runtime->minigameLeaveProofLifecyclePlayerFinishSingleBefore >= 0 &&
+    runtime->minigameLeaveProofLifecyclePlayerFinishSingleAfter ==
+      runtime->minigameLeaveProofLifecyclePlayerFinishSingleBefore + 1 &&
+    runtime->minigameLeaveProofLifecycleSingleLeaveCalls >= 2 &&
+    runtime->minigameLeaveProofLifecycleSinglePauseCommandCalls >= 2 &&
+    runtime->minigameLeaveProofLifecycleSingleStepCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSingleUpdateCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSinglePauseCalls >= 2 &&
+    runtime->minigameLeaveProofLifecycleSingleMapLoadedCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSingleCheatDropCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSingleCheatWinCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSingleSessionFinishedCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleSingleEjectCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMinigamesLeaveCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMinigamesForceLeaveCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMinigamesStepCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMinigamesUpdateCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMinigamesMapLoadedCalls >= 1 &&
+    runtime->minigameLeaveProofLifecycleMainSentCommands >= 1 &&
+    runtime->minigameLeaveProofWorldSessionTargetsExpected > 0 &&
+    runtime->minigameLeaveProofWorldSessionTargets ==
+      runtime->minigameLeaveProofWorldSessionTargetsExpected &&
+    runtime->minigameLeaveProofWorldSessionTargetsAllied ==
+      runtime->minigameLeaveProofWorldSessionTargetsExpected &&
+    runtime->minigameLeaveProofWorldSessionTargetsForeign == 0 &&
+    runtime->minigameLeaveProofWorldSessionTargetsSelf == 1 &&
+    runtime->minigameLeaveProofWorldSessionCanScrollDuplicate == 0 &&
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostBefore == 0 &&
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostAfter == 0 &&
+    runtime->minigameLeaveProofWorldSessionGoldAfterAdd ==
+      runtime->minigameLeaveProofWorldSessionGoldBefore + 7 &&
+    runtime->minigameLeaveProofWorldSessionGoldAfterTake ==
+      runtime->minigameLeaveProofWorldSessionGoldBefore &&
+    runtime->minigameLeaveProofWorldSessionGoldAfterZZBoost ==
+      runtime->minigameLeaveProofWorldSessionGoldBefore &&
+    runtime->minigameLeaveProofWorldSessionTotalNafta >= 0 &&
+    runtime->minigameLeaveProofWorldSessionShop == 1 &&
+    runtime->minigameLeaveProofWorldSessionConsumable == 1 &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetObjectId >= 0 &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetObjectId !=
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetPlayerId >= 0 &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetAddItem == 1 &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetSlotsAfter ==
+      runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore + 1 &&
+    runtime->minigameLeaveProofWorldSessionAllyTargetAddedQuantity == 1 &&
+    runtime->minigameLeaveProofWorldSessionAddItem == 1 &&
+    runtime->minigameLeaveProofWorldSessionSlotsAfter ==
+      runtime->minigameLeaveProofWorldSessionSlotsBefore + 1 &&
+    runtime->minigameLeaveProofWorldSessionAddedQuantity == 1 &&
+    runtime->minigameLeaveProofWorldSessionStatsCallsBefore >= 0 &&
+    runtime->minigameLeaveProofWorldSessionStatsCallsAfterAlly >
+      runtime->minigameLeaveProofWorldSessionStatsCallsBefore &&
+    runtime->minigameLeaveProofWorldSessionStatsCallsAfterSelf ==
+      runtime->minigameLeaveProofWorldSessionStatsCallsAfterAlly + 1 &&
+    runtime->minigameLeaveProofWorldSessionStatsAllyAfter ==
+      runtime->minigameLeaveProofWorldSessionStatsAllyBefore + 1 &&
+    runtime->minigameLeaveProofWorldSessionStatsSelfAfter >
+      runtime->minigameLeaveProofWorldSessionStatsSelfBefore &&
+    runtime->minigameLeaveProofWorldSessionStatsAllyFrom ==
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofWorldSessionStatsAllyTo ==
+      runtime->minigameLeaveProofWorldSessionAllyTargetObjectId &&
+    runtime->minigameLeaveProofWorldSessionStatsAllyItem == 1 &&
+    runtime->minigameLeaveProofWorldSessionStatsSelfFrom ==
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofWorldSessionStatsSelfTo ==
+      runtime->minigameLeaveProofHeroObjectId &&
+    runtime->minigameLeaveProofWorldSessionStatsSelfItem == 1 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsBefore >= 0 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterAlly ==
+      runtime->minigameLeaveProofWorldSessionBehaviourCallsBefore + 1 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterSelf ==
+      runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterAlly + 1 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterAlly ==
+      runtime->minigameLeaveProofWorldSessionBehaviourGaveBefore + 1 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterSelf ==
+      runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterAlly &&
+    runtime->minigameLeaveProofWorldSessionBehaviourTookAfterAlly ==
+      runtime->minigameLeaveProofWorldSessionBehaviourTookBefore &&
+    runtime->minigameLeaveProofWorldSessionBehaviourTookAfterSelf ==
+      runtime->minigameLeaveProofWorldSessionBehaviourTookAfterAlly + 1 &&
+    runtime->minigameLeaveProofWorldSessionBehaviourLastAfterAlly ==
+      static_cast<int>(EPlayerBehaviourEvent::GaveScroll) &&
+    runtime->minigameLeaveProofWorldSessionBehaviourLastAfterSelf ==
+      static_cast<int>(EPlayerBehaviourEvent::TookScroll) &&
     runtime->minigameLeaveProofVisualStateAfter ==
       static_cast<int>(NDb::MINIGAMEVISUALSTATE_SESSION);
 
@@ -31892,6 +36914,183 @@ bool MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(
         true))
   {
     runtime->mapPreviewCommandMoveProofSent = true;
+    (void)playerId;
+    (void)clientId;
+    return true;
+  }
+
+  return false;
+}
+
+bool SendLinuxLiveMinimapMoveCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY,
+  const char* source
+);
+
+bool SendLinuxLiveMapPreviewMoveCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source
+);
+
+bool ProjectLinuxMapPreviewWorldToScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxBootstrapScreenRuntime& runtime,
+  const CVec2& worldPosition,
+  int* screenX,
+  int* screenY
+);
+
+bool SendLinuxLiveMinimapAttackOrMoveCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY
+);
+
+bool SendLinuxLiveMinimapSignalCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY,
+  const char* source
+);
+
+bool SelectLinuxLiveMinimapTargetFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY
+);
+
+bool MaybeSendLinuxBootstrapLiveMinimapMoveProofCommand(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      !runtime->liveMinimapCommandSurfaceReady ||
+      runtime->liveMinimapCommandProofSent ||
+      runtime->mapPreviewCommandMoveProofSent ||
+      runtime->mapPreviewCommandMoveCommandsSent > 0)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
+    { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
+    { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
+    { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
+    { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
+    { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
+    { runtime->transceiverHeroPickupObjectRuntimeCommandSent, linuxBootstrapPickupObjectCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 target = ResolveLinuxBootstrapMapPreviewProofMoveTarget(world, source);
+  int screenX = 0;
+  int screenY = 0;
+  if (!ProjectLinuxLiveMinimapWorldToScreen(*runtime, target, &screenX, &screenY))
+  {
+    return false;
+  }
+
+  if (SendLinuxLiveMinimapMoveCommandFromScreen(
+        runtime,
+        screenX,
+        screenY,
+        "bootstrap-live-minimap-proof"))
+  {
+    runtime->liveMinimapCommandProofSent = true;
+    runtime->mapPreviewCommandMoveProofSent = true;
+    runtime->liveMinimapLastAction = "bootstrap-live-minimap-proof";
+    (void)playerId;
+    (void)clientId;
+    return true;
+  }
+
+  return false;
+}
+
+bool MaybeSendLinuxBootstrapLiveMapPreviewMoveProofCommand(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      settings.width <= 0 ||
+      settings.height <= 0 ||
+      !selectedMapPreview.tactical.ready ||
+      runtime->liveMapPreviewCommandProofSent ||
+      runtime->mapPreviewCommandMoveCommandsSent == 0)
+  {
+    return false;
+  }
+
+  const LinuxBootstrapCommandGate gates[] =
+  {
+    { runtime->mapPreviewCommandMoveProofSent, linuxBootstrapMoveHeroCommandTypeId }
+  };
+  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  const CVec2 source = hero->GetPosition().AsVec2D();
+  const CVec2 target = ResolveLinuxBootstrapMapPreviewProofMoveTarget(world, source);
+  int screenX = 0;
+  int screenY = 0;
+  if (!ProjectLinuxMapPreviewWorldToScreen(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        target,
+        &screenX,
+        &screenY))
+  {
+    return false;
+  }
+
+  if (SendLinuxLiveMapPreviewMoveCommandFromScreen(
+        settings,
+        selectedMapPreview,
+        screenX,
+        screenY,
+        runtime,
+        "bootstrap-live-3d-map-proof"))
+  {
+    runtime->liveMapPreviewCommandSurfaceReady = true;
+    runtime->liveMapPreviewCommandProofSent = true;
+    runtime->liveMapPreviewLastAction = "bootstrap-live-3d-map-proof";
     (void)playerId;
     (void)clientId;
     return true;
@@ -32093,6 +37292,7 @@ void DrawLinuxBootstrapNetworkStatusScreen(
 }
 
 void EnsureLinuxBootstrapGameScheduler(
+  const LinuxClientLaunchSettings& settings,
   LinuxBootstrapScreenRuntime* runtime
 )
 {
@@ -32125,7 +37325,130 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->replayWriterBytesWritten = 0;
     runtime->replayWriterFailures = 0;
     runtime->replayWriterPath = "inactive";
+    runtime->replayInputStorage = 0;
+    runtime->replayInputTransceiver = 0;
+    runtime->replayInputReady = false;
+    runtime->replayInputHeaderReady = false;
+    runtime->replayInputWorldAttached = false;
+    runtime->replayInputStepCountMatches = false;
+    runtime->replayInputCommandCountMatches = false;
+    runtime->replayInputStatusCountMatches = false;
+    runtime->replayInputValidated = false;
+    runtime->replayInputPaused = settings.replayStartPaused;
+    runtime->replayInputLoadedSegments = 0;
+    runtime->replayInputLoadedCommands = 0;
+    runtime->replayInputLoadedStatuses = 0;
+    runtime->replayInputStepCalls = 0;
+    runtime->replayInputWorldSteps = 0;
+    runtime->replayInputCommandsExecuted = 0;
+    runtime->replayInputStatusesApplied = 0;
+    runtime->replayInputPlaybackRate =
+      settings.replaySpeedMultiplier == 0 ? 1 : settings.replaySpeedMultiplier;
+    runtime->replayInputPendingManualSteps = settings.replayInitialStepBudget;
+    runtime->replayInputManualStepRequests = settings.replayInitialStepBudget;
+    runtime->replayInputManualStepsConsumed = 0;
+    runtime->replayInputPauseToggleCount = 0;
+    runtime->replayInputSpeedChangeCount = 0;
+    runtime->replayInputControlEvents =
+      (settings.replayStartPaused ? 1 : 0) +
+      (settings.replayInitialStepBudget > 0 ? 1 : 0) +
+      (settings.replaySpeedMultiplier > 1 ? 1 : 0) +
+      ((settings.replayRealtimePacing || settings.replayPaceMs > 0) ? 1 : 0);
+    runtime->replayInputRealtimePacing = settings.replayRealtimePacing || settings.replayPaceMs > 0;
+    runtime->replayInputPaceMs = settings.replayPaceMs;
+    runtime->replayInputNextStepTimeMs = 0;
+    runtime->replayInputPacingSkips = 0;
+    runtime->replayInputStepLength = 0;
+    runtime->replayInputFinalWorldStep = -1;
+    runtime->replayInputPath = settings.replayFile.empty() ? "inactive" : settings.replayFile.string();
+    runtime->replayInputError = runtime->replayFileInputActive ? "not-started" : "inactive";
+    runtime->replayInputControlSource =
+      settings.replayInitialStepBudget > 0 ? "command-line-steps" :
+      (settings.replayStartPaused ? "command-line-paused" :
+       (settings.replayPaceMs > 0 ? "command-line-pace" :
+        (settings.replayRealtimePacing ? "command-line-realtime" :
+         (settings.replaySpeedMultiplier > 1 ? "command-line-speed" : "auto"))));
+    runtime->replayCaptureValidated = false;
+    runtime->replayCaptureMagicReady = false;
+    runtime->replayCaptureBoundsOk = false;
+    runtime->replayCaptureByteCountMatches = false;
+    runtime->replayCaptureCommandCountMatches = false;
+    runtime->replayCaptureStatusCountMatches = false;
+    runtime->replayReadbackDecoded = false;
+    runtime->replayReadbackCommandCountMatches = false;
+    runtime->replayStorageValidated = false;
+    runtime->replayStorageSegmentCountMatches = false;
+    runtime->replayStorageCommandCountMatches = false;
+    runtime->replayStorageStatusCountMatches = false;
+    runtime->replayStorageHeaderValidated = false;
+    runtime->replayPlaybackHeaderValidated = false;
+    runtime->replayPlaybackValidated = false;
+    runtime->replayPlaybackWorldAttached = false;
+    runtime->replayPlaybackStepCountMatches = false;
+    runtime->replayPlaybackCommandCountMatches = false;
+    runtime->replayServerPlaybackHeaderValidated = false;
+    runtime->replayServerPlaybackValidated = false;
+    runtime->replayServerPlaybackWorldAttached = false;
+    runtime->replayServerPlaybackStepCountMatches = false;
+    runtime->replayServerPlaybackCommandCountMatches = false;
+    runtime->replayServerPlaybackStatusCountMatches = false;
+    runtime->replayCaptureRecords = 0;
+    runtime->replayCaptureCommandBlocks = 0;
+    runtime->replayCaptureStatusBlocks = 0;
+    runtime->replayCaptureStatusActiveBlocks = 0;
+    runtime->replayCaptureStatusAwayBlocks = 0;
+    runtime->replayCaptureStatusDisconnectedBlocks = 0;
+    runtime->replayCaptureStatusLeaverBlocks = 0;
+    runtime->replayCaptureBytesRead = 0;
+    runtime->replayCaptureLargestCommandBytes = 0;
+    runtime->replayReadbackPackedCommands = 0;
+    runtime->replayReadbackDecodeFailures = 0;
+    runtime->replayReadbackCommandBytes = 0;
+    runtime->replayReadbackDistinctCommandTypes = 0;
+    runtime->replayStorageLoadedSegments = 0;
+    runtime->replayStorageLoadedCommands = 0;
+    runtime->replayStorageLoadedStatuses = 0;
+    runtime->replayStorageConsumedSegments = 0;
+    runtime->replayStorageConsumedCommands = 0;
+    runtime->replayStorageConsumedStatuses = 0;
+    runtime->replayStorageDecodeFailures = 0;
+    runtime->replayStorageHeaderPlayers = 0;
+    runtime->replayPlaybackStepCalls = 0;
+    runtime->replayPlaybackWorldSteps = 0;
+    runtime->replayPlaybackCommandBatches = 0;
+    runtime->replayPlaybackCommands = 0;
+    runtime->replayServerPlaybackStepCalls = 0;
+    runtime->replayServerPlaybackWorldSteps = 0;
+    runtime->replayServerPlaybackCommandBatches = 0;
+    runtime->replayServerPlaybackCommands = 0;
+    runtime->replayServerPlaybackStatusUpdates = 0;
+    runtime->replayReadbackFirstClientId = -1;
+    runtime->replayReadbackLastClientId = -1;
+    runtime->replayReadbackMinClientId = -1;
+    runtime->replayReadbackMaxClientId = -1;
+    runtime->replayReadbackFirstCommandTypeId = 0;
+    runtime->replayReadbackLastCommandTypeId = 0;
+    runtime->replayReadbackFirstCommandTime = 0;
+    runtime->replayReadbackLastCommandTime = 0;
+    runtime->replayStorageHeaderClientId = -1;
+    runtime->replayStorageHeaderStepLength = 0;
+    runtime->replayPlaybackHeaderStepLength = 0;
+    runtime->replayServerPlaybackHeaderStepLength = 0;
+    runtime->replayCaptureStartStep = -1;
+    runtime->replayCaptureFirstStep = -1;
+    runtime->replayCaptureLastStep = -1;
+    runtime->replayStorageFirstStep = -1;
+    runtime->replayStorageLastStep = -1;
+    runtime->replayPlaybackFinalWorldStep = -1;
+    runtime->replayServerPlaybackFinalWorldStep = -1;
+    runtime->replayCaptureValidationError.clear();
+    runtime->replayStorageValidationError.clear();
+    runtime->replayStorageHeaderMap = "<none>";
+    runtime->replayPlaybackValidationError.clear();
+    runtime->replayServerPlaybackValidationError.clear();
     runtime->transceiver = 0;
+    runtime->replayInputStorage = 0;
+    runtime->replayInputTransceiver = 0;
     runtime->transceiverWorld = 0;
     runtime->transceiverStepped = false;
     runtime->transceiverReady = false;
@@ -32138,6 +37461,23 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->transceiverCommandBatches = 0;
     runtime->transceiverCommands = 0;
     runtime->transceiverStatusUpdates = 0;
+    runtime->transceiverStatusMissing = 0;
+    runtime->transceiverStatusActiveUpdates = 0;
+    runtime->transceiverStatusAwayUpdates = 0;
+    runtime->transceiverStatusPlayingUpdates = 0;
+    runtime->transceiverStatusDisconnectedUpdates = 0;
+    runtime->transceiverStatusReconnectedUpdates = 0;
+    runtime->transceiverStatusLeaverUpdates = 0;
+    runtime->transceiverStatusScriptQueued = 0;
+    runtime->transceiverStatusScriptApplied = 0;
+    runtime->transceiverStatusScriptCompleted = false;
+    runtime->transceiverLastStatusClientId = -1;
+    runtime->transceiverLastStatusValue = -1;
+    runtime->transceiverLastStatusStep = -1;
+    runtime->transceiverLastStatusPlaying = -1;
+    runtime->transceiverLastStatusActive = -1;
+    runtime->transceiverLastStatusDisconnected = -1;
+    runtime->transceiverLastStatusLeaver = -1;
     runtime->transceiverStepCalls = 0;
     runtime->transceiverProcessedSteps = 0;
     runtime->transceiverRuntimeCommandSent = false;
@@ -32271,8 +37611,21 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->minigameLeaveProofPlaceUserAfter = -1;
     runtime->minigameLeaveProofHeroIsolatedBefore = 0;
     runtime->minigameLeaveProofHeroIsolatedAfter = 0;
+    runtime->minigameLeaveProofHeroHiddenBefore = 0;
+    runtime->minigameLeaveProofHeroHiddenAfter = 0;
+    runtime->minigameLeaveProofHeroInvisibleBefore = 0;
+    runtime->minigameLeaveProofHeroInvisibleAfter = 0;
     runtime->minigameLeaveProofHeroFlagBefore = 0;
     runtime->minigameLeaveProofHeroFlagAfter = 0;
+    runtime->minigameLeaveProofSummonAbilityCreated = 0;
+    runtime->minigameLeaveProofSummonFactoryCreated = 0;
+    runtime->minigameLeaveProofSummonObjectId = -1;
+    runtime->minigameLeaveProofSummonGroupCountBefore = -1;
+    runtime->minigameLeaveProofSummonActionCountBefore = -1;
+    runtime->minigameLeaveProofSummonHiddenBefore = 0;
+    runtime->minigameLeaveProofSummonHiddenAfter = 0;
+    runtime->minigameLeaveProofSummonInvisibleBefore = 0;
+    runtime->minigameLeaveProofSummonInvisibleAfter = 0;
     runtime->minigameLeaveProofVisualStateBefore = -1;
     runtime->minigameLeaveProofVisualStateAfter = -1;
     runtime->minigameLeaveProofPlacementApplyBefore = -1;
@@ -32287,6 +37640,21 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->minigameLeaveProofMinigamesMainAfter = 0;
     runtime->minigameLeaveProofMinigamesMainWorldBefore = 0;
     runtime->minigameLeaveProofMinigamesMainWorldAfter = 0;
+    runtime->minigameLeaveProofMinigamesMainCommonBefore = 0;
+    runtime->minigameLeaveProofMinigamesMainCommonAfter = 0;
+    runtime->minigameLeaveProofMinigamesMainBidonsBefore = -1;
+    runtime->minigameLeaveProofMinigamesMainBidonsAfter = -1;
+    runtime->minigameLeaveProofBidonBefore = -1;
+    runtime->minigameLeaveProofBidonAfter = -1;
+    runtime->minigameLeaveProofMainSpawnerBefore = -1;
+    runtime->minigameLeaveProofMainSpawnerAfter = -1;
+    runtime->minigameLeaveProofMainCreepId = -1;
+    runtime->minigameLeaveProofMainCreepDescBeforeReturn = 0;
+    runtime->minigameLeaveProofMainCreepDescAfterReturn = -1;
+    runtime->minigameLeaveProofMainCreepOutBeforeReturn = 0;
+    runtime->minigameLeaveProofMainCreepOwner = -1;
+    runtime->minigameLeaveProofMainCreepInstant = 0;
+    runtime->minigameLeaveProofMainCreepType = -1;
     runtime->minigameLeaveProofMinigamesOpacityBefore = -1.0f;
     runtime->minigameLeaveProofMinigamesOpacityAfter = -1.0f;
     runtime->minigameLeaveProofSingleCountBefore = -1;
@@ -32299,11 +37667,172 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->minigameLeaveProofNamedSingleAfter = 0;
     runtime->minigameLeaveProofSingleIdBefore = 0;
     runtime->minigameLeaveProofSingleIdAfter = 0;
+    runtime->minigameLeaveProofSingleDbidBefore = 0;
+    runtime->minigameLeaveProofSingleDbidAfter = 0;
+    runtime->minigameLeaveProofStartGuardPlace = -1;
+    runtime->minigameLeaveProofStartGuardFaction = -1;
+    runtime->minigameLeaveProofStartGuardHeroFaction = -1;
+    runtime->minigameLeaveProofStartGuardCanUse = -1;
+    runtime->minigameLeaveProofStartGuardAvailable = -1;
+    runtime->minigameLeaveProofStartGuardResult = -1;
+    runtime->minigameLeaveProofStartGuardHeroPlaceAfter = -1;
+    runtime->minigameLeaveProofStartGuardPlaceUserAfter = -1;
+    runtime->minigameLeaveProofStartGuardCurrentSingleAfter = -1;
+    runtime->minigameLeaveProofLifecycleBefore = 0;
+    runtime->minigameLeaveProofLifecycleAfter = 0;
+    runtime->minigameLeaveProofLifecycleRunningBefore = -1;
+    runtime->minigameLeaveProofLifecycleRunningAfter = -1;
+    runtime->minigameLeaveProofLifecyclePausedAfter = -1;
+    runtime->minigameLeaveProofLifecycleFogDuring = -1;
+    runtime->minigameLeaveProofLifecycleFogAfter = -1;
+    runtime->minigameLeaveProofLifecycleFinishedBefore = -1;
+    runtime->minigameLeaveProofLifecycleFinishedAfter = -1;
+    runtime->minigameLeaveProofLifecycleVictoryAfter = -1;
+    runtime->minigameLeaveProofMinigameEventCallsBefore = -1;
+    runtime->minigameLeaveProofMinigameEventCallsAfter = -1;
+    runtime->minigameLeaveProofMinigameStartedEventsBefore = -1;
+    runtime->minigameLeaveProofMinigameStartedEventsAfter = -1;
+    runtime->minigameLeaveProofMinigameExitEventsBefore = -1;
+    runtime->minigameLeaveProofMinigameExitEventsAfter = -1;
+    runtime->minigameLeaveProofMinigameLastEventBefore = -1;
+    runtime->minigameLeaveProofMinigameLastEventAfter = -1;
+    runtime->minigameLeaveProofMinigameLastEventUnitBefore = -1;
+    runtime->minigameLeaveProofMinigameLastEventUnitAfter = -1;
+    runtime->minigameLeaveProofSlowdownHintBefore = -1.0f;
+    runtime->minigameLeaveProofSlowdownHintSentinel = -1.0f;
+    runtime->minigameLeaveProofSlowdownHintDuring = -1.0f;
+    runtime->minigameLeaveProofSlowdownHintAfter = -1.0f;
+    runtime->minigameLeaveProofSlowdownHintRestored = -1.0f;
+    runtime->minigameLeaveProofLifecycleSingleLeaveCalls = 0;
+    runtime->minigameLeaveProofLifecycleSinglePauseCommandCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleStepCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleUpdateCalls = 0;
+    runtime->minigameLeaveProofLifecycleSinglePauseCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleMapLoadedCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleCheatDropCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleCheatWinCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleSessionFinishedCalls = 0;
+    runtime->minigameLeaveProofLifecycleSingleEjectCalls = 0;
+    runtime->minigameLeaveProofLifecycleMinigamesLeaveCalls = 0;
+    runtime->minigameLeaveProofLifecycleMinigamesForceLeaveCalls = 0;
+    runtime->minigameLeaveProofLifecycleMinigamesStepCalls = 0;
+    runtime->minigameLeaveProofLifecycleMinigamesUpdateCalls = 0;
+    runtime->minigameLeaveProofLifecycleMinigamesMapLoadedCalls = 0;
+    runtime->minigameLeaveProofLifecycleMainSentCommands = 0;
+    runtime->minigameLeaveProofLifecycleDropForwardBefore = -1;
+    runtime->minigameLeaveProofLifecycleDropForwardAfter = -1;
+    runtime->minigameLeaveProofLifecycleFinishForwardBefore = -1;
+    runtime->minigameLeaveProofLifecycleFinishForwardAfter = -1;
+    runtime->minigameLeaveProofLifecyclePlayerDropCallsBefore = -1;
+    runtime->minigameLeaveProofLifecyclePlayerDropCallsAfter = -1;
+    runtime->minigameLeaveProofLifecyclePlayerDropHadCurrent = -1;
+    runtime->minigameLeaveProofLifecyclePlayerDropSingleBefore = -1;
+    runtime->minigameLeaveProofLifecyclePlayerDropSingleAfter = -1;
+    runtime->minigameLeaveProofLifecyclePlayerFinishCallsBefore = -1;
+    runtime->minigameLeaveProofLifecyclePlayerFinishCallsAfter = -1;
+    runtime->minigameLeaveProofLifecyclePlayerFinishHadCurrent = -1;
+    runtime->minigameLeaveProofLifecyclePlayerFinishSingleBefore = -1;
+    runtime->minigameLeaveProofLifecyclePlayerFinishSingleAfter = -1;
+    runtime->minigameLeaveProofWorldSessionTargets = -1;
+    runtime->minigameLeaveProofWorldSessionTargetsExpected = -1;
+    runtime->minigameLeaveProofWorldSessionTargetsAllied = -1;
+    runtime->minigameLeaveProofWorldSessionTargetsForeign = -1;
+    runtime->minigameLeaveProofWorldSessionTargetsSelf = -1;
+    runtime->minigameLeaveProofWorldSessionCanScrollDuplicate = -1;
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostBefore = -1;
+    runtime->minigameLeaveProofWorldSessionCanBuyZZBoostAfter = -1;
+    runtime->minigameLeaveProofWorldSessionGoldBefore = -1;
+    runtime->minigameLeaveProofWorldSessionGoldAfterAdd = -1;
+    runtime->minigameLeaveProofWorldSessionGoldAfterTake = -1;
+    runtime->minigameLeaveProofWorldSessionGoldAfterZZBoost = -1;
+    runtime->minigameLeaveProofWorldSessionTotalNafta = -1;
+    runtime->minigameLeaveProofWorldSessionShop = 0;
+    runtime->minigameLeaveProofWorldSessionConsumable = 0;
+    runtime->minigameLeaveProofWorldSessionAddItem = 0;
+    runtime->minigameLeaveProofWorldSessionAllyTargetObjectId = -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetPlayerId = -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetAddItem = 0;
+    runtime->minigameLeaveProofWorldSessionAllyTargetSlotsBefore = -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetSlotsAfter = -1;
+    runtime->minigameLeaveProofWorldSessionAllyTargetAddedQuantity = -1;
+    runtime->minigameLeaveProofWorldSessionSlotsBefore = -1;
+    runtime->minigameLeaveProofWorldSessionSlotsAfter = -1;
+    runtime->minigameLeaveProofWorldSessionAddedQuantity = -1;
+    runtime->minigameLeaveProofWorldSessionStatsCallsBefore = -1;
+    runtime->minigameLeaveProofWorldSessionStatsCallsAfterAlly = -1;
+    runtime->minigameLeaveProofWorldSessionStatsCallsAfterSelf = -1;
+    runtime->minigameLeaveProofWorldSessionStatsSelfBefore = -1;
+    runtime->minigameLeaveProofWorldSessionStatsSelfAfter = -1;
+    runtime->minigameLeaveProofWorldSessionStatsAllyBefore = -1;
+    runtime->minigameLeaveProofWorldSessionStatsAllyAfter = -1;
+    runtime->minigameLeaveProofWorldSessionStatsAllyFrom = -1;
+    runtime->minigameLeaveProofWorldSessionStatsAllyTo = -1;
+    runtime->minigameLeaveProofWorldSessionStatsAllyItem = -1;
+    runtime->minigameLeaveProofWorldSessionStatsSelfFrom = -1;
+    runtime->minigameLeaveProofWorldSessionStatsSelfTo = -1;
+    runtime->minigameLeaveProofWorldSessionStatsSelfItem = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsBefore = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterAlly = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourCallsAfterSelf = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourTookBefore = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourTookAfterAlly = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourTookAfterSelf = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourGaveBefore = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterAlly = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourGaveAfterSelf = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourLastAfterAlly = -1;
+    runtime->minigameLeaveProofWorldSessionBehaviourLastAfterSelf = -1;
     runtime->transceiverHeroPickupObjectRuntimeCommandSent = false;
     runtime->transceiverHeroPickupObjectRuntimeCommandsSent = 0;
     runtime->transceiverHeroPickupObjectPlayerId = -1;
     runtime->transceiverHeroPickupObjectClientId = -1;
     runtime->transceiverHeroPickupObjectId = -1;
+    runtime->linuxBotCommandDriverActive = false;
+    runtime->linuxBotCommandDriverReady = false;
+    runtime->linuxBotCommandTicks = 0;
+    runtime->linuxBotCommandHeroesConsidered = 0;
+    runtime->linuxBotCommandHeroesCommanded = 0;
+    runtime->linuxBotMoveRuntimeCommandsSent = 0;
+    runtime->linuxBotAttackRuntimeCommandsSent = 0;
+    runtime->linuxBotCommandSkippedTicks = 0;
+    runtime->linuxBotCommandNextWorldStep = -1;
+    runtime->linuxBotCommandLastWorldStep = -1;
+    runtime->linuxBotCommandLastPlayerId = -1;
+    runtime->linuxBotCommandLastClientId = -1;
+    runtime->linuxBotCommandLastTargetPlayerId = -1;
+    runtime->linuxBotCommandLastTargetClientId = -1;
+    runtime->linuxBotCommandSourceX = 0.0f;
+    runtime->linuxBotCommandSourceY = 0.0f;
+    runtime->linuxBotCommandTargetX = 0.0f;
+    runtime->linuxBotCommandTargetY = 0.0f;
+    runtime->linuxBotCommandLastAction = "none";
+    runtime->linuxAIAutoStartAttempts = 0;
+    runtime->linuxAIAutoStartSuccesses = 0;
+    runtime->linuxAIAddRequests = 0;
+    runtime->linuxAIAddSuccesses = 0;
+    runtime->linuxAIRemoveRequests = 0;
+    runtime->linuxAIRemoveSuccesses = 0;
+    runtime->linuxAIStepCalls = 0;
+    runtime->linuxAIControllerCount = 0;
+    runtime->linuxAIBotsSettingsAvailable = 0;
+    runtime->linuxAIBotsEnabled = -1;
+    runtime->linuxAILastHeroObjectId = -1;
+    runtime->linuxAILastPlayerId = -1;
+    runtime->linuxAILastUserId = -1;
+    runtime->linuxAILastLine = -1;
+    runtime->linuxAICommandAttempts = 0;
+    runtime->linuxAICommandsSent = 0;
+    runtime->linuxAICommandDirectFallbacks = 0;
+    runtime->linuxAICommandMoveSent = 0;
+    runtime->linuxAICommandCombatMoveSent = 0;
+    runtime->linuxAICommandAttackSent = 0;
+    runtime->linuxAICommandOtherSent = 0;
+    runtime->linuxAILastCommandKind = 0;
+    runtime->linuxAILastCommandHeroObjectId = -1;
+    runtime->linuxAILastCommandPlayerId = -1;
+    runtime->linuxAILastCommandUserId = -1;
+    runtime->linuxAILastCommandTargetObjectId = -1;
+    runtime->linuxAILastCommandSent = 0;
     runtime->mapPreviewCommandMoveTargetDrawn = false;
     runtime->mapPreviewCommandMoveProofSent = false;
     runtime->mapPreviewCommandMoveCommandsSent = 0;
@@ -32403,6 +37932,28 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->mapPreviewSelectedTargetY = 0.0f;
     runtime->mapPreviewSelectedTargetDistance = 0.0f;
     runtime->mapPreviewSelectedTargetSource = "none";
+    ResetLinuxLiveHudCommandRuntime(runtime);
+    ResetLinuxLiveHotkeyCommandRuntime(runtime);
+    ResetLinuxLiveMapPreviewCommandRuntime(runtime);
+    runtime->visibleLiveMinimapCommandMarkerDrawn = false;
+    runtime->liveMinimapCommandSurfaceReady = false;
+    runtime->liveMinimapInnerX = 0;
+    runtime->liveMinimapInnerY = 0;
+    runtime->liveMinimapInnerSize = 0;
+    runtime->liveMinimapMinX = 0.0f;
+    runtime->liveMinimapMaxX = 0.0f;
+    runtime->liveMinimapMinY = 0.0f;
+    runtime->liveMinimapMaxY = 0.0f;
+    runtime->liveMinimapCommandProofSent = false;
+    runtime->liveMinimapCommandTargetDrawn = false;
+    runtime->liveMinimapInputCount = 0;
+    runtime->liveMinimapMoveCommandsSent = 0;
+    runtime->liveMinimapAttackCommandsSent = 0;
+    runtime->liveMinimapSignalCommandsSent = 0;
+    runtime->liveMinimapSelectionCount = 0;
+    runtime->liveMinimapCommandTargetX = 0.0f;
+    runtime->liveMinimapCommandTargetY = 0.0f;
+    runtime->liveMinimapLastAction = "none";
     runtime->transceiverRuntimeCommandQueuedBeforePrime = false;
     runtime->worldExecutedPackedCommands = 0;
     runtime->worldBootstrapRuntimeCommands = 0;
@@ -32459,9 +38010,35 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->worldMinNeutralCreepSpawnerSpawnDelay = 0.0f;
     runtime->worldCommonCreepMovementDistance = 0.0f;
 
-    runtime->replayWriter = new NCore::ReplayWriter();
-    runtime->replayWriter->WriteStartGame(0, 0);
-    runtime->localScheduler->SetReplayWriter(runtime->replayWriter);
+    if (!runtime->replayFileInputActive)
+    {
+      runtime->replayWriter = new NCore::ReplayWriter();
+      int replayClientId =
+        runtime->loadingGameContext && runtime->loadingGameContext->userId > 0 ?
+        runtime->loadingGameContext->userId :
+        -1;
+      if (replayClientId <= 0)
+      {
+        for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
+             it != runtime->loadingMapStartInfo.playersInfo.end();
+             ++it)
+        {
+          if (it->playerType == NCore::EPlayerType::Human && it->userID > 0)
+          {
+            replayClientId = it->userID;
+            break;
+          }
+        }
+      }
+      NCore::ClientSettings replayClientSettings;
+      runtime->replayWriter->WriteLinuxBootstrapHeader(
+        runtime->loadingMapStartInfo,
+        replayClientId,
+        DEFAULT_GAME_STEP_LENGTH,
+        replayClientSettings);
+      runtime->replayWriter->WriteStartGame(0, 0);
+      runtime->localScheduler->SetReplayWriter(runtime->replayWriter);
+    }
     UpdateLinuxBootstrapReplayWriterRuntime(runtime);
   }
 
@@ -32471,6 +38048,73 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->schedulerStarted = true;
   }
 
+  if (runtime->replayFileInputActive)
+  {
+    if (!runtime->replayInputStorage)
+    {
+      runtime->replayInputPath = settings.replayFile.string();
+      runtime->replayInputStorage =
+        new NWorld::ReplayStorage2(
+          NCore::REPLAY_BUFFER_READ,
+          runtime->replayInputPath.c_str(),
+          0,
+          0);
+      if (!runtime->replayInputStorage || !runtime->replayInputStorage->IsOk())
+      {
+        runtime->replayInputError =
+          runtime->replayInputStorage ?
+            runtime->replayInputStorage->GetLinuxReplayError() :
+            "storage-create-failed";
+        runtime->transceiverReady = false;
+        return;
+      }
+
+      NCore::MapStartInfo replayHeaderInfo;
+      NCore::ClientSettings replayHeaderClientSettings;
+      int replayHeaderClientId = -1;
+      runtime->replayInputHeaderReady = runtime->replayInputStorage->GetHeader(
+        &replayHeaderInfo,
+        &replayHeaderClientId,
+        &runtime->replayInputStepLength,
+        &replayHeaderClientSettings,
+        0);
+      if (!runtime->replayInputHeaderReady || runtime->replayInputStepLength <= 0)
+      {
+        runtime->replayInputError = "header-missing";
+        runtime->transceiverReady = false;
+        return;
+      }
+      if (runtime->replayInputRealtimePacing && runtime->replayInputPaceMs == 0)
+      {
+        runtime->replayInputPaceMs = static_cast<size_t>(runtime->replayInputStepLength);
+      }
+
+      runtime->replayInputLoadedSegments = runtime->replayInputStorage->GetLinuxReplayLoadedSegments();
+      runtime->replayInputLoadedCommands = runtime->replayInputStorage->GetLinuxReplayLoadedCommands();
+      runtime->replayInputLoadedStatuses = runtime->replayInputStorage->GetLinuxReplayLoadedStatuses();
+      runtime->transceiverWorld = NWorld::PFWorld::CreatePFWorld();
+      runtime->replayInputTransceiver =
+        new NWorld::ReplayTransceiver(
+          runtime->replayInputStorage.GetPtr(),
+          runtime->replayInputStepLength);
+      runtime->replayInputTransceiver->SetUseServerReplay(true);
+      runtime->replayInputTransceiver->SetWorld(runtime->transceiverWorld);
+      runtime->replayInputWorldAttached =
+        runtime->replayInputTransceiver->GetWorld() == runtime->transceiverWorld.GetPtr();
+      runtime->replayInputReady = runtime->replayInputWorldAttached;
+      runtime->replayInputError = runtime->replayInputReady ? "none" : "world-attach-failed";
+      runtime->transceiverReady = runtime->replayInputReady;
+      runtime->transceiverWorldAttached = runtime->replayInputWorldAttached;
+      runtime->transceiverStepped = false;
+      runtime->transceiverNoData = false;
+      runtime->transceiverAsynced = false;
+      runtime->transceiverNextStep = 0;
+      runtime->transceiverWorldStep = runtime->replayInputTransceiver->GetWorldStep();
+      runtime->transceiverBufferLimit = runtime->replayInputTransceiver->GetBufferLimit();
+    }
+    return;
+  }
+
   if (!runtime->transceiver)
   {
     runtime->transceiver = new NCore::Transceiver(
@@ -32478,6 +38122,12 @@ void EnsureLinuxBootstrapGameScheduler(
       DEFAULT_GAME_STEP_LENGTH,
       false);
     runtime->transceiverWorld = NWorld::PFWorld::CreatePFWorld();
+    if (NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr()))
+    {
+      world->SetLinuxAutoAIEnabled(settings.bootstrapCreateGame);
+      if (settings.bootstrapCreateGame)
+        world->SetAIContainer(new NWorld::PFAIContainer(world, runtime->transceiver));
+    }
     runtime->transceiver->SetWorld(runtime->transceiverWorld);
     runtime->transceiverReady = true;
     runtime->transceiverWorldAttached = true;
@@ -32519,8 +38169,97 @@ void EnsureLinuxBootstrapGameScheduler(
   }
 }
 
+static const size_t LINUX_BOOTSTRAP_PLAYER_STATUS_SCRIPT_COUNT = 5;
+static const size_t LINUX_BOOTSTRAP_PLAYER_STATUS_DISCONNECT_INDEX = 3;
+
+int GetLinuxBootstrapPlayerStatusScriptValue(size_t index)
+{
+  switch (index)
+  {
+  case 0:
+    return Peered::Active;
+  case 1:
+    return Peered::Away;
+  case 2:
+    return Peered::Active;
+  case 3:
+    return Peered::DisconnectedByClient;
+  case 4:
+    return Peered::Active;
+  default:
+    return Peered::Active;
+  }
+}
+
+void UpdateLinuxBootstrapPlayerStatusScriptRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+    return;
+
+  runtime->transceiverStatusScriptQueued = runtime->localScheduler ?
+    runtime->localScheduler->GetLinuxProducedStatusCount() :
+    0;
+  runtime->transceiverStatusScriptApplied = runtime->transceiverStatusUpdates;
+  runtime->transceiverStatusScriptCompleted =
+    runtime->transceiverStatusScriptQueued >= LINUX_BOOTSTRAP_PLAYER_STATUS_SCRIPT_COUNT &&
+    runtime->transceiverStatusUpdates >= LINUX_BOOTSTRAP_PLAYER_STATUS_SCRIPT_COUNT &&
+    runtime->transceiverStatusMissing == 0 &&
+    runtime->transceiverStatusActiveUpdates >= 3 &&
+    runtime->transceiverStatusAwayUpdates >= 1 &&
+    runtime->transceiverStatusPlayingUpdates >= 4 &&
+    runtime->transceiverStatusDisconnectedUpdates >= 1 &&
+    runtime->transceiverStatusReconnectedUpdates >= 1 &&
+    runtime->transceiverStatusLeaverUpdates == 0 &&
+    runtime->transceiverLastStatusValue == Peered::Active &&
+    runtime->transceiverLastStatusPlaying == 1 &&
+    runtime->transceiverLastStatusActive == 1 &&
+    runtime->transceiverLastStatusDisconnected == 0;
+}
+
+void MaybeQueueLinuxBootstrapPlayerStatusScript(
+  LinuxBootstrapScreenRuntime* runtime,
+  NWorld::PFWorld* world
+)
+{
+  if (!runtime ||
+      !world ||
+      !runtime->localScheduler ||
+      runtime->worldLocalUserId <= 0 ||
+      world->GetPlayersCount() <= 0)
+  {
+    return;
+  }
+
+  UpdateLinuxBootstrapPlayerStatusScriptRuntime(runtime);
+
+  const size_t queuedStatuses = runtime->localScheduler->GetLinuxProducedStatusCount();
+  if (queuedStatuses >= LINUX_BOOTSTRAP_PLAYER_STATUS_SCRIPT_COUNT ||
+      queuedStatuses > runtime->transceiverStatusUpdates)
+  {
+    return;
+  }
+
+  if (queuedStatuses >= LINUX_BOOTSTRAP_PLAYER_STATUS_DISCONNECT_INDEX &&
+      !runtime->minigameLeaveProofCompleted)
+  {
+    return;
+  }
+
+  runtime->localScheduler->QueueLinuxClientStatus(
+    GetLinuxBootstrapPlayerStatusScriptValue(queuedStatuses));
+  UpdateLinuxBootstrapPlayerStatusScriptRuntime(runtime);
+}
+
+size_t ClampLinuxReplayInputPlaybackRate(size_t value);
+
+bool HandleLinuxReplayInputControls(
+  const LinuxInputState& inputState,
+  LinuxBootstrapScreenRuntime* runtime
+);
+
 void DriveLinuxBootstrapGameScheduler(
   const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
   LinuxBootstrapScreenRuntime* runtime
 )
 {
@@ -32541,7 +38280,85 @@ void DriveLinuxBootstrapGameScheduler(
   const size_t maxBootstrapTransceiverStepsPerDrive = finiteBootstrapRun ? 3 : 1;
   bool schedulerStepped = false;
 
-  if (runtime->transceiver && runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps)
+  if (runtime->replayFileInputActive)
+  {
+    schedulerStepped = true;
+    const size_t replayRate =
+      ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+    runtime->replayInputPlaybackRate = replayRate;
+    const bool replayCanStep =
+      runtime->replayInputReady &&
+      runtime->replayInputTransceiver &&
+      runtime->mapLoadingJobCompleted &&
+      runtime->replayInputStepCalls < runtime->replayInputLoadedSegments;
+    size_t replayStepsThisDrive = 0;
+    if (runtime->replayInputPaused)
+    {
+      replayStepsThisDrive =
+        runtime->replayInputPendingManualSteps < maxBootstrapTransceiverStepsPerDrive ?
+          runtime->replayInputPendingManualSteps :
+          maxBootstrapTransceiverStepsPerDrive;
+    }
+    else if (runtime->replayInputRealtimePacing &&
+             runtime->replayInputPaceMs > 0 &&
+             replayCanStep)
+    {
+      const unsigned long nowMs = GetLinuxTickMs();
+      if (runtime->replayInputNextStepTimeMs == 0 ||
+          nowMs >= runtime->replayInputNextStepTimeMs)
+      {
+        replayStepsThisDrive = replayRate;
+        runtime->replayInputNextStepTimeMs = nowMs +
+          static_cast<unsigned long>(runtime->replayInputPaceMs);
+      }
+      else
+      {
+        ++runtime->replayInputPacingSkips;
+      }
+    }
+    else
+    {
+      replayStepsThisDrive = maxBootstrapTransceiverStepsPerDrive * replayRate;
+    }
+    if (replayCanStep && replayStepsThisDrive > 0)
+    {
+      for (size_t stepIndex = 0;
+        stepIndex < replayStepsThisDrive &&
+          runtime->replayInputStepCalls < runtime->replayInputLoadedSegments;
+        ++stepIndex)
+      {
+        const int beforeWorldStep = runtime->replayInputTransceiver->GetWorldStep();
+        runtime->replayInputTransceiver->Step(static_cast<float>(runtime->replayInputStepLength));
+        const int afterWorldStep = runtime->replayInputTransceiver->GetWorldStep();
+        ++runtime->schedulerTickCount;
+        ++runtime->replayInputStepCalls;
+        ++runtime->transceiverStepCalls;
+        if (runtime->replayInputPendingManualSteps > 0)
+        {
+          --runtime->replayInputPendingManualSteps;
+          ++runtime->replayInputManualStepsConsumed;
+        }
+        runtime->transceiverStepped = true;
+        runtime->transceiverReady = true;
+        runtime->transceiverWorldAttached = runtime->replayInputTransceiver->GetWorld() != 0;
+        runtime->transceiverNoData = runtime->replayInputStepCalls >= runtime->replayInputLoadedSegments;
+        runtime->transceiverAsynced = false;
+        runtime->transceiverNextStep = static_cast<int>(runtime->replayInputStepCalls);
+        runtime->transceiverWorldStep = afterWorldStep;
+        runtime->transceiverBufferLimit = runtime->replayInputTransceiver->GetBufferLimit();
+        runtime->transceiverProcessedSteps = runtime->replayInputStepCalls;
+        if (afterWorldStep > beforeWorldStep)
+        {
+          runtime->transceiverCommandBatches += static_cast<size_t>(afterWorldStep - beforeWorldStep);
+        }
+      }
+    }
+    else
+    {
+      ++runtime->schedulerTickCount;
+    }
+  }
+  else if (runtime->transceiver && runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps)
   {
     if (runtime->transceiverWorld)
     {
@@ -32565,9 +38382,18 @@ void DriveLinuxBootstrapGameScheduler(
       MaybeSendLinuxBootstrapHeroUseConsumableCommand(runtime, world);
       MaybeSendLinuxBootstrapHeroRaiseFlagCommand(runtime, world);
       MaybeSendLinuxBootstrapHeroPickupObjectCommand(runtime, world);
-      MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(runtime, world);
+      if (!MaybeSendLinuxBootstrapLiveMinimapMoveProofCommand(runtime, world))
+      {
+        MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(runtime, world);
+      }
+      MaybeSendLinuxBootstrapLiveMapPreviewMoveProofCommand(
+        settings,
+        selectedMapPreview,
+        runtime,
+        world);
       MaybeSendLinuxBootstrapHeroInitMinigameCommand(runtime, world);
       MaybeRunLinuxBootstrapMinigameLeaveProof(runtime, world);
+      MaybeDriveLinuxBootstrapBotCommandDriver(runtime, world);
     }
 
     for (size_t stepIndex = 0;
@@ -32601,7 +38427,6 @@ void DriveLinuxBootstrapGameScheduler(
         const size_t processedSteps = static_cast<size_t>(afterWorldStep - beforeWorldStep);
         runtime->transceiverProcessedSteps += processedSteps;
         runtime->transceiverCommandBatches += processedSteps;
-        runtime->transceiverStatusUpdates += processedSteps;
       }
       else
       {
@@ -32713,6 +38538,22 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
       runtime->worldTimeScale = world->GetTimeScale();
       runtime->transceiverCommands = runtime->worldExecutedPackedCommands;
+      runtime->transceiverStatusUpdates = world->GetLinuxPlayerStatusUpdatesCount();
+      runtime->transceiverStatusMissing = world->GetLinuxPlayerStatusMissingCount();
+      runtime->transceiverStatusActiveUpdates = world->GetLinuxPlayerStatusActiveUpdatesCount();
+      runtime->transceiverStatusAwayUpdates = world->GetLinuxPlayerStatusAwayUpdatesCount();
+      runtime->transceiverStatusPlayingUpdates = world->GetLinuxPlayerStatusPlayingUpdatesCount();
+      runtime->transceiverStatusDisconnectedUpdates = world->GetLinuxPlayerStatusDisconnectedUpdatesCount();
+      runtime->transceiverStatusReconnectedUpdates = world->GetLinuxPlayerStatusReconnectedUpdatesCount();
+      runtime->transceiverStatusLeaverUpdates = world->GetLinuxPlayerStatusLeaverUpdatesCount();
+      runtime->transceiverLastStatusClientId = world->GetLinuxLastPlayerStatusClientId();
+      runtime->transceiverLastStatusValue = world->GetLinuxLastPlayerStatusValue();
+      runtime->transceiverLastStatusStep = world->GetLinuxLastPlayerStatusStep();
+      runtime->transceiverLastStatusPlaying = world->GetLinuxLastPlayerStatusPlaying();
+      runtime->transceiverLastStatusActive = world->GetLinuxLastPlayerStatusActive();
+      runtime->transceiverLastStatusDisconnected = world->GetLinuxLastPlayerStatusDisconnected();
+      runtime->transceiverLastStatusLeaver = world->GetLinuxLastPlayerStatusLeaver();
+      CaptureLinuxBootstrapAIDiagnostics(runtime, world);
       runtime->worldLocalUserId = 0;
       for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
            it != runtime->loadingMapStartInfo.playersInfo.end();
@@ -32723,6 +38564,54 @@ void DriveLinuxBootstrapGameScheduler(
           runtime->worldLocalUserId = it->userID;
           break;
         }
+      }
+      if (runtime->replayFileInputActive)
+      {
+        runtime->replayInputWorldSteps =
+          runtime->transceiverWorldStep >= 0 ? static_cast<size_t>(runtime->transceiverWorldStep) : 0;
+        runtime->replayInputCommandsExecuted = runtime->worldExecutedPackedCommands;
+        runtime->replayInputStatusesApplied = runtime->transceiverStatusUpdates;
+        runtime->replayInputFinalWorldStep = runtime->transceiverWorldStep;
+        runtime->replayInputStepCountMatches =
+          runtime->replayInputStepCalls == runtime->replayInputLoadedSegments &&
+          runtime->replayInputFinalWorldStep >= 0 &&
+          (runtime->replayInputFinalWorldStep == static_cast<int>(runtime->replayInputLoadedSegments) ||
+           runtime->replayInputFinalWorldStep + 1 == static_cast<int>(runtime->replayInputLoadedSegments));
+        runtime->replayInputCommandCountMatches =
+          runtime->replayInputCommandsExecuted == runtime->replayInputLoadedCommands;
+        runtime->replayInputStatusCountMatches =
+          runtime->replayInputStatusesApplied == runtime->replayInputLoadedStatuses;
+        runtime->replayInputValidated =
+          runtime->replayInputReady &&
+          runtime->replayInputWorldAttached &&
+          runtime->worldSpawnedHeroObjects > 0 &&
+          runtime->worldPlayersWithHeroObjects > 0 &&
+          runtime->replayInputStepCountMatches &&
+          runtime->replayInputCommandCountMatches &&
+          runtime->replayInputStatusCountMatches;
+        if (runtime->replayInputValidated)
+        {
+          runtime->replayInputError = "none";
+        }
+        else if (!runtime->replayInputReady)
+        {
+          runtime->replayInputError =
+            runtime->replayInputError.empty() ? "not-ready" : runtime->replayInputError;
+        }
+        else if (runtime->replayInputStepCalls < runtime->replayInputLoadedSegments)
+        {
+          runtime->replayInputError =
+            runtime->replayInputPaused ? "paused" : "incomplete";
+        }
+        else
+        {
+          runtime->replayInputError = "counter-mismatch";
+        }
+      }
+      else
+      {
+        MaybeQueueLinuxBootstrapPlayerStatusScript(runtime, world);
+        UpdateLinuxBootstrapPlayerStatusScriptRuntime(runtime);
       }
     }
   }
@@ -32857,6 +38746,7 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
         runtime->worldTimeScale = world->GetTimeScale();
         runtime->transceiverCommands = runtime->worldExecutedPackedCommands;
+        CaptureLinuxBootstrapAIDiagnostics(runtime, world);
         runtime->worldLocalUserId = 0;
         for (NCore::TPlayersStartInfo::const_iterator it = runtime->loadingMapStartInfo.playersInfo.begin();
              it != runtime->loadingMapStartInfo.playersInfo.end();
@@ -32955,7 +38845,9 @@ void EnsureLinuxBootstrapLoadingScreen(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxReplayFileHeaderPreview& replayHeaderPreview,
   const std::string& defaultLocale,
   LinuxBootstrapScreenRuntime* runtime,
   LinuxUiRootPreview* preview
@@ -32978,7 +38870,12 @@ void EnsureLinuxBootstrapLoadingScreen(
         heroCatalog,
         mapCatalog,
         mapBrowserState,
+        selectedMapPreview,
         localMatchPreview,
+        replayHeaderPreview.usable && replayHeaderPreview.adoptedMap ?
+          &replayHeaderPreview.mapStartInfo :
+          0,
+        replayHeaderPreview.clientId,
         defaultLocale,
         runtime,
         &loadingWarnings))
@@ -33024,8 +38921,8 @@ void EnsureLinuxBootstrapLoadingScreen(
     runtime->loadingScreen->GetLoadingStatusHandler()->OnLobbyInGameStatus(lobby::EOperationResult::InProgress);
   }
 
-  EnsureLinuxBootstrapGameScheduler(runtime);
-  DriveLinuxBootstrapGameScheduler(settings, runtime);
+  EnsureLinuxBootstrapGameScheduler(settings, runtime);
+  DriveLinuxBootstrapGameScheduler(settings, selectedMapPreview, runtime);
   DriveLinuxBootstrapLoadingRuntime(runtime);
   UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
 }
@@ -33169,7 +39066,9 @@ void InitializeLinuxBootstrapScreenRuntime(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxReplayFileHeaderPreview& replayHeaderPreview,
   const std::string& defaultLocale,
   LinuxUiRootPreview* preview
 )
@@ -33179,6 +39078,7 @@ void InitializeLinuxBootstrapScreenRuntime(
     return;
   }
 
+  runtime->replayFileInputActive = !settings.replayFile.empty();
   preview->runtimeBootstrapScreenEventCount = 0;
 
   if (!preview->runtimeInitialized || !UI::GetUser())
@@ -33230,7 +39130,9 @@ void InitializeLinuxBootstrapScreenRuntime(
     heroCatalog,
     mapCatalog,
     mapBrowserState,
+    selectedMapPreview,
     localMatchPreview,
+    replayHeaderPreview,
     defaultLocale,
     runtime,
     preview
@@ -33247,7 +39149,9 @@ void DriveLinuxBootstrapScreenRuntime(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview& selectedMapPreview,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxReplayFileHeaderPreview& replayHeaderPreview,
   const std::string& defaultLocale,
   LinuxBootstrapScreenRuntime* runtime,
   LinuxUiRootPreview* preview
@@ -33258,6 +39162,7 @@ void DriveLinuxBootstrapScreenRuntime(
     return;
   }
 
+  runtime->replayFileInputActive = !settings.replayFile.empty();
   UpdateLinuxVisibleMenuRuntime(runtime);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
@@ -33272,7 +39177,9 @@ void DriveLinuxBootstrapScreenRuntime(
     heroCatalog,
     mapCatalog,
     mapBrowserState,
+    selectedMapPreview,
     localMatchPreview,
+    replayHeaderPreview,
     defaultLocale,
     runtime,
     preview
@@ -33282,13 +39189,14 @@ void DriveLinuxBootstrapScreenRuntime(
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
+    HandleLinuxReplayInputControls(inputState, runtime);
     for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
     {
       runtime->loadingScreen->ProcessUIEvent(inputState.frameEvents[i]);
     }
 
-    EnsureLinuxBootstrapGameScheduler(runtime);
-    DriveLinuxBootstrapGameScheduler(settings, runtime);
+    EnsureLinuxBootstrapGameScheduler(settings, runtime);
+    DriveLinuxBootstrapGameScheduler(settings, selectedMapPreview, runtime);
     DriveLinuxBootstrapLoadingRuntime(runtime);
     runtime->loadingScreen->Step(NMainFrame::IsAppActive());
     preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
@@ -34057,6 +39965,276 @@ bool HandleLinuxVisibleMenuHotkeys(
   return changed;
 }
 
+bool HandleLinuxLiveHudInputMessage(
+  const NMainFrame::SWindowsMsg& message,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime ||
+      !runtime->liveHudCommandSurfaceReady ||
+      !IsPointInsideLinuxLiveHudCommandSurface(runtime, message.x, message.y))
+  {
+    return false;
+  }
+
+  const int talentSlotIndex =
+    FindLinuxLiveHudTalentCommandSlot(runtime, message.x, message.y);
+  const bool attackSlot =
+    IsPointInsideLinuxRectValues(
+      runtime->liveHudAttackX,
+      runtime->liveHudAttackY,
+      runtime->liveHudAttackWidth,
+      runtime->liveHudAttackHeight,
+      message.x,
+      message.y);
+  const bool targetPanel =
+    IsPointInsideLinuxRectValues(
+      runtime->liveHudTargetX,
+      runtime->liveHudTargetY,
+      runtime->liveHudTargetWidth,
+      runtime->liveHudTargetHeight,
+      message.x,
+      message.y);
+
+  switch (message.msg)
+  {
+    case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+    case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
+      runtime->mapPreviewDragging = false;
+      runtime->mapPreviewPanning = false;
+      runtime->characterPreviewDragging = false;
+      runtime->liveHudLastAction =
+        message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DOWN ?
+          "live-hud-press" :
+          "live-hud-command-press";
+      return true;
+
+    case NMainFrame::SWindowsMsg::MOUSE_LB_UP:
+    {
+      NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+      bool sent = false;
+      const char* failedAction = "live-hud-command-failed";
+      if (talentSlotIndex >= 0)
+      {
+        sent = SendLinuxLiveHudActivateTalentSlotCommand(
+          runtime,
+          world,
+          talentSlotIndex,
+          "live-hud-activate-talent");
+        failedAction = "live-hud-activate-talent-failed";
+      }
+      else if (attackSlot)
+      {
+        sent = SendLinuxLiveHudAttackCommand(runtime, world, "live-hud-attack");
+        failedAction = "live-hud-attack-failed";
+      }
+      else if (targetPanel)
+      {
+        sent = SendLinuxLiveHudUseUnitCommand(runtime, world, "live-hud-use-unit");
+        failedAction = "live-hud-use-unit-failed";
+      }
+      if (!sent)
+      {
+        runtime->liveHudLastAction = failedAction;
+      }
+      ++runtime->liveHudInputCount;
+      ++runtime->mapPreviewInputCount;
+      runtime->mapPreviewDragging = false;
+      runtime->mapPreviewPanning = false;
+      runtime->characterPreviewDragging = false;
+      return true;
+    }
+
+    case NMainFrame::SWindowsMsg::MOUSE_RB_UP:
+    {
+      NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+      bool sent = false;
+      const char* failedAction = "live-hud-command-failed";
+      if (talentSlotIndex >= 0)
+      {
+        sent = SendLinuxLiveHudUseTalentSlotCommand(
+          runtime,
+          world,
+          talentSlotIndex,
+          "live-hud-use-talent");
+        failedAction = "live-hud-use-talent-failed";
+      }
+      else if (attackSlot || targetPanel)
+      {
+        sent = SendLinuxLiveHudAttackCommand(runtime, world, "live-hud-attack");
+        failedAction = "live-hud-attack-failed";
+      }
+      if (!sent)
+      {
+        runtime->liveHudLastAction = failedAction;
+      }
+      ++runtime->liveHudInputCount;
+      ++runtime->mapPreviewInputCount;
+      runtime->mapPreviewDragging = false;
+      runtime->mapPreviewPanning = false;
+      runtime->characterPreviewDragging = false;
+      return true;
+    }
+
+    case NMainFrame::SWindowsMsg::MOUSE_MB_UP:
+    {
+      NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+      const bool sent =
+        targetPanel ?
+          SendLinuxLiveHudFollowCommand(runtime, world, "live-hud-follow") :
+          false;
+      if (!sent)
+      {
+        runtime->liveHudLastAction = targetPanel ?
+          "live-hud-follow-failed" :
+          "live-hud-command-failed";
+      }
+      ++runtime->liveHudInputCount;
+      ++runtime->mapPreviewInputCount;
+      runtime->mapPreviewDragging = false;
+      runtime->mapPreviewPanning = false;
+      runtime->characterPreviewDragging = false;
+      return true;
+    }
+
+    case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
+      runtime->liveHudLastAction = "live-hud-wheel";
+      ++runtime->liveHudInputCount;
+      return true;
+
+    default:
+      break;
+  }
+
+  return false;
+}
+
+int ResolveLinuxLiveHotkeyTalentSlotIndex(unsigned long key)
+{
+  switch (key)
+  {
+    case XK_1: return 0;
+    case XK_2: return 1;
+    case XK_3: return 2;
+    case XK_4: return 3;
+    case XK_5: return 4;
+    case XK_6: return 5;
+    case XK_7: return 6;
+    case XK_8: return 7;
+    case XK_9: return 8;
+    default: break;
+  }
+
+  return -1;
+}
+
+bool HandleLinuxLiveGameplayHotkeyMessage(
+  const NMainFrame::SWindowsMsg& message,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime ||
+      message.msg != NMainFrame::SWindowsMsg::KEY_DOWN ||
+      !runtime->liveHeroState.ready)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  bool handled = true;
+  bool sent = false;
+  const char* failedAction = "live-hotkey-command-failed";
+  const int talentSlotIndex = ResolveLinuxLiveHotkeyTalentSlotIndex(message.nKey);
+  if (talentSlotIndex >= 0)
+  {
+    sent =
+      SendLinuxLiveHotkeyActivateTalentCommand(
+        runtime,
+        world,
+        talentSlotIndex,
+        "live-hotkey-activate-talent");
+    failedAction = "live-hotkey-activate-talent-failed";
+  }
+  else
+  {
+    switch (message.nKey)
+    {
+      case XK_s:
+      case XK_S:
+        sent = SendLinuxLiveHotkeyStopCommand(runtime, world, "live-hotkey-stop");
+        failedAction = "live-hotkey-stop-failed";
+        break;
+
+      case XK_a:
+      case XK_A:
+        sent = SendLinuxLiveHotkeyAttackCommand(runtime, world, "live-hotkey-attack");
+        failedAction = "live-hotkey-attack-failed";
+        break;
+
+      case XK_f:
+      case XK_F:
+        sent = SendLinuxLiveHotkeyFollowCommand(runtime, world, "live-hotkey-follow");
+        failedAction = "live-hotkey-follow-failed";
+        break;
+
+      case XK_h:
+      case XK_H:
+        sent = SendLinuxLiveHotkeyHoldCommand(runtime, world, "live-hotkey-hold");
+        failedAction = "live-hotkey-hold-failed";
+        break;
+
+      case XK_c:
+      case XK_C:
+        sent = SendLinuxLiveHotkeyCancelCommand(runtime, world, "live-hotkey-cancel");
+        failedAction = "live-hotkey-cancel-failed";
+        break;
+
+      case XK_t:
+      case XK_T:
+        sent = SendLinuxLiveHotkeyUseTalentCommand(runtime, world, -1, "live-hotkey-use-talent");
+        failedAction = "live-hotkey-use-talent-failed";
+        break;
+
+      case XK_u:
+      case XK_U:
+        sent = SendLinuxLiveHotkeyUseUnitCommand(runtime, world, "live-hotkey-use-unit");
+        failedAction = "live-hotkey-use-unit-failed";
+        break;
+
+      case XK_g:
+      case XK_G:
+        sent = SendLinuxLiveHotkeyUseConsumableCommand(runtime, world, "live-hotkey-use-consumable");
+        failedAction = "live-hotkey-use-consumable-failed";
+        break;
+
+      default:
+        handled = false;
+        break;
+    }
+  }
+
+  if (!handled)
+  {
+    return false;
+  }
+
+  if (!sent)
+  {
+    runtime->liveHotkeyLastAction = failedAction;
+  }
+  ++runtime->liveHotkeyInputCount;
+  ++runtime->mapPreviewInputCount;
+  runtime->mapPreviewDragging = false;
+  runtime->mapPreviewPanning = false;
+  runtime->characterPreviewDragging = false;
+  return true;
+}
+
 bool HandleLinuxCharacterPreviewInput(
   const LinuxClientLaunchSettings& settings,
   const LinuxInputState& inputState,
@@ -34064,6 +40242,12 @@ bool HandleLinuxCharacterPreviewInput(
 )
 {
   if (!runtime || IsLinuxDiagnosticsOverlayActive(settings, runtime))
+  {
+    return false;
+  }
+
+  // Keep automated create-game smoke deterministic; normal runs still accept live input.
+  if (settings.bootstrapCreateGame && runtime->liveHeroState.ready)
   {
     return false;
   }
@@ -34079,6 +40263,94 @@ bool HandleLinuxCharacterPreviewInput(
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
   {
     const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (HandleLinuxLiveHudInputMessage(message, runtime))
+    {
+      changed = true;
+      continue;
+    }
+    if (HandleLinuxLiveGameplayHotkeyMessage(message, runtime))
+    {
+      changed = true;
+      continue;
+    }
+
+    float liveMinimapWorldX = 0.0f;
+    float liveMinimapWorldY = 0.0f;
+    const bool liveMinimapPoint =
+      ProjectLinuxLiveMinimapScreenToWorld(
+        *runtime,
+        message.x,
+        message.y,
+        &liveMinimapWorldX,
+        &liveMinimapWorldY);
+    if (liveMinimapPoint)
+    {
+      switch (message.msg)
+      {
+        case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+        case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
+          runtime->mapPreviewDragging = false;
+          runtime->mapPreviewPanning = false;
+          runtime->liveMinimapLastAction =
+            message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DOWN ?
+              "live-minimap-press" :
+              "live-minimap-command-press";
+          changed = true;
+          continue;
+
+        case NMainFrame::SWindowsMsg::MOUSE_LB_UP:
+          runtime->mapPreviewDragging = false;
+          runtime->mapPreviewPanning = false;
+          runtime->liveMinimapLastAction =
+            SelectLinuxLiveMinimapTargetFromScreen(
+              runtime,
+              message.x,
+              message.y) ?
+                "live-minimap-select" :
+                "live-minimap-clear";
+          ++runtime->liveMinimapInputCount;
+          ++runtime->mapPreviewInputCount;
+          changed = true;
+          continue;
+
+        case NMainFrame::SWindowsMsg::MOUSE_RB_UP:
+          runtime->mapPreviewDragging = false;
+          runtime->mapPreviewPanning = false;
+          runtime->liveMinimapLastAction =
+            SendLinuxLiveMinimapAttackOrMoveCommandFromScreen(
+              runtime,
+              message.x,
+              message.y) ?
+                runtime->liveMinimapLastAction :
+                "live-minimap-command-failed";
+          ++runtime->liveMinimapInputCount;
+          ++runtime->mapPreviewInputCount;
+          changed = true;
+          continue;
+
+        case NMainFrame::SWindowsMsg::MOUSE_MB_UP:
+          runtime->liveMinimapLastAction =
+            SendLinuxLiveMinimapSignalCommandFromScreen(
+              runtime,
+              message.x,
+              message.y,
+              "live-minimap-signal") ?
+                "live-minimap-signal" :
+                "live-minimap-signal-failed";
+          ++runtime->liveMinimapInputCount;
+          ++runtime->mapPreviewInputCount;
+          changed = true;
+          continue;
+
+        case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
+          changed = true;
+          continue;
+
+        default:
+          break;
+      }
+    }
+
     switch (message.msg)
     {
       case NMainFrame::SWindowsMsg::KEY_DOWN:
@@ -34262,6 +40534,138 @@ bool ProjectLinuxMapPreviewScreenToWorld(
 
   if (worldX) *worldX = projectedX;
   if (worldY) *worldY = projectedY;
+  return true;
+}
+
+bool ProjectLinuxMapPreviewWorldToScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  const LinuxBootstrapScreenRuntime& runtime,
+  const CVec2& worldPosition,
+  int* screenX,
+  int* screenY
+)
+{
+  if (screenX) *screenX = 0;
+  if (screenY) *screenY = 0;
+  if (settings.width <= 0 || settings.height <= 0 || !selectedMapPreview.tactical.ready)
+  {
+    return false;
+  }
+
+  const int screenWidth = static_cast<int>(settings.width);
+  const int screenHeight = static_cast<int>(settings.height);
+  const float rangeX =
+    std::max(1.0f, selectedMapPreview.tactical.maxX - selectedMapPreview.tactical.minX);
+  const float rangeY =
+    std::max(1.0f, selectedMapPreview.tactical.maxY - selectedMapPreview.tactical.minY);
+  const float mapRange = std::max(rangeX, rangeY);
+  const float allowedError = std::max(1.5f, mapRange * 0.0125f);
+  float currentScreenX = static_cast<float>(screenWidth) * 0.5f;
+  float currentScreenY = static_cast<float>(screenHeight) * 0.5f;
+
+  for (int iteration = 0; iteration < 5; ++iteration)
+  {
+    const int sampleScreenX = static_cast<int>(currentScreenX + 0.5f);
+    const int sampleScreenY = static_cast<int>(currentScreenY + 0.5f);
+    float baseWorldX = 0.0f;
+    float baseWorldY = 0.0f;
+    if (!ProjectLinuxMapPreviewScreenToWorld(
+          settings,
+          selectedMapPreview,
+          runtime,
+          sampleScreenX,
+          sampleScreenY,
+          &baseWorldX,
+          &baseWorldY))
+    {
+      return false;
+    }
+
+    const float deltaWorldX = worldPosition.x - baseWorldX;
+    const float deltaWorldY = worldPosition.y - baseWorldY;
+    if (sqrtf(deltaWorldX * deltaWorldX + deltaWorldY * deltaWorldY) <= allowedError)
+    {
+      if (screenX) *screenX = sampleScreenX;
+      if (screenY) *screenY = sampleScreenY;
+      return true;
+    }
+
+    const int samplePixels = std::max(24, std::min(96, std::min(screenWidth, screenHeight) / 8));
+    const int sampleX2 = std::min(screenWidth - 1, sampleScreenX + samplePixels);
+    const int sampleY2 = std::min(screenHeight - 1, sampleScreenY + samplePixels);
+    if (sampleX2 == sampleScreenX || sampleY2 == sampleScreenY)
+    {
+      return false;
+    }
+
+    float worldX2 = 0.0f;
+    float worldY2 = 0.0f;
+    float worldX3 = 0.0f;
+    float worldY3 = 0.0f;
+    if (!ProjectLinuxMapPreviewScreenToWorld(
+          settings,
+          selectedMapPreview,
+          runtime,
+          sampleX2,
+          sampleScreenY,
+          &worldX2,
+          &worldY2) ||
+        !ProjectLinuxMapPreviewScreenToWorld(
+          settings,
+          selectedMapPreview,
+          runtime,
+          sampleScreenX,
+          sampleY2,
+          &worldX3,
+          &worldY3))
+    {
+      return false;
+    }
+
+    const float dxWorldX = worldX2 - baseWorldX;
+    const float dxWorldY = worldY2 - baseWorldY;
+    const float dyWorldX = worldX3 - baseWorldX;
+    const float dyWorldY = worldY3 - baseWorldY;
+    const float determinant = dxWorldX * dyWorldY - dxWorldY * dyWorldX;
+    if (fabs(determinant) <= 0.0001f)
+    {
+      return false;
+    }
+
+    const float scaleX = (deltaWorldX * dyWorldY - deltaWorldY * dyWorldX) / determinant;
+    const float scaleY = (dxWorldX * deltaWorldY - dxWorldY * deltaWorldX) / determinant;
+    currentScreenX += scaleX * static_cast<float>(sampleX2 - sampleScreenX);
+    currentScreenY += scaleY * static_cast<float>(sampleY2 - sampleScreenY);
+    currentScreenX = std::max(2.0f, std::min(static_cast<float>(screenWidth - 3), currentScreenX));
+    currentScreenY = std::max(2.0f, std::min(static_cast<float>(screenHeight - 3), currentScreenY));
+  }
+
+  const int finalScreenX = static_cast<int>(currentScreenX + 0.5f);
+  const int finalScreenY = static_cast<int>(currentScreenY + 0.5f);
+  float projectedWorldX = 0.0f;
+  float projectedWorldY = 0.0f;
+  if (!ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        runtime,
+        finalScreenX,
+        finalScreenY,
+        &projectedWorldX,
+        &projectedWorldY))
+  {
+    return false;
+  }
+
+  const float errorX = worldPosition.x - projectedWorldX;
+  const float errorY = worldPosition.y - projectedWorldY;
+  if (sqrtf(errorX * errorX + errorY * errorY) > allowedError)
+  {
+    return false;
+  }
+
+  if (screenX) *screenX = finalScreenX;
+  if (screenY) *screenY = finalScreenY;
   return true;
 }
 
@@ -34496,6 +40900,274 @@ bool SendLinuxMapPreviewMinimapSignalCommandFromScreen(
     "middle-click-signal");
 }
 
+bool SendLinuxLiveMinimapMoveCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  {
+    return false;
+  }
+
+  if (!SendLinuxBootstrapHeroMoveCommandToTarget(
+        runtime,
+        world,
+        CVec2(targetX, targetY),
+        source && *source ? source : "live-minimap-move",
+        true))
+  {
+    return false;
+  }
+
+  ++runtime->liveMinimapMoveCommandsSent;
+  runtime->liveMinimapCommandTargetDrawn = true;
+  runtime->liveMinimapCommandTargetX = runtime->mapPreviewCommandMoveTargetX;
+  runtime->liveMinimapCommandTargetY = runtime->mapPreviewCommandMoveTargetY;
+  runtime->liveMinimapLastAction = source && *source ? source : "live-minimap-move";
+  return true;
+}
+
+bool SendLinuxLiveMinimapAttackOrMoveCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::LinuxDynamicWorldMarker marker;
+  float targetDistance = 0.0f;
+  if (FindLinuxMapPreviewMarkerNearWorld(
+        world,
+        CVec2(targetX, targetY),
+        hero,
+        true,
+        &marker,
+        &targetDistance))
+  {
+    NWorld::PFBaseUnit* targetUnit = world->FindLinuxUnitByObjectId(marker.objectId);
+    if (targetUnit)
+    {
+      targetPlayerId = marker.playerId;
+      targetClientId = marker.userId;
+      RecordLinuxMapPreviewSelectedTarget(
+        runtime,
+        marker,
+        "live-minimap-select-target",
+        targetDistance);
+      if (SendLinuxBootstrapHeroAttackUnitCommandToTarget(
+            runtime,
+            world,
+            targetUnit,
+            targetPlayerId,
+            targetClientId,
+            "live-minimap-attack"))
+      {
+        ++runtime->liveMinimapAttackCommandsSent;
+        runtime->liveMinimapCommandTargetDrawn = true;
+        runtime->liveMinimapCommandTargetX = marker.x;
+        runtime->liveMinimapCommandTargetY = marker.y;
+        runtime->liveMinimapLastAction = "live-minimap-attack";
+        (void)playerId;
+        (void)clientId;
+        return true;
+      }
+    }
+  }
+
+  if (SendLinuxLiveMinimapMoveCommandFromScreen(
+        runtime,
+        mouseX,
+        mouseY,
+        "live-minimap-move"))
+  {
+    (void)playerId;
+    (void)clientId;
+    return true;
+  }
+
+  return false;
+}
+
+bool SendLinuxLiveMinimapSignalCommandFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  if (!hero)
+  {
+    return false;
+  }
+
+  int targetPlayerId = -1;
+  int targetClientId = -1;
+  NWorld::PFBaseUnit* selectedUnit = 0;
+  NWorld::LinuxDynamicWorldMarker marker;
+  float markerDistance = 0.0f;
+  if (FindLinuxMapPreviewMarkerNearWorld(
+        world,
+        CVec2(targetX, targetY),
+        hero,
+        false,
+        &marker,
+        &markerDistance))
+  {
+    selectedUnit = world->FindLinuxUnitByObjectId(marker.objectId);
+    if (selectedUnit)
+    {
+      targetPlayerId = marker.playerId;
+      targetClientId = marker.userId;
+    }
+  }
+
+  if (!SendLinuxBootstrapHeroMinimapSignalCommandToTarget(
+        runtime,
+        world,
+        CVec2(targetX, targetY),
+        selectedUnit,
+        selectedUnit ? targetPlayerId : -1,
+        selectedUnit ? targetClientId : -1,
+        source && *source ? source : "live-minimap-signal"))
+  {
+    (void)playerId;
+    (void)clientId;
+    return false;
+  }
+
+  ++runtime->liveMinimapSignalCommandsSent;
+  runtime->liveMinimapCommandTargetDrawn = true;
+  runtime->liveMinimapCommandTargetX = targetX;
+  runtime->liveMinimapCommandTargetY = targetY;
+  runtime->liveMinimapLastAction = source && *source ? source : "live-minimap-signal";
+  (void)playerId;
+  (void)clientId;
+  return true;
+}
+
+bool SelectLinuxLiveMinimapTargetFromScreen(
+  LinuxBootstrapScreenRuntime* runtime,
+  int mouseX,
+  int mouseY
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+  if (!world)
+  {
+    return false;
+  }
+
+  float targetX = 0.0f;
+  float targetY = 0.0f;
+  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  {
+    return false;
+  }
+
+  int playerId = -1;
+  int clientId = -1;
+  NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, &playerId, &clientId);
+  NWorld::LinuxDynamicWorldMarker marker;
+  float markerDistance = 0.0f;
+  if (!FindLinuxMapPreviewMarkerNearWorld(
+        world,
+        CVec2(targetX, targetY),
+        hero,
+        false,
+        &marker,
+        &markerDistance))
+  {
+    ClearLinuxMapPreviewSelectedTarget(runtime, "live-minimap-clear");
+    runtime->liveMinimapLastAction = "live-minimap-clear";
+    (void)playerId;
+    (void)clientId;
+    return false;
+  }
+
+  RecordLinuxMapPreviewSelectedTarget(
+    runtime,
+    marker,
+    "live-minimap-select",
+    markerDistance);
+  ++runtime->liveMinimapSelectionCount;
+  runtime->liveMinimapCommandTargetDrawn = true;
+  runtime->liveMinimapCommandTargetX = marker.x;
+  runtime->liveMinimapCommandTargetY = marker.y;
+  runtime->liveMinimapLastAction = "live-minimap-select";
+  (void)playerId;
+  (void)clientId;
+  return true;
+}
+
 bool SelectLinuxMapPreviewTargetFromScreen(
   const LinuxClientLaunchSettings& settings,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -34558,6 +41230,304 @@ bool SelectLinuxMapPreviewTargetFromScreen(
   return true;
 }
 
+void RecordLinuxLiveMapPreviewCommandResult(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source,
+  float targetX,
+  float targetY
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveMapPreviewCommandTargetX = targetX;
+  runtime->liveMapPreviewCommandTargetY = targetY;
+  runtime->liveMapPreviewLastAction =
+    source && *source ? source : "live-map-preview";
+  runtime->mapPreviewLastAction = runtime->liveMapPreviewLastAction;
+}
+
+bool SendLinuxLiveMapPreviewMoveCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (!SendLinuxMapPreviewMoveCommandFromScreen(
+        settings,
+        selectedMapPreview,
+        mouseX,
+        mouseY,
+        runtime))
+  {
+    return false;
+  }
+
+  ++runtime->liveMapPreviewMoveCommandsSent;
+  runtime->mapPreviewCommandSource =
+    source && *source ? source : "live-map-preview-move";
+  RecordLinuxLiveMapPreviewCommandResult(
+    runtime,
+    source && *source ? source : "live-map-preview-move",
+    runtime->mapPreviewCommandMoveTargetX,
+    runtime->mapPreviewCommandMoveTargetY);
+  return true;
+}
+
+bool SendLinuxLiveMapPreviewAttackOrMoveCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (SendLinuxMapPreviewAttackCommandFromScreen(
+        settings,
+        selectedMapPreview,
+        mouseX,
+        mouseY,
+        runtime))
+  {
+    ++runtime->liveMapPreviewAttackCommandsSent;
+    runtime->mapPreviewCommandActionSource = "live-map-preview-attack";
+    RecordLinuxLiveMapPreviewCommandResult(
+      runtime,
+      "live-map-preview-attack",
+      runtime->mapPreviewCommandActionTargetX,
+      runtime->mapPreviewCommandActionTargetY);
+    return true;
+  }
+
+  if (SendLinuxLiveMapPreviewMoveCommandFromScreen(
+        settings,
+        selectedMapPreview,
+        mouseX,
+        mouseY,
+        runtime,
+        "live-map-preview-move"))
+  {
+    runtime->mapPreviewLastAction = "live-map-preview-move";
+    return true;
+  }
+
+  return false;
+}
+
+bool SendLinuxLiveMapPreviewSignalCommandFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (!SendLinuxMapPreviewMinimapSignalCommandFromScreen(
+        settings,
+        selectedMapPreview,
+        mouseX,
+        mouseY,
+        runtime))
+  {
+    return false;
+  }
+
+  ++runtime->liveMapPreviewSignalCommandsSent;
+  runtime->mapPreviewCommandActionSource = "live-map-preview-signal";
+  RecordLinuxLiveMapPreviewCommandResult(
+    runtime,
+    "live-map-preview-signal",
+    runtime->mapPreviewCommandActionTargetX,
+    runtime->mapPreviewCommandActionTargetY);
+  return true;
+}
+
+bool SelectLinuxLiveMapPreviewTargetFromScreen(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  int mouseX,
+  int mouseY,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (!SelectLinuxMapPreviewTargetFromScreen(
+        settings,
+        selectedMapPreview,
+        mouseX,
+        mouseY,
+        runtime))
+  {
+    runtime->liveMapPreviewLastAction = "live-map-preview-clear";
+    return false;
+  }
+
+  ++runtime->liveMapPreviewSelectionCount;
+  runtime->mapPreviewSelectedTargetSource = "live-map-preview-select";
+  RecordLinuxLiveMapPreviewCommandResult(
+    runtime,
+    "live-map-preview-select",
+    runtime->mapPreviewSelectedTargetX,
+    runtime->mapPreviewSelectedTargetY);
+  return true;
+}
+
+size_t ClampLinuxReplayInputPlaybackRate(size_t value)
+{
+  if (value < 1)
+  {
+    return 1;
+  }
+  if (value > 8)
+  {
+    return 8;
+  }
+  return value;
+}
+
+bool HandleLinuxReplayInputControls(
+  const LinuxInputState& inputState,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !runtime->replayFileInputActive)
+  {
+    return false;
+  }
+
+  bool changed = false;
+  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
+  {
+    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
+    {
+      continue;
+    }
+
+    switch (message.nKey)
+    {
+      case XK_p:
+      case XK_P:
+      case XK_space:
+        runtime->replayInputPaused = !runtime->replayInputPaused;
+        ++runtime->replayInputPauseToggleCount;
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource =
+          runtime->replayInputPaused ? "keyboard-pause" : "keyboard-resume";
+        changed = true;
+        break;
+
+      case XK_n:
+      case XK_N:
+      case XK_period:
+      case XK_KP_Decimal:
+        runtime->replayInputPaused = true;
+        ++runtime->replayInputPendingManualSteps;
+        ++runtime->replayInputManualStepRequests;
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "keyboard-step";
+        changed = true;
+        break;
+
+      case XK_bracketright:
+      case XK_equal:
+      case XK_plus:
+      case XK_KP_Add:
+      {
+        const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
+        runtime->replayInputPlaybackRate = newRate;
+        if (newRate != oldRate)
+        {
+          ++runtime->replayInputSpeedChangeCount;
+        }
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "keyboard-speed-up";
+        changed = true;
+        break;
+      }
+
+      case XK_bracketleft:
+      case XK_minus:
+      case XK_KP_Subtract:
+      {
+        const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
+        runtime->replayInputPlaybackRate = newRate;
+        if (newRate != oldRate)
+        {
+          ++runtime->replayInputSpeedChangeCount;
+        }
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "keyboard-speed-down";
+        changed = true;
+        break;
+      }
+
+      case XK_0:
+      case XK_KP_0:
+        runtime->replayInputPlaybackRate = 1;
+        ++runtime->replayInputSpeedChangeCount;
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "keyboard-speed-reset";
+        changed = true;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return changed;
+}
+
+bool IsLinuxMapPreviewUiReservedPoint(
+  const LinuxBootstrapScreenRuntime* runtime,
+  const LinuxScreenRect& heroPreviewRect,
+  int x,
+  int y
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (IsPointInsideLinuxScreenRect(heroPreviewRect, x, y) ||
+      IsPointInsideLinuxLiveHudCommandSurface(runtime, x, y))
+  {
+    return true;
+  }
+
+  float worldX = 0.0f;
+  float worldY = 0.0f;
+  return ProjectLinuxLiveMinimapScreenToWorld(*runtime, x, y, &worldX, &worldY);
+}
+
 bool HandleLinuxMapPreviewInput(
   const LinuxClientLaunchSettings& settings,
   const LinuxInputState& inputState,
@@ -34567,8 +41537,21 @@ bool HandleLinuxMapPreviewInput(
 {
   if (!runtime ||
       IsLinuxDiagnosticsOverlayActive(settings, runtime) ||
-      !IsLinuxBootstrapLoadingScreenActive(runtime) ||
       !selectedMapPreview.tactical.ready)
+  {
+    return false;
+  }
+
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  NWorld::PFWorld* activeWorld = GetLinuxBootstrapRuntimeWorld(runtime);
+  const bool liveMapActive = runtime->liveHeroState.ready && activeWorld != 0;
+  runtime->liveMapPreviewCommandSurfaceReady = liveMapActive;
+  if (!loadingActive && !liveMapActive)
+  {
+    return false;
+  }
+  // Keep automated create-game smoke deterministic; normal runs still accept map input.
+  if (settings.bootstrapCreateGame)
   {
     return false;
   }
@@ -34577,7 +41560,7 @@ bool HandleLinuxMapPreviewInput(
   const LinuxScreenRect heroPreviewRect = ResolveLinuxCharacterPreviewRect(
     settings.width,
     settings.height,
-    true
+    loadingActive
   );
 
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
@@ -34591,48 +41574,87 @@ bool HandleLinuxMapPreviewInput(
           case XK_q:
           case XK_Q:
             RotateLinuxMapPreview(runtime, -15.0f, "keyboard-left");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-left";
+            }
             changed = true;
             break;
 
           case XK_e:
           case XK_E:
             RotateLinuxMapPreview(runtime, 15.0f, "keyboard-right");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-right";
+            }
             changed = true;
             break;
 
           case XK_z:
           case XK_Z:
             ZoomLinuxMapPreview(runtime, 0.88f, "keyboard-zoom-out");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-zoom-out";
+            }
             changed = true;
             break;
 
           case XK_x:
           case XK_X:
             ZoomLinuxMapPreview(runtime, 1.14f, "keyboard-zoom-in");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-zoom-in";
+            }
             changed = true;
             break;
 
           case XK_i:
           case XK_I:
             TiltLinuxMapPreview(runtime, -4.0f, "keyboard-tilt-up");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-tilt-up";
+            }
             changed = true;
             break;
 
           case XK_k:
           case XK_K:
             TiltLinuxMapPreview(runtime, 4.0f, "keyboard-tilt-down");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-tilt-down";
+            }
             changed = true;
             break;
 
           case XK_r:
           case XK_R:
             ResetLinuxMapPreviewCamera(runtime, "keyboard-reset");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "keyboard-reset";
+            }
             changed = true;
             break;
 
           case XK_s:
           case XK_S:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             runtime->mapPreviewLastAction =
               SendLinuxBootstrapHeroStopCommandNow(runtime, world, "keyboard-stop") ?
@@ -34646,6 +41668,10 @@ bool HandleLinuxMapPreviewInput(
           case XK_a:
           case XK_A:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             if (!SendLinuxBootstrapHeroAttackSelectedOrNearestCommand(
                   runtime,
@@ -34663,6 +41689,10 @@ bool HandleLinuxMapPreviewInput(
           case XK_f:
           case XK_F:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             if (!SendLinuxBootstrapHeroFollowSelectedOrNearestCommand(
                   runtime,
@@ -34680,6 +41710,10 @@ bool HandleLinuxMapPreviewInput(
           case XK_h:
           case XK_H:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             runtime->mapPreviewLastAction =
               SendLinuxBootstrapHeroHoldCommandNow(runtime, world, "keyboard-hold") ?
@@ -34693,6 +41727,10 @@ bool HandleLinuxMapPreviewInput(
           case XK_c:
           case XK_C:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             runtime->mapPreviewLastAction =
               SendLinuxBootstrapHeroCancelChannellingCommandNow(runtime, world, "keyboard-cancel") ?
@@ -34705,6 +41743,10 @@ bool HandleLinuxMapPreviewInput(
 
           case XK_1:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             int talentLevel = 0;
             int talentSlot = 0;
@@ -34738,6 +41780,10 @@ bool HandleLinuxMapPreviewInput(
 
           case XK_2:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             if (!SendLinuxBootstrapHeroUseTalentSelectedOrNearestCommand(
                   runtime,
@@ -34754,6 +41800,10 @@ bool HandleLinuxMapPreviewInput(
 
           case XK_3:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             CVec2 targetPosition(0.0f, 0.0f);
             bool sent = false;
@@ -34788,6 +41838,10 @@ bool HandleLinuxMapPreviewInput(
 
           case XK_4:
           {
+            if (runtime->liveHeroState.ready)
+            {
+              break;
+            }
             NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
             if (!SendLinuxBootstrapHeroUseUnitSelectedOrNearestCommand(
                   runtime,
@@ -34808,24 +41862,34 @@ bool HandleLinuxMapPreviewInput(
         break;
 
       case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
-        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
           const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
           if (wheelDelta > 0)
           {
             ZoomLinuxMapPreview(runtime, 1.10f, "mouse-wheel-zoom-in");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "mouse-wheel-zoom-in";
+            }
             changed = true;
           }
           else if (wheelDelta < 0)
           {
             ZoomLinuxMapPreview(runtime, 0.91f, "mouse-wheel-zoom-out");
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "mouse-wheel-zoom-out";
+            }
             changed = true;
           }
         }
         break;
 
       case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
-        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
           runtime->mapPreviewDragging = true;
           runtime->mapPreviewDragMoved = false;
@@ -34858,6 +41922,11 @@ bool HandleLinuxMapPreviewInput(
               static_cast<float>(deltaX) * 0.28f,
               "mouse-drag"
             );
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+              runtime->liveMapPreviewLastAction = "mouse-drag";
+            }
             changed = true;
           }
         }
@@ -34873,16 +41942,28 @@ bool HandleLinuxMapPreviewInput(
           runtime->mapPreviewDragging = false;
           if (selectClick)
           {
-            runtime->mapPreviewLastAction =
-              SelectLinuxMapPreviewTargetFromScreen(
-                settings,
-                selectedMapPreview,
-                message.x,
-                message.y,
-                runtime) ?
-                  "left-click-select" :
-                  "left-click-clear";
+            const bool selected =
+              liveMapActive ?
+                SelectLinuxLiveMapPreviewTargetFromScreen(
+                  settings,
+                  selectedMapPreview,
+                  message.x,
+                  message.y,
+                  runtime) :
+                SelectLinuxMapPreviewTargetFromScreen(
+                  settings,
+                  selectedMapPreview,
+                  message.x,
+                  message.y,
+                  runtime);
+            runtime->mapPreviewLastAction = selected ?
+              (liveMapActive ? "live-map-preview-select" : "left-click-select") :
+              (liveMapActive ? "live-map-preview-clear" : "left-click-clear");
             ++runtime->mapPreviewInputCount;
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+            }
           }
           else
           {
@@ -34899,7 +41980,7 @@ bool HandleLinuxMapPreviewInput(
         break;
 
       case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
-        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
           runtime->mapPreviewPanning = true;
           runtime->mapPreviewPanMoved = false;
@@ -34919,12 +42000,20 @@ bool HandleLinuxMapPreviewInput(
           runtime->mapPreviewPanning = false;
           if (commandClick)
           {
-            if (SendLinuxMapPreviewMoveOrAttackCommandFromScreen(
-                  settings,
-                  selectedMapPreview,
-                  message.x,
-                  message.y,
-                  runtime))
+            if ((liveMapActive &&
+                 SendLinuxLiveMapPreviewAttackOrMoveCommandFromScreen(
+                   settings,
+                   selectedMapPreview,
+                   message.x,
+                   message.y,
+                   runtime)) ||
+                (!liveMapActive &&
+                 SendLinuxMapPreviewMoveOrAttackCommandFromScreen(
+                   settings,
+                   selectedMapPreview,
+                   message.x,
+                   message.y,
+                   runtime)))
             {
               if (runtime->mapPreviewLastAction.empty())
               {
@@ -34934,8 +42023,16 @@ bool HandleLinuxMapPreviewInput(
             else
             {
               runtime->mapPreviewLastAction = "right-click-move-failed";
+              if (liveMapActive)
+              {
+                runtime->liveMapPreviewLastAction = "live-map-preview-command-failed";
+              }
             }
             ++runtime->mapPreviewInputCount;
+            if (liveMapActive)
+            {
+              ++runtime->liveMapPreviewInputCount;
+            }
           }
           else
           {
@@ -34946,18 +42043,34 @@ bool HandleLinuxMapPreviewInput(
         break;
 
       case NMainFrame::SWindowsMsg::MOUSE_MB_UP:
-        if (!IsPointInsideLinuxScreenRect(heroPreviewRect, message.x, message.y))
+        if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
-          runtime->mapPreviewLastAction =
-            SendLinuxMapPreviewMinimapSignalCommandFromScreen(
-              settings,
-              selectedMapPreview,
-              message.x,
-              message.y,
-              runtime) ?
-                "middle-click-signal" :
-                "middle-click-signal-failed";
+          const bool sent =
+            liveMapActive ?
+              SendLinuxLiveMapPreviewSignalCommandFromScreen(
+                settings,
+                selectedMapPreview,
+                message.x,
+                message.y,
+                runtime) :
+              SendLinuxMapPreviewMinimapSignalCommandFromScreen(
+                settings,
+                selectedMapPreview,
+                message.x,
+                message.y,
+                runtime);
+          runtime->mapPreviewLastAction = sent ?
+            (liveMapActive ? "live-map-preview-signal" : "middle-click-signal") :
+            (liveMapActive ? "live-map-preview-signal-failed" : "middle-click-signal-failed");
+          if (liveMapActive && !sent)
+          {
+            runtime->liveMapPreviewLastAction = "live-map-preview-signal-failed";
+          }
           ++runtime->mapPreviewInputCount;
+          if (liveMapActive)
+          {
+            ++runtime->liveMapPreviewInputCount;
+          }
           changed = true;
         }
         break;
@@ -34988,6 +42101,11 @@ bool HandleLinuxMapPreviewInput(
           static_cast<float>(-deltaY) * panScale,
           "mouse-pan"
         );
+        if (liveMapActive)
+        {
+          ++runtime->liveMapPreviewInputCount;
+          runtime->liveMapPreviewLastAction = "mouse-pan";
+        }
         changed = true;
       }
     }
@@ -41221,6 +48339,7 @@ struct LinuxOverlayUiRenderContext
   double elapsedSeconds;
   int width;
   int height;
+  bool uiCallbackRendered;
 
   LinuxOverlayUiRenderContext()
     : overlay(nullptr),
@@ -41254,7 +48373,8 @@ struct LinuxOverlayUiRenderContext
       inputState(nullptr),
       elapsedSeconds(0.0),
       width(0),
-      height(0)
+      height(0),
+      uiCallbackRendered(false)
   {
   }
 };
@@ -42827,6 +49947,12 @@ void DrawLinuxCharacterPreviewMannequin(
   DrawLinuxBootstrap3DCuboid(1.42f, 4.65f, -0.28f, 0.22f, 0.08f, 0.42f, 212, 186, 104);
 }
 
+void DrawLinuxBootstrapHeroPreviewDetails(
+  const LinuxOverlayUiRenderContext& renderContext,
+  const LinuxScreenRect& rect,
+  const LinuxHeroCatalogEntry* heroEntry
+);
+
 void DrawLinuxBootstrapCharacterPreview(const LinuxOverlayUiRenderContext& renderContext)
 {
   if (!renderContext.overlay ||
@@ -42895,6 +50021,7 @@ void DrawLinuxBootstrapCharacterPreview(const LinuxOverlayUiRenderContext& rende
   glDisable(GL_DEPTH_TEST);
 
   ApplyOpenGl2DProjection(width, height);
+  DrawLinuxBootstrapHeroPreviewDetails(renderContext, rect, heroEntry);
   const std::string heroTitle = heroEntry ?
     (heroEntry->title.empty() ? ResolveHeroCatalogId(*heroEntry) : heroEntry->title) :
     std::string("Selected hero");
@@ -43495,6 +50622,853 @@ void DrawLinuxLobbyRadio(
   DrawOpenGlText(overlay, rx + size + layout.W(12), ry + ResolveOpenGlTextBaseline(overlay, 0, size), text);
 }
 
+std::string ResolveLinuxLobbyTextureAssetKey(const LinuxTextureAssetPreview& texturePreview)
+{
+  if (!texturePreview.sourceFile.empty())
+  {
+    return texturePreview.sourceFile;
+  }
+  if (!texturePreview.reference.empty())
+  {
+    return texturePreview.reference;
+  }
+  if (!texturePreview.descriptorFile.empty())
+  {
+    return texturePreview.descriptorFile;
+  }
+  return NStr::StrFmt(
+    "texture:%lux%lu",
+    texturePreview.width,
+    texturePreview.height
+  );
+}
+
+bool ResolveLinuxLobbyTextureAsset(
+  LinuxWindowOverlay* overlay,
+  const LinuxTextureAssetPreview& texturePreview,
+  LinuxWindowOverlay::OpenGlTexture* texture,
+  std::string* sourceFile
+)
+{
+  if (!overlay || !texture || !sourceFile)
+  {
+    return false;
+  }
+
+  if (!texturePreview.artworkLoaded || !texturePreview.artwork.ready)
+  {
+    if (texture->texture)
+    {
+      DeleteOpenGlTexture(texture);
+    }
+    sourceFile->clear();
+    return false;
+  }
+
+  const std::string nextSource = ResolveLinuxLobbyTextureAssetKey(texturePreview);
+  if (texture->texture && *sourceFile == nextSource)
+  {
+    return true;
+  }
+
+  DeleteOpenGlTexture(texture);
+  if (!UploadOpenGlTexture(overlay, texturePreview.artwork, texture))
+  {
+    sourceFile->clear();
+    return false;
+  }
+
+  *sourceFile = nextSource;
+  return true;
+}
+
+const LinuxTextureAssetPreview* ResolveLinuxLobbyPreferredMinimap(
+  const LinuxSelectedMapPreview* selectedMapPreview
+)
+{
+  if (!selectedMapPreview)
+  {
+    return 0;
+  }
+
+  if (selectedMapPreview->minimapFirst.artworkLoaded)
+  {
+    return &selectedMapPreview->minimapFirst;
+  }
+  if (selectedMapPreview->minimapNeutral.artworkLoaded)
+  {
+    return &selectedMapPreview->minimapNeutral;
+  }
+  if (selectedMapPreview->minimapSecond.artworkLoaded)
+  {
+    return &selectedMapPreview->minimapSecond;
+  }
+  return 0;
+}
+
+std::string ResolveLinuxLobbyLineupSlotTitle(
+  const LinuxWindowOverlay* overlay,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchSlot& slot
+)
+{
+  std::string title = slot.heroTitle;
+  std::string fallback = slot.heroId;
+  if (slot.heroIndex < heroCatalog.entries.size())
+  {
+    const LinuxHeroCatalogEntry& heroEntry = heroCatalog.entries[slot.heroIndex];
+    if (title.empty())
+    {
+      title = heroEntry.title;
+    }
+    if (fallback.empty())
+    {
+      fallback = ResolveHeroCatalogId(heroEntry);
+    }
+  }
+
+  if (title.empty())
+  {
+    title = fallback.empty() ? std::string("Hero") : fallback;
+  }
+
+  return MakeOpenGlOverlayText(overlay, title, fallback);
+}
+
+size_t DrawLinuxLobbyLineupStrip(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+  SetOpenGlColor(6, 9, 12, 168);
+  DrawOpenGlRect(rx, ry, rw, rh);
+  SetOpenGlColor(74, 83, 82, 160);
+  DrawOpenGlBorderRect(rx, ry, rw, rh);
+
+  if (localMatchPreview.lineup.empty())
+  {
+    SetOpenGlColor(197, 203, 198, 215);
+    DrawOpenGlTextInBox(
+      overlay,
+      rx + layout.W(8),
+      ry,
+      std::max(1, rw - layout.W(16)),
+      rh,
+      "Lineup not generated",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    return 0;
+  }
+
+  const size_t slotCount = std::min<size_t>(localMatchPreview.lineup.size(), 10);
+  const int gap = std::max(2, layout.W(5));
+  const int slotW = std::max(24, (rw - gap * static_cast<int>(slotCount + 1)) / static_cast<int>(slotCount));
+  const int slotH = std::max(14, rh - layout.H(8));
+  size_t drawnSlots = 0;
+  for (size_t i = 0; i < slotCount; ++i)
+  {
+    const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
+    const int slotX = rx + gap + static_cast<int>(i) * (slotW + gap);
+    const int slotY = ry + std::max(2, (rh - slotH) / 2);
+
+    if (slot.team == 1)
+    {
+      SetOpenGlColor(45, 81, 136, slot.human ? 230 : 190);
+    }
+    else if (slot.team == 2)
+    {
+      SetOpenGlColor(142, 64, 55, slot.human ? 230 : 190);
+    }
+    else
+    {
+      SetOpenGlColor(57, 63, 66, 190);
+    }
+    DrawOpenGlRect(slotX, slotY, slotW, slotH);
+    SetOpenGlColor(slot.human ? 236 : 104, slot.human ? 202 : 117, slot.human ? 113 : 124, 225);
+    DrawOpenGlBorderRect(slotX, slotY, slotW, slotH);
+
+    std::string label = ResolveLinuxLobbyLineupSlotTitle(overlay, heroCatalog, slot);
+    if (slot.human)
+    {
+      label = "P " + label;
+    }
+    SetOpenGlColor(239, 238, 222, 235);
+    DrawOpenGlTextInBox(
+      overlay,
+      slotX + layout.W(3),
+      slotY,
+      std::max(1, slotW - layout.W(6)),
+      slotH,
+      label,
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++drawnSlots;
+  }
+
+  return drawnSlots;
+}
+
+void DrawLinuxLobbySelectedMapDetails(
+  LinuxWindowOverlay* overlay,
+  const LinuxLobbyLayoutTransform& layout,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  const LinuxMapCatalogEntry* selectedEntry = 0;
+  if (!mapCatalog.entries.empty() && mapBrowserState.selectedIndex < mapCatalog.entries.size())
+  {
+    selectedEntry = &mapCatalog.entries[mapBrowserState.selectedIndex];
+  }
+
+  std::string title = "Selected map";
+  std::string details = "PvP";
+  std::string description = "No maps found";
+  if (selectedEntry)
+  {
+    title = ResolveLinuxLobbyMapTitle(overlay, *selectedEntry, mapBrowserState.selectedIndex);
+    details = ResolveLinuxLobbyMapDetails(overlay, *selectedEntry);
+    description = ResolveLinuxLobbyMapDescription(overlay, *selectedEntry);
+  }
+
+  DrawLinuxLobbyPanel(overlay, layout, 65, 84, 705, 236);
+  DrawLinuxLobbyHeader(overlay, layout, 77, 96, 681, 38, title);
+
+  const int artX = layout.X(82);
+  const int artY = layout.Y(143);
+  const int artW = layout.W(230);
+  const int artH = layout.H(124);
+  bool backDrawn = false;
+  bool logoDrawn = false;
+  bool minimapDrawn = false;
+  size_t textureCount = 0;
+
+  if (selectedMapPreview &&
+      ResolveLinuxLobbyTextureAsset(
+        overlay,
+        selectedMapPreview->loadingBack,
+        &overlay->lobbySelectedMapBack,
+        &overlay->lobbySelectedMapBackSourceFile))
+  {
+    DrawOpenGlTextureCover(
+      overlay->lobbySelectedMapBack.texture,
+      overlay->lobbySelectedMapBack.width,
+      overlay->lobbySelectedMapBack.height,
+      artX,
+      artY,
+      artW,
+      artH
+    );
+    backDrawn = true;
+    ++textureCount;
+  }
+  else
+  {
+    SetOpenGlColor(18, 25, 29, 230);
+    DrawOpenGlRect(artX, artY, artW, artH);
+  }
+
+  SetOpenGlColor(10, 13, 16, 92);
+  DrawOpenGlRect(artX, artY, artW, artH);
+  SetOpenGlColor(111, 98, 63, 220);
+  DrawOpenGlBorderRect(artX, artY, artW, artH);
+
+  if (selectedMapPreview &&
+      ResolveLinuxLobbyTextureAsset(
+        overlay,
+        selectedMapPreview->loadingLogo,
+        &overlay->lobbySelectedMapLogo,
+        &overlay->lobbySelectedMapLogoSourceFile))
+  {
+    DrawOpenGlTextureCover(
+      overlay->lobbySelectedMapLogo.texture,
+      overlay->lobbySelectedMapLogo.width,
+      overlay->lobbySelectedMapLogo.height,
+      artX + layout.W(15),
+      artY + layout.H(8),
+      artW - layout.W(30),
+      layout.H(42)
+    );
+    logoDrawn = true;
+    ++textureCount;
+  }
+
+  const LinuxTextureAssetPreview* minimapPreview =
+    ResolveLinuxLobbyPreferredMinimap(selectedMapPreview);
+  if (minimapPreview &&
+      ResolveLinuxLobbyTextureAsset(
+        overlay,
+        *minimapPreview,
+        &overlay->lobbySelectedMapMinimap,
+        &overlay->lobbySelectedMapMinimapSourceFile))
+  {
+    const int minimapSize = std::max(42, layout.H(72));
+    const int minimapX = artX + artW - minimapSize - layout.W(8);
+    const int minimapY = artY + artH - minimapSize - layout.H(8);
+    SetOpenGlColor(5, 8, 10, 188);
+    DrawOpenGlRect(minimapX - layout.W(3), minimapY - layout.H(3), minimapSize + layout.W(6), minimapSize + layout.H(6));
+    DrawOpenGlTextureCover(
+      overlay->lobbySelectedMapMinimap.texture,
+      overlay->lobbySelectedMapMinimap.width,
+      overlay->lobbySelectedMapMinimap.height,
+      minimapX,
+      minimapY,
+      minimapSize,
+      minimapSize
+    );
+    SetOpenGlColor(209, 184, 99, 230);
+    DrawOpenGlBorderRect(minimapX, minimapY, minimapSize, minimapSize);
+    minimapDrawn = true;
+    ++textureCount;
+  }
+
+  SetOpenGlColor(218, 212, 185, 235);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(331),
+    layout.Y(143),
+    layout.W(412),
+    layout.H(23),
+    details,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  SetOpenGlColor(176, 188, 184, 220);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(331),
+    layout.Y(170),
+    layout.W(412),
+    layout.H(54),
+    description,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_TOP,
+    true
+  );
+
+  const size_t markers = selectedMapPreview ? selectedMapPreview->tactical.markers.size() : 0;
+  const size_t terrainTriangles = selectedMapPreview ?
+    selectedMapPreview->terrainHeightmap.sampledTriangles :
+    0;
+  std::string stats = selectedMapPreview ?
+    NStr::StrFmt(
+      "Objects %lu  Markers %lu  Terrain %lu tris  Water %lu  Lights %lu",
+      static_cast<unsigned long>(selectedMapPreview->objectCount),
+      static_cast<unsigned long>(markers),
+      static_cast<unsigned long>(terrainTriangles),
+      static_cast<unsigned long>(selectedMapPreview->waterZoneCount),
+      static_cast<unsigned long>(selectedMapPreview->pointLightCount)
+    ) :
+    std::string("Map data not loaded");
+  SetOpenGlColor(213, 195, 132, 226);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(331),
+    layout.Y(229),
+    layout.W(412),
+    layout.H(38),
+    stats,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_TOP,
+    true
+  );
+
+  const size_t lineupSlots = DrawLinuxLobbyLineupStrip(
+    overlay,
+    layout,
+    heroCatalog,
+    localMatchPreview,
+    82,
+    280,
+    661,
+    29
+  );
+
+  if (runtime)
+  {
+    runtime->visibleLobbyDetailsDrawn = true;
+    runtime->visibleLobbyDetailsArtworkDrawn = backDrawn || logoDrawn;
+    runtime->visibleLobbyDetailsMinimapDrawn = minimapDrawn;
+    runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
+    runtime->visibleLobbyDetailsTextureCount = textureCount;
+  }
+}
+
+const LinuxWindowOverlay::OpenGlTexture* ResolveLinuxLobbyCachedTextureAsset(
+  LinuxWindowOverlay* overlay,
+  const LinuxTextureAssetPreview& texturePreview
+)
+{
+  if (!overlay || !texturePreview.artworkLoaded || !texturePreview.artwork.ready)
+  {
+    return 0;
+  }
+
+  const std::string sourceKey = ResolveLinuxLobbyTextureAssetKey(texturePreview);
+  if (overlay->lobbyTextureFailedSourceFiles.find(sourceKey) !=
+      overlay->lobbyTextureFailedSourceFiles.end())
+  {
+    return 0;
+  }
+
+  std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator cachedTexture =
+    overlay->lobbyTextureCache.find(sourceKey);
+  if (cachedTexture != overlay->lobbyTextureCache.end())
+  {
+    return &cachedTexture->second;
+  }
+
+  LinuxWindowOverlay::OpenGlTexture uploadedTexture;
+  if (!UploadOpenGlTexture(overlay, texturePreview.artwork, &uploadedTexture))
+  {
+    overlay->lobbyTextureFailedSourceFiles.insert(sourceKey);
+    return 0;
+  }
+
+  const std::pair<std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator, bool> inserted =
+    overlay->lobbyTextureCache.insert(
+      std::make_pair(sourceKey, uploadedTexture)
+    );
+  return &inserted.first->second;
+}
+
+const LinuxWindowOverlay::OpenGlTexture* ResolveLinuxLobbyCachedTextureReference(
+  LinuxWindowOverlay* overlay,
+  const LinuxClientEnvironment* environment,
+  const std::string& reference
+)
+{
+  if (!overlay || !environment || reference.empty())
+  {
+    return 0;
+  }
+
+  const std::string sourceKey = NormalizeDataRefPath(reference);
+  if (overlay->lobbyTextureFailedSourceFiles.find(sourceKey) !=
+      overlay->lobbyTextureFailedSourceFiles.end())
+  {
+    return 0;
+  }
+
+  std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator cachedTexture =
+    overlay->lobbyTextureCache.find(sourceKey);
+  if (cachedTexture != overlay->lobbyTextureCache.end())
+  {
+    return &cachedTexture->second;
+  }
+
+  LinuxTextureAssetPreview texturePreview;
+  ProbeTextureAsset(*environment, reference, &texturePreview);
+  if (!texturePreview.artworkLoaded || !texturePreview.artwork.ready)
+  {
+    ProbeTexturePayloadFile(*environment, reference, &texturePreview);
+  }
+  if (!texturePreview.artworkLoaded || !texturePreview.artwork.ready)
+  {
+    overlay->lobbyTextureFailedSourceFiles.insert(sourceKey);
+    return 0;
+  }
+
+  LinuxWindowOverlay::OpenGlTexture uploadedTexture;
+  if (!UploadOpenGlTexture(overlay, texturePreview.artwork, &uploadedTexture))
+  {
+    overlay->lobbyTextureFailedSourceFiles.insert(sourceKey);
+    return 0;
+  }
+
+  const std::pair<std::map<std::string, LinuxWindowOverlay::OpenGlTexture>::iterator, bool> inserted =
+    overlay->lobbyTextureCache.insert(
+      std::make_pair(sourceKey, uploadedTexture)
+    );
+  return &inserted.first->second;
+}
+
+bool DrawLinuxBootstrapHeroTextureSlot(
+  LinuxWindowOverlay* overlay,
+  const LinuxTextureAssetPreview& texturePreview,
+  int x,
+  int y,
+  int size,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  bool locked
+)
+{
+  SetOpenGlColor(9, 13, 17, 222);
+  DrawOpenGlRect(x, y, size, size);
+  SetOpenGlColor(red, green, blue, 230);
+  DrawOpenGlBorderRect(x, y, size, size);
+
+  bool textureDrawn = false;
+  const LinuxWindowOverlay::OpenGlTexture* texture =
+    ResolveLinuxLobbyCachedTextureAsset(overlay, texturePreview);
+  if (texture)
+  {
+    DrawOpenGlTextureCover(
+      texture->texture,
+      texture->width,
+      texture->height,
+      x + 2,
+      y + 2,
+      std::max(1, size - 4),
+      std::max(1, size - 4)
+    );
+    textureDrawn = true;
+  }
+  else
+  {
+    SetOpenGlColor(red, green, blue, 92);
+    DrawOpenGlRect(x + size / 4, y + size / 4, std::max(1, size / 2), std::max(1, size / 2));
+  }
+
+  if (locked)
+  {
+    SetOpenGlColor(0, 0, 0, 120);
+    DrawOpenGlRect(x + 1, y + 1, std::max(1, size - 2), std::max(1, size - 2));
+  }
+
+  return textureDrawn;
+}
+
+std::string ResolveLinuxBootstrapHeroPreviewTitle(
+  const LinuxWindowOverlay* overlay,
+  const LinuxHeroCatalogEntry* heroEntry,
+  const LinuxSelectedHeroDbPreview* heroPreview
+)
+{
+  std::string fallback;
+  if (heroEntry)
+  {
+    fallback = ResolveHeroCatalogId(*heroEntry);
+  }
+  if (fallback.empty() && heroPreview)
+  {
+    fallback = heroPreview->persistentId.empty() ? heroPreview->dbid : heroPreview->persistentId;
+  }
+  if (fallback.empty())
+  {
+    fallback = "Selected hero";
+  }
+
+  std::string title;
+  if (heroPreview && !heroPreview->title.empty())
+  {
+    title = heroPreview->title;
+  }
+  else if (heroEntry && !heroEntry->title.empty())
+  {
+    title = heroEntry->title;
+  }
+
+  return MakeOpenGlOverlayText(overlay, title.empty() ? fallback : title, fallback);
+}
+
+void DrawLinuxBootstrapHeroPreviewDetails(
+  const LinuxOverlayUiRenderContext& renderContext,
+  const LinuxScreenRect& rect,
+  const LinuxHeroCatalogEntry* heroEntry
+)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxSelectedHeroDbPreview* heroPreview = renderContext.selectedHeroPreview;
+  if (!overlay || (!heroEntry && !heroPreview))
+  {
+    return;
+  }
+
+  const int padding = std::max(6, std::min(11, rect.width / 36));
+  const int lineHeight = std::max(12, ResolveOpenGlTextLineHeight(overlay));
+  const int portraitSize = std::max(48, std::min(72, rect.height / 4));
+  const int availablePanelW = std::max(1, rect.width - padding * 2);
+  const int topPanelX = rect.x + padding;
+  const int topPanelY = rect.y + padding;
+  const int topPanelW = std::min(availablePanelW, std::max(180, rect.width * 2 / 3));
+  const int topPanelH = portraitSize + padding * 2;
+  bool portraitDrawn = false;
+
+  SetOpenGlColor(5, 8, 12, 158);
+  DrawOpenGlRect(topPanelX, topPanelY, topPanelW, topPanelH);
+  SetOpenGlColor(85, 102, 112, 180);
+  DrawOpenGlBorderRect(topPanelX, topPanelY, topPanelW, topPanelH);
+
+  const int portraitX = topPanelX + padding;
+  const int portraitY = topPanelY + padding;
+  if (heroPreview)
+  {
+    const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+      ResolveLinuxLobbyCachedTextureAsset(overlay, heroPreview->portrait);
+    if (portraitTexture)
+    {
+      DrawOpenGlTextureCover(
+        portraitTexture->texture,
+        portraitTexture->width,
+        portraitTexture->height,
+        portraitX,
+        portraitY,
+        portraitSize,
+        portraitSize
+      );
+      portraitDrawn = true;
+    }
+  }
+
+  if (!portraitDrawn)
+  {
+    unsigned char accentR = 82;
+    unsigned char accentG = 142;
+    unsigned char accentB = 210;
+    ResolveLinuxCharacterPreviewAccent(heroEntry, heroPreview, &accentR, &accentG, &accentB);
+    SetOpenGlColor(accentR, accentG, accentB, 202);
+    DrawOpenGlRect(portraitX, portraitY, portraitSize, portraitSize);
+    SetOpenGlColor(245, 232, 182, 214);
+    DrawOpenGlTextInBox(
+      overlay,
+      portraitX,
+      portraitY,
+      portraitSize,
+      portraitSize,
+      "H",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+  SetOpenGlColor(210, 184, 96, 230);
+  DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+
+  const int textX = portraitX + portraitSize + padding;
+  const int textW = std::max(1, topPanelX + topPanelW - textX - padding);
+  const std::string heroTitle =
+    ResolveLinuxBootstrapHeroPreviewTitle(overlay, heroEntry, heroPreview);
+  SetOpenGlColor(244, 236, 214, 246);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    topPanelY + padding,
+    textW,
+    lineHeight + 2,
+    heroTitle,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  std::string raceLine;
+  if (heroPreview && !heroPreview->heroRace.empty())
+  {
+    raceLine = heroPreview->heroRace;
+  }
+  else if (heroEntry && !heroEntry->gender.empty())
+  {
+    raceLine = heroEntry->gender;
+  }
+  if (!raceLine.empty())
+  {
+    SetOpenGlColor(178, 194, 194, 218);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      topPanelY + padding + lineHeight + 2,
+      textW,
+      lineHeight,
+      MakeOpenGlOverlayText(overlay, raceLine, raceLine),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  std::string abilityLine = "Hero data loading";
+  if (heroPreview)
+  {
+    abilityLine = NStr::StrFmt(
+      "%lu abilities  %lu active  %lu passive",
+      static_cast<unsigned long>(heroPreview->abilityCount),
+      static_cast<unsigned long>(heroPreview->activeAbilityCount),
+      static_cast<unsigned long>(heroPreview->passiveAbilityCount)
+    );
+  }
+  SetOpenGlColor(213, 195, 132, 224);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    topPanelY + padding + lineHeight * 2 + 4,
+    textW,
+    lineHeight,
+    abilityLine,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  std::string statLine;
+  if (heroPreview && heroPreview->uniqueResourceReady && !heroPreview->uniqueResourceName.empty())
+  {
+    statLine = MakeOpenGlOverlayText(
+      overlay,
+      heroPreview->uniqueResourceName,
+      heroPreview->uniqueResourceName
+    );
+  }
+  else if (heroPreview && heroPreview->statsReady)
+  {
+    statLine = NStr::StrFmt(
+      "%lu stats  %lu upgrades",
+      static_cast<unsigned long>(heroPreview->statsCount),
+      static_cast<unsigned long>(heroPreview->levelUpgradeCount)
+    );
+  }
+  if (!statLine.empty())
+  {
+    SetOpenGlColor(152, 168, 170, 214);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      topPanelY + padding + lineHeight * 3 + 6,
+      textW,
+      lineHeight,
+      statLine,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  size_t abilityIconsDrawn = 0;
+  size_t talentIconsDrawn = 0;
+  if (heroPreview)
+  {
+    const int abilityIconSize = std::max(24, std::min(34, rect.width / 12));
+    const int abilityGap = std::max(3, abilityIconSize / 6);
+    std::vector<const LinuxHeroAbilityPreview*> visibleAbilities;
+    for (size_t i = 0; i < heroPreview->featuredAbilities.size() && visibleAbilities.size() < 4; ++i)
+    {
+      if (heroPreview->featuredAbilities[i].icon.artworkLoaded)
+      {
+        visibleAbilities.push_back(&heroPreview->featuredAbilities[i]);
+      }
+    }
+
+    const int talentIconSize = std::max(15, std::min(22, rect.width / 20));
+    const int talentGap = std::max(2, talentIconSize / 7);
+    const int talentColumns = 6;
+    const int talentRows = 2;
+    const int talentPanelW =
+      talentColumns * talentIconSize + (talentColumns - 1) * talentGap + padding * 2;
+    const int talentPanelH =
+      talentRows * talentIconSize + (talentRows - 1) * talentGap + padding * 2;
+    const int abilityPanelW = !visibleAbilities.empty() ?
+      static_cast<int>(visibleAbilities.size()) * abilityIconSize +
+        static_cast<int>(visibleAbilities.size() - 1) * abilityGap + padding * 2 :
+      0;
+    const int abilityPanelH = !visibleAbilities.empty() ? abilityIconSize + padding * 2 : 0;
+    const int iconPanelH = std::max(abilityPanelH, talentPanelH);
+    const int iconPanelY =
+      rect.y + rect.height - iconPanelH - padding - lineHeight * 2 - 6;
+
+    if (!visibleAbilities.empty() && iconPanelY > topPanelY + topPanelH + padding)
+    {
+      const int abilityPanelX = rect.x + padding;
+      SetOpenGlColor(5, 8, 12, 150);
+      DrawOpenGlRect(abilityPanelX, iconPanelY, abilityPanelW, abilityPanelH);
+      SetOpenGlColor(85, 102, 112, 166);
+      DrawOpenGlBorderRect(abilityPanelX, iconPanelY, abilityPanelW, abilityPanelH);
+      for (size_t i = 0; i < visibleAbilities.size(); ++i)
+      {
+        const LinuxHeroAbilityPreview& ability = *visibleAbilities[i];
+        unsigned char red = 88;
+        unsigned char green = 156;
+        unsigned char blue = 224;
+        ResolveAbilityPreviewAccent(ability, &red, &green, &blue);
+        if (DrawLinuxBootstrapHeroTextureSlot(
+              overlay,
+              ability.icon,
+              abilityPanelX + padding + static_cast<int>(i) * (abilityIconSize + abilityGap),
+              iconPanelY + padding,
+              abilityIconSize,
+              red,
+              green,
+              blue,
+              false))
+        {
+          ++abilityIconsDrawn;
+        }
+      }
+    }
+
+    std::vector<const LinuxHeroTalentPreview*> visibleTalents;
+    for (size_t i = 0; i < heroPreview->defaultTalentPreviews.size() && visibleTalents.size() < 12; ++i)
+    {
+      if (heroPreview->defaultTalentPreviews[i].icon.artworkLoaded)
+      {
+        visibleTalents.push_back(&heroPreview->defaultTalentPreviews[i]);
+      }
+    }
+
+    if (!visibleTalents.empty() && iconPanelY > topPanelY + topPanelH + padding)
+    {
+      const int talentPanelX = rect.x + rect.width - padding - talentPanelW;
+      SetOpenGlColor(5, 8, 12, 150);
+      DrawOpenGlRect(talentPanelX, iconPanelY, talentPanelW, talentPanelH);
+      SetOpenGlColor(85, 102, 112, 166);
+      DrawOpenGlBorderRect(talentPanelX, iconPanelY, talentPanelW, talentPanelH);
+      for (size_t i = 0; i < visibleTalents.size(); ++i)
+      {
+        const LinuxHeroTalentPreview& talent = *visibleTalents[i];
+        const int column = static_cast<int>(i % talentColumns);
+        const int row = static_cast<int>(i / talentColumns);
+        unsigned char red = 88;
+        unsigned char green = 156;
+        unsigned char blue = 224;
+        ResolveTalentPreviewAccent(talent, &red, &green, &blue);
+        if (DrawLinuxBootstrapHeroTextureSlot(
+              overlay,
+              talent.icon,
+              talentPanelX + padding + column * (talentIconSize + talentGap),
+              iconPanelY + padding + row * (talentIconSize + talentGap),
+              talentIconSize,
+              red,
+              green,
+              blue,
+              talent.locked))
+        {
+          ++talentIconsDrawn;
+        }
+      }
+    }
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLobbyHeroDetailsDrawn = true;
+    runtime->visibleLobbyHeroPortraitDrawn = portraitDrawn;
+    runtime->visibleLobbyHeroAbilityIconsDrawn = abilityIconsDrawn;
+    runtime->visibleLobbyHeroTalentIconsDrawn = talentIconsDrawn;
+  }
+}
+
 size_t ResolveLinuxLobbyFirstVisibleRow(size_t selectedIndex, size_t totalRows, size_t visibleRows)
 {
   if (totalRows == 0 || visibleRows == 0 || selectedIndex < visibleRows)
@@ -43999,7 +51973,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const LinuxMapBrowserState& mapBrowserState = *renderContext.mapBrowserState;
   const LinuxLocalMatchPreview& localMatchPreview = *renderContext.localMatchPreview;
   const LinuxUiRootPreview& uiRootPreview = *renderContext.uiRootPreview;
-  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
   const LinuxLobbyLayoutTransform layout(width, height);
 
   if (overlay->lobbyBackgroundTexture)
@@ -44028,6 +52002,19 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   DrawOpenGlRect(0, 0, width, height);
 
   DrawLinuxBootstrapCharacterPreview(renderContext);
+  if (renderContext.selectedMapPreview && renderContext.heroCatalog)
+  {
+    DrawLinuxLobbySelectedMapDetails(
+      overlay,
+      layout,
+      mapCatalog,
+      mapBrowserState,
+      renderContext.selectedMapPreview,
+      *renderContext.heroCatalog,
+      localMatchPreview,
+      runtime
+    );
+  }
 
   DrawLinuxLobbyHeader(overlay, layout, 71, 344, 535, 60, overlay->lobbyText.createGameHeader);
   DrawLinuxLobbyHeader(overlay, layout, 694, 342, 535, 60, overlay->lobbyText.joinGameHeader);
@@ -44137,7 +52124,19 @@ void DrawLinuxLiveHudPercentBar(
 void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
-  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLiveHudDrawn = false;
+    runtime->visibleLiveHudPortraitDrawn = false;
+    runtime->visibleLiveHudBarsDrawn = 0;
+    runtime->visibleLiveHudAbilitySlotsDrawn = 0;
+    runtime->visibleLiveHudAbilityIconsDrawn = 0;
+    runtime->visibleLiveHudTalentSlotsDrawn = 0;
+    runtime->visibleLiveHudTalentIconsDrawn = 0;
+    runtime->visibleLiveHudTargetPanelDrawn = false;
+    ClearLinuxLiveHudCommandSurface(runtime);
+  }
   if (!overlay || !runtime || !runtime->liveHeroState.ready)
   {
     return;
@@ -44148,40 +52147,128 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   const LinuxLiveUnitHudState& hero = runtime->liveHeroState;
   const LinuxLiveUnitHudState& target = runtime->liveTargetState;
   const bool hasTarget = target.ready;
-  const int panelWidth = std::min(std::max(430, width / 3), std::max(360, width - 88));
-  const int panelHeight = hasTarget ? 154 : 112;
-  const int panelLeft = std::max(44, width / 18);
-  const int panelTop = std::max(72, height - 38 - panelHeight - 18);
-  const int barWidth = std::max(220, panelWidth - 28);
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const int panelWidth = loadingActive ?
+    std::min(std::max(520, width / 2 - 24), std::max(360, width - 84)) :
+    std::min(std::max(720, width * 3 / 5), std::max(360, width - 88));
+  const int panelHeight = hasTarget ? 176 : 138;
+  const int rosterH = std::max(150, std::min(188, height / 4 + 8));
+  const int rosterTop = std::max(64, height - rosterH - 48);
+  const int panelLeft = loadingActive ?
+    std::max(42, width - panelWidth - 42) :
+    std::max(44, (width - panelWidth) / 2);
+  const int panelTop = loadingActive ?
+    std::max(126, rosterTop - panelHeight - 14) :
+    std::max(72, height - 38 - panelHeight - 18);
+  const int padding = 10;
+  const int portraitSize = std::max(54, std::min(72, panelHeight - padding * 2 - 34));
+  const int targetPanelWidth = hasTarget ?
+    std::min(std::max(178, panelWidth / 4), std::max(160, panelWidth / 3)) :
+    0;
+  const int targetGap = hasTarget ? 10 : 0;
+  const int textLeft = panelLeft + padding + portraitSize + 12;
+  const int textRight = panelLeft + panelWidth - padding - targetPanelWidth - targetGap;
+  const int barWidth = std::max(160, textRight - textLeft);
   char buffer[512] = {0};
+  size_t barsDrawn = 0;
+  size_t abilitySlotsDrawn = 0;
+  size_t abilityIconsDrawn = 0;
+  size_t talentSlotsDrawn = 0;
+  size_t talentIconsDrawn = 0;
+  bool portraitDrawn = false;
+  bool commandHighlightDrawn = false;
 
-  SetOpenGlColor(9, 13, 17, 224);
+  SetOpenGlColor(9, 13, 17, 218);
   DrawOpenGlRect(panelLeft, panelTop, panelWidth, panelHeight);
   SetOpenGlColor(88, 112, 124, 220);
   DrawOpenGlBorderRect(panelLeft, panelTop, panelWidth, panelHeight);
+
+  const int portraitX = panelLeft + padding;
+  const int portraitY = panelTop + padding;
+  const LinuxSelectedHeroDbPreview* heroPreview = renderContext.selectedHeroPreview;
+  if (heroPreview)
+  {
+    const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+      ResolveLinuxLobbyCachedTextureAsset(overlay, heroPreview->portrait);
+    if (portraitTexture)
+    {
+      DrawOpenGlTextureCover(
+        portraitTexture->texture,
+        portraitTexture->width,
+        portraitTexture->height,
+        portraitX,
+        portraitY,
+        portraitSize,
+        portraitSize
+      );
+      portraitDrawn = true;
+    }
+  }
+  if (!portraitDrawn)
+  {
+    SetOpenGlColor(48, 75, 98, 214);
+    DrawOpenGlRect(portraitX, portraitY, portraitSize, portraitSize);
+    SetOpenGlColor(240, 232, 198, 226);
+    DrawOpenGlTextInBox(
+      overlay,
+      portraitX,
+      portraitY,
+      portraitSize,
+      portraitSize,
+      "H",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+  SetOpenGlColor(218, 196, 126, 224);
+  DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
 
   SetOpenGlColor(244, 239, 230, 246);
   snprintf(
     buffer,
     sizeof(buffer),
-    "Hero #%d P%d U%d level %d gold %d",
+    "%s  #%d  level %d  gold %d",
+    heroPreview && !heroPreview->title.empty() ?
+      TruncateForOverlay(MakeOpenGlOverlayText(overlay, heroPreview->title, "Hero"), 30).c_str() :
+      "Hero",
     hero.objectId,
-    hero.playerId,
-    hero.userId,
     hero.level,
     hero.gold);
-  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 24, buffer);
+  DrawOpenGlTextInBox(
+    overlay,
+    textLeft,
+    panelTop + padding + 1,
+    barWidth,
+    18,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
 
   SetOpenGlColor(188, 205, 216, 232);
   snprintf(
     buffer,
     sizeof(buffer),
-    "%s  %.1f,%.1f  %s",
+    "%s  P%d U%d  %.1f,%.1f  %s",
     DescribeLinuxLiveHudUnitKind(hero.kind),
+    hero.playerId,
+    hero.userId,
     static_cast<double>(hero.x),
     static_cast<double>(hero.y),
     hero.moving ? "moving" : (hero.dead ? "dead" : "ready"));
-  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 46, buffer);
+  DrawOpenGlTextInBox(
+    overlay,
+    textLeft,
+    panelTop + padding + 21,
+    barWidth,
+    17,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
 
   snprintf(
     buffer,
@@ -44192,8 +52279,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     static_cast<double>(hero.lifePercent * 100.0f));
   DrawLinuxLiveHudPercentBar(
     overlay,
-    panelLeft + 14,
-    panelTop + 58,
+    textLeft,
+    panelTop + padding + 42,
     barWidth,
     18,
     hero.lifePercent,
@@ -44201,6 +52288,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     hero.lifePercent < 0.28f ? 72 : 205,
     84,
     buffer);
+  ++barsDrawn;
 
   snprintf(
     buffer,
@@ -44211,8 +52299,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     static_cast<double>(hero.energyPercent * 100.0f));
   DrawLinuxLiveHudPercentBar(
     overlay,
-    panelLeft + 14,
-    panelTop + 80,
+    textLeft,
+    panelTop + padding + 64,
     barWidth,
     18,
     hero.energyPercent,
@@ -44220,42 +52308,2401 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     139,
     222,
     buffer);
+  ++barsDrawn;
 
-  if (!hasTarget)
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "%.0f-%.0f dmg  %.2f aps  %.2f m/s  regen %.1f/%.1f",
+    static_cast<double>(hero.damageMin),
+    static_cast<double>(hero.damageMax),
+    static_cast<double>(hero.attacksPerSecond),
+    static_cast<double>(hero.moveSpeedMps),
+    static_cast<double>(hero.lifeRegen),
+    static_cast<double>(hero.energyRegen));
+  SetOpenGlColor(173, 189, 195, 224);
+  DrawOpenGlTextInBox(
+    overlay,
+    textLeft,
+    panelTop + padding + 86,
+    barWidth,
+    17,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const int iconSize = std::max(24, std::min(34, panelHeight / 5));
+  const int iconGap = 5;
+  int iconX = textLeft;
+  const int iconY = panelTop + panelHeight - padding - iconSize;
+  const int iconLimitX = panelLeft + panelWidth - padding - (hasTarget ? targetPanelWidth + targetGap : 0);
+  if (heroPreview && heroPreview->attackReady && iconX + iconSize <= iconLimitX)
+  {
+    bool iconDrawn = false;
+    if (!heroPreview->featuredAbilities.empty())
+    {
+      unsigned char r = 88;
+      unsigned char g = 156;
+      unsigned char b = 224;
+      ResolveAbilityPreviewAccent(heroPreview->featuredAbilities[0], &r, &g, &b);
+      iconDrawn = DrawLinuxBootstrapHeroTextureSlot(
+        overlay,
+        heroPreview->featuredAbilities[0].icon,
+        iconX,
+        iconY,
+        iconSize,
+        r,
+        g,
+        b,
+        false);
+    }
+    else
+    {
+      SetOpenGlColor(34, 66, 92, 216);
+      DrawOpenGlRect(iconX, iconY, iconSize, iconSize);
+      SetOpenGlColor(98, 151, 208, 226);
+      DrawOpenGlBorderRect(iconX, iconY, iconSize, iconSize);
+    }
+    SetOpenGlColor(238, 236, 218, 230);
+    DrawOpenGlTextInBox(
+      overlay,
+      iconX,
+      iconY,
+      iconSize,
+      iconSize,
+      "A",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++abilitySlotsDrawn;
+    if (iconDrawn)
+    {
+      ++abilityIconsDrawn;
+    }
+    StoreLinuxLiveHudAttackCommandSurface(runtime, iconX, iconY, iconSize, iconSize);
+    if (runtime->liveHudLastCommandSlot == -2)
+    {
+      SetOpenGlColor(248, 221, 105, 242);
+      DrawOpenGlBorderRect(iconX - 2, iconY - 2, iconSize + 4, iconSize + 4);
+      commandHighlightDrawn = true;
+    }
+    iconX += iconSize + iconGap;
+  }
+
+  if (heroPreview)
+  {
+    for (size_t i = 0; i < heroPreview->defaultTalentPreviews.size() && iconX + iconSize <= iconLimitX; ++i)
+    {
+      const LinuxHeroTalentPreview& talent = heroPreview->defaultTalentPreviews[i];
+      unsigned char r = 88;
+      unsigned char g = 156;
+      unsigned char b = 224;
+      ResolveTalentPreviewAccent(talent, &r, &g, &b);
+      const bool iconDrawn = DrawLinuxBootstrapHeroTextureSlot(
+        overlay,
+        talent.icon,
+        iconX,
+        iconY,
+        iconSize,
+        r,
+        g,
+        b,
+        talent.locked);
+      if (i < 9)
+      {
+        SetOpenGlColor(238, 236, 218, 230);
+        DrawOpenGlTextInBox(
+          overlay,
+          iconX,
+          iconY,
+          iconSize,
+          iconSize,
+          NStr::StrFmt("%lu", static_cast<unsigned long>(i + 1)),
+          LINUX_OPENGL_TEXT_ALIGN_CENTER,
+          LINUX_OPENGL_TEXT_VALIGN_CENTER,
+          false
+        );
+      }
+      const int storedTalentSlotIndex =
+        runtime->liveHudTalentCommandSlots < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS ?
+          static_cast<int>(runtime->liveHudTalentCommandSlots) :
+          -1;
+      StoreLinuxLiveHudTalentCommandSurface(
+        runtime,
+        iconX,
+        iconY,
+        iconSize,
+        iconSize,
+        static_cast<int>(talent.levelIndex),
+        static_cast<int>(talent.slotIndex));
+      if (storedTalentSlotIndex >= 0 &&
+          runtime->liveHudLastCommandSlot == storedTalentSlotIndex)
+      {
+        SetOpenGlColor(248, 221, 105, 242);
+        DrawOpenGlBorderRect(iconX - 2, iconY - 2, iconSize + 4, iconSize + 4);
+        commandHighlightDrawn = true;
+      }
+      ++talentSlotsDrawn;
+      if (iconDrawn)
+      {
+        ++talentIconsDrawn;
+      }
+      iconX += iconSize + iconGap;
+    }
+  }
+
+  if (hasTarget)
+  {
+    const int targetX = panelLeft + panelWidth - padding - targetPanelWidth;
+    const int targetY = panelTop + padding;
+    const int targetH = panelHeight - padding * 2;
+    SetOpenGlColor(13, 18, 23, 188);
+    DrawOpenGlRect(targetX, targetY, targetPanelWidth, targetH);
+    SetOpenGlColor(101, 112, 116, 190);
+    DrawOpenGlBorderRect(targetX, targetY, targetPanelWidth, targetH);
+    StoreLinuxLiveHudTargetCommandSurface(runtime, targetX, targetY, targetPanelWidth, targetH);
+    if (runtime->liveHudLastCommandSlot == -3)
+    {
+      SetOpenGlColor(248, 221, 105, 242);
+      DrawOpenGlBorderRect(targetX - 2, targetY - 2, targetPanelWidth + 4, targetH + 4);
+      commandHighlightDrawn = true;
+    }
+
+    SetOpenGlColor(217, 225, 221, 238);
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "#%d %s F%d",
+      target.objectId,
+      DescribeLinuxLiveHudUnitKind(target.kind),
+      target.faction);
+    DrawOpenGlTextInBox(
+      overlay,
+      targetX + 8,
+      targetY + 7,
+      targetPanelWidth - 16,
+      17,
+      buffer,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    SetOpenGlColor(166, 184, 191, 224);
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "dist %.1f  %s",
+      static_cast<double>(target.distance),
+      target.source.empty() ? "none" : target.source.c_str());
+    DrawOpenGlTextInBox(
+      overlay,
+      targetX + 8,
+      targetY + 27,
+      targetPanelWidth - 16,
+      17,
+      TruncateForOverlay(buffer, 32),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "HP %.0f/%.0f %.0f%%",
+      static_cast<double>(target.life),
+      static_cast<double>(target.maxLife),
+      static_cast<double>(target.lifePercent * 100.0f));
+    DrawLinuxLiveHudPercentBar(
+      overlay,
+      targetX + 8,
+      targetY + 50,
+      std::max(120, targetPanelWidth - 16),
+      16,
+      target.lifePercent,
+      target.lifePercent < 0.28f ? 224 : 215,
+      target.lifePercent < 0.28f ? 72 : 184,
+      target.lifePercent < 0.28f ? 84 : 82,
+      buffer);
+    ++barsDrawn;
+
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "%.0f-%.0f dmg  %.2f aps",
+      static_cast<double>(target.damageMin),
+      static_cast<double>(target.damageMax),
+      static_cast<double>(target.attacksPerSecond));
+    SetOpenGlColor(174, 187, 190, 220);
+    DrawOpenGlTextInBox(
+      overlay,
+      targetX + 8,
+      targetY + 72,
+      targetPanelWidth - 16,
+      17,
+      buffer,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  runtime->visibleLiveHudDrawn = true;
+  runtime->visibleLiveHudPortraitDrawn = portraitDrawn;
+  runtime->visibleLiveHudBarsDrawn = barsDrawn;
+  runtime->visibleLiveHudAbilitySlotsDrawn = abilitySlotsDrawn;
+  runtime->visibleLiveHudAbilityIconsDrawn = abilityIconsDrawn;
+  runtime->visibleLiveHudTalentSlotsDrawn = talentSlotsDrawn;
+  runtime->visibleLiveHudTalentIconsDrawn = talentIconsDrawn;
+  runtime->visibleLiveHudTargetPanelDrawn = hasTarget;
+  runtime->liveHudCommandHighlightDrawn = commandHighlightDrawn;
+}
+
+void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxSelectedMapPreview* selectedMapPreview = renderContext.selectedMapPreview;
+  if (runtime)
+  {
+    runtime->visibleLiveMinimapDrawn = false;
+    runtime->visibleLiveMinimapTextureDrawn = false;
+    runtime->visibleLiveMinimapMarkersDrawn = 0;
+    runtime->visibleLiveMinimapHeroMarkersDrawn = 0;
+    runtime->visibleLiveMinimapCreepMarkersDrawn = 0;
+    runtime->visibleLiveMinimapMovingMarkersDrawn = 0;
+    runtime->visibleLiveMinimapTargetMarkerDrawn = false;
+    runtime->visibleLiveMinimapCommandMarkerDrawn = false;
+    ClearLinuxLiveMinimapCommandSurface(runtime);
+  }
+  if (!overlay ||
+      !runtime ||
+      !runtime->liveHeroState.ready ||
+      !selectedMapPreview ||
+      !selectedMapPreview->tactical.ready)
   {
     return;
   }
 
-  SetOpenGlColor(217, 225, 221, 238);
+  NWorld::PFWorld* world =
+    dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+  if (!world)
+  {
+    return;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  if (markers.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const LinuxLiveMinimapLayout layout =
+    ResolveLinuxLiveMinimapLayout(width, height, loadingActive, selectedMapPreview);
+  if (!layout.ready)
+  {
+    return;
+  }
+
+  StoreLinuxLiveMinimapCommandSurface(runtime, layout);
+
+  const int padding = 8;
+  const int mapSize = layout.mapSize;
+  const int panelX = layout.panelX;
+  const int panelY = layout.panelY;
+  const int innerX = layout.innerX;
+  const int innerY = layout.innerY;
+  const int innerSize = layout.innerSize;
+  const int panelH = layout.panelHeight;
+  const float minX = layout.minX;
+  const float maxX = layout.maxX;
+  const float minY = layout.minY;
+  const float maxY = layout.maxY;
+  const float rangeX = std::max(1.0f, maxX - minX);
+  const float rangeY = std::max(1.0f, maxY - minY);
+  size_t markerCount = 0;
+  size_t heroCount = 0;
+  size_t creepCount = 0;
+  size_t movingCount = 0;
+  bool targetDrawn = false;
+  bool commandMarkerDrawn = false;
+  bool textureDrawn = false;
+
+  SetOpenGlColor(5, 9, 13, loadingActive ? 188 : 210);
+  DrawOpenGlRect(panelX, panelY, mapSize, panelH);
+  SetOpenGlColor(104, 124, 132, 214);
+  DrawOpenGlBorderRect(panelX, panelY, mapSize, panelH);
+
+  SetOpenGlColor(231, 225, 198, 236);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 3,
+    innerSize,
+    15,
+    "Map",
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const LinuxWindowOverlay::OpenGlTexture* minimapTexture =
+    ResolveLinuxLobbyCachedTextureAsset(overlay, selectedMapPreview->minimapFirst);
+  if (!minimapTexture)
+  {
+    minimapTexture = ResolveLinuxLobbyCachedTextureAsset(overlay, selectedMapPreview->minimapSecond);
+  }
+  if (!minimapTexture)
+  {
+    minimapTexture = ResolveLinuxLobbyCachedTextureAsset(overlay, selectedMapPreview->minimapNeutral);
+  }
+  if (minimapTexture)
+  {
+    DrawOpenGlTextureStretch(*minimapTexture, innerX, innerY, innerSize, innerSize, 206);
+    textureDrawn = true;
+  }
+  else
+  {
+    SetOpenGlColor(13, 30, 33, 220);
+    DrawOpenGlRect(innerX, innerY, innerSize, innerSize);
+    SetOpenGlColor(41, 66, 71, 160);
+    for (int i = 1; i < 4; ++i)
+    {
+      const int lineX = innerX + innerSize * i / 4;
+      const int lineY = innerY + innerSize * i / 4;
+      glBegin(GL_LINES);
+      glVertex2i(lineX, innerY);
+      glVertex2i(lineX, innerY + innerSize);
+      glVertex2i(innerX, lineY);
+      glVertex2i(innerX + innerSize, lineY);
+      glEnd();
+    }
+  }
+
+  SetOpenGlColor(91, 113, 121, 228);
+  DrawOpenGlBorderRect(innerX, innerY, innerSize, innerSize);
+
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  const size_t markerLimit = std::min<size_t>(markers.size(), 320);
+  const int selectedTargetObjectId =
+    runtime->mapPreviewSelectedTargetObjectId >= 0 ?
+    runtime->mapPreviewSelectedTargetObjectId :
+    runtime->liveTargetState.objectId;
+  for (size_t i = 0; i < markerLimit; ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.dead)
+    {
+      continue;
+    }
+
+    int markerSize = 3;
+    if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+    {
+      markerSize = 7;
+      ++heroCount;
+    }
+    else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+             marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+    {
+      markerSize = marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? 5 : 4;
+      ++creepCount;
+    }
+    else
+    {
+      continue;
+    }
+
+    const float normalizedX = std::max(0.0f, std::min(1.0f, (marker.x - minX) / rangeX));
+    const float normalizedY = std::max(0.0f, std::min(1.0f, (marker.y - minY) / rangeY));
+    const int markerX = innerX + static_cast<int>(normalizedX * static_cast<float>(innerSize));
+    const int markerY = innerY + innerSize - static_cast<int>(normalizedY * static_cast<float>(innerSize));
+    const int half = std::max(1, markerSize / 2);
+    unsigned char red = 0;
+    unsigned char green = 0;
+    unsigned char blue = 0;
+    ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+    SetOpenGlColor(red, green, blue, marker.moving ? 248 : 216);
+    DrawOpenGlRect(markerX - half, markerY - half, markerSize, markerSize);
+
+    if (marker.moving)
+    {
+      ++movingCount;
+      SetOpenGlColor(232, 236, 220, 180);
+      glBegin(GL_LINES);
+      glVertex2i(markerX, markerY);
+      glVertex2i(
+        markerX + static_cast<int>(marker.moveDirX * 7.0f),
+        markerY - static_cast<int>(marker.moveDirY * 7.0f));
+      glEnd();
+    }
+
+    if (marker.objectId == runtime->liveHeroState.objectId)
+    {
+      SetOpenGlColor(255, 244, 172, 248);
+      DrawOpenGlBorderRect(markerX - half - 2, markerY - half - 2, markerSize + 4, markerSize + 4);
+    }
+    if (marker.objectId == selectedTargetObjectId)
+    {
+      targetDrawn = true;
+      SetOpenGlColor(255, 255, 255, 238);
+      glLineWidth(2.0f);
+      glBegin(GL_LINES);
+      glVertex2i(markerX - half - 4, markerY - half - 4);
+      glVertex2i(markerX + half + 4, markerY + half + 4);
+      glVertex2i(markerX + half + 4, markerY - half - 4);
+      glVertex2i(markerX - half - 4, markerY + half + 4);
+      glEnd();
+      glLineWidth(1.0f);
+    }
+
+    ++markerCount;
+  }
+
+  if (runtime->liveMinimapCommandTargetDrawn)
+  {
+    const float normalizedX = std::max(
+      0.0f,
+      std::min(1.0f, (runtime->liveMinimapCommandTargetX - minX) / rangeX));
+    const float normalizedY = std::max(
+      0.0f,
+      std::min(1.0f, (runtime->liveMinimapCommandTargetY - minY) / rangeY));
+    const int targetX =
+      innerX + static_cast<int>(normalizedX * static_cast<float>(innerSize - 1));
+    const int targetY =
+      innerY + innerSize - 1 -
+      static_cast<int>(normalizedY * static_cast<float>(innerSize - 1));
+    SetOpenGlColor(94, 225, 238, 240);
+    DrawOpenGlBorderRect(targetX - 5, targetY - 5, 11, 11);
+    SetOpenGlColor(252, 229, 119, 236);
+    glLineWidth(2.0f);
+    glBegin(GL_LINES);
+    glVertex2i(targetX - 7, targetY);
+    glVertex2i(targetX + 7, targetY);
+    glVertex2i(targetX, targetY - 7);
+    glVertex2i(targetX, targetY + 7);
+    glEnd();
+    glLineWidth(1.0f);
+    commandMarkerDrawn = true;
+  }
+
+  char buffer[160] = {0};
+  if (runtime->liveMinimapMoveCommandsSent ||
+      runtime->liveMinimapAttackCommandsSent ||
+      runtime->liveMinimapSignalCommandsSent ||
+      runtime->liveMinimapSelectionCount)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "%lu units H%lu C%lu  M%lu A%lu S%lu",
+      static_cast<unsigned long>(markerCount),
+      static_cast<unsigned long>(heroCount),
+      static_cast<unsigned long>(creepCount),
+      static_cast<unsigned long>(runtime->liveMinimapMoveCommandsSent),
+      static_cast<unsigned long>(runtime->liveMinimapAttackCommandsSent),
+      static_cast<unsigned long>(runtime->liveMinimapSignalCommandsSent));
+  }
+  else
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "%lu units  H%lu C%lu",
+      static_cast<unsigned long>(markerCount),
+      static_cast<unsigned long>(heroCount),
+      static_cast<unsigned long>(creepCount));
+  }
+  SetOpenGlColor(182, 197, 197, 224);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    innerY + innerSize + 6,
+    innerSize,
+    16,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  runtime->visibleLiveMinimapDrawn = textureDrawn || markerCount > 0;
+  runtime->visibleLiveMinimapTextureDrawn = textureDrawn;
+  runtime->visibleLiveMinimapMarkersDrawn = markerCount;
+  runtime->visibleLiveMinimapHeroMarkersDrawn = heroCount;
+  runtime->visibleLiveMinimapCreepMarkersDrawn = creepCount;
+  runtime->visibleLiveMinimapMovingMarkersDrawn = movingCount;
+  runtime->visibleLiveMinimapTargetMarkerDrawn = targetDrawn;
+  runtime->visibleLiveMinimapCommandMarkerDrawn = commandMarkerDrawn;
+}
+
+struct LinuxLiveScoreboardTeamState
+{
+  size_t liveHeroes;
+  size_t totalHeroes;
+  size_t creeps;
+  size_t moving;
+  size_t damaged;
+
+  LinuxLiveScoreboardTeamState()
+    : liveHeroes(0),
+      totalHeroes(0),
+      creeps(0),
+      moving(0),
+      damaged(0)
+  {
+  }
+};
+
+void AccumulateLinuxLiveScoreboardMarker(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  LinuxLiveScoreboardTeamState* state
+)
+{
+  if (!state)
+  {
+    return;
+  }
+
+  if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+  {
+    ++state->totalHeroes;
+    if (!marker.dead)
+    {
+      ++state->liveHeroes;
+    }
+  }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+           marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+  {
+    if (!marker.dead)
+    {
+      ++state->creeps;
+    }
+  }
+
+  if (!marker.dead && marker.moving)
+  {
+    ++state->moving;
+  }
+  if (!marker.dead && marker.healthPercent < 0.995f)
+  {
+    ++state->damaged;
+  }
+}
+
+size_t DrawLinuxLiveScoreboardTeamColumn(
+  LinuxWindowOverlay* overlay,
+  int x,
+  int y,
+  int width,
+  int height,
+  const std::string& label,
+  const LinuxLiveScoreboardTeamState& state,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  bool selectedTeam
+)
+{
+  SetOpenGlColor(red / 5, green / 5, blue / 5, selectedTeam ? 226 : 188);
+  DrawOpenGlRect(x, y, width, height);
+  SetOpenGlColor(red, green, blue, selectedTeam ? 248 : 202);
+  DrawOpenGlBorderRect(x, y, width, height);
+
+  SetOpenGlColor(241, 235, 213, 240);
+  DrawOpenGlTextInBox(
+    overlay,
+    x + 8,
+    y + 4,
+    width - 16,
+    17,
+    label,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  char buffer[160] = {0};
   snprintf(
     buffer,
     sizeof(buffer),
-    "Target #%d %s F%d dist %.1f  %s",
-    target.objectId,
-    DescribeLinuxLiveHudUnitKind(target.kind),
-    target.faction,
-    static_cast<double>(target.distance),
-    target.source.empty() ? "none" : target.source.c_str());
-  DrawOpenGlText(overlay, panelLeft + 14, panelTop + 124, buffer);
+    "%lu/%lu heroes  %lu creeps",
+    static_cast<unsigned long>(state.liveHeroes),
+    static_cast<unsigned long>(state.totalHeroes),
+    static_cast<unsigned long>(state.creeps));
+  SetOpenGlColor(187, 203, 204, 226);
+  DrawOpenGlTextInBox(
+    overlay,
+    x + 8,
+    y + 22,
+    width - 16,
+    16,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const int pipSize = 8;
+  const int pipGap = 5;
+  const size_t pips = std::min<size_t>(state.totalHeroes, 5);
+  const int pipY = y + height - pipSize - 7;
+  for (size_t i = 0; i < pips; ++i)
+  {
+    const int pipX = x + 8 + static_cast<int>(i) * (pipSize + pipGap);
+    const bool alive = i < state.liveHeroes;
+    SetOpenGlColor(alive ? red : 48, alive ? green : 52, alive ? blue : 56, alive ? 236 : 196);
+    DrawOpenGlRect(pipX, pipY, pipSize, pipSize);
+    SetOpenGlColor(226, 219, 185, alive ? 210 : 96);
+    DrawOpenGlBorderRect(pipX, pipY, pipSize, pipSize);
+  }
+
+  if (state.damaged > 0)
+  {
+    snprintf(buffer, sizeof(buffer), "%lu damaged", static_cast<unsigned long>(state.damaged));
+    SetOpenGlColor(232, 184, 122, 222);
+    DrawOpenGlTextInBox(
+      overlay,
+      x + width / 2,
+      pipY - 2,
+      width / 2 - 8,
+      14,
+      buffer,
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  return pips;
+}
+
+void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLiveScoreboardDrawn = false;
+    runtime->visibleLiveScoreboardTeamColumnsDrawn = 0;
+    runtime->visibleLiveScoreboardHeroMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardObjectiveLinesDrawn = 0;
+    runtime->visibleLiveScoreboardCommandLinesDrawn = 0;
+  }
+  if (!overlay || !runtime || !runtime->liveHeroState.ready)
+  {
+    return;
+  }
+
+  NWorld::PFWorld* world =
+    dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+  if (!world)
+  {
+    return;
+  }
+
+  vector<NWorld::LinuxDynamicWorldMarker> markers;
+  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  if (markers.empty())
+  {
+    return;
+  }
+
+  LinuxLiveScoreboardTeamState freezeTeam;
+  LinuxLiveScoreboardTeamState burnTeam;
+  LinuxLiveScoreboardTeamState neutralTeam;
+  for (size_t i = 0; i < markers.size(); ++i)
+  {
+    const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+    if (marker.faction == NDb::FACTION_FREEZE)
+    {
+      AccumulateLinuxLiveScoreboardMarker(marker, &freezeTeam);
+    }
+    else if (marker.faction == NDb::FACTION_BURN)
+    {
+      AccumulateLinuxLiveScoreboardMarker(marker, &burnTeam);
+    }
+    else
+    {
+      AccumulateLinuxLiveScoreboardMarker(marker, &neutralTeam);
+    }
+  }
+
+  if (freezeTeam.totalHeroes == 0 && burnTeam.totalHeroes == 0)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const int panelW = std::min(std::max(650, width / 2), std::max(360, width - 84));
+  const int panelH = 74;
+  const int panelX = loadingActive ?
+    std::max(42, width - panelW - 42) :
+    std::max(42, (width - panelW) / 2);
+  const int panelY = loadingActive ?
+    std::max(164, std::min(226, height / 4)) :
+    18;
+  const int gap = 10;
+  const int centerW = std::max(156, panelW / 4);
+  const int teamW = std::max(120, (panelW - centerW - gap * 2) / 2);
+  const int freezeX = panelX;
+  const int centerX = freezeX + teamW + gap;
+  const int burnX = centerX + centerW + gap;
+
+  SetOpenGlColor(6, 10, 14, loadingActive ? 182 : 214);
+  DrawOpenGlRect(panelX - 8, panelY - 7, panelW + 16, panelH + 14);
+  SetOpenGlColor(92, 111, 121, 205);
+  DrawOpenGlBorderRect(panelX - 8, panelY - 7, panelW + 16, panelH + 14);
+
+  size_t heroPips = 0;
+  heroPips += DrawLinuxLiveScoreboardTeamColumn(
+    overlay,
+    freezeX,
+    panelY,
+    teamW,
+    panelH,
+    "Freeze",
+    freezeTeam,
+    91,
+    157,
+    238,
+    runtime->liveHeroState.faction == NDb::FACTION_FREEZE);
+  heroPips += DrawLinuxLiveScoreboardTeamColumn(
+    overlay,
+    burnX,
+    panelY,
+    teamW,
+    panelH,
+    "Burn",
+    burnTeam,
+    228,
+    93,
+    82,
+    runtime->liveHeroState.faction == NDb::FACTION_BURN);
+
+  SetOpenGlColor(12, 18, 24, 218);
+  DrawOpenGlRect(centerX, panelY, centerW, panelH);
+  SetOpenGlColor(126, 132, 128, 210);
+  DrawOpenGlBorderRect(centerX, panelY, centerW, panelH);
+
+  char buffer[192] = {0};
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "World step %d",
+    runtime->transceiverWorldStep >= 0 ? runtime->transceiverWorldStep : 0);
+  SetOpenGlColor(245, 236, 204, 242);
+  DrawOpenGlTextInBox(
+    overlay,
+    centerX + 8,
+    panelY + 5,
+    centerW - 16,
+    18,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
 
   snprintf(
     buffer,
     sizeof(buffer),
-    "HP %.0f/%.0f %.0f%%",
-    static_cast<double>(target.life),
-    static_cast<double>(target.maxLife),
-    static_cast<double>(target.lifePercent * 100.0f));
-  DrawLinuxLiveHudPercentBar(
+    "Towers %lu  Main %lu",
+    static_cast<unsigned long>(runtime->worldTowerObjects),
+    static_cast<unsigned long>(runtime->worldMainBuildingObjects));
+  SetOpenGlColor(184, 200, 199, 226);
+  DrawOpenGlTextInBox(
     overlay,
-    panelLeft + 14,
-    panelTop + 134,
-    std::max(180, panelWidth - 28),
+    centerX + 8,
+    panelY + 27,
+    centerW - 16,
     16,
-    target.lifePercent,
-    target.lifePercent < 0.28f ? 224 : 215,
-    target.lifePercent < 0.28f ? 72 : 184,
-    target.lifePercent < 0.28f ? 84 : 82,
-    buffer);
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "Cmd %lu  Replay %lu B",
+    static_cast<unsigned long>(runtime->transceiverCommands),
+    static_cast<unsigned long>(runtime->replayWriterBytesWritten));
+  SetOpenGlColor(152, 173, 178, 222);
+  DrawOpenGlTextInBox(
+    overlay,
+    centerX + 8,
+    panelY + 47,
+    centerW - 16,
+    16,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  if (neutralTeam.creeps > 0)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Neutral %lu  moving %lu",
+      static_cast<unsigned long>(neutralTeam.creeps),
+      static_cast<unsigned long>(freezeTeam.moving + burnTeam.moving + neutralTeam.moving));
+    SetOpenGlColor(188, 169, 83, 218);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX,
+      panelY + panelH + 3,
+      panelW,
+      15,
+      buffer,
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
+
+  runtime->visibleLiveScoreboardDrawn = true;
+  runtime->visibleLiveScoreboardTeamColumnsDrawn = 2;
+  runtime->visibleLiveScoreboardHeroMarkersDrawn = heroPips;
+  runtime->visibleLiveScoreboardObjectiveLinesDrawn = 2 + (neutralTeam.creeps > 0 ? 1 : 0);
+  runtime->visibleLiveScoreboardCommandLinesDrawn = 1;
+}
+
+struct LinuxLiveEventFeedRow
+{
+  std::string text;
+  unsigned char red;
+  unsigned char green;
+  unsigned char blue;
+  bool command;
+  bool combat;
+  bool objective;
+
+  LinuxLiveEventFeedRow(
+    const std::string& text_,
+    unsigned char red_,
+    unsigned char green_,
+    unsigned char blue_,
+    bool command_,
+    bool combat_,
+    bool objective_
+  )
+    : text(text_),
+      red(red_),
+      green(green_),
+      blue(blue_),
+      command(command_),
+      combat(combat_),
+      objective(objective_)
+  {
+  }
+};
+
+void AddLinuxLiveEventFeedRow(
+  vector<LinuxLiveEventFeedRow>* rows,
+  const std::string& text,
+  unsigned char red,
+  unsigned char green,
+  unsigned char blue,
+  bool command,
+  bool combat,
+  bool objective
+)
+{
+  if (!rows || text.empty())
+  {
+    return;
+  }
+
+  rows->push_back(LinuxLiveEventFeedRow(text, red, green, blue, command, combat, objective));
+}
+
+void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLiveEventFeedDrawn = false;
+    runtime->visibleLiveEventFeedRowsDrawn = 0;
+    runtime->visibleLiveEventFeedCommandRowsDrawn = 0;
+    runtime->visibleLiveEventFeedCombatRowsDrawn = 0;
+    runtime->visibleLiveEventFeedObjectiveRowsDrawn = 0;
+  }
+  if (!overlay || !runtime || !runtime->liveHeroState.ready)
+  {
+    return;
+  }
+
+  vector<LinuxLiveEventFeedRow> rows;
+  char buffer[256] = {0};
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "Cmd %lu  replay %lu B  step %d",
+    static_cast<unsigned long>(runtime->transceiverCommands),
+    static_cast<unsigned long>(runtime->replayWriterBytesWritten),
+    runtime->transceiverWorldStep >= 0 ? runtime->transceiverWorldStep : 0);
+  AddLinuxLiveEventFeedRow(&rows, buffer, 91, 171, 218, true, false, false);
+
+  if (runtime->liveMinimapLastAction != "none" ||
+      runtime->liveMinimapCommandProofSent ||
+      runtime->liveMinimapMoveCommandsSent ||
+      runtime->liveMinimapAttackCommandsSent ||
+      runtime->liveMinimapSignalCommandsSent ||
+      runtime->liveMinimapSelectionCount)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Minimap %s M%lu A%lu S%lu %.1f,%.1f",
+      runtime->liveMinimapLastAction.empty() ?
+        "command" :
+        runtime->liveMinimapLastAction.c_str(),
+      static_cast<unsigned long>(runtime->liveMinimapMoveCommandsSent),
+      static_cast<unsigned long>(runtime->liveMinimapAttackCommandsSent),
+      static_cast<unsigned long>(runtime->liveMinimapSignalCommandsSent),
+      static_cast<double>(runtime->liveMinimapCommandTargetX),
+      static_cast<double>(runtime->liveMinimapCommandTargetY));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 111, 211, 224, true, false, false);
+  }
+
+  if (runtime->liveHudLastAction != "none" ||
+      runtime->liveHudActivateTalentProofSent ||
+      runtime->liveHudAttackCommandsSent ||
+      runtime->liveHudUseUnitCommandsSent ||
+      runtime->liveHudActivateTalentCommandsSent ||
+      runtime->liveHudUseTalentCommandsSent ||
+      runtime->liveHudFollowCommandsSent)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "HUD %s A%lu U%lu L%lu T%lu F%lu",
+      runtime->liveHudLastAction.empty() ?
+        "command" :
+        runtime->liveHudLastAction.c_str(),
+      static_cast<unsigned long>(runtime->liveHudAttackCommandsSent),
+      static_cast<unsigned long>(runtime->liveHudUseUnitCommandsSent),
+      static_cast<unsigned long>(runtime->liveHudActivateTalentCommandsSent),
+      static_cast<unsigned long>(runtime->liveHudUseTalentCommandsSent),
+      static_cast<unsigned long>(runtime->liveHudFollowCommandsSent));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 218, 190, 92, true, false, false);
+  }
+
+  if (runtime->liveHotkeyLastAction != "none" ||
+      runtime->liveHotkeyCommandProofSent ||
+      runtime->liveHotkeyStopCommandsSent ||
+      runtime->liveHotkeyAttackCommandsSent ||
+      runtime->liveHotkeyFollowCommandsSent ||
+      runtime->liveHotkeyHoldCommandsSent ||
+      runtime->liveHotkeyCancelCommandsSent ||
+      runtime->liveHotkeyActivateTalentCommandsSent ||
+      runtime->liveHotkeyUseTalentCommandsSent ||
+      runtime->liveHotkeyUseUnitCommandsSent ||
+      runtime->liveHotkeyUseConsumableCommandsSent)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Keys %s S%lu A%lu F%lu H%lu C%lu T%lu",
+      runtime->liveHotkeyLastAction.empty() ?
+        "command" :
+        runtime->liveHotkeyLastAction.c_str(),
+      static_cast<unsigned long>(runtime->liveHotkeyStopCommandsSent),
+      static_cast<unsigned long>(runtime->liveHotkeyAttackCommandsSent),
+      static_cast<unsigned long>(runtime->liveHotkeyFollowCommandsSent),
+      static_cast<unsigned long>(runtime->liveHotkeyHoldCommandsSent),
+      static_cast<unsigned long>(runtime->liveHotkeyCancelCommandsSent),
+      static_cast<unsigned long>(
+        runtime->liveHotkeyActivateTalentCommandsSent +
+        runtime->liveHotkeyUseTalentCommandsSent));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 199, 170, 237, true, false, false);
+  }
+
+  if (runtime->liveMapPreviewLastAction != "none" ||
+      runtime->liveMapPreviewInputCount ||
+      runtime->liveMapPreviewMoveCommandsSent ||
+      runtime->liveMapPreviewAttackCommandsSent ||
+      runtime->liveMapPreviewSignalCommandsSent ||
+      runtime->liveMapPreviewSelectionCount)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "3D Map %s M%lu A%lu S%lu Sel%lu",
+      runtime->liveMapPreviewLastAction.empty() ?
+        "command" :
+        runtime->liveMapPreviewLastAction.c_str(),
+      static_cast<unsigned long>(runtime->liveMapPreviewMoveCommandsSent),
+      static_cast<unsigned long>(runtime->liveMapPreviewAttackCommandsSent),
+      static_cast<unsigned long>(runtime->liveMapPreviewSignalCommandsSent),
+      static_cast<unsigned long>(runtime->liveMapPreviewSelectionCount));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 109, 188, 226, true, false, false);
+  }
+
+  if (runtime->linuxBotCommandDriverActive ||
+      runtime->linuxBotMoveRuntimeCommandsSent ||
+      runtime->linuxBotAttackRuntimeCommandsSent)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Bots %s M%lu A%lu P%d C%d step %d",
+      runtime->linuxBotCommandLastAction.empty() ?
+        "command" :
+        runtime->linuxBotCommandLastAction.c_str(),
+      static_cast<unsigned long>(runtime->linuxBotMoveRuntimeCommandsSent),
+      static_cast<unsigned long>(runtime->linuxBotAttackRuntimeCommandsSent),
+      runtime->linuxBotCommandLastPlayerId,
+      runtime->linuxBotCommandLastClientId,
+      runtime->linuxBotCommandLastWorldStep);
+    AddLinuxLiveEventFeedRow(&rows, buffer, 155, 212, 112, true, false, false);
+  }
+
+  if (runtime->linuxAIControllerCount ||
+      runtime->linuxAIAutoStartAttempts ||
+      runtime->linuxAIAddRequests ||
+      runtime->linuxAIStepCalls ||
+      runtime->linuxAICommandAttempts)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "AI ctrl %d auto %d/%d add %d/%d cmd %d/%d M%d C%d A%d",
+      runtime->linuxAIControllerCount,
+      runtime->linuxAIAutoStartAttempts,
+      runtime->linuxAIAutoStartSuccesses,
+      runtime->linuxAIAddRequests,
+      runtime->linuxAIAddSuccesses,
+      runtime->linuxAICommandAttempts,
+      runtime->linuxAICommandsSent,
+      runtime->linuxAICommandMoveSent,
+      runtime->linuxAICommandCombatMoveSent,
+      runtime->linuxAICommandAttackSent);
+    AddLinuxLiveEventFeedRow(&rows, buffer, 110, 202, 156, true, false, false);
+  }
+
+  if (runtime->mapPreviewSelectedTargetAttackProofPrepared)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Hero attack #%d hits %lu hp %.0f->%.0f %s%s",
+      runtime->mapPreviewSelectedTargetAttackProofObjectId,
+      static_cast<unsigned long>(runtime->mapPreviewSelectedTargetAttackProofHitCount),
+      static_cast<double>(runtime->mapPreviewSelectedTargetAttackProofLifeBefore),
+      static_cast<double>(runtime->mapPreviewSelectedTargetAttackProofLifeAfter),
+      runtime->mapPreviewSelectedTargetAttackProofDamaged ? "damage" : "tracking",
+      runtime->mapPreviewSelectedTargetAttackProofSustained ? " sustained" : "");
+    AddLinuxLiveEventFeedRow(&rows, buffer, 229, 128, 92, false, true, false);
+  }
+
+  if (runtime->mapPreviewCreepDuelProofPrepared)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Creep duel %d->%d hits %lu hp %.0f->%.0f %s",
+      runtime->mapPreviewCreepDuelProofAttackerObjectId,
+      runtime->mapPreviewCreepDuelProofTargetObjectId,
+      static_cast<unsigned long>(runtime->mapPreviewCreepDuelProofHitCount),
+      static_cast<double>(runtime->mapPreviewCreepDuelProofLifeBefore),
+      static_cast<double>(runtime->mapPreviewCreepDuelProofLifeAfter),
+      runtime->mapPreviewCreepDuelProofDamaged ? "damage" : "tracking");
+    AddLinuxLiveEventFeedRow(&rows, buffer, 226, 167, 83, false, true, false);
+  }
+
+  const LinuxLiveUnitHudState& target = runtime->liveTargetState;
+  if (target.ready || runtime->mapPreviewSelectedTargetDrawn)
+  {
+    const int targetObjectId = target.ready ?
+      target.objectId :
+      runtime->mapPreviewSelectedTargetObjectId;
+    const int targetKind = target.ready ?
+      target.kind :
+      runtime->mapPreviewSelectedTargetKind;
+    const int targetFaction = target.ready ?
+      target.faction :
+      runtime->mapPreviewSelectedTargetFaction;
+    const float targetDistance = target.ready ?
+      target.distance :
+      runtime->mapPreviewSelectedTargetDistance;
+    const float targetLife = target.ready ? target.life : 0.0f;
+    const float targetMaxLife = target.ready ? target.maxLife : 0.0f;
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Target #%d %s F%d dist %.1f hp %.0f/%.0f",
+      targetObjectId,
+      DescribeLinuxLiveHudUnitKind(targetKind),
+      targetFaction,
+      static_cast<double>(targetDistance),
+      static_cast<double>(targetLife),
+      static_cast<double>(targetMaxLife));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 214, 216, 205, false, true, false);
+  }
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "World H%lu C%lu N%lu towers %lu main %lu",
+    static_cast<unsigned long>(runtime->mapPreviewDynamicHeroMarkers),
+    static_cast<unsigned long>(runtime->mapPreviewDynamicCommonCreepMarkers),
+    static_cast<unsigned long>(runtime->mapPreviewDynamicNeutralCreepMarkers),
+    static_cast<unsigned long>(runtime->worldTowerObjects),
+    static_cast<unsigned long>(runtime->worldMainBuildingObjects));
+  AddLinuxLiveEventFeedRow(&rows, buffer, 126, 198, 135, false, false, true);
+
+  if (runtime->mapPreviewCommandActionTargetDrawn)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Action %s %s P%d->P%d",
+      runtime->mapPreviewCommandActionKind.empty() ?
+        "command" :
+        runtime->mapPreviewCommandActionKind.c_str(),
+      runtime->mapPreviewCommandActionSource.empty() ?
+        "native" :
+        runtime->mapPreviewCommandActionSource.c_str(),
+      runtime->mapPreviewCommandActionPlayerId,
+      runtime->mapPreviewCommandActionTargetPlayerId);
+    AddLinuxLiveEventFeedRow(&rows, buffer, 154, 181, 239, true, false, false);
+  }
+
+  if (runtime->mapPreviewCommandMoveTargetDrawn)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Move target %.1f,%.1f dist %.1f remaining %.1f",
+      static_cast<double>(runtime->mapPreviewCommandMoveTargetX),
+      static_cast<double>(runtime->mapPreviewCommandMoveTargetY),
+      static_cast<double>(runtime->mapPreviewCommandMoveHeroDistance),
+      static_cast<double>(runtime->mapPreviewCommandMoveHeroRemaining));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 130, 168, 225, true, false, false);
+  }
+
+  if (rows.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const int panelW = loadingActive ?
+    std::min(std::max(382, width / 3), std::max(320, width - 84)) :
+    std::min(std::max(460, width / 3), std::max(320, width - 84));
+  const size_t maxRows = loadingActive ? 5 : 6;
+  const size_t rowsToDraw = std::min(static_cast<size_t>(rows.size()), maxRows);
+  const int rowH = 19;
+  const int panelH = 34 + static_cast<int>(rowsToDraw) * rowH + 8;
+  const int panelX = loadingActive ?
+    std::max(42, width - panelW - 42) :
+    std::max(42, width - panelW - 24);
+  const int panelY = loadingActive ?
+    std::max(264, std::min(height - panelH - 86, height / 2 - 48)) :
+    104;
+
+  SetOpenGlColor(5, 8, 12, loadingActive ? 206 : 220);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(93, 111, 118, 216);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  SetOpenGlColor(236, 229, 204, 238);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + 10,
+    panelY + 6,
+    panelW - 20,
+    17,
+    "Events",
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  size_t commandRows = 0;
+  size_t combatRows = 0;
+  size_t objectiveRows = 0;
+  for (size_t i = 0; i < rowsToDraw; ++i)
+  {
+    const LinuxLiveEventFeedRow& row = rows[i];
+    const int rowX = panelX + 10;
+    const int rowY = panelY + 28 + static_cast<int>(i) * rowH;
+    const int rowW = panelW - 20;
+
+    SetOpenGlColor(row.red / 5, row.green / 5, row.blue / 5, 186);
+    DrawOpenGlRect(rowX, rowY, rowW, rowH - 3);
+    SetOpenGlColor(row.red, row.green, row.blue, 232);
+    DrawOpenGlRect(rowX, rowY, 4, rowH - 3);
+    SetOpenGlColor(221, 228, 224, 234);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + 10,
+      rowY,
+      rowW - 14,
+      rowH - 3,
+      TruncateForOverlay(row.text, loadingActive ? 50 : 62),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    if (row.command)
+    {
+      ++commandRows;
+    }
+    if (row.combat)
+    {
+      ++combatRows;
+    }
+    if (row.objective)
+    {
+      ++objectiveRows;
+    }
+  }
+
+  runtime->visibleLiveEventFeedDrawn = rowsToDraw > 0;
+  runtime->visibleLiveEventFeedRowsDrawn = rowsToDraw;
+  runtime->visibleLiveEventFeedCommandRowsDrawn = commandRows;
+  runtime->visibleLiveEventFeedCombatRowsDrawn = combatRows;
+  runtime->visibleLiveEventFeedObjectiveRowsDrawn = objectiveRows;
+}
+
+void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleReplayControlsDrawn = false;
+    runtime->visibleReplayControlsLinesDrawn = 0;
+    runtime->visibleReplayProgressDrawn = false;
+  }
+  if (!overlay || !runtime || !runtime->replayFileInputActive)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const int panelW = std::min(std::max(430, width / 3), std::max(320, width - 84));
+  const int panelH = 136;
+  const int panelX = std::max(42, width - panelW - 42);
+  const int panelY = loadingActive ? 42 : 18;
+  const int padding = 10;
+  const int barX = panelX + padding;
+  const int barY = panelY + 48;
+  const int barW = panelW - padding * 2;
+  const int barH = 12;
+  const size_t consumedSegments = runtime->replayInputStepCalls;
+  const size_t loadedSegments = runtime->replayInputLoadedSegments;
+  const float progress = loadedSegments > 0 ?
+    std::max(0.0f, std::min(1.0f,
+      static_cast<float>(consumedSegments) / static_cast<float>(loadedSegments))) :
+    0.0f;
+  const int fillW = std::max(1, static_cast<int>(static_cast<float>(barW) * progress));
+  char buffer[512] = {0};
+  size_t linesDrawn = 0;
+
+  (void)height;
+  SetOpenGlColor(5, 8, 12, loadingActive ? 218 : 226);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(
+    runtime->replayInputPaused ? 206 : 96,
+    runtime->replayInputPaused ? 172 : 150,
+    runtime->replayInputPaused ? 80 : 204,
+    222);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "Replay %s  x%lu  step %lu/%lu",
+    runtime->replayInputPaused ? "paused" : "playing",
+    static_cast<unsigned long>(runtime->replayInputPlaybackRate),
+    static_cast<unsigned long>(consumedSegments),
+    static_cast<unsigned long>(loadedSegments));
+  SetOpenGlColor(244, 239, 218, 244);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 7,
+    panelW - padding * 2,
+    18,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  ++linesDrawn;
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "commands %lu/%lu  statuses %lu/%lu  world %d",
+    static_cast<unsigned long>(runtime->replayInputCommandsExecuted),
+    static_cast<unsigned long>(runtime->replayInputLoadedCommands),
+    static_cast<unsigned long>(runtime->replayInputStatusesApplied),
+    static_cast<unsigned long>(runtime->replayInputLoadedStatuses),
+    runtime->replayInputFinalWorldStep >= 0 ?
+      runtime->replayInputFinalWorldStep :
+      runtime->transceiverWorldStep);
+  SetOpenGlColor(191, 207, 212, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 27,
+    panelW - padding * 2,
+    17,
+    buffer,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  ++linesDrawn;
+
+  SetOpenGlColor(14, 18, 23, 235);
+  DrawOpenGlRect(barX, barY, barW, barH);
+  SetOpenGlColor(
+    runtime->replayInputPaused ? 226 : 89,
+    runtime->replayInputPaused ? 184 : 190,
+    runtime->replayInputPaused ? 86 : 218,
+    240);
+  DrawOpenGlRect(barX + 1, barY + 1, std::max(1, fillW - 2), std::max(1, barH - 2));
+  SetOpenGlColor(104, 119, 124, 228);
+  DrawOpenGlBorderRect(barX, barY, barW, barH);
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "P/Space pause  N step  +/- speed  0 reset  source=%s",
+    runtime->replayInputControlSource.empty() ?
+      "auto" :
+      runtime->replayInputControlSource.c_str());
+  SetOpenGlColor(172, 187, 191, 226);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 67,
+    panelW - padding * 2,
+    17,
+    TruncateForOverlay(buffer, 64),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  ++linesDrawn;
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "manual %lu/%lu/%lu  controls %lu  pace %s/%lums",
+    static_cast<unsigned long>(runtime->replayInputManualStepsConsumed),
+    static_cast<unsigned long>(runtime->replayInputManualStepRequests),
+    static_cast<unsigned long>(runtime->replayInputPendingManualSteps),
+    static_cast<unsigned long>(runtime->replayInputControlEvents),
+    runtime->replayInputRealtimePacing ? "on" : "off",
+    static_cast<unsigned long>(runtime->replayInputPaceMs));
+  SetOpenGlColor(204, 212, 202, 226);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 88,
+    panelW - padding * 2,
+    17,
+    TruncateForOverlay(buffer, 64),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  ++linesDrawn;
+
+  snprintf(
+    buffer,
+    sizeof(buffer),
+    "skips %lu  %s",
+    static_cast<unsigned long>(runtime->replayInputPacingSkips),
+    runtime->replayInputError.empty() ? "none" : runtime->replayInputError.c_str());
+  SetOpenGlColor(178, 190, 186, 218);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 109,
+    panelW - padding * 2,
+    17,
+    TruncateForOverlay(buffer, 64),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  ++linesDrawn;
+
+  runtime->visibleReplayControlsDrawn = true;
+  runtime->visibleReplayControlsLinesDrawn = linesDrawn;
+  runtime->visibleReplayProgressDrawn = loadedSegments > 0;
+}
+
+std::string StripLinuxLoadingFlashMarkup(std::string value)
+{
+  std::string plain;
+  plain.reserve(value.size());
+  bool inTag = false;
+  for (size_t i = 0; i < value.size(); ++i)
+  {
+    const char c = value[i];
+    if (c == '<')
+    {
+      inTag = true;
+      continue;
+    }
+    if (c == '>')
+    {
+      inTag = false;
+      continue;
+    }
+    if (!inTag)
+    {
+      plain.push_back(c);
+    }
+  }
+
+  return SanitizeLocalizedText(plain);
+}
+
+void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLoadingUiPreview* loadingUiPreview = renderContext.loadingUiPreview;
+  const LinuxLoadingUiState* loadingUiState = renderContext.loadingUiState;
+  if (!overlay || !loadingUiPreview || !loadingUiState)
+  {
+    return;
+  }
+
+  std::string statusText = loadingUiState->runtimeStatusText;
+  if (statusText.empty() &&
+      !loadingUiPreview->statuses.empty() &&
+      loadingUiState->statusIndex < loadingUiPreview->statuses.size())
+  {
+    statusText = loadingUiPreview->statuses[loadingUiState->statusIndex].text;
+  }
+  statusText = StripLinuxLoadingFlashMarkup(statusText);
+
+  std::string tipText;
+  if (!loadingUiPreview->tips.empty() &&
+      loadingUiState->tipIndex < loadingUiPreview->tips.size())
+  {
+    tipText = loadingUiPreview->tips[loadingUiState->tipIndex];
+  }
+  if (tipText.empty())
+  {
+    tipText = loadingUiPreview->sampleTip;
+  }
+  tipText = StripLinuxLoadingFlashMarkup(tipText);
+
+  const LinuxLoadingModeEntry* modeEntry = 0;
+  if (!loadingUiPreview->modes.empty() &&
+      loadingUiState->modeIndex < loadingUiPreview->modes.size())
+  {
+    modeEntry = &loadingUiPreview->modes[loadingUiState->modeIndex];
+  }
+
+  const LinuxLoadingLocaleEntry* currentLocale = 0;
+  const LinuxLoadingLocaleEntry* enemyLocale = 0;
+  if (!loadingUiPreview->locales.empty())
+  {
+    if (loadingUiState->currentLocaleIndex < loadingUiPreview->locales.size())
+    {
+      currentLocale = &loadingUiPreview->locales[loadingUiState->currentLocaleIndex];
+    }
+    if (loadingUiState->enemyLocaleIndex < loadingUiPreview->locales.size())
+    {
+      enemyLocale = &loadingUiPreview->locales[loadingUiState->enemyLocaleIndex];
+    }
+  }
+
+  std::string modeText;
+  if (modeEntry)
+  {
+    modeText = StripLinuxLoadingFlashMarkup(modeEntry->tooltip);
+    if (modeText.empty())
+    {
+      modeText = modeEntry->id;
+    }
+  }
+
+  std::string localeText;
+  if (currentLocale)
+  {
+    localeText = currentLocale->tooltip.empty() ? currentLocale->locale : currentLocale->tooltip;
+  }
+  if (enemyLocale)
+  {
+    if (!localeText.empty())
+    {
+      localeText += "  vs  ";
+    }
+    localeText += enemyLocale->tooltip.empty() ? enemyLocale->locale : enemyLocale->tooltip;
+  }
+  localeText = StripLinuxLoadingFlashMarkup(localeText);
+
+  if (statusText.empty() && tipText.empty() && modeText.empty() && localeText.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int panelW = std::min(std::max(720, width - 160), std::max(1, width - 48));
+  const int panelH = 116;
+  const int panelX = std::max(12, (width - panelW) / 2);
+  const int panelY = 42;
+  const int padding = 12;
+  const int iconSize = 40;
+  const int flagSize = 24;
+  const int textX = panelX + padding + iconSize + 12;
+  const int rightIconW = flagSize * 2 + 8;
+  const int textW = std::max(80, panelW - (textX - panelX) - padding - rightIconW);
+  const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
+  size_t linesDrawn = 0;
+  size_t iconsDrawn = 0;
+
+  SetOpenGlColor(4, 7, 10, 182);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(92, 103, 105, 185);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  if (modeEntry)
+  {
+    const LinuxWindowOverlay::OpenGlTexture* modeTexture =
+      ResolveLinuxLobbyCachedTextureReference(
+        overlay,
+        renderContext.environment,
+        modeEntry->iconRef);
+    if (modeTexture)
+    {
+      DrawOpenGlTextureCover(
+        modeTexture->texture,
+        modeTexture->width,
+        modeTexture->height,
+        panelX + padding,
+        panelY + padding,
+        iconSize,
+        iconSize
+      );
+      ++iconsDrawn;
+    }
+  }
+
+  const int flagsX = panelX + panelW - padding - rightIconW;
+  if (currentLocale)
+  {
+    const LinuxWindowOverlay::OpenGlTexture* flagTexture =
+      ResolveLinuxLobbyCachedTextureReference(
+        overlay,
+        renderContext.environment,
+        currentLocale->imageRef);
+    if (flagTexture)
+    {
+      DrawOpenGlTextureCover(
+        flagTexture->texture,
+        flagTexture->width,
+        flagTexture->height,
+        flagsX,
+        panelY + padding,
+        flagSize,
+        flagSize
+      );
+      ++iconsDrawn;
+    }
+  }
+  if (enemyLocale)
+  {
+    const LinuxWindowOverlay::OpenGlTexture* flagTexture =
+      ResolveLinuxLobbyCachedTextureReference(
+        overlay,
+        renderContext.environment,
+        enemyLocale->imageRef);
+    if (flagTexture)
+    {
+      DrawOpenGlTextureCover(
+        flagTexture->texture,
+        flagTexture->width,
+        flagTexture->height,
+        flagsX + flagSize + 8,
+        panelY + padding,
+        flagSize,
+        flagSize
+      );
+      ++iconsDrawn;
+    }
+  }
+
+  if (!statusText.empty())
+  {
+    SetOpenGlColor(250, 236, 192, 246);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      panelY + 10,
+      textW,
+      lineH,
+      MakeOpenGlOverlayText(overlay, TruncateForOverlay(statusText, 64), "Loading"),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++linesDrawn;
+  }
+
+  if (!tipText.empty())
+  {
+    SetOpenGlColor(194, 208, 205, 226);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      panelY + 34,
+      textW,
+      lineH * 2,
+      MakeOpenGlOverlayText(overlay, TruncateForOverlay(tipText, 120), "Tip"),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_TOP,
+      true
+    );
+    ++linesDrawn;
+  }
+
+  std::string footerText = modeText;
+  if (!localeText.empty())
+  {
+    if (!footerText.empty())
+    {
+      footerText += "  |  ";
+    }
+    footerText += localeText;
+  }
+  if (!footerText.empty())
+  {
+    SetOpenGlColor(154, 173, 178, 222);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      panelY + panelH - padding - lineH,
+      textW,
+      lineH,
+      MakeOpenGlOverlayText(overlay, TruncateForOverlay(footerText, 100), "Mode"),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++linesDrawn;
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLoadingInfoDrawn = linesDrawn > 0 || iconsDrawn > 0;
+    runtime->visibleLoadingInfoLinesDrawn = linesDrawn;
+    runtime->visibleLoadingInfoIconsDrawn = iconsDrawn;
+  }
+}
+
+void ResolveLinuxLoadingChatColor(
+  uint channelColor,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  if (!red || !green || !blue)
+  {
+    return;
+  }
+
+  *red = 178;
+  *green = 190;
+  *blue = 188;
+  if (channelColor == 0)
+  {
+    return;
+  }
+
+  const unsigned char parsedRed = static_cast<unsigned char>((channelColor >> 16) & 0xff);
+  const unsigned char parsedGreen = static_cast<unsigned char>((channelColor >> 8) & 0xff);
+  const unsigned char parsedBlue = static_cast<unsigned char>(channelColor & 0xff);
+  if (parsedRed == 0 && parsedGreen == 0 && parsedBlue == 0)
+  {
+    return;
+  }
+
+  *red = std::max<unsigned char>(96, parsedRed);
+  *green = std::max<unsigned char>(96, parsedGreen);
+  *blue = std::max<unsigned char>(96, parsedBlue);
+}
+
+std::string MakeLinuxLoadingWideText(
+  const LinuxWindowOverlay* overlay,
+  const wstring& text,
+  const std::string& fallback
+)
+{
+  std::string value = StripLinuxLoadingFlashMarkup(ToStdString(NStr::ToMBCS(text)));
+  return MakeOpenGlOverlayText(overlay, value, fallback);
+}
+
+void ResolveLinuxLoadingForceColor(
+  const LinuxLoadingRuntimeDriver* loadingRuntimeDriver,
+  int force,
+  unsigned char fallbackRed,
+  unsigned char fallbackGreen,
+  unsigned char fallbackBlue,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+)
+{
+  if (!red || !green || !blue)
+  {
+    return;
+  }
+
+  *red = fallbackRed;
+  *green = fallbackGreen;
+  *blue = fallbackBlue;
+  if (!loadingRuntimeDriver || !loadingRuntimeDriver->flashInterface)
+  {
+    return;
+  }
+
+  const vector<int>& forces = loadingRuntimeDriver->flashInterface->GetForceTable();
+  const vector<uint>& colors = loadingRuntimeDriver->flashInterface->GetColorTable();
+  for (size_t i = 0; i < forces.size() && i < colors.size(); ++i)
+  {
+    if (forces[i] != force || colors[i] == 0)
+    {
+      continue;
+    }
+
+    const unsigned char parsedRed = static_cast<unsigned char>((colors[i] >> 16) & 0xff);
+    const unsigned char parsedGreen = static_cast<unsigned char>((colors[i] >> 8) & 0xff);
+    const unsigned char parsedBlue = static_cast<unsigned char>(colors[i] & 0xff);
+    if (parsedRed == 0 && parsedGreen == 0 && parsedBlue == 0)
+    {
+      return;
+    }
+
+    *red = std::max<unsigned char>(80, parsedRed);
+    *green = std::max<unsigned char>(80, parsedGreen);
+    *blue = std::max<unsigned char>(80, parsedBlue);
+    return;
+  }
+}
+
+void DrawLinuxLoadingChatOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLoadingRuntimeDriver* loadingRuntimeDriver = renderContext.loadingRuntimeDriver;
+  if (!overlay ||
+      !loadingRuntimeDriver ||
+      !loadingRuntimeDriver->flashInterface ||
+      !loadingRuntimeDriver->flashInterface->IsChatVisible() ||
+      loadingRuntimeDriver->flashInterface->IsChatOff())
+  {
+    return;
+  }
+
+  const Game::LoadingFlashInterface* flashInterface = loadingRuntimeDriver->flashInterface;
+  const vector<Game::LoadingFlashChatChannelState>& channels = flashInterface->GetChatChannels();
+  const vector<Game::LoadingFlashChatMessageState>& messages = flashInterface->GetChatMessages();
+  if (channels.empty() && messages.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const int rosterH = std::max(150, std::min(188, height / 4 + 8));
+  const int rosterY = std::max(64, height - rosterH - 48);
+  const int panelX = 42;
+  const int panelY = std::max(164, std::min(186, rosterY - 188));
+  const int panelW = std::min(std::max(330, width / 3), std::max(1, width - 84));
+  const int panelH = std::max(96, std::min(176, rosterY - panelY - 12));
+  if (panelW <= 0 || panelH <= 0)
+  {
+    return;
+  }
+
+  const int padding = 10;
+  const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
+  size_t channelsDrawn = 0;
+  size_t messagesDrawn = 0;
+
+  SetOpenGlColor(4, 7, 10, 172);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(82, 96, 101, 176);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  SetOpenGlColor(238, 228, 197, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 4,
+    panelW - padding * 2,
+    lineH,
+    "Chat",
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const int channelY = panelY + padding + lineH;
+  int channelX = panelX + padding;
+  const size_t channelLimit = std::min<size_t>(channels.size(), 4);
+  for (size_t i = 0; i < channelLimit; ++i)
+  {
+    const Game::LoadingFlashChatChannelState& channel = channels[i];
+    std::string channelName = MakeLinuxLoadingWideText(
+      overlay,
+      channel.channelName,
+      NStr::StrFmt("Ch %d", static_cast<int>(channel.channel)));
+    if (channelName.empty())
+    {
+      channelName = NStr::StrFmt("Ch %d", static_cast<int>(channel.channel));
+    }
+    std::string shortcut = MakeLinuxLoadingWideText(overlay, channel.shortcut, std::string());
+    if (!shortcut.empty())
+    {
+      channelName += " ";
+      channelName += shortcut;
+    }
+
+    const int chipW = std::min(128, std::max(54, static_cast<int>(channelName.size()) * 8 + 14));
+    if (channelX + chipW > panelX + panelW - padding)
+    {
+      break;
+    }
+
+    unsigned char r = 0;
+    unsigned char g = 0;
+    unsigned char b = 0;
+    ResolveLinuxLoadingChatColor(channel.channelColor, &r, &g, &b);
+    SetOpenGlColor(r / 3, g / 3, b / 3, 182);
+    DrawOpenGlRect(channelX, channelY, chipW, lineH + 4);
+    SetOpenGlColor(r, g, b, 214);
+    DrawOpenGlBorderRect(channelX, channelY, chipW, lineH + 4);
+    SetOpenGlColor(232, 235, 224, 230);
+    DrawOpenGlTextInBox(
+      overlay,
+      channelX + 6,
+      channelY + 2,
+      chipW - 12,
+      lineH,
+      TruncateForOverlay(channelName, 18),
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    channelX += chipW + 6;
+    ++channelsDrawn;
+  }
+
+  const int messageTop = channelY + lineH + 12;
+  const int availableMessageH = panelY + panelH - padding - messageTop;
+  const size_t messageLimit = std::min<size_t>(
+    messages.size(),
+    static_cast<size_t>(std::max(1, availableMessageH / std::max(1, lineH + 4)))
+  );
+  for (size_t i = 0; i < messageLimit; ++i)
+  {
+    const Game::LoadingFlashChatMessageState& message = messages[messages.size() - messageLimit + i];
+    std::string playerName = MakeLinuxLoadingWideText(overlay, message.playerName, std::string());
+    std::string messageText = MakeLinuxLoadingWideText(overlay, message.message, std::string());
+    if (messageText.empty())
+    {
+      continue;
+    }
+
+    std::string rowText = messageText;
+    if (!playerName.empty())
+    {
+      rowText = playerName + ": " + messageText;
+    }
+
+    const int rowY = messageTop + static_cast<int>(messagesDrawn) * (lineH + 4);
+    SetOpenGlColor(10, 15, 19, 124);
+    DrawOpenGlRect(panelX + padding, rowY, panelW - padding * 2, lineH + 3);
+    SetOpenGlColor(185, 199, 198, 224);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 6,
+      rowY + 1,
+      panelW - padding * 2 - 12,
+      lineH,
+      TruncateForOverlay(rowText, 64),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++messagesDrawn;
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLoadingChatDrawn = channelsDrawn > 0 || messagesDrawn > 0;
+    runtime->visibleLoadingChatChannelsDrawn = channelsDrawn;
+    runtime->visibleLoadingChatMessagesDrawn = messagesDrawn;
+  }
+}
+
+void DrawLinuxLoadingRosterCard(
+  const LinuxOverlayUiRenderContext& renderContext,
+  const LinuxLoadingRuntimeHeroEntry& entry,
+  int x,
+  int y,
+  int width,
+  int height,
+  size_t* portraitsDrawn,
+  size_t* flagsDrawn,
+  size_t* progressBarsDrawn,
+  size_t* forceBadgesDrawn,
+  size_t* metaLabelsDrawn,
+  size_t* rankIconsDrawn,
+  size_t* premiumBadgesDrawn
+)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  if (!overlay || width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  unsigned char teamR = 81;
+  unsigned char teamG = 99;
+  unsigned char teamB = 112;
+  if (entry.team == 1)
+  {
+    teamR = 63;
+    teamG = 112;
+    teamB = 185;
+  }
+  else if (entry.team == 2)
+  {
+    teamR = 168;
+    teamG = 79;
+    teamB = 70;
+  }
+
+  SetOpenGlColor(7, 11, 15, entry.human ? 232 : 204);
+  DrawOpenGlRect(x, y, width, height);
+  SetOpenGlColor(teamR, teamG, teamB, entry.human ? 250 : 214);
+  DrawOpenGlBorderRect(x, y, width, height);
+
+  const int padding = std::max(4, std::min(8, height / 8));
+  const int portraitSize = std::max(24, std::min(height - padding * 2, 52));
+  const int portraitX = x + padding;
+  const int portraitY = y + std::max(2, (height - portraitSize) / 2);
+  bool portraitDrawn = false;
+  const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+    ResolveLinuxLobbyCachedTextureReference(
+      overlay,
+      renderContext.environment,
+      entry.iconPath);
+  if (portraitTexture)
+  {
+    DrawOpenGlTextureCover(
+      portraitTexture->texture,
+      portraitTexture->width,
+      portraitTexture->height,
+      portraitX,
+      portraitY,
+      portraitSize,
+      portraitSize
+    );
+    portraitDrawn = true;
+    if (portraitsDrawn)
+    {
+      ++(*portraitsDrawn);
+    }
+  }
+  else
+  {
+    SetOpenGlColor(teamR, teamG, teamB, 168);
+    DrawOpenGlRect(portraitX, portraitY, portraitSize, portraitSize);
+  }
+  SetOpenGlColor(portraitDrawn ? 230 : 150, 210, 150, 222);
+  DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+
+  const int flagSize = std::max(12, std::min(18, height / 3));
+  const int forceBadgeW = std::max(28, std::min(42, width / 4));
+  const int rightBlockW = std::max(flagSize, forceBadgeW);
+  const int flagX = x + width - padding - flagSize;
+  const int flagY = y + padding;
+  const LinuxWindowOverlay::OpenGlTexture* flagTexture =
+    ResolveLinuxLobbyCachedTextureReference(
+      overlay,
+      renderContext.environment,
+      entry.flagIcon);
+  if (flagTexture)
+  {
+    DrawOpenGlTextureCover(
+      flagTexture->texture,
+      flagTexture->width,
+      flagTexture->height,
+      flagX,
+      flagY,
+      flagSize,
+      flagSize
+    );
+    SetOpenGlColor(218, 208, 152, 212);
+    DrawOpenGlBorderRect(flagX, flagY, flagSize, flagSize);
+    if (flagsDrawn)
+    {
+      ++(*flagsDrawn);
+    }
+  }
+
+  const int textX = portraitX + portraitSize + padding;
+  const int textW = std::max(1, x + width - padding - rightBlockW - textX - padding);
+  const int lineHeight = std::max(12, ResolveOpenGlTextLineHeight(overlay));
+  const std::string playerText = MakeOpenGlOverlayText(
+    overlay,
+    entry.playerName.empty() ? std::string("Player") : entry.playerName,
+    entry.human ? std::string("Player") : std::string("Bot")
+  );
+  const std::string heroText = MakeOpenGlOverlayText(
+    overlay,
+    entry.heroTitle.empty() ? std::string("Hero") : entry.heroTitle,
+    std::string("Hero")
+  );
+
+  SetOpenGlColor(entry.human ? 255 : 230, entry.human ? 236 : 226, entry.human ? 188 : 212, 244);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    y + padding,
+    textW,
+    lineHeight,
+    playerText,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  SetOpenGlColor(170, 188, 190, 225);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    y + padding + lineHeight,
+    textW,
+    lineHeight,
+    heroText,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  std::string metaText;
+  if (entry.heroLevel > 0)
+  {
+    metaText += NStr::StrFmt("Lv %d", entry.heroLevel);
+  }
+  if (entry.rating != 0)
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += NStr::StrFmt("R %d", entry.rating);
+  }
+  if (entry.ratingAcc != 0)
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += NStr::StrFmt("Acc %d", entry.ratingAcc);
+  }
+  if (entry.partyId != 0)
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += NStr::StrFmt("Pty %u", entry.partyId);
+  }
+  if (entry.isNovice)
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += "New";
+  }
+  if (entry.leftGame)
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += "Left";
+  }
+  if (!metaText.empty())
+  {
+    SetOpenGlColor(142, 164, 172, 218);
+    DrawOpenGlTextInBox(
+      overlay,
+      textX,
+      y + padding + lineHeight * 2,
+      textW,
+      lineHeight,
+      TruncateForOverlay(metaText, 34),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    if (metaLabelsDrawn)
+    {
+      ++(*metaLabelsDrawn);
+    }
+  }
+
+  const int barX = textX;
+  const int barY = y + height - padding - 8;
+  const int barW = std::max(1, width - (barX - x) - padding);
+  unsigned char forceR = teamR;
+  unsigned char forceG = teamG;
+  unsigned char forceB = teamB;
+  ResolveLinuxLoadingForceColor(
+    renderContext.loadingRuntimeDriver,
+    entry.force,
+    teamR,
+    teamG,
+    teamB,
+    &forceR,
+    &forceG,
+    &forceB);
+  const int forceBadgeH = std::max(12, std::min(18, lineHeight + 2));
+  const int forceBadgeX = x + width - padding - forceBadgeW;
+  const int forcePreferredY = flagY + flagSize + 4;
+  const int forceMaxY = barY - forceBadgeH - 3;
+  const int forceBadgeY = std::max(y + padding, std::min(forcePreferredY, forceMaxY));
+  SetOpenGlColor(forceR / 3, forceG / 3, forceB / 3, 190);
+  DrawOpenGlRect(forceBadgeX, forceBadgeY, forceBadgeW, forceBadgeH);
+  SetOpenGlColor(forceR, forceG, forceB, 224);
+  DrawOpenGlBorderRect(forceBadgeX, forceBadgeY, forceBadgeW, forceBadgeH);
+  SetOpenGlColor(238, 235, 215, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    forceBadgeX + 2,
+    forceBadgeY,
+    forceBadgeW - 4,
+    forceBadgeH,
+    NStr::StrFmt("F%d", entry.force),
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  if (forceBadgesDrawn)
+  {
+    ++(*forceBadgesDrawn);
+  }
+
+  const std::string rankIconRef =
+    !entry.rankIcon.empty() ? entry.rankIcon :
+      (!entry.rankAccIcon.empty() ? entry.rankAccIcon : entry.classIcon);
+  if (!rankIconRef.empty())
+  {
+    const int rankSize = flagSize;
+    const int rankX = forceBadgeX - rankSize - 4;
+    const int rankY = forceBadgeY;
+    if (rankX >= textX + textW + 2)
+    {
+      const LinuxWindowOverlay::OpenGlTexture* rankTexture =
+        ResolveLinuxLobbyCachedTextureReference(
+          overlay,
+          renderContext.environment,
+          rankIconRef);
+      if (rankTexture)
+      {
+        DrawOpenGlTextureCover(
+          rankTexture->texture,
+          rankTexture->width,
+          rankTexture->height,
+          rankX,
+          rankY,
+          rankSize,
+          rankSize
+        );
+        SetOpenGlColor(218, 208, 152, 206);
+        DrawOpenGlBorderRect(rankX, rankY, rankSize, rankSize);
+        if (rankIconsDrawn)
+        {
+          ++(*rankIconsDrawn);
+        }
+      }
+    }
+  }
+
+  if (entry.hasPremium)
+  {
+    const int premiumSize = std::max(12, std::min(18, flagSize));
+    const int premiumX = flagX - premiumSize - 4;
+    const int premiumY = flagY;
+    if (premiumX > textX)
+    {
+      SetOpenGlColor(98, 72, 20, 224);
+      DrawOpenGlRect(premiumX, premiumY, premiumSize, premiumSize);
+      SetOpenGlColor(240, 204, 76, 240);
+      DrawOpenGlBorderRect(premiumX, premiumY, premiumSize, premiumSize);
+      DrawOpenGlTextInBox(
+        overlay,
+        premiumX,
+        premiumY,
+        premiumSize,
+        premiumSize,
+        "P",
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      if (premiumBadgesDrawn)
+      {
+        ++(*premiumBadgesDrawn);
+      }
+    }
+  }
+
+  SetOpenGlColor(16, 20, 24, 224);
+  DrawOpenGlRect(barX, barY, barW, 7);
+  const float progress = ClampLinuxDynamicMarkerPercent(entry.progress);
+  const int fillW = std::max(1, static_cast<int>(static_cast<float>(barW) * progress));
+  SetOpenGlColor(teamR, teamG, teamB, 236);
+  DrawOpenGlRect(barX + 1, barY + 1, std::max(1, fillW - 2), 5);
+  SetOpenGlColor(103, 118, 126, 206);
+  DrawOpenGlBorderRect(barX, barY, barW, 7);
+  if (progressBarsDrawn)
+  {
+    ++(*progressBarsDrawn);
+  }
+}
+
+void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLoadingHeroesRuntimePreview* heroesPreview = renderContext.loadingHeroesRuntimePreview;
+  if (!overlay || !heroesPreview || !heroesPreview->ready || heroesPreview->heroes.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const int panelW = std::min(std::max(760, width - 88), std::max(1, width - 44));
+  const int panelH = std::max(150, std::min(188, height / 4 + 8));
+  const int panelX = std::max(12, (width - panelW) / 2);
+  const int panelY = std::max(64, height - panelH - 48);
+  const int gap = std::max(5, std::min(9, panelW / 150));
+  const int headerH = std::max(8, std::min(12, panelH / 12));
+  const int cardW = std::max(84, (panelW - gap * 6) / 5);
+  const int cardH = std::max(46, (panelH - headerH - gap * 3) / 2);
+
+  std::vector<const LinuxLoadingRuntimeHeroEntry*> topRow;
+  std::vector<const LinuxLoadingRuntimeHeroEntry*> bottomRow;
+  for (size_t i = 0; i < heroesPreview->heroes.size(); ++i)
+  {
+    const LinuxLoadingRuntimeHeroEntry& entry = heroesPreview->heroes[i];
+    if (entry.team == 2)
+    {
+      if (bottomRow.size() < 5)
+      {
+        bottomRow.push_back(&entry);
+      }
+    }
+    else if (topRow.size() < 5)
+    {
+      topRow.push_back(&entry);
+    }
+    else if (bottomRow.size() < 5)
+    {
+      bottomRow.push_back(&entry);
+    }
+  }
+
+  SetOpenGlColor(4, 7, 10, 190);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(92, 103, 105, 198);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  size_t rowsDrawn = 0;
+  size_t portraitsDrawn = 0;
+  size_t flagsDrawn = 0;
+  size_t progressBarsDrawn = 0;
+  size_t forceBadgesDrawn = 0;
+  size_t metaLabelsDrawn = 0;
+  size_t rankIconsDrawn = 0;
+  size_t premiumBadgesDrawn = 0;
+  for (size_t row = 0; row < 2; ++row)
+  {
+    const std::vector<const LinuxLoadingRuntimeHeroEntry*>& rowEntries =
+      row == 0 ? topRow : bottomRow;
+    const int cardY = panelY + headerH + gap + static_cast<int>(row) * (cardH + gap);
+    for (size_t column = 0; column < rowEntries.size() && column < 5; ++column)
+    {
+      const int cardX = panelX + gap + static_cast<int>(column) * (cardW + gap);
+      DrawLinuxLoadingRosterCard(
+        renderContext,
+        *rowEntries[column],
+        cardX,
+        cardY,
+        cardW,
+        cardH,
+        &portraitsDrawn,
+        &flagsDrawn,
+        &progressBarsDrawn,
+        &forceBadgesDrawn,
+        &metaLabelsDrawn,
+        &rankIconsDrawn,
+        &premiumBadgesDrawn
+      );
+      ++rowsDrawn;
+    }
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLoadingRosterDrawn = rowsDrawn > 0;
+    runtime->visibleLoadingRosterRowsDrawn = rowsDrawn;
+    runtime->visibleLoadingRosterPortraitsDrawn = portraitsDrawn;
+    runtime->visibleLoadingRosterFlagsDrawn = flagsDrawn;
+    runtime->visibleLoadingRosterProgressBarsDrawn = progressBarsDrawn;
+    runtime->visibleLoadingRosterForceBadgesDrawn = forceBadgesDrawn;
+    runtime->visibleLoadingRosterMetaLabelsDrawn = metaLabelsDrawn;
+    runtime->visibleLoadingRosterRankIconsDrawn = rankIconsDrawn;
+    runtime->visibleLoadingRosterPremiumBadgesDrawn = premiumBadgesDrawn;
+  }
 }
 
 void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& renderContext)
@@ -44268,7 +54715,7 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
 
   const int width = renderContext.width;
   const int height = renderContext.height;
-  const LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
   const LinuxMapCatalog& mapCatalog = *renderContext.mapCatalog;
   const LinuxMapBrowserState& mapBrowserState = *renderContext.mapBrowserState;
   const LinuxHeroCatalog& heroCatalog = *renderContext.heroCatalog;
@@ -44497,8 +54944,19 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
     }
   }
 
+  if (loadingActive)
+  {
+    DrawLinuxLoadingInfoOverlay(renderContext);
+    DrawLinuxLoadingChatOverlay(renderContext);
+    DrawLinuxLoadingRosterOverlay(renderContext);
+  }
+
+  DrawLinuxLiveScoreboardOverlay(renderContext);
   DrawLinuxBootstrapCharacterPreview(renderContext);
+  DrawLinuxLiveMinimapOverlay(renderContext);
   DrawLinuxLiveHudOverlay(renderContext);
+  DrawLinuxLiveEventFeedOverlay(renderContext);
+  DrawLinuxReplayInputControlOverlay(renderContext);
 
   SetOpenGlColor(8, 12, 16, 210);
   DrawOpenGlRect(0, height - 38, width, 38);
@@ -44689,6 +55147,7 @@ void RenderWindowOverlayOpenGlUiCallback(void* userData, unsigned int width, uns
     return;
   }
 
+  renderContext->uiCallbackRendered = true;
   renderContext->width = static_cast<int>(width);
   renderContext->height = static_cast<int>(height);
   RenderWindowOverlayOpenGlUi(*renderContext);
@@ -44783,9 +55242,14 @@ bool DrawWindowOverlayOpenGl(
 
   if (renderBootstrap && renderBootstrap->started && renderBootstrap->renderingInterface)
   {
+    renderContext.uiCallbackRendered = false;
     renderBootstrap->renderingInterface->SetLinuxUiRenderCallback(&RenderWindowOverlayOpenGlUiCallback, &renderContext);
     renderBootstrap->renderingInterface->Render(false, 0, 0, width, height);
     renderBootstrap->renderingInterface->SetLinuxUiRenderCallback(0, 0);
+    if (!renderContext.uiCallbackRendered)
+    {
+      RenderWindowOverlayOpenGlUi(renderContext);
+    }
     renderBootstrap->renderingInterface->Present();
   }
   else
@@ -45108,6 +55572,11 @@ void WriteStartupLog(
   logFile << "  sizeFromParent=" << ((settings.widthFromParent || settings.heightFromParent) ? "yes" : "no") << "\n";
   logFile << "  spectator=" << (settings.spectator ? "yes" : "no") << "\n";
   logFile << "  tutorial=" << (settings.tutorial ? "yes" : "no") << "\n";
+  logFile << "  replayControlStartPaused=" << (settings.replayStartPaused ? "yes" : "no") << "\n";
+  logFile << "  replayControlInitialSteps=" << settings.replayInitialStepBudget << "\n";
+  logFile << "  replayControlSpeed=" << settings.replaySpeedMultiplier << "\n";
+  logFile << "  replayControlRealtimePacing=" << (settings.replayRealtimePacing ? "yes" : "no") << "\n";
+  logFile << "  replayControlPaceMs=" << settings.replayPaceMs << "\n";
   logFile << "  launchSource=" << (launchPreview.source.empty() ? "<none>" : launchPreview.source) << "\n";
   logFile << "  launchProtocolPresent=" << (launchPreview.protocolPresent ? "yes" : "no") << "\n";
   logFile << "  launchProtocolValid=" << (launchPreview.protocolValid ? "yes" : "no") << "\n";
@@ -45218,6 +55687,38 @@ void WriteStartupLog(
   logFile << "  loadingUiPremiumTooltip="
           << (loadingUiPreview.premiumTooltip.empty() ? "<none>" : loadingUiPreview.premiumTooltip) << "\n";
   logFile << "  loadingRuntimeReady=" << (loadingRuntimeDriver.ready ? "yes" : "no") << "\n";
+  logFile << "  loadingRuntimeFlashForceColors="
+          << loadingRuntimeDriver.flashForceColorCount << "/"
+          << loadingRuntimeDriver.flashColorCount << "\n";
+  logFile << "  loadingRuntimeFlashModeDescriptions="
+          << loadingRuntimeDriver.flashModeDescriptionCount << "\n";
+  logFile << "  loadingRuntimeFlashLocales="
+          << (loadingRuntimeDriver.flashLocalesReady ? "yes" : "no") << "\n";
+  logFile << "  loadingRuntimeFlashTeamForce="
+          << (loadingRuntimeDriver.flashTeamForceReady ? "yes" : "no") << "\n";
+  logFile << "  loadingRuntimeFlashTip="
+          << (loadingRuntimeDriver.flashTipReady ? "yes" : "no") << "\n";
+  logFile << "  loadingRuntimeFlashStatus="
+          << (loadingRuntimeDriver.flashStatusReady ? "yes" : "no") << "\n";
+  logFile << "  loadingRuntimeFlashChat="
+          << "channels:" << loadingRuntimeDriver.flashChatChannelCount
+          << " shortcuts:" << loadingRuntimeDriver.flashChatShortcutCount
+          << " messages:" << loadingRuntimeDriver.flashChatMessageCount
+          << " visible:" << (loadingRuntimeDriver.flashChatVisible ? "yes" : "no")
+          << " off:" << (loadingRuntimeDriver.flashChatOff ? "yes" : "no")
+          << " default:" << loadingRuntimeDriver.flashDefaultChannel << "\n";
+  logFile << "  loadingRuntimeFlashPlayerBindings="
+          << loadingRuntimeDriver.flashPlayerBindingCount << "\n";
+  logFile << "  loadingRuntimeFlashPlayerBindingIcons="
+          << loadingRuntimeDriver.flashPlayerBindingIconCount << "\n";
+  logFile << "  loadingRuntimeFlashPlayerBindingHeroes="
+          << loadingRuntimeDriver.flashPlayerBindingHeroCount << "\n";
+  logFile << "  loadingRuntimeFlashHeroes="
+          << loadingRuntimeDriver.flashHeroCount << "\n";
+  logFile << "  loadingRuntimeFlashHeroProgress="
+          << loadingRuntimeDriver.flashHeroProgressCount << "\n";
+  logFile << "  loadingRuntimeFlashHeroPremium="
+          << loadingRuntimeDriver.flashHeroPremiumCount << "\n";
   logFile << "  loadingHeroesRuntimeReady=" << (loadingHeroesRuntimePreview.ready ? "yes" : "no") << "\n";
   logFile << "  loadingHeroesRuntimeCount=" << loadingHeroesRuntimePreview.heroes.size() << "\n";
   logFile << "  loadingHeroesRuntimeHumanCount=" << loadingHeroesRuntimePreview.humanCount << "\n";
@@ -45253,6 +55754,10 @@ void WriteStartupLog(
   {
     logFile << "  loadingRuntimeSample[" << i << "]=" << loadingRuntimeDriver.samples[i] << "\n";
   }
+  for (size_t i = 0; i < loadingRuntimeDriver.flashSamples.size(); ++i)
+  {
+    logFile << "  loadingRuntimeFlashSample[" << i << "]=" << loadingRuntimeDriver.flashSamples[i] << "\n";
+  }
   for (size_t i = 0; i < loadingHeroesRuntimePreview.samples.size(); ++i)
   {
     logFile << "  loadingHeroesRuntimeSample[" << i << "]=" << loadingHeroesRuntimePreview.samples[i] << "\n";
@@ -45271,8 +55776,13 @@ void WriteStartupLog(
     logFile << "  loadingHeroesRuntimeHero[" << i << "].isNovice=" << (loadingHeroesRuntimePreview.heroes[i].isNovice ? "yes" : "no") << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].progress=" << loadingHeroesRuntimePreview.heroes[i].progress << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].heroLevel=" << loadingHeroesRuntimePreview.heroes[i].heroLevel << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].force=" << loadingHeroesRuntimePreview.heroes[i].force << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].rating=" << loadingHeroesRuntimePreview.heroes[i].rating << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].ratingAcc=" << loadingHeroesRuntimePreview.heroes[i].ratingAcc << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].rankIcon="
+            << (loadingHeroesRuntimePreview.heroes[i].rankIcon.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].rankIcon) << "\n";
+    logFile << "  loadingHeroesRuntimeHero[" << i << "].rankAccIcon="
+            << (loadingHeroesRuntimePreview.heroes[i].rankAccIcon.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].rankAccIcon) << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].partyId=" << loadingHeroesRuntimePreview.heroes[i].partyId << "\n";
     logFile << "  loadingHeroesRuntimeHero[" << i << "].locale="
             << (loadingHeroesRuntimePreview.heroes[i].locale.empty() ? "<none>" : loadingHeroesRuntimePreview.heroes[i].locale) << "\n";
@@ -47361,6 +57871,7 @@ void AppendRuntimeInputLog(
   const LinuxInputState& inputState,
   const LinuxLaunchPreview& launchPreview,
   const LinuxSessionPreview& sessionPreview,
+  const LinuxReplayFileHeaderPreview& replayHeaderPreview,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -47389,8 +57900,87 @@ void AppendRuntimeInputLog(
           << (sessionPreview.currentHeroPersistentId.empty() ? "<none>" : sessionPreview.currentHeroPersistentId) << "\n";
   logFile << "  sessionCurrentTeamId=" << sessionPreview.currentTeamId << "\n";
   logFile << "  sessionPlayersCount=" << sessionPreview.players.size() << "\n";
+  logFile << "  replayHeaderRequested=" << (replayHeaderPreview.requested ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderLoaded=" << (replayHeaderPreview.loaded ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderUsable=" << (replayHeaderPreview.usable ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderAdoptedMap=" << (replayHeaderPreview.adoptedMap ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderAdoptedLineup=" << (replayHeaderPreview.adoptedLineup ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderAutoCreateGame=" << (replayHeaderPreview.autoCreateGame ? "yes" : "no") << "\n";
+  logFile << "  replayHeaderPath="
+          << (replayHeaderPreview.path.empty() ? "<none>" : replayHeaderPreview.path.string()) << "\n";
+  logFile << "  replayHeaderMap="
+          << (replayHeaderPreview.mapDescName.empty() ? "<none>" : replayHeaderPreview.mapDescName) << "\n";
+  logFile << "  replayHeaderClientId=" << replayHeaderPreview.clientId << "\n";
+  logFile << "  replayHeaderClientTeam=" << replayHeaderPreview.clientTeam << "\n";
+  logFile << "  replayHeaderClientHeroChecksum="
+          << NStr::StrFmt("0x%08X", replayHeaderPreview.clientHeroChecksum) << "\n";
+  logFile << "  replayHeaderStepLength=" << replayHeaderPreview.stepLength << "\n";
+  logFile << "  replayHeaderPlayers=" << replayHeaderPreview.players << "\n";
+  logFile << "  replayHeaderHumanPlayers=" << replayHeaderPreview.humanPlayers << "\n";
+  logFile << "  replayHeaderBotPlayers=" << replayHeaderPreview.botPlayers << "\n";
+  logFile << "  replayHeaderTeam1Players=" << replayHeaderPreview.team1Players << "\n";
+  logFile << "  replayHeaderTeam2Players=" << replayHeaderPreview.team2Players << "\n";
+  logFile << "  replayHeaderUnresolvedHeroes=" << replayHeaderPreview.unresolvedHeroes << "\n";
+  logFile << "  replayHeaderError="
+          << (replayHeaderPreview.error.empty() ? "none" : replayHeaderPreview.error) << "\n";
+  for (size_t i = 0; i < replayHeaderPreview.warnings.size(); ++i)
+  {
+    logFile << "  replayHeaderWarning[" << i << "]=" << replayHeaderPreview.warnings[i] << "\n";
+  }
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  logFile << "  finalVisibleLobbyDetailsDrawn="
+          << (screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsArtwork="
+          << (screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsMinimap="
+          << (screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsTextures="
+          << screenRuntime.visibleLobbyDetailsTextureCount << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupSlots="
+          << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapBack="
+          << (selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile) << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapLogo="
+          << (selectedMapPreview.loadingLogo.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingLogo.sourceFile) << "\n";
+  logFile << "  finalVisibleLobbyHeroDetailsDrawn="
+          << (screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyHeroPortrait="
+          << (screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyHeroAbilityIcons="
+          << screenRuntime.visibleLobbyHeroAbilityIconsDrawn << "\n";
+  logFile << "  finalVisibleLobbyHeroTalentIcons="
+          << screenRuntime.visibleLobbyHeroTalentIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingInfoDrawn="
+          << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingInfoLines="
+          << screenRuntime.visibleLoadingInfoLinesDrawn << "\n";
+  logFile << "  finalVisibleLoadingInfoIcons="
+          << screenRuntime.visibleLoadingInfoIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingChatDrawn="
+          << (screenRuntime.visibleLoadingChatDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingChatChannels="
+          << screenRuntime.visibleLoadingChatChannelsDrawn << "\n";
+  logFile << "  finalVisibleLoadingChatMessages="
+          << screenRuntime.visibleLoadingChatMessagesDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterDrawn="
+          << (screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingRosterRows="
+          << screenRuntime.visibleLoadingRosterRowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterPortraits="
+          << screenRuntime.visibleLoadingRosterPortraitsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterFlags="
+          << screenRuntime.visibleLoadingRosterFlagsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterProgressBars="
+          << screenRuntime.visibleLoadingRosterProgressBarsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterForceBadges="
+          << screenRuntime.visibleLoadingRosterForceBadgesDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterMetaLabels="
+          << screenRuntime.visibleLoadingRosterMetaLabelsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterRankIcons="
+          << screenRuntime.visibleLoadingRosterRankIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterPremiumBadges="
+          << screenRuntime.visibleLoadingRosterPremiumBadgesDrawn << "\n";
   logFile << "  finalGameSchedulerTicks=" << screenRuntime.schedulerTickCount << "\n";
   logFile << "  finalGameSchedulerNextStep=" << screenRuntime.schedulerNextStep << "\n";
   logFile << "  finalGameSchedulerSegmentReady="
@@ -47680,6 +58270,21 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameMinigameLeaveProofHeroIsolated="
           << screenRuntime.minigameLeaveProofHeroIsolatedBefore << "->"
           << screenRuntime.minigameLeaveProofHeroIsolatedAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofHeroHidden="
+          << screenRuntime.minigameLeaveProofHeroHiddenBefore << "->"
+          << screenRuntime.minigameLeaveProofHeroHiddenAfter
+          << " invisible:" << screenRuntime.minigameLeaveProofHeroInvisibleBefore
+          << "->" << screenRuntime.minigameLeaveProofHeroInvisibleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofSummonHidden="
+          << screenRuntime.minigameLeaveProofSummonHiddenBefore << "->"
+          << screenRuntime.minigameLeaveProofSummonHiddenAfter
+          << " invisible:" << screenRuntime.minigameLeaveProofSummonInvisibleBefore
+          << "->" << screenRuntime.minigameLeaveProofSummonInvisibleAfter
+          << " object:" << screenRuntime.minigameLeaveProofSummonObjectId
+          << " created:" << screenRuntime.minigameLeaveProofSummonAbilityCreated
+          << "/" << screenRuntime.minigameLeaveProofSummonFactoryCreated
+          << " count:" << screenRuntime.minigameLeaveProofSummonGroupCountBefore
+          << "/" << screenRuntime.minigameLeaveProofSummonActionCountBefore << "\n";
   logFile << "  finalGameMinigameLeaveProofHeroFlag="
           << screenRuntime.minigameLeaveProofHeroFlagBefore << "->"
           << screenRuntime.minigameLeaveProofHeroFlagAfter << "\n";
@@ -47704,6 +58309,26 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameMinigameLeaveProofMinigamesMainWorld="
           << screenRuntime.minigameLeaveProofMinigamesMainWorldBefore << "->"
           << screenRuntime.minigameLeaveProofMinigamesMainWorldAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesMainCommon="
+          << screenRuntime.minigameLeaveProofMinigamesMainCommonBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesMainCommonAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigamesMainBidons="
+          << screenRuntime.minigameLeaveProofMinigamesMainBidonsBefore << "->"
+          << screenRuntime.minigameLeaveProofMinigamesMainBidonsAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofBidon="
+          << screenRuntime.minigameLeaveProofBidonBefore << "->"
+          << screenRuntime.minigameLeaveProofBidonAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMainSpawner="
+          << screenRuntime.minigameLeaveProofMainSpawnerBefore << "->"
+          << screenRuntime.minigameLeaveProofMainSpawnerAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMainCreep="
+          << "id:" << screenRuntime.minigameLeaveProofMainCreepId
+          << " desc:" << screenRuntime.minigameLeaveProofMainCreepDescBeforeReturn
+          << "->" << screenRuntime.minigameLeaveProofMainCreepDescAfterReturn
+          << " out:" << screenRuntime.minigameLeaveProofMainCreepOutBeforeReturn
+          << " owner:" << screenRuntime.minigameLeaveProofMainCreepOwner
+          << " instant:" << screenRuntime.minigameLeaveProofMainCreepInstant
+          << " type:" << screenRuntime.minigameLeaveProofMainCreepType << "\n";
   logFile << "  finalGameMinigameLeaveProofMinigamesOpacity="
           << screenRuntime.minigameLeaveProofMinigamesOpacityBefore << "->"
           << screenRuntime.minigameLeaveProofMinigamesOpacityAfter << "\n";
@@ -47722,6 +58347,134 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameMinigameLeaveProofSingleId="
           << screenRuntime.minigameLeaveProofSingleIdBefore << "->"
           << screenRuntime.minigameLeaveProofSingleIdAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofSingleDbid="
+          << screenRuntime.minigameLeaveProofSingleDbidBefore << "->"
+          << screenRuntime.minigameLeaveProofSingleDbidAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofStartGuard="
+          << "place:" << screenRuntime.minigameLeaveProofStartGuardPlace
+          << " faction:" << screenRuntime.minigameLeaveProofStartGuardFaction
+          << "/" << screenRuntime.minigameLeaveProofStartGuardHeroFaction
+          << " can:" << screenRuntime.minigameLeaveProofStartGuardCanUse
+          << " available:" << screenRuntime.minigameLeaveProofStartGuardAvailable
+          << " result:" << screenRuntime.minigameLeaveProofStartGuardResult
+          << " heroPlace:" << screenRuntime.minigameLeaveProofStartGuardHeroPlaceAfter
+          << " user:" << screenRuntime.minigameLeaveProofStartGuardPlaceUserAfter
+          << " current:" << screenRuntime.minigameLeaveProofStartGuardCurrentSingleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofLifecycle="
+          << "diag:" << screenRuntime.minigameLeaveProofLifecycleBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecycleAfter
+          << " running:" << screenRuntime.minigameLeaveProofLifecycleRunningBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecycleRunningAfter
+          << " paused:" << screenRuntime.minigameLeaveProofLifecyclePausedAfter
+          << " fog:" << screenRuntime.minigameLeaveProofLifecycleFogDuring
+          << "->" << screenRuntime.minigameLeaveProofLifecycleFogAfter
+          << " finished:" << screenRuntime.minigameLeaveProofLifecycleFinishedBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecycleFinishedAfter
+          << " victory:" << screenRuntime.minigameLeaveProofLifecycleVictoryAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofMinigameEvents="
+          << "calls:" << screenRuntime.minigameLeaveProofMinigameEventCallsBefore
+          << "->" << screenRuntime.minigameLeaveProofMinigameEventCallsAfter
+          << " started:" << screenRuntime.minigameLeaveProofMinigameStartedEventsBefore
+          << "->" << screenRuntime.minigameLeaveProofMinigameStartedEventsAfter
+          << " exit:" << screenRuntime.minigameLeaveProofMinigameExitEventsBefore
+          << "->" << screenRuntime.minigameLeaveProofMinigameExitEventsAfter
+          << " last:" << screenRuntime.minigameLeaveProofMinigameLastEventBefore
+          << "->" << screenRuntime.minigameLeaveProofMinigameLastEventAfter
+          << " unit:" << screenRuntime.minigameLeaveProofMinigameLastEventUnitBefore
+          << "->" << screenRuntime.minigameLeaveProofMinigameLastEventUnitAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofSlowdownHint="
+          << "before:" << screenRuntime.minigameLeaveProofSlowdownHintBefore
+          << " sentinel:" << screenRuntime.minigameLeaveProofSlowdownHintSentinel
+          << " during:" << screenRuntime.minigameLeaveProofSlowdownHintDuring
+          << " after:" << screenRuntime.minigameLeaveProofSlowdownHintAfter
+          << " restored:" << screenRuntime.minigameLeaveProofSlowdownHintRestored << "\n";
+  logFile << "  finalGameMinigameLeaveProofLifecycleSingleCalls="
+          << "leave:" << screenRuntime.minigameLeaveProofLifecycleSingleLeaveCalls
+          << " pauseCmd:" << screenRuntime.minigameLeaveProofLifecycleSinglePauseCommandCalls
+          << " pause:" << screenRuntime.minigameLeaveProofLifecycleSinglePauseCalls
+          << " step:" << screenRuntime.minigameLeaveProofLifecycleSingleStepCalls
+          << " update:" << screenRuntime.minigameLeaveProofLifecycleSingleUpdateCalls
+          << " map:" << screenRuntime.minigameLeaveProofLifecycleSingleMapLoadedCalls
+          << " cheatDrop:" << screenRuntime.minigameLeaveProofLifecycleSingleCheatDropCalls
+          << " cheatWin:" << screenRuntime.minigameLeaveProofLifecycleSingleCheatWinCalls
+          << " finish:" << screenRuntime.minigameLeaveProofLifecycleSingleSessionFinishedCalls
+          << " eject:" << screenRuntime.minigameLeaveProofLifecycleSingleEjectCalls << "\n";
+  logFile << "  finalGameMinigameLeaveProofLifecycleForwarding="
+          << "drop:" << screenRuntime.minigameLeaveProofLifecycleDropForwardBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecycleDropForwardAfter
+          << " finish:" << screenRuntime.minigameLeaveProofLifecycleFinishForwardBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecycleFinishForwardAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofPlayerForwarding="
+          << "drop:calls:" << screenRuntime.minigameLeaveProofLifecyclePlayerDropCallsBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecyclePlayerDropCallsAfter
+          << " current:" << screenRuntime.minigameLeaveProofLifecyclePlayerDropHadCurrent
+          << " single:" << screenRuntime.minigameLeaveProofLifecyclePlayerDropSingleBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecyclePlayerDropSingleAfter
+          << " finish:calls:" << screenRuntime.minigameLeaveProofLifecyclePlayerFinishCallsBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecyclePlayerFinishCallsAfter
+          << " current:" << screenRuntime.minigameLeaveProofLifecyclePlayerFinishHadCurrent
+          << " single:" << screenRuntime.minigameLeaveProofLifecyclePlayerFinishSingleBefore
+          << "->" << screenRuntime.minigameLeaveProofLifecyclePlayerFinishSingleAfter << "\n";
+  logFile << "  finalGameMinigameLeaveProofLifecycleMinigamesCalls="
+          << "leave:" << screenRuntime.minigameLeaveProofLifecycleMinigamesLeaveCalls
+          << " force:" << screenRuntime.minigameLeaveProofLifecycleMinigamesForceLeaveCalls
+          << " step:" << screenRuntime.minigameLeaveProofLifecycleMinigamesStepCalls
+          << " update:" << screenRuntime.minigameLeaveProofLifecycleMinigamesUpdateCalls
+          << " map:" << screenRuntime.minigameLeaveProofLifecycleMinigamesMapLoadedCalls
+          << " mainSent:" << screenRuntime.minigameLeaveProofLifecycleMainSentCommands << "\n";
+  logFile << "  finalGameMinigameLeaveProofWorldSession="
+          << "targets:" << screenRuntime.minigameLeaveProofWorldSessionTargets
+          << "/" << screenRuntime.minigameLeaveProofWorldSessionTargetsExpected
+          << " allied:" << screenRuntime.minigameLeaveProofWorldSessionTargetsAllied
+          << " foreign:" << screenRuntime.minigameLeaveProofWorldSessionTargetsForeign
+          << " self:" << screenRuntime.minigameLeaveProofWorldSessionTargetsSelf
+          << " scroll:" << screenRuntime.minigameLeaveProofWorldSessionCanScrollDuplicate
+          << " zz:" << screenRuntime.minigameLeaveProofWorldSessionCanBuyZZBoostBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionCanBuyZZBoostAfter
+          << " gold:" << screenRuntime.minigameLeaveProofWorldSessionGoldBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionGoldAfterAdd
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionGoldAfterTake
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionGoldAfterZZBoost
+          << " nafta:" << screenRuntime.minigameLeaveProofWorldSessionTotalNafta << "\n";
+  logFile << "  finalGameMinigameLeaveProofWorldSessionItem="
+          << "shop:" << screenRuntime.minigameLeaveProofWorldSessionShop
+          << " consumable:" << screenRuntime.minigameLeaveProofWorldSessionConsumable
+          << " ally:" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetObjectId
+          << "/" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetPlayerId
+          << " add:" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetAddItem
+          << " slots:" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetSlotsBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetSlotsAfter
+          << " qty:" << screenRuntime.minigameLeaveProofWorldSessionAllyTargetAddedQuantity
+          << " add:" << screenRuntime.minigameLeaveProofWorldSessionAddItem
+          << " slots:" << screenRuntime.minigameLeaveProofWorldSessionSlotsBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionSlotsAfter
+          << " qty:" << screenRuntime.minigameLeaveProofWorldSessionAddedQuantity << "\n";
+  logFile << "  finalGameMinigameLeaveProofWorldSessionItemStats="
+          << "calls:" << screenRuntime.minigameLeaveProofWorldSessionStatsCallsBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsCallsAfterAlly
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsCallsAfterSelf
+          << " ally:" << screenRuntime.minigameLeaveProofWorldSessionStatsAllyBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsAllyAfter
+          << " self:" << screenRuntime.minigameLeaveProofWorldSessionStatsSelfBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsSelfAfter
+          << " allyLast:" << screenRuntime.minigameLeaveProofWorldSessionStatsAllyFrom
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsAllyTo
+          << ":" << screenRuntime.minigameLeaveProofWorldSessionStatsAllyItem
+          << " selfLast:" << screenRuntime.minigameLeaveProofWorldSessionStatsSelfFrom
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionStatsSelfTo
+          << ":" << screenRuntime.minigameLeaveProofWorldSessionStatsSelfItem << "\n";
+  logFile << "  finalGameMinigameLeaveProofWorldSessionBehaviour="
+          << "calls:" << screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsAfterAlly
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsAfterSelf
+          << " gave:" << screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveAfterAlly
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveAfterSelf
+          << " took:" << screenRuntime.minigameLeaveProofWorldSessionBehaviourTookBefore
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourTookAfterAlly
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourTookAfterSelf
+          << " last:" << screenRuntime.minigameLeaveProofWorldSessionBehaviourLastAfterAlly
+          << "->" << screenRuntime.minigameLeaveProofWorldSessionBehaviourLastAfterSelf << "\n";
   logFile << "  finalGameTransceiverHeroPickupObjectSent="
           << (screenRuntime.transceiverHeroPickupObjectRuntimeCommandSent ? "yes" : "no") << "\n";
   logFile << "  finalGameTransceiverHeroPickupObjectCommandsSent="
@@ -47734,9 +58487,91 @@ void AppendRuntimeInputLog(
           << screenRuntime.transceiverHeroPickupObjectClientId << "\n";
   logFile << "  finalGameTransceiverHeroPickupObjectId="
           << screenRuntime.transceiverHeroPickupObjectId << "\n";
+  logFile << "  finalLinuxBotCommandDriverActive="
+          << (screenRuntime.linuxBotCommandDriverActive ? "yes" : "no") << "\n";
+  logFile << "  finalLinuxBotCommandDriverReady="
+          << (screenRuntime.linuxBotCommandDriverReady ? "yes" : "no") << "\n";
+  logFile << "  finalLinuxBotCommandTicks="
+          << screenRuntime.linuxBotCommandTicks << "\n";
+  logFile << "  finalLinuxBotCommandHeroesConsidered="
+          << screenRuntime.linuxBotCommandHeroesConsidered << "\n";
+  logFile << "  finalLinuxBotCommandHeroesCommanded="
+          << screenRuntime.linuxBotCommandHeroesCommanded << "\n";
+  logFile << "  finalLinuxBotMoveCommandsSent="
+          << screenRuntime.linuxBotMoveRuntimeCommandsSent << "\n";
+  logFile << "  finalLinuxBotAttackCommandsSent="
+          << screenRuntime.linuxBotAttackRuntimeCommandsSent << "\n";
+  logFile << "  finalLinuxBotCommandSkippedTicks="
+          << screenRuntime.linuxBotCommandSkippedTicks << "\n";
+  logFile << "  finalLinuxBotCommandWorldStep="
+          << screenRuntime.linuxBotCommandLastWorldStep
+          << "/" << screenRuntime.linuxBotCommandNextWorldStep << "\n";
+  logFile << "  finalLinuxBotCommandPlayer="
+          << screenRuntime.linuxBotCommandLastPlayerId
+          << "/" << screenRuntime.linuxBotCommandLastClientId << "\n";
+  logFile << "  finalLinuxBotCommandTarget="
+          << screenRuntime.linuxBotCommandLastTargetPlayerId
+          << "/" << screenRuntime.linuxBotCommandLastTargetClientId << "\n";
+  logFile << "  finalLinuxBotCommandPositions="
+          << screenRuntime.linuxBotCommandSourceX << ","
+          << screenRuntime.linuxBotCommandSourceY << "->"
+          << screenRuntime.linuxBotCommandTargetX << ","
+          << screenRuntime.linuxBotCommandTargetY << "\n";
+  logFile << "  finalLinuxBotCommandLastAction="
+          << (screenRuntime.linuxBotCommandLastAction.empty() ?
+              "none" :
+              screenRuntime.linuxBotCommandLastAction) << "\n";
+  logFile << "  finalLinuxAIControllers="
+          << "auto:" << screenRuntime.linuxAIAutoStartAttempts
+          << "/" << screenRuntime.linuxAIAutoStartSuccesses
+          << " add:" << screenRuntime.linuxAIAddRequests
+          << "/" << screenRuntime.linuxAIAddSuccesses
+          << " remove:" << screenRuntime.linuxAIRemoveRequests
+          << "/" << screenRuntime.linuxAIRemoveSuccesses
+          << " steps:" << screenRuntime.linuxAIStepCalls
+          << " active:" << screenRuntime.linuxAIControllerCount
+          << " bots:" << screenRuntime.linuxAIBotsSettingsAvailable
+          << "/" << screenRuntime.linuxAIBotsEnabled
+          << " last:" << screenRuntime.linuxAILastHeroObjectId
+          << "/" << screenRuntime.linuxAILastPlayerId
+          << "/" << screenRuntime.linuxAILastUserId
+          << "/" << screenRuntime.linuxAILastLine
+          << " commands:" << screenRuntime.linuxAICommandAttempts
+          << "/" << screenRuntime.linuxAICommandsSent
+          << " fallback:" << screenRuntime.linuxAICommandDirectFallbacks
+          << " move:" << screenRuntime.linuxAICommandMoveSent
+          << " combat:" << screenRuntime.linuxAICommandCombatMoveSent
+          << " attack:" << screenRuntime.linuxAICommandAttackSent
+          << " other:" << screenRuntime.linuxAICommandOtherSent
+          << " lastCmd:" << screenRuntime.linuxAILastCommandKind
+          << "/" << screenRuntime.linuxAILastCommandHeroObjectId
+          << "/" << screenRuntime.linuxAILastCommandPlayerId
+          << "/" << screenRuntime.linuxAILastCommandUserId
+          << "/" << screenRuntime.linuxAILastCommandTargetObjectId
+          << "/" << screenRuntime.linuxAILastCommandSent << "\n";
   logFile << "  finalGameTransceiverCommandQueuedBeforePrime="
           << (screenRuntime.transceiverRuntimeCommandQueuedBeforePrime ? "yes" : "no") << "\n";
   logFile << "  finalGameTransceiverStatusUpdates=" << screenRuntime.transceiverStatusUpdates << "\n";
+  logFile << "  finalGameTransceiverStatusMissing=" << screenRuntime.transceiverStatusMissing << "\n";
+  logFile << "  finalGameTransceiverStatusBreakdown="
+          << "active:" << screenRuntime.transceiverStatusActiveUpdates
+          << " away:" << screenRuntime.transceiverStatusAwayUpdates
+          << " playing:" << screenRuntime.transceiverStatusPlayingUpdates
+          << " disconnected:" << screenRuntime.transceiverStatusDisconnectedUpdates
+          << " reconnected:" << screenRuntime.transceiverStatusReconnectedUpdates
+          << " leaver:" << screenRuntime.transceiverStatusLeaverUpdates << "\n";
+  logFile << "  finalGameTransceiverStatusScript="
+          << "queued:" << screenRuntime.transceiverStatusScriptQueued
+          << " applied:" << screenRuntime.transceiverStatusScriptApplied
+          << " completed:" << (screenRuntime.transceiverStatusScriptCompleted ? "yes" : "no") << "\n";
+  logFile << "  finalGameTransceiverLastStatus="
+          << screenRuntime.transceiverLastStatusClientId
+          << "/" << screenRuntime.transceiverLastStatusValue
+          << "/" << screenRuntime.transceiverLastStatusStep
+          << " playing:" << screenRuntime.transceiverLastStatusPlaying
+          << " active:" << screenRuntime.transceiverLastStatusActive
+          << " disconnected:" << screenRuntime.transceiverLastStatusDisconnected
+          << " leaver:" << screenRuntime.transceiverLastStatusLeaver << "\n";
   logFile << "  finalGameTransceiverNoData="
           << (screenRuntime.transceiverNoData ? "yes" : "no") << "\n";
   logFile << "  finalGameReplayWriterReady="
@@ -47757,6 +58592,326 @@ void AppendRuntimeInputLog(
           << screenRuntime.replayWriterFailures << "\n";
   logFile << "  finalGameReplayWriterPath="
           << (screenRuntime.replayWriterPath.empty() ? "<none>" : screenRuntime.replayWriterPath) << "\n";
+  logFile << "  finalGameReplayInputReady="
+          << (screenRuntime.replayInputReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputHeaderReady="
+          << (screenRuntime.replayInputHeaderReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputWorldAttached="
+          << (screenRuntime.replayInputWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputValidated="
+          << (screenRuntime.replayInputValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputPath="
+          << (screenRuntime.replayInputPath.empty() ? "<none>" : screenRuntime.replayInputPath) << "\n";
+  logFile << "  finalGameReplayInputStepLength=" << screenRuntime.replayInputStepLength << "\n";
+  logFile << "  finalGameReplayInputSegments=" << screenRuntime.replayInputLoadedSegments << "\n";
+  logFile << "  finalGameReplayInputCommands=" << screenRuntime.replayInputCommandsExecuted
+          << "/" << screenRuntime.replayInputLoadedCommands << "\n";
+  logFile << "  finalGameReplayInputStatuses=" << screenRuntime.replayInputStatusesApplied
+          << "/" << screenRuntime.replayInputLoadedStatuses << "\n";
+  logFile << "  finalGameReplayInputPaused="
+          << (screenRuntime.replayInputPaused ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputPlaybackRate="
+          << screenRuntime.replayInputPlaybackRate << "\n";
+  logFile << "  finalGameReplayInputRealtimePacing="
+          << (screenRuntime.replayInputRealtimePacing ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputPaceMs="
+          << screenRuntime.replayInputPaceMs << "\n";
+  logFile << "  finalGameReplayInputPacingSkips="
+          << screenRuntime.replayInputPacingSkips << "\n";
+  logFile << "  finalGameReplayInputControlEvents="
+          << screenRuntime.replayInputControlEvents << "\n";
+  logFile << "  finalGameReplayInputPauseToggles="
+          << screenRuntime.replayInputPauseToggleCount << "\n";
+  logFile << "  finalGameReplayInputSpeedChanges="
+          << screenRuntime.replayInputSpeedChangeCount << "\n";
+  logFile << "  finalGameReplayInputManualSteps="
+          << screenRuntime.replayInputManualStepsConsumed
+          << "/" << screenRuntime.replayInputManualStepRequests
+          << "/" << screenRuntime.replayInputPendingManualSteps << "\n";
+  logFile << "  finalGameReplayInputControlSource="
+          << (screenRuntime.replayInputControlSource.empty() ? "auto" : screenRuntime.replayInputControlSource) << "\n";
+  logFile << "  finalGameReplayInputStepCalls=" << screenRuntime.replayInputStepCalls << "\n";
+  logFile << "  finalGameReplayInputWorldSteps=" << screenRuntime.replayInputWorldSteps << "\n";
+  logFile << "  finalGameReplayInputFinalWorldStep=" << screenRuntime.replayInputFinalWorldStep << "\n";
+  logFile << "  finalGameReplayInputMatches="
+          << "step:" << (screenRuntime.replayInputStepCountMatches ? "yes" : "no")
+          << " command:" << (screenRuntime.replayInputCommandCountMatches ? "yes" : "no")
+          << " status:" << (screenRuntime.replayInputStatusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayInputError="
+          << (screenRuntime.replayInputError.empty() ? "none" : screenRuntime.replayInputError) << "\n";
+  logFile << "  finalGameReplayCaptureValidated="
+          << (screenRuntime.replayCaptureValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureMagicReady="
+          << (screenRuntime.replayCaptureMagicReady ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureBoundsOk="
+          << (screenRuntime.replayCaptureBoundsOk ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureByteCountMatches="
+          << (screenRuntime.replayCaptureByteCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureCommandCountMatches="
+          << (screenRuntime.replayCaptureCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureStatusCountMatches="
+          << (screenRuntime.replayCaptureStatusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayCaptureRecords="
+          << screenRuntime.replayCaptureRecords << "\n";
+  logFile << "  finalGameReplayCaptureCommands="
+          << screenRuntime.replayCaptureCommandBlocks << "\n";
+  logFile << "  finalGameReplayCaptureStatuses="
+          << screenRuntime.replayCaptureStatusBlocks << "\n";
+  logFile << "  finalGameReplayCaptureStatusBreakdown="
+          << "active:" << screenRuntime.replayCaptureStatusActiveBlocks
+          << " away:" << screenRuntime.replayCaptureStatusAwayBlocks
+          << " disconnected:" << screenRuntime.replayCaptureStatusDisconnectedBlocks
+          << " leaver:" << screenRuntime.replayCaptureStatusLeaverBlocks << "\n";
+  logFile << "  finalGameReplayCaptureBytesRead="
+          << screenRuntime.replayCaptureBytesRead << "\n";
+  logFile << "  finalGameReplayCaptureLargestCommandBytes="
+          << screenRuntime.replayCaptureLargestCommandBytes << "\n";
+  logFile << "  finalGameReplayCaptureStartStep="
+          << screenRuntime.replayCaptureStartStep << "\n";
+  logFile << "  finalGameReplayCaptureFirstStep="
+          << screenRuntime.replayCaptureFirstStep << "\n";
+  logFile << "  finalGameReplayCaptureLastStep="
+          << screenRuntime.replayCaptureLastStep << "\n";
+  logFile << "  finalGameReplayCaptureError="
+          << (screenRuntime.replayCaptureValidationError.empty() ? "none" : screenRuntime.replayCaptureValidationError) << "\n";
+  logFile << "  finalGameReplayReadbackDecoded="
+          << (screenRuntime.replayReadbackDecoded ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayReadbackCommandCountMatches="
+          << (screenRuntime.replayReadbackCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayReadbackPackedCommands="
+          << screenRuntime.replayReadbackPackedCommands << "\n";
+  logFile << "  finalGameReplayReadbackDecodeFailures="
+          << screenRuntime.replayReadbackDecodeFailures << "\n";
+  logFile << "  finalGameReplayReadbackCommandBytes="
+          << screenRuntime.replayReadbackCommandBytes << "\n";
+  logFile << "  finalGameReplayReadbackDistinctCommandTypes="
+          << screenRuntime.replayReadbackDistinctCommandTypes << "\n";
+  logFile << "  finalGameReplayReadbackClientRange="
+          << screenRuntime.replayReadbackMinClientId << ".." << screenRuntime.replayReadbackMaxClientId << "\n";
+  logFile << "  finalGameReplayReadbackFirstClientId="
+          << screenRuntime.replayReadbackFirstClientId << "\n";
+  logFile << "  finalGameReplayReadbackLastClientId="
+          << screenRuntime.replayReadbackLastClientId << "\n";
+  logFile << "  finalGameReplayReadbackFirstCommandTypeId="
+          << NStr::StrFmt("0x%08X", screenRuntime.replayReadbackFirstCommandTypeId) << "\n";
+  logFile << "  finalGameReplayReadbackLastCommandTypeId="
+          << NStr::StrFmt("0x%08X", screenRuntime.replayReadbackLastCommandTypeId) << "\n";
+  logFile << "  finalGameReplayReadbackFirstCommandTime="
+          << screenRuntime.replayReadbackFirstCommandTime << "\n";
+  logFile << "  finalGameReplayReadbackLastCommandTime="
+          << screenRuntime.replayReadbackLastCommandTime << "\n";
+  logFile << "  finalGameReplayStorageValidated="
+          << (screenRuntime.replayStorageValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayStorageSegmentCountMatches="
+          << (screenRuntime.replayStorageSegmentCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayStorageCommandCountMatches="
+          << (screenRuntime.replayStorageCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayStorageStatusCountMatches="
+          << (screenRuntime.replayStorageStatusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayStorageHeaderValidated="
+          << (screenRuntime.replayStorageHeaderValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayStorageHeaderPlayers="
+          << screenRuntime.replayStorageHeaderPlayers << "\n";
+  logFile << "  finalGameReplayStorageHeaderClientId="
+          << screenRuntime.replayStorageHeaderClientId << "\n";
+  logFile << "  finalGameReplayStorageHeaderStepLength="
+          << screenRuntime.replayStorageHeaderStepLength << "\n";
+  logFile << "  finalGameReplayStorageHeaderMap="
+          << screenRuntime.replayStorageHeaderMap << "\n";
+  logFile << "  finalGameReplayStorageLoadedSegments="
+          << screenRuntime.replayStorageLoadedSegments << "\n";
+  logFile << "  finalGameReplayStorageConsumedSegments="
+          << screenRuntime.replayStorageConsumedSegments << "\n";
+  logFile << "  finalGameReplayStorageLoadedCommands="
+          << screenRuntime.replayStorageLoadedCommands << "\n";
+  logFile << "  finalGameReplayStorageConsumedCommands="
+          << screenRuntime.replayStorageConsumedCommands << "\n";
+  logFile << "  finalGameReplayStorageLoadedStatuses="
+          << screenRuntime.replayStorageLoadedStatuses << "\n";
+  logFile << "  finalGameReplayStorageConsumedStatuses="
+          << screenRuntime.replayStorageConsumedStatuses << "\n";
+  logFile << "  finalGameReplayStorageDecodeFailures="
+          << screenRuntime.replayStorageDecodeFailures << "\n";
+  logFile << "  finalGameReplayStorageFirstStep="
+          << screenRuntime.replayStorageFirstStep << "\n";
+  logFile << "  finalGameReplayStorageLastStep="
+          << screenRuntime.replayStorageLastStep << "\n";
+  logFile << "  finalGameReplayStorageError="
+          << (screenRuntime.replayStorageValidationError.empty() ? "none" : screenRuntime.replayStorageValidationError) << "\n";
+  logFile << "  finalGameReplayStorageSource=ReplayStorage2\n";
+  logFile << "  finalGameReplayPlaybackValidated="
+          << (screenRuntime.replayPlaybackValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayPlaybackHeaderValidated="
+          << (screenRuntime.replayPlaybackHeaderValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayPlaybackHeaderStepLength="
+          << screenRuntime.replayPlaybackHeaderStepLength << "\n";
+  logFile << "  finalGameReplayPlaybackWorldAttached="
+          << (screenRuntime.replayPlaybackWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayPlaybackStepCountMatches="
+          << (screenRuntime.replayPlaybackStepCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayPlaybackCommandCountMatches="
+          << (screenRuntime.replayPlaybackCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayPlaybackStepCalls="
+          << screenRuntime.replayPlaybackStepCalls << "\n";
+  logFile << "  finalGameReplayPlaybackWorldSteps="
+          << screenRuntime.replayPlaybackWorldSteps << "\n";
+  logFile << "  finalGameReplayPlaybackCommandBatches="
+          << screenRuntime.replayPlaybackCommandBatches << "\n";
+  logFile << "  finalGameReplayPlaybackCommands="
+          << screenRuntime.replayPlaybackCommands << "\n";
+  logFile << "  finalGameReplayPlaybackFinalWorldStep="
+          << screenRuntime.replayPlaybackFinalWorldStep << "\n";
+  logFile << "  finalGameReplayPlaybackError="
+          << (screenRuntime.replayPlaybackValidationError.empty() ? "none" : screenRuntime.replayPlaybackValidationError) << "\n";
+  logFile << "  finalGameReplayServerPlaybackValidated="
+          << (screenRuntime.replayServerPlaybackValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackHeaderValidated="
+          << (screenRuntime.replayServerPlaybackHeaderValidated ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackHeaderStepLength="
+          << screenRuntime.replayServerPlaybackHeaderStepLength << "\n";
+  logFile << "  finalGameReplayServerPlaybackWorldAttached="
+          << (screenRuntime.replayServerPlaybackWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackStepCountMatches="
+          << (screenRuntime.replayServerPlaybackStepCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackCommandCountMatches="
+          << (screenRuntime.replayServerPlaybackCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackStatusCountMatches="
+          << (screenRuntime.replayServerPlaybackStatusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalGameReplayServerPlaybackStepCalls="
+          << screenRuntime.replayServerPlaybackStepCalls << "\n";
+  logFile << "  finalGameReplayServerPlaybackWorldSteps="
+          << screenRuntime.replayServerPlaybackWorldSteps << "\n";
+  logFile << "  finalGameReplayServerPlaybackCommandBatches="
+          << screenRuntime.replayServerPlaybackCommandBatches << "\n";
+  logFile << "  finalGameReplayServerPlaybackCommands="
+          << screenRuntime.replayServerPlaybackCommands << "\n";
+  logFile << "  finalGameReplayServerPlaybackStatusUpdates="
+          << screenRuntime.replayServerPlaybackStatusUpdates << "\n";
+  logFile << "  finalGameReplayServerPlaybackFinalWorldStep="
+          << screenRuntime.replayServerPlaybackFinalWorldStep << "\n";
+  logFile << "  finalGameReplayServerPlaybackError="
+          << (screenRuntime.replayServerPlaybackValidationError.empty() ? "none" : screenRuntime.replayServerPlaybackValidationError) << "\n";
+  logFile << "  finalReplayFileRequested="
+          << (screenRuntime.replayFileProof.requested ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePath="
+          << (screenRuntime.replayFileProof.path.empty() ? "<none>" : screenRuntime.replayFileProof.path) << "\n";
+  logFile << "  finalReplayFileValidated="
+          << (screenRuntime.replayFileProof.validated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileStorageReady="
+          << (screenRuntime.replayFileProof.storageReady ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileHeaderReady="
+          << (screenRuntime.replayFileProof.headerReady ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileHeaderValidated="
+          << (screenRuntime.replayFileProof.headerValidated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileHeaderPlayers="
+          << screenRuntime.replayFileProof.headerPlayers << "\n";
+  logFile << "  finalReplayFileHeaderClientId="
+          << screenRuntime.replayFileProof.headerClientId << "\n";
+  logFile << "  finalReplayFileHeaderStepLength="
+          << screenRuntime.replayFileProof.headerStepLength << "\n";
+  logFile << "  finalReplayFileHeaderMap="
+          << screenRuntime.replayFileProof.headerMap << "\n";
+  logFile << "  finalReplayFileLoadedSegments="
+          << screenRuntime.replayFileProof.loadedSegments << "\n";
+  logFile << "  finalReplayFileConsumedSegments="
+          << screenRuntime.replayFileProof.consumedSegments << "\n";
+  logFile << "  finalReplayFileLoadedCommands="
+          << screenRuntime.replayFileProof.loadedCommands << "\n";
+  logFile << "  finalReplayFileConsumedCommands="
+          << screenRuntime.replayFileProof.consumedCommands << "\n";
+  logFile << "  finalReplayFileLoadedStatuses="
+          << screenRuntime.replayFileProof.loadedStatuses << "\n";
+  logFile << "  finalReplayFileConsumedStatuses="
+          << screenRuntime.replayFileProof.consumedStatuses << "\n";
+  logFile << "  finalReplayFileDecodeFailures="
+          << screenRuntime.replayFileProof.decodeFailures << "\n";
+  logFile << "  finalReplayFileSteps="
+          << screenRuntime.replayFileProof.firstStep << ".."
+          << screenRuntime.replayFileProof.lastStep << "\n";
+  logFile << "  finalReplayFileSegmentCountMatches="
+          << (screenRuntime.replayFileProof.segmentCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileCommandCountMatches="
+          << (screenRuntime.replayFileProof.commandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileStatusCountMatches="
+          << (screenRuntime.replayFileProof.statusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePlaybackValidated="
+          << (screenRuntime.replayFileProof.playbackValidated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePlaybackWorldAttached="
+          << (screenRuntime.replayFileProof.playbackWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePlaybackStepCountMatches="
+          << (screenRuntime.replayFileProof.playbackStepCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePlaybackCommandCountMatches="
+          << (screenRuntime.replayFileProof.playbackCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFilePlaybackStepCalls="
+          << screenRuntime.replayFileProof.playbackStepCalls << "\n";
+  logFile << "  finalReplayFilePlaybackWorldSteps="
+          << screenRuntime.replayFileProof.playbackWorldSteps << "\n";
+  logFile << "  finalReplayFilePlaybackCommandBatches="
+          << screenRuntime.replayFileProof.playbackCommandBatches << "\n";
+  logFile << "  finalReplayFilePlaybackCommands="
+          << screenRuntime.replayFileProof.playbackCommands << "\n";
+  logFile << "  finalReplayFilePlaybackFinalWorldStep="
+          << screenRuntime.replayFileProof.playbackFinalWorldStep << "\n";
+  logFile << "  finalReplayFilePlaybackError="
+          << (screenRuntime.replayFileProof.playbackValidationError.empty() ? "none" : screenRuntime.replayFileProof.playbackValidationError) << "\n";
+  logFile << "  finalReplayFileServerPlaybackValidated="
+          << (screenRuntime.replayFileProof.serverPlaybackValidated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileServerPlaybackWorldAttached="
+          << (screenRuntime.replayFileProof.serverPlaybackWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileServerPlaybackStepCountMatches="
+          << (screenRuntime.replayFileProof.serverPlaybackStepCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileServerPlaybackCommandCountMatches="
+          << (screenRuntime.replayFileProof.serverPlaybackCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileServerPlaybackStatusCountMatches="
+          << (screenRuntime.replayFileProof.serverPlaybackStatusCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileServerPlaybackStepCalls="
+          << screenRuntime.replayFileProof.serverPlaybackStepCalls << "\n";
+  logFile << "  finalReplayFileServerPlaybackWorldSteps="
+          << screenRuntime.replayFileProof.serverPlaybackWorldSteps << "\n";
+  logFile << "  finalReplayFileServerPlaybackCommandBatches="
+          << screenRuntime.replayFileProof.serverPlaybackCommandBatches << "\n";
+  logFile << "  finalReplayFileServerPlaybackCommands="
+          << screenRuntime.replayFileProof.serverPlaybackCommands << "\n";
+  logFile << "  finalReplayFileServerPlaybackStatuses="
+          << screenRuntime.replayFileProof.serverPlaybackStatusUpdates << "\n";
+  logFile << "  finalReplayFileServerPlaybackFinalWorldStep="
+          << screenRuntime.replayFileProof.serverPlaybackFinalWorldStep << "\n";
+  logFile << "  finalReplayFileServerPlaybackError="
+          << (screenRuntime.replayFileProof.serverPlaybackValidationError.empty() ? "none" : screenRuntime.replayFileProof.serverPlaybackValidationError) << "\n";
+  logFile << "  finalReplayFileLiveWorldValidated="
+          << (screenRuntime.replayFileProof.liveWorldValidated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldCreated="
+          << (screenRuntime.replayFileProof.liveWorldCreated ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldLoaded="
+          << (screenRuntime.replayFileProof.liveWorldLoaded ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldAttached="
+          << (screenRuntime.replayFileProof.liveWorldAttached ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldStepCountMatches="
+          << (screenRuntime.replayFileProof.liveWorldStepCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldCommandCountMatches="
+          << (screenRuntime.replayFileProof.liveWorldCommandCountMatches ? "yes" : "no") << "\n";
+  logFile << "  finalReplayFileLiveWorldStepCalls="
+          << screenRuntime.replayFileProof.liveWorldStepCalls << "\n";
+  logFile << "  finalReplayFileLiveWorldFinalStep="
+          << screenRuntime.replayFileProof.liveWorldFinalStep << "\n";
+  logFile << "  finalReplayFileLiveWorldPlayers="
+          << screenRuntime.replayFileProof.liveWorldPlayers << "\n";
+  logFile << "  finalReplayFileLiveWorldMapObjects="
+          << screenRuntime.replayFileProof.liveWorldMapObjects << "\n";
+  logFile << "  finalReplayFileLiveWorldSpawnedHeroes="
+          << screenRuntime.replayFileProof.liveWorldSpawnedHeroes << "\n";
+  logFile << "  finalReplayFileLiveWorldPlayerHeroes="
+          << screenRuntime.replayFileProof.liveWorldPlayerHeroes << "\n";
+  logFile << "  finalReplayFileLiveWorldCommandsBefore="
+          << screenRuntime.replayFileProof.liveWorldCommandsBefore << "\n";
+  logFile << "  finalReplayFileLiveWorldCommandsAfter="
+          << screenRuntime.replayFileProof.liveWorldCommandsAfter << "\n";
+  logFile << "  finalReplayFileLiveWorldCommandsExecuted="
+          << screenRuntime.replayFileProof.liveWorldCommandsExecuted << "\n";
+  logFile << "  finalReplayFileLiveWorldError="
+          << (screenRuntime.replayFileProof.liveWorldValidationError.empty() ? "none" : screenRuntime.replayFileProof.liveWorldValidationError) << "\n";
+  logFile << "  finalReplayFileError="
+          << (screenRuntime.replayFileProof.validationError.empty() ? "none" : screenRuntime.replayFileProof.validationError) << "\n";
   logFile << "  finalGameWorldPlayers=" << screenRuntime.worldPlayers << "\n";
   logFile << "  finalGameWorldPresentPlayers=" << screenRuntime.worldPresentPlayers << "\n";
   logFile << "  finalGameWorldFog=" << screenRuntime.worldFogWidth << "x" << screenRuntime.worldFogHeight << "\n";
@@ -47958,6 +59113,158 @@ void AppendRuntimeInputLog(
           << screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId << "\n";
   logFile << "  finalLiveHudSamples="
           << screenRuntime.liveHudSampleCount << "\n";
+  logFile << "  finalVisibleLiveHudDrawn="
+          << (screenRuntime.visibleLiveHudDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudPortrait="
+          << (screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudBars="
+          << screenRuntime.visibleLiveHudBarsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudAbilitySlots="
+          << screenRuntime.visibleLiveHudAbilitySlotsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudAbilityIcons="
+          << screenRuntime.visibleLiveHudAbilityIconsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudTalentSlots="
+          << screenRuntime.visibleLiveHudTalentSlotsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudTalentIcons="
+          << screenRuntime.visibleLiveHudTalentIconsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudTargetPanel="
+          << (screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHudCommandSurface="
+          << (screenRuntime.liveHudCommandSurfaceReady ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHudActivateTalentProof="
+          << (screenRuntime.liveHudActivateTalentProofSent ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHudCommandHighlight="
+          << (screenRuntime.liveHudCommandHighlightDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHudInputCount="
+          << screenRuntime.liveHudInputCount << "\n";
+  logFile << "  finalLiveHudAttackCommands="
+          << screenRuntime.liveHudAttackCommandsSent << "\n";
+  logFile << "  finalLiveHudUseUnitCommands="
+          << screenRuntime.liveHudUseUnitCommandsSent << "\n";
+  logFile << "  finalLiveHudActivateTalentCommands="
+          << screenRuntime.liveHudActivateTalentCommandsSent << "\n";
+  logFile << "  finalLiveHudUseTalentCommands="
+          << screenRuntime.liveHudUseTalentCommandsSent << "\n";
+  logFile << "  finalLiveHudFollowCommands="
+          << screenRuntime.liveHudFollowCommandsSent << "\n";
+  logFile << "  finalLiveHudTalentCommandSlots="
+          << screenRuntime.liveHudTalentCommandSlots << "\n";
+  logFile << "  finalLiveHudLastAction="
+          << (screenRuntime.liveHudLastAction.empty() ?
+              "<none>" :
+              screenRuntime.liveHudLastAction) << "\n";
+  logFile << "  finalLiveHotkeyReady="
+          << (screenRuntime.liveHeroState.ready ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHotkeyCommandProof="
+          << (screenRuntime.liveHotkeyCommandProofSent ? "yes" : "no") << "\n";
+  logFile << "  finalLiveHotkeyInputCount="
+          << screenRuntime.liveHotkeyInputCount << "\n";
+  logFile << "  finalLiveHotkeyStopCommands="
+          << screenRuntime.liveHotkeyStopCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyAttackCommands="
+          << screenRuntime.liveHotkeyAttackCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyFollowCommands="
+          << screenRuntime.liveHotkeyFollowCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyHoldCommands="
+          << screenRuntime.liveHotkeyHoldCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyCancelCommands="
+          << screenRuntime.liveHotkeyCancelCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyActivateTalentCommands="
+          << screenRuntime.liveHotkeyActivateTalentCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyUseTalentCommands="
+          << screenRuntime.liveHotkeyUseTalentCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyUseUnitCommands="
+          << screenRuntime.liveHotkeyUseUnitCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyUseConsumableCommands="
+          << screenRuntime.liveHotkeyUseConsumableCommandsSent << "\n";
+  logFile << "  finalLiveHotkeyLastAction="
+          << (screenRuntime.liveHotkeyLastAction.empty() ?
+              "<none>" :
+              screenRuntime.liveHotkeyLastAction) << "\n";
+  logFile << "  finalLiveMapPreviewCommandSurface="
+          << (screenRuntime.liveMapPreviewCommandSurfaceReady ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMapPreviewCommandProof="
+          << (screenRuntime.liveMapPreviewCommandProofSent ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMapPreviewInputCount="
+          << screenRuntime.liveMapPreviewInputCount << "\n";
+  logFile << "  finalLiveMapPreviewMoveCommands="
+          << screenRuntime.liveMapPreviewMoveCommandsSent << "\n";
+  logFile << "  finalLiveMapPreviewAttackCommands="
+          << screenRuntime.liveMapPreviewAttackCommandsSent << "\n";
+  logFile << "  finalLiveMapPreviewSignalCommands="
+          << screenRuntime.liveMapPreviewSignalCommandsSent << "\n";
+  logFile << "  finalLiveMapPreviewSelections="
+          << screenRuntime.liveMapPreviewSelectionCount << "\n";
+  logFile << "  finalLiveMapPreviewCommandTarget="
+          << screenRuntime.liveMapPreviewCommandTargetX << ","
+          << screenRuntime.liveMapPreviewCommandTargetY << "\n";
+  logFile << "  finalLiveMapPreviewLastAction="
+          << (screenRuntime.liveMapPreviewLastAction.empty() ?
+              "<none>" :
+              screenRuntime.liveMapPreviewLastAction) << "\n";
+  logFile << "  finalVisibleLiveMinimapDrawn="
+          << (screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveMinimapTexture="
+          << (screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkers="
+          << screenRuntime.visibleLiveMinimapMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapHeroMarkers="
+          << screenRuntime.visibleLiveMinimapHeroMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapCreepMarkers="
+          << screenRuntime.visibleLiveMinimapCreepMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapMovingMarkers="
+          << screenRuntime.visibleLiveMinimapMovingMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapTargetMarker="
+          << (screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveMinimapCommandMarker="
+          << (screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMinimapCommandSurface="
+          << (screenRuntime.liveMinimapCommandSurfaceReady ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMinimapCommandProof="
+          << (screenRuntime.liveMinimapCommandProofSent ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMinimapInputCount="
+          << screenRuntime.liveMinimapInputCount << "\n";
+  logFile << "  finalLiveMinimapMoveCommands="
+          << screenRuntime.liveMinimapMoveCommandsSent << "\n";
+  logFile << "  finalLiveMinimapAttackCommands="
+          << screenRuntime.liveMinimapAttackCommandsSent << "\n";
+  logFile << "  finalLiveMinimapSignalCommands="
+          << screenRuntime.liveMinimapSignalCommandsSent << "\n";
+  logFile << "  finalLiveMinimapSelections="
+          << screenRuntime.liveMinimapSelectionCount << "\n";
+  logFile << "  finalLiveMinimapCommandTarget="
+          << screenRuntime.liveMinimapCommandTargetX << ","
+          << screenRuntime.liveMinimapCommandTargetY << "\n";
+  logFile << "  finalLiveMinimapLastAction="
+          << (screenRuntime.liveMinimapLastAction.empty() ?
+              "<none>" :
+              screenRuntime.liveMinimapLastAction) << "\n";
+  logFile << "  finalVisibleLiveScoreboardDrawn="
+          << (screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveScoreboardTeamColumns="
+          << screenRuntime.visibleLiveScoreboardTeamColumnsDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardHeroMarkers="
+          << screenRuntime.visibleLiveScoreboardHeroMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardObjectiveLines="
+          << screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardCommandLines="
+          << screenRuntime.visibleLiveScoreboardCommandLinesDrawn << "\n";
+  logFile << "  finalVisibleLiveEventFeedDrawn="
+          << (screenRuntime.visibleLiveEventFeedDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveEventFeedRows="
+          << screenRuntime.visibleLiveEventFeedRowsDrawn << "\n";
+  logFile << "  finalVisibleLiveEventFeedCommandRows="
+          << screenRuntime.visibleLiveEventFeedCommandRowsDrawn << "\n";
+  logFile << "  finalVisibleLiveEventFeedCombatRows="
+          << screenRuntime.visibleLiveEventFeedCombatRowsDrawn << "\n";
+  logFile << "  finalVisibleLiveEventFeedObjectiveRows="
+          << screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn << "\n";
+  logFile << "  finalVisibleReplayControlsDrawn="
+          << (screenRuntime.visibleReplayControlsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayControlsLines="
+          << screenRuntime.visibleReplayControlsLinesDrawn << "\n";
+  logFile << "  finalVisibleReplayProgress="
+          << (screenRuntime.visibleReplayProgressDrawn ? "yes" : "no") << "\n";
   WriteLinuxLiveHudStateLog(logFile, "finalLiveHero", screenRuntime.liveHeroState);
   WriteLinuxLiveHudStateLog(logFile, "finalLiveTarget", screenRuntime.liveTargetState);
   logFile << "  finalMap3DPreviewSelectedTargetAttackProofPrepared="
@@ -48400,6 +59707,11 @@ int main(int argc, char** argv)
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
   settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
+  settings.replayStartPaused = ReadReplayStartPausedFlag(argc, argv);
+  settings.replayInitialStepBudget = ReadReplayStepBudget(argc, argv);
+  settings.replaySpeedMultiplier = ReadReplaySpeedMultiplier(argc, argv);
+  settings.replayRealtimePacing = ReadReplayRealtimePacingFlag(argc, argv);
+  settings.replayPaceMs = ReadReplayPaceMs(argc, argv);
   settings.width = ReadWindowSize(argc, argv, "--width", 1280);
   settings.height = ReadWindowSize(argc, argv, "--height", 720);
   settings.spectator = CmdLineLite::Instance().IsKeyDefined("spectator");
@@ -48447,11 +59759,13 @@ int main(int argc, char** argv)
   LinuxLoadingUiState loadingUiState;
   InitializeLoadingUiState(contentProbe, loadingUiPreview, &loadingUiState);
   LinuxLoadingRuntimeDriver loadingRuntimeDriver;
-  InitializeLoadingRuntimeDriver(loadingUiPreview, &loadingRuntimeDriver, &loadingUiState);
   LinuxLoadingArtwork loadingArtwork;
   LoadLoadingScreenArtwork(contentProbe, &loadingPreview, &loadingArtwork);
   LinuxMapCatalog mapCatalog;
   ProbeMapCatalog(environment, &mapCatalog);
+  LinuxReplayFileHeaderPreview replayHeaderPreview;
+  ProbeLinuxReplayFileHeader(settings.replayFile, &replayHeaderPreview);
+  ApplyLinuxReplayFileHeaderMapSelection(&replayHeaderPreview, &settings, mapCatalog);
   LinuxMapBrowserState mapBrowserState;
   InitializeMapBrowserState(settings, mapCatalog, &mapBrowserState);
   if (launchPreview.mapIdProvided && settings.mapSelector == launchPreview.mapId)
@@ -48472,6 +59786,12 @@ int main(int argc, char** argv)
   InitializeLocalMatchPreview(heroCatalog, mapCatalog, mapBrowserState, &localMatchPreview);
   ApplyLaunchSelections(settings, heroCatalog, mapCatalog, mapBrowserState, &artworkState, &localMatchPreview);
   ApplySessionSelections(&sessionPreview, heroCatalog, mapCatalog, &mapBrowserState, &localMatchPreview);
+  ApplyLinuxReplayFileHeaderLineup(
+    &replayHeaderPreview,
+    heroCatalog,
+    mapCatalog,
+    mapBrowserState,
+    &localMatchPreview);
   LinuxSelectedHeroDbPreview selectedHeroPreview;
   ProbeSelectedHeroDbPreview(environment, sessionRootPreview, heroCatalog, localMatchPreview, &selectedHeroPreview);
   std::vector<LinuxSelectedHeroDbPreview> lineupHeroPreviews;
@@ -48501,9 +59821,16 @@ int main(int argc, char** argv)
   LinuxLoadingHeroesRuntimePreview loadingHeroesRuntimePreview;
   ProbeLoadingHeroesRuntimePreview(
     sessionPreview,
+    heroCatalog,
     selectedMapPreview,
     engineMapStartPreview,
     &loadingHeroesRuntimePreview
+  );
+  InitializeLoadingRuntimeDriver(
+    loadingUiPreview,
+    loadingHeroesRuntimePreview,
+    &loadingRuntimeDriver,
+    &loadingUiState
   );
 
   char appName[256] = {0};
@@ -48578,7 +59905,9 @@ int main(int argc, char** argv)
             heroCatalog,
             mapCatalog,
             mapBrowserState,
+            selectedMapPreview,
             localMatchPreview,
+            replayHeaderPreview,
             contentProbe.locale,
             &uiRootPreview
           );
@@ -48918,6 +60247,27 @@ int main(int argc, char** argv)
       loadingUiState.runtimeEvent.c_str(),
       loadingUiState.runtimeStatusText.empty() ? "<empty>" : loadingUiState.runtimeStatusText.c_str());
   }
+  if (loadingRuntimeDriver.ready)
+  {
+    fprintf(stdout, "Loading flash capture: force=%lu/%lu modes=%lu locales=%s teamForce=%s chat=%lu/%lu/%lu heroes=%lu/%lu/%lu bindings=%lu/%lu/%lu default=%d tip=%s status=%s\n",
+      static_cast<unsigned long>(loadingRuntimeDriver.flashForceColorCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashColorCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashModeDescriptionCount),
+      loadingRuntimeDriver.flashLocalesReady ? "yes" : "no",
+      loadingRuntimeDriver.flashTeamForceReady ? "yes" : "no",
+      static_cast<unsigned long>(loadingRuntimeDriver.flashChatChannelCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashChatShortcutCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashChatMessageCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashHeroCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashHeroProgressCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashHeroPremiumCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashPlayerBindingCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashPlayerBindingIconCount),
+      static_cast<unsigned long>(loadingRuntimeDriver.flashPlayerBindingHeroCount),
+      loadingRuntimeDriver.flashDefaultChannel,
+      loadingRuntimeDriver.flashTipReady ? "yes" : "no",
+      loadingRuntimeDriver.flashStatusReady ? "yes" : "no");
+  }
   if (loadingHeroesRuntimePreview.ready)
   {
     fprintf(stdout, "Loading runtime heroes: %lu total, %lu humans, %lu bots, %lu disconnected, %lu premium, %lu locales, %lu flagged\n",
@@ -48987,6 +60337,27 @@ int main(int argc, char** argv)
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
   fprintf(stdout, "Bootstrap create game: %s\n", settings.bootstrapCreateGame ? "yes" : "no");
+  fprintf(stdout, "Replay header startup: requested=%s usable=%s adoptedMap=%s adoptedLineup=%s autoCreate=%s path=%s players=%lu humans=%lu bots=%lu client=%d team=%d stepLength=%d map=%s error=%s\n",
+    replayHeaderPreview.requested ? "yes" : "no",
+    replayHeaderPreview.usable ? "yes" : "no",
+    replayHeaderPreview.adoptedMap ? "yes" : "no",
+    replayHeaderPreview.adoptedLineup ? "yes" : "no",
+    replayHeaderPreview.autoCreateGame ? "yes" : "no",
+    replayHeaderPreview.path.empty() ? "<none>" : replayHeaderPreview.path.string().c_str(),
+    static_cast<unsigned long>(replayHeaderPreview.players),
+    static_cast<unsigned long>(replayHeaderPreview.humanPlayers),
+    static_cast<unsigned long>(replayHeaderPreview.botPlayers),
+    replayHeaderPreview.clientId,
+    replayHeaderPreview.clientTeam,
+    replayHeaderPreview.stepLength,
+    replayHeaderPreview.mapDescName.empty() ? "<none>" : replayHeaderPreview.mapDescName.c_str(),
+    replayHeaderPreview.error.empty() ? "none" : replayHeaderPreview.error.c_str());
+  fprintf(stdout, "Replay input controls: paused=%s speed=%lu stepBudget=%lu realtime=%s paceMs=%lu\n",
+    settings.replayStartPaused ? "yes" : "no",
+    static_cast<unsigned long>(settings.replaySpeedMultiplier),
+    static_cast<unsigned long>(settings.replayInitialStepBudget),
+    settings.replayRealtimePacing ? "yes" : "no",
+    static_cast<unsigned long>(settings.replayPaceMs));
   fprintf(stdout, "Diagnostics overlay: %s\n", settings.diagnosticsOverlay ? "yes" : "no");
   fprintf(stdout, "Map catalog: %lu maps source=%s scanned=%lu custom=%lu/%lu (%lu PvP, %lu PvE, %lu tutorial)\n",
     static_cast<unsigned long>(mapCatalog.descriptorCount),
@@ -49362,6 +60733,11 @@ int main(int argc, char** argv)
     uiRootPreview.runtimeVisibleMenuAction.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuAction.c_str(),
     static_cast<unsigned long>(uiRootPreview.runtimeVisibleMenuActivatedCount),
     uiRootPreview.runtimeVisibleMenuPath.empty() ? "<none>" : uiRootPreview.runtimeVisibleMenuPath.c_str());
+  fprintf(stdout, "Visible lobby details startup: back=%s logo=%s minimap=%s lineup=%lu\n",
+    selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile.c_str(),
+    selectedMapPreview.loadingLogo.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingLogo.sourceFile.c_str(),
+    selectedMapPreview.minimapFirst.sourceFile.empty() ? "<none>" : selectedMapPreview.minimapFirst.sourceFile.c_str(),
+    static_cast<unsigned long>(localMatchPreview.lineup.size()));
   fprintf(stdout, "UI hero runtime: ready=%s window=%s players=%lu path=%s\n",
     uiRootPreview.runtimeHeroScreenReady ? "yes" : "no",
     uiRootPreview.runtimeHeroScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeHeroScreenWindow.c_str(),
@@ -49840,7 +61216,9 @@ int main(int argc, char** argv)
         heroCatalog,
         mapCatalog,
         mapBrowserState,
+        selectedMapPreview,
         localMatchPreview,
+        replayHeaderPreview,
         contentProbe.locale,
         &screenRuntime,
         &uiRootPreview
@@ -49947,6 +61325,7 @@ int main(int argc, char** argv)
       );
       ProbeLoadingHeroesRuntimePreview(
         sessionPreview,
+        heroCatalog,
         selectedMapPreview,
         engineMapStartPreview,
         &loadingHeroesRuntimePreview
@@ -50033,11 +61412,14 @@ int main(int argc, char** argv)
     usleep(16 * 1000);
   }
 
+  ValidateLinuxBootstrapReplayFileProof(settings.replayFile, &screenRuntime.replayFileProof);
+
   AppendRuntimeInputLog(
     environment,
     inputState,
     launchPreview,
     sessionPreview,
+    replayHeaderPreview,
     mapCatalog,
     mapBrowserState,
     selectedMapPreview,
@@ -50047,6 +61429,35 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu\n",
+    screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn));
+  fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s abilities=%lu talents=%lu\n",
+    screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilityIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsDrawn));
+  fprintf(stdout, "Final visible loading info: drawn=%s lines=%lu icons=%lu\n",
+    screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingInfoIconsDrawn));
+  fprintf(stdout, "Final visible loading chat: drawn=%s channels=%lu messages=%lu\n",
+    screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu portraits=%lu flags=%lu progress=%lu force=%lu meta=%lu rank=%lu premium=%lu\n",
+    screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPortraitsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterFlagsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterProgressBarsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterForceBadgesDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterMetaLabelsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRankIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPremiumBadgesDrawn));
   fprintf(stdout, "Final game transceiver runtime: ready=%s world=%s step=%d commands=%lu runtimeSent=%lu productionSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroCombatMoveSent=%s heroCombatMoveCommands=%lu heroCombatMoveType=0x%08X heroHoldSent=%s heroHoldCommands=%lu heroHoldType=0x%08X heroCancelSent=%s heroCancelCommands=%lu heroCancelType=0x%08X heroMinimapSignalSent=%s heroMinimapSignalCommands=%lu heroMinimapSignalType=0x%08X heroUseUnitSent=%s heroUseUnitCommands=%lu heroUseUnitType=0x%08X heroActivateTalentSent=%s heroActivateTalentCommands=%lu heroActivateTalentType=0x%08X heroUseTalentSent=%s heroUseTalentCommands=%lu heroUseTalentType=0x%08X heroUsePortalSent=%s heroUsePortalCommands=%lu heroUsePortalType=0x%08X heroUseConsumableSent=%s heroUseConsumableCommands=%lu heroUseConsumableType=0x%08X heroBuyConsumableSent=%s heroBuyConsumableCommands=%lu heroBuyConsumableType=0x%08X heroRaiseFlagSent=%s heroRaiseFlagCommands=%lu heroRaiseFlagType=0x%08X heroInitMinigameSent=%s heroInitMinigameCommands=%lu heroInitMinigameType=0x%08X heroPickupObjectSent=%s heroPickupObjectCommands=%lu heroPickupObjectType=0x%08X cmdType=0x%08X spawnedHeroes=%lu playerHeroes=%lu replayCommands=%lu replayBytes=%lu path=%s\n",
     screenRuntime.transceiverReady ? "yes" : "no",
     screenRuntime.transceiverWorldAttached ? "yes" : "no",
@@ -50111,6 +61522,260 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.replayWriterCommandWrites),
     static_cast<unsigned long>(screenRuntime.replayWriterBytesWritten),
     screenRuntime.replayWriterPath.empty() ? "<none>" : screenRuntime.replayWriterPath.c_str());
+  fprintf(stdout, "Final Linux bot commands: active=%s ready=%s ticks=%lu considered=%lu commanded=%lu move=%lu attack=%lu skipped=%lu step=%d/%d player=%d/%d target=%d/%d pos=%.1f,%.1f->%.1f,%.1f action=%s\n",
+    screenRuntime.linuxBotCommandDriverActive ? "yes" : "no",
+    screenRuntime.linuxBotCommandDriverReady ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.linuxBotCommandTicks),
+    static_cast<unsigned long>(screenRuntime.linuxBotCommandHeroesConsidered),
+    static_cast<unsigned long>(screenRuntime.linuxBotCommandHeroesCommanded),
+    static_cast<unsigned long>(screenRuntime.linuxBotMoveRuntimeCommandsSent),
+    static_cast<unsigned long>(screenRuntime.linuxBotAttackRuntimeCommandsSent),
+    static_cast<unsigned long>(screenRuntime.linuxBotCommandSkippedTicks),
+    screenRuntime.linuxBotCommandLastWorldStep,
+    screenRuntime.linuxBotCommandNextWorldStep,
+    screenRuntime.linuxBotCommandLastPlayerId,
+    screenRuntime.linuxBotCommandLastClientId,
+    screenRuntime.linuxBotCommandLastTargetPlayerId,
+    screenRuntime.linuxBotCommandLastTargetClientId,
+    static_cast<double>(screenRuntime.linuxBotCommandSourceX),
+    static_cast<double>(screenRuntime.linuxBotCommandSourceY),
+    static_cast<double>(screenRuntime.linuxBotCommandTargetX),
+    static_cast<double>(screenRuntime.linuxBotCommandTargetY),
+    screenRuntime.linuxBotCommandLastAction.empty() ?
+      "none" :
+      screenRuntime.linuxBotCommandLastAction.c_str());
+  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d attack=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
+    screenRuntime.linuxAIAutoStartAttempts,
+    screenRuntime.linuxAIAutoStartSuccesses,
+    screenRuntime.linuxAIAddRequests,
+    screenRuntime.linuxAIAddSuccesses,
+    screenRuntime.linuxAIRemoveRequests,
+    screenRuntime.linuxAIRemoveSuccesses,
+    screenRuntime.linuxAIStepCalls,
+    screenRuntime.linuxAIControllerCount,
+    screenRuntime.linuxAIBotsSettingsAvailable,
+    screenRuntime.linuxAIBotsEnabled,
+    screenRuntime.linuxAILastHeroObjectId,
+    screenRuntime.linuxAILastPlayerId,
+    screenRuntime.linuxAILastUserId,
+    screenRuntime.linuxAILastLine,
+    screenRuntime.linuxAICommandAttempts,
+    screenRuntime.linuxAICommandsSent,
+    screenRuntime.linuxAICommandDirectFallbacks,
+    screenRuntime.linuxAICommandMoveSent,
+    screenRuntime.linuxAICommandCombatMoveSent,
+    screenRuntime.linuxAICommandAttackSent,
+    screenRuntime.linuxAICommandOtherSent,
+    screenRuntime.linuxAILastCommandKind,
+    screenRuntime.linuxAILastCommandHeroObjectId,
+    screenRuntime.linuxAILastCommandPlayerId,
+    screenRuntime.linuxAILastCommandUserId,
+    screenRuntime.linuxAILastCommandTargetObjectId,
+    screenRuntime.linuxAILastCommandSent);
+  fprintf(stdout, "Final live replay input: active=%s ready=%s header=%s world=%s valid=%s path=%s segments=%lu commands=%lu/%lu statuses=%lu/%lu calls=%lu worldSteps=%lu finalStep=%d stepMatch=%s commandMatch=%s statusMatch=%s spawnedHeroes=%lu playerHeroes=%lu paused=%s rate=%lu pacing=%s/%lu skips=%lu controls=%lu pauseToggles=%lu speedChanges=%lu manualSteps=%lu/%lu/%lu source=%s error=%s\n",
+    screenRuntime.replayFileInputActive ? "yes" : "no",
+    screenRuntime.replayInputReady ? "yes" : "no",
+    screenRuntime.replayInputHeaderReady ? "yes" : "no",
+    screenRuntime.replayInputWorldAttached ? "yes" : "no",
+    screenRuntime.replayInputValidated ? "yes" : "no",
+    screenRuntime.replayInputPath.empty() ? "<none>" : screenRuntime.replayInputPath.c_str(),
+    static_cast<unsigned long>(screenRuntime.replayInputLoadedSegments),
+    static_cast<unsigned long>(screenRuntime.replayInputCommandsExecuted),
+    static_cast<unsigned long>(screenRuntime.replayInputLoadedCommands),
+    static_cast<unsigned long>(screenRuntime.replayInputStatusesApplied),
+    static_cast<unsigned long>(screenRuntime.replayInputLoadedStatuses),
+    static_cast<unsigned long>(screenRuntime.replayInputStepCalls),
+    static_cast<unsigned long>(screenRuntime.replayInputWorldSteps),
+    screenRuntime.replayInputFinalWorldStep,
+    screenRuntime.replayInputStepCountMatches ? "yes" : "no",
+    screenRuntime.replayInputCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayInputStatusCountMatches ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.worldSpawnedHeroObjects),
+    static_cast<unsigned long>(screenRuntime.worldPlayersWithHeroObjects),
+    screenRuntime.replayInputPaused ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayInputPlaybackRate),
+    screenRuntime.replayInputRealtimePacing ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayInputPaceMs),
+    static_cast<unsigned long>(screenRuntime.replayInputPacingSkips),
+    static_cast<unsigned long>(screenRuntime.replayInputControlEvents),
+    static_cast<unsigned long>(screenRuntime.replayInputPauseToggleCount),
+    static_cast<unsigned long>(screenRuntime.replayInputSpeedChangeCount),
+    static_cast<unsigned long>(screenRuntime.replayInputManualStepsConsumed),
+    static_cast<unsigned long>(screenRuntime.replayInputManualStepRequests),
+    static_cast<unsigned long>(screenRuntime.replayInputPendingManualSteps),
+    screenRuntime.replayInputControlSource.empty() ? "auto" : screenRuntime.replayInputControlSource.c_str(),
+    screenRuntime.replayInputError.empty() ? "none" : screenRuntime.replayInputError.c_str());
+  fprintf(stdout, "Final replay capture validation: valid=%s magic=%s bounds=%s bytes=%s commands=%s statuses=%s records=%lu steps=%lu commandBlocks=%lu/%lu statusBlocks=%lu/%lu active=%lu away=%lu disconnected=%lu leaver=%lu bytesRead=%lu/%lu largest=%lu startStep=%d firstStep=%d lastStep=%d error=%s\n",
+    screenRuntime.replayCaptureValidated ? "yes" : "no",
+    screenRuntime.replayCaptureMagicReady ? "yes" : "no",
+    screenRuntime.replayCaptureBoundsOk ? "yes" : "no",
+    screenRuntime.replayCaptureByteCountMatches ? "yes" : "no",
+    screenRuntime.replayCaptureCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayCaptureStatusCountMatches ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayCaptureRecords),
+    static_cast<unsigned long>(screenRuntime.replayWriterStepWrites),
+    static_cast<unsigned long>(screenRuntime.replayCaptureCommandBlocks),
+    static_cast<unsigned long>(screenRuntime.replayWriterCommandWrites),
+    static_cast<unsigned long>(screenRuntime.replayCaptureStatusBlocks),
+    static_cast<unsigned long>(screenRuntime.replayWriterStatusWrites),
+    static_cast<unsigned long>(screenRuntime.replayCaptureStatusActiveBlocks),
+    static_cast<unsigned long>(screenRuntime.replayCaptureStatusAwayBlocks),
+    static_cast<unsigned long>(screenRuntime.replayCaptureStatusDisconnectedBlocks),
+    static_cast<unsigned long>(screenRuntime.replayCaptureStatusLeaverBlocks),
+    static_cast<unsigned long>(screenRuntime.replayCaptureBytesRead),
+    static_cast<unsigned long>(screenRuntime.replayWriterBytesWritten),
+    static_cast<unsigned long>(screenRuntime.replayCaptureLargestCommandBytes),
+    screenRuntime.replayCaptureStartStep,
+    screenRuntime.replayCaptureFirstStep,
+    screenRuntime.replayCaptureLastStep,
+    screenRuntime.replayCaptureValidationError.empty() ? "none" : screenRuntime.replayCaptureValidationError.c_str());
+  fprintf(stdout, "Final replay readback: decoded=%s commands=%lu/%lu failures=%lu bytes=%lu distinctTypes=%lu clients=%d..%d first=0x%08X/%d/%u last=0x%08X/%d/%u countMatch=%s\n",
+    screenRuntime.replayReadbackDecoded ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayReadbackPackedCommands),
+    static_cast<unsigned long>(screenRuntime.replayWriterCommandWrites),
+    static_cast<unsigned long>(screenRuntime.replayReadbackDecodeFailures),
+    static_cast<unsigned long>(screenRuntime.replayReadbackCommandBytes),
+    static_cast<unsigned long>(screenRuntime.replayReadbackDistinctCommandTypes),
+    screenRuntime.replayReadbackMinClientId,
+    screenRuntime.replayReadbackMaxClientId,
+    static_cast<unsigned int>(screenRuntime.replayReadbackFirstCommandTypeId),
+    screenRuntime.replayReadbackFirstClientId,
+    static_cast<unsigned int>(screenRuntime.replayReadbackFirstCommandTime),
+    static_cast<unsigned int>(screenRuntime.replayReadbackLastCommandTypeId),
+    screenRuntime.replayReadbackLastClientId,
+    static_cast<unsigned int>(screenRuntime.replayReadbackLastCommandTime),
+    screenRuntime.replayReadbackCommandCountMatches ? "yes" : "no");
+  fprintf(stdout, "Final replay storage: valid=%s segments=%lu/%lu commands=%lu/%lu statuses=%lu/%lu failures=%lu steps=%d..%d segmentMatch=%s commandMatch=%s statusMatch=%s header=%s/%lu client=%d stepLength=%d map=%s error=%s source=ReplayStorage2\n",
+    screenRuntime.replayStorageValidated ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayStorageConsumedSegments),
+    static_cast<unsigned long>(screenRuntime.replayStorageLoadedSegments),
+    static_cast<unsigned long>(screenRuntime.replayStorageConsumedCommands),
+    static_cast<unsigned long>(screenRuntime.replayStorageLoadedCommands),
+    static_cast<unsigned long>(screenRuntime.replayStorageConsumedStatuses),
+    static_cast<unsigned long>(screenRuntime.replayStorageLoadedStatuses),
+    static_cast<unsigned long>(screenRuntime.replayStorageDecodeFailures),
+    screenRuntime.replayStorageFirstStep,
+    screenRuntime.replayStorageLastStep,
+    screenRuntime.replayStorageSegmentCountMatches ? "yes" : "no",
+    screenRuntime.replayStorageCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayStorageStatusCountMatches ? "yes" : "no",
+    screenRuntime.replayStorageHeaderValidated ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayStorageHeaderPlayers),
+    screenRuntime.replayStorageHeaderClientId,
+    screenRuntime.replayStorageHeaderStepLength,
+    screenRuntime.replayStorageHeaderMap.c_str(),
+    screenRuntime.replayStorageValidationError.empty() ? "none" : screenRuntime.replayStorageValidationError.c_str());
+  fprintf(stdout, "Final replay transceiver: valid=%s header=%s stepLength=%d world=%s calls=%lu worldSteps=%lu batches=%lu commands=%lu finalStep=%d stepMatch=%s commandMatch=%s error=%s\n",
+    screenRuntime.replayPlaybackValidated ? "yes" : "no",
+    screenRuntime.replayPlaybackHeaderValidated ? "yes" : "no",
+    screenRuntime.replayPlaybackHeaderStepLength,
+    screenRuntime.replayPlaybackWorldAttached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayPlaybackStepCalls),
+    static_cast<unsigned long>(screenRuntime.replayPlaybackWorldSteps),
+    static_cast<unsigned long>(screenRuntime.replayPlaybackCommandBatches),
+    static_cast<unsigned long>(screenRuntime.replayPlaybackCommands),
+    screenRuntime.replayPlaybackFinalWorldStep,
+    screenRuntime.replayPlaybackStepCountMatches ? "yes" : "no",
+    screenRuntime.replayPlaybackCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayPlaybackValidationError.empty() ? "none" : screenRuntime.replayPlaybackValidationError.c_str());
+  fprintf(stdout, "Final replay server transceiver: valid=%s header=%s stepLength=%d world=%s calls=%lu worldSteps=%lu batches=%lu commands=%lu statuses=%lu finalStep=%d stepMatch=%s commandMatch=%s statusMatch=%s error=%s\n",
+    screenRuntime.replayServerPlaybackValidated ? "yes" : "no",
+    screenRuntime.replayServerPlaybackHeaderValidated ? "yes" : "no",
+    screenRuntime.replayServerPlaybackHeaderStepLength,
+    screenRuntime.replayServerPlaybackWorldAttached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayServerPlaybackStepCalls),
+    static_cast<unsigned long>(screenRuntime.replayServerPlaybackWorldSteps),
+    static_cast<unsigned long>(screenRuntime.replayServerPlaybackCommandBatches),
+    static_cast<unsigned long>(screenRuntime.replayServerPlaybackCommands),
+    static_cast<unsigned long>(screenRuntime.replayServerPlaybackStatusUpdates),
+    screenRuntime.replayServerPlaybackFinalWorldStep,
+    screenRuntime.replayServerPlaybackStepCountMatches ? "yes" : "no",
+    screenRuntime.replayServerPlaybackCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayServerPlaybackStatusCountMatches ? "yes" : "no",
+    screenRuntime.replayServerPlaybackValidationError.empty() ? "none" : screenRuntime.replayServerPlaybackValidationError.c_str());
+  fprintf(stdout, "Final replay file storage: requested=%s valid=%s path=%s segments=%lu/%lu commands=%lu/%lu statuses=%lu/%lu failures=%lu steps=%d..%d segmentMatch=%s commandMatch=%s statusMatch=%s header=%s/%lu client=%d stepLength=%d map=%s error=%s source=ReplayStorage2\n",
+    screenRuntime.replayFileProof.requested ? "yes" : "no",
+    screenRuntime.replayFileProof.validated ? "yes" : "no",
+    screenRuntime.replayFileProof.path.empty() ? "<none>" : screenRuntime.replayFileProof.path.c_str(),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.consumedSegments),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.loadedSegments),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.consumedCommands),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.loadedCommands),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.consumedStatuses),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.loadedStatuses),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.decodeFailures),
+    screenRuntime.replayFileProof.firstStep,
+    screenRuntime.replayFileProof.lastStep,
+    screenRuntime.replayFileProof.segmentCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.commandCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.statusCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.headerValidated ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayFileProof.headerPlayers),
+    screenRuntime.replayFileProof.headerClientId,
+    screenRuntime.replayFileProof.headerStepLength,
+    screenRuntime.replayFileProof.headerMap.c_str(),
+    screenRuntime.replayFileProof.validationError.empty() ? "none" : screenRuntime.replayFileProof.validationError.c_str());
+  fprintf(stdout, "Final replay file transceiver: valid=%s world=%s calls=%lu worldSteps=%lu batches=%lu commands=%lu finalStep=%d stepMatch=%s commandMatch=%s error=%s\n",
+    screenRuntime.replayFileProof.playbackValidated ? "yes" : "no",
+    screenRuntime.replayFileProof.playbackWorldAttached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayFileProof.playbackStepCalls),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.playbackWorldSteps),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.playbackCommandBatches),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.playbackCommands),
+    screenRuntime.replayFileProof.playbackFinalWorldStep,
+    screenRuntime.replayFileProof.playbackStepCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.playbackCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.playbackValidationError.empty() ? "none" : screenRuntime.replayFileProof.playbackValidationError.c_str());
+  fprintf(stdout, "Final replay file server transceiver: valid=%s world=%s calls=%lu worldSteps=%lu batches=%lu commands=%lu statuses=%lu finalStep=%d stepMatch=%s commandMatch=%s statusMatch=%s error=%s\n",
+    screenRuntime.replayFileProof.serverPlaybackValidated ? "yes" : "no",
+    screenRuntime.replayFileProof.serverPlaybackWorldAttached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayFileProof.serverPlaybackStepCalls),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.serverPlaybackWorldSteps),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.serverPlaybackCommandBatches),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.serverPlaybackCommands),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.serverPlaybackStatusUpdates),
+    screenRuntime.replayFileProof.serverPlaybackFinalWorldStep,
+    screenRuntime.replayFileProof.serverPlaybackStepCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.serverPlaybackCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.serverPlaybackStatusCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.serverPlaybackValidationError.empty() ? "none" : screenRuntime.replayFileProof.serverPlaybackValidationError.c_str());
+  fprintf(stdout, "Final replay file live PFWorld: valid=%s created=%s loaded=%s attached=%s calls=%lu finalStep=%d players=%lu mapObjects=%lu spawnedHeroes=%lu playerHeroes=%lu commands=%lu/%lu before=%lu after=%lu stepMatch=%s commandMatch=%s error=%s\n",
+    screenRuntime.replayFileProof.liveWorldValidated ? "yes" : "no",
+    screenRuntime.replayFileProof.liveWorldCreated ? "yes" : "no",
+    screenRuntime.replayFileProof.liveWorldLoaded ? "yes" : "no",
+    screenRuntime.replayFileProof.liveWorldAttached ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldStepCalls),
+    screenRuntime.replayFileProof.liveWorldFinalStep,
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldPlayers),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldMapObjects),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldSpawnedHeroes),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldPlayerHeroes),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldCommandsExecuted),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.loadedCommands),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldCommandsBefore),
+    static_cast<unsigned long>(screenRuntime.replayFileProof.liveWorldCommandsAfter),
+    screenRuntime.replayFileProof.liveWorldStepCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.liveWorldCommandCountMatches ? "yes" : "no",
+    screenRuntime.replayFileProof.liveWorldValidationError.empty() ? "none" : screenRuntime.replayFileProof.liveWorldValidationError.c_str());
+  fprintf(stdout, "Final player status runtime: updates=%lu missing=%lu active=%lu away=%lu playingUpdates=%lu disconnectedUpdates=%lu reconnectedUpdates=%lu leaverUpdates=%lu script=%lu/%lu/%s last=%d/%d/%d playing=%d active=%d disconnected=%d leaver=%d\n",
+    static_cast<unsigned long>(screenRuntime.transceiverStatusUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusMissing),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusActiveUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusAwayUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusPlayingUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusDisconnectedUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusReconnectedUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusLeaverUpdates),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusScriptQueued),
+    static_cast<unsigned long>(screenRuntime.transceiverStatusScriptApplied),
+    screenRuntime.transceiverStatusScriptCompleted ? "yes" : "no",
+    screenRuntime.transceiverLastStatusClientId,
+    screenRuntime.transceiverLastStatusValue,
+    screenRuntime.transceiverLastStatusStep,
+    screenRuntime.transceiverLastStatusPlaying,
+    screenRuntime.transceiverLastStatusActive,
+    screenRuntime.transceiverLastStatusDisconnected,
+    screenRuntime.transceiverLastStatusLeaver);
   fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d yaw=%.1f pitch=%.1f zoom=%.2f\n",
     screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceVertices),
@@ -50224,6 +61889,88 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu talentSlots=%lu talentIcons=%lu target=%s\n",
+    screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
+    screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilitySlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilityIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentIconsDrawn),
+    screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no");
+  fprintf(stdout, "Final live HUD commands: surface=%s proof=%s highlight=%s input=%lu attack=%lu useUnit=%lu activate=%lu talent=%lu follow=%lu slots=%lu action=%s\n",
+    screenRuntime.liveHudCommandSurfaceReady ? "yes" : "no",
+    screenRuntime.liveHudActivateTalentProofSent ? "yes" : "no",
+    screenRuntime.liveHudCommandHighlightDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.liveHudInputCount),
+    static_cast<unsigned long>(screenRuntime.liveHudAttackCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHudUseUnitCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHudActivateTalentCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHudUseTalentCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHudFollowCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHudTalentCommandSlots),
+    screenRuntime.liveHudLastAction.empty() ? "<none>" : screenRuntime.liveHudLastAction.c_str());
+  fprintf(stdout, "Final live hotkey commands: ready=%s proof=%s input=%lu stop=%lu attack=%lu follow=%lu hold=%lu cancel=%lu activate=%lu talent=%lu useUnit=%lu consumable=%lu action=%s\n",
+    screenRuntime.liveHeroState.ready ? "yes" : "no",
+    screenRuntime.liveHotkeyCommandProofSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.liveHotkeyInputCount),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyStopCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyAttackCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyFollowCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyHoldCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyCancelCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyActivateTalentCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyUseTalentCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyUseUnitCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveHotkeyUseConsumableCommandsSent),
+    screenRuntime.liveHotkeyLastAction.empty() ? "<none>" : screenRuntime.liveHotkeyLastAction.c_str());
+  fprintf(stdout, "Final live 3D map commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f action=%s\n",
+    screenRuntime.liveMapPreviewCommandSurfaceReady ? "yes" : "no",
+    screenRuntime.liveMapPreviewCommandProofSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.liveMapPreviewInputCount),
+    static_cast<unsigned long>(screenRuntime.liveMapPreviewMoveCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMapPreviewAttackCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMapPreviewSignalCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMapPreviewSelectionCount),
+    static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
+    static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
+    screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu creeps=%lu moving=%lu target=%s\n",
+    screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
+    screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapHeroMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapCreepMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMovingMarkersDrawn),
+    screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no");
+  fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f marker=%s action=%s\n",
+    screenRuntime.liveMinimapCommandSurfaceReady ? "yes" : "no",
+    screenRuntime.liveMinimapCommandProofSent ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.liveMinimapInputCount),
+    static_cast<unsigned long>(screenRuntime.liveMinimapMoveCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMinimapAttackCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMinimapSignalCommandsSent),
+    static_cast<unsigned long>(screenRuntime.liveMinimapSelectionCount),
+    static_cast<double>(screenRuntime.liveMinimapCommandTargetX),
+    static_cast<double>(screenRuntime.liveMinimapCommandTargetY),
+    screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
+    screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
+  fprintf(stdout, "Final visible live scoreboard: drawn=%s teams=%lu heroMarkers=%lu objectiveLines=%lu commandLines=%lu\n",
+    screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTeamColumnsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardHeroMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardCommandLinesDrawn));
+  fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu command=%lu combat=%lu objective=%lu\n",
+    screenRuntime.visibleLiveEventFeedDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCommandRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn));
+  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu progress=%s\n",
+    screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
+    screenRuntime.visibleReplayProgressDrawn ? "yes" : "no");
   fprintf(stdout, "Final live HUD state: samples=%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
     static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
     screenRuntime.liveHeroState.ready ? "yes" : "no",
@@ -50349,7 +62096,7 @@ int main(int argc, char** argv)
     screenRuntime.transceiverHeroLeaveMinigamePlayerId,
     screenRuntime.transceiverHeroLeaveMinigameClientId,
     screenRuntime.transceiverHeroLeaveMinigameObjectId);
-  fprintf(stdout, "Final minigame leave proof: attempted=%d completed=%d hero=%d state=%d->%d/%d->%d/%d->%d flag=%d->%d visual=%d->%d placement=%d->%d minigames=%d->%d local=%d->%d session=%d->%d main=%d->%d/%d->%d opacity=%.2f->%.2f single=count:%d->%d/current:%d->%d/index:%d->%d/name:%d->%d/id:%d->%d\n",
+  fprintf(stdout, "Final minigame leave proof: attempted=%d completed=%d hero=%d state=%d->%d/%d->%d/%d->%d flag=%d->%d visual=%d->%d placement=%d->%d minigames=%d->%d local=%d->%d session=%d->%d main=%d->%d/%d->%d common=%d->%d bidons=%d->%d bidon=%d->%d spawner=%d->%d creep=id:%d/desc:%d->%d/out:%d/owner:%d/instant:%d/type:%d opacity=%.2f->%.2f single=count:%d->%d/current:%d->%d/index:%d->%d/name:%d->%d/id:%d->%d/dbid:%d->%d lifecycle=diag:%d->%d/run:%d->%d/pause:%d/fog:%d->%d/finish:%d->%d/victory:%d calls=single:%d/%d/%d/%d/%d/%d/%d/%d/%d/%d minigames:%d/%d/%d/%d/%d/main:%d worldSession=targets:%d/%d/allied:%d/foreign:%d/self:%d/scroll:%d/zz:%d->%d/gold:%d->%d->%d->%d/nafta:%d/item:%d:%d/ally:%d:%d:%d:%d->%d:%d/self:%d:%d->%d:%d\n",
     screenRuntime.minigameLeaveProofAttempted ? 1 : 0,
     screenRuntime.minigameLeaveProofCompleted ? 1 : 0,
     screenRuntime.minigameLeaveProofHeroObjectId,
@@ -50375,6 +62122,21 @@ int main(int argc, char** argv)
     screenRuntime.minigameLeaveProofMinigamesMainAfter,
     screenRuntime.minigameLeaveProofMinigamesMainWorldBefore,
     screenRuntime.minigameLeaveProofMinigamesMainWorldAfter,
+    screenRuntime.minigameLeaveProofMinigamesMainCommonBefore,
+    screenRuntime.minigameLeaveProofMinigamesMainCommonAfter,
+    screenRuntime.minigameLeaveProofMinigamesMainBidonsBefore,
+    screenRuntime.minigameLeaveProofMinigamesMainBidonsAfter,
+    screenRuntime.minigameLeaveProofBidonBefore,
+    screenRuntime.minigameLeaveProofBidonAfter,
+    screenRuntime.minigameLeaveProofMainSpawnerBefore,
+    screenRuntime.minigameLeaveProofMainSpawnerAfter,
+    screenRuntime.minigameLeaveProofMainCreepId,
+    screenRuntime.minigameLeaveProofMainCreepDescBeforeReturn,
+    screenRuntime.minigameLeaveProofMainCreepDescAfterReturn,
+    screenRuntime.minigameLeaveProofMainCreepOutBeforeReturn,
+    screenRuntime.minigameLeaveProofMainCreepOwner,
+    screenRuntime.minigameLeaveProofMainCreepInstant,
+    screenRuntime.minigameLeaveProofMainCreepType,
     static_cast<double>(screenRuntime.minigameLeaveProofMinigamesOpacityBefore),
     static_cast<double>(screenRuntime.minigameLeaveProofMinigamesOpacityAfter),
     screenRuntime.minigameLeaveProofSingleCountBefore,
@@ -50386,7 +62148,148 @@ int main(int argc, char** argv)
     screenRuntime.minigameLeaveProofNamedSingleBefore,
     screenRuntime.minigameLeaveProofNamedSingleAfter,
     screenRuntime.minigameLeaveProofSingleIdBefore,
-    screenRuntime.minigameLeaveProofSingleIdAfter);
+    screenRuntime.minigameLeaveProofSingleIdAfter,
+    screenRuntime.minigameLeaveProofSingleDbidBefore,
+    screenRuntime.minigameLeaveProofSingleDbidAfter,
+    screenRuntime.minigameLeaveProofLifecycleBefore,
+    screenRuntime.minigameLeaveProofLifecycleAfter,
+    screenRuntime.minigameLeaveProofLifecycleRunningBefore,
+    screenRuntime.minigameLeaveProofLifecycleRunningAfter,
+    screenRuntime.minigameLeaveProofLifecyclePausedAfter,
+    screenRuntime.minigameLeaveProofLifecycleFogDuring,
+    screenRuntime.minigameLeaveProofLifecycleFogAfter,
+    screenRuntime.minigameLeaveProofLifecycleFinishedBefore,
+    screenRuntime.minigameLeaveProofLifecycleFinishedAfter,
+    screenRuntime.minigameLeaveProofLifecycleVictoryAfter,
+    screenRuntime.minigameLeaveProofLifecycleSingleLeaveCalls,
+    screenRuntime.minigameLeaveProofLifecycleSinglePauseCommandCalls,
+    screenRuntime.minigameLeaveProofLifecycleSinglePauseCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleStepCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleUpdateCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleMapLoadedCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleCheatDropCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleCheatWinCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleSessionFinishedCalls,
+    screenRuntime.minigameLeaveProofLifecycleSingleEjectCalls,
+    screenRuntime.minigameLeaveProofLifecycleMinigamesLeaveCalls,
+    screenRuntime.minigameLeaveProofLifecycleMinigamesForceLeaveCalls,
+    screenRuntime.minigameLeaveProofLifecycleMinigamesStepCalls,
+    screenRuntime.minigameLeaveProofLifecycleMinigamesUpdateCalls,
+    screenRuntime.minigameLeaveProofLifecycleMinigamesMapLoadedCalls,
+    screenRuntime.minigameLeaveProofLifecycleMainSentCommands,
+    screenRuntime.minigameLeaveProofWorldSessionTargets,
+    screenRuntime.minigameLeaveProofWorldSessionTargetsExpected,
+    screenRuntime.minigameLeaveProofWorldSessionTargetsAllied,
+    screenRuntime.minigameLeaveProofWorldSessionTargetsForeign,
+    screenRuntime.minigameLeaveProofWorldSessionTargetsSelf,
+    screenRuntime.minigameLeaveProofWorldSessionCanScrollDuplicate,
+    screenRuntime.minigameLeaveProofWorldSessionCanBuyZZBoostBefore,
+    screenRuntime.minigameLeaveProofWorldSessionCanBuyZZBoostAfter,
+    screenRuntime.minigameLeaveProofWorldSessionGoldBefore,
+    screenRuntime.minigameLeaveProofWorldSessionGoldAfterAdd,
+    screenRuntime.minigameLeaveProofWorldSessionGoldAfterTake,
+    screenRuntime.minigameLeaveProofWorldSessionGoldAfterZZBoost,
+    screenRuntime.minigameLeaveProofWorldSessionTotalNafta,
+    screenRuntime.minigameLeaveProofWorldSessionShop,
+    screenRuntime.minigameLeaveProofWorldSessionConsumable,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetObjectId,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetPlayerId,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetAddItem,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetSlotsBefore,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetSlotsAfter,
+    screenRuntime.minigameLeaveProofWorldSessionAllyTargetAddedQuantity,
+    screenRuntime.minigameLeaveProofWorldSessionAddItem,
+    screenRuntime.minigameLeaveProofWorldSessionSlotsBefore,
+    screenRuntime.minigameLeaveProofWorldSessionSlotsAfter,
+    screenRuntime.minigameLeaveProofWorldSessionAddedQuantity);
+  fprintf(stdout, "Final minigame start guard proof: place=%d faction=%d/%d can=%d available=%d result=%d heroPlace=%d user=%d current=%d\n",
+    screenRuntime.minigameLeaveProofStartGuardPlace,
+    screenRuntime.minigameLeaveProofStartGuardFaction,
+    screenRuntime.minigameLeaveProofStartGuardHeroFaction,
+    screenRuntime.minigameLeaveProofStartGuardCanUse,
+    screenRuntime.minigameLeaveProofStartGuardAvailable,
+    screenRuntime.minigameLeaveProofStartGuardResult,
+    screenRuntime.minigameLeaveProofStartGuardHeroPlaceAfter,
+    screenRuntime.minigameLeaveProofStartGuardPlaceUserAfter,
+    screenRuntime.minigameLeaveProofStartGuardCurrentSingleAfter);
+  fprintf(stdout, "Final minigame hide proof: isolated=%d->%d hidden=%d->%d invisible=%d->%d inMinigame=%d->%d\n",
+    screenRuntime.minigameLeaveProofHeroIsolatedBefore,
+    screenRuntime.minigameLeaveProofHeroIsolatedAfter,
+    screenRuntime.minigameLeaveProofHeroHiddenBefore,
+    screenRuntime.minigameLeaveProofHeroHiddenAfter,
+    screenRuntime.minigameLeaveProofHeroInvisibleBefore,
+    screenRuntime.minigameLeaveProofHeroInvisibleAfter,
+    screenRuntime.minigameLeaveProofHeroFlagBefore,
+    screenRuntime.minigameLeaveProofHeroFlagAfter);
+  fprintf(stdout, "Final minigame summon hide proof: object=%d created=%d/%d count=%d/%d hidden=%d->%d invisible=%d->%d\n",
+    screenRuntime.minigameLeaveProofSummonObjectId,
+    screenRuntime.minigameLeaveProofSummonAbilityCreated,
+    screenRuntime.minigameLeaveProofSummonFactoryCreated,
+    screenRuntime.minigameLeaveProofSummonGroupCountBefore,
+    screenRuntime.minigameLeaveProofSummonActionCountBefore,
+    screenRuntime.minigameLeaveProofSummonHiddenBefore,
+    screenRuntime.minigameLeaveProofSummonHiddenAfter,
+    screenRuntime.minigameLeaveProofSummonInvisibleBefore,
+    screenRuntime.minigameLeaveProofSummonInvisibleAfter);
+  fprintf(stdout, "Final minigame lifecycle forwarding proof: drop=%d->%d finish=%d->%d\n",
+    screenRuntime.minigameLeaveProofLifecycleDropForwardBefore,
+    screenRuntime.minigameLeaveProofLifecycleDropForwardAfter,
+    screenRuntime.minigameLeaveProofLifecycleFinishForwardBefore,
+    screenRuntime.minigameLeaveProofLifecycleFinishForwardAfter);
+  fprintf(stdout, "Final minigame event proof: calls=%d->%d started=%d->%d exit=%d->%d last=%d->%d unit=%d->%d\n",
+    screenRuntime.minigameLeaveProofMinigameEventCallsBefore,
+    screenRuntime.minigameLeaveProofMinigameEventCallsAfter,
+    screenRuntime.minigameLeaveProofMinigameStartedEventsBefore,
+    screenRuntime.minigameLeaveProofMinigameStartedEventsAfter,
+    screenRuntime.minigameLeaveProofMinigameExitEventsBefore,
+    screenRuntime.minigameLeaveProofMinigameExitEventsAfter,
+    screenRuntime.minigameLeaveProofMinigameLastEventBefore,
+    screenRuntime.minigameLeaveProofMinigameLastEventAfter,
+    screenRuntime.minigameLeaveProofMinigameLastEventUnitBefore,
+    screenRuntime.minigameLeaveProofMinigameLastEventUnitAfter);
+  fprintf(stdout, "Final minigame slowdown proof: before=%.2f sentinel=%.2f during=%.2f after=%.2f restored=%.2f\n",
+    static_cast<double>(screenRuntime.minigameLeaveProofSlowdownHintBefore),
+    static_cast<double>(screenRuntime.minigameLeaveProofSlowdownHintSentinel),
+    static_cast<double>(screenRuntime.minigameLeaveProofSlowdownHintDuring),
+    static_cast<double>(screenRuntime.minigameLeaveProofSlowdownHintAfter),
+    static_cast<double>(screenRuntime.minigameLeaveProofSlowdownHintRestored));
+  fprintf(stdout, "Final minigame item stats proof: calls=%d->%d->%d ally=%d->%d self=%d->%d allyLast=%d->%d:%d selfLast=%d->%d:%d\n",
+    screenRuntime.minigameLeaveProofWorldSessionStatsCallsBefore,
+    screenRuntime.minigameLeaveProofWorldSessionStatsCallsAfterAlly,
+    screenRuntime.minigameLeaveProofWorldSessionStatsCallsAfterSelf,
+    screenRuntime.minigameLeaveProofWorldSessionStatsAllyBefore,
+    screenRuntime.minigameLeaveProofWorldSessionStatsAllyAfter,
+    screenRuntime.minigameLeaveProofWorldSessionStatsSelfBefore,
+    screenRuntime.minigameLeaveProofWorldSessionStatsSelfAfter,
+    screenRuntime.minigameLeaveProofWorldSessionStatsAllyFrom,
+    screenRuntime.minigameLeaveProofWorldSessionStatsAllyTo,
+    screenRuntime.minigameLeaveProofWorldSessionStatsAllyItem,
+    screenRuntime.minigameLeaveProofWorldSessionStatsSelfFrom,
+    screenRuntime.minigameLeaveProofWorldSessionStatsSelfTo,
+    screenRuntime.minigameLeaveProofWorldSessionStatsSelfItem);
+  fprintf(stdout, "Final minigame item behaviour proof: calls=%d->%d->%d gave=%d->%d->%d took=%d->%d->%d last=%d->%d\n",
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsBefore,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsAfterAlly,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourCallsAfterSelf,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveBefore,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveAfterAlly,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourGaveAfterSelf,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourTookBefore,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourTookAfterAlly,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourTookAfterSelf,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourLastAfterAlly,
+    screenRuntime.minigameLeaveProofWorldSessionBehaviourLastAfterSelf);
+  fprintf(stdout, "Final minigame player forwarding proof: drop=calls:%d->%d current:%d single:%d->%d finish=calls:%d->%d current:%d single:%d->%d\n",
+    screenRuntime.minigameLeaveProofLifecyclePlayerDropCallsBefore,
+    screenRuntime.minigameLeaveProofLifecyclePlayerDropCallsAfter,
+    screenRuntime.minigameLeaveProofLifecyclePlayerDropHadCurrent,
+    screenRuntime.minigameLeaveProofLifecyclePlayerDropSingleBefore,
+    screenRuntime.minigameLeaveProofLifecyclePlayerDropSingleAfter,
+    screenRuntime.minigameLeaveProofLifecyclePlayerFinishCallsBefore,
+    screenRuntime.minigameLeaveProofLifecyclePlayerFinishCallsAfter,
+    screenRuntime.minigameLeaveProofLifecyclePlayerFinishHadCurrent,
+    screenRuntime.minigameLeaveProofLifecyclePlayerFinishSingleBefore,
+    screenRuntime.minigameLeaveProofLifecyclePlayerFinishSingleAfter);
   fprintf(stdout, "Final minigame leave command execution: can=%d/%d executed=%d accepted=%d hero=%d state=%d->%d/%d->%d/%d->%d flag=%d->%d visual=%d->%d placement=%d->%d\n",
     heroGameplayCommandDiagnostics.leaveMinigameCanChecks,
     heroGameplayCommandDiagnostics.leaveMinigameCanAccepted,

@@ -8,6 +8,7 @@
 #include "System/FileSystem/FileWriteAsynchronousStream.h"
 #include "System/ImageTGA.h"
 #include "System/Crc32Checksum.h"
+#include "System/StrProc.h"
 #include "System/SystemLog.h"
 #include "System/Texts.h"
 #include "Core/BaseState.h"
@@ -140,8 +141,10 @@ namespace NCore
 namespace
 {
 const char kLinuxReplayMagic[] = "PWLXREPLAY1\n";
+const char kLinuxReplayInfoMagic[] = "PWLXREPLAYINFO1";
 const char kLinuxReplayFolder[] = "logs";
 const char kLinuxReplayPath[] = "logs/linux-bootstrap-replay.pwrp";
+const char kLinuxReplayInfoPath[] = "logs/linux-bootstrap-replay.pwrp.info";
 
 void EnsureLinuxReplayFolder()
 {
@@ -156,6 +159,8 @@ ReplayWriter::ReplayWriter()
     headerWritten(false),
     infoheaderWritten(false),
     linuxReplayFile(0),
+    linuxReplayInfoFilePath(kLinuxReplayInfoPath),
+    linuxReplayInfoHeaderWritten(false),
     linuxReplayStartWrites(0),
     linuxReplayStepWrites(0),
     linuxReplayCommandWrites(0),
@@ -237,6 +242,62 @@ void ReplayWriter::WriteGSData(int stepLength, const ClientSettings& clientSetti
   gsDataWritten = true;
 }
 
+void ReplayWriter::WriteLinuxBootstrapHeader(const MapStartInfo& mapStartInfo, int clientId, int stepLength, const ClientSettings& clientSettings)
+{
+  EnsureLinuxReplayFolder();
+  linuxReplayInfoFilePath = kLinuxReplayInfoPath;
+
+  FILE* infoFile = fopen(linuxReplayInfoFilePath.c_str(), "wb");
+  if (!infoFile)
+  {
+    ++linuxReplayWriteFailures;
+    linuxReplayInfoHeaderWritten = false;
+    return;
+  }
+
+  fprintf(infoFile, "%s\n", kLinuxReplayInfoMagic);
+  fprintf(infoFile, "clientId\t%d\n", clientId);
+  fprintf(infoFile, "stepLength\t%d\n", stepLength);
+  fprintf(infoFile, "mapDescName\t%s\n", mapStartInfo.mapDescName.c_str());
+  fprintf(infoFile, "replayName\t%s\n", mapStartInfo.replayName.c_str());
+  fprintf(infoFile, "randomSeed\t%d\n", mapStartInfo.randomSeed);
+  fprintf(infoFile, "isCustomGame\t%d\n", mapStartInfo.isCustomGame ? 1 : 0);
+  fprintf(infoFile, "minigameEnabled\t%d\n", clientSettings.minigameEnabled ? 1 : 0);
+  fprintf(infoFile, "logicParam1\t%.6f\n", static_cast<double>(clientSettings.logicParam1));
+  fprintf(infoFile, "aiForLeaversEnabled\t%d\n", clientSettings.aiForLeaversEnabled ? 1 : 0);
+  fprintf(infoFile, "aiForLeaversThreshold\t%d\n", clientSettings.aiForLeaversThreshold);
+  fprintf(infoFile, "playerCount\t%lu\n", static_cast<unsigned long>(mapStartInfo.playersInfo.size()));
+  for (size_t i = 0; i < mapStartInfo.playersInfo.size(); ++i)
+  {
+    const PlayerStartInfo& player = mapStartInfo.playersInfo[i];
+    const string playerNickname = NStr::ToMBCS(player.nickname);
+    fprintf(
+      infoFile,
+      "player\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%u\t%s\t%s\t%u\t%d\t%.6f\t%d\t%d\t%d\t%u\n",
+      player.playerID,
+      static_cast<int>(player.teamID),
+      static_cast<int>(player.originalTeamID),
+      static_cast<int>(player.playerType),
+      player.userID,
+      static_cast<int>(player.zzimaSex),
+      playerNickname.c_str(),
+      static_cast<unsigned int>(player.playerInfo.heroId),
+      player.playerInfo.heroSkin.c_str(),
+      player.playerInfo.locale.c_str(),
+      static_cast<unsigned int>(player.playerInfo.heroLevel),
+      player.playerInfo.heroExp,
+      static_cast<double>(player.playerInfo.heroRating),
+      player.playerInfo.hasPremium ? 1 : 0,
+      static_cast<int>(player.playerInfo.basket),
+      player.playerInfo.isAnimatedAvatar ? 1 : 0,
+      static_cast<unsigned int>(player.playerInfo.partyId)
+    );
+  }
+
+  fclose(infoFile);
+  linuxReplayInfoHeaderWritten = true;
+}
+
 void ReplayWriter::WriteStartGame(Peered::TSessionId serverId, int step)
 {
   LinuxEnsureReplayFile();
@@ -268,7 +329,7 @@ void ReplayWriter::WriteStepData(int step, const nstl::vector<rpc::MemoryBlock>&
   LinuxWriteReplay(&step, sizeof(step));
 
   const size_t commandsToWrite = Min<size_t>(commands.size(), 0xFFFF);
-  const size_t statusesToWrite = 0;
+  const size_t statusesToWrite = Min<size_t>(statuses.size(), 0xFFFF);
   unsigned short commandsCount = static_cast<unsigned short>(commandsToWrite);
   unsigned short statusesCount = static_cast<unsigned short>(statusesToWrite);
   LinuxWriteReplay(&commandsCount, sizeof(commandsCount));
@@ -283,7 +344,13 @@ void ReplayWriter::WriteStepData(int step, const nstl::vector<rpc::MemoryBlock>&
     LinuxWriteReplay(block.memory, bytesToWrite);
   }
 
-  (void)statuses;
+  for (size_t i = 0; i < statusesToWrite; ++i)
+  {
+    const Peered::BriefClientInfo& status = statuses[i];
+    unsigned short size = static_cast<unsigned short>(sizeof(status));
+    LinuxWriteReplay(&size, sizeof(size));
+    LinuxWriteReplay(&status, sizeof(status));
+  }
 
   fflush(linuxReplayFile);
   ++linuxReplayStepWrites;
@@ -500,7 +567,6 @@ class TileMap;
 class PFBaseUnit;
 class PFHeroStatistics;
 class MapLoadingController;
-class PlayerBehaviourTracker;
 }
 
 namespace PF_Minigames
@@ -526,7 +592,6 @@ template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, voi
 template<> TypeName* CastToUserObjectImpl<TypeName>(CObjectBase*, TypeName*, CObjectBase*) { return 0; }
 
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(NWorld::PFHeroStatistics)
-PW_LINUX_BOOTSTRAP_OBJECT_CASTS(NWorld::PlayerBehaviourTracker)
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(PF_Minigames::IMinigamesMain)
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::CCommonPathFinder)
 PW_LINUX_BOOTSTRAP_OBJECT_CASTS(Pathfinding::RoutePathFinder)

@@ -42,6 +42,11 @@ public:
 
   void StartGame() { gameReady = true; }
   size_t GetBufferedSegmentCount() const { return readySegments.size(); }
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  void QueueLinuxClientStatus(int status);
+  size_t GetLinuxProducedStatusCount() const { return linuxProducedStatusCount; }
+  size_t GetLinuxConsumedStatusCount() const { return linuxConsumedStatusCount; }
+#endif
   void SetReplayWriter(NCore::ReplayWriter * _replayWriter) { replayWriter = _replayWriter; }
   void OnVictory(const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo);
   void OnCombatScreenStarted( const NGameX::ReplayInfo & _replayInfo );
@@ -56,6 +61,10 @@ private:
   timer::Time               nextStepTime;
   NCore::StepsDelaySettings defaultStepsDelaySettings;
   WeakMT<NCore::ReplayWriter> replayWriter;
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+  size_t                    linuxProducedStatusCount;
+  size_t                    linuxConsumedStatusCount;
+#endif
 };
 
 } //namespace Game

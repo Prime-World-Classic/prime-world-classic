@@ -95,6 +95,7 @@ private:
 
   // dynamic fields
   bool       isRespawned;
+  bool       initialRouteIssued;
   EHealPhase healing;
   int        healingTick;
   float      warFrontTimeDist;

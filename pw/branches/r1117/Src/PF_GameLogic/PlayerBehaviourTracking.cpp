@@ -2,7 +2,10 @@
 #include "PlayerBehaviourTracking.h"
 
 #include "PFHero.h"
+#include "PFPlayer.h"
+#if !defined(PW_LINUX_NULL_RENDER)
 #include "AdventureScreen.h"
+#endif
 
 namespace PlayerBehaviourTracking
 {
@@ -28,6 +31,10 @@ namespace PlayerBehaviourTracking
 
   void DispatchEvent(int userId, const EPlayerBehaviourEvent::Enum event)
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    (void)userId;
+    (void)event;
+#else
     NGameX::AdventureScreen * advScreen = NGameX::AdventureScreen::Instance();
     if (!advScreen )
       return;
@@ -41,6 +48,7 @@ namespace PlayerBehaviourTracking
       return;
 
     Private::DispatchEventImpl(player->GetBehaviourTracker(), event);
+#endif
   }
 
 

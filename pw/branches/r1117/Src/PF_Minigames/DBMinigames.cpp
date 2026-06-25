@@ -13,7 +13,9 @@ REGISTER_DBRESOURCE( DBMinigamesCommon );
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // includes for factories
+#if !defined(PW_LINUX_NULL_RENDER)
 #include "MinigamesMain.h"
+#endif
 
 namespace NDb
 {
@@ -111,6 +113,10 @@ void DBMinigamesCommon::Assign( const DBMinigamesCommon& _dBMinigamesCommon )
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 PF_Minigames::IMinigamesMain* DBMinigamesCommon::Construct() const
 {
+#if defined(PW_LINUX_NULL_RENDER)
+	return 0;
+#else
 	return new PF_Minigames::MinigamesMain( *this );
+#endif
 }
 }; // namespace NDb

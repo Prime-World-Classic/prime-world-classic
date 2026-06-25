@@ -15,6 +15,55 @@ namespace NWorld
 class PFBaseMaleHero;
 class PFMinigamePlace;
 
+#if defined(PW_LINUX_NULL_RENDER)
+struct LinuxMinigameDiagnostics
+{
+  int hasMinigames;
+  int hasSingleMinigame;
+  int hasMain;
+  int singleRunning;
+  int singlePaused;
+  int singleUnderFogOfWar;
+  int singleSessionFinished;
+  int singleSessionVictory;
+  int singleStartCalls;
+  int singleStartClientCalls;
+  int singleLeaveCalls;
+  int singleLeaveCommandCalls;
+  int singlePauseCommandCalls;
+  int singleStepCalls;
+  int singleUpdateCalls;
+  int singlePauseCalls;
+  int singleCheatDropCooldownCalls;
+  int singleCheatWinCalls;
+  int singleSessionFinishedCalls;
+  int singleMapLoadedCalls;
+  int singleEjectCalls;
+  int playerDropCooldownForwardCalls;
+  int playerDropCooldownForwardHadCurrent;
+  int playerDropCooldownForwardSingleCallsBefore;
+  int playerDropCooldownForwardSingleCallsAfter;
+  int playerGameFinishedForwardCalls;
+  int playerGameFinishedForwardHadCurrent;
+  int playerGameFinishedForwardSingleCallsBefore;
+  int playerGameFinishedForwardSingleCallsAfter;
+  int playerMinigameEventCalls;
+  int playerMinigameStartedEvents;
+  int playerMinigameExitEvents;
+  int playerMinigameLastEventType;
+  int playerMinigameLastEventUnitObjectId;
+  int minigamesStartCalls;
+  int minigamesLeaveCalls;
+  int minigamesForceLeaveCalls;
+  int minigamesStepCalls;
+  int minigamesUpdateCalls;
+  int minigamesMapLoadedCalls;
+  int minigamesInitCalls;
+  int minigamesReinitCalls;
+  int mainSentCommands;
+};
+#endif
+
 class PFEaselPlayer : public PFBaseHero, public PF_Minigames::IWorldSessionInterface
 {
   WORLD_OBJECT_METHODS( 0x8B77F380, PFEaselPlayer );
@@ -73,6 +122,10 @@ public:
 
   virtual NDb::EBidonType     GetCurrentBidon() const { return bidon; }
   virtual void                SetCurrentBidon( NDb::EBidonType _bidon );
+
+#if defined(PW_LINUX_NULL_RENDER)
+  bool                        GetLinuxMinigameDiagnostics( LinuxMinigameDiagnostics& diagnostics ) const;
+#endif
 
   virtual void                OnMapLoaded();
 
