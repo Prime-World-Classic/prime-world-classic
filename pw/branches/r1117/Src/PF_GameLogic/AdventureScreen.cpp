@@ -7182,7 +7182,7 @@ void AdventureScreen::OnVictory( NDb::EFaction _failedFaction, int _surrenderVot
     NMainFrame::Exit();
 }
 
-// WASD
+// ==================== ����� ������� ��� WASD ====================
 CVec3 AdventureScreen::GetMoveDirectionFromKey(int key) const
 {
     if (!pCameraController || !pScene)
@@ -7192,20 +7192,31 @@ CVec3 AdventureScreen::GetMoveDirectionFromKey(int key) const
     if (!camera)
         return VNULL3;
 
-    // �������� ������� � ���������� ������
     NScene::SCameraPosition camPos;
     camera->GetPosition(&camPos);
 
-    // Forward (����������� ������� ������)
+    // === Forward ===
     CVec3 forward = camPos.GetCameraDir();
-    forward.z = 0.0f;                    // ������� ������������ ������������
-    forward.NormalizeSelf();
+    forward.z = 0.0f;
 
-    // Right (������ �� ������). ��������� ����� cross product
+    float lenF = forward.Length();
+    if (lenF > 0.001f)
+        forward = forward / lenF;           // ����������� �������
+
+    // === Right (��������� ����� cross product) ===
     CVec3 up = camPos.GetCameraUp();
-    CVec3 right = forward.Cross(up);
+
+    CVec3 right(
+        forward.y * up.z - forward.z * up.y,
+        forward.z * up.x - forward.x * up.z,
+        forward.x * up.y - forward.y * up.x
+    );
+
     right.z = 0.0f;
-    right.NormalizeSelf();
+
+    float lenR = right.Length();
+    if (lenR > 0.001f)
+        right = right / lenR;               // ����������� �������
 
     CVec3 moveDir = VNULL3;
 
@@ -7219,7 +7230,7 @@ CVec3 AdventureScreen::GetMoveDirectionFromKey(int key) const
 
     return moveDir;
 }
-// WASD
+// ============================================================
 
 #pragma code_seg(pop)
 
