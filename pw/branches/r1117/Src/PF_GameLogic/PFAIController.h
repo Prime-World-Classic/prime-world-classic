@@ -110,6 +110,7 @@ private:
   int	usePotionDelay;
   int	blessDelay;
   int	mountDelay;
+  int combatScanDelay;
 
   // priestess fields
   vector<CPtr<PFBaseMaleHero>> blessers;

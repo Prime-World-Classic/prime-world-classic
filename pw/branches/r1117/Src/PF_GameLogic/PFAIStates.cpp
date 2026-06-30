@@ -108,7 +108,12 @@ void AIAttackUnitState::OnEnter()
 bool AIAttackUnitState::OnStep( float dt )
 {
   (void)dt;
-  return !IsValid(pTarget);
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pTarget))
+    return true;
+  if (pTarget->IsDead() || !pHelper->pUnit->CanAttackTarget(pTarget))
+    return true;
+  const float keepRange = Max(pHelper->pUnit->GetVisibilityRange(), pHelper->pUnit->GetTargetingRange()) + pTarget->GetObjectSize();
+  return fabs2(pHelper->pUnit->GetPosition().AsVec2D() - pTarget->GetPosition().AsVec2D()) > keepRange * keepRange;
 }
 
 bool EscapeFromTowerState::OnStep( float dt )

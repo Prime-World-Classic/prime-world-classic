@@ -1,6 +1,6 @@
 # Linux Native Port Plan
 
-Updated: 2026-06-25
+Updated: 2026-06-30
 
 ## Goal
 
@@ -19,6 +19,16 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - `PrimeWorldLinuxGameplayProbe` builds successfully.
 - `PrimeWorldLinuxClientRuntimeProbe` builds successfully.
 - `PrimeWorldLinuxRenderProbe` builds successfully.
+- Latest chunk: Linux/null-render AI now has the first real talent activation/use scheduling path on top of the production-command AI controller work. The Linux `TalentWrapper` path now walks the full DB talent grid instead of only slot `(0,0)`, ranks candidate activations by AI priority and Nafta cost, and the Linux `TalentPart` / `PFAIController` paths scan activated/active talents with `CheckValidAbilityTargetCondition` plus `FindMicroAITargetTemp(...)` before sending the existing `CreateCmdActivateTalent(...)` / `CreateCmdUseTalent(...)` commands through `PFAIHelper`. To preserve replay determinism, controller-driven talent commands are delayed until world step `700` and throttled with local Linux delays; an ungated version produced many activation commands but crashed replay-input during early scripted consumable replay, so the gate is intentionally conservative. Windows/full-render AI remains on its existing code path.
+- Verification after the Linux AI talent-scheduling chunk: built `PrimeWorldLinuxClient`, `PrimeWorldLinuxGameplayProbe`, `PrimeWorldLinuxClientRuntimeProbe`, and `PrimeWorldLinuxRenderProbe` with `cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClient PrimeWorldLinuxGameplayProbe PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxRenderProbe -- -j2`; the final build exited `0`.
+- A 90-second native OpenGL `--bootstrap-create-game` regression after the Linux AI talent-scheduling chunk wrote `Bin/logs/2026.06.30-04.56.31/linux-client-shell.log` and exited `0`. The run kept the transceiver/replay path valid with `finalGameTransceiverCommands=29`, `finalGameReplayWriterCommandWrites=38`, `finalGameReplayCaptureValidated=yes`, `finalGameReplayStorageValidated=yes`, `finalGameReplayPlaybackValidated=yes`, and `finalGameReplayServerPlaybackValidated=yes`. Linux AI controllers sent/captured the delayed talent-command attempts through the production command path: `finalLinuxAIControllers=auto:9/9 add:9/9 remove:0/0 steps:723 active:9 bots:1/1 ... commands:26/26 fallback:0 move:0 combat:11 attack:6 other:9 lastCmd:6/7450/9/-9/-1/1`. Live HUD/minimap rendering stayed active (`finalVisibleLiveMinimapDrawn=yes`, `finalVisibleLiveMinimapMarkers=169`). The older scripted minigame proof still did not run in this smoke, and the create-game-side hero talent execution counters remained `finalHeroGameplayTalent=0/0/0/0/0 ... use=0/0/0/0/0`, so the executed talent proof moved to replay-input below.
+- A native OpenGL replay-input regression against that generated replay wrote `Bin/logs/2026.06.30-05.00.03/linux-client-shell.log` and exited `0`. Replay playback consumed the latest file deterministically with `finalReplayFileValidated=yes`, `finalReplayFileLoadedCommands=38`, `finalReplayFileConsumedCommands=38`, `finalReplayFileLiveWorldValidated=yes`, `finalReplayFileLiveWorldCommandsExecuted=38`, and AI auto-start disabled during replay (`finalLinuxAIControllers=auto:0/0 add:0/0 remove:0/0 ... commands:0/0`). The delayed activation commands now replay through the gameplay command executor without the prior crash: `finalHeroGameplayTalent=18/18/18/4/0 slot=0,2 progress=3->3 dev=3->3 gold=0->0 use=0/0/0/0/0 ...`. `UseTalent` scanning is implemented, but this run still did not prove an executed use-talent command; next work should extend the active-target window or choose a content setup with a usable active talent.
+- The normal 8-second native OpenGL menu regression after the Linux AI talent-scheduling chunk wrote `Bin/logs/2026.06.30-05.00.34/linux-client-shell.log` and exited `0`. It keeps the starting UI overlays intact with `finalVisibleLobbyDetailsDrawn=yes`, `finalVisibleLobbyDetailsArtwork=yes`, `finalVisibleLobbyDetailsMinimap=yes`, `finalVisibleLobbyDetailsLineupSlots=10`, `finalVisibleLobbyHeroDetailsDrawn=yes`, `finalVisibleLobbyHeroPortrait=yes`, `finalVisibleLobbyHeroTalentIcons=12`, and expected inactive AI counters (`finalLinuxAIControllers=auto:0/0 add:0/0 remove:0/0 steps:0 active:0 bots:0/-1 ... commands:0/0`).
+- Latest chunk: Linux/null-render `PFAIController` now performs conservative real combat target acquisition while following lane routes. The Linux `PFAIHelper::FindEnemyNear()` path now reuses `PFBaseUnit::FindTarget(...)` over the existing Linux bootstrap unit registry instead of returning no target. `PFAIController::CheckWarFront(...)` throttles local scans, skips heroes that already have a target or are already in `ATTACKUNIT`, and pushes `AIAttackUnitState` so the existing `PFAIHelper::Attack(...)`/transceiver command route sends real `CreateCmdAttackTarget(...)` commands. The Linux attack state now exits when the target becomes invalid, dead, no longer attackable, or outside visibility/targeting range so the lane-move state below can resume. The new delay field is initialized in both Linux and Windows constructors; Windows/full-render AI behavior remains on its existing richer implementation.
+- Verification after the Linux AI target-acquisition chunk: configured a fresh build tree with `cmake -S pw/branches/r1117/Src/LinuxBootstrap -B /tmp/primeworld-linux-bootstrap` and built `PrimeWorldLinuxClient`, `PrimeWorldLinuxGameplayProbe`, `PrimeWorldLinuxClientRuntimeProbe`, and `PrimeWorldLinuxRenderProbe` with `cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClient PrimeWorldLinuxGameplayProbe PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxRenderProbe -- -j2`; the final build exited `0`. The first build attempt caught a Linux-only link issue because `AiConst::MOVE_START_DELAY()` pulls in `AdventureScreen::Instance()` in this bootstrap target; the Linux combat scan delay is now a local fixed tick delay to keep it independent of that full-client symbol.
+- A 90-second native OpenGL `--bootstrap-create-game` regression after the Linux AI target-acquisition chunk wrote `Bin/logs/2026.06.30-04.39.21/linux-client-shell.log` and exited `0`. It now proves real production AI attack commands from controllers: `Final Linux AI controllers: auto=9/9 add=9/9 remove=0/0 steps=720 active=9 bots=1/1 ... commands=17/17 fallback=0 move=0 combat=11 attack=6 other=0 lastCmd=2/7418/4/-4/-1/1`. Replay capture/storage/transceiver validation stayed clean with `Final replay capture validation: valid=yes ... commandBlocks=29/29 statusBlocks=3/3 ... error=none`, `Final replay storage: valid=yes segments=15/15 commands=29/29 statuses=3/3 ... error=none`, and live map/HUD/minimap/event-feed/creep-combat rendering remained active. The old late minigame proof still did not run in this 90-second smoke because real AI/combat activity changes the timing of the scripted proof chain (`attempted=0 completed=0`).
+- A native OpenGL replay-input regression against the freshly generated AI-command replay wrote `Bin/logs/2026.06.30-04.41.08/linux-client-shell.log` and exited `0`. Replay playback consumed the larger AI-command replay cleanly with `Final live replay input: active=yes ready=yes header=yes world=yes valid=yes ... segments=15 commands=29/29 statuses=3/3 calls=15 worldSteps=14 finalStep=14 stepMatch=yes commandMatch=yes statusMatch=yes ... rate=2 pacing=no/0 ... error=none`. AI auto-start stayed disabled during replay (`Final Linux AI controllers: auto=0/0 add=0/0 remove=0/0 ... commands=0/0 fallback=0`), and visible replay controls/3D/minimap/HUD still rendered.
+- The normal 8-second native OpenGL menu regression after the Linux AI target-acquisition chunk wrote `Bin/logs/2026.06.30-04.41.34/linux-client-shell.log` and exited `0`. It keeps the starting UI overlays intact with `Final visible lobby details: drawn=yes artwork=yes minimap=yes textures=3 lineup=10`, `Final visible lobby hero details: drawn=yes portrait=yes abilities=0 talents=12`, and expected inactive gameplay/replay/AI counters (`Final Linux AI controllers: auto=0/0 add=0/0 remove=0/0 steps=0 active=0 bots=0/-1 ... commands=0/0 fallback=0`).
 - Latest chunk: Linux/null-render AI now has a functional local `PFHFSM` / `PFFsm` implementation instead of no-op state stubs, so `PFAIController` states can actually enter, push route substates, and call `PFAIHelper`. `PFAIHelper` now sends the same production `CreateCmd...` commands used by the normal helper path through `NCore::ITransceiver` when a transceiver-backed AI container is installed, records Linux-only command diagnostics in `PFWorld`, and keeps direct mutation fallbacks only for probe/no-transceiver cases. The Linux `--bootstrap-create-game` path installs a real `PFAIContainer` on the transceiver world and the Linux controller issues its first lane route once; replay-input and menu PFWorld instances still keep AI auto-start disabled. A shutdown-only pure-virtual crash found while enabling the FSM was fixed by making Linux null-render FSM destructors release references without virtual `DoLeave()` calls while preserving explicit `Cleanup()` behavior. Windows, DirectX, and non-Linux client behavior remain on the existing code paths.
 - Verification after the transceiver-backed AI command/FSM chunk: focused `git diff --check -- pw/branches/r1117/Src/PF_GameLogic/PFBaseUnit.cpp pw/branches/r1117/Src/PF_GameLogic/PFAIController.cpp pw/branches/r1117/Src/PF_GameLogic/PFAIController.h pw/branches/r1117/Src/PF_GameLogic/PFAIHelper.cpp pw/branches/r1117/Src/PF_GameLogic/PFAIHelper.h pw/branches/r1117/Src/PF_GameLogic/PFWorld.cpp pw/branches/r1117/Src/PF_GameLogic/PFWorld.h pw/branches/r1117/Src/PW_Client/Game.cpp` exited `0`, and `cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClient PrimeWorldLinuxGameplayProbe PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxRenderProbe -- -j2` exited `0`.
 - A 90-second native OpenGL `--bootstrap-create-game` regression after the transceiver-backed AI command/FSM chunk wrote `Bin/logs/2026.06.25-08.05.29/linux-client-shell.log` and exited `0`. It now proves real AI commands from the attached controllers: `Final Linux AI controllers: auto=9/9 add=9/9 remove=0/0 steps=882 active=9 bots=1/1 ... commands=11/11 fallback=0 move=0 combat=11 attack=0 other=0 lastCmd=2/7418/4/-4/-1/1`. The same run kept the real scheduler/transceiver/replay path valid with `Final game transceiver runtime: ready=yes world=yes step=881 commands=23 runtimeSent=12 productionSent=11 ... replayCommands=23 replayBytes=936`, valid capture/storage/transceiver proofs (`Final replay capture validation: valid=yes ... commandBlocks=23/23 statusBlocks=3/3 ... error=none`, `Final replay storage: valid=yes segments=14/14 commands=23/23 statuses=3/3 ... error=none`), spawned/player heroes `10/10`, live 3D terrain/water/static/animated/dynamic/hero/creep rendering, HUD/minimap/scoreboard/event-feed rendering, selected-target combat, and creep combat. Because real AI now starts lane movement immediately, the older late scripted bootstrap command/minigame proof chain is no longer the primary success signal in this smoke and did not reach the minigame leave proof inside 90 seconds (`attempted=0 completed=0`).
@@ -506,43 +516,43 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Latest verified runtime command:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --seconds 8
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --seconds 8
 ```
 
 The current deeper custom-lobby verification command is:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map MOBA --bootstrap-create-game --seconds 90
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map MOBA --bootstrap-create-game --seconds 90
 ```
 
 The current first-3D/create-game visual verification command is:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --map MOBA --hero plane --bootstrap-create-game --seconds 8
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --map MOBA --hero plane --bootstrap-create-game --seconds 8
 ```
 
 The current selected-map point-light verification command is:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --map NightMap --hero plane --bootstrap-create-game --seconds 8
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --map NightMap --hero plane --bootstrap-create-game --seconds 8
 ```
 
 The current selected-hero 3D visual verification command is:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map Aram --hero shadow --seconds 8
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map Aram --hero shadow --seconds 8
 ```
 
 - Latest verified runtime log:
 
 ```text
-/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.25-03.52.46/linux-client-shell.log
+/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.30-05.00.34/linux-client-shell.log
 ```
 
 - Latest verified Linux-generated replay-input log:
 
 ```text
-/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.25-03.50.46/linux-client-shell.log
+/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.30-05.00.03/linux-client-shell.log
 ```
 
 - Latest verified gameplay-effect runtime log:
@@ -554,7 +564,7 @@ The current selected-hero 3D visual verification command is:
 - Latest verified deeper custom-lobby/loading log:
 
 ```text
-/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.25-03.51.08/linux-client-shell.log
+/home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/2026.06.30-04.56.31/linux-client-shell.log
 ```
 
 - Latest verified first-3D visual run log:
@@ -761,7 +771,9 @@ The executable is therefore past basic unit identity, hero object identity, hero
 
 Loaded-map creep runtime is now past the old inert-spawner boundary too: the Linux executable steps real `PFBaseSpawner` instances from the loaded PFWorld, creates DB-backed lane/neutral creep objects during long create-game smokes, executes enabled `PFCommonCreepBehaviour` from `PFBaseUnit::Step(...)`, scans same-world bootstrap enemy targets, and moves lane common creeps along their DB waypoint lists through `PFBaseMovingUnit::MoveTo(...)`. That proof is still headless and null-render-only; production pathfinding/steering, chase/evade AI parity, combat/state-machine parity, and visible creep client objects remain open.
 
-The hard work is enabling full pathfinding/voxel behavior beyond controlled registry/selection, production steering/collision resolver behavior beyond the current direct/live-target/follow/attach, segment-trace, blocked-step, tunnel-stop, resolver-overlap/search, and simple push/free-place/tick null-render movement proofs, content-driven summon cloning/template behavior and full summon/pet AI beyond the current controlled `SummonApplicator` creation proof, remaining special-applicator side effects for full real terrain/tree/tile/fog mutations, mounted-hero gameplay beyond the current attached-unit mirror, and full-client-scene paths beyond the controlled eye/lock/terrain/flag/pickup/channeling probes, full aura scans/child applicators beyond controlled probes, content-driven bounce target-selector retargeting beyond the current same-target dispatch proof, chain-lightning AI range scans/visual effects beyond the current first-hit dispatch proof, delegate-damage selector fanout beyond the current owner-fallback split proof, content-driven stat/status/taunt/modifier stacking and interactions beyond controlled probes, real resurrect hero/death-state transitions, content-driven base-attack swapping, scene-object visual mutation, FX/effect ownership, production creep lane-path/evade/chase/AI behavior and rendered creep client objects beyond the current first headless waypoint/target proof, trigger/shield/event processors, content-driven throw/fly trajectories beyond the current selector-backed throw displacement proof, production attack-state/FSM behavior beyond the current Linux direct-attack bridge, production content-driven Highlander/MicroAI/selector scans and conditions beyond controlled bootstrap probes, content-driven damage-history selector/converter semantics beyond the current controlled sent-history scan, active base-attack damage/stat application beyond the current dispatch/applicator proof, client-backed hero/creature/summon/pet rendering, active hero talent/consumable/interact behavior, production bot AI command/transceiver behavior beyond the current scripted post-minigame driver, active hero leveling/statistics/respawn/session-event behavior, active minigame/easel behavior, active ability formula/cast-limitation evaluation beyond constant bootstrap formulas, active threaded map loading, and gameplay/applicator-spawned effect ownership without pulling the Windows Direct3D scene path into Linux.
+Linux AI controller runtime is now past the pure scripted-bot-driver boundary for initial combat and talent activation. Controller-backed bots can acquire nearby enemy units, push `AIAttackUnitState`, send production attack commands, scan real talents, send delayed activation commands through the same transceiver/replay path, and replay those activation commands deterministically. The remaining AI/talent gap is full Windows-parity decision quality: lane/chase/evade strategy, broader state transitions, content-driven MicroAI use-talent execution during live create-game runs, consumable/interact decisions, and client-backed visual/effect parity.
+
+The hard work is enabling full pathfinding/voxel behavior beyond controlled registry/selection, production steering/collision resolver behavior beyond the current direct/live-target/follow/attach, segment-trace, blocked-step, tunnel-stop, resolver-overlap/search, and simple push/free-place/tick null-render movement proofs, content-driven summon cloning/template behavior and full summon/pet AI beyond the current controlled `SummonApplicator` creation proof, remaining special-applicator side effects for full real terrain/tree/tile/fog mutations, mounted-hero gameplay beyond the current attached-unit mirror, and full-client-scene paths beyond the controlled eye/lock/terrain/flag/pickup/channeling probes, full aura scans/child applicators beyond controlled probes, content-driven bounce target-selector retargeting beyond the current same-target dispatch proof, chain-lightning AI range scans/visual effects beyond the current first-hit dispatch proof, delegate-damage selector fanout beyond the current owner-fallback split proof, content-driven stat/status/taunt/modifier stacking and interactions beyond controlled probes, real resurrect hero/death-state transitions, content-driven base-attack swapping, scene-object visual mutation, FX/effect ownership, production creep lane-path/evade/chase/AI behavior and rendered creep client objects beyond the current first headless waypoint/target proof, trigger/shield/event processors, content-driven throw/fly trajectories beyond the current selector-backed throw displacement proof, production attack-state/FSM behavior beyond the current Linux direct-attack bridge, production content-driven Highlander/MicroAI/selector scans and conditions beyond controlled bootstrap probes, content-driven damage-history selector/converter semantics beyond the current controlled sent-history scan, active base-attack damage/stat application beyond the current dispatch/applicator proof, client-backed hero/creature/summon/pet rendering, active consumable/interact behavior, production bot AI parity beyond the current controller attack/talent scheduling, active hero leveling/statistics/respawn/session-event behavior, active minigame/easel behavior, active ability formula/cast-limitation evaluation beyond constant bootstrap formulas, active threaded map loading, and gameplay/applicator-spawned effect ownership without pulling the Windows Direct3D scene path into Linux.
 
 As of the 2026-06-02 chunks, the specific Linux loaded-world enemy-hero damage, death, respawn-timer, resurrection, local kill-award, and first Prime-funded talent level-up proof is closed for the bootstrap/null-render path. Remaining hero respawn/progression references above mean full parity work around session events, statistics, broader talent/consumable interactions, visual state, and production FSM/client-object behavior.
 
@@ -823,44 +835,44 @@ cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxRenderProb
 Run the latest verified Linux shell smoke test:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --seconds 3 --diagnostics-overlay
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --seconds 3 --diagnostics-overlay
 ```
 
 Run the latest verified deeper custom-lobby/loading live-map hero death/respawn/progression smoke tests from `pw/branches/r1117/Bin` so the native replay-capture file is written under `Bin/logs`:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map MOBA --bootstrap-create-game --seconds 90
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map NightMap --hero plane --bootstrap-create-game --seconds 90
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map MOBA --bootstrap-create-game --seconds 90
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --map NightMap --hero plane --bootstrap-create-game --seconds 90
 ```
 
 Run the latest verified starting UI smoke:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --seconds 8
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --seconds 8
 ```
 
 Run the latest verified Linux-generated replay-input smoke after creating `Bin/logs/linux-bootstrap-replay.pwrp` with a create-game run. Use an absolute replay path unless the current working directory is `pw/branches/r1117/Bin`, because replay detection ignores positional paths that do not exist relative to the process cwd:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-speed 2 --seconds 12 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-speed 2 --seconds 12 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
 ```
 
 Run the latest verified Linux replay-input realtime playback smoke; this should derive the effective pace from the replay header `stepLength` and finish with `Final live replay input ... valid=yes ... pacing=yes/100 ... error=none` for the current generated replay:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-realtime --seconds 12 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-realtime --seconds 12 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
 ```
 
 Run the latest verified Linux replay-input explicit pacing smoke; this intentionally uses a short runtime so it should finish with `Final live replay input ... valid=no ... pacing=yes/500 ... error=incomplete` while still drawing the replay-control panel:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-pace-ms 500 --seconds 4 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-pace-ms 500 --seconds 4 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
 ```
 
 Run the latest verified Linux replay-input pause/manual-step smoke; this should intentionally finish with `Final live replay input ... valid=no ... error=paused` because only five replay segments are allowed through:
 
 ```bash
-/tmp/primeworld-linux-bootstrap/LinuxBootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-paused --replay-steps 5 --seconds 6 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --root /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117 --locale en-US --replay-paused --replay-steps 5 --seconds 6 /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin/logs/linux-bootstrap-replay.pwrp
 ```
 
 For longer creep-wave regression checks, keep the same commands but use `--seconds 65`.

@@ -5,12 +5,17 @@
 #include "PFAIHelper.h"
 #include "PFAIStates.h"
 #include "PFMaleHero.h"
+#include "PFTalent.h"
 #include "PFBuildings.h"
 #include "PFFlagpole.h"
+#include "TargetSelectorHelper.hpp"
 
 namespace
 {
   static bool g_debugAIStates = false;
+  static const int LINUX_AI_ACTIVATE_TALENT_DELAY = 30;
+  static const int LINUX_AI_USE_TALENT_DELAY = 30;
+  static const int LINUX_AI_TALENT_COMMAND_START_STEP = 700;
 }
 
 REGISTER_DEV_VAR("debug_ai_states", g_debugAIStates, STORAGE_NONE);
@@ -33,6 +38,7 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
   , usePotionDelay(0)
   , blessDelay(0)
   , mountDelay(0)
+  , combatScanDelay(0)
   , findFlagDelay(0)
 {
   SetLine(line, shift);
@@ -40,7 +46,10 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
 
 TalentWrapper PFAIController::GetLastTalent()
 {
-  return TalentWrapper(GetHero(), 0, 0);
+  const int numSlots  = NDb::KnownEnum<NDb::ETalentSlot>::sizeOf;
+  const int numLevels = NDb::KnownEnum<NDb::ETalentLevel>::sizeOf;
+
+  return TalentWrapper(GetHero(), numLevels - 1, numSlots - 1);
 }
 
 bool PFAIController::CanUseConsumable( int slot )
@@ -114,10 +123,89 @@ void PFAIController::RecoverHealth()
 
 void PFAIController::ActivateTalents()
 {
+  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TALENT_COMMAND_START_STEP)
+    return;
+
+  if (--activateTalentDelay > 0)
+    return;
+  activateTalentDelay = LINUX_AI_ACTIVATE_TALENT_DELAY;
+
+  TalentWrapper toActivate(GetHero(), 0, 0);
+
+  for (TalentWrapper i = GetFirstTalent(); i.IsValid(); ++i)
+  {
+    if (i.CanBeActivated() && i.IsPreferable(toActivate))
+      toActivate = i;
+  }
+
+  if (toActivate.CanBeActivated())
+    GetHelper().ActivateTalent(toActivate);
 }
 
 void PFAIController::UseTalents()
 {
+  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TALENT_COMMAND_START_STEP)
+    return;
+
+  if (--useTalentDelay > 0)
+    return;
+  useTalentDelay = LINUX_AI_USE_TALENT_DELAY;
+
+  struct ToUse
+  {
+    TalentWrapper talentWrapper;
+    Target target;
+
+    ToUse(const TalentWrapper& _talentWrapper, Target _target)
+      : talentWrapper(_talentWrapper)
+      , target(_target)
+    {
+    }
+
+    ToUse()
+      : talentWrapper()
+      , target()
+    {
+    }
+  };
+
+  nstl::vector<ToUse> talentsToUse;
+  int bestPriority = -1;
+
+  for (TalentWrapper i = GetFirstTalent(); i.IsValid(); ++i)
+  {
+    if (!i.IsActivated() || !i.IsActive())
+      continue;
+
+    const PFTalent* pTalent = i.GetTalent();
+    if (!pTalent)
+      continue;
+
+    if (pTalent->IsMultiState() && pTalent->IsOn())
+      continue;
+
+    const CheckValidAbilityTargetCondition condition;
+    Target target;
+    if (!pTalent->FindMicroAITargetTemp(target, condition))
+      continue;
+
+    if (!(target.IsObject() || target.IsPosition()))
+      continue;
+
+    const int priority = i.GetPriority();
+    if (priority >= bestPriority)
+    {
+      if (priority > bestPriority)
+      {
+        bestPriority = priority;
+        talentsToUse.clear();
+      }
+      talentsToUse.push_back(ToUse(i, target));
+    }
+  }
+
+  if (!talentsToUse.empty())
+    GetHelper().UseTalent(talentsToUse.front().talentWrapper, talentsToUse.front().target);
 }
 
 void PFAIController::RaiseFlags()
@@ -132,6 +220,23 @@ bool PFAIController::TryTeleport()
 void PFAIController::CheckWarFront( float timeDelta )
 {
   (void)timeDelta;
+  if (combatScanDelay > 0)
+  {
+    --combatScanDelay;
+    return;
+  }
+  // Keep Linux bootstrap AI independent of AdventureScreen-backed AiConst::TICK().
+  combatScanDelay = 3;
+
+  if (!IsValid(GetHero()) || GetHero()->GetCurrentTarget())
+    return;
+  const AIBaseState* currentState = CurrentState();
+  if (currentState && currentState->stateType == ATTACKUNIT)
+    return;
+
+  PFBaseUnit* enemy = GetHelper().FindEnemyNear();
+  if (IsValid(enemy))
+    PushState(new AIAttackUnitState(this, enemy));
 }
 
 CVec2 PFAIController::GetRoadPointByOffset( CVec2 const& pos, float offset )
@@ -187,6 +292,9 @@ void PFAIController::Step( float timeDelta )
   }
 
   ProcessHealing();
+  ActivateTalents();
+  UseTalents();
+  CheckWarFront(timeDelta);
   FsmStep(timeDelta);
 }
 
@@ -250,6 +358,7 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
   , usePotionDelay( 0 )
   , blessDelay( 0 )
   , mountDelay( 0 )
+  , combatScanDelay( 0 )
   ,findFlagDelay(0)
 {
   if ( IsValid(GetHelper().pDBBots) && GetHelper().pDBBots->midOnly )

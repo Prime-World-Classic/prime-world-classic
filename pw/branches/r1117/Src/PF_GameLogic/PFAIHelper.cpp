@@ -11,6 +11,7 @@
 #include "PFFlagpole.h"
 #include "PFBuildings.h"
 #include "HeroActions.h"
+#include "TargetSelectorHelper.hpp"
 
 namespace NWorld
 {
@@ -23,8 +24,49 @@ TalentWrapper::TalentWrapper( CPtr<PFBaseMaleHero> _pUnit, int _level, int _slot
 }
 bool TalentWrapper::operator<( const TalentWrapper& other ) const { return level == other.level ? slot < other.slot : level < other.level; }
 bool TalentWrapper::operator!=( const TalentWrapper& other ) const { return pUnit != other.pUnit || level != other.level || slot != other.slot; }
-TalentWrapper TalentWrapper::operator++() { pTalent = 0; level = -1; slot = -1; return *this; }
-bool TalentWrapper::IsPreferable( const TalentWrapper& other ) const { return GetPriority() > other.GetPriority(); }
+TalentWrapper TalentWrapper::operator++()
+{
+  if ( !IsValid() )
+    return *this;
+
+  TalentWrapper current = *this;
+
+  const int numSlots  = NDb::KnownEnum<NDb::ETalentSlot>::sizeOf;
+  const int numLevels = NDb::KnownEnum<NDb::ETalentLevel>::sizeOf;
+
+  if ( slot < numSlots - 1 )
+  {
+    *this = TalentWrapper( pUnit, level, slot + 1 );
+  }
+  else if ( level < numLevels - 1 )
+  {
+    *this = TalentWrapper( pUnit, level + 1, 0 );
+  }
+  else
+  {
+    pTalent = 0;
+    level = -1;
+    slot = -1;
+  }
+
+  return current;
+}
+bool TalentWrapper::IsPreferable( const TalentWrapper& other ) const
+{
+  if ( !other.pTalent || !other.CanBeActivated() )
+    return true;
+
+  if ( !pTalent || !CanBeActivated() )
+    return false;
+
+  if ( pTalent->GetAIPriority() > other.pTalent->GetAIPriority() )
+    return true;
+
+  if ( pTalent->GetAIPriority() < other.pTalent->GetAIPriority() )
+    return false;
+
+  return pTalent->GetNaftaCost() > other.pTalent->GetNaftaCost();
+}
 int TalentWrapper::GetPriority() const { return pTalent ? pTalent->GetAIPriority() : -1; }
 bool TalentWrapper::IsActive() const { return pTalent ? pTalent->IsActive() : false; }
 bool TalentWrapper::IsActivated() const { return pTalent ? pTalent->IsActivated() : false; }
@@ -237,12 +279,95 @@ void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole )
   SendGameCommand(CreateCmdRaiseFlag(pUnit, pFlagpole, false), PFWorld::LinuxAICommandRaiseFlag, pFlagpole);
 }
 int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex ) { (void)type; if (firstIndex) *firstIndex = -1; return 0; }
-PFBaseUnit* PFAIHelper::FindEnemyNear() { return 0; }
+PFBaseUnit* PFAIHelper::FindEnemyNear()
+{
+  if (!IsValid(pUnit))
+    return 0;
+  const float searchRadius = Max(pUnit->GetVisibilityRange(), pUnit->GetTargetingRange());
+  return pUnit->FindTarget(searchRadius, true);
+}
 
-void TalentPart::ActivateTalents( PFAIHelper &aiHelper ) { (void)aiHelper; }
-void TalentPart::UseTalents( PFAIHelper &aiHelper ) { (void)aiHelper; }
+void TalentPart::ActivateTalents( PFAIHelper &aiHelper )
+{
+  if ( --activateTimeLeft > 0 )
+    return;
+  activateTimeLeft = activateDelay;
+
+  TalentWrapper toActivate( aiHelper.pUnit, 0, 0 );
+
+  for ( TalentWrapper i = GetFirstTalent(aiHelper); i.IsValid(); ++i )
+  {
+    if ( i.CanBeActivated() && i.IsPreferable( toActivate ) )
+      toActivate = i;
+  }
+
+  if ( toActivate.CanBeActivated() )
+    aiHelper.ActivateTalent( toActivate );
+}
+
+void TalentPart::UseTalents( PFAIHelper &aiHelper )
+{
+  if ( --useTimeLeft > 0 )
+    return;
+  useTimeLeft = useDelay;
+
+  struct ToUse
+  {
+    TalentWrapper talentWrapper;
+    Target target;
+
+    ToUse( const TalentWrapper& _talentWrapper, Target _target ) : talentWrapper( _talentWrapper ), target( _target ) {}
+    ToUse() : talentWrapper(), target() {}
+  };
+
+  nstl::vector<ToUse> talentsToUse;
+  int bestPriority = -1;
+
+  for ( TalentWrapper i = GetFirstTalent(aiHelper); i.IsValid(); ++i )
+  {
+    if ( !i.IsActivated() || !i.IsActive() )
+      continue;
+
+    const PFTalent* pTalent = i.GetTalent();
+    if ( !pTalent )
+      continue;
+
+    if ( pTalent->IsMultiState() && pTalent->IsOn() )
+      continue;
+
+    const CheckValidAbilityTargetCondition condition;
+    Target target;
+    if ( !pTalent->FindMicroAITargetTemp( target, condition ) )
+      continue;
+
+    if ( !( target.IsObject() || target.IsPosition() ) )
+      continue;
+
+    const int priority = i.GetPriority();
+    if ( priority >= bestPriority )
+    {
+      if ( priority > bestPriority )
+      {
+        bestPriority = priority;
+        talentsToUse.clear();
+      }
+      talentsToUse.push_back( ToUse( i, target ) );
+    }
+  }
+
+  if ( talentsToUse.empty() )
+    return;
+
+  aiHelper.UseTalent( talentsToUse.front().talentWrapper, talentsToUse.front().target );
+}
 TalentWrapper TalentPart::GetFirstTalent( PFAIHelper &aiHelper ) { return TalentWrapper(aiHelper.pUnit, 0, 0); }
-TalentWrapper TalentPart::GetLastTalent( PFAIHelper &aiHelper ) { return TalentWrapper(aiHelper.pUnit, 0, 0); }
+TalentWrapper TalentPart::GetLastTalent( PFAIHelper &aiHelper )
+{
+  const int numSlots  = NDb::KnownEnum<NDb::ETalentSlot>::sizeOf;
+  const int numLevels = NDb::KnownEnum<NDb::ETalentLevel>::sizeOf;
+
+  return TalentWrapper( aiHelper.pUnit, numLevels - 1, numSlots - 1 );
+}
 
 }
 
