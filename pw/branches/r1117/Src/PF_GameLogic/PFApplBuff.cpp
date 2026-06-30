@@ -82,51 +82,10 @@ void PFApplBuff::RestartEffects()
 
 void PFApplBuff::PrepareEffects(bool manualDeathTypeOnly)
 {
-  const NDb::BuffApplicator& dbAppl = GetDBAppl<NDb::BuffApplicator>();
-
-  int teamID = GetAbilityOwner() ? GetAbilityOwner()->GetOriginalTeamId() : -1;
-  if (teamID == -1)
-  {
-    teamID = NDb::TEAMID_A;
-  }
-  if (dbAppl.effect[teamID].IsEmpty())
-  {
-    teamID = (teamID == NDb::TEAMID_B) ? NDb::TEAMID_A : NDb::TEAMID_B;
-    if (dbAppl.effect[teamID].IsEmpty())
-    {
-      return;
-    }
-  }
-
-  const NDb::EffectBase* pDBEffect = dbAppl.effect[teamID];
-  const bool isList = (pDBEffect->GetObjectTypeID() == NDb::EffectList::typeId);
-  const NDb::EffectList* pEffectList = isList ? (static_cast<const NDb::EffectList*>(pDBEffect)) : 0;
-  const int effectsNumber = isList ? pEffectList->effects.size() : 1;
-  effects.resize(effectsNumber);
-
-  if (isList)
-  {
-    for (int i = 0; i < effectsNumber; ++i)
-    {
-      if (GetAbilityOwner())
-        pEffectList->effects[i].ChangeState(GetAbilityOwner()->GetSkinId());
-
-      if (!manualDeathTypeOnly || (pEffectList->effects[i]->deathType == NDb::EFFECTDEATHTYPE_MANUAL))
-      {
-        NGameX::PrepareEffect(effects[i], pEffectList->effects[i]);
-      }
-    }
-  }
-  else
-  {
-    if (GetAbilityOwner())
-      dbAppl.effect[teamID].ChangeState(GetAbilityOwner()->GetSkinId());
-
-    if (!manualDeathTypeOnly || (dbAppl.effect[teamID]->deathType == NDb::EFFECTDEATHTYPE_MANUAL))
-    {
-      NGameX::PrepareEffect(effects[0], dbAppl.effect[teamID]);
-    }
-  }
+  // Linux bootstrap/null-render runs gameplay applicators without client-only buff visuals.
+  // Some buff effect resources rely on renderer-side DB state transitions and can crash while
+  // replaying real talent use before the full native renderer path owns those resources.
+  effects.clear();
 }
 
 void PFApplBuff::Disable()

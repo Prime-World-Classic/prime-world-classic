@@ -108,6 +108,75 @@ bool CompareRoutePoints( const vector<CVec2>& road, const CVec2& pos1, const CVe
   return GetNextRoutePoint(road, pos1) <= GetNextRoutePoint(road, pos2);
 }
 
+bool IsLinuxAITalentUnitTargetAllowed( PFBaseMaleHero* hero, const PFTalent* talent, PFBaseUnit* targetUnit )
+{
+  if ( !IsValid(hero) || !talent || !IsValid(targetUnit) || targetUnit->IsDead() )
+    return false;
+
+  const unsigned targetTypes = talent->GetTargetType();
+  if ( targetTypes == 0 )
+    return false;
+
+  const Target candidate(targetUnit);
+  const CheckValidAbilityTargetCondition condition;
+  if ( !condition(candidate, talent) )
+    return false;
+
+  if ( hero == targetUnit )
+    return ( targetTypes & NDb::SPELLTARGET_SELF ) != 0;
+
+  if ( ( targetTypes & ( 1 << targetUnit->GetUnitKind() ) ) == 0 )
+    return false;
+
+  const bool sameFaction = hero->GetFaction() == targetUnit->GetFaction();
+  if ( sameFaction )
+    return ( targetTypes & NDb::SPELLTARGET_ALLY ) != 0;
+
+  return ( targetTypes & NDb::SPELLTARGET_ENEMY ) != 0;
+}
+
+bool FindLinuxAITalentTarget( PFBaseMaleHero* hero, const PFTalent* talent, Target& target )
+{
+  if ( !IsValid(hero) || !talent )
+    return false;
+
+  const unsigned targetTypes = talent->GetTargetType();
+  if ( targetTypes == 0 )
+  {
+    target = Target(hero);
+    return true;
+  }
+
+  PFBaseUnit* currentTarget = hero->GetCurrentTarget();
+  if ( IsLinuxAITalentUnitTargetAllowed(hero, talent, currentTarget) )
+  {
+    target = Target(currentTarget);
+    return true;
+  }
+
+  const float searchRadius = Max(hero->GetVisibilityRange(), hero->GetTargetingRange());
+  PFBaseUnit* nearbyEnemy = hero->FindTarget(searchRadius, true);
+  if ( IsLinuxAITalentUnitTargetAllowed(hero, talent, nearbyEnemy) )
+  {
+    target = Target(nearbyEnemy);
+    return true;
+  }
+
+  if ( targetTypes & NDb::SPELLTARGET_SELF )
+  {
+    target = Target(hero);
+    return true;
+  }
+
+  if ( targetTypes & NDb::SPELLTARGET_LAND )
+  {
+    target = Target(IsValid(nearbyEnemy) ? nearbyEnemy->GetPosition() : hero->GetPosition());
+    return true;
+  }
+
+  return false;
+}
+
 EConsumableType IdentifyConsumable( const NDb::Consumable* pConsumable )
 {
   if (!pConsumable)
@@ -337,7 +406,8 @@ void TalentPart::UseTalents( PFAIHelper &aiHelper )
 
     const CheckValidAbilityTargetCondition condition;
     Target target;
-    if ( !pTalent->FindMicroAITargetTemp( target, condition ) )
+    if ( !pTalent->FindMicroAITargetTemp( target, condition ) &&
+         !FindLinuxAITalentTarget( aiHelper.pUnit, pTalent, target ) )
       continue;
 
     if ( !( target.IsObject() || target.IsPosition() ) )

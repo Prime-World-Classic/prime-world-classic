@@ -194,6 +194,9 @@ namespace NWorld
   bool GetRoute( PFWorld* pWorld, NDb::EFaction faction, int roadIndex, vector<CVec2>& road );
   int GetNextRoutePoint( const vector<CVec2>& road, const CVec2& unitPos );
   bool CompareRoutePoints( const vector<CVec2>& road, const CVec2& pos1, const CVec2& pos2 );
+#if defined(PW_LINUX_NULL_RENDER)
+  bool FindLinuxAITalentTarget( PFBaseMaleHero* hero, const PFTalent* talent, Target& target );
+#endif
   EConsumableType IdentifyConsumable( const NDb::Consumable* pConsumable );
   // Shift a waypoint to some specific distance, perpendicularly to the line between
   // the given waypoint an the reference (next) waypoint. Shifted to different side,

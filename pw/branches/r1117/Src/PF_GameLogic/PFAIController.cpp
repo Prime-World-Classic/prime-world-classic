@@ -13,9 +13,10 @@
 namespace
 {
   static bool g_debugAIStates = false;
-  static const int LINUX_AI_ACTIVATE_TALENT_DELAY = 30;
-  static const int LINUX_AI_USE_TALENT_DELAY = 30;
-  static const int LINUX_AI_TALENT_COMMAND_START_STEP = 700;
+  static const int LINUX_AI_ACTIVATE_TALENT_DELAY = 20;
+  static const int LINUX_AI_USE_TALENT_DELAY = 10;
+  static const int LINUX_AI_ACTIVATE_TALENT_START_STEP = 650;
+  static const int LINUX_AI_USE_TALENT_START_STEP = 700;
 }
 
 REGISTER_DEV_VAR("debug_ai_states", g_debugAIStates, STORAGE_NONE);
@@ -123,7 +124,7 @@ void PFAIController::RecoverHealth()
 
 void PFAIController::ActivateTalents()
 {
-  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TALENT_COMMAND_START_STEP)
+  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_ACTIVATE_TALENT_START_STEP)
     return;
 
   if (--activateTalentDelay > 0)
@@ -144,7 +145,7 @@ void PFAIController::ActivateTalents()
 
 void PFAIController::UseTalents()
 {
-  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TALENT_COMMAND_START_STEP)
+  if (!GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_USE_TALENT_START_STEP)
     return;
 
   if (--useTalentDelay > 0)
@@ -186,7 +187,8 @@ void PFAIController::UseTalents()
 
     const CheckValidAbilityTargetCondition condition;
     Target target;
-    if (!pTalent->FindMicroAITargetTemp(target, condition))
+    if (!pTalent->FindMicroAITargetTemp(target, condition) &&
+        !FindLinuxAITalentTarget(GetHero(), pTalent, target))
       continue;
 
     if (!(target.IsObject() || target.IsPosition()))
