@@ -4979,10 +4979,15 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveEventFeedObjectiveRowsDrawn;
   size_t visibleLiveEventFeedObjectiveMarkersDrawn;
   bool visibleReplayControlsDrawn;
+  bool visibleReplayControlsLayoutReady;
   size_t visibleReplayControlsLinesDrawn;
   size_t visibleReplayControlsButtonsDrawn;
+  size_t visibleReplayControlsActiveButtonsDrawn;
+  bool visibleReplayPauseButtonActive;
+  bool visibleReplayResetButtonActive;
   bool visibleReplayProgressDrawn;
   int visibleReplayProgressPercent;
+  int visibleReplayProgressFillPixels;
   size_t visibleReplayProgressConsumedSegments;
   size_t visibleReplayProgressLoadedSegments;
   size_t visibleReplayProgressRemainingSegments;
@@ -5983,10 +5988,15 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveEventFeedObjectiveRowsDrawn(0),
       visibleLiveEventFeedObjectiveMarkersDrawn(0),
       visibleReplayControlsDrawn(false),
+      visibleReplayControlsLayoutReady(false),
       visibleReplayControlsLinesDrawn(0),
       visibleReplayControlsButtonsDrawn(0),
+      visibleReplayControlsActiveButtonsDrawn(0),
+      visibleReplayPauseButtonActive(false),
+      visibleReplayResetButtonActive(false),
       visibleReplayProgressDrawn(false),
       visibleReplayProgressPercent(0),
+      visibleReplayProgressFillPixels(0),
       visibleReplayProgressConsumedSegments(0),
       visibleReplayProgressLoadedSegments(0),
       visibleReplayProgressRemainingSegments(0),
@@ -54639,10 +54649,15 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   if (runtime)
   {
     runtime->visibleReplayControlsDrawn = false;
+    runtime->visibleReplayControlsLayoutReady = false;
     runtime->visibleReplayControlsLinesDrawn = 0;
     runtime->visibleReplayControlsButtonsDrawn = 0;
+    runtime->visibleReplayControlsActiveButtonsDrawn = 0;
+    runtime->visibleReplayPauseButtonActive = false;
+    runtime->visibleReplayResetButtonActive = false;
     runtime->visibleReplayProgressDrawn = false;
     runtime->visibleReplayProgressPercent = 0;
+    runtime->visibleReplayProgressFillPixels = 0;
     runtime->visibleReplayProgressConsumedSegments = 0;
     runtime->visibleReplayProgressLoadedSegments = 0;
     runtime->visibleReplayProgressRemainingSegments = 0;
@@ -54662,6 +54677,7 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   {
     return;
   }
+  runtime->visibleReplayControlsLayoutReady = true;
 
   const int panelW = layout.panel.width;
   const int panelH = layout.panel.height;
@@ -54768,12 +54784,27 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     { layout.reset, "1x" }
   };
   size_t buttonsDrawn = 0;
+  size_t activeButtonsDrawn = 0;
+  bool pauseButtonActive = false;
+  bool resetButtonActive = false;
   for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i)
   {
     const ReplayButtonSpec& button = buttons[i];
     const bool active =
       (i == 0 && runtime->replayInputPaused) ||
       (i == 4 && runtime->replayInputPlaybackRate == 1);
+    if (active)
+    {
+      ++activeButtonsDrawn;
+    }
+    if (i == 0)
+    {
+      pauseButtonActive = active;
+    }
+    else if (i == 4)
+    {
+      resetButtonActive = active;
+    }
     SetOpenGlColor(active ? 52 : 18, active ? 76 : 26, active ? 84 : 34, active ? 232 : 218);
     DrawOpenGlRect(button.rect.x, button.rect.y, button.rect.width, button.rect.height);
     SetOpenGlColor(active ? 226 : 116, active ? 206 : 136, active ? 142 : 144, 232);
@@ -54844,8 +54875,12 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   runtime->visibleReplayControlsDrawn = true;
   runtime->visibleReplayControlsLinesDrawn = linesDrawn;
   runtime->visibleReplayControlsButtonsDrawn = buttonsDrawn;
+  runtime->visibleReplayControlsActiveButtonsDrawn = activeButtonsDrawn;
+  runtime->visibleReplayPauseButtonActive = pauseButtonActive;
+  runtime->visibleReplayResetButtonActive = resetButtonActive;
   runtime->visibleReplayProgressDrawn = loadedSegments > 0;
   runtime->visibleReplayProgressPercent = progressPercent;
+  runtime->visibleReplayProgressFillPixels = fillW;
   runtime->visibleReplayProgressConsumedSegments = consumedSegments;
   runtime->visibleReplayProgressLoadedSegments = loadedSegments;
   runtime->visibleReplayProgressRemainingSegments = remainingSegments;
@@ -60469,14 +60504,24 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn << "\n";
   logFile << "  finalVisibleReplayControlsDrawn="
           << (screenRuntime.visibleReplayControlsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayControlsLayoutReady="
+          << (screenRuntime.visibleReplayControlsLayoutReady ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayControlsLines="
           << screenRuntime.visibleReplayControlsLinesDrawn << "\n";
   logFile << "  finalVisibleReplayControlsButtons="
           << screenRuntime.visibleReplayControlsButtonsDrawn << "\n";
+  logFile << "  finalVisibleReplayControlsActiveButtons="
+          << screenRuntime.visibleReplayControlsActiveButtonsDrawn << "\n";
+  logFile << "  finalVisibleReplayPauseButtonActive="
+          << (screenRuntime.visibleReplayPauseButtonActive ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayResetButtonActive="
+          << (screenRuntime.visibleReplayResetButtonActive ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayProgress="
           << (screenRuntime.visibleReplayProgressDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayProgressPercent="
           << screenRuntime.visibleReplayProgressPercent << "\n";
+  logFile << "  finalVisibleReplayProgressFillPixels="
+          << screenRuntime.visibleReplayProgressFillPixels << "\n";
   logFile << "  finalVisibleReplayProgressSegments="
           << screenRuntime.visibleReplayProgressConsumedSegments << "/"
           << screenRuntime.visibleReplayProgressLoadedSegments << "\n";
@@ -63271,12 +63316,17 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
-  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu buttons=%lu progress=%s percent=%d segments=%lu/%lu remaining=%lu complete=%s\n",
+  fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s percent=%d fill=%d segments=%lu/%lu remaining=%lu complete=%s\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
+    screenRuntime.visibleReplayControlsLayoutReady ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsButtonsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleReplayControlsActiveButtonsDrawn),
+    screenRuntime.visibleReplayPauseButtonActive ? "yes" : "no",
+    screenRuntime.visibleReplayResetButtonActive ? "yes" : "no",
     screenRuntime.visibleReplayProgressDrawn ? "yes" : "no",
     screenRuntime.visibleReplayProgressPercent,
+    screenRuntime.visibleReplayProgressFillPixels,
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressConsumedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressLoadedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressRemainingSegments),
