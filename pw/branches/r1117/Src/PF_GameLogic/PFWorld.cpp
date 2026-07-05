@@ -743,6 +743,10 @@ void PFWorld::GetLinuxDynamicWorldMarkers(vector<LinuxDynamicWorldMarker>& marke
       marker.kind = LinuxDynamicWorldMarker::KIND_COMMON_CREEP;
     else if (dynamic_cast<PFNeutralCreep*>(unit))
       marker.kind = LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+    else if (dynamic_cast<PFTower*>(unit))
+      marker.kind = LinuxDynamicWorldMarker::KIND_TOWER;
+    else if (dynamic_cast<PFMainBuilding*>(unit))
+      marker.kind = LinuxDynamicWorldMarker::KIND_MAIN_BUILDING;
     else
       continue;
 

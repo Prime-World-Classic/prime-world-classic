@@ -18674,6 +18674,13 @@ bool IsLinuxDynamicWorldCreepMarker(const NWorld::LinuxDynamicWorldMarker& marke
     marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
 }
 
+bool IsLinuxDynamicWorldObjectiveMarker(const NWorld::LinuxDynamicWorldMarker& marker)
+{
+  return
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER ||
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING;
+}
+
 std::string BuildLinuxDynamicWorldUnitMeshPreviewKey(const NWorld::LinuxDynamicWorldMarker& marker)
 {
   if (!marker.sceneObjectDbid.empty())
@@ -46640,6 +46647,18 @@ void ResolveLinuxDynamicWorldMarkerColor(
     g = BlendOpenGlColorByte(g, 215, 0.18f);
     b = BlendOpenGlColorByte(b, 145, 0.18f);
   }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER)
+  {
+    r = BlendOpenGlColorByte(r, 218, 0.22f);
+    g = BlendOpenGlColorByte(g, 220, 0.22f);
+    b = BlendOpenGlColorByte(b, 198, 0.22f);
+  }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING)
+  {
+    r = BlendOpenGlColorByte(r, 255, 0.34f);
+    g = BlendOpenGlColorByte(g, 226, 0.34f);
+    b = BlendOpenGlColorByte(b, 128, 0.34f);
+  }
 
   if (red) *red = r;
   if (green) *green = g;
@@ -46679,7 +46698,8 @@ bool ShouldDrawLinuxDynamicWorldMarkerOverlay(
 {
   return
     !marker.dead ||
-    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO;
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ||
+    IsLinuxDynamicWorldObjectiveMarker(marker);
 }
 
 bool DrawLinuxHeroMeshPreview(
@@ -46908,6 +46928,10 @@ const char* DescribeLinuxLiveHudUnitKind(int kind)
     return "creep";
   case NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP:
     return "neutral";
+  case NWorld::LinuxDynamicWorldMarker::KIND_TOWER:
+    return "tower";
+  case NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING:
+    return "main";
   default:
     return "unit";
   }
@@ -47762,7 +47786,7 @@ bool DrawLinuxMapPreviewSelectedTarget(
   return true;
 }
 
-void DrawLinuxMapDeadHeroMarkerOverlay(
+void DrawLinuxMapDeadWorldMarkerOverlay(
   float x,
   float z,
   float baseY,
@@ -47903,6 +47927,18 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       columnHeight = 2.25f;
       ++neutralCreeps;
     }
+    else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER)
+    {
+      radiusWorld = 12.5f;
+      columnHalf = 0.74f;
+      columnHeight = 3.45f;
+    }
+    else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING)
+    {
+      radiusWorld = 19.0f;
+      columnHalf = 1.15f;
+      columnHeight = 5.20f;
+    }
     else
     {
       continue;
@@ -48002,7 +48038,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
 
     if (marker.dead)
     {
-      DrawLinuxMapDeadHeroMarkerOverlay(x, z, baseY, ringRadius);
+      DrawLinuxMapDeadWorldMarkerOverlay(x, z, baseY, ringRadius);
     }
     else
     {
@@ -52995,6 +53031,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t markerCount = 0;
   size_t heroCount = 0;
   size_t creepCount = 0;
+  size_t objectiveCount = 0;
   size_t movingCount = 0;
   bool targetDrawn = false;
   bool commandMarkerDrawn = false;
@@ -53082,6 +53119,12 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
       markerSize = marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? 5 : 4;
       ++creepCount;
     }
+    else if (IsLinuxDynamicWorldObjectiveMarker(marker))
+    {
+      markerSize =
+        marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING ? 10 : 7;
+      ++objectiveCount;
+    }
     else
     {
       continue;
@@ -53099,6 +53142,15 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     const unsigned char alpha = marker.dead ? 154 : (marker.moving ? 248 : 216);
     SetOpenGlColor(red, green, blue, alpha);
     DrawOpenGlRect(markerX - half, markerY - half, markerSize, markerSize);
+    if (IsLinuxDynamicWorldObjectiveMarker(marker))
+    {
+      SetOpenGlColor(235, 230, 198, marker.dead ? 132 : 210);
+      DrawOpenGlBorderRect(markerX - half - 1, markerY - half - 1, markerSize + 2, markerSize + 2);
+      if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING)
+      {
+        DrawOpenGlBorderRect(markerX - half - 3, markerY - half - 3, markerSize + 6, markerSize + 6);
+      }
+    }
 
     if (marker.dead)
     {
@@ -53183,10 +53235,11 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     snprintf(
       buffer,
       sizeof(buffer),
-      "%lu units H%lu C%lu  M%lu A%lu S%lu",
+      "%lu units H%lu C%lu O%lu  M%lu A%lu S%lu",
       static_cast<unsigned long>(markerCount),
       static_cast<unsigned long>(heroCount),
       static_cast<unsigned long>(creepCount),
+      static_cast<unsigned long>(objectiveCount),
       static_cast<unsigned long>(runtime->liveMinimapMoveCommandsSent),
       static_cast<unsigned long>(runtime->liveMinimapAttackCommandsSent),
       static_cast<unsigned long>(runtime->liveMinimapSignalCommandsSent));
@@ -53196,10 +53249,11 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     snprintf(
       buffer,
       sizeof(buffer),
-      "%lu units  H%lu C%lu",
+      "%lu units  H%lu C%lu O%lu",
       static_cast<unsigned long>(markerCount),
       static_cast<unsigned long>(heroCount),
-      static_cast<unsigned long>(creepCount));
+      static_cast<unsigned long>(creepCount),
+      static_cast<unsigned long>(objectiveCount));
   }
   SetOpenGlColor(182, 197, 197, 224);
   DrawOpenGlTextInBox(
@@ -53229,6 +53283,8 @@ struct LinuxLiveScoreboardTeamState
   size_t liveHeroes;
   size_t totalHeroes;
   size_t creeps;
+  size_t towers;
+  size_t mainBuildings;
   size_t moving;
   size_t damaged;
 
@@ -53236,6 +53292,8 @@ struct LinuxLiveScoreboardTeamState
     : liveHeroes(0),
       totalHeroes(0),
       creeps(0),
+      towers(0),
+      mainBuildings(0),
       moving(0),
       damaged(0)
   {
@@ -53267,6 +53325,14 @@ void AccumulateLinuxLiveScoreboardMarker(
     {
       ++state->creeps;
     }
+  }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER)
+  {
+    ++state->towers;
+  }
+  else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING)
+  {
+    ++state->mainBuildings;
   }
 
   if (!marker.dead && marker.moving)
@@ -53511,12 +53577,24 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     false
   );
 
+  size_t scoreboardTowerMarkers = freezeTeam.towers + burnTeam.towers + neutralTeam.towers;
+  size_t scoreboardMainBuildingMarkers =
+    freezeTeam.mainBuildings + burnTeam.mainBuildings + neutralTeam.mainBuildings;
+  if (scoreboardTowerMarkers == 0)
+  {
+    scoreboardTowerMarkers = runtime->worldTowerObjects;
+  }
+  if (scoreboardMainBuildingMarkers == 0)
+  {
+    scoreboardMainBuildingMarkers = runtime->worldMainBuildingObjects;
+  }
+
   snprintf(
     buffer,
     sizeof(buffer),
-    "Towers %lu  Main %lu",
-    static_cast<unsigned long>(runtime->worldTowerObjects),
-    static_cast<unsigned long>(runtime->worldMainBuildingObjects));
+    "Obj T%lu  Main %lu",
+    static_cast<unsigned long>(scoreboardTowerMarkers),
+    static_cast<unsigned long>(scoreboardMainBuildingMarkers));
   SetOpenGlColor(184, 200, 199, 226);
   DrawOpenGlTextInBox(
     overlay,

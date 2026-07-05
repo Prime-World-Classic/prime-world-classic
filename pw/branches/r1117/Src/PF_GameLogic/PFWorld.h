@@ -87,7 +87,9 @@ struct LinuxDynamicWorldMarker
   {
     KIND_HERO = 1,
     KIND_COMMON_CREEP = 2,
-    KIND_NEUTRAL_CREEP = 3
+    KIND_NEUTRAL_CREEP = 3,
+    KIND_TOWER = 4,
+    KIND_MAIN_BUILDING = 5
   };
 
   float x;
