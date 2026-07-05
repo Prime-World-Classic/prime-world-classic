@@ -4681,6 +4681,11 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyDetailsLineupHumanSlotsDrawn;
   size_t visibleLobbyDetailsLineupManualSlotsDrawn;
   size_t visibleLobbyDetailsLineupFallbackSlotsDrawn;
+  bool visibleLobbyDetailsLineupTeamSeparatorDrawn;
+  size_t visibleLobbyDetailsLineupTeam1SlotsDrawn;
+  size_t visibleLobbyDetailsLineupTeam2SlotsDrawn;
+  int visibleLobbyDetailsLineupLocalSlotIndex;
+  int visibleLobbyDetailsLineupLocalTeam;
   size_t visibleLobbyDetailsTextureCount;
   int visibleLobbyDetailsBackTextureWidth;
   int visibleLobbyDetailsBackTextureHeight;
@@ -5827,6 +5832,11 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsLineupHumanSlotsDrawn(0),
       visibleLobbyDetailsLineupManualSlotsDrawn(0),
       visibleLobbyDetailsLineupFallbackSlotsDrawn(0),
+      visibleLobbyDetailsLineupTeamSeparatorDrawn(false),
+      visibleLobbyDetailsLineupTeam1SlotsDrawn(0),
+      visibleLobbyDetailsLineupTeam2SlotsDrawn(0),
+      visibleLobbyDetailsLineupLocalSlotIndex(-1),
+      visibleLobbyDetailsLineupLocalTeam(0),
       visibleLobbyDetailsTextureCount(0),
       visibleLobbyDetailsBackTextureWidth(0),
       visibleLobbyDetailsBackTextureHeight(0),
@@ -52185,6 +52195,14 @@ size_t DrawLinuxLobbyLineupStrip(
   const int gap = std::max(2, layout.W(5));
   const int slotW = std::max(24, (rw - gap * static_cast<int>(slotCount + 1)) / static_cast<int>(slotCount));
   const int slotH = std::max(14, rh - layout.H(8));
+  if (localMatchPreview.teamSize > 0 && localMatchPreview.teamSize < slotCount)
+  {
+    const int separatorX =
+      rx + gap + static_cast<int>(localMatchPreview.teamSize) * (slotW + gap) - std::max(1, gap / 2);
+    SetOpenGlColor(226, 199, 112, 210);
+    DrawOpenGlRect(separatorX, ry + layout.H(3), std::max(1, layout.W(2)), std::max(1, rh - layout.H(6)));
+  }
+
   size_t drawnSlots = 0;
   for (size_t i = 0; i < slotCount; ++i)
   {
@@ -52557,6 +52575,31 @@ void DrawLinuxLobbySelectedMapDetails(
     &lineupManualSlots,
     &lineupFallbackSlots
   );
+  const size_t visibleLineupSlots = std::min<size_t>(localMatchPreview.lineup.size(), 10);
+  const bool lineupTeamSeparatorDrawn =
+    localMatchPreview.teamSize > 0 &&
+    localMatchPreview.teamSize < visibleLineupSlots;
+  size_t lineupTeam1Slots = 0;
+  size_t lineupTeam2Slots = 0;
+  int lineupLocalSlotIndex = -1;
+  int lineupLocalTeam = 0;
+  for (size_t slotIndex = 0; slotIndex < visibleLineupSlots; ++slotIndex)
+  {
+    const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[slotIndex];
+    if (slot.team == 1)
+    {
+      ++lineupTeam1Slots;
+    }
+    else if (slot.team == 2)
+    {
+      ++lineupTeam2Slots;
+    }
+    if (slot.human)
+    {
+      lineupLocalSlotIndex = static_cast<int>(slotIndex);
+      lineupLocalTeam = slot.team;
+    }
+  }
 
   if (runtime)
   {
@@ -52573,6 +52616,11 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsLineupHumanSlotsDrawn = lineupHumanSlots;
     runtime->visibleLobbyDetailsLineupManualSlotsDrawn = lineupManualSlots;
     runtime->visibleLobbyDetailsLineupFallbackSlotsDrawn = lineupFallbackSlots;
+    runtime->visibleLobbyDetailsLineupTeamSeparatorDrawn = lineupTeamSeparatorDrawn;
+    runtime->visibleLobbyDetailsLineupTeam1SlotsDrawn = lineupTeam1Slots;
+    runtime->visibleLobbyDetailsLineupTeam2SlotsDrawn = lineupTeam2Slots;
+    runtime->visibleLobbyDetailsLineupLocalSlotIndex = lineupLocalSlotIndex;
+    runtime->visibleLobbyDetailsLineupLocalTeam = lineupLocalTeam;
     runtime->visibleLobbyDetailsTextureCount = textureCount;
     runtime->visibleLobbyDetailsBackTextureWidth = backTextureWidth;
     runtime->visibleLobbyDetailsBackTextureHeight = backTextureHeight;
@@ -60616,6 +60664,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupFallbackSlots="
           << screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupTeamSeparator="
+          << (screenRuntime.visibleLobbyDetailsLineupTeamSeparatorDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupTeams="
+          << screenRuntime.visibleLobbyDetailsLineupTeam1SlotsDrawn << "/"
+          << screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupLocalSlot="
+          << screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex << "/"
+          << screenRuntime.visibleLobbyDetailsLineupLocalTeam << "\n";
   logFile << "  finalVisibleLobbyDetailsMapBack="
           << (selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile) << "\n";
   logFile << "  finalVisibleLobbyDetailsMapLogo="
@@ -64405,7 +64461,7 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu teams=%s/%lu/%lu localSlot=%d/%d\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
@@ -64433,7 +64489,12 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupLocalSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn),
+    screenRuntime.visibleLobbyDetailsLineupTeamSeparatorDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam1SlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
+    screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
+    screenRuntime.visibleLobbyDetailsLineupLocalTeam);
   fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapScroll=%s/%lu/%lu/%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
