@@ -4643,6 +4643,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbySelectedGameRow;
   size_t visibleLobbyMapRowsDrawn;
   size_t visibleLobbyMapSelectedRowsDrawn;
+  size_t visibleLobbyMapPvpRowsDrawn;
+  size_t visibleLobbyMapPveRowsDrawn;
+  size_t visibleLobbyMapTutorialRowsDrawn;
+  size_t visibleLobbyMapOtherRowsDrawn;
   size_t visibleLobbyGameRowsDrawn;
   size_t visibleLobbyGameSelectedRowsDrawn;
   size_t visibleLobbyGameOpenRowsDrawn;
@@ -5751,6 +5755,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbySelectedGameRow(0),
       visibleLobbyMapRowsDrawn(0),
       visibleLobbyMapSelectedRowsDrawn(0),
+      visibleLobbyMapPvpRowsDrawn(0),
+      visibleLobbyMapPveRowsDrawn(0),
+      visibleLobbyMapTutorialRowsDrawn(0),
+      visibleLobbyMapOtherRowsDrawn(0),
       visibleLobbyGameRowsDrawn(0),
       visibleLobbyGameSelectedRowsDrawn(0),
       visibleLobbyGameOpenRowsDrawn(0),
@@ -53006,17 +53014,58 @@ void DrawLinuxLobbyScrollBar(
   }
 }
 
+std::string ResolveLinuxLobbyMapCategoryChip(const LinuxMapCatalogEntry& entry)
+{
+  if (entry.category == "Tutorial")
+  {
+    return "Tutorial";
+  }
+  if (entry.category == "PvE" || entry.mapType == "PvE")
+  {
+    return "PvE";
+  }
+  if (entry.mapType == "PvP" || entry.category == "Multiplayer")
+  {
+    return "PvP";
+  }
+  if (!entry.mapType.empty())
+  {
+    return entry.mapType;
+  }
+  return entry.category.empty() ? std::string("Map") : entry.category;
+}
+
 size_t DrawLinuxLobbyMapRows(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
-  size_t* selectedRowsDrawn
+  size_t* selectedRowsDrawn,
+  size_t* pvpRowsDrawn,
+  size_t* pveRowsDrawn,
+  size_t* tutorialRowsDrawn,
+  size_t* otherRowsDrawn
 )
 {
   if (selectedRowsDrawn)
   {
     *selectedRowsDrawn = 0;
+  }
+  if (pvpRowsDrawn)
+  {
+    *pvpRowsDrawn = 0;
+  }
+  if (pveRowsDrawn)
+  {
+    *pveRowsDrawn = 0;
+  }
+  if (tutorialRowsDrawn)
+  {
+    *tutorialRowsDrawn = 0;
+  }
+  if (otherRowsDrawn)
+  {
+    *otherRowsDrawn = 0;
   }
 
   const int panelX = layout.X(65);
@@ -53081,6 +53130,7 @@ size_t DrawLinuxLobbyMapRows(
     const std::string details = ResolveLinuxLobbyMapDetails(overlay, entry);
     const std::string description = ResolveLinuxLobbyMapDescription(overlay, entry);
     const std::string id = ResolveDataRefOverlayName(entry.descriptor);
+    const std::string categoryChip = ResolveLinuxLobbyMapCategoryChip(entry);
     std::string body = details;
     if (!description.empty())
     {
@@ -53118,20 +53168,87 @@ size_t DrawLinuxLobbyMapRows(
         true
       );
     }
-    if (rowVisibleH > layout.H(112) && !id.empty())
+    if (categoryChip == "PvP")
     {
-      SetOpenGlColor(213, 195, 132, 225);
+      if (pvpRowsDrawn)
+      {
+        ++(*pvpRowsDrawn);
+      }
+    }
+    else if (categoryChip == "PvE")
+    {
+      if (pveRowsDrawn)
+      {
+        ++(*pveRowsDrawn);
+      }
+    }
+    else if (categoryChip == "Tutorial")
+    {
+      if (tutorialRowsDrawn)
+      {
+        ++(*tutorialRowsDrawn);
+      }
+    }
+    else if (otherRowsDrawn)
+    {
+      ++(*otherRowsDrawn);
+    }
+
+    if (rowVisibleH > layout.H(112))
+    {
+      const int chipY = rowY + layout.H(109);
+      const int categoryChipW = layout.W(74);
+      const int teamChipW = layout.W(56);
+      const int chipH = layout.H(17);
+      SetOpenGlColor(27, 42, 52, 206);
+      DrawOpenGlRect(rowX + layout.W(8), chipY, categoryChipW, chipH);
+      SetOpenGlColor(122, 148, 156, 216);
+      DrawOpenGlBorderRect(rowX + layout.W(8), chipY, categoryChipW, chipH);
+      SetOpenGlColor(230, 226, 204, 232);
       DrawOpenGlTextInBox(
         overlay,
-        rowX + layout.W(3),
-        rowY + layout.H(111),
-        layout.W(512),
-        std::min(layout.H(16), std::max(1, rowVisibleH - layout.H(111))),
-        id,
-        LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+        rowX + layout.W(12),
+        chipY,
+        std::max(1, categoryChipW - layout.W(8)),
+        chipH,
+        categoryChip,
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
         LINUX_OPENGL_TEXT_VALIGN_CENTER,
         false
       );
+
+      SetOpenGlColor(50, 43, 28, 206);
+      DrawOpenGlRect(rowX + layout.W(88), chipY, teamChipW, chipH);
+      SetOpenGlColor(176, 145, 82, 216);
+      DrawOpenGlBorderRect(rowX + layout.W(88), chipY, teamChipW, chipH);
+      SetOpenGlColor(234, 222, 182, 232);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(92),
+        chipY,
+        std::max(1, teamChipW - layout.W(8)),
+        chipH,
+        entry.teamSize > 0 ? NStr::StrFmt("%dx%d", entry.teamSize, entry.teamSize) : std::string("?"),
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+
+      if (!id.empty())
+      {
+        SetOpenGlColor(213, 195, 132, 225);
+        DrawOpenGlTextInBox(
+          overlay,
+          rowX + layout.W(152),
+          rowY + layout.H(111),
+          layout.W(363),
+          std::min(layout.H(16), std::max(1, rowVisibleH - layout.H(111))),
+          id,
+          LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+          LINUX_OPENGL_TEXT_VALIGN_CENTER,
+          false
+        );
+      }
     }
     ++rowsDrawn;
   }
@@ -53556,8 +53673,22 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   DrawLinuxLobbyPanel(overlay, layout, 65, 455, 546, 368);
   DrawLinuxLobbyPanel(overlay, layout, 689, 454, 546, 449);
   size_t selectedMapRowsDrawn = 0;
+  size_t pvpMapRowsDrawn = 0;
+  size_t pveMapRowsDrawn = 0;
+  size_t tutorialMapRowsDrawn = 0;
+  size_t otherMapRowsDrawn = 0;
   const size_t mapRowsDrawn =
-    DrawLinuxLobbyMapRows(overlay, layout, mapCatalog, mapBrowserState, &selectedMapRowsDrawn);
+    DrawLinuxLobbyMapRows(
+      overlay,
+      layout,
+      mapCatalog,
+      mapBrowserState,
+      &selectedMapRowsDrawn,
+      &pvpMapRowsDrawn,
+      &pveMapRowsDrawn,
+      &tutorialMapRowsDrawn,
+      &otherMapRowsDrawn
+    );
   size_t selectedGameRowsDrawn = 0;
   size_t openGameRowsDrawn = 0;
   size_t fullGameRowsDrawn = 0;
@@ -53655,6 +53786,10 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   {
     runtime->visibleLobbyMapRowsDrawn = mapRowsDrawn;
     runtime->visibleLobbyMapSelectedRowsDrawn = selectedMapRowsDrawn;
+    runtime->visibleLobbyMapPvpRowsDrawn = pvpMapRowsDrawn;
+    runtime->visibleLobbyMapPveRowsDrawn = pveMapRowsDrawn;
+    runtime->visibleLobbyMapTutorialRowsDrawn = tutorialMapRowsDrawn;
+    runtime->visibleLobbyMapOtherRowsDrawn = otherMapRowsDrawn;
     runtime->visibleLobbyGameRowsDrawn = gameRowsDrawn;
     runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
     runtime->visibleLobbyGameOpenRowsDrawn = openGameRowsDrawn;
@@ -60140,6 +60275,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyMapRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyMapSelectedRows="
           << screenRuntime.visibleLobbyMapSelectedRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapPvpRows="
+          << screenRuntime.visibleLobbyMapPvpRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapPveRows="
+          << screenRuntime.visibleLobbyMapPveRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapTutorialRows="
+          << screenRuntime.visibleLobbyMapTutorialRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapOtherRows="
+          << screenRuntime.visibleLobbyMapOtherRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameRows="
           << screenRuntime.visibleLobbyGameRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameSelectedRows="
@@ -63987,9 +64130,13 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapPveRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapTutorialRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapOtherRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameOpenRowsDrawn),
