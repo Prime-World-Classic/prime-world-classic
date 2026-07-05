@@ -4675,6 +4675,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingRosterPortraitsDrawn;
   size_t visibleLoadingRosterFlagsDrawn;
   size_t visibleLoadingRosterProgressBarsDrawn;
+  int visibleLoadingRosterMinProgressPercent;
+  int visibleLoadingRosterMaxProgressPercent;
+  int visibleLoadingRosterAverageProgressPercent;
+  int visibleLoadingRosterLocalProgressPercent;
   size_t visibleLoadingRosterForceBadgesDrawn;
   size_t visibleLoadingRosterMetaLabelsDrawn;
   size_t visibleLoadingRosterRankIconsDrawn;
@@ -5765,6 +5769,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingRosterPortraitsDrawn(0),
       visibleLoadingRosterFlagsDrawn(0),
       visibleLoadingRosterProgressBarsDrawn(0),
+      visibleLoadingRosterMinProgressPercent(0),
+      visibleLoadingRosterMaxProgressPercent(0),
+      visibleLoadingRosterAverageProgressPercent(0),
+      visibleLoadingRosterLocalProgressPercent(-1),
       visibleLoadingRosterForceBadgesDrawn(0),
       visibleLoadingRosterMetaLabelsDrawn(0),
       visibleLoadingRosterRankIconsDrawn(0),
@@ -56652,6 +56660,11 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   size_t metaLabelsDrawn = 0;
   size_t rankIconsDrawn = 0;
   size_t premiumBadgesDrawn = 0;
+  size_t progressSamples = 0;
+  int minProgressPercent = 100;
+  int maxProgressPercent = 0;
+  int progressPercentTotal = 0;
+  int localProgressPercent = -1;
   for (size_t row = 0; row < 2; ++row)
   {
     const std::vector<const LinuxLoadingRuntimeHeroEntry*>& rowEntries =
@@ -56679,9 +56692,17 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
         &premiumBadgesDrawn
       );
       ++rowsDrawn;
+      const int progressPercent =
+        static_cast<int>(
+          ClampLinuxDynamicMarkerPercent(entry.progress) * 100.0f + 0.5f);
+      minProgressPercent = std::min(minProgressPercent, progressPercent);
+      maxProgressPercent = std::max(maxProgressPercent, progressPercent);
+      progressPercentTotal += progressPercent;
+      ++progressSamples;
       if (localPlayer)
       {
         ++localRowsDrawn;
+        localProgressPercent = progressPercent;
       }
       if (entry.team == 1)
       {
@@ -56709,6 +56730,18 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLoadingRosterPortraitsDrawn = portraitsDrawn;
     runtime->visibleLoadingRosterFlagsDrawn = flagsDrawn;
     runtime->visibleLoadingRosterProgressBarsDrawn = progressBarsDrawn;
+    runtime->visibleLoadingRosterMinProgressPercent =
+      progressSamples > 0 ? minProgressPercent : 0;
+    runtime->visibleLoadingRosterMaxProgressPercent =
+      progressSamples > 0 ? maxProgressPercent : 0;
+    runtime->visibleLoadingRosterAverageProgressPercent =
+      progressSamples > 0 ?
+      static_cast<int>(
+        static_cast<double>(progressPercentTotal) /
+        static_cast<double>(progressSamples) +
+        0.5) :
+      0;
+    runtime->visibleLoadingRosterLocalProgressPercent = localProgressPercent;
     runtime->visibleLoadingRosterForceBadgesDrawn = forceBadgesDrawn;
     runtime->visibleLoadingRosterMetaLabelsDrawn = metaLabelsDrawn;
     runtime->visibleLoadingRosterRankIconsDrawn = rankIconsDrawn;
@@ -60030,6 +60063,13 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingRosterFlagsDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterProgressBars="
           << screenRuntime.visibleLoadingRosterProgressBarsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterProgressRange="
+          << screenRuntime.visibleLoadingRosterMinProgressPercent << ".."
+          << screenRuntime.visibleLoadingRosterMaxProgressPercent << "\n";
+  logFile << "  finalVisibleLoadingRosterProgressAverage="
+          << screenRuntime.visibleLoadingRosterAverageProgressPercent << "\n";
+  logFile << "  finalVisibleLoadingRosterLocalProgress="
+          << screenRuntime.visibleLoadingRosterLocalProgressPercent << "\n";
   logFile << "  finalVisibleLoadingRosterForceBadges="
           << screenRuntime.visibleLoadingRosterForceBadgesDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterMetaLabels="
@@ -63777,7 +63817,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
-  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu force=%lu meta=%lu rank=%lu premium=%lu\n",
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterLocalRowsDrawn),
@@ -63787,6 +63827,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPortraitsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterFlagsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterProgressBarsDrawn),
+    screenRuntime.visibleLoadingRosterMinProgressPercent,
+    screenRuntime.visibleLoadingRosterMaxProgressPercent,
+    screenRuntime.visibleLoadingRosterAverageProgressPercent,
+    screenRuntime.visibleLoadingRosterLocalProgressPercent,
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterForceBadgesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterMetaLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRankIconsDrawn),
