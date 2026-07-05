@@ -51591,10 +51591,7 @@ void DrawLinuxBootstrapHeroPreviewDetails(
     std::vector<const LinuxHeroAbilityPreview*> visibleAbilities;
     for (size_t i = 0; i < heroPreview->featuredAbilities.size() && visibleAbilities.size() < 4; ++i)
     {
-      if (heroPreview->featuredAbilities[i].icon.artworkLoaded)
-      {
-        visibleAbilities.push_back(&heroPreview->featuredAbilities[i]);
-      }
+      visibleAbilities.push_back(&heroPreview->featuredAbilities[i]);
     }
 
     const int talentIconSize = std::max(15, std::min(22, rect.width / 20));
@@ -51628,19 +51625,34 @@ void DrawLinuxBootstrapHeroPreviewDetails(
         unsigned char green = 156;
         unsigned char blue = 224;
         ResolveAbilityPreviewAccent(ability, &red, &green, &blue);
-        if (DrawLinuxBootstrapHeroTextureSlot(
-              overlay,
-              ability.icon,
-              abilityPanelX + padding + static_cast<int>(i) * (abilityIconSize + abilityGap),
-              iconPanelY + padding,
-              abilityIconSize,
-              red,
-              green,
-              blue,
-              false))
+        const int slotX = abilityPanelX + padding + static_cast<int>(i) * (abilityIconSize + abilityGap);
+        const int slotY = iconPanelY + padding;
+        const bool textureDrawn = DrawLinuxBootstrapHeroTextureSlot(
+          overlay,
+          ability.icon,
+          slotX,
+          slotY,
+          abilityIconSize,
+          red,
+          green,
+          blue,
+          false);
+        if (!textureDrawn)
         {
-          ++abilityIconsDrawn;
+          SetOpenGlColor(238, 236, 218, 230);
+          DrawOpenGlTextInBox(
+            overlay,
+            slotX,
+            slotY,
+            abilityIconSize,
+            abilityIconSize,
+            ability.isAttack ? "A" : "?",
+            LINUX_OPENGL_TEXT_ALIGN_CENTER,
+            LINUX_OPENGL_TEXT_VALIGN_CENTER,
+            false
+          );
         }
+        ++abilityIconsDrawn;
       }
     }
 
