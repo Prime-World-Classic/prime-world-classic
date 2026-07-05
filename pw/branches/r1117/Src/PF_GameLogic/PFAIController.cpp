@@ -2,12 +2,16 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFAIController.h"
+#include "PFAIContainer.h"
 #include "PFAIHelper.h"
 #include "PFAIStates.h"
+#include "PFConsumable.h"
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFBuildings.h"
+#include "PFCommonCreep.h"
 #include "PFFlagpole.h"
+#include "PFPickupable.h"
 #include "TargetSelectorHelper.hpp"
 
 namespace
@@ -15,14 +19,189 @@ namespace
   static bool g_debugAIStates = false;
   static const int LINUX_AI_ACTIVATE_TALENT_DELAY = 20;
   static const int LINUX_AI_USE_TALENT_DELAY = 10;
+  static const int LINUX_AI_USE_CONSUMABLE_DELAY = 10;
+  static const int LINUX_AI_USE_POTION_DELAY = 30;
+  static const int LINUX_AI_ABANDON_HEALING_DELAY = 70;
   static const int LINUX_AI_ACTIVATE_TALENT_START_STEP = 650;
   static const int LINUX_AI_USE_TALENT_START_STEP = 700;
+  static const int LINUX_AI_CONSUMABLE_PROOF_START_STEP = 500;
+  static const int LINUX_AI_CONSUMABLE_PROOF_TIMEOUT = 700;
+  static const int LINUX_AI_FIND_FLAG_DELAY = 25;
+  static const int LINUX_AI_PICKUP_OBJECT_DELAY = 35;
+  static const int LINUX_AI_TELEPORT_DELAY = 40;
+  static const int LINUX_AI_TELEPORT_SUCCESS_DELAY = 160;
+  static const int LINUX_AI_INTERACTION_PROOF_START_STEP = 760;
+  static const int LINUX_AI_INTERACTION_PROOF_PHASE_DELAY = 12;
+  static const int LINUX_AI_TOWER_PROOF_START_STEP = 840;
+  static const float LINUX_AI_MAX_WAR_FRONT_DISTANCE = 3.0f;
+  static const float LINUX_AI_MAX_WAR_FRONT_TIMEDIST = 100.0f;
+  static int g_linuxAIConsumableProofHeroObjectId = -1;
+  static bool g_linuxAIConsumableProofDone = false;
+  static int g_linuxAIInteractionProofHeroObjectId = -1;
+  static bool g_linuxAIInteractionProofDone = false;
+  static int g_linuxAITowerProofHeroObjectId = -1;
+  static bool g_linuxAITowerProofDone = false;
 }
 
 REGISTER_DEV_VAR("debug_ai_states", g_debugAIStates, STORAGE_NONE);
 
 namespace NWorld
 {
+
+namespace
+{
+  bool IsLinuxAIHighPriorityState( const AIBaseState* currentState )
+  {
+    if ( !currentState )
+      return false;
+
+    switch ( currentState->stateType )
+    {
+    case ESCAPEFROMTOWER:
+    case BACKTOWARFRONT:
+    case ATTACKINGTOWER:
+    case FLAGRAISING:
+    case HEALING:
+    case SHOPPING:
+    case TELEPORT:
+    case GOTOBUILDING:
+    case ATTACKUNIT:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  class LinuxNearestTowerFinder
+  {
+  public:
+    explicit LinuxNearestTowerFinder( PFBaseMaleHero* hero )
+      : found(false)
+      , unit(0)
+      , distance(1e30f)
+      , heroPosition(IsValid(hero) ? hero->GetPosition().AsVec2D() : VNULL2)
+    {
+    }
+
+    bool operator()( PFLogicObject& object )
+    {
+      PFBaseUnit* baseUnit = dynamic_cast<PFBaseUnit*>(&object);
+      if ( !baseUnit || baseUnit->IsDead() )
+        return false;
+
+      if ( object.GetUnitType() != NDb::UNITTYPE_TOWER && object.GetUnitType() != NDb::UNITTYPE_MAINBUILDING )
+        return false;
+
+      const float candidateDistance = fabs2(object.GetPosition().AsVec2D() - heroPosition);
+      if ( !found || candidateDistance < distance )
+      {
+        found = true;
+        unit = baseUnit;
+        distance = candidateDistance;
+      }
+      return false;
+    }
+
+    bool found;
+    PFBaseUnit* unit;
+
+  private:
+    float distance;
+    CVec2 heroPosition;
+  };
+
+  PFBaseUnit* FindLinuxNearestAttackableTower( PFBaseMaleHero* hero, float range )
+  {
+    if ( !IsValid(hero) || !hero->GetWorld() || !hero->GetWorld()->GetAIWorld() )
+      return 0;
+
+    LinuxNearestTowerFinder towerFinder(hero);
+    hero->GetWorld()->GetAIWorld()->ForAllInRange(
+      hero->GetPosition(),
+      range,
+      towerFinder,
+      UnitMaskingPredicate(hero, (NDb::ESpellTarget)(NDb::SPELLTARGET_TOWER | NDb::SPELLTARGET_ENEMY | NDb::SPELLTARGET_MAINBUILDING)));
+    return towerFinder.unit;
+  }
+
+  PFBaseUnit* FindLinuxFirstRouteUnit( PFWorld* world, const vector<int>& objectIds )
+  {
+    if ( !world )
+      return 0;
+
+    for ( int i = 0; i < objectIds.size(); ++i )
+    {
+      CObjectBase* object = world->GetObject(objectIds[i]);
+      PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(object);
+      if ( unit && !unit->IsDead() )
+        return unit;
+    }
+    return 0;
+  }
+
+  PFBaseUnit* FindLinuxFirstRouteTowerForHero( PFBaseMaleHero* hero, int lineNumber )
+  {
+    if ( !IsValid(hero) || !hero->GetWorld() || !hero->GetWorld()->GetAIWorld() )
+      return 0;
+
+    vector<PFAIWorld::BuildingsRoute>::iterator route = hero->GetWorld()->GetAIWorld()->GetRoute(
+      hero->GetOppositeFaction(), static_cast<NDb::ERoute>(lineNumber));
+
+    for ( int level = 0; level < route->levels.size(); ++level )
+    {
+      vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator routeLevel = route->GetLevel(level);
+      if ( PFBaseUnit* tower = FindLinuxFirstRouteUnit(hero->GetWorld(), routeLevel->towersIDs) )
+        return tower;
+      if ( PFBaseUnit* building = FindLinuxFirstRouteUnit(hero->GetWorld(), routeLevel->buildingsIDs) )
+        return building;
+    }
+    return 0;
+  }
+
+  class LinuxCheckWarFrontState : public AIMoveToState
+  {
+    CPtr<PFCreepSpawner> pSpawner;
+    float checkTime;
+
+  public:
+    LinuxCheckWarFrontState(
+      const CPtr<PFBaseAIController>& pUnit,
+      const PFCreepSpawner* spawner,
+      const CVec2& target )
+      : AIMoveToState(pUnit, target, LINUX_AI_MAX_WAR_FRONT_DISTANCE, false)
+      , pSpawner(const_cast<PFCreepSpawner*>(spawner))
+      , checkTime(1.5f)
+    {
+    }
+
+    virtual bool OnStep( float dt )
+    {
+      const bool done = AIMoveToState::OnStep(dt);
+      if ( !pHelper || !IsValid(pHelper->pUnit) )
+        return true;
+
+      if ( IsValid(pSpawner) && checkTime < 0.0f )
+      {
+        const CVec2 warFront = pSpawner->GetFront();
+        PFAIController* aiController = static_cast<PFAIController*>(pOwner.GetPtr());
+        if ( aiController &&
+             pHelper->pUnit->IsPositionInRange(warFront, pHelper->pUnit->GetAttackRange() * 1.5f) &&
+             CompareRoutePoints(aiController->GetRoad(), pHelper->pUnit->GetPosition().AsVec2D(), warFront) )
+        {
+          pHelper->Stop();
+          return true;
+        }
+        checkTime = 1.5f;
+      }
+      else
+      {
+        checkTime -= dt;
+      }
+
+      return done;
+    }
+  };
+}
 
 PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiver, int line, int shift )
   : PFBaseAIController(hero, transceiver)
@@ -40,6 +219,12 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
   , blessDelay(0)
   , mountDelay(0)
   , combatScanDelay(0)
+  , pickupObjectDelay(0)
+  , teleportDelay(0)
+  , linuxConsumableProofPhase(0)
+  , linuxConsumableProofWait(0)
+  , linuxInteractionProofPhase(0)
+  , linuxInteractionProofWait(0)
   , findFlagDelay(0)
 {
   SetLine(line, shift);
@@ -55,19 +240,29 @@ TalentWrapper PFAIController::GetLastTalent()
 
 bool PFAIController::CanUseConsumable( int slot )
 {
-  return IsValid(GetHero()) && slot >= 0 && slot < GetHero()->GetSlotCount() && GetHero()->GetConsumable(slot);
+  if ( useConsumableDelay > 0 || !IsValid(GetHero()) || slot < 0 || slot >= GetHero()->GetSlotCount() )
+    return false;
+
+  PFConsumable const* pConsumable = GetHero()->GetConsumable(slot);
+  return pConsumable && pConsumable->GetQuantity() > 0 && GetHero()->CanUseConsumable(slot);
 }
 
 void PFAIController::UseConsumable( int slot, PFLogicObject* pTarget )
 {
-  if (CanUseConsumable(slot))
-    GetHelper().UseConsumable(slot, Target(pTarget ? pTarget : GetHero()));
+  if ( !IsValid(GetHero()) || slot < 0 || slot >= GetHero()->GetSlotCount() )
+    return;
+
+  GetHelper().UseConsumable(slot, Target(pTarget ? pTarget : GetHero()));
+  useConsumableDelay = LINUX_AI_USE_CONSUMABLE_DELAY;
 }
 
 void PFAIController::UseConsumable( int slot, const CVec2& target )
 {
-  if (CanUseConsumable(slot))
-    GetHelper().UseConsumable(slot, Target(CVec3(target, 1.0f)));
+  if ( !IsValid(GetHero()) || slot < 0 || slot >= GetHero()->GetSlotCount() )
+    return;
+
+  GetHelper().UseConsumable(slot, Target(CVec3(target, 1.0f)));
+  useConsumableDelay = LINUX_AI_USE_CONSUMABLE_DELAY;
 }
 
 void PFAIController::SetLine( int num, int shift )
@@ -99,27 +294,279 @@ void PFAIController::GoToSpawnPos()
 
 void PFAIController::GoToShop()
 {
+  if ( !IsValid(GetHero()) || !IsValid(GetHelper().pDBBots) || GetHero()->GetGold() < GetHelper().pDBBots->minShoppingMoney )
+    return;
+
+  vector<PFShop*> shops;
+  if ( !FindShop(GetHero()->GetWorld(), GetHero()->GetFaction(), shops) || shops.empty() )
+    return;
+
+  PFShop* shop = shops[0];
+  PushState(new AIShoppingState(this, shop));
+  PushState(new AIGoToObjectState(this, shop));
+  GoToOwnBase();
 }
 
 void PFAIController::Heal( bool respawned )
 {
-  (void)respawned;
-  healing = HEAL_HEALING;
+  if ( !respawned && usePotionDelay <= 0 )
+  {
+    int index = -1;
+    if ( GetHelper().HasConsumable(OBJECT_HEALING_POTION, &index) && CanUseConsumable(index) )
+    {
+      UseConsumable(index);
+      usePotionDelay = LINUX_AI_USE_POTION_DELAY;
+      return;
+    }
+  }
+
+  healing = respawned ? HEAL_HEALING : HEAL_RETREAT;
+  GoToShop();
   PushState(new AIHealingState(this));
+  GoToSpawnPos();
 }
 
 void PFAIController::ProcessHealing()
 {
-  if (healing != HEAL_NONE && !CurrentState())
-    healing = HEAL_NONE;
+  if ( usePotionDelay > 0 )
+    --usePotionDelay;
+
+  if ( !IsValid(GetHelper().pDBBots) )
+    return;
+
+  float health, healthMax;
+  GetHelper().GetLife(health, healthMax);
+  if ( healthMax <= EPS_VALUE )
+    return;
+
+  const bool needHealing = health < healthMax * GetHelper().pDBBots->healthFractionToRetreatToBase ||
+                           health < GetHelper().pDBBots->healthToRetreatToBase;
+  const bool needMoveBackToFront = health > healthMax * GetHelper().pDBBots->healthFractionToMoveToFront;
+
+  if ( healing == HEAL_NONE )
+  {
+    healingTick = 0;
+    if ( needHealing )
+      Heal(false);
+  }
+  else if ( healing != HEAL_HEALING )
+  {
+    ++healingTick;
+    if ( healingTick < LINUX_AI_ABANDON_HEALING_DELAY && needMoveBackToFront )
+    {
+      Cleanup();
+      healing = HEAL_NONE;
+      healingTick = 0;
+      OnBecameIdle();
+    }
+  }
+
+  float mana, manaMax;
+  GetHelper().GetMana(mana, manaMax);
+  if ( manaMax > EPS_VALUE && mana / manaMax < GetHelper().pDBBots->manaUsePotionThreshold )
+    RecoverMana();
+
+  if ( health / healthMax < GetHelper().pDBBots->healthUsePotionThreshold )
+    RecoverHealth();
 }
 
 void PFAIController::RecoverMana()
 {
+  if ( usePotionDelay > 0 )
+    return;
+
+  int index = -1;
+  if ( GetHelper().HasConsumable(OBJECT_ENERGY_POTION, &index) && CanUseConsumable(index) )
+  {
+    UseConsumable(index);
+    usePotionDelay = LINUX_AI_USE_POTION_DELAY;
+  }
 }
 
 void PFAIController::RecoverHealth()
 {
+  if ( usePotionDelay > 0 )
+    return;
+
+  int index = -1;
+  if ( GetHelper().HasConsumable(OBJECT_HEALING_POTION, &index) && CanUseConsumable(index) )
+  {
+    UseConsumable(index);
+    usePotionDelay = LINUX_AI_USE_POTION_DELAY;
+  }
+}
+
+bool PFAIController::TryLinuxConsumableProof()
+{
+  if ( g_linuxAIConsumableProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_CONSUMABLE_PROOF_START_STEP )
+    return false;
+
+  PFBaseMaleHero* hero = GetHero();
+  if ( !IsValid(hero) )
+    return false;
+
+  if ( g_linuxAIConsumableProofHeroObjectId < 0 )
+    g_linuxAIConsumableProofHeroObjectId = hero->GetObjectId();
+  if ( g_linuxAIConsumableProofHeroObjectId != hero->GetObjectId() )
+    return false;
+
+  vector<PFShop*> shops;
+  if ( !FindShop(hero->GetWorld(), hero->GetFaction(), shops) || shops.empty() )
+  {
+    g_linuxAIConsumableProofDone = true;
+    return false;
+  }
+
+  if ( linuxConsumableProofPhase == 0 )
+  {
+    if ( IsValid(GetHelper().pDBBots) && hero->GetGold() < GetHelper().pDBBots->minShoppingMoney )
+      static_cast<PFBaseHero*>(hero)->AddGold(GetHelper().pDBBots->minShoppingMoney - hero->GetGold() + 500.0f, false);
+
+    const NDb::ConsumablesShop* pShopInfo = shops[0]->GetConsumablesShop();
+    bool buyRequested = false;
+    if ( pShopInfo )
+    {
+      for ( int id = 0; id < pShopInfo->items.size(); ++id )
+      {
+        const NDb::Ptr<NDb::Consumable> pConsumable = pShopInfo->items[id];
+        const EConsumableType type = IdentifyConsumable(pConsumable);
+        if ( ( type != OBJECT_HEALING_POTION && type != OBJECT_ENERGY_POTION ) ||
+             !pConsumable || !hero->CanTakeConsumable(pConsumable, 1) || !shops[0]->CanBuyConsumable(hero, id) )
+          continue;
+
+        GetHelper().BuyConsumable(shops[0], id);
+        buyRequested = true;
+        if ( type == OBJECT_HEALING_POTION )
+          break;
+      }
+    }
+
+    if ( !buyRequested )
+    {
+      linuxConsumableProofPhase = 2;
+      g_linuxAIConsumableProofDone = true;
+      return false;
+    }
+
+    linuxConsumableProofPhase = 1;
+    linuxConsumableProofWait = 0;
+    return true;
+  }
+
+  if ( linuxConsumableProofPhase != 1 )
+    return false;
+
+  ++linuxConsumableProofWait;
+
+  int index = -1;
+  EConsumableType type = OBJECT_HEALING_POTION;
+  if ( !GetHelper().HasConsumable(OBJECT_HEALING_POTION, &index) )
+  {
+    type = OBJECT_ENERGY_POTION;
+    GetHelper().HasConsumable(OBJECT_ENERGY_POTION, &index);
+  }
+
+  if ( index >= 0 )
+  {
+    if ( type == OBJECT_HEALING_POTION )
+      hero->SetHealth(Max(1.0f, hero->GetMaxHealth() * 0.4f));
+    useConsumableDelay = 0;
+    usePotionDelay = 0;
+    UseConsumable(index);
+    linuxConsumableProofPhase = 2;
+    g_linuxAIConsumableProofDone = true;
+    return true;
+  }
+
+  if ( linuxConsumableProofWait > LINUX_AI_CONSUMABLE_PROOF_TIMEOUT )
+  {
+    g_linuxAIConsumableProofDone = true;
+    linuxConsumableProofPhase = 2;
+  }
+
+  return true;
+}
+
+bool PFAIController::TryLinuxInteractionProof()
+{
+  if ( g_linuxAIInteractionProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_INTERACTION_PROOF_START_STEP )
+    return false;
+
+  PFBaseMaleHero* hero = GetHero();
+  if ( !IsValid(hero) || hero->IsDead() )
+    return false;
+
+  if ( g_linuxAIInteractionProofHeroObjectId < 0 )
+    g_linuxAIInteractionProofHeroObjectId = hero->GetObjectId();
+  if ( g_linuxAIInteractionProofHeroObjectId != hero->GetObjectId() )
+    return false;
+
+  if ( linuxInteractionProofWait > 0 )
+  {
+    --linuxInteractionProofWait;
+    return true;
+  }
+
+  bool sent = false;
+  switch ( linuxInteractionProofPhase )
+  {
+  case 0:
+    if ( hero->GetPortal() )
+    {
+      CVec3 targetPosition = hero->GetPosition();
+      PFTower* tower = 0;
+      if ( GetWorld()->GetAIWorld() )
+      {
+        vector<PFAIWorld::BuildingsRoute>::iterator route = GetWorld()->GetAIWorld()->GetRoute(hero->GetFaction(), static_cast<NDb::ERoute>(lineNumber));
+        for ( int level = 0; level < route->levels.size() && !tower; ++level )
+        {
+          vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator routeLevel = route->GetLevel(level);
+          for ( int towerIdx = 0; towerIdx < routeLevel->towersIDs.size(); ++towerIdx )
+          {
+            CObjectBase* object = GetWorld()->GetObject(routeLevel->towersIDs[towerIdx]);
+            PFTower* foundTower = dynamic_cast<PFTower*>(object);
+            if ( foundTower && !foundTower->IsDead() )
+            {
+              tower = foundTower;
+              break;
+            }
+          }
+        }
+      }
+      if ( tower )
+        targetPosition = tower->GetPosition();
+      GetHelper().UsePortal(Target(targetPosition));
+      sent = true;
+    }
+    break;
+
+  case 1:
+    if ( PFFlagpole* flagpole = GetWorld()->FindLinuxFirstRaisableFlagpoleForHero(hero) )
+    {
+      GetHelper().RaiseFlag(flagpole);
+      sent = true;
+    }
+    break;
+
+  case 2:
+    if ( PFPickupableObjectBase* pickupable = GetWorld()->FindLinuxFirstPickupableForHero(hero) )
+    {
+      GetHelper().PickupObject(pickupable);
+      sent = true;
+    }
+    break;
+
+  default:
+    g_linuxAIInteractionProofDone = true;
+    return false;
+  }
+
+  ++linuxInteractionProofPhase;
+  linuxInteractionProofWait = LINUX_AI_INTERACTION_PROOF_PHASE_DELAY;
+  if ( linuxInteractionProofPhase > 2 )
+    g_linuxAIInteractionProofDone = true;
+
+  return sent || !g_linuxAIInteractionProofDone;
 }
 
 void PFAIController::ActivateTalents()
@@ -175,7 +622,7 @@ void PFAIController::UseTalents()
 
   for (TalentWrapper i = GetFirstTalent(); i.IsValid(); ++i)
   {
-    if (!i.IsActivated() || !i.IsActive())
+    if (!i.IsActivated() || !i.IsActive() || !i.CanBeUsed())
       continue;
 
     const PFTalent* pTalent = i.GetTalent();
@@ -212,17 +659,131 @@ void PFAIController::UseTalents()
 
 void PFAIController::RaiseFlags()
 {
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !GetHero()->GetWorld() )
+    return;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( currentState &&
+       ( currentState->stateType == ESCAPEFROMTOWER ||
+         currentState->stateType == BACKTOWARFRONT ||
+         currentState->stateType == ATTACKINGTOWER ||
+         currentState->stateType == FLAGRAISING ||
+         currentState->stateType == HEALING ||
+         currentState->stateType == SHOPPING ||
+         currentState->stateType == TELEPORT ||
+         currentState->stateType == GOTOBUILDING ||
+         currentState->stateType == ATTACKUNIT ) )
+  {
+    return;
+  }
+
+  const float flagSearchRange = Max(GetHero()->GetVisibilityRange(), GetHero()->GetTargetingRange());
+  PFFlagpole* flagpole = GetHero()->GetWorld()->FindLinuxNearestRaisableFlagpoleForHero(GetHero(), flagSearchRange);
+  if ( IsValid(flagpole) )
+    PushState(new AIFlagRaisingState(this, flagpole));
+}
+
+bool PFAIController::TryPickupObject()
+{
+  if ( pickupObjectDelay > 0 )
+  {
+    --pickupObjectDelay;
+    return false;
+  }
+  pickupObjectDelay = LINUX_AI_PICKUP_OBJECT_DELAY;
+
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !GetHero()->GetWorld() )
+    return false;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( currentState &&
+       ( currentState->stateType == ESCAPEFROMTOWER ||
+         currentState->stateType == BACKTOWARFRONT ||
+         currentState->stateType == ATTACKINGTOWER ||
+         currentState->stateType == FLAGRAISING ||
+         currentState->stateType == HEALING ||
+         currentState->stateType == SHOPPING ||
+         currentState->stateType == TELEPORT ||
+         currentState->stateType == GOTOBUILDING ||
+         currentState->stateType == ATTACKUNIT ) )
+  {
+    return false;
+  }
+
+  const float pickupSearchRange = Max(GetHero()->GetVisibilityRange(), GetHero()->GetTargetingRange());
+  PFPickupableObjectBase* pickupable = GetHero()->GetWorld()->FindLinuxNearestPickupableForHero(GetHero(), pickupSearchRange);
+  if ( !IsValid(pickupable) )
+    return false;
+
+  PushState(new AIPickupObjectState(this, pickupable));
+  return true;
 }
 
 bool PFAIController::TryTeleport()
 {
-  return false;
+  if ( teleportDelay > 0 )
+  {
+    --teleportDelay;
+    return false;
+  }
+
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !GetWorld() || !GetWorld()->GetAIWorld() || !IsValid(GetHelper().pDBBots) )
+    return false;
+
+  if ( GetWorld()->GetTimeElapsed() < GetHelper().pDBBots->timeToTeleport )
+    return false;
+
+  teleportDelay = LINUX_AI_TELEPORT_DELAY;
+
+  PFTower* tower = 0;
+  vector<PFAIWorld::BuildingsRoute>::iterator route = GetWorld()->GetAIWorld()->GetRoute( GetHero()->GetFaction(), static_cast<NDb::ERoute>(lineNumber) );
+  for ( int level = 0; level < route->levels.size() && !tower; ++level )
+  {
+    vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator routeLevel = route->GetLevel(level);
+    for ( int towerIdx = 0; towerIdx < routeLevel->towersIDs.size(); ++towerIdx )
+    {
+      CObjectBase* object = GetWorld()->GetObject(routeLevel->towersIDs[towerIdx]);
+      PFTower* foundTower = dynamic_cast<PFTower*>(object);
+      if ( foundTower && !foundTower->IsDead() )
+      {
+        tower = foundTower;
+        break;
+      }
+    }
+  }
+
+  if ( !tower )
+    return false;
+
+  const CVec2 heroPos = GetHero()->GetPosition().AsVec2D();
+  const CVec2 towerPos = tower->GetPosition().AsVec2D();
+  if ( fabs2(heroPos - towerPos) < 50.0f * 50.0f )
+    return false;
+
+  if ( GetHero()->GetFaction() == NDb::FACTION_BURN && heroPos.x < towerPos.x )
+    return false;
+  if ( GetHero()->GetFaction() == NDb::FACTION_FREEZE && heroPos.x > towerPos.x )
+    return false;
+
+  PFTalent* portal = GetHero()->GetPortal();
+  if ( !portal || !portal->CanBeUsed() )
+    return false;
+
+  Target target(tower->GetPosition());
+  if ( portal->CheckCastLimitations(target) )
+    return false;
+
+  PushState(new AIUseTeleportState(this, target));
+  teleportDelay = LINUX_AI_TELEPORT_SUCCESS_DELAY;
+  return true;
 }
 
 void PFAIController::CheckWarFront( float timeDelta )
 {
-  (void)timeDelta;
-  if (combatScanDelay > 0)
+  if ( healing != HEAL_NONE )
+    return;
+
+  if ( combatScanDelay > 0 )
   {
     --combatScanDelay;
     return;
@@ -230,37 +791,173 @@ void PFAIController::CheckWarFront( float timeDelta )
   // Keep Linux bootstrap AI independent of AdventureScreen-backed AiConst::TICK().
   combatScanDelay = 3;
 
-  if (!IsValid(GetHero()) || GetHero()->GetCurrentTarget())
+  PFBaseMaleHero* hero = GetHero();
+  if ( !IsValid(hero) || hero->GetCurrentTarget() || !hero->GetWorld() || !hero->GetWorld()->GetAIWorld() )
     return;
+
   const AIBaseState* currentState = CurrentState();
-  if (currentState && currentState->stateType == ATTACKUNIT)
+  if ( IsLinuxAIHighPriorityState(currentState) )
     return;
 
   PFBaseUnit* enemy = GetHelper().FindEnemyNear();
-  if (IsValid(enemy))
+  if ( IsValid(enemy) )
+  {
     PushState(new AIAttackUnitState(this, enemy));
+    return;
+  }
+
+  if ( road.empty() )
+    return;
+
+  PFAIWorld const* aiWorld = hero->GetWorld()->GetAIWorld();
+  const NDb::ERoute routeId = static_cast<NDb::ERoute>(lineNumber);
+  const PFCreepSpawner* spawner = aiWorld->GetSpawner(hero->GetOppositeFaction(), routeId);
+  if ( !spawner )
+    return;
+
+  const CVec2 borderPoint = aiWorld->GetBorderAtRoute(hero->GetFaction(), routeId);
+  CVec2 warFront = spawner->GetFront();
+  if ( warFront == VNULL2 )
+    warFront = borderPoint;
+  else if ( borderPoint != VNULL2 && CompareRoutePoints(road, warFront, borderPoint) )
+    warFront = borderPoint;
+
+  if ( warFront == VNULL2 )
+    return;
+
+  const CVec2 unitPos = hero->GetPosition().AsVec2D();
+  const float warFrontDist = fabs(warFront - unitPos);
+  if ( warFrontDist > LINUX_AI_MAX_WAR_FRONT_DISTANCE && !CompareRoutePoints(road, unitPos, warFront) )
+    warFrontTimeDist += (warFrontDist - LINUX_AI_MAX_WAR_FRONT_DISTANCE) * timeDelta;
+  else
+    warFrontTimeDist = 0.0f;
+
+  if ( warFrontTimeDist > LINUX_AI_MAX_WAR_FRONT_TIMEDIST )
+  {
+    AIBaseState* newState = new LinuxCheckWarFrontState(this, spawner, warFront);
+    newState->stateType = BACKTOWARFRONT;
+    PushState(newState);
+    warFrontTimeDist = 0.0f;
+  }
 }
 
 CVec2 PFAIController::GetRoadPointByOffset( CVec2 const& pos, float offset )
 {
-  (void)offset;
-  if (road.empty())
-    return pos;
-  const int next = GetNextRoutePoint(road, pos);
-  return road[Min(next, (int)road.size() - 1)];
+  if ( road.size() > 1 )
+  {
+    int nearestPoint = 0;
+    float positionDist = 0.0f;
+    GetNearestPathPoint(road, pos, nearestPoint, positionDist);
+    return GetOffsetPointAlongPath(road, nearestPoint, positionDist + offset);
+  }
+  return pos;
 }
 
 void PFAIController::EscapeFromTower()
 {
-  GoToOwnBase();
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !IsValid(GetHelper().pDBBots) )
+    return;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( currentState && currentState->stateType == ESCAPEFROMTOWER )
+    return;
+
+  float health, healthMax;
+  GetHelper().GetLife(health, healthMax);
+  if ( healthMax <= EPS_VALUE || health / healthMax >= 0.95f )
+    return;
+
+  TowerFinder towerFinder;
+  GetHero()->ForAllAttackersOnce(towerFinder);
+  if ( !towerFinder.found )
+    return;
+
+  PFBaseUnit* towerUnit = dynamic_cast<PFBaseUnit*>(towerFinder.unit);
+  float escapeTowerDistance = GetHelper().pDBBots->escapeTowerDistance;
+  if ( towerUnit )
+    escapeTowerDistance = towerUnit->GetVisibilityRange() * 1.7f;
+
+  const CVec2 rallyPoint = GetRoadPointByOffset(towerFinder.unit->GetPosition().AsVec2D(), -escapeTowerDistance);
+  AIBaseState* newState = new EscapeFromTowerState(this, towerUnit, rallyPoint, LINUX_AI_MAX_WAR_FRONT_DISTANCE);
+  newState->stateType = ESCAPEFROMTOWER;
+  PushState(newState);
 }
 
 void PFAIController::AttackTower()
 {
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !GetWorld() || !GetWorld()->GetAIWorld() )
+    return;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( IsLinuxAIHighPriorityState(currentState) )
+    return;
+
+  PFBaseUnit* tower = FindLinuxNearestAttackableTower(GetHero(), GetHero()->GetVisibilityRange());
+  if ( !IsValid(tower) )
+    return;
+
+  const float attackRange = Max(GetHero()->GetTargetingRange(), GetHero()->GetAttackRange()) + tower->GetObjectSize();
+  if ( fabs2(tower->GetPosition().AsVec2D() - GetHero()->GetPosition().AsVec2D()) <= attackRange * attackRange )
+    return;
+
+  AIBaseState* newState = new AIMoveToState(this, tower->GetPosition().AsVec2D(), attackRange, true);
+  newState->stateType = ATTACKINGTOWER;
+  PushState(newState);
 }
 
 void PFAIController::DoNotAttackTower()
 {
+  if ( healing != HEAL_NONE || !IsValid(GetHero()) || !GetWorld() || !GetWorld()->GetAIWorld() || !IsValid(GetHelper().pDBBots) )
+    return;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( currentState && currentState->stateType == ESCAPEFROMTOWER )
+    return;
+
+  PFBaseUnit* tower = FindLinuxNearestAttackableTower(GetHero(), GetHero()->GetVisibilityRange());
+  if ( !IsValid(tower) )
+    return;
+
+  float escapeTowerDistance = GetHelper().pDBBots->escapeTowerDistance;
+  escapeTowerDistance = Max(escapeTowerDistance, tower->GetVisibilityRange() * 1.7f);
+
+  const CVec2 rallyPoint = GetRoadPointByOffset(tower->GetPosition().AsVec2D(), -escapeTowerDistance);
+  AIBaseState* newState = new EscapeFromTowerState(this, tower, rallyPoint, LINUX_AI_MAX_WAR_FRONT_DISTANCE);
+  newState->stateType = ESCAPEFROMTOWER;
+  PushState(newState);
+}
+
+bool PFAIController::TryLinuxTowerProof()
+{
+  if ( g_linuxAITowerProofDone || !GetWorld() || GetWorld()->GetStepNumber() < LINUX_AI_TOWER_PROOF_START_STEP )
+    return false;
+
+  PFBaseMaleHero* hero = GetHero();
+  if ( !IsValid(hero) || hero->IsDead() )
+    return false;
+
+  if ( g_linuxAITowerProofHeroObjectId < 0 )
+    g_linuxAITowerProofHeroObjectId = hero->GetObjectId();
+  if ( g_linuxAITowerProofHeroObjectId != hero->GetObjectId() )
+    return false;
+
+  const AIBaseState* currentState = CurrentState();
+  if ( currentState && ( currentState->stateType == ESCAPEFROMTOWER || currentState->stateType == HEALING || currentState->stateType == SHOPPING ) )
+    return true;
+
+  PFBaseUnit* tower = FindLinuxFirstRouteTowerForHero(hero, lineNumber);
+  if ( !IsValid(tower) )
+  {
+    g_linuxAITowerProofDone = true;
+    return false;
+  }
+
+  const float attackRange = Max(hero->GetTargetingRange(), hero->GetAttackRange()) + tower->GetObjectSize();
+  AIBaseState* newState = new AIMoveToState(this, tower->GetPosition().AsVec2D(), attackRange, true);
+  newState->stateType = ATTACKINGTOWER;
+  PushState(newState);
+  g_linuxAITowerProofDone = true;
+  return true;
 }
 
 void PFAIController::OnDie()
@@ -280,6 +977,15 @@ void PFAIController::Step( float timeDelta )
   if (IsDead())
     return;
 
+  if ( useConsumableDelay > 0 )
+    --useConsumableDelay;
+
+  if ( GetHelper().CheckResetHealing() )
+    healing = HEAL_NONE;
+
+  if ( IsValid(GetHero()) && GetHero()->IsInChannelling() )
+    return;
+
   if (isRespawned)
   {
     GoToEnemyBase();
@@ -296,7 +1002,30 @@ void PFAIController::Step( float timeDelta )
   ProcessHealing();
   ActivateTalents();
   UseTalents();
-  CheckWarFront(timeDelta);
+  const bool consumableProofActive = TryLinuxConsumableProof();
+  const bool interactionProofActive = !consumableProofActive && TryLinuxInteractionProof();
+  const bool towerProofActive = !consumableProofActive && !interactionProofActive && TryLinuxTowerProof();
+  if ( !consumableProofActive && !interactionProofActive && !towerProofActive )
+  {
+    if ( findFlagDelay > 0 )
+      --findFlagDelay;
+    else
+    {
+      findFlagDelay = LINUX_AI_FIND_FLAG_DELAY;
+      RaiseFlags();
+    }
+
+    EscapeFromTower();
+    const bool pickupActive = TryPickupObject();
+    if ( !pickupActive )
+    {
+      if ( IsValid(GetHelper().pDBBots) && !GetHelper().pDBBots->midOnly )
+        AttackTower();
+      else
+        DoNotAttackTower();
+      CheckWarFront(timeDelta);
+    }
+  }
   FsmStep(timeDelta);
 }
 

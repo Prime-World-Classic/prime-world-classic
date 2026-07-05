@@ -40,6 +40,9 @@ public:
   PFWorld * GetWorld();
 
 private:
+#if defined(PW_LINUX_NULL_RENDER)
+  void RefreshLinuxHeroReference();
+#endif
   CPtr<PFBaseMaleHero>  hero;
   PFAIHelper  aiHelper;
   bool  isDead;

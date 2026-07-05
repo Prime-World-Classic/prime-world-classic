@@ -19,6 +19,9 @@
 #include "PFLogicDebug.h"
 #include "PFEaselPlayer.h"
 #include "PFAIContainer.h"
+#if defined(PW_LINUX_NULL_RENDER)
+#include "PFConsumable.h"
+#endif
 
 #include "TileMap.h"
 #include "StaticPathInternal.h"
@@ -226,6 +229,24 @@ namespace NWorld
   void ResetLinuxHeroGameplayCommandDiagnostics()
   {
     g_linuxHeroGameplayCommandDiagnostics = LinuxHeroGameplayCommandDiagnostics();
+  }
+
+  void RecordLinuxAIConsumableInventoryProbe(
+    PFBaseMaleHero const* hero,
+    int requestedType,
+    int slotCount,
+    int matches,
+    int firstIndex,
+    int firstType,
+    int firstQuantity)
+  {
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeHeroObjectId = hero ? hero->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeRequestedType = requestedType;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeSlotCount = slotCount;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeMatches = matches;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstIndex = firstIndex;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstType = firstType;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity = firstQuantity;
   }
 #endif
 
@@ -534,9 +555,12 @@ namespace NWorld
     if( canUseConsumable )
     {
 #if defined(PW_LINUX_NULL_RENDER)
-      ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
-#endif
+      CObj<PFAbilityInstance> instance = pHero->UseConsumable(slot, target, pHero->IsLocal());
+      if (instance)
+        ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
+#else
       pHero->EnqueueState( new PFHeroUseConsumableState( pHero, slot, target ), true );
+#endif
     }
   }
 
@@ -917,6 +941,7 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = IsValid(pHero) ? pHero->GetObjectId() : -1;
 #endif
     return accepted;
   }
@@ -924,46 +949,88 @@ namespace NWorld
   void CmdBuyConsumable::Execute( NCore::IWorldBase* pWorld )
   {
 #if defined(PW_LINUX_NULL_RENDER)
+    PFBaseHero* commandHero = pHero.GetPtr();
+    PFBaseHero* originalCommandHero = commandHero;
+    PFShop* commandShop = pShop.GetPtr();
+    int resolvedHeroFromWorld = 0;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = commandHero ? commandHero->GetObjectId() : -1;
+    if ( PFWorld* pPFWorld = dynamic_cast<PFWorld*>(pWorld) )
+    {
+      if ( commandHero )
+      {
+        if ( PFBaseHero* liveHero = dynamic_cast<PFBaseHero*>(pPFWorld->FindLinuxUnitByObjectId(commandHero->GetObjectId())) )
+        {
+          commandHero = liveHero;
+          resolvedHeroFromWorld = commandHero != originalCommandHero ? 1 : 0;
+        }
+      }
+      if ( commandShop )
+      {
+        if ( PFShop* liveShop = dynamic_cast<PFShop*>(pPFWorld->GetObjectById(commandShop->GetObjectId())) )
+          commandShop = liveShop;
+      }
+    }
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId = commandHero ? commandHero->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld = resolvedHeroFromWorld;
+#else
+    PFBaseHero* commandHero = pHero.GetPtr();
+    PFShop* commandShop = pShop.GetPtr();
+#endif
+
+#if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableExecuteCalls;
-    g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = commandShop ? commandShop->GetObjectId() : -1;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
 #endif
-    if (!pShop)
+    if (!commandShop)
       return;
-    if ( !IsValid(pHero) )
+    if ( !commandHero )
       return;
 
-    const bool canBuy = pShop->CanBuyConsumable(pHero, index);
+#if defined(PW_LINUX_NULL_RENDER)
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountBefore = commandHero->GetSlotCount();
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroPlayerId = commandHero->GetPlayerId();
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = -1;
+    if ( const PFPlayer* player = commandHero->GetPlayer() )
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = player->GetUserID();
+#endif
+    const bool canBuy = commandShop->CanBuyConsumable(commandHero, index);
 #if defined(PW_LINUX_NULL_RENDER)
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanBuy = canBuy ? 1 : 0;
 #endif
     if (canBuy)
     {
-      NDb::Ptr<NDb::Consumable> pConsumableDesc = pShop->GetConsumableDesc(index);
+      NDb::Ptr<NDb::Consumable> pConsumableDesc = commandShop->GetConsumableDesc(index);
 
-      LogLogicObject(pHero, "CMD BUY ARTEFACT", false);
+      LogLogicObject(commandHero, "CMD BUY ARTEFACT", false);
       
-      const bool took = pHero->TakeConsumable( pConsumableDesc, 1, NDb::CONSUMABLEORIGIN_SHOP, slotIndex );
+      const bool took = commandHero->TakeConsumable( pConsumableDesc, 1, NDb::CONSUMABLEORIGIN_SHOP, slotIndex );
 #if defined(PW_LINUX_NULL_RENDER)
       g_linuxHeroGameplayCommandDiagnostics.buyConsumableTook = took ? 1 : 0;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountAfter = commandHero->GetSlotCount();
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex = slotIndex >= 0 ? slotIndex : commandHero->GetSlotCount() - 1;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotType = -1;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = 0;
+      if ( PFConsumable const* pBoughtConsumable = commandHero->GetConsumable(g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex) )
+        g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = pBoughtConsumable->GetQuantity();
 #endif
       if ( !took )
       {
-        pHero->GetWorld()->GetIAdventureScreen()->NotifyOfSimpleUIEvent( pHero, NDb::ERRORMESSAGETYPE_OUTOFINVENTORY);
+        commandHero->GetWorld()->GetIAdventureScreen()->NotifyOfSimpleUIEvent( commandHero, NDb::ERRORMESSAGETYPE_OUTOFINVENTORY);
         return;
       }
 
 #if defined(PW_LINUX_NULL_RENDER)
       ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableActionAccepted;
 #endif
-      int cost = pHero->GetConsumableCost(pConsumableDesc);
-      pHero->TakeGold( cost);
+      int cost = commandHero->GetConsumableCost(pConsumableDesc);
+      commandHero->TakeGold( cost);
 
       StatisticService::RPC::SessionEventInfo params;
       params.intParam1 = pConsumableDesc->GetDBID().GetHashKey();
       params.intParam2 = cost;
-      pHero->LogSessionEvent(SessionEventType::ConsumableBought, params);
+      commandHero->LogSessionEvent(SessionEventType::ConsumableBought, params);
     }
   }
 

@@ -16,6 +16,8 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*, NWorld::PFTalent*, CObjectBase*);
 
 #include "PFHeroStates.h"
+#include "PFAbilityInstance.h"
+#include "PFConsumable.h"
 #include "PFFlagpole.h"
 #include "PFPickupable.h"
 
@@ -62,14 +64,33 @@ bool PFBaseUseHeroState::NeedToGetClose() const
 PFHeroUseConsumableState::PFHeroUseConsumableState( PFBaseMaleHero * _pOwner, int _slot, Target const& _target )
   : PFBaseUseHeroState( _pOwner, _target )
   , slot( _slot )
-  , pDBDesc( 0 )
+  , pDBDesc( GetConsumable() ? GetConsumable()->GetDBDesc() : 0 )
 {
 }
 
 bool PFHeroUseConsumableState::OnStep( float dt )
 {
-  (void)dt;
-  return true;
+  if ( !IsUnitValid( pOwner ) || !IsValid( hero ) )
+    return true;
+
+  if ( !target.IsValid() )
+  {
+    if ( !hero->IsMovingSpecial() )
+      hero->Stop();
+    return true;
+  }
+
+  if ( !pAbilityInstance )
+  {
+    if ( !hero->CanUseConsumable( slot ) )
+      return true;
+
+    pAbilityInstance = hero->UseConsumable( slot, target, hero->IsLocal() );
+    return !pAbilityInstance || pAbilityInstance->IsFinished();
+  }
+
+  pAbilityInstance->Update( dt );
+  return pAbilityInstance->IsFinished();
 }
 
 float PFHeroUseConsumableState::GetUseRange() const
@@ -84,7 +105,7 @@ NDb::Ability const* PFHeroUseConsumableState::GetDBDesc() const
 
 const PFConsumable * PFHeroUseConsumableState::GetConsumable() const
 {
-  return 0;
+  return IsValid( hero ) ? hero->GetConsumable( slot ) : 0;
 }
 
 PFHeroUseTalentState::PFHeroUseTalentState( PFBaseMaleHero * _pOwner, PFTalent * _talent, Target const& _target )
@@ -192,7 +213,17 @@ void PFInteractObjectState::OnEnter()
 bool PFInteractObjectState::OnStep( float dt )
 {
   (void)dt;
-  return true;
+  if ( !IsUnitValid( pOwner ) || !target.IsValid() )
+    return true;
+
+  if ( !used )
+  {
+    used = true;
+    DoAction();
+    return false;
+  }
+
+  return IsActionFinished();
 }
 
 void PFInteractObjectState::OnLeave()
@@ -236,6 +267,14 @@ PFCreatureRaiseFlagState::PFCreatureRaiseFlagState( PFBaseHero* pOwner, PFFlagpo
 
 void PFCreatureRaiseFlagState::DoAction()
 {
+  if ( IsUnitValid( pOwner ) &&
+       IsUnitValid( pFlagpole ) &&
+       pFlagpole->CanRaise( pOwner->GetFaction() ) &&
+       !pOwner->CheckFlag( NDb::UNITFLAG_FORBIDINTERACT ) )
+  {
+    pFlagpole->OnStartRaise( 0, 0.0f );
+    pFlagpole->OnRaise( pOwner->GetFaction(), pOwner );
+  }
 }
 
 PFHeroPickupObjectState::PFHeroPickupObjectState( PFBaseHero* pOwner, PFPickupableObjectBase* _pPickupable )
@@ -246,6 +285,12 @@ PFHeroPickupObjectState::PFHeroPickupObjectState( PFBaseHero* pOwner, PFPickupab
 
 void PFHeroPickupObjectState::DoAction()
 {
+  if ( IsUnitValid( pOwner ) &&
+       IsValid( pPickupable ) &&
+       pPickupable->CanBePickedUpBy( pOwner ) )
+  {
+    pPickupable->PickUp( pOwner );
+  }
 }
 
 PFHeroSuspendState::PFHeroSuspendState( CPtr<PFBaseHero> const& pOwner, bool isLongSuspend )

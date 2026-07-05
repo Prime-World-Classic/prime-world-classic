@@ -140,7 +140,16 @@ linuxAICommandsSent(0),
 linuxAICommandDirectFallbacks(0),
 linuxAICommandMoveSent(0),
 linuxAICommandCombatMoveSent(0),
+linuxAICommandStopSent(0),
+linuxAICommandFollowSent(0),
 linuxAICommandAttackSent(0),
+linuxAICommandActivateTalentSent(0),
+linuxAICommandUseTalentSent(0),
+linuxAICommandBuyConsumableSent(0),
+linuxAICommandUseConsumableSent(0),
+linuxAICommandUsePortalSent(0),
+linuxAICommandPickupObjectSent(0),
+linuxAICommandRaiseFlagSent(0),
 linuxAICommandOtherSent(0),
 linuxAILastCommandKind(0),
 linuxAILastCommandHeroObjectId(-1),
@@ -241,7 +250,16 @@ linuxAICommandsSent(0),
 linuxAICommandDirectFallbacks(0),
 linuxAICommandMoveSent(0),
 linuxAICommandCombatMoveSent(0),
+linuxAICommandStopSent(0),
+linuxAICommandFollowSent(0),
 linuxAICommandAttackSent(0),
+linuxAICommandActivateTalentSent(0),
+linuxAICommandUseTalentSent(0),
+linuxAICommandBuyConsumableSent(0),
+linuxAICommandUseConsumableSent(0),
+linuxAICommandUsePortalSent(0),
+linuxAICommandPickupObjectSent(0),
+linuxAICommandRaiseFlagSent(0),
 linuxAICommandOtherSent(0),
 linuxAILastCommandKind(0),
 linuxAILastCommandHeroObjectId(-1),
@@ -978,6 +996,37 @@ PFFlagpole* PFWorld::FindLinuxFirstRaisableFlagpoleForHero(PFBaseHero const* her
 
   return 0;
 }
+PFFlagpole* PFWorld::FindLinuxNearestRaisableFlagpoleForHero(PFBaseHero const* hero, float maxDistance)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  const CVec2 heroPosition = hero->GetPosition().AsVec2D();
+  const float maxDistance2 = maxDistance > 0.0f ? maxDistance * maxDistance : FP_MAX_VALUE;
+  float bestDistance2 = maxDistance2;
+  PFFlagpole* bestFlagpole = 0;
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFFlagpole* flagpole = dynamic_cast<PFFlagpole*>(it->second.GetPtr());
+    if (!flagpole || !flagpole->CanRaise(hero->GetFaction()))
+    {
+      continue;
+    }
+
+    const float distance2 = fabs2(flagpole->GetPosition().AsVec2D() - heroPosition);
+    if (distance2 <= bestDistance2)
+    {
+      bestDistance2 = distance2;
+      bestFlagpole = flagpole;
+    }
+  }
+
+  return bestFlagpole;
+}
 PFMinigamePlace* PFWorld::FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero const* hero)
 {
   if (!hero)
@@ -1041,6 +1090,37 @@ PFPickupableObjectBase* PFWorld::FindLinuxFirstPickupableForHero(PFBaseHero cons
 
   return 0;
 }
+PFPickupableObjectBase* PFWorld::FindLinuxNearestPickupableForHero(PFBaseHero const* hero, float maxDistance)
+{
+  if (!hero)
+  {
+    return 0;
+  }
+
+  const CVec2 heroPosition = hero->GetPosition().AsVec2D();
+  const float maxDistance2 = maxDistance > 0.0f ? maxDistance * maxDistance : FP_MAX_VALUE;
+  float bestDistance2 = maxDistance2;
+  PFPickupableObjectBase* bestPickupable = 0;
+
+  TObjects& objects = GetObjects();
+  for (TObjects::iterator it = objects.begin(), end = objects.end(); it != end; ++it)
+  {
+    PFPickupableObjectBase* pickupable = dynamic_cast<PFPickupableObjectBase*>(it->second.GetPtr());
+    if (!pickupable || !pickupable->CanBePickedUpBy(hero))
+    {
+      continue;
+    }
+
+    const float distance2 = fabs2(pickupable->GetPosition().AsVec2D() - heroPosition);
+    if (distance2 <= bestDistance2)
+    {
+      bestDistance2 = distance2;
+      bestPickupable = pickupable;
+    }
+  }
+
+  return bestPickupable;
+}
 void PFWorld::AddAI(PFBaseHero* hero, int line)
 {
   ++linuxAIAddRequests;
@@ -1099,8 +1179,35 @@ void PFWorld::RecordLinuxAICommand(LinuxAICommandKind kind, const PFBaseHero* he
   case LinuxAICommandCombatMove:
     ++linuxAICommandCombatMoveSent;
     break;
+  case LinuxAICommandStop:
+    ++linuxAICommandStopSent;
+    break;
+  case LinuxAICommandFollow:
+    ++linuxAICommandFollowSent;
+    break;
   case LinuxAICommandAttack:
     ++linuxAICommandAttackSent;
+    break;
+  case LinuxAICommandActivateTalent:
+    ++linuxAICommandActivateTalentSent;
+    break;
+  case LinuxAICommandUseTalent:
+    ++linuxAICommandUseTalentSent;
+    break;
+  case LinuxAICommandBuyConsumable:
+    ++linuxAICommandBuyConsumableSent;
+    break;
+  case LinuxAICommandUseConsumable:
+    ++linuxAICommandUseConsumableSent;
+    break;
+  case LinuxAICommandUsePortal:
+    ++linuxAICommandUsePortalSent;
+    break;
+  case LinuxAICommandPickupObject:
+    ++linuxAICommandPickupObjectSent;
+    break;
+  case LinuxAICommandRaiseFlag:
+    ++linuxAICommandRaiseFlagSent;
     break;
   default:
     ++linuxAICommandOtherSent;

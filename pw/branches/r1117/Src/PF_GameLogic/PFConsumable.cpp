@@ -20,6 +20,7 @@ PFConsumable::PFConsumable(CObj<PFConsumableAbilityData> const& abilityData, int
 , actionBarIndex(-1)
 , isPet(false)
 , pAbilityData(abilityData)
+, pDBDesc(dynamic_cast<NDb::Consumable const*>(abilityData ? abilityData->GetDBDesc() : 0))
 , quantity(quantity_)
 {
 }

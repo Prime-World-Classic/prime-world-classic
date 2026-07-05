@@ -157,6 +157,23 @@ namespace NWorld
     int buyConsumableShopObjectId;
     int buyConsumableIndex;
     int buyConsumableSlotIndex;
+    int buyConsumableCommandHeroObjectId;
+    int buyConsumableLiveHeroObjectId;
+    int buyConsumableResolvedHeroFromWorld;
+    int buyConsumableHeroPlayerId;
+    int buyConsumableHeroUserId;
+    int buyConsumableSlotCountBefore;
+    int buyConsumableSlotCountAfter;
+    int buyConsumableResultSlotIndex;
+    int buyConsumableResultSlotType;
+    int buyConsumableResultSlotQuantity;
+    int aiConsumableProbeHeroObjectId;
+    int aiConsumableProbeRequestedType;
+    int aiConsumableProbeSlotCount;
+    int aiConsumableProbeMatches;
+    int aiConsumableProbeFirstIndex;
+    int aiConsumableProbeFirstType;
+    int aiConsumableProbeFirstQuantity;
 
     int raiseFlagCanChecks;
     int raiseFlagCanAccepted;
@@ -211,6 +228,14 @@ namespace NWorld
   void ResetLinuxHeroMoveCommandDiagnostics();
   LinuxHeroGameplayCommandDiagnostics GetLinuxHeroGameplayCommandDiagnostics();
   void ResetLinuxHeroGameplayCommandDiagnostics();
+  void RecordLinuxAIConsumableInventoryProbe(
+    PFBaseMaleHero const* hero,
+    int requestedType,
+    int slotCount,
+    int matches,
+    int firstIndex,
+    int firstType,
+    int firstQuantity);
 #endif
 
   NCore::WorldCommand* CreateCmdCombatMoveHero( PFBaseHero* pHero, CVec2 const& target );

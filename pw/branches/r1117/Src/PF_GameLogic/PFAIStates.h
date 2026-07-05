@@ -37,6 +37,7 @@ namespace NWorld
   class PFShop;
   class PFBaseMaleHero;
   class PFTalent;
+  class PFPickupableObjectBase;
 
   class AIBaseState;
 
@@ -160,6 +161,25 @@ namespace NWorld
       CPtr<PFFlagpole>  pFlag;
       float range;
     };
+
+  class AIPickupObjectState : public AIBaseState
+  {
+  public:
+    AIPickupObjectState(const CPtr<PFBaseAIController>& pUnit, PFPickupableObjectBase* _pPickupable)
+      : AIBaseState(pUnit, GOTOBUILDING)
+      , pPickupable(_pPickupable)
+      , range(0.0f)
+      , delay(0)
+    {}
+
+  protected:
+    virtual void OnEnter();
+    virtual bool OnStep( float dt );
+
+    CPtr<PFPickupableObjectBase> pPickupable;
+    float range;
+    int delay;
+  };
     
   class AIUseTeleportState : public AIBaseState
   {

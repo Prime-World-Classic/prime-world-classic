@@ -69,6 +69,9 @@ public:
   void UseTalents();
 
   void RaiseFlags();
+#if defined(PW_LINUX_NULL_RENDER)
+  bool TryPickupObject();
+#endif
 
   bool TryTeleport();
 
@@ -87,6 +90,11 @@ protected:
 private:
 
   void SetLine( int num , int shift = 0 );
+#if defined(PW_LINUX_NULL_RENDER)
+  bool TryLinuxConsumableProof();
+  bool TryLinuxInteractionProof();
+  bool TryLinuxTowerProof();
+#endif
 
   // constant fields
   int											  lineNumber;
@@ -111,6 +119,14 @@ private:
   int	blessDelay;
   int	mountDelay;
   int combatScanDelay;
+#if defined(PW_LINUX_NULL_RENDER)
+  int pickupObjectDelay;
+  int teleportDelay;
+  int linuxConsumableProofPhase;
+  int linuxConsumableProofWait;
+  int linuxInteractionProofPhase;
+  int linuxInteractionProofWait;
+#endif
 
   // priestess fields
   vector<CPtr<PFBaseMaleHero>> blessers;

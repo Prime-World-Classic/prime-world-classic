@@ -819,7 +819,13 @@ namespace NWorld
       teamID = ( teamID == NDb::TEAMID_B ? NDb::TEAMID_A : NDb::TEAMID_B );
     }
 
-    pFlyEffect = PF_Core::EffectsPool::Get()->Retrieve( DB.flyEffect[teamID] );
+    PF_Core::EffectsPool* effectsPool = PF_Core::EffectsPool::Get();
+    if ( !effectsPool || DB.flyEffect[teamID].IsEmpty() )
+    {
+      return;
+    }
+
+    pFlyEffect = effectsPool->Retrieve( DB.flyEffect[teamID] );
   }
 
   void PFApplThrow::ApplyFlyEffect()

@@ -2,6 +2,7 @@
 #include "PFBaseAIController.h"
 #include "PFAIHelper.h"
 #include "PFMaleHero.h"
+#include "PFWorld.h"
 #include "PFAIStates.h"
 #include "Core/Scheduler.h"
 
@@ -16,9 +17,28 @@ PFBaseAIController::PFBaseAIController(PFBaseHero * _hero, NCore::ITransceiver *
   hero = dynamic_cast<PFBaseMaleHero*>( _hero );
 }
 
+#if defined(PW_LINUX_NULL_RENDER)
+void PFBaseAIController::RefreshLinuxHeroReference()
+{
+  if ( !IsValid(hero) || !hero->GetWorld() )
+    return;
+
+  PFBaseMaleHero* liveHero = dynamic_cast<PFBaseMaleHero*>(hero->GetWorld()->FindLinuxUnitByObjectId(hero->GetObjectId()));
+  if ( liveHero )
+  {
+    hero = liveHero;
+    aiHelper.pUnit = liveHero;
+  }
+}
+#endif
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void PFBaseAIController::Step( float timeDelta )
 {
+#if defined(PW_LINUX_NULL_RENDER)
+  RefreshLinuxHeroReference();
+#endif
+
   if ( hero->IsDead() )
   {
     if ( !isDead )

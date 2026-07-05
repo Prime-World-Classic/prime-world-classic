@@ -247,7 +247,15 @@ float PFBaseMaleHero::GetTalentsAcquiredBudgetPercent() const { return pTalents 
 void PFBaseMaleHero::DropTalentsCooldowns( DropCooldownParams const& dropCooldownParams ) const { (void)dropCooldownParams; }
 void PFBaseMaleHero::RestartGroupCooldowns( PFTalent const* pTalent ) { (void)pTalent; }
 const IUnitFormulaPars* PFBaseMaleHero::GetObjectFavorite() const { return 0; }
-void PFBaseMaleHero::ExecuteCommandUseConsumable( int slot, const Target& target, bool isPlayerCommand ) { (void)slot; (void)target; (void)isPlayerCommand; }
+void PFBaseMaleHero::ExecuteCommandUseConsumable( int slot, const Target& target, bool isPlayerCommand )
+{
+  (void)isPlayerCommand;
+
+  if ( !CanUseConsumable(slot) )
+    return;
+
+  UseConsumable(slot, target, IsLocal());
+}
 void PFBaseMaleHero::DoPetLogic() {}
 void PFBaseMaleHero::LoadInventory( const NWorld::PFResourcesCollection* collection ) { (void)collection; }
 int PFBaseMaleHero::GetEffectiveClassMask() const { return 0; }

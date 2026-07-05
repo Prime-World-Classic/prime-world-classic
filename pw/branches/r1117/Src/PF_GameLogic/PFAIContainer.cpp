@@ -4,7 +4,10 @@
 
 #include "PFAIContainer.h"
 #include "PFAIController.h"
+#include "PFAIWorld.h"
+#include "PFBuildings.h"
 #include "PFHero.h"
+#include "PFMainBuilding.h"
 #include "PFMaleHero.h"
 namespace NWorld
 {
@@ -239,9 +242,41 @@ void PFAIContainer::RegisterObject(PF_Core::WorldObjectBase* pObject, nstl::stri
 bool PFAIContainer::ScriptEffect::Create( NScene::IScene* pScene ) { (void)pScene; return false; }
 void PFAIContainer::ScriptEffect::Remove() {}
 
-bool FindQuarters( PFWorld* pWorld, NDb::EFaction faction, vector<PFQuarters*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
-bool FindMainBuildings( PFWorld* pWorld, NDb::EFaction faction, vector<PFMainBuilding*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
-bool FindShop( PFWorld* pWorld, NDb::EFaction faction, vector<PFShop*>& objects ) { (void)pWorld; (void)faction; objects.clear(); return false; }
+template<class UnitType>
+struct UnitCollectorFaction : NonCopyable
+{
+  UnitCollectorFaction( vector<UnitType*>& _objects, NDb::EFaction _faction )
+    : objects(_objects)
+    , faction(_faction)
+  {
+  }
+
+  void operator()( PFLogicObject &baseUnit )
+  {
+    CDynamicCast<UnitType> unit = &baseUnit;
+    if ( IsValid(unit) && unit->GetFaction() == faction )
+      objects.push_back(unit);
+  }
+
+  vector<UnitType*>& objects;
+  NDb::EFaction faction;
+};
+
+template<class UnitType>
+bool FindFactionObjects( PFWorld* pWorld, NDb::EFaction faction, vector<UnitType*>& objects )
+{
+  objects.clear();
+  if ( !pWorld || !pWorld->GetAIWorld() )
+    return false;
+
+  UnitCollectorFaction<UnitType> collector(objects, faction);
+  pWorld->GetAIWorld()->ForAllUnits(collector);
+  return !objects.empty();
+}
+
+bool FindQuarters( PFWorld* pWorld, NDb::EFaction faction, vector<PFQuarters*>& objects ) { return FindFactionObjects(pWorld, faction, objects); }
+bool FindMainBuildings( PFWorld* pWorld, NDb::EFaction faction, vector<PFMainBuilding*>& objects ) { return FindFactionObjects(pWorld, faction, objects); }
+bool FindShop( PFWorld* pWorld, NDb::EFaction faction, vector<PFShop*>& objects ) { return FindFactionObjects(pWorld, faction, objects); }
 
 } // namespace NWorld
 

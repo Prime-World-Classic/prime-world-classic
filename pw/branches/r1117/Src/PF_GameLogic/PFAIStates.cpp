@@ -4,22 +4,46 @@
 
 #include "PFAIStates.h"
 #include "PFAIHelper.h"
+#include "PFAIWorld.h"
+#include "PFBaseMovingUnit.h"
 #include "PFBaseUnit.h"
 #include "PFBuildings.h"
+#include "PFConsumable.h"
+#include "PFFlagpole.h"
 #include "PFMaleHero.h"
+#include "PFPickupable.h"
 
 namespace NWorld
 {
 
+namespace
+{
+  static const int LINUX_AI_MOVE_START_DELAY = 12;
+  static const int LINUX_AI_MOVE_STUCK_DELAY = 180;
+}
+
 void AIMoveToState::OnEnter()
 {
-  canCombat ? pHelper->CombatMoveTo(target) : pHelper->MoveTo(target);
+  if (pHelper)
+    canCombat ? pHelper->CombatMoveTo(target) : pHelper->MoveTo(target);
 }
 
 bool AIMoveToState::OnStep( float dt )
 {
   (void)dt;
-  return !pHelper || !IsValid(pHelper->pUnit) || pHelper->pUnit->IsPositionInRange(target, range);
+  if (!pHelper || !IsValid(pHelper->pUnit))
+    return true;
+
+  if (pHelper->pUnit->IsPositionInRange(target, range))
+    return true;
+
+  if (canCombat && pHelper->pUnit->GetCurrentTarget())
+    return false;
+
+  if (delay++ < LINUX_AI_MOVE_START_DELAY)
+    return false;
+
+  return delay >= LINUX_AI_MOVE_STUCK_DELAY && !pHelper->IsMoving();
 }
 
 AIMoveByLineState::AIMoveByLineState( const CPtr<PFBaseAIController>& pUnit, const vector<CVec2>& _road, bool _reverse, PFAIController* ctrl_ )
@@ -45,6 +69,9 @@ bool AIMoveByLineState::PushNextWaypoint()
 
 bool AIMoveByLineState::OnStep( float dt )
 {
+  if ( IsValid(ctrl) && canCombat && ctrl->TryTeleport() )
+    return false;
+
   FSMStep(dt);
   return GetCurrentState() == NULL && !PushNextWaypoint();
 }
@@ -58,20 +85,118 @@ void AIHealingState::OnLeave()
 bool AIHealingState::OnStep( float dt )
 {
   (void)dt;
-  return true;
+  const PFBaseMaleHero* pHero = pHelper ? pHelper->pUnit.GetPtr() : 0;
+  if ( !IsValid(pHero) )
+    return true;
+
+  if ( !pHelper->IsMoving() && !pHero->IsPositionInRange(pHero->GetSpawnPosition().AsVec2D(), pHero->GetObjectSize()) )
+    pHelper->MoveTo(pHero->GetSpawnPosition().AsVec2D());
+
+  float health, healthMax, mana, manaMax;
+  pHelper->GetLife(health, healthMax);
+  pHelper->GetMana(mana, manaMax);
+  return healthMax > EPS_VALUE && manaMax > EPS_VALUE && health >= healthMax * 0.99f && mana >= manaMax * 0.99f;
 }
 
 bool AIShoppingState::OnStep( float dt )
 {
   (void)dt;
+  if ( !pHelper || !IsValid(pHelper->pUnit) )
+    return true;
+
+  const NDb::ConsumablesShop* pShopInfo = IsValid(pShop) ? pShop->GetConsumablesShop() : 0;
+  if ( !pShopInfo )
+    return true;
+
+  PFBaseHero* hero = pHelper->pUnit;
+  for ( int id = 0; id < pShopInfo->items.size(); ++id )
+  {
+    const NDb::Ptr<NDb::Consumable> pConsumable = pShopInfo->items[id];
+    if ( !pConsumable || !hero->CanTakeConsumable(pConsumable, 1) || !pShop->CanBuyConsumable(hero, id) )
+      continue;
+
+    int maxCount = 0;
+    const EConsumableType type = IdentifyConsumable(pConsumable);
+    switch ( type )
+    {
+    case OBJECT_HEALING_POTION:
+      maxCount = IsValid(pHelper->pDBBots) ? pHelper->pDBBots->maxHealthPotion : 0;
+      break;
+    case OBJECT_ENERGY_POTION:
+      maxCount = IsValid(pHelper->pDBBots) ? pHelper->pDBBots->maxManaPotion : 0;
+      if ( maxCount > 0 && hero->GetDbHero() && IsValid(pHelper->pDBBots) )
+      {
+        for ( int i = 0; i < pHelper->pDBBots->doNotBuyMana.size(); ++i )
+        {
+          if ( pHelper->pDBBots->doNotBuyMana[i]->GetDBID() == hero->GetDbHero()->GetDBID() )
+          {
+            maxCount = 0;
+            break;
+          }
+        }
+      }
+      break;
+    case OBJECT_TELEPORT_SCROLL:
+    case OBJECT_UNKNOWN:
+      maxCount = 0;
+      break;
+    }
+
+    const int ownedItems = pHelper->HasConsumable(type);
+    for ( int i = ownedItems; i < maxCount; ++i )
+      pHelper->BuyConsumable(pShop, id);
+  }
   return true;
 }
 
 bool AIFlagRaisingState::OnStep( float dt )
 {
   (void)dt;
-  if (pHelper && IsValid(pFlag))
-    pHelper->RaiseFlag(pFlag);
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pFlag))
+    return true;
+  if (!pFlag->CanRaise(pHelper->pUnit->GetFaction()))
+    return true;
+  if (!pHelper->pUnit->IsPositionInRange(pFlag->GetPosition().AsVec2D(), range))
+  {
+    if (!pHelper->IsMoving())
+      pHelper->CombatMoveTo(pFlag->GetPosition().AsVec2D());
+    return false;
+  }
+  pHelper->RaiseFlag(pFlag);
+  return true;
+}
+
+void AIPickupObjectState::OnEnter()
+{
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pPickupable))
+    return;
+
+  range = pHelper->GetWorld() && pHelper->GetWorld()->GetAIWorld()
+    ? pHelper->GetWorld()->GetAIWorld()->GetAIParameters().pickupItemRange
+    : 2.0f;
+  if (!pHelper->pUnit->IsPositionInRange(pPickupable->GetPosition().AsVec2D(), range))
+    pHelper->MoveTo(pPickupable->GetPosition().AsVec2D());
+}
+
+bool AIPickupObjectState::OnStep( float dt )
+{
+  (void)dt;
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pPickupable))
+    return true;
+  if (!pPickupable->CanBePickedUpBy(pHelper->pUnit))
+    return true;
+
+  if (delay++ < LINUX_AI_MOVE_START_DELAY)
+    return false;
+
+  if (!pHelper->pUnit->IsPositionInRange(pPickupable->GetPosition().AsVec2D(), range))
+  {
+    if (!pHelper->IsMoving())
+      pHelper->MoveTo(pPickupable->GetPosition().AsVec2D());
+    return false;
+  }
+
+  pHelper->PickupObject(pPickupable);
   return true;
 }
 
@@ -85,18 +210,44 @@ bool AIUseTeleportState::OnStep( float dt )
 
 void AIUseTeleportState::OnLeave()
 {
+  if (IsValid(ctrl))
+    ctrl->GoToEnemyBase();
 }
 
 void AIGoToObjectState::OnEnter()
 {
-  if (pHelper && IsValid(pTarget))
+  if (!pHelper || !IsValid(pTarget))
+    return;
+
+  PFBaseMovingUnit* pMovingUnit = dynamic_cast<PFBaseMovingUnit*>(pTarget.GetPtr());
+  if (pMovingUnit && pHelper->GetWorld() && pHelper->GetWorld()->GetAIWorld() && IsValid(pHelper->pDBBots))
+  {
+    const float range = pHelper->GetWorld()->GetAIWorld()->GetAIParameters().followRange;
+    const float forcedRange = pHelper->pDBBots->forcedFollowRange;
+    pHelper->Follow(pTarget, range, forcedRange);
+  }
+  else
+  {
     pHelper->MoveTo(pTarget->GetPosition().AsVec2D());
+  }
 }
 
 bool AIGoToObjectState::OnStep( float dt )
 {
   (void)dt;
-  return !pHelper || !IsValid(pTarget) || !pHelper->IsMoving();
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pTarget))
+    return true;
+
+  PFShop* pShop = dynamic_cast<PFShop*>(pTarget.GetPtr());
+  if (pShop && IsValid(pHelper->pDBBots) && pHelper->pUnit->GetGold() < pHelper->pDBBots->minShoppingMoney)
+    return true;
+
+  bool finished = delay >= LINUX_AI_MOVE_STUCK_DELAY && !pHelper->IsMoving();
+  if (pHelper->pUnit->GetCurrentTarget())
+    finished = false;
+  if (delay++ < LINUX_AI_MOVE_START_DELAY)
+    finished = false;
+  return finished;
 }
 
 void AIAttackUnitState::OnEnter()
@@ -112,13 +263,36 @@ bool AIAttackUnitState::OnStep( float dt )
     return true;
   if (pTarget->IsDead() || !pHelper->pUnit->CanAttackTarget(pTarget))
     return true;
-  const float keepRange = Max(pHelper->pUnit->GetVisibilityRange(), pHelper->pUnit->GetTargetingRange()) + pTarget->GetObjectSize();
-  return fabs2(pHelper->pUnit->GetPosition().AsVec2D() - pTarget->GetPosition().AsVec2D()) > keepRange * keepRange;
+
+  if (delay++ < LINUX_AI_MOVE_START_DELAY)
+    return false;
+
+  return !pHelper->pUnit->GetCurrentTarget();
 }
 
 bool EscapeFromTowerState::OnStep( float dt )
 {
-  return AIMoveToState::OnStep(dt);
+  bool res = AIMoveToState::OnStep(dt);
+
+  if ( !pHelper || !IsValid(pHelper->pUnit) )
+    return true;
+
+  if ( IsValid(pTower) && checkTime < 0.0f )
+  {
+    if ( pHelper->pUnit->IsInRange(pTower, pTower->GetAttackRange() * 1.5f) )
+      checkTime = 1.0f;
+    else
+    {
+      pHelper->Stop();
+      return true;
+    }
+  }
+  else
+  {
+    checkTime -= dt;
+  }
+
+  return res;
 }
 
 const char *PFAIStatesEnum_ToString( const PFAIStatesEnum value )
@@ -151,6 +325,7 @@ const char *PFAIStatesEnum_ToString( const PFAIStatesEnum value )
 #include "PFTalent.h"
 #include "PFBuildings.h"
 #include "PFAIWorld.h"
+#include "PFPickupable.h"
 
 #include "PFAIStates.h"
 #include "PFAIHelper.h"
@@ -355,6 +530,38 @@ bool AIFlagRaisingState::OnStep( float dt )
     }
   }
 
+  return true;
+}
+
+void AIPickupObjectState::OnEnter()
+{
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pPickupable))
+    return;
+
+  range = pHelper->GetWorld()->GetAIWorld()->GetAIParameters().pickupItemRange;
+  if (!pHelper->pUnit->IsPositionInRange(pPickupable->GetPosition().AsVec2D(), range))
+    pHelper->MoveTo(pPickupable->GetPosition().AsVec2D());
+}
+
+bool AIPickupObjectState::OnStep( float dt )
+{
+  (void)dt;
+  if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pPickupable))
+    return true;
+  if (!pPickupable->CanBePickedUpBy(pHelper->pUnit))
+    return true;
+
+  if (delay++ < AiConst::MOVE_START_DELAY())
+    return false;
+
+  if (!pHelper->pUnit->IsPositionInRange(pPickupable->GetPosition().AsVec2D(), range))
+  {
+    if (!pHelper->IsMoving())
+      pHelper->MoveTo(pPickupable->GetPosition().AsVec2D());
+    return false;
+  }
+
+  pHelper->PickupObject(pPickupable);
   return true;
 }
 

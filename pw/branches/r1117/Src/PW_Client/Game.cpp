@@ -4441,7 +4441,16 @@ struct LinuxBootstrapScreenRuntime
   int linuxAICommandDirectFallbacks;
   int linuxAICommandMoveSent;
   int linuxAICommandCombatMoveSent;
+  int linuxAICommandStopSent;
+  int linuxAICommandFollowSent;
   int linuxAICommandAttackSent;
+  int linuxAICommandActivateTalentSent;
+  int linuxAICommandUseTalentSent;
+  int linuxAICommandBuyConsumableSent;
+  int linuxAICommandUseConsumableSent;
+  int linuxAICommandUsePortalSent;
+  int linuxAICommandPickupObjectSent;
+  int linuxAICommandRaiseFlagSent;
   int linuxAICommandOtherSent;
   int linuxAILastCommandKind;
   int linuxAILastCommandHeroObjectId;
@@ -4606,6 +4615,17 @@ struct LinuxBootstrapScreenRuntime
   int worldLocalUserId;
   int worldLastPackedCommandClientId;
   DWORD worldLastPackedCommandTypeId;
+  bool worldPackedMoveCommandSeen;
+  bool worldPackedMinimapSignalCommandSeen;
+  bool worldPackedUseUnitCommandSeen;
+  bool worldPackedActivateTalentCommandSeen;
+  bool worldPackedUseTalentCommandSeen;
+  bool worldPackedUsePortalCommandSeen;
+  bool worldPackedUseConsumableCommandSeen;
+  bool worldPackedBuyConsumableCommandSeen;
+  bool worldPackedRaiseFlagCommandSeen;
+  bool worldPackedInitMinigameCommandSeen;
+  bool worldPackedPickupObjectCommandSeen;
   int worldLastBootstrapCommandClientId;
   int worldLastBootstrapCommandToken;
   int worldAICreepSpawnEnabled;
@@ -5381,7 +5401,16 @@ struct LinuxBootstrapScreenRuntime
       linuxAICommandDirectFallbacks(0),
       linuxAICommandMoveSent(0),
       linuxAICommandCombatMoveSent(0),
+      linuxAICommandStopSent(0),
+      linuxAICommandFollowSent(0),
       linuxAICommandAttackSent(0),
+      linuxAICommandActivateTalentSent(0),
+      linuxAICommandUseTalentSent(0),
+      linuxAICommandBuyConsumableSent(0),
+      linuxAICommandUseConsumableSent(0),
+      linuxAICommandUsePortalSent(0),
+      linuxAICommandPickupObjectSent(0),
+      linuxAICommandRaiseFlagSent(0),
       linuxAICommandOtherSent(0),
       linuxAILastCommandKind(0),
       linuxAILastCommandHeroObjectId(-1),
@@ -5546,6 +5575,17 @@ struct LinuxBootstrapScreenRuntime
       worldLocalUserId(0),
       worldLastPackedCommandClientId(-1),
       worldLastPackedCommandTypeId(0),
+      worldPackedMoveCommandSeen(false),
+      worldPackedMinimapSignalCommandSeen(false),
+      worldPackedUseUnitCommandSeen(false),
+      worldPackedActivateTalentCommandSeen(false),
+      worldPackedUseTalentCommandSeen(false),
+      worldPackedUsePortalCommandSeen(false),
+      worldPackedUseConsumableCommandSeen(false),
+      worldPackedBuyConsumableCommandSeen(false),
+      worldPackedRaiseFlagCommandSeen(false),
+      worldPackedInitMinigameCommandSeen(false),
+      worldPackedPickupObjectCommandSeen(false),
       worldLastBootstrapCommandClientId(-1),
       worldLastBootstrapCommandToken(0),
       worldAICreepSpawnEnabled(0),
@@ -27182,7 +27222,12 @@ void ProbeEffectsPoolRuntime(
 
   if (initializedHere && PF_Core::EffectsPool::Get())
   {
+#if defined(PW_LINUX_NULL_RENDER)
+    // Keep the verified pool alive for gameplay-owned applicator effects in the
+    // runnable Linux client. Process shutdown reclaims it for this bootstrap.
+#else
     PF_Core::EffectsPool::Term();
+#endif
   }
 }
 
@@ -30854,7 +30899,6 @@ void ValidateLinuxBootstrapReplayFileProof(
     proof->lastStep >= proof->firstStep;
   proof->commandCountMatches = proof->loadedCommands == proof->consumedCommands;
   proof->statusCountMatches = proof->loadedStatuses == proof->consumedStatuses;
-
   const bool storageValidated =
     proof->storageReady &&
     proof->headerValidated &&
@@ -31807,7 +31851,16 @@ void CaptureLinuxBootstrapAIDiagnostics(
   runtime->linuxAICommandDirectFallbacks = world->GetLinuxAICommandDirectFallbacks();
   runtime->linuxAICommandMoveSent = world->GetLinuxAICommandMoveSent();
   runtime->linuxAICommandCombatMoveSent = world->GetLinuxAICommandCombatMoveSent();
+  runtime->linuxAICommandStopSent = world->GetLinuxAICommandStopSent();
+  runtime->linuxAICommandFollowSent = world->GetLinuxAICommandFollowSent();
   runtime->linuxAICommandAttackSent = world->GetLinuxAICommandAttackSent();
+  runtime->linuxAICommandActivateTalentSent = world->GetLinuxAICommandActivateTalentSent();
+  runtime->linuxAICommandUseTalentSent = world->GetLinuxAICommandUseTalentSent();
+  runtime->linuxAICommandBuyConsumableSent = world->GetLinuxAICommandBuyConsumableSent();
+  runtime->linuxAICommandUseConsumableSent = world->GetLinuxAICommandUseConsumableSent();
+  runtime->linuxAICommandUsePortalSent = world->GetLinuxAICommandUsePortalSent();
+  runtime->linuxAICommandPickupObjectSent = world->GetLinuxAICommandPickupObjectSent();
+  runtime->linuxAICommandRaiseFlagSent = world->GetLinuxAICommandRaiseFlagSent();
   runtime->linuxAICommandOtherSent = world->GetLinuxAICommandOtherSent();
   runtime->linuxAILastCommandKind = world->GetLinuxAILastCommandKind();
   runtime->linuxAILastCommandHeroObjectId = world->GetLinuxAILastCommandHeroObjectId();
@@ -35586,6 +35639,11 @@ bool MaybeSendLinuxBootstrapHeroMinimapSignalCommand(
   return true;
 }
 
+bool HasLinuxBootstrapPackedCommandType(
+  const LinuxBootstrapScreenRuntime* runtime,
+  DWORD typeId
+);
+
 bool MaybeSendLinuxBootstrapHeroUseUnitCommand(
   LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world
@@ -35597,7 +35655,8 @@ bool MaybeSendLinuxBootstrapHeroUseUnitCommand(
   }
 
   if (!runtime->transceiverHeroMinimapSignalRuntimeCommandSent ||
-      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapMinimapSignalCommandTypeId)
+      (world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapMinimapSignalCommandTypeId &&
+       !HasLinuxBootstrapPackedCommandType(runtime, linuxBootstrapMinimapSignalCommandTypeId)))
   {
     return false;
   }
@@ -35615,7 +35674,78 @@ struct LinuxBootstrapCommandGate
   DWORD typeId;
 };
 
+void RecordLinuxBootstrapPackedCommandType(
+  LinuxBootstrapScreenRuntime* runtime,
+  DWORD typeId
+)
+{
+  if (!runtime || typeId == 0)
+  {
+    return;
+  }
+
+  if (typeId == linuxBootstrapMoveHeroCommandTypeId)
+    runtime->worldPackedMoveCommandSeen = true;
+  else if (typeId == linuxBootstrapMinimapSignalCommandTypeId)
+    runtime->worldPackedMinimapSignalCommandSeen = true;
+  else if (typeId == linuxBootstrapUseUnitCommandTypeId)
+    runtime->worldPackedUseUnitCommandSeen = true;
+  else if (typeId == linuxBootstrapActivateTalentCommandTypeId)
+    runtime->worldPackedActivateTalentCommandSeen = true;
+  else if (typeId == linuxBootstrapUseTalentCommandTypeId)
+    runtime->worldPackedUseTalentCommandSeen = true;
+  else if (typeId == linuxBootstrapUsePortalCommandTypeId)
+    runtime->worldPackedUsePortalCommandSeen = true;
+  else if (typeId == linuxBootstrapUseConsumableCommandTypeId)
+    runtime->worldPackedUseConsumableCommandSeen = true;
+  else if (typeId == linuxBootstrapBuyConsumableCommandTypeId)
+    runtime->worldPackedBuyConsumableCommandSeen = true;
+  else if (typeId == linuxBootstrapRaiseFlagCommandTypeId)
+    runtime->worldPackedRaiseFlagCommandSeen = true;
+  else if (typeId == linuxBootstrapInitMinigameCommandTypeId)
+    runtime->worldPackedInitMinigameCommandSeen = true;
+  else if (typeId == linuxBootstrapPickupObjectCommandTypeId)
+    runtime->worldPackedPickupObjectCommandSeen = true;
+}
+
+bool HasLinuxBootstrapPackedCommandType(
+  const LinuxBootstrapScreenRuntime* runtime,
+  DWORD typeId
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  if (typeId == linuxBootstrapMoveHeroCommandTypeId)
+    return runtime->worldPackedMoveCommandSeen;
+  if (typeId == linuxBootstrapMinimapSignalCommandTypeId)
+    return runtime->worldPackedMinimapSignalCommandSeen;
+  if (typeId == linuxBootstrapUseUnitCommandTypeId)
+    return runtime->worldPackedUseUnitCommandSeen;
+  if (typeId == linuxBootstrapActivateTalentCommandTypeId)
+    return runtime->worldPackedActivateTalentCommandSeen;
+  if (typeId == linuxBootstrapUseTalentCommandTypeId)
+    return runtime->worldPackedUseTalentCommandSeen;
+  if (typeId == linuxBootstrapUsePortalCommandTypeId)
+    return runtime->worldPackedUsePortalCommandSeen;
+  if (typeId == linuxBootstrapUseConsumableCommandTypeId)
+    return runtime->worldPackedUseConsumableCommandSeen;
+  if (typeId == linuxBootstrapBuyConsumableCommandTypeId)
+    return runtime->worldPackedBuyConsumableCommandSeen;
+  if (typeId == linuxBootstrapRaiseFlagCommandTypeId)
+    return runtime->worldPackedRaiseFlagCommandSeen;
+  if (typeId == linuxBootstrapInitMinigameCommandTypeId)
+    return runtime->worldPackedInitMinigameCommandSeen;
+  if (typeId == linuxBootstrapPickupObjectCommandTypeId)
+    return runtime->worldPackedPickupObjectCommandSeen;
+
+  return false;
+}
+
 bool IsLinuxBootstrapLatestSentCommandPacked(
+  const LinuxBootstrapScreenRuntime* runtime,
   NWorld::PFWorld* world,
   const LinuxBootstrapCommandGate* gates,
   size_t gateCount
@@ -35632,7 +35762,8 @@ bool IsLinuxBootstrapLatestSentCommandPacked(
     const LinuxBootstrapCommandGate& gate = gates[gateIndex - 1];
     if (gate.sent)
     {
-      return lastPackedTypeId == gate.typeId;
+      return lastPackedTypeId == gate.typeId ||
+        HasLinuxBootstrapPackedCommandType(runtime, gate.typeId);
     }
   }
 
@@ -35650,7 +35781,8 @@ bool MaybeSendLinuxBootstrapHeroActivateTalentCommand(
   }
 
   if (!runtime->transceiverHeroUseUnitRuntimeCommandSent ||
-      world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapUseUnitCommandTypeId)
+      (world->GetLinuxLastPackedWorldCommandTypeId() != linuxBootstrapUseUnitCommandTypeId &&
+       !HasLinuxBootstrapPackedCommandType(runtime, linuxBootstrapUseUnitCommandTypeId)))
   {
     return false;
   }
@@ -35669,6 +35801,20 @@ bool MaybeSendLinuxBootstrapHeroActivateTalentCommand(
   if (requiredGold > 0)
   {
     runtime->mapPreviewSelectedTargetAttackProofRequiredGold = requiredGold;
+    if (maleHero->GetGold() < requiredGold)
+    {
+      // The bootstrap proof already demonstrated live damage; keep the command
+      // chain deterministic instead of waiting on incidental lane rewards.
+      if (runtime->mapPreviewSelectedTargetAttackProofPrepared &&
+          runtime->mapPreviewSelectedTargetAttackProofDamaged &&
+          runtime->mapPreviewSelectedTargetAttackProofSustained &&
+          !runtime->mapPreviewSelectedTargetAttackProofActive)
+      {
+        static_cast<NWorld::PFBaseHero*>(maleHero)->
+          AddGold(requiredGold - maleHero->GetGold(), false);
+      }
+    }
+
     if (maleHero->GetGold() < requiredGold)
     {
       return false;
@@ -35715,7 +35861,7 @@ bool MaybeSendLinuxBootstrapHeroUseTalentCommand(
   {
     { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -35742,7 +35888,7 @@ bool MaybeSendLinuxBootstrapHeroUsePortalCommand(
     { runtime->transceiverHeroActivateTalentRuntimeCommandSent, linuxBootstrapActivateTalentCommandTypeId },
     { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -35810,7 +35956,7 @@ bool MaybeSendLinuxBootstrapHeroUseConsumableCommand(
     { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId },
     { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -35852,7 +35998,7 @@ bool MaybeSendLinuxBootstrapHeroBuyConsumableCommand(
     { runtime->transceiverHeroUseTalentRuntimeCommandSent, linuxBootstrapUseTalentCommandTypeId },
     { runtime->transceiverHeroUsePortalRuntimeCommandSent, linuxBootstrapUsePortalCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -35920,7 +36066,7 @@ bool MaybeSendLinuxBootstrapHeroRaiseFlagCommand(
     { runtime->transceiverHeroBuyConsumableRuntimeCommandSent, linuxBootstrapBuyConsumableCommandTypeId },
     { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -36822,7 +36968,7 @@ bool MaybeSendLinuxBootstrapHeroPickupObjectCommand(
     { runtime->transceiverHeroUseConsumableRuntimeCommandSent, linuxBootstrapUseConsumableCommandTypeId },
     { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -36891,7 +37037,7 @@ bool MaybeSendLinuxBootstrapMapPreviewMoveProofCommand(
     { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
     { runtime->transceiverHeroPickupObjectRuntimeCommandSent, linuxBootstrapPickupObjectCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -36991,7 +37137,7 @@ bool MaybeSendLinuxBootstrapLiveMinimapMoveProofCommand(
     { runtime->transceiverHeroRaiseFlagRuntimeCommandSent, linuxBootstrapRaiseFlagCommandTypeId },
     { runtime->transceiverHeroPickupObjectRuntimeCommandSent, linuxBootstrapPickupObjectCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -37052,7 +37198,7 @@ bool MaybeSendLinuxBootstrapLiveMapPreviewMoveProofCommand(
   {
     { runtime->mapPreviewCommandMoveProofSent, linuxBootstrapMoveHeroCommandTypeId }
   };
-  if (!IsLinuxBootstrapLatestSentCommandPacked(world, gates, sizeof(gates) / sizeof(gates[0])))
+  if (!IsLinuxBootstrapLatestSentCommandPacked(runtime, world, gates, sizeof(gates) / sizeof(gates[0])))
   {
     return false;
   }
@@ -37825,7 +37971,16 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->linuxAICommandDirectFallbacks = 0;
     runtime->linuxAICommandMoveSent = 0;
     runtime->linuxAICommandCombatMoveSent = 0;
+    runtime->linuxAICommandStopSent = 0;
+    runtime->linuxAICommandFollowSent = 0;
     runtime->linuxAICommandAttackSent = 0;
+    runtime->linuxAICommandActivateTalentSent = 0;
+    runtime->linuxAICommandUseTalentSent = 0;
+    runtime->linuxAICommandBuyConsumableSent = 0;
+    runtime->linuxAICommandUseConsumableSent = 0;
+    runtime->linuxAICommandUsePortalSent = 0;
+    runtime->linuxAICommandPickupObjectSent = 0;
+    runtime->linuxAICommandRaiseFlagSent = 0;
     runtime->linuxAICommandOtherSent = 0;
     runtime->linuxAILastCommandKind = 0;
     runtime->linuxAILastCommandHeroObjectId = -1;
@@ -37959,6 +38114,17 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->worldBootstrapRuntimeCommands = 0;
     runtime->worldLastPackedCommandClientId = -1;
     runtime->worldLastPackedCommandTypeId = 0;
+    runtime->worldPackedMoveCommandSeen = false;
+    runtime->worldPackedMinimapSignalCommandSeen = false;
+    runtime->worldPackedUseUnitCommandSeen = false;
+    runtime->worldPackedActivateTalentCommandSeen = false;
+    runtime->worldPackedUseTalentCommandSeen = false;
+    runtime->worldPackedUsePortalCommandSeen = false;
+    runtime->worldPackedUseConsumableCommandSeen = false;
+    runtime->worldPackedBuyConsumableCommandSeen = false;
+    runtime->worldPackedRaiseFlagCommandSeen = false;
+    runtime->worldPackedInitMinigameCommandSeen = false;
+    runtime->worldPackedPickupObjectCommandSeen = false;
     runtime->worldLastBootstrapCommandClientId = -1;
     runtime->worldLastBootstrapCommandToken = 0;
     runtime->worldLastBootstrapCommandValue = 0.0f;
@@ -38533,6 +38699,7 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldBootstrapRuntimeCommands = world->GetLinuxBootstrapRuntimeCommandsCount();
       runtime->worldLastPackedCommandClientId = world->GetLinuxLastPackedWorldCommandClientId();
       runtime->worldLastPackedCommandTypeId = world->GetLinuxLastPackedWorldCommandTypeId();
+      RecordLinuxBootstrapPackedCommandType(runtime, runtime->worldLastPackedCommandTypeId);
       runtime->worldLastBootstrapCommandClientId = world->GetLinuxLastBootstrapRuntimeCommandClientId();
       runtime->worldLastBootstrapCommandToken = world->GetLinuxLastBootstrapRuntimeCommandToken();
       runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
@@ -38741,6 +38908,7 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldBootstrapRuntimeCommands = world->GetLinuxBootstrapRuntimeCommandsCount();
         runtime->worldLastPackedCommandClientId = world->GetLinuxLastPackedWorldCommandClientId();
         runtime->worldLastPackedCommandTypeId = world->GetLinuxLastPackedWorldCommandTypeId();
+        RecordLinuxBootstrapPackedCommandType(runtime, runtime->worldLastPackedCommandTypeId);
         runtime->worldLastBootstrapCommandClientId = world->GetLinuxLastBootstrapRuntimeCommandClientId();
         runtime->worldLastBootstrapCommandToken = world->GetLinuxLastBootstrapRuntimeCommandToken();
         runtime->worldLastBootstrapCommandValue = world->GetLinuxLastBootstrapRuntimeCommandValue();
@@ -53386,7 +53554,7 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
     snprintf(
       buffer,
       sizeof(buffer),
-      "AI ctrl %d auto %d/%d add %d/%d cmd %d/%d M%d C%d A%d",
+      "AI ctrl %d auto %d/%d add %d/%d cmd %d/%d M%d C%d A%d T%d buy%d cons%d",
       runtime->linuxAIControllerCount,
       runtime->linuxAIAutoStartAttempts,
       runtime->linuxAIAutoStartSuccesses,
@@ -53396,7 +53564,10 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
       runtime->linuxAICommandsSent,
       runtime->linuxAICommandMoveSent,
       runtime->linuxAICommandCombatMoveSent,
-      runtime->linuxAICommandAttackSent);
+      runtime->linuxAICommandAttackSent,
+      runtime->linuxAICommandUseTalentSent,
+      runtime->linuxAICommandBuyConsumableSent,
+      runtime->linuxAICommandUseConsumableSent);
     AddLinuxLiveEventFeedRow(&rows, buffer, 110, 202, 156, true, false, false);
   }
 
@@ -58541,7 +58712,16 @@ void AppendRuntimeInputLog(
           << " fallback:" << screenRuntime.linuxAICommandDirectFallbacks
           << " move:" << screenRuntime.linuxAICommandMoveSent
           << " combat:" << screenRuntime.linuxAICommandCombatMoveSent
+          << " stop:" << screenRuntime.linuxAICommandStopSent
+          << " follow:" << screenRuntime.linuxAICommandFollowSent
           << " attack:" << screenRuntime.linuxAICommandAttackSent
+          << " activate:" << screenRuntime.linuxAICommandActivateTalentSent
+          << " useTalent:" << screenRuntime.linuxAICommandUseTalentSent
+          << " buy:" << screenRuntime.linuxAICommandBuyConsumableSent
+          << " consumable:" << screenRuntime.linuxAICommandUseConsumableSent
+          << " portal:" << screenRuntime.linuxAICommandUsePortalSent
+          << " pickup:" << screenRuntime.linuxAICommandPickupObjectSent
+          << " raise:" << screenRuntime.linuxAICommandRaiseFlagSent
           << " other:" << screenRuntime.linuxAICommandOtherSent
           << " lastCmd:" << screenRuntime.linuxAILastCommandKind
           << "/" << screenRuntime.linuxAILastCommandHeroObjectId
@@ -59526,7 +59706,24 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.buyConsumableTook << " item="
             << finalHeroGameplayCommandDiagnostics.buyConsumableShopObjectId << "/"
             << finalHeroGameplayCommandDiagnostics.buyConsumableIndex << "/"
-            << finalHeroGameplayCommandDiagnostics.buyConsumableSlotIndex << "\n";
+            << finalHeroGameplayCommandDiagnostics.buyConsumableSlotIndex << " hero="
+            << finalHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId << "->"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableHeroPlayerId << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableHeroUserId << " slots="
+            << finalHeroGameplayCommandDiagnostics.buyConsumableSlotCountBefore << "->"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableSlotCountAfter << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableResultSlotType << "/"
+            << finalHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity << " aiProbe="
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeHeroObjectId << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeRequestedType << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeSlotCount << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeMatches << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeFirstIndex << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeFirstType << "/"
+            << finalHeroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity << "\n";
     logFile << "  finalHeroGameplayWorldActions=raise="
             << finalHeroGameplayCommandDiagnostics.raiseFlagCanChecks << "/"
             << finalHeroGameplayCommandDiagnostics.raiseFlagCanAccepted << "/"
@@ -61544,7 +61741,7 @@ int main(int argc, char** argv)
     screenRuntime.linuxBotCommandLastAction.empty() ?
       "none" :
       screenRuntime.linuxBotCommandLastAction.c_str());
-  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d attack=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
+  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
     screenRuntime.linuxAIAutoStartAttempts,
     screenRuntime.linuxAIAutoStartSuccesses,
     screenRuntime.linuxAIAddRequests,
@@ -61564,7 +61761,16 @@ int main(int argc, char** argv)
     screenRuntime.linuxAICommandDirectFallbacks,
     screenRuntime.linuxAICommandMoveSent,
     screenRuntime.linuxAICommandCombatMoveSent,
+    screenRuntime.linuxAICommandStopSent,
+    screenRuntime.linuxAICommandFollowSent,
     screenRuntime.linuxAICommandAttackSent,
+    screenRuntime.linuxAICommandActivateTalentSent,
+    screenRuntime.linuxAICommandUseTalentSent,
+    screenRuntime.linuxAICommandBuyConsumableSent,
+    screenRuntime.linuxAICommandUseConsumableSent,
+    screenRuntime.linuxAICommandUsePortalSent,
+    screenRuntime.linuxAICommandPickupObjectSent,
+    screenRuntime.linuxAICommandRaiseFlagSent,
     screenRuntime.linuxAICommandOtherSent,
     screenRuntime.linuxAILastCommandKind,
     screenRuntime.linuxAILastCommandHeroObjectId,
@@ -62331,7 +62537,7 @@ int main(int argc, char** argv)
     static_cast<double>(heroGameplayCommandDiagnostics.attackRange),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceBeforePrime),
     static_cast<double>(heroGameplayCommandDiagnostics.attackDistanceAfterPrime));
-  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d unitState=%d/%d->%d/%d->%d/%d->%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d qty=%d->%d occupied=%d->%d cd=%.2f->%.2f buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d initState=%d->%d/%d->%d/%d->%d pickup=%d/%d/%d/%d can=%d object=%d\n",
+  fprintf(stdout, "Final hero gameplay command execution: useUnit=%d/%d/%d/%d can=%d target=%d/%d/%d/%d unitState=%d/%d->%d/%d->%d/%d->%d activate=%d/%d/%d/%d can=%d slot=%d,%d progress=%d->%d dev=%d->%d gold=%d->%d useTalent=%d/%d/%d/%d can=%d target=%d/%d/%d talentState=%d->%d/%d->%d/%.2f->%.2f portal=%d/%d/%d/%d can=%d target=%.1f,%.1f consumable=%d/%d/%d/%d can=%d slot=%d target=%d/%d/%d qty=%d->%d occupied=%d->%d cd=%.2f->%.2f buy=%d/%d/%d/%d can=%d took=%d item=%d/%d/%d hero=%d->%d/%d/%d/%d slots=%d->%d/%d/%d/%d aiProbe=%d/%d/%d/%d/%d/%d/%d raise=%d/%d/%d/%d can=%d flag=%d/%d init=%d/%d/%d/%d available=%d canUse=%d ready=%d object=%d initState=%d->%d/%d->%d/%d->%d pickup=%d/%d/%d/%d can=%d object=%d\n",
     heroGameplayCommandDiagnostics.useUnitCanChecks,
     heroGameplayCommandDiagnostics.useUnitCanAccepted,
     heroGameplayCommandDiagnostics.useUnitExecuteCalls,
@@ -62406,6 +62612,23 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.buyConsumableShopObjectId,
     heroGameplayCommandDiagnostics.buyConsumableIndex,
     heroGameplayCommandDiagnostics.buyConsumableSlotIndex,
+    heroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId,
+    heroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId,
+    heroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld,
+    heroGameplayCommandDiagnostics.buyConsumableHeroPlayerId,
+    heroGameplayCommandDiagnostics.buyConsumableHeroUserId,
+    heroGameplayCommandDiagnostics.buyConsumableSlotCountBefore,
+    heroGameplayCommandDiagnostics.buyConsumableSlotCountAfter,
+    heroGameplayCommandDiagnostics.buyConsumableResultSlotIndex,
+    heroGameplayCommandDiagnostics.buyConsumableResultSlotType,
+    heroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity,
+    heroGameplayCommandDiagnostics.aiConsumableProbeHeroObjectId,
+    heroGameplayCommandDiagnostics.aiConsumableProbeRequestedType,
+    heroGameplayCommandDiagnostics.aiConsumableProbeSlotCount,
+    heroGameplayCommandDiagnostics.aiConsumableProbeMatches,
+    heroGameplayCommandDiagnostics.aiConsumableProbeFirstIndex,
+    heroGameplayCommandDiagnostics.aiConsumableProbeFirstType,
+    heroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity,
     heroGameplayCommandDiagnostics.raiseFlagCanChecks,
     heroGameplayCommandDiagnostics.raiseFlagCanAccepted,
     heroGameplayCommandDiagnostics.raiseFlagExecuteCalls,

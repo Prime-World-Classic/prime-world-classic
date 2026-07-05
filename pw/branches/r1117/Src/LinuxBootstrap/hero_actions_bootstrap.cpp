@@ -3,6 +3,7 @@
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #include "PF_GameLogic/PFHero.h"
 #include "PF_GameLogic/PFMaleHero.h"
+#include "PF_GameLogic/PFLogicObject.h"
 #include "PF_GameLogic/PFAbilityInstance.h"
 #include "PF_GameLogic/PFConsumable.h"
 #include "PF_GameLogic/PFTalent.h"
@@ -40,11 +41,22 @@ namespace NWorld
     if (outResolvedByClientId)
       *outResolvedByClientId = false;
 
-    if (IsValid(preferredHero))
-      return preferredHero;
-
     if (!world)
-      return 0;
+      return IsValid(preferredHero) ? preferredHero : 0;
+
+    if (IsValid(preferredHero))
+    {
+      PFBaseHero* liveHero =
+        dynamic_cast<PFBaseHero*>(world->FindLinuxUnitByObjectId(preferredHero->GetObjectId()));
+      if (IsValid(liveHero))
+      {
+        if (outResolvedFromWorld)
+          *outResolvedFromWorld = liveHero != preferredHero;
+        return liveHero;
+      }
+
+      return preferredHero;
+    }
 
     if (clientId > 0)
     {
@@ -103,6 +115,33 @@ namespace NWorld
     PFBaseHero* hero =
       ResolveLinuxBootstrapCommandHero(world, preferredHero, clientId, 0, 0);
     return dynamic_cast<PFBaseMaleHero*>(hero);
+  }
+
+  static int EncodeLinuxBootstrapCommandHeroSlotIndex(
+    PFBaseHero* hero,
+    int slotIndex)
+  {
+    if (slotIndex == -1 && IsValid(hero))
+      return -hero->GetObjectId() - 2;
+
+    return slotIndex;
+  }
+
+  static int DecodeLinuxBootstrapCommandHeroSlotIndex(
+    int encodedSlotIndex,
+    int* outSlotIndex)
+  {
+    if (outSlotIndex)
+      *outSlotIndex = encodedSlotIndex;
+
+    if (encodedSlotIndex < -1)
+    {
+      if (outSlotIndex)
+        *outSlotIndex = -1;
+      return -encodedSlotIndex - 2;
+    }
+
+    return -1;
   }
 
   static PFEaselPlayer* ResolveLinuxBootstrapCommandEaselPlayer(
@@ -264,6 +303,45 @@ namespace NWorld
     return -1;
   }
 
+  static AbilityTarget ResolveLinuxBootstrapAbilityTarget(
+    PFWorld* world,
+    const AbilityTarget& target,
+    PFBaseUnit* fallbackUnit = 0)
+  {
+    if (!world || !target.IsObject())
+      return target;
+
+    const int targetObjectId = GetLinuxBootstrapTargetObjectId(target);
+    if (targetObjectId < 0)
+    {
+      if (target.IsUnit() && IsValid(fallbackUnit))
+      {
+        AbilityTarget resolved = AbilityTarget(Target(fallbackUnit));
+        resolved.SetDBAlternativeTarget(target.GetDBAlternativeTarget());
+        return resolved;
+      }
+      return target;
+    }
+
+    if (target.IsUnit())
+    {
+      PFBaseUnit* liveUnit = world->FindLinuxUnitByObjectId(targetObjectId);
+      if (IsValid(liveUnit))
+      {
+        AbilityTarget resolved = AbilityTarget(Target(liveUnit));
+        resolved.SetDBAlternativeTarget(target.GetDBAlternativeTarget());
+        return resolved;
+      }
+    }
+
+    CObjectBase* liveObjectBase = world->GetObject(targetObjectId);
+    PFLogicObject* liveObject = dynamic_cast<PFLogicObject*>(liveObjectBase);
+    if (IsValid(liveObject))
+      return AbilityTarget(liveObject, target.AcquirePosition(), target.GetDBAlternativeTarget());
+
+    return target;
+  }
+
   static void CaptureLinuxBootstrapTargetUnit(
     int* objectId,
     int* kind,
@@ -346,6 +424,24 @@ namespace NWorld
   void ResetLinuxHeroGameplayCommandDiagnostics()
   {
     g_linuxHeroGameplayCommandDiagnostics = LinuxHeroGameplayCommandDiagnostics();
+  }
+
+  void RecordLinuxAIConsumableInventoryProbe(
+    PFBaseMaleHero const* hero,
+    int requestedType,
+    int slotCount,
+    int matches,
+    int firstIndex,
+    int firstType,
+    int firstQuantity)
+  {
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeHeroObjectId = hero ? hero->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeRequestedType = requestedType;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeSlotCount = slotCount;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeMatches = matches;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstIndex = firstIndex;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstType = firstType;
+    g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity = firstQuantity;
   }
 #endif
 
@@ -869,7 +965,12 @@ namespace NWorld
 #endif
     PFBaseMaleHero* hero = 0;
 #if defined(PW_LINUX_NULL_RENDER)
-    hero = ResolveLinuxBootstrapCommandMaleHero(dynamic_cast<PFWorld*>(pWorld), pHero, GetId());
+    PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
+    hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
+    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target, hero);
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetType = static_cast<int>(resolvedTarget.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetObjectId = GetLinuxBootstrapTargetObjectId(resolvedTarget);
+    g_linuxHeroGameplayCommandDiagnostics.useConsumableTargetFaction = GetLinuxBootstrapTargetFaction(resolvedTarget);
 #else
     hero = pHero;
 #endif
@@ -892,7 +993,7 @@ namespace NWorld
     {
 #if defined(PW_LINUX_NULL_RENDER)
       CObj<PFAbilityInstance> instance =
-        hero->UseConsumable(slot, target, hero->IsLocal());
+        hero->UseConsumable(slot, resolvedTarget, hero->IsLocal());
       if (instance)
         ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
 #else
@@ -947,7 +1048,8 @@ namespace NWorld
 #endif
     PFBaseMaleHero* hero = 0;
 #if defined(PW_LINUX_NULL_RENDER)
-    hero = ResolveLinuxBootstrapCommandMaleHero(dynamic_cast<PFWorld*>(pWorld), pHero, GetId());
+    PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
+    hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
 #else
     hero = pHero;
 #endif
@@ -1028,7 +1130,12 @@ namespace NWorld
 #endif
     PFBaseMaleHero* hero = 0;
 #if defined(PW_LINUX_NULL_RENDER)
-    hero = ResolveLinuxBootstrapCommandMaleHero(dynamic_cast<PFWorld*>(pWorld), pHero, GetId());
+    PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
+    hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
+    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target);
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetType = static_cast<int>(resolvedTarget.GetType());
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(resolvedTarget);
+    g_linuxHeroGameplayCommandDiagnostics.useTalentTargetFaction = GetLinuxBootstrapTargetFaction(resolvedTarget);
 #else
     hero = pHero;
 #endif
@@ -1047,7 +1154,7 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
-      CObj<PFAbilityInstance> instance = hero->UseTalent(talent, target);
+      CObj<PFAbilityInstance> instance = hero->UseTalent(talent, resolvedTarget);
       if (instance)
         ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
     }
@@ -1101,13 +1208,15 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.usePortalExecuteCalls;
-    const CVec3 portalTarget = target.AcquirePosition();
-    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetX = portalTarget.x;
-    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetY = portalTarget.y;
 #endif
     PFBaseMaleHero* hero = 0;
 #if defined(PW_LINUX_NULL_RENDER)
-    hero = ResolveLinuxBootstrapCommandMaleHero(dynamic_cast<PFWorld*>(pWorld), pHero, GetId());
+    PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
+    hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
+    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target);
+    const CVec3 portalTarget = resolvedTarget.AcquirePosition();
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetX = portalTarget.x;
+    g_linuxHeroGameplayCommandDiagnostics.usePortalTargetY = portalTarget.y;
 #else
     hero = pHero;
 #endif
@@ -1119,8 +1228,10 @@ namespace NWorld
     {
 #if defined(PW_LINUX_NULL_RENDER)
       ++g_linuxHeroGameplayCommandDiagnostics.usePortalActionAccepted;
-#endif
+      hero->UseTalent(hero->GetPortal(), resolvedTarget);
+#else
       hero->UseTalent(hero->GetPortal(), target);
+#endif
     }
   }
 
@@ -1240,7 +1351,15 @@ namespace NWorld
   {
     if (IsValid(pHero) && IsValid(pShop))
     {
+#if defined(PW_LINUX_NULL_RENDER)
+      return new CmdBuyConsumable(
+        pHero,
+        pShop,
+        index,
+        EncodeLinuxBootstrapCommandHeroSlotIndex(pHero, slotIndex));
+#else
       return new CmdBuyConsumable(pHero, pShop, index, slotIndex);
+#endif
     }
 
     NI_ALWAYS_ASSERT("Hero and shop objects must exist!");
@@ -1254,6 +1373,7 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = IsValid(pHero) ? pHero->GetObjectId() : -1;
     if (!IsValid(pHero) || !IsValid(pShop))
     {
       ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanAccepted;
@@ -1275,16 +1395,30 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = IsValid(pShop) ? pShop->GetObjectId() : -1;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = index;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = slotIndex;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableCommandHeroObjectId = IsValid(pHero) ? pHero->GetObjectId() : -1;
 #endif
     PFBaseHero* hero = 0;
     PFShop* shop = 0;
     int consumableIndex = index;
+    int commandSlotIndex = slotIndex;
 #if defined(PW_LINUX_NULL_RENDER)
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
-    hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), 0, 0);
+    bool resolvedHeroFromWorld = false;
+    const int commandHeroObjectId =
+      DecodeLinuxBootstrapCommandHeroSlotIndex(slotIndex, &commandSlotIndex);
+    if (commandHeroObjectId >= 0 && world)
+    {
+      hero = dynamic_cast<PFBaseHero*>(world->FindLinuxUnitByObjectId(commandHeroObjectId));
+      resolvedHeroFromWorld = IsValid(hero);
+    }
+    if (!IsValid(hero))
+      hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), &resolvedHeroFromWorld, 0);
     shop = pShop;
     if (!IsValid(shop) && world)
       shop = world->FindLinuxFirstShopForHero(hero, &consumableIndex);
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableLiveHeroObjectId = IsValid(hero) ? hero->GetObjectId() : -1;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableResolvedHeroFromWorld = resolvedHeroFromWorld ? 1 : 0;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotIndex = commandSlotIndex;
 #else
     hero = pHero;
     shop = pShop;
@@ -1303,6 +1437,11 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableCanBuy = 1;
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableShopObjectId = shop->GetObjectId();
     g_linuxHeroGameplayCommandDiagnostics.buyConsumableIndex = consumableIndex;
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroPlayerId = hero->GetPlayerId();
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = -1;
+    if (const PFPlayer* player = hero->GetPlayer())
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableHeroUserId = player->GetUserID();
+    g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountBefore = hero->GetSlotCount();
 #endif
 
     const NDb::Consumable* consumable = shop->GetConsumableDesc(consumableIndex);
@@ -1311,10 +1450,16 @@ namespace NWorld
       return;
     }
 
-    if (hero->TakeConsumable(consumable, 1, NDb::CONSUMABLEORIGIN_SHOP, slotIndex))
+    if (hero->TakeConsumable(consumable, 1, NDb::CONSUMABLEORIGIN_SHOP, commandSlotIndex))
     {
 #if defined(PW_LINUX_NULL_RENDER)
       g_linuxHeroGameplayCommandDiagnostics.buyConsumableTook = 1;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableSlotCountAfter = hero->GetSlotCount();
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex = commandSlotIndex >= 0 ? commandSlotIndex : hero->GetSlotCount() - 1;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotType = -1;
+      g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = 0;
+      if (PFConsumable const* pBoughtConsumable = hero->GetConsumable(g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotIndex))
+        g_linuxHeroGameplayCommandDiagnostics.buyConsumableResultSlotQuantity = pBoughtConsumable->GetQuantity();
       ++g_linuxHeroGameplayCommandDiagnostics.buyConsumableActionAccepted;
 #endif
       hero->TakeGold(hero->GetConsumableCost(consumable));

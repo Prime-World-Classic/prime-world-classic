@@ -295,7 +295,16 @@ class PFWorld : public PF_Core::World
   int linuxAICommandDirectFallbacks;
   int linuxAICommandMoveSent;
   int linuxAICommandCombatMoveSent;
+  int linuxAICommandStopSent;
+  int linuxAICommandFollowSent;
   int linuxAICommandAttackSent;
+  int linuxAICommandActivateTalentSent;
+  int linuxAICommandUseTalentSent;
+  int linuxAICommandBuyConsumableSent;
+  int linuxAICommandUseConsumableSent;
+  int linuxAICommandUsePortalSent;
+  int linuxAICommandPickupObjectSent;
+  int linuxAICommandRaiseFlagSent;
   int linuxAICommandOtherSent;
   int linuxAILastCommandKind;
   int linuxAILastCommandHeroObjectId;
@@ -478,7 +487,16 @@ public:
   int GetLinuxAICommandDirectFallbacks() const { return linuxAICommandDirectFallbacks; }
   int GetLinuxAICommandMoveSent() const { return linuxAICommandMoveSent; }
   int GetLinuxAICommandCombatMoveSent() const { return linuxAICommandCombatMoveSent; }
+  int GetLinuxAICommandStopSent() const { return linuxAICommandStopSent; }
+  int GetLinuxAICommandFollowSent() const { return linuxAICommandFollowSent; }
   int GetLinuxAICommandAttackSent() const { return linuxAICommandAttackSent; }
+  int GetLinuxAICommandActivateTalentSent() const { return linuxAICommandActivateTalentSent; }
+  int GetLinuxAICommandUseTalentSent() const { return linuxAICommandUseTalentSent; }
+  int GetLinuxAICommandBuyConsumableSent() const { return linuxAICommandBuyConsumableSent; }
+  int GetLinuxAICommandUseConsumableSent() const { return linuxAICommandUseConsumableSent; }
+  int GetLinuxAICommandUsePortalSent() const { return linuxAICommandUsePortalSent; }
+  int GetLinuxAICommandPickupObjectSent() const { return linuxAICommandPickupObjectSent; }
+  int GetLinuxAICommandRaiseFlagSent() const { return linuxAICommandRaiseFlagSent; }
   int GetLinuxAICommandOtherSent() const { return linuxAICommandOtherSent; }
   int GetLinuxAILastCommandKind() const { return linuxAILastCommandKind; }
   int GetLinuxAILastCommandHeroObjectId() const { return linuxAILastCommandHeroObjectId; }
@@ -511,9 +529,11 @@ public:
   PFShop* FindLinuxFirstShopForHero(PFBaseHero const* hero, int* outConsumableIndex);
   PFBaseUnit* FindLinuxFirstUsableUnitForHero(PFBaseHero const* hero);
   PFFlagpole* FindLinuxFirstRaisableFlagpoleForHero(PFBaseHero const* hero);
+  PFFlagpole* FindLinuxNearestRaisableFlagpoleForHero(PFBaseHero const* hero, float maxDistance);
   PFMinigamePlace* FindLinuxFirstAvailableMinigamePlaceForHero(PFBaseHero const* hero);
   PFMinigamePlace* FindLinuxFirstForeignMinigamePlaceForHero(PFBaseHero const* hero);
   PFPickupableObjectBase* FindLinuxFirstPickupableForHero(PFBaseHero const* hero);
+  PFPickupableObjectBase* FindLinuxNearestPickupableForHero(PFBaseHero const* hero, float maxDistance);
 #endif
   virtual int GetStepLength() const { return stepLength; }
   virtual float GetStepLengthInSeconds() const { return stepLengthInSeconds; }

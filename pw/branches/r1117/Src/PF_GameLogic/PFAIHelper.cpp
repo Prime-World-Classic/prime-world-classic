@@ -10,6 +10,7 @@
 #include "PFPickupable.h"
 #include "PFFlagpole.h"
 #include "PFBuildings.h"
+#include "PFConsumable.h"
 #include "HeroActions.h"
 #include "TargetSelectorHelper.hpp"
 
@@ -347,7 +348,48 @@ void PFAIHelper::RaiseFlag( PFFlagpole* pFlagpole )
 {
   SendGameCommand(CreateCmdRaiseFlag(pUnit, pFlagpole, false), PFWorld::LinuxAICommandRaiseFlag, pFlagpole);
 }
-int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex ) { (void)type; if (firstIndex) *firstIndex = -1; return 0; }
+int PFAIHelper::HasConsumable( EConsumableType type, int* firstIndex )
+{
+  if ( firstIndex )
+    *firstIndex = -1;
+
+  if ( !IsValid(pUnit) )
+  {
+    RecordLinuxAIConsumableInventoryProbe(0, static_cast<int>(type), -1, 0, -1, -1, 0);
+    return 0;
+  }
+
+  int count = 0;
+  int firstMatchIndex = -1;
+  int firstMatchType = -1;
+  int firstMatchQuantity = 0;
+  for ( int slot = 0; slot < pUnit->GetSlotCount(); ++slot )
+  {
+    PFConsumable const* pConsumable = pUnit->GetConsumable(slot);
+    const EConsumableType slotType = pConsumable ? IdentifyConsumable(pConsumable->GetDBDesc()) : OBJECT_UNKNOWN;
+    if ( !pConsumable || slotType != type )
+      continue;
+
+    if ( count == 0 && firstIndex )
+      *firstIndex = slot;
+    if ( count == 0 )
+    {
+      firstMatchIndex = slot;
+      firstMatchType = static_cast<int>(slotType);
+      firstMatchQuantity = pConsumable->GetQuantity();
+    }
+    count += pConsumable->GetQuantity();
+  }
+  RecordLinuxAIConsumableInventoryProbe(
+    pUnit,
+    static_cast<int>(type),
+    pUnit->GetSlotCount(),
+    count,
+    firstMatchIndex,
+    firstMatchType,
+    firstMatchQuantity);
+  return count;
+}
 PFBaseUnit* PFAIHelper::FindEnemyNear()
 {
   if (!IsValid(pUnit))
