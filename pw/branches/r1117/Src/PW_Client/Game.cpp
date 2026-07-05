@@ -41821,6 +41821,39 @@ bool HandleLinuxReplayInputControls(
       changed = true;
       continue;
     }
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_WHEEL &&
+        replayLayout.ready &&
+        IsPointInsideLinuxScreenRect(replayLayout.panel, message.x, message.y))
+    {
+      const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
+      if (wheelDelta > 0)
+      {
+        const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
+        runtime->replayInputPlaybackRate = newRate;
+        if (newRate != oldRate)
+        {
+          ++runtime->replayInputSpeedChangeCount;
+        }
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "mouse-wheel-speed-up";
+        changed = true;
+      }
+      else if (wheelDelta < 0)
+      {
+        const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
+        runtime->replayInputPlaybackRate = newRate;
+        if (newRate != oldRate)
+        {
+          ++runtime->replayInputSpeedChangeCount;
+        }
+        ++runtime->replayInputControlEvents;
+        runtime->replayInputControlSource = "mouse-wheel-speed-down";
+        changed = true;
+      }
+      continue;
+    }
     if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
     {
       continue;
