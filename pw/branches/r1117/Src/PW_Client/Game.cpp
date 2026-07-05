@@ -4935,6 +4935,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveEventFeedObjectiveRowsDrawn;
   bool visibleReplayControlsDrawn;
   size_t visibleReplayControlsLinesDrawn;
+  size_t visibleReplayControlsButtonsDrawn;
   bool visibleReplayProgressDrawn;
   bool mapPreviewDragging;
   bool mapPreviewPanning;
@@ -5888,6 +5889,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveEventFeedObjectiveRowsDrawn(0),
       visibleReplayControlsDrawn(false),
       visibleReplayControlsLinesDrawn(0),
+      visibleReplayControlsButtonsDrawn(0),
       visibleReplayProgressDrawn(false),
       mapPreviewDragging(false),
       mapPreviewPanning(false),
@@ -54262,6 +54264,7 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   {
     runtime->visibleReplayControlsDrawn = false;
     runtime->visibleReplayControlsLinesDrawn = 0;
+    runtime->visibleReplayControlsButtonsDrawn = 0;
     runtime->visibleReplayProgressDrawn = false;
   }
   if (!overlay || !runtime || !runtime->replayFileInputActive)
@@ -54379,6 +54382,7 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     { layout.faster, "+" },
     { layout.reset, "1x" }
   };
+  size_t buttonsDrawn = 0;
   for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i)
   {
     const ReplayButtonSpec& button = buttons[i];
@@ -54401,6 +54405,7 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
       LINUX_OPENGL_TEXT_VALIGN_CENTER,
       false
     );
+    ++buttonsDrawn;
   }
   ++linesDrawn;
 
@@ -54453,6 +54458,7 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
 
   runtime->visibleReplayControlsDrawn = true;
   runtime->visibleReplayControlsLinesDrawn = linesDrawn;
+  runtime->visibleReplayControlsButtonsDrawn = buttonsDrawn;
   runtime->visibleReplayProgressDrawn = loadedSegments > 0;
 }
 
@@ -59974,6 +59980,8 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleReplayControlsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayControlsLines="
           << screenRuntime.visibleReplayControlsLinesDrawn << "\n";
+  logFile << "  finalVisibleReplayControlsButtons="
+          << screenRuntime.visibleReplayControlsButtonsDrawn << "\n";
   logFile << "  finalVisibleReplayProgress="
           << (screenRuntime.visibleReplayProgressDrawn ? "yes" : "no") << "\n";
   WriteLinuxLiveHudStateLog(logFile, "finalLiveHero", screenRuntime.liveHeroState);
@@ -62705,9 +62713,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCommandRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn));
-  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu progress=%s\n",
+  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu buttons=%lu progress=%s\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleReplayControlsButtonsDrawn),
     screenRuntime.visibleReplayProgressDrawn ? "yes" : "no");
   fprintf(stdout, "Final live HUD state: samples=%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
     static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
