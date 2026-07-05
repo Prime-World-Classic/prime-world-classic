@@ -5045,11 +5045,15 @@ struct LinuxBootstrapScreenRuntime
   bool visibleReplayPauseButtonActive;
   bool visibleReplayResetButtonActive;
   bool visibleReplayProgressDrawn;
+  bool visibleReplayProgressHasSegments;
+  bool visibleReplayProgressOverrun;
   int visibleReplayProgressPercent;
   int visibleReplayProgressFillPixels;
+  int visibleReplayProgressBarPixels;
   size_t visibleReplayProgressConsumedSegments;
   size_t visibleReplayProgressLoadedSegments;
   size_t visibleReplayProgressRemainingSegments;
+  size_t visibleReplayProgressOverrunSegments;
   bool visibleReplayProgressComplete;
   bool mapPreviewDragging;
   bool mapPreviewPanning;
@@ -6113,11 +6117,15 @@ struct LinuxBootstrapScreenRuntime
       visibleReplayPauseButtonActive(false),
       visibleReplayResetButtonActive(false),
       visibleReplayProgressDrawn(false),
+      visibleReplayProgressHasSegments(false),
+      visibleReplayProgressOverrun(false),
       visibleReplayProgressPercent(0),
       visibleReplayProgressFillPixels(0),
+      visibleReplayProgressBarPixels(0),
       visibleReplayProgressConsumedSegments(0),
       visibleReplayProgressLoadedSegments(0),
       visibleReplayProgressRemainingSegments(0),
+      visibleReplayProgressOverrunSegments(0),
       visibleReplayProgressComplete(false),
       mapPreviewDragging(false),
       mapPreviewPanning(false),
@@ -55223,11 +55231,15 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     runtime->visibleReplayPauseButtonActive = false;
     runtime->visibleReplayResetButtonActive = false;
     runtime->visibleReplayProgressDrawn = false;
+    runtime->visibleReplayProgressHasSegments = false;
+    runtime->visibleReplayProgressOverrun = false;
     runtime->visibleReplayProgressPercent = 0;
     runtime->visibleReplayProgressFillPixels = 0;
+    runtime->visibleReplayProgressBarPixels = 0;
     runtime->visibleReplayProgressConsumedSegments = 0;
     runtime->visibleReplayProgressLoadedSegments = 0;
     runtime->visibleReplayProgressRemainingSegments = 0;
+    runtime->visibleReplayProgressOverrunSegments = 0;
     runtime->visibleReplayProgressComplete = false;
   }
   if (!overlay || !runtime || !runtime->replayFileInputActive)
@@ -55261,6 +55273,9 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   const int barH = layout.progress.height;
   const size_t consumedSegments = runtime->replayInputStepCalls;
   const size_t loadedSegments = runtime->replayInputLoadedSegments;
+  const bool progressHasSegments = loadedSegments > 0;
+  const bool progressOverrun = progressHasSegments && consumedSegments > loadedSegments;
+  const size_t overrunSegments = progressOverrun ? consumedSegments - loadedSegments : 0;
   const float progress = loadedSegments > 0 ?
     std::max(0.0f, std::min(1.0f,
       static_cast<float>(consumedSegments) / static_cast<float>(loadedSegments))) :
@@ -55449,13 +55464,17 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   runtime->visibleReplayControlsActiveButtonsDrawn = activeButtonsDrawn;
   runtime->visibleReplayPauseButtonActive = pauseButtonActive;
   runtime->visibleReplayResetButtonActive = resetButtonActive;
-  runtime->visibleReplayProgressDrawn = loadedSegments > 0;
+  runtime->visibleReplayProgressDrawn = progressHasSegments;
+  runtime->visibleReplayProgressHasSegments = progressHasSegments;
+  runtime->visibleReplayProgressOverrun = progressOverrun;
   runtime->visibleReplayProgressPercent = progressPercent;
   runtime->visibleReplayProgressFillPixels = fillW;
+  runtime->visibleReplayProgressBarPixels = barW;
   runtime->visibleReplayProgressConsumedSegments = consumedSegments;
   runtime->visibleReplayProgressLoadedSegments = loadedSegments;
   runtime->visibleReplayProgressRemainingSegments = remainingSegments;
-  runtime->visibleReplayProgressComplete = loadedSegments > 0 && consumedSegments >= loadedSegments;
+  runtime->visibleReplayProgressOverrunSegments = overrunSegments;
+  runtime->visibleReplayProgressComplete = progressHasSegments && consumedSegments >= loadedSegments;
 }
 
 std::string StripLinuxLoadingFlashMarkup(std::string value)
@@ -61256,15 +61275,23 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleReplayResetButtonActive ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayProgress="
           << (screenRuntime.visibleReplayProgressDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayProgressHasSegments="
+          << (screenRuntime.visibleReplayProgressHasSegments ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayProgressOverrun="
+          << (screenRuntime.visibleReplayProgressOverrun ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayProgressPercent="
           << screenRuntime.visibleReplayProgressPercent << "\n";
   logFile << "  finalVisibleReplayProgressFillPixels="
           << screenRuntime.visibleReplayProgressFillPixels << "\n";
+  logFile << "  finalVisibleReplayProgressBarPixels="
+          << screenRuntime.visibleReplayProgressBarPixels << "\n";
   logFile << "  finalVisibleReplayProgressSegments="
           << screenRuntime.visibleReplayProgressConsumedSegments << "/"
           << screenRuntime.visibleReplayProgressLoadedSegments << "\n";
   logFile << "  finalVisibleReplayProgressRemaining="
           << screenRuntime.visibleReplayProgressRemainingSegments << "\n";
+  logFile << "  finalVisibleReplayProgressOverrunSegments="
+          << screenRuntime.visibleReplayProgressOverrunSegments << "\n";
   logFile << "  finalVisibleReplayProgressComplete="
           << (screenRuntime.visibleReplayProgressComplete ? "yes" : "no") << "\n";
   WriteLinuxLiveHudStateLog(logFile, "finalLiveHero", screenRuntime.liveHeroState);
@@ -64106,7 +64133,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
-  fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s panel=%d,%d,%dx%d lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s percent=%d fill=%d segments=%lu/%lu remaining=%lu complete=%s lastHit=%s at=%d,%d\n",
+  fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s panel=%d,%d,%dx%d lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s available=%s percent=%d fill=%d/%d segments=%lu/%lu remaining=%lu overrun=%s/%lu complete=%s lastHit=%s at=%d,%d\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
     screenRuntime.visibleReplayControlsLayoutReady ? "yes" : "no",
     screenRuntime.visibleReplayControlsPanelX,
@@ -64119,11 +64146,15 @@ int main(int argc, char** argv)
     screenRuntime.visibleReplayPauseButtonActive ? "yes" : "no",
     screenRuntime.visibleReplayResetButtonActive ? "yes" : "no",
     screenRuntime.visibleReplayProgressDrawn ? "yes" : "no",
+    screenRuntime.visibleReplayProgressHasSegments ? "yes" : "no",
     screenRuntime.visibleReplayProgressPercent,
     screenRuntime.visibleReplayProgressFillPixels,
+    screenRuntime.visibleReplayProgressBarPixels,
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressConsumedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressLoadedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressRemainingSegments),
+    screenRuntime.visibleReplayProgressOverrun ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleReplayProgressOverrunSegments),
     screenRuntime.visibleReplayProgressComplete ? "yes" : "no",
     screenRuntime.replayInputLastControlHit.empty() ?
       "none" :
