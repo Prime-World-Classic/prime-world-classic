@@ -4645,6 +4645,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyMapSelectedRowsDrawn;
   size_t visibleLobbyGameRowsDrawn;
   size_t visibleLobbyGameSelectedRowsDrawn;
+  size_t visibleLobbyGameOpenRowsDrawn;
+  size_t visibleLobbyGameFullRowsDrawn;
   size_t visibleLobbyJoinModeButtonsDrawn;
   size_t visibleLobbyActionButtonsDrawn;
   bool visibleLobbyDetailsDrawn;
@@ -5751,6 +5753,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyMapSelectedRowsDrawn(0),
       visibleLobbyGameRowsDrawn(0),
       visibleLobbyGameSelectedRowsDrawn(0),
+      visibleLobbyGameOpenRowsDrawn(0),
+      visibleLobbyGameFullRowsDrawn(0),
       visibleLobbyJoinModeButtonsDrawn(0),
       visibleLobbyActionButtonsDrawn(0),
       visibleLobbyDetailsDrawn(false),
@@ -53153,12 +53157,22 @@ size_t DrawLinuxLobbyGameRows(
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxUiRootPreview& uiRootPreview,
   const LinuxBootstrapScreenRuntime* runtime,
-  size_t* selectedRowsDrawn
+  size_t* selectedRowsDrawn,
+  size_t* openRowsDrawn,
+  size_t* fullRowsDrawn
 )
 {
   if (selectedRowsDrawn)
   {
     *selectedRowsDrawn = 0;
+  }
+  if (openRowsDrawn)
+  {
+    *openRowsDrawn = 0;
+  }
+  if (fullRowsDrawn)
+  {
+    *fullRowsDrawn = 0;
   }
 
   const int panelX = layout.X(689);
@@ -53228,6 +53242,24 @@ size_t DrawLinuxLobbyGameRows(
 
     const bool emptyList = gameCount == 0;
     const lobby::SDevGameInfo* gameInfo = emptyList ? 0 : ResolveLinuxLobbyVisibleGameInfo(runtime, gameRow);
+    const bool fullGame =
+      gameInfo &&
+      gameInfo->maxPlayers > 0 &&
+      gameInfo->playersCount >= gameInfo->maxPlayers;
+    if (gameInfo)
+    {
+      if (fullGame)
+      {
+        if (fullRowsDrawn)
+        {
+          ++(*fullRowsDrawn);
+        }
+      }
+      else if (openRowsDrawn)
+      {
+        ++(*openRowsDrawn);
+      }
+    }
     std::string title = emptyList ? "No open games found" : overlay->lobbyText.sessionName;
     if (gameInfo && !gameInfo->name.empty())
     {
@@ -53316,6 +53348,26 @@ size_t DrawLinuxLobbyGameRows(
         layout.H(18),
         overlay->lobbyText.sessionMap,
         LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      const int statusX = rowX + layout.W(322);
+      const int statusY = rowY + layout.H(36);
+      const int statusW = layout.W(82);
+      const int statusH = layout.H(18);
+      SetOpenGlColor(fullGame ? 95 : 36, fullGame ? 53 : 88, fullGame ? 45 : 55, 205);
+      DrawOpenGlRect(statusX, statusY, statusW, statusH);
+      SetOpenGlColor(fullGame ? 206 : 134, fullGame ? 119 : 177, fullGame ? 91 : 118, 218);
+      DrawOpenGlBorderRect(statusX, statusY, statusW, statusH);
+      SetOpenGlColor(230, 225, 202, 232);
+      DrawOpenGlTextInBox(
+        overlay,
+        statusX + layout.W(4),
+        statusY,
+        std::max(1, statusW - layout.W(8)),
+        statusH,
+        fullGame ? "Full" : "Open",
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
         LINUX_OPENGL_TEXT_VALIGN_CENTER,
         false
       );
@@ -53507,8 +53559,20 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const size_t mapRowsDrawn =
     DrawLinuxLobbyMapRows(overlay, layout, mapCatalog, mapBrowserState, &selectedMapRowsDrawn);
   size_t selectedGameRowsDrawn = 0;
+  size_t openGameRowsDrawn = 0;
+  size_t fullGameRowsDrawn = 0;
   const size_t gameRowsDrawn =
-    DrawLinuxLobbyGameRows(overlay, layout, mapCatalog, mapBrowserState, uiRootPreview, runtime, &selectedGameRowsDrawn);
+    DrawLinuxLobbyGameRows(
+      overlay,
+      layout,
+      mapCatalog,
+      mapBrowserState,
+      uiRootPreview,
+      runtime,
+      &selectedGameRowsDrawn,
+      &openGameRowsDrawn,
+      &fullGameRowsDrawn
+    );
 
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
   const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
@@ -53593,6 +53657,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyMapSelectedRowsDrawn = selectedMapRowsDrawn;
     runtime->visibleLobbyGameRowsDrawn = gameRowsDrawn;
     runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
+    runtime->visibleLobbyGameOpenRowsDrawn = openGameRowsDrawn;
+    runtime->visibleLobbyGameFullRowsDrawn = fullGameRowsDrawn;
     runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
     runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
   }
@@ -60078,6 +60144,10 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyGameRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameSelectedRows="
           << screenRuntime.visibleLobbyGameSelectedRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyGameOpenRows="
+          << screenRuntime.visibleLobbyGameOpenRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyGameFullRows="
+          << screenRuntime.visibleLobbyGameFullRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyJoinModeButtons="
           << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtons="
@@ -63917,11 +63987,13 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu gameRows=%lu selectedGameRows=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameOpenRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameFullRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode));
