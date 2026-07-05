@@ -41665,6 +41665,29 @@ size_t ClampLinuxReplayInputPlaybackRate(size_t value)
   return value;
 }
 
+bool ApplyLinuxReplayInputPlaybackRate(
+  LinuxBootstrapScreenRuntime* runtime,
+  size_t requestedRate,
+  const char* source
+)
+{
+  if (!runtime)
+  {
+    return false;
+  }
+
+  const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+  const size_t newRate = ClampLinuxReplayInputPlaybackRate(requestedRate);
+  runtime->replayInputPlaybackRate = newRate;
+  if (newRate != oldRate)
+  {
+    ++runtime->replayInputSpeedChangeCount;
+  }
+  ++runtime->replayInputControlEvents;
+  runtime->replayInputControlSource = source ? source : "speed";
+  return newRate != oldRate;
+}
+
 struct LinuxReplayInputControlLayout
 {
   LinuxScreenRect panel;
@@ -41752,35 +41775,18 @@ bool ApplyLinuxReplayInputMouseControl(
   if (IsPointInsideLinuxScreenRect(layout.slower, x, y))
   {
     const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-    const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
-    runtime->replayInputPlaybackRate = newRate;
-    if (newRate != oldRate)
-    {
-      ++runtime->replayInputSpeedChangeCount;
-    }
-    ++runtime->replayInputControlEvents;
-    runtime->replayInputControlSource = "mouse-speed-down";
+    ApplyLinuxReplayInputPlaybackRate(runtime, oldRate > 1 ? oldRate / 2 : 1, "mouse-speed-down");
     return true;
   }
   if (IsPointInsideLinuxScreenRect(layout.faster, x, y))
   {
     const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-    const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
-    runtime->replayInputPlaybackRate = newRate;
-    if (newRate != oldRate)
-    {
-      ++runtime->replayInputSpeedChangeCount;
-    }
-    ++runtime->replayInputControlEvents;
-    runtime->replayInputControlSource = "mouse-speed-up";
+    ApplyLinuxReplayInputPlaybackRate(runtime, oldRate * 2, "mouse-speed-up");
     return true;
   }
   if (IsPointInsideLinuxScreenRect(layout.reset, x, y))
   {
-    runtime->replayInputPlaybackRate = 1;
-    ++runtime->replayInputSpeedChangeCount;
-    ++runtime->replayInputControlEvents;
-    runtime->replayInputControlSource = "mouse-speed-reset";
+    ApplyLinuxReplayInputPlaybackRate(runtime, 1, "mouse-speed-reset");
     return true;
   }
 
@@ -41829,27 +41835,13 @@ bool HandleLinuxReplayInputControls(
       if (wheelDelta > 0)
       {
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
-        runtime->replayInputPlaybackRate = newRate;
-        if (newRate != oldRate)
-        {
-          ++runtime->replayInputSpeedChangeCount;
-        }
-        ++runtime->replayInputControlEvents;
-        runtime->replayInputControlSource = "mouse-wheel-speed-up";
+        ApplyLinuxReplayInputPlaybackRate(runtime, oldRate * 2, "mouse-wheel-speed-up");
         changed = true;
       }
       else if (wheelDelta < 0)
       {
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
-        runtime->replayInputPlaybackRate = newRate;
-        if (newRate != oldRate)
-        {
-          ++runtime->replayInputSpeedChangeCount;
-        }
-        ++runtime->replayInputControlEvents;
-        runtime->replayInputControlSource = "mouse-wheel-speed-down";
+        ApplyLinuxReplayInputPlaybackRate(runtime, oldRate > 1 ? oldRate / 2 : 1, "mouse-wheel-speed-down");
         changed = true;
       }
       continue;
@@ -41890,14 +41882,7 @@ bool HandleLinuxReplayInputControls(
       case XK_KP_Add:
       {
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
-        runtime->replayInputPlaybackRate = newRate;
-        if (newRate != oldRate)
-        {
-          ++runtime->replayInputSpeedChangeCount;
-        }
-        ++runtime->replayInputControlEvents;
-        runtime->replayInputControlSource = "keyboard-speed-up";
+        ApplyLinuxReplayInputPlaybackRate(runtime, oldRate * 2, "keyboard-speed-up");
         changed = true;
         break;
       }
@@ -41907,24 +41892,14 @@ bool HandleLinuxReplayInputControls(
       case XK_KP_Subtract:
       {
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
-        const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
-        runtime->replayInputPlaybackRate = newRate;
-        if (newRate != oldRate)
-        {
-          ++runtime->replayInputSpeedChangeCount;
-        }
-        ++runtime->replayInputControlEvents;
-        runtime->replayInputControlSource = "keyboard-speed-down";
+        ApplyLinuxReplayInputPlaybackRate(runtime, oldRate > 1 ? oldRate / 2 : 1, "keyboard-speed-down");
         changed = true;
         break;
       }
 
       case XK_0:
       case XK_KP_0:
-        runtime->replayInputPlaybackRate = 1;
-        ++runtime->replayInputSpeedChangeCount;
-        ++runtime->replayInputControlEvents;
-        runtime->replayInputControlSource = "keyboard-speed-reset";
+        ApplyLinuxReplayInputPlaybackRate(runtime, 1, "keyboard-speed-reset");
         changed = true;
         break;
 
