@@ -4975,6 +4975,14 @@ struct LinuxBootstrapScreenRuntime
   size_t liveMinimapSelectionCount;
   float liveMinimapCommandTargetX;
   float liveMinimapCommandTargetY;
+  size_t liveMinimapProjectionAttempts;
+  size_t liveMinimapProjectionFailures;
+  bool liveMinimapLastProjectionValid;
+  int liveMinimapLastProjectionScreenX;
+  int liveMinimapLastProjectionScreenY;
+  float liveMinimapLastProjectionWorldX;
+  float liveMinimapLastProjectionWorldY;
+  std::string liveMinimapLastProjectionSource;
   bool visibleLiveScoreboardDrawn;
   size_t visibleLiveScoreboardMarkersLoaded;
   size_t visibleLiveScoreboardMarkerLimit;
@@ -6008,6 +6016,14 @@ struct LinuxBootstrapScreenRuntime
       liveMinimapSelectionCount(0),
       liveMinimapCommandTargetX(0.0f),
       liveMinimapCommandTargetY(0.0f),
+      liveMinimapProjectionAttempts(0),
+      liveMinimapProjectionFailures(0),
+      liveMinimapLastProjectionValid(false),
+      liveMinimapLastProjectionScreenX(0),
+      liveMinimapLastProjectionScreenY(0),
+      liveMinimapLastProjectionWorldX(0.0f),
+      liveMinimapLastProjectionWorldY(0.0f),
+      liveMinimapLastProjectionSource("none"),
       visibleLiveScoreboardDrawn(false),
       visibleLiveScoreboardMarkersLoaded(0),
       visibleLiveScoreboardMarkerLimit(0),
@@ -29843,6 +29859,34 @@ bool ProjectLinuxLiveMinimapScreenToWorld(
   return true;
 }
 
+void RecordLinuxLiveMinimapProjection(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* source,
+  int mouseX,
+  int mouseY,
+  bool valid,
+  float worldX,
+  float worldY
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  ++runtime->liveMinimapProjectionAttempts;
+  if (!valid)
+  {
+    ++runtime->liveMinimapProjectionFailures;
+  }
+  runtime->liveMinimapLastProjectionValid = valid;
+  runtime->liveMinimapLastProjectionScreenX = mouseX;
+  runtime->liveMinimapLastProjectionScreenY = mouseY;
+  runtime->liveMinimapLastProjectionWorldX = valid ? worldX : 0.0f;
+  runtime->liveMinimapLastProjectionWorldY = valid ? worldY : 0.0f;
+  runtime->liveMinimapLastProjectionSource = source && *source ? source : "live-minimap";
+}
+
 bool ProjectLinuxLiveMinimapWorldToScreen(
   const LinuxBootstrapScreenRuntime& runtime,
   const CVec2& worldPosition,
@@ -38344,6 +38388,14 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->liveMinimapSelectionCount = 0;
     runtime->liveMinimapCommandTargetX = 0.0f;
     runtime->liveMinimapCommandTargetY = 0.0f;
+    runtime->liveMinimapProjectionAttempts = 0;
+    runtime->liveMinimapProjectionFailures = 0;
+    runtime->liveMinimapLastProjectionValid = false;
+    runtime->liveMinimapLastProjectionScreenX = 0;
+    runtime->liveMinimapLastProjectionScreenY = 0;
+    runtime->liveMinimapLastProjectionWorldX = 0.0f;
+    runtime->liveMinimapLastProjectionWorldY = 0.0f;
+    runtime->liveMinimapLastProjectionSource = "none";
     runtime->liveMinimapLastAction = "none";
     runtime->transceiverRuntimeCommandQueuedBeforePrime = false;
     runtime->worldExecutedPackedCommands = 0;
@@ -41324,9 +41376,13 @@ bool SendLinuxLiveMinimapMoveCommandFromScreen(
     return false;
   }
 
+  const char* actionSource = source && *source ? source : "live-minimap-move";
   float targetX = 0.0f;
   float targetY = 0.0f;
-  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  const bool projected =
+    ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY);
+  RecordLinuxLiveMinimapProjection(runtime, actionSource, mouseX, mouseY, projected, targetX, targetY);
+  if (!projected)
   {
     return false;
   }
@@ -41335,7 +41391,7 @@ bool SendLinuxLiveMinimapMoveCommandFromScreen(
         runtime,
         world,
         CVec2(targetX, targetY),
-        source && *source ? source : "live-minimap-move",
+        actionSource,
         true))
   {
     return false;
@@ -41345,7 +41401,7 @@ bool SendLinuxLiveMinimapMoveCommandFromScreen(
   runtime->liveMinimapCommandTargetDrawn = true;
   runtime->liveMinimapCommandTargetX = runtime->mapPreviewCommandMoveTargetX;
   runtime->liveMinimapCommandTargetY = runtime->mapPreviewCommandMoveTargetY;
-  runtime->liveMinimapLastAction = source && *source ? source : "live-minimap-move";
+  runtime->liveMinimapLastAction = actionSource;
   return true;
 }
 
@@ -41368,7 +41424,17 @@ bool SendLinuxLiveMinimapAttackOrMoveCommandFromScreen(
 
   float targetX = 0.0f;
   float targetY = 0.0f;
-  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  const bool projected =
+    ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY);
+  RecordLinuxLiveMinimapProjection(
+    runtime,
+    "live-minimap-attack-or-move",
+    mouseX,
+    mouseY,
+    projected,
+    targetX,
+    targetY);
+  if (!projected)
   {
     return false;
   }
@@ -41455,9 +41521,13 @@ bool SendLinuxLiveMinimapSignalCommandFromScreen(
     return false;
   }
 
+  const char* actionSource = source && *source ? source : "live-minimap-signal";
   float targetX = 0.0f;
   float targetY = 0.0f;
-  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  const bool projected =
+    ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY);
+  RecordLinuxLiveMinimapProjection(runtime, actionSource, mouseX, mouseY, projected, targetX, targetY);
+  if (!projected)
   {
     return false;
   }
@@ -41498,7 +41568,7 @@ bool SendLinuxLiveMinimapSignalCommandFromScreen(
         selectedUnit,
         selectedUnit ? targetPlayerId : -1,
         selectedUnit ? targetClientId : -1,
-        source && *source ? source : "live-minimap-signal"))
+        actionSource))
   {
     (void)playerId;
     (void)clientId;
@@ -41509,7 +41579,7 @@ bool SendLinuxLiveMinimapSignalCommandFromScreen(
   runtime->liveMinimapCommandTargetDrawn = true;
   runtime->liveMinimapCommandTargetX = targetX;
   runtime->liveMinimapCommandTargetY = targetY;
-  runtime->liveMinimapLastAction = source && *source ? source : "live-minimap-signal";
+  runtime->liveMinimapLastAction = actionSource;
   (void)playerId;
   (void)clientId;
   return true;
@@ -41534,7 +41604,17 @@ bool SelectLinuxLiveMinimapTargetFromScreen(
 
   float targetX = 0.0f;
   float targetY = 0.0f;
-  if (!ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY))
+  const bool projected =
+    ProjectLinuxLiveMinimapScreenToWorld(*runtime, mouseX, mouseY, &targetX, &targetY);
+  RecordLinuxLiveMinimapProjection(
+    runtime,
+    "live-minimap-select",
+    mouseX,
+    mouseY,
+    projected,
+    targetX,
+    targetY);
+  if (!projected)
   {
     return false;
   }
@@ -60828,6 +60908,22 @@ void AppendRuntimeInputLog(
   logFile << "  finalLiveMinimapCommandTarget="
           << screenRuntime.liveMinimapCommandTargetX << ","
           << screenRuntime.liveMinimapCommandTargetY << "\n";
+  logFile << "  finalLiveMinimapProjectionAttempts="
+          << screenRuntime.liveMinimapProjectionAttempts << "\n";
+  logFile << "  finalLiveMinimapProjectionFailures="
+          << screenRuntime.liveMinimapProjectionFailures << "\n";
+  logFile << "  finalLiveMinimapLastProjectionValid="
+          << (screenRuntime.liveMinimapLastProjectionValid ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMinimapLastProjectionScreen="
+          << screenRuntime.liveMinimapLastProjectionScreenX << ","
+          << screenRuntime.liveMinimapLastProjectionScreenY << "\n";
+  logFile << "  finalLiveMinimapLastProjectionWorld="
+          << screenRuntime.liveMinimapLastProjectionWorldX << ","
+          << screenRuntime.liveMinimapLastProjectionWorldY << "\n";
+  logFile << "  finalLiveMinimapLastProjectionSource="
+          << (screenRuntime.liveMinimapLastProjectionSource.empty() ?
+              "<none>" :
+              screenRuntime.liveMinimapLastProjectionSource) << "\n";
   logFile << "  finalLiveMinimapLastAction="
           << (screenRuntime.liveMinimapLastAction.empty() ?
               "<none>" :
@@ -63681,7 +63777,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLiveMinimapLocalHeroMarkerDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no");
-  fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f marker=%s action=%s\n",
+  fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f projection=%s attempts=%lu failures=%lu screen=%d,%d world=%.1f,%.1f source=%s marker=%s action=%s\n",
     screenRuntime.liveMinimapCommandSurfaceReady ? "yes" : "no",
     screenRuntime.liveMinimapCommandProofSent ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.liveMinimapInputCount),
@@ -63691,6 +63787,16 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.liveMinimapSelectionCount),
     static_cast<double>(screenRuntime.liveMinimapCommandTargetX),
     static_cast<double>(screenRuntime.liveMinimapCommandTargetY),
+    screenRuntime.liveMinimapLastProjectionValid ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.liveMinimapProjectionAttempts),
+    static_cast<unsigned long>(screenRuntime.liveMinimapProjectionFailures),
+    screenRuntime.liveMinimapLastProjectionScreenX,
+    screenRuntime.liveMinimapLastProjectionScreenY,
+    static_cast<double>(screenRuntime.liveMinimapLastProjectionWorldX),
+    static_cast<double>(screenRuntime.liveMinimapLastProjectionWorldY),
+    screenRuntime.liveMinimapLastProjectionSource.empty() ?
+      "<none>" :
+      screenRuntime.liveMinimapLastProjectionSource.c_str(),
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
     screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
   fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu selectedTeam=%s heroMarkers=%lu towers=%lu main=%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
