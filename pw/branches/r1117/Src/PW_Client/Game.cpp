@@ -4866,8 +4866,12 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveHudBarsDrawn;
   size_t visibleLiveHudAbilitySlotsDrawn;
   size_t visibleLiveHudAbilityIconsDrawn;
+  bool visibleLiveHudAbilityFallbackIconDrawn;
+  size_t visibleLiveHudTalentSlotsAvailable;
   size_t visibleLiveHudTalentSlotsDrawn;
+  size_t visibleLiveHudTalentSlotsSkipped;
   size_t visibleLiveHudTalentIconsDrawn;
+  bool visibleLiveHudIconLimitHit;
   bool visibleLiveHudTargetPanelDrawn;
   bool liveHudCommandSurfaceReady;
   bool liveHudActivateTalentProofSent;
@@ -5866,8 +5870,12 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveHudBarsDrawn(0),
       visibleLiveHudAbilitySlotsDrawn(0),
       visibleLiveHudAbilityIconsDrawn(0),
+      visibleLiveHudAbilityFallbackIconDrawn(false),
+      visibleLiveHudTalentSlotsAvailable(0),
       visibleLiveHudTalentSlotsDrawn(0),
+      visibleLiveHudTalentSlotsSkipped(0),
       visibleLiveHudTalentIconsDrawn(0),
+      visibleLiveHudIconLimitHit(false),
       visibleLiveHudTargetPanelDrawn(false),
       liveHudCommandSurfaceReady(false),
       liveHudActivateTalentProofSent(false),
@@ -52868,8 +52876,12 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     runtime->visibleLiveHudBarsDrawn = 0;
     runtime->visibleLiveHudAbilitySlotsDrawn = 0;
     runtime->visibleLiveHudAbilityIconsDrawn = 0;
+    runtime->visibleLiveHudAbilityFallbackIconDrawn = false;
+    runtime->visibleLiveHudTalentSlotsAvailable = 0;
     runtime->visibleLiveHudTalentSlotsDrawn = 0;
+    runtime->visibleLiveHudTalentSlotsSkipped = 0;
     runtime->visibleLiveHudTalentIconsDrawn = 0;
+    runtime->visibleLiveHudIconLimitHit = false;
     runtime->visibleLiveHudTargetPanelDrawn = false;
     ClearLinuxLiveHudCommandSurface(runtime);
   }
@@ -52909,8 +52921,10 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   size_t barsDrawn = 0;
   size_t abilitySlotsDrawn = 0;
   size_t abilityIconsDrawn = 0;
+  bool abilityFallbackIconDrawn = false;
   size_t talentSlotsDrawn = 0;
   size_t talentIconsDrawn = 0;
+  bool iconLimitHit = false;
   bool portraitDrawn = false;
   bool commandHighlightDrawn = false;
 
@@ -52922,6 +52936,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   const int portraitX = panelLeft + padding;
   const int portraitY = panelTop + padding;
   const LinuxSelectedHeroDbPreview* heroPreview = renderContext.selectedHeroPreview;
+  const size_t talentSlotsAvailable = heroPreview ? heroPreview->defaultTalentPreviews.size() : 0;
   if (heroPreview)
   {
     const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
@@ -53121,6 +53136,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     {
       ++abilityIconsDrawn;
     }
+    abilityFallbackIconDrawn = iconFallbackDrawn;
     StoreLinuxLiveHudAttackCommandSurface(runtime, iconX, iconY, iconSize, iconSize);
     if (runtime->liveHudLastCommandSlot == -2)
     {
@@ -53130,12 +53146,17 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     }
     iconX += iconSize + iconGap;
   }
+  else if (heroPreview && heroPreview->attackReady)
+  {
+    iconLimitHit = true;
+  }
 
   if (heroPreview)
   {
-    for (size_t i = 0; i < heroPreview->defaultTalentPreviews.size() && iconX + iconSize <= iconLimitX; ++i)
+    size_t talentIndex = 0;
+    for (; talentIndex < heroPreview->defaultTalentPreviews.size() && iconX + iconSize <= iconLimitX; ++talentIndex)
     {
-      const LinuxHeroTalentPreview& talent = heroPreview->defaultTalentPreviews[i];
+      const LinuxHeroTalentPreview& talent = heroPreview->defaultTalentPreviews[talentIndex];
       unsigned char r = 88;
       unsigned char g = 156;
       unsigned char b = 224;
@@ -53150,7 +53171,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
         g,
         b,
         talent.locked);
-      if (i < 9)
+      if (talentIndex < 9)
       {
         SetOpenGlColor(238, 236, 218, 230);
         DrawOpenGlTextInBox(
@@ -53159,7 +53180,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
           iconY,
           iconSize,
           iconSize,
-          NStr::StrFmt("%lu", static_cast<unsigned long>(i + 1)),
+          NStr::StrFmt("%lu", static_cast<unsigned long>(talentIndex + 1)),
           LINUX_OPENGL_TEXT_ALIGN_CENTER,
           LINUX_OPENGL_TEXT_VALIGN_CENTER,
           false
@@ -53191,7 +53212,14 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       }
       iconX += iconSize + iconGap;
     }
+    if (talentIndex < heroPreview->defaultTalentPreviews.size())
+    {
+      iconLimitHit = true;
+    }
   }
+  const size_t talentSlotsSkipped = talentSlotsAvailable > talentSlotsDrawn ?
+    talentSlotsAvailable - talentSlotsDrawn :
+    0;
 
   if (hasTarget)
   {
@@ -53295,8 +53323,12 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   runtime->visibleLiveHudBarsDrawn = barsDrawn;
   runtime->visibleLiveHudAbilitySlotsDrawn = abilitySlotsDrawn;
   runtime->visibleLiveHudAbilityIconsDrawn = abilityIconsDrawn;
+  runtime->visibleLiveHudAbilityFallbackIconDrawn = abilityFallbackIconDrawn;
+  runtime->visibleLiveHudTalentSlotsAvailable = talentSlotsAvailable;
   runtime->visibleLiveHudTalentSlotsDrawn = talentSlotsDrawn;
+  runtime->visibleLiveHudTalentSlotsSkipped = talentSlotsSkipped;
   runtime->visibleLiveHudTalentIconsDrawn = talentIconsDrawn;
+  runtime->visibleLiveHudIconLimitHit = iconLimitHit;
   runtime->visibleLiveHudTargetPanelDrawn = hasTarget;
   runtime->liveHudCommandHighlightDrawn = commandHighlightDrawn;
 }
@@ -60201,10 +60233,18 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveHudAbilitySlotsDrawn << "\n";
   logFile << "  finalVisibleLiveHudAbilityIcons="
           << screenRuntime.visibleLiveHudAbilityIconsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudAbilityFallbackIcon="
+          << (screenRuntime.visibleLiveHudAbilityFallbackIconDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudTalentSlotsAvailable="
+          << screenRuntime.visibleLiveHudTalentSlotsAvailable << "\n";
   logFile << "  finalVisibleLiveHudTalentSlots="
           << screenRuntime.visibleLiveHudTalentSlotsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudTalentSlotsSkipped="
+          << screenRuntime.visibleLiveHudTalentSlotsSkipped << "\n";
   logFile << "  finalVisibleLiveHudTalentIcons="
           << screenRuntime.visibleLiveHudTalentIconsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudIconLimitHit="
+          << (screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudTargetPanel="
           << (screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudTargetSummary="
@@ -63073,14 +63113,18 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
-  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu talentSlots=%lu talentIcons=%lu target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
     screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilitySlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilityIconsDrawn),
+    screenRuntime.visibleLiveHudAbilityFallbackIconDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsAvailable),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsSkipped),
+    screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no",
     screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no",
     DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind),
     screenRuntime.liveTargetState.objectId,
