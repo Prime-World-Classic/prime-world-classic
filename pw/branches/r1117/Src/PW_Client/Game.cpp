@@ -4641,6 +4641,9 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyDetailsDrawn;
   bool visibleLobbyDetailsArtworkDrawn;
   bool visibleLobbyDetailsMinimapDrawn;
+  bool visibleLobbyDetailsMapBackDrawn;
+  bool visibleLobbyDetailsMapLogoDrawn;
+  bool visibleLobbyDetailsMapMinimapDrawn;
   size_t visibleLobbyDetailsLineupSlotsDrawn;
   size_t visibleLobbyDetailsLineupPortraitsDrawn;
   size_t visibleLobbyDetailsLineupSelectedSlotsDrawn;
@@ -5633,6 +5636,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsDrawn(false),
       visibleLobbyDetailsArtworkDrawn(false),
       visibleLobbyDetailsMinimapDrawn(false),
+      visibleLobbyDetailsMapBackDrawn(false),
+      visibleLobbyDetailsMapLogoDrawn(false),
+      visibleLobbyDetailsMapMinimapDrawn(false),
       visibleLobbyDetailsLineupSlotsDrawn(0),
       visibleLobbyDetailsLineupPortraitsDrawn(0),
       visibleLobbyDetailsLineupSelectedSlotsDrawn(0),
@@ -51685,6 +51691,9 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsDrawn = true;
     runtime->visibleLobbyDetailsArtworkDrawn = backDrawn || logoDrawn;
     runtime->visibleLobbyDetailsMinimapDrawn = minimapDrawn;
+    runtime->visibleLobbyDetailsMapBackDrawn = backDrawn;
+    runtime->visibleLobbyDetailsMapLogoDrawn = logoDrawn;
+    runtime->visibleLobbyDetailsMapMinimapDrawn = minimapDrawn;
     runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
     runtime->visibleLobbyDetailsLineupPortraitsDrawn = lineupPortraits;
     runtime->visibleLobbyDetailsLineupSelectedSlotsDrawn = lineupSelectedSlots;
@@ -58930,6 +58939,12 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsTextures="
           << screenRuntime.visibleLobbyDetailsTextureCount << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapBackDrawn="
+          << (screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapLogoDrawn="
+          << (screenRuntime.visibleLobbyDetailsMapLogoDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapMinimapDrawn="
+          << (screenRuntime.visibleLobbyDetailsMapMinimapDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupSlots="
           << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupPortraits="
@@ -62523,9 +62538,11 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu human=%lu manual=%lu fallback=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s logo=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu human=%lu manual=%lu fallback=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMapLogoDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
