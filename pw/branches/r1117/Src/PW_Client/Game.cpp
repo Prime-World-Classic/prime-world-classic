@@ -4704,6 +4704,15 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyHeroAbilitySlotsShown;
   size_t visibleLobbyHeroAbilityIconsDrawn;
   size_t visibleLobbyHeroAbilityFallbackIconsDrawn;
+  bool visibleLobbyHeroMetadataDrawn;
+  size_t visibleLobbyHeroDbAbilityCount;
+  size_t visibleLobbyHeroDbActiveAbilityCount;
+  size_t visibleLobbyHeroDbPassiveAbilityCount;
+  bool visibleLobbyHeroStatsDrawn;
+  size_t visibleLobbyHeroStatsCount;
+  size_t visibleLobbyHeroRecommendedStatCount;
+  size_t visibleLobbyHeroTalentReadyCount;
+  size_t visibleLobbyHeroTalentIconCount;
   size_t visibleLobbyHeroTalentSlotsAvailable;
   size_t visibleLobbyHeroTalentSlotsShown;
   size_t visibleLobbyHeroTalentIconsDrawn;
@@ -5841,6 +5850,15 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyHeroAbilitySlotsShown(0),
       visibleLobbyHeroAbilityIconsDrawn(0),
       visibleLobbyHeroAbilityFallbackIconsDrawn(0),
+      visibleLobbyHeroMetadataDrawn(false),
+      visibleLobbyHeroDbAbilityCount(0),
+      visibleLobbyHeroDbActiveAbilityCount(0),
+      visibleLobbyHeroDbPassiveAbilityCount(0),
+      visibleLobbyHeroStatsDrawn(false),
+      visibleLobbyHeroStatsCount(0),
+      visibleLobbyHeroRecommendedStatCount(0),
+      visibleLobbyHeroTalentReadyCount(0),
+      visibleLobbyHeroTalentIconCount(0),
       visibleLobbyHeroTalentSlotsAvailable(0),
       visibleLobbyHeroTalentSlotsShown(0),
       visibleLobbyHeroTalentIconsDrawn(0),
@@ -53053,6 +53071,15 @@ void DrawLinuxBootstrapHeroPreviewDetails(
     runtime->visibleLobbyHeroAbilitySlotsShown = abilitySlotsShown;
     runtime->visibleLobbyHeroAbilityIconsDrawn = abilityIconsDrawn;
     runtime->visibleLobbyHeroAbilityFallbackIconsDrawn = abilityFallbackIconsDrawn;
+    runtime->visibleLobbyHeroMetadataDrawn = heroPreview && heroPreview->ready;
+    runtime->visibleLobbyHeroDbAbilityCount = heroPreview ? heroPreview->abilityCount : 0;
+    runtime->visibleLobbyHeroDbActiveAbilityCount = heroPreview ? heroPreview->activeAbilityCount : 0;
+    runtime->visibleLobbyHeroDbPassiveAbilityCount = heroPreview ? heroPreview->passiveAbilityCount : 0;
+    runtime->visibleLobbyHeroStatsDrawn = heroPreview && heroPreview->statsReady;
+    runtime->visibleLobbyHeroStatsCount = heroPreview ? heroPreview->statsCount : 0;
+    runtime->visibleLobbyHeroRecommendedStatCount = heroPreview ? heroPreview->recommendedStatCount : 0;
+    runtime->visibleLobbyHeroTalentReadyCount = heroPreview ? heroPreview->defaultTalentReadyCount : 0;
+    runtime->visibleLobbyHeroTalentIconCount = heroPreview ? heroPreview->defaultTalentIconCount : 0;
     runtime->visibleLobbyHeroTalentSlotsAvailable = talentSlotsAvailable;
     runtime->visibleLobbyHeroTalentSlotsShown = talentSlotsShown;
     runtime->visibleLobbyHeroTalentIconsDrawn = talentIconsDrawn;
@@ -60607,6 +60634,19 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyHeroAbilityIconsDrawn << "\n";
   logFile << "  finalVisibleLobbyHeroAbilityFallbackIcons="
           << screenRuntime.visibleLobbyHeroAbilityFallbackIconsDrawn << "\n";
+  logFile << "  finalVisibleLobbyHeroMetadata="
+          << (screenRuntime.visibleLobbyHeroMetadataDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyHeroDbAbilities="
+          << screenRuntime.visibleLobbyHeroDbAbilityCount << "/"
+          << screenRuntime.visibleLobbyHeroDbActiveAbilityCount << "/"
+          << screenRuntime.visibleLobbyHeroDbPassiveAbilityCount << "\n";
+  logFile << "  finalVisibleLobbyHeroStats="
+          << (screenRuntime.visibleLobbyHeroStatsDrawn ? "yes" : "no") << "/"
+          << screenRuntime.visibleLobbyHeroStatsCount << "/"
+          << screenRuntime.visibleLobbyHeroRecommendedStatCount << "\n";
+  logFile << "  finalVisibleLobbyHeroTalentReady="
+          << screenRuntime.visibleLobbyHeroTalentReadyCount << "/"
+          << screenRuntime.visibleLobbyHeroTalentIconCount << "\n";
   logFile << "  finalVisibleLobbyHeroTalentSlotsAvailable="
           << screenRuntime.visibleLobbyHeroTalentSlotsAvailable << "\n";
   logFile << "  finalVisibleLobbyHeroTalentSlotsShown="
@@ -64426,7 +64466,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyLastInputY,
     screenRuntime.visibleLobbyLastBaseX,
     screenRuntime.visibleLobbyLastBaseY);
-  fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu talents=%lu/%lu shown=%lu talentMissing=%lu\n",
+  fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu dbAbilities=%s/%lu/%lu/%lu stats=%s/%lu/%lu talents=%lu/%lu shown=%lu talentMissing=%lu talentReady=%lu/%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitFallbackDrawn ? "yes" : "no",
@@ -64434,10 +64474,19 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilitySlotsAvailable),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilitySlotsShown),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilityFallbackIconsDrawn),
+    screenRuntime.visibleLobbyHeroMetadataDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroDbAbilityCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroDbActiveAbilityCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroDbPassiveAbilityCount),
+    screenRuntime.visibleLobbyHeroStatsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroStatsCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroRecommendedStatCount),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentSlotsAvailable),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentSlotsShown),
-    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsMissing));
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsMissing),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentReadyCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconCount));
   fprintf(stdout, "Final visible loading info: drawn=%s lines=%lu icons=%lu\n",
     screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
