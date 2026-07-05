@@ -4903,6 +4903,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveMinimapMarkersDrawn;
   size_t visibleLiveMinimapHeroMarkersDrawn;
   size_t visibleLiveMinimapCreepMarkersDrawn;
+  size_t visibleLiveMinimapObjectiveMarkersDrawn;
   size_t visibleLiveMinimapMovingMarkersDrawn;
   bool visibleLiveMinimapTargetMarkerDrawn;
   bool visibleLiveMinimapCommandMarkerDrawn;
@@ -5857,6 +5858,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveMinimapMarkersDrawn(0),
       visibleLiveMinimapHeroMarkersDrawn(0),
       visibleLiveMinimapCreepMarkersDrawn(0),
+      visibleLiveMinimapObjectiveMarkersDrawn(0),
       visibleLiveMinimapMovingMarkersDrawn(0),
       visibleLiveMinimapTargetMarkerDrawn(false),
       visibleLiveMinimapCommandMarkerDrawn(false),
@@ -53130,6 +53132,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLiveMinimapMarkersDrawn = 0;
     runtime->visibleLiveMinimapHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapCreepMarkersDrawn = 0;
+    runtime->visibleLiveMinimapObjectiveMarkersDrawn = 0;
     runtime->visibleLiveMinimapMovingMarkersDrawn = 0;
     runtime->visibleLiveMinimapTargetMarkerDrawn = false;
     runtime->visibleLiveMinimapCommandMarkerDrawn = false;
@@ -53429,6 +53432,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   runtime->visibleLiveMinimapMarkersDrawn = markerCount;
   runtime->visibleLiveMinimapHeroMarkersDrawn = heroCount;
   runtime->visibleLiveMinimapCreepMarkersDrawn = creepCount;
+  runtime->visibleLiveMinimapObjectiveMarkersDrawn = objectiveCount;
   runtime->visibleLiveMinimapMovingMarkersDrawn = movingCount;
   runtime->visibleLiveMinimapTargetMarkerDrawn = targetDrawn;
   runtime->visibleLiveMinimapCommandMarkerDrawn = commandMarkerDrawn;
@@ -59929,6 +59933,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveMinimapHeroMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapCreepMarkers="
           << screenRuntime.visibleLiveMinimapCreepMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapObjectiveMarkers="
+          << screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapMovingMarkers="
           << screenRuntime.visibleLiveMinimapMovingMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapTargetMarker="
@@ -62681,12 +62687,13 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
-  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu creeps=%lu moving=%lu target=%s\n",
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu creeps=%lu objectives=%lu moving=%lu target=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapCreepMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMovingMarkersDrawn),
     screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no");
   fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f marker=%s action=%s\n",
