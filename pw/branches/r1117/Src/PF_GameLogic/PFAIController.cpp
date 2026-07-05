@@ -276,7 +276,7 @@ void PFAIController::SetLine( int num, int shift )
 
 void PFAIController::WalkByRoad( bool backToBase )
 {
-  if (road.empty())
+  if ( !IsValid(GetHero()) || ( GetHero()->IsMounted() && !GetHero()->CanControlMount() ) || road.empty() )
     return;
   PushState(new AIMoveByLineState(this, road, backToBase, this));
 }
@@ -288,13 +288,16 @@ void PFAIController::GoToEnemyBase()
 
 void PFAIController::GoToSpawnPos()
 {
-  if (IsValid(GetHero()))
-    PushState(new AIMoveToState(this, GetHero()->GetSpawnPosition().AsVec2D(), GetHero()->GetObjectSize()));
+  if ( !IsValid(GetHero()) || ( GetHero()->IsMounted() && !GetHero()->CanControlMount() ) )
+    return;
+
+  PushState(new AIMoveToState(this, GetHero()->GetSpawnPosition().AsVec2D(), GetHero()->GetObjectSize()));
 }
 
 void PFAIController::GoToShop()
 {
-  if ( !IsValid(GetHero()) || !IsValid(GetHelper().pDBBots) || GetHero()->GetGold() < GetHelper().pDBBots->minShoppingMoney )
+  if ( !IsValid(GetHero()) || ( GetHero()->IsMounted() && !GetHero()->CanControlMount() ) ||
+       !IsValid(GetHelper().pDBBots) || GetHero()->GetGold() < GetHelper().pDBBots->minShoppingMoney )
     return;
 
   vector<PFShop*> shops;
@@ -962,13 +965,16 @@ bool PFAIController::TryLinuxTowerProof()
 
 void PFAIController::OnDie()
 {
+  Cleanup();
   healing = HEAL_NONE;
+  healingTick = 0;
   isRespawned = false;
 }
 
 void PFAIController::OnRespawn()
 {
   isRespawned = true;
+  GoToShop();
 }
 
 void PFAIController::Step( float timeDelta )
@@ -1006,9 +1012,11 @@ void PFAIController::Step( float timeDelta )
     initialRouteIssued = true;
   }
 
-  ProcessHealing();
+  FsmStep(timeDelta);
+
   ActivateTalents();
   UseTalents();
+  ProcessHealing();
   const bool consumableProofActive = TryLinuxConsumableProof();
   const bool interactionProofActive = !consumableProofActive && TryLinuxInteractionProof();
   const bool towerProofActive = !consumableProofActive && !interactionProofActive && TryLinuxTowerProof();
@@ -1033,7 +1041,6 @@ void PFAIController::Step( float timeDelta )
       CheckWarFront(timeDelta);
     }
   }
-  FsmStep(timeDelta);
 }
 
 void PFAIController::OnBecameIdle()
