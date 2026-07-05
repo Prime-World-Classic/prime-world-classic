@@ -4936,6 +4936,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveEventFeedCommandRowsDrawn;
   size_t visibleLiveEventFeedCombatRowsDrawn;
   size_t visibleLiveEventFeedObjectiveRowsDrawn;
+  size_t visibleLiveEventFeedObjectiveMarkersDrawn;
   bool visibleReplayControlsDrawn;
   size_t visibleReplayControlsLinesDrawn;
   size_t visibleReplayControlsButtonsDrawn;
@@ -5893,6 +5894,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveEventFeedCommandRowsDrawn(0),
       visibleLiveEventFeedCombatRowsDrawn(0),
       visibleLiveEventFeedObjectiveRowsDrawn(0),
+      visibleLiveEventFeedObjectiveMarkersDrawn(0),
       visibleReplayControlsDrawn(false),
       visibleReplayControlsLinesDrawn(0),
       visibleReplayControlsButtonsDrawn(0),
@@ -53884,6 +53886,7 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLiveEventFeedCommandRowsDrawn = 0;
     runtime->visibleLiveEventFeedCombatRowsDrawn = 0;
     runtime->visibleLiveEventFeedObjectiveRowsDrawn = 0;
+    runtime->visibleLiveEventFeedObjectiveMarkersDrawn = 0;
   }
   if (!overlay || !runtime || !runtime->liveHeroState.ready)
   {
@@ -54139,15 +54142,29 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
     AddLinuxLiveEventFeedRow(&rows, buffer, 214, 216, 205, false, true, false);
   }
 
+  size_t eventFeedTowerMarkers = runtime->visibleLiveScoreboardTowerMarkersDrawn;
+  size_t eventFeedMainBuildingMarkers =
+    runtime->visibleLiveScoreboardMainBuildingMarkersDrawn;
+  if (eventFeedTowerMarkers == 0)
+  {
+    eventFeedTowerMarkers = runtime->worldTowerObjects;
+  }
+  if (eventFeedMainBuildingMarkers == 0)
+  {
+    eventFeedMainBuildingMarkers = runtime->worldMainBuildingObjects;
+  }
+  const size_t eventFeedObjectiveMarkers =
+    eventFeedTowerMarkers + eventFeedMainBuildingMarkers;
   snprintf(
     buffer,
     sizeof(buffer),
-    "World H%lu C%lu N%lu towers %lu main %lu",
+    "World H%lu C%lu N%lu O%lu T%lu M%lu",
     static_cast<unsigned long>(runtime->mapPreviewDynamicHeroMarkers),
     static_cast<unsigned long>(runtime->mapPreviewDynamicCommonCreepMarkers),
     static_cast<unsigned long>(runtime->mapPreviewDynamicNeutralCreepMarkers),
-    static_cast<unsigned long>(runtime->worldTowerObjects),
-    static_cast<unsigned long>(runtime->worldMainBuildingObjects));
+    static_cast<unsigned long>(eventFeedObjectiveMarkers),
+    static_cast<unsigned long>(eventFeedTowerMarkers),
+    static_cast<unsigned long>(eventFeedMainBuildingMarkers));
   AddLinuxLiveEventFeedRow(&rows, buffer, 126, 198, 135, false, false, true);
 
   if (runtime->mapPreviewCommandActionTargetDrawn)
@@ -54266,6 +54283,7 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
   runtime->visibleLiveEventFeedCommandRowsDrawn = commandRows;
   runtime->visibleLiveEventFeedCombatRowsDrawn = combatRows;
   runtime->visibleLiveEventFeedObjectiveRowsDrawn = objectiveRows;
+  runtime->visibleLiveEventFeedObjectiveMarkersDrawn = eventFeedObjectiveMarkers;
 }
 
 void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& renderContext)
@@ -59994,6 +60012,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveEventFeedCombatRowsDrawn << "\n";
   logFile << "  finalVisibleLiveEventFeedObjectiveRows="
           << screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn << "\n";
+  logFile << "  finalVisibleLiveEventFeedObjectiveMarkers="
+          << screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn << "\n";
   logFile << "  finalVisibleReplayControlsDrawn="
           << (screenRuntime.visibleReplayControlsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayControlsLines="
@@ -62728,12 +62748,13 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardCommandLinesDrawn));
-  fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu command=%lu combat=%lu objective=%lu\n",
+  fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu command=%lu combat=%lu objective=%lu objectiveMarkers=%lu\n",
     screenRuntime.visibleLiveEventFeedDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCommandRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
   fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu buttons=%lu progress=%s\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
