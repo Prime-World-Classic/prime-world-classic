@@ -156,6 +156,8 @@ bool AIFlagRaisingState::OnStep( float dt )
     return true;
   if (!pFlag->CanRaise(pHelper->pUnit->GetFaction()))
     return true;
+  if (IsValid(pHelper->FindEnemyNear()))
+    return true;
   if (!pHelper->pUnit->IsPositionInRange(pFlag->GetPosition().AsVec2D(), range))
   {
     if (!pHelper->IsMoving())
@@ -184,6 +186,8 @@ bool AIPickupObjectState::OnStep( float dt )
   if (!pHelper || !IsValid(pHelper->pUnit) || !IsValid(pPickupable))
     return true;
   if (!pPickupable->CanBePickedUpBy(pHelper->pUnit))
+    return true;
+  if (IsValid(pHelper->FindEnemyNear()))
     return true;
 
   if (delay++ < LINUX_AI_MOVE_START_DELAY)

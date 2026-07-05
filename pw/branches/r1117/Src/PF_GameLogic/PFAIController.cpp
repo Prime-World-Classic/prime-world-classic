@@ -776,6 +776,10 @@ bool PFAIController::TryPickupObject()
     return false;
   }
 
+  PFBaseUnit* enemy = GetHelper().FindEnemyNear();
+  if ( IsValid(enemy) )
+    return false;
+
   const float pickupSearchRange = Max(GetHero()->GetVisibilityRange(), GetHero()->GetTargetingRange());
   PFPickupableObjectBase* pickupable = GetHero()->GetWorld()->FindLinuxNearestPickupableForHero(GetHero(), pickupSearchRange);
   if ( !IsValid(pickupable) )
