@@ -4875,6 +4875,12 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveHudTalentIconsDrawn;
   bool visibleLiveHudIconLimitHit;
   bool visibleLiveHudTargetPanelDrawn;
+  int visibleLiveHudHeroHealthPercent;
+  bool visibleLiveHudHeroMoving;
+  bool visibleLiveHudHeroDead;
+  int visibleLiveHudTargetHealthPercent;
+  bool visibleLiveHudTargetMoving;
+  bool visibleLiveHudTargetDead;
   bool liveHudCommandSurfaceReady;
   bool liveHudActivateTalentProofSent;
   bool liveHudCommandHighlightDrawn;
@@ -5890,6 +5896,12 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveHudTalentIconsDrawn(0),
       visibleLiveHudIconLimitHit(false),
       visibleLiveHudTargetPanelDrawn(false),
+      visibleLiveHudHeroHealthPercent(0),
+      visibleLiveHudHeroMoving(false),
+      visibleLiveHudHeroDead(false),
+      visibleLiveHudTargetHealthPercent(0),
+      visibleLiveHudTargetMoving(false),
+      visibleLiveHudTargetDead(false),
       liveHudCommandSurfaceReady(false),
       liveHudActivateTalentProofSent(false),
       liveHudCommandHighlightDrawn(false),
@@ -52907,6 +52919,12 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     runtime->visibleLiveHudTalentIconsDrawn = 0;
     runtime->visibleLiveHudIconLimitHit = false;
     runtime->visibleLiveHudTargetPanelDrawn = false;
+    runtime->visibleLiveHudHeroHealthPercent = 0;
+    runtime->visibleLiveHudHeroMoving = false;
+    runtime->visibleLiveHudHeroDead = false;
+    runtime->visibleLiveHudTargetHealthPercent = 0;
+    runtime->visibleLiveHudTargetMoving = false;
+    runtime->visibleLiveHudTargetDead = false;
     ClearLinuxLiveHudCommandSurface(runtime);
   }
   if (!overlay || !runtime || !runtime->liveHeroState.ready)
@@ -53361,6 +53379,15 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   runtime->visibleLiveHudTalentIconsDrawn = talentIconsDrawn;
   runtime->visibleLiveHudIconLimitHit = iconLimitHit;
   runtime->visibleLiveHudTargetPanelDrawn = hasTarget;
+  runtime->visibleLiveHudHeroHealthPercent =
+    static_cast<int>(std::max(0.0f, std::min(1.0f, hero.lifePercent)) * 100.0f + 0.5f);
+  runtime->visibleLiveHudHeroMoving = hero.moving;
+  runtime->visibleLiveHudHeroDead = hero.dead;
+  runtime->visibleLiveHudTargetHealthPercent = hasTarget ?
+    static_cast<int>(std::max(0.0f, std::min(1.0f, target.lifePercent)) * 100.0f + 0.5f) :
+    0;
+  runtime->visibleLiveHudTargetMoving = hasTarget && target.moving;
+  runtime->visibleLiveHudTargetDead = hasTarget && target.dead;
   runtime->liveHudCommandHighlightDrawn = commandHighlightDrawn;
 }
 
@@ -60319,6 +60346,18 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudTargetPanel="
           << (screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudHeroHealthPercent="
+          << screenRuntime.visibleLiveHudHeroHealthPercent << "\n";
+  logFile << "  finalVisibleLiveHudHeroMoving="
+          << (screenRuntime.visibleLiveHudHeroMoving ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudHeroDead="
+          << (screenRuntime.visibleLiveHudHeroDead ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudTargetHealthPercent="
+          << screenRuntime.visibleLiveHudTargetHealthPercent << "\n";
+  logFile << "  finalVisibleLiveHudTargetMoving="
+          << (screenRuntime.visibleLiveHudTargetMoving ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudTargetDead="
+          << (screenRuntime.visibleLiveHudTargetDead ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudTargetSummary="
           << (screenRuntime.liveTargetState.ready ? "yes" : "no")
           << "/" << DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind)
@@ -63203,12 +63242,15 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
-  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu heroBars=%lu targetBars=%lu abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu heroBars=%lu targetBars=%lu heroHp=%d heroMoving=%s heroDead=%s abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetHp=%d targetMoving=%s targetDead=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
     screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudHeroBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTargetBarsDrawn),
+    screenRuntime.visibleLiveHudHeroHealthPercent,
+    screenRuntime.visibleLiveHudHeroMoving ? "yes" : "no",
+    screenRuntime.visibleLiveHudHeroDead ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilitySlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilityIconsDrawn),
     screenRuntime.visibleLiveHudAbilityFallbackIconDrawn ? "yes" : "no",
@@ -63218,6 +63260,9 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsSkipped),
     screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no",
     screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no",
+    screenRuntime.visibleLiveHudTargetHealthPercent,
+    screenRuntime.visibleLiveHudTargetMoving ? "yes" : "no",
+    screenRuntime.visibleLiveHudTargetDead ? "yes" : "no",
     DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind),
     screenRuntime.liveTargetState.objectId,
     screenRuntime.liveTargetState.faction,
