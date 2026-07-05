@@ -4922,6 +4922,9 @@ struct LinuxBootstrapScreenRuntime
   int liveHudTalentLevel[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
   int liveHudTalentSlot[LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS];
   int liveHudLastCommandSlot;
+  int liveHudLastInputX;
+  int liveHudLastInputY;
+  int liveHudLastInputSlot;
   bool liveHotkeyCommandProofSent;
   size_t liveHotkeyInputCount;
   size_t liveHotkeyStopCommandsSent;
@@ -5080,6 +5083,7 @@ struct LinuxBootstrapScreenRuntime
   std::string mapPreviewCommandActionSource;
   std::string mapPreviewSelectedTargetSource;
   std::string liveHudLastAction;
+  std::string liveHudLastHitSurface;
   std::string liveHotkeyLastAction;
   std::string liveMapPreviewLastAction;
   std::string liveMinimapLastAction;
@@ -5994,6 +5998,9 @@ struct LinuxBootstrapScreenRuntime
       liveHudTargetHeight(0),
       liveHudTalentCommandSlots(0),
       liveHudLastCommandSlot(-1),
+      liveHudLastInputX(-1),
+      liveHudLastInputY(-1),
+      liveHudLastInputSlot(-1),
       liveHotkeyCommandProofSent(false),
       liveHotkeyInputCount(0),
       liveHotkeyStopCommandsSent(0),
@@ -6150,6 +6157,7 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewCommandActionSource("none"),
       mapPreviewSelectedTargetSource("none"),
       liveHudLastAction("none"),
+      liveHudLastHitSurface("none"),
       liveHotkeyLastAction("none"),
       liveMapPreviewLastAction("none"),
       liveMinimapLastAction("none"),
@@ -29595,7 +29603,11 @@ void ResetLinuxLiveHudCommandRuntime(LinuxBootstrapScreenRuntime* runtime)
   runtime->liveHudUseTalentCommandsSent = 0;
   runtime->liveHudFollowCommandsSent = 0;
   runtime->liveHudLastCommandSlot = -1;
+  runtime->liveHudLastInputX = -1;
+  runtime->liveHudLastInputY = -1;
+  runtime->liveHudLastInputSlot = -1;
   runtime->liveHudLastAction = "none";
+  runtime->liveHudLastHitSurface = "none";
 }
 
 void ResetLinuxLiveHotkeyCommandRuntime(LinuxBootstrapScreenRuntime* runtime)
@@ -29734,6 +29746,69 @@ int FindLinuxLiveHudTalentCommandSlot(
   }
 
   return -1;
+}
+
+const char* DescribeLinuxLiveHudCommandHitSurface(
+  const LinuxBootstrapScreenRuntime* runtime,
+  int x,
+  int y,
+  int* talentSlotIndex
+)
+{
+  const int talentSlot = FindLinuxLiveHudTalentCommandSlot(runtime, x, y);
+  if (talentSlotIndex)
+  {
+    *talentSlotIndex = talentSlot;
+  }
+  if (talentSlot >= 0)
+  {
+    return "talent";
+  }
+  if (!runtime || !runtime->liveHudCommandSurfaceReady)
+  {
+    return "none";
+  }
+  if (IsPointInsideLinuxRectValues(
+        runtime->liveHudAttackX,
+        runtime->liveHudAttackY,
+        runtime->liveHudAttackWidth,
+        runtime->liveHudAttackHeight,
+        x,
+        y))
+  {
+    return "attack";
+  }
+  if (IsPointInsideLinuxRectValues(
+        runtime->liveHudTargetX,
+        runtime->liveHudTargetY,
+        runtime->liveHudTargetWidth,
+        runtime->liveHudTargetHeight,
+        x,
+        y))
+  {
+    return "target";
+  }
+
+  return "none";
+}
+
+void RecordLinuxLiveHudCommandHit(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* surface,
+  int x,
+  int y,
+  int slot
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveHudLastHitSurface = surface && *surface ? surface : "none";
+  runtime->liveHudLastInputX = x;
+  runtime->liveHudLastInputY = y;
+  runtime->liveHudLastInputSlot = slot;
 }
 
 bool IsPointInsideLinuxLiveHudCommandSurface(
@@ -40500,8 +40575,19 @@ bool HandleLinuxLiveHudInputMessage(
     return false;
   }
 
-  const int talentSlotIndex =
-    FindLinuxLiveHudTalentCommandSlot(runtime, message.x, message.y);
+  int talentSlotIndex = -1;
+  const char* hitSurface =
+    DescribeLinuxLiveHudCommandHitSurface(
+      runtime,
+      message.x,
+      message.y,
+      &talentSlotIndex);
+  RecordLinuxLiveHudCommandHit(
+    runtime,
+    hitSurface,
+    message.x,
+    message.y,
+    talentSlotIndex);
   const bool attackSlot =
     IsPointInsideLinuxRectValues(
       runtime->liveHudAttackX,
@@ -61034,6 +61120,15 @@ void AppendRuntimeInputLog(
           << screenRuntime.liveHudFollowCommandsSent << "\n";
   logFile << "  finalLiveHudTalentCommandSlots="
           << screenRuntime.liveHudTalentCommandSlots << "\n";
+  logFile << "  finalLiveHudLastHitSurface="
+          << (screenRuntime.liveHudLastHitSurface.empty() ?
+              "none" :
+              screenRuntime.liveHudLastHitSurface) << "\n";
+  logFile << "  finalLiveHudLastInputPoint="
+          << screenRuntime.liveHudLastInputX << ","
+          << screenRuntime.liveHudLastInputY << "\n";
+  logFile << "  finalLiveHudLastInputSlot="
+          << screenRuntime.liveHudLastInputSlot << "\n";
   logFile << "  finalLiveHudLastAction="
           << (screenRuntime.liveHudLastAction.empty() ?
               "<none>" :
@@ -64005,7 +64100,7 @@ int main(int argc, char** argv)
     screenRuntime.liveTargetState.faction,
     screenRuntime.liveTargetState.playerId,
     static_cast<double>(screenRuntime.liveTargetState.distance));
-  fprintf(stdout, "Final live HUD commands: surface=%s proof=%s highlight=%s input=%lu attack=%lu useUnit=%lu activate=%lu talent=%lu follow=%lu slots=%lu action=%s\n",
+  fprintf(stdout, "Final live HUD commands: surface=%s proof=%s highlight=%s input=%lu attack=%lu useUnit=%lu activate=%lu talent=%lu follow=%lu slots=%lu lastHit=%s at=%d,%d slot=%d action=%s\n",
     screenRuntime.liveHudCommandSurfaceReady ? "yes" : "no",
     screenRuntime.liveHudActivateTalentProofSent ? "yes" : "no",
     screenRuntime.liveHudCommandHighlightDrawn ? "yes" : "no",
@@ -64016,6 +64111,12 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.liveHudUseTalentCommandsSent),
     static_cast<unsigned long>(screenRuntime.liveHudFollowCommandsSent),
     static_cast<unsigned long>(screenRuntime.liveHudTalentCommandSlots),
+    screenRuntime.liveHudLastHitSurface.empty() ?
+      "none" :
+      screenRuntime.liveHudLastHitSurface.c_str(),
+    screenRuntime.liveHudLastInputX,
+    screenRuntime.liveHudLastInputY,
+    screenRuntime.liveHudLastInputSlot,
     screenRuntime.liveHudLastAction.empty() ? "<none>" : screenRuntime.liveHudLastAction.c_str());
   fprintf(stdout, "Final live hotkey commands: ready=%s proof=%s input=%lu stop=%lu attack=%lu follow=%lu hold=%lu cancel=%lu activate=%lu talent=%lu useUnit=%lu consumable=%lu action=%s\n",
     screenRuntime.liveHeroState.ready ? "yes" : "no",
