@@ -4881,6 +4881,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveHudTalentIconsDrawn;
   bool visibleLiveHudIconLimitHit;
   bool visibleLiveHudTargetPanelDrawn;
+  bool visibleLiveHudTargetRelationBadgeDrawn;
   int visibleLiveHudHeroHealthPercent;
   bool visibleLiveHudHeroMoving;
   bool visibleLiveHudHeroDead;
@@ -5913,6 +5914,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveHudTalentIconsDrawn(0),
       visibleLiveHudIconLimitHit(false),
       visibleLiveHudTargetPanelDrawn(false),
+      visibleLiveHudTargetRelationBadgeDrawn(false),
       visibleLiveHudHeroHealthPercent(0),
       visibleLiveHudHeroMoving(false),
       visibleLiveHudHeroDead(false),
@@ -53013,6 +53015,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     runtime->visibleLiveHudTalentIconsDrawn = 0;
     runtime->visibleLiveHudIconLimitHit = false;
     runtime->visibleLiveHudTargetPanelDrawn = false;
+    runtime->visibleLiveHudTargetRelationBadgeDrawn = false;
     runtime->visibleLiveHudHeroHealthPercent = 0;
     runtime->visibleLiveHudHeroMoving = false;
     runtime->visibleLiveHudHeroDead = false;
@@ -53378,6 +53381,37 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       commandHighlightDrawn = true;
     }
 
+    const bool sameFaction = target.faction == hero.faction;
+    const int relationBadgeW = std::max(46, std::min(62, targetPanelWidth / 3));
+    const int relationBadgeH = 16;
+    const int relationBadgeX = targetX + targetPanelWidth - relationBadgeW - 8;
+    const int relationBadgeY = targetY + 7;
+    if (sameFaction)
+    {
+      SetOpenGlColor(30, 82, 62, 224);
+      DrawOpenGlRect(relationBadgeX, relationBadgeY, relationBadgeW, relationBadgeH);
+      SetOpenGlColor(112, 224, 158, 236);
+      DrawOpenGlBorderRect(relationBadgeX, relationBadgeY, relationBadgeW, relationBadgeH);
+    }
+    else
+    {
+      SetOpenGlColor(104, 38, 32, 224);
+      DrawOpenGlRect(relationBadgeX, relationBadgeY, relationBadgeW, relationBadgeH);
+      SetOpenGlColor(242, 126, 96, 236);
+      DrawOpenGlBorderRect(relationBadgeX, relationBadgeY, relationBadgeW, relationBadgeH);
+    }
+    DrawOpenGlTextInBox(
+      overlay,
+      relationBadgeX + 2,
+      relationBadgeY,
+      relationBadgeW - 4,
+      relationBadgeH,
+      sameFaction ? "ALLY" : "ENEMY",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
     SetOpenGlColor(217, 225, 221, 238);
     snprintf(
       buffer,
@@ -53390,7 +53424,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       overlay,
       targetX + 8,
       targetY + 7,
-      targetPanelWidth - 16,
+      std::max(1, targetPanelWidth - relationBadgeW - 24),
       17,
       buffer,
       LINUX_OPENGL_TEXT_ALIGN_LEFT,
@@ -53473,6 +53507,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   runtime->visibleLiveHudTalentIconsDrawn = talentIconsDrawn;
   runtime->visibleLiveHudIconLimitHit = iconLimitHit;
   runtime->visibleLiveHudTargetPanelDrawn = hasTarget;
+  runtime->visibleLiveHudTargetRelationBadgeDrawn = hasTarget;
   runtime->visibleLiveHudHeroHealthPercent =
     static_cast<int>(std::max(0.0f, std::min(1.0f, hero.lifePercent)) * 100.0f + 0.5f);
   runtime->visibleLiveHudHeroMoving = hero.moving;
@@ -60561,6 +60596,8 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudTargetPanel="
           << (screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudTargetRelationBadge="
+          << (screenRuntime.visibleLiveHudTargetRelationBadgeDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudHeroHealthPercent="
           << screenRuntime.visibleLiveHudHeroHealthPercent << "\n";
   logFile << "  finalVisibleLiveHudHeroMoving="
@@ -63474,7 +63511,7 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
-  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu heroBars=%lu targetBars=%lu heroHp=%d heroMoving=%s heroDead=%s abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetHp=%d targetMoving=%s targetDead=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu heroBars=%lu targetBars=%lu heroHp=%d heroMoving=%s heroDead=%s abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetRelation=%s relationBadge=%s targetHp=%d targetMoving=%s targetDead=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
     screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
@@ -63492,6 +63529,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsSkipped),
     screenRuntime.visibleLiveHudIconLimitHit ? "yes" : "no",
     screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no",
+    screenRuntime.liveTargetState.ready ?
+      (screenRuntime.liveTargetState.faction == screenRuntime.liveHeroState.faction ? "ally" : "enemy") :
+      "none",
+    screenRuntime.visibleLiveHudTargetRelationBadgeDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudTargetHealthPercent,
     screenRuntime.visibleLiveHudTargetMoving ? "yes" : "no",
     screenRuntime.visibleLiveHudTargetDead ? "yes" : "no",
