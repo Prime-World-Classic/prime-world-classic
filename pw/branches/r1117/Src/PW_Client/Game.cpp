@@ -4655,6 +4655,12 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyDetailsLineupManualSlotsDrawn;
   size_t visibleLobbyDetailsLineupFallbackSlotsDrawn;
   size_t visibleLobbyDetailsTextureCount;
+  int visibleLobbyDetailsBackTextureWidth;
+  int visibleLobbyDetailsBackTextureHeight;
+  int visibleLobbyDetailsLogoTextureWidth;
+  int visibleLobbyDetailsLogoTextureHeight;
+  int visibleLobbyDetailsMinimapTextureWidth;
+  int visibleLobbyDetailsMinimapTextureHeight;
   bool visibleLobbyHeroDetailsDrawn;
   bool visibleLobbyHeroPortraitDrawn;
   bool visibleLobbyHeroPortraitFallbackDrawn;
@@ -5749,6 +5755,12 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsLineupManualSlotsDrawn(0),
       visibleLobbyDetailsLineupFallbackSlotsDrawn(0),
       visibleLobbyDetailsTextureCount(0),
+      visibleLobbyDetailsBackTextureWidth(0),
+      visibleLobbyDetailsBackTextureHeight(0),
+      visibleLobbyDetailsLogoTextureWidth(0),
+      visibleLobbyDetailsLogoTextureHeight(0),
+      visibleLobbyDetailsMinimapTextureWidth(0),
+      visibleLobbyDetailsMinimapTextureHeight(0),
       visibleLobbyHeroDetailsDrawn(false),
       visibleLobbyHeroPortraitDrawn(false),
       visibleLobbyHeroPortraitFallbackDrawn(false),
@@ -52217,6 +52229,12 @@ void DrawLinuxLobbySelectedMapDetails(
   bool backDrawn = false;
   bool logoDrawn = false;
   bool minimapDrawn = false;
+  int backTextureWidth = 0;
+  int backTextureHeight = 0;
+  int logoTextureWidth = 0;
+  int logoTextureHeight = 0;
+  int minimapTextureWidth = 0;
+  int minimapTextureHeight = 0;
   size_t textureCount = 0;
 
   if (selectedMapPreview &&
@@ -52236,6 +52254,8 @@ void DrawLinuxLobbySelectedMapDetails(
       artH
     );
     backDrawn = true;
+    backTextureWidth = overlay->lobbySelectedMapBack.width;
+    backTextureHeight = overlay->lobbySelectedMapBack.height;
     ++textureCount;
   }
   else
@@ -52266,6 +52286,8 @@ void DrawLinuxLobbySelectedMapDetails(
       layout.H(42)
     );
     logoDrawn = true;
+    logoTextureWidth = overlay->lobbySelectedMapLogo.width;
+    logoTextureHeight = overlay->lobbySelectedMapLogo.height;
     ++textureCount;
   }
 
@@ -52295,6 +52317,8 @@ void DrawLinuxLobbySelectedMapDetails(
     SetOpenGlColor(209, 184, 99, 230);
     DrawOpenGlBorderRect(minimapX, minimapY, minimapSize, minimapSize);
     minimapDrawn = true;
+    minimapTextureWidth = overlay->lobbySelectedMapMinimap.width;
+    minimapTextureHeight = overlay->lobbySelectedMapMinimap.height;
     ++textureCount;
   }
 
@@ -52391,6 +52415,12 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsLineupManualSlotsDrawn = lineupManualSlots;
     runtime->visibleLobbyDetailsLineupFallbackSlotsDrawn = lineupFallbackSlots;
     runtime->visibleLobbyDetailsTextureCount = textureCount;
+    runtime->visibleLobbyDetailsBackTextureWidth = backTextureWidth;
+    runtime->visibleLobbyDetailsBackTextureHeight = backTextureHeight;
+    runtime->visibleLobbyDetailsLogoTextureWidth = logoTextureWidth;
+    runtime->visibleLobbyDetailsLogoTextureHeight = logoTextureHeight;
+    runtime->visibleLobbyDetailsMinimapTextureWidth = minimapTextureWidth;
+    runtime->visibleLobbyDetailsMinimapTextureHeight = minimapTextureHeight;
   }
 }
 
@@ -59989,10 +60019,19 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyDetailsTextureCount << "\n";
   logFile << "  finalVisibleLobbyDetailsMapBackDrawn="
           << (screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsBackTextureSize="
+          << screenRuntime.visibleLobbyDetailsBackTextureWidth << "x"
+          << screenRuntime.visibleLobbyDetailsBackTextureHeight << "\n";
   logFile << "  finalVisibleLobbyDetailsMapLogoDrawn="
           << (screenRuntime.visibleLobbyDetailsMapLogoDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsLogoTextureSize="
+          << screenRuntime.visibleLobbyDetailsLogoTextureWidth << "x"
+          << screenRuntime.visibleLobbyDetailsLogoTextureHeight << "\n";
   logFile << "  finalVisibleLobbyDetailsMapMinimapDrawn="
           << (screenRuntime.visibleLobbyDetailsMapMinimapDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsMinimapTextureSize="
+          << screenRuntime.visibleLobbyDetailsMinimapTextureWidth << "x"
+          << screenRuntime.visibleLobbyDetailsMinimapTextureHeight << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupSlots="
           << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupPortraits="
@@ -63783,12 +63822,18 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s logo=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsBackTextureWidth,
+    screenRuntime.visibleLobbyDetailsBackTextureHeight,
     screenRuntime.visibleLobbyDetailsMapLogoDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsLogoTextureWidth,
+    screenRuntime.visibleLobbyDetailsLogoTextureHeight,
     screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMinimapTextureWidth,
+    screenRuntime.visibleLobbyDetailsMinimapTextureHeight,
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn),
