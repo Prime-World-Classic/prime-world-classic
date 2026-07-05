@@ -4956,10 +4956,14 @@ struct LinuxBootstrapScreenRuntime
   float liveMinimapCommandTargetX;
   float liveMinimapCommandTargetY;
   bool visibleLiveScoreboardDrawn;
+  size_t visibleLiveScoreboardMarkersLoaded;
+  size_t visibleLiveScoreboardMarkerLimit;
+  bool visibleLiveScoreboardMarkerLimitHit;
   size_t visibleLiveScoreboardTeamColumnsDrawn;
   size_t visibleLiveScoreboardHeroMarkersDrawn;
   size_t visibleLiveScoreboardTowerMarkersDrawn;
   size_t visibleLiveScoreboardMainBuildingMarkersDrawn;
+  bool visibleLiveScoreboardObjectiveFallbackUsed;
   size_t visibleLiveScoreboardMovingMarkersDrawn;
   size_t visibleLiveScoreboardDamagedMarkersDrawn;
   size_t visibleLiveScoreboardDeadHeroMarkersDrawn;
@@ -5956,10 +5960,14 @@ struct LinuxBootstrapScreenRuntime
       liveMinimapCommandTargetX(0.0f),
       liveMinimapCommandTargetY(0.0f),
       visibleLiveScoreboardDrawn(false),
+      visibleLiveScoreboardMarkersLoaded(0),
+      visibleLiveScoreboardMarkerLimit(0),
+      visibleLiveScoreboardMarkerLimitHit(false),
       visibleLiveScoreboardTeamColumnsDrawn(0),
       visibleLiveScoreboardHeroMarkersDrawn(0),
       visibleLiveScoreboardTowerMarkersDrawn(0),
       visibleLiveScoreboardMainBuildingMarkersDrawn(0),
+      visibleLiveScoreboardObjectiveFallbackUsed(false),
       visibleLiveScoreboardMovingMarkersDrawn(0),
       visibleLiveScoreboardDamagedMarkersDrawn(0),
       visibleLiveScoreboardDeadHeroMarkersDrawn(0),
@@ -53926,10 +53934,14 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   if (runtime)
   {
     runtime->visibleLiveScoreboardDrawn = false;
+    runtime->visibleLiveScoreboardMarkersLoaded = 0;
+    runtime->visibleLiveScoreboardMarkerLimit = 0;
+    runtime->visibleLiveScoreboardMarkerLimitHit = false;
     runtime->visibleLiveScoreboardTeamColumnsDrawn = 0;
     runtime->visibleLiveScoreboardHeroMarkersDrawn = 0;
     runtime->visibleLiveScoreboardTowerMarkersDrawn = 0;
     runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardObjectiveFallbackUsed = false;
     runtime->visibleLiveScoreboardMovingMarkersDrawn = 0;
     runtime->visibleLiveScoreboardDamagedMarkersDrawn = 0;
     runtime->visibleLiveScoreboardDeadHeroMarkersDrawn = 0;
@@ -53949,7 +53961,8 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   }
 
   vector<NWorld::LinuxDynamicWorldMarker> markers;
-  world->GetLinuxDynamicWorldMarkers(markers, 640);
+  const size_t markerLimit = 640;
+  world->GetLinuxDynamicWorldMarkers(markers, markerLimit);
   if (markers.empty())
   {
     return;
@@ -54056,13 +54069,16 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   size_t scoreboardTowerMarkers = freezeTeam.towers + burnTeam.towers + neutralTeam.towers;
   size_t scoreboardMainBuildingMarkers =
     freezeTeam.mainBuildings + burnTeam.mainBuildings + neutralTeam.mainBuildings;
+  bool scoreboardObjectiveFallbackUsed = false;
   if (scoreboardTowerMarkers == 0)
   {
     scoreboardTowerMarkers = runtime->worldTowerObjects;
+    scoreboardObjectiveFallbackUsed = scoreboardTowerMarkers > 0;
   }
   if (scoreboardMainBuildingMarkers == 0)
   {
     scoreboardMainBuildingMarkers = runtime->worldMainBuildingObjects;
+    scoreboardObjectiveFallbackUsed = scoreboardObjectiveFallbackUsed || scoreboardMainBuildingMarkers > 0;
   }
   const size_t scoreboardMovingMarkers =
     freezeTeam.moving + burnTeam.moving + neutralTeam.moving;
@@ -54134,10 +54150,14 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   }
 
   runtime->visibleLiveScoreboardDrawn = true;
+  runtime->visibleLiveScoreboardMarkersLoaded = markers.size();
+  runtime->visibleLiveScoreboardMarkerLimit = markerLimit;
+  runtime->visibleLiveScoreboardMarkerLimitHit = markers.size() >= markerLimit;
   runtime->visibleLiveScoreboardTeamColumnsDrawn = 2;
   runtime->visibleLiveScoreboardHeroMarkersDrawn = heroPips;
   runtime->visibleLiveScoreboardTowerMarkersDrawn = scoreboardTowerMarkers;
   runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = scoreboardMainBuildingMarkers;
+  runtime->visibleLiveScoreboardObjectiveFallbackUsed = scoreboardObjectiveFallbackUsed;
   runtime->visibleLiveScoreboardMovingMarkersDrawn = scoreboardMovingMarkers;
   runtime->visibleLiveScoreboardDamagedMarkersDrawn = scoreboardDamagedMarkers;
   runtime->visibleLiveScoreboardDeadHeroMarkersDrawn = scoreboardDeadHeroMarkers;
@@ -60403,6 +60423,12 @@ void AppendRuntimeInputLog(
               screenRuntime.liveMinimapLastAction) << "\n";
   logFile << "  finalVisibleLiveScoreboardDrawn="
           << (screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveScoreboardMarkersLoaded="
+          << screenRuntime.visibleLiveScoreboardMarkersLoaded << "\n";
+  logFile << "  finalVisibleLiveScoreboardMarkerLimit="
+          << screenRuntime.visibleLiveScoreboardMarkerLimit << "\n";
+  logFile << "  finalVisibleLiveScoreboardMarkerLimitHit="
+          << (screenRuntime.visibleLiveScoreboardMarkerLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveScoreboardTeamColumns="
           << screenRuntime.visibleLiveScoreboardTeamColumnsDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardHeroMarkers="
@@ -60411,6 +60437,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveScoreboardTowerMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardMainBuildingMarkers="
           << screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardObjectiveFallback="
+          << (screenRuntime.visibleLiveScoreboardObjectiveFallbackUsed ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveScoreboardMovingMarkers="
           << screenRuntime.visibleLiveScoreboardMovingMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardDamagedMarkers="
@@ -63218,12 +63246,16 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMinimapCommandTargetY),
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
     screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
-  fprintf(stdout, "Final visible live scoreboard: drawn=%s teams=%lu heroMarkers=%lu towers=%lu main=%lu moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
+  fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu heroMarkers=%lu towers=%lu main=%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
     screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkersLoaded),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkerLimit),
+    screenRuntime.visibleLiveScoreboardMarkerLimitHit ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTeamColumnsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTowerMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn),
+    screenRuntime.visibleLiveScoreboardObjectiveFallbackUsed ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMovingMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDamagedMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDeadHeroMarkersDrawn),
