@@ -4056,6 +4056,9 @@ struct LinuxBootstrapScreenRuntime
   std::string replayInputPath;
   std::string replayInputError;
   std::string replayInputControlSource;
+  std::string replayInputLastControlHit;
+  int replayInputLastControlX;
+  int replayInputLastControlY;
   size_t loadingTickCount;
   size_t heroPlayerEntryCount;
   size_t loadingPlayerEntryCount;
@@ -5032,6 +5035,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveEventFeedObjectiveMarkersDrawn;
   bool visibleReplayControlsDrawn;
   bool visibleReplayControlsLayoutReady;
+  int visibleReplayControlsPanelX;
+  int visibleReplayControlsPanelY;
+  int visibleReplayControlsPanelWidth;
+  int visibleReplayControlsPanelHeight;
   size_t visibleReplayControlsLinesDrawn;
   size_t visibleReplayControlsButtonsDrawn;
   size_t visibleReplayControlsActiveButtonsDrawn;
@@ -5125,6 +5132,9 @@ struct LinuxBootstrapScreenRuntime
       replayInputPath("inactive"),
       replayInputError("inactive"),
       replayInputControlSource("auto"),
+      replayInputLastControlHit("none"),
+      replayInputLastControlX(-1),
+      replayInputLastControlY(-1),
       loadingTickCount(0),
       heroPlayerEntryCount(0),
       loadingPlayerEntryCount(0),
@@ -6093,6 +6103,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveEventFeedObjectiveMarkersDrawn(0),
       visibleReplayControlsDrawn(false),
       visibleReplayControlsLayoutReady(false),
+      visibleReplayControlsPanelX(0),
+      visibleReplayControlsPanelY(0),
+      visibleReplayControlsPanelWidth(0),
+      visibleReplayControlsPanelHeight(0),
       visibleReplayControlsLinesDrawn(0),
       visibleReplayControlsButtonsDrawn(0),
       visibleReplayControlsActiveButtonsDrawn(0),
@@ -37834,6 +37848,9 @@ void EnsureLinuxBootstrapGameScheduler(
        (settings.replayPaceMs > 0 ? "command-line-pace" :
         (settings.replayRealtimePacing ? "command-line-realtime" :
          (settings.replaySpeedMultiplier > 1 ? "command-line-speed" : "auto"))));
+    runtime->replayInputLastControlHit = "none";
+    runtime->replayInputLastControlX = -1;
+    runtime->replayInputLastControlY = -1;
     runtime->replayCaptureValidated = false;
     runtime->replayCaptureMagicReady = false;
     runtime->replayCaptureBoundsOk = false;
@@ -42012,6 +42029,60 @@ LinuxReplayInputControlLayout ResolveLinuxReplayInputControlLayout(
   return layout;
 }
 
+const char* DescribeLinuxReplayInputControlHit(
+  const LinuxReplayInputControlLayout& layout,
+  int x,
+  int y
+)
+{
+  if (!layout.ready || !IsPointInsideLinuxScreenRect(layout.panel, x, y))
+  {
+    return "none";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.pause, x, y))
+  {
+    return "pause";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.step, x, y))
+  {
+    return "step";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.slower, x, y))
+  {
+    return "slower";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.faster, x, y))
+  {
+    return "faster";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.reset, x, y))
+  {
+    return "reset";
+  }
+  if (IsPointInsideLinuxScreenRect(layout.progress, x, y))
+  {
+    return "progress";
+  }
+  return "panel";
+}
+
+void RecordLinuxReplayInputControlHit(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* hit,
+  int x,
+  int y
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->replayInputLastControlHit = hit && *hit ? hit : "none";
+  runtime->replayInputLastControlX = x;
+  runtime->replayInputLastControlY = y;
+}
+
 bool ApplyLinuxReplayInputMouseControl(
   const LinuxReplayInputControlLayout& layout,
   int x,
@@ -42023,6 +42094,12 @@ bool ApplyLinuxReplayInputMouseControl(
   {
     return false;
   }
+
+  RecordLinuxReplayInputControlHit(
+    runtime,
+    DescribeLinuxReplayInputControlHit(layout, x, y),
+    x,
+    y);
 
   if (IsPointInsideLinuxScreenRect(layout.pause, x, y))
   {
@@ -42088,6 +42165,11 @@ bool HandleLinuxReplayInputControls(
         replayLayout.ready &&
         IsPointInsideLinuxScreenRect(replayLayout.panel, message.x, message.y))
     {
+      RecordLinuxReplayInputControlHit(
+        runtime,
+        DescribeLinuxReplayInputControlHit(replayLayout, message.x, message.y),
+        message.x,
+        message.y);
       changed = true;
       continue;
     }
@@ -42101,6 +42183,11 @@ bool HandleLinuxReplayInputControls(
         replayLayout.ready &&
         IsPointInsideLinuxScreenRect(replayLayout.panel, message.x, message.y))
     {
+      RecordLinuxReplayInputControlHit(
+        runtime,
+        DescribeLinuxReplayInputControlHit(replayLayout, message.x, message.y),
+        message.x,
+        message.y);
       const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
       if (wheelDelta > 0)
       {
@@ -42126,6 +42213,7 @@ bool HandleLinuxReplayInputControls(
       case XK_p:
       case XK_P:
       case XK_space:
+        RecordLinuxReplayInputControlHit(runtime, "keyboard-pause", -1, -1);
         runtime->replayInputPaused = !runtime->replayInputPaused;
         ++runtime->replayInputPauseToggleCount;
         ++runtime->replayInputControlEvents;
@@ -42138,6 +42226,7 @@ bool HandleLinuxReplayInputControls(
       case XK_N:
       case XK_period:
       case XK_KP_Decimal:
+        RecordLinuxReplayInputControlHit(runtime, "keyboard-step", -1, -1);
         runtime->replayInputPaused = true;
         ++runtime->replayInputPendingManualSteps;
         ++runtime->replayInputManualStepRequests;
@@ -42151,6 +42240,7 @@ bool HandleLinuxReplayInputControls(
       case XK_plus:
       case XK_KP_Add:
       {
+        RecordLinuxReplayInputControlHit(runtime, "keyboard-speed-up", -1, -1);
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
         ApplyLinuxReplayInputPlaybackRate(runtime, oldRate * 2, "keyboard-speed-up");
         changed = true;
@@ -42161,6 +42251,7 @@ bool HandleLinuxReplayInputControls(
       case XK_minus:
       case XK_KP_Subtract:
       {
+        RecordLinuxReplayInputControlHit(runtime, "keyboard-speed-down", -1, -1);
         const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
         ApplyLinuxReplayInputPlaybackRate(runtime, oldRate > 1 ? oldRate / 2 : 1, "keyboard-speed-down");
         changed = true;
@@ -42169,6 +42260,7 @@ bool HandleLinuxReplayInputControls(
 
       case XK_0:
       case XK_KP_0:
+        RecordLinuxReplayInputControlHit(runtime, "keyboard-speed-reset", -1, -1);
         ApplyLinuxReplayInputPlaybackRate(runtime, 1, "keyboard-speed-reset");
         changed = true;
         break;
@@ -55121,6 +55213,10 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   {
     runtime->visibleReplayControlsDrawn = false;
     runtime->visibleReplayControlsLayoutReady = false;
+    runtime->visibleReplayControlsPanelX = 0;
+    runtime->visibleReplayControlsPanelY = 0;
+    runtime->visibleReplayControlsPanelWidth = 0;
+    runtime->visibleReplayControlsPanelHeight = 0;
     runtime->visibleReplayControlsLinesDrawn = 0;
     runtime->visibleReplayControlsButtonsDrawn = 0;
     runtime->visibleReplayControlsActiveButtonsDrawn = 0;
@@ -55149,6 +55245,10 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     return;
   }
   runtime->visibleReplayControlsLayoutReady = true;
+  runtime->visibleReplayControlsPanelX = layout.panel.x;
+  runtime->visibleReplayControlsPanelY = layout.panel.y;
+  runtime->visibleReplayControlsPanelWidth = layout.panel.width;
+  runtime->visibleReplayControlsPanelHeight = layout.panel.height;
 
   const int panelW = layout.panel.width;
   const int panelH = layout.panel.height;
@@ -60336,6 +60436,13 @@ void AppendRuntimeInputLog(
           << "/" << screenRuntime.replayInputPendingManualSteps << "\n";
   logFile << "  finalGameReplayInputControlSource="
           << (screenRuntime.replayInputControlSource.empty() ? "auto" : screenRuntime.replayInputControlSource) << "\n";
+  logFile << "  finalGameReplayInputLastControlHit="
+          << (screenRuntime.replayInputLastControlHit.empty() ?
+              "none" :
+              screenRuntime.replayInputLastControlHit) << "\n";
+  logFile << "  finalGameReplayInputLastControlPoint="
+          << screenRuntime.replayInputLastControlX << ","
+          << screenRuntime.replayInputLastControlY << "\n";
   logFile << "  finalGameReplayInputStepCalls=" << screenRuntime.replayInputStepCalls << "\n";
   logFile << "  finalGameReplayInputWorldSteps=" << screenRuntime.replayInputWorldSteps << "\n";
   logFile << "  finalGameReplayInputFinalWorldStep=" << screenRuntime.replayInputFinalWorldStep << "\n";
@@ -61132,6 +61239,11 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleReplayControlsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleReplayControlsLayoutReady="
           << (screenRuntime.visibleReplayControlsLayoutReady ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayControlsPanel="
+          << screenRuntime.visibleReplayControlsPanelX << ","
+          << screenRuntime.visibleReplayControlsPanelY << ","
+          << screenRuntime.visibleReplayControlsPanelWidth << "x"
+          << screenRuntime.visibleReplayControlsPanelHeight << "\n";
   logFile << "  finalVisibleReplayControlsLines="
           << screenRuntime.visibleReplayControlsLinesDrawn << "\n";
   logFile << "  finalVisibleReplayControlsButtons="
@@ -63994,9 +64106,13 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
-  fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s percent=%d fill=%d segments=%lu/%lu remaining=%lu complete=%s\n",
+  fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s panel=%d,%d,%dx%d lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s percent=%d fill=%d segments=%lu/%lu remaining=%lu complete=%s lastHit=%s at=%d,%d\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
     screenRuntime.visibleReplayControlsLayoutReady ? "yes" : "no",
+    screenRuntime.visibleReplayControlsPanelX,
+    screenRuntime.visibleReplayControlsPanelY,
+    screenRuntime.visibleReplayControlsPanelWidth,
+    screenRuntime.visibleReplayControlsPanelHeight,
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsActiveButtonsDrawn),
@@ -64008,7 +64124,12 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressConsumedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressLoadedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressRemainingSegments),
-    screenRuntime.visibleReplayProgressComplete ? "yes" : "no");
+    screenRuntime.visibleReplayProgressComplete ? "yes" : "no",
+    screenRuntime.replayInputLastControlHit.empty() ?
+      "none" :
+      screenRuntime.replayInputLastControlHit.c_str(),
+    screenRuntime.replayInputLastControlX,
+    screenRuntime.replayInputLastControlY);
   fprintf(stdout, "Final live HUD state: samples=%lu targetSource=%s targetCandidates=%lu targetRejected=%lu/%lu/%lu/%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
     static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
     screenRuntime.liveHudTargetSelectionSource.empty() ?
