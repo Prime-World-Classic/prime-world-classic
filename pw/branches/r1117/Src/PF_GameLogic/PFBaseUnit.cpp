@@ -1172,7 +1172,53 @@ bool PFBaseUnit::IsTargetInAttackRange(const PFLogicObject* pTarget, bool useTar
   return IsObjectInRange(pTarget, GetAttackRange());
 }
 
-void PFBaseUnit::AutoTarget(float) {}
+void PFBaseUnit::AutoTarget(float dtInSeconds)
+{
+  const bool hasCurrentTarget = IsValid(pCurrentTarget);
+  const bool hasScreamTargets = !screamTargets.empty();
+
+  if (!hasCurrentTarget && !hasScreamTargets)
+    return;
+
+  if (IsDead() ||
+      CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK) ||
+      CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET) ||
+      bStrongTarget)
+  {
+    screamTargets.clear();
+    return;
+  }
+
+  const bool canKeepCurrentTarget =
+    IsUnitValid(pCurrentTarget) &&
+    pCurrentTarget != this &&
+    pCurrentTarget->GetFaction() != GetFaction() &&
+    CanAttackTarget(pCurrentTarget) &&
+    CanSelectTarget(pCurrentTarget, false);
+
+  if (canKeepCurrentTarget && !hasScreamTargets)
+  {
+    targetRevisionTime -= dtInSeconds;
+    if (targetRevisionTime > 0.0f)
+      return;
+  }
+
+  if (!canKeepCurrentTarget)
+    DropTarget();
+
+  CPtr<PFBaseUnit> pTarget = FindTarget(GetTargetingRange(), hasScreamTargets);
+  if (IsUnitValid(pTarget) && pTarget != pCurrentTarget)
+  {
+    if (IsValid(pCurrentTarget))
+      AssignTarget(pTarget, false);
+    else
+      OnTarget(pTarget, false);
+  }
+
+  const NDb::UnitTargetingParameters* targetingParams = GetTargetingParamsPtr();
+  targetRevisionTime = targetingParams ? targetingParams->targetRevisionTime : 0.0f;
+  screamTargets.clear();
+}
 
 CObj<PFAbilityInstance> PFBaseUnit::CreateAbilityInstance(PFAbilityData* pAbilityData, Target const& target)
 {
@@ -1304,6 +1350,9 @@ bool PFBaseUnit::Step(float dtInSeconds)
   if (pAttackAbility)
     pAttackAbility->Update(dtInSeconds, !IsDead());
   UpdateExternalAbilities(dtInSeconds);
+
+  if (!IsDead())
+    AutoTarget(dtInSeconds);
 
   if (!IsDead() &&
       IsUnitValid(pCurrentTarget) &&
