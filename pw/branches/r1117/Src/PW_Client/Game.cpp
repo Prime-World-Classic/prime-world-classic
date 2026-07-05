@@ -62926,7 +62926,7 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
-  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu target=%s\n",
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu target=%s commandMarker=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersLoaded),
@@ -62943,7 +62943,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveHealthBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapDamagedObjectiveHealthBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMovingMarkersDrawn),
-    screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no");
+    screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no",
+    screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no");
   fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f marker=%s action=%s\n",
     screenRuntime.liveMinimapCommandSurfaceReady ? "yes" : "no",
     screenRuntime.liveMinimapCommandProofSent ? "yes" : "no",
