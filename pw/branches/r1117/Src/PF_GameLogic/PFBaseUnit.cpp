@@ -955,9 +955,31 @@ bool PFBaseUnit::IsAttackFinished() const
 }
 float PFBaseUnit::GetTargetWeight(const CPtr<PFBaseUnit>&, const NDb::UnitTargetingParameters&, PathMap*) const { return 0.0f; }
 bool PFBaseUnit::IsRequireDirectSightToAttack() { return false; }
-bool PFBaseUnit::CanAttackFlying() const { return true; }
-bool PFBaseUnit::CanAttackTarget(PFBaseUnit const* pTarget, bool ignoreInvulnerability) const { return pTarget && (ignoreInvulnerability || pTarget->IsVulnerable()); }
-bool PFBaseUnit::CanSelectTarget(PFBaseUnit const* pTarget, bool) const { return pTarget != 0; }
+bool PFBaseUnit::CanAttackFlying() const
+{
+  return pAttackAbility ? pAttackAbility->CanHitFlying() : false;
+}
+bool PFBaseUnit::CanAttackTarget(PFBaseUnit const* pTarget, bool ignoreInvulnerability) const
+{
+  return IsUnitValid(pTarget) &&
+         (ignoreInvulnerability || pTarget->IsVulnerable()) &&
+         (!pTarget->IsFlying() || CanAttackFlying());
+}
+bool PFBaseUnit::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) const
+{
+  if (!pTarget)
+    return false;
+
+  const bool isSelf = pTarget == this;
+  const bool visibilityTest = !mustSeeTarget || pTarget->IsVisibleForFaction(GetWarfogFaction());
+
+  return !IsDead() &&
+         !isSelf &&
+         CanAttackTarget(pTarget) &&
+         !pTarget->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOTARGETME) &&
+         visibilityTest &&
+         (!GetBehaviour() || GetBehaviour()->CanSelectTarget(pTarget, mustSeeTarget));
+}
 CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int, bool checkForbid)
 {
   if (IsDead() || (checkForbid && CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)))
