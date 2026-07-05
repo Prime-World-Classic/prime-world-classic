@@ -29247,6 +29247,16 @@ struct LinuxScreenRect
   }
 };
 
+LinuxScreenRect MakeLinuxScreenRect(int x, int y, int width, int height)
+{
+  LinuxScreenRect rect;
+  rect.x = x;
+  rect.y = y;
+  rect.width = width;
+  rect.height = height;
+  return rect;
+}
+
 LinuxScreenRect ResolveLinuxCharacterPreviewRect(
   int screenWidth,
   int screenHeight,
@@ -38486,6 +38496,8 @@ size_t ClampLinuxReplayInputPlaybackRate(size_t value);
 
 bool HandleLinuxReplayInputControls(
   const LinuxInputState& inputState,
+  int screenWidth,
+  int screenHeight,
   LinuxBootstrapScreenRuntime* runtime
 );
 
@@ -39423,7 +39435,7 @@ void DriveLinuxBootstrapScreenRuntime(
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
-    HandleLinuxReplayInputControls(inputState, runtime);
+    HandleLinuxReplayInputControls(inputState, settings.width, settings.height, runtime);
     for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
     {
       runtime->loadingScreen->ProcessUIEvent(inputState.frameEvents[i]);
@@ -41643,8 +41655,132 @@ size_t ClampLinuxReplayInputPlaybackRate(size_t value)
   return value;
 }
 
+struct LinuxReplayInputControlLayout
+{
+  LinuxScreenRect panel;
+  LinuxScreenRect progress;
+  LinuxScreenRect pause;
+  LinuxScreenRect step;
+  LinuxScreenRect slower;
+  LinuxScreenRect faster;
+  LinuxScreenRect reset;
+  bool ready;
+
+  LinuxReplayInputControlLayout()
+    : ready(false)
+  {
+  }
+};
+
+LinuxReplayInputControlLayout ResolveLinuxReplayInputControlLayout(
+  int screenWidth,
+  int screenHeight,
+  bool loadingActive
+)
+{
+  LinuxReplayInputControlLayout layout;
+  if (screenWidth <= 0 || screenHeight <= 0)
+  {
+    return layout;
+  }
+
+  const int panelW = std::min(std::max(430, screenWidth / 3), std::max(320, screenWidth - 84));
+  const int panelH = 136;
+  const int panelX = std::max(42, screenWidth - panelW - 42);
+  const int panelY = loadingActive ? 42 : 18;
+  const int padding = 10;
+  const int buttonY = panelY + 66;
+  const int buttonH = 18;
+  const int gap = 6;
+  int buttonX = panelX + padding;
+
+  layout.panel = MakeLinuxScreenRect(panelX, panelY, panelW, panelH);
+  layout.progress = MakeLinuxScreenRect(panelX + padding, panelY + 48, panelW - padding * 2, 12);
+  layout.pause = MakeLinuxScreenRect(buttonX, buttonY, 88, buttonH);
+  buttonX += layout.pause.width + gap;
+  layout.step = MakeLinuxScreenRect(buttonX, buttonY, 58, buttonH);
+  buttonX += layout.step.width + gap;
+  layout.slower = MakeLinuxScreenRect(buttonX, buttonY, 34, buttonH);
+  buttonX += layout.slower.width + gap;
+  layout.faster = MakeLinuxScreenRect(buttonX, buttonY, 34, buttonH);
+  buttonX += layout.faster.width + gap;
+  layout.reset = MakeLinuxScreenRect(buttonX, buttonY, 46, buttonH);
+  layout.ready = true;
+  return layout;
+}
+
+bool ApplyLinuxReplayInputMouseControl(
+  const LinuxReplayInputControlLayout& layout,
+  int x,
+  int y,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !layout.ready || !IsPointInsideLinuxScreenRect(layout.panel, x, y))
+  {
+    return false;
+  }
+
+  if (IsPointInsideLinuxScreenRect(layout.pause, x, y))
+  {
+    runtime->replayInputPaused = !runtime->replayInputPaused;
+    ++runtime->replayInputPauseToggleCount;
+    ++runtime->replayInputControlEvents;
+    runtime->replayInputControlSource =
+      runtime->replayInputPaused ? "mouse-pause" : "mouse-resume";
+    return true;
+  }
+  if (IsPointInsideLinuxScreenRect(layout.step, x, y))
+  {
+    runtime->replayInputPaused = true;
+    ++runtime->replayInputPendingManualSteps;
+    ++runtime->replayInputManualStepRequests;
+    ++runtime->replayInputControlEvents;
+    runtime->replayInputControlSource = "mouse-step";
+    return true;
+  }
+  if (IsPointInsideLinuxScreenRect(layout.slower, x, y))
+  {
+    const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+    const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate > 1 ? oldRate / 2 : 1);
+    runtime->replayInputPlaybackRate = newRate;
+    if (newRate != oldRate)
+    {
+      ++runtime->replayInputSpeedChangeCount;
+    }
+    ++runtime->replayInputControlEvents;
+    runtime->replayInputControlSource = "mouse-speed-down";
+    return true;
+  }
+  if (IsPointInsideLinuxScreenRect(layout.faster, x, y))
+  {
+    const size_t oldRate = ClampLinuxReplayInputPlaybackRate(runtime->replayInputPlaybackRate);
+    const size_t newRate = ClampLinuxReplayInputPlaybackRate(oldRate * 2);
+    runtime->replayInputPlaybackRate = newRate;
+    if (newRate != oldRate)
+    {
+      ++runtime->replayInputSpeedChangeCount;
+    }
+    ++runtime->replayInputControlEvents;
+    runtime->replayInputControlSource = "mouse-speed-up";
+    return true;
+  }
+  if (IsPointInsideLinuxScreenRect(layout.reset, x, y))
+  {
+    runtime->replayInputPlaybackRate = 1;
+    ++runtime->replayInputSpeedChangeCount;
+    ++runtime->replayInputControlEvents;
+    runtime->replayInputControlSource = "mouse-speed-reset";
+    return true;
+  }
+
+  return true;
+}
+
 bool HandleLinuxReplayInputControls(
   const LinuxInputState& inputState,
+  int screenWidth,
+  int screenHeight,
   LinuxBootstrapScreenRuntime* runtime
 )
 {
@@ -41654,9 +41790,27 @@ bool HandleLinuxReplayInputControls(
   }
 
   bool changed = false;
+  const LinuxReplayInputControlLayout replayLayout =
+    ResolveLinuxReplayInputControlLayout(
+      screenWidth,
+      screenHeight,
+      IsLinuxBootstrapLoadingScreenActive(runtime));
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
   {
     const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DOWN &&
+        replayLayout.ready &&
+        IsPointInsideLinuxScreenRect(replayLayout.panel, message.x, message.y))
+    {
+      changed = true;
+      continue;
+    }
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_UP &&
+        ApplyLinuxReplayInputMouseControl(replayLayout, message.x, message.y, runtime))
+    {
+      changed = true;
+      continue;
+    }
     if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
     {
       continue;
@@ -54118,15 +54272,22 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   const int width = renderContext.width;
   const int height = renderContext.height;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
-  const int panelW = std::min(std::max(430, width / 3), std::max(320, width - 84));
-  const int panelH = 136;
-  const int panelX = std::max(42, width - panelW - 42);
-  const int panelY = loadingActive ? 42 : 18;
+  const LinuxReplayInputControlLayout layout =
+    ResolveLinuxReplayInputControlLayout(width, height, loadingActive);
+  if (!layout.ready)
+  {
+    return;
+  }
+
+  const int panelW = layout.panel.width;
+  const int panelH = layout.panel.height;
+  const int panelX = layout.panel.x;
+  const int panelY = layout.panel.y;
   const int padding = 10;
-  const int barX = panelX + padding;
-  const int barY = panelY + 48;
-  const int barW = panelW - padding * 2;
-  const int barH = 12;
+  const int barX = layout.progress.x;
+  const int barY = layout.progress.y;
+  const int barW = layout.progress.width;
+  const int barH = layout.progress.height;
   const size_t consumedSegments = runtime->replayInputStepCalls;
   const size_t loadedSegments = runtime->replayInputLoadedSegments;
   const float progress = loadedSegments > 0 ?
@@ -54205,37 +54366,55 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   SetOpenGlColor(104, 119, 124, 228);
   DrawOpenGlBorderRect(barX, barY, barW, barH);
 
-  snprintf(
-    buffer,
-    sizeof(buffer),
-    "P/Space pause  N step  +/- speed  0 reset  source=%s",
-    runtime->replayInputControlSource.empty() ?
-      "auto" :
-      runtime->replayInputControlSource.c_str());
-  SetOpenGlColor(172, 187, 191, 226);
-  DrawOpenGlTextInBox(
-    overlay,
-    panelX + padding,
-    panelY + 67,
-    panelW - padding * 2,
-    17,
-    TruncateForOverlay(buffer, 64),
-    LINUX_OPENGL_TEXT_ALIGN_LEFT,
-    LINUX_OPENGL_TEXT_VALIGN_CENTER,
-    false
-  );
+  struct ReplayButtonSpec
+  {
+    LinuxScreenRect rect;
+    const char* label;
+  };
+  const ReplayButtonSpec buttons[] =
+  {
+    { layout.pause, runtime->replayInputPaused ? "Play" : "Pause" },
+    { layout.step, "Step" },
+    { layout.slower, "-" },
+    { layout.faster, "+" },
+    { layout.reset, "1x" }
+  };
+  for (size_t i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i)
+  {
+    const ReplayButtonSpec& button = buttons[i];
+    const bool active =
+      (i == 0 && runtime->replayInputPaused) ||
+      (i == 4 && runtime->replayInputPlaybackRate == 1);
+    SetOpenGlColor(active ? 52 : 18, active ? 76 : 26, active ? 84 : 34, active ? 232 : 218);
+    DrawOpenGlRect(button.rect.x, button.rect.y, button.rect.width, button.rect.height);
+    SetOpenGlColor(active ? 226 : 116, active ? 206 : 136, active ? 142 : 144, 232);
+    DrawOpenGlBorderRect(button.rect.x, button.rect.y, button.rect.width, button.rect.height);
+    SetOpenGlColor(232, 236, 220, 236);
+    DrawOpenGlTextInBox(
+      overlay,
+      button.rect.x + 2,
+      button.rect.y,
+      button.rect.width - 4,
+      button.rect.height,
+      button.label,
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
   ++linesDrawn;
 
   snprintf(
     buffer,
     sizeof(buffer),
-    "manual %lu/%lu/%lu  controls %lu  pace %s/%lums",
+    "manual %lu/%lu/%lu  controls %lu  source=%s",
     static_cast<unsigned long>(runtime->replayInputManualStepsConsumed),
     static_cast<unsigned long>(runtime->replayInputManualStepRequests),
     static_cast<unsigned long>(runtime->replayInputPendingManualSteps),
     static_cast<unsigned long>(runtime->replayInputControlEvents),
-    runtime->replayInputRealtimePacing ? "on" : "off",
-    static_cast<unsigned long>(runtime->replayInputPaceMs));
+    runtime->replayInputControlSource.empty() ?
+      "auto" :
+      runtime->replayInputControlSource.c_str());
   SetOpenGlColor(204, 212, 202, 226);
   DrawOpenGlTextInBox(
     overlay,
@@ -54253,7 +54432,9 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   snprintf(
     buffer,
     sizeof(buffer),
-    "skips %lu  %s",
+    "pace %s/%lums  skips %lu  %s",
+    runtime->replayInputRealtimePacing ? "on" : "off",
+    static_cast<unsigned long>(runtime->replayInputPaceMs),
     static_cast<unsigned long>(runtime->replayInputPacingSkips),
     runtime->replayInputError.empty() ? "none" : runtime->replayInputError.c_str());
   SetOpenGlColor(178, 190, 186, 218);
