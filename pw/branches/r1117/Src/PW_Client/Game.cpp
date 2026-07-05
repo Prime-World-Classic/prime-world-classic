@@ -4907,6 +4907,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveMinimapDeadHeroMarkersDrawn;
   size_t visibleLiveMinimapCreepMarkersDrawn;
   size_t visibleLiveMinimapObjectiveMarkersDrawn;
+  size_t visibleLiveMinimapObjectiveLabelsDrawn;
   size_t visibleLiveMinimapMovingMarkersDrawn;
   bool visibleLiveMinimapTargetMarkerDrawn;
   bool visibleLiveMinimapCommandMarkerDrawn;
@@ -5871,6 +5872,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveMinimapDeadHeroMarkersDrawn(0),
       visibleLiveMinimapCreepMarkersDrawn(0),
       visibleLiveMinimapObjectiveMarkersDrawn(0),
+      visibleLiveMinimapObjectiveLabelsDrawn(0),
       visibleLiveMinimapMovingMarkersDrawn(0),
       visibleLiveMinimapTargetMarkerDrawn(false),
       visibleLiveMinimapCommandMarkerDrawn(false),
@@ -53178,6 +53180,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLiveMinimapDeadHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapCreepMarkersDrawn = 0;
     runtime->visibleLiveMinimapObjectiveMarkersDrawn = 0;
+    runtime->visibleLiveMinimapObjectiveLabelsDrawn = 0;
     runtime->visibleLiveMinimapMovingMarkersDrawn = 0;
     runtime->visibleLiveMinimapTargetMarkerDrawn = false;
     runtime->visibleLiveMinimapCommandMarkerDrawn = false;
@@ -53237,6 +53240,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t deadHeroCount = 0;
   size_t creepCount = 0;
   size_t objectiveCount = 0;
+  size_t objectiveLabels = 0;
   size_t movingCount = 0;
   bool targetDrawn = false;
   bool commandMarkerDrawn = false;
@@ -53359,6 +53363,22 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
       {
         DrawOpenGlBorderRect(markerX - half - 3, markerY - half - 3, markerSize + 6, markerSize + 6);
       }
+      if (markerSize >= 7)
+      {
+        SetOpenGlColor(245, 240, 204, marker.dead ? 142 : 226);
+        DrawOpenGlTextInBox(
+          overlay,
+          markerX - half - 1,
+          markerY - half - 1,
+          markerSize + 2,
+          markerSize + 2,
+          marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING ? "M" : "T",
+          LINUX_OPENGL_TEXT_ALIGN_CENTER,
+          LINUX_OPENGL_TEXT_VALIGN_CENTER,
+          false
+        );
+        ++objectiveLabels;
+      }
     }
 
     if (marker.dead)
@@ -53444,12 +53464,13 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     snprintf(
       buffer,
       sizeof(buffer),
-      "%lu units H%lu D%lu C%lu O%lu  M%lu A%lu S%lu",
+      "%lu units H%lu D%lu C%lu O%lu L%lu  M%lu A%lu S%lu",
       static_cast<unsigned long>(markerCount),
       static_cast<unsigned long>(heroCount),
       static_cast<unsigned long>(deadHeroCount),
       static_cast<unsigned long>(creepCount),
       static_cast<unsigned long>(objectiveCount),
+      static_cast<unsigned long>(objectiveLabels),
       static_cast<unsigned long>(runtime->liveMinimapMoveCommandsSent),
       static_cast<unsigned long>(runtime->liveMinimapAttackCommandsSent),
       static_cast<unsigned long>(runtime->liveMinimapSignalCommandsSent));
@@ -53459,12 +53480,13 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     snprintf(
       buffer,
       sizeof(buffer),
-      "%lu units  H%lu D%lu C%lu O%lu",
+      "%lu units  H%lu D%lu C%lu O%lu L%lu",
       static_cast<unsigned long>(markerCount),
       static_cast<unsigned long>(heroCount),
       static_cast<unsigned long>(deadHeroCount),
       static_cast<unsigned long>(creepCount),
-      static_cast<unsigned long>(objectiveCount));
+      static_cast<unsigned long>(objectiveCount),
+      static_cast<unsigned long>(objectiveLabels));
   }
   SetOpenGlColor(182, 197, 197, 224);
   DrawOpenGlTextInBox(
@@ -53486,6 +53508,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   runtime->visibleLiveMinimapDeadHeroMarkersDrawn = deadHeroCount;
   runtime->visibleLiveMinimapCreepMarkersDrawn = creepCount;
   runtime->visibleLiveMinimapObjectiveMarkersDrawn = objectiveCount;
+  runtime->visibleLiveMinimapObjectiveLabelsDrawn = objectiveLabels;
   runtime->visibleLiveMinimapMovingMarkersDrawn = movingCount;
   runtime->visibleLiveMinimapTargetMarkerDrawn = targetDrawn;
   runtime->visibleLiveMinimapCommandMarkerDrawn = commandMarkerDrawn;
@@ -60039,6 +60062,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveMinimapCreepMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapObjectiveMarkers="
           << screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapObjectiveLabels="
+          << screenRuntime.visibleLiveMinimapObjectiveLabelsDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapMovingMarkers="
           << screenRuntime.visibleLiveMinimapMovingMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapTargetMarker="
@@ -62818,7 +62843,7 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
-  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu moving=%lu target=%s\n",
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu moving=%lu target=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersDrawn),
@@ -62826,6 +62851,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapDeadHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapCreepMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMovingMarkersDrawn),
     screenRuntime.visibleLiveMinimapTargetMarkerDrawn ? "yes" : "no");
   fprintf(stdout, "Final live minimap commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f marker=%s action=%s\n",
