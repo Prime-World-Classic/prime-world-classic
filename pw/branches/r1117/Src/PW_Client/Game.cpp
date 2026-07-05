@@ -4864,6 +4864,8 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLiveHudDrawn;
   bool visibleLiveHudPortraitDrawn;
   size_t visibleLiveHudBarsDrawn;
+  size_t visibleLiveHudHeroBarsDrawn;
+  size_t visibleLiveHudTargetBarsDrawn;
   size_t visibleLiveHudAbilitySlotsDrawn;
   size_t visibleLiveHudAbilityIconsDrawn;
   bool visibleLiveHudAbilityFallbackIconDrawn;
@@ -5868,6 +5870,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveHudDrawn(false),
       visibleLiveHudPortraitDrawn(false),
       visibleLiveHudBarsDrawn(0),
+      visibleLiveHudHeroBarsDrawn(0),
+      visibleLiveHudTargetBarsDrawn(0),
       visibleLiveHudAbilitySlotsDrawn(0),
       visibleLiveHudAbilityIconsDrawn(0),
       visibleLiveHudAbilityFallbackIconDrawn(false),
@@ -52874,6 +52878,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     runtime->visibleLiveHudDrawn = false;
     runtime->visibleLiveHudPortraitDrawn = false;
     runtime->visibleLiveHudBarsDrawn = 0;
+    runtime->visibleLiveHudHeroBarsDrawn = 0;
+    runtime->visibleLiveHudTargetBarsDrawn = 0;
     runtime->visibleLiveHudAbilitySlotsDrawn = 0;
     runtime->visibleLiveHudAbilityIconsDrawn = 0;
     runtime->visibleLiveHudAbilityFallbackIconDrawn = false;
@@ -52919,6 +52925,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   const int barWidth = std::max(160, textRight - textLeft);
   char buffer[512] = {0};
   size_t barsDrawn = 0;
+  size_t heroBarsDrawn = 0;
+  size_t targetBarsDrawn = 0;
   size_t abilitySlotsDrawn = 0;
   size_t abilityIconsDrawn = 0;
   bool abilityFallbackIconDrawn = false;
@@ -53037,9 +53045,10 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     hero.lifePercent,
     hero.lifePercent < 0.28f ? 224 : 76,
     hero.lifePercent < 0.28f ? 72 : 205,
-    84,
-    buffer);
+      84,
+      buffer);
   ++barsDrawn;
+  ++heroBarsDrawn;
 
   snprintf(
     buffer,
@@ -53060,6 +53069,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     222,
     buffer);
   ++barsDrawn;
+  ++heroBarsDrawn;
 
   snprintf(
     buffer,
@@ -53296,6 +53306,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       target.lifePercent < 0.28f ? 84 : 82,
       buffer);
     ++barsDrawn;
+    ++targetBarsDrawn;
 
     snprintf(
       buffer,
@@ -53321,6 +53332,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   runtime->visibleLiveHudDrawn = true;
   runtime->visibleLiveHudPortraitDrawn = portraitDrawn;
   runtime->visibleLiveHudBarsDrawn = barsDrawn;
+  runtime->visibleLiveHudHeroBarsDrawn = heroBarsDrawn;
+  runtime->visibleLiveHudTargetBarsDrawn = targetBarsDrawn;
   runtime->visibleLiveHudAbilitySlotsDrawn = abilitySlotsDrawn;
   runtime->visibleLiveHudAbilityIconsDrawn = abilityIconsDrawn;
   runtime->visibleLiveHudAbilityFallbackIconDrawn = abilityFallbackIconDrawn;
@@ -60229,6 +60242,10 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudBars="
           << screenRuntime.visibleLiveHudBarsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudHeroBars="
+          << screenRuntime.visibleLiveHudHeroBarsDrawn << "\n";
+  logFile << "  finalVisibleLiveHudTargetBars="
+          << screenRuntime.visibleLiveHudTargetBarsDrawn << "\n";
   logFile << "  finalVisibleLiveHudAbilitySlots="
           << screenRuntime.visibleLiveHudAbilitySlotsDrawn << "\n";
   logFile << "  finalVisibleLiveHudAbilityIcons="
@@ -63113,10 +63130,12 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
-  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu heroBars=%lu targetBars=%lu abilitySlots=%lu abilityIcons=%lu abilityFallback=%s talentSlots=%lu talentIcons=%lu talentAvailable=%lu talentSkipped=%lu iconLimit=%s target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
     screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudHeroBarsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveHudTargetBarsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilitySlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilityIconsDrawn),
     screenRuntime.visibleLiveHudAbilityFallbackIconDrawn ? "yes" : "no",
