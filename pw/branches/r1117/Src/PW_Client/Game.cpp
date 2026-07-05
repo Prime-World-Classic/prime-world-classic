@@ -4748,6 +4748,7 @@ struct LinuxBootstrapScreenRuntime
   size_t mapPreviewDynamicCreepMeshTriangles;
   bool mapPreviewDynamicSelectedHeroMarkerMatched;
   int mapPreviewDynamicSelectedHeroMarkerPlayerId;
+  size_t mapPreviewDynamicSelectedHeroBadges;
   size_t mapPreviewLineupHeroMeshPreviewSlots;
   size_t mapPreviewLineupHeroMeshPreviewReady;
   size_t mapPreviewHeroDiffuseTexturesCached;
@@ -5781,6 +5782,7 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewDynamicCreepMeshTriangles(0),
       mapPreviewDynamicSelectedHeroMarkerMatched(false),
       mapPreviewDynamicSelectedHeroMarkerPlayerId(-1),
+      mapPreviewDynamicSelectedHeroBadges(0),
       mapPreviewLineupHeroMeshPreviewSlots(0),
       mapPreviewLineupHeroMeshPreviewReady(0),
       mapPreviewHeroDiffuseTexturesCached(0),
@@ -48136,6 +48138,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t* heroMeshTriangles,
   size_t* creepMeshReplicas,
   size_t* creepMeshTriangles,
+  size_t* selectedHeroBadges,
   bool* selectedHeroMarkerMatched,
   int* selectedHeroMarkerPlayerId
 )
@@ -48152,6 +48155,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (heroMeshTriangles) *heroMeshTriangles = 0;
   if (creepMeshReplicas) *creepMeshReplicas = 0;
   if (creepMeshTriangles) *creepMeshTriangles = 0;
+  if (selectedHeroBadges) *selectedHeroBadges = 0;
   if (selectedHeroMarkerMatched) *selectedHeroMarkerMatched = false;
   if (selectedHeroMarkerPlayerId) *selectedHeroMarkerPlayerId = -1;
   if (!selectedMapPreview || !world)
@@ -48187,6 +48191,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t heroMeshTriangleCount = 0;
   size_t creepMeshes = 0;
   size_t creepMeshTriangleCount = 0;
+  size_t selectedHeroBadgeCount = 0;
   const size_t ringSegments = 18;
   const size_t heroMeshLimit = 10;
   const size_t creepMeshLimit = 48;
@@ -48214,6 +48219,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     {
       continue;
     }
+    const bool selectedHeroMarker = i == selectedHeroMarkerIndex;
 
     float radiusWorld = 4.0f;
     float columnHalf = 0.38f;
@@ -48365,6 +48371,37 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
         &statusBars,
         &directionArrows);
     }
+    if (selectedHeroMarker)
+    {
+      const float badgeRingRadius = std::max(0.58f, ringRadius * 0.72f);
+      const float badgeY = baseY + (marker.dead ? 0.58f : columnHeight + 0.42f);
+      SetOpenGlColor(255, 235, 148, 246);
+      glLineWidth(3.0f);
+      glBegin(GL_LINE_LOOP);
+      for (size_t segment = 0; segment < ringSegments; ++segment)
+      {
+        const float angle =
+          6.28318530718f * static_cast<float>(segment) /
+          static_cast<float>(ringSegments);
+        glVertex3f(
+          x + cosf(angle) * badgeRingRadius,
+          badgeY,
+          z + sinf(angle) * badgeRingRadius);
+      }
+      glEnd();
+      DrawLinuxBootstrap3DCuboid(
+        x,
+        badgeY + 0.10f,
+        z,
+        0.42f,
+        0.42f,
+        0.36f,
+        255,
+        218,
+        90,
+        236);
+      ++selectedHeroBadgeCount;
+    }
     ++drawn;
   }
 
@@ -48477,6 +48514,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (heroMeshTriangles) *heroMeshTriangles = heroMeshTriangleCount;
   if (creepMeshReplicas) *creepMeshReplicas = creepMeshes;
   if (creepMeshTriangles) *creepMeshTriangles = creepMeshTriangleCount;
+  if (selectedHeroBadges) *selectedHeroBadges = selectedHeroBadgeCount;
   return drawn;
 }
 
@@ -49086,6 +49124,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewDynamicCreepMeshTriangles = 0;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerMatched = false;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerPlayerId = -1;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroBadges = 0;
     renderContext.screenRuntime->mapPreviewHeroDiffuseTexturesCached = 0;
     renderContext.screenRuntime->mapPreviewHeroDiffuseTextureFailures = 0;
     renderContext.screenRuntime->mapPreviewTerrainElementMeshDrawn = false;
@@ -49450,6 +49489,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   size_t dynamicHeroMeshTriangles = 0;
   size_t dynamicCreepMeshes = 0;
   size_t dynamicCreepMeshTriangles = 0;
+  size_t dynamicSelectedHeroBadges = 0;
   bool dynamicSelectedHeroMarkerMatched = false;
   int dynamicSelectedHeroMarkerPlayerId = -1;
   const size_t dynamicWorldMarkers = DrawLinuxMapDynamicWorldMarkerPreview(
@@ -49477,6 +49517,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     &dynamicHeroMeshTriangles,
     &dynamicCreepMeshes,
     &dynamicCreepMeshTriangles,
+    &dynamicSelectedHeroBadges,
     &dynamicSelectedHeroMarkerMatched,
     &dynamicSelectedHeroMarkerPlayerId);
   if (renderContext.screenRuntime)
@@ -49505,6 +49546,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewDynamicCreepMeshTriangles = dynamicCreepMeshTriangles;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerMatched = dynamicSelectedHeroMarkerMatched;
     renderContext.screenRuntime->mapPreviewDynamicSelectedHeroMarkerPlayerId = dynamicSelectedHeroMarkerPlayerId;
+    renderContext.screenRuntime->mapPreviewDynamicSelectedHeroBadges = dynamicSelectedHeroBadges;
     renderContext.screenRuntime->mapPreviewHeroDiffuseTexturesCached =
       renderContext.overlay ? renderContext.overlay->heroPreviewDiffuseTextureCache.size() : 0;
     renderContext.screenRuntime->mapPreviewHeroDiffuseTextureFailures =
@@ -57843,6 +57885,8 @@ void WriteStartupLog(
           << (screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no") << "\n";
   logFile << "  map3DPreviewDynamicSelectedHeroMarkerPlayerId="
           << screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId << "\n";
+  logFile << "  map3DPreviewDynamicSelectedHeroBadges="
+          << screenRuntime.mapPreviewDynamicSelectedHeroBadges << "\n";
   logFile << "  map3DPreviewCommandMoveTargetDrawn="
           << (screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no") << "\n";
   logFile << "  map3DPreviewCommandMoveCommands="
@@ -60485,6 +60529,8 @@ void AppendRuntimeInputLog(
           << (screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no") << "\n";
   logFile << "  finalMap3DPreviewDynamicSelectedHeroMarkerPlayerId="
           << screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId << "\n";
+  logFile << "  finalMap3DPreviewDynamicSelectedHeroBadges="
+          << screenRuntime.mapPreviewDynamicSelectedHeroBadges << "\n";
   logFile << "  finalLiveHudSamples="
           << screenRuntime.liveHudSampleCount << "\n";
   logFile << "  finalVisibleLiveHudDrawn="
@@ -61951,7 +61997,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(selectedMapPreview.terrainElementPayloads.size()),
     static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainElementPayloadResolvedCount),
     selectedMapPreview.terrainHeightmap.terrainElementPayloadLimitHit ? "yes" : "no");
-  fprintf(stdout, "Bootstrap 3D preview: ready=%s active=%s yaw=%.1f baseYaw=%.1f pitch=%.1f zoom=%.2f pan=%.1f,%.1f input=%lu markers=%lu terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu routes=%s/%lu/%lu/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu starts=%s/%lu/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d moveCmd=%s/%lu moveProgress=%s/%s/%s/%.1f/%.1f lineupHeroMeshes=%lu/%lu heroTextures=%lu/%lu source=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-scene-objects-loaded-world-units-status-bars-map-click-move-command-and-texture-cached-lineup-hero-and-creep-meshes\n",
+  fprintf(stdout, "Bootstrap 3D preview: ready=%s active=%s yaw=%.1f baseYaw=%.1f pitch=%.1f zoom=%.2f pan=%.1f,%.1f input=%lu markers=%lu terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu routes=%s/%lu/%lu/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu starts=%s/%lu/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d localHeroBadge=%lu moveCmd=%s/%lu moveProgress=%s/%s/%s/%.1f/%.1f lineupHeroMeshes=%lu/%lu heroTextures=%lu/%lu source=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-scene-objects-loaded-world-units-status-bars-map-click-move-command-and-texture-cached-lineup-hero-and-creep-meshes\n",
     IsLinuxBootstrap3DPreviewReady(&selectedMapPreview) ? "yes" : "no",
     (uiRootPreview.runtimeLoadingScreenReady && IsLinuxBootstrap3DPreviewReady(&selectedMapPreview)) ? "yes" : "no",
     static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
@@ -62016,6 +62062,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewReady),
     screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no",
     screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId,
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicSelectedHeroBadges),
     screenRuntime.mapPreviewCommandMoveTargetDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.mapPreviewCommandMoveCommandsSent),
     screenRuntime.mapPreviewCommandMoveHeroTracking ? "yes" : "no",
@@ -63308,7 +63355,7 @@ int main(int argc, char** argv)
     screenRuntime.transceiverLastStatusActive,
     screenRuntime.transceiverLastStatusDisconnected,
     screenRuntime.transceiverLastStatusLeaver);
-  fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d yaw=%.1f pitch=%.1f zoom=%.2f\n",
+  fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d localHeroBadge=%lu yaw=%.1f pitch=%.1f zoom=%.2f\n",
     screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceVertices),
     static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceTriangles),
@@ -63353,6 +63400,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicUnitMeshPreviewReady),
     screenRuntime.mapPreviewDynamicSelectedHeroMarkerMatched ? "yes" : "no",
     screenRuntime.mapPreviewDynamicSelectedHeroMarkerPlayerId,
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicSelectedHeroBadges),
     static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
     static_cast<double>(screenRuntime.mapPreviewRenderedPitchDegrees),
     static_cast<double>(screenRuntime.mapPreviewZoom));
