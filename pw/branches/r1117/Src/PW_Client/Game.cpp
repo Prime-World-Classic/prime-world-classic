@@ -46646,6 +46646,42 @@ void ResolveLinuxDynamicWorldMarkerColor(
   if (blue) *blue = b;
 }
 
+void ResolveLinuxDynamicWorldMarkerOverlayColor(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue,
+  unsigned char* alpha
+)
+{
+  unsigned char r = 0;
+  unsigned char g = 0;
+  unsigned char b = 0;
+  ResolveLinuxDynamicWorldMarkerColor(marker, &r, &g, &b);
+  unsigned char a = marker.moving ? 238 : 178;
+  if (marker.dead)
+  {
+    r = BlendOpenGlColorByte(r, 160, 0.62f);
+    g = BlendOpenGlColorByte(g, 165, 0.62f);
+    b = BlendOpenGlColorByte(b, 168, 0.62f);
+    a = 142;
+  }
+
+  if (red) *red = r;
+  if (green) *green = g;
+  if (blue) *blue = b;
+  if (alpha) *alpha = a;
+}
+
+bool ShouldDrawLinuxDynamicWorldMarkerOverlay(
+  const NWorld::LinuxDynamicWorldMarker& marker
+)
+{
+  return
+    !marker.dead ||
+    marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO;
+}
+
 bool DrawLinuxHeroMeshPreview(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedHeroDbPreview* heroPreview,
@@ -47726,6 +47762,25 @@ bool DrawLinuxMapPreviewSelectedTarget(
   return true;
 }
 
+void DrawLinuxMapDeadHeroMarkerOverlay(
+  float x,
+  float z,
+  float baseY,
+  float ringRadius
+)
+{
+  const float y = baseY + 0.34f;
+  SetOpenGlColor(221, 226, 218, 176);
+  glLineWidth(2.1f);
+  glBegin(GL_LINES);
+  glVertex3f(x - ringRadius * 0.58f, y, z - ringRadius * 0.58f);
+  glVertex3f(x + ringRadius * 0.58f, y, z + ringRadius * 0.58f);
+  glVertex3f(x + ringRadius * 0.58f, y, z - ringRadius * 0.58f);
+  glVertex3f(x - ringRadius * 0.58f, y, z + ringRadius * 0.58f);
+  glEnd();
+  glLineWidth(1.0f);
+}
+
 size_t DrawLinuxMapDynamicWorldMarkerPreview(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedMapPreview* selectedMapPreview,
@@ -47819,7 +47874,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   for (size_t i = 0; i < markers.size(); ++i)
   {
     const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-    if (marker.dead)
+    if (!ShouldDrawLinuxDynamicWorldMarkerOverlay(marker))
     {
       continue;
     }
@@ -47853,7 +47908,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       continue;
     }
 
-    if (marker.moving)
+    if (!marker.dead && marker.moving)
     {
       ++moving;
     }
@@ -47861,7 +47916,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     unsigned char red = 0;
     unsigned char green = 0;
     unsigned char blue = 0;
-    ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
+    unsigned char alpha = 0;
+    ResolveLinuxDynamicWorldMarkerOverlayColor(marker, &red, &green, &blue, &alpha);
 
     const float x = (marker.x - centerX) * scale;
     const float z = (marker.y - centerY) * scale;
@@ -47881,6 +47937,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       ResolveLinuxDynamicUnitMeshPreviewForMarker(marker, dynamicUnitMeshPreviews);
     const bool drawHeroMesh =
       heroMeshLayerReady &&
+      !marker.dead &&
       markerHeroPreview &&
       marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
       heroMeshCandidates < heroMeshLimit;
@@ -47890,6 +47947,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
     }
     const bool drawUnitMesh =
       heroMeshLayerReady &&
+      !marker.dead &&
       markerUnitPreview &&
       IsLinuxDynamicWorldCreepMarker(marker) &&
       creepMeshCandidates < creepMeshLimit;
@@ -47898,7 +47956,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       ++creepMeshCandidates;
     }
 
-    SetOpenGlColor(red, green, blue, marker.moving ? 238 : 178);
+    SetOpenGlColor(red, green, blue, alpha);
     glLineWidth(marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ? 2.0f : 1.25f);
     glBegin(GL_LINE_LOOP);
     for (size_t segment = 0; segment < ringSegments; ++segment)
@@ -47935,21 +47993,28 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
         z,
         columnHalf,
         columnHalf,
-        columnHeight,
+        marker.dead ? 0.38f : columnHeight,
         red,
         green,
         blue,
-        marker.moving ? 232 : 188);
+        marker.dead ? 126 : (marker.moving ? 232 : 188));
     }
 
-    DrawLinuxMapDynamicWorldMarkerStatus(
-      marker,
-      x,
-      z,
-      baseY,
-      ringRadius,
-      &statusBars,
-      &directionArrows);
+    if (marker.dead)
+    {
+      DrawLinuxMapDeadHeroMarkerOverlay(x, z, baseY, ringRadius);
+    }
+    else
+    {
+      DrawLinuxMapDynamicWorldMarkerStatus(
+        marker,
+        x,
+        z,
+        baseY,
+        ringRadius,
+        &statusBars,
+        &directionArrows);
+    }
     ++drawn;
   }
 
@@ -53000,7 +53065,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   for (size_t i = 0; i < markerLimit; ++i)
   {
     const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
-    if (marker.dead)
+    if (!ShouldDrawLinuxDynamicWorldMarkerOverlay(marker))
     {
       continue;
     }
@@ -53030,11 +53095,25 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     unsigned char red = 0;
     unsigned char green = 0;
     unsigned char blue = 0;
-    ResolveLinuxDynamicWorldMarkerColor(marker, &red, &green, &blue);
-    SetOpenGlColor(red, green, blue, marker.moving ? 248 : 216);
+    ResolveLinuxDynamicWorldMarkerOverlayColor(marker, &red, &green, &blue, 0);
+    const unsigned char alpha = marker.dead ? 154 : (marker.moving ? 248 : 216);
+    SetOpenGlColor(red, green, blue, alpha);
     DrawOpenGlRect(markerX - half, markerY - half, markerSize, markerSize);
 
-    if (marker.moving)
+    if (marker.dead)
+    {
+      SetOpenGlColor(224, 228, 218, 190);
+      glLineWidth(1.6f);
+      glBegin(GL_LINES);
+      glVertex2i(markerX - half - 2, markerY - half - 2);
+      glVertex2i(markerX + half + 2, markerY + half + 2);
+      glVertex2i(markerX + half + 2, markerY - half - 2);
+      glVertex2i(markerX - half - 2, markerY + half + 2);
+      glEnd();
+      glLineWidth(1.0f);
+    }
+
+    if (!marker.dead && marker.moving)
     {
       ++movingCount;
       SetOpenGlColor(232, 236, 220, 180);
@@ -53233,13 +53312,29 @@ size_t DrawLinuxLiveScoreboardTeamColumn(
   );
 
   char buffer[160] = {0};
-  snprintf(
-    buffer,
-    sizeof(buffer),
-    "%lu/%lu heroes  %lu creeps",
-    static_cast<unsigned long>(state.liveHeroes),
-    static_cast<unsigned long>(state.totalHeroes),
-    static_cast<unsigned long>(state.creeps));
+  const size_t deadHeroes =
+    state.totalHeroes > state.liveHeroes ? state.totalHeroes - state.liveHeroes : 0;
+  if (deadHeroes > 0)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "%lu/%lu heroes  D%lu C%lu",
+      static_cast<unsigned long>(state.liveHeroes),
+      static_cast<unsigned long>(state.totalHeroes),
+      static_cast<unsigned long>(deadHeroes),
+      static_cast<unsigned long>(state.creeps));
+  }
+  else
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "%lu/%lu heroes  %lu creeps",
+      static_cast<unsigned long>(state.liveHeroes),
+      static_cast<unsigned long>(state.totalHeroes),
+      static_cast<unsigned long>(state.creeps));
+  }
   SetOpenGlColor(187, 203, 204, 226);
   DrawOpenGlTextInBox(
     overlay,
@@ -53560,6 +53655,42 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
     static_cast<unsigned long>(runtime->replayWriterBytesWritten),
     runtime->transceiverWorldStep >= 0 ? runtime->transceiverWorldStep : 0);
   AddLinuxLiveEventFeedRow(&rows, buffer, 91, 171, 218, true, false, false);
+
+  NWorld::PFWorld* world =
+    dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
+  size_t liveHeroes = 0;
+  size_t deadHeroes = 0;
+  if (world)
+  {
+    vector<NWorld::LinuxDynamicWorldMarker> markers;
+    world->GetLinuxDynamicWorldMarkers(markers, 640);
+    for (size_t i = 0; i < markers.size(); ++i)
+    {
+      const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
+      if (marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO)
+      {
+        continue;
+      }
+      if (marker.dead)
+      {
+        ++deadHeroes;
+      }
+      else
+      {
+        ++liveHeroes;
+      }
+    }
+  }
+  if (deadHeroes > 0)
+  {
+    snprintf(
+      buffer,
+      sizeof(buffer),
+      "Respawn heroes live %lu dead %lu",
+      static_cast<unsigned long>(liveHeroes),
+      static_cast<unsigned long>(deadHeroes));
+    AddLinuxLiveEventFeedRow(&rows, buffer, 226, 142, 96, false, true, false);
+  }
 
   if (runtime->liveMinimapLastAction != "none" ||
       runtime->liveMinimapCommandProofSent ||
