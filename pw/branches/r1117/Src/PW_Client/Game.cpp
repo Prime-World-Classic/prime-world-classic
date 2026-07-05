@@ -4867,6 +4867,12 @@ struct LinuxBootstrapScreenRuntime
   LinuxLiveUnitHudState liveHeroState;
   LinuxLiveUnitHudState liveTargetState;
   size_t liveHudSampleCount;
+  size_t liveHudTargetCandidates;
+  size_t liveHudTargetRejectedDead;
+  size_t liveHudTargetRejectedSelf;
+  size_t liveHudTargetRejectedAlly;
+  size_t liveHudTargetRejectedUnsupported;
+  std::string liveHudTargetSelectionSource;
   bool visibleLiveHudDrawn;
   bool visibleLiveHudPortraitDrawn;
   size_t visibleLiveHudBarsDrawn;
@@ -5900,6 +5906,12 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewSelectedTargetY(0.0f),
       mapPreviewSelectedTargetDistance(0.0f),
       liveHudSampleCount(0),
+      liveHudTargetCandidates(0),
+      liveHudTargetRejectedDead(0),
+      liveHudTargetRejectedSelf(0),
+      liveHudTargetRejectedAlly(0),
+      liveHudTargetRejectedUnsupported(0),
+      liveHudTargetSelectionSource("none"),
       visibleLiveHudDrawn(false),
       visibleLiveHudPortraitDrawn(false),
       visibleLiveHudBarsDrawn(0),
@@ -47228,6 +47240,15 @@ float ClampLinuxDynamicMarkerPercent(float value)
   return value;
 }
 
+enum LinuxLiveHudTargetClassification
+{
+  LINUX_LIVE_HUD_TARGET_ACCEPT,
+  LINUX_LIVE_HUD_TARGET_REJECT_DEAD,
+  LINUX_LIVE_HUD_TARGET_REJECT_SELF,
+  LINUX_LIVE_HUD_TARGET_REJECT_ALLY,
+  LINUX_LIVE_HUD_TARGET_REJECT_UNSUPPORTED
+};
+
 const char* DescribeLinuxLiveHudUnitKind(int kind)
 {
   switch (kind)
@@ -47315,22 +47336,38 @@ void PopulateLinuxLiveUnitHudState(
   }
 }
 
+LinuxLiveHudTargetClassification ClassifyLinuxLiveHudPreferredTarget(
+  const NWorld::LinuxDynamicWorldMarker& marker,
+  const LinuxLiveUnitHudState& heroState
+)
+{
+  if (marker.dead)
+  {
+    return LINUX_LIVE_HUD_TARGET_REJECT_DEAD;
+  }
+  if (marker.objectId == heroState.objectId)
+  {
+    return LINUX_LIVE_HUD_TARGET_REJECT_SELF;
+  }
+  if (heroState.ready && heroState.faction >= 0 && marker.faction == heroState.faction)
+  {
+    return LINUX_LIVE_HUD_TARGET_REJECT_ALLY;
+  }
+  if (marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_HERO &&
+      marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP &&
+      marker.kind != NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+  {
+    return LINUX_LIVE_HUD_TARGET_REJECT_UNSUPPORTED;
+  }
+  return LINUX_LIVE_HUD_TARGET_ACCEPT;
+}
+
 bool IsLinuxLiveHudPreferredTarget(
   const NWorld::LinuxDynamicWorldMarker& marker,
   const LinuxLiveUnitHudState& heroState
 )
 {
-  if (marker.dead || marker.objectId == heroState.objectId)
-  {
-    return false;
-  }
-  if (heroState.ready && heroState.faction >= 0 && marker.faction == heroState.faction)
-  {
-    return false;
-  }
-  return marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO ||
-         marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
-         marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP;
+  return ClassifyLinuxLiveHudPreferredTarget(marker, heroState) == LINUX_LIVE_HUD_TARGET_ACCEPT;
 }
 
 void UpdateLinuxLiveHudState(
@@ -47347,6 +47384,12 @@ void UpdateLinuxLiveHudState(
 
   runtime->liveHeroState = LinuxLiveUnitHudState();
   runtime->liveTargetState = LinuxLiveUnitHudState();
+  runtime->liveHudTargetCandidates = 0;
+  runtime->liveHudTargetRejectedDead = 0;
+  runtime->liveHudTargetRejectedSelf = 0;
+  runtime->liveHudTargetRejectedAlly = 0;
+  runtime->liveHudTargetRejectedUnsupported = 0;
+  runtime->liveHudTargetSelectionSource = "no-world";
   if (!world)
   {
     return;
@@ -47354,6 +47397,7 @@ void UpdateLinuxLiveHudState(
 
   vector<NWorld::LinuxDynamicWorldMarker> markers;
   world->GetLinuxDynamicWorldMarkers(markers, 640);
+  runtime->liveHudTargetSelectionSource = "no-markers";
   if (markers.empty())
   {
     return;
@@ -47380,6 +47424,7 @@ void UpdateLinuxLiveHudState(
 
   if (selectedHeroIndex == static_cast<size_t>(-1))
   {
+    runtime->liveHudTargetSelectionSource = "no-hero";
     return;
   }
 
@@ -47396,7 +47441,7 @@ void UpdateLinuxLiveHudState(
 
   const int selectedTargetObjectId = runtime->mapPreviewSelectedTargetObjectId;
   size_t targetIndex = static_cast<size_t>(-1);
-  std::string targetSource = "none";
+  std::string targetSource = selectedTargetObjectId >= 0 ? "selected-target-missing" : "no-preferred-target";
   if (selectedTargetObjectId >= 0)
   {
     for (size_t i = 0; i < markers.size(); ++i)
@@ -47415,11 +47460,30 @@ void UpdateLinuxLiveHudState(
     float bestDistanceSq = 0.0f;
     for (size_t i = 0; i < markers.size(); ++i)
     {
-      if (!IsLinuxLiveHudPreferredTarget(markers[i], runtime->liveHeroState))
+      const LinuxLiveHudTargetClassification classification =
+        ClassifyLinuxLiveHudPreferredTarget(markers[i], runtime->liveHeroState);
+      if (classification == LINUX_LIVE_HUD_TARGET_REJECT_DEAD)
       {
+        ++runtime->liveHudTargetRejectedDead;
+        continue;
+      }
+      if (classification == LINUX_LIVE_HUD_TARGET_REJECT_SELF)
+      {
+        ++runtime->liveHudTargetRejectedSelf;
+        continue;
+      }
+      if (classification == LINUX_LIVE_HUD_TARGET_REJECT_ALLY)
+      {
+        ++runtime->liveHudTargetRejectedAlly;
+        continue;
+      }
+      if (classification == LINUX_LIVE_HUD_TARGET_REJECT_UNSUPPORTED)
+      {
+        ++runtime->liveHudTargetRejectedUnsupported;
         continue;
       }
 
+      ++runtime->liveHudTargetCandidates;
       const float dx = markers[i].x - runtime->liveHeroState.x;
       const float dy = markers[i].y - runtime->liveHeroState.y;
       const float distanceSq = dx * dx + dy * dy;
@@ -47437,12 +47501,17 @@ void UpdateLinuxLiveHudState(
 
   if (targetIndex != static_cast<size_t>(-1))
   {
+    runtime->liveHudTargetSelectionSource = targetSource;
     PopulateLinuxLiveUnitHudState(
       markers[targetIndex],
       targetSource,
       world,
       &runtime->liveHeroState,
       &runtime->liveTargetState);
+  }
+  else
+  {
+    runtime->liveHudTargetSelectionSource = targetSource;
   }
 
   ++runtime->liveHudSampleCount;
@@ -60568,6 +60637,20 @@ void AppendRuntimeInputLog(
           << screenRuntime.mapPreviewDynamicSelectedHeroBadges << "\n";
   logFile << "  finalLiveHudSamples="
           << screenRuntime.liveHudSampleCount << "\n";
+  logFile << "  finalLiveHudTargetSelectionSource="
+          << (screenRuntime.liveHudTargetSelectionSource.empty() ?
+                "<none>" :
+                screenRuntime.liveHudTargetSelectionSource.c_str()) << "\n";
+  logFile << "  finalLiveHudTargetCandidates="
+          << screenRuntime.liveHudTargetCandidates << "\n";
+  logFile << "  finalLiveHudTargetRejectedDead="
+          << screenRuntime.liveHudTargetRejectedDead << "\n";
+  logFile << "  finalLiveHudTargetRejectedSelf="
+          << screenRuntime.liveHudTargetRejectedSelf << "\n";
+  logFile << "  finalLiveHudTargetRejectedAlly="
+          << screenRuntime.liveHudTargetRejectedAlly << "\n";
+  logFile << "  finalLiveHudTargetRejectedUnsupported="
+          << screenRuntime.liveHudTargetRejectedUnsupported << "\n";
   logFile << "  finalVisibleLiveHudDrawn="
           << (screenRuntime.visibleLiveHudDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveHudPortrait="
@@ -63654,8 +63737,16 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressLoadedSegments),
     static_cast<unsigned long>(screenRuntime.visibleReplayProgressRemainingSegments),
     screenRuntime.visibleReplayProgressComplete ? "yes" : "no");
-  fprintf(stdout, "Final live HUD state: samples=%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
+  fprintf(stdout, "Final live HUD state: samples=%lu targetSource=%s targetCandidates=%lu targetRejected=%lu/%lu/%lu/%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
     static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
+    screenRuntime.liveHudTargetSelectionSource.empty() ?
+      "<none>" :
+      screenRuntime.liveHudTargetSelectionSource.c_str(),
+    static_cast<unsigned long>(screenRuntime.liveHudTargetCandidates),
+    static_cast<unsigned long>(screenRuntime.liveHudTargetRejectedDead),
+    static_cast<unsigned long>(screenRuntime.liveHudTargetRejectedSelf),
+    static_cast<unsigned long>(screenRuntime.liveHudTargetRejectedAlly),
+    static_cast<unsigned long>(screenRuntime.liveHudTargetRejectedUnsupported),
     screenRuntime.liveHeroState.ready ? "yes" : "no",
     screenRuntime.liveHeroState.objectId,
     DescribeLinuxLiveHudUnitKind(screenRuntime.liveHeroState.kind),
