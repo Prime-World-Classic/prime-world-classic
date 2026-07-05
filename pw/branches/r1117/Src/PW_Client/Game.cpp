@@ -19273,12 +19273,9 @@ bool CompositeSelectedHeroAbilityIcons(
   }
 
   std::vector<const LinuxHeroAbilityPreview*> visibleAbilities;
-  for (size_t i = 0; i < selectedHeroPreview.featuredAbilities.size(); ++i)
+  for (size_t i = 0; i < selectedHeroPreview.featuredAbilities.size() && visibleAbilities.size() < 4; ++i)
   {
-    if (selectedHeroPreview.featuredAbilities[i].icon.artworkLoaded)
-    {
-      visibleAbilities.push_back(&selectedHeroPreview.featuredAbilities[i]);
-    }
+    visibleAbilities.push_back(&selectedHeroPreview.featuredAbilities[i]);
   }
 
   if (visibleAbilities.empty())
@@ -19323,13 +19320,73 @@ bool CompositeSelectedHeroAbilityIcons(
     FillArtworkRect(artwork, slotX, slotY, iconSize, iconSize, 24, 32, 42, 208);
     StrokeArtworkRect(artwork, slotX, slotY, iconSize, iconSize, 2, red, green, blue, 240);
 
-    LinuxLoadingArtwork scaledIcon;
-    ScaleArtworkToFit(abilityPreview.icon.artwork, iconSize - 8, iconSize - 8, &scaledIcon);
-    if (scaledIcon.ready)
+    if (abilityPreview.icon.artworkLoaded)
     {
-      const int iconX = slotX + (iconSize - scaledIcon.width) / 2;
-      const int iconY = slotY + (iconSize - scaledIcon.height) / 2;
-      CompositeArtwork(artwork, scaledIcon, iconX, iconY);
+      LinuxLoadingArtwork scaledIcon;
+      ScaleArtworkToFit(abilityPreview.icon.artwork, iconSize - 8, iconSize - 8, &scaledIcon);
+      if (scaledIcon.ready)
+      {
+        const int iconX = slotX + (iconSize - scaledIcon.width) / 2;
+        const int iconY = slotY + (iconSize - scaledIcon.height) / 2;
+        CompositeArtwork(artwork, scaledIcon, iconX, iconY);
+      }
+    }
+    else
+    {
+      const int fallbackInset = std::max(6, iconSize / 5);
+      const int fallbackSize = std::max(4, iconSize - fallbackInset * 2);
+      const int markerHalf = std::max(3, fallbackSize / 5);
+      const int markerX = slotX + iconSize / 2;
+      const int markerY = slotY + iconSize / 2;
+      FillArtworkRect(
+        artwork,
+        slotX + fallbackInset,
+        slotY + fallbackInset,
+        fallbackSize,
+        fallbackSize,
+        red,
+        green,
+        blue,
+        70
+      );
+      StrokeArtworkRect(
+        artwork,
+        slotX + fallbackInset,
+        slotY + fallbackInset,
+        fallbackSize,
+        fallbackSize,
+        1,
+        red,
+        green,
+        blue,
+        180
+      );
+      DrawArtworkMarker(artwork, markerX, markerY, markerHalf, 238, 236, 218, 172);
+      if (abilityPreview.isAttack)
+      {
+        FillArtworkRect(
+          artwork,
+          markerX - markerHalf * 2,
+          markerY - 1,
+          markerHalf * 4 + 1,
+          2,
+          238,
+          236,
+          218,
+          218
+        );
+        FillArtworkRect(
+          artwork,
+          markerX - 1,
+          markerY - markerHalf * 2,
+          2,
+          markerHalf * 4 + 1,
+          238,
+          236,
+          218,
+          218
+        );
+      }
     }
   }
 
