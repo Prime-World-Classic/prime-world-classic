@@ -59884,6 +59884,13 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveHudTalentIconsDrawn << "\n";
   logFile << "  finalVisibleLiveHudTargetPanel="
           << (screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveHudTargetSummary="
+          << (screenRuntime.liveTargetState.ready ? "yes" : "no")
+          << "/" << DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind)
+          << "/" << screenRuntime.liveTargetState.objectId
+          << "/faction:" << screenRuntime.liveTargetState.faction
+          << "/player:" << screenRuntime.liveTargetState.playerId
+          << "/distance:" << screenRuntime.liveTargetState.distance << "\n";
   logFile << "  finalLiveHudCommandSurface="
           << (screenRuntime.liveHudCommandSurfaceReady ? "yes" : "no") << "\n";
   logFile << "  finalLiveHudActivateTalentProof="
@@ -62681,7 +62688,7 @@ int main(int argc, char** argv)
     screenRuntime.mapPreviewSelectedTargetAttackProofLastWorldStep -
       screenRuntime.mapPreviewSelectedTargetAttackProofStartWorldStep,
     screenRuntime.mapPreviewSelectedTargetSource.empty() ? "<none>" : screenRuntime.mapPreviewSelectedTargetSource.c_str());
-  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu talentSlots=%lu talentIcons=%lu target=%s\n",
+  fprintf(stdout, "Final visible live HUD: drawn=%s portrait=%s bars=%lu abilitySlots=%lu abilityIcons=%lu talentSlots=%lu talentIcons=%lu target=%s targetKind=%s targetObject=%d targetFaction=%d targetPlayer=%d targetDistance=%.1f\n",
     screenRuntime.visibleLiveHudDrawn ? "yes" : "no",
     screenRuntime.visibleLiveHudPortraitDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveHudBarsDrawn),
@@ -62689,7 +62696,12 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveHudAbilityIconsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveHudTalentIconsDrawn),
-    screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no");
+    screenRuntime.visibleLiveHudTargetPanelDrawn ? "yes" : "no",
+    DescribeLinuxLiveHudUnitKind(screenRuntime.liveTargetState.kind),
+    screenRuntime.liveTargetState.objectId,
+    screenRuntime.liveTargetState.faction,
+    screenRuntime.liveTargetState.playerId,
+    static_cast<double>(screenRuntime.liveTargetState.distance));
   fprintf(stdout, "Final live HUD commands: surface=%s proof=%s highlight=%s input=%lu attack=%lu useUnit=%lu activate=%lu talent=%lu follow=%lu slots=%lu action=%s\n",
     screenRuntime.liveHudCommandSurfaceReady ? "yes" : "no",
     screenRuntime.liveHudActivateTalentProofSent ? "yes" : "no",
