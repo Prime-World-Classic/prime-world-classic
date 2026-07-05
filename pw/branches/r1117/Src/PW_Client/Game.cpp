@@ -4714,6 +4714,8 @@ struct LinuxBootstrapScreenRuntime
   size_t mapPreviewDynamicHeroMarkers;
   size_t mapPreviewDynamicCommonCreepMarkers;
   size_t mapPreviewDynamicNeutralCreepMarkers;
+  size_t mapPreviewDynamicTowerMarkers;
+  size_t mapPreviewDynamicMainBuildingMarkers;
   size_t mapPreviewDynamicMovingMarkers;
   size_t mapPreviewDynamicHealthBars;
   size_t mapPreviewDynamicMoveDirectionArrows;
@@ -5684,6 +5686,8 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewDynamicHeroMarkers(0),
       mapPreviewDynamicCommonCreepMarkers(0),
       mapPreviewDynamicNeutralCreepMarkers(0),
+      mapPreviewDynamicTowerMarkers(0),
+      mapPreviewDynamicMainBuildingMarkers(0),
       mapPreviewDynamicMovingMarkers(0),
       mapPreviewDynamicHealthBars(0),
       mapPreviewDynamicMoveDirectionArrows(0),
@@ -48001,6 +48005,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t* heroMarkers,
   size_t* commonCreepMarkers,
   size_t* neutralCreepMarkers,
+  size_t* towerMarkers,
+  size_t* mainBuildingMarkers,
   size_t* movingMarkers,
   size_t* healthBars,
   size_t* moveDirectionArrows,
@@ -48015,6 +48021,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (heroMarkers) *heroMarkers = 0;
   if (commonCreepMarkers) *commonCreepMarkers = 0;
   if (neutralCreepMarkers) *neutralCreepMarkers = 0;
+  if (towerMarkers) *towerMarkers = 0;
+  if (mainBuildingMarkers) *mainBuildingMarkers = 0;
   if (movingMarkers) *movingMarkers = 0;
   if (healthBars) *healthBars = 0;
   if (moveDirectionArrows) *moveDirectionArrows = 0;
@@ -48046,6 +48054,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t heroes = 0;
   size_t commonCreeps = 0;
   size_t neutralCreeps = 0;
+  size_t towers = 0;
+  size_t mainBuildings = 0;
   size_t moving = 0;
   size_t statusBars = 0;
   size_t directionArrows = 0;
@@ -48112,12 +48122,14 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
       radiusWorld = 12.5f;
       columnHalf = 0.74f;
       columnHeight = 3.45f;
+      ++towers;
     }
     else if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING)
     {
       radiusWorld = 19.0f;
       columnHalf = 1.15f;
       columnHeight = 5.20f;
+      ++mainBuildings;
     }
     else
     {
@@ -48334,6 +48346,8 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (heroMarkers) *heroMarkers = heroes;
   if (commonCreepMarkers) *commonCreepMarkers = commonCreeps;
   if (neutralCreepMarkers) *neutralCreepMarkers = neutralCreeps;
+  if (towerMarkers) *towerMarkers = towers;
+  if (mainBuildingMarkers) *mainBuildingMarkers = mainBuildings;
   if (movingMarkers) *movingMarkers = moving;
   if (healthBars) *healthBars = statusBars;
   if (moveDirectionArrows) *moveDirectionArrows = directionArrows;
@@ -48935,6 +48949,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewDynamicHeroMarkers = 0;
     renderContext.screenRuntime->mapPreviewDynamicCommonCreepMarkers = 0;
     renderContext.screenRuntime->mapPreviewDynamicNeutralCreepMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicTowerMarkers = 0;
+    renderContext.screenRuntime->mapPreviewDynamicMainBuildingMarkers = 0;
     renderContext.screenRuntime->mapPreviewDynamicMovingMarkers = 0;
     renderContext.screenRuntime->mapPreviewDynamicHealthBars = 0;
     renderContext.screenRuntime->mapPreviewDynamicMoveDirectionArrows = 0;
@@ -49303,6 +49319,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   size_t dynamicHeroMarkers = 0;
   size_t dynamicCommonCreepMarkers = 0;
   size_t dynamicNeutralCreepMarkers = 0;
+  size_t dynamicTowerMarkers = 0;
+  size_t dynamicMainBuildingMarkers = 0;
   size_t dynamicMovingMarkers = 0;
   size_t dynamicHealthBars = 0;
   size_t dynamicMoveDirectionArrows = 0;
@@ -49328,6 +49346,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     &dynamicHeroMarkers,
     &dynamicCommonCreepMarkers,
     &dynamicNeutralCreepMarkers,
+    &dynamicTowerMarkers,
+    &dynamicMainBuildingMarkers,
     &dynamicMovingMarkers,
     &dynamicHealthBars,
     &dynamicMoveDirectionArrows,
@@ -49344,6 +49364,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewDynamicHeroMarkers = dynamicHeroMarkers;
     renderContext.screenRuntime->mapPreviewDynamicCommonCreepMarkers = dynamicCommonCreepMarkers;
     renderContext.screenRuntime->mapPreviewDynamicNeutralCreepMarkers = dynamicNeutralCreepMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicTowerMarkers = dynamicTowerMarkers;
+    renderContext.screenRuntime->mapPreviewDynamicMainBuildingMarkers = dynamicMainBuildingMarkers;
     renderContext.screenRuntime->mapPreviewDynamicMovingMarkers = dynamicMovingMarkers;
     renderContext.screenRuntime->mapPreviewDynamicHealthBars = dynamicHealthBars;
     renderContext.screenRuntime->mapPreviewDynamicMoveDirectionArrows = dynamicMoveDirectionArrows;
@@ -57271,6 +57293,10 @@ void WriteStartupLog(
           << screenRuntime.mapPreviewDynamicCommonCreepMarkers << "\n";
   logFile << "  map3DPreviewDynamicNeutralCreepMarkers="
           << screenRuntime.mapPreviewDynamicNeutralCreepMarkers << "\n";
+  logFile << "  map3DPreviewDynamicTowerMarkers="
+          << screenRuntime.mapPreviewDynamicTowerMarkers << "\n";
+  logFile << "  map3DPreviewDynamicMainBuildingMarkers="
+          << screenRuntime.mapPreviewDynamicMainBuildingMarkers << "\n";
   logFile << "  map3DPreviewDynamicMovingMarkers="
           << screenRuntime.mapPreviewDynamicMovingMarkers << "\n";
   logFile << "  map3DPreviewDynamicHealthBars="
@@ -59871,6 +59897,10 @@ void AppendRuntimeInputLog(
           << screenRuntime.mapPreviewDynamicCommonCreepMarkers << "\n";
   logFile << "  finalMap3DPreviewDynamicNeutralCreepMarkers="
           << screenRuntime.mapPreviewDynamicNeutralCreepMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicTowerMarkers="
+          << screenRuntime.mapPreviewDynamicTowerMarkers << "\n";
+  logFile << "  finalMap3DPreviewDynamicMainBuildingMarkers="
+          << screenRuntime.mapPreviewDynamicMainBuildingMarkers << "\n";
   logFile << "  finalMap3DPreviewDynamicMovingMarkers="
           << screenRuntime.mapPreviewDynamicMovingMarkers << "\n";
   logFile << "  finalMap3DPreviewDynamicHealthBars="
@@ -61280,7 +61310,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(selectedMapPreview.terrainElementPayloads.size()),
     static_cast<unsigned long>(selectedMapPreview.terrainHeightmap.terrainElementPayloadResolvedCount),
     selectedMapPreview.terrainHeightmap.terrainElementPayloadLimitHit ? "yes" : "no");
-  fprintf(stdout, "Bootstrap 3D preview: ready=%s active=%s yaw=%.1f baseYaw=%.1f pitch=%.1f zoom=%.2f pan=%.1f,%.1f input=%lu markers=%lu terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu routes=%s/%lu/%lu/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu starts=%s/%lu/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d moveCmd=%s/%lu moveProgress=%s/%s/%s/%.1f/%.1f lineupHeroMeshes=%lu/%lu heroTextures=%lu/%lu source=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-scene-objects-loaded-world-units-status-bars-map-click-move-command-and-texture-cached-lineup-hero-and-creep-meshes\n",
+  fprintf(stdout, "Bootstrap 3D preview: ready=%s active=%s yaw=%.1f baseYaw=%.1f pitch=%.1f zoom=%.2f pan=%.1f,%.1f input=%lu markers=%lu terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu routes=%s/%lu/%lu/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu starts=%s/%lu/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d moveCmd=%s/%lu moveProgress=%s/%s/%s/%.1f/%.1f lineupHeroMeshes=%lu/%lu heroTextures=%lu/%lu source=selected-map-layered-terrain-heightmap-water-zones-roads-authored-guides-point-lights-engine-start-slots-team-routes-terrain-elements-tactical-markers-scene-objects-loaded-world-units-status-bars-map-click-move-command-and-texture-cached-lineup-hero-and-creep-meshes\n",
     IsLinuxBootstrap3DPreviewReady(&selectedMapPreview) ? "yes" : "no",
     (uiRootPreview.runtimeLoadingScreenReady && IsLinuxBootstrap3DPreviewReady(&selectedMapPreview)) ? "yes" : "no",
     static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
@@ -61328,6 +61358,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCommonCreepMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicNeutralCreepMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMovingMarkers),
+    static_cast<unsigned long>(
+      screenRuntime.mapPreviewDynamicTowerMarkers +
+      screenRuntime.mapPreviewDynamicMainBuildingMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicTowerMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMainBuildingMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHealthBars),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMoveDirectionArrows),
     screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no",
@@ -62614,7 +62649,7 @@ int main(int argc, char** argv)
     screenRuntime.transceiverLastStatusActive,
     screenRuntime.transceiverLastStatusDisconnected,
     screenRuntime.transceiverLastStatusLeaver);
-  fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d yaw=%.1f pitch=%.1f zoom=%.2f\n",
+  fprintf(stdout, "Final map 3D preview: terrain=%s/%lu/%lu water=%s/%lu/%lu roads=%s/%lu/%lu terrainElements=%s/%lu/%lu/%lu static=%s/%lu/%lu/%lu animated=%s/%lu/%lu/%lu dynamic=%s/%lu/%lu/%lu/%lu/%lu objectives=%lu towers=%lu main=%lu status=%lu/%lu heroMeshes=%s/%lu/%lu creepMeshes=%s/%lu/%lu unitMeshAssets=%lu/%lu selectedHeroMarker=%s/%d yaw=%.1f pitch=%.1f zoom=%.2f\n",
     screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceVertices),
     static_cast<unsigned long>(screenRuntime.mapPreviewTerrainSurfaceTriangles),
@@ -62642,6 +62677,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicCommonCreepMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicNeutralCreepMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMovingMarkers),
+    static_cast<unsigned long>(
+      screenRuntime.mapPreviewDynamicTowerMarkers +
+      screenRuntime.mapPreviewDynamicMainBuildingMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicTowerMarkers),
+    static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMainBuildingMarkers),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicHealthBars),
     static_cast<unsigned long>(screenRuntime.mapPreviewDynamicMoveDirectionArrows),
     screenRuntime.mapPreviewDynamicHeroMeshesDrawn ? "yes" : "no",
