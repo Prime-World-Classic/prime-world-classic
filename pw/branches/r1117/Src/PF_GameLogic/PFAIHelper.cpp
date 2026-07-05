@@ -89,25 +89,63 @@ bool GetRoute( PFWorld* pWorld, NDb::EFaction faction, int roadIndex, vector<CVe
 
 int GetNextRoutePoint( const vector<CVec2>& road, const CVec2& unitPos )
 {
-  if (road.empty())
+  const int roadSize = road.size();
+  if (roadSize == 0)
     return 0;
+  if (roadSize == 1)
+    return 1;
+
   int nearestPoint = 0;
   float nearestDist = FP_MAX_VALUE;
-  for (int i = 0; i < road.size(); ++i)
+  const float moveByLineSens = AiConst::MOVE_BY_LINE_SENS();
+  for (int i = 0; i < roadSize; ++i)
   {
-    const float dist = fabs2(unitPos - road[i]);
+    const float dist = fabs2(unitPos - road[i]) + moveByLineSens;
     if (dist < nearestDist)
     {
       nearestDist = dist;
       nearestPoint = i;
     }
   }
-  return Min(nearestPoint + 1, (int)road.size());
+
+  int nextPoint = nearestPoint;
+  for (int i = nearestPoint; i < roadSize; ++i)
+  {
+    CVec2 dirByRoad;
+    if (i < roadSize - 1)
+      dirByRoad = road[i + 1] - road[i];
+    else
+      dirByRoad = road[i] - road[i - 1];
+
+    const CVec2 dirToUnit = unitPos - road[i];
+    if (dirByRoad * dirToUnit < 0.0f)
+      break;
+
+    nextPoint = i + 1;
+  }
+
+  if (nextPoint >= 0 && nextPoint < roadSize)
+  {
+    if ((fabs2(road[nextPoint] - unitPos) + moveByLineSens) < sqr(moveByLineSens + 2.0f))
+      ++nextPoint;
+  }
+  return nextPoint;
 }
 
 bool CompareRoutePoints( const vector<CVec2>& road, const CVec2& pos1, const CVec2& pos2 )
 {
-  return GetNextRoutePoint(road, pos1) <= GetNextRoutePoint(road, pos2);
+  const int p1 = GetNextRoutePoint(road, pos1);
+  const int p2 = GetNextRoutePoint(road, pos2);
+  if (p1 < p2)
+    return true;
+  if (p1 > p2)
+    return false;
+
+  if (p1 >= static_cast<int>(road.size()))
+    return true;
+
+  const CVec2& nextPoint = road[p1];
+  return fabs2(pos1 - nextPoint) > fabs2(pos2 - nextPoint);
 }
 
 bool IsLinuxAITalentUnitTargetAllowed( PFBaseMaleHero* hero, const PFTalent* talent, PFBaseUnit* targetUnit )
