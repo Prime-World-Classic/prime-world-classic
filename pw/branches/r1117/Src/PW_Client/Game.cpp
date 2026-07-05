@@ -4664,6 +4664,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyHeroTalentIconsMissing;
   bool visibleLoadingRosterDrawn;
   size_t visibleLoadingRosterRowsDrawn;
+  size_t visibleLoadingRosterLocalRowsDrawn;
+  size_t visibleLoadingRosterTeam1RowsDrawn;
+  size_t visibleLoadingRosterTeam2RowsDrawn;
+  size_t visibleLoadingRosterOtherRowsDrawn;
   size_t visibleLoadingRosterPortraitsDrawn;
   size_t visibleLoadingRosterFlagsDrawn;
   size_t visibleLoadingRosterProgressBarsDrawn;
@@ -5692,6 +5696,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyHeroTalentIconsMissing(0),
       visibleLoadingRosterDrawn(false),
       visibleLoadingRosterRowsDrawn(0),
+      visibleLoadingRosterLocalRowsDrawn(0),
+      visibleLoadingRosterTeam1RowsDrawn(0),
+      visibleLoadingRosterTeam2RowsDrawn(0),
+      visibleLoadingRosterOtherRowsDrawn(0),
       visibleLoadingRosterPortraitsDrawn(0),
       visibleLoadingRosterFlagsDrawn(0),
       visibleLoadingRosterProgressBarsDrawn(0),
@@ -55501,6 +55509,7 @@ void DrawLinuxLoadingRosterCard(
   int y,
   int width,
   int height,
+  bool localPlayer,
   size_t* portraitsDrawn,
   size_t* flagsDrawn,
   size_t* progressBarsDrawn,
@@ -55571,6 +55580,27 @@ void DrawLinuxLoadingRosterCard(
   }
   SetOpenGlColor(portraitDrawn ? 230 : 150, 210, 150, 222);
   DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+  if (localPlayer)
+  {
+    const int badgeW = std::max(24, std::min(34, portraitSize - 4));
+    const int badgeH = std::max(11, std::min(15, portraitSize / 3));
+    SetOpenGlColor(92, 58, 8, 226);
+    DrawOpenGlRect(portraitX + 2, portraitY + 2, badgeW, badgeH);
+    SetOpenGlColor(255, 235, 148, 246);
+    DrawOpenGlBorderRect(portraitX + 2, portraitY + 2, badgeW, badgeH);
+    DrawOpenGlTextInBox(
+      overlay,
+      portraitX + 4,
+      portraitY + 1,
+      badgeW - 4,
+      badgeH,
+      "YOU",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    DrawOpenGlBorderRect(x + 2, y + 2, std::max(1, width - 4), std::max(1, height - 4));
+  }
 
   const int flagSize = std::max(12, std::min(18, height / 3));
   const int forceBadgeW = std::max(28, std::min(42, width / 4));
@@ -55883,6 +55913,10 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
 
   size_t rowsDrawn = 0;
+  size_t localRowsDrawn = 0;
+  size_t team1RowsDrawn = 0;
+  size_t team2RowsDrawn = 0;
+  size_t otherRowsDrawn = 0;
   size_t portraitsDrawn = 0;
   size_t flagsDrawn = 0;
   size_t progressBarsDrawn = 0;
@@ -55897,14 +55931,17 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     const int cardY = panelY + headerH + gap + static_cast<int>(row) * (cardH + gap);
     for (size_t column = 0; column < rowEntries.size() && column < 5; ++column)
     {
+      const LinuxLoadingRuntimeHeroEntry& entry = *rowEntries[column];
+      const bool localPlayer = entry.slotId == heroesPreview->ourHeroId;
       const int cardX = panelX + gap + static_cast<int>(column) * (cardW + gap);
       DrawLinuxLoadingRosterCard(
         renderContext,
-        *rowEntries[column],
+        entry,
         cardX,
         cardY,
         cardW,
         cardH,
+        localPlayer,
         &portraitsDrawn,
         &flagsDrawn,
         &progressBarsDrawn,
@@ -55914,6 +55951,22 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
         &premiumBadgesDrawn
       );
       ++rowsDrawn;
+      if (localPlayer)
+      {
+        ++localRowsDrawn;
+      }
+      if (entry.team == 1)
+      {
+        ++team1RowsDrawn;
+      }
+      else if (entry.team == 2)
+      {
+        ++team2RowsDrawn;
+      }
+      else
+      {
+        ++otherRowsDrawn;
+      }
     }
   }
 
@@ -55921,6 +55974,10 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   {
     runtime->visibleLoadingRosterDrawn = rowsDrawn > 0;
     runtime->visibleLoadingRosterRowsDrawn = rowsDrawn;
+    runtime->visibleLoadingRosterLocalRowsDrawn = localRowsDrawn;
+    runtime->visibleLoadingRosterTeam1RowsDrawn = team1RowsDrawn;
+    runtime->visibleLoadingRosterTeam2RowsDrawn = team2RowsDrawn;
+    runtime->visibleLoadingRosterOtherRowsDrawn = otherRowsDrawn;
     runtime->visibleLoadingRosterPortraitsDrawn = portraitsDrawn;
     runtime->visibleLoadingRosterFlagsDrawn = flagsDrawn;
     runtime->visibleLoadingRosterProgressBarsDrawn = progressBarsDrawn;
@@ -59227,6 +59284,14 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingRosterRows="
           << screenRuntime.visibleLoadingRosterRowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterLocalRows="
+          << screenRuntime.visibleLoadingRosterLocalRowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterTeam1Rows="
+          << screenRuntime.visibleLoadingRosterTeam1RowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterTeam2Rows="
+          << screenRuntime.visibleLoadingRosterTeam2RowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterOtherRows="
+          << screenRuntime.visibleLoadingRosterOtherRowsDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterPortraits="
           << screenRuntime.visibleLoadingRosterPortraitsDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterFlags="
@@ -62865,9 +62930,13 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
-  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu portraits=%lu flags=%lu progress=%lu force=%lu meta=%lu rank=%lu premium=%lu\n",
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu force=%lu meta=%lu rank=%lu premium=%lu\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterLocalRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam1RowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam2RowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterOtherRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPortraitsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterFlagsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterProgressBarsDrawn),
