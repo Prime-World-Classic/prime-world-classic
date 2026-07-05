@@ -4958,6 +4958,11 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleReplayControlsLinesDrawn;
   size_t visibleReplayControlsButtonsDrawn;
   bool visibleReplayProgressDrawn;
+  int visibleReplayProgressPercent;
+  size_t visibleReplayProgressConsumedSegments;
+  size_t visibleReplayProgressLoadedSegments;
+  size_t visibleReplayProgressRemainingSegments;
+  bool visibleReplayProgressComplete;
   bool mapPreviewDragging;
   bool mapPreviewPanning;
   bool mapPreviewDragMoved;
@@ -5933,6 +5938,11 @@ struct LinuxBootstrapScreenRuntime
       visibleReplayControlsLinesDrawn(0),
       visibleReplayControlsButtonsDrawn(0),
       visibleReplayProgressDrawn(false),
+      visibleReplayProgressPercent(0),
+      visibleReplayProgressConsumedSegments(0),
+      visibleReplayProgressLoadedSegments(0),
+      visibleReplayProgressRemainingSegments(0),
+      visibleReplayProgressComplete(false),
       mapPreviewDragging(false),
       mapPreviewPanning(false),
       mapPreviewDragMoved(false),
@@ -54462,6 +54472,11 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     runtime->visibleReplayControlsLinesDrawn = 0;
     runtime->visibleReplayControlsButtonsDrawn = 0;
     runtime->visibleReplayProgressDrawn = false;
+    runtime->visibleReplayProgressPercent = 0;
+    runtime->visibleReplayProgressConsumedSegments = 0;
+    runtime->visibleReplayProgressLoadedSegments = 0;
+    runtime->visibleReplayProgressRemainingSegments = 0;
+    runtime->visibleReplayProgressComplete = false;
   }
   if (!overlay || !runtime || !runtime->replayFileInputActive)
   {
@@ -54493,6 +54508,10 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
     std::max(0.0f, std::min(1.0f,
       static_cast<float>(consumedSegments) / static_cast<float>(loadedSegments))) :
     0.0f;
+  const size_t remainingSegments = loadedSegments > consumedSegments ?
+    loadedSegments - consumedSegments :
+    0;
+  const int progressPercent = static_cast<int>(progress * 100.0f + 0.5f);
   const int fillW = std::max(1, static_cast<int>(static_cast<float>(barW) * progress));
   char buffer[512] = {0};
   size_t linesDrawn = 0;
@@ -54656,6 +54675,11 @@ void DrawLinuxReplayInputControlOverlay(const LinuxOverlayUiRenderContext& rende
   runtime->visibleReplayControlsLinesDrawn = linesDrawn;
   runtime->visibleReplayControlsButtonsDrawn = buttonsDrawn;
   runtime->visibleReplayProgressDrawn = loadedSegments > 0;
+  runtime->visibleReplayProgressPercent = progressPercent;
+  runtime->visibleReplayProgressConsumedSegments = consumedSegments;
+  runtime->visibleReplayProgressLoadedSegments = loadedSegments;
+  runtime->visibleReplayProgressRemainingSegments = remainingSegments;
+  runtime->visibleReplayProgressComplete = loadedSegments > 0 && consumedSegments >= loadedSegments;
 }
 
 std::string StripLinuxLoadingFlashMarkup(std::string value)
@@ -60233,6 +60257,15 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleReplayControlsButtonsDrawn << "\n";
   logFile << "  finalVisibleReplayProgress="
           << (screenRuntime.visibleReplayProgressDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleReplayProgressPercent="
+          << screenRuntime.visibleReplayProgressPercent << "\n";
+  logFile << "  finalVisibleReplayProgressSegments="
+          << screenRuntime.visibleReplayProgressConsumedSegments << "/"
+          << screenRuntime.visibleReplayProgressLoadedSegments << "\n";
+  logFile << "  finalVisibleReplayProgressRemaining="
+          << screenRuntime.visibleReplayProgressRemainingSegments << "\n";
+  logFile << "  finalVisibleReplayProgressComplete="
+          << (screenRuntime.visibleReplayProgressComplete ? "yes" : "no") << "\n";
   WriteLinuxLiveHudStateLog(logFile, "finalLiveHero", screenRuntime.liveHeroState);
   WriteLinuxLiveHudStateLog(logFile, "finalLiveTarget", screenRuntime.liveTargetState);
   logFile << "  finalMap3DPreviewSelectedTargetAttackProofPrepared="
@@ -62997,11 +63030,16 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
-  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu buttons=%lu progress=%s\n",
+  fprintf(stdout, "Final visible replay controls: drawn=%s lines=%lu buttons=%lu progress=%s percent=%d segments=%lu/%lu remaining=%lu complete=%s\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleReplayControlsButtonsDrawn),
-    screenRuntime.visibleReplayProgressDrawn ? "yes" : "no");
+    screenRuntime.visibleReplayProgressDrawn ? "yes" : "no",
+    screenRuntime.visibleReplayProgressPercent,
+    static_cast<unsigned long>(screenRuntime.visibleReplayProgressConsumedSegments),
+    static_cast<unsigned long>(screenRuntime.visibleReplayProgressLoadedSegments),
+    static_cast<unsigned long>(screenRuntime.visibleReplayProgressRemainingSegments),
+    screenRuntime.visibleReplayProgressComplete ? "yes" : "no");
   fprintf(stdout, "Final live HUD state: samples=%lu hero=%s object=%d kind=%s faction=%d player=%d user=%d level=%d gold=%d pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s target=%s object=%d kind=%s faction=%d player=%d user=%d source=%s dist=%.1f pos=%.1f,%.1f hp=%.0f/%.0f/%.0f%% energy=%.0f/%.0f/%.0f%% damage=%.1f-%.1f aps=%.2f move=%.2f regen=%.2f/%.2f moving=%s dead=%s\n",
     static_cast<unsigned long>(screenRuntime.liveHudSampleCount),
     screenRuntime.liveHeroState.ready ? "yes" : "no",
