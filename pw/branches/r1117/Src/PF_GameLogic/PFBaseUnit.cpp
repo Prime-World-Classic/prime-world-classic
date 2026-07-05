@@ -1021,10 +1021,64 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int, bool checkForbi
 
   return bestTarget;
 }
-void PFBaseUnit::OnBeingTargeted(PFBaseUnit&) {}
-void PFBaseUnit::StopAttackingMe(bool) {}
-void PFBaseUnit::AssignTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget) { pCurrentTarget = pTarget; bStrongTarget = strongTarget; OnTargetAssigned(); }
-void PFBaseUnit::DropTarget() { pCurrentTarget = 0; bStrongTarget = false; OnTargetDropped(); }
+void PFBaseUnit::OnBeingTargeted(PFBaseUnit& attacker)
+{
+  attackersRing.addLast(&attacker);
+}
+void PFBaseUnit::StopAttackingMe(bool ignorePursueDispatches)
+{
+  for (ring::Range<AttackersRing> it(attackersRing); it; )
+  {
+    PFBaseUnit* pUnit = &(*it);
+    ++it;
+    pUnit->DropTarget();
+  }
+
+  for (ring::Range<UnitDispatchesRing> it(inboundDispatches); it; )
+  {
+    PFDispatchUniformLinearMove* pDispatch = &(*it);
+    ++it;
+    if (ignorePursueDispatches || pDispatch->GetDB().aiming != NDb::DISPATCHAIMING_PURSUE)
+    {
+      if (!IsUnitAlly(pDispatch->GetSender()))
+        pDispatch->DropTarget();
+    }
+  }
+}
+void PFBaseUnit::AssignTarget(const CPtr<PFBaseUnit>& pTarget, bool strongTarget)
+{
+  if (!CanAttackTarget(pTarget) || pCurrentTarget == pTarget)
+    return;
+
+  CPtr<PFBaseUnit> pLastTarget = pCurrentTarget;
+
+  DropTarget();
+
+  pCurrentTarget = pTarget;
+  if (!IsValid(pCurrentTarget))
+    return;
+
+  EventHappened(PFBaseUnitAssignTargetEvent(pTarget, pLastTarget, strongTarget));
+  pCurrentTarget->OnBeingTargeted(*this);
+
+  bStrongTarget = strongTarget;
+  const NDb::UnitTargetingParameters* targetingParams = GetTargetingParamsPtr();
+  targetRevisionTime = !strongTarget && targetingParams ? targetingParams->targetRevisionTime : 0.0f;
+
+  OnTargetAssigned();
+}
+void PFBaseUnit::DropTarget()
+{
+  if (IsValid(pCurrentTarget))
+  {
+    AttackersRing::remove(this);
+    pCurrentTarget = 0;
+    targetRevisionTime = 0.0f;
+    bStrongTarget = false;
+
+    OnTargetDropped();
+  }
+}
 void PFBaseUnit::ClearScreamTargets() { screamTargets.clear(); }
 void PFBaseUnit::DoScream(const CPtr<PFBaseUnit>&, ScreamTarget::ScreamType) {}
 void PFBaseUnit::Stacked(const bool) {}
