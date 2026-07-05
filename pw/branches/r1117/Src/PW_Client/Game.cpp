@@ -52636,14 +52636,15 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   const int iconLimitX = panelLeft + panelWidth - padding - (hasTarget ? targetPanelWidth + targetGap : 0);
   if (heroPreview && heroPreview->attackReady && iconX + iconSize <= iconLimitX)
   {
-    bool iconDrawn = false;
+    bool iconTextureDrawn = false;
+    bool iconFallbackDrawn = false;
     if (!heroPreview->featuredAbilities.empty())
     {
       unsigned char r = 88;
       unsigned char g = 156;
       unsigned char b = 224;
       ResolveAbilityPreviewAccent(heroPreview->featuredAbilities[0], &r, &g, &b);
-      iconDrawn = DrawLinuxBootstrapHeroTextureSlot(
+      iconTextureDrawn = DrawLinuxBootstrapHeroTextureSlot(
         overlay,
         heroPreview->featuredAbilities[0].icon,
         iconX,
@@ -52653,6 +52654,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
         g,
         b,
         false);
+      iconFallbackDrawn = !iconTextureDrawn;
     }
     else
     {
@@ -52660,6 +52662,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       DrawOpenGlRect(iconX, iconY, iconSize, iconSize);
       SetOpenGlColor(98, 151, 208, 226);
       DrawOpenGlBorderRect(iconX, iconY, iconSize, iconSize);
+      iconFallbackDrawn = true;
     }
     SetOpenGlColor(238, 236, 218, 230);
     DrawOpenGlTextInBox(
@@ -52674,7 +52677,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       false
     );
     ++abilitySlotsDrawn;
-    if (iconDrawn)
+    if (iconTextureDrawn || iconFallbackDrawn)
     {
       ++abilityIconsDrawn;
     }
