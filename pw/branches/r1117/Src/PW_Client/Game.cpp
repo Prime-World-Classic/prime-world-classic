@@ -4980,6 +4980,9 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveEventFeedRowsMax;
   size_t visibleLiveEventFeedRowsDrawn;
   size_t visibleLiveEventFeedRowsDropped;
+  size_t visibleLiveEventFeedCommandRowsGenerated;
+  size_t visibleLiveEventFeedCombatRowsGenerated;
+  size_t visibleLiveEventFeedObjectiveRowsGenerated;
   size_t visibleLiveEventFeedCommandRowsDrawn;
   size_t visibleLiveEventFeedCombatRowsDrawn;
   size_t visibleLiveEventFeedObjectiveRowsDrawn;
@@ -5995,6 +5998,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveEventFeedRowsMax(0),
       visibleLiveEventFeedRowsDrawn(0),
       visibleLiveEventFeedRowsDropped(0),
+      visibleLiveEventFeedCommandRowsGenerated(0),
+      visibleLiveEventFeedCombatRowsGenerated(0),
+      visibleLiveEventFeedObjectiveRowsGenerated(0),
       visibleLiveEventFeedCommandRowsDrawn(0),
       visibleLiveEventFeedCombatRowsDrawn(0),
       visibleLiveEventFeedObjectiveRowsDrawn(0),
@@ -54262,6 +54268,9 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLiveEventFeedRowsMax = 0;
     runtime->visibleLiveEventFeedRowsDrawn = 0;
     runtime->visibleLiveEventFeedRowsDropped = 0;
+    runtime->visibleLiveEventFeedCommandRowsGenerated = 0;
+    runtime->visibleLiveEventFeedCombatRowsGenerated = 0;
+    runtime->visibleLiveEventFeedObjectiveRowsGenerated = 0;
     runtime->visibleLiveEventFeedCommandRowsDrawn = 0;
     runtime->visibleLiveEventFeedCombatRowsDrawn = 0;
     runtime->visibleLiveEventFeedObjectiveRowsDrawn = 0;
@@ -54598,6 +54607,24 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
   const int panelY = loadingActive ?
     std::max(264, std::min(height - panelH - 86, height / 2 - 48)) :
     104;
+  size_t commandRowsGenerated = 0;
+  size_t combatRowsGenerated = 0;
+  size_t objectiveRowsGenerated = 0;
+  for (size_t i = 0; i < rows.size(); ++i)
+  {
+    if (rows[i].command)
+    {
+      ++commandRowsGenerated;
+    }
+    if (rows[i].combat)
+    {
+      ++combatRowsGenerated;
+    }
+    if (rows[i].objective)
+    {
+      ++objectiveRowsGenerated;
+    }
+  }
 
   SetOpenGlColor(5, 8, 12, loadingActive ? 206 : 220);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
@@ -54663,6 +54690,9 @@ void DrawLinuxLiveEventFeedOverlay(const LinuxOverlayUiRenderContext& renderCont
   runtime->visibleLiveEventFeedRowsMax = maxRows;
   runtime->visibleLiveEventFeedRowsDrawn = rowsToDraw;
   runtime->visibleLiveEventFeedRowsDropped = rowsDropped;
+  runtime->visibleLiveEventFeedCommandRowsGenerated = commandRowsGenerated;
+  runtime->visibleLiveEventFeedCombatRowsGenerated = combatRowsGenerated;
+  runtime->visibleLiveEventFeedObjectiveRowsGenerated = objectiveRowsGenerated;
   runtime->visibleLiveEventFeedCommandRowsDrawn = commandRows;
   runtime->visibleLiveEventFeedCombatRowsDrawn = combatRows;
   runtime->visibleLiveEventFeedObjectiveRowsDrawn = objectiveRows;
@@ -60533,6 +60563,12 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveEventFeedRowsDrawn << "\n";
   logFile << "  finalVisibleLiveEventFeedRowsDropped="
           << screenRuntime.visibleLiveEventFeedRowsDropped << "\n";
+  logFile << "  finalVisibleLiveEventFeedCommandRowsGenerated="
+          << screenRuntime.visibleLiveEventFeedCommandRowsGenerated << "\n";
+  logFile << "  finalVisibleLiveEventFeedCombatRowsGenerated="
+          << screenRuntime.visibleLiveEventFeedCombatRowsGenerated << "\n";
+  logFile << "  finalVisibleLiveEventFeedObjectiveRowsGenerated="
+          << screenRuntime.visibleLiveEventFeedObjectiveRowsGenerated << "\n";
   logFile << "  finalVisibleLiveEventFeedCommandRows="
           << screenRuntime.visibleLiveEventFeedCommandRowsDrawn << "\n";
   logFile << "  finalVisibleLiveEventFeedCombatRows="
@@ -63351,15 +63387,18 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDeadHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardCommandLinesDrawn));
-  fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu generated=%lu max=%lu dropped=%lu command=%lu combat=%lu objective=%lu objectiveMarkers=%lu\n",
+  fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu generated=%lu max=%lu dropped=%lu command=%lu/%lu combat=%lu/%lu objective=%lu/%lu objectiveMarkers=%lu\n",
     screenRuntime.visibleLiveEventFeedDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsMax),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedRowsDropped),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCommandRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCommandRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedCombatRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveRowsGenerated),
     static_cast<unsigned long>(screenRuntime.visibleLiveEventFeedObjectiveMarkersDrawn));
   fprintf(stdout, "Final visible replay controls: drawn=%s layout=%s lines=%lu buttons=%lu activeButtons=%lu pauseActive=%s resetActive=%s progress=%s percent=%d fill=%d segments=%lu/%lu remaining=%lu complete=%s\n",
     screenRuntime.visibleReplayControlsDrawn ? "yes" : "no",
