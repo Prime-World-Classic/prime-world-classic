@@ -54754,6 +54754,14 @@ void DrawLinuxLoadingRosterCard(
     }
     metaText += NStr::StrFmt("Pty %u", entry.partyId);
   }
+  if (!entry.locale.empty())
+  {
+    if (!metaText.empty())
+    {
+      metaText += "  ";
+    }
+    metaText += "Loc " + entry.locale;
+  }
   if (entry.isNovice)
   {
     if (!metaText.empty())
