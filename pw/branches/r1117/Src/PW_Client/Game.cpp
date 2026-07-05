@@ -4647,6 +4647,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyDetailsLineupSlotsDrawn;
   size_t visibleLobbyDetailsLineupPortraitsDrawn;
   size_t visibleLobbyDetailsLineupSelectedSlotsDrawn;
+  size_t visibleLobbyDetailsLineupLocalSlotsDrawn;
   size_t visibleLobbyDetailsLineupHumanSlotsDrawn;
   size_t visibleLobbyDetailsLineupManualSlotsDrawn;
   size_t visibleLobbyDetailsLineupFallbackSlotsDrawn;
@@ -5679,6 +5680,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsLineupSlotsDrawn(0),
       visibleLobbyDetailsLineupPortraitsDrawn(0),
       visibleLobbyDetailsLineupSelectedSlotsDrawn(0),
+      visibleLobbyDetailsLineupLocalSlotsDrawn(0),
       visibleLobbyDetailsLineupHumanSlotsDrawn(0),
       visibleLobbyDetailsLineupManualSlotsDrawn(0),
       visibleLobbyDetailsLineupFallbackSlotsDrawn(0),
@@ -51403,6 +51405,7 @@ size_t DrawLinuxLobbyLineupStrip(
   int height,
   size_t* portraitsDrawn,
   size_t* selectedSlotsDrawn,
+  size_t* localSlotsDrawn,
   size_t* humanSlotsDrawn,
   size_t* manualSlotsDrawn,
   size_t* fallbackSlotsDrawn
@@ -51415,6 +51418,10 @@ size_t DrawLinuxLobbyLineupStrip(
   if (selectedSlotsDrawn)
   {
     *selectedSlotsDrawn = 0;
+  }
+  if (localSlotsDrawn)
+  {
+    *localSlotsDrawn = 0;
   }
   if (humanSlotsDrawn)
   {
@@ -51466,6 +51473,7 @@ size_t DrawLinuxLobbyLineupStrip(
     const int slotX = rx + gap + static_cast<int>(i) * (slotW + gap);
     const int slotY = ry + std::max(2, (rh - slotH) / 2);
     const bool selectedSlot = i == localMatchPreview.selectedSlotIndex;
+    const bool localSlot = selectedSlot && slot.human;
     const bool fallbackSlot = slot.heroTitle.empty() || slot.heroIndex >= heroCatalog.entries.size();
 
     if (slot.team == 1)
@@ -51488,7 +51496,6 @@ size_t DrawLinuxLobbyLineupStrip(
       SetOpenGlColor(250, 226, 141, 238);
       DrawOpenGlBorderRect(slotX + 1, slotY + 1, std::max(1, slotW - 2), std::max(1, slotH - 2));
     }
-
     bool portraitDrawn = false;
     const int portraitSize = std::max(12, std::min(slotH - layout.H(4), slotW / 3));
     const int portraitX = slotX + layout.W(3);
@@ -51520,6 +51527,26 @@ size_t DrawLinuxLobbyLineupStrip(
         }
       }
     }
+    if (localSlot)
+    {
+      const int badgeW = std::max(20, std::min(30, slotW / 3));
+      const int badgeH = std::max(10, std::min(13, slotH - layout.H(4)));
+      SetOpenGlColor(92, 58, 8, 226);
+      DrawOpenGlRect(slotX + layout.W(3), slotY + layout.H(2), badgeW, badgeH);
+      SetOpenGlColor(255, 235, 148, 246);
+      DrawOpenGlBorderRect(slotX + layout.W(3), slotY + layout.H(2), badgeW, badgeH);
+      DrawOpenGlTextInBox(
+        overlay,
+        slotX + layout.W(4),
+        slotY + layout.H(1),
+        std::max(1, badgeW - layout.W(2)),
+        badgeH,
+        "YOU",
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+    }
 
     std::string label = ResolveLinuxLobbyLineupSlotTitle(overlay, heroCatalog, slot);
     if (slot.human)
@@ -51548,6 +51575,10 @@ size_t DrawLinuxLobbyLineupStrip(
     if (selectedSlot && selectedSlotsDrawn)
     {
       ++(*selectedSlotsDrawn);
+    }
+    if (localSlot && localSlotsDrawn)
+    {
+      ++(*localSlotsDrawn);
     }
     if (slot.human && humanSlotsDrawn)
     {
@@ -51740,6 +51771,7 @@ void DrawLinuxLobbySelectedMapDetails(
 
   size_t lineupPortraits = 0;
   size_t lineupSelectedSlots = 0;
+  size_t lineupLocalSlots = 0;
   size_t lineupHumanSlots = 0;
   size_t lineupManualSlots = 0;
   size_t lineupFallbackSlots = 0;
@@ -51755,6 +51787,7 @@ void DrawLinuxLobbySelectedMapDetails(
     29,
     &lineupPortraits,
     &lineupSelectedSlots,
+    &lineupLocalSlots,
     &lineupHumanSlots,
     &lineupManualSlots,
     &lineupFallbackSlots
@@ -51771,6 +51804,7 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
     runtime->visibleLobbyDetailsLineupPortraitsDrawn = lineupPortraits;
     runtime->visibleLobbyDetailsLineupSelectedSlotsDrawn = lineupSelectedSlots;
+    runtime->visibleLobbyDetailsLineupLocalSlotsDrawn = lineupLocalSlots;
     runtime->visibleLobbyDetailsLineupHumanSlotsDrawn = lineupHumanSlots;
     runtime->visibleLobbyDetailsLineupManualSlotsDrawn = lineupManualSlots;
     runtime->visibleLobbyDetailsLineupFallbackSlotsDrawn = lineupFallbackSlots;
@@ -59236,6 +59270,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupSelectedSlots="
           << screenRuntime.visibleLobbyDetailsLineupSelectedSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupLocalSlots="
+          << screenRuntime.visibleLobbyDetailsLineupLocalSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupHumanSlots="
           << screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupManualSlots="
@@ -62897,7 +62933,7 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s logo=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu human=%lu manual=%lu fallback=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s logo=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
@@ -62907,6 +62943,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSelectedSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupLocalSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
