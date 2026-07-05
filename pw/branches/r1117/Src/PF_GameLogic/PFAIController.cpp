@@ -656,8 +656,17 @@ void PFAIController::UseTalents()
     }
   }
 
-  if (!talentsToUse.empty())
-    GetHelper().UseTalent(talentsToUse.front().talentWrapper, talentsToUse.front().target);
+  const unsigned int numTalents = talentsToUse.size();
+  if ( numTalents == 0 )
+    return;
+
+  int talentIndex = 0;
+  if ( numTalents > 1 )
+    talentIndex = NRandom::Random( numTalents - 1 );
+
+  TalentWrapper toUse( talentsToUse[talentIndex].talentWrapper );
+  Target target = talentsToUse[talentIndex].target;
+  GetHelper().UseTalent( toUse, target );
 }
 
 void PFAIController::RaiseFlags()
@@ -679,6 +688,10 @@ void PFAIController::RaiseFlags()
   {
     return;
   }
+
+  PFBaseUnit* enemy = GetHelper().FindEnemyNear();
+  if ( IsValid(enemy) )
+    return;
 
   const float flagSearchRange = Max(GetHero()->GetVisibilityRange(), GetHero()->GetTargetingRange());
   PFFlagpole* flagpole = GetHero()->GetWorld()->FindLinuxNearestRaisableFlagpoleForHero(GetHero(), flagSearchRange);

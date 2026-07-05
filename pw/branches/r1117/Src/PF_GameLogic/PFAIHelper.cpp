@@ -436,7 +436,7 @@ void TalentPart::UseTalents( PFAIHelper &aiHelper )
 
   for ( TalentWrapper i = GetFirstTalent(aiHelper); i.IsValid(); ++i )
   {
-    if ( !i.IsActivated() || !i.IsActive() )
+    if ( !i.IsActivated() || !i.IsActive() || !i.CanBeUsed() )
       continue;
 
     const PFTalent* pTalent = i.GetTalent();
@@ -467,10 +467,17 @@ void TalentPart::UseTalents( PFAIHelper &aiHelper )
     }
   }
 
-  if ( talentsToUse.empty() )
+  const unsigned int numTalents = talentsToUse.size();
+  if ( numTalents == 0 )
     return;
 
-  aiHelper.UseTalent( talentsToUse.front().talentWrapper, talentsToUse.front().target );
+  int talentIndex = 0;
+  if ( numTalents > 1 )
+    talentIndex = NRandom::Random( numTalents - 1 );
+
+  TalentWrapper toUse( talentsToUse[talentIndex].talentWrapper );
+  Target target = talentsToUse[talentIndex].target;
+  aiHelper.UseTalent( toUse, target );
 }
 TalentWrapper TalentPart::GetFirstTalent( PFAIHelper &aiHelper ) { return TalentWrapper(aiHelper.pUnit, 0, 0); }
 TalentWrapper TalentPart::GetLastTalent( PFAIHelper &aiHelper )
