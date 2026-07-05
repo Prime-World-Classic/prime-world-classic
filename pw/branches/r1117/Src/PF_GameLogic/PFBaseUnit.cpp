@@ -980,7 +980,46 @@ bool PFBaseUnit::CanSelectTarget(PFBaseUnit const* pTarget, bool mustSeeTarget) 
          visibilityTest &&
          (!GetBehaviour() || GetBehaviour()->CanSelectTarget(pTarget, mustSeeTarget));
 }
-CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int, bool checkForbid)
+
+class LinuxAIWorldTargetScan
+{
+public:
+  LinuxAIWorldTargetScan(const PFBaseUnit& owner, float maxRange)
+    : owner(owner)
+    , maxRange(maxRange)
+    , bestDistance2(FLT_MAX)
+    , origin(owner.GetPosition().AsVec2D())
+  {
+  }
+
+  void operator()(PFBaseUnit& unit)
+  {
+    if (unit.GetWorld() != owner.GetWorld())
+      return;
+    if (!owner.CanSelectTarget(&unit, true))
+      return;
+    if (!owner.IsTargetInRange(&unit, maxRange))
+      return;
+
+    const float distance2 = fabs2(unit.GetPosition().AsVec2D() - origin);
+    if (distance2 < bestDistance2)
+    {
+      bestDistance2 = distance2;
+      bestTarget = &unit;
+    }
+  }
+
+  const CPtr<PFBaseUnit>& GetTarget() const { return bestTarget; }
+
+private:
+  const PFBaseUnit& owner;
+  float maxRange;
+  float bestDistance2;
+  CVec2 origin;
+  CPtr<PFBaseUnit> bestTarget;
+};
+
+CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, bool checkForbid)
 {
   if (IsDead() || (checkForbid && CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)))
     return CPtr<PFBaseUnit>();
@@ -988,6 +1027,25 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int, bool checkForbi
   const float range = fRange > EPS_VALUE ? fRange : GetVisibilityRange();
   if (range <= EPS_VALUE)
     return CPtr<PFBaseUnit>();
+
+  if (GetWorld() && GetWorld()->GetAIWorld())
+  {
+    PFAIWorld* pAIWorld = GetWorld()->GetAIWorld();
+    const float searchRadius = range + (GetObjectSize() + pAIWorld->GetMaxObjectSize()) * 0.5f;
+    int targetTypesToFind = NDb::SPELLTARGET_ALL;
+    if (CanAttackFlying())
+      targetTypesToFind |= NDb::SPELLTARGET_FLYING;
+    if (IsRequireDirectSightToAttack())
+      targetTypesToFind |= NDb::SPELLTARGET_LINEOFSIGHT;
+    targetTypesToFind |= targetFlags;
+
+    LinuxAIWorldTargetScan targetFinder(*this, range);
+    pAIWorld->ForAllUnitsInRange(GetPosition(), searchRadius, targetFinder, UnitMaskingPredicate(GetOppositeFactionFlags(), targetTypesToFind, this));
+
+    CPtr<PFBaseUnit> aiWorldTarget = targetFinder.GetTarget();
+    if (IsValid(aiWorldTarget))
+      return aiWorldTarget;
+  }
 
   vector<CPtr<PFBaseUnit> > units;
   GetLinuxBootstrapUnits(units);

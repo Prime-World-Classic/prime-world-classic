@@ -4642,6 +4642,7 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyDetailsArtworkDrawn;
   bool visibleLobbyDetailsMinimapDrawn;
   size_t visibleLobbyDetailsLineupSlotsDrawn;
+  size_t visibleLobbyDetailsLineupPortraitsDrawn;
   size_t visibleLobbyDetailsTextureCount;
   bool visibleLobbyHeroDetailsDrawn;
   bool visibleLobbyHeroPortraitDrawn;
@@ -5602,6 +5603,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsArtworkDrawn(false),
       visibleLobbyDetailsMinimapDrawn(false),
       visibleLobbyDetailsLineupSlotsDrawn(0),
+      visibleLobbyDetailsLineupPortraitsDrawn(0),
       visibleLobbyDetailsTextureCount(0),
       visibleLobbyHeroDetailsDrawn(false),
       visibleLobbyHeroPortraitDrawn(false),
@@ -50903,17 +50905,30 @@ std::string ResolveLinuxLobbyLineupSlotTitle(
   return MakeOpenGlOverlayText(overlay, title, fallback);
 }
 
+const LinuxWindowOverlay::OpenGlTexture* ResolveLinuxLobbyCachedTextureReference(
+  LinuxWindowOverlay* overlay,
+  const LinuxClientEnvironment* environment,
+  const std::string& reference
+);
+
 size_t DrawLinuxLobbyLineupStrip(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
+  const LinuxClientEnvironment* environment,
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
   int x,
   int y,
   int width,
-  int height
+  int height,
+  size_t* portraitsDrawn
 )
 {
+  if (portraitsDrawn)
+  {
+    *portraitsDrawn = 0;
+  }
+
   const int rx = layout.X(x);
   const int ry = layout.Y(y);
   const int rw = layout.W(width);
@@ -50967,17 +50982,55 @@ size_t DrawLinuxLobbyLineupStrip(
     SetOpenGlColor(slot.human ? 236 : 104, slot.human ? 202 : 117, slot.human ? 113 : 124, 225);
     DrawOpenGlBorderRect(slotX, slotY, slotW, slotH);
 
+    bool portraitDrawn = false;
+    const int portraitSize = std::max(12, std::min(slotH - layout.H(4), slotW / 3));
+    const int portraitX = slotX + layout.W(3);
+    const int portraitY = slotY + std::max(1, (slotH - portraitSize) / 2);
+    if (portraitSize > 0 &&
+        slotW >= portraitSize + layout.W(24) &&
+        slot.heroIndex < heroCatalog.entries.size())
+    {
+      const LinuxHeroCatalogEntry& heroEntry = heroCatalog.entries[slot.heroIndex];
+      const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+        ResolveLinuxLobbyCachedTextureReference(overlay, environment, heroEntry.iconRef);
+      if (portraitTexture)
+      {
+        DrawOpenGlTextureCover(
+          portraitTexture->texture,
+          portraitTexture->width,
+          portraitTexture->height,
+          portraitX,
+          portraitY,
+          portraitSize,
+          portraitSize
+        );
+        SetOpenGlColor(245, 232, 182, 174);
+        DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+        portraitDrawn = true;
+        if (portraitsDrawn)
+        {
+          ++(*portraitsDrawn);
+        }
+      }
+    }
+
     std::string label = ResolveLinuxLobbyLineupSlotTitle(overlay, heroCatalog, slot);
     if (slot.human)
     {
       label = "P " + label;
     }
+    const int labelX = portraitDrawn ?
+      portraitX + portraitSize + layout.W(4) :
+      slotX + layout.W(3);
+    const int labelW = portraitDrawn ?
+      std::max(1, slotX + slotW - labelX - layout.W(3)) :
+      std::max(1, slotW - layout.W(6));
     SetOpenGlColor(239, 238, 222, 235);
     DrawOpenGlTextInBox(
       overlay,
-      slotX + layout.W(3),
+      labelX,
       slotY,
-      std::max(1, slotW - layout.W(6)),
+      labelW,
       slotH,
       label,
       LINUX_OPENGL_TEXT_ALIGN_CENTER,
@@ -50996,6 +51049,7 @@ void DrawLinuxLobbySelectedMapDetails(
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxSelectedMapPreview* selectedMapPreview,
+  const LinuxClientEnvironment* environment,
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
   LinuxBootstrapScreenRuntime* runtime
@@ -51161,15 +51215,18 @@ void DrawLinuxLobbySelectedMapDetails(
     true
   );
 
+  size_t lineupPortraits = 0;
   const size_t lineupSlots = DrawLinuxLobbyLineupStrip(
     overlay,
     layout,
+    environment,
     heroCatalog,
     localMatchPreview,
     82,
     280,
     661,
-    29
+    29,
+    &lineupPortraits
   );
 
   if (runtime)
@@ -51178,6 +51235,7 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsArtworkDrawn = backDrawn || logoDrawn;
     runtime->visibleLobbyDetailsMinimapDrawn = minimapDrawn;
     runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
+    runtime->visibleLobbyDetailsLineupPortraitsDrawn = lineupPortraits;
     runtime->visibleLobbyDetailsTextureCount = textureCount;
   }
 }
@@ -52178,6 +52236,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       mapCatalog,
       mapBrowserState,
       renderContext.selectedMapPreview,
+      renderContext.environment,
       *renderContext.heroCatalog,
       localMatchPreview,
       runtime
@@ -58110,6 +58169,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyDetailsTextureCount << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupSlots="
           << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupPortraits="
+          << screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsMapBack="
           << (selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile) << "\n";
   logFile << "  finalVisibleLobbyDetailsMapLogo="
@@ -61626,12 +61687,13 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu portraits=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
-    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn));
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s abilities=%lu talents=%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
