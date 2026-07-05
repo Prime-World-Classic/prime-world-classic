@@ -4643,6 +4643,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyDetailsMinimapDrawn;
   size_t visibleLobbyDetailsLineupSlotsDrawn;
   size_t visibleLobbyDetailsLineupPortraitsDrawn;
+  size_t visibleLobbyDetailsLineupSelectedSlotsDrawn;
+  size_t visibleLobbyDetailsLineupHumanSlotsDrawn;
+  size_t visibleLobbyDetailsLineupManualSlotsDrawn;
+  size_t visibleLobbyDetailsLineupFallbackSlotsDrawn;
   size_t visibleLobbyDetailsTextureCount;
   bool visibleLobbyHeroDetailsDrawn;
   bool visibleLobbyHeroPortraitDrawn;
@@ -5631,6 +5635,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsMinimapDrawn(false),
       visibleLobbyDetailsLineupSlotsDrawn(0),
       visibleLobbyDetailsLineupPortraitsDrawn(0),
+      visibleLobbyDetailsLineupSelectedSlotsDrawn(0),
+      visibleLobbyDetailsLineupHumanSlotsDrawn(0),
+      visibleLobbyDetailsLineupManualSlotsDrawn(0),
+      visibleLobbyDetailsLineupFallbackSlotsDrawn(0),
       visibleLobbyDetailsTextureCount(0),
       visibleLobbyHeroDetailsDrawn(false),
       visibleLobbyHeroPortraitDrawn(false),
@@ -51313,12 +51321,32 @@ size_t DrawLinuxLobbyLineupStrip(
   int y,
   int width,
   int height,
-  size_t* portraitsDrawn
+  size_t* portraitsDrawn,
+  size_t* selectedSlotsDrawn,
+  size_t* humanSlotsDrawn,
+  size_t* manualSlotsDrawn,
+  size_t* fallbackSlotsDrawn
 )
 {
   if (portraitsDrawn)
   {
     *portraitsDrawn = 0;
+  }
+  if (selectedSlotsDrawn)
+  {
+    *selectedSlotsDrawn = 0;
+  }
+  if (humanSlotsDrawn)
+  {
+    *humanSlotsDrawn = 0;
+  }
+  if (manualSlotsDrawn)
+  {
+    *manualSlotsDrawn = 0;
+  }
+  if (fallbackSlotsDrawn)
+  {
+    *fallbackSlotsDrawn = 0;
   }
 
   const int rx = layout.X(x);
@@ -51357,6 +51385,8 @@ size_t DrawLinuxLobbyLineupStrip(
     const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
     const int slotX = rx + gap + static_cast<int>(i) * (slotW + gap);
     const int slotY = ry + std::max(2, (rh - slotH) / 2);
+    const bool selectedSlot = i == localMatchPreview.selectedSlotIndex;
+    const bool fallbackSlot = slot.heroTitle.empty() || slot.heroIndex >= heroCatalog.entries.size();
 
     if (slot.team == 1)
     {
@@ -51373,6 +51403,11 @@ size_t DrawLinuxLobbyLineupStrip(
     DrawOpenGlRect(slotX, slotY, slotW, slotH);
     SetOpenGlColor(slot.human ? 236 : 104, slot.human ? 202 : 117, slot.human ? 113 : 124, 225);
     DrawOpenGlBorderRect(slotX, slotY, slotW, slotH);
+    if (selectedSlot)
+    {
+      SetOpenGlColor(250, 226, 141, 238);
+      DrawOpenGlBorderRect(slotX + 1, slotY + 1, std::max(1, slotW - 2), std::max(1, slotH - 2));
+    }
 
     bool portraitDrawn = false;
     const int portraitSize = std::max(12, std::min(slotH - layout.H(4), slotW / 3));
@@ -51430,6 +51465,22 @@ size_t DrawLinuxLobbyLineupStrip(
       false
     );
     ++drawnSlots;
+    if (selectedSlot && selectedSlotsDrawn)
+    {
+      ++(*selectedSlotsDrawn);
+    }
+    if (slot.human && humanSlotsDrawn)
+    {
+      ++(*humanSlotsDrawn);
+    }
+    if (slot.manualHero && manualSlotsDrawn)
+    {
+      ++(*manualSlotsDrawn);
+    }
+    if (fallbackSlot && fallbackSlotsDrawn)
+    {
+      ++(*fallbackSlotsDrawn);
+    }
   }
 
   return drawnSlots;
@@ -51608,6 +51659,10 @@ void DrawLinuxLobbySelectedMapDetails(
   );
 
   size_t lineupPortraits = 0;
+  size_t lineupSelectedSlots = 0;
+  size_t lineupHumanSlots = 0;
+  size_t lineupManualSlots = 0;
+  size_t lineupFallbackSlots = 0;
   const size_t lineupSlots = DrawLinuxLobbyLineupStrip(
     overlay,
     layout,
@@ -51618,7 +51673,11 @@ void DrawLinuxLobbySelectedMapDetails(
     280,
     661,
     29,
-    &lineupPortraits
+    &lineupPortraits,
+    &lineupSelectedSlots,
+    &lineupHumanSlots,
+    &lineupManualSlots,
+    &lineupFallbackSlots
   );
 
   if (runtime)
@@ -51628,6 +51687,10 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsMinimapDrawn = minimapDrawn;
     runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
     runtime->visibleLobbyDetailsLineupPortraitsDrawn = lineupPortraits;
+    runtime->visibleLobbyDetailsLineupSelectedSlotsDrawn = lineupSelectedSlots;
+    runtime->visibleLobbyDetailsLineupHumanSlotsDrawn = lineupHumanSlots;
+    runtime->visibleLobbyDetailsLineupManualSlotsDrawn = lineupManualSlots;
+    runtime->visibleLobbyDetailsLineupFallbackSlotsDrawn = lineupFallbackSlots;
     runtime->visibleLobbyDetailsTextureCount = textureCount;
   }
 }
@@ -58871,6 +58934,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupPortraits="
           << screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupSelectedSlots="
+          << screenRuntime.visibleLobbyDetailsLineupSelectedSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupHumanSlots="
+          << screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupManualSlots="
+          << screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn << "\n";
+  logFile << "  finalVisibleLobbyDetailsLineupFallbackSlots="
+          << screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsMapBack="
           << (selectedMapPreview.loadingBack.sourceFile.empty() ? "<none>" : selectedMapPreview.loadingBack.sourceFile) << "\n";
   logFile << "  finalVisibleLobbyDetailsMapLogo="
@@ -62452,13 +62523,17 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu portraits=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s minimap=%s textures=%lu lineup=%lu portraits=%lu selected=%lu human=%lu manual=%lu fallback=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMinimapDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSelectedSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s abilities=%lu talents=%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
