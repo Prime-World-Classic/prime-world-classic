@@ -4653,8 +4653,15 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyDetailsTextureCount;
   bool visibleLobbyHeroDetailsDrawn;
   bool visibleLobbyHeroPortraitDrawn;
+  bool visibleLobbyHeroPortraitFallbackDrawn;
+  size_t visibleLobbyHeroAbilitySlotsAvailable;
+  size_t visibleLobbyHeroAbilitySlotsShown;
   size_t visibleLobbyHeroAbilityIconsDrawn;
+  size_t visibleLobbyHeroAbilityFallbackIconsDrawn;
+  size_t visibleLobbyHeroTalentSlotsAvailable;
+  size_t visibleLobbyHeroTalentSlotsShown;
   size_t visibleLobbyHeroTalentIconsDrawn;
+  size_t visibleLobbyHeroTalentIconsMissing;
   bool visibleLoadingRosterDrawn;
   size_t visibleLoadingRosterRowsDrawn;
   size_t visibleLoadingRosterPortraitsDrawn;
@@ -5648,8 +5655,15 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsTextureCount(0),
       visibleLobbyHeroDetailsDrawn(false),
       visibleLobbyHeroPortraitDrawn(false),
+      visibleLobbyHeroPortraitFallbackDrawn(false),
+      visibleLobbyHeroAbilitySlotsAvailable(0),
+      visibleLobbyHeroAbilitySlotsShown(0),
       visibleLobbyHeroAbilityIconsDrawn(0),
+      visibleLobbyHeroAbilityFallbackIconsDrawn(0),
+      visibleLobbyHeroTalentSlotsAvailable(0),
+      visibleLobbyHeroTalentSlotsShown(0),
       visibleLobbyHeroTalentIconsDrawn(0),
+      visibleLobbyHeroTalentIconsMissing(0),
       visibleLoadingRosterDrawn(false),
       visibleLoadingRosterRowsDrawn(0),
       visibleLoadingRosterPortraitsDrawn(0),
@@ -52047,7 +52061,13 @@ void DrawLinuxBootstrapHeroPreviewDetails(
   }
 
   size_t abilityIconsDrawn = 0;
+  size_t abilitySlotsAvailable = heroPreview ? heroPreview->featuredAbilities.size() : 0;
+  size_t abilitySlotsShown = 0;
+  size_t abilityFallbackIconsDrawn = 0;
+  size_t talentSlotsAvailable = heroPreview ? heroPreview->defaultTalentPreviews.size() : 0;
+  size_t talentSlotsShown = 0;
   size_t talentIconsDrawn = 0;
+  size_t talentIconsMissing = 0;
   if (heroPreview)
   {
     const int abilityIconSize = std::max(24, std::min(34, rect.width / 12));
@@ -52115,7 +52135,9 @@ void DrawLinuxBootstrapHeroPreviewDetails(
             LINUX_OPENGL_TEXT_VALIGN_CENTER,
             false
           );
+          ++abilityFallbackIconsDrawn;
         }
+        ++abilitySlotsShown;
         ++abilityIconsDrawn;
       }
     }
@@ -52145,6 +52167,7 @@ void DrawLinuxBootstrapHeroPreviewDetails(
         unsigned char green = 156;
         unsigned char blue = 224;
         ResolveTalentPreviewAccent(talent, &red, &green, &blue);
+        ++talentSlotsShown;
         if (DrawLinuxBootstrapHeroTextureSlot(
               overlay,
               talent.icon,
@@ -52159,6 +52182,9 @@ void DrawLinuxBootstrapHeroPreviewDetails(
           ++talentIconsDrawn;
         }
       }
+      talentIconsMissing = talentSlotsShown > talentIconsDrawn ?
+        talentSlotsShown - talentIconsDrawn :
+        0;
     }
   }
 
@@ -52166,8 +52192,15 @@ void DrawLinuxBootstrapHeroPreviewDetails(
   {
     runtime->visibleLobbyHeroDetailsDrawn = true;
     runtime->visibleLobbyHeroPortraitDrawn = portraitDrawn;
+    runtime->visibleLobbyHeroPortraitFallbackDrawn = !portraitDrawn;
+    runtime->visibleLobbyHeroAbilitySlotsAvailable = abilitySlotsAvailable;
+    runtime->visibleLobbyHeroAbilitySlotsShown = abilitySlotsShown;
     runtime->visibleLobbyHeroAbilityIconsDrawn = abilityIconsDrawn;
+    runtime->visibleLobbyHeroAbilityFallbackIconsDrawn = abilityFallbackIconsDrawn;
+    runtime->visibleLobbyHeroTalentSlotsAvailable = talentSlotsAvailable;
+    runtime->visibleLobbyHeroTalentSlotsShown = talentSlotsShown;
     runtime->visibleLobbyHeroTalentIconsDrawn = talentIconsDrawn;
+    runtime->visibleLobbyHeroTalentIconsMissing = talentIconsMissing;
   }
 }
 
@@ -58965,10 +58998,24 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyHeroPortrait="
           << (screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyHeroPortraitFallback="
+          << (screenRuntime.visibleLobbyHeroPortraitFallbackDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyHeroAbilitySlotsAvailable="
+          << screenRuntime.visibleLobbyHeroAbilitySlotsAvailable << "\n";
+  logFile << "  finalVisibleLobbyHeroAbilitySlotsShown="
+          << screenRuntime.visibleLobbyHeroAbilitySlotsShown << "\n";
   logFile << "  finalVisibleLobbyHeroAbilityIcons="
           << screenRuntime.visibleLobbyHeroAbilityIconsDrawn << "\n";
+  logFile << "  finalVisibleLobbyHeroAbilityFallbackIcons="
+          << screenRuntime.visibleLobbyHeroAbilityFallbackIconsDrawn << "\n";
+  logFile << "  finalVisibleLobbyHeroTalentSlotsAvailable="
+          << screenRuntime.visibleLobbyHeroTalentSlotsAvailable << "\n";
+  logFile << "  finalVisibleLobbyHeroTalentSlotsShown="
+          << screenRuntime.visibleLobbyHeroTalentSlotsShown << "\n";
   logFile << "  finalVisibleLobbyHeroTalentIcons="
           << screenRuntime.visibleLobbyHeroTalentIconsDrawn << "\n";
+  logFile << "  finalVisibleLobbyHeroTalentIconsMissing="
+          << screenRuntime.visibleLobbyHeroTalentIconsMissing << "\n";
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingInfoLines="
@@ -62551,11 +62598,18 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
-  fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s abilities=%lu talents=%lu\n",
+  fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu talents=%lu/%lu shown=%lu talentMissing=%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyHeroPortraitFallbackDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilityIconsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilitySlotsAvailable),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilitySlotsShown),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroAbilityFallbackIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentSlotsAvailable),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentSlotsShown),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsMissing));
   fprintf(stdout, "Final visible loading info: drawn=%s lines=%lu icons=%lu\n",
     screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
