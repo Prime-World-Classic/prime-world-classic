@@ -4653,6 +4653,11 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameFullRowsDrawn;
   size_t visibleLobbyJoinModeButtonsDrawn;
   size_t visibleLobbyActionButtonsDrawn;
+  size_t visibleLobbyMouseInputCount;
+  int visibleLobbyLastInputX;
+  int visibleLobbyLastInputY;
+  int visibleLobbyLastBaseX;
+  int visibleLobbyLastBaseY;
   bool visibleLobbyDetailsDrawn;
   bool visibleLobbyDetailsArtworkDrawn;
   bool visibleLobbyDetailsMinimapDrawn;
@@ -5115,6 +5120,7 @@ struct LinuxBootstrapScreenRuntime
   std::string liveMapPreviewLastAction;
   std::string liveMapPreviewLastHitSurface;
   std::string liveMinimapLastAction;
+  std::string visibleLobbyLastHitSurface;
   std::string replayCaptureValidationError;
   std::string replayStorageValidationError;
   std::string replayStorageHeaderMap;
@@ -5765,6 +5771,11 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameFullRowsDrawn(0),
       visibleLobbyJoinModeButtonsDrawn(0),
       visibleLobbyActionButtonsDrawn(0),
+      visibleLobbyMouseInputCount(0),
+      visibleLobbyLastInputX(-1),
+      visibleLobbyLastInputY(-1),
+      visibleLobbyLastBaseX(-1),
+      visibleLobbyLastBaseY(-1),
       visibleLobbyDetailsDrawn(false),
       visibleLobbyDetailsArtworkDrawn(false),
       visibleLobbyDetailsMinimapDrawn(false),
@@ -6223,6 +6234,7 @@ struct LinuxBootstrapScreenRuntime
       replayPlaybackValidationError("inactive"),
       replayServerPlaybackValidationError("inactive"),
       characterPreviewLastAction("default"),
+      visibleLobbyLastHitSurface("none"),
       visibleMenuPath("inactive")
   {
     for (size_t i = 0; i < LINUX_LIVE_HUD_MAX_TALENT_COMMAND_SLOTS; ++i)
@@ -43204,6 +43216,28 @@ bool HitLinuxLobbyBaseRect(int baseX, int baseY, int x, int y, int width, int he
   return baseX >= x && baseX < x + width && baseY >= y && baseY < y + height;
 }
 
+void RecordLinuxVisibleLobbyMouseHit(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* surface,
+  int inputX,
+  int inputY,
+  int baseX,
+  int baseY
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->visibleLobbyLastHitSurface = surface && *surface ? surface : "none";
+  runtime->visibleLobbyLastInputX = inputX;
+  runtime->visibleLobbyLastInputY = inputY;
+  runtime->visibleLobbyLastBaseX = baseX;
+  runtime->visibleLobbyLastBaseY = baseY;
+  ++runtime->visibleLobbyMouseInputCount;
+}
+
 bool SelectLinuxLobbyMapRowAt(
   const LinuxMapCatalog& mapCatalog,
   LinuxMapBrowserState* mapBrowserState,
@@ -43528,6 +43562,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 975, 14, 289, 53))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "developer-sex", message.x, message.y, baseX, baseY);
       changed = ToggleLinuxLobbyDeveloperSex(runtime) || changed;
       if (consumedNavigation)
       {
@@ -43538,6 +43573,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 679, 399, 561, 57))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "join-mode", message.x, message.y, baseX, baseY);
       size_t joinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
       if (baseX >= 1053)
       {
@@ -43558,6 +43594,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 65, 455, 518, 368))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "map-row", message.x, message.y, baseX, baseY);
       const bool mapChanged = SelectLinuxLobbyMapRowAt(
         mapCatalog,
         mapBrowserState,
@@ -43591,6 +43628,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 583, 455, 28, 368))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "map-scrollbar", message.x, message.y, baseX, baseY);
       const bool mapChanged = SelectLinuxLobbyMapFromScrollAt(
         mapCatalog,
         mapBrowserState,
@@ -43613,6 +43651,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 689, 454, 518, 449))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "game-row", message.x, message.y, baseX, baseY);
       const bool gameChanged = SelectLinuxLobbyGameRowAt(uiRootPreview, runtime, baseY);
       changed = gameChanged || changed;
       if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
@@ -43633,6 +43672,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 1207, 454, 28, 449))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "game-scrollbar", message.x, message.y, baseX, baseY);
       changed = SelectLinuxLobbyGameFromScrollAt(uiRootPreview, runtime, baseY) || changed;
       if (consumedNavigation)
       {
@@ -43643,6 +43683,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 69, 883, 247, 32))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "player-count", message.x, message.y, baseX, baseY);
       const bool playerCountChanged = SetLinuxLobbyPlayerCountFromSliderAt(
         mapCatalog,
         *mapBrowserState,
@@ -43666,6 +43707,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 418, 849, 192, 59) ||
         HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "primary-button", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PRIMARY;
       changed = ActivateLinuxVisibleMenuAction(
         mapCatalog,
@@ -43683,6 +43725,7 @@ bool HandleLinuxVisibleLobbyMouse(
 
     if (HitLinuxLobbyBaseRect(baseX, baseY, 807, 935, 324, 59))
     {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "refresh-button", message.x, message.y, baseX, baseY);
       if (IsValid(runtime->gameContext))
       {
         runtime->gameContext->RefreshGamesList();
@@ -43697,6 +43740,8 @@ bool HandleLinuxVisibleLobbyMouse(
       }
       continue;
     }
+
+    RecordLinuxVisibleLobbyMouseHit(runtime, "background", message.x, message.y, baseX, baseY);
   }
 
   return changed;
@@ -60297,6 +60342,18 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyActionButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyJoinMode="
           << DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode) << "\n";
+  logFile << "  finalVisibleLobbyMouseInputs="
+          << screenRuntime.visibleLobbyMouseInputCount << "\n";
+  logFile << "  finalVisibleLobbyLastHitSurface="
+          << (screenRuntime.visibleLobbyLastHitSurface.empty() ?
+              "none" :
+              screenRuntime.visibleLobbyLastHitSurface) << "\n";
+  logFile << "  finalVisibleLobbyLastInput="
+          << screenRuntime.visibleLobbyLastInputX << ","
+          << screenRuntime.visibleLobbyLastInputY << "\n";
+  logFile << "  finalVisibleLobbyLastBaseInput="
+          << screenRuntime.visibleLobbyLastBaseX << ","
+          << screenRuntime.visibleLobbyLastBaseY << "\n";
   logFile << "  finalVisibleLobbyDetailsDrawn="
           << (screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsArtwork="
@@ -64130,7 +64187,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu joinButtons=%lu actionButtons=%lu joinMode=%s mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64143,7 +64200,15 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameFullRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
-    DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode));
+    DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMouseInputCount),
+    screenRuntime.visibleLobbyLastHitSurface.empty() ?
+      "none" :
+      screenRuntime.visibleLobbyLastHitSurface.c_str(),
+    screenRuntime.visibleLobbyLastInputX,
+    screenRuntime.visibleLobbyLastInputY,
+    screenRuntime.visibleLobbyLastBaseX,
+    screenRuntime.visibleLobbyLastBaseY);
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu talents=%lu/%lu shown=%lu talentMissing=%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
