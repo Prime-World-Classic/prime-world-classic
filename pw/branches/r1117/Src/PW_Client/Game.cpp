@@ -4997,6 +4997,21 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveScoreboardHeroMarkersDrawn;
   size_t visibleLiveScoreboardTowerMarkersDrawn;
   size_t visibleLiveScoreboardMainBuildingMarkersDrawn;
+  size_t visibleLiveScoreboardFreezeLiveHeroes;
+  size_t visibleLiveScoreboardFreezeTotalHeroes;
+  size_t visibleLiveScoreboardFreezeCreeps;
+  size_t visibleLiveScoreboardFreezeTowers;
+  size_t visibleLiveScoreboardFreezeMainBuildings;
+  size_t visibleLiveScoreboardFreezeDamaged;
+  size_t visibleLiveScoreboardBurnLiveHeroes;
+  size_t visibleLiveScoreboardBurnTotalHeroes;
+  size_t visibleLiveScoreboardBurnCreeps;
+  size_t visibleLiveScoreboardBurnTowers;
+  size_t visibleLiveScoreboardBurnMainBuildings;
+  size_t visibleLiveScoreboardBurnDamaged;
+  size_t visibleLiveScoreboardNeutralCreeps;
+  size_t visibleLiveScoreboardNeutralMoving;
+  size_t visibleLiveScoreboardNeutralDamaged;
   bool visibleLiveScoreboardObjectiveFallbackUsed;
   size_t visibleLiveScoreboardMovingMarkersDrawn;
   size_t visibleLiveScoreboardDamagedMarkersDrawn;
@@ -6043,6 +6058,21 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveScoreboardHeroMarkersDrawn(0),
       visibleLiveScoreboardTowerMarkersDrawn(0),
       visibleLiveScoreboardMainBuildingMarkersDrawn(0),
+      visibleLiveScoreboardFreezeLiveHeroes(0),
+      visibleLiveScoreboardFreezeTotalHeroes(0),
+      visibleLiveScoreboardFreezeCreeps(0),
+      visibleLiveScoreboardFreezeTowers(0),
+      visibleLiveScoreboardFreezeMainBuildings(0),
+      visibleLiveScoreboardFreezeDamaged(0),
+      visibleLiveScoreboardBurnLiveHeroes(0),
+      visibleLiveScoreboardBurnTotalHeroes(0),
+      visibleLiveScoreboardBurnCreeps(0),
+      visibleLiveScoreboardBurnTowers(0),
+      visibleLiveScoreboardBurnMainBuildings(0),
+      visibleLiveScoreboardBurnDamaged(0),
+      visibleLiveScoreboardNeutralCreeps(0),
+      visibleLiveScoreboardNeutralMoving(0),
+      visibleLiveScoreboardNeutralDamaged(0),
       visibleLiveScoreboardObjectiveFallbackUsed(false),
       visibleLiveScoreboardMovingMarkersDrawn(0),
       visibleLiveScoreboardDamagedMarkersDrawn(0),
@@ -54335,6 +54365,21 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     runtime->visibleLiveScoreboardHeroMarkersDrawn = 0;
     runtime->visibleLiveScoreboardTowerMarkersDrawn = 0;
     runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardFreezeLiveHeroes = 0;
+    runtime->visibleLiveScoreboardFreezeTotalHeroes = 0;
+    runtime->visibleLiveScoreboardFreezeCreeps = 0;
+    runtime->visibleLiveScoreboardFreezeTowers = 0;
+    runtime->visibleLiveScoreboardFreezeMainBuildings = 0;
+    runtime->visibleLiveScoreboardFreezeDamaged = 0;
+    runtime->visibleLiveScoreboardBurnLiveHeroes = 0;
+    runtime->visibleLiveScoreboardBurnTotalHeroes = 0;
+    runtime->visibleLiveScoreboardBurnCreeps = 0;
+    runtime->visibleLiveScoreboardBurnTowers = 0;
+    runtime->visibleLiveScoreboardBurnMainBuildings = 0;
+    runtime->visibleLiveScoreboardBurnDamaged = 0;
+    runtime->visibleLiveScoreboardNeutralCreeps = 0;
+    runtime->visibleLiveScoreboardNeutralMoving = 0;
+    runtime->visibleLiveScoreboardNeutralDamaged = 0;
     runtime->visibleLiveScoreboardObjectiveFallbackUsed = false;
     runtime->visibleLiveScoreboardMovingMarkersDrawn = 0;
     runtime->visibleLiveScoreboardDamagedMarkersDrawn = 0;
@@ -54554,6 +54599,21 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   runtime->visibleLiveScoreboardHeroMarkersDrawn = heroPips;
   runtime->visibleLiveScoreboardTowerMarkersDrawn = scoreboardTowerMarkers;
   runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = scoreboardMainBuildingMarkers;
+  runtime->visibleLiveScoreboardFreezeLiveHeroes = freezeTeam.liveHeroes;
+  runtime->visibleLiveScoreboardFreezeTotalHeroes = freezeTeam.totalHeroes;
+  runtime->visibleLiveScoreboardFreezeCreeps = freezeTeam.creeps;
+  runtime->visibleLiveScoreboardFreezeTowers = freezeTeam.towers;
+  runtime->visibleLiveScoreboardFreezeMainBuildings = freezeTeam.mainBuildings;
+  runtime->visibleLiveScoreboardFreezeDamaged = freezeTeam.damaged;
+  runtime->visibleLiveScoreboardBurnLiveHeroes = burnTeam.liveHeroes;
+  runtime->visibleLiveScoreboardBurnTotalHeroes = burnTeam.totalHeroes;
+  runtime->visibleLiveScoreboardBurnCreeps = burnTeam.creeps;
+  runtime->visibleLiveScoreboardBurnTowers = burnTeam.towers;
+  runtime->visibleLiveScoreboardBurnMainBuildings = burnTeam.mainBuildings;
+  runtime->visibleLiveScoreboardBurnDamaged = burnTeam.damaged;
+  runtime->visibleLiveScoreboardNeutralCreeps = neutralTeam.creeps;
+  runtime->visibleLiveScoreboardNeutralMoving = neutralTeam.moving;
+  runtime->visibleLiveScoreboardNeutralDamaged = neutralTeam.damaged;
   runtime->visibleLiveScoreboardObjectiveFallbackUsed = scoreboardObjectiveFallbackUsed;
   runtime->visibleLiveScoreboardMovingMarkersDrawn = scoreboardMovingMarkers;
   runtime->visibleLiveScoreboardDamagedMarkersDrawn = scoreboardDamagedMarkers;
@@ -61004,6 +61064,34 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveScoreboardTowerMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardMainBuildingMarkers="
           << screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardFreezeHeroes="
+          << screenRuntime.visibleLiveScoreboardFreezeLiveHeroes << "/"
+          << screenRuntime.visibleLiveScoreboardFreezeTotalHeroes << "\n";
+  logFile << "  finalVisibleLiveScoreboardFreezeCreeps="
+          << screenRuntime.visibleLiveScoreboardFreezeCreeps << "\n";
+  logFile << "  finalVisibleLiveScoreboardFreezeTowers="
+          << screenRuntime.visibleLiveScoreboardFreezeTowers << "\n";
+  logFile << "  finalVisibleLiveScoreboardFreezeMainBuildings="
+          << screenRuntime.visibleLiveScoreboardFreezeMainBuildings << "\n";
+  logFile << "  finalVisibleLiveScoreboardFreezeDamaged="
+          << screenRuntime.visibleLiveScoreboardFreezeDamaged << "\n";
+  logFile << "  finalVisibleLiveScoreboardBurnHeroes="
+          << screenRuntime.visibleLiveScoreboardBurnLiveHeroes << "/"
+          << screenRuntime.visibleLiveScoreboardBurnTotalHeroes << "\n";
+  logFile << "  finalVisibleLiveScoreboardBurnCreeps="
+          << screenRuntime.visibleLiveScoreboardBurnCreeps << "\n";
+  logFile << "  finalVisibleLiveScoreboardBurnTowers="
+          << screenRuntime.visibleLiveScoreboardBurnTowers << "\n";
+  logFile << "  finalVisibleLiveScoreboardBurnMainBuildings="
+          << screenRuntime.visibleLiveScoreboardBurnMainBuildings << "\n";
+  logFile << "  finalVisibleLiveScoreboardBurnDamaged="
+          << screenRuntime.visibleLiveScoreboardBurnDamaged << "\n";
+  logFile << "  finalVisibleLiveScoreboardNeutralCreeps="
+          << screenRuntime.visibleLiveScoreboardNeutralCreeps << "\n";
+  logFile << "  finalVisibleLiveScoreboardNeutralMoving="
+          << screenRuntime.visibleLiveScoreboardNeutralMoving << "\n";
+  logFile << "  finalVisibleLiveScoreboardNeutralDamaged="
+          << screenRuntime.visibleLiveScoreboardNeutralDamaged << "\n";
   logFile << "  finalVisibleLiveScoreboardObjectiveFallback="
           << (screenRuntime.visibleLiveScoreboardObjectiveFallbackUsed ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveScoreboardMovingMarkers="
@@ -63862,7 +63950,7 @@ int main(int argc, char** argv)
       screenRuntime.liveMinimapLastProjectionSource.c_str(),
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
     screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
-  fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu selectedTeam=%s heroMarkers=%lu towers=%lu main=%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
+  fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu selectedTeam=%s heroMarkers=%lu towers=%lu main=%lu freeze=%lu/%lu/%lu/%lu/%lu/%lu burn=%lu/%lu/%lu/%lu/%lu/%lu neutral=%lu/%lu/%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
     screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkersLoaded),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkerLimit),
@@ -63872,6 +63960,21 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTowerMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeLiveHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeTotalHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeCreeps),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeTowers),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeMainBuildings),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardFreezeDamaged),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnLiveHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnTotalHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnCreeps),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnTowers),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnMainBuildings),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardBurnDamaged),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardNeutralCreeps),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardNeutralMoving),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardNeutralDamaged),
     screenRuntime.visibleLiveScoreboardObjectiveFallbackUsed ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMovingMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDamagedMarkersDrawn),
