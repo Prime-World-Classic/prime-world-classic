@@ -6,6 +6,7 @@
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFWorld.h"
+#include "PFAIWorld.h"
 #include "PFWorldNatureMap.h"
 #include "PFPickupable.h"
 #include "PFFlagpole.h"
@@ -394,8 +395,45 @@ PFBaseUnit* PFAIHelper::FindEnemyNear()
 {
   if (!IsValid(pUnit))
     return 0;
-  const float searchRadius = Max(pUnit->GetVisibilityRange(), pUnit->GetTargetingRange());
-  return pUnit->FindTarget(searchRadius, true);
+
+  PFWorld* world = pUnit->GetWorld();
+  if (!world || !world->GetAIWorld())
+    return pUnit->FindTarget(pUnit->GetVisibilityRange(), true);
+
+  const float searchRadius = pUnit->GetVisibilityRange();
+  const int targetTypesToFind = NDb::SPELLTARGET_ALL | (pUnit->CanAttackFlying() ? NDb::SPELLTARGET_FLYING : 0);
+
+  struct TargetFinder
+  {
+    TargetFinder(const PFBaseUnit* owner) : owner(owner) {}
+
+    bool operator()(PFBaseUnit& unit)
+    {
+      if (!unit.IsVisibleForEnemy(owner->GetFaction()))
+        return false;
+
+      const int unitTypeMask = NDb::SPELLTARGET_ALLWOBUILDINGS;
+      const bool checkFogOfWar = (unitTypeMask & (1L << unit.GetUnitType())) == 0;
+      if (!owner->CanSelectTarget(&unit, checkFogOfWar))
+        return false;
+
+      target = &unit;
+      return true;
+    }
+
+    CPtr<PFBaseUnit> target;
+
+  private:
+    const PFBaseUnit* owner;
+  } targetFinder(pUnit);
+
+  world->GetAIWorld()->ForAllUnitsInRange(
+    pUnit->GetPosition(),
+    searchRadius,
+    targetFinder,
+    UnitMaskingPredicate(pUnit->GetOppositeFactionFlags(), targetTypesToFind, pUnit));
+
+  return targetFinder.target;
 }
 
 void TalentPart::ActivateTalents( PFAIHelper &aiHelper )

@@ -342,6 +342,7 @@ void PFAIController::GoToSpawnPos()
     return;
 
   PushState(new AIMoveToState(this, GetHero()->GetSpawnPosition().AsVec2D(), GetHero()->GetObjectSize()));
+  GoToOwnBase();
 }
 
 void PFAIController::GoToShop()
