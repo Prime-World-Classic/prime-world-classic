@@ -4948,7 +4948,12 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveMinimapHeroMarkersDrawn;
   size_t visibleLiveMinimapDeadHeroMarkersDrawn;
   size_t visibleLiveMinimapCreepMarkersDrawn;
+  size_t visibleLiveMinimapNeutralCreepMarkersDrawn;
   size_t visibleLiveMinimapObjectiveMarkersDrawn;
+  size_t visibleLiveMinimapMarkersSkippedDead;
+  size_t visibleLiveMinimapMarkersSkippedUnsupported;
+  size_t visibleLiveMinimapMarkersSkippedByLimit;
+  size_t visibleLiveMinimapMarkersClamped;
   size_t visibleLiveMinimapObjectiveLabelsDrawn;
   size_t visibleLiveMinimapTowerLabelsDrawn;
   size_t visibleLiveMinimapMainBuildingLabelsDrawn;
@@ -5989,7 +5994,12 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveMinimapHeroMarkersDrawn(0),
       visibleLiveMinimapDeadHeroMarkersDrawn(0),
       visibleLiveMinimapCreepMarkersDrawn(0),
+      visibleLiveMinimapNeutralCreepMarkersDrawn(0),
       visibleLiveMinimapObjectiveMarkersDrawn(0),
+      visibleLiveMinimapMarkersSkippedDead(0),
+      visibleLiveMinimapMarkersSkippedUnsupported(0),
+      visibleLiveMinimapMarkersSkippedByLimit(0),
+      visibleLiveMinimapMarkersClamped(0),
       visibleLiveMinimapObjectiveLabelsDrawn(0),
       visibleLiveMinimapTowerLabelsDrawn(0),
       visibleLiveMinimapMainBuildingLabelsDrawn(0),
@@ -53685,7 +53695,12 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLiveMinimapHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapDeadHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapCreepMarkersDrawn = 0;
+    runtime->visibleLiveMinimapNeutralCreepMarkersDrawn = 0;
     runtime->visibleLiveMinimapObjectiveMarkersDrawn = 0;
+    runtime->visibleLiveMinimapMarkersSkippedDead = 0;
+    runtime->visibleLiveMinimapMarkersSkippedUnsupported = 0;
+    runtime->visibleLiveMinimapMarkersSkippedByLimit = 0;
+    runtime->visibleLiveMinimapMarkersClamped = 0;
     runtime->visibleLiveMinimapObjectiveLabelsDrawn = 0;
     runtime->visibleLiveMinimapTowerLabelsDrawn = 0;
     runtime->visibleLiveMinimapMainBuildingLabelsDrawn = 0;
@@ -53751,7 +53766,12 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t heroCount = 0;
   size_t deadHeroCount = 0;
   size_t creepCount = 0;
+  size_t neutralCreepCount = 0;
   size_t objectiveCount = 0;
+  size_t skippedDeadCount = 0;
+  size_t skippedUnsupportedCount = 0;
+  size_t skippedByLimitCount = 0;
+  size_t clampedCount = 0;
   size_t objectiveLabels = 0;
   size_t towerLabels = 0;
   size_t mainBuildingLabels = 0;
@@ -53823,6 +53843,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   const size_t markerLimit = std::min<size_t>(markers.size(), 320);
   runtime->visibleLiveMinimapMarkerLimit = markerLimit;
   runtime->visibleLiveMinimapMarkerLimitHit = markers.size() > markerLimit;
+  skippedByLimitCount = markers.size() > markerLimit ? markers.size() - markerLimit : 0;
   const int selectedTargetObjectId =
     runtime->mapPreviewSelectedTargetObjectId >= 0 ?
     runtime->mapPreviewSelectedTargetObjectId :
@@ -53832,6 +53853,14 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     const NWorld::LinuxDynamicWorldMarker& marker = markers[i];
     if (!ShouldDrawLinuxDynamicWorldMarkerOverlay(marker))
     {
+      if (marker.dead)
+      {
+        ++skippedDeadCount;
+      }
+      else
+      {
+        ++skippedUnsupportedCount;
+      }
       continue;
     }
 
@@ -53850,6 +53879,10 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     {
       markerSize = marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP ? 5 : 4;
       ++creepCount;
+      if (marker.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP)
+      {
+        ++neutralCreepCount;
+      }
     }
     else if (IsLinuxDynamicWorldObjectiveMarker(marker))
     {
@@ -53859,11 +53892,21 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
     }
     else
     {
+      ++skippedUnsupportedCount;
       continue;
     }
 
-    const float normalizedX = std::max(0.0f, std::min(1.0f, (marker.x - minX) / rangeX));
-    const float normalizedY = std::max(0.0f, std::min(1.0f, (marker.y - minY) / rangeY));
+    const float rawNormalizedX = (marker.x - minX) / rangeX;
+    const float rawNormalizedY = (marker.y - minY) / rangeY;
+    if (rawNormalizedX < 0.0f ||
+        rawNormalizedX > 1.0f ||
+        rawNormalizedY < 0.0f ||
+        rawNormalizedY > 1.0f)
+    {
+      ++clampedCount;
+    }
+    const float normalizedX = std::max(0.0f, std::min(1.0f, rawNormalizedX));
+    const float normalizedY = std::max(0.0f, std::min(1.0f, rawNormalizedY));
     const int markerX = innerX + static_cast<int>(normalizedX * static_cast<float>(innerSize));
     const int markerY = innerY + innerSize - static_cast<int>(normalizedY * static_cast<float>(innerSize));
     const int half = std::max(1, markerSize / 2);
@@ -54075,7 +54118,12 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   runtime->visibleLiveMinimapHeroMarkersDrawn = heroCount;
   runtime->visibleLiveMinimapDeadHeroMarkersDrawn = deadHeroCount;
   runtime->visibleLiveMinimapCreepMarkersDrawn = creepCount;
+  runtime->visibleLiveMinimapNeutralCreepMarkersDrawn = neutralCreepCount;
   runtime->visibleLiveMinimapObjectiveMarkersDrawn = objectiveCount;
+  runtime->visibleLiveMinimapMarkersSkippedDead = skippedDeadCount;
+  runtime->visibleLiveMinimapMarkersSkippedUnsupported = skippedUnsupportedCount;
+  runtime->visibleLiveMinimapMarkersSkippedByLimit = skippedByLimitCount;
+  runtime->visibleLiveMinimapMarkersClamped = clampedCount;
   runtime->visibleLiveMinimapObjectiveLabelsDrawn = objectiveLabels;
   runtime->visibleLiveMinimapTowerLabelsDrawn = towerLabels;
   runtime->visibleLiveMinimapMainBuildingLabelsDrawn = mainBuildingLabels;
@@ -60871,8 +60919,18 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveMinimapDeadHeroMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapCreepMarkers="
           << screenRuntime.visibleLiveMinimapCreepMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapNeutralCreepMarkers="
+          << screenRuntime.visibleLiveMinimapNeutralCreepMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapObjectiveMarkers="
           << screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkersSkippedDead="
+          << screenRuntime.visibleLiveMinimapMarkersSkippedDead << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkersSkippedUnsupported="
+          << screenRuntime.visibleLiveMinimapMarkersSkippedUnsupported << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkersSkippedByLimit="
+          << screenRuntime.visibleLiveMinimapMarkersSkippedByLimit << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkersClamped="
+          << screenRuntime.visibleLiveMinimapMarkersClamped << "\n";
   logFile << "  finalVisibleLiveMinimapObjectiveLabels="
           << screenRuntime.visibleLiveMinimapObjectiveLabelsDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapTowerLabels="
@@ -63757,7 +63815,7 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
-  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu localHero=%s target=%s commandMarker=%s\n",
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu neutralCreeps=%lu objectives=%lu skippedDead=%lu skippedUnsupported=%lu skippedLimit=%lu clamped=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu localHero=%s target=%s commandMarker=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersLoaded),
@@ -63767,7 +63825,12 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapDeadHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapCreepMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapNeutralCreepMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersSkippedDead),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersSkippedUnsupported),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersSkippedByLimit),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersClamped),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapObjectiveLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapTowerLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMainBuildingLabelsDrawn),
