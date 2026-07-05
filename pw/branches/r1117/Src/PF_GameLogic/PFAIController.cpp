@@ -9,6 +9,7 @@
 #include "PFMaleHero.h"
 #include "PFTalent.h"
 #include "PFBuildings.h"
+#include "PFMainBuilding.h"
 #include "PFCommonCreep.h"
 #include "PFFlagpole.h"
 #include "PFPickupable.h"
@@ -35,6 +36,7 @@ namespace
   static const int LINUX_AI_TOWER_PROOF_START_STEP = 840;
   static const float LINUX_AI_MAX_WAR_FRONT_DISTANCE = 3.0f;
   static const float LINUX_AI_MAX_WAR_FRONT_TIMEDIST = 100.0f;
+  static const float LINUX_AI_ROAD_SHIFT_DISTANCE = 3.0f;
   static int g_linuxAIConsumableProofHeroObjectId = -1;
   static bool g_linuxAIConsumableProofDone = false;
   static int g_linuxAIInteractionProofHeroObjectId = -1;
@@ -227,7 +229,10 @@ PFAIController::PFAIController( PFBaseHero* hero, NCore::ITransceiver* transceiv
   , linuxInteractionProofWait(0)
   , findFlagDelay(0)
 {
-  SetLine(line, shift);
+  if ( IsValid(GetHelper().pDBBots) && GetHelper().pDBBots->midOnly )
+    SetLine(1, shift);
+  else
+    SetLine(line, shift);
 }
 
 TalentWrapper PFAIController::GetLastTalent()
@@ -267,11 +272,56 @@ void PFAIController::UseConsumable( int slot, const CVec2& target )
 
 void PFAIController::SetLine( int num, int shift )
 {
-  lineNumber = num < 0 ? 0 : num;
+  if ( num < 0 )
+    num = NRandom::Random( NDb::KnownEnum<NDb::ENatureRoad>::sizeOf );
+
+  lineNumber = num;
   lineShift = shift;
   road.clear();
-  if (IsValid(GetHero()))
-    GetRoute(GetHero()->GetWorld(), GetHero()->GetFaction(), lineNumber, road);
+
+  if ( !IsValid(GetHero()) || !GetRoute(GetHero()->GetWorld(), GetHero()->GetFaction(), lineNumber, road) )
+    return;
+
+  if ( lineShift && road.size() > 1 )
+  {
+    int i = 0;
+    for ( i = 0; i < road.size() - 1; ++i )
+      ShiftWaypoint(road[i], road[i + 1], lineShift, LINUX_AI_ROAD_SHIFT_DISTANCE);
+    ShiftWaypoint(road[i], road[i - 1], -lineShift, LINUX_AI_ROAD_SHIFT_DISTANCE);
+  }
+
+  vector<PFQuarters*> quarters;
+  if ( FindQuarters(GetHero()->GetWorld(), GetHero()->GetOppositeFaction(), quarters) )
+  {
+    for ( int i = 0; i < quarters.size(); ++i )
+    {
+      if ( IsValid(quarters[i]) && num == static_cast<int>(quarters[i]->GetRouteId()) )
+      {
+        const CVec2 dstPos = quarters[i]->GetPosition().AsVec2D();
+        const int nextPoint = GetNextRoutePoint(road, dstPos);
+        if ( nextPoint >= road.size() )
+          road.push_back(dstPos);
+      }
+    }
+  }
+
+  vector<PFMainBuilding*> buildings;
+  if ( !FindMainBuildings(GetHero()->GetWorld(), GetHero()->GetOppositeFaction(), buildings) ||
+       buildings.empty() || !IsValid(buildings[0]) || road.empty() )
+  {
+    return;
+  }
+
+  PFMainBuilding* building = buildings[0];
+  const CVec2 lastRoadPos = road[road.size() - 1];
+  CVec2 dir = lastRoadPos - building->GetPosition().AsVec2D();
+  const float dirLength = dir.Length();
+  if ( dirLength <= EPS_VALUE )
+    return;
+
+  dir /= dirLength;
+  const CVec2 dstPos = building->GetPosition().AsVec2D() + dir * (building->GetObjectSize() * 0.5f);
+  road.push_back(dstPos);
 }
 
 void PFAIController::WalkByRoad( bool backToBase )
