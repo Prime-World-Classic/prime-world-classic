@@ -4945,6 +4945,11 @@ struct LinuxBootstrapScreenRuntime
   size_t liveMapPreviewSelectionCount;
   float liveMapPreviewCommandTargetX;
   float liveMapPreviewCommandTargetY;
+  int liveMapPreviewLastInputX;
+  int liveMapPreviewLastInputY;
+  bool liveMapPreviewLastProjectionValid;
+  float liveMapPreviewLastWorldX;
+  float liveMapPreviewLastWorldY;
   bool visibleLiveMinimapDrawn;
   bool visibleLiveMinimapTextureDrawn;
   size_t visibleLiveMinimapMarkersLoaded;
@@ -5086,6 +5091,7 @@ struct LinuxBootstrapScreenRuntime
   std::string liveHudLastHitSurface;
   std::string liveHotkeyLastAction;
   std::string liveMapPreviewLastAction;
+  std::string liveMapPreviewLastHitSurface;
   std::string liveMinimapLastAction;
   std::string replayCaptureValidationError;
   std::string replayStorageValidationError;
@@ -6021,6 +6027,11 @@ struct LinuxBootstrapScreenRuntime
       liveMapPreviewSelectionCount(0),
       liveMapPreviewCommandTargetX(0.0f),
       liveMapPreviewCommandTargetY(0.0f),
+      liveMapPreviewLastInputX(-1),
+      liveMapPreviewLastInputY(-1),
+      liveMapPreviewLastProjectionValid(false),
+      liveMapPreviewLastWorldX(0.0f),
+      liveMapPreviewLastWorldY(0.0f),
       visibleLiveMinimapDrawn(false),
       visibleLiveMinimapTextureDrawn(false),
       visibleLiveMinimapMarkersLoaded(0),
@@ -6160,6 +6171,7 @@ struct LinuxBootstrapScreenRuntime
       liveHudLastHitSurface("none"),
       liveHotkeyLastAction("none"),
       liveMapPreviewLastAction("none"),
+      liveMapPreviewLastHitSurface("none"),
       liveMinimapLastAction("none"),
       replayCaptureValidationError("inactive"),
       replayStorageValidationError("inactive"),
@@ -29647,7 +29659,13 @@ void ResetLinuxLiveMapPreviewCommandRuntime(LinuxBootstrapScreenRuntime* runtime
   runtime->liveMapPreviewSelectionCount = 0;
   runtime->liveMapPreviewCommandTargetX = 0.0f;
   runtime->liveMapPreviewCommandTargetY = 0.0f;
+  runtime->liveMapPreviewLastInputX = -1;
+  runtime->liveMapPreviewLastInputY = -1;
+  runtime->liveMapPreviewLastProjectionValid = false;
+  runtime->liveMapPreviewLastWorldX = 0.0f;
+  runtime->liveMapPreviewLastWorldY = 0.0f;
   runtime->liveMapPreviewLastAction = "none";
+  runtime->liveMapPreviewLastHitSurface = "none";
 }
 
 void StoreLinuxLiveHudAttackCommandSurface(
@@ -41886,6 +41904,50 @@ void RecordLinuxLiveMapPreviewCommandResult(
   runtime->mapPreviewLastAction = runtime->liveMapPreviewLastAction;
 }
 
+void RecordLinuxLiveMapPreviewInputHit(
+  const LinuxClientLaunchSettings& settings,
+  const LinuxSelectedMapPreview& selectedMapPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* surface,
+  int x,
+  int y,
+  bool projectWorld
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->liveMapPreviewLastHitSurface = surface && *surface ? surface : "none";
+  runtime->liveMapPreviewLastInputX = x;
+  runtime->liveMapPreviewLastInputY = y;
+  runtime->liveMapPreviewLastProjectionValid = false;
+  runtime->liveMapPreviewLastWorldX = 0.0f;
+  runtime->liveMapPreviewLastWorldY = 0.0f;
+
+  if (!projectWorld)
+  {
+    return;
+  }
+
+  float worldX = 0.0f;
+  float worldY = 0.0f;
+  if (ProjectLinuxMapPreviewScreenToWorld(
+        settings,
+        selectedMapPreview,
+        *runtime,
+        x,
+        y,
+        &worldX,
+        &worldY))
+  {
+    runtime->liveMapPreviewLastProjectionValid = true;
+    runtime->liveMapPreviewLastWorldX = worldX;
+    runtime->liveMapPreviewLastWorldY = worldY;
+  }
+}
+
 bool SendLinuxLiveMapPreviewMoveCommandFromScreen(
   const LinuxClientLaunchSettings& settings,
   const LinuxSelectedMapPreview& selectedMapPreview,
@@ -42431,6 +42493,17 @@ bool HandleLinuxMapPreviewInput(
     switch (message.msg)
     {
       case NMainFrame::SWindowsMsg::KEY_DOWN:
+        if (liveMapActive)
+        {
+          RecordLinuxLiveMapPreviewInputHit(
+            settings,
+            selectedMapPreview,
+            runtime,
+            "keyboard",
+            -1,
+            -1,
+            false);
+        }
         switch (message.nKey)
         {
           case XK_q:
@@ -42726,6 +42799,17 @@ bool HandleLinuxMapPreviewInput(
       case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
         if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
+          if (liveMapActive)
+          {
+            RecordLinuxLiveMapPreviewInputHit(
+              settings,
+              selectedMapPreview,
+              runtime,
+              "wheel",
+              message.x,
+              message.y,
+              true);
+          }
           const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
           if (wheelDelta > 0)
           {
@@ -42753,6 +42837,17 @@ bool HandleLinuxMapPreviewInput(
       case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
         if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
+          if (liveMapActive)
+          {
+            RecordLinuxLiveMapPreviewInputHit(
+              settings,
+              selectedMapPreview,
+              runtime,
+              "drag-start",
+              message.x,
+              message.y,
+              true);
+          }
           runtime->mapPreviewDragging = true;
           runtime->mapPreviewDragMoved = false;
           runtime->mapPreviewDragStartX = message.x;
@@ -42786,6 +42881,14 @@ bool HandleLinuxMapPreviewInput(
             );
             if (liveMapActive)
             {
+              RecordLinuxLiveMapPreviewInputHit(
+                settings,
+                selectedMapPreview,
+                runtime,
+                "drag",
+                message.x,
+                message.y,
+                true);
               ++runtime->liveMapPreviewInputCount;
               runtime->liveMapPreviewLastAction = "mouse-drag";
             }
@@ -42804,6 +42907,17 @@ bool HandleLinuxMapPreviewInput(
           runtime->mapPreviewDragging = false;
           if (selectClick)
           {
+            if (liveMapActive)
+            {
+              RecordLinuxLiveMapPreviewInputHit(
+                settings,
+                selectedMapPreview,
+                runtime,
+                "select",
+                message.x,
+                message.y,
+                true);
+            }
             const bool selected =
               liveMapActive ?
                 SelectLinuxLiveMapPreviewTargetFromScreen(
@@ -42844,6 +42958,17 @@ bool HandleLinuxMapPreviewInput(
       case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
         if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
+          if (liveMapActive)
+          {
+            RecordLinuxLiveMapPreviewInputHit(
+              settings,
+              selectedMapPreview,
+              runtime,
+              "pan-start",
+              message.x,
+              message.y,
+              true);
+          }
           runtime->mapPreviewPanning = true;
           runtime->mapPreviewPanMoved = false;
           runtime->mapPreviewPanStartX = message.x;
@@ -42862,6 +42987,17 @@ bool HandleLinuxMapPreviewInput(
           runtime->mapPreviewPanning = false;
           if (commandClick)
           {
+            if (liveMapActive)
+            {
+              RecordLinuxLiveMapPreviewInputHit(
+                settings,
+                selectedMapPreview,
+                runtime,
+                "command",
+                message.x,
+                message.y,
+                true);
+            }
             if ((liveMapActive &&
                  SendLinuxLiveMapPreviewAttackOrMoveCommandFromScreen(
                    settings,
@@ -42907,6 +43043,17 @@ bool HandleLinuxMapPreviewInput(
       case NMainFrame::SWindowsMsg::MOUSE_MB_UP:
         if (!IsLinuxMapPreviewUiReservedPoint(runtime, heroPreviewRect, message.x, message.y))
         {
+          if (liveMapActive)
+          {
+            RecordLinuxLiveMapPreviewInputHit(
+              settings,
+              selectedMapPreview,
+              runtime,
+              "signal",
+              message.x,
+              message.y,
+              true);
+          }
           const bool sent =
             liveMapActive ?
               SendLinuxLiveMapPreviewSignalCommandFromScreen(
@@ -42965,6 +43112,14 @@ bool HandleLinuxMapPreviewInput(
         );
         if (liveMapActive)
         {
+          RecordLinuxLiveMapPreviewInputHit(
+            settings,
+            selectedMapPreview,
+            runtime,
+            "pan",
+            message.x,
+            message.y,
+            true);
           ++runtime->liveMapPreviewInputCount;
           runtime->liveMapPreviewLastAction = "mouse-pan";
         }
@@ -61178,6 +61333,18 @@ void AppendRuntimeInputLog(
   logFile << "  finalLiveMapPreviewCommandTarget="
           << screenRuntime.liveMapPreviewCommandTargetX << ","
           << screenRuntime.liveMapPreviewCommandTargetY << "\n";
+  logFile << "  finalLiveMapPreviewLastHitSurface="
+          << (screenRuntime.liveMapPreviewLastHitSurface.empty() ?
+              "none" :
+              screenRuntime.liveMapPreviewLastHitSurface) << "\n";
+  logFile << "  finalLiveMapPreviewLastInputPoint="
+          << screenRuntime.liveMapPreviewLastInputX << ","
+          << screenRuntime.liveMapPreviewLastInputY << "\n";
+  logFile << "  finalLiveMapPreviewLastProjection="
+          << (screenRuntime.liveMapPreviewLastProjectionValid ? "yes" : "no") << "\n";
+  logFile << "  finalLiveMapPreviewLastWorldPoint="
+          << screenRuntime.liveMapPreviewLastWorldX << ","
+          << screenRuntime.liveMapPreviewLastWorldY << "\n";
   logFile << "  finalLiveMapPreviewLastAction="
           << (screenRuntime.liveMapPreviewLastAction.empty() ?
               "<none>" :
@@ -64132,7 +64299,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.liveHotkeyUseUnitCommandsSent),
     static_cast<unsigned long>(screenRuntime.liveHotkeyUseConsumableCommandsSent),
     screenRuntime.liveHotkeyLastAction.empty() ? "<none>" : screenRuntime.liveHotkeyLastAction.c_str());
-  fprintf(stdout, "Final live 3D map commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f action=%s\n",
+  fprintf(stdout, "Final live 3D map commands: surface=%s proof=%s input=%lu move=%lu attack=%lu signal=%lu select=%lu target=%.1f,%.1f lastHit=%s at=%d,%d projection=%s world=%.1f,%.1f action=%s\n",
     screenRuntime.liveMapPreviewCommandSurfaceReady ? "yes" : "no",
     screenRuntime.liveMapPreviewCommandProofSent ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.liveMapPreviewInputCount),
@@ -64142,6 +64309,14 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.liveMapPreviewSelectionCount),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
+    screenRuntime.liveMapPreviewLastHitSurface.empty() ?
+      "none" :
+      screenRuntime.liveMapPreviewLastHitSurface.c_str(),
+    screenRuntime.liveMapPreviewLastInputX,
+    screenRuntime.liveMapPreviewLastInputY,
+    screenRuntime.liveMapPreviewLastProjectionValid ? "yes" : "no",
+    static_cast<double>(screenRuntime.liveMapPreviewLastWorldX),
+    static_cast<double>(screenRuntime.liveMapPreviewLastWorldY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
   fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu neutralCreeps=%lu objectives=%lu skippedDead=%lu skippedUnsupported=%lu skippedLimit=%lu clamped=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu localHero=%s target=%s commandMarker=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
