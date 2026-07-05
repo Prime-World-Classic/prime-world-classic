@@ -4641,6 +4641,12 @@ struct LinuxBootstrapScreenRuntime
   float worldCommonCreepMovementDistance;
   size_t visibleLobbyJoinMode;
   size_t visibleLobbySelectedGameRow;
+  size_t visibleLobbyMapRowsDrawn;
+  size_t visibleLobbyMapSelectedRowsDrawn;
+  size_t visibleLobbyGameRowsDrawn;
+  size_t visibleLobbyGameSelectedRowsDrawn;
+  size_t visibleLobbyJoinModeButtonsDrawn;
+  size_t visibleLobbyActionButtonsDrawn;
   bool visibleLobbyDetailsDrawn;
   bool visibleLobbyDetailsArtworkDrawn;
   bool visibleLobbyDetailsMinimapDrawn;
@@ -5741,6 +5747,12 @@ struct LinuxBootstrapScreenRuntime
       worldCommonCreepMovementDistance(0.0f),
       visibleLobbyJoinMode(LINUX_LOBBY_JOIN_MODE_NORMAL),
       visibleLobbySelectedGameRow(0),
+      visibleLobbyMapRowsDrawn(0),
+      visibleLobbyMapSelectedRowsDrawn(0),
+      visibleLobbyGameRowsDrawn(0),
+      visibleLobbyGameSelectedRowsDrawn(0),
+      visibleLobbyJoinModeButtonsDrawn(0),
+      visibleLobbyActionButtonsDrawn(0),
       visibleLobbyDetailsDrawn(false),
       visibleLobbyDetailsArtworkDrawn(false),
       visibleLobbyDetailsMinimapDrawn(false),
@@ -52990,13 +53002,19 @@ void DrawLinuxLobbyScrollBar(
   }
 }
 
-void DrawLinuxLobbyMapRows(
+size_t DrawLinuxLobbyMapRows(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
   const LinuxMapCatalog& mapCatalog,
-  const LinuxMapBrowserState& mapBrowserState
+  const LinuxMapBrowserState& mapBrowserState,
+  size_t* selectedRowsDrawn
 )
 {
+  if (selectedRowsDrawn)
+  {
+    *selectedRowsDrawn = 0;
+  }
+
   const int panelX = layout.X(65);
   const int panelY = layout.Y(455);
   const int panelH = layout.H(368);
@@ -53010,7 +53028,7 @@ void DrawLinuxLobbyMapRows(
     SetOpenGlColor(201, 210, 213, 220);
     DrawOpenGlText(overlay, rowX + layout.W(12), panelY + layout.H(40), "No maps found");
     DrawLinuxLobbyScrollBar(overlay, layout, 583, 455, 28, 368, 0, visibleRows, 0);
-    return;
+    return 0;
   }
 
   const size_t firstRow = ResolveLinuxLobbyFirstVisibleRow(
@@ -53019,11 +53037,16 @@ void DrawLinuxLobbyMapRows(
     visibleRows
   );
 
+  size_t rowsDrawn = 0;
   for (size_t row = 0; row < visibleRows && firstRow + row < mapCatalog.entries.size(); ++row)
   {
     const size_t entryIndex = firstRow + row;
     const LinuxMapCatalogEntry& entry = mapCatalog.entries[entryIndex];
     const bool selected = entryIndex == mapBrowserState.selectedIndex;
+    if (selected && selectedRowsDrawn)
+    {
+      ++(*selectedRowsDrawn);
+    }
     const int rowY = panelY + static_cast<int>(row) * rowH;
     const int rowVisibleH = std::max(0, std::min(rowH, panelY + panelH - rowY));
     if (rowVisibleH <= 0)
@@ -53106,6 +53129,7 @@ void DrawLinuxLobbyMapRows(
         false
       );
     }
+    ++rowsDrawn;
   }
 
   DrawLinuxLobbyScrollBar(
@@ -53119,17 +53143,24 @@ void DrawLinuxLobbyMapRows(
     visibleRows,
     firstRow
   );
+  return rowsDrawn;
 }
 
-void DrawLinuxLobbyGameRows(
+size_t DrawLinuxLobbyGameRows(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
   const LinuxUiRootPreview& uiRootPreview,
-  const LinuxBootstrapScreenRuntime* runtime
+  const LinuxBootstrapScreenRuntime* runtime,
+  size_t* selectedRowsDrawn
 )
 {
+  if (selectedRowsDrawn)
+  {
+    *selectedRowsDrawn = 0;
+  }
+
   const int panelX = layout.X(689);
   const int panelY = layout.Y(454);
   const int panelH = layout.H(449);
@@ -53156,6 +53187,7 @@ void DrawLinuxLobbyGameRows(
     }
   }
 
+  size_t rowsDrawn = 0;
   for (size_t row = 0; row < visibleRows && firstRow + row < rowCount; ++row)
   {
     const size_t gameRow = firstRow + row;
@@ -53170,6 +53202,10 @@ void DrawLinuxLobbyGameRows(
       gameCount > 0 &&
       runtime &&
       gameRow == selectedRow;
+    if (selected && selectedRowsDrawn)
+    {
+      ++(*selectedRowsDrawn);
+    }
 
     if (overlay && overlay->lobbyPanel.texture)
     {
@@ -53241,6 +53277,7 @@ void DrawLinuxLobbyGameRows(
         LINUX_OPENGL_TEXT_VALIGN_CENTER,
         false
       );
+      ++rowsDrawn;
       continue;
     }
 
@@ -53308,6 +53345,7 @@ void DrawLinuxLobbyGameRows(
       LINUX_OPENGL_TEXT_VALIGN_CENTER,
       false
     );
+    ++rowsDrawn;
   }
 
   DrawLinuxLobbyScrollBar(
@@ -53321,6 +53359,7 @@ void DrawLinuxLobbyGameRows(
     visibleRows,
     firstRow
   );
+  return rowsDrawn;
 }
 
 void DrawLinuxLobbyPlayerCount(
@@ -53464,11 +53503,16 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
 
   DrawLinuxLobbyPanel(overlay, layout, 65, 455, 546, 368);
   DrawLinuxLobbyPanel(overlay, layout, 689, 454, 546, 449);
-  DrawLinuxLobbyMapRows(overlay, layout, mapCatalog, mapBrowserState);
-  DrawLinuxLobbyGameRows(overlay, layout, mapCatalog, mapBrowserState, uiRootPreview, runtime);
+  size_t selectedMapRowsDrawn = 0;
+  const size_t mapRowsDrawn =
+    DrawLinuxLobbyMapRows(overlay, layout, mapCatalog, mapBrowserState, &selectedMapRowsDrawn);
+  size_t selectedGameRowsDrawn = 0;
+  const size_t gameRowsDrawn =
+    DrawLinuxLobbyGameRows(overlay, layout, mapCatalog, mapBrowserState, uiRootPreview, runtime, &selectedGameRowsDrawn);
 
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
   const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
+  size_t joinModeButtonsDrawn = 0;
   DrawLinuxLobbyRadio(
     overlay,
     layout,
@@ -53477,6 +53521,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     overlay->lobbyText.joinNormal,
     joinMode == LINUX_LOBBY_JOIN_MODE_NORMAL
   );
+  ++joinModeButtonsDrawn;
   DrawLinuxLobbyRadio(
     overlay,
     layout,
@@ -53485,6 +53530,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     overlay->lobbyText.joinReconnect,
     joinMode == LINUX_LOBBY_JOIN_MODE_RECONNECT
   );
+  ++joinModeButtonsDrawn;
   DrawLinuxLobbyRadio(
     overlay,
     layout,
@@ -53493,6 +53539,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     overlay->lobbyText.joinSpectate,
     joinMode == LINUX_LOBBY_JOIN_MODE_SPECTATE
   );
+  ++joinModeButtonsDrawn;
 
   if (overlay->lobbySelectionFrame.texture)
   {
@@ -53532,9 +53579,23 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       std::string(""));
 
   const bool primarySelected = runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_PRIMARY;
+  size_t actionButtonsDrawn = 0;
   DrawLinuxLobbyButton(overlay, layout, 186, 935, 309, 59, overlay->lobbyText.startSessionButton, false);
+  ++actionButtonsDrawn;
   DrawLinuxLobbyButton(overlay, layout, 418, 849, 192, 59, overlay->lobbyText.createGameButton, primarySelected);
+  ++actionButtonsDrawn;
   DrawLinuxLobbyButton(overlay, layout, 807, 935, 324, 59, overlay->lobbyText.refreshButton, false);
+  ++actionButtonsDrawn;
+
+  if (runtime)
+  {
+    runtime->visibleLobbyMapRowsDrawn = mapRowsDrawn;
+    runtime->visibleLobbyMapSelectedRowsDrawn = selectedMapRowsDrawn;
+    runtime->visibleLobbyGameRowsDrawn = gameRowsDrawn;
+    runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
+    runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
+    runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
+  }
 }
 
 void DrawLinuxLiveHudPercentBar(
@@ -60009,6 +60070,20 @@ void AppendRuntimeInputLog(
   }
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  logFile << "  finalVisibleLobbyMapRows="
+          << screenRuntime.visibleLobbyMapRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapSelectedRows="
+          << screenRuntime.visibleLobbyMapSelectedRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyGameRows="
+          << screenRuntime.visibleLobbyGameRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyGameSelectedRows="
+          << screenRuntime.visibleLobbyGameSelectedRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyJoinModeButtons="
+          << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
+  logFile << "  finalVisibleLobbyActionButtons="
+          << screenRuntime.visibleLobbyActionButtonsDrawn << "\n";
+  logFile << "  finalVisibleLobbyJoinMode="
+          << DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode) << "\n";
   logFile << "  finalVisibleLobbyDetailsDrawn="
           << (screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsArtwork="
@@ -63842,6 +63917,14 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupHumanSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupManualSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupFallbackSlotsDrawn));
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu gameRows=%lu selectedGameRows=%lu joinButtons=%lu actionButtons=%lu joinMode=%s\n",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
+    DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode));
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu talents=%lu/%lu shown=%lu talentMissing=%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
