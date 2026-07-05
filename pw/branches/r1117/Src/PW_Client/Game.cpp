@@ -4967,6 +4967,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveScoreboardMarkerLimit;
   bool visibleLiveScoreboardMarkerLimitHit;
   size_t visibleLiveScoreboardTeamColumnsDrawn;
+  bool visibleLiveScoreboardSelectedTeamColumnDrawn;
   size_t visibleLiveScoreboardHeroMarkersDrawn;
   size_t visibleLiveScoreboardTowerMarkersDrawn;
   size_t visibleLiveScoreboardMainBuildingMarkersDrawn;
@@ -5986,6 +5987,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveScoreboardMarkerLimit(0),
       visibleLiveScoreboardMarkerLimitHit(false),
       visibleLiveScoreboardTeamColumnsDrawn(0),
+      visibleLiveScoreboardSelectedTeamColumnDrawn(false),
       visibleLiveScoreboardHeroMarkersDrawn(0),
       visibleLiveScoreboardTowerMarkersDrawn(0),
       visibleLiveScoreboardMainBuildingMarkersDrawn(0),
@@ -53915,6 +53917,21 @@ size_t DrawLinuxLiveScoreboardTeamColumn(
     LINUX_OPENGL_TEXT_VALIGN_CENTER,
     false
   );
+  if (selectedTeam)
+  {
+    SetOpenGlColor(255, 240, 154, 242);
+    DrawOpenGlTextInBox(
+      overlay,
+      x + width - 54,
+      y + 4,
+      46,
+      17,
+      "YOU",
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
 
   char buffer[160] = {0};
   const size_t deadHeroes =
@@ -53998,6 +54015,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     runtime->visibleLiveScoreboardMarkerLimit = 0;
     runtime->visibleLiveScoreboardMarkerLimitHit = false;
     runtime->visibleLiveScoreboardTeamColumnsDrawn = 0;
+    runtime->visibleLiveScoreboardSelectedTeamColumnDrawn = false;
     runtime->visibleLiveScoreboardHeroMarkersDrawn = 0;
     runtime->visibleLiveScoreboardTowerMarkersDrawn = 0;
     runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = 0;
@@ -54076,6 +54094,8 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   SetOpenGlColor(92, 111, 121, 205);
   DrawOpenGlBorderRect(panelX - 8, panelY - 7, panelW + 16, panelH + 14);
 
+  const bool freezeSelected = runtime->liveHeroState.faction == NDb::FACTION_FREEZE;
+  const bool burnSelected = runtime->liveHeroState.faction == NDb::FACTION_BURN;
   size_t heroPips = 0;
   heroPips += DrawLinuxLiveScoreboardTeamColumn(
     overlay,
@@ -54088,7 +54108,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     91,
     157,
     238,
-    runtime->liveHeroState.faction == NDb::FACTION_FREEZE);
+    freezeSelected);
   heroPips += DrawLinuxLiveScoreboardTeamColumn(
     overlay,
     burnX,
@@ -54100,7 +54120,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     228,
     93,
     82,
-    runtime->liveHeroState.faction == NDb::FACTION_BURN);
+    burnSelected);
 
   SetOpenGlColor(12, 18, 24, 218);
   DrawOpenGlRect(centerX, panelY, centerW, panelH);
@@ -54214,6 +54234,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   runtime->visibleLiveScoreboardMarkerLimit = markerLimit;
   runtime->visibleLiveScoreboardMarkerLimitHit = markers.size() >= markerLimit;
   runtime->visibleLiveScoreboardTeamColumnsDrawn = 2;
+  runtime->visibleLiveScoreboardSelectedTeamColumnDrawn = freezeSelected || burnSelected;
   runtime->visibleLiveScoreboardHeroMarkersDrawn = heroPips;
   runtime->visibleLiveScoreboardTowerMarkersDrawn = scoreboardTowerMarkers;
   runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = scoreboardMainBuildingMarkers;
@@ -60554,6 +60575,8 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLiveScoreboardMarkerLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveScoreboardTeamColumns="
           << screenRuntime.visibleLiveScoreboardTeamColumnsDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardSelectedTeamColumn="
+          << (screenRuntime.visibleLiveScoreboardSelectedTeamColumnDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveScoreboardHeroMarkers="
           << screenRuntime.visibleLiveScoreboardHeroMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardTowerMarkers="
@@ -63392,12 +63415,13 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMinimapCommandTargetY),
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
     screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
-  fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu heroMarkers=%lu towers=%lu main=%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
+  fprintf(stdout, "Final visible live scoreboard: drawn=%s loaded=%lu limit=%lu capped=%s teams=%lu selectedTeam=%s heroMarkers=%lu towers=%lu main=%lu fallback=%s moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
     screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkersLoaded),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMarkerLimit),
     screenRuntime.visibleLiveScoreboardMarkerLimitHit ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTeamColumnsDrawn),
+    screenRuntime.visibleLiveScoreboardSelectedTeamColumnDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTowerMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn),
