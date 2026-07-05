@@ -4902,6 +4902,9 @@ struct LinuxBootstrapScreenRuntime
   float liveMapPreviewCommandTargetY;
   bool visibleLiveMinimapDrawn;
   bool visibleLiveMinimapTextureDrawn;
+  size_t visibleLiveMinimapMarkersLoaded;
+  size_t visibleLiveMinimapMarkerLimit;
+  bool visibleLiveMinimapMarkerLimitHit;
   size_t visibleLiveMinimapMarkersDrawn;
   size_t visibleLiveMinimapHeroMarkersDrawn;
   size_t visibleLiveMinimapDeadHeroMarkersDrawn;
@@ -5871,6 +5874,9 @@ struct LinuxBootstrapScreenRuntime
       liveMapPreviewCommandTargetY(0.0f),
       visibleLiveMinimapDrawn(false),
       visibleLiveMinimapTextureDrawn(false),
+      visibleLiveMinimapMarkersLoaded(0),
+      visibleLiveMinimapMarkerLimit(0),
+      visibleLiveMinimapMarkerLimitHit(false),
       visibleLiveMinimapMarkersDrawn(0),
       visibleLiveMinimapHeroMarkersDrawn(0),
       visibleLiveMinimapDeadHeroMarkersDrawn(0),
@@ -53183,6 +53189,9 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   {
     runtime->visibleLiveMinimapDrawn = false;
     runtime->visibleLiveMinimapTextureDrawn = false;
+    runtime->visibleLiveMinimapMarkersLoaded = 0;
+    runtime->visibleLiveMinimapMarkerLimit = 0;
+    runtime->visibleLiveMinimapMarkerLimitHit = false;
     runtime->visibleLiveMinimapMarkersDrawn = 0;
     runtime->visibleLiveMinimapHeroMarkersDrawn = 0;
     runtime->visibleLiveMinimapDeadHeroMarkersDrawn = 0;
@@ -53220,6 +53229,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   {
     return;
   }
+  runtime->visibleLiveMinimapMarkersLoaded = markers.size();
 
   const int width = renderContext.width;
   const int height = renderContext.height;
@@ -53320,6 +53330,8 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   const size_t markerLimit = std::min<size_t>(markers.size(), 320);
+  runtime->visibleLiveMinimapMarkerLimit = markerLimit;
+  runtime->visibleLiveMinimapMarkerLimitHit = markers.size() > markerLimit;
   const int selectedTargetObjectId =
     runtime->mapPreviewSelectedTargetObjectId >= 0 ?
     runtime->mapPreviewSelectedTargetObjectId :
@@ -60109,6 +60121,12 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveMinimapTexture="
           << (screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkersLoaded="
+          << screenRuntime.visibleLiveMinimapMarkersLoaded << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkerLimit="
+          << screenRuntime.visibleLiveMinimapMarkerLimit << "\n";
+  logFile << "  finalVisibleLiveMinimapMarkerLimitHit="
+          << (screenRuntime.visibleLiveMinimapMarkerLimitHit ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLiveMinimapMarkers="
           << screenRuntime.visibleLiveMinimapMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveMinimapHeroMarkers="
@@ -62908,9 +62926,12 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetX),
     static_cast<double>(screenRuntime.liveMapPreviewCommandTargetY),
     screenRuntime.liveMapPreviewLastAction.empty() ? "<none>" : screenRuntime.liveMapPreviewLastAction.c_str());
-  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu target=%s\n",
+  fprintf(stdout, "Final visible live minimap: drawn=%s texture=%s loaded=%lu limit=%lu capped=%s markers=%lu heroes=%lu deadHeroes=%lu creeps=%lu objectives=%lu objectiveLabels=%lu towerLabels=%lu mainLabels=%lu objectiveBars=%lu damagedObjectiveBars=%lu moving=%lu target=%s\n",
     screenRuntime.visibleLiveMinimapDrawn ? "yes" : "no",
     screenRuntime.visibleLiveMinimapTextureDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersLoaded),
+    static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkerLimit),
+    screenRuntime.visibleLiveMinimapMarkerLimitHit ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveMinimapDeadHeroMarkersDrawn),
