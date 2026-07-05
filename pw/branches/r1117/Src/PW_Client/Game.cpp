@@ -4688,6 +4688,15 @@ struct LinuxBootstrapScreenRuntime
   int visibleLobbyDetailsLogoTextureHeight;
   int visibleLobbyDetailsMinimapTextureWidth;
   int visibleLobbyDetailsMinimapTextureHeight;
+  bool visibleLobbyDetailsRulesDrawn;
+  int visibleLobbyDetailsRuleDelay;
+  int visibleLobbyDetailsRulePrime;
+  int visibleLobbyDetailsRuleForce;
+  bool visibleLobbyDetailsObjectivesDrawn;
+  size_t visibleLobbyDetailsObjectiveTowers;
+  size_t visibleLobbyDetailsObjectiveSpawns;
+  size_t visibleLobbyDetailsObjectiveShops;
+  size_t visibleLobbyDetailsObjectiveGlyphs;
   bool visibleLobbyHeroDetailsDrawn;
   bool visibleLobbyHeroPortraitDrawn;
   bool visibleLobbyHeroPortraitFallbackDrawn;
@@ -5816,6 +5825,15 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsLogoTextureHeight(0),
       visibleLobbyDetailsMinimapTextureWidth(0),
       visibleLobbyDetailsMinimapTextureHeight(0),
+      visibleLobbyDetailsRulesDrawn(false),
+      visibleLobbyDetailsRuleDelay(0),
+      visibleLobbyDetailsRulePrime(0),
+      visibleLobbyDetailsRuleForce(0),
+      visibleLobbyDetailsObjectivesDrawn(false),
+      visibleLobbyDetailsObjectiveTowers(0),
+      visibleLobbyDetailsObjectiveSpawns(0),
+      visibleLobbyDetailsObjectiveShops(0),
+      visibleLobbyDetailsObjectiveGlyphs(0),
       visibleLobbyHeroDetailsDrawn(false),
       visibleLobbyHeroPortraitDrawn(false),
       visibleLobbyHeroPortraitFallbackDrawn(false),
@@ -52441,9 +52459,18 @@ void DrawLinuxLobbySelectedMapDetails(
   const size_t terrainTriangles = selectedMapPreview ?
     selectedMapPreview->terrainHeightmap.sampledTriangles :
     0;
+  const bool rulesDrawn = selectedMapPreview && selectedMapPreview->settings.resolved;
+  const bool objectivesDrawn = selectedMapPreview && selectedMapPreview->tactical.ready;
+  const int ruleDelay = rulesDrawn ? selectedMapPreview->settings.battleStartDelay : 0;
+  const int rulePrime = rulesDrawn ? selectedMapPreview->settings.startPrimePerTeam : 0;
+  const int ruleForce = rulesDrawn ? selectedMapPreview->settings.force : 0;
+  const size_t objectiveTowers = objectivesDrawn ? selectedMapPreview->tactical.towerCount : 0;
+  const size_t objectiveSpawns = objectivesDrawn ? selectedMapPreview->tactical.heroSpawnCount : 0;
+  const size_t objectiveShops = objectivesDrawn ? selectedMapPreview->tactical.shopCount : 0;
+  const size_t objectiveGlyphs = objectivesDrawn ? selectedMapPreview->tactical.glyphCount : 0;
   std::string stats = selectedMapPreview ?
     NStr::StrFmt(
-      "Objects %lu  Markers %lu  Terrain %lu tris  Water %lu  Lights %lu",
+      "Objects %lu  Markers %lu  Terrain %lu  Water %lu  Lights %lu",
       static_cast<unsigned long>(selectedMapPreview->objectCount),
       static_cast<unsigned long>(markers),
       static_cast<unsigned long>(terrainTriangles),
@@ -52457,11 +52484,36 @@ void DrawLinuxLobbySelectedMapDetails(
     layout.X(331),
     layout.Y(229),
     layout.W(412),
-    layout.H(38),
+    layout.H(18),
     stats,
     LINUX_OPENGL_TEXT_ALIGN_LEFT,
-    LINUX_OPENGL_TEXT_VALIGN_TOP,
-    true
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const std::string rules = selectedMapPreview ?
+    NStr::StrFmt(
+      "Rules %d/%d/%d  Obj T%lu S%lu Sh%lu G%lu",
+      ruleDelay,
+      rulePrime,
+      ruleForce,
+      static_cast<unsigned long>(objectiveTowers),
+      static_cast<unsigned long>(objectiveSpawns),
+      static_cast<unsigned long>(objectiveShops),
+      static_cast<unsigned long>(objectiveGlyphs)
+    ) :
+    std::string("Rules and objectives not loaded");
+  SetOpenGlColor(229, 218, 169, 230);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(331),
+    layout.Y(250),
+    layout.W(412),
+    layout.H(18),
+    rules,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
   );
 
   size_t lineupPortraits = 0;
@@ -52510,6 +52562,15 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsLogoTextureHeight = logoTextureHeight;
     runtime->visibleLobbyDetailsMinimapTextureWidth = minimapTextureWidth;
     runtime->visibleLobbyDetailsMinimapTextureHeight = minimapTextureHeight;
+    runtime->visibleLobbyDetailsRulesDrawn = rulesDrawn;
+    runtime->visibleLobbyDetailsRuleDelay = ruleDelay;
+    runtime->visibleLobbyDetailsRulePrime = rulePrime;
+    runtime->visibleLobbyDetailsRuleForce = ruleForce;
+    runtime->visibleLobbyDetailsObjectivesDrawn = objectivesDrawn;
+    runtime->visibleLobbyDetailsObjectiveTowers = objectiveTowers;
+    runtime->visibleLobbyDetailsObjectiveSpawns = objectiveSpawns;
+    runtime->visibleLobbyDetailsObjectiveShops = objectiveShops;
+    runtime->visibleLobbyDetailsObjectiveGlyphs = objectiveGlyphs;
   }
 }
 
@@ -60501,6 +60562,19 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyDetailsMinimapTextureSize="
           << screenRuntime.visibleLobbyDetailsMinimapTextureWidth << "x"
           << screenRuntime.visibleLobbyDetailsMinimapTextureHeight << "\n";
+  logFile << "  finalVisibleLobbyDetailsRules="
+          << (screenRuntime.visibleLobbyDetailsRulesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsRuleValues="
+          << screenRuntime.visibleLobbyDetailsRuleDelay << "/"
+          << screenRuntime.visibleLobbyDetailsRulePrime << "/"
+          << screenRuntime.visibleLobbyDetailsRuleForce << "\n";
+  logFile << "  finalVisibleLobbyDetailsObjectives="
+          << (screenRuntime.visibleLobbyDetailsObjectivesDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsObjectiveValues="
+          << screenRuntime.visibleLobbyDetailsObjectiveTowers << "/"
+          << screenRuntime.visibleLobbyDetailsObjectiveSpawns << "/"
+          << screenRuntime.visibleLobbyDetailsObjectiveShops << "/"
+          << screenRuntime.visibleLobbyDetailsObjectiveGlyphs << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupSlots="
           << screenRuntime.visibleLobbyDetailsLineupSlotsDrawn << "\n";
   logFile << "  finalVisibleLobbyDetailsLineupPortraits="
@@ -64291,7 +64365,7 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
@@ -64304,6 +64378,15 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyDetailsMinimapTextureWidth,
     screenRuntime.visibleLobbyDetailsMinimapTextureHeight,
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
+    screenRuntime.visibleLobbyDetailsRulesDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsRuleDelay,
+    screenRuntime.visibleLobbyDetailsRulePrime,
+    screenRuntime.visibleLobbyDetailsRuleForce,
+    screenRuntime.visibleLobbyDetailsObjectivesDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsObjectiveTowers),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsObjectiveSpawns),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsObjectiveShops),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsObjectiveGlyphs),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSlotsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupPortraitsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupSelectedSlotsDrawn),
