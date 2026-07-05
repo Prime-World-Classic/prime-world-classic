@@ -4929,6 +4929,9 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLiveScoreboardHeroMarkersDrawn;
   size_t visibleLiveScoreboardTowerMarkersDrawn;
   size_t visibleLiveScoreboardMainBuildingMarkersDrawn;
+  size_t visibleLiveScoreboardMovingMarkersDrawn;
+  size_t visibleLiveScoreboardDamagedMarkersDrawn;
+  size_t visibleLiveScoreboardDeadHeroMarkersDrawn;
   size_t visibleLiveScoreboardObjectiveLinesDrawn;
   size_t visibleLiveScoreboardCommandLinesDrawn;
   bool visibleLiveEventFeedDrawn;
@@ -5887,6 +5890,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLiveScoreboardHeroMarkersDrawn(0),
       visibleLiveScoreboardTowerMarkersDrawn(0),
       visibleLiveScoreboardMainBuildingMarkersDrawn(0),
+      visibleLiveScoreboardMovingMarkersDrawn(0),
+      visibleLiveScoreboardDamagedMarkersDrawn(0),
+      visibleLiveScoreboardDeadHeroMarkersDrawn(0),
       visibleLiveScoreboardObjectiveLinesDrawn(0),
       visibleLiveScoreboardCommandLinesDrawn(0),
       visibleLiveEventFeedDrawn(false),
@@ -53633,6 +53639,9 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     runtime->visibleLiveScoreboardHeroMarkersDrawn = 0;
     runtime->visibleLiveScoreboardTowerMarkersDrawn = 0;
     runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardMovingMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardDamagedMarkersDrawn = 0;
+    runtime->visibleLiveScoreboardDeadHeroMarkersDrawn = 0;
     runtime->visibleLiveScoreboardObjectiveLinesDrawn = 0;
     runtime->visibleLiveScoreboardCommandLinesDrawn = 0;
   }
@@ -53764,6 +53773,14 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   {
     scoreboardMainBuildingMarkers = runtime->worldMainBuildingObjects;
   }
+  const size_t scoreboardMovingMarkers =
+    freezeTeam.moving + burnTeam.moving + neutralTeam.moving;
+  const size_t scoreboardDamagedMarkers =
+    freezeTeam.damaged + burnTeam.damaged + neutralTeam.damaged;
+  const size_t scoreboardDeadHeroMarkers =
+    (freezeTeam.totalHeroes > freezeTeam.liveHeroes ? freezeTeam.totalHeroes - freezeTeam.liveHeroes : 0) +
+    (burnTeam.totalHeroes > burnTeam.liveHeroes ? burnTeam.totalHeroes - burnTeam.liveHeroes : 0) +
+    (neutralTeam.totalHeroes > neutralTeam.liveHeroes ? neutralTeam.totalHeroes - neutralTeam.liveHeroes : 0);
 
   snprintf(
     buffer,
@@ -53810,7 +53827,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
       sizeof(buffer),
       "Neutral %lu  moving %lu",
       static_cast<unsigned long>(neutralTeam.creeps),
-      static_cast<unsigned long>(freezeTeam.moving + burnTeam.moving + neutralTeam.moving));
+      static_cast<unsigned long>(scoreboardMovingMarkers));
     SetOpenGlColor(188, 169, 83, 218);
     DrawOpenGlTextInBox(
       overlay,
@@ -53830,6 +53847,9 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   runtime->visibleLiveScoreboardHeroMarkersDrawn = heroPips;
   runtime->visibleLiveScoreboardTowerMarkersDrawn = scoreboardTowerMarkers;
   runtime->visibleLiveScoreboardMainBuildingMarkersDrawn = scoreboardMainBuildingMarkers;
+  runtime->visibleLiveScoreboardMovingMarkersDrawn = scoreboardMovingMarkers;
+  runtime->visibleLiveScoreboardDamagedMarkersDrawn = scoreboardDamagedMarkers;
+  runtime->visibleLiveScoreboardDeadHeroMarkersDrawn = scoreboardDeadHeroMarkers;
   runtime->visibleLiveScoreboardObjectiveLinesDrawn = 2 + (neutralTeam.creeps > 0 ? 1 : 0);
   runtime->visibleLiveScoreboardCommandLinesDrawn = 1;
 }
@@ -60013,6 +60033,12 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLiveScoreboardTowerMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardMainBuildingMarkers="
           << screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardMovingMarkers="
+          << screenRuntime.visibleLiveScoreboardMovingMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardDamagedMarkers="
+          << screenRuntime.visibleLiveScoreboardDamagedMarkersDrawn << "\n";
+  logFile << "  finalVisibleLiveScoreboardDeadHeroMarkers="
+          << screenRuntime.visibleLiveScoreboardDeadHeroMarkersDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardObjectiveLines="
           << screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn << "\n";
   logFile << "  finalVisibleLiveScoreboardCommandLines="
@@ -62760,12 +62786,15 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.liveMinimapCommandTargetY),
     screenRuntime.visibleLiveMinimapCommandMarkerDrawn ? "yes" : "no",
     screenRuntime.liveMinimapLastAction.empty() ? "<none>" : screenRuntime.liveMinimapLastAction.c_str());
-  fprintf(stdout, "Final visible live scoreboard: drawn=%s teams=%lu heroMarkers=%lu towers=%lu main=%lu objectiveLines=%lu commandLines=%lu\n",
+  fprintf(stdout, "Final visible live scoreboard: drawn=%s teams=%lu heroMarkers=%lu towers=%lu main=%lu moving=%lu damaged=%lu deadHeroes=%lu objectiveLines=%lu commandLines=%lu\n",
     screenRuntime.visibleLiveScoreboardDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTeamColumnsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardTowerMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMainBuildingMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardMovingMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDamagedMarkersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardDeadHeroMarkersDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardObjectiveLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLiveScoreboardCommandLinesDrawn));
   fprintf(stdout, "Final visible live event feed: drawn=%s rows=%lu command=%lu combat=%lu objective=%lu objectiveMarkers=%lu\n",
