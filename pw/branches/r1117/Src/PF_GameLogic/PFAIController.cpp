@@ -973,6 +973,9 @@ void PFAIController::OnRespawn()
 
 void PFAIController::Step( float timeDelta )
 {
+  if ( GetWorld() && GetWorld()->GetAIWorld() && GetWorld()->GetAIWorld()->WasGameFinished() )
+    return;
+
   PFBaseAIController::Step(timeDelta);
   if (IsDead())
     return;
@@ -988,9 +991,13 @@ void PFAIController::Step( float timeDelta )
 
   if (isRespawned)
   {
-    GoToEnemyBase();
-    initialRouteIssued = true;
-    isRespawned = false;
+    if ( IsValid(GetHelper().pDBBots) && GetWorld() && GetWorld()->GetTimeElapsed() > GetHelper().pDBBots->timeToGo )
+    {
+      GoToEnemyBase();
+      initialRouteIssued = true;
+      isRespawned = false;
+      Heal(true);
+    }
   }
 
   if (!initialRouteIssued && !CurrentState() && !road.empty())
@@ -1031,7 +1038,7 @@ void PFAIController::Step( float timeDelta )
 
 void PFAIController::OnBecameIdle()
 {
-  if (IsValid(GetHero()) && !road.empty())
+  if (!isRespawned && IsValid(GetHero()) && !road.empty())
   {
     initialRouteIssued = true;
     WalkByRoad(false);
