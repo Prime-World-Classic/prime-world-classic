@@ -50550,6 +50550,41 @@ size_t ResolveLinuxMapRendererMaterialTextureIndex(
   return kLinuxHeroPreviewNoDiffuseTexture;
 }
 
+size_t ResolveLinuxSkeletalRendererMaterialTextureIndex(
+  const std::string& rootGeometryFile,
+  const std::vector<size_t>& materialDiffuseTextureIndices,
+  unsigned int primitiveIndex
+)
+{
+  if (!rootGeometryFile.empty())
+  {
+    const Render::MeshGeometry* meshGeometry =
+      Render::RenderResourceManager::LoadSkeletalMeshGeometry(
+        nstl::string(rootGeometryFile.c_str()));
+    if (meshGeometry &&
+        primitiveIndex < static_cast<unsigned int>(meshGeometry->primitives.size()) &&
+        primitiveIndex < sizeof(meshGeometry->materialID) / sizeof(meshGeometry->materialID[0]))
+    {
+      const int materialIndex = meshGeometry->materialID[primitiveIndex];
+      if (materialIndex >= 0)
+      {
+        const size_t materialTextureIndex =
+          ResolveLinuxMapRendererMaterialTextureIndex(
+            materialDiffuseTextureIndices,
+            static_cast<unsigned int>(materialIndex));
+        if (materialTextureIndex != kLinuxHeroPreviewNoDiffuseTexture)
+        {
+          return materialTextureIndex;
+        }
+      }
+    }
+  }
+
+  return ResolveLinuxMapRendererMaterialTextureIndex(
+    materialDiffuseTextureIndices,
+    primitiveIndex);
+}
+
 size_t DrawLinuxMapRendererStaticMeshPayloadList(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedMapPreview* selectedMapPreview,
@@ -50830,7 +50865,8 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
         if (partIndexes[partIndex] < slotTextureIndices.size())
         {
           slotTextureIndices[partIndexes[partIndex]] =
-            ResolveLinuxMapRendererMaterialTextureIndex(
+            ResolveLinuxSkeletalRendererMaterialTextureIndex(
+              skinPayload.rootGeometryFile,
               skinPayload.materialDiffuseTextureIndices,
               partIndex);
         }
@@ -52242,7 +52278,8 @@ size_t ResolveLinuxHeroRendererPayloadTextureIndex(
   unsigned int partIndex
 )
 {
-  return ResolveLinuxHeroRendererMaterialTextureIndex(
+  return ResolveLinuxSkeletalRendererMaterialTextureIndex(
+    payload.rootGeometryFile,
     payload.materialDiffuseTextureIndices,
     partIndex);
 }
