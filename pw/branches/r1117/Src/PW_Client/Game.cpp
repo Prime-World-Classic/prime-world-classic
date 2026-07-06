@@ -878,6 +878,8 @@ struct LinuxInputState
 enum LinuxVisibleMenuAction
 {
   LINUX_VISIBLE_MENU_ACTION_PRIMARY = 0,
+  LINUX_VISIBLE_MENU_ACTION_START_SESSION,
+  LINUX_VISIBLE_MENU_ACTION_REFRESH,
   LINUX_VISIBLE_MENU_ACTION_MAP,
   LINUX_VISIBLE_MENU_ACTION_HERO,
   LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS,
@@ -30915,6 +30917,12 @@ std::string DescribeLinuxVisibleMenuAction(
       }
       return "Create custom game";
 
+    case LINUX_VISIBLE_MENU_ACTION_START_SESSION:
+      return "Start session";
+
+    case LINUX_VISIBLE_MENU_ACTION_REFRESH:
+      return "Refresh games";
+
     case LINUX_VISIBLE_MENU_ACTION_MAP:
       return "Cycle map";
 
@@ -41020,11 +41028,19 @@ bool UpdateLocalMatchPreviewState(
   return changed;
 }
 
+bool ActivateLinuxLobbySelectedGame(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime
+);
+
 bool ActivateLinuxVisibleMenuAction(
   const LinuxMapCatalog& mapCatalog,
   LinuxMapBrowserState* mapBrowserState,
   const LinuxHeroCatalog& heroCatalog,
   LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxUiRootPreview& uiRootPreview,
   LinuxBootstrapScreenRuntime* runtime
 )
 {
@@ -41085,6 +41101,24 @@ bool ActivateLinuxVisibleMenuAction(
       break;
     }
 
+    case LINUX_VISIBLE_MENU_ACTION_START_SESSION:
+      changed = ActivateLinuxLobbySelectedGame(
+        heroCatalog,
+        *localMatchPreview,
+        uiRootPreview,
+        runtime
+      );
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_REFRESH:
+      if (IsValid(runtime->gameContext))
+      {
+        runtime->gameContext->RefreshGamesList();
+      }
+      runtime->visibleMenuLastAction = "refresh-games";
+      changed = true;
+      break;
+
     case LINUX_VISIBLE_MENU_ACTION_MAP:
       if (mapBrowserState)
       {
@@ -41137,6 +41171,7 @@ bool HandleLinuxVisibleMenuHotkeys(
   LinuxMapBrowserState* mapBrowserState,
   const LinuxHeroCatalog& heroCatalog,
   LinuxLocalMatchPreview* localMatchPreview,
+  const LinuxUiRootPreview& uiRootPreview,
   LinuxBootstrapScreenRuntime* runtime,
   bool* consumedNavigation
 )
@@ -41215,6 +41250,7 @@ bool HandleLinuxVisibleMenuHotkeys(
           mapBrowserState,
           heroCatalog,
           localMatchPreview,
+          uiRootPreview,
           runtime
         ) || changed;
         if (consumedNavigation)
@@ -44396,6 +44432,7 @@ bool HandleLinuxVisibleLobbyMouse(
           mapBrowserState,
           heroCatalog,
           localMatchPreview,
+          uiRootPreview,
           runtime
         ) || changed;
       }
@@ -44493,6 +44530,7 @@ bool HandleLinuxVisibleLobbyMouse(
         mapBrowserState,
         heroCatalog,
         localMatchPreview,
+        uiRootPreview,
         runtime
       ) || changed;
       if (consumedNavigation)
@@ -44505,6 +44543,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "start-session-button", message.x, message.y, baseX, baseY);
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_START_SESSION;
       changed = ActivateLinuxLobbySelectedGame(
         heroCatalog,
         *localMatchPreview,
@@ -44521,6 +44560,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 807, 935, 324, 59))
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "refresh-button", message.x, message.y, baseX, baseY);
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_REFRESH;
       if (IsValid(runtime->gameContext))
       {
         runtime->gameContext->RefreshGamesList();
@@ -52732,6 +52772,12 @@ const char* ResolveLinuxLobbyKeyboardFocusSurface(size_t selectedAction)
     case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
       return "primary-button";
 
+    case LINUX_VISIBLE_MENU_ACTION_START_SESSION:
+      return "start-session-button";
+
+    case LINUX_VISIBLE_MENU_ACTION_REFRESH:
+      return "refresh-button";
+
     case LINUX_VISIBLE_MENU_ACTION_MAP:
       return "map-list";
 
@@ -52761,6 +52807,20 @@ bool DrawLinuxLobbyKeyboardFocus(
       x = 418;
       y = 849;
       width = 192;
+      height = 59;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_START_SESSION:
+      x = 186;
+      y = 935;
+      width = 309;
+      height = 59;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_REFRESH:
+      x = 807;
+      y = 935;
+      width = 324;
       height = 59;
       break;
 
@@ -55200,11 +55260,13 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   size_t actionButtonsSelected = 0;
   std::string selectedActionButton = "none";
   const bool startSessionEnabled = openGameRowsDrawn > 0;
-  const bool startSessionSelected = false;
+  const bool startSessionSelected =
+    runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_START_SESSION;
   const bool createGameEnabled = true;
   const bool createGameSelected = primarySelected;
   const bool refreshEnabled = true;
-  const bool refreshSelected = false;
+  const bool refreshSelected =
+    runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_REFRESH;
   const bool startSessionHovered = hoverSurface == "start-session-button";
   const bool createGameHovered = hoverSurface == "create-game-button";
   const bool refreshHovered = hoverSurface == "refresh-button";
@@ -65632,6 +65694,7 @@ int main(int argc, char** argv)
       &mapBrowserState,
       heroCatalog,
       &localMatchPreview,
+      uiRootPreview,
       &screenRuntime,
       &visibleMenuConsumedNavigation
     );
