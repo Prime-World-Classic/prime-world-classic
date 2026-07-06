@@ -495,6 +495,11 @@ add_executable(
   runtime_stubs.cpp
 )
 
+add_executable(
+  PrimeWorldLinuxSwfProbe
+  swf_probe.cpp
+)
+
 add_library(
   PrimeWorldLinuxGameplayProbe
   OBJECT
@@ -947,6 +952,7 @@ add_library(
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxSwfProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClientRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
@@ -1032,6 +1038,12 @@ target_link_libraries(
     ${FREETYPE_LIBRARIES}
     ZLIB::ZLIB
     ${PNG_LIBRARIES}
+)
+
+target_link_libraries(
+  PrimeWorldLinuxSwfProbe
+  PRIVATE
+    ZLIB::ZLIB
 )
 
 target_include_directories(
