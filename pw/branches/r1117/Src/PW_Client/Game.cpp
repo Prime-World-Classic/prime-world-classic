@@ -15238,7 +15238,7 @@ void PrintLinuxRendererMaterialStats(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 void RecordLinuxRendererSmartTextureBindStats(
   const Render::SmartRenderer::OpenGLTextureBindStats& beforeStats,
-  bool manualTextureBound,
+  bool expectedDiffuseTexture,
   LinuxRendererMaterialSlotStats* stats)
 {
   if (!stats)
@@ -15256,7 +15256,7 @@ void RecordLinuxRendererSmartTextureBindStats(
   stats->missingGL += CountLinuxRendererStatDelta(
     beforeStats.texture2DMissingOpenGLTexture,
     afterStats.texture2DMissingOpenGLTexture);
-  if (manualTextureBound && successfulBinds == 0)
+  if (expectedDiffuseTexture && successfulBinds == 0)
   {
     ++stats->manualFallbackOnlyBatches;
   }
@@ -50877,10 +50877,8 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
         const size_t textureIndex = ResolveLinuxMapRendererMaterialTextureIndex(
           payload.materialDiffuseTextureIndices,
           batch->elementNumber);
-        const GLuint diffuseTexture =
-          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
-          ResolveLinuxMapPreviewDiffuseTexture(overlay, selectedMapPreview, textureIndex) :
-          0;
+        const bool expectedDiffuseTexture =
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         Render::SmartRenderer::UnBindTexture(0u);
 #endif
@@ -50894,7 +50892,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         RecordLinuxRendererSmartTextureBindStats(
           bindStatsBefore,
-          diffuseTexture != 0,
+          expectedDiffuseTexture,
           materialStats);
 #endif
         batch->Draw();
@@ -51139,7 +51137,7 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         RecordLinuxRendererSmartTextureBindStats(
           bindStatsBefore,
-          false,
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture,
           materialStats);
 #endif
         batch->Draw();
@@ -52632,10 +52630,8 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
         const size_t textureIndex = ResolveLinuxHeroRendererMaterialTextureIndex(
           payload.materialDiffuseTextureIndices,
           batch->elementNumber);
-        const GLuint diffuseTexture =
-          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
-          ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
-          0;
+        const bool expectedDiffuseTexture =
+          textureIndex != kLinuxHeroPreviewNoDiffuseTexture;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         Render::SmartRenderer::UnBindTexture(0u);
 #endif
@@ -52649,7 +52645,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         RecordLinuxRendererSmartTextureBindStats(
           bindStatsBefore,
-          diffuseTexture != 0,
+          expectedDiffuseTexture,
           materialStats);
 #endif
         batch->Draw();
@@ -52836,7 +52832,7 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
       RecordLinuxRendererSmartTextureBindStats(
         bindStatsBefore,
-        false,
+        textureIndex != kLinuxHeroPreviewNoDiffuseTexture,
         &materialStats);
 #endif
       batch->Draw();
