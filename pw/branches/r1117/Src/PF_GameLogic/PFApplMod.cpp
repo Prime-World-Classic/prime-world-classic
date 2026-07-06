@@ -736,7 +736,13 @@ void PFApplCreepBehaviourChange::Disable()
   PFApplBuff::Disable();
 }
 
-float PFApplDamageReflect::OnDamage(CPtr<PFBaseUnit>, float, float damage4Apply, int) { return damage4Apply * amountInPersent * 0.01f; }
+float PFApplDamageReflect::OnDamage(CPtr<PFBaseUnit>, float, float damage4Apply, int)
+{
+  if (!RetrieveParam(pDBAppl->enabled, true))
+    return 0.0f;
+
+  return -(damage4Apply * amountInPersent);
+}
 void PFApplOnDamage::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddEventListener(this); }
 void PFApplOnDamage::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveEventListener(this); PFApplBuff::Disable(); }
 unsigned int PFApplOnDamage::OnEvent(const PFBaseUnitEvent* pEvent)
