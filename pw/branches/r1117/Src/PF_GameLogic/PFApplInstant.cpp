@@ -653,6 +653,11 @@ bool PFApplChangeState::Start()
 bool PFApplGiveConsumable::Start()
 {
   PFBaseApplicator::Start();
+  PFBaseHero* pHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
+  if (!pHero)
+    return true;
+
+  pHero->TakeConsumable(GetDB().consumable, RetrieveParam(GetDB().amount, 1), NDb::CONSUMABLEORIGIN_APPLICATOR);
   return true;
 }
 
