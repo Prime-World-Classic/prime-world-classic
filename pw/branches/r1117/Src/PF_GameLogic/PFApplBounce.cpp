@@ -16,16 +16,46 @@ bool PFApplBounce::Start()
     return true;
 
   MakeApplicationTarget(currentTarget, GetDB().startTarget);
-  if (GetDB().target)
-    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().target->Create(GetWorld()));
+
+  if ((GetDB().flags & NDb::BOUNCEFLAGS_RENEWTARGETONSTART) != 0 && IsValid(pReceiver) && IsValid(GetAbility()))
+  {
+    struct NewTargetSetter : NonCopyable
+    {
+      NewTargetSetter(const Target& target_, const PFAbilityData* pAbilityData_, const NDb::DBID& applDbid_)
+        : target(target_), pAbilityData(pAbilityData_), applDbid(applDbid_), found(false)
+      {
+      }
+
+      void operator()(const CObj<PFBaseApplicator>& pAppl)
+      {
+        if (IsValid(pAppl) && pAppl->GetTypeId() == PFApplBounce::typeId && IsValid(pAppl->GetAbility())
+            && pAppl->GetAbility()->GetData() == pAbilityData && pAppl->GetDBBase()->GetDBID() == applDbid)
+        {
+          static_cast<PFApplBounce*>(pAppl.GetPtr())->SetNewTarget(target);
+          found = true;
+        }
+      }
+
+      const Target& target;
+      const PFAbilityData* pAbilityData;
+      const NDb::DBID& applDbid;
+      bool found;
+    } f(currentTarget, GetAbility()->GetData(), GetDB().GetDBID());
+
+    pReceiver->ForAllAppliedApplicators(f);
+
+    if (f.found)
+      return true;
+  }
+
   targetsNumber = RetrieveParam(GetDB().targetsNumber);
   bounceDelay = RetrieveParam(GetDB().bounceDelay);
   timeToNextBounce = 0.0f;
   targetCounter = 0;
   finished = false;
 
-  if (targetsNumber == 0)
-    return false;
+  if (GetDB().target)
+    pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().target->Create(GetWorld()));
 
   return !ExecuteNext();
 }
@@ -46,7 +76,16 @@ bool PFApplBounce::Step(float dtInSeconds)
   if (finished)
     return true;
 
-  if (timeToNextBounce > EPS_VALUE)
+  if (IsValid(pDispatch))
+  {
+    if (!pDispatch->HasArrived())
+      return false;
+
+    pDispatch = 0;
+    timeToNextBounce = bounceDelay;
+  }
+
+  if (timeToNextBounce > EPS_VALUE && ((GetDB().flags & NDb::BOUNCEFLAGS_BOUNCENEXTTARGETONLOSS) == 0 || currentTarget.IsObjectValid()))
   {
     timeToNextBounce -= dtInSeconds;
     return false;
@@ -66,52 +105,96 @@ bool PFApplBounce::ExecuteNext()
     return false;
   }
 
-  ++targetCounter;
+  CPtr<PFBaseUnit> const& pAbilityOwner = GetAbilityOwner();
+  bool const trackDispatchArrival = IsValid(pAbilityOwner) && pAbilityOwner->GetWorld();
+  PFDispatch* pCreatedDispatch = 0;
 
-  Target source(currentTarget);
-  Target target(currentTarget);
-  if ((GetDB().flags & NDb::BOUNCEFLAGS_STARTFROMOWNER) != 0 && targetCounter == 1)
+  if ((GetDB().flags & NDb::BOUNCEFLAGS_STARTFROMOWNER) == 0 || targetCounter > 0)
   {
-    source.SetUnit(GetAbilityOwner());
-  }
-  else if (IsValid(pTargetSelector))
-  {
-    PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, source);
-    if (!pTargetSelector->FindTarget(params, target))
+    Target const source(currentTarget);
+    if (IsValid(pTargetSelector) && !pTargetSelector->FindTarget(PFTargetSelector::RequestParams(pOwner.GetPtr(), this, source), currentTarget))
     {
       finished = true;
       return false;
     }
-  }
 
-  if (target.IsValid())
+    pCreatedDispatch = CreateDispatch(pAbility, this, source, currentTarget, GetDB().spell);
+  }
+  else
   {
-    currentTarget = target;
-    pDispatch = CreateDispatch(pAbility, this, source, currentTarget, GetDB().spell);
+    Target const source(pOwner);
+    pCreatedDispatch = CreateDispatch(pAbility, this, source, currentTarget, GetDB().spell);
   }
 
-  timeToNextBounce = bounceDelay;
+  if (trackDispatchArrival)
+    pDispatch = pCreatedDispatch;
+  else
+  {
+    pDispatch = 0;
+    timeToNextBounce = bounceDelay;
+  }
 
-  if (targetsNumber > 0 && targetCounter >= targetsNumber)
+  ++targetCounter;
+
+  if (IsFinished())
     finished = true;
 
   return !finished;
 }
 
-void PFApplBounce::OnDispatchTargetDropped(const PFDispatch*)
+void PFApplBounce::OnDispatchTargetDropped(const PFDispatch* pDroppedDispatch)
 {
   if ((GetDB().flags & NDb::BOUNCEFLAGS_BOUNCENEXTTARGETONLOSS) == 0)
+    return;
+
+  if (!pDroppedDispatch || !IsValid(pTargetSelector))
+  {
     finished = true;
-  else
-    timeToNextBounce = 0.0f;
+    return;
+  }
+
+  PFTargetSelector::RequestParams params(pOwner.GetPtr(), this, Target(pDroppedDispatch->GetCurrentPosition()));
+  if (!pTargetSelector->FindTarget(params, currentTarget))
+  {
+    finished = true;
+    return;
+  }
+
+  if (IsValid(pDispatch))
+    pDispatch->SetNewTarget(currentTarget);
 }
 
 void PFApplBounce::SetNewTarget(const Target& target)
 {
-  currentTarget = target;
+  if (IsValid(pDispatch) && pDispatch->HasArrived())
+    ++targetCounter;
+
   timeToNextBounce = 0.0f;
+
   if (target.IsUnitValid() && target.GetUnit() == GetAbilityOwner())
+  {
+    if (IsValid(pDispatch))
+    {
+      pDispatch->Cancel();
+      pDispatch = 0;
+    }
+
     finished = true;
+    return;
+  }
+
+  if (IsValid(pDispatch) && !pDispatch->HasArrived())
+  {
+    pDispatch->SetNewTarget(target);
+  }
+  else
+  {
+    CPtr<PFBaseUnit> const& pAbilityOwner = GetAbilityOwner();
+    PFDispatch* pCreatedDispatch = CreateDispatch(pAbility, this, currentTarget, target, GetDB().spell);
+    pDispatch = IsValid(pAbilityOwner) && pAbilityOwner->GetWorld() ? pCreatedDispatch : 0;
+  }
+
+  currentTarget = target;
 }
 
 bool PFApplBounce::IsFinished() const
@@ -125,7 +208,12 @@ float PFApplBounce::GetVariable(const char* sVariableName) const
     return static_cast<float>(targetCounter);
 
   if (strcmp(sVariableName, "IsInDelay") == 0)
-    return timeToNextBounce > EPS_VALUE ? 1.0f : 0.0f;
+  {
+    if (timeToNextBounce > EPS_VALUE || IsValid(pDispatch) && pDispatch->HasArrived())
+      return 1.0f;
+
+    return 0.0f;
+  }
 
   return PFBaseApplicator::GetVariable(sVariableName);
 }
