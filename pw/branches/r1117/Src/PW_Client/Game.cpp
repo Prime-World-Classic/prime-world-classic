@@ -4651,6 +4651,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyMapScrollTotalRows;
   size_t visibleLobbyMapScrollVisibleRows;
   size_t visibleLobbyMapScrollFirstRow;
+  size_t visibleLobbyMapFirstVisibleRow;
+  size_t visibleLobbyMapLastVisibleRow;
   size_t visibleLobbyGameRowsDrawn;
   size_t visibleLobbyGameSelectedRowsDrawn;
   size_t visibleLobbyGameOpenRowsDrawn;
@@ -4659,6 +4661,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameScrollTotalRows;
   size_t visibleLobbyGameScrollVisibleRows;
   size_t visibleLobbyGameScrollFirstRow;
+  size_t visibleLobbyGameFirstVisibleRow;
+  size_t visibleLobbyGameLastVisibleRow;
   size_t visibleLobbyJoinModeButtonsDrawn;
   size_t visibleLobbyActionButtonsDrawn;
   bool visibleLobbyPlayerCountDrawn;
@@ -5806,6 +5810,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyMapScrollTotalRows(0),
       visibleLobbyMapScrollVisibleRows(0),
       visibleLobbyMapScrollFirstRow(0),
+      visibleLobbyMapFirstVisibleRow(0),
+      visibleLobbyMapLastVisibleRow(0),
       visibleLobbyGameRowsDrawn(0),
       visibleLobbyGameSelectedRowsDrawn(0),
       visibleLobbyGameOpenRowsDrawn(0),
@@ -5814,6 +5820,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameScrollTotalRows(0),
       visibleLobbyGameScrollVisibleRows(0),
       visibleLobbyGameScrollFirstRow(0),
+      visibleLobbyGameFirstVisibleRow(0),
+      visibleLobbyGameLastVisibleRow(0),
       visibleLobbyJoinModeButtonsDrawn(0),
       visibleLobbyActionButtonsDrawn(0),
       visibleLobbyPlayerCountDrawn(false),
@@ -54109,6 +54117,10 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyMapScrollTotalRows = mapScrollTotalRows;
     runtime->visibleLobbyMapScrollVisibleRows = mapScrollVisibleRows;
     runtime->visibleLobbyMapScrollFirstRow = mapScrollFirstRow;
+    runtime->visibleLobbyMapFirstVisibleRow = mapRowsDrawn > 0 ? mapScrollFirstRow : 0;
+    runtime->visibleLobbyMapLastVisibleRow = mapRowsDrawn > 0 ?
+      mapScrollFirstRow + mapRowsDrawn - 1 :
+      0;
     runtime->visibleLobbyGameRowsDrawn = gameRowsDrawn;
     runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
     runtime->visibleLobbyGameOpenRowsDrawn = openGameRowsDrawn;
@@ -54117,6 +54129,10 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyGameScrollTotalRows = gameScrollTotalRows;
     runtime->visibleLobbyGameScrollVisibleRows = gameScrollVisibleRows;
     runtime->visibleLobbyGameScrollFirstRow = gameScrollFirstRow;
+    runtime->visibleLobbyGameFirstVisibleRow = gameRowsDrawn > 0 ? gameScrollFirstRow : 0;
+    runtime->visibleLobbyGameLastVisibleRow = gameRowsDrawn > 0 ?
+      gameScrollFirstRow + gameRowsDrawn - 1 :
+      0;
     runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
     runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
     runtime->visibleLobbyPlayerCountDrawn = playerCountValue > 0;
@@ -60614,6 +60630,9 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyMapScrollTotalRows << "/"
           << screenRuntime.visibleLobbyMapScrollVisibleRows << "/"
           << screenRuntime.visibleLobbyMapScrollFirstRow << "\n";
+  logFile << "  finalVisibleLobbyMapVisibleRange="
+          << screenRuntime.visibleLobbyMapFirstVisibleRow << ".."
+          << screenRuntime.visibleLobbyMapLastVisibleRow << "\n";
   logFile << "  finalVisibleLobbyGameRows="
           << screenRuntime.visibleLobbyGameRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameSelectedRows="
@@ -60628,6 +60647,9 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyGameScrollTotalRows << "/"
           << screenRuntime.visibleLobbyGameScrollVisibleRows << "/"
           << screenRuntime.visibleLobbyGameScrollFirstRow << "\n";
+  logFile << "  finalVisibleLobbyGameVisibleRange="
+          << screenRuntime.visibleLobbyGameFirstVisibleRow << ".."
+          << screenRuntime.visibleLobbyGameLastVisibleRow << "\n";
   logFile << "  finalVisibleLobbyJoinModeButtons="
           << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtons="
@@ -64541,7 +64563,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapScroll=%s/%lu/%lu/%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64552,6 +64574,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollTotalRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollVisibleRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollFirstRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapFirstVisibleRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapLastVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameOpenRowsDrawn),
@@ -64560,6 +64584,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollTotalRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollVisibleRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollFirstRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameFirstVisibleRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameLastVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
