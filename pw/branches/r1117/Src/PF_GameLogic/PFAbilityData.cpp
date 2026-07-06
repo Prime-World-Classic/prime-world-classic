@@ -169,6 +169,7 @@ void PFAbilityData::ApplyPassivePart( bool bApply )
     AddInstance(pPassiveInstance);
   }
 
+  UpdateAbilityModifiers();
   RecalculateCooldown();
   RecalculateManaCost();
 }
@@ -255,8 +256,52 @@ bool PFAbilityData::CanBeUsed() const
 {
   return (IsOn() || IsEnoughMana()) && IsReady() && !IsForbidded() && IsCastSelfLimitationPassed();
 }
-void PFAbilityData::UpdateAbilityModifiers() {}
-float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) const { (void)mode; return value; }
+void PFAbilityData::UpdateAbilityModifiers()
+{
+  if (!IsValid(pOwner) || !pOwner->IsHero())
+    return;
+
+  PFBaseHero const* pHero = static_cast<PFBaseHero const*>(pOwner.GetPtr());
+  if (cachedModifiersTime >= pHero->AbilitiesModsGetActualizationTime())
+    return;
+
+  for (int i = 0; i < NDb::KnownEnum<NDb::EAbilityModMode>::sizeOf; ++i)
+    modifiers[i].clear();
+
+  bool setSecondState = false;
+  for (PFApplAbilityMod* mod = pHero->GetAbilitiesMods().first(), *last = pHero->GetAbilitiesMods().last();
+       mod != last;
+       mod = PFApplAbilityMod::Ring::next(mod))
+  {
+    if (!IsValid(mod))
+      continue;
+
+    const NDb::EAbilityModMode mode = mod->GetMode();
+    if (mode == NDb::ABILITYMODMODE_STATE)
+    {
+      if (mod->IsApplicable(mode, abilityType, GetDBDesc()))
+        setSecondState = true;
+      continue;
+    }
+
+    const int modeIndex = static_cast<int>(mode);
+    if (modeIndex >= 0 && modeIndex < NDb::KnownEnum<NDb::EAbilityModMode>::sizeOf)
+      mod->AddModifier(modifiers[modeIndex].add, modifiers[modeIndex].mul, mode, abilityType, GetDBDesc());
+  }
+
+  abilityState = setSecondState ? EAbilityState::Second : EAbilityState::First;
+  cachedModifiersTime = pHero->AbilitiesModsGetActualizationTime();
+}
+float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) const
+{
+  const int modeIndex = static_cast<int>(mode);
+  if (modeIndex < 0 || modeIndex >= NDb::KnownEnum<NDb::EAbilityModMode>::sizeOf)
+    return value;
+  if (!IsValid(pOwner) || !pOwner->IsHero())
+    return value;
+
+  return value * modifiers[modeIndex].mul + modifiers[modeIndex].add;
+}
 float PFAbilityData::GetBaseManaCost() const
 {
   if (!pDBDesc || !IsValid(pOwner))
