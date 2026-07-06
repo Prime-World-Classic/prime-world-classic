@@ -149,7 +149,23 @@ void PFSummonedUnitAIBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc)
   }
 }
 
-void PFSummonedUnitAIBehaviour::AcquireBehaviourDefinedSpawnPosition(Target& spawnPosition) const { (void)spawnPosition; }
+void PFSummonedUnitAIBehaviour::AcquireBehaviourDefinedSpawnPosition(Target& spawnPosition) const
+{
+  if (!IsValid(pMaster) || !IsValid(pUnit) || !GetWorld() || !GetWorld()->GetAIWorld())
+    return;
+
+  CVec3 correctedPos(0.0f, 0.0f, 0.0f);
+  float range = 0.0f;
+  if (summonType == NDb::SUMMONTYPE_PRIMARY)
+    range = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.primarySummonEscortDistance;
+  else if (summonType == NDb::SUMMONTYPE_SECONDARY)
+    range = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.secondarySummonEscortDistance;
+  else if (summonType == NDb::SUMMONTYPE_PET)
+    range = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.petEscortDistance;
+
+  pUnit->FindFreePlace2(GetEscortPosition(), pMaster->GetPosition().AsVec2D(), range, correctedPos.AsVec2D(), true);
+  spawnPosition.SetPosition(correctedPos);
+}
 
 CVec2 PFSummonedUnitAIBehaviour::GetMasterOffset() const
 {
