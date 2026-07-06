@@ -59580,6 +59580,10 @@ bool DrawWindowOverlayOpenGl(
     {
       RenderWindowOverlayOpenGlUi(renderContext);
     }
+    if (UI::GetUIRoot())
+    {
+      UI::PresentFrame(uiSyncTime, true);
+    }
     renderBootstrap->renderingInterface->Present();
   }
   else
@@ -59588,13 +59592,13 @@ bool DrawWindowOverlayOpenGl(
     glClearColor(17.0f / 255.0f, 22.0f / 255.0f, 28.0f / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
     RenderWindowOverlayOpenGlUi(renderContext);
+    if (UI::GetUIRoot())
+    {
+      UI::PresentFrame(uiSyncTime, true);
+    }
     NMainFrame::SwapOpenGLBuffers();
   }
 
-  if (UI::GetUIRoot())
-  {
-    UI::PresentFrame(uiSyncTime, true);
-  }
   return true;
 }
 
