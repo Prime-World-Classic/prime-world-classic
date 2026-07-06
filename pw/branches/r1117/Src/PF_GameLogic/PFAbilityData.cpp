@@ -228,16 +228,50 @@ void PFAbilityData::RemoveApplicatorsFrom(CPtr<PFBaseUnit> const& pUnit) const
 }
 void PFAbilityData::LevelUp() { ++rank; }
 bool PFAbilityData::IsReady() const { return cooldown[abilityState] <= 0.0f && forbids <= 0; }
-bool PFAbilityData::IsEnoughMana() const { return true; }
-void PFAbilityData::SpendMana() const {}
-bool PFAbilityData::DoesSpendLifeInsteadEnergy() const { return false; }
-bool PFAbilityData::IsActiveCustomTrigger() const { return false; }
-bool PFAbilityData::DoesApplyToDead() const { return false; }
-bool PFAbilityData::CanBeUsed() const { return IsReady(); }
+bool PFAbilityData::IsEnoughMana() const
+{
+  if (!IsValid(pOwner))
+    return false;
+
+  if (DoesSpendLifeInsteadEnergy())
+    return GetManaCost() <= pOwner->GetLife();
+
+  return GetManaCost() <= pOwner->GetMana();
+}
+void PFAbilityData::SpendMana() const
+{
+  if (!IsValid(pOwner))
+    return;
+
+  if (DoesSpendLifeInsteadEnergy())
+    pOwner->TakeHealth(GetManaCost());
+  else
+    pOwner->TakeMana(GetManaCost());
+}
+bool PFAbilityData::DoesSpendLifeInsteadEnergy() const { return (GetFlags() & NDb::ABILITYFLAGS_SPENDLIFEINSTEADENERGY) != 0; }
+bool PFAbilityData::IsActiveCustomTrigger() const { return pDBDesc ? pDBDesc->activeCustomTrigger : true; }
+bool PFAbilityData::DoesApplyToDead() const { return (GetFlags() & NDb::ABILITYFLAGS_APPLYTODEAD) != 0; }
+bool PFAbilityData::CanBeUsed() const
+{
+  return (IsOn() || IsEnoughMana()) && IsReady() && !IsForbidded() && IsCastSelfLimitationPassed();
+}
 void PFAbilityData::UpdateAbilityModifiers() {}
 float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) const { (void)mode; return value; }
-float PFAbilityData::GetBaseManaCost() const { return 0.0f; }
-void PFAbilityData::RecalculateManaCost() { manaCost = 0.0f; }
+float PFAbilityData::GetBaseManaCost() const
+{
+  if (!pDBDesc || !IsValid(pOwner))
+    return 0.0f;
+
+  const float rawCost = pDBDesc->manaCost(pOwner, pOwner, this, 0.0f);
+  return pOwner->GetManaCostModifier(DoesSpendLifeInsteadEnergy()) * rawCost;
+}
+void PFAbilityData::RecalculateManaCost()
+{
+  if (DoesSpendLifeInsteadEnergy())
+    manaCost = GetBaseManaCost();
+  else
+    manaCost = GetModifiedValue(GetBaseManaCost(), NDb::ABILITYMODMODE_MANACOST);
+}
 void PFAbilityData::RecalculateCooldown() { cooldownTime[abilityState] = 0.0f; }
 void PFAbilityData::RestartCooldown(float cooldownTime_) { cooldown[abilityState] = cooldownTime_ > 0.0f ? cooldownTime_ : cooldownTime[abilityState]; }
 void PFAbilityData::RecalculateAndRestartCooldown() { RecalculateCooldown(); RestartCooldown(); }
