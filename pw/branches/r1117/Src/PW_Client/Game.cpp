@@ -105,6 +105,7 @@
 #include "Render/SkeletonWrapper.h"
 #include "Render/smartrenderer.h"
 #include "Render/StaticMesh.h"
+#include "Render/uirenderer.h"
 #include "Scene/DBScene.h"
 #include "Terrain/DBTerrain.h"
 #include "DebugVarsSender.h"
@@ -60305,6 +60306,7 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
     DrawLinuxBootstrapScreenRuntime(*renderContext.loadingUiPreview,
       renderContext.screenRuntime,
       const_cast<LinuxUiRootPreview*>(renderContext.uiRootPreview));
+    Render::GetUIRenderer()->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
   }
 
   if (!IsLinuxDiagnosticsOverlayActive(*renderContext.settings, renderContext.screenRuntime))
@@ -63596,6 +63598,23 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleHeroLobbySelectedHeroId.empty() ?
               "<none>" :
               screenRuntime.visibleHeroLobbySelectedHeroId) << "\n";
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  const Render::LinuxOpenGLUiRendererStats& realUiRendererStats =
+    Render::GetLinuxOpenGLUiRendererStats();
+  logFile << "  finalRealUiRendererQueued="
+          << realUiRendererStats.queued2DQuads << "/"
+          << realUiRendererStats.queued2DTextQuads << "/"
+          << realUiRendererStats.queued3DQuads << "\n";
+  logFile << "  finalRealUiRendererRendered="
+          << realUiRendererStats.rendered2DQuads << "/"
+          << realUiRendererStats.rendered2DTextQuads << "/"
+          << realUiRendererStats.rendered3DQuads << "\n";
+  logFile << "  finalRealUiRendererCalls="
+          << realUiRendererStats.render2DCalls << "/"
+          << realUiRendererStats.render3DCalls << "\n";
+  logFile << "  finalRealUiRendererCropRejected="
+          << realUiRendererStats.cropRejectedQuads << "\n";
+#endif
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingInfoLines="
@@ -67680,6 +67699,22 @@ int main(int argc, char** argv)
     screenRuntime.visibleHeroLobbySelectedHeroId.empty() ?
       "<none>" :
       screenRuntime.visibleHeroLobbySelectedHeroId.c_str());
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  {
+    const Render::LinuxOpenGLUiRendererStats& finalRealUiRendererStats =
+      Render::GetLinuxOpenGLUiRendererStats();
+    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu\n",
+      static_cast<unsigned long>(finalRealUiRendererStats.queued2DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.queued2DTextQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.queued3DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.rendered2DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.rendered2DTextQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.rendered3DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.render2DCalls),
+      static_cast<unsigned long>(finalRealUiRendererStats.render3DCalls),
+      static_cast<unsigned long>(finalRealUiRendererStats.cropRejectedQuads));
+  }
+#endif
   fprintf(stdout, "Final hero renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
     static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshAuthoredMaterials),
     static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshDiffuseSamplers),

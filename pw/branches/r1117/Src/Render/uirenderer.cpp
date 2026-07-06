@@ -4,47 +4,270 @@
 
 #include "uirenderer.h"
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include "../System/MainFrame.h"
+#include <GL/gl.h>
+#endif
+
 namespace Render
 {
 
 namespace
 {
 
+static const UIRect noCrop(-1, -1, -1, -1);
+static const unsigned int LINUX_UI_QUAD_MAX_COUNT = 20000;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+LinuxOpenGLUiRendererStats g_linuxOpenGLUiRendererStats;
+#endif
+
+struct LinuxQueuedUIQuad
+{
+  UIQuad quad;
+  Render::Color color;
+  bool text;
+
+  LinuxQueuedUIQuad()
+    : quad()
+    , color()
+    , text(false)
+  {
+  }
+
+  LinuxQueuedUIQuad(const UIQuad& _quad, const Render::Color& _color, bool _text)
+    : quad(_quad)
+    , color(_color)
+    , text(_text)
+  {
+  }
+};
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+float ResolveLinuxUIRenderSurfaceSize(float coef, int viewportSize)
+{
+  if (coef > 0.00001f && coef < 1.0f)
+    return 2.0f / coef;
+
+  return static_cast<float>(viewportSize > 0 ? viewportSize : 1);
+}
+
+unsigned char LimitLinuxUIAlpha(unsigned char alpha, bool text)
+{
+  if (alpha == 0)
+    return 0;
+
+  const unsigned char cap = text ? 112 : 48;
+  const unsigned char floorValue = text ? 40 : 18;
+  unsigned char result = alpha < cap ? alpha : cap;
+  return result < floorValue ? floorValue : result;
+}
+
+Render::Color ResolveLinuxUIFallbackColor(const Render::Color& color, bool text)
+{
+  Render::Color result(color);
+  if (!text && result.R > 238 && result.G > 238 && result.B > 238)
+  {
+    result.R = 82;
+    result.G = 134;
+    result.B = 162;
+  }
+  result.A = LimitLinuxUIAlpha(result.A, text);
+  return result;
+}
+#endif
+
+bool CropLinuxUIQuad(UIQuad* quad, const UIRect& cropRect)
+{
+  if (!quad)
+    return false;
+
+  UIRect croppedRect(quad->tl.x, quad->tl.y, quad->br.x, quad->br.y);
+  croppedRect.Intersect(cropRect);
+
+  if (croppedRect.IsEmpty())
+    return false;
+
+  quad->tl.x = croppedRect.x1;
+  quad->tl.y = croppedRect.y1;
+  quad->br.x = croppedRect.x2;
+  quad->br.y = croppedRect.y2;
+  return true;
+}
+
+void TransformLinuxUIQuadPoint(float* x, float* y, const CVec2& pivot, float ksn, float kcs)
+{
+  const float px = *x - pivot.x;
+  const float py = *y - pivot.y;
+  *x = pivot.x + px * kcs + py * ksn;
+  *y = pivot.y - px * ksn + py * kcs;
+}
+
+void BuildLinuxUIQuadPoints(const UIQuad& quad, float points[4][2])
+{
+  points[0][0] = quad.tl.x;
+  points[0][1] = quad.tl.y;
+  points[1][0] = quad.br.x;
+  points[1][1] = quad.tl.y;
+  points[2][0] = quad.br.x;
+  points[2][1] = quad.br.y;
+  points[3][0] = quad.tl.x;
+  points[3][1] = quad.br.y;
+
+  if (!quad.ext)
+    return;
+
+  const float ksn = sinf(quad.angle) * quad.scale;
+  const float kcs = cosf(quad.angle) * quad.scale;
+  for (int i = 0; i < 4; ++i)
+    TransformLinuxUIQuadPoint(&points[i][0], &points[i][1], quad.pivot, ksn, kcs);
+}
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+// First-pass Linux UI proof: draw queued geometry without material or texture binding.
+void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec4& resolutionCoefs)
+{
+  if (quads.empty() || !NMainFrame::MakeOpenGLContextCurrent())
+    return;
+
+  GLint viewport[4] = { 0, 0, 0, 0 };
+  glGetIntegerv(GL_VIEWPORT, viewport);
+  if (viewport[2] <= 0 || viewport[3] <= 0)
+    return;
+
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT);
+
+  glDisable(GL_DEPTH_TEST);
+  glDepthMask(GL_FALSE);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_LIGHTING);
+  glDisable(GL_TEXTURE_2D);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  const float surfaceWidth = ResolveLinuxUIRenderSurfaceSize(resolutionCoefs.x, viewport[2]);
+  const float surfaceHeight = ResolveLinuxUIRenderSurfaceSize(resolutionCoefs.y, viewport[3]);
+
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(0.0, surfaceWidth, surfaceHeight, 0.0, -1.0, 1.0);
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+
+  glBegin(GL_QUADS);
+  for (unsigned int i = 0; i < quads.size(); ++i)
+  {
+    const LinuxQueuedUIQuad& queuedQuad = quads[i];
+    float points[4][2];
+    BuildLinuxUIQuadPoints(queuedQuad.quad, points);
+
+    glColor4ub(queuedQuad.color.R, queuedQuad.color.G, queuedQuad.color.B, queuedQuad.color.A);
+    for (int point = 0; point < 4; ++point)
+      glVertex2f(points[point][0], points[point][1]);
+  }
+  glEnd();
+
+  glMatrixMode(GL_MODELVIEW);
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+
+  glPopAttrib();
+}
+#endif
+
 class NullUIRenderer : public IUIRenderer
 {
 public:
   NullUIRenderer()
-    : resolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f)
+    : initialized(false)
+    , resolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f)
     , forbidSaturation(false)
+    , textStarted(false)
+    , queueRendered(false)
+    , queueOverflowed(false)
   {
+    quads.reserve(1024);
   }
 
-  virtual bool Initialize() { return true; }
-  virtual void Release() {}
+  virtual bool Initialize()
+  {
+    initialized = true;
+    StartFrame();
+    return true;
+  }
 
-  virtual void StartFrame() {}
+  virtual void Release()
+  {
+    initialized = false;
+    quads.clear();
+    cropRects.clear();
+    textStarted = false;
+    queueRendered = false;
+    queueOverflowed = false;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    ResetLinuxOpenGLUiRendererStats();
+#endif
+  }
 
-  virtual void PushCrop(const UIRect& cropRect) { (void)cropRect; }
-  virtual void PushNoCrop() {}
-  virtual void PopCrop() {}
+  virtual void StartFrame()
+  {
+    quads.clear();
+    cropRects.clear();
+    textStarted = false;
+    queueRendered = false;
+    queueOverflowed = false;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    ResetLinuxOpenGLUiRendererStats();
+#endif
+  }
+
+  virtual void PushCrop(const UIRect& cropRect)
+  {
+    cropRects.push_back(cropRect);
+  }
+
+  virtual void PushNoCrop()
+  {
+    cropRects.push_back(noCrop);
+  }
+
+  virtual void PopCrop()
+  {
+    if (!cropRects.empty())
+      cropRects.pop_back();
+  }
 
   virtual void AddQuad(UIQuad& quad, Render::BaseMaterial* renderMaterial, const SMaterialParams& params)
   {
-    (void)quad;
     (void)renderMaterial;
-    (void)params;
+    QueueQuad(quad, params.color0, false);
   }
 
   virtual void BeginFlashParts(int startFlashElement) { (void)startFlashElement; }
   virtual void EndFlashParts(int lastFlashElement) { (void)lastFlashElement; }
 
-  virtual void BeginText() {}
+  virtual void BeginText()
+  {
+    textStarted = true;
+  }
+
   virtual void AddTextQuad(UIQuad& quad, const SMaterialParams& params)
   {
-    (void)quad;
-    (void)params;
+    if (!textStarted)
+      return;
+
+    quad.ext = false;
+    QueueQuad(quad, params.color0, true);
   }
-  virtual void EndText(Render::BaseMaterial* renderMaterial) { (void)renderMaterial; }
+
+  virtual void EndText(Render::BaseMaterial* renderMaterial)
+  {
+    (void)renderMaterial;
+    textStarted = false;
+  }
 
   virtual void SetViewMatrices(const SHMatrix& view, const SHMatrix& projection)
   {
@@ -102,14 +325,34 @@ public:
     (void)height;
   }
 
-  virtual void BeginQueue() {}
-  virtual void EndQueue() {}
+  virtual void BeginQueue()
+  {
+    StartFrame();
+  }
+
+  virtual void EndQueue()
+  {
+  }
 
   virtual void Render(ERenderWhat::Enum what, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy)
   {
-    (void)what;
     (void)pMainRT0;
     (void)pMainRT0Copy;
+
+    if (what != ERenderWhat::_2D || !initialized || queueRendered)
+      return;
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    ++g_linuxOpenGLUiRendererStats.render2DCalls;
+    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs);
+    g_linuxOpenGLUiRendererStats.rendered2DQuads += quads.size();
+    for (unsigned int i = 0; i < quads.size(); ++i)
+      if (quads[i].text)
+        ++g_linuxOpenGLUiRendererStats.rendered2DTextQuads;
+    queueRendered = true;
+#else
+    (void)what;
+#endif
   }
 
   virtual void PrepareRender() {}
@@ -153,8 +396,52 @@ public:
   }
 
 private:
+  void QueueQuad(UIQuad quad, const Render::Color& color, bool text)
+  {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    if (!initialized)
+      return;
+
+    if (!quad.ext && !cropRects.empty() && !cropRects.back().IsSame(noCrop))
+      if (!CropLinuxUIQuad(&quad, cropRects.back()))
+      {
+        ++g_linuxOpenGLUiRendererStats.cropRejectedQuads;
+        return;
+      }
+
+    if (quad.br.x <= quad.tl.x || quad.br.y <= quad.tl.y)
+    {
+      ++g_linuxOpenGLUiRendererStats.cropRejectedQuads;
+      return;
+    }
+
+    if (quads.size() >= LINUX_UI_QUAD_MAX_COUNT)
+    {
+      queueOverflowed = true;
+      return;
+    }
+
+    const Render::Color queuedColor = ResolveLinuxUIFallbackColor(color, text);
+    quads.push_back(LinuxQueuedUIQuad(quad, queuedColor, text));
+    ++g_linuxOpenGLUiRendererStats.queued2DQuads;
+    if (text)
+      ++g_linuxOpenGLUiRendererStats.queued2DTextQuads;
+    queueRendered = false;
+#else
+    (void)quad;
+    (void)color;
+    (void)text;
+#endif
+  }
+
+  bool initialized;
   CVec4 resolutionCoefs;
   bool forbidSaturation;
+  bool textStarted;
+  bool queueRendered;
+  bool queueOverflowed;
+  vector<UIRect> cropRects;
+  vector<LinuxQueuedUIQuad> quads;
 };
 
 } // namespace
@@ -164,6 +451,18 @@ IUIRenderer* GetUIRenderer()
   static NullUIRenderer uiRenderer;
   return &uiRenderer;
 }
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+const LinuxOpenGLUiRendererStats& GetLinuxOpenGLUiRendererStats()
+{
+  return g_linuxOpenGLUiRendererStats;
+}
+
+void ResetLinuxOpenGLUiRendererStats()
+{
+  g_linuxOpenGLUiRendererStats = LinuxOpenGLUiRendererStats();
+}
+#endif
 
 UIRenderMaterial::UIRenderMaterial()
   : renderMaterial(0)

@@ -174,4 +174,35 @@ _interface IUIRenderer
 // $TODO get rid of singleton nature
 IUIRenderer* GetUIRenderer();
 
+#if defined(PW_LINUX_NULL_RENDER) && defined(PW_LINUX_OPENGL_BOOTSTRAP)
+struct LinuxOpenGLUiRendererStats
+{
+  unsigned int queued2DQuads;
+  unsigned int queued2DTextQuads;
+  unsigned int queued3DQuads;
+  unsigned int rendered2DQuads;
+  unsigned int rendered2DTextQuads;
+  unsigned int rendered3DQuads;
+  unsigned int cropRejectedQuads;
+  unsigned int render2DCalls;
+  unsigned int render3DCalls;
+
+  LinuxOpenGLUiRendererStats()
+    : queued2DQuads(0)
+    , queued2DTextQuads(0)
+    , queued3DQuads(0)
+    , rendered2DQuads(0)
+    , rendered2DTextQuads(0)
+    , rendered3DQuads(0)
+    , cropRejectedQuads(0)
+    , render2DCalls(0)
+    , render3DCalls(0)
+  {
+  }
+};
+
+const LinuxOpenGLUiRendererStats& GetLinuxOpenGLUiRendererStats();
+void ResetLinuxOpenGLUiRendererStats();
+#endif
+
 } // namespace Render
