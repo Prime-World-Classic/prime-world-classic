@@ -189,6 +189,20 @@ struct LinuxClientEnvironment
   }
 };
 
+struct LinuxBootstrapClickSpec
+{
+  int baseX;
+  int baseY;
+  bool doubleClick;
+
+  LinuxBootstrapClickSpec()
+    : baseX(-1),
+      baseY(-1),
+      doubleClick(false)
+  {
+  }
+};
+
 struct LinuxClientLaunchSettings
 {
   unsigned long width;
@@ -205,6 +219,8 @@ struct LinuxClientLaunchSettings
   int bootstrapClickBaseY;
   bool bootstrapClickDouble;
   double bootstrapClickAfterSeconds;
+  double bootstrapClickIntervalSeconds;
+  std::vector<LinuxBootstrapClickSpec> bootstrapClickScript;
   bool diagnosticsOverlay;
   bool replayStartPaused;
   size_t replayInitialStepBudget;
@@ -232,6 +248,7 @@ struct LinuxClientLaunchSettings
       bootstrapClickBaseY(-1),
       bootstrapClickDouble(false),
       bootstrapClickAfterSeconds(0.5),
+      bootstrapClickIntervalSeconds(0.25),
       diagnosticsOverlay(false),
       replayStartPaused(false),
       replayInitialStepBudget(0),
@@ -6542,6 +6559,7 @@ struct LinuxSessionPreview
 bool ReadTextFile(const fs::path& path, std::string* content);
 std::string ReadNamedKey(const char* key, const char* alternateKey = 0);
 std::string TrimAscii(const std::string& text);
+std::vector<std::string> SplitString(const std::string& text, char delimiter);
 std::string ToAsciiLower(std::string value);
 
 const char* ResolveSessionHeroPersistentId(int heroWebId)
@@ -6953,6 +6971,88 @@ bool ReadBootstrapClickBase(int argc, char** argv, int* baseX, int* baseY)
   );
 }
 
+bool ParseBootstrapClickSpecToken(
+  const std::string& token,
+  bool defaultDoubleClick,
+  LinuxBootstrapClickSpec* spec
+)
+{
+  if (!spec)
+  {
+    return false;
+  }
+
+  const std::string trimmed = TrimAscii(token);
+  if (trimmed.empty())
+  {
+    return false;
+  }
+
+  const size_t optionPos = trimmed.find(':');
+  const std::string coordinateText = optionPos == std::string::npos ?
+    trimmed :
+    TrimAscii(trimmed.substr(0, optionPos));
+  int baseX = -1;
+  int baseY = -1;
+  if (!ParseBootstrapClickBasePair(coordinateText.c_str(), &baseX, &baseY))
+  {
+    return false;
+  }
+
+  spec->baseX = baseX;
+  spec->baseY = baseY;
+  spec->doubleClick = defaultDoubleClick;
+  if (optionPos != std::string::npos)
+  {
+    const std::string option = ToAsciiLower(TrimAscii(trimmed.substr(optionPos + 1)));
+    if (option == "double" || option == "dbl" || option == "2")
+    {
+      spec->doubleClick = true;
+    }
+    else if (option == "single" || option == "click" || option == "1")
+    {
+      spec->doubleClick = false;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void ReadBootstrapClickScript(
+  int argc,
+  char** argv,
+  bool defaultDoubleClick,
+  std::vector<LinuxBootstrapClickSpec>* script
+)
+{
+  (void)argc;
+  (void)argv;
+  if (!script)
+  {
+    return;
+  }
+
+  const char* value = CmdLineLite::Instance().GetStringKey("--bootstrap-click-script", 0);
+  if (!value || !value[0])
+  {
+    return;
+  }
+
+  const std::vector<std::string> tokens = SplitString(value, ';');
+  for (size_t i = 0; i < tokens.size(); ++i)
+  {
+    LinuxBootstrapClickSpec spec;
+    if (ParseBootstrapClickSpecToken(tokens[i], defaultDoubleClick, &spec))
+    {
+      script->push_back(spec);
+    }
+  }
+}
+
 bool ReadBootstrapClickDoubleFlag(int argc, char** argv)
 {
   (void)argc;
@@ -6965,6 +7065,14 @@ double ReadBootstrapClickAfterSeconds(int argc, char** argv)
   (void)argc;
   (void)argv;
   const double value = CmdLineLite::Instance().GetFloatKey("--bootstrap-click-after", 0.5f);
+  return value > 0.0 ? value : 0.0;
+}
+
+double ReadBootstrapClickIntervalSeconds(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const double value = CmdLineLite::Instance().GetFloatKey("--bootstrap-click-interval", 0.25f);
   return value > 0.0 ? value : 0.0;
 }
 
@@ -29597,10 +29705,14 @@ bool InjectLinuxBootstrapLobbyClick(
   const LinuxClientLaunchSettings& settings,
   double elapsedSeconds,
   const LinuxBootstrapScreenRuntime& runtime,
+  size_t clickIndex,
   LinuxInputState* inputState
 )
 {
-  if (!inputState || !settings.bootstrapClickEnabled || !runtime.visibleMenuReady)
+  if (!inputState ||
+      !settings.bootstrapClickEnabled ||
+      !runtime.visibleMenuReady ||
+      clickIndex >= settings.bootstrapClickScript.size())
   {
     return false;
   }
@@ -29609,18 +29721,19 @@ bool InjectLinuxBootstrapLobbyClick(
     return false;
   }
 
+  const LinuxBootstrapClickSpec& click = settings.bootstrapClickScript[clickIndex];
   NMainFrame::SWindowsMsg message;
   memset(&message, 0, sizeof(message));
   NHPTimer::GetTime(message.time);
-  message.msg = settings.bootstrapClickDouble ?
+  message.msg = click.doubleClick ?
     NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
     NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
   message.x = static_cast<int>(
-    static_cast<double>(settings.bootstrapClickBaseX) *
+    static_cast<double>(click.baseX) *
       static_cast<double>(settings.width) / 1280.0 + 0.5
   );
   message.y = static_cast<int>(
-    static_cast<double>(settings.bootstrapClickBaseY) *
+    static_cast<double>(click.baseY) *
       static_cast<double>(settings.height) / 1024.0 + 0.5
   );
   inputState->rawMessages.push_back(message);
@@ -63230,9 +63343,19 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
-  settings.bootstrapClickEnabled = ReadBootstrapClickBase(argc, argv, &settings.bootstrapClickBaseX, &settings.bootstrapClickBaseY);
   settings.bootstrapClickDouble = ReadBootstrapClickDoubleFlag(argc, argv);
   settings.bootstrapClickAfterSeconds = ReadBootstrapClickAfterSeconds(argc, argv);
+  settings.bootstrapClickIntervalSeconds = ReadBootstrapClickIntervalSeconds(argc, argv);
+  if (ReadBootstrapClickBase(argc, argv, &settings.bootstrapClickBaseX, &settings.bootstrapClickBaseY))
+  {
+    LinuxBootstrapClickSpec spec;
+    spec.baseX = settings.bootstrapClickBaseX;
+    spec.baseY = settings.bootstrapClickBaseY;
+    spec.doubleClick = settings.bootstrapClickDouble;
+    settings.bootstrapClickScript.push_back(spec);
+  }
+  ReadBootstrapClickScript(argc, argv, settings.bootstrapClickDouble, &settings.bootstrapClickScript);
+  settings.bootstrapClickEnabled = !settings.bootstrapClickScript.empty();
   settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
   settings.replayStartPaused = ReadReplayStartPausedFlag(argc, argv);
   settings.replayInitialStepBudget = ReadReplayStepBudget(argc, argv);
@@ -64732,7 +64855,8 @@ int main(int argc, char** argv)
   NHPTimer::STime start = 0;
   NHPTimer::GetTime(start);
   double lastDemoCycleTime = 0.0;
-  bool bootstrapClickInjected = false;
+  size_t bootstrapClickNextIndex = 0;
+  double bootstrapClickNextTime = settings.bootstrapClickAfterSeconds;
 
   while (!NMainFrame::IsExit())
   {
@@ -64762,10 +64886,17 @@ int main(int argc, char** argv)
     NHPTimer::STime now = 0;
     NHPTimer::GetTime(now);
     const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
-    if (!bootstrapClickInjected &&
-        InjectLinuxBootstrapLobbyClick(settings, elapsedSeconds, screenRuntime, &inputState))
+    if (bootstrapClickNextIndex < settings.bootstrapClickScript.size() &&
+        elapsedSeconds >= bootstrapClickNextTime &&
+        InjectLinuxBootstrapLobbyClick(
+          settings,
+          elapsedSeconds,
+          screenRuntime,
+          bootstrapClickNextIndex,
+          &inputState))
     {
-      bootstrapClickInjected = true;
+      ++bootstrapClickNextIndex;
+      bootstrapClickNextTime = elapsedSeconds + settings.bootstrapClickIntervalSeconds;
     }
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
