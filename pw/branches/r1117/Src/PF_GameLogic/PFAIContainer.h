@@ -88,6 +88,23 @@ public:
   void RemoveAll();
 #if defined( PW_LINUX_NULL_RENDER )
   int GetLinuxControllerCount() const { return controllers.size(); }
+  void GetLinuxRegistryCounts( size_t* creepCount, size_t* unitCount, size_t* objectCount, size_t* groupCount, size_t* deadNameCount, size_t* objectNameCount, size_t* resourceCount ) const
+  {
+    if ( creepCount )
+      *creepCount = creeps.size();
+    if ( unitCount )
+      *unitCount = units.size();
+    if ( objectCount )
+      *objectCount = objects.size();
+    if ( groupCount )
+      *groupCount = objectGroups.size();
+    if ( deadNameCount )
+      *deadNameCount = deadObjectNames.size();
+    if ( objectNameCount )
+      *objectNameCount = objectIdToName.size();
+    if ( resourceCount )
+      *resourceCount = resources.size();
+  }
 #endif
 
   void LoadScript( const vector<string>& script );

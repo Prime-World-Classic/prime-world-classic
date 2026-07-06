@@ -6,9 +6,12 @@
 #include "PFAIController.h"
 #include "PFAIWorld.h"
 #include "PFBuildings.h"
+#include "PFCreep.h"
 #include "PFHero.h"
 #include "PFMainBuilding.h"
 #include "PFMaleHero.h"
+#include "PFPlayer.h"
+#include "PFWorld.h"
 namespace NWorld
 {
 
@@ -116,8 +119,14 @@ void PFAIContainer::LoadScript( const vector<string>& _script )
 bool PFAIContainer::LoadScript( const string & scriptName, const vector<NDb::ResourceDesc> & res, bool isReconnecting )
 {
   (void)scriptName;
-  (void)res;
   (void)isReconnecting;
+
+  for ( int i = 0; i < res.size(); ++i )
+  {
+    if ( !res[i].key.empty() && IsValid(res[i].resource) )
+      resources[res[i].key] = res[i].resource->GetDBID().GetFileName();
+  }
+
   return false;
 }
 
@@ -200,25 +209,335 @@ void PFAIContainer::StepScript()
 
 void PFAIContainer::RemoveInvalidUnits()
 {
+  for( TCreeps::iterator it = creeps.begin(); it != creeps.end(); )
+  {
+    if ( IsUnitValid( it->second ) )
+      ++it;
+    else
+    {
+      deadObjectNames.insert( it->first );
+      it = creeps.erase( it );
+    }
+  }
+
+  for( TUnits::iterator it = units.begin(); it != units.end(); )
+  {
+    if ( IsUnitValid( it->second ) )
+      ++it;
+    else
+    {
+      deadObjectNames.insert( it->first );
+      it = units.erase( it );
+    }
+  }
+
+  for( TObjects::iterator it = objects.begin(); it != objects.end(); )
+  {
+    if ( IsValid( it->second ) )
+      ++it;
+    else
+    {
+      deadObjectNames.insert( it->first );
+      it = objects.erase( it );
+    }
+  }
+
+  for( TObjectGroups::iterator it = objectGroups.begin(); it != objectGroups.end(); )
+  {
+    for( TObjectGroup::iterator itList = it->second.begin(); itList != it->second.end(); )
+    {
+      if ( IsValid( *itList ) )
+        ++itList;
+      else
+        itList = it->second.erase( itList );
+    }
+
+    if ( it->second.size() > 0 )
+      ++it;
+    else
+      it = objectGroups.erase( it );
+  }
+
+  const PFWorld* world = GetWorld();
+  if ( !world )
+    return;
+
+  for ( TObjectNames::iterator it = objectIdToName.begin(); it != objectIdToName.end(); )
+  {
+    if ( IsValid( world->GetObjectById( it->first ) ) )
+      ++it;
+    else
+      it = objectIdToName.erase( it );
+  }
 }
 
 void PFAIContainer::BuildIdNameMap()
 {
+  objectIdToName.clear();
+
+  for ( TCreeps::const_iterator it = creeps.begin(); it != creeps.end(); ++it )
+  {
+    PFBaseCreep* object = it->second.GetPtr();
+    if ( object )
+      objectIdToName.insert( make_pair( object->GetWOID(), it->first ) );
+  }
+
+  for ( TUnits::const_iterator it = units.begin(); it != units.end(); ++it )
+  {
+    PFBaseUnit* object = it->second.GetPtr();
+    if ( object )
+      objectIdToName.insert( make_pair( object->GetWOID(), it->first ) );
+  }
+
+  for ( TObjects::const_iterator it = objects.begin(); it != objects.end(); ++it )
+  {
+    PF_Core::WorldObjectBase* object = it->second.GetPtr();
+    if ( object )
+      objectIdToName.insert( make_pair( object->GetObjectId(), it->first ) );
+  }
 }
 
-PFBaseHero* PFAIContainer::GetLocalHero() const { return 0; }
-PFBaseHero* PFAIContainer::FindHero( const char* hero, bool aliasEnabled ) const { (void)hero; (void)aliasEnabled; return 0; }
-PFCreature* PFAIContainer::FindCreature( const char* creature ) const { (void)creature; return 0; }
+PFBaseHero* PFAIContainer::GetLocalHero() const
+{
+  const PFWorld* world = GetWorld();
+  if ( !world )
+    return 0;
+
+  for ( int i = 0; i < world->GetPlayersCount(); ++i )
+  {
+    PFPlayer* player = world->GetPlayer( i );
+    if ( player && player->IsLocal() )
+      return player->GetHero();
+  }
+
+  return 0;
+}
+
+PFBaseHero* PFAIContainer::FindHero( const char* hero, bool aliasEnabled ) const
+{
+  if ( !hero )
+    return 0;
+
+  if ( strcmp( "local", hero ) == 0 )
+    return GetLocalHero();
+
+  if ( aliasEnabled )
+  {
+    for ( vector<HeroAlias>::const_iterator iter = heroesAliases.begin(); iter != heroesAliases.end(); ++iter )
+    {
+      if ( iter->alias == string( hero ) )
+        return FindHero( iter->hero.c_str() );
+    }
+  }
+
+  if ( strlen( hero ) != 2 || !NStr::IsDecDigit( hero[0] ) || !NStr::IsDecDigit( hero[1] ) )
+    return 0;
+
+  const PFWorld* world = GetWorld();
+  if ( !world )
+    return 0;
+
+  int n = 0;
+  const int team = hero[0] - '0';
+  const int id = hero[1] - '0';
+  for ( int i = 0; i < world->GetPlayersCount(); ++i )
+  {
+    PFPlayer* player = world->GetPlayer( i );
+    if ( player && player->GetTeamID() == team )
+    {
+      if ( n == id )
+        return player->GetHero();
+      ++n;
+    }
+  }
+
+  return 0;
+}
+
+PFCreature* PFAIContainer::FindCreature( const char* creature ) const
+{
+  if ( !creature )
+    return 0;
+
+  TCreeps::const_iterator pos = creeps.find( creature );
+  if ( pos != creeps.end() )
+    return pos->second;
+
+  vector<string> parts;
+  NStr::SplitString( creature, &parts, '_' );
+  if ( parts.size() == 3 && parts[0] == "summon" && NStr::IsDecNumber( parts[2] ) )
+  {
+    PFBaseHero* hero = FindHero( parts[1].c_str() );
+    if ( !IsValid( hero ) )
+      return 0;
+
+    int number = NStr::ToInt( parts[2] );
+    PFBehaviourGroup* group = hero->GetSummonedGroup( NDb::SUMMONTYPE_PRIMARY );
+    if ( group && number >= group->GetSize() )
+    {
+      number -= group->GetSize();
+      group = hero->GetSummonedGroup( NDb::SUMMONTYPE_SECONDARY );
+    }
+
+    if ( group && number < group->GetSize() )
+    {
+      struct GetNthFromRingFunctor
+      {
+        int number;
+        PFSummonBehaviour* behaviour;
+        GetNthFromRingFunctor( int _number ) : number( _number ), behaviour( 0 ) {}
+        void operator()( PFSummonBehaviour* _behaviour )
+        {
+          if ( number == 0 )
+            behaviour = _behaviour;
+          --number;
+        }
+      } f( number );
+      group->ForAllBehaviour( f );
+
+      if ( IsValid( f.behaviour ) )
+        return dynamic_cast<PFCreature*>( f.behaviour->GetUnit().GetPtr() );
+    }
+  }
+
+  return FindHero( creature );
+}
 PFFlagpole* PFAIContainer::FindFlag(int roadIndex, int flagIndex) const { (void)roadIndex; (void)flagIndex; return 0; }
-PFBaseUnit* PFAIContainer::FindUnit( const char* unit ) const { (void)unit; return 0; }
-PF_Core::WorldObjectBase* PFAIContainer::FindObject( const char* obj ) const { (void)obj; return 0; }
+PFBaseUnit* PFAIContainer::FindUnit( const char* unit ) const
+{
+  if ( !unit )
+    return 0;
+
+  TUnits::const_iterator pos = units.find( unit );
+  if ( pos != units.end() )
+    return pos->second;
+
+  return FindCreature( unit );
+}
+
+PF_Core::WorldObjectBase* PFAIContainer::FindObject( const char* obj ) const
+{
+  if ( !obj )
+    return 0;
+
+  TObjects::const_iterator it = objects.find( obj );
+  if ( it != objects.end() )
+    return it->second;
+
+  return FindUnit( obj );
+}
 bool PFAIContainer::FindTalent( PFBaseHero* hero, const char* persistentId, int* level, int* slot ) const { (void)hero; (void)persistentId; (void)level; (void)slot; return false; }
-PFAIContainer::TObjectGroup* PFAIContainer::FindGroup( const char * group ) { (void)group; return 0; }
-bool PFAIContainer::FindDeadObjectName(const char * objectName) const { (void)objectName; return false; }
-const char* PFAIContainer::FindObjectGroupName( const PF_Core::WorldObjectBase* object ) const { (void)object; return 0; }
-void PFAIContainer::GetCreepNames( const hash_set<int>& objectIds, vector<const char*>* pObjectNames ) { (void)objectIds; if (pObjectNames) pObjectNames->clear(); }
-bool PFAIContainer::FindObjectName( string& name, PF_Core::WorldObjectBase* object ) { (void)name; (void)object; return false; }
-void PFAIContainer::GetHeroName( PFBaseHero* pHero, string &name ) { (void)pHero; name.clear(); }
+PFAIContainer::TObjectGroup* PFAIContainer::FindGroup( const char * group )
+{
+  if ( !group )
+    return 0;
+
+  TObjectGroups::iterator it = objectGroups.find( group );
+  return it != objectGroups.end() ? &it->second : 0;
+}
+
+bool PFAIContainer::FindDeadObjectName(const char * objectName) const
+{
+  return objectName && deadObjectNames.find( objectName ) != deadObjectNames.end();
+}
+
+const char* PFAIContainer::FindObjectGroupName( const PF_Core::WorldObjectBase* object ) const
+{
+  if ( !object )
+    return 0;
+
+  for ( TObjectGroups::const_iterator it = objectGroups.begin(); it != objectGroups.end(); ++it )
+  {
+    for ( TObjectGroup::const_iterator itList = it->second.begin(); itList != it->second.end(); ++itList )
+    {
+      if ( *itList == object )
+        return it->first.c_str();
+    }
+  }
+
+  return 0;
+}
+
+void PFAIContainer::GetCreepNames( const hash_set<int>& objectIds, vector<const char*>* pObjectNames )
+{
+  if ( !pObjectNames )
+    return;
+
+  for ( TCreeps::const_iterator it = creeps.begin(); it != creeps.end(); ++it )
+  {
+    PFBaseCreep* object = it->second.GetPtr();
+    if ( object && objectIds.find( object->GetObjectId() ) != objectIds.end() )
+      pObjectNames->push_back( it->first.c_str() );
+  }
+}
+
+bool PFAIContainer::FindObjectName( string& name, PF_Core::WorldObjectBase* object )
+{
+  name.clear();
+  if ( !object )
+    return false;
+
+  if ( PFBaseCreep* creep = dynamic_cast<PFBaseCreep*>( object ) )
+  {
+    if ( IsValid( creep->GetMasterUnit() ) )
+    {
+      object = creep->GetMasterUnit();
+      name = "summon_";
+    }
+  }
+
+  if ( PFBaseHero* hero = dynamic_cast<PFBaseHero*>( object ) )
+  {
+    if ( hero->IsClone() && IsValid( hero->GetMasterUnit() ) && hero->GetMasterUnit()->IsTrueHero() )
+      object = hero->GetMasterUnit();
+  }
+
+  if ( PFBaseHero* hero = dynamic_cast<PFBaseHero*>( object ) )
+  {
+    PFWorld* world = GetWorld();
+    if ( !world )
+      return false;
+
+    char pid[2] = {0, 0};
+    for ( int i = 0; i < world->GetPlayersCount(); ++i )
+    {
+      PFPlayer* player = world->GetPlayer( i );
+      if ( !player )
+        continue;
+
+      const int team = player->GetTeamID();
+      if ( team < 0 || team >= 2 )
+        continue;
+
+      if ( player->GetHero() == hero )
+      {
+        name.resize( 2, '\0' );
+        name[0] = '0' + team;
+        name[1] = '0' + pid[team];
+        return true;
+      }
+
+      ++pid[team];
+    }
+
+    return false;
+  }
+
+  TObjectNames::iterator it = objectIdToName.find( object->GetObjectId() );
+  if ( it != objectIdToName.end() )
+  {
+    name += it->second;
+    return true;
+  }
+
+  return false;
+}
+
+void PFAIContainer::GetHeroName( PFBaseHero* pHero, string &name )
+{
+  if ( !FindObjectName( name, pHero ) )
+    name.clear();
+}
 void PFAIContainer::RemoveStandaloneEffect( const char* effectName ) { (void)effectName; }
 void PFAIContainer::PlaceStandaloneEffect( const char* effectName, const char* dbid, float x, float y ) { (void)effectName; (void)dbid; (void)x; (void)y; }
 void PFAIContainer::PlaceAttachedEffect( const char* name, const char* dbid, const char* parentName ) { (void)name; (void)dbid; (void)parentName; }
@@ -234,10 +553,48 @@ void PFAIContainer::RegisterEventScriptHandler( const char* name, NDb::EBaseUnit
 void PFAIContainer::UnregisterEventScriptHandler( const char* name, NDb::EBaseUnitEvent eventType ) { (void)name; (void)eventType; }
 void PFAIContainer::InvokeEventCallback( const string& name, const string& callbackFunctionName, const PFBaseUnitEvent *pEvent ) { (void)name; (void)callbackFunctionName; (void)pEvent; }
 bool PFAIContainer::CreateZombie( PFCreature const* pCreature, const char* dbid, const NDb::EFaction faction ) { (void)pCreature; (void)dbid; (void)faction; return false; }
-const char* PFAIContainer::GetFileNameByKey(const char* key) { return key; }
+const char* PFAIContainer::GetFileNameByKey(const char* key)
+{
+  if ( !key )
+    return 0;
+
+  ScriptResources::iterator it = resources.find( key );
+  return it == resources.end() ? key : it->second.c_str();
+}
 bool PFAIContainer::ChangeNatureMap( const float x, const float y, const float radius, NDb::ENatureType from, NDb::ENatureType to) { (void)x; (void)y; (void)radius; (void)from; (void)to; return false; }
 bool PFAIContainer::HeroRaiseFlag( const char* _hero, const char* _flag ) { (void)_hero; (void)_flag; return false; }
-void PFAIContainer::RegisterObject(PF_Core::WorldObjectBase* pObject, nstl::string scriptName, nstl::string scriptGroupName ) { (void)pObject; (void)scriptName; (void)scriptGroupName; }
+void PFAIContainer::RegisterObject(PF_Core::WorldObjectBase* pObject, nstl::string scriptName, nstl::string scriptGroupName )
+{
+  if ( !pObject )
+    return;
+
+  if ( !scriptName.empty() )
+  {
+    objectIdToName[pObject->GetObjectId()] = scriptName;
+
+    if ( PFBaseCreep* pCreep = dynamic_cast<PFBaseCreep*>( pObject ) )
+    {
+      NI_VERIFY( creeps.find( scriptName ) == creeps.end(),
+        NStr::StrFmt( "Creep with script name \"%s\" already registered!", scriptName.c_str() ), return );
+      creeps[scriptName] = pCreep;
+    }
+    else if ( PFBaseUnit* pUnit = dynamic_cast<PFBaseUnit*>( pObject ) )
+    {
+      NI_VERIFY( units.find( scriptName ) == units.end(),
+        NStr::StrFmt( "Unit with script name \"%s\" already registered!", scriptName.c_str() ), return );
+      units[scriptName] = pUnit;
+    }
+    else
+    {
+      NI_VERIFY( objects.find( scriptName ) == objects.end(),
+        NStr::StrFmt( "Object with script name \"%s\" already registered!", scriptName.c_str() ), return );
+      objects[scriptName] = pObject;
+    }
+  }
+
+  if ( !scriptGroupName.empty() )
+    objectGroups[scriptGroupName].push_back( pObject );
+}
 
 bool PFAIContainer::ScriptEffect::Create( NScene::IScene* pScene ) { (void)pScene; return false; }
 void PFAIContainer::ScriptEffect::Remove() {}

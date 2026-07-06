@@ -4474,6 +4474,13 @@ struct LinuxBootstrapScreenRuntime
   int linuxAIRemoveSuccesses;
   int linuxAIStepCalls;
   int linuxAIControllerCount;
+  size_t linuxAIRegistryCreeps;
+  size_t linuxAIRegistryUnits;
+  size_t linuxAIRegistryObjects;
+  size_t linuxAIRegistryGroups;
+  size_t linuxAIRegistryDeadNames;
+  size_t linuxAIRegistryObjectNames;
+  size_t linuxAIRegistryResources;
   int linuxAIBotsSettingsAvailable;
   int linuxAIBotsEnabled;
   int linuxAILastHeroObjectId;
@@ -5665,6 +5672,13 @@ struct LinuxBootstrapScreenRuntime
       linuxAIRemoveSuccesses(0),
       linuxAIStepCalls(0),
       linuxAIControllerCount(0),
+      linuxAIRegistryCreeps(0),
+      linuxAIRegistryUnits(0),
+      linuxAIRegistryObjects(0),
+      linuxAIRegistryGroups(0),
+      linuxAIRegistryDeadNames(0),
+      linuxAIRegistryObjectNames(0),
+      linuxAIRegistryResources(0),
       linuxAIBotsSettingsAvailable(0),
       linuxAIBotsEnabled(-1),
       linuxAILastHeroObjectId(-1),
@@ -39116,6 +39130,13 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->linuxAIRemoveSuccesses = 0;
     runtime->linuxAIStepCalls = 0;
     runtime->linuxAIControllerCount = 0;
+    runtime->linuxAIRegistryCreeps = 0;
+    runtime->linuxAIRegistryUnits = 0;
+    runtime->linuxAIRegistryObjects = 0;
+    runtime->linuxAIRegistryGroups = 0;
+    runtime->linuxAIRegistryDeadNames = 0;
+    runtime->linuxAIRegistryObjectNames = 0;
+    runtime->linuxAIRegistryResources = 0;
     runtime->linuxAIBotsSettingsAvailable = 0;
     runtime->linuxAIBotsEnabled = -1;
     runtime->linuxAILastHeroObjectId = -1;
@@ -39810,6 +39831,17 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldContentCreepSpawnerObjects = world->GetLinuxContentCreepSpawnerObjectsCount();
       runtime->worldContentNeutralCreepSpawnerObjects = world->GetLinuxContentNeutralCreepSpawnerObjectsCount();
       runtime->worldRegisteredCreepObjects = world->GetLinuxRegisteredCreepObjectsCount();
+      if (NWorld::PFAIContainer* aiContainer = world->GetAIContainer())
+      {
+        aiContainer->GetLinuxRegistryCounts(
+          &runtime->linuxAIRegistryCreeps,
+          &runtime->linuxAIRegistryUnits,
+          &runtime->linuxAIRegistryObjects,
+          &runtime->linuxAIRegistryGroups,
+          &runtime->linuxAIRegistryDeadNames,
+          &runtime->linuxAIRegistryObjectNames,
+          &runtime->linuxAIRegistryResources);
+      }
       runtime->worldSpawnedNeutralCreepObjects = world->GetLinuxSpawnedNeutralCreepObjectsCount();
       runtime->worldMovingCommonCreepObjects = world->GetLinuxMovingCommonCreepObjectsCount();
       runtime->worldMovedCommonCreepObjects = world->GetLinuxMovedCommonCreepObjectsCount();
@@ -40019,6 +40051,17 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldContentCreepSpawnerObjects = world->GetLinuxContentCreepSpawnerObjectsCount();
         runtime->worldContentNeutralCreepSpawnerObjects = world->GetLinuxContentNeutralCreepSpawnerObjectsCount();
         runtime->worldRegisteredCreepObjects = world->GetLinuxRegisteredCreepObjectsCount();
+        if (NWorld::PFAIContainer* aiContainer = world->GetAIContainer())
+        {
+          aiContainer->GetLinuxRegistryCounts(
+            &runtime->linuxAIRegistryCreeps,
+            &runtime->linuxAIRegistryUnits,
+            &runtime->linuxAIRegistryObjects,
+            &runtime->linuxAIRegistryGroups,
+            &runtime->linuxAIRegistryDeadNames,
+            &runtime->linuxAIRegistryObjectNames,
+            &runtime->linuxAIRegistryResources);
+        }
         runtime->worldSpawnedNeutralCreepObjects = world->GetLinuxSpawnedNeutralCreepObjectsCount();
         runtime->worldMovingCommonCreepObjects = world->GetLinuxMovingCommonCreepObjectsCount();
         runtime->worldMovedCommonCreepObjects = world->GetLinuxMovedCommonCreepObjectsCount();
@@ -66444,7 +66487,7 @@ int main(int argc, char** argv)
     screenRuntime.linuxBotCommandLastAction.empty() ?
       "none" :
       screenRuntime.linuxBotCommandLastAction.c_str());
-  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
+  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d registry=%lu/%lu/%lu/%lu/%lu/%lu/%lu bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
     screenRuntime.linuxAIAutoStartAttempts,
     screenRuntime.linuxAIAutoStartSuccesses,
     screenRuntime.linuxAIAddRequests,
@@ -66453,6 +66496,13 @@ int main(int argc, char** argv)
     screenRuntime.linuxAIRemoveSuccesses,
     screenRuntime.linuxAIStepCalls,
     screenRuntime.linuxAIControllerCount,
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryCreeps),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryUnits),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryObjects),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryGroups),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryDeadNames),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryObjectNames),
+    static_cast<unsigned long>(screenRuntime.linuxAIRegistryResources),
     screenRuntime.linuxAIBotsSettingsAvailable,
     screenRuntime.linuxAIBotsEnabled,
     screenRuntime.linuxAILastHeroObjectId,
