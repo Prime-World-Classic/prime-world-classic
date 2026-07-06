@@ -4687,6 +4687,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyMapScrollFirstRow;
   size_t visibleLobbyMapFirstVisibleRow;
   size_t visibleLobbyMapLastVisibleRow;
+  size_t visibleLobbyMapHoveredRowsDrawn;
+  int visibleLobbyMapHoveredRowIndex;
   size_t visibleLobbyGameRowsDrawn;
   size_t visibleLobbyGameSelectedRowsDrawn;
   size_t visibleLobbyGameOpenRowsDrawn;
@@ -4698,6 +4700,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameScrollFirstRow;
   size_t visibleLobbyGameFirstVisibleRow;
   size_t visibleLobbyGameLastVisibleRow;
+  size_t visibleLobbyGameHoveredRowsDrawn;
+  int visibleLobbyGameHoveredRowIndex;
   size_t visibleLobbyJoinModeButtonsDrawn;
   size_t visibleLobbyJoinModeButtonsSelected;
   bool visibleLobbyDeveloperSexDrawn;
@@ -5869,6 +5873,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyMapScrollFirstRow(0),
       visibleLobbyMapFirstVisibleRow(0),
       visibleLobbyMapLastVisibleRow(0),
+      visibleLobbyMapHoveredRowsDrawn(0),
+      visibleLobbyMapHoveredRowIndex(-1),
       visibleLobbyGameRowsDrawn(0),
       visibleLobbyGameSelectedRowsDrawn(0),
       visibleLobbyGameOpenRowsDrawn(0),
@@ -5880,6 +5886,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameScrollFirstRow(0),
       visibleLobbyGameFirstVisibleRow(0),
       visibleLobbyGameLastVisibleRow(0),
+      visibleLobbyGameHoveredRowsDrawn(0),
+      visibleLobbyGameHoveredRowIndex(-1),
       visibleLobbyJoinModeButtonsDrawn(0),
       visibleLobbyJoinModeButtonsSelected(0),
       visibleLobbyDeveloperSexDrawn(false),
@@ -53862,6 +53870,26 @@ size_t ResolveLinuxLobbyFirstVisibleRow(size_t selectedIndex, size_t totalRows, 
   return std::min(selectedIndex - visibleRows + 1, maxFirst);
 }
 
+bool IsLinuxVisibleLobbyHoverRow(
+  const LinuxBootstrapScreenRuntime* runtime,
+  const char* surface,
+  size_t visibleRow,
+  int panelBaseY,
+  int panelBaseHeight,
+  int rowBaseHeight
+)
+{
+  if (!runtime || !surface || runtime->visibleLobbyHoverSurface != surface)
+  {
+    return false;
+  }
+
+  const int rowTop = panelBaseY + static_cast<int>(visibleRow) * rowBaseHeight;
+  const int rowBottom = std::min(panelBaseY + panelBaseHeight, rowTop + rowBaseHeight);
+  return runtime->visibleLobbyHoverBaseY >= rowTop &&
+    runtime->visibleLobbyHoverBaseY < rowBottom;
+}
+
 bool DrawLinuxLobbyScrollBar(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
@@ -53958,12 +53986,15 @@ size_t DrawLinuxLobbyMapRows(
   const LinuxLobbyLayoutTransform& layout,
   const LinuxMapCatalog& mapCatalog,
   const LinuxMapBrowserState& mapBrowserState,
+  const LinuxBootstrapScreenRuntime* runtime,
   size_t* selectedRowsDrawn,
   size_t* pvpRowsDrawn,
   size_t* pveRowsDrawn,
   size_t* tutorialRowsDrawn,
   size_t* otherRowsDrawn,
   size_t* indexLabelsDrawn,
+  size_t* hoveredRowsDrawn,
+  int* hoveredRowIndex,
   bool* scrollBarDrawn,
   size_t* scrollTotalRows,
   size_t* scrollVisibleRows,
@@ -53993,6 +54024,14 @@ size_t DrawLinuxLobbyMapRows(
   if (indexLabelsDrawn)
   {
     *indexLabelsDrawn = 0;
+  }
+  if (hoveredRowsDrawn)
+  {
+    *hoveredRowsDrawn = 0;
+  }
+  if (hoveredRowIndex)
+  {
+    *hoveredRowIndex = -1;
   }
   if (scrollBarDrawn)
   {
@@ -54051,6 +54090,18 @@ size_t DrawLinuxLobbyMapRows(
     const size_t entryIndex = firstRow + row;
     const LinuxMapCatalogEntry& entry = mapCatalog.entries[entryIndex];
     const bool selected = entryIndex == mapBrowserState.selectedIndex;
+    const bool hovered = IsLinuxVisibleLobbyHoverRow(runtime, "map-row", row, 455, 368, 130);
+    if (hovered)
+    {
+      if (hoveredRowsDrawn)
+      {
+        ++(*hoveredRowsDrawn);
+      }
+      if (hoveredRowIndex)
+      {
+        *hoveredRowIndex = static_cast<int>(entryIndex);
+      }
+    }
     if (selected && selectedRowsDrawn)
     {
       ++(*selectedRowsDrawn);
@@ -54079,6 +54130,11 @@ size_t DrawLinuxLobbyMapRows(
     {
       SetOpenGlColor(selected ? 213 : 60, selected ? 174 : 72, selected ? 82 : 58, selected ? 220 : 140);
       DrawOpenGlBorderRect(rowX, rowY, rowW, rowVisibleH);
+    }
+    if (hovered)
+    {
+      SetOpenGlColor(255, 226, 132, selected ? 168 : 220);
+      DrawOpenGlBorderRect(rowX + layout.W(2), rowY + layout.H(2), std::max(1, rowW - layout.W(4)), std::max(1, rowVisibleH - layout.H(4)));
     }
 
     const std::string title = ResolveLinuxLobbyMapTitle(overlay, entry, entryIndex);
@@ -54265,6 +54321,8 @@ size_t DrawLinuxLobbyGameRows(
   size_t* openRowsDrawn,
   size_t* fullRowsDrawn,
   size_t* indexLabelsDrawn,
+  size_t* hoveredRowsDrawn,
+  int* hoveredRowIndex,
   bool* scrollBarDrawn,
   size_t* scrollTotalRows,
   size_t* scrollVisibleRows,
@@ -54286,6 +54344,14 @@ size_t DrawLinuxLobbyGameRows(
   if (indexLabelsDrawn)
   {
     *indexLabelsDrawn = 0;
+  }
+  if (hoveredRowsDrawn)
+  {
+    *hoveredRowsDrawn = 0;
+  }
+  if (hoveredRowIndex)
+  {
+    *hoveredRowIndex = -1;
   }
   if (scrollBarDrawn)
   {
@@ -54345,6 +54411,18 @@ size_t DrawLinuxLobbyGameRows(
       gameCount > 0 &&
       runtime &&
       gameRow == selectedRow;
+    const bool hovered = IsLinuxVisibleLobbyHoverRow(runtime, "game-row", row, 454, 449, 80);
+    if (hovered)
+    {
+      if (hoveredRowsDrawn)
+      {
+        ++(*hoveredRowsDrawn);
+      }
+      if (hoveredRowIndex)
+      {
+        *hoveredRowIndex = static_cast<int>(gameRow);
+      }
+    }
     if (selected && selectedRowsDrawn)
     {
       ++(*selectedRowsDrawn);
@@ -54367,6 +54445,11 @@ size_t DrawLinuxLobbyGameRows(
     {
       SetOpenGlColor(selected ? 213 : 65, selected ? 174 : 79, selected ? 82 : 78, selected ? 220 : 155);
       DrawOpenGlBorderRect(rowX, rowY, rowW, rowVisibleH);
+    }
+    if (hovered)
+    {
+      SetOpenGlColor(255, 226, 132, selected ? 168 : 220);
+      DrawOpenGlBorderRect(rowX + layout.W(2), rowY + layout.H(2), std::max(1, rowW - layout.W(4)), std::max(1, rowVisibleH - layout.H(4)));
     }
 
     const bool emptyList = gameCount == 0;
@@ -54735,6 +54818,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   size_t tutorialMapRowsDrawn = 0;
   size_t otherMapRowsDrawn = 0;
   size_t mapIndexLabelsDrawn = 0;
+  size_t hoveredMapRowsDrawn = 0;
+  int hoveredMapRowIndex = -1;
   bool mapScrollBarDrawn = false;
   size_t mapScrollTotalRows = 0;
   size_t mapScrollVisibleRows = 0;
@@ -54745,12 +54830,15 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       layout,
       mapCatalog,
       mapBrowserState,
+      runtime,
       &selectedMapRowsDrawn,
       &pvpMapRowsDrawn,
       &pveMapRowsDrawn,
       &tutorialMapRowsDrawn,
       &otherMapRowsDrawn,
       &mapIndexLabelsDrawn,
+      &hoveredMapRowsDrawn,
+      &hoveredMapRowIndex,
       &mapScrollBarDrawn,
       &mapScrollTotalRows,
       &mapScrollVisibleRows,
@@ -54760,6 +54848,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   size_t openGameRowsDrawn = 0;
   size_t fullGameRowsDrawn = 0;
   size_t gameIndexLabelsDrawn = 0;
+  size_t hoveredGameRowsDrawn = 0;
+  int hoveredGameRowIndex = -1;
   bool gameScrollBarDrawn = false;
   size_t gameScrollTotalRows = 0;
   size_t gameScrollVisibleRows = 0;
@@ -54776,6 +54866,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       &openGameRowsDrawn,
       &fullGameRowsDrawn,
       &gameIndexLabelsDrawn,
+      &hoveredGameRowsDrawn,
+      &hoveredGameRowIndex,
       &gameScrollBarDrawn,
       &gameScrollTotalRows,
       &gameScrollVisibleRows,
@@ -54998,6 +55090,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyMapLastVisibleRow = mapRowsDrawn > 0 ?
       mapScrollFirstRow + mapRowsDrawn - 1 :
       0;
+    runtime->visibleLobbyMapHoveredRowsDrawn = hoveredMapRowsDrawn;
+    runtime->visibleLobbyMapHoveredRowIndex = hoveredMapRowIndex;
     runtime->visibleLobbyGameRowsDrawn = gameRowsDrawn;
     runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
     runtime->visibleLobbyGameOpenRowsDrawn = openGameRowsDrawn;
@@ -55011,6 +55105,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyGameLastVisibleRow = gameRowsDrawn > 0 ?
       gameScrollFirstRow + gameRowsDrawn - 1 :
       0;
+    runtime->visibleLobbyGameHoveredRowsDrawn = hoveredGameRowsDrawn;
+    runtime->visibleLobbyGameHoveredRowIndex = hoveredGameRowIndex;
     runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
     runtime->visibleLobbyJoinModeButtonsSelected = joinModeButtonsSelected;
     runtime->visibleLobbyDeveloperSexDrawn = true;
@@ -61532,6 +61628,9 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyMapVisibleRange="
           << screenRuntime.visibleLobbyMapFirstVisibleRow << ".."
           << screenRuntime.visibleLobbyMapLastVisibleRow << "\n";
+  logFile << "  finalVisibleLobbyMapHover="
+          << screenRuntime.visibleLobbyMapHoveredRowsDrawn << "/"
+          << screenRuntime.visibleLobbyMapHoveredRowIndex << "\n";
   logFile << "  finalVisibleLobbyGameRows="
           << screenRuntime.visibleLobbyGameRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameSelectedRows="
@@ -61551,6 +61650,9 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyGameVisibleRange="
           << screenRuntime.visibleLobbyGameFirstVisibleRow << ".."
           << screenRuntime.visibleLobbyGameLastVisibleRow << "\n";
+  logFile << "  finalVisibleLobbyGameHover="
+          << screenRuntime.visibleLobbyGameHoveredRowsDrawn << "/"
+          << screenRuntime.visibleLobbyGameHoveredRowIndex << "\n";
   logFile << "  finalVisibleLobbyJoinModeButtons="
           << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyJoinModeButtonsSelected="
@@ -65532,7 +65634,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu hover=%lu/%s at=%d,%d base=%d,%d lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu mapHover=%lu/%d gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu gameHover=%lu/%d joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu hover=%lu/%s at=%d,%d base=%d,%d lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -65546,6 +65648,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollFirstRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapFirstVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapLastVisibleRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapHoveredRowsDrawn),
+    screenRuntime.visibleLobbyMapHoveredRowIndex,
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameOpenRowsDrawn),
@@ -65557,6 +65661,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollFirstRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameFirstVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameLastVisibleRow),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameHoveredRowsDrawn),
+    screenRuntime.visibleLobbyGameHoveredRowIndex,
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsSelected),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
