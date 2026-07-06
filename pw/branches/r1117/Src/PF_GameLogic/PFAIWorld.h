@@ -221,6 +221,7 @@ public:
   int GetLinuxLastAppliedAwardHeroGoldAfter() const { return linuxLastAppliedAwardHeroGoldAfter; }
   // Linux bootstrap diagnostics for route/building bookkeeping restored without the visual client.
   void GetLinuxRouteRegistryCounts( size_t* routeCount, size_t* levelCount, size_t* towerCount, size_t* buildingCount, size_t* spawnerCount, size_t* quarterDestroyedCount, size_t* borderCount ) const;
+  void GetLinuxRouteVulnerabilityCounts( size_t* vulnerableTowerCount, size_t* vulnerableBuildingCount ) const;
 #endif
 
 private:

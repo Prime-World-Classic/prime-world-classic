@@ -4488,6 +4488,8 @@ struct LinuxBootstrapScreenRuntime
   size_t linuxAIRouteSpawners;
   size_t linuxAIRouteDestroyedQuarters;
   size_t linuxAIRouteBorders;
+  size_t linuxAIRouteVulnerableTowers;
+  size_t linuxAIRouteVulnerableBuildings;
   int linuxAIBotsSettingsAvailable;
   int linuxAIBotsEnabled;
   int linuxAILastHeroObjectId;
@@ -5693,6 +5695,8 @@ struct LinuxBootstrapScreenRuntime
       linuxAIRouteSpawners(0),
       linuxAIRouteDestroyedQuarters(0),
       linuxAIRouteBorders(0),
+      linuxAIRouteVulnerableTowers(0),
+      linuxAIRouteVulnerableBuildings(0),
       linuxAIBotsSettingsAvailable(0),
       linuxAIBotsEnabled(-1),
       linuxAILastHeroObjectId(-1),
@@ -39158,6 +39162,8 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->linuxAIRouteSpawners = 0;
     runtime->linuxAIRouteDestroyedQuarters = 0;
     runtime->linuxAIRouteBorders = 0;
+    runtime->linuxAIRouteVulnerableTowers = 0;
+    runtime->linuxAIRouteVulnerableBuildings = 0;
     runtime->linuxAIBotsSettingsAvailable = 0;
     runtime->linuxAIBotsEnabled = -1;
     runtime->linuxAILastHeroObjectId = -1;
@@ -39884,6 +39890,9 @@ void DriveLinuxBootstrapGameScheduler(
           &runtime->linuxAIRouteSpawners,
           &runtime->linuxAIRouteDestroyedQuarters,
           &runtime->linuxAIRouteBorders);
+        aiWorld->GetLinuxRouteVulnerabilityCounts(
+          &runtime->linuxAIRouteVulnerableTowers,
+          &runtime->linuxAIRouteVulnerableBuildings);
         runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
         runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
         runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
@@ -40112,6 +40121,9 @@ void DriveLinuxBootstrapLoadingRuntime(
             &runtime->linuxAIRouteSpawners,
             &runtime->linuxAIRouteDestroyedQuarters,
             &runtime->linuxAIRouteBorders);
+          aiWorld->GetLinuxRouteVulnerabilityCounts(
+            &runtime->linuxAIRouteVulnerableTowers,
+            &runtime->linuxAIRouteVulnerableBuildings);
           runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
           runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
           runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
@@ -63516,6 +63528,8 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameWorldAIRouteSpawners=" << screenRuntime.linuxAIRouteSpawners << "\n";
   logFile << "  finalGameWorldAIRouteDestroyedQuarters=" << screenRuntime.linuxAIRouteDestroyedQuarters << "\n";
   logFile << "  finalGameWorldAIRouteBorders=" << screenRuntime.linuxAIRouteBorders << "\n";
+  logFile << "  finalGameWorldAIRouteVulnerableTowers=" << screenRuntime.linuxAIRouteVulnerableTowers << "\n";
+  logFile << "  finalGameWorldAIRouteVulnerableBuildings=" << screenRuntime.linuxAIRouteVulnerableBuildings << "\n";
   logFile << "  finalGameWorldAICreepSpawnEnabled=" << screenRuntime.worldAICreepSpawnEnabled << "\n";
   logFile << "  finalGameWorldAINeutralSpawnEnabled=" << screenRuntime.worldAINeutralCreepSpawnEnabled << "\n";
   logFile << "  finalGameWorldAIMaxCreeps=" << screenRuntime.worldAIMaxCreepsCount << "\n";
@@ -66531,7 +66545,7 @@ int main(int argc, char** argv)
     screenRuntime.linuxBotCommandLastAction.empty() ?
       "none" :
       screenRuntime.linuxBotCommandLastAction.c_str());
-  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d registry=%lu/%lu/%lu/%lu/%lu/%lu/%lu routes=%lu/%lu/%lu/%lu/%lu/%lu/%lu bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
+  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d registry=%lu/%lu/%lu/%lu/%lu/%lu/%lu routes=%lu/%lu/%lu/%lu/%lu/%lu/%lu routeVulnerable=%lu/%lu bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
     screenRuntime.linuxAIAutoStartAttempts,
     screenRuntime.linuxAIAutoStartSuccesses,
     screenRuntime.linuxAIAddRequests,
@@ -66554,6 +66568,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.linuxAIRouteSpawners),
     static_cast<unsigned long>(screenRuntime.linuxAIRouteDestroyedQuarters),
     static_cast<unsigned long>(screenRuntime.linuxAIRouteBorders),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteVulnerableTowers),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteVulnerableBuildings),
     screenRuntime.linuxAIBotsSettingsAvailable,
     screenRuntime.linuxAIBotsEnabled,
     screenRuntime.linuxAILastHeroObjectId,

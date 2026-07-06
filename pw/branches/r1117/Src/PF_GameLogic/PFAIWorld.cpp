@@ -205,11 +205,19 @@ void PFAIWorld::Update(float dtInSeconds)
       battleStartDelay = 0.0f;
   }
 
-  if (towersVulnerabilityDelay > 0.0f)
+  if (towersVulnerabilityDelay >= 0.0f)
   {
     towersVulnerabilityDelay -= dtInSeconds;
-    if (towersVulnerabilityDelay < 0.0f)
-      towersVulnerabilityDelay = 0.0f;
+    if (towersVulnerabilityDelay <= EPS_VALUE)
+    {
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_FREEZE, NDb::ROUTE_BOTTOM)->GetLevel(0), true);
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_FREEZE, NDb::ROUTE_CENTER)->GetLevel(0), true);
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_FREEZE, NDb::ROUTE_TOP)->GetLevel(0), true);
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_BURN, NDb::ROUTE_BOTTOM)->GetLevel(0), true);
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_BURN, NDb::ROUTE_CENTER)->GetLevel(0), true);
+      SetRouteLevelVulnerable(GetRoute(NDb::FACTION_BURN, NDb::ROUTE_TOP)->GetLevel(0), true);
+      towersVulnerabilityDelay = -1.0f;
+    }
   }
 }
 
@@ -657,6 +665,39 @@ void PFAIWorld::GetLinuxRouteRegistryCounts( size_t* routeCount, size_t* levelCo
     *quarterDestroyedCount = destroyedQuarters;
   if (borderCount)
     *borderCount = borders;
+}
+
+void PFAIWorld::GetLinuxRouteVulnerabilityCounts( size_t* vulnerableTowerCount, size_t* vulnerableBuildingCount ) const
+{
+  size_t vulnerableTowers = 0;
+  size_t vulnerableBuildings = 0;
+
+  for (vector<BuildingsRoute>::const_iterator route = buildingsRoutes.begin(); route != buildingsRoutes.end(); ++route)
+  {
+    for (vector<BuildingsRoute::RouteLevel>::const_iterator level = route->levels.begin(); level != route->levels.end(); ++level)
+    {
+      for (vector<int>::const_iterator tower = level->towersIDs.begin(); tower != level->towersIDs.end(); ++tower)
+      {
+        PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(*tower) : 0;
+        PFBaseUnit const* unit = dynamic_cast<PFBaseUnit const*>(object);
+        if (unit && unit->IsVulnerable())
+          ++vulnerableTowers;
+      }
+
+      for (vector<int>::const_iterator building = level->buildingsIDs.begin(); building != level->buildingsIDs.end(); ++building)
+      {
+        PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(*building) : 0;
+        PFBaseUnit const* unit = dynamic_cast<PFBaseUnit const*>(object);
+        if (unit && unit->IsVulnerable())
+          ++vulnerableBuildings;
+      }
+    }
+  }
+
+  if (vulnerableTowerCount)
+    *vulnerableTowerCount = vulnerableTowers;
+  if (vulnerableBuildingCount)
+    *vulnerableBuildingCount = vulnerableBuildings;
 }
 
 const PFCreepSpawner* PFAIWorld::GetSpawner(NDb::EFaction faction, NDb::ERoute routeID) const
