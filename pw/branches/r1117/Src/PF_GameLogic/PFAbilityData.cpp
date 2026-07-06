@@ -272,11 +272,57 @@ void PFAbilityData::RecalculateManaCost()
   else
     manaCost = GetModifiedValue(GetBaseManaCost(), NDb::ABILITYMODMODE_MANACOST);
 }
-void PFAbilityData::RecalculateCooldown() { cooldownTime[abilityState] = 0.0f; }
-void PFAbilityData::RestartCooldown(float cooldownTime_) { cooldown[abilityState] = cooldownTime_ > 0.0f ? cooldownTime_ : cooldownTime[abilityState]; }
+void PFAbilityData::RecalculateCooldown()
+{
+  if (!pDBDesc || !IsValid(pOwner))
+  {
+    cooldownTime[EAbilityState::First] = 0.0f;
+    cooldownTime[EAbilityState::Second] = 0.0f;
+    return;
+  }
+
+  cooldownTime[EAbilityState::First] =
+    GetModifiedValue(pDBDesc->cooldownTime(pOwner, pOwner, this, 0.0f), NDb::ABILITYMODMODE_COOLDOWN);
+  cooldownTime[EAbilityState::Second] =
+    GetModifiedValue(pDBDesc->cooldownTimeSecondState(pOwner, pOwner, this, 0.0f), NDb::ABILITYMODMODE_COOLDOWN);
+}
+void PFAbilityData::RestartCooldown(float cooldownTime_)
+{
+  if (cooldownTime_ >= 0.0f)
+    cooldownTime[abilityState] = cooldownTime_;
+  cooldown[abilityState] = cooldownTime[abilityState];
+}
 void PFAbilityData::RecalculateAndRestartCooldown() { RecalculateCooldown(); RestartCooldown(); }
-void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, bool reduceByPercent) { (void)cooldownReduction; (void)reduceByPercent; if (forAllStates) { cooldown[EAbilityState::First] = 0.0f; cooldown[EAbilityState::Second] = 0.0f; } else cooldown[abilityState] = 0.0f; }
-void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cooldownReduction, bool reduceByPercent) { (void)cooldownReduction; (void)reduceByPercent; cooldown[forAbilityState] = 0.0f; }
+void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, bool reduceByPercent)
+{
+  if (forAllStates)
+  {
+    DropCooldown(EAbilityState::First, cooldownReduction, reduceByPercent);
+    DropCooldown(EAbilityState::Second, cooldownReduction, reduceByPercent);
+  }
+  else
+  {
+    DropCooldown(abilityState, cooldownReduction, reduceByPercent);
+  }
+}
+void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cooldownReduction, bool reduceByPercent)
+{
+  if (cooldownReduction == 0.0f)
+  {
+    cooldown[forAbilityState] = 0.0f;
+  }
+  else if (reduceByPercent)
+  {
+    cooldown[forAbilityState] =
+      min(cooldownTime[forAbilityState], cooldown[forAbilityState] * (1.0f - min(cooldownReduction, 1.0f)));
+  }
+  else
+  {
+    cooldown[forAbilityState] = max(0.0f, cooldown[forAbilityState] - cooldownReduction);
+    if (cooldown[forAbilityState] > cooldownTime[forAbilityState])
+      cooldownTime[forAbilityState] -= cooldownReduction;
+  }
+}
 float PFAbilityData::GetUseRange() const
 {
   if (!pDBDesc || !IsValid(pOwner))
