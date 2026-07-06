@@ -341,7 +341,12 @@ CObj<PFConsumableAbilityData> PFBaseHero::GetConsumableAbility( const NDb::Abili
 bool PFBaseHero::CanStackConsumables( int src, int dst ) const { (void)src; (void)dst; return false; }
 bool PFBaseHero::StackConsumables( int src, int dst ) { (void)src; (void)dst; return false; }
 void PFBaseHero::SellConsumable(int slot) { RemoveConsumable(slot); }
-float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const { return pDBDesc ? pDBDesc->naftaCost : 0.0f; }
+float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const
+{
+  return pDBDesc
+    ? GetModifiedAbilityValue( pDBDesc->naftaCost, NDb::ABILITYMODMODE_NAFTACOST, NDb::ABILITYTYPEID_CONSUMABLE, pDBDesc )
+    : 0.0f;
+}
 void PFBaseHero::RestartGroupCooldowns( PFConsumableAbilityData const* pConsumableAD ) { (void)pConsumableAD; }
 void PFBaseHero::AddConsumableToGroup( PFConsumableAbilityData* pConsumableAD ) { (void)pConsumableAD; }
 void PFBaseHero::AddAbilityModifier( PFApplAbilityMod* appl )
