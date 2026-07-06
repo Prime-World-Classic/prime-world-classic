@@ -139,7 +139,7 @@ void Interface::Clear( Color color )
   if ( NMainFrame::MakeOpenGLContextCurrent() )
   {
     glClearColor( clearColor.R / 255.0f, clearColor.G / 255.0f, clearColor.B / 255.0f, clearColor.A / 255.0f );
-    glClear( GL_COLOR_BUFFER_BIT );
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
   }
 #elif defined(PW_LINUX_NULL_RENDER)
   clearColor = color;
