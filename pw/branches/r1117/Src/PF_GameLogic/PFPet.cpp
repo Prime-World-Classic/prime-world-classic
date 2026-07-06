@@ -3,6 +3,7 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFPet.h"
+#include "PFHero.h"
 
 namespace NWorld
 {
@@ -10,28 +11,51 @@ namespace NWorld
 PFPetAIBaseState::PFPetAIBaseState(CPtr<PFBasePetUnit> const& pPet)
   : PFBasePetUnitState(pPet)
   , pPetKeeper(IsValid(pPet) ? pPet->GetKeeper() : 0)
-  , maxEscortDistance(0.0f)
   , minEscortDistance(0.0f)
+  , maxEscortDistance(0.0f)
 {
+  if (IsUnitValid(pPet))
+  {
+    minEscortDistance = pPet->GetObjectSize() * 0.5f;
+    maxEscortDistance = pPet->GetChaseRange();
+  }
 }
 
 bool PFPetAIBaseState::OnStep(float dt)
 {
-  (void)dt;
-  return true;
+  if (GetCurrentState())
+    FSMStep(dt);
+
+  if (!IsUnitValid(pOwner) || !IsValid(pPetKeeper))
+    return true;
+
+  if (!GetCurrentState())
+  {
+    const CVec2 petKeeperPosition = pPetKeeper->IsDead() ? pPetKeeper->GetSpawnPosition().AsVec2D() : pPetKeeper->GetPosition().AsVec2D();
+    if (pOwner->IsPositionInRange(petKeeperPosition, maxEscortDistance))
+    {
+      const CVec2 escortPosition = pPetKeeper->IsDead() ? pPetKeeper->GetSpawnPosition().AsVec2D() : pPetKeeper->GetPetEscortPosition().AsVec2D();
+      if (!pOwner->IsPositionInRange(escortPosition, minEscortDistance))
+        pOwner->MoveTo(escortPosition);
+    }
+  }
+
+  return false;
 }
 
 PFBasePetUnit::PFBasePetUnit(CPtr<PFWorld> pWorld, const NDb::BasePet& petObj, CPtr<PFBaseHero> pKeeper_)
-  : PFCreature(pWorld.GetPtr(), CVec3(0.0f, 0.0f, 0.0f), CVec2(0.0f, 1.0f), petObj)
+  : PFCreature(pWorld.GetPtr(), IsValid(pKeeper_) ? pKeeper_->GetPetEscortPosition() : CVec3(0.0f, 0.0f, 0.0f), CVec2(0.0f, 1.0f), petObj)
   , pKeeper(pKeeper_)
 {
   PFBaseUnit::InitData data;
-  data.faction = NDb::FACTION_NEUTRAL;
+  data.faction = IsValid(pKeeper) ? pKeeper->GetFaction() : NDb::FACTION_NEUTRAL;
   data.type = NDb::UNITTYPE_PET;
-  data.playerId = -1;
+  data.playerId = IsValid(pKeeper) ? pKeeper->GetPlayerId() : -1;
   data.pObjectDesc = &petObj;
   Initialize(data);
   SetVulnerable(true);
+  if (IsValid(pKeeper))
+    EnqueueState(new PFPetAIBaseState(this), true);
 }
 
 void PFBasePetUnit::Reset()
@@ -41,10 +65,14 @@ void PFBasePetUnit::Reset()
 
 PFBasePetUnit* CreateTestPet(PFWorld* pWorld, const char* name, const CPtr<PFBaseHero>& pKeeper)
 {
-  (void)pWorld;
-  (void)name;
-  (void)pKeeper;
-  return 0;
+  NDb::Ptr<NDb::BasePet> pDBPet = NDb::Get<NDb::BasePet>(NDb::DBID(name));
+  NI_VERIFY(IsValid(pDBPet), NStr::StrFmt("Cannot find pet: %s", name), return NULL;);
+
+  NI_ASSERT(IsUnitValid(pKeeper), "Invalid pet keeper");
+  if (!pWorld || !IsUnitValid(pKeeper))
+    return 0;
+
+  return new PFBasePetUnit(pWorld, *pDBPet, pKeeper);
 }
 
 } // namespace NWorld
