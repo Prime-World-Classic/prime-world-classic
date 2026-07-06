@@ -6,6 +6,7 @@
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
 #include "PFHero.h"
+#include "PFPredefinedUnitVariables.h"
 #include "PFTargetSelector.h"
 
 namespace NWorld
@@ -182,30 +183,181 @@ void PFApplPermanentStatMod::DumpInfo(NLogg::CChannelLogger&) const {}
 
 bool PFApplAbilityMod::Start()
 {
+  pTalCdAddVar = 0;
+  pTalCdMulVar = 0;
+  pTalMcAddVar = 0;
+  pTalMcMulVar = 0;
+  talCdAddModifierId = INVALID_MODIFIER_ID;
+  talCdMulModifierId = INVALID_MODIFIER_ID;
+  talMcAddModifierId = INVALID_MODIFIER_ID;
+  talMcMulModifierId = INVALID_MODIFIER_ID;
   cachedAdd = RetrieveParam(GetDB().addValue, 0.0f);
   cachedMul = RetrieveParam(GetDB().multValue, 1.0f);
+
+  if (!IsValid(pReceiver))
+    return true;
+
+  pHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
+  if (!IsValid(pHero))
+    return PFApplBuff::Start();
+
+  if ((GetDB().targetAbilities & NDb::ABILITYIDFLAGS_TALENTS) && GetDB().talents.empty() && IsValid(pOwner) && pOwner->GetFaction() == pHero->GetFaction())
+  {
+    if (GetDB().mode == NDb::ABILITYMODMODE_COOLDOWN)
+    {
+      pTalCdAddVar = pHero->GetVariableVWM(UnitVariables::szTalentsCdAdd);
+      pTalCdMulVar = pHero->GetVariableVWM(UnitVariables::szTalentsCdMul);
+      if (pTalCdMulVar)
+        pTalCdMulVar->SetBaseValue(1.0f);
+    }
+    else if (GetDB().mode == NDb::ABILITYMODMODE_MANACOST)
+    {
+      pTalMcAddVar = pHero->GetVariableVWM(UnitVariables::szTalentsMcAdd);
+      pTalMcMulVar = pHero->GetVariableVWM(UnitVariables::szTalentsMcMul);
+      if (pTalMcMulVar)
+        pTalMcMulVar->SetBaseValue(1.0f);
+    }
+  }
+
   return PFApplBuff::Start();
 }
 void PFApplAbilityMod::CheckCachedValues()
 {
-  cachedAdd = RetrieveParam(GetDB().addValue, 0.0f);
-  cachedMul = RetrieveParam(GetDB().multValue, 1.0f);
+  const float add = RetrieveParam(GetDB().addValue, 0.0f);
+  const float mul = RetrieveParam(GetDB().multValue, 1.0f);
+  if (cachedAdd != add || cachedMul != mul)
+  {
+    cachedAdd = add;
+    cachedMul = mul;
+    if (IsValid(pHero))
+      pHero->RecacheAbilitiesModifiers();
+  }
 }
-bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityTypeId, NDb::Ptr<NDb::Ability> const&) { return mode == GetDB().mode; }
+bool PFApplAbilityMod::IsApplicable(NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility)
+{
+  NDb::AbilityModApplicator const& dbDesc = GetDB();
+  if (dbDesc.mode != mode)
+    return false;
+
+  if (!IsValid(pHero))
+    return true;
+
+  if (abilityType == NDb::ABILITYTYPEID_TALENT && (dbDesc.targetAbilities & NDb::ABILITYIDFLAGS_TALENTS)
+      && !PFAbilityData::IsAbilitySuitable(dbAbility, dbDesc.talents, dbDesc.useListAs))
+    return false;
+
+  if (((dbDesc.targetAbilities == NDb::ABILITYIDFLAGS_SPECIFIC) && dbAbility && (dbDesc.specificAbility == dbAbility))
+      || ((abilityType != NDb::ABILITYTYPEID_SPECIAL) && (dbDesc.targetAbilities & (1 << abilityType))))
+    return true;
+
+  return false;
+}
 void PFApplAbilityMod::AddModifier(float& add, float& mul, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility)
 {
-  if (IsApplicable(mode, abilityType, dbAbility))
+  if (IsApplicable(mode, abilityType, dbAbility) && mode != NDb::ABILITYMODMODE_STATE)
   {
     CheckCachedValues();
     add += cachedAdd;
     mul *= cachedMul;
   }
 }
-void PFApplAbilityMod::Enable() { PFApplBuff::Enable(); }
-void PFApplAbilityMod::Disable() { PFApplBuff::Disable(); }
-bool PFApplAbilityMod::Step(float dtInSeconds) { CheckCachedValues(); return PFApplBuff::Step(dtInSeconds); }
+void PFApplAbilityMod::Enable()
+{
+  PFApplBuff::Enable();
+  if (!IsValid(pHero))
+    return;
+
+  pHero->AddAbilityModifier(this);
+  CheckCachedValues();
+
+  const int provider = LinuxModifierProvider(GetAbilityOwner());
+  if (pTalCdAddVar && pTalCdMulVar)
+  {
+    talCdAddModifierId = pTalCdAddVar->AddModifier(1.0f, cachedAdd, provider);
+    talCdMulModifierId = pTalCdMulVar->AddModifier(cachedMul, 0.0f, provider);
+  }
+  else if (pTalMcAddVar && pTalMcMulVar)
+  {
+    talMcAddModifierId = pTalMcAddVar->AddModifier(1.0f, cachedAdd, provider);
+    talMcMulModifierId = pTalMcMulVar->AddModifier(cachedMul, 0.0f, provider);
+  }
+}
+void PFApplAbilityMod::Disable()
+{
+  if (IsValid(pHero))
+    pHero->RemoveAbilityModifier(this);
+  PFApplBuff::Disable();
+
+  if (pTalCdAddVar && talCdAddModifierId != INVALID_MODIFIER_ID)
+    pTalCdAddVar->RemoveModifier(talCdAddModifierId);
+  if (pTalCdMulVar && talCdMulModifierId != INVALID_MODIFIER_ID)
+    pTalCdMulVar->RemoveModifier(talCdMulModifierId);
+  if (pTalMcAddVar && talMcAddModifierId != INVALID_MODIFIER_ID)
+    pTalMcAddVar->RemoveModifier(talMcAddModifierId);
+  if (pTalMcMulVar && talMcMulModifierId != INVALID_MODIFIER_ID)
+    pTalMcMulVar->RemoveModifier(talMcMulModifierId);
+
+  talCdAddModifierId = INVALID_MODIFIER_ID;
+  talCdMulModifierId = INVALID_MODIFIER_ID;
+  talMcAddModifierId = INVALID_MODIFIER_ID;
+  talMcMulModifierId = INVALID_MODIFIER_ID;
+}
+bool PFApplAbilityMod::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (IsEnabled())
+  {
+    CheckCachedValues();
+    if (pTalCdAddVar && talCdAddModifierId != INVALID_MODIFIER_ID)
+      pTalCdAddVar->UpdateModifierAdd(talCdAddModifierId, cachedAdd);
+    if (pTalCdMulVar && talCdMulModifierId != INVALID_MODIFIER_ID)
+      pTalCdMulVar->UpdateModifierMul(talCdMulModifierId, cachedMul);
+    if (pTalMcAddVar && talMcAddModifierId != INVALID_MODIFIER_ID)
+      pTalMcAddVar->UpdateModifierAdd(talMcAddModifierId, cachedAdd);
+    if (pTalMcMulVar && talMcMulModifierId != INVALID_MODIFIER_ID)
+      pTalMcMulVar->UpdateModifierMul(talMcMulModifierId, cachedMul);
+  }
+
+  return false;
+}
 void PFApplAbilityMod::DumpInfo(NLogg::CChannelLogger&) const {}
-void PFApplAbilityMod::Reset() { PFApplBuff::Reset(); cachedAdd = 0.0f; cachedMul = 1.0f; }
+void PFApplAbilityMod::Reset()
+{
+  PFApplBuff::Reset();
+  cachedAdd = 0.0f;
+  cachedMul = 1.0f;
+  pTalCdAddVar = 0;
+  pTalCdMulVar = 0;
+  pTalMcAddVar = 0;
+  pTalMcMulVar = 0;
+  talCdAddModifierId = INVALID_MODIFIER_ID;
+  talCdMulModifierId = INVALID_MODIFIER_ID;
+  talMcAddModifierId = INVALID_MODIFIER_ID;
+  talMcMulModifierId = INVALID_MODIFIER_ID;
+
+  if (!IsValid(pHero) || !IsValid(pOwner) || pOwner->GetFaction() != pHero->GetFaction())
+    return;
+
+  if ((GetDB().targetAbilities & NDb::ABILITYIDFLAGS_TALENTS) && GetDB().talents.empty())
+  {
+    if (GetDB().mode == NDb::ABILITYMODMODE_COOLDOWN)
+    {
+      pTalCdAddVar = pHero->SearchVariableVWM(UnitVariables::szTalentsCdAdd);
+      pTalCdMulVar = pHero->SearchVariableVWM(UnitVariables::szTalentsCdMul);
+      if (pTalCdMulVar)
+        pTalCdMulVar->SetBaseValue(1.0f);
+    }
+    else if (GetDB().mode == NDb::ABILITYMODMODE_MANACOST)
+    {
+      pTalMcAddVar = pHero->SearchVariableVWM(UnitVariables::szTalentsMcAdd);
+      pTalMcMulVar = pHero->SearchVariableVWM(UnitVariables::szTalentsMcMul);
+      if (pTalMcMulVar)
+        pTalMcMulVar->SetBaseValue(1.0f);
+    }
+  }
+}
 
 bool PFApplAbilityUpgrade::Start()
 {

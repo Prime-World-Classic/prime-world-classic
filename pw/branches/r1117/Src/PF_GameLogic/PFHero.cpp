@@ -344,10 +344,33 @@ void PFBaseHero::SellConsumable(int slot) { RemoveConsumable(slot); }
 float PFBaseHero::GetConsumableCost( const NDb::Consumable * pDBDesc ) const { return pDBDesc ? pDBDesc->naftaCost : 0.0f; }
 void PFBaseHero::RestartGroupCooldowns( PFConsumableAbilityData const* pConsumableAD ) { (void)pConsumableAD; }
 void PFBaseHero::AddConsumableToGroup( PFConsumableAbilityData* pConsumableAD ) { (void)pConsumableAD; }
-void PFBaseHero::AddAbilityModifier( PFApplAbilityMod* appl ) { (void)appl; }
-void PFBaseHero::RemoveAbilityModifier( PFApplAbilityMod* appl ) { (void)appl; }
-void PFBaseHero::RecacheAbilitiesModifiers() {}
-float PFBaseHero::GetModifiedAbilityValue( float value, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility ) const { (void)mode; (void)abilityType; (void)dbAbility; return value; }
+void PFBaseHero::AddAbilityModifier( PFApplAbilityMod* appl )
+{
+  if (!appl)
+    return;
+  rgAbilitiesModifiers.addLast(appl);
+  RecacheAbilitiesModifiers();
+}
+void PFBaseHero::RemoveAbilityModifier( PFApplAbilityMod* appl )
+{
+  if (!appl)
+    return;
+  PFApplAbilityMod::Ring::safeRemove(appl);
+  RecacheAbilitiesModifiers();
+}
+void PFBaseHero::RecacheAbilitiesModifiers() { abilityModsActualizationTime = GetWorld() ? GetWorld()->GetTimeElapsed() : 0.0f; }
+float PFBaseHero::GetModifiedAbilityValue( float value, NDb::EAbilityModMode mode, NDb::EAbilityTypeId abilityType, NDb::Ptr<NDb::Ability> const& dbAbility ) const
+{
+  float add = 0.0f;
+  float mul = 1.0f;
+  for ( ring::Range<PFApplAbilityMod::Ring> it(rgAbilitiesModifiers); it; ++it )
+  {
+    PFApplAbilityMod* pAppl = &(*it);
+    if (IsValid(pAppl))
+      pAppl->AddModifier(add, mul, mode, abilityType, dbAbility);
+  }
+  return value * mul + add;
+}
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const StatisticService::RPC::SessionEventInfo & params ) { (void)eventType; (void)params; }
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, const NDb::DbResource * resource) { (void)eventType; (void)resource; }
 void PFBaseHero::LogSessionEvent( SessionEventType::EventType eventType, int intParam1) { (void)eventType; (void)intParam1; }
