@@ -161,6 +161,58 @@ bool PFApplBuff::NeedToDisableOnDeath() const { return (GetDBAppl<NDb::BuffAppli
 bool PFApplAddApplicatorDuration::Start()
 {
   PFBaseApplicator::Start();
+  if (GetDB().applicators.empty())
+    return true;
+
+  const bool bCheckByName = GetDB().flags & NDb::UPDATEDURATIONFLAGS_CHECKBYFORMULANAME;
+  const bool bSetDuration = GetDB().flags & NDb::UPDATEDURATIONFLAGS_SETDURATION;
+
+  struct UpdateApplicatorDuration : public NonCopyable
+  {
+    UpdateApplicatorDuration(vector<NDb::Ptr<NDb::BuffApplicator> > const& dbApplList_, float durationToAdd_, string const& nameToCheck_, bool bCheckByName_, bool bSetDuration_)
+      : dbApplList(dbApplList_)
+      , durationToAdd(durationToAdd_)
+      , nameToCheck(nameToCheck_)
+      , bCheckByName(bCheckByName_)
+      , bSetDuration(bSetDuration_)
+    {
+    }
+
+    void operator()(const CObj<PFBaseApplicator>& pAppl)
+    {
+      if (!pAppl || !pAppl->GetDBBase())
+        return;
+
+      for (vector<NDb::Ptr<NDb::BuffApplicator> >::const_iterator it = dbApplList.begin(); it != dbApplList.end(); ++it)
+      {
+        if (!*it)
+          continue;
+
+        if (pAppl->GetDBBase()->GetDBID() == (*it)->GetDBID() && (!bCheckByName || nameToCheck == pAppl->GetApplicatorName()))
+        {
+          PFApplBuff* pApplBuff = static_cast<PFApplBuff*>(pAppl.GetPtr());
+          if (pApplBuff->GetDuration() > 0.0f)
+            pApplBuff->SetDuration(bSetDuration ? durationToAdd : pApplBuff->GetDuration() + durationToAdd);
+
+          if (pApplBuff->GetLifetime() > 0.0f)
+            pApplBuff->SetLifetime(bSetDuration ? durationToAdd : pApplBuff->GetLifetime() + durationToAdd);
+
+          return;
+        }
+      }
+    }
+
+  private:
+    vector<NDb::Ptr<NDb::BuffApplicator> > const& dbApplList;
+    float durationToAdd;
+    string const& nameToCheck;
+    bool bCheckByName;
+    bool bSetDuration;
+  } updateApplicatorDuration(GetDB().applicators, RetrieveParam(GetDB().durationToAdd, 0.0f), GetDB().nameToCheck, bCheckByName, bSetDuration);
+
+  if (IsValid(pReceiver))
+    pReceiver->ForAllAppliedApplicators(updateApplicatorDuration);
+
   return true;
 }
 
