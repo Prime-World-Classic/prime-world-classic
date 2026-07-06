@@ -431,7 +431,34 @@ float PFAbilityData::GetUseRange(const NWorld::Target & target) const
 {
   return target.IsUnit() ? GetUseRange(target.GetUnit()) : GetUseRange();
 }
-NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const { (void)bFromMinimap; altTarget = origTarget; return 0; }
+NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const
+{
+  altTarget = origTarget;
+  if (!pDBDesc)
+    return 0;
+
+  typedef vector<NDb::Ptr<NDb::AlternativeTarget> > AlternativeTargets;
+  AlternativeTargets const& dbAltTargets = pDBDesc->alternativeTargets;
+  for (int i = 0; i < dbAltTargets.size(); ++i)
+  {
+    NDb::AlternativeTarget const* pDBAltTarget = dbAltTargets[i];
+    if (!pDBAltTarget || !pDBAltTarget->targetSelector || pDBAltTarget->fromMinimap != bFromMinimap)
+      continue;
+
+    const PFTargetSelector::RequestParams rp(GetOwner(), this, origTarget);
+    CObj<PFSingleTargetSelector> pTS = static_cast<PFSingleTargetSelector*>(pDBAltTarget->targetSelector->Create(0));
+    Target target;
+    if (pTS && pTS->FindTarget(rp, target))
+    {
+      if (pDBAltTarget->updateTarget)
+        altTarget = target;
+
+      return pDBAltTarget;
+    }
+  }
+
+  return 0;
+}
 void PFAbilityData::AddInstance(CObj<PFAbilityInstance> const& inst) { if (inst) rgInstances.push_back( inst ); }
 void PFAbilityData::SwitchOff()
 {
