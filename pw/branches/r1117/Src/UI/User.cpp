@@ -6,7 +6,7 @@
 
 #include "../System/InlineProfiler.h"
 
-#if defined(NV_LINUX_PLATFORM) && (defined(PW_LINUX_NULL_RENDER) || defined(PW_LINUX_OPENGL_BOOTSTRAP))
+#if defined(NV_LINUX_PLATFORM) && defined(PW_LINUX_NULL_RENDER) && !defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #define PW_LINUX_UI_USER_BOOTSTRAP 1
 #else
 #include "Window.h"

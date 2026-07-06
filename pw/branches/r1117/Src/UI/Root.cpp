@@ -305,7 +305,7 @@ User * GetUser()
 void NewFrame( DWORD time )
 {
 	g_syncTime = time;
-#if !defined(PW_LINUX_UI_BOOTSTRAP)
+#if !defined(PW_LINUX_UI_BOOTSTRAP) || defined(PW_LINUX_OPENGL_BOOTSTRAP)
 	NCursors::Reset();
 #endif
 }
