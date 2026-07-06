@@ -85,10 +85,19 @@ namespace
 float g_linuxBootstrapTime = 0.0f;
 float g_linuxBootstrapTimeDelta = 1.0f / 60.0f;
 float g_linuxBootstrapTimeScale = 1.0f;
+// Keep HP time on the native engine timer while simulation time stays fixed-step.
+NHPTimer::STime g_linuxBootstrapHPTime = 0;
+
+NHPTimer::STime UpdateLinuxBootstrapHPTime()
+{
+  NHPTimer::GetTime(g_linuxBootstrapHPTime);
+  return g_linuxBootstrapHPTime;
+}
 }
 
 void UpdateTime()
 {
+  UpdateLinuxBootstrapHPTime();
   g_linuxBootstrapTime += g_linuxBootstrapTimeDelta * g_linuxBootstrapTimeScale;
 }
 
@@ -103,7 +112,11 @@ float GetTime()
 
 NHPTimer::STime GetHPTime()
 {
-  return 0;
+  if (!g_linuxBootstrapHPTime)
+  {
+    return UpdateLinuxBootstrapHPTime();
+  }
+  return g_linuxBootstrapHPTime;
 }
 
 float GetTimeDelta()
