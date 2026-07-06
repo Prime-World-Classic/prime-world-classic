@@ -15123,17 +15123,10 @@ const char* DescribeLinuxRendererTextureBindingFallbackRemovable(
   size_t manualFallbackOnlyBatches,
   size_t missingGL)
 {
-  return manualFallbackBinds > 0 && manualFallbackOnlyBatches == 0 && missingGL == 0 ?
+  (void)manualFallbackBinds;
+  return manualFallbackOnlyBatches == 0 && missingGL == 0 ?
     "yes" :
     "no";
-}
-
-void RecordLinuxRendererManualFallbackTextureBind(LinuxRendererMaterialSlotStats* stats)
-{
-  if (stats)
-  {
-    ++stats->manualFallbackBinds;
-  }
 }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -50886,7 +50879,6 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
   Render::SmartRenderer::ResetTriangleAndDipCount();
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
 
-  bool textureEnabled = false;
   size_t totalPayloads = 0;
   size_t totalBatches = 0;
   const std::vector<LinuxMapAnimatedGeometryPayloadPreview>& payloads =
@@ -50987,32 +50979,10 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
           batch->elementNumber < slotTextureIndices.size() ?
           slotTextureIndices[batch->elementNumber] :
           kLinuxHeroPreviewNoDiffuseTexture;
-        const GLuint diffuseTexture =
-          textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
-          ResolveLinuxMapPreviewDiffuseTexture(overlay, selectedMapPreview, textureIndex) :
-          0;
-#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
-        const bool manualTextureBound = diffuseTexture != 0;
-#endif
         RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, materialStats);
-        if (diffuseTexture)
-        {
-          if (!textureEnabled)
-          {
-            glEnable(GL_TEXTURE_2D);
-            textureEnabled = true;
-          }
-          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
-          RecordLinuxRendererManualFallbackTextureBind(materialStats);
-        }
-        else if (textureEnabled)
-        {
-          glBindTexture(GL_TEXTURE_2D, 0);
-          glDisable(GL_TEXTURE_2D);
-          textureEnabled = false;
-        }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        Render::SmartRenderer::UnBindTexture(0u);
         const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
           Render::SmartRenderer::GetOpenGLTextureBindStats();
 #endif
@@ -51020,7 +50990,7 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         RecordLinuxRendererSmartTextureBindStats(
           bindStatsBefore,
-          manualTextureBound,
+          false,
           materialStats);
 #endif
         batch->Draw();
@@ -51035,11 +51005,7 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
     }
   }
 
-  if (textureEnabled)
-  {
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-  }
+  Render::SmartRenderer::UnBindTexture(0u);
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
 
   unsigned int triangles = 0;
@@ -52650,32 +52616,10 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
         batch->elementNumber < slotTextureIndices.size() ?
         slotTextureIndices[batch->elementNumber] :
         kLinuxHeroPreviewNoDiffuseTexture;
-      const GLuint diffuseTexture =
-        textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
-        ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
-        0;
-#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
-      const bool manualTextureBound = diffuseTexture != 0;
-#endif
       RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, &materialStats);
-      if (diffuseTexture)
-      {
-        if (!textureEnabled)
-        {
-          glEnable(GL_TEXTURE_2D);
-          textureEnabled = true;
-        }
-        glBindTexture(GL_TEXTURE_2D, diffuseTexture);
-        RecordLinuxRendererManualFallbackTextureBind(&materialStats);
-      }
-      else if (textureEnabled)
-      {
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glDisable(GL_TEXTURE_2D);
-        textureEnabled = false;
-      }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+      Render::SmartRenderer::UnBindTexture(0u);
       const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
         Render::SmartRenderer::GetOpenGLTextureBindStats();
 #endif
@@ -52683,7 +52627,7 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
       RecordLinuxRendererSmartTextureBindStats(
         bindStatsBefore,
-        manualTextureBound,
+        false,
         &materialStats);
 #endif
       batch->Draw();
@@ -52691,6 +52635,7 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
     }
   }
 
+  Render::SmartRenderer::UnBindTexture(0u);
   size_t staticPayloads = 0;
   size_t staticTriangles = 0;
   const size_t staticBatches = DrawLinuxHeroRendererStaticMeshPayloads(
