@@ -4831,6 +4831,22 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyHeroTalentSlotsShown;
   size_t visibleLobbyHeroTalentIconsDrawn;
   size_t visibleLobbyHeroTalentIconsMissing;
+  bool visibleHeroLobbyDrawn;
+  size_t visibleHeroLobbyRowsDrawn;
+  size_t visibleHeroLobbyTeam1RowsDrawn;
+  size_t visibleHeroLobbyTeam2RowsDrawn;
+  size_t visibleHeroLobbyLocalRowsDrawn;
+  size_t visibleHeroLobbyReadyRowsDrawn;
+  size_t visibleHeroLobbyNotReadyRowsDrawn;
+  size_t visibleHeroLobbySelectedRowsDrawn;
+  size_t visibleHeroLobbyActionButtonsDrawn;
+  size_t visibleHeroLobbyActionButtonsEnabled;
+  size_t visibleHeroLobbyActionButtonsSelected;
+  bool visibleHeroLobbyReadyButtonDrawn;
+  int visibleHeroLobbySelectedTeam;
+  int visibleHeroLobbySelectedFaction;
+  bool visibleHeroLobbyReady;
+  std::string visibleHeroLobbySelectedHeroId;
   bool visibleLoadingRosterDrawn;
   size_t visibleLoadingRosterRowsDrawn;
   size_t visibleLoadingRosterLocalRowsDrawn;
@@ -6078,6 +6094,22 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyHeroTalentSlotsShown(0),
       visibleLobbyHeroTalentIconsDrawn(0),
       visibleLobbyHeroTalentIconsMissing(0),
+      visibleHeroLobbyDrawn(false),
+      visibleHeroLobbyRowsDrawn(0),
+      visibleHeroLobbyTeam1RowsDrawn(0),
+      visibleHeroLobbyTeam2RowsDrawn(0),
+      visibleHeroLobbyLocalRowsDrawn(0),
+      visibleHeroLobbyReadyRowsDrawn(0),
+      visibleHeroLobbyNotReadyRowsDrawn(0),
+      visibleHeroLobbySelectedRowsDrawn(0),
+      visibleHeroLobbyActionButtonsDrawn(0),
+      visibleHeroLobbyActionButtonsEnabled(0),
+      visibleHeroLobbyActionButtonsSelected(0),
+      visibleHeroLobbyReadyButtonDrawn(false),
+      visibleHeroLobbySelectedTeam(0),
+      visibleHeroLobbySelectedFaction(0),
+      visibleHeroLobbyReady(false),
+      visibleHeroLobbySelectedHeroId("<none>"),
       visibleLoadingRosterDrawn(false),
       visibleLoadingRosterRowsDrawn(0),
       visibleLoadingRosterLocalRowsDrawn(0),
@@ -31421,7 +31453,9 @@ void UpdateLinuxVisibleMenuRuntime(LinuxBootstrapScreenRuntime* runtime)
     runtime->visibleLobbyJoinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
   }
   runtime->visibleMenuPath = runtime->visibleMenuReady ?
-    "Linux visible lobby overlay + NGameX::SelectGameModeScreen" :
+    (IsLinuxBootstrapHeroScreenActive(runtime) ?
+      "Linux visible hero lobby overlay + NGameX::SelectHeroScreen" :
+      "Linux visible lobby overlay + NGameX::SelectGameModeScreen") :
     "inactive";
 }
 
@@ -52951,7 +52985,8 @@ void DrawLinuxCharacterPreviewMannequin(
 void DrawLinuxBootstrapHeroPreviewDetails(
   const LinuxOverlayUiRenderContext& renderContext,
   const LinuxScreenRect& rect,
-  const LinuxHeroCatalogEntry* heroEntry
+  const LinuxHeroCatalogEntry* heroEntry,
+  int reservedBottomLineCount = 2
 );
 
 void DrawLinuxBootstrapCharacterPreview(const LinuxOverlayUiRenderContext& renderContext)
@@ -54636,7 +54671,8 @@ std::string ResolveLinuxBootstrapHeroPreviewTitle(
 void DrawLinuxBootstrapHeroPreviewDetails(
   const LinuxOverlayUiRenderContext& renderContext,
   const LinuxScreenRect& rect,
-  const LinuxHeroCatalogEntry* heroEntry
+  const LinuxHeroCatalogEntry* heroEntry,
+  int reservedBottomLineCount
 )
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -54837,8 +54873,11 @@ void DrawLinuxBootstrapHeroPreviewDetails(
       0;
     const int abilityPanelH = !visibleAbilities.empty() ? abilityIconSize + padding * 2 : 0;
     const int iconPanelH = std::max(abilityPanelH, talentPanelH);
+    const int reservedBottomH =
+      std::max(0, reservedBottomLineCount) * lineHeight +
+      (reservedBottomLineCount > 0 ? 6 : 0);
     const int iconPanelY =
-      rect.y + rect.height - iconPanelH - padding - lineHeight * 2 - 6;
+      rect.y + rect.height - iconPanelH - padding - reservedBottomH;
 
     if (!visibleAbilities.empty() && iconPanelY > topPanelY + topPanelH + padding)
     {
@@ -55863,6 +55902,464 @@ int DrawLinuxLobbyPlayerCount(
     DrawOpenGlBorderRect(valueX + 2, valueY + 2, std::max(1, valueW - 4), std::max(1, valueH - 4));
   }
   return players;
+}
+
+void ResetLinuxVisibleHeroLobbyRuntime(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->visibleHeroLobbyDrawn = false;
+  runtime->visibleHeroLobbyRowsDrawn = 0;
+  runtime->visibleHeroLobbyTeam1RowsDrawn = 0;
+  runtime->visibleHeroLobbyTeam2RowsDrawn = 0;
+  runtime->visibleHeroLobbyLocalRowsDrawn = 0;
+  runtime->visibleHeroLobbyReadyRowsDrawn = 0;
+  runtime->visibleHeroLobbyNotReadyRowsDrawn = 0;
+  runtime->visibleHeroLobbySelectedRowsDrawn = 0;
+  runtime->visibleHeroLobbyActionButtonsDrawn = 0;
+  runtime->visibleHeroLobbyActionButtonsEnabled = 0;
+  runtime->visibleHeroLobbyActionButtonsSelected = 0;
+  runtime->visibleHeroLobbyReadyButtonDrawn = false;
+  runtime->visibleHeroLobbySelectedTeam = 0;
+  runtime->visibleHeroLobbySelectedFaction = 0;
+  runtime->visibleHeroLobbyReady = false;
+  runtime->visibleHeroLobbySelectedHeroId = "<none>";
+}
+
+std::string ResolveLinuxVisibleHeroLobbyHeroTitle(
+  const LinuxHeroCatalog& heroCatalog,
+  const std::string& heroId,
+  const LinuxLocalMatchSlot& slot
+)
+{
+  if (!heroId.empty())
+  {
+    const size_t heroIndex = FindHeroCatalogIndex(heroCatalog, heroId);
+    if (heroIndex != static_cast<size_t>(-1))
+    {
+      const LinuxHeroCatalogEntry& heroEntry = heroCatalog.entries[heroIndex];
+      return heroEntry.title.empty() ? ResolveHeroCatalogId(heroEntry) : heroEntry.title;
+    }
+  }
+
+  return slot.heroTitle.empty() ? slot.heroId : slot.heroTitle;
+}
+
+const LinuxHeroCatalogEntry* ResolveLinuxVisibleHeroLobbySelectedHero(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxLocalMatchPreview& localMatchPreview,
+  const std::string& selectedHeroId
+)
+{
+  if (!selectedHeroId.empty())
+  {
+    const size_t heroIndex = FindHeroCatalogIndex(heroCatalog, selectedHeroId);
+    if (heroIndex != static_cast<size_t>(-1))
+    {
+      return &heroCatalog.entries[heroIndex];
+    }
+  }
+
+  if (localMatchPreview.ready &&
+      localMatchPreview.selectedSlotIndex < localMatchPreview.lineup.size())
+  {
+    const LinuxLocalMatchSlot& selectedSlot =
+      localMatchPreview.lineup[localMatchPreview.selectedSlotIndex];
+    if (selectedSlot.heroIndex < heroCatalog.entries.size())
+    {
+      return &heroCatalog.entries[selectedSlot.heroIndex];
+    }
+  }
+
+  return 0;
+}
+
+void DrawLinuxVisibleHeroLobbyRosterRow(
+  const LinuxOverlayUiRenderContext& renderContext,
+  const LinuxLobbyLayoutTransform& layout,
+  int rowX,
+  int rowY,
+  int rowW,
+  int rowH,
+  size_t slotIndex,
+  const LinuxLocalMatchSlot& slot,
+  int displayTeam,
+  const std::string& heroId,
+  const std::string& heroTitle,
+  bool local,
+  bool ready,
+  bool selected
+)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  if (!overlay)
+  {
+    return;
+  }
+
+  if (overlay->lobbyPanel.texture)
+  {
+    DrawOpenGlTextureStretch(
+      overlay->lobbyPanel,
+      rowX,
+      rowY,
+      rowW,
+      rowH,
+      selected ? 178 : 126);
+  }
+  else
+  {
+    SetOpenGlColor(selected ? 45 : 15, selected ? 55 : 22, selected ? 43 : 27, selected ? 204 : 174);
+    DrawOpenGlRect(rowX, rowY, rowW, rowH);
+  }
+  if (selected && overlay->lobbySelectionFrame.texture)
+  {
+    DrawOpenGlTextureStretch(overlay->lobbySelectionFrame, rowX, rowY, rowW, rowH, 226);
+  }
+  else
+  {
+    SetOpenGlColor(selected ? 213 : 65, selected ? 174 : 79, selected ? 82 : 78, selected ? 220 : 155);
+    DrawOpenGlBorderRect(rowX, rowY, rowW, rowH);
+  }
+
+  const int portraitSize = std::max(38, std::min(layout.H(52), rowH - layout.H(12)));
+  const int portraitX = rowX + layout.W(10);
+  const int portraitY = rowY + std::max(4, (rowH - portraitSize) / 2);
+  bool portraitDrawn = false;
+  if (renderContext.lineupHeroPreviews &&
+      slotIndex < renderContext.lineupHeroPreviews->size())
+  {
+    const LinuxSelectedHeroDbPreview& preview = (*renderContext.lineupHeroPreviews)[slotIndex];
+    const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+      ResolveLinuxLobbyCachedTextureAsset(overlay, preview.portrait);
+    if (portraitTexture)
+    {
+      DrawOpenGlTextureCover(
+        portraitTexture->texture,
+        portraitTexture->width,
+        portraitTexture->height,
+        portraitX,
+        portraitY,
+        portraitSize,
+        portraitSize);
+      portraitDrawn = true;
+    }
+  }
+  if (!portraitDrawn)
+  {
+    SetOpenGlColor(local ? 76 : 42, local ? 113 : 73, local ? 130 : 88, 218);
+    DrawOpenGlRect(portraitX, portraitY, portraitSize, portraitSize);
+    SetOpenGlColor(238, 230, 190, 228);
+    DrawOpenGlTextInBox(
+      overlay,
+      portraitX,
+      portraitY,
+      portraitSize,
+      portraitSize,
+      local ? "P" : "B",
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false);
+  }
+  SetOpenGlColor(local ? 235 : 149, local ? 205 : 162, local ? 120 : 162, 232);
+  DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+
+  const int textX = portraitX + portraitSize + layout.W(12);
+  const int badgeW = layout.W(72);
+  const int textW = std::max(40, rowX + rowW - textX - badgeW - layout.W(18));
+  const std::string playerName = local ?
+    std::string("Linux Player") :
+    NStr::StrFmt("Bot %lu", static_cast<unsigned long>(slotIndex + 1));
+  const std::string titleText = heroTitle.empty() ? heroId : heroTitle;
+  SetOpenGlColor(238, 236, 222, 244);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    rowY + layout.H(8),
+    textW,
+    layout.H(22),
+    playerName,
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false);
+  SetOpenGlColor(167, 184, 184, 222);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    rowY + layout.H(33),
+    textW,
+    layout.H(22),
+    MakeOpenGlOverlayText(
+      overlay,
+      TruncateForOverlay(titleText, 34),
+      TruncateForOverlay(heroId.empty() ? std::string("Hero") : heroId, 34)),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false);
+
+  const int chipX = rowX + rowW - badgeW - layout.W(10);
+  const int chipY = rowY + layout.H(18);
+  const int chipH = layout.H(28);
+  SetOpenGlColor(ready ? 31 : 86, ready ? 92 : 58, ready ? 62 : 45, 218);
+  DrawOpenGlRect(chipX, chipY, badgeW, chipH);
+  SetOpenGlColor(ready ? 126 : 198, ready ? 184 : 132, ready ? 116 : 91, 232);
+  DrawOpenGlBorderRect(chipX, chipY, badgeW, chipH);
+  SetOpenGlColor(235, 231, 204, 238);
+  DrawOpenGlTextInBox(
+    overlay,
+    chipX + layout.W(3),
+    chipY,
+    std::max(1, badgeW - layout.W(6)),
+    chipH,
+    ready ? "Ready" : "Wait",
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false);
+
+  if (local)
+  {
+    const std::string teamText = NStr::StrFmt("T%d", displayTeam);
+    SetOpenGlColor(212, 176, 76, 232);
+    DrawOpenGlTextInBox(
+      overlay,
+      rowX + layout.W(8),
+      rowY + rowH - layout.H(18),
+      layout.W(40),
+      layout.H(16),
+      teamText,
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false);
+  }
+}
+
+void RenderWindowOverlayOpenGlLobbyHeroScreen(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  ResetLinuxVisibleHeroLobbyRuntime(runtime);
+  if (!overlay || !renderContext.localMatchPreview || !renderContext.heroCatalog)
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const LinuxLocalMatchPreview& localMatchPreview = *renderContext.localMatchPreview;
+  const LinuxHeroCatalog& heroCatalog = *renderContext.heroCatalog;
+  const LinuxLobbyLayoutTransform layout(width, height);
+  if (overlay->lobbyBackgroundTexture)
+  {
+    DrawOpenGlTextureCover(
+      overlay->lobbyBackgroundTexture,
+      overlay->lobbyBackgroundWidth,
+      overlay->lobbyBackgroundHeight,
+      0,
+      0,
+      width,
+      height);
+  }
+  else if (overlay->artworkTexture)
+  {
+    DrawOpenGlTextureCover(overlay, 0, 0, width, height);
+  }
+  else
+  {
+    SetOpenGlColor(13, 17, 21);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+
+  SetOpenGlColor(0, 0, 0, 48);
+  DrawOpenGlRect(0, 0, width, height);
+
+  DrawLinuxBootstrapCharacterPreview(renderContext);
+
+  DrawLinuxLobbyHeader(overlay, layout, 65, 78, 546, 60, "Doct");
+  DrawLinuxLobbyHeader(overlay, layout, 669, 78, 546, 60, "Adornia");
+  DrawLinuxLobbyPanel(overlay, layout, 65, 140, 546, 620);
+  DrawLinuxLobbyPanel(overlay, layout, 669, 140, 546, 620);
+
+  int selectedTeam = localMatchPreview.humanTeam;
+  int selectedFaction = selectedTeam;
+  bool ready = false;
+  std::string selectedHeroId;
+  if (runtime && IsValid(runtime->gameContext))
+  {
+    const int contextTeam = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedTeam());
+    const int contextFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedFaction());
+    selectedTeam = contextTeam > 0 ? contextTeam : selectedTeam;
+    selectedFaction = contextFaction > 0 ? contextFaction : selectedFaction;
+    ready = runtime->gameContext->GetReadyState() != lobby::EGameMemberReadiness::NotReady;
+    selectedHeroId = runtime->gameContext->GetSelectedHeroId().c_str();
+  }
+  if (selectedHeroId.empty())
+  {
+    selectedHeroId = ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview).c_str();
+  }
+
+  const int rowH = layout.H(96);
+  const int rowW = layout.W(518);
+  const int teamPanelY = layout.Y(152);
+  const int rowGap = layout.H(10);
+  size_t rowsDrawn = 0;
+  size_t team1Rows = 0;
+  size_t team2Rows = 0;
+  size_t localRows = 0;
+  size_t readyRows = 0;
+  size_t notReadyRows = 0;
+  size_t selectedRows = 0;
+  size_t teamRowOffsets[2] = {0, 0};
+
+  for (size_t i = 0; i < localMatchPreview.lineup.size(); ++i)
+  {
+    const LinuxLocalMatchSlot& slot = localMatchPreview.lineup[i];
+    int displayTeam = slot.team;
+    std::string heroId = slot.heroId;
+    if (slot.human)
+    {
+      displayTeam = selectedTeam > 0 ? selectedTeam : displayTeam;
+      if (!selectedHeroId.empty())
+      {
+        heroId = selectedHeroId;
+      }
+    }
+    if (displayTeam != 1 && displayTeam != 2)
+    {
+      continue;
+    }
+
+    const size_t teamIndex = static_cast<size_t>(displayTeam - 1);
+    const size_t rowIndex = teamRowOffsets[teamIndex]++;
+    const int rowX = layout.X(displayTeam == 1 ? 79 : 683);
+    const int rowY = teamPanelY + static_cast<int>(rowIndex) * (rowH + rowGap);
+    if (rowY + rowH > layout.Y(746))
+    {
+      continue;
+    }
+
+    const bool local = slot.human;
+    const bool slotReady = local ? ready : true;
+    const bool selected = local;
+    const std::string heroTitle = ResolveLinuxVisibleHeroLobbyHeroTitle(heroCatalog, heroId, slot);
+    DrawLinuxVisibleHeroLobbyRosterRow(
+      renderContext,
+      layout,
+      rowX,
+      rowY,
+      rowW,
+      rowH,
+      i,
+      slot,
+      displayTeam,
+      heroId,
+      heroTitle,
+      local,
+      slotReady,
+      selected);
+
+    ++rowsDrawn;
+    if (displayTeam == 1)
+    {
+      ++team1Rows;
+    }
+    else
+    {
+      ++team2Rows;
+    }
+    if (local)
+    {
+      ++localRows;
+    }
+    if (slotReady)
+    {
+      ++readyRows;
+    }
+    else
+    {
+      ++notReadyRows;
+    }
+    if (selected)
+    {
+      ++selectedRows;
+    }
+  }
+
+  const LinuxHeroCatalogEntry* selectedHeroEntry =
+    ResolveLinuxVisibleHeroLobbySelectedHero(heroCatalog, localMatchPreview, selectedHeroId);
+  DrawLinuxBootstrapHeroPreviewDetails(
+    renderContext,
+    MakeLinuxScreenRect(layout.X(65), layout.Y(700), layout.W(762), layout.H(290)),
+    selectedHeroEntry,
+    0);
+
+  const std::string selectedHeroTitle = selectedHeroEntry ?
+    (selectedHeroEntry->title.empty() ? ResolveHeroCatalogId(*selectedHeroEntry) : selectedHeroEntry->title) :
+    (selectedHeroId.empty() ? std::string("<none>") : selectedHeroId);
+  DrawLinuxLobbyPanel(overlay, layout, 846, 774, 369, 102);
+  SetOpenGlColor(238, 232, 210, 244);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(866),
+    layout.Y(790),
+    layout.W(329),
+    layout.H(24),
+    MakeOpenGlOverlayText(overlay, TruncateForOverlay(selectedHeroTitle, 34), selectedHeroId),
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false);
+  SetOpenGlColor(169, 184, 184, 224);
+  DrawOpenGlTextInBox(
+    overlay,
+    layout.X(866),
+    layout.Y(822),
+    layout.W(329),
+    layout.H(22),
+    NStr::StrFmt("Team %d  Faction %d", selectedTeam, selectedFaction),
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false);
+
+  size_t actionButtonsDrawn = 0;
+  size_t actionButtonsEnabled = 0;
+  size_t actionButtonsSelected = 0;
+  DrawLinuxLobbyButton(
+    overlay,
+    layout,
+    900,
+    902,
+    262,
+    59,
+    ready ? "Ready" : "Not ready",
+    true,
+    true,
+    false);
+  ++actionButtonsDrawn;
+  ++actionButtonsEnabled;
+  ++actionButtonsSelected;
+
+  if (runtime)
+  {
+    runtime->visibleHeroLobbyDrawn = true;
+    runtime->visibleHeroLobbyRowsDrawn = rowsDrawn;
+    runtime->visibleHeroLobbyTeam1RowsDrawn = team1Rows;
+    runtime->visibleHeroLobbyTeam2RowsDrawn = team2Rows;
+    runtime->visibleHeroLobbyLocalRowsDrawn = localRows;
+    runtime->visibleHeroLobbyReadyRowsDrawn = readyRows;
+    runtime->visibleHeroLobbyNotReadyRowsDrawn = notReadyRows;
+    runtime->visibleHeroLobbySelectedRowsDrawn = selectedRows;
+    runtime->visibleHeroLobbyActionButtonsDrawn = actionButtonsDrawn;
+    runtime->visibleHeroLobbyActionButtonsEnabled = actionButtonsEnabled;
+    runtime->visibleHeroLobbyActionButtonsSelected = actionButtonsSelected;
+    runtime->visibleHeroLobbyReadyButtonDrawn = true;
+    runtime->visibleHeroLobbySelectedTeam = selectedTeam;
+    runtime->visibleHeroLobbySelectedFaction = selectedFaction;
+    runtime->visibleHeroLobbyReady = ready;
+    runtime->visibleHeroLobbySelectedHeroId =
+      selectedHeroId.empty() ? std::string("<none>") : selectedHeroId;
+  }
 }
 
 void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderContext& renderContext)
@@ -59816,6 +60313,10 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
     {
       RenderWindowOverlayOpenGlVisibleMenu(renderContext);
     }
+    else if (IsLinuxBootstrapHeroScreenActive(renderContext.screenRuntime))
+    {
+      RenderWindowOverlayOpenGlLobbyHeroScreen(renderContext);
+    }
     else
     {
       RenderWindowOverlayOpenGlLobbySelectGameMode(renderContext);
@@ -63068,6 +63569,33 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyHeroTalentIconsDrawn << "\n";
   logFile << "  finalVisibleLobbyHeroTalentIconsMissing="
           << screenRuntime.visibleLobbyHeroTalentIconsMissing << "\n";
+  logFile << "  finalVisibleHeroLobbyDrawn="
+          << (screenRuntime.visibleHeroLobbyDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleHeroLobbyRows="
+          << screenRuntime.visibleHeroLobbyRowsDrawn << "\n";
+  logFile << "  finalVisibleHeroLobbyTeams="
+          << screenRuntime.visibleHeroLobbyTeam1RowsDrawn << "/"
+          << screenRuntime.visibleHeroLobbyTeam2RowsDrawn << "\n";
+  logFile << "  finalVisibleHeroLobbyLocalRows="
+          << screenRuntime.visibleHeroLobbyLocalRowsDrawn << "\n";
+  logFile << "  finalVisibleHeroLobbyReadyRows="
+          << screenRuntime.visibleHeroLobbyReadyRowsDrawn << "/"
+          << screenRuntime.visibleHeroLobbyNotReadyRowsDrawn << "\n";
+  logFile << "  finalVisibleHeroLobbySelectedRows="
+          << screenRuntime.visibleHeroLobbySelectedRowsDrawn << "\n";
+  logFile << "  finalVisibleHeroLobbyButtons="
+          << screenRuntime.visibleHeroLobbyActionButtonsDrawn << "/"
+          << screenRuntime.visibleHeroLobbyActionButtonsEnabled << "/"
+          << screenRuntime.visibleHeroLobbyActionButtonsSelected << "\n";
+  logFile << "  finalVisibleHeroLobbyReadyButton="
+          << (screenRuntime.visibleHeroLobbyReadyButtonDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleHeroLobbySelection="
+          << screenRuntime.visibleHeroLobbySelectedTeam << "/"
+          << screenRuntime.visibleHeroLobbySelectedFaction << "/"
+          << (screenRuntime.visibleHeroLobbyReady ? "ready" : "not-ready") << "/"
+          << (screenRuntime.visibleHeroLobbySelectedHeroId.empty() ?
+              "<none>" :
+              screenRuntime.visibleHeroLobbySelectedHeroId) << "\n";
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingInfoLines="
@@ -67133,6 +67661,25 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconsMissing),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentReadyCount),
     static_cast<unsigned long>(screenRuntime.visibleLobbyHeroTalentIconCount));
+  fprintf(stdout, "Final visible hero lobby: drawn=%s rows=%lu teams=%lu/%lu local=%lu ready=%lu/%lu selectedRows=%lu buttons=%lu/%lu/%lu readyButton=%s selection=%d/%d/%s/%s\n",
+    screenRuntime.visibleHeroLobbyDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyTeam1RowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyTeam2RowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyLocalRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyReadyRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyNotReadyRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbySelectedRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyActionButtonsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyActionButtonsEnabled),
+    static_cast<unsigned long>(screenRuntime.visibleHeroLobbyActionButtonsSelected),
+    screenRuntime.visibleHeroLobbyReadyButtonDrawn ? "yes" : "no",
+    screenRuntime.visibleHeroLobbySelectedTeam,
+    screenRuntime.visibleHeroLobbySelectedFaction,
+    screenRuntime.visibleHeroLobbyReady ? "ready" : "not-ready",
+    screenRuntime.visibleHeroLobbySelectedHeroId.empty() ?
+      "<none>" :
+      screenRuntime.visibleHeroLobbySelectedHeroId.c_str());
   fprintf(stdout, "Final hero renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
     static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshAuthoredMaterials),
     static_cast<unsigned long>(screenRuntime.characterPreviewRendererMeshDiffuseSamplers),
