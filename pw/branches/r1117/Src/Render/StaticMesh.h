@@ -26,8 +26,13 @@ namespace Render
 {
 
 struct SceneConstants;
+class BaseMaterial;
 #if !defined(PW_LINUX_NULL_RENDER)
 class LightsData;
+#endif
+
+#if defined(PW_LINUX_NULL_RENDER)
+BaseMaterial* CreateLinuxStaticMeshPreviewMaterial(const NDb::Material* dbMaterial);
 #endif
 
 #if defined(NV_LINUX_PLATFORM)

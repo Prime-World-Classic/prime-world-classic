@@ -1368,6 +1368,7 @@ struct LinuxHeroStaticGeometryPayloadPreview
   std::string geometryFile;
   std::string rootGeometryFile;
   std::vector<size_t> materialDiffuseTextureIndices;
+  std::vector<NDb::Ptr<NDb::Material> > materialReferences;
   Placement placement;
   Placement originalPlacement;
   Placement locatorParentPlacement;
@@ -2003,6 +2004,7 @@ struct LinuxMapStaticGeometryPayloadPreview
   std::string geometryFile;
   std::string rootGeometryFile;
   std::vector<size_t> materialDiffuseTextureIndices;
+  std::vector<NDb::Ptr<NDb::Material> > materialReferences;
   Placement placement;
 };
 
@@ -4868,10 +4870,26 @@ struct LinuxBootstrapScreenRuntime
   size_t characterPreviewRendererStaticMeshPayloads;
   size_t characterPreviewRendererStaticMeshBatches;
   size_t characterPreviewRendererStaticMeshTriangles;
+  size_t characterPreviewRendererStaticMeshAuthoredMaterials;
+  size_t characterPreviewRendererStaticMeshDiffuseSamplers;
+  size_t characterPreviewRendererStaticMeshDiffuseTextures;
+  size_t characterPreviewRendererStaticMeshFallbackMaterials;
+  size_t characterPreviewRendererStaticMeshSmartRendererBinds;
+  size_t characterPreviewRendererStaticMeshManualFallbackBinds;
+  size_t characterPreviewRendererStaticMeshManualFallbackOnlyBatches;
+  size_t characterPreviewRendererStaticMeshMissingGL;
   bool mapPreviewRendererStaticMeshDrawn;
   size_t mapPreviewRendererStaticMeshPayloads;
   size_t mapPreviewRendererStaticMeshBatches;
   size_t mapPreviewRendererStaticMeshTriangles;
+  size_t mapPreviewRendererStaticMeshAuthoredMaterials;
+  size_t mapPreviewRendererStaticMeshDiffuseSamplers;
+  size_t mapPreviewRendererStaticMeshDiffuseTextures;
+  size_t mapPreviewRendererStaticMeshFallbackMaterials;
+  size_t mapPreviewRendererStaticMeshSmartRendererBinds;
+  size_t mapPreviewRendererStaticMeshManualFallbackBinds;
+  size_t mapPreviewRendererStaticMeshManualFallbackOnlyBatches;
+  size_t mapPreviewRendererStaticMeshMissingGL;
   bool mapPreviewTerrainSurfaceDrawn;
   size_t mapPreviewTerrainSurfaceVertices;
   size_t mapPreviewTerrainSurfaceTriangles;
@@ -4935,6 +4953,14 @@ struct LinuxBootstrapScreenRuntime
   size_t mapPreviewTerrainElementMeshPayloads;
   size_t mapPreviewTerrainElementMeshBatches;
   size_t mapPreviewTerrainElementMeshTriangles;
+  size_t mapPreviewTerrainElementMeshAuthoredMaterials;
+  size_t mapPreviewTerrainElementMeshDiffuseSamplers;
+  size_t mapPreviewTerrainElementMeshDiffuseTextures;
+  size_t mapPreviewTerrainElementMeshFallbackMaterials;
+  size_t mapPreviewTerrainElementMeshSmartRendererBinds;
+  size_t mapPreviewTerrainElementMeshManualFallbackBinds;
+  size_t mapPreviewTerrainElementMeshManualFallbackOnlyBatches;
+  size_t mapPreviewTerrainElementMeshMissingGL;
   bool mapPreviewRendererAnimatedMeshDrawn;
   size_t mapPreviewRendererAnimatedMeshPayloads;
   size_t mapPreviewRendererAnimatedMeshBatches;
@@ -6091,10 +6117,26 @@ struct LinuxBootstrapScreenRuntime
       characterPreviewRendererStaticMeshPayloads(0),
       characterPreviewRendererStaticMeshBatches(0),
       characterPreviewRendererStaticMeshTriangles(0),
+      characterPreviewRendererStaticMeshAuthoredMaterials(0),
+      characterPreviewRendererStaticMeshDiffuseSamplers(0),
+      characterPreviewRendererStaticMeshDiffuseTextures(0),
+      characterPreviewRendererStaticMeshFallbackMaterials(0),
+      characterPreviewRendererStaticMeshSmartRendererBinds(0),
+      characterPreviewRendererStaticMeshManualFallbackBinds(0),
+      characterPreviewRendererStaticMeshManualFallbackOnlyBatches(0),
+      characterPreviewRendererStaticMeshMissingGL(0),
       mapPreviewRendererStaticMeshDrawn(false),
       mapPreviewRendererStaticMeshPayloads(0),
       mapPreviewRendererStaticMeshBatches(0),
       mapPreviewRendererStaticMeshTriangles(0),
+      mapPreviewRendererStaticMeshAuthoredMaterials(0),
+      mapPreviewRendererStaticMeshDiffuseSamplers(0),
+      mapPreviewRendererStaticMeshDiffuseTextures(0),
+      mapPreviewRendererStaticMeshFallbackMaterials(0),
+      mapPreviewRendererStaticMeshSmartRendererBinds(0),
+      mapPreviewRendererStaticMeshManualFallbackBinds(0),
+      mapPreviewRendererStaticMeshManualFallbackOnlyBatches(0),
+      mapPreviewRendererStaticMeshMissingGL(0),
       mapPreviewTerrainSurfaceDrawn(false),
       mapPreviewTerrainSurfaceVertices(0),
       mapPreviewTerrainSurfaceTriangles(0),
@@ -6158,6 +6200,14 @@ struct LinuxBootstrapScreenRuntime
       mapPreviewTerrainElementMeshPayloads(0),
       mapPreviewTerrainElementMeshBatches(0),
       mapPreviewTerrainElementMeshTriangles(0),
+      mapPreviewTerrainElementMeshAuthoredMaterials(0),
+      mapPreviewTerrainElementMeshDiffuseSamplers(0),
+      mapPreviewTerrainElementMeshDiffuseTextures(0),
+      mapPreviewTerrainElementMeshFallbackMaterials(0),
+      mapPreviewTerrainElementMeshSmartRendererBinds(0),
+      mapPreviewTerrainElementMeshManualFallbackBinds(0),
+      mapPreviewTerrainElementMeshManualFallbackOnlyBatches(0),
+      mapPreviewTerrainElementMeshMissingGL(0),
       mapPreviewRendererAnimatedMeshDrawn(false),
       mapPreviewRendererAnimatedMeshPayloads(0),
       mapPreviewRendererAnimatedMeshBatches(0),
@@ -15129,6 +15179,62 @@ const char* DescribeLinuxRendererTextureBindingFallbackRemovable(
     "no";
 }
 
+void WriteLinuxRendererMaterialStatsLog(
+  std::ofstream& logFile,
+  const char* prefix,
+  size_t authoredMaterials,
+  size_t diffuseSamplers,
+  size_t diffuseTextures,
+  size_t fallbackMaterials,
+  size_t smartRendererBinds,
+  size_t manualFallbackBinds,
+  size_t manualFallbackOnlyBatches,
+  size_t missingGL)
+{
+  logFile << "  " << prefix << "AuthoredMaterials=" << authoredMaterials << "\n";
+  logFile << "  " << prefix << "DiffuseSamplers=" << diffuseSamplers << "\n";
+  logFile << "  " << prefix << "DiffuseTextures=" << diffuseTextures << "\n";
+  logFile << "  " << prefix << "FallbackMaterials=" << fallbackMaterials << "\n";
+  logFile << "  " << prefix << "TextureBindingSmartRenderer=" << smartRendererBinds << "\n";
+  logFile << "  " << prefix << "TextureBindingManualFallback=" << manualFallbackBinds << "\n";
+  logFile << "  " << prefix << "TextureBindingManualFallbackOnly=" << manualFallbackOnlyBatches << "\n";
+  logFile << "  " << prefix << "TextureBindingMissingGL=" << missingGL << "\n";
+  logFile << "  " << prefix << "TextureBindingRemovable="
+          << DescribeLinuxRendererTextureBindingFallbackRemovable(
+               manualFallbackBinds,
+               manualFallbackOnlyBatches,
+               missingGL) << "\n";
+}
+
+void PrintLinuxRendererMaterialStats(
+  const char* label,
+  size_t authoredMaterials,
+  size_t diffuseSamplers,
+  size_t diffuseTextures,
+  size_t fallbackMaterials,
+  size_t smartRendererBinds,
+  size_t manualFallbackBinds,
+  size_t manualFallbackOnlyBatches,
+  size_t missingGL)
+{
+  fprintf(stdout, "%s renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
+    label,
+    static_cast<unsigned long>(authoredMaterials),
+    static_cast<unsigned long>(diffuseSamplers),
+    static_cast<unsigned long>(diffuseTextures),
+    static_cast<unsigned long>(fallbackMaterials));
+  fprintf(stdout, "%s renderer texture binding: smartRenderer=%lu manualFallback=%lu manualFallbackOnly=%lu missingGL=%lu removable=%s\n",
+    label,
+    static_cast<unsigned long>(smartRendererBinds),
+    static_cast<unsigned long>(manualFallbackBinds),
+    static_cast<unsigned long>(manualFallbackOnlyBatches),
+    static_cast<unsigned long>(missingGL),
+    DescribeLinuxRendererTextureBindingFallbackRemovable(
+      manualFallbackBinds,
+      manualFallbackOnlyBatches,
+      missingGL));
+}
+
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 void RecordLinuxRendererSmartTextureBindStats(
   const Render::SmartRenderer::OpenGLTextureBindStats& beforeStats,
@@ -15157,6 +15263,14 @@ void RecordLinuxRendererSmartTextureBindStats(
 }
 #endif
 
+void RecordLinuxRendererManualFallbackTextureBind(LinuxRendererMaterialSlotStats* stats)
+{
+  if (stats)
+  {
+    ++stats->manualFallbackBinds;
+  }
+}
+
 void CopyLinuxPreviewMaterialReferences(
   const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
   NDb::SkinPartBase* skinPart)
@@ -15172,6 +15286,33 @@ void CopyLinuxPreviewMaterialReferences(
   {
     skinPart->materialsReferences.push_back(materialReferences[i]);
   }
+}
+
+vector<Render::BaseMaterial*> CreateLinuxStaticPreviewMaterials(
+  const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
+  const Render::MeshGeometry* meshGeometry)
+{
+  vector<Render::BaseMaterial*> materials;
+#if defined(PW_LINUX_NULL_RENDER)
+  if (!meshGeometry)
+  {
+    return materials;
+  }
+
+  const size_t materialCount = std::min(
+    materialReferences.size(),
+    std::min(static_cast<size_t>(meshGeometry->primitives.size()), static_cast<size_t>(16)));
+  materials.reserve(materialCount);
+  for (size_t i = 0; i < materialCount; ++i)
+  {
+    materials.push_back(
+      Render::CreateLinuxStaticMeshPreviewMaterial(materialReferences[i].GetPtr()));
+  }
+#else
+  (void)materialReferences;
+  (void)meshGeometry;
+#endif
+  return materials;
 }
 
 void RecordLinuxRendererMaterialSlotStats(
@@ -15312,6 +15453,7 @@ void RecordHeroSceneStaticGeometryPayload(
   const LinuxClientEnvironment& environment,
   const std::string& reference,
   const std::vector<size_t>& materialDiffuseTextureIndices,
+  const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
   const Placement& placement,
   const Placement& originalPlacement,
   const Placement& locatorParentPlacement,
@@ -15352,6 +15494,7 @@ void RecordHeroSceneStaticGeometryPayload(
   payloadPreview.rootGeometryFile =
     ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
   payloadPreview.originalPlacement = originalPlacement;
   payloadPreview.locatorParentPlacement = locatorParentPlacement;
@@ -18026,6 +18169,7 @@ void RecordLinuxMapStaticGeometryPayload(
   const LinuxClientEnvironment& environment,
   const std::string& reference,
   const std::vector<size_t>& materialDiffuseTextureIndices,
+  const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
   const Placement& placement,
   LinuxSelectedMapPreview* preview
 )
@@ -18054,6 +18198,7 @@ void RecordLinuxMapStaticGeometryPayload(
   payloadPreview.rootGeometryFile =
     ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
   preview->staticGeometryPayloads.push_back(payloadPreview);
 }
@@ -18596,8 +18741,10 @@ void RecordLinuxMapTerrainElementPayload(
   }
 
   std::vector<size_t> materialDiffuseTextureIndices;
+  std::vector<NDb::Ptr<NDb::Material> > materialReferences;
   if (IsValid(terrainElement.material))
   {
+    materialReferences.push_back(terrainElement.material);
     materialDiffuseTextureIndices.push_back(
       RecordLinuxMapStaticDiffuseTexture(
         environment,
@@ -18609,6 +18756,7 @@ void RecordLinuxMapTerrainElementPayload(
     terrainElement.terrainObject->materialsReferences;
   for (int materialIndex = 0; materialIndex < meshMaterials.size(); ++materialIndex)
   {
+    materialReferences.push_back(meshMaterials[materialIndex]);
     const std::string textureFileName =
       ExtractLinuxMaterialDiffuseTextureFileName(meshMaterials[materialIndex].GetPtr());
     materialDiffuseTextureIndices.push_back(
@@ -18625,6 +18773,7 @@ void RecordLinuxMapTerrainElementPayload(
   payloadPreview.rootGeometryFile =
     ResolveLinuxRootFileSystemDataPath(environment, resolvedFile);
   payloadPreview.materialDiffuseTextureIndices = materialDiffuseTextureIndices;
+  payloadPreview.materialReferences = materialReferences;
   payloadPreview.placement = placement;
   preview->terrainElementPayloads.push_back(payloadPreview);
 }
@@ -19222,9 +19371,12 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
   {
     ++preview->staticSceneComponentCount;
     std::vector<size_t> materialDiffuseTextureIndices;
+    std::vector<NDb::Ptr<NDb::Material> > materialReferences;
     materialDiffuseTextureIndices.reserve(staticComponent->materialsReferences.size());
+    materialReferences.reserve(staticComponent->materialsReferences.size());
     for (int materialIndex = 0; materialIndex < staticComponent->materialsReferences.size(); ++materialIndex)
     {
+      materialReferences.push_back(staticComponent->materialsReferences[materialIndex]);
       const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
         staticComponent->materialsReferences[materialIndex].GetPtr());
       materialDiffuseTextureIndices.push_back(
@@ -19235,6 +19387,7 @@ void ProbeLinuxMapSceneComponentStaticPayloads(
       environment,
       ToStdString(staticComponent->geometryFileName),
       materialDiffuseTextureIndices,
+      materialReferences,
       componentPlacement,
       preview);
   }
@@ -19504,9 +19657,12 @@ void ProbeHeroSceneComponentAsset(
     MergeHeroSceneAabb(staticComponent->aabb, preview);
     preview->materialReferenceCount += staticComponent->materialsReferences.size();
     std::vector<size_t> materialDiffuseTextureIndices;
+    std::vector<NDb::Ptr<NDb::Material> > materialReferences;
     materialDiffuseTextureIndices.reserve(staticComponent->materialsReferences.size());
+    materialReferences.reserve(staticComponent->materialsReferences.size());
     for (int materialIndex = 0; materialIndex < staticComponent->materialsReferences.size(); ++materialIndex)
     {
+      materialReferences.push_back(staticComponent->materialsReferences[materialIndex]);
       const std::string textureFileName = ExtractLinuxMaterialDiffuseTextureFileName(
         staticComponent->materialsReferences[materialIndex].GetPtr());
       materialDiffuseTextureIndices.push_back(
@@ -19537,6 +19693,7 @@ void ProbeHeroSceneComponentAsset(
       environment,
       ToStdString(staticComponent->geometryFileName),
       materialDiffuseTextureIndices,
+      materialReferences,
       payloadPlacement,
       originalPlacement,
       parentPlacement,
@@ -50664,6 +50821,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
   float centerX,
   float centerY,
   float scale,
+  LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
   size_t* renderedTriangles
 )
@@ -50707,9 +50865,10 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
 
     Matrix43 worldMatrix;
     payload.placement.GetMatrix(&worldMatrix);
-    vector<Render::BaseMaterial*> emptyMaterials;
+    vector<Render::BaseMaterial*> previewMaterials =
+      CreateLinuxStaticPreviewMaterials(payload.materialReferences, meshGeometry);
     Render::StaticMesh staticMesh;
-    staticMesh.Initialize(worldMatrix, meshGeometry, emptyMaterials);
+    staticMesh.Initialize(worldMatrix, meshGeometry, previewMaterials);
 
     Render::BatchQueueSorter sorter(16, true);
     Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
@@ -50731,6 +50890,10 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
           textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
           ResolveLinuxMapPreviewDiffuseTexture(overlay, selectedMapPreview, textureIndex) :
           0;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        Render::SmartRenderer::UnBindTexture(0u);
+#endif
+        RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, materialStats);
         if (diffuseTexture)
         {
           if (!textureEnabled)
@@ -50739,6 +50902,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
             textureEnabled = true;
           }
           glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+          RecordLinuxRendererManualFallbackTextureBind(materialStats);
         }
         else if (textureEnabled)
         {
@@ -50747,7 +50911,17 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
           textureEnabled = false;
         }
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
+          Render::SmartRenderer::GetOpenGLTextureBindStats();
+#endif
         batch->Prepare();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        RecordLinuxRendererSmartTextureBindStats(
+          bindStatsBefore,
+          diffuseTexture != 0,
+          materialStats);
+#endif
         batch->Draw();
         ++payloadBatches;
       }
@@ -50765,6 +50939,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
   }
+  Render::SmartRenderer::UnBindTexture(0u);
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
 
   unsigned int triangles = 0;
@@ -50788,6 +50963,7 @@ size_t DrawLinuxMapRendererTerrainElementPayloads(
   float centerX,
   float centerY,
   float scale,
+  LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
   size_t* renderedTriangles
 )
@@ -50812,6 +50988,7 @@ size_t DrawLinuxMapRendererTerrainElementPayloads(
     centerX,
     centerY,
     scale,
+    materialStats,
     drawnPayloads,
     renderedTriangles);
 }
@@ -50822,6 +50999,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloads(
   float centerX,
   float centerY,
   float scale,
+  LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
   size_t* renderedTriangles
 )
@@ -50846,6 +51024,7 @@ size_t DrawLinuxMapRendererStaticMeshPayloads(
     centerX,
     centerY,
     scale,
+    materialStats,
     drawnPayloads,
     renderedTriangles);
 }
@@ -51182,6 +51361,22 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = 0;
     renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = 0;
     renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshAuthoredMaterials = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseSamplers = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseTextures = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshFallbackMaterials = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshSmartRendererBinds = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackBinds = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackOnlyBatches = 0;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshMissingGL = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshAuthoredMaterials = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseSamplers = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseTextures = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshFallbackMaterials = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshSmartRendererBinds = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackBinds = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackOnlyBatches = 0;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshMissingGL = 0;
     renderContext.screenRuntime->mapPreviewRendererAnimatedMeshDrawn = false;
     renderContext.screenRuntime->mapPreviewRendererAnimatedMeshPayloads = 0;
     renderContext.screenRuntime->mapPreviewRendererAnimatedMeshBatches = 0;
@@ -51322,12 +51517,14 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
   size_t terrainElementPayloads = 0;
   size_t terrainElementTriangles = 0;
+  LinuxRendererMaterialSlotStats terrainElementMaterialStats;
   const size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
     renderContext.overlay,
     selectedMapPreview,
     centerX,
     centerY,
     scale,
+    &terrainElementMaterialStats,
     &terrainElementPayloads,
     &terrainElementTriangles);
   if (renderContext.screenRuntime)
@@ -51337,6 +51534,22 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewTerrainElementMeshPayloads = terrainElementPayloads;
     renderContext.screenRuntime->mapPreviewTerrainElementMeshBatches = terrainElementBatches;
     renderContext.screenRuntime->mapPreviewTerrainElementMeshTriangles = terrainElementTriangles;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshAuthoredMaterials =
+      terrainElementMaterialStats.authoredMaterials;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseSamplers =
+      terrainElementMaterialStats.diffuseSamplers;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshDiffuseTextures =
+      terrainElementMaterialStats.diffuseTextures;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshFallbackMaterials =
+      terrainElementMaterialStats.fallbackMaterials;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshSmartRendererBinds =
+      terrainElementMaterialStats.smartRendererBinds;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackBinds =
+      terrainElementMaterialStats.manualFallbackBinds;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshManualFallbackOnlyBatches =
+      terrainElementMaterialStats.manualFallbackOnlyBatches;
+    renderContext.screenRuntime->mapPreviewTerrainElementMeshMissingGL =
+      terrainElementMaterialStats.missingGL;
   }
 
   SetOpenGlColor(54, 83, 88, 150);
@@ -51364,12 +51577,14 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
   size_t staticPayloads = 0;
   size_t staticTriangles = 0;
+  LinuxRendererMaterialSlotStats staticMaterialStats;
   const size_t staticBatches = DrawLinuxMapRendererStaticMeshPayloads(
     renderContext.overlay,
     selectedMapPreview,
     centerX,
     centerY,
     scale,
+    &staticMaterialStats,
     &staticPayloads,
     &staticTriangles);
   if (renderContext.screenRuntime)
@@ -51379,6 +51594,22 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewRendererStaticMeshPayloads = staticPayloads;
     renderContext.screenRuntime->mapPreviewRendererStaticMeshBatches = staticBatches;
     renderContext.screenRuntime->mapPreviewRendererStaticMeshTriangles = staticTriangles;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshAuthoredMaterials =
+      staticMaterialStats.authoredMaterials;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseSamplers =
+      staticMaterialStats.diffuseSamplers;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshDiffuseTextures =
+      staticMaterialStats.diffuseTextures;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshFallbackMaterials =
+      staticMaterialStats.fallbackMaterials;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshSmartRendererBinds =
+      staticMaterialStats.smartRendererBinds;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackBinds =
+      staticMaterialStats.manualFallbackBinds;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshManualFallbackOnlyBatches =
+      staticMaterialStats.manualFallbackOnlyBatches;
+    renderContext.screenRuntime->mapPreviewRendererStaticMeshMissingGL =
+      staticMaterialStats.missingGL;
   }
 
   size_t animatedPayloads = 0;
@@ -52360,6 +52591,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
   const LinuxSelectedHeroDbPreview* heroPreview,
   const Render::SkeletonWrapper* skeletonWrapper,
   bool* textureEnabled,
+  LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
   size_t* renderedTriangles
 )
@@ -52410,9 +52642,10 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
 
     Matrix43 worldMatrix;
     ResolveLinuxHeroStaticPayloadPlacement(payload, skeletonWrapper).GetMatrix(&worldMatrix);
-    vector<Render::BaseMaterial*> emptyMaterials;
+    vector<Render::BaseMaterial*> previewMaterials =
+      CreateLinuxStaticPreviewMaterials(payload.materialReferences, meshGeometry);
     Render::StaticMesh staticMesh;
-    staticMesh.Initialize(worldMatrix, meshGeometry, emptyMaterials);
+    staticMesh.Initialize(worldMatrix, meshGeometry, previewMaterials);
 
     Render::BatchQueueSorter sorter(16, true);
     Render::BatchQueue queue(Render::BatchQueue::INDEX_MAIN, sorter, 32);
@@ -52434,6 +52667,10 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
           textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
           ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
           0;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        Render::SmartRenderer::UnBindTexture(0u);
+#endif
+        RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, materialStats);
         if (diffuseTexture)
         {
           if (!*textureEnabled)
@@ -52442,6 +52679,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
             *textureEnabled = true;
           }
           glBindTexture(GL_TEXTURE_2D, diffuseTexture);
+          RecordLinuxRendererManualFallbackTextureBind(materialStats);
         }
         else if (*textureEnabled)
         {
@@ -52450,7 +52688,17 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
           *textureEnabled = false;
         }
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
+          Render::SmartRenderer::GetOpenGLTextureBindStats();
+#endif
         batch->Prepare();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+        RecordLinuxRendererSmartTextureBindStats(
+          bindStatsBefore,
+          diffuseTexture != 0,
+          materialStats);
+#endif
         batch->Draw();
         ++payloadBatches;
       }
@@ -52463,6 +52711,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
     }
   }
 
+  Render::SmartRenderer::UnBindTexture(0u);
   unsigned int afterTriangles = 0;
   unsigned int afterDips = 0;
   Render::SmartRenderer::GetTriangleAndDipCount(afterTriangles, afterDips);
@@ -52504,6 +52753,14 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
     screenRuntime->characterPreviewRendererStaticMeshPayloads = 0;
     screenRuntime->characterPreviewRendererStaticMeshBatches = 0;
     screenRuntime->characterPreviewRendererStaticMeshTriangles = 0;
+    screenRuntime->characterPreviewRendererStaticMeshAuthoredMaterials = 0;
+    screenRuntime->characterPreviewRendererStaticMeshDiffuseSamplers = 0;
+    screenRuntime->characterPreviewRendererStaticMeshDiffuseTextures = 0;
+    screenRuntime->characterPreviewRendererStaticMeshFallbackMaterials = 0;
+    screenRuntime->characterPreviewRendererStaticMeshSmartRendererBinds = 0;
+    screenRuntime->characterPreviewRendererStaticMeshManualFallbackBinds = 0;
+    screenRuntime->characterPreviewRendererStaticMeshManualFallbackOnlyBatches = 0;
+    screenRuntime->characterPreviewRendererStaticMeshMissingGL = 0;
   }
 
   if (!overlay ||
@@ -52638,11 +52895,13 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
   Render::SmartRenderer::UnBindTexture(0u);
   size_t staticPayloads = 0;
   size_t staticTriangles = 0;
+  LinuxRendererMaterialSlotStats staticMaterialStats;
   const size_t staticBatches = DrawLinuxHeroRendererStaticMeshPayloads(
     overlay,
     heroPreview,
     skeletalMesh.GetSkeletonWrapper(),
     &textureEnabled,
+    &staticMaterialStats,
     &staticPayloads,
     &staticTriangles);
   drawnBatches += staticBatches;
@@ -52677,6 +52936,21 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
     screenRuntime->characterPreviewRendererStaticMeshPayloads = staticPayloads;
     screenRuntime->characterPreviewRendererStaticMeshBatches = staticBatches;
     screenRuntime->characterPreviewRendererStaticMeshTriangles = staticTriangles;
+    screenRuntime->characterPreviewRendererStaticMeshAuthoredMaterials =
+      staticMaterialStats.authoredMaterials;
+    screenRuntime->characterPreviewRendererStaticMeshDiffuseSamplers =
+      staticMaterialStats.diffuseSamplers;
+    screenRuntime->characterPreviewRendererStaticMeshDiffuseTextures =
+      staticMaterialStats.diffuseTextures;
+    screenRuntime->characterPreviewRendererStaticMeshFallbackMaterials =
+      staticMaterialStats.fallbackMaterials;
+    screenRuntime->characterPreviewRendererStaticMeshSmartRendererBinds =
+      staticMaterialStats.smartRendererBinds;
+    screenRuntime->characterPreviewRendererStaticMeshManualFallbackBinds =
+      staticMaterialStats.manualFallbackBinds;
+    screenRuntime->characterPreviewRendererStaticMeshManualFallbackOnlyBatches =
+      staticMaterialStats.manualFallbackOnlyBatches;
+    screenRuntime->characterPreviewRendererStaticMeshMissingGL = staticMaterialStats.missingGL;
   }
 
   return drawnBatches > 0 && renderedTriangles > 0 && renderedDips > 0;
@@ -61045,6 +61319,17 @@ void WriteStartupLog(
           << screenRuntime.characterPreviewRendererStaticMeshBatches << "\n";
   logFile << "  hero3DPreviewRendererStaticMeshTriangles="
           << screenRuntime.characterPreviewRendererStaticMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "hero3DPreviewRendererStaticMesh",
+    screenRuntime.characterPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.characterPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.characterPreviewRendererStaticMeshMissingGL);
   logFile << "  map3DPreviewRendererStaticMeshDrawn="
           << (screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
   logFile << "  map3DPreviewRendererStaticMeshPayloads="
@@ -61053,6 +61338,17 @@ void WriteStartupLog(
           << screenRuntime.mapPreviewRendererStaticMeshBatches << "\n";
   logFile << "  map3DPreviewRendererStaticMeshTriangles="
           << screenRuntime.mapPreviewRendererStaticMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "map3DPreviewRendererStaticMesh",
+    screenRuntime.mapPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.mapPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewRendererStaticMeshMissingGL);
   logFile << "  map3DPreviewTerrainSurfaceDrawn="
           << (screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no") << "\n";
   logFile << "  map3DPreviewTerrainSurfaceVertices="
@@ -61321,6 +61617,17 @@ void WriteStartupLog(
           << screenRuntime.mapPreviewTerrainElementMeshBatches << "\n";
   logFile << "  map3DPreviewTerrainElementMeshTriangles="
           << screenRuntime.mapPreviewTerrainElementMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "map3DPreviewTerrainElementMesh",
+    screenRuntime.mapPreviewTerrainElementMeshAuthoredMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseSamplers,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseTextures,
+    screenRuntime.mapPreviewTerrainElementMeshFallbackMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshSmartRendererBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewTerrainElementMeshMissingGL);
   logFile << "  map3DPreviewRendererAnimatedMeshDrawn="
           << (screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no") << "\n";
   logFile << "  map3DPreviewRendererAnimatedMeshPayloads="
@@ -63928,6 +64235,17 @@ void AppendRuntimeInputLog(
           << screenRuntime.characterPreviewRendererStaticMeshBatches << "\n";
   logFile << "  finalHero3DPreviewRendererStaticMeshTriangles="
           << screenRuntime.characterPreviewRendererStaticMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "finalHero3DPreviewRendererStaticMesh",
+    screenRuntime.characterPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.characterPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.characterPreviewRendererStaticMeshMissingGL);
   logFile << "  finalMap3DPreviewRendererStaticMeshDrawn="
           << (screenRuntime.mapPreviewRendererStaticMeshDrawn ? "yes" : "no") << "\n";
   logFile << "  finalMap3DPreviewRendererStaticMeshPayloads="
@@ -63936,6 +64254,17 @@ void AppendRuntimeInputLog(
           << screenRuntime.mapPreviewRendererStaticMeshBatches << "\n";
   logFile << "  finalMap3DPreviewRendererStaticMeshTriangles="
           << screenRuntime.mapPreviewRendererStaticMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "finalMap3DPreviewRendererStaticMesh",
+    screenRuntime.mapPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.mapPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewRendererStaticMeshMissingGL);
   logFile << "  finalMap3DPreviewTerrainSurfaceDrawn="
           << (screenRuntime.mapPreviewTerrainSurfaceDrawn ? "yes" : "no") << "\n";
   logFile << "  finalMap3DPreviewTerrainSurfaceVertices="
@@ -64777,6 +65106,17 @@ void AppendRuntimeInputLog(
           << screenRuntime.mapPreviewTerrainElementMeshBatches << "\n";
   logFile << "  finalMap3DPreviewTerrainElementMeshTriangles="
           << screenRuntime.mapPreviewTerrainElementMeshTriangles << "\n";
+  WriteLinuxRendererMaterialStatsLog(
+    logFile,
+    "finalMap3DPreviewTerrainElementMesh",
+    screenRuntime.mapPreviewTerrainElementMeshAuthoredMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseSamplers,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseTextures,
+    screenRuntime.mapPreviewTerrainElementMeshFallbackMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshSmartRendererBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewTerrainElementMeshMissingGL);
   logFile << "  finalMap3DPreviewRendererAnimatedMeshDrawn="
           << (screenRuntime.mapPreviewRendererAnimatedMeshDrawn ? "yes" : "no") << "\n";
   logFile << "  finalMap3DPreviewRendererAnimatedMeshPayloads="
@@ -66865,6 +67205,16 @@ int main(int argc, char** argv)
       screenRuntime.characterPreviewRendererMeshManualFallbackBinds,
       screenRuntime.characterPreviewRendererMeshManualFallbackOnlyBatches,
       screenRuntime.characterPreviewRendererMeshMissingGL));
+  PrintLinuxRendererMaterialStats(
+    "Final hero static",
+    screenRuntime.characterPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.characterPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.characterPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.characterPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.characterPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.characterPreviewRendererStaticMeshMissingGL);
   fprintf(stdout, "Final visible loading info: drawn=%s lines=%lu icons=%lu\n",
     screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
@@ -67283,6 +67633,26 @@ int main(int argc, char** argv)
     static_cast<double>(screenRuntime.mapPreviewRenderedYawDegrees),
     static_cast<double>(screenRuntime.mapPreviewRenderedPitchDegrees),
     static_cast<double>(screenRuntime.mapPreviewZoom));
+  PrintLinuxRendererMaterialStats(
+    "Final map terrain element",
+    screenRuntime.mapPreviewTerrainElementMeshAuthoredMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseSamplers,
+    screenRuntime.mapPreviewTerrainElementMeshDiffuseTextures,
+    screenRuntime.mapPreviewTerrainElementMeshFallbackMaterials,
+    screenRuntime.mapPreviewTerrainElementMeshSmartRendererBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackBinds,
+    screenRuntime.mapPreviewTerrainElementMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewTerrainElementMeshMissingGL);
+  PrintLinuxRendererMaterialStats(
+    "Final map static",
+    screenRuntime.mapPreviewRendererStaticMeshAuthoredMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseSamplers,
+    screenRuntime.mapPreviewRendererStaticMeshDiffuseTextures,
+    screenRuntime.mapPreviewRendererStaticMeshFallbackMaterials,
+    screenRuntime.mapPreviewRendererStaticMeshSmartRendererBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackBinds,
+    screenRuntime.mapPreviewRendererStaticMeshManualFallbackOnlyBatches,
+    screenRuntime.mapPreviewRendererStaticMeshMissingGL);
   fprintf(stdout, "Final map animated renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
     static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshAuthoredMaterials),
     static_cast<unsigned long>(screenRuntime.mapPreviewRendererAnimatedMeshDiffuseSamplers),

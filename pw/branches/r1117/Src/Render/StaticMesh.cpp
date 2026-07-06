@@ -5,6 +5,7 @@
 
 #include "batch.h"
 #include "MaterialSpec.h"
+#include "renderer.h"
 #include "smartrenderer.h"
 
 #include <algorithm>
@@ -17,6 +18,12 @@ DECLARE_INSTANCE_COUNTER(StaticMesh);
 namespace
 {
 
+enum LinuxPreviewSamplerFillMode
+{
+  LINUX_PREVIEW_SAMPLER_METADATA,
+  LINUX_PREVIEW_SAMPLER_TEXTURE
+};
+
 class NullStaticMeshMaterial : public BaseMaterial
 {
 public:
@@ -28,6 +35,207 @@ public:
   virtual void PrepareRenderer()
   {
   }
+};
+
+bool CanLoadPreviewDiffuseSamplerTexture(const NDb::Ptr<NDb::TextureBase>& texture)
+{
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  return IsValid(texture);
+#else
+  return IsValid(texture) && dynamic_cast<const NDb::Texture*>(texture.GetPtr());
+#endif
+}
+
+bool FillPreviewDiffuseSampler(
+  const NDb::Sampler& dbSampler,
+  Render::Sampler* sampler,
+  bool canBeVisualDegrade,
+  LinuxPreviewSamplerFillMode fillMode)
+{
+  if (!sampler || !IsValid(dbSampler.texture))
+    return false;
+
+  if (fillMode == LINUX_PREVIEW_SAMPLER_TEXTURE)
+  {
+    if (!CanLoadPreviewDiffuseSamplerTexture(dbSampler.texture))
+      return false;
+
+    Render::FillSampler(dbSampler, sampler, canBeVisualDegrade, 0);
+    return sampler->GetTexture();
+  }
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  return true;
+}
+
+bool FillPreviewDiffuseSampler(
+  const NDb::SamplerEx& dbSampler,
+  Render::Sampler* sampler,
+  bool canBeVisualDegrade,
+  LinuxPreviewSamplerFillMode fillMode)
+{
+  if (!sampler || !IsValid(dbSampler.texture))
+    return false;
+
+  if (fillMode == LINUX_PREVIEW_SAMPLER_TEXTURE)
+  {
+    if (!CanLoadPreviewDiffuseSamplerTexture(dbSampler.texture))
+      return false;
+
+    Render::FillSampler(dbSampler, sampler, canBeVisualDegrade, 0);
+    return sampler->GetTexture();
+  }
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  sampler->SetMultiplierAndAdd(dbSampler.Multiplier, dbSampler.Add);
+  return true;
+}
+
+bool FillPreviewDiffuseSampler(
+  const NDb::Material* dbMaterial,
+  Render::Sampler* sampler,
+  LinuxPreviewSamplerFillMode fillMode)
+{
+  if (!dbMaterial || !sampler)
+    return false;
+
+  switch (dbMaterial->GetObjectTypeID())
+  {
+    case NDb::BasicMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::BasicMaskMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicMaskMaterial*>(dbMaterial)->Diffuse,
+        sampler,
+        false,
+        fillMode);
+
+    case NDb::BasicFXMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicFXMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::DropMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::DropMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::DecalMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::DecalMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::DecalTerrainMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::DecalTerrainMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::TerrainMaterial::typeId:
+    {
+      const NDb::TerrainMaterial* terrainMaterial =
+        static_cast<const NDb::TerrainMaterial*>(dbMaterial);
+      if (FillPreviewDiffuseSampler(terrainMaterial->N_DiffuseMap, sampler, true, fillMode))
+        return true;
+      if (FillPreviewDiffuseSampler(terrainMaterial->A_DiffuseMap, sampler, true, fillMode))
+        return true;
+      return FillPreviewDiffuseSampler(terrainMaterial->B_DiffuseMap, sampler, true, fillMode);
+    }
+
+    case NDb::ParticleFXMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::ParticleFXMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    case NDb::TestTownMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::TestTownMaterial*>(dbMaterial)->DiffuseMap,
+        sampler,
+        true,
+        fillMode);
+
+    default:
+      return false;
+  }
+}
+
+class LinuxStaticMeshPreviewMaterial : public NullStaticMeshMaterial
+{
+public:
+  LinuxStaticMeshPreviewMaterial(const NDb::Material* dbMaterial)
+    : NullStaticMeshMaterial()
+    , diffuseSamplerReady(false)
+    , diffuseTextureReady(false)
+    , diffuseTextureAttempted(false)
+  {
+    if (!dbMaterial)
+      return;
+
+    pDbMaterial = dbMaterial;
+    Render::Material::FillMaterial(dbMaterial, 0, false);
+    diffuseSamplerReady =
+      FillPreviewDiffuseSampler(dbMaterial, &diffuseMap, LINUX_PREVIEW_SAMPLER_METADATA);
+  }
+
+  virtual const NDb::Material* GetDBMaterial() const
+  {
+    return pDbMaterial.GetPtr();
+  }
+
+  virtual Render::Sampler* GetDiffuseMap()
+  {
+    return diffuseSamplerReady ? &diffuseMap : 0;
+  }
+
+  virtual const Render::Sampler* GetDiffuseMap() const
+  {
+    return diffuseSamplerReady ? &diffuseMap : 0;
+  }
+
+  virtual void PrepareRenderer()
+  {
+    if (diffuseSamplerReady && !diffuseTextureAttempted)
+    {
+      diffuseTextureAttempted = true;
+      diffuseTextureReady =
+        FillPreviewDiffuseSampler(pDbMaterial.GetPtr(), &diffuseMap, LINUX_PREVIEW_SAMPLER_TEXTURE);
+    }
+
+    if (diffuseTextureReady && diffuseMap.Enabled())
+    {
+      if (Render::GetStatesManager())
+      {
+        Render::BindSampler(0, diffuseMap);
+      }
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+      else
+      {
+        Render::SmartRenderer::BindTexture(0, diffuseMap.GetTexture().GetPtr());
+      }
+#endif
+    }
+  }
+
+private:
+  NDb::Ptr<NDb::Material> pDbMaterial;
+  Render::Sampler diffuseMap;
+  bool diffuseSamplerReady;
+  bool diffuseTextureReady;
+  bool diffuseTextureAttempted;
 };
 
 void ClearStaticMeshMaterials(StaticArray<ScopedPtr<BaseMaterial>, 16>& materials, int* materialsCount)
@@ -69,6 +277,11 @@ void InitializeStaticMeshNullMaterials(
 }
 
 } // namespace
+
+BaseMaterial* CreateLinuxStaticMeshPreviewMaterial(const NDb::Material* dbMaterial)
+{
+  return dbMaterial ? new LinuxStaticMeshPreviewMaterial(dbMaterial) : 0;
+}
 
 StaticMesh::StaticMesh()
   : pMeshGeom(0)
