@@ -3,12 +3,17 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFApplMod.h"
+#include "DBAdvMap.h"
+#include "DBSessionRoots.h"
+#include "DBUnit.h"
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
 #include "PFDispatchFactory.h"
 #include "PFHero.h"
 #include "PFPredefinedUnitVariables.h"
+#include "PFTalent.h"
 #include "PFTargetSelector.h"
+#include "libdb/ClonedPtr.h"
 
 namespace NWorld
 {
@@ -368,7 +373,125 @@ bool PFApplAbilityUpgrade::Start()
 void PFApplAbilityUpgrade::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddAbilityUpgradeApplicator(this); }
 void PFApplAbilityUpgrade::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveAbilityUpgradeApplicator(this); PFApplBuff::Disable(); }
 void PFApplAbilityUpgrade::DumpInfo(NLogg::CChannelLogger&) const {}
-void PFApplAbilityUpgrade::UpgradeAbilityApplicators(CPtr<PFAbilityData> const&, vector<NDb::Ptr<NDb::BaseApplicator>>&, vector<NDb::Ptr<NDb::BaseApplicator>>&, bool&) {}
+void PFApplAbilityUpgrade::UpgradeAbilityApplicators(CPtr<PFAbilityData> const& abilityData, vector<NDb::Ptr<NDb::BaseApplicator> >& applicators, vector<NDb::Ptr<NDb::BaseApplicator> >& persistentApplicators, bool& useOriginal)
+{
+  if (!CheckAppliesCount() || !IsValid(abilityData))
+    return;
+
+  NDb::AbilityUpgradeApplicator const& dbDesc = GetDB();
+  NDb::EAbilityTypeId const abilityType = abilityData->GetAbilityTypeId();
+
+  if (dbDesc.targetAbility != abilityType &&
+      !(dbDesc.targetAbility == NDb::ABILITYTYPEID_TALENTFROMLIST && abilityType == NDb::ABILITYTYPEID_TALENT))
+  {
+    return;
+  }
+
+  const NDb::Ability* pAbilityDesc = abilityData->GetDBDesc();
+  CPtr<PFAbilityData> pUpgradeAbilityData = IsValid(pAbility) ? pAbility->GetData() : 0;
+
+  if (dbDesc.targetAbility == NDb::ABILITYTYPEID_TALENTFROMLIST)
+  {
+    if (!PFAbilityData::IsAbilitySuitable(pAbilityDesc, dbDesc.talents, dbDesc.useListAs))
+      return;
+
+    if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_APPLYONCEPERCAST)
+    {
+      const PFTalent* const talent = dynamic_cast<const PFTalent*>(abilityData.GetPtr());
+      if (!talent || !IsValid(pReceiver))
+        return;
+
+      ValueWithModifiers* const vwm = pReceiver->GetVariableVWM(GetTalentLastUseStepVariableName(talent->GetObjectId()));
+      if (!vwm || !(vwm->GetBaseValue() < static_cast<float>(talent->GetLastUseStep())))
+        return;
+
+      vwm->SetBaseValue(static_cast<float>(talent->GetLastUseStep()));
+    }
+  }
+
+  if ((dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEABILITYCOOLDOWN) && (!IsValid(pUpgradeAbilityData) || !pUpgradeAbilityData->IsReady()))
+    return;
+  if ((dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEABILITYMANA) && (!IsValid(pUpgradeAbilityData) || !pUpgradeAbilityData->IsEnoughMana()))
+    return;
+
+  if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEABILITYCOOLDOWN)
+    pUpgradeAbilityData->RecalculateAndRestartCooldown();
+  if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEABILITYMANA)
+    pUpgradeAbilityData->SpendMana();
+
+  applicators.insert(applicators.end(), dbDesc.applicators.begin(), dbDesc.applicators.end());
+  persistentApplicators.insert(persistentApplicators.end(), dbDesc.persistentApplicators.begin(), dbDesc.persistentApplicators.end());
+
+  if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_USEGLYPH)
+  {
+    PFBaseApplicator* const pParentApplicator = GetParentAppl();
+    CPtr<PFBaseUnit> pAbilityOwner = GetAbilityOwner();
+    const int glyphNumber = pParentApplicator ? pParentApplicator->GetVariable("glyphNumber") : -1;
+
+    if (IsValid(pAbilityOwner) && glyphNumber >= 0)
+    {
+      NDb::Ptr<NDb::Ability> glyph;
+      PFWorld* const pWorld = GetWorld();
+      const NDb::AdvMapDescription* mapDescription = pWorld ? pWorld->GetMapDescription() : 0;
+      const NDb::AdvMapSettings* settings = 0;
+      if (mapDescription)
+        settings = IsValid(mapDescription->mapSettings) ? mapDescription->mapSettings.GetPtr() : (IsValid(mapDescription->map) ? mapDescription->map->mapSettings.GetPtr() : 0);
+
+      if (settings && IsValid(settings->overrideGlyphSettings) && glyphNumber < settings->overrideGlyphSettings->glyphs->glyphs.size())
+        glyph = settings->overrideGlyphSettings->glyphs->glyphs[glyphNumber].glyph;
+      else
+      {
+        NDb::Ptr<NDb::SessionRoot> pRoot = NDb::SessionRoot::GetRoot();
+        NDb::Ptr<NDb::GlyphsDB> pDBGlyphs = pRoot && pRoot->logicRoot ? pRoot->logicRoot->glyphsDB : 0;
+        if (pDBGlyphs && glyphNumber < pDBGlyphs->glyphs.size())
+          glyph = pDBGlyphs->glyphs[glyphNumber].glyph;
+      }
+
+      if (glyph)
+        pAbilityOwner->UseExternalAbility(glyph, Target(pAbilityOwner));
+    }
+  }
+
+  if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_DONTUSEORIGINAL)
+    useOriginal = false;
+
+  if (dbDesc.flags & NDb::ABILITYUPGRADEMODE_APPLYONCEPERCASTPERTARGET)
+  {
+    const PFTalent* const talent = dynamic_cast<const PFTalent*>(abilityData.GetPtr());
+    if (!talent)
+      return;
+
+    bool ok = false;
+    for (int i = 0, count = applicators.size(); i < count; ++i)
+    {
+      NDb::Ptr<NDb::BaseApplicator>& applr = applicators[i];
+      if (!applr || applr->GetObjectTypeID() != NDb::AbilityUpgradeTechApplicator::typeId)
+        continue;
+
+      NDb::ClonedPtr<NDb::AbilityUpgradeTechApplicator> cloned;
+      cloned.Clone(static_cast<const NDb::AbilityUpgradeTechApplicator*>(applr.GetPtr()));
+      cloned->abilityObjectId = talent->GetObjectId();
+      cloned->abilityLastUseStep = talent->GetLastUseStep();
+
+      if (i < count - 1)
+      {
+        applicators.erase(applicators.begin() + i);
+        applicators.push_back(cloned.GetPtr());
+      }
+      else
+      {
+        applr = cloned.GetPtr();
+      }
+
+      ok = true;
+      break;
+    }
+
+    NI_ASSERT(ok, "AbilityUpgradeApplicator: tech applicator not found!");
+  }
+
+  ++appliesCount;
+}
 bool PFApplAbilityUpgrade::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
 
 PFApplTechAbilityUpgrade::PFApplTechAbilityUpgrade(const PFApplCreatePars& cp) : Base(cp) {}
@@ -782,7 +905,6 @@ REGISTER_WORLD_OBJECT_NM(PFApplTechAbilityUpgrade,   NWorld);
 #include "PFApplInstant.h"
 
 #include "PFPredefinedUnitVariables.h"
-#include "PFTriggerApplicator.h"
 
 #ifndef VISUAL_CUTTED
 #include "ClientVisibilityHelper.h"
