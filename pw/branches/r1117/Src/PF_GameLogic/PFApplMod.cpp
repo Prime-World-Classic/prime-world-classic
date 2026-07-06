@@ -5,6 +5,7 @@
 #include "PFApplMod.h"
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
+#include "PFDispatchFactory.h"
 #include "PFHero.h"
 #include "PFPredefinedUnitVariables.h"
 #include "PFTargetSelector.h"
@@ -472,7 +473,33 @@ void PFApplCreepBehaviourChange::Disable() { pBehaviour = 0; oldTargetingParams 
 float PFApplDamageReflect::OnDamage(CPtr<PFBaseUnit>, float, float damage4Apply, int) { return damage4Apply * amountInPersent * 0.01f; }
 void PFApplOnDamage::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddEventListener(this); }
 void PFApplOnDamage::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveEventListener(this); PFApplBuff::Disable(); }
-unsigned int PFApplOnDamage::OnEvent(const PFBaseUnitEvent*) { return 0; }
+unsigned int PFApplOnDamage::OnEvent(const PFBaseUnitEvent* pEvent)
+{
+  if (!pEvent || pEvent->GetType() != NDb::BASEUNITEVENT_DAMAGE)
+    return 0;
+
+  const PFBaseUnitDamageEvent* pDmg = dynamic_cast<const PFBaseUnitDamageEvent*>(pEvent);
+  if (!pDmg || !pDmg->pDesc)
+    return 0;
+
+  if (!CheckDamageTypeFilter(pDmg->pDesc->flags, pDmg->pDesc->damageType, GetDB().filterFlags, false))
+    return 0;
+
+  Target targ;
+  if (GetDB().spellTarget != NDb::APPLICATORAPPLYTARGET_APPLICATORSELECTEDTARGET)
+    MakeApplicationTarget(targ, GetDB().spellTarget);
+  else if (IsValid(pDmg->pDesc->pSender))
+    targ.SetUnit(pDmg->pDesc->pSender);
+
+  if (targ.IsValid())
+  {
+    Target source;
+    MakeApplicationTarget(source);
+    CreateDispatch(pAbility, this, source, targ, GetDB().spell, PFBaseApplicator::FLAG_REFLECTED);
+  }
+
+  return 0;
+}
 
 PFApplInvisibility::PFApplInvisibility(PFApplCreatePars const &cp)
   : Base(cp), state(FADEIN), time(0.0f), invisible(false), partialVisibilityEnabled(false), partialVisibilityRevision(0) {}
@@ -529,9 +556,39 @@ bool PFApplInvisibility::Step(float dtInSeconds)
     if (time <= 0.0f)
       becomeInvisible();
   }
-  return false;
+  return state == CANCEL;
 }
-unsigned int PFApplInvisibility::OnEvent(const PFBaseUnitEvent*) { return 0; }
+unsigned int PFApplInvisibility::OnEvent(const PFBaseUnitEvent* pEvent)
+{
+  if (!pEvent)
+    return 0;
+
+  const NDb::EBaseUnitEvent eventType = pEvent->GetType();
+  if ((eventType == NDb::BASEUNITEVENT_CANCELINVISIBILITY && !GetDB().ignoreCancel) || eventType == NDb::BASEUNITEVENT_ATTACK)
+  {
+    state = CANCEL;
+  }
+  else if (eventType == NDb::BASEUNITEVENT_CASTMAGIC ||
+           eventType == NDb::BASEUNITEVENT_USECONSUMABLE ||
+           eventType == NDb::BASEUNITEVENT_USETALENT)
+  {
+    PFBaseUnitUseAbilityEvent const* pAbilityEvent = dynamic_cast<PFBaseUnitUseAbilityEvent const*>(pEvent);
+    if (!pAbilityEvent || !IsValid(pAbilityEvent->GetAbility()))
+      return 0;
+
+    PFAbilityInstance const* pInstance = pAbilityEvent->GetAbility();
+    if (pInstance == pAbility)
+      return 0;
+
+    if (!pInstance->GetData())
+      return 0;
+
+    if ((pInstance->GetFlags() & NDb::ABILITYFLAGS_STAYINVISIBLE) == 0)
+      state = CANCEL;
+  }
+
+  return 0;
+}
 void PFApplInvisibility::becomeVisible()
 {
   if (IsValid(pReceiver))
