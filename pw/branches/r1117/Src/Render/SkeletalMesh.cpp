@@ -6,6 +6,7 @@
 #include "DBRenderResources.h"
 #include "batch.h"
 #include "MaterialSpec.h"
+#include "renderer.h"
 #include "renderresourcemanager.h"
 #include "SkeletalAnimationBlender.h"
 #include "SkeletonWrapper.h"
@@ -18,6 +19,12 @@ DECLARE_INSTANCE_COUNTER(SkeletalMesh);
 
 namespace
 {
+
+enum LinuxPreviewSamplerFillMode
+{
+  LINUX_PREVIEW_SAMPLER_METADATA,
+  LINUX_PREVIEW_SAMPLER_TEXTURE
+};
 
 class NullSkeletalMeshMaterial : public BaseMaterial
 {
@@ -32,26 +39,60 @@ public:
   }
 };
 
-bool FillPreviewDiffuseSampler(const NDb::Sampler& dbSampler, Render::Sampler* sampler)
+bool CanLoadPreviewDiffuseSamplerTexture(const NDb::Ptr<NDb::TextureBase>& texture)
 {
-  if (!sampler)
-    return false;
-
-  sampler->SetSamplerState(dbSampler.samplerState);
-  return IsValid(dbSampler.texture);
+  return IsValid(texture) && dynamic_cast<const NDb::Texture*>(texture.GetPtr());
 }
 
-bool FillPreviewDiffuseSampler(const NDb::SamplerEx& dbSampler, Render::Sampler* sampler)
+bool FillPreviewDiffuseSampler(
+  const NDb::Sampler& dbSampler,
+  Render::Sampler* sampler,
+  bool canBeVisualDegrade,
+  LinuxPreviewSamplerFillMode fillMode)
 {
-  if (!sampler)
+  if (!sampler || !IsValid(dbSampler.texture))
     return false;
+
+  if (fillMode == LINUX_PREVIEW_SAMPLER_TEXTURE)
+  {
+    if (!CanLoadPreviewDiffuseSamplerTexture(dbSampler.texture))
+      return false;
+
+    Render::FillSampler(dbSampler, sampler, canBeVisualDegrade, 0);
+    return sampler->GetTexture();
+  }
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  return true;
+}
+
+bool FillPreviewDiffuseSampler(
+  const NDb::SamplerEx& dbSampler,
+  Render::Sampler* sampler,
+  bool canBeVisualDegrade,
+  LinuxPreviewSamplerFillMode fillMode)
+{
+  if (!sampler || !IsValid(dbSampler.texture))
+    return false;
+
+  if (fillMode == LINUX_PREVIEW_SAMPLER_TEXTURE)
+  {
+    if (!CanLoadPreviewDiffuseSamplerTexture(dbSampler.texture))
+      return false;
+
+    Render::FillSampler(dbSampler, sampler, canBeVisualDegrade, 0);
+    return sampler->GetTexture();
+  }
 
   sampler->SetSamplerState(dbSampler.samplerState);
   sampler->SetMultiplierAndAdd(dbSampler.Multiplier, dbSampler.Add);
-  return IsValid(dbSampler.texture);
+  return true;
 }
 
-bool FillPreviewDiffuseSampler(const NDb::Material* dbMaterial, Render::Sampler* sampler)
+bool FillPreviewDiffuseSampler(
+  const NDb::Material* dbMaterial,
+  Render::Sampler* sampler,
+  LinuxPreviewSamplerFillMode fillMode)
 {
   if (!dbMaterial || !sampler)
     return false;
@@ -61,27 +102,37 @@ bool FillPreviewDiffuseSampler(const NDb::Material* dbMaterial, Render::Sampler*
     case NDb::BasicMaterial::typeId:
       return FillPreviewDiffuseSampler(
         static_cast<const NDb::BasicMaterial*>(dbMaterial)->DiffuseMap,
-        sampler);
+        sampler,
+        true,
+        fillMode);
 
     case NDb::BasicMaskMaterial::typeId:
       return FillPreviewDiffuseSampler(
         static_cast<const NDb::BasicMaskMaterial*>(dbMaterial)->Diffuse,
-        sampler);
+        sampler,
+        false,
+        fillMode);
 
     case NDb::BasicFXMaterial::typeId:
       return FillPreviewDiffuseSampler(
         static_cast<const NDb::BasicFXMaterial*>(dbMaterial)->DiffuseMap,
-        sampler);
+        sampler,
+        true,
+        fillMode);
 
     case NDb::DropMaterial::typeId:
       return FillPreviewDiffuseSampler(
         static_cast<const NDb::DropMaterial*>(dbMaterial)->DiffuseMap,
-        sampler);
+        sampler,
+        true,
+        fillMode);
 
     case NDb::ParticleFXMaterial::typeId:
       return FillPreviewDiffuseSampler(
         static_cast<const NDb::ParticleFXMaterial*>(dbMaterial)->DiffuseMap,
-        sampler);
+        sampler,
+        true,
+        fillMode);
 
     default:
       return false;
@@ -94,13 +145,16 @@ public:
   LinuxSkeletalMeshPreviewMaterial(const NDb::Material* dbMaterial)
     : NullSkeletalMeshMaterial()
     , diffuseSamplerReady(false)
+    , diffuseTextureReady(false)
+    , diffuseTextureAttempted(false)
   {
     if (!dbMaterial)
       return;
 
     pDbMaterial = dbMaterial;
     Render::Material::FillMaterial(dbMaterial, 0, false);
-    diffuseSamplerReady = FillPreviewDiffuseSampler(dbMaterial, &diffuseMap);
+    diffuseSamplerReady =
+      FillPreviewDiffuseSampler(dbMaterial, &diffuseMap, LINUX_PREVIEW_SAMPLER_METADATA);
   }
 
   virtual const NDb::Material* GetDBMaterial() const
@@ -120,12 +174,23 @@ public:
 
   virtual void PrepareRenderer()
   {
+    if (diffuseSamplerReady && !diffuseTextureAttempted)
+    {
+      diffuseTextureAttempted = true;
+      diffuseTextureReady =
+        FillPreviewDiffuseSampler(pDbMaterial.GetPtr(), &diffuseMap, LINUX_PREVIEW_SAMPLER_TEXTURE);
+    }
+
+    if (diffuseTextureReady && Render::GetStatesManager())
+      Render::BindSampler(0, diffuseMap);
   }
 
 private:
   NDb::Ptr<NDb::Material> pDbMaterial;
   Render::Sampler diffuseMap;
   bool diffuseSamplerReady;
+  bool diffuseTextureReady;
+  bool diffuseTextureAttempted;
 };
 
 BaseMaterial* CreateLinuxSkeletalMeshPreviewMaterial(
