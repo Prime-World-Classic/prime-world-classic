@@ -4717,6 +4717,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyActionButtonsEnabled;
   size_t visibleLobbyActionButtonsSelected;
   std::string visibleLobbySelectedActionButton;
+  bool visibleLobbyKeyboardFocusDrawn;
+  std::string visibleLobbyKeyboardFocusSurface;
   bool visibleLobbyPlayerCountDrawn;
   int visibleLobbyPlayerCountValue;
   size_t visibleLobbyMouseInputCount;
@@ -5906,6 +5908,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyActionButtonsEnabled(0),
       visibleLobbyActionButtonsSelected(0),
       visibleLobbySelectedActionButton("none"),
+      visibleLobbyKeyboardFocusDrawn(false),
+      visibleLobbyKeyboardFocusSurface("none"),
       visibleLobbyPlayerCountDrawn(false),
       visibleLobbyPlayerCountValue(0),
       visibleLobbyMouseInputCount(0),
@@ -52721,6 +52725,81 @@ void DrawLinuxLobbyButton(
   }
 }
 
+const char* ResolveLinuxLobbyKeyboardFocusSurface(size_t selectedAction)
+{
+  switch (selectedAction)
+  {
+    case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
+      return "primary-button";
+
+    case LINUX_VISIBLE_MENU_ACTION_MAP:
+      return "map-list";
+
+    case LINUX_VISIBLE_MENU_ACTION_HERO:
+      return "hero-details";
+
+    case LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS:
+      return "diagnostics-status";
+
+    default:
+      return "none";
+  }
+}
+
+bool DrawLinuxLobbyKeyboardFocus(
+  const LinuxLobbyLayoutTransform& layout,
+  size_t selectedAction
+)
+{
+  int x = 0;
+  int y = 0;
+  int width = 0;
+  int height = 0;
+  switch (selectedAction)
+  {
+    case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
+      x = 418;
+      y = 849;
+      width = 192;
+      height = 59;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_MAP:
+      x = 65;
+      y = 455;
+      width = 546;
+      height = 368;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_HERO:
+      x = 65;
+      y = 84;
+      width = 705;
+      height = 236;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS:
+      x = 697;
+      y = 906;
+      width = 440;
+      height = 24;
+      break;
+
+    default:
+      return false;
+  }
+
+  const int rx = layout.X(x);
+  const int ry = layout.Y(y);
+  const int rw = layout.W(width);
+  const int rh = layout.H(height);
+  SetOpenGlColor(255, 226, 132, 218);
+  DrawOpenGlBorderRect(rx - 2, ry - 2, std::max(1, rw + 4), std::max(1, rh + 4));
+  SetOpenGlColor(255, 246, 194, 112);
+  DrawOpenGlBorderRect(rx + 2, ry + 2, std::max(1, rw - 4), std::max(1, rh - 4));
+  return true;
+}
+
 void DrawLinuxLobbyRadio(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
@@ -55193,6 +55272,14 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     selectedActionButton = "refresh";
   }
 
+  bool keyboardFocusDrawn = false;
+  const char* keyboardFocusSurface = "none";
+  if (runtime)
+  {
+    keyboardFocusSurface = ResolveLinuxLobbyKeyboardFocusSurface(runtime->visibleMenuSelectedAction);
+    keyboardFocusDrawn = DrawLinuxLobbyKeyboardFocus(layout, runtime->visibleMenuSelectedAction);
+  }
+
   if (runtime)
   {
     runtime->visibleLobbyMapRowsDrawn = mapRowsDrawn;
@@ -55240,6 +55327,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyActionButtonsEnabled = actionButtonsEnabled;
     runtime->visibleLobbyActionButtonsSelected = actionButtonsSelected;
     runtime->visibleLobbySelectedActionButton = selectedActionButton;
+    runtime->visibleLobbyKeyboardFocusDrawn = keyboardFocusDrawn;
+    runtime->visibleLobbyKeyboardFocusSurface = keyboardFocusSurface;
     runtime->visibleLobbyPlayerCountDrawn = playerCountValue > 0;
     runtime->visibleLobbyPlayerCountValue = playerCountValue;
   }
@@ -61801,6 +61890,11 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLobbySelectedActionButton.empty() ?
               "none" :
               screenRuntime.visibleLobbySelectedActionButton) << "\n";
+  logFile << "  finalVisibleLobbyKeyboardFocus="
+          << (screenRuntime.visibleLobbyKeyboardFocusDrawn ? "yes" : "no") << "/"
+          << (screenRuntime.visibleLobbyKeyboardFocusSurface.empty() ?
+              "none" :
+              screenRuntime.visibleLobbyKeyboardFocusSurface) << "\n";
   logFile << "  finalVisibleLobbyJoinMode="
           << DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode) << "\n";
   logFile << "  finalVisibleLobbyPlayerCountDrawn="
@@ -65769,7 +65863,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu mapHover=%lu/%d gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu gameHover=%lu/%d joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu hover=%lu/%s at=%d,%d base=%d,%d lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu mapHover=%lu/%d gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu gameHover=%lu/%d joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s keyboardFocus=%s/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu hover=%lu/%s at=%d,%d base=%d,%d lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -65806,6 +65900,10 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbySelectedActionButton.empty() ?
       "none" :
       screenRuntime.visibleLobbySelectedActionButton.c_str(),
+    screenRuntime.visibleLobbyKeyboardFocusDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyKeyboardFocusSurface.empty() ?
+      "none" :
+      screenRuntime.visibleLobbyKeyboardFocusSurface.c_str(),
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
     screenRuntime.visibleLobbyDeveloperSexDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDeveloperFemale ? "female" : "male",
