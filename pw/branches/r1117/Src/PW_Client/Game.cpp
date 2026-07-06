@@ -4666,6 +4666,9 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameFirstVisibleRow;
   size_t visibleLobbyGameLastVisibleRow;
   size_t visibleLobbyJoinModeButtonsDrawn;
+  size_t visibleLobbyJoinModeButtonsSelected;
+  bool visibleLobbyDeveloperSexDrawn;
+  bool visibleLobbyDeveloperFemale;
   size_t visibleLobbyActionButtonsDrawn;
   size_t visibleLobbyActionButtonsSelected;
   std::string visibleLobbySelectedActionButton;
@@ -5832,6 +5835,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameFirstVisibleRow(0),
       visibleLobbyGameLastVisibleRow(0),
       visibleLobbyJoinModeButtonsDrawn(0),
+      visibleLobbyJoinModeButtonsSelected(0),
+      visibleLobbyDeveloperSexDrawn(false),
+      visibleLobbyDeveloperFemale(false),
       visibleLobbyActionButtonsDrawn(0),
       visibleLobbyActionButtonsSelected(0),
       visibleLobbySelectedActionButton("none"),
@@ -54132,33 +54138,49 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
   const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
   size_t joinModeButtonsDrawn = 0;
+  size_t joinModeButtonsSelected = 0;
+  const bool normalJoinModeSelected = joinMode == LINUX_LOBBY_JOIN_MODE_NORMAL;
+  const bool reconnectJoinModeSelected = joinMode == LINUX_LOBBY_JOIN_MODE_RECONNECT;
+  const bool spectateJoinModeSelected = joinMode == LINUX_LOBBY_JOIN_MODE_SPECTATE;
   DrawLinuxLobbyRadio(
     overlay,
     layout,
     705,
     411,
     overlay->lobbyText.joinNormal,
-    joinMode == LINUX_LOBBY_JOIN_MODE_NORMAL
+    normalJoinModeSelected
   );
   ++joinModeButtonsDrawn;
+  if (normalJoinModeSelected)
+  {
+    ++joinModeButtonsSelected;
+  }
   DrawLinuxLobbyRadio(
     overlay,
     layout,
     888,
     411,
     overlay->lobbyText.joinReconnect,
-    joinMode == LINUX_LOBBY_JOIN_MODE_RECONNECT
+    reconnectJoinModeSelected
   );
   ++joinModeButtonsDrawn;
+  if (reconnectJoinModeSelected)
+  {
+    ++joinModeButtonsSelected;
+  }
   DrawLinuxLobbyRadio(
     overlay,
     layout,
     1074,
     411,
     overlay->lobbyText.joinSpectate,
-    joinMode == LINUX_LOBBY_JOIN_MODE_SPECTATE
+    spectateJoinModeSelected
   );
   ++joinModeButtonsDrawn;
+  if (spectateJoinModeSelected)
+  {
+    ++joinModeButtonsSelected;
+  }
 
   if (overlay->lobbySelectionFrame.texture)
   {
@@ -54257,6 +54279,9 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       gameScrollFirstRow + gameRowsDrawn - 1 :
       0;
     runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
+    runtime->visibleLobbyJoinModeButtonsSelected = joinModeButtonsSelected;
+    runtime->visibleLobbyDeveloperSexDrawn = true;
+    runtime->visibleLobbyDeveloperFemale = developerFemale;
     runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
     runtime->visibleLobbyActionButtonsSelected = actionButtonsSelected;
     runtime->visibleLobbySelectedActionButton = selectedActionButton;
@@ -60781,6 +60806,11 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyGameLastVisibleRow << "\n";
   logFile << "  finalVisibleLobbyJoinModeButtons="
           << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
+  logFile << "  finalVisibleLobbyJoinModeButtonsSelected="
+          << screenRuntime.visibleLobbyJoinModeButtonsSelected << "\n";
+  logFile << "  finalVisibleLobbyDeveloperSex="
+          << (screenRuntime.visibleLobbyDeveloperSexDrawn ? "yes" : "no") << "/"
+          << (screenRuntime.visibleLobbyDeveloperFemale ? "female" : "male") << "\n";
   logFile << "  finalVisibleLobbyActionButtons="
           << screenRuntime.visibleLobbyActionButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtonsSelected="
@@ -64705,7 +64735,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu selectedAction=%lu/%s joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64731,12 +64761,15 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameFirstVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameLastVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsSelected),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsSelected),
     screenRuntime.visibleLobbySelectedActionButton.empty() ?
       "none" :
       screenRuntime.visibleLobbySelectedActionButton.c_str(),
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
+    screenRuntime.visibleLobbyDeveloperSexDrawn ? "yes" : "no",
+    screenRuntime.visibleLobbyDeveloperFemale ? "female" : "male",
     screenRuntime.visibleLobbyPlayerCountDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyPlayerCountValue,
     static_cast<unsigned long>(screenRuntime.visibleLobbyMouseInputCount),
