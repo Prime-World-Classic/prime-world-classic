@@ -41,7 +41,11 @@ public:
 
 bool CanLoadPreviewDiffuseSamplerTexture(const NDb::Ptr<NDb::TextureBase>& texture)
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  return IsValid(texture);
+#else
   return IsValid(texture) && dynamic_cast<const NDb::Texture*>(texture.GetPtr());
+#endif
 }
 
 bool FillPreviewDiffuseSampler(
@@ -181,8 +185,19 @@ public:
         FillPreviewDiffuseSampler(pDbMaterial.GetPtr(), &diffuseMap, LINUX_PREVIEW_SAMPLER_TEXTURE);
     }
 
-    if (diffuseTextureReady && Render::GetStatesManager())
-      Render::BindSampler(0, diffuseMap);
+    if (diffuseTextureReady && diffuseMap.Enabled())
+    {
+      if (Render::GetStatesManager())
+      {
+        Render::BindSampler(0, diffuseMap);
+      }
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+      else
+      {
+        Render::SmartRenderer::BindTexture(0, diffuseMap.GetTexture().GetPtr());
+      }
+#endif
+    }
   }
 
 private:

@@ -42,10 +42,30 @@ void ResetTriangleAndDipCount();
 void OnFrameStart();
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+struct OpenGLTextureBindStats
+{
+  unsigned int attempts;
+  unsigned int successfulBinds;
+  unsigned int nullUnbinds;
+  unsigned int nonTexture2DRejects;
+  unsigned int texture2DMissingOpenGLTexture;
+
+  OpenGLTextureBindStats()
+    : attempts(0),
+      successfulBinds(0),
+      nullUnbinds(0),
+      nonTexture2DRejects(0),
+      texture2DMissingOpenGLTexture(0)
+  {
+  }
+};
+
 void SetOpenGLImmediateMeshDrawingEnabled(bool enabled);
 void SetOpenGLImmediateMeshPreviewTransform(float centerX, float centerY, float minZ, float scale);
 void SetOpenGLImmediateObjectMatrix(const Matrix43* matrix);
 void SetOpenGLImmediateSkeletalMatrices(const Matrix43* matrices, unsigned int matrixCount);
+OpenGLTextureBindStats GetOpenGLTextureBindStats();
+void ResetOpenGLTextureBindStats();
 #endif
 
 void AddRect(float l, float t, float r, float b, int R, int G, int B);

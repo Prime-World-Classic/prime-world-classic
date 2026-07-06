@@ -237,6 +237,16 @@ Texture2DRef GetOrCreateTexture2D(nstl::string const& filename, void* poolId, bo
   {
     if (poolId)
       it->second.poolId = poolId;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    if (it->second.texture && !it->second.texture->GetOpenGLTexture())
+    {
+      Texture2DRef texture = CreateTexture2DFromFile(normalized);
+      if (texture && texture->GetOpenGLTexture())
+      {
+        it->second.texture = texture;
+      }
+    }
+#endif
     return it->second.texture;
   }
 

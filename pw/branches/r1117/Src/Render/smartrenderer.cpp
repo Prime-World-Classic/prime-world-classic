@@ -68,6 +68,7 @@ namespace
   float g_openGLPreviewCenterY = 0.0f;
   float g_openGLPreviewMinZ = 0.0f;
   float g_openGLPreviewScale = 1.0f;
+  Render::SmartRenderer::OpenGLTextureBindStats g_openGLTextureBindStats;
 
   float ClampFloat(float value, float minValue, float maxValue)
   {
@@ -683,6 +684,18 @@ void BindPixelShader(IDirect3DPixelShader9 *shader)
   (void)shader;
 }
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+OpenGLTextureBindStats GetOpenGLTextureBindStats()
+{
+  return g_openGLTextureBindStats;
+}
+
+void ResetOpenGLTextureBindStats()
+{
+  g_openGLTextureBindStats = OpenGLTextureBindStats();
+}
+#endif
+
 void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtect)
 {
   (void)bProtect;
@@ -691,20 +704,32 @@ void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtec
   if (samplerIndex != 0)
     return;
 
+  ++g_openGLTextureBindStats.attempts;
   if (!texture)
   {
+    ++g_openGLTextureBindStats.nullUnbinds;
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisable(GL_TEXTURE_2D);
     return;
   }
 
   const Texture2D* texture2D = dynamic_cast<const Texture2D*>(texture);
-  const unsigned int openGLTexture = texture2D ? texture2D->GetOpenGLTexture() : 0;
-  if (!openGLTexture)
+  if (!texture2D)
+  {
+    ++g_openGLTextureBindStats.nonTexture2DRejects;
     return;
+  }
+
+  const unsigned int openGLTexture = texture2D->GetOpenGLTexture();
+  if (!openGLTexture)
+  {
+    ++g_openGLTextureBindStats.texture2DMissingOpenGLTexture;
+    return;
+  }
 
   glEnable(GL_TEXTURE_2D);
   glBindTexture(GL_TEXTURE_2D, openGLTexture);
+  ++g_openGLTextureBindStats.successfulBinds;
 #else
   (void)samplerIndex;
   (void)texture;
