@@ -6,6 +6,7 @@
 #include "PFTargetSelector.h"
 #include "PFBaseUnit.h"
 #include "PFAbilityData.h"
+#include "PFApplInstant.h"
 #include "PFCastLimitations.h"
 
 namespace NWorld
@@ -42,7 +43,17 @@ const PFAbilityData* CheckConditionLimitation(NDb::ConditionCastLimitation const
 
 const PFAbilityData* CheckDispellLimitation(NDb::DispellCastLimitation const&, CastLimitationsCheckParams const &cp)
 {
-  return 0;
+  if (!cp.pAbility || !cp.pAbility->GetOwner())
+    return 0;
+
+  vector<PFBaseApplicator*> statuses;
+  PFBaseUnit* pAbilityOwner = cp.pAbility->GetOwner();
+  const int count = PFApplDispell::SearchStatus2Dispell(
+    vector<const PFBaseUnit*>(1, pAbilityOwner),
+    pAbilityOwner->GetOppositeFactionFlags(),
+    Target(pAbilityOwner),
+    statuses);
+  return count > 0 ? cp.pAbility : 0;
 }
 
 const PFAbilityData* CheckPositionLimitation(NDb::PositionCastLimitation const& dbLimit, CastLimitationsCheckParams const& cp)
