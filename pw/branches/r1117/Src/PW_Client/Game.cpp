@@ -197,6 +197,7 @@ struct LinuxBootstrapClickSpec
   int wheelDelta;
   int keySym;
   bool moveOnly;
+  double waitSeconds;
 
   LinuxBootstrapClickSpec()
     : baseX(-1),
@@ -204,7 +205,8 @@ struct LinuxBootstrapClickSpec
       doubleClick(false),
       wheelDelta(0),
       keySym(0),
-      moveOnly(false)
+      moveOnly(false),
+      waitSeconds(0.0)
   {
   }
 };
@@ -4724,6 +4726,9 @@ struct LinuxBootstrapScreenRuntime
   int visibleLobbyHoverBaseX;
   int visibleLobbyHoverBaseY;
   bool visibleLobbyHoverSynthetic;
+  size_t bootstrapInputScriptTokens;
+  size_t bootstrapInputScriptWaitTokens;
+  double bootstrapInputScriptWaitSeconds;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -5910,6 +5915,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyHoverBaseX(-1),
       visibleLobbyHoverBaseY(-1),
       visibleLobbyHoverSynthetic(false),
+      bootstrapInputScriptTokens(0),
+      bootstrapInputScriptWaitTokens(0),
+      bootstrapInputScriptWaitSeconds(0.0),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -7092,6 +7100,30 @@ bool ResolveLinuxBootstrapKeySym(const std::string& keyName, int* keySym)
   return true;
 }
 
+bool ParseLinuxBootstrapWaitSeconds(const std::string& value, double* waitSeconds)
+{
+  if (!waitSeconds)
+  {
+    return false;
+  }
+
+  const std::string trimmed = TrimAscii(value);
+  if (trimmed.empty())
+  {
+    return false;
+  }
+
+  char* end = 0;
+  const double parsed = strtod(trimmed.c_str(), &end);
+  if (!end || *end != 0 || parsed <= 0.0)
+  {
+    return false;
+  }
+
+  *waitSeconds = parsed;
+  return true;
+}
+
 bool ParseBootstrapClickSpecToken(
   const std::string& token,
   bool defaultDoubleClick,
@@ -7110,6 +7142,38 @@ bool ParseBootstrapClickSpecToken(
   }
 
   const std::string lowered = ToAsciiLower(trimmed);
+  if (lowered.find("wait:") == 0 || lowered.find("wait=") == 0)
+  {
+    double waitSeconds = 0.0;
+    if (!ParseLinuxBootstrapWaitSeconds(trimmed.substr(5), &waitSeconds))
+    {
+      return false;
+    }
+    spec->baseX = -1;
+    spec->baseY = -1;
+    spec->doubleClick = false;
+    spec->wheelDelta = 0;
+    spec->keySym = 0;
+    spec->moveOnly = false;
+    spec->waitSeconds = waitSeconds;
+    return true;
+  }
+  if (lowered.find("delay:") == 0 || lowered.find("delay=") == 0)
+  {
+    double waitSeconds = 0.0;
+    if (!ParseLinuxBootstrapWaitSeconds(trimmed.substr(6), &waitSeconds))
+    {
+      return false;
+    }
+    spec->baseX = -1;
+    spec->baseY = -1;
+    spec->doubleClick = false;
+    spec->wheelDelta = 0;
+    spec->keySym = 0;
+    spec->moveOnly = false;
+    spec->waitSeconds = waitSeconds;
+    return true;
+  }
   if (lowered.find("key:") == 0 || lowered.find("key=") == 0)
   {
     int keySym = 0;
@@ -7123,6 +7187,7 @@ bool ParseBootstrapClickSpecToken(
     spec->wheelDelta = 0;
     spec->keySym = keySym;
     spec->moveOnly = false;
+    spec->waitSeconds = 0.0;
     return true;
   }
 
@@ -7143,6 +7208,7 @@ bool ParseBootstrapClickSpecToken(
   spec->wheelDelta = 0;
   spec->keySym = 0;
   spec->moveOnly = false;
+  spec->waitSeconds = 0.0;
   if (optionPos != std::string::npos)
   {
     const std::string option = ToAsciiLower(TrimAscii(trimmed.substr(optionPos + 1)));
@@ -29886,6 +29952,11 @@ bool InjectLinuxBootstrapLobbyClick(
   }
 
   const LinuxBootstrapClickSpec& click = settings.bootstrapClickScript[clickIndex];
+  if (click.waitSeconds > 0.0)
+  {
+    return true;
+  }
+
   NMainFrame::SWindowsMsg message;
   memset(&message, 0, sizeof(message));
   NHPTimer::GetTime(message.time);
@@ -61605,6 +61676,10 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleMenuLastAction.empty() ?
               "none" :
               screenRuntime.visibleMenuLastAction) << "\n";
+  logFile << "  finalBootstrapInputScript="
+          << screenRuntime.bootstrapInputScriptTokens << "/"
+          << screenRuntime.bootstrapInputScriptWaitTokens << "/"
+          << NStr::StrFmt("%.2f", screenRuntime.bootstrapInputScriptWaitSeconds) << "\n";
   logFile << "  finalVisibleLobbyMapRows="
           << screenRuntime.visibleLobbyMapRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyMapSelectedRows="
@@ -65389,8 +65464,19 @@ int main(int argc, char** argv)
           bootstrapClickNextIndex,
           &inputState))
     {
+      const double nextDelay =
+        settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds > 0.0 ?
+          settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds :
+          settings.bootstrapClickIntervalSeconds;
+      ++screenRuntime.bootstrapInputScriptTokens;
+      if (settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds > 0.0)
+      {
+        ++screenRuntime.bootstrapInputScriptWaitTokens;
+        screenRuntime.bootstrapInputScriptWaitSeconds +=
+          settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds;
+      }
       ++bootstrapClickNextIndex;
-      bootstrapClickNextTime = elapsedSeconds + settings.bootstrapClickIntervalSeconds;
+      bootstrapClickNextTime = elapsedSeconds + nextDelay;
     }
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
@@ -65706,6 +65792,10 @@ int main(int argc, char** argv)
     screenRuntime.visibleMenuPath.empty() ?
       "none" :
       screenRuntime.visibleMenuPath.c_str());
+  fprintf(stdout, "Final bootstrap input script: tokens=%lu waits=%lu waitSeconds=%.2f\n",
+    static_cast<unsigned long>(screenRuntime.bootstrapInputScriptTokens),
+    static_cast<unsigned long>(screenRuntime.bootstrapInputScriptWaitTokens),
+    screenRuntime.bootstrapInputScriptWaitSeconds);
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu dbAbilities=%s/%lu/%lu/%lu stats=%s/%lu/%lu talents=%lu/%lu shown=%lu talentMissing=%lu talentReady=%lu/%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
