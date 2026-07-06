@@ -4667,6 +4667,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameLastVisibleRow;
   size_t visibleLobbyJoinModeButtonsDrawn;
   size_t visibleLobbyActionButtonsDrawn;
+  size_t visibleLobbyActionButtonsSelected;
+  std::string visibleLobbySelectedActionButton;
   bool visibleLobbyPlayerCountDrawn;
   int visibleLobbyPlayerCountValue;
   size_t visibleLobbyMouseInputCount;
@@ -5831,6 +5833,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameLastVisibleRow(0),
       visibleLobbyJoinModeButtonsDrawn(0),
       visibleLobbyActionButtonsDrawn(0),
+      visibleLobbyActionButtonsSelected(0),
+      visibleLobbySelectedActionButton("none"),
       visibleLobbyPlayerCountDrawn(false),
       visibleLobbyPlayerCountValue(0),
       visibleLobbyMouseInputCount(0),
@@ -54195,12 +54199,32 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
 
   const bool primarySelected = runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_PRIMARY;
   size_t actionButtonsDrawn = 0;
-  DrawLinuxLobbyButton(overlay, layout, 186, 935, 309, 59, overlay->lobbyText.startSessionButton, false);
+  size_t actionButtonsSelected = 0;
+  std::string selectedActionButton = "none";
+  const bool startSessionSelected = false;
+  const bool createGameSelected = primarySelected;
+  const bool refreshSelected = false;
+  DrawLinuxLobbyButton(overlay, layout, 186, 935, 309, 59, overlay->lobbyText.startSessionButton, startSessionSelected);
   ++actionButtonsDrawn;
-  DrawLinuxLobbyButton(overlay, layout, 418, 849, 192, 59, overlay->lobbyText.createGameButton, primarySelected);
+  if (startSessionSelected)
+  {
+    ++actionButtonsSelected;
+    selectedActionButton = "start-session";
+  }
+  DrawLinuxLobbyButton(overlay, layout, 418, 849, 192, 59, overlay->lobbyText.createGameButton, createGameSelected);
   ++actionButtonsDrawn;
-  DrawLinuxLobbyButton(overlay, layout, 807, 935, 324, 59, overlay->lobbyText.refreshButton, false);
+  if (createGameSelected)
+  {
+    ++actionButtonsSelected;
+    selectedActionButton = "create-game";
+  }
+  DrawLinuxLobbyButton(overlay, layout, 807, 935, 324, 59, overlay->lobbyText.refreshButton, refreshSelected);
   ++actionButtonsDrawn;
+  if (refreshSelected)
+  {
+    ++actionButtonsSelected;
+    selectedActionButton = "refresh";
+  }
 
   if (runtime)
   {
@@ -54234,6 +54258,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       0;
     runtime->visibleLobbyJoinModeButtonsDrawn = joinModeButtonsDrawn;
     runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
+    runtime->visibleLobbyActionButtonsSelected = actionButtonsSelected;
+    runtime->visibleLobbySelectedActionButton = selectedActionButton;
     runtime->visibleLobbyPlayerCountDrawn = playerCountValue > 0;
     runtime->visibleLobbyPlayerCountValue = playerCountValue;
   }
@@ -60757,6 +60783,12 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyJoinModeButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtons="
           << screenRuntime.visibleLobbyActionButtonsDrawn << "\n";
+  logFile << "  finalVisibleLobbyActionButtonsSelected="
+          << screenRuntime.visibleLobbyActionButtonsSelected << "\n";
+  logFile << "  finalVisibleLobbySelectedActionButton="
+          << (screenRuntime.visibleLobbySelectedActionButton.empty() ?
+              "none" :
+              screenRuntime.visibleLobbySelectedActionButton) << "\n";
   logFile << "  finalVisibleLobbyJoinMode="
           << DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode) << "\n";
   logFile << "  finalVisibleLobbyPlayerCountDrawn="
@@ -64673,7 +64705,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu selectedAction=%lu/%s joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64700,6 +64732,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameLastVisibleRow),
     static_cast<unsigned long>(screenRuntime.visibleLobbyJoinModeButtonsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyActionButtonsSelected),
+    screenRuntime.visibleLobbySelectedActionButton.empty() ?
+      "none" :
+      screenRuntime.visibleLobbySelectedActionButton.c_str(),
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
     screenRuntime.visibleLobbyPlayerCountDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyPlayerCountValue,
