@@ -129,6 +129,53 @@ void PushMouseMessage(NMainFrame::SWindowsMsg::EMsg msgType, int x, int y, unsig
   PushMessage(msg);
 }
 
+NMainFrame::SWindowsMsg::EMsg GetLocalCursorPos(int& x, int& y)
+{
+  x = 0;
+  y = 0;
+
+  if (!g_display || !g_window || !g_active || !g_notMinimized)
+  {
+    return NMainFrame::SWindowsMsg::MOUSE_DISABLED;
+  }
+
+  XWindowAttributes attributes = {};
+  if (!XGetWindowAttributes(g_display, g_window, &attributes) || attributes.map_state != IsViewable)
+  {
+    return NMainFrame::SWindowsMsg::MOUSE_DISABLED;
+  }
+
+  ::Window root = 0;
+  ::Window child = 0;
+  int rootX = 0;
+  int rootY = 0;
+  int winX = 0;
+  int winY = 0;
+  unsigned int mask = 0;
+  if (!XQueryPointer(g_display, g_window, &root, &child, &rootX, &rootY, &winX, &winY, &mask))
+  {
+    return NMainFrame::SWindowsMsg::MOUSE_DISABLED;
+  }
+
+  x = winX;
+  y = winY;
+
+  if (winX < 0 || winX >= attributes.width || winY < 0 || winY >= attributes.height)
+  {
+    return NMainFrame::SWindowsMsg::MOUSE_OUT;
+  }
+
+  return NMainFrame::SWindowsMsg::MOUSE_MOVE;
+}
+
+void PushCursorMessage()
+{
+  int x = 0;
+  int y = 0;
+  const NMainFrame::SWindowsMsg::EMsg msg = GetLocalCursorPos(x, y);
+  PushMouseMessage(msg, x, y, 0);
+}
+
 void PushKeyMessage(NMainFrame::SWindowsMsg::EMsg msgType, int key, int repeat)
 {
   NMainFrame::SWindowsMsg msg = {};
@@ -584,6 +631,8 @@ void PumpMessages()
   {
     return;
   }
+
+  PushCursorMessage();
 
   while (XPending(g_display) > 0)
   {
