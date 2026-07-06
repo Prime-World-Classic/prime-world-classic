@@ -200,6 +200,11 @@ struct LinuxClientLaunchSettings
   bool spectator;
   bool tutorial;
   bool bootstrapCreateGame;
+  bool bootstrapClickEnabled;
+  int bootstrapClickBaseX;
+  int bootstrapClickBaseY;
+  bool bootstrapClickDouble;
+  double bootstrapClickAfterSeconds;
   bool diagnosticsOverlay;
   bool replayStartPaused;
   size_t replayInitialStepBudget;
@@ -222,6 +227,11 @@ struct LinuxClientLaunchSettings
       spectator(false),
       tutorial(false),
       bootstrapCreateGame(false),
+      bootstrapClickEnabled(false),
+      bootstrapClickBaseX(-1),
+      bootstrapClickBaseY(-1),
+      bootstrapClickDouble(false),
+      bootstrapClickAfterSeconds(0.5),
       diagnosticsOverlay(false),
       replayStartPaused(false),
       replayInitialStepBudget(0),
@@ -6893,6 +6903,69 @@ bool ReadBootstrapCreateGameFlag(int argc, char** argv)
   (void)argc;
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-create-game");
+}
+
+bool ParseBootstrapClickBasePair(const char* value, int* baseX, int* baseY)
+{
+  if (!value || !value[0] || !baseX || !baseY)
+  {
+    return false;
+  }
+
+  const char* comma = strchr(value, ',');
+  if (!comma)
+  {
+    return false;
+  }
+
+  char* firstEnd = 0;
+  const long parsedX = strtol(value, &firstEnd, 10);
+  if (firstEnd != comma)
+  {
+    return false;
+  }
+
+  char* secondEnd = 0;
+  const long parsedY = strtol(comma + 1, &secondEnd, 10);
+  if (secondEnd == comma + 1 || (secondEnd && *secondEnd))
+  {
+    return false;
+  }
+
+  if (parsedX < 0 || parsedX > 1279 || parsedY < 0 || parsedY > 1023)
+  {
+    return false;
+  }
+
+  *baseX = static_cast<int>(parsedX);
+  *baseY = static_cast<int>(parsedY);
+  return true;
+}
+
+bool ReadBootstrapClickBase(int argc, char** argv, int* baseX, int* baseY)
+{
+  (void)argc;
+  (void)argv;
+  return ParseBootstrapClickBasePair(
+    CmdLineLite::Instance().GetStringKey("--bootstrap-click-base", 0),
+    baseX,
+    baseY
+  );
+}
+
+bool ReadBootstrapClickDoubleFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--bootstrap-click-double");
+}
+
+double ReadBootstrapClickAfterSeconds(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const double value = CmdLineLite::Instance().GetFloatKey("--bootstrap-click-after", 0.5f);
+  return value > 0.0 ? value : 0.0;
 }
 
 bool ReadDiagnosticsOverlayFlag(int argc, char** argv)
@@ -29518,6 +29591,40 @@ void UpdateInputState(LinuxInputState* state)
   {
     state->recentEvents.erase(state->recentEvents.begin(), state->recentEvents.end() - maxRecentEvents);
   }
+}
+
+bool InjectLinuxBootstrapLobbyClick(
+  const LinuxClientLaunchSettings& settings,
+  double elapsedSeconds,
+  const LinuxBootstrapScreenRuntime& runtime,
+  LinuxInputState* inputState
+)
+{
+  if (!inputState || !settings.bootstrapClickEnabled || !runtime.visibleMenuReady)
+  {
+    return false;
+  }
+  if (elapsedSeconds < settings.bootstrapClickAfterSeconds || settings.width <= 0 || settings.height <= 0)
+  {
+    return false;
+  }
+
+  NMainFrame::SWindowsMsg message;
+  memset(&message, 0, sizeof(message));
+  NHPTimer::GetTime(message.time);
+  message.msg = settings.bootstrapClickDouble ?
+    NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
+    NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
+  message.x = static_cast<int>(
+    static_cast<double>(settings.bootstrapClickBaseX) *
+      static_cast<double>(settings.width) / 1280.0 + 0.5
+  );
+  message.y = static_cast<int>(
+    static_cast<double>(settings.bootstrapClickBaseY) *
+      static_cast<double>(settings.height) / 1024.0 + 0.5
+  );
+  inputState->rawMessages.push_back(message);
+  return true;
 }
 
 void DriveLinuxUiUser(
@@ -60903,6 +61010,14 @@ void AppendRuntimeInputLog(
   }
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  logFile << "  finalVisibleMenuSelectedAction="
+          << screenRuntime.visibleMenuSelectedAction << "\n";
+  logFile << "  finalVisibleMenuActivatedCount="
+          << screenRuntime.visibleMenuActivatedCount << "\n";
+  logFile << "  finalVisibleMenuLastAction="
+          << (screenRuntime.visibleMenuLastAction.empty() ?
+              "none" :
+              screenRuntime.visibleMenuLastAction) << "\n";
   logFile << "  finalVisibleLobbyMapRows="
           << screenRuntime.visibleLobbyMapRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyMapSelectedRows="
@@ -63115,6 +63230,9 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
+  settings.bootstrapClickEnabled = ReadBootstrapClickBase(argc, argv, &settings.bootstrapClickBaseX, &settings.bootstrapClickBaseY);
+  settings.bootstrapClickDouble = ReadBootstrapClickDoubleFlag(argc, argv);
+  settings.bootstrapClickAfterSeconds = ReadBootstrapClickAfterSeconds(argc, argv);
   settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
   settings.replayStartPaused = ReadReplayStartPausedFlag(argc, argv);
   settings.replayInitialStepBudget = ReadReplayStepBudget(argc, argv);
@@ -64614,6 +64732,7 @@ int main(int argc, char** argv)
   NHPTimer::STime start = 0;
   NHPTimer::GetTime(start);
   double lastDemoCycleTime = 0.0;
+  bool bootstrapClickInjected = false;
 
   while (!NMainFrame::IsExit())
   {
@@ -64639,6 +64758,14 @@ int main(int argc, char** argv)
         &uiRootPreview
       );
       DriveLinuxUiCursor(&uiRootPreview);
+    }
+    NHPTimer::STime now = 0;
+    NHPTimer::GetTime(now);
+    const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
+    if (!bootstrapClickInjected &&
+        InjectLinuxBootstrapLobbyClick(settings, elapsedSeconds, screenRuntime, &inputState))
+    {
+      bootstrapClickInjected = true;
     }
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
@@ -64689,9 +64816,6 @@ int main(int argc, char** argv)
       ) || localMatchChanged;
     }
 
-    NHPTimer::STime now = 0;
-    NHPTimer::GetTime(now);
-    const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
     bool demoChanged = false;
     if (settings.demoCycleSeconds > 0.0 && elapsedSeconds - lastDemoCycleTime >= settings.demoCycleSeconds)
     {
@@ -64936,6 +65060,15 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyLastInputY,
     screenRuntime.visibleLobbyLastBaseX,
     screenRuntime.visibleLobbyLastBaseY);
+  fprintf(stdout, "Final visible menu runtime: selected=%lu activations=%lu lastAction=%s path=%s\n",
+    static_cast<unsigned long>(screenRuntime.visibleMenuSelectedAction),
+    static_cast<unsigned long>(screenRuntime.visibleMenuActivatedCount),
+    screenRuntime.visibleMenuLastAction.empty() ?
+      "none" :
+      screenRuntime.visibleMenuLastAction.c_str(),
+    screenRuntime.visibleMenuPath.empty() ?
+      "none" :
+      screenRuntime.visibleMenuPath.c_str());
   fprintf(stdout, "Final visible lobby hero details: drawn=%s portrait=%s portraitFallback=%s abilities=%lu/%lu shown=%lu abilityFallback=%lu dbAbilities=%s/%lu/%lu/%lu stats=%s/%lu/%lu talents=%lu/%lu shown=%lu talentMissing=%lu talentReady=%lu/%lu\n",
     screenRuntime.visibleLobbyHeroDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyHeroPortraitDrawn ? "yes" : "no",
