@@ -564,9 +564,16 @@ int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, cons
     ? pWorld->GetSmartRndGen()->Random(outcomesNumber, probDecrement, pFirst, pSecond, pDBDesc->GetDBID().GetHashKey())
     : (outcomesNumber > 0 ? 0 : -1);
 }
-float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const { (void)name; (void)pSender; (void)pReceiver; (void)pMisc; return 0.0f; }
+float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const
+{
+  NDb::UnitConstant const* pConstant = GetConstant(name);
+  if (!pConstant)
+    return 0.0f;
+
+  return pConstant->var(pSender, pReceiver, pMisc ? pMisc : this, 0.0f);
+}
 NDb::UnitConstant const* PFAbilityData::GetConstant(char const *name) const { return pConstantsMap ? pConstantsMap->Get( name ) : 0; }
-float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { (void)name; (void)pSender; (void)pReceiver; return 0.0f; }
+float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { return CalcParam(name, pSender, pReceiver, this); }
 bool PFAbilityData::CheckUpgradePerCastPerTarget() const { return true; }
 const IUnitFormulaPars* PFAbilityData::GetObjectOwner() const { return pOwner.GetPtr(); }
 int PFAbilityData::GetScrollLevel() const
@@ -703,12 +710,45 @@ NNameMap::Variant * PFAbilityData::ConditionsResolver::ResolveVariant( const cha
 PFAbilityConstantsMap::PFAbilityConstantsMap( CPtr<PFAbilityData> const& pAbility_, const NDb::Ability* pDBDesc )
   : pAbility( pAbility_ )
 {
-  (void)pDBDesc;
+  const NDb::UnitConstantsContainer* pConstants = pDBDesc && pDBDesc->constants ? pDBDesc->constants.GetPtr() : 0;
+  if (!pConstants)
+    return;
+
+  for (vector<NDb::Ptr<NDb::UnitConstant> >::const_iterator iConst = pConstants->vars.begin(), iEnd = pConstants->vars.end(); iConst != iEnd; ++iConst)
+  {
+    if (!*iConst)
+      continue;
+
+    constMap[(*iConst)->name] = (*iConst);
+  }
 }
 
 NDb::UnitConstant const* PFAbilityConstantsMap::Get(const char *name) const
 {
-  (void)name;
+  if (!name)
+    return 0;
+
+  ConstMap::const_iterator iConst = constMap.find(name);
+  if (iConst != constMap.end())
+    return iConst->second;
+
+  if (!IsValid(pAbility))
+    return 0;
+
+  CPtr<PFBaseUnit> const& pOwner = pAbility->GetOwner();
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  PFAIWorld* pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
+  const NDb::UnitConstantsContainer* pGlobalConstants =
+    pAIWorld && pAIWorld->GetAIParameters().globalConstants
+      ? pAIWorld->GetAIParameters().globalConstants.GetPtr()
+      : 0;
+  if (!pGlobalConstants)
+    return 0;
+
+  for (vector<NDb::Ptr<NDb::UnitConstant> >::const_iterator iGlob = pGlobalConstants->vars.begin(), iEnd = pGlobalConstants->vars.end(); iGlob != iEnd; ++iGlob)
+    if (*iGlob && (*iGlob)->name == name)
+      return (*iGlob).GetPtr();
+
   return 0;
 }
 
