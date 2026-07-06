@@ -46,6 +46,12 @@ PFStatistics::PFStatistics(const CPtr<PFWorld> pWorld)
 , linuxLastItemTransferFromObjectId(-1)
 , linuxLastItemTransferToObjectId(-1)
 , linuxLastItemTransferHadItem(0)
+, linuxFlagRaisedCalls(0)
+, linuxFlagRaisedHeroCalls(0)
+, linuxFlagDestroyedCalls(0)
+, linuxFlagDestroyedHeroCalls(0)
+, linuxLastFlagRaisedObjectId(-1)
+, linuxLastFlagDestroyedObjectId(-1)
 {
   if (NDb::SessionRoot::GetRoot() && NDb::SessionRoot::GetRoot()->logicRoot)
     scoring = NDb::SessionRoot::GetRoot()->logicRoot->scoringTable;
@@ -74,6 +80,18 @@ void NotifyLinuxItemTransfer(PFStatistics* pStatistics, PFBaseHero* from, PFBase
     pStatistics->NotifyItemTransfer(from, to, dbItem);
 }
 
+void NotifyLinuxFlagRaised(PFStatistics* pStatistics, PFBaseUnit* raiser)
+{
+  if (pStatistics)
+    pStatistics->AddFlagRaised(raiser);
+}
+
+void NotifyLinuxFlagDestroyed(PFStatistics* pStatistics, PFBaseUnit* destroyer)
+{
+  if (pStatistics)
+    pStatistics->AddFlagDestroyed(destroyer);
+}
+
 void PFStatistics::Reset()
 {
   PFWorldObjectBase::Reset();
@@ -83,6 +101,12 @@ void PFStatistics::Reset()
   linuxLastItemTransferFromObjectId = -1;
   linuxLastItemTransferToObjectId = -1;
   linuxLastItemTransferHadItem = 0;
+  linuxFlagRaisedCalls = 0;
+  linuxFlagRaisedHeroCalls = 0;
+  linuxFlagDestroyedCalls = 0;
+  linuxFlagDestroyedHeroCalls = 0;
+  linuxLastFlagRaisedObjectId = -1;
+  linuxLastFlagDestroyedObjectId = -1;
   ResetUiEvents();
 }
 
@@ -115,6 +139,22 @@ void PFStatistics::NotifyItemTransfer(PFBaseHero* from, PFBaseHero* to, const ND
   linuxLastItemTransferFromObjectId = from ? from->GetObjectId() : -1;
   linuxLastItemTransferToObjectId = to ? to->GetObjectId() : -1;
   linuxLastItemTransferHadItem = dbItem ? 1 : 0;
+}
+
+void PFStatistics::AddFlagRaised(CPtr<PFBaseUnit> pRaiser)
+{
+  ++linuxFlagRaisedCalls;
+  linuxLastFlagRaisedObjectId = IsValid(pRaiser) ? pRaiser->GetObjectId() : -1;
+  if (IsValid(pRaiser) && pRaiser->IsTrueHero())
+    ++linuxFlagRaisedHeroCalls;
+}
+
+void PFStatistics::AddFlagDestroyed(CPtr<PFBaseUnit> pDestroyer)
+{
+  ++linuxFlagDestroyedCalls;
+  linuxLastFlagDestroyedObjectId = IsValid(pDestroyer) ? pDestroyer->GetObjectId() : -1;
+  if (IsValid(pDestroyer) && pDestroyer->IsTrueHero())
+    ++linuxFlagDestroyedHeroCalls;
 }
 
 } // namespace NWorld

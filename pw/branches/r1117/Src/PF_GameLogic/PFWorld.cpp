@@ -53,6 +53,8 @@ int PFWorld::instanceCount = 0;
 PFStatistics* CreateLinuxPFStatistics(PFWorld* pWorld);
 bool StepLinuxPFStatistics(PFStatistics* pStatistics, float dtInSeconds);
 void NotifyLinuxItemTransfer(PFStatistics* pStatistics, PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem);
+void NotifyLinuxFlagRaised(PFStatistics* pStatistics, PFBaseUnit* raiser);
+void NotifyLinuxFlagDestroyed(PFStatistics* pStatistics, PFBaseUnit* destroyer);
 
 PFWorld::PFWorld() :
 step( -1 ),
@@ -1462,6 +1464,16 @@ bool PFWorld::CanTrackPlayersBehaviour(const NCore::MapStartInfo&) const { retur
 void PFWorld::NotifyItemTransferForLinuxBootstrap(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem)
 {
   NotifyLinuxItemTransfer(pStatistics, from, to, dbItem);
+}
+
+void PFWorld::NotifyFlagRaisedForLinuxBootstrap(PFBaseUnit* raiser)
+{
+  NotifyLinuxFlagRaised(pStatistics, raiser);
+}
+
+void PFWorld::NotifyFlagDestroyedForLinuxBootstrap(PFBaseUnit* destroyer)
+{
+  NotifyLinuxFlagDestroyed(pStatistics, destroyer);
 }
 
 } // namespace NWorld

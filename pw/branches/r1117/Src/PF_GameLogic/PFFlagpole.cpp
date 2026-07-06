@@ -22,6 +22,7 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 
 #include "../Game/PF/Audit/ClientStubs.h"
 #include "PFFlagpole.h"
+#include "PFWorld.h"
 
 namespace NWorld
 {
@@ -60,8 +61,11 @@ void PFFlagpole::Reset()
 void PFFlagpole::OnStartRaise(int, const float) { isRising = true; }
 void PFFlagpole::OnCancelRaise() { isRising = false; }
 
-void PFFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit*)
+void PFFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit* unitWhoRaised)
 {
+  if (PFWorld* pWorld = GetWorld())
+    pWorld->NotifyFlagRaisedForLinuxBootstrap(unitWhoRaised);
+
   ChangeFaction(_faction);
   health = GetMaxHealth();
   RemoveFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
@@ -71,8 +75,11 @@ void PFFlagpole::OnRaise(NDb::EFaction _faction, PFBaseUnit*)
     prev->UpdateVulnerable();
 }
 
-void PFFlagpole::OnDropFlag(PFBaseUnit*)
+void PFFlagpole::OnDropFlag(PFBaseUnit* unitWhoDropped)
 {
+  if (PFWorld* pWorld = GetWorld())
+    pWorld->NotifyFlagDestroyedForLinuxBootstrap(unitWhoDropped);
+
   const NDb::EFaction oldFaction = faction;
   ChangeFaction(NDb::FACTION_NEUTRAL);
   health = GetMaxHealth();

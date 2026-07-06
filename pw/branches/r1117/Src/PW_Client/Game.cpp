@@ -64376,6 +64376,19 @@ void AppendRuntimeInputLog(
             << finalHeroGameplayCommandDiagnostics.pickupObjectActionAccepted << "/"
             << finalHeroGameplayCommandDiagnostics.pickupObjectCanPickup << " object="
             << finalHeroGameplayCommandDiagnostics.pickupObjectId << "\n";
+    NWorld::PFWorld* finalWorld =
+      dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr());
+    NWorld::PFStatistics* finalStatistics = finalWorld ? finalWorld->GetStatistics() : 0;
+    logFile << "  finalLinuxFlagStatistics=raise="
+            << (finalStatistics ? finalStatistics->GetLinuxFlagRaisedCalls() : -1) << "/"
+            << (finalStatistics ? finalStatistics->GetLinuxFlagRaisedHeroCalls() : -1)
+            << " destroyed="
+            << (finalStatistics ? finalStatistics->GetLinuxFlagDestroyedCalls() : -1) << "/"
+            << (finalStatistics ? finalStatistics->GetLinuxFlagDestroyedHeroCalls() : -1)
+            << " last="
+            << (finalStatistics ? finalStatistics->GetLinuxLastFlagRaisedObjectId() : -1) << "/"
+            << (finalStatistics ? finalStatistics->GetLinuxLastFlagDestroyedObjectId() : -1)
+            << "\n";
   }
 #endif
   logFile << "  finalMap3DPreviewLineupHeroMeshPreviewSlots="
@@ -67612,6 +67625,18 @@ int main(int argc, char** argv)
     heroGameplayCommandDiagnostics.pickupObjectActionAccepted,
     heroGameplayCommandDiagnostics.pickupObjectCanPickup,
     heroGameplayCommandDiagnostics.pickupObjectId);
+  {
+    NWorld::PFWorld* finalWorld =
+      dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr());
+    NWorld::PFStatistics* finalStatistics = finalWorld ? finalWorld->GetStatistics() : 0;
+    fprintf(stdout, "Final Linux flag statistics: raise=%d/%d destroyed=%d/%d last=%d/%d\n",
+      finalStatistics ? finalStatistics->GetLinuxFlagRaisedCalls() : -1,
+      finalStatistics ? finalStatistics->GetLinuxFlagRaisedHeroCalls() : -1,
+      finalStatistics ? finalStatistics->GetLinuxFlagDestroyedCalls() : -1,
+      finalStatistics ? finalStatistics->GetLinuxFlagDestroyedHeroCalls() : -1,
+      finalStatistics ? finalStatistics->GetLinuxLastFlagRaisedObjectId() : -1,
+      finalStatistics ? finalStatistics->GetLinuxLastFlagDestroyedObjectId() : -1);
+  }
 #endif
   fprintf(stdout, "Final Linux creep combat: prepared=%s active=%s damage=%s sustained=%s hits=%lu killed=%s attacker=%d target=%d hp=%.0f->%.0f range=%.2f dist=%.1f->%.1f pos=%.1f,%.1f->%.1f,%.1f wait=%d samples=%lu\n",
     screenRuntime.mapPreviewCreepDuelProofPrepared ? "yes" : "no",

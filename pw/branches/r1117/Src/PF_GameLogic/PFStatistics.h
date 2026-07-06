@@ -91,6 +91,12 @@ class PFStatistics : public PFWorldObjectBase
     , linuxLastItemTransferFromObjectId(-1)
     , linuxLastItemTransferToObjectId(-1)
     , linuxLastItemTransferHadItem(0)
+    , linuxFlagRaisedCalls(0)
+    , linuxFlagRaisedHeroCalls(0)
+    , linuxFlagDestroyedCalls(0)
+    , linuxFlagDestroyedHeroCalls(0)
+    , linuxLastFlagRaisedObjectId(-1)
+    , linuxLastFlagDestroyedObjectId(-1)
 #endif
   {};
 public:
@@ -209,6 +215,12 @@ protected:
   int linuxLastItemTransferFromObjectId;
   int linuxLastItemTransferToObjectId;
   int linuxLastItemTransferHadItem;
+  int linuxFlagRaisedCalls;
+  int linuxFlagRaisedHeroCalls;
+  int linuxFlagDestroyedCalls;
+  int linuxFlagDestroyedHeroCalls;
+  int linuxLastFlagRaisedObjectId;
+  int linuxLastFlagDestroyedObjectId;
 #endif
 public:
   ZEND int operator&( IBinSaver &f )
@@ -233,6 +245,12 @@ public:
     f.Add(17,&linuxLastItemTransferFromObjectId);
     f.Add(18,&linuxLastItemTransferToObjectId);
     f.Add(19,&linuxLastItemTransferHadItem);
+    f.Add(20,&linuxFlagRaisedCalls);
+    f.Add(21,&linuxFlagRaisedHeroCalls);
+    f.Add(22,&linuxFlagDestroyedCalls);
+    f.Add(23,&linuxFlagDestroyedHeroCalls);
+    f.Add(24,&linuxLastFlagRaisedObjectId);
+    f.Add(25,&linuxLastFlagDestroyedObjectId);
 #endif
     return 0;
   }
@@ -268,6 +286,12 @@ public:
   int GetLinuxLastItemTransferFromObjectId() const { return linuxLastItemTransferFromObjectId; }
   int GetLinuxLastItemTransferToObjectId() const { return linuxLastItemTransferToObjectId; }
   int GetLinuxLastItemTransferHadItem() const { return linuxLastItemTransferHadItem; }
+  int GetLinuxFlagRaisedCalls() const { return linuxFlagRaisedCalls; }
+  int GetLinuxFlagRaisedHeroCalls() const { return linuxFlagRaisedHeroCalls; }
+  int GetLinuxFlagDestroyedCalls() const { return linuxFlagDestroyedCalls; }
+  int GetLinuxFlagDestroyedHeroCalls() const { return linuxFlagDestroyedHeroCalls; }
+  int GetLinuxLastFlagRaisedObjectId() const { return linuxLastFlagRaisedObjectId; }
+  int GetLinuxLastFlagDestroyedObjectId() const { return linuxLastFlagDestroyedObjectId; }
 #endif
 
   static CPtr<NWorld::PFBaseHero> GetHeroById( const CPtr<NWorld::PFAIWorld>& pAIWorld, int id );

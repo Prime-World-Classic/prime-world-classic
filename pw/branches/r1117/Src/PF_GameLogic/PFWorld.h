@@ -353,6 +353,8 @@ public:
   PFStatistics      *GetStatistics() const { return pStatistics; }
 #if defined(PW_LINUX_NULL_RENDER)
   void NotifyItemTransferForLinuxBootstrap(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem);
+  void NotifyFlagRaisedForLinuxBootstrap(PFBaseUnit* raiser);
+  void NotifyFlagDestroyedForLinuxBootstrap(PFBaseUnit* destroyer);
 #endif
   FogOfWar          *GetFogOfWar() const {return warFog;}
   PFWorldNatureMap  *GetNatureMap()     { return pNatureMap; }
