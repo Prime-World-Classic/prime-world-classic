@@ -144,7 +144,7 @@ void PFWorldNatureMap::SetCustomNaturePercents( float freeze, float burn )
 int PFWorldNatureMap::GetNumSegments() const
 {
 #if defined( PW_LINUX_NATUREMAP_NULL_RENDER )
-  return 0;
+  return pDBTerrain ? pDBTerrain->natureMap.segmentCount : 0;
 #else
   return pMap ? pMap->GetNumSegments() : 0;
 #endif
