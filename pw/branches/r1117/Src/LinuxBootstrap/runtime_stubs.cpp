@@ -84,11 +84,12 @@ namespace
 {
 float g_linuxBootstrapTime = 0.0f;
 float g_linuxBootstrapTimeDelta = 1.0f / 60.0f;
+float g_linuxBootstrapTimeScale = 1.0f;
 }
 
 void UpdateTime()
 {
-  g_linuxBootstrapTime += g_linuxBootstrapTimeDelta;
+  g_linuxBootstrapTime += g_linuxBootstrapTimeDelta * g_linuxBootstrapTimeScale;
 }
 
 void MarkStepFrame()
@@ -107,17 +108,17 @@ NHPTimer::STime GetHPTime()
 
 float GetTimeDelta()
 {
-  return g_linuxBootstrapTimeDelta;
+  return g_linuxBootstrapTimeDelta * g_linuxBootstrapTimeScale;
 }
 
 float GetTimeScale()
 {
-  return 1.0f;
+  return g_linuxBootstrapTimeScale;
 }
 
 void SetTimeScale(float scale)
 {
-  (void)scale;
+  g_linuxBootstrapTimeScale = scale;
 }
 
 void SetTemporaryTimeDelta(float val)
