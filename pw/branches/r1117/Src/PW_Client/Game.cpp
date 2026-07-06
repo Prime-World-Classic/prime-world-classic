@@ -4880,6 +4880,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingChatDrawn;
   size_t visibleLoadingChatChannelsDrawn;
   size_t visibleLoadingChatMessagesDrawn;
+  bool visibleLoadingBackdropDrawn;
+  bool visibleLoadingBackdropLiveBackDrawn;
+  bool visibleLoadingBackdropLiveLogoDrawn;
+  std::string visibleLoadingBackdropSource;
   float characterPreviewYawDegrees;
   bool characterPreviewRendererMeshDrawn;
   size_t characterPreviewRendererMeshBatches;
@@ -6144,6 +6148,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingChatDrawn(false),
       visibleLoadingChatChannelsDrawn(0),
       visibleLoadingChatMessagesDrawn(0),
+      visibleLoadingBackdropDrawn(false),
+      visibleLoadingBackdropLiveBackDrawn(false),
+      visibleLoadingBackdropLiveLogoDrawn(false),
+      visibleLoadingBackdropSource("none"),
       characterPreviewYawDegrees(28.0f),
       characterPreviewRendererMeshDrawn(false),
       characterPreviewRendererMeshBatches(0),
@@ -47325,6 +47333,48 @@ void DrawOpenGlTextureCover(
   glDisable(GL_TEXTURE_2D);
 }
 
+void DrawOpenGlTextureContain(
+  GLuint texture,
+  unsigned int textureWidth,
+  unsigned int textureHeight,
+  int x,
+  int y,
+  int width,
+  int height
+)
+{
+  if (!texture || textureWidth == 0 || textureHeight == 0 ||
+      width <= 0 || height <= 0)
+  {
+    return;
+  }
+
+  const float sourceAspect =
+    static_cast<float>(textureWidth) / static_cast<float>(textureHeight);
+  int drawW = width;
+  int drawH = std::max(1, static_cast<int>(static_cast<float>(drawW) / sourceAspect + 0.5f));
+  if (drawH > height)
+  {
+    drawH = height;
+    drawW = std::max(1, static_cast<int>(static_cast<float>(drawH) * sourceAspect + 0.5f));
+  }
+
+  const int drawX = x + (width - drawW) / 2;
+  const int drawY = y + (height - drawH) / 2;
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  SetOpenGlColor(255, 255, 255);
+  glBegin(GL_QUADS);
+  glTexCoord2f(0.0f, 0.0f); glVertex2i(drawX, drawY);
+  glTexCoord2f(1.0f, 0.0f); glVertex2i(drawX + drawW, drawY);
+  glTexCoord2f(1.0f, 1.0f); glVertex2i(drawX + drawW, drawY + drawH);
+  glTexCoord2f(0.0f, 1.0f); glVertex2i(drawX, drawY + drawH);
+  glEnd();
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
+}
+
 void DrawOpenGlTextureCover(LinuxWindowOverlay* overlay, int x, int y, int width, int height)
 {
   if (!overlay)
@@ -60287,6 +60337,107 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   }
 }
 
+bool DrawLinuxLoadingBackdropOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLoadingBackdropDrawn = false;
+    runtime->visibleLoadingBackdropLiveBackDrawn = false;
+    runtime->visibleLoadingBackdropLiveLogoDrawn = false;
+    runtime->visibleLoadingBackdropSource = "none";
+  }
+  if (!overlay)
+  {
+    return false;
+  }
+
+  const Game::LoadingFlashInterface* flashInterface =
+    GetActiveLinuxLoadingFlashInterface(runtime);
+  if (!flashInterface)
+  {
+    return false;
+  }
+
+  const std::string backRef = ToStdString(flashInterface->GetMapBackground());
+  const std::string logoRef = ToStdString(flashInterface->GetMapLogo());
+  if (backRef.empty())
+  {
+    if (runtime)
+    {
+      runtime->visibleLoadingBackdropSource = logoRef.empty() ?
+        "live-loading-flash-empty" :
+        "live-loading-flash-logo-only";
+    }
+    return false;
+  }
+
+  const LinuxWindowOverlay::OpenGlTexture* backTexture =
+    ResolveLinuxLobbyCachedTextureReference(
+      overlay,
+      renderContext.environment,
+      backRef);
+  if (!backTexture)
+  {
+    if (runtime)
+    {
+      runtime->visibleLoadingBackdropSource = "live-loading-flash-missing-back";
+    }
+    return false;
+  }
+
+  DrawOpenGlTextureCover(
+    backTexture->texture,
+    backTexture->width,
+    backTexture->height,
+    0,
+    0,
+    renderContext.width,
+    renderContext.height
+  );
+
+  bool logoDrawn = false;
+  if (!logoRef.empty())
+  {
+    const LinuxWindowOverlay::OpenGlTexture* logoTexture =
+      ResolveLinuxLobbyCachedTextureReference(
+        overlay,
+        renderContext.environment,
+        logoRef);
+    if (logoTexture)
+    {
+      const int logoMaxW = std::min(
+        std::max(260, renderContext.width / 2),
+        std::max(1, renderContext.width - 160));
+      const int logoMaxH = std::min(
+        std::max(72, renderContext.height / 6),
+        std::max(1, renderContext.height / 4));
+      const int logoX = (renderContext.width - logoMaxW) / 2;
+      const int logoY = std::max(24, renderContext.height - logoMaxH - std::max(30, renderContext.height / 18));
+      DrawOpenGlTextureContain(
+        logoTexture->texture,
+        logoTexture->width,
+        logoTexture->height,
+        logoX,
+        logoY,
+        logoMaxW,
+        logoMaxH
+      );
+      logoDrawn = true;
+    }
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLoadingBackdropDrawn = true;
+    runtime->visibleLoadingBackdropLiveBackDrawn = true;
+    runtime->visibleLoadingBackdropLiveLogoDrawn = logoDrawn;
+    runtime->visibleLoadingBackdropSource = "live-loading-flash";
+  }
+  return true;
+}
+
 void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -60304,12 +60455,14 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
   const LinuxLocalMatchPreview& localMatchPreview = *renderContext.localMatchPreview;
   const LinuxUiRootPreview& uiRootPreview = *renderContext.uiRootPreview;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+  const bool liveLoadingBackdropDrawn =
+    loadingActive && DrawLinuxLoadingBackdropOverlay(renderContext);
 
-  if (overlay->artworkTexture)
+  if (!liveLoadingBackdropDrawn && overlay->artworkTexture)
   {
     DrawOpenGlTextureCover(overlay, 0, 0, width, height);
   }
-  else
+  else if (!liveLoadingBackdropDrawn)
   {
     SetOpenGlColor(14, 18, 24);
     DrawOpenGlRect(0, 0, width, height);
@@ -60323,6 +60476,11 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
     DrawOpenGlRect(0, 0, width, height);
   }
   else if (overlay->artworkTexture)
+  {
+    SetOpenGlColor(7, 10, 14, 150);
+    DrawOpenGlRect(0, 0, width, height);
+  }
+  else if (liveLoadingBackdropDrawn)
   {
     SetOpenGlColor(7, 10, 14, 150);
     DrawOpenGlRect(0, 0, width, height);
@@ -63902,6 +64060,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingChatChannelsDrawn << "\n";
   logFile << "  finalVisibleLoadingChatMessages="
           << screenRuntime.visibleLoadingChatMessagesDrawn << "\n";
+  logFile << "  finalVisibleLoadingBackdropDrawn="
+          << (screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingBackdropLiveBack="
+          << (screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingBackdropLiveLogo="
+          << (screenRuntime.visibleLoadingBackdropLiveLogoDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingBackdropSource="
+          << (screenRuntime.visibleLoadingBackdropSource.empty() ? "none" : screenRuntime.visibleLoadingBackdropSource) << "\n";
   logFile << "  finalVisibleLoadingRosterDrawn="
           << (screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingRosterRows="
@@ -68031,6 +68197,11 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
+  fprintf(stdout, "Final visible loading backdrop: drawn=%s back=%s logo=%s source=%s\n",
+    screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingBackdropLiveLogoDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingBackdropSource.empty() ? "none" : screenRuntime.visibleLoadingBackdropSource.c_str());
   fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu source=%s\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
