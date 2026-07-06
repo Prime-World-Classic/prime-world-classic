@@ -3213,6 +3213,9 @@ struct LinuxUiRootPreview
   size_t runtimeHeroPlayerEntryCount;
   size_t runtimeLoadingPlayerEntryCount;
   size_t runtimeLoadingDisconnectedCount;
+  size_t runtimeLoadingFlashHeroCount;
+  size_t runtimeLoadingFlashChatChannelCount;
+  size_t runtimeLoadingFlashPlayerBindingCount;
   size_t runtimeGameSchedulerTicks;
   size_t runtimeGameSchedulerSegmentCommands;
   size_t runtimeGameSchedulerSegmentStatuses;
@@ -3340,6 +3343,7 @@ struct LinuxUiRootPreview
   std::string runtimeLoadingScreenPath;
   std::string runtimeLoadingScreenWindow;
   std::string runtimeLoadingStatusText;
+  std::string runtimeLoadingFlashSource;
   std::string runtimeGameSchedulerPath;
   std::string runtimeGameTransceiverPath;
   std::string runtimeGameReplayWriterPath;
@@ -3412,6 +3416,9 @@ struct LinuxUiRootPreview
       runtimeHeroPlayerEntryCount(0),
       runtimeLoadingPlayerEntryCount(0),
       runtimeLoadingDisconnectedCount(0),
+      runtimeLoadingFlashHeroCount(0),
+      runtimeLoadingFlashChatChannelCount(0),
+      runtimeLoadingFlashPlayerBindingCount(0),
       runtimeGameSchedulerTicks(0),
       runtimeGameSchedulerSegmentCommands(0),
       runtimeGameSchedulerSegmentStatuses(0),
@@ -3524,6 +3531,7 @@ struct LinuxUiRootPreview
       runtimeBootstrapJoinResult("<inactive>"),
       runtimeHeroScreenPath("inactive"),
       runtimeLoadingScreenPath("inactive"),
+      runtimeLoadingFlashSource("inactive"),
       runtimeGameSchedulerPath("inactive"),
       runtimeGameTransceiverPath("inactive"),
       runtimeGameReplayWriterPath("inactive"),
@@ -4865,6 +4873,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingRosterMetaLabelsDrawn;
   size_t visibleLoadingRosterRankIconsDrawn;
   size_t visibleLoadingRosterPremiumBadgesDrawn;
+  std::string visibleLoadingRosterSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6128,6 +6137,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingRosterMetaLabelsDrawn(0),
       visibleLoadingRosterRankIconsDrawn(0),
       visibleLoadingRosterPremiumBadgesDrawn(0),
+      visibleLoadingRosterSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -11080,6 +11090,21 @@ int ConvertCoreTeamToDisplayTeam(NCore::ETeam::Enum team)
       return 1;
 
     case NCore::ETeam::Team2:
+      return 2;
+
+    default:
+      return 0;
+  }
+}
+
+int ConvertFactionToDisplayTeam(NDb::EFaction faction)
+{
+  switch (faction)
+  {
+    case NDb::FACTION_FREEZE:
+      return 1;
+
+    case NDb::FACTION_BURN:
       return 2;
 
     default:
@@ -30568,6 +30593,19 @@ bool IsLinuxBootstrapLoadingScreenActive(const LinuxBootstrapScreenRuntime* runt
     IsValid(runtime->loadingScreen);
 }
 
+const Game::LoadingFlashInterface* GetActiveLinuxLoadingFlashInterface(
+  const LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!IsLinuxBootstrapLoadingScreenActive(runtime))
+  {
+    return 0;
+  }
+
+  Game::LoadingScreenLogic* loadingLogic =
+    dynamic_cast<Game::LoadingScreenLogic*>(runtime->loadingScreen->GetLogic());
+  return loadingLogic ? loadingLogic->GetLoadingFlashInterface() : 0;
+}
+
 bool IsLinuxBootstrapHeroScreenActive(const LinuxBootstrapScreenRuntime* runtime)
 {
   return runtime &&
@@ -31823,8 +31861,14 @@ void UpdateLinuxBootstrapLoadingScreenPreview(
   preview->runtimeLoadingProgress = runtime.loadingProgressValue;
   preview->runtimeLoadingPlayerEntryCount = runtime.loadingPlayerEntryCount;
   preview->runtimeLoadingDisconnectedCount = runtime.loadingDisconnectedCount;
+  preview->runtimeLoadingFlashHeroCount = 0;
+  preview->runtimeLoadingFlashChatChannelCount = 0;
+  preview->runtimeLoadingFlashPlayerBindingCount = 0;
   preview->runtimeLoadingScreenWindow.clear();
   preview->runtimeLoadingStatusText = runtime.loadingStatusText;
+  preview->runtimeLoadingFlashSource = preview->runtimeLoadingScreenReady ?
+    "active-no-flash" :
+    "inactive";
   preview->runtimeLoadingScreenPath = preview->runtimeLoadingScreenReady ?
     (runtime.mapLoadingJob ?
       "Game::LoadingScreen::Init/Step/Draw + NWorld::MapLoadingJob::DoTheJob/PFWorld::LoadMap/TileMap::Prepare" :
@@ -31862,14 +31906,17 @@ void UpdateLinuxBootstrapLoadingScreenPreview(
     }
   }
 
-  Game::LoadingScreenLogic* loadingLogic =
-    dynamic_cast<Game::LoadingScreenLogic*>(runtime.loadingScreen->GetLogic());
-  if (!loadingLogic || !loadingLogic->GetLoadingFlashInterface())
+  const Game::LoadingFlashInterface* flashInterface =
+    GetActiveLinuxLoadingFlashInterface(&runtime);
+  if (!flashInterface)
   {
     return;
   }
 
-  const Game::LoadingFlashInterface* flashInterface = loadingLogic->GetLoadingFlashInterface();
+  preview->runtimeLoadingFlashSource = "live-loading-flash";
+  preview->runtimeLoadingFlashHeroCount = flashInterface->GetHeroes().size();
+  preview->runtimeLoadingFlashChatChannelCount = flashInterface->GetChatChannels().size();
+  preview->runtimeLoadingFlashPlayerBindingCount = flashInterface->GetPlayerBindings().size();
   const vector<Game::LoadingFlashHeroState>& heroes = flashInterface->GetHeroes();
   preview->runtimeLoadingPlayerEntryCount = heroes.size();
 
@@ -46529,13 +46576,17 @@ std::vector<std::string> BuildOverlayLines(
     snprintf(
       buffer,
       sizeof(buffer),
-      "UI loading runtime: %s window=%s players=%lu status=%s progress=%.2f disc=%lu",
+      "UI loading runtime: %s window=%s players=%lu status=%s progress=%.2f disc=%lu flash=%s heroes=%lu chat=%lu bindings=%lu",
       uiRootPreview.runtimeLoadingScreenReady ? "yes" : "no",
       uiRootPreview.runtimeLoadingScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenWindow.c_str(),
       static_cast<unsigned long>(uiRootPreview.runtimeLoadingPlayerEntryCount),
       uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText.c_str(),
       static_cast<double>(uiRootPreview.runtimeLoadingProgress),
-      static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount)
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount),
+      uiRootPreview.runtimeLoadingFlashSource.empty() ? "<none>" : uiRootPreview.runtimeLoadingFlashSource.c_str(),
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashHeroCount),
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashChatChannelCount),
+      static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashPlayerBindingCount)
     );
     lines.push_back(buffer);
 
@@ -59025,6 +59076,9 @@ std::string StripLinuxLoadingFlashMarkup(std::string value)
   return SanitizeLocalizedText(plain);
 }
 
+const Game::LoadingFlashInterface* ResolveLinuxLoadingOverlayFlashInterface(
+  const LinuxOverlayUiRenderContext& renderContext);
+
 void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -59036,12 +59090,23 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     return;
   }
 
+  const Game::LoadingFlashInterface* flashInterface =
+    ResolveLinuxLoadingOverlayFlashInterface(renderContext);
   std::string statusText = loadingUiState->runtimeStatusText;
   if (statusText.empty() &&
       !loadingUiPreview->statuses.empty() &&
       loadingUiState->statusIndex < loadingUiPreview->statuses.size())
   {
     statusText = loadingUiPreview->statuses[loadingUiState->statusIndex].text;
+  }
+  if (flashInterface)
+  {
+    const std::string liveStatusText = StripLinuxLoadingFlashMarkup(
+      ToStdString(NStr::ToMBCS(flashInterface->GetLoadingStatusText())));
+    if (!liveStatusText.empty())
+    {
+      statusText = liveStatusText;
+    }
   }
   statusText = StripLinuxLoadingFlashMarkup(statusText);
 
@@ -59054,6 +59119,15 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   if (tipText.empty())
   {
     tipText = loadingUiPreview->sampleTip;
+  }
+  if (flashInterface)
+  {
+    const std::string liveTipText = StripLinuxLoadingFlashMarkup(
+      ToStdString(NStr::ToMBCS(flashInterface->GetTipText())));
+    if (!liveTipText.empty())
+    {
+      tipText = liveTipText;
+    }
   }
   tipText = StripLinuxLoadingFlashMarkup(tipText);
 
@@ -59088,18 +59162,52 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     }
   }
 
-  std::string localeText;
+  std::string currentLocaleImageRef;
+  std::string enemyLocaleImageRef;
+  std::string currentLocaleTooltip;
+  std::string enemyLocaleTooltip;
   if (currentLocale)
   {
-    localeText = currentLocale->tooltip.empty() ? currentLocale->locale : currentLocale->tooltip;
+    currentLocaleImageRef = currentLocale->imageRef;
+    currentLocaleTooltip = currentLocale->tooltip.empty() ? currentLocale->locale : currentLocale->tooltip;
   }
   if (enemyLocale)
+  {
+    enemyLocaleImageRef = enemyLocale->imageRef;
+    enemyLocaleTooltip = enemyLocale->tooltip.empty() ? enemyLocale->locale : enemyLocale->tooltip;
+  }
+  if (flashInterface)
+  {
+    if (!flashInterface->GetLeftLocaleImage().empty())
+    {
+      currentLocaleImageRef = ToStdString(flashInterface->GetLeftLocaleImage());
+    }
+    if (!flashInterface->GetRightLocaleImage().empty())
+    {
+      enemyLocaleImageRef = ToStdString(flashInterface->GetRightLocaleImage());
+    }
+    const std::string liveLeftTooltip = StripLinuxLoadingFlashMarkup(
+      ToStdString(NStr::ToMBCS(flashInterface->GetLeftLocaleTooltip())));
+    const std::string liveRightTooltip = StripLinuxLoadingFlashMarkup(
+      ToStdString(NStr::ToMBCS(flashInterface->GetRightLocaleTooltip())));
+    if (!liveLeftTooltip.empty())
+    {
+      currentLocaleTooltip = liveLeftTooltip;
+    }
+    if (!liveRightTooltip.empty())
+    {
+      enemyLocaleTooltip = liveRightTooltip;
+    }
+  }
+
+  std::string localeText = currentLocaleTooltip;
+  if (!enemyLocaleTooltip.empty())
   {
     if (!localeText.empty())
     {
       localeText += "  vs  ";
     }
-    localeText += enemyLocale->tooltip.empty() ? enemyLocale->locale : enemyLocale->tooltip;
+    localeText += enemyLocaleTooltip;
   }
   localeText = StripLinuxLoadingFlashMarkup(localeText);
 
@@ -59151,13 +59259,13 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   }
 
   const int flagsX = panelX + panelW - padding - rightIconW;
-  if (currentLocale)
+  if (!currentLocaleImageRef.empty())
   {
     const LinuxWindowOverlay::OpenGlTexture* flagTexture =
       ResolveLinuxLobbyCachedTextureReference(
         overlay,
         renderContext.environment,
-        currentLocale->imageRef);
+        currentLocaleImageRef);
     if (flagTexture)
     {
       DrawOpenGlTextureCover(
@@ -59172,13 +59280,13 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
       ++iconsDrawn;
     }
   }
-  if (enemyLocale)
+  if (!enemyLocaleImageRef.empty())
   {
     const LinuxWindowOverlay::OpenGlTexture* flagTexture =
       ResolveLinuxLobbyCachedTextureReference(
         overlay,
         renderContext.environment,
-        enemyLocale->imageRef);
+        enemyLocaleImageRef);
     if (flagTexture)
     {
       DrawOpenGlTextureCover(
@@ -59305,8 +59413,23 @@ std::string MakeLinuxLoadingWideText(
   return MakeOpenGlOverlayText(overlay, value, fallback);
 }
 
+const Game::LoadingFlashInterface* ResolveLinuxLoadingOverlayFlashInterface(
+  const LinuxOverlayUiRenderContext& renderContext)
+{
+  const Game::LoadingFlashInterface* activeFlashInterface =
+    GetActiveLinuxLoadingFlashInterface(renderContext.screenRuntime);
+  if (activeFlashInterface)
+  {
+    return activeFlashInterface;
+  }
+
+  return renderContext.loadingRuntimeDriver ?
+    renderContext.loadingRuntimeDriver->flashInterface :
+    0;
+}
+
 void ResolveLinuxLoadingForceColor(
-  const LinuxLoadingRuntimeDriver* loadingRuntimeDriver,
+  const Game::LoadingFlashInterface* flashInterface,
   int force,
   unsigned char fallbackRed,
   unsigned char fallbackGreen,
@@ -59324,13 +59447,13 @@ void ResolveLinuxLoadingForceColor(
   *red = fallbackRed;
   *green = fallbackGreen;
   *blue = fallbackBlue;
-  if (!loadingRuntimeDriver || !loadingRuntimeDriver->flashInterface)
+  if (!flashInterface)
   {
     return;
   }
 
-  const vector<int>& forces = loadingRuntimeDriver->flashInterface->GetForceTable();
-  const vector<uint>& colors = loadingRuntimeDriver->flashInterface->GetColorTable();
+  const vector<int>& forces = flashInterface->GetForceTable();
+  const vector<uint>& colors = flashInterface->GetColorTable();
   for (size_t i = 0; i < forces.size() && i < colors.size(); ++i)
   {
     if (forces[i] != force || colors[i] == 0)
@@ -59357,17 +59480,16 @@ void DrawLinuxLoadingChatOverlay(const LinuxOverlayUiRenderContext& renderContex
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
   LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
-  const LinuxLoadingRuntimeDriver* loadingRuntimeDriver = renderContext.loadingRuntimeDriver;
+  const Game::LoadingFlashInterface* flashInterface =
+    ResolveLinuxLoadingOverlayFlashInterface(renderContext);
   if (!overlay ||
-      !loadingRuntimeDriver ||
-      !loadingRuntimeDriver->flashInterface ||
-      !loadingRuntimeDriver->flashInterface->IsChatVisible() ||
-      loadingRuntimeDriver->flashInterface->IsChatOff())
+      !flashInterface ||
+      !flashInterface->IsChatVisible() ||
+      flashInterface->IsChatOff())
   {
     return;
   }
 
-  const Game::LoadingFlashInterface* flashInterface = loadingRuntimeDriver->flashInterface;
   const vector<Game::LoadingFlashChatChannelState>& channels = flashInterface->GetChatChannels();
   const vector<Game::LoadingFlashChatMessageState>& messages = flashInterface->GetChatMessages();
   if (channels.empty() && messages.empty())
@@ -59759,7 +59881,7 @@ void DrawLinuxLoadingRosterCard(
   unsigned char forceG = teamG;
   unsigned char forceB = teamB;
   ResolveLinuxLoadingForceColor(
-    renderContext.loadingRuntimeDriver,
+    ResolveLinuxLoadingOverlayFlashInterface(renderContext),
     entry.force,
     teamR,
     teamG,
@@ -59872,12 +59994,155 @@ void DrawLinuxLoadingRosterCard(
   }
 }
 
+const LinuxLoadingRuntimeHeroEntry* FindLinuxLoadingRuntimeHeroBySlot(
+  const LinuxLoadingHeroesRuntimePreview* heroesPreview,
+  int slotId)
+{
+  if (!heroesPreview)
+  {
+    return 0;
+  }
+
+  for (size_t i = 0; i < heroesPreview->heroes.size(); ++i)
+  {
+    if (heroesPreview->heroes[i].slotId == slotId)
+    {
+      return &heroesPreview->heroes[i];
+    }
+  }
+
+  return 0;
+}
+
+void BuildLinuxVisibleLoadingRosterEntries(
+  const LinuxOverlayUiRenderContext& renderContext,
+  std::vector<LinuxLoadingRuntimeHeroEntry>* heroes,
+  int* ourHeroId,
+  std::string* source)
+{
+  if (!heroes || !ourHeroId || !source)
+  {
+    return;
+  }
+
+  heroes->clear();
+  *ourHeroId = -1;
+  *source = "none";
+
+  const LinuxLoadingHeroesRuntimePreview* heroesPreview =
+    renderContext.loadingHeroesRuntimePreview;
+  if (heroesPreview && heroesPreview->ready && !heroesPreview->heroes.empty())
+  {
+    *heroes = heroesPreview->heroes;
+    *ourHeroId = heroesPreview->ourHeroId;
+    *source = "probe";
+  }
+
+  const Game::LoadingFlashInterface* activeFlashInterface =
+    GetActiveLinuxLoadingFlashInterface(renderContext.screenRuntime);
+  if (!activeFlashInterface || activeFlashInterface->GetHeroes().empty())
+  {
+    return;
+  }
+
+  std::vector<LinuxLoadingRuntimeHeroEntry> liveHeroes;
+  const vector<Game::LoadingFlashHeroState>& capturedHeroes =
+    activeFlashInterface->GetHeroes();
+  liveHeroes.reserve(capturedHeroes.size());
+  for (size_t i = 0; i < capturedHeroes.size(); ++i)
+  {
+    const Game::LoadingFlashHeroState& captured = capturedHeroes[i];
+    const LinuxLoadingRuntimeHeroEntry* previewEntry =
+      FindLinuxLoadingRuntimeHeroBySlot(heroesPreview, captured.slotId);
+    LinuxLoadingRuntimeHeroEntry entry;
+    if (previewEntry)
+    {
+      entry = *previewEntry;
+    }
+
+    entry.slotId = captured.slotId;
+    const int factionTeam = ConvertFactionToDisplayTeam(captured.faction);
+    const int originalFactionTeam = ConvertFactionToDisplayTeam(captured.originalFaction);
+    if (factionTeam != 0)
+    {
+      entry.team = factionTeam;
+    }
+    else if (originalFactionTeam != 0)
+    {
+      entry.team = originalFactionTeam;
+    }
+
+    entry.progress = ClampLinuxDynamicMarkerPercent(captured.loadProgress / 100.0f);
+    entry.leftGame = captured.isLeftGame;
+    entry.hasPremium = captured.hasPremium;
+    entry.isNovice = captured.isNovice;
+    entry.heroLevel = captured.heroLevel;
+    entry.force = captured.force;
+    entry.rating = captured.rating;
+    entry.ratingAcc = captured.ratingAcc;
+    entry.leagueIndex = captured.leagueIndex;
+    entry.partyId = captured.partyId;
+
+    const std::string playerName = ToStdString(NStr::ToMBCS(captured.playerName));
+    if (!playerName.empty())
+    {
+      entry.playerName = playerName;
+    }
+    if (!captured.flagIcon.empty())
+    {
+      entry.flagIcon = ToStdString(captured.flagIcon);
+    }
+    if (!captured.rankIcon.empty())
+    {
+      entry.rankIcon = ToStdString(captured.rankIcon);
+    }
+    if (!captured.rankAccIcon.empty())
+    {
+      entry.rankAccIcon = ToStdString(captured.rankAccIcon);
+    }
+    if (!captured.iconPath.empty())
+    {
+      entry.iconPath = ToStdString(captured.iconPath);
+    }
+    if (!captured.classIcon.empty())
+    {
+      entry.classIcon = ToStdString(captured.classIcon);
+    }
+    if (!entry.human && captured.slotId == activeFlashInterface->GetOurHeroId())
+    {
+      entry.human = true;
+    }
+
+    liveHeroes.push_back(entry);
+  }
+
+  heroes->swap(liveHeroes);
+  *ourHeroId = activeFlashInterface->GetOurHeroId();
+  *source = "live-loading-flash";
+}
+
 void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
   LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
-  const LinuxLoadingHeroesRuntimePreview* heroesPreview = renderContext.loadingHeroesRuntimePreview;
-  if (!overlay || !heroesPreview || !heroesPreview->ready || heroesPreview->heroes.empty())
+  if (runtime)
+  {
+    runtime->visibleLoadingRosterSource = "none";
+  }
+  if (!overlay)
+  {
+    return;
+  }
+
+  std::vector<LinuxLoadingRuntimeHeroEntry> heroes;
+  int ourHeroId = -1;
+  std::string rosterSource;
+  BuildLinuxVisibleLoadingRosterEntries(
+    renderContext,
+    &heroes,
+    &ourHeroId,
+    &rosterSource);
+  if (heroes.empty())
   {
     return;
   }
@@ -59895,9 +60160,9 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
 
   std::vector<const LinuxLoadingRuntimeHeroEntry*> topRow;
   std::vector<const LinuxLoadingRuntimeHeroEntry*> bottomRow;
-  for (size_t i = 0; i < heroesPreview->heroes.size(); ++i)
+  for (size_t i = 0; i < heroes.size(); ++i)
   {
-    const LinuxLoadingRuntimeHeroEntry& entry = heroesPreview->heroes[i];
+    const LinuxLoadingRuntimeHeroEntry& entry = heroes[i];
     if (entry.team == 2)
     {
       if (bottomRow.size() < 5)
@@ -59945,7 +60210,7 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     for (size_t column = 0; column < rowEntries.size() && column < 5; ++column)
     {
       const LinuxLoadingRuntimeHeroEntry& entry = *rowEntries[column];
-      const bool localPlayer = entry.slotId == heroesPreview->ourHeroId;
+      const bool localPlayer = entry.slotId == ourHeroId;
       const int cardX = panelX + gap + static_cast<int>(column) * (cardW + gap);
       DrawLinuxLoadingRosterCard(
         renderContext,
@@ -60018,6 +60283,7 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLoadingRosterMetaLabelsDrawn = metaLabelsDrawn;
     runtime->visibleLoadingRosterRankIconsDrawn = rankIconsDrawn;
     runtime->visibleLoadingRosterPremiumBadgesDrawn = premiumBadgesDrawn;
+    runtime->visibleLoadingRosterSource = rosterSource;
   }
 }
 
@@ -62311,6 +62577,11 @@ void WriteStartupLog(
   logFile << "  uiRootRuntimeLoadingPlayerEntries=" << uiRootPreview.runtimeLoadingPlayerEntryCount << "\n";
   logFile << "  uiRootRuntimeLoadingProgress=" << uiRootPreview.runtimeLoadingProgress << "\n";
   logFile << "  uiRootRuntimeLoadingDisconnected=" << uiRootPreview.runtimeLoadingDisconnectedCount << "\n";
+  logFile << "  uiRootRuntimeLoadingFlashSource="
+          << (uiRootPreview.runtimeLoadingFlashSource.empty() ? "<none>" : uiRootPreview.runtimeLoadingFlashSource) << "\n";
+  logFile << "  uiRootRuntimeLoadingFlashHeroes=" << uiRootPreview.runtimeLoadingFlashHeroCount << "\n";
+  logFile << "  uiRootRuntimeLoadingFlashChatChannels=" << uiRootPreview.runtimeLoadingFlashChatChannelCount << "\n";
+  logFile << "  uiRootRuntimeLoadingFlashPlayerBindings=" << uiRootPreview.runtimeLoadingFlashPlayerBindingCount << "\n";
   logFile << "  uiRootRuntimeLoadingStatusReady=" << (uiRootPreview.runtimeLoadingStatusReady ? "yes" : "no") << "\n";
   logFile << "  uiRootRuntimeLoadingStatusText="
           << (uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText) << "\n";
@@ -63664,6 +63935,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingRosterRankIconsDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterPremiumBadges="
           << screenRuntime.visibleLoadingRosterPremiumBadgesDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterSource="
+          << (screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource) << "\n";
   logFile << "  finalGameSchedulerTicks=" << screenRuntime.schedulerTickCount << "\n";
   logFile << "  finalGameSchedulerNextStep=" << screenRuntime.schedulerNextStep << "\n";
   logFile << "  finalGameSchedulerSegmentReady="
@@ -66835,13 +67108,17 @@ int main(int argc, char** argv)
     uiRootPreview.runtimeHeroSelectedFaction,
     uiRootPreview.runtimeHeroReady ? "yes" : "no",
     uiRootPreview.runtimeHeroSelectedHeroId.empty() ? "<none>" : uiRootPreview.runtimeHeroSelectedHeroId.c_str());
-  fprintf(stdout, "UI loading runtime: ready=%s window=%s players=%lu status=%s progress=%.2f disconnected=%lu path=%s\n",
+  fprintf(stdout, "UI loading runtime: ready=%s window=%s players=%lu status=%s progress=%.2f disconnected=%lu flash=%s heroes=%lu chat=%lu bindings=%lu path=%s\n",
     uiRootPreview.runtimeLoadingScreenReady ? "yes" : "no",
     uiRootPreview.runtimeLoadingScreenWindow.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenWindow.c_str(),
     static_cast<unsigned long>(uiRootPreview.runtimeLoadingPlayerEntryCount),
     uiRootPreview.runtimeLoadingStatusText.empty() ? "<none>" : uiRootPreview.runtimeLoadingStatusText.c_str(),
     static_cast<double>(uiRootPreview.runtimeLoadingProgress),
     static_cast<unsigned long>(uiRootPreview.runtimeLoadingDisconnectedCount),
+    uiRootPreview.runtimeLoadingFlashSource.empty() ? "<none>" : uiRootPreview.runtimeLoadingFlashSource.c_str(),
+    static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashHeroCount),
+    static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashChatChannelCount),
+    static_cast<unsigned long>(uiRootPreview.runtimeLoadingFlashPlayerBindingCount),
     uiRootPreview.runtimeLoadingScreenPath.empty() ? "<none>" : uiRootPreview.runtimeLoadingScreenPath.c_str());
   fprintf(stdout, "Game scheduler runtime: ready=%s started=%s ticks=%lu next=%d segment=%s step=%d commands=%lu statuses=%lu path=%s\n",
     uiRootPreview.runtimeGameSchedulerReady ? "yes" : "no",
@@ -67754,7 +68031,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
-  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu\n",
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu source=%s\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterLocalRowsDrawn),
@@ -67771,7 +68048,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterForceBadgesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterMetaLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRankIconsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPremiumBadgesDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPremiumBadgesDrawn),
+    screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource.c_str());
   fprintf(stdout, "Final game transceiver runtime: ready=%s world=%s step=%d commands=%lu runtimeSent=%lu productionSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroCombatMoveSent=%s heroCombatMoveCommands=%lu heroCombatMoveType=0x%08X heroHoldSent=%s heroHoldCommands=%lu heroHoldType=0x%08X heroCancelSent=%s heroCancelCommands=%lu heroCancelType=0x%08X heroMinimapSignalSent=%s heroMinimapSignalCommands=%lu heroMinimapSignalType=0x%08X heroUseUnitSent=%s heroUseUnitCommands=%lu heroUseUnitType=0x%08X heroActivateTalentSent=%s heroActivateTalentCommands=%lu heroActivateTalentType=0x%08X heroUseTalentSent=%s heroUseTalentCommands=%lu heroUseTalentType=0x%08X heroUsePortalSent=%s heroUsePortalCommands=%lu heroUsePortalType=0x%08X heroUseConsumableSent=%s heroUseConsumableCommands=%lu heroUseConsumableType=0x%08X heroBuyConsumableSent=%s heroBuyConsumableCommands=%lu heroBuyConsumableType=0x%08X heroRaiseFlagSent=%s heroRaiseFlagCommands=%lu heroRaiseFlagType=0x%08X heroInitMinigameSent=%s heroInitMinigameCommands=%lu heroInitMinigameType=0x%08X heroPickupObjectSent=%s heroPickupObjectCommands=%lu heroPickupObjectType=0x%08X cmdType=0x%08X spawnedHeroes=%lu playerHeroes=%lu replayCommands=%lu replayBytes=%lu path=%s\n",
     screenRuntime.transceiverReady ? "yes" : "no",
     screenRuntime.transceiverWorldAttached ? "yes" : "no",
