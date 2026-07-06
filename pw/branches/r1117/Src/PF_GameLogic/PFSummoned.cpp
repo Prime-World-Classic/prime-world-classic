@@ -88,10 +88,22 @@ PFBaseSummonedUnit::PFBaseSummonedUnit(CPtr<PFWorld> const& pWorld, NDb::Creatur
   data.playerId = IsValid(pMaster) ? pMaster->GetPlayerId() : -1;
   data.pObjectDesc = creepObj;
   Initialize(data);
+  InitBaseAttack();
+
+  if (!openWarFog)
+    PFBaseCreep::CloseWarFog(true);
+
   if (!noSummonAnimation)
     InitializeSummonBehavior();
+
   if (IsValid(pMaster))
+  {
+    CopyStatModifiersFrom(pMaster, PF_Core::WORLD_ID);
+    DoLevelups(1);
     SetNaftaLevel(pMaster->GetNaftaLevel());
+  }
+
+  UpgradeAbilities();
 }
 
 float PFBaseSummonedUnit::OnBeforeDamage(const DamageDesc& desc) { return desc.amount * takeModDmg; }
