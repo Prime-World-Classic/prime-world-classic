@@ -5,12 +5,14 @@
 #include "DBGameLogic.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
+#include "PFAIWorld.h"
 #include "PFBaseUnit.h"
 #include "PFConsumable.h"
 #include "PFHero.h"
 #include "PFMicroAI.h"
 #include "PFTargetSelector.h"
 #include "PFUniTarget.h"
+#include "PFWorldNatureMap.h"
 
 namespace NNameMap
 {
@@ -295,17 +297,42 @@ bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const
 float PFAbilityData::GetDist2Target() const { return 0.0f; }
 float PFAbilityData::GetParentScale() const { return 1.0f; }
 int PFAbilityData::GetAbilityType() const { return abilityType; }
-bool PFAbilityData::Roll(float probability ) const { return probability >= 1.0f; }
-int PFAbilityData::GetRandom(int from, int to ) const { return from <= to ? from : to; }
+bool PFAbilityData::Roll(float probability ) const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  return pWorld ? pWorld->GetRndGen()->Roll(probability) : probability >= 1.0f;
+}
+int PFAbilityData::GetRandom(int from, int to ) const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  return pWorld ? pWorld->GetRndGen()->Next(from, to) : (from <= to ? from : to);
+}
 float PFAbilityData::GetRefineAbilityScale( float valueAtRefineLevel0, float incrementPerLevel ) const { return valueAtRefineLevel0 + incrementPerLevel * GetRefineRate(); }
-bool PFAbilityData::GetSmartRoll( float probability, int maxFailReps, int maxSuccessReps, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const { (void)maxFailReps; (void)maxSuccessReps; (void)pFirst; (void)pSecond; return Roll( probability ); }
-int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const { (void)probDecrement; (void)pFirst; (void)pSecond; return outcomesNumber > 0 ? 0 : -1; }
+bool PFAbilityData::GetSmartRoll( float probability, int maxFailReps, int maxSuccessReps, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  return pWorld && pDBDesc && pFirst && pSecond
+    ? pWorld->GetSmartRndGen()->Roll(probability, maxFailReps, maxSuccessReps, pFirst, pSecond, pDBDesc->GetDBID().GetHashKey())
+    : Roll(probability);
+}
+int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  return pWorld && pDBDesc && pFirst && pSecond && outcomesNumber > 1
+    ? pWorld->GetSmartRndGen()->Random(outcomesNumber, probDecrement, pFirst, pSecond, pDBDesc->GetDBID().GetHashKey())
+    : (outcomesNumber > 0 ? 0 : -1);
+}
 float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const { (void)name; (void)pSender; (void)pReceiver; (void)pMisc; return 0.0f; }
 NDb::UnitConstant const* PFAbilityData::GetConstant(char const *name) const { return pConstantsMap ? pConstantsMap->Get( name ) : 0; }
 float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { (void)name; (void)pSender; (void)pReceiver; return 0.0f; }
 bool PFAbilityData::CheckUpgradePerCastPerTarget() const { return false; }
 const IUnitFormulaPars* PFAbilityData::GetObjectOwner() const { return 0; }
-int PFAbilityData::GetScrollLevel() const { return 0; }
+int PFAbilityData::GetScrollLevel() const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  PFAIWorld* pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
+  return pAIWorld && IsValid(pOwner) ? pAIWorld->GetAveragePriestessLvl(pOwner->GetFaction()) : 0;
+}
 bool PFAbilityData::IsNight() const { return false; }
 NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& target ) const { (void)target; return 0; }
 ::DiAnimGraph* PFAbilityData::GetAG( NScene::SceneObject* so ) const { (void)so; return 0; }
@@ -314,13 +341,57 @@ float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::strin
 NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const { needDelete = false; return 0; }
 bool PFAbilityData::IsInstaCast() const { return (GetFlags() & NDb::ABILITYFLAGS_INSTACAST) != 0; }
 bool PFAbilityData::GetEventTypeByAbilityTypeId( NDb::EBaseUnitEvent& eventType ) { eventType = NDb::BASEUNITEVENT_CASTMAGIC; return false; }
-float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilityScaleMode abScaleMode, float valueLeft, float valueRight, bool bRound ) const { (void)isDamage; (void)statValue; (void)abScaleMode; (void)valueRight; (void)bRound; return valueLeft; }
+float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilityScaleMode abScaleMode, float valueLeft, float valueRight, bool bRound ) const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  PFAIWorld* pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
+  if (!pAIWorld)
+    return valueLeft;
+
+  const NDb::AbilityAndDamageScalingParams& params = pAIWorld->GetAIParameters().abilityAndDamageScalingParams;
+  float statLeft = 0.0f;
+  float statRight = 0.0f;
+
+  switch (abScaleMode)
+  {
+  case ABILITYSCALEMODE_STAT:
+    statLeft = isDamage ? params.damageScaleStatLeft : params.abilityScaleStatLeft;
+    statRight = isDamage ? params.damageScaleStatRight : params.abilityScaleStatRight;
+    break;
+  case ABILITYSCALEMODE_LIFE:
+    statLeft = isDamage ? params.damageScaleLifeLeft : params.abilityScaleLifeLeft;
+    statRight = isDamage ? params.damageScaleLifeRight : params.abilityScaleLifeRight;
+    break;
+  case ABILITYSCALEMODE_ENERGY:
+    statLeft = isDamage ? params.damageScaleEnergyLeft : params.abilityScaleEnergyLeft;
+    statRight = isDamage ? params.damageScaleEnergyRight : params.abilityScaleEnergyRight;
+    break;
+  default:
+    return valueLeft;
+  }
+
+  if (statRight == statLeft)
+    return valueLeft;
+
+  float result = max((statValue - statLeft) * (valueRight - valueLeft) / (statRight - statLeft) + valueLeft, valueLeft);
+  return bRound ? Round(result) : result;
+}
 bool PFAbilityData::IsAbilitySupposedToStopUnit() const { return false; }
 bool PFAbilityData::IsAbilitySupposedToSyncVisual() const { return false; }
 bool PFAbilityData::IsAbilitySuitable( NDb::Ability const* pDbAbility, vector<NDb::Ptr<NDb::Ability> > const& dbAbilities, NDb::EUseMode mode ) { (void)mode; return pDbAbility && dbAbilities.find( pDbAbility ) != dbAbilities.end(); }
-float PFAbilityData::GetTerrainPart(int faction) const { (void)faction; return 0.0f; }
+float PFAbilityData::GetTerrainPart(int faction) const
+{
+  PFWorld const* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  PFWorldNatureMap const* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  return pNatureMap ? pNatureMap->GetNaturePercent((NDb::EFaction)faction) : 0.0f;
+}
 int PFAbilityData::GetTerrianTypeUnderCursor() const { return 0; }
-int PFAbilityData::GetNatureTypeInPos(CVec2 pos) const { (void)pos; return 0; }
+int PFAbilityData::GetNatureTypeInPos(CVec2 pos) const
+{
+  PFWorld const* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  PFWorldNatureMap const* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  return pNatureMap ? pNatureMap->GetNatureInPoint(pos.x, pos.y) : 0;
+}
 int PFAbilityData::GetActivatedWithinKit() const { return 0; }
 int PFAbilityData::GetTalentsWithinKit() const { return 0; }
 float PFAbilityData::GetStatusDispellPriority( const IUnitFormulaPars* pUnitToCheck, bool returnDuration ) const { (void)pUnitToCheck; (void)returnDuration; return -1.0f; }
