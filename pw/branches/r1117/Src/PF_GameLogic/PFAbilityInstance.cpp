@@ -38,7 +38,15 @@ PFAbilityInstance::PFAbilityInstance( const CObj<PFAbilityData>& _pAbilityData, 
   if ( IsValid( pOwner ) )
   {
     castPosition = pOwner->GetPos();
-    castMasterPosition = IsValid( pOwner->GetMasterUnit() ) ? pOwner->GetMasterUnit()->GetPos() : pOwner->GetPos();
+    if ( ( pOwner->GetUnitType() == NDb::UNITTYPE_SUMMON || pOwner->GetUnitType() == NDb::UNITTYPE_DUMMYUNIT ) &&
+      IsValid( pOwner->GetMasterUnit() ) )
+    {
+      castMasterPosition = pOwner->GetMasterUnit()->GetPos();
+    }
+    else
+    {
+      castMasterPosition = pOwner->GetPos();
+    }
   }
 }
 
