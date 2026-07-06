@@ -361,7 +361,34 @@ float PFAbilityData::GetAttackTimeOffset() const { return 0.0f; }
 float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::string &nodeName, const nstl::string &markerName ) const { (void)pSO; (void)nodeName; (void)markerName; return 0.0f; }
 NScene::SceneObject* PFAbilityData::GetSO( bool& needDelete ) const { needDelete = false; return 0; }
 bool PFAbilityData::IsInstaCast() const { return (GetFlags() & NDb::ABILITYFLAGS_INSTACAST) != 0; }
-bool PFAbilityData::GetEventTypeByAbilityTypeId( NDb::EBaseUnitEvent& eventType ) { eventType = NDb::BASEUNITEVENT_CASTMAGIC; return false; }
+bool PFAbilityData::GetEventTypeByAbilityTypeId( NDb::EBaseUnitEvent& eventType )
+{
+  switch ( abilityType )
+  {
+    case NDb::ABILITYTYPEID_ABILITY0:
+    case NDb::ABILITYTYPEID_ABILITY1:
+    case NDb::ABILITYTYPEID_ABILITY2:
+    case NDb::ABILITYTYPEID_ABILITY3:
+    case NDb::ABILITYTYPEID_ABILITY4:
+      eventType = NDb::BASEUNITEVENT_CASTMAGIC;
+      return true;
+
+    case NDb::ABILITYTYPEID_TALENT:
+      eventType = NDb::BASEUNITEVENT_USETALENT;
+      return true;
+
+    case NDb::ABILITYTYPEID_CONSUMABLE:
+      eventType = NDb::BASEUNITEVENT_USECONSUMABLE;
+      return true;
+
+    case NDb::ABILITYTYPEID_PORTAL:
+      eventType = NDb::BASEUNITEVENT_USEPORTAL;
+      return true;
+
+    default:
+      return false;
+  }
+}
 float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilityScaleMode abScaleMode, float valueLeft, float valueRight, bool bRound ) const
 {
   PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;

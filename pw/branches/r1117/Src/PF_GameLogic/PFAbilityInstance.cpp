@@ -5,6 +5,7 @@
 #include "PFAbilityInstance.h"
 #include "PFAbilityData.h"
 #include "PFBaseUnit.h"
+#include "PFBaseUnitEvent.h"
 #include "PFDispatch.h"
 #include "PFDispatchFactory.h"
 
@@ -88,8 +89,20 @@ void PFAbilityInstance::Activate()
 
     dispatch.Start();
     pAbilityData->OnDispatchStarted();
-    pAbilityData->SpendMana();
-    pAbilityData->NotifyCastProcessed();
+
+    if ( ( GetFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING ) != 0 && IsValid( pOwner ) )
+      pOwner->SetChannellingProgress( 0.0001f );
+
+    if ( ( GetFlags() & NDb::ABILITYFLAGS_CHANNELINGCREATE ) == 0 )
+    {
+      NDb::EBaseUnitEvent eventType = NDb::BASEUNITEVENT_CASTMAGIC;
+      if ( pAbilityData->GetEventTypeByAbilityTypeId( eventType ) && IsValid( pOwner ) )
+        pOwner->EventHappened( PFBaseUnitUseAbilityEvent( eventType, this ) );
+
+      pAbilityData->SpendMana();
+      LogAbilityUsed();
+      pAbilityData->NotifyCastProcessed();
+    }
 
     if ( IsValid( pOwner ) && GetData()->abilityType != NDb::ABILITYTYPEID_SPECIAL )
       pOwner->StartGlobalCooldown();
@@ -131,8 +144,20 @@ bool PFAbilityInstance::ApplyToTarget()
       }
 
       pAbilityData->OnDispatchStarted();
-      pAbilityData->SpendMana();
-      pAbilityData->NotifyCastProcessed();
+
+      if ( ( GetFlags() & NDb::ABILITYFLAGS_WAITFORCHANNELING ) != 0 && IsValid( pOwner ) )
+        pOwner->SetChannellingProgress( 0.0001f );
+
+      if ( ( GetFlags() & NDb::ABILITYFLAGS_CHANNELINGCREATE ) == 0 )
+      {
+        NDb::EBaseUnitEvent eventType = NDb::BASEUNITEVENT_CASTMAGIC;
+        if ( pAbilityData->GetEventTypeByAbilityTypeId( eventType ) && IsValid( pOwner ) )
+          pOwner->EventHappened( PFBaseUnitUseAbilityEvent( eventType, this ) );
+
+        pAbilityData->SpendMana();
+        LogAbilityUsed();
+        pAbilityData->NotifyCastProcessed();
+      }
 
       if ( IsValid( pOwner ) && GetData()->abilityType != NDb::ABILITYTYPEID_SPECIAL )
         pOwner->StartGlobalCooldown();
@@ -221,7 +246,14 @@ void PFAbilityInstance::RemoveApplicatorsFrom(CPtr<PFBaseUnit> const& pUnit) con
 
 void PFAbilityInstance::NotifyChannelingCreateStop(bool fire)
 {
-  (void)fire;
+  if ( !fire || !IsValid( pAbilityData ) || !IsValid( pOwner ) )
+    return;
+
+  NDb::EBaseUnitEvent eventType = NDb::BASEUNITEVENT_CASTMAGIC;
+  if ( pAbilityData->GetEventTypeByAbilityTypeId( eventType ) )
+    pOwner->EventHappened( PFBaseUnitUseAbilityEvent( eventType, this ) );
+
+  LogAbilityUsed();
 }
 
 void PFAbilityInstance::LogAbilityUsed() const
@@ -257,7 +289,13 @@ void PFAbilityInstance::SetWarFogOpened(NDb::EFaction faction, bool opened)
 
 ELookKind PFAbilityInstance::IsCasterShouldLookAtTarget() const
 {
-  return DontLook;
+  if ( ( target.IsUnit() && target.GetUnit() == GetOwner() ) || ( GetFlags() & NDb::ABILITYFLAGS_FOCUSONTARGET ) == 0 )
+    return DontLook;
+
+  if ( ( GetFlags() & NDb::ABILITYFLAGS_FOCUSINSTANTLY ) != 0 )
+    return TurnInstantly;
+
+  return Turn;
 }
 
 void PFAbilityInstance::NotifyApplicatorStopped( PFBaseUnit * target )
@@ -282,7 +320,8 @@ void PFAbilityInstance::NotifyAbilityEnd()
 
 unsigned int PFAbilityInstance::GetFlags() const
 {
-  return IsValid( pAbilityData ) ? pAbilityData->GetFlags() : 0;
+  const NDb::AlternativeActivity* pAltActivity = GetTarget().GetDBAlternativeTarget() ? GetTarget().GetDBAlternativeTarget()->alternativeActivity : 0;
+  return pAltActivity ? pAltActivity->flags : ( IsValid( pAbilityData ) ? pAbilityData->GetFlags() : 0 );
 }
 
 void PFAbilityInstance::PFDispatchHolder::Start()
