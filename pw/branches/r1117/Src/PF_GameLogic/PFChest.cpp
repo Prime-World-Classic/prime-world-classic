@@ -5,6 +5,9 @@
 
 #include "PFChest.h"
 #include "DBConsumable.h"
+#include "DBGameLogic.h"
+#include "PFAIWorld.h"
+#include "PFHero.h"
 #include "PFWorld.h"
 
 namespace NWorld
@@ -18,10 +21,14 @@ CObj<PFConsumableChest> PFConsumableChest::Create(PFWorld* pWorld, NDb::Ptr<NDb:
 {
   NI_VERIFY(dbConsumable, "Invalid consumable to place into chest!", return NULL;);
   NDb::AdvMapObject amChest;
-  amChest.gameObject = gameObject ? gameObject : (dbConsumable->gameObject.GetPtr());
+  amChest.gameObject = gameObject ? gameObject : (pWorld && pWorld->GetAIWorld() ? pWorld->GetAIWorld()->GetAIParameters().chestGameObject.GetPtr() : 0);
+  if (!amChest.gameObject)
+    amChest.gameObject = dbConsumable->gameObject.GetPtr();
   amChest.offset = CPlacement(CVec3(pos, 0.0f), QNULL, CVec3(1.0f, 1.0f, 1.0f));
   CObj<PFConsumableChest> pChest(new PFConsumableChest(pWorld, dbConsumable, quantity, amChest));
-  pChest->SetObjectSizes(1.0f, 1, 1);
+  const float objectTileSize = amChest.gameObject ? amChest.gameObject->lockMask.tileSize : 1.0f;
+  const float objectSize = objectTileSize > 0.0f ? objectTileSize : 1.0f;
+  pChest->SetObjectSizes(objectSize, static_cast<int>(ceil(objectSize)), static_cast<int>(ceil(objectSize)));
   return pChest;
 }
 
@@ -40,13 +47,17 @@ void PFConsumableChest::Reset()
 
 bool PFConsumableChest::CanBePickedUpBy(CPtr<PFBaseHero> const& pPicker) const
 {
-  (void)pPicker;
-  return IsValid(consumable);
+  if (!IsUnitValid(pPicker) || !IsValid(consumable))
+    return false;
+
+  return pPicker->CanTakeConsumable(consumable, quantity);
 }
 
 void PFConsumableChest::OnPickedUp(const CPtr<PFBaseHero>& pPicker)
 {
-  (void)pPicker;
+  NI_VERIFY(IsUnitValid(pPicker), "Hero must be valid!", return;);
+  NI_VERIFY(pPicker->TakeConsumable(consumable, quantity, NDb::CONSUMABLEORIGIN_PICKUPABLE),
+    "Can not pick up consumable from chest (CanBePickedUpBy work wrong?)", return;);
 }
 
 const wstring& PFConsumableChest::GetName() const
