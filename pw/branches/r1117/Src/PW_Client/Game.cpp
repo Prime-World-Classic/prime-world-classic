@@ -4669,6 +4669,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyJoinModeButtonsSelected;
   bool visibleLobbyDeveloperSexDrawn;
   bool visibleLobbyDeveloperFemale;
+  size_t visibleLobbyHeadersDrawn;
+  size_t visibleLobbyPanelsDrawn;
   size_t visibleLobbyActionButtonsDrawn;
   size_t visibleLobbyActionButtonsSelected;
   std::string visibleLobbySelectedActionButton;
@@ -5838,6 +5840,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyJoinModeButtonsSelected(0),
       visibleLobbyDeveloperSexDrawn(false),
       visibleLobbyDeveloperFemale(false),
+      visibleLobbyHeadersDrawn(0),
+      visibleLobbyPanelsDrawn(0),
       visibleLobbyActionButtonsDrawn(0),
       visibleLobbyActionButtonsSelected(0),
       visibleLobbySelectedActionButton("none"),
@@ -54034,6 +54038,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const LinuxUiRootPreview& uiRootPreview = *renderContext.uiRootPreview;
   LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
   const LinuxLobbyLayoutTransform layout(width, height);
+  size_t lobbyHeadersDrawn = 0;
+  size_t lobbyPanelsDrawn = 0;
 
   if (overlay->lobbyBackgroundTexture)
   {
@@ -54077,11 +54083,16 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   }
 
   DrawLinuxLobbyHeader(overlay, layout, 71, 344, 535, 60, overlay->lobbyText.createGameHeader);
+  ++lobbyHeadersDrawn;
   DrawLinuxLobbyHeader(overlay, layout, 694, 342, 535, 60, overlay->lobbyText.joinGameHeader);
+  ++lobbyHeadersDrawn;
   DrawLinuxLobbyHeader(overlay, layout, 109, 428, 455, 23, overlay->lobbyText.mapsListHeader);
+  ++lobbyHeadersDrawn;
 
   DrawLinuxLobbyPanel(overlay, layout, 65, 455, 546, 368);
+  ++lobbyPanelsDrawn;
   DrawLinuxLobbyPanel(overlay, layout, 689, 454, 546, 449);
+  ++lobbyPanelsDrawn;
   size_t selectedMapRowsDrawn = 0;
   size_t pvpMapRowsDrawn = 0;
   size_t pveMapRowsDrawn = 0;
@@ -54136,6 +54147,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     );
 
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
+  ++lobbyPanelsDrawn;
   const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
   size_t joinModeButtonsDrawn = 0;
   size_t joinModeButtonsSelected = 0;
@@ -54197,6 +54209,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   {
     DrawLinuxLobbyPanel(overlay, layout, 975, 14, 289, 53);
   }
+  ++lobbyPanelsDrawn;
   SetOpenGlColor(225, 219, 195, 235);
   const bool developerFemale =
     runtime &&
@@ -54282,6 +54295,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyJoinModeButtonsSelected = joinModeButtonsSelected;
     runtime->visibleLobbyDeveloperSexDrawn = true;
     runtime->visibleLobbyDeveloperFemale = developerFemale;
+    runtime->visibleLobbyHeadersDrawn = lobbyHeadersDrawn;
+    runtime->visibleLobbyPanelsDrawn = lobbyPanelsDrawn;
     runtime->visibleLobbyActionButtonsDrawn = actionButtonsDrawn;
     runtime->visibleLobbyActionButtonsSelected = actionButtonsSelected;
     runtime->visibleLobbySelectedActionButton = selectedActionButton;
@@ -60811,6 +60826,9 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyDeveloperSex="
           << (screenRuntime.visibleLobbyDeveloperSexDrawn ? "yes" : "no") << "/"
           << (screenRuntime.visibleLobbyDeveloperFemale ? "female" : "male") << "\n";
+  logFile << "  finalVisibleLobbyLayout="
+          << screenRuntime.visibleLobbyHeadersDrawn << "/"
+          << screenRuntime.visibleLobbyPanelsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtons="
           << screenRuntime.visibleLobbyActionButtonsDrawn << "\n";
   logFile << "  finalVisibleLobbyActionButtonsSelected="
@@ -64735,7 +64753,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64770,6 +64788,8 @@ int main(int argc, char** argv)
     DescribeLinuxLobbyJoinMode(screenRuntime.visibleLobbyJoinMode),
     screenRuntime.visibleLobbyDeveloperSexDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDeveloperFemale ? "female" : "male",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHeadersDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyPanelsDrawn),
     screenRuntime.visibleLobbyPlayerCountDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyPlayerCountValue,
     static_cast<unsigned long>(screenRuntime.visibleLobbyMouseInputCount),
