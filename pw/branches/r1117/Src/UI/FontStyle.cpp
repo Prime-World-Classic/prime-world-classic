@@ -7,6 +7,39 @@
 namespace UI
 {
 
+namespace
+{
+
+#if defined(PW_LINUX_NULL_RENDER)
+class LinuxFontMaterial : public Render::BaseMaterial
+{
+public:
+  LinuxFontMaterial()
+    : Render::BaseMaterial( NDb::MATERIALPRIORITY_TRANSPARENT, 0, -1 )
+  {
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+
+  virtual Render::Sampler* GetDiffuseMap()
+  {
+    return &diffuseMap;
+  }
+
+  virtual const Render::Sampler* GetDiffuseMap() const
+  {
+    return &diffuseMap;
+  }
+
+private:
+  Render::Sampler diffuseMap;
+};
+#endif
+
+} // namespace
+
 #pragma warning( disable: 4355 ) //'this' : used in base member initializer list
 
 FontStyle::FontStyle() :
@@ -104,12 +137,19 @@ void FontStyle::SetupMaterial()
   fontMaterialDesc.DiffuseMap.samplerState.minFilter = NDb::MINFILTERTYPE_LINEAR;
   fontMaterialDesc.DiffuseMap.samplerState.mipFilter = NDb::MIPFILTERTYPE_POINT;
 
-#if !defined(PW_LINUX_NULL_RENDER)
+#if defined(PW_LINUX_NULL_RENDER)
+  renderMaterial = new LinuxFontMaterial();
+#else
   renderMaterial = static_cast<Render::BaseMaterial*>( Render::CreateRenderMaterial( NDb::UIFontMaterial::typeId ) );
-  renderMaterial->FillMaterial( &fontMaterialDesc, 0, false );
-  renderMaterial->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
-  renderMaterial->GetDiffuseMap()->SetTexture( GetFontRenderer()->GetFontsTexture() );
 #endif
+  if ( renderMaterial )
+  {
+#if !defined(PW_LINUX_NULL_RENDER)
+    renderMaterial->FillMaterial( &fontMaterialDesc, 0, false );
+    renderMaterial->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
+#endif
+    renderMaterial->GetDiffuseMap()->SetTexture( GetFontRenderer()->GetFontsTexture() );
+  }
 
   //Font metrics
   if ( uiFontStyle )

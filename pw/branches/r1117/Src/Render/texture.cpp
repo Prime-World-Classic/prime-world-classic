@@ -14,6 +14,22 @@ bool MakeOpenGLContextCurrent();
 namespace Render
 {
 
+namespace
+{
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+unsigned int ClampLinuxTextureCoord(long value, unsigned int maxValue)
+{
+  if (value <= 0)
+    return 0;
+
+  const unsigned long unsignedValue = static_cast<unsigned long>(value);
+  return unsignedValue > maxValue ? maxValue : static_cast<unsigned int>(unsignedValue);
+}
+#endif
+
+} // namespace
+
 Texture::Texture()
   : pDXTexture(0)
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -78,12 +94,21 @@ void Texture::ReleaseOpenGLTexture()
 
   openGLTexture = 0;
 }
+
+bool Texture::HasValidLinuxTextureResource() const
+{
+  return Get(pDXTexture) != 0 || openGLTexture != 0;
+}
 #endif
 
 Texture2D::Texture2D()
   : DeviceLostHandler(HANDLERPRIORITY_NORMAL)
   , levels(0)
   , desc()
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  , linuxPixels()
+  , linuxPixelsDirty(false)
+#endif
 {
 }
 
@@ -92,6 +117,10 @@ Texture2D::Texture2D(IDirect3DTexture9 *pTex, HandlerPriority deviceLostHandlerP
   , DeviceLostHandler(deviceLostHandlerPriority)
   , levels(0)
   , desc()
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  , linuxPixels()
+  , linuxPixelsDirty(false)
+#endif
 {
 }
 
@@ -100,6 +129,10 @@ Texture2D::Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHan
   , DeviceLostHandler(deviceLostHandlerPriority)
   , levels(1)
   , desc(desc_)
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  , linuxPixels()
+  , linuxPixelsDirty(false)
+#endif
 {
   CreateInternal();
 }
@@ -107,37 +140,201 @@ Texture2D::Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHan
 void Texture2D::CreateInternal()
 {
   Texture::SetTexture(static_cast<IDirect3DBaseTexture9*>(0));
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  EnsureLinuxPixelStorage();
+#endif
 }
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+unsigned int Texture2D::GetLinuxBytesPerPixel() const
+{
+  switch (desc.Format)
+  {
+    case D3DFMT_A8R8G8B8:
+    case D3DFMT_X8R8G8B8:
+      return 4;
+    case D3DFMT_A8:
+    case D3DFMT_L8:
+      return 1;
+    default:
+      return 0;
+  }
+}
+
+bool Texture2D::EnsureLinuxPixelStorage()
+{
+  const unsigned int bytesPerPixel = GetLinuxBytesPerPixel();
+  if (!desc.Width || !desc.Height || !bytesPerPixel)
+    return false;
+
+  const size_t requiredSize =
+    static_cast<size_t>(desc.Width) * static_cast<size_t>(desc.Height) * bytesPerPixel;
+  if (linuxPixels.size() != requiredSize)
+  {
+    linuxPixels.resize(requiredSize);
+    linuxPixelsDirty = true;
+  }
+
+  return true;
+}
+
+bool Texture2D::HasValidLinuxTextureResource() const
+{
+  if (Texture::HasValidLinuxTextureResource())
+    return true;
+
+  return desc.Type == D3DRTYPE_TEXTURE &&
+    !(desc.Usage & D3DUSAGE_RENDERTARGET) &&
+    desc.Width &&
+    desc.Height &&
+    GetLinuxBytesPerPixel() != 0;
+}
+
+void Texture2D::EnsureOpenGLTexture()
+{
+  if (!linuxPixels.empty() && (linuxPixelsDirty || !GetOpenGLTexture()))
+    UploadLinuxPixelsToOpenGL();
+}
+
+void Texture2D::UploadLinuxPixelsToOpenGL()
+{
+  const unsigned int bytesPerPixel = GetLinuxBytesPerPixel();
+  if (linuxPixels.empty() || !desc.Width || !desc.Height || !bytesPerPixel)
+  {
+    linuxPixelsDirty = false;
+    return;
+  }
+
+  if (!NMainFrame::MakeOpenGLContextCurrent())
+    return;
+
+  nstl::vector<unsigned char> rgba;
+  rgba.resize(static_cast<size_t>(desc.Width) * static_cast<size_t>(desc.Height) * 4U);
+
+  const size_t pixelCount = static_cast<size_t>(desc.Width) * static_cast<size_t>(desc.Height);
+  for (size_t pixel = 0; pixel < pixelCount; ++pixel)
+  {
+    const size_t src = pixel * bytesPerPixel;
+    const size_t dst = pixel * 4U;
+    if (bytesPerPixel == 4)
+    {
+      rgba[dst + 0] = linuxPixels[src + 2];
+      rgba[dst + 1] = linuxPixels[src + 1];
+      rgba[dst + 2] = linuxPixels[src + 0];
+      rgba[dst + 3] = desc.Format == D3DFMT_X8R8G8B8 ? 255 : linuxPixels[src + 3];
+    }
+    else
+    {
+      const unsigned char value = linuxPixels[src];
+      if (desc.Format == D3DFMT_A8)
+      {
+        rgba[dst + 0] = 255;
+        rgba[dst + 1] = 255;
+        rgba[dst + 2] = 255;
+        rgba[dst + 3] = value;
+      }
+      else
+      {
+        rgba[dst + 0] = value;
+        rgba[dst + 1] = value;
+        rgba[dst + 2] = value;
+        rgba[dst + 3] = 255;
+      }
+    }
+  }
+
+  GLuint texture = static_cast<GLuint>(GetOpenGLTexture());
+  if (!texture)
+  {
+    glGenTextures(1, &texture);
+    if (!texture)
+      return;
+    SetOpenGLTexture(texture);
+  }
+
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(
+    GL_TEXTURE_2D,
+    0,
+    GL_RGBA,
+    static_cast<GLsizei>(desc.Width),
+    static_cast<GLsizei>(desc.Height),
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_BYTE,
+    &rgba[0]);
+  glBindTexture(GL_TEXTURE_2D, 0);
+  linuxPixelsDirty = false;
+}
+#endif
 
 LockedRect Texture2D::LockRect(unsigned int level, unsigned int left, unsigned int right, unsigned int top, unsigned int bottom, ERenderLockType lockType)
 {
-  (void)level;
-  (void)left;
-  (void)right;
-  (void)top;
-  (void)bottom;
-  (void)lockType;
-  return LockedRect();
+  RECT rect = {
+    static_cast<long>(left),
+    static_cast<long>(top),
+    static_cast<long>(right),
+    static_cast<long>(bottom)
+  };
+
+  return LockRect(level, &rect, lockType);
 }
 
 LockedRect Texture2D::LockRect(unsigned int level, RECT *pRect, ERenderLockType lockType)
 {
+  (void)lockType;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (level != 0 || !EnsureLinuxPixelStorage())
+    return LockedRect();
+
+  unsigned int left = 0;
+  unsigned int top = 0;
+  unsigned int right = desc.Width;
+  unsigned int bottom = desc.Height;
+  if (pRect)
+  {
+    left = ClampLinuxTextureCoord(pRect->left, desc.Width);
+    top = ClampLinuxTextureCoord(pRect->top, desc.Height);
+    right = ClampLinuxTextureCoord(pRect->right, desc.Width);
+    bottom = ClampLinuxTextureCoord(pRect->bottom, desc.Height);
+  }
+
+  if (left >= right || top >= bottom)
+    return LockedRect();
+
+  const unsigned int bytesPerPixel = GetLinuxBytesPerPixel();
+  const int pitch = static_cast<int>(desc.Width * bytesPerPixel);
+  const size_t offset =
+    (static_cast<size_t>(top) * static_cast<size_t>(desc.Width) + left) * bytesPerPixel;
+  return LockedRect(pitch, &linuxPixels[offset]);
+#else
   (void)level;
   (void)pRect;
-  (void)lockType;
   return LockedRect();
+#endif
 }
 
 LockedRect Texture2D::LockRect(unsigned int level, ERenderLockType lockType)
 {
-  (void)level;
-  (void)lockType;
-  return LockedRect();
+  return LockRect(level, static_cast<RECT*>(0), lockType);
 }
 
 void Texture2D::UnlockRect(unsigned int level)
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (level == 0 && !linuxPixels.empty())
+  {
+    linuxPixelsDirty = true;
+    EnsureOpenGLTexture();
+  }
+#else
   (void)level;
+#endif
 }
 
 DXSurfaceRef Texture2D::GetSurface(unsigned int level) const
@@ -173,6 +370,12 @@ void Texture2D::SetTexture(Texture2D const& theOther)
   pDXTexture = theOther.pDXTexture;
   desc = theOther.desc;
   levels = theOther.levels;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  ReleaseOpenGLTexture();
+  linuxPixels = theOther.linuxPixels;
+  linuxPixelsDirty = !linuxPixels.empty();
+  EnsureOpenGLTexture();
+#endif
 }
 
 TextureVtx::TextureVtx(const Sizes& _sizes, bool _preferR2VB)

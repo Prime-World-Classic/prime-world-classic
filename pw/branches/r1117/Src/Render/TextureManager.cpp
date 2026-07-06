@@ -206,10 +206,33 @@ Texture2DRef CreateTexture2DFromFile(nstl::string const& filename)
   if (!LoadDdsTextureRgba(filename, &rgba, &width, &height))
     return CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
 
-  const unsigned int openGLTexture = UploadOpenGLTexture2D(rgba, width, height);
   Texture2DRef texture = CreatePlaceholderTexture2D(width, height, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
-  if (openGLTexture && texture)
-    texture->SetOpenGLTexture(openGLTexture);
+  if (!texture)
+    return texture;
+
+  LockedRect locked = texture->LockRect(0, LOCK_DEFAULT);
+  if (locked.data)
+  {
+    for (unsigned int y = 0; y < height; ++y)
+    {
+      for (unsigned int x = 0; x < width; ++x)
+      {
+        const size_t pixelIndex = (static_cast<size_t>(y) * static_cast<size_t>(width) + x) * 4U;
+        unsigned char* out = locked.data + static_cast<size_t>(y) * locked.pitch + static_cast<size_t>(x) * 4U;
+        out[0] = rgba[pixelIndex + 2];
+        out[1] = rgba[pixelIndex + 1];
+        out[2] = rgba[pixelIndex + 0];
+        out[3] = rgba[pixelIndex + 3];
+      }
+    }
+    texture->UnlockRect(0);
+  }
+  else
+  {
+    const unsigned int openGLTexture = UploadOpenGLTexture2D(rgba, width, height);
+    if (openGLTexture)
+      texture->SetOpenGLTexture(openGLTexture);
+  }
   return texture;
 }
 #endif
@@ -323,7 +346,29 @@ Texture2DRef Create2DTextureFromArray2D(const CArray2D<Render::Color>& src)
 {
   if (src.IsEmpty())
     return GetDefaultTexture2D();
-  return CreatePlaceholderTexture2D(src.GetSizeX(), src.GetSizeY(), 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+
+  Texture2DRef texture = CreatePlaceholderTexture2D(src.GetSizeX(), src.GetSizeY(), 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+  if (!texture)
+    return texture;
+
+  LockedRect locked = texture->LockRect(0, LOCK_DEFAULT);
+  if (locked.data)
+  {
+    for (int y = 0; y < src.GetSizeY(); ++y)
+    {
+      for (int x = 0; x < src.GetSizeX(); ++x)
+      {
+        const Render::Color& color = src[y][x];
+        unsigned char* out = locked.data + static_cast<size_t>(y) * locked.pitch + static_cast<size_t>(x) * 4U;
+        out[0] = color.B;
+        out[1] = color.G;
+        out[2] = color.R;
+        out[3] = color.A;
+      }
+    }
+  }
+  texture->UnlockRect(0);
+  return texture;
 }
 
 Texture2DRef CreateTexture2D(unsigned int width, unsigned int height, unsigned int level, PoolType poolType, ERenderFormat formatType)

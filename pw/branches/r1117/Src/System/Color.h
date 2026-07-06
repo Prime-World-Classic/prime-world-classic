@@ -15,7 +15,7 @@ namespace Render
 		union 
 		{
 			struct{ TValue B, G, R, A; }; // intel byte order aka little-endian 
-			unsigned long Dummy;
+			unsigned int Dummy; // Keep packed color 32-bit on 64-bit Linux.
 		};
 		
     #ifdef WIN32

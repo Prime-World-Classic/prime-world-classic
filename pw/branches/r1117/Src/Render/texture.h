@@ -29,6 +29,7 @@ public:
   unsigned int GetOpenGLTexture() const { return openGLTexture; }
   void SetOpenGLTexture(unsigned int texture);
   void ReleaseOpenGLTexture();
+  virtual bool HasValidLinuxTextureResource() const;
 #endif
 
 protected:
@@ -61,6 +62,10 @@ public:
   unsigned int GetWidth() const { return desc.Width; }
   unsigned int GetHeight() const { return desc.Height; }
   D3DFORMAT GetFormat() const { return desc.Format; }
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  void EnsureOpenGLTexture();
+  virtual bool HasValidLinuxTextureResource() const;
+#endif
 
   LockedRect LockRect(unsigned int level, unsigned int left, unsigned int right, unsigned int top, unsigned int bottom, ERenderLockType lockType);
   LockedRect LockRect(unsigned int level, RECT *pRect, ERenderLockType lockType);
@@ -82,11 +87,20 @@ protected:
   explicit Texture2D(D3DSURFACE_DESC const& desc_, HandlerPriority deviceLostHandlerPriority = HANDLERPRIORITY_NORMAL);
 
   void CreateInternal();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  unsigned int GetLinuxBytesPerPixel() const;
+  bool EnsureLinuxPixelStorage();
+  void UploadLinuxPixelsToOpenGL();
+#endif
 
   virtual void GenerateMipSubLevels_();
 
   UINT levels;
   D3DSURFACE_DESC desc;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  nstl::vector<unsigned char> linuxPixels;
+  bool linuxPixelsDirty;
+#endif
 };
 
 class TextureVtx : public Texture2D
@@ -149,7 +163,11 @@ typedef CObj<TextureCube> TextureCubeRef;
 
 inline bool IsValidPtr(const Texture* _tex)
 {
-  return _tex && _tex->GetDXTexture();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  return _tex != 0 && _tex->HasValidLinuxTextureResource();
+#else
+  return _tex != 0 && Get(_tex->GetDXTexture()) != 0;
+#endif
 }
 
 } // namespace Render

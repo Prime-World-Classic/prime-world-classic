@@ -314,6 +314,9 @@ void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec
   for (unsigned int i = 0; i < quads.size(); ++i)
   {
     const LinuxQueuedUIQuad& queuedQuad = quads[i];
+    if (queuedQuad.diffuseTexture)
+      queuedQuad.diffuseTexture->EnsureOpenGLTexture();
+
     const unsigned int openGLTexture = queuedQuad.diffuseTexture ?
       queuedQuad.diffuseTexture->GetOpenGLTexture() :
       0U;
@@ -376,6 +379,7 @@ public:
     , resolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f)
     , forbidSaturation(false)
     , textStarted(false)
+    , textFirstQuad(0)
     , queueRendered(false)
     , queueOverflowed(false)
   {
@@ -395,6 +399,7 @@ public:
     quads.clear();
     cropRects.clear();
     textStarted = false;
+    textFirstQuad = 0;
     queueRendered = false;
     queueOverflowed = false;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -407,6 +412,7 @@ public:
     quads.clear();
     cropRects.clear();
     textStarted = false;
+    textFirstQuad = 0;
     queueRendered = false;
     queueOverflowed = false;
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -441,6 +447,9 @@ public:
   virtual void BeginText()
   {
     textStarted = true;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    textFirstQuad = quads.size();
+#endif
   }
 
   virtual void AddTextQuad(UIQuad& quad, const SMaterialParams& params)
@@ -454,7 +463,23 @@ public:
 
   virtual void EndText(Render::BaseMaterial* renderMaterial)
   {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    const Render::Texture2DRef textTexture = ResolveLinuxUITexture(renderMaterial);
+    if (textTexture)
+    {
+      for (unsigned int i = textFirstQuad; i < quads.size(); ++i)
+      {
+        if (!quads[i].text || quads[i].diffuseTexture)
+          continue;
+
+        quads[i].diffuseTexture = textTexture;
+        ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
+      }
+      queueRendered = false;
+    }
+#else
     (void)renderMaterial;
+#endif
     textStarted = false;
   }
 
@@ -613,7 +638,7 @@ private:
     const Render::Texture2DRef diffuseTexture = text ?
       Render::Texture2DRef() :
       ResolveLinuxUITexture(renderMaterial);
-    const Render::Color queuedColor = ResolveLinuxUIFallbackColor(color, text, diffuseTexture);
+    const Render::Color queuedColor = text ? color : ResolveLinuxUIFallbackColor(color, text, diffuseTexture);
     quads.push_back(LinuxQueuedUIQuad(quad, queuedColor, diffuseTexture, text));
     ++g_linuxOpenGLUiRendererStats.queued2DQuads;
     if (text)
@@ -633,6 +658,7 @@ private:
   CVec4 resolutionCoefs;
   bool forbidSaturation;
   bool textStarted;
+  unsigned int textFirstQuad;
   bool queueRendered;
   bool queueOverflowed;
   vector<UIRect> cropRects;

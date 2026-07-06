@@ -403,7 +403,7 @@ void VisibilityMapClient::FillTexture(Render::Texture2DRef const& pTexture, Fill
       fogOfWar->MakeAllVisible();
 
     for (BYTE *start = rect.data, *bound = rect.data + height * rect.pitch; start != bound; start += rect.pitch)
-      memset(start, 0, width * sizeof(Render::Color));
+      memset(start, 0, width * sizeof(DWORD));
   }
   else
   {

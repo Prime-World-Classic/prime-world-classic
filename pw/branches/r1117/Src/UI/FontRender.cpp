@@ -4,6 +4,7 @@
 #include "Resolution.h"
 
 #include "../Render/MaterialSpec.h"
+#include "../Render/TextureManager.h"
 #include "../Render/UIRenderer.h"
 #include "../System/FileSystem/FilePath.h"
 #include "../System/FileSystem/FileUtils.h"
@@ -44,8 +45,8 @@ FontRenderer::~FontRenderer()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void FontRenderer::Initialize()
 {
-#if defined(PW_LINUX_NULL_RENDER)
-  fontTexture = Render::Texture2DRef();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  fontTexture = Render::CreateTexture2D( FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8 );
 #else
   fontTexture = Render::CreateTexture2D( FONT_TEXTURE_SIZE, FONT_TEXTURE_SIZE, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_L8 );
 #endif
@@ -165,10 +166,13 @@ IFontStyle * FontRenderer::GetDebugFontStyle( int size )
   {
     FontStyle * st = new FontStyle;
     st->SetDefaultSize( size );
+    if ( st->GetMaterial() )
+    {
 #if !defined(PW_LINUX_NULL_RENDER)
-    st->GetMaterial()->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
-    st->GetMaterial()->GetDiffuseMap()->SetTexture( fontTexture );
+      st->GetMaterial()->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
 #endif
+      st->GetMaterial()->GetDiffuseMap()->SetTexture( fontTexture );
+    }
     style = st;
   }
 

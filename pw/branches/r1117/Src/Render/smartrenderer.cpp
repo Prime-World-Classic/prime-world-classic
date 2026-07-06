@@ -713,13 +713,14 @@ void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtec
     return;
   }
 
-  const Texture2D* texture2D = dynamic_cast<const Texture2D*>(texture);
+  Texture2D* texture2D = const_cast<Texture2D*>(dynamic_cast<const Texture2D*>(texture));
   if (!texture2D)
   {
     ++g_openGLTextureBindStats.nonTexture2DRejects;
     return;
   }
 
+  texture2D->EnsureOpenGLTexture();
   const unsigned int openGLTexture = texture2D->GetOpenGLTexture();
   if (!openGLTexture)
   {
