@@ -7,6 +7,9 @@
 #include "PFUniTarget.h"
 #include "PFBaseUnit.h"
 #include "PFLogicObject.h"
+#include "PFWorld.h"
+#include "TileMap.h"
+#include "WarFog.h"
 
 struct lua_State;
 
@@ -75,7 +78,22 @@ void Target::SetPosition(const CVec3& pos)
 
 bool Target::IsUnitValid(bool deadUnitsAllowed) const { return IsUnit() && ::IsValid(pUnit.GetPtr()) && (deadUnitsAllowed || !pUnit->IsDead()); }
 bool Target::IsObjectValid(bool deadUnitsAllowed) const { return IsUnit() ? IsUnitValid(deadUnitsAllowed) : (IsObject() && NWorld::IsObjectValid(pObject)); }
-bool Target::IsVisibleForFaction(const PFWorld* world, int faction) const { (void)world; (void)faction; return true; }
+bool Target::IsVisibleForFaction(const PFWorld* world, int faction) const
+{
+  if (IsUnit())
+    return IsValid(pUnit) && pUnit->IsVisibleForFaction(faction);
+
+  if (IsObject())
+    return IsValid(pObject) && pObject->IsVisibleForFaction(faction);
+
+  if (IsPosition() && world && world->GetTileMap() && world->GetFogOfWar())
+  {
+    const SVector tilePos = world->GetTileMap()->GetTile(vPosition.AsVec2D());
+    return world->GetFogOfWar()->IsTileVisible(tilePos, faction);
+  }
+
+  return false;
+}
 bool Target::IsUnitMounted(bool deadUnitsAllowed) const { return IsUnitValid(deadUnitsAllowed) && pUnit->IsMounted(); }
 int Target::Set(lua_State* L) const { (void)L; return 0; }
 
