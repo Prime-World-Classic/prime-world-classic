@@ -1932,7 +1932,14 @@ void PFBaseUnit::AddBehaviourOnTop(PFBaseBehaviour* pBehaviour)
 }
 void PFBaseUnit::RemoveBehaviour(PFBaseBehaviour* pBehaviour) { if (pBehaviour) PFBaseBehaviour::UnitRing::safeRemove(pBehaviour); }
 float PFBaseUnit::GetNormalLevelling() const { return 0.0f; }
-void PFBaseUnit::CancelChannelling() {}
+void PFBaseUnit::CancelChannelling()
+{
+  if (!IsInChannelling())
+    return;
+
+  EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_CHANNELINGCANCELED));
+  SetChannellingProgress(0.0f);
+}
 void PFBaseUnit::SetHappy() {}
 const NDb::Ability* PFBaseUnit::GetExternalAbility() const
 {
