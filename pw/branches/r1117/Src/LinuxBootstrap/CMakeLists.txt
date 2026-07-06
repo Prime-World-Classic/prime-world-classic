@@ -176,6 +176,7 @@ add_executable(
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFSummonState.cpp
   ../PF_GameLogic/PFState.cpp
   ../PF_GameLogic/PFTree.cpp
   ../PF_GameLogic/PFTalent.cpp
@@ -577,6 +578,7 @@ add_library(
   ../PF_GameLogic/PFAIContainer.cpp
   ../PF_GameLogic/CollisionResolver.cpp
   ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFSummonState.cpp
   ../PF_GameLogic/PFState.cpp
   ../PF_GameLogic/PFStatistics.cpp
   ../PF_GameLogic/TriggerMarkerHandler.cpp
@@ -699,6 +701,7 @@ add_library(
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFSummonState.cpp
   ../PF_GameLogic/PFState.cpp
   ../PF_GameLogic/PFTree.cpp
   ../PF_GameLogic/PFTalent.cpp
@@ -1128,6 +1131,7 @@ set_source_files_properties(
   ../PF_GameLogic/PFScriptedFlagpole.cpp
   ../PF_GameLogic/PFSimpleObject.cpp
   ../PF_GameLogic/PFSummoned.cpp
+  ../PF_GameLogic/PFSummonState.cpp
   ../PF_GameLogic/PFStatistics.cpp
   ../PF_GameLogic/TriggerMarkerHandler.cpp
   ../PF_GameLogic/PFTargetSelector.cpp

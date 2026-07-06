@@ -3,6 +3,9 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFSummoned.h"
+#include "PFSummonState.h"
+#include "PFAIWorld.h"
+#include "PFHero.h"
 #include "PFWorld.h"
 
 namespace
@@ -40,11 +43,68 @@ PFSummonedUnitAIBehaviour::PFSummonedUnitAIBehaviour(PFBaseMovingUnit* pUnit, CP
 {
   if ((behaviourFlags & BEHAVIOURFLAGS_ALPHASUMMON) != 0 && IsValid(pMaster))
     pMaster->SetAlphaSummon(pUnit);
+
+  if (IsValid(pMaster))
+    pMaster->AddEventListener(this);
 }
 
-bool PFSummonedUnitAIBehaviour::OnStep(float dtInSeconds) { return PFSummonedUnitBehaviour::OnStep(dtInSeconds); }
-void PFSummonedUnitAIBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { (void)pTarget; (void)bStrongTarget; }
-bool PFSummonedUnitAIBehaviour::CanSelectTarget(const PFBaseUnit* pTarget, bool mustSeeTarget) const { (void)pTarget; (void)mustSeeTarget; return false; }
+bool PFSummonedUnitAIBehaviour::OnStep(float dtInSeconds)
+{
+  CPtr<PFBaseMovingUnit> pMovingUnit = GetUnit();
+  CPtr<PFCreature> pCreature = dynamic_cast<PFCreature*>(pMovingUnit.GetPtr());
+  if (IsValid(pCreature) && pCreature->IsMicroAiEnabled())
+  {
+    if (pCreature->HaveAbilityInProgress())
+      return true;
+    if (pCreature->UseAbilityWithMicroAI())
+      return true;
+  }
+
+  const NDb::SummonBehaviourCommon* pSummonBehaviourCommon = dynamic_cast<const NDb::SummonBehaviourCommon*>(GetDB());
+  if (pSummonBehaviourCommon && IsValid(pMaster) && IsValid(pMovingUnit))
+    SetLashRange(pSummonBehaviourCommon->lashRange(pMaster, pMovingUnit, NULL, 15.f));
+
+  if (IsValid(pMovingUnit) && !pMovingUnit->GetCurrentState())
+    pMovingUnit->EnqueueState(new PFSummonAIBaseState(pMovingUnit), true);
+
+  return PFSummonedUnitBehaviour::OnStep(dtInSeconds);
+}
+
+void PFSummonedUnitAIBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
+{
+  if (!IsUnitValid(pTarget) || !pTarget->IsVulnerable())
+    return;
+
+  CPtr<PFBaseMovingUnit> pMovingUnit = GetUnit();
+  if (!IsValid(pMovingUnit) || pMovingUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+    return;
+
+  pMovingUnit->DropStates();
+  pMovingUnit->PushState(new PFSummonAIAttackState(pMovingUnit, pTarget, bStrongTarget));
+}
+
+bool PFSummonedUnitAIBehaviour::CanSelectTarget(const PFBaseUnit* pTarget, bool mustSeeTarget) const
+{
+  (void)mustSeeTarget;
+
+  if (!IsValid(pUnit) || !pTarget)
+    return false;
+
+  if (pUnit->GetCurrentState() && pUnit->GetCurrentState()->GetTypeId() == PFSummonAIBaseState::typeId)
+  {
+    PFSummonAIBaseState* state = dynamic_cast<PFSummonAIBaseState*>(pUnit->GetCurrentState());
+    if (state && !state->CanSelectTarget(pTarget))
+      return false;
+  }
+
+  if (pUnit->IsInTaunt())
+    return true;
+
+  float lashRange = Min(GetLashRange(), pUnit->GetChaseRange());
+
+  return IsValid(pMaster)
+    && (lashRange < EPS_VALUE || pMaster->IsTargetInRange(pTarget, lashRange + pUnit->GetAttackRange()));
+}
 void PFSummonedUnitAIBehaviour::OnStop()
 {
   if (IsValid(pMaster))
@@ -68,10 +128,137 @@ void PFSummonedUnitAIBehaviour::Resume()
     pMaster->GetSummonedGroup(GetSummonType())->AddBehavior(this);
   isSuspended = false;
 }
-void PFSummonedUnitAIBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
+void PFSummonedUnitAIBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc)
+{
+  if (!IsValid(pUnit) || IsUnitValid(pUnit->GetCurrentTarget()))
+    return;
+
+  if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+    return;
+
+  CPtr<PFBaseUnit> pSender = IsValid(desc.pSender) ? (desc.pSender->IsMounted() ? desc.pSender->GetMountedOn() : desc.pSender) : NULL;
+
+  if (IsTargetValid(pSender) && pSender->IsVisibleForFaction(pUnit->GetFaction()) && !desc.dontAttackBack && pSender->GetFaction() != GetFaction())
+  {
+    if (!CanSelectTarget(pSender))
+      return;
+
+    pUnit->DropStates();
+    pUnit->PushState(new PFSummonAIAttackState(pUnit, pSender, false));
+    pUnit->DoScream(pSender, ScreamTarget::ScreamAlert);
+  }
+}
+
 void PFSummonedUnitAIBehaviour::AcquireBehaviourDefinedSpawnPosition(Target& spawnPosition) const { (void)spawnPosition; }
-CVec2 PFSummonedUnitAIBehaviour::GetMasterOffset() const { return VNULL2; }
-unsigned int PFSummonedUnitAIBehaviour::OnEvent(const PFBaseUnitEvent* pEvent) { (void)pEvent; return 0; }
+
+CVec2 PFSummonedUnitAIBehaviour::GetMasterOffset() const
+{
+  CVec2 result(0.0f, 0.0f);
+
+  PFBaseMovingUnit* pMovingMaster = dynamic_cast<PFBaseMovingUnit*>(pMaster.GetPtr());
+  if (!pMovingMaster || !GetWorld() || !GetWorld()->GetAIWorld())
+    return result;
+
+  result = pMovingMaster->GetMoveDirection();
+  Normalize(&result);
+
+  int count = 1;
+  float distance = 0.0f;
+  float angle = -FP_PI4;
+
+  if (summonType == NDb::SUMMONTYPE_PRIMARY)
+  {
+    PFBehaviourGroup* pGroup = pMaster->GetSummonedGroup(NDb::SUMMONTYPE_PRIMARY);
+    count = pGroup ? pGroup->GetMaxSize() : 1;
+    distance = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.primarySummonEscortDistance;
+    angle = count > 2 ? -FP_PI / count : -FP_PI4;
+  }
+  else if (summonType == NDb::SUMMONTYPE_PET)
+  {
+    PFBehaviourGroup* pGroup = pMaster->GetSummonedGroup(NDb::SUMMONTYPE_PET);
+    count = pGroup ? pGroup->GetMaxSize() : 1;
+    distance = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.petEscortDistance;
+    angle = count > 2 ? -FP_PI / count : -FP_PI4;
+  }
+  else
+  {
+    PFBehaviourGroup* pGroup = pMaster->GetSummonedGroup(NDb::SUMMONTYPE_SECONDARY);
+    count = pGroup ? pGroup->GetMaxSize() : 1;
+    distance = GetWorld()->GetAIWorld()->GetAIParameters().commonSummonParameters.secondarySummonEscortDistance;
+    angle = -3.0f * FP_PI4;
+  }
+
+  if (count > 2)
+    angle += FP_2PI * float(GetIndex()) / float(count);
+  else if (GetIndex() == 1)
+    angle = -angle;
+
+  RotatePoint(&result, angle);
+  result *= distance;
+  return result;
+}
+
+unsigned int PFSummonedUnitAIBehaviour::OnEvent(const PFBaseUnitEvent* pEvent)
+{
+  if (!pEvent || !IsValid(pUnit))
+    return 0;
+
+  NDb::EBaseUnitEvent eventType = pEvent->GetType();
+
+  if (NDb::BASEUNITEVENT_WANTMOVETO == eventType)
+  {
+    if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL))
+      return 0;
+    if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+      return 0;
+    if (!IsValid(pMaster) || pMaster->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+      return 0;
+
+    PFHeroEventWantMoveTo const* pWantMoveEvent = dynamic_cast<PFHeroEventWantMoveTo const*>(pEvent);
+    if (pWantMoveEvent)
+    {
+      CVec2 masterDestination = pWantMoveEvent->GetDestination();
+      if (masterDestination == VNULL2)
+      {
+        pUnit->DropStates();
+        pUnit->Stop();
+        pUnit->PushState(new PFSummonAIBaseState(pUnit));
+      }
+      else
+      {
+        const float& range = GetResponseRange();
+        if (range > 0.0f && !pUnit->IsPositionInRange(masterDestination, range))
+        {
+          PFSummonAIBaseState* pState = 0;
+          if (!pUnit->GetCurrentState() || pUnit->GetCurrentState()->GetTypeId() != PFSummonAIBaseState::typeId)
+          {
+            pUnit->DropStates();
+            pState = new PFSummonAIBaseState(pUnit);
+            pUnit->PushState(pState);
+          }
+          else
+          {
+            pState = dynamic_cast<PFSummonAIBaseState*>(pUnit->GetCurrentState());
+          }
+
+          if (pState)
+            pState->SetIgnoreTimer(GetResponseTime());
+        }
+      }
+    }
+  }
+  else if (NDb::BASEUNITEVENT_ASSIGNTARGET == eventType)
+  {
+    if (pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL))
+      return 0;
+
+    PFBaseUnitAssignTargetEvent const* pAssignTargetEvent = dynamic_cast<PFBaseUnitAssignTargetEvent const*>(pEvent);
+    if (pAssignTargetEvent && !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET))
+      OnTarget(pAssignTargetEvent->pTarget, pAssignTargetEvent->strongTarget);
+  }
+
+  return 0;
+}
 
 PFBaseSummonedUnit::PFBaseSummonedUnit(CPtr<PFWorld> const& pWorld, NDb::Creature const* creepObj, NDb::EUnitType unitType, CPtr<PFBaseUnit> const& pMaster, Placement const& placement, bool noSummonAnimation, bool attachGlowEffect_, bool openWarFog_)
   : PFBaseCreep(pWorld.GetPtr(), placement.pos, placement.Get2DDirection(), *creepObj)

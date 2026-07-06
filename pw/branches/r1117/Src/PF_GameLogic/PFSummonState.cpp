@@ -180,7 +180,8 @@ namespace NWorld
       //  leashRange = pSummonBehaviour ? pSummonBehaviour->GetLashRange(): pOwner->GetChaseRange();
       //}
       leashRange = maxChaseDistance;
-      isStationarySummon = pOwner->GetTargetingParams().isStationarySummon;
+      const NDb::UnitTargetingParameters* pTargetingParams = pOwner->GetTargetingParamsPtr();
+      isStationarySummon = pTargetingParams ? pTargetingParams->isStationarySummon : false;
     }
   }
 
@@ -271,10 +272,11 @@ namespace NWorld
     if ( IsUnitValid( pOwner ) )
     {
       pMaster = pOwner->GetMasterUnit();
-      const PFSummonedUnitAIBehaviour* pB = static_cast<const PFSummonedUnitAIBehaviour*>( pOwner->GetBehaviour() );
+      const PFSummonBehaviour* pB = dynamic_cast<const PFSummonBehaviour*>( pOwner->GetBehaviour() );
       maxEscortDistance =  pB ? Min( pB->GetLashRange(), pOwner->GetChaseRange() ) : pOwner->GetChaseRange();
       //lastMasterDestination = pOwner->GetPosition().AsVec2D();
-      isStationarySummon = pOwner->GetTargetingParams().isStationarySummon;
+      const NDb::UnitTargetingParameters* pTargetingParams = pOwner->GetTargetingParamsPtr();
+      isStationarySummon = pTargetingParams ? pTargetingParams->isStationarySummon : false;
     }
   }
 
