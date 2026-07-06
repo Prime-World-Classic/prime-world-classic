@@ -52727,13 +52727,15 @@ void DrawLinuxLobbyRadio(
   int x,
   int y,
   const std::string& text,
-  bool selected
+  bool selected,
+  bool hovered
 )
 {
   const int rx = layout.X(x);
   const int ry = layout.Y(y);
   const int size = std::max(12, layout.H(32));
-  const LinuxWindowOverlay::OpenGlTexture& texture = selected && overlay->lobbyRadioSelected.texture ?
+  const bool hot = selected || hovered;
+  const LinuxWindowOverlay::OpenGlTexture& texture = hot && overlay->lobbyRadioSelected.texture ?
     overlay->lobbyRadioSelected :
     overlay->lobbyRadioNormal;
 
@@ -52745,7 +52747,7 @@ void DrawLinuxLobbyRadio(
   {
     SetOpenGlColor(13, 18, 21, 235);
     DrawOpenGlRect(rx, ry, size, size);
-    SetOpenGlColor(138, 118, 74, 230);
+    SetOpenGlColor(hot ? 224 : 138, hot ? 178 : 118, hot ? 75 : 74, hot ? 245 : 230);
     DrawOpenGlBorderRect(rx, ry, size, size);
     if (selected)
     {
@@ -52754,7 +52756,13 @@ void DrawLinuxLobbyRadio(
     }
   }
 
-  SetOpenGlColor(212, 220, 220, 235);
+  if (hovered && !selected)
+  {
+    SetOpenGlColor(255, 226, 132, 210);
+    DrawOpenGlBorderRect(rx + 2, ry + 2, std::max(1, size - 4), std::max(1, size - 4));
+  }
+
+  SetOpenGlColor(hot ? 244 : 212, hot ? 236 : 220, hot ? 204 : 220, hot ? 245 : 235);
   DrawOpenGlText(overlay, rx + size + layout.W(12), ry + ResolveOpenGlTextBaseline(overlay, 0, size), text);
 }
 
@@ -53970,7 +53978,8 @@ bool DrawLinuxLobbyScrollBar(
   int height,
   size_t totalRows,
   size_t visibleRows,
-  size_t firstRow
+  size_t firstRow,
+  bool hovered
 )
 {
   const int rx = layout.X(x);
@@ -54027,6 +54036,11 @@ bool DrawLinuxLobbyScrollBar(
     DrawOpenGlRect(rx + 3, leverY + 3, std::max(1, rw - 6), std::max(1, leverH - 6));
     SetOpenGlColor(226, 194, 103, 230);
     DrawOpenGlBorderRect(rx + 3, leverY + 3, std::max(1, rw - 6), std::max(1, leverH - 6));
+  }
+  if (hovered)
+  {
+    SetOpenGlColor(255, 226, 132, 210);
+    DrawOpenGlBorderRect(rx + 2, ry + 2, std::max(1, rw - 4), std::max(1, rh - 4));
   }
   return true;
 }
@@ -54137,7 +54151,17 @@ size_t DrawLinuxLobbyMapRows(
   {
     SetOpenGlColor(201, 210, 213, 220);
     DrawOpenGlText(overlay, rowX + layout.W(12), panelY + layout.H(40), "No maps found");
-    const bool drawn = DrawLinuxLobbyScrollBar(overlay, layout, 583, 455, 28, 368, 0, visibleRows, 0);
+    const bool drawn = DrawLinuxLobbyScrollBar(
+      overlay,
+      layout,
+      583,
+      455,
+      28,
+      368,
+      0,
+      visibleRows,
+      0,
+      runtime && runtime->visibleLobbyHoverSurface == "map-scrollbar");
     if (scrollBarDrawn)
     {
       *scrollBarDrawn = drawn;
@@ -54372,7 +54396,8 @@ size_t DrawLinuxLobbyMapRows(
     368,
     mapCatalog.entries.size(),
     visibleRows,
-    firstRow
+    firstRow,
+    runtime && runtime->visibleLobbyHoverSurface == "map-scrollbar"
   );
   if (scrollBarDrawn)
   {
@@ -54725,7 +54750,8 @@ size_t DrawLinuxLobbyGameRows(
     449,
     rowCount,
     visibleRows,
-    firstRow
+    firstRow,
+    runtime && runtime->visibleLobbyHoverSurface == "game-scrollbar"
   );
   if (scrollBarDrawn)
   {
@@ -54737,7 +54763,8 @@ size_t DrawLinuxLobbyGameRows(
 int DrawLinuxLobbyPlayerCount(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
-  const LinuxLocalMatchPreview& localMatchPreview
+  const LinuxLocalMatchPreview& localMatchPreview,
+  bool hovered
 )
 {
   const int labelX = layout.X(68);
@@ -54809,6 +54836,12 @@ int DrawLinuxLobbyPlayerCount(
   }
   SetOpenGlColor(237, 226, 181, 245);
   DrawOpenGlTextCentered(overlay, valueX, valueY, valueW, valueH, NStr::StrFmt("%d", players));
+  if (hovered)
+  {
+    SetOpenGlColor(255, 226, 132, 210);
+    DrawOpenGlBorderRect(sliderX + 2, sliderY + 2, std::max(1, sliderW - 4), std::max(1, sliderH - 4));
+    DrawOpenGlBorderRect(valueX + 2, valueY + 2, std::max(1, valueW - 4), std::max(1, valueH - 4));
+  }
   return players;
 }
 
@@ -54945,6 +54978,15 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       &gameScrollFirstRow
     );
 
+  const std::string hoverSurface = runtime ? runtime->visibleLobbyHoverSurface : std::string("none");
+  const int hoverBaseX = runtime ? runtime->visibleLobbyHoverBaseX : -1;
+  const bool joinModeHovered = hoverSurface == "join-mode";
+  const bool normalJoinHovered = joinModeHovered && hoverBaseX < 866;
+  const bool reconnectJoinHovered = joinModeHovered && hoverBaseX >= 866 && hoverBaseX < 1053;
+  const bool spectateJoinHovered = joinModeHovered && hoverBaseX >= 1053;
+  const bool developerSexHovered = hoverSurface == "developer-sex";
+  const bool playerCountHovered = hoverSurface == "player-count";
+
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
   ++lobbyPanelsDrawn;
   const size_t joinMode = runtime ? runtime->visibleLobbyJoinMode : LINUX_LOBBY_JOIN_MODE_NORMAL;
@@ -54959,7 +55001,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     705,
     411,
     overlay->lobbyText.joinNormal,
-    normalJoinModeSelected
+    normalJoinModeSelected,
+    normalJoinHovered
   );
   ++joinModeButtonsDrawn;
   if (normalJoinModeSelected)
@@ -54972,7 +55015,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     888,
     411,
     overlay->lobbyText.joinReconnect,
-    reconnectJoinModeSelected
+    reconnectJoinModeSelected,
+    reconnectJoinHovered
   );
   ++joinModeButtonsDrawn;
   if (reconnectJoinModeSelected)
@@ -54985,7 +55029,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     1074,
     411,
     overlay->lobbyText.joinSpectate,
-    spectateJoinModeSelected
+    spectateJoinModeSelected,
+    spectateJoinHovered
   );
   ++joinModeButtonsDrawn;
   if (spectateJoinModeSelected)
@@ -55008,6 +55053,11 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   {
     DrawLinuxLobbyPanel(overlay, layout, 975, 14, 289, 53);
   }
+  if (developerSexHovered)
+  {
+    SetOpenGlColor(255, 226, 132, 210);
+    DrawOpenGlBorderRect(layout.X(977), layout.Y(16), std::max(1, layout.W(285)), std::max(1, layout.H(49)));
+  }
   ++lobbyPanelsDrawn;
   SetOpenGlColor(225, 219, 195, 235);
   const bool developerFemale =
@@ -55023,7 +55073,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     developerFemale ? overlay->lobbyText.developerFemale : overlay->lobbyText.developerMale
   );
 
-  const int playerCountValue = DrawLinuxLobbyPlayerCount(overlay, layout, localMatchPreview);
+  const int playerCountValue = DrawLinuxLobbyPlayerCount(overlay, layout, localMatchPreview, playerCountHovered);
 
   std::string joinResultText =
     uiRootPreview.runtimeBootstrapJoinResultReady ?
@@ -55076,7 +55126,6 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const bool createGameSelected = primarySelected;
   const bool refreshEnabled = true;
   const bool refreshSelected = false;
-  const std::string hoverSurface = runtime ? runtime->visibleLobbyHoverSurface : std::string("none");
   const bool startSessionHovered = hoverSurface == "start-session-button";
   const bool createGameHovered = hoverSurface == "create-game-button";
   const bool refreshHovered = hoverSurface == "refresh-button";
