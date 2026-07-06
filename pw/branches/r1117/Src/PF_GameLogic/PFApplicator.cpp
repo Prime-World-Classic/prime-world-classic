@@ -214,6 +214,10 @@ void PFBaseApplicator::MakeApplicationTarget(Target &targ, NDb::EApplicatorApply
 {
   switch (applyTarget)
   {
+  case NDb::APPLICATORAPPLYTARGET_APPLICATORTARGET:
+  case NDb::APPLICATORAPPLYTARGET_APPLICATORSELECTEDTARGET:
+    targ = target;
+    break;
   case NDb::APPLICATORAPPLYTARGET_ABILITYOWNER:
     targ.SetUnit(GetAbilityOwner());
     break;
@@ -225,6 +229,15 @@ void PFBaseApplicator::MakeApplicationTarget(Target &targ, NDb::EApplicatorApply
     break;
   case NDb::APPLICATORAPPLYTARGET_PREVAPPLICATORTARGET:
     targ = IsValid(pParent) ? pParent->GetTarget() : target;
+    break;
+  case NDb::APPLICATORAPPLYTARGET_HIER1UPAPPLICATORTARGET:
+    targ = GoUpByApplicatorHierarchy(this, 1)->GetTarget();
+    break;
+  case NDb::APPLICATORAPPLYTARGET_HIER2UPAPPLICATORTARGET:
+    targ = GoUpByApplicatorHierarchy(this, 2)->GetTarget();
+    break;
+  case NDb::APPLICATORAPPLYTARGET_HIER3UPAPPLICATORTARGET:
+    targ = GoUpByApplicatorHierarchy(this, 3)->GetTarget();
     break;
   case NDb::APPLICATORAPPLYTARGET_ABILITYTARGET:
     targ = pAbility ? pAbility->GetTarget() : target;
@@ -379,7 +392,37 @@ int PFBaseApplicator::GetNatureTypeInPos(CVec2 pos) const
   PFWorldNatureMap const* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
   return pNatureMap ? pNatureMap->GetNatureInPoint(pos.x, pos.y) : 0;
 }
-bool PFBaseApplicator::CheckUpgradePerCastPerTarget() const { return true; }
+bool PFBaseApplicator::CheckUpgradePerCastPerTarget() const
+{
+  const CObj<PFAbilityData>& upgrader = GetUpgraderAbilityData();
+  if (!upgrader)
+    return true;
+
+  const NDb::Ability* dbUpgrader = upgrader->GetDBDesc();
+  if (!dbUpgrader)
+    return true;
+
+  for (int i = 0, count = dbUpgrader->passiveApplicators.size(); i < count; ++i)
+  {
+    const NDb::Ptr<NDb::BaseApplicator>& dbUpgraderPassiveApplicator = dbUpgrader->passiveApplicators[i];
+    if (!dbUpgraderPassiveApplicator || dbUpgraderPassiveApplicator->GetObjectTypeID() != NDb::AbilityUpgradeApplicator::typeId)
+      continue;
+
+    const NDb::AbilityUpgradeApplicator* dbAbilityUpgrade = static_cast<const NDb::AbilityUpgradeApplicator*>(dbUpgraderPassiveApplicator.GetPtr());
+    if (!(dbAbilityUpgrade->flags & NDb::ABILITYUPGRADEMODE_APPLYONCEPERCASTPERTARGET))
+      continue;
+
+    if (!pAbility || !pAbility->GetData() || pAbility->GetData()->GetAbilityTypeId() != NDb::ABILITYTYPEID_TALENT)
+      return true;
+
+    const PFTalent* talent = static_cast<const PFTalent*>(pAbility->GetData());
+    const ValueWithModifiers* vwm = GetReceiver() ? GetReceiver()->SearchVariableVWM(GetTalentLastUseStepVariableName(talent->GetObjectId())) : 0;
+    if (vwm)
+      return vwm->GetBaseValue() < talent->GetLastUseStep();
+  }
+
+  return true;
+}
 int PFBaseApplicator::GetActivatedWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetActivatedWithinKit() : 0; }
 int PFBaseApplicator::GetTalentsWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetTalentsWithinKit() : 0; }
 float PFBaseApplicator::GetStatusDispellPriority(const IUnitFormulaPars*, bool) const { return -1.0f; }
@@ -392,6 +435,17 @@ bool ActivateApplicator(CObj<PFBaseApplicator> app, CObj<PFAbilityInstance> cons
     return false;
   Target applicationTarget;
   app->MakeApplicationTarget(applicationTarget);
+
+  PFWorld* pWorld = app->GetWorld();
+  TileMap* tileMap = pWorld ? pWorld->GetTileMap() : 0;
+  if (tileMap && applicationTarget.GetType() != Target::INVALID)
+  {
+    CVec2 pos = applicationTarget.AcquirePosition().AsVec2D();
+    SVector tile = tileMap->GetTile(pos);
+    if (tileMap->IsPointOutsideMap(tile.x, tile.y))
+      return false;
+  }
+
   if (!applicationTarget.IsUnit())
   {
     app->Start();
