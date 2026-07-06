@@ -204,6 +204,7 @@ REGISTER_DBRESOURCE( WeightTargetSelector );
 
 // includes for factories
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "PFAdvancedSummon.h"
 #include "PFAITargetSelectors.h"
 #include "PFApplBounce.h"
 #include "PFApplChainLightning.h"
@@ -11893,12 +11894,7 @@ void SetAdvancedSummonTargetApplicator::Assign( const SetAdvancedSummonTargetApp
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 NWorld::PFBaseApplicator* SetAdvancedSummonTargetApplicator::Create( NWorld::PFApplCreatePars const &cp ) const
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
-#else
-
 	return NWorld::CreateApplicator<NWorld::PFApplAdvancedSummonSetTarget>( *this, cp );
-#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 SetTimescaleApplicator::SetTimescaleApplicator() :
@@ -12986,7 +12982,7 @@ void SummonBehaviourAdvanced::Assign( const SummonBehaviourAdvanced& _summonBeha
 NWorld::PFSummonBehaviourDataBase* SummonBehaviourAdvanced::Create() const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	return new NWorld::PFSummonBehaviourDataAdvanced( *this );
 #else
 
 	return new NWorld::PFSummonBehaviourDataAdvanced( *this );

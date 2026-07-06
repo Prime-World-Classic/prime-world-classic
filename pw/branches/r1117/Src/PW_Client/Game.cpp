@@ -68,6 +68,7 @@
 #include "PF_GameLogic/PFApplSpecial.h"
 #include "PF_GameLogic/PFAbilityData.h"
 #include "PF_GameLogic/PFAbilityInstance.h"
+#include "PF_GameLogic/PFAdvancedSummon.h"
 #include "PF_GameLogic/PFBaseAttackData.h"
 #include "PF_GameLogic/PFBaseUnit.h"
 #include "PF_GameLogic/PFBuildings.h"
@@ -25363,7 +25364,9 @@ void ProbeEffectsPoolRuntime(
           NDb::DBID("", "LinuxBootstrapRuntimeSummonApplicator")
         )
       );
-    NDb::SummonBehaviourCommon* unitSummonBehaviourDb = new NDb::SummonBehaviourCommon();
+    NDb::SummonBehaviourAdvanced* unitSummonBehaviourDb = new NDb::SummonBehaviourAdvanced();
+    NDb::SetAdvancedSummonTargetApplicator* unitSummonAdvancedTargetDb =
+      new NDb::SetAdvancedSummonTargetApplicator();
     NDb::Summoned* unitSummonCreatureDb =
       static_cast<NDb::Summoned*>(
         NDb::Summoned::NewSummoned(
@@ -25380,6 +25383,7 @@ void ProbeEffectsPoolRuntime(
     bool unitSummonDbReady =
       unitSummonDb &&
       unitSummonBehaviourDb &&
+      unitSummonAdvancedTargetDb &&
       unitSummonCreatureDb &&
       unitSummonChildDb;
     bool unitSummonUnitsReady = false;
@@ -25388,6 +25392,9 @@ void ProbeEffectsPoolRuntime(
     bool unitSummonMastered = false;
     bool unitSummonChildApplied = false;
     bool unitSummonFactory = false;
+    bool unitSummonAdvancedData = false;
+    bool unitSummonAdvancedBehaviour = false;
+    bool unitSummonAdvancedTarget = false;
     size_t unitSummonGroupCount = 0;
     size_t unitSummonActionCount = 0;
     size_t unitSummonChildApplicators = 0;
@@ -25401,9 +25408,19 @@ void ProbeEffectsPoolRuntime(
       unitSummonBehaviourDb->lashRange.sString = "6.0";
       unitSummonBehaviourDb->responseRange = 6.0f;
       unitSummonBehaviourDb->responseTime = 0.05f;
+      unitSummonBehaviourDb->guardBehaviourParams.lashRange.sString = "4.0";
+      unitSummonBehaviourDb->guardBehaviourParams.responseRange = 4.0f;
+      unitSummonBehaviourDb->guardBehaviourParams.responseTime = 0.05f;
+      unitSummonBehaviourDb->chaseBehaviourParams.lashRange.sString = "5.0";
+      unitSummonBehaviourDb->chaseBehaviourParams.responseRange = 5.0f;
+      unitSummonBehaviourDb->chaseBehaviourParams.responseTime = 0.05f;
+
+      CObj<NWorld::PFSummonBehaviourDataBase> unitSummonAdvancedDataProof(unitSummonBehaviourDb->Create());
+      unitSummonAdvancedData = unitSummonAdvancedDataProof != 0;
 
       unitSummonChildDb->value.sString = "0.44";
       unitSummonChildDb->lifeTime.sString = "-1.0";
+      unitSummonAdvancedTargetDb->applyTarget = NDb::APPLICATORAPPLYTARGET_ABILITYOWNER;
 
       unitSummonDb->behaviour = NDb::Ptr<NDb::SummonBehaviourBase>(unitSummonBehaviourDb);
       unitSummonDb->summonedUnits.push_back(NDb::Ptr<NDb::Summoned>(unitSummonCreatureDb));
@@ -25482,6 +25499,34 @@ void ProbeEffectsPoolRuntime(
             unitSummonChildApplicators == 2 &&
             unitSummonChildValue > 0.87f &&
             unitSummonChildValue < 0.89f;
+
+          const NWorld::PFSummonBehaviourAdvanced* firstAdvancedBehaviour =
+            dynamic_cast<const NWorld::PFSummonBehaviourAdvanced*>(summonCollector.units[0]->GetBehaviour());
+          const NWorld::PFSummonBehaviourAdvanced* secondAdvancedBehaviour =
+            dynamic_cast<const NWorld::PFSummonBehaviourAdvanced*>(summonCollector.units[1]->GetBehaviour());
+          unitSummonAdvancedBehaviour =
+            firstAdvancedBehaviour &&
+            secondAdvancedBehaviour &&
+            firstAdvancedBehaviour->GetMode() == NWorld::EAdvancedSummonBehaviourMode::Default &&
+            secondAdvancedBehaviour->GetMode() == NWorld::EAdvancedSummonBehaviourMode::Default;
+
+          NDb::Ability* advancedTargetAbility = new NDb::Ability();
+          advancedTargetAbility->type = NDb::ABILITYTYPE_ACTIVE;
+          advancedTargetAbility->targetType = NDb::SPELLTARGET_ALL;
+          advancedTargetAbility->applicators.push_back(NDb::Ptr<NDb::BaseApplicator>(unitSummonAdvancedTargetDb));
+          CObj<NWorld::PFAbilityInstance> advancedTargetInstance =
+            unitSummonOwner->UseExternalAbility(
+              NDb::Ptr<NDb::Ability>(advancedTargetAbility),
+              NWorld::Target(CVec3(112.0f, 38.0f, 0.0f))
+            );
+          unitSummonAdvancedTarget =
+            advancedTargetInstance &&
+            firstAdvancedBehaviour &&
+            secondAdvancedBehaviour &&
+            firstAdvancedBehaviour->GetMode() == NWorld::EAdvancedSummonBehaviourMode::Guard &&
+            secondAdvancedBehaviour->GetMode() == NWorld::EAdvancedSummonBehaviourMode::Guard;
+          if (advancedTargetInstance)
+            advancedTargetInstance->Cancel();
         }
 
         if (summonInstance)
@@ -25491,7 +25536,7 @@ void ProbeEffectsPoolRuntime(
 
     fprintf(
       stdout,
-      "Session effects unit-summon runtime: db=%s units=%s ability=%s factory=%s created=%s/%lu/%lu mastered=%s child=%s/%lu/%.2f\n",
+      "Session effects unit-summon runtime: db=%s units=%s ability=%s factory=%s created=%s/%lu/%lu mastered=%s child=%s/%lu/%.2f advanced=%s/%s/%s\n",
       unitSummonDbReady ? "yes" : "no",
       unitSummonUnitsReady ? "yes" : "no",
       unitSummonAbilityCreated ? "yes" : "no",
@@ -25502,7 +25547,10 @@ void ProbeEffectsPoolRuntime(
       unitSummonMastered ? "yes" : "no",
       unitSummonChildApplied ? "yes" : "no",
       static_cast<unsigned long>(unitSummonChildApplicators),
-      unitSummonChildValue);
+      unitSummonChildValue,
+      unitSummonAdvancedData ? "yes" : "no",
+      unitSummonAdvancedBehaviour ? "yes" : "no",
+      unitSummonAdvancedTarget ? "yes" : "no");
 
     NDb::SpellSwitchApplicator* specialSwitchDb = new NDb::SpellSwitchApplicator();
     NDb::ProgramApplicator* specialProgramDb = new NDb::ProgramApplicator();
