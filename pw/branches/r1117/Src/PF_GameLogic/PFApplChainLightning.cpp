@@ -4,6 +4,8 @@
 
 #include "PFApplChainLightning.h"
 #include "PFBaseUnit.h"
+#include "PFWorld.h"
+#include "PFAIWorld.h"
 #include "PFDispatchFactory.h"
 
 namespace NWorld
@@ -35,6 +37,23 @@ void PFApplChainLightning::ApplyEffect(const NDb::Ptr<NDb::EffectBase>&, PFBaseU
 
 void PFApplChainLightning::DoIt()
 {
+  CPtr<PFBaseUnit> const& pSender = GetAbilityOwner();
+  if (!IsValid(pSender) || !pSender->GetWorld() || !pSender->GetWorld()->GetAIWorld())
+  {
+    numJumpsLeft = 0;
+    return;
+  }
+
+  pBestTarget = NULL;
+  pSender->GetWorld()->GetAIWorld()->ForAllUnitsInRange(
+    startDispatchPos, range, *this, UnitMaskingPredicate(pSender, GetDB().targetFilter));
+
+  if (IsValid(pBestTarget))
+  {
+    AttackUnit(pBestTarget);
+    return;
+  }
+
   numJumpsLeft = 0;
 }
 
