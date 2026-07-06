@@ -32,6 +32,124 @@ public:
   }
 };
 
+bool FillPreviewDiffuseSampler(const NDb::Sampler& dbSampler, Render::Sampler* sampler)
+{
+  if (!sampler)
+    return false;
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  return IsValid(dbSampler.texture);
+}
+
+bool FillPreviewDiffuseSampler(const NDb::SamplerEx& dbSampler, Render::Sampler* sampler)
+{
+  if (!sampler)
+    return false;
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  sampler->SetMultiplierAndAdd(dbSampler.Multiplier, dbSampler.Add);
+  return IsValid(dbSampler.texture);
+}
+
+bool FillPreviewDiffuseSampler(const NDb::Material* dbMaterial, Render::Sampler* sampler)
+{
+  if (!dbMaterial || !sampler)
+    return false;
+
+  switch (dbMaterial->GetObjectTypeID())
+  {
+    case NDb::BasicMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicMaterial*>(dbMaterial)->DiffuseMap,
+        sampler);
+
+    case NDb::BasicMaskMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicMaskMaterial*>(dbMaterial)->Diffuse,
+        sampler);
+
+    case NDb::BasicFXMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::BasicFXMaterial*>(dbMaterial)->DiffuseMap,
+        sampler);
+
+    case NDb::DropMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::DropMaterial*>(dbMaterial)->DiffuseMap,
+        sampler);
+
+    case NDb::ParticleFXMaterial::typeId:
+      return FillPreviewDiffuseSampler(
+        static_cast<const NDb::ParticleFXMaterial*>(dbMaterial)->DiffuseMap,
+        sampler);
+
+    default:
+      return false;
+  }
+}
+
+class LinuxSkeletalMeshPreviewMaterial : public NullSkeletalMeshMaterial
+{
+public:
+  LinuxSkeletalMeshPreviewMaterial(const NDb::Material* dbMaterial)
+    : NullSkeletalMeshMaterial()
+    , diffuseSamplerReady(false)
+  {
+    if (!dbMaterial)
+      return;
+
+    pDbMaterial = dbMaterial;
+    Render::Material::FillMaterial(dbMaterial, 0, false);
+    diffuseSamplerReady = FillPreviewDiffuseSampler(dbMaterial, &diffuseMap);
+  }
+
+  virtual const NDb::Material* GetDBMaterial() const
+  {
+    return pDbMaterial.GetPtr();
+  }
+
+  virtual Render::Sampler* GetDiffuseMap()
+  {
+    return diffuseSamplerReady ? &diffuseMap : 0;
+  }
+
+  virtual const Render::Sampler* GetDiffuseMap() const
+  {
+    return diffuseSamplerReady ? &diffuseMap : 0;
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+
+private:
+  NDb::Ptr<NDb::Material> pDbMaterial;
+  Render::Sampler diffuseMap;
+  bool diffuseSamplerReady;
+};
+
+BaseMaterial* CreateLinuxSkeletalMeshPreviewMaterial(
+  const NDb::SkinPartBase* skinPart,
+  const MeshGeometry* meshGeometry,
+  int primitiveIndex)
+{
+  if (skinPart && meshGeometry && primitiveIndex >= 0 &&
+      static_cast<size_t>(primitiveIndex) <
+        sizeof(meshGeometry->materialID) / sizeof(meshGeometry->materialID[0]))
+  {
+    const int materialIndex = meshGeometry->materialID[primitiveIndex];
+    if (materialIndex >= 0 &&
+        static_cast<size_t>(materialIndex) < skinPart->materialsReferences.size())
+    {
+      const NDb::Material* dbMaterial = skinPart->materialsReferences[materialIndex].GetPtr();
+      if (dbMaterial)
+        return new LinuxSkeletalMeshPreviewMaterial(dbMaterial);
+    }
+  }
+
+  return new NullSkeletalMeshMaterial();
+}
+
 } // namespace
 
 void SkeletalMesh::Update(bool bNeedBlenderUpdate)
@@ -145,7 +263,8 @@ void SkeletalMesh::AddSkinPart(const NDb::SkinPartBase* pDBSkinPartResource, uns
     if (!elementSlots[i].IsEmpty())
       continue;
 
-    BaseMaterial* pMaterial = new NullSkeletalMeshMaterial();
+    BaseMaterial* pMaterial =
+      CreateLinuxSkeletalMeshPreviewMaterial(pDBSkinPartResource, pMeshGeometry, counter);
     elementSlots[i].Initialize(pMaterial, pMeshGeometry, counter);
     pPartIndexes[counter] = i;
     ++counter;

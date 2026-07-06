@@ -1655,6 +1655,10 @@ struct LinuxHeroSceneAssetPreview
   size_t rendererSkeletalMeshRenderedTriangleCount;
   size_t rendererSkeletalMeshRenderedDipCount;
   size_t rendererSkeletalMeshMaterialSwitchCount;
+  size_t rendererSkeletalMeshAuthoredMaterialSlotCount;
+  size_t rendererSkeletalMeshDiffuseSamplerSlotCount;
+  size_t rendererSkeletalMeshDiffuseTextureSlotCount;
+  size_t rendererSkeletalMeshFallbackMaterialSlotCount;
   bool rendererSkeletalMeshDisableCullReady;
   bool rendererSkeletalMeshRemoveReady;
   float minX;
@@ -1722,6 +1726,10 @@ struct LinuxHeroSceneAssetPreview
       rendererSkeletalMeshRenderedTriangleCount(0),
       rendererSkeletalMeshRenderedDipCount(0),
       rendererSkeletalMeshMaterialSwitchCount(0),
+      rendererSkeletalMeshAuthoredMaterialSlotCount(0),
+      rendererSkeletalMeshDiffuseSamplerSlotCount(0),
+      rendererSkeletalMeshDiffuseTextureSlotCount(0),
+      rendererSkeletalMeshFallbackMaterialSlotCount(0),
       rendererSkeletalMeshDisableCullReady(false),
       rendererSkeletalMeshRemoveReady(false),
       minX(0.0f),
@@ -17266,6 +17274,10 @@ bool ProbeLinuxHeroRendererSkeletalMeshComponent(
 
   size_t componentSkinPartsReady = 0;
   size_t componentSlots = 0;
+  size_t componentAuthoredMaterialSlots = 0;
+  size_t componentDiffuseSamplerSlots = 0;
+  size_t componentDiffuseTextureSlots = 0;
+  size_t componentFallbackMaterialSlots = 0;
   std::vector<unsigned int> componentSlotIndexes;
   for (int i = 0; i < animated->skins.size(); ++i)
   {
@@ -17278,7 +17290,21 @@ bool ProbeLinuxHeroRendererSkeletalMeshComponent(
       componentSlots += partsCount;
       for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
       {
-        componentSlotIndexes.push_back(partIndexes[partIndex]);
+        const unsigned int slotIndex = partIndexes[partIndex];
+        componentSlotIndexes.push_back(slotIndex);
+
+        Render::BaseMaterial* material = skeletalMesh.GetMaterial(slotIndex);
+        const NDb::Material* dbMaterial = material ? material->GetDBMaterial() : 0;
+        if (dbMaterial)
+          ++componentAuthoredMaterialSlots;
+        else
+          ++componentFallbackMaterialSlots;
+
+        const Render::Sampler* diffuseSampler = material ? material->GetDiffuseMap() : 0;
+        if (diffuseSampler)
+          ++componentDiffuseSamplerSlots;
+        if (!ExtractLinuxMaterialDiffuseTextureFileName(dbMaterial).empty())
+          ++componentDiffuseTextureSlots;
       }
     }
   }
@@ -17332,6 +17358,10 @@ bool ProbeLinuxHeroRendererSkeletalMeshComponent(
   preview->rendererSkeletalMeshRenderedTriangleCount += renderedTriangles;
   preview->rendererSkeletalMeshRenderedDipCount += renderedDips;
   preview->rendererSkeletalMeshMaterialSwitchCount += materialSwitches > 0 ? materialSwitches : 0;
+  preview->rendererSkeletalMeshAuthoredMaterialSlotCount += componentAuthoredMaterialSlots;
+  preview->rendererSkeletalMeshDiffuseSamplerSlotCount += componentDiffuseSamplerSlots;
+  preview->rendererSkeletalMeshDiffuseTextureSlotCount += componentDiffuseTextureSlots;
+  preview->rendererSkeletalMeshFallbackMaterialSlotCount += componentFallbackMaterialSlots;
   preview->rendererSkeletalMeshDisableCullReady =
     preview->rendererSkeletalMeshDisableCullReady || disabledQueueEmpty;
   preview->rendererSkeletalMeshRemoveReady =
@@ -17360,6 +17390,14 @@ bool ProbeLinuxHeroRendererSkeletalMeshComponent(
         static_cast<unsigned long>(renderedDips),
         static_cast<unsigned long>(renderedTriangles),
         fs::path(ToStdString(animated->skeletonFileName)).filename().string().c_str()));
+    AppendHeroSceneAssetSample(
+      preview,
+      NStr::StrFmt(
+        "render-skeletal-materials:authored=%lu diffuse=%lu textures=%lu fallback=%lu",
+        static_cast<unsigned long>(componentAuthoredMaterialSlots),
+        static_cast<unsigned long>(componentDiffuseSamplerSlots),
+        static_cast<unsigned long>(componentDiffuseTextureSlots),
+        static_cast<unsigned long>(componentFallbackMaterialSlots)));
   }
   else if (!skeletonReady)
   {
@@ -60570,6 +60608,14 @@ void WriteStartupLog(
           << selectedHeroPreview.sceneAsset.rendererSkeletalMeshRenderedTriangleCount << "\n";
   logFile << "  selectedHeroSceneAssetRendererSkeletalMeshMaterialSwitches="
           << selectedHeroPreview.sceneAsset.rendererSkeletalMeshMaterialSwitchCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshAuthoredMaterials="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshAuthoredMaterialSlotCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshDiffuseSamplers="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshDiffuseSamplerSlotCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshDiffuseTextures="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshDiffuseTextureSlotCount << "\n";
+  logFile << "  selectedHeroSceneAssetRendererSkeletalMeshFallbackMaterials="
+          << selectedHeroPreview.sceneAsset.rendererSkeletalMeshFallbackMaterialSlotCount << "\n";
   logFile << "  selectedHeroSceneAssetRendererSkeletalMeshDisableCullReady="
           << (selectedHeroPreview.sceneAsset.rendererSkeletalMeshDisableCullReady ? "yes" : "no") << "\n";
   logFile << "  selectedHeroSceneAssetRendererSkeletalMeshRemoveReady="
@@ -65512,6 +65558,11 @@ int main(int argc, char** argv)
       selectedHeroPreview.sceneAsset.skinDiffuseTexture.width,
       selectedHeroPreview.sceneAsset.skinDiffuseTexture.height);
   }
+  fprintf(stdout, "Selected hero renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshAuthoredMaterialSlotCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshDiffuseSamplerSlotCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshDiffuseTextureSlotCount),
+    static_cast<unsigned long>(selectedHeroPreview.sceneAsset.rendererSkeletalMeshFallbackMaterialSlotCount));
   fprintf(stdout, "Hero 3D preview: ready=%s source=%s yaw=%.1f assetRendering=%s rendererMesh=%s/%lu/%lu static=%s/%lu/%lu/%lu assetResolved=%s\n",
     heroCatalog.entries.empty() ? "no" : "yes",
     screenRuntime.characterPreviewRendererMeshDrawn ?
