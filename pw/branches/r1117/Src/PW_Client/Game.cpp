@@ -4674,6 +4674,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyDetailsMapBackDrawn;
   bool visibleLobbyDetailsMapLogoDrawn;
   bool visibleLobbyDetailsMapMinimapDrawn;
+  bool visibleLobbyDetailsMapSelectionDrawn;
+  size_t visibleLobbyDetailsMapSelectedIndex;
+  size_t visibleLobbyDetailsMapTotalCount;
+  int visibleLobbyDetailsMapTeamSize;
   size_t visibleLobbyDetailsLineupSlotsDrawn;
   size_t visibleLobbyDetailsLineupPortraitsDrawn;
   size_t visibleLobbyDetailsLineupSelectedSlotsDrawn;
@@ -5825,6 +5829,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsMapBackDrawn(false),
       visibleLobbyDetailsMapLogoDrawn(false),
       visibleLobbyDetailsMapMinimapDrawn(false),
+      visibleLobbyDetailsMapSelectionDrawn(false),
+      visibleLobbyDetailsMapSelectedIndex(0),
+      visibleLobbyDetailsMapTotalCount(0),
+      visibleLobbyDetailsMapTeamSize(0),
       visibleLobbyDetailsLineupSlotsDrawn(0),
       visibleLobbyDetailsLineupPortraitsDrawn(0),
       visibleLobbyDetailsLineupSelectedSlotsDrawn(0),
@@ -52355,6 +52363,9 @@ void DrawLinuxLobbySelectedMapDetails(
   std::string title = "Selected map";
   std::string details = "PvP";
   std::string description = "No maps found";
+  const size_t selectedMapIndex = selectedEntry ? mapBrowserState.selectedIndex : 0;
+  const size_t mapTotalCount = mapCatalog.entries.size();
+  const int selectedMapTeamSize = selectedEntry ? selectedEntry->teamSize : 0;
   if (selectedEntry)
   {
     title = ResolveLinuxLobbyMapTitle(overlay, *selectedEntry, mapBrowserState.selectedIndex);
@@ -52364,6 +52375,27 @@ void DrawLinuxLobbySelectedMapDetails(
 
   DrawLinuxLobbyPanel(overlay, layout, 65, 84, 705, 236);
   DrawLinuxLobbyHeader(overlay, layout, 77, 96, 681, 38, title);
+  if (selectedEntry)
+  {
+    const std::string mapSelectionText = NStr::StrFmt(
+      "%lu / %lu  %dx%d",
+      static_cast<unsigned long>(selectedMapIndex + 1),
+      static_cast<unsigned long>(mapTotalCount),
+      selectedMapTeamSize,
+      selectedMapTeamSize);
+    SetOpenGlColor(232, 221, 176, 228);
+    DrawOpenGlTextInBox(
+      overlay,
+      layout.X(610),
+      layout.Y(104),
+      layout.W(132),
+      layout.H(20),
+      mapSelectionText,
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+  }
 
   const int artX = layout.X(82);
   const int artY = layout.Y(143);
@@ -52609,6 +52641,10 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsMapBackDrawn = backDrawn;
     runtime->visibleLobbyDetailsMapLogoDrawn = logoDrawn;
     runtime->visibleLobbyDetailsMapMinimapDrawn = minimapDrawn;
+    runtime->visibleLobbyDetailsMapSelectionDrawn = selectedEntry != 0;
+    runtime->visibleLobbyDetailsMapSelectedIndex = selectedMapIndex;
+    runtime->visibleLobbyDetailsMapTotalCount = mapTotalCount;
+    runtime->visibleLobbyDetailsMapTeamSize = selectedMapTeamSize;
     runtime->visibleLobbyDetailsLineupSlotsDrawn = lineupSlots;
     runtime->visibleLobbyDetailsLineupPortraitsDrawn = lineupPortraits;
     runtime->visibleLobbyDetailsLineupSelectedSlotsDrawn = lineupSelectedSlots;
@@ -60637,6 +60673,12 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyDetailsMinimapTextureSize="
           << screenRuntime.visibleLobbyDetailsMinimapTextureWidth << "x"
           << screenRuntime.visibleLobbyDetailsMinimapTextureHeight << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapSelection="
+          << (screenRuntime.visibleLobbyDetailsMapSelectionDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapSelectionValues="
+          << screenRuntime.visibleLobbyDetailsMapSelectedIndex << "/"
+          << screenRuntime.visibleLobbyDetailsMapTotalCount << "/"
+          << screenRuntime.visibleLobbyDetailsMapTeamSize << "\n";
   logFile << "  finalVisibleLobbyDetailsRules="
           << (screenRuntime.visibleLobbyDetailsRulesDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsRuleValues="
@@ -64461,7 +64503,7 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu teams=%s/%lu/%lu localSlot=%d/%d\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu mapSelection=%s/%lu/%lu/%d rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu teams=%s/%lu/%lu localSlot=%d/%d\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
@@ -64474,6 +64516,10 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyDetailsMinimapTextureWidth,
     screenRuntime.visibleLobbyDetailsMinimapTextureHeight,
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
+    screenRuntime.visibleLobbyDetailsMapSelectionDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsMapSelectedIndex),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsMapTotalCount),
+    screenRuntime.visibleLobbyDetailsMapTeamSize,
     screenRuntime.visibleLobbyDetailsRulesDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsRuleDelay,
     screenRuntime.visibleLobbyDetailsRulePrime,
