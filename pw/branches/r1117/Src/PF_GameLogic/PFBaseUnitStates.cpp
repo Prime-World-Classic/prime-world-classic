@@ -3,10 +3,18 @@
 
 #include "PFBaseUnitStates.h"
 #include "PFBaseMovingUnit.h"
+#include "PFUniTarget.h"
 
 namespace
 {
   static int g_useAttackSectors = 1;
+
+  // Keep null-render helper filtering aligned with the full client attack path.
+  bool CanPushAttackState( NWorld::PFBaseMovingUnit* owner, NWorld::PFBaseUnit* target )
+  {
+    return IsValid( owner ) && IsValid( target ) && target->IsVulnerable() &&
+           ( target->GetFaction() != owner->GetFaction() );
+  }
 };
 
 namespace NWorld
@@ -14,16 +22,22 @@ namespace NWorld
 
 void PushAttackState( PFHFSM* fsm, PFBaseMovingUnit* owner, PFBaseUnit* target, bool strongTarget, bool scream, bool ignoreChaseRange )
 {
-  (void)scream;
-  if ( fsm && IsValid( owner ) && IsValid( target ) )
+  if ( fsm && CanPushAttackState( owner, target ) )
+  {
     fsm->PushState( new PFBaseUnitAttackState( owner->GetWorld(), owner, target, strongTarget, ignoreChaseRange ) );
+    if ( scream )
+      owner->DoScream( target, ScreamTarget::ScreamAlert );
+  }
 }
 
 void EnqueueAttackState( PFBaseMovingUnit* owner, PFBaseUnit* target, bool strongTarget, bool scream, bool ignoreChaseRange )
 {
-  (void)scream;
-  if ( IsValid( owner ) && IsValid( target ) )
+  if ( CanPushAttackState( owner, target ) )
+  {
     owner->EnqueueState( new PFBaseUnitAttackState( owner->GetWorld(), owner, target, strongTarget, ignoreChaseRange ), true );
+    if ( scream )
+      owner->DoScream( target, ScreamTarget::ScreamAlert );
+  }
 }
 
 void MoveUnitStateFSM::DumpStateToConsole(int depths)
@@ -178,16 +192,26 @@ PFBaseUnitAttackState::PFBaseUnitAttackState(CPtr<PFWorld> const& pWorld_, CPtr<
 
 void PFBaseUnitAttackState::OnEnter()
 {
+  if ( IsUnitValid( pOwner ) && IsTargetValid( pTarget ) )
+  {
+    pOwner->OnEnterCombat();
+    pOwner->AssignTarget( pTarget, strongTarget );
+  }
 }
 
 void PFBaseUnitAttackState::OnLeave()
 {
+  if ( IsUnitValid( pOwner ) )
+  {
+    pOwner->DropTarget();
+    pOwner->OnLeaveCombat();
+  }
 }
 
 bool PFBaseUnitAttackState::OnStep(float dt)
 {
   (void)dt;
-  if (!IsValid(pOwner) || !IsValid(pTarget))
+  if (!IsUnitValid(pOwner) || !IsUnitValid(pTarget))
     return true;
   if (!pOwner->CanAttackTarget(pTarget))
     return true;
