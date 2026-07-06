@@ -415,11 +415,49 @@ void PFAbilityData::OnAbilityInstanceRemoved( PFAbilityInstance const* pInstance
 }
 float PFAbilityData::GetWorkTime() const { return 0.0f; }
 float PFAbilityData::GetSpeed() const { return 0.0f; }
-float PFAbilityData::GetTimeOffset( bool getRawTime ) const { (void)getRawTime; return 0.0f; }
+float PFAbilityData::GetTimeOffset( bool getRawTime ) const
+{
+  const float rawTimeOffset = GetAttackTimeOffset();
+  if (getRawTime)
+    return rawTimeOffset;
+
+  PFWorld* pOwnerWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  const float stepLengthInSeconds = pOwnerWorld ? pOwnerWorld->GetStepLengthInSeconds() : 0.0f;
+  if (stepLengthInSeconds <= EPS_VALUE)
+    return rawTimeOffset;
+
+  return int(rawTimeOffset / stepLengthInSeconds + 0.5f) * stepLengthInSeconds;
+}
 unsigned PFAbilityData::GetFlags() const { return pDBDesc ? pDBDesc->flags : 0; }
-float PFAbilityData::GetAoeSize() const { return 0.0f; }
-void PFAbilityData::OnDispatchStarted() const {}
-bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const { return target.IsValid( bAllowDead ); }
+float PFAbilityData::GetAoeSize() const
+{
+  return (pDBDesc && IsValid(pOwner)) ? pDBDesc->aoeSize(pOwner, pOwner, this, 0.0f) : 0.0f;
+}
+void PFAbilityData::OnDispatchStarted() const
+{
+  if (!isInPassivePartUpdate && IsValid(pOwner))
+    pOwner->OnAbilityDispatchStarted(this);
+}
+bool PFAbilityData::IsTargetValid( Target const& target, bool bAllowDead ) const
+{
+  if (target.IsPosition())
+    return true;
+
+  if (target.IsUnit())
+  {
+    CPtr<PFBaseUnit> const& pUnit = target.GetUnit();
+    if (!IsValid(pUnit))
+      return false;
+    if (bAllowDead)
+      return true;
+    return pUnit->IsDead() ? DoesApplyToDead() : !DoesApplyToDead();
+  }
+
+  if (target.IsObject())
+    return target.IsObjectValid();
+
+  return false;
+}
 float PFAbilityData::GetDist2Target() const { return 0.0f; }
 float PFAbilityData::GetParentScale() const { return 1.0f; }
 int PFAbilityData::GetAbilityType() const { return abilityType; }
