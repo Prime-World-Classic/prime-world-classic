@@ -4481,6 +4481,13 @@ struct LinuxBootstrapScreenRuntime
   size_t linuxAIRegistryDeadNames;
   size_t linuxAIRegistryObjectNames;
   size_t linuxAIRegistryResources;
+  size_t linuxAIRouteCount;
+  size_t linuxAIRouteLevels;
+  size_t linuxAIRouteTowers;
+  size_t linuxAIRouteBuildings;
+  size_t linuxAIRouteSpawners;
+  size_t linuxAIRouteDestroyedQuarters;
+  size_t linuxAIRouteBorders;
   int linuxAIBotsSettingsAvailable;
   int linuxAIBotsEnabled;
   int linuxAILastHeroObjectId;
@@ -5679,6 +5686,13 @@ struct LinuxBootstrapScreenRuntime
       linuxAIRegistryDeadNames(0),
       linuxAIRegistryObjectNames(0),
       linuxAIRegistryResources(0),
+      linuxAIRouteCount(0),
+      linuxAIRouteLevels(0),
+      linuxAIRouteTowers(0),
+      linuxAIRouteBuildings(0),
+      linuxAIRouteSpawners(0),
+      linuxAIRouteDestroyedQuarters(0),
+      linuxAIRouteBorders(0),
       linuxAIBotsSettingsAvailable(0),
       linuxAIBotsEnabled(-1),
       linuxAILastHeroObjectId(-1),
@@ -39137,6 +39151,13 @@ void EnsureLinuxBootstrapGameScheduler(
     runtime->linuxAIRegistryDeadNames = 0;
     runtime->linuxAIRegistryObjectNames = 0;
     runtime->linuxAIRegistryResources = 0;
+    runtime->linuxAIRouteCount = 0;
+    runtime->linuxAIRouteLevels = 0;
+    runtime->linuxAIRouteTowers = 0;
+    runtime->linuxAIRouteBuildings = 0;
+    runtime->linuxAIRouteSpawners = 0;
+    runtime->linuxAIRouteDestroyedQuarters = 0;
+    runtime->linuxAIRouteBorders = 0;
     runtime->linuxAIBotsSettingsAvailable = 0;
     runtime->linuxAIBotsEnabled = -1;
     runtime->linuxAILastHeroObjectId = -1;
@@ -39855,6 +39876,14 @@ void DriveLinuxBootstrapGameScheduler(
       runtime->worldLastCleanedDeadUnitObjectId = world->GetLinuxLastCleanedDeadUnitObjectId();
       if (NWorld::PFAIWorld* aiWorld = world->GetAIWorld())
       {
+        aiWorld->GetLinuxRouteRegistryCounts(
+          &runtime->linuxAIRouteCount,
+          &runtime->linuxAIRouteLevels,
+          &runtime->linuxAIRouteTowers,
+          &runtime->linuxAIRouteBuildings,
+          &runtime->linuxAIRouteSpawners,
+          &runtime->linuxAIRouteDestroyedQuarters,
+          &runtime->linuxAIRouteBorders);
         runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
         runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
         runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
@@ -40075,6 +40104,14 @@ void DriveLinuxBootstrapLoadingRuntime(
         runtime->worldLastCleanedDeadUnitObjectId = world->GetLinuxLastCleanedDeadUnitObjectId();
         if (NWorld::PFAIWorld* aiWorld = world->GetAIWorld())
         {
+          aiWorld->GetLinuxRouteRegistryCounts(
+            &runtime->linuxAIRouteCount,
+            &runtime->linuxAIRouteLevels,
+            &runtime->linuxAIRouteTowers,
+            &runtime->linuxAIRouteBuildings,
+            &runtime->linuxAIRouteSpawners,
+            &runtime->linuxAIRouteDestroyedQuarters,
+            &runtime->linuxAIRouteBorders);
           runtime->worldAwardKillersCalls = aiWorld->GetLinuxAwardKillersCalls();
           runtime->worldAwardKillersRejected = aiWorld->GetLinuxAwardKillersRejected();
           runtime->worldAwardKillersApplied = aiWorld->GetLinuxAwardKillersApplied();
@@ -63472,6 +63509,13 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameWorldEnabledNeutralSpawners=" << screenRuntime.worldEnabledNeutralCreepSpawnerObjects << "\n";
   logFile << "  finalGameWorldContentCreepSpawners=" << screenRuntime.worldContentCreepSpawnerObjects << "\n";
   logFile << "  finalGameWorldContentNeutralSpawners=" << screenRuntime.worldContentNeutralCreepSpawnerObjects << "\n";
+  logFile << "  finalGameWorldAIRoutes=" << screenRuntime.linuxAIRouteCount << "\n";
+  logFile << "  finalGameWorldAIRouteLevels=" << screenRuntime.linuxAIRouteLevels << "\n";
+  logFile << "  finalGameWorldAIRouteTowers=" << screenRuntime.linuxAIRouteTowers << "\n";
+  logFile << "  finalGameWorldAIRouteBuildings=" << screenRuntime.linuxAIRouteBuildings << "\n";
+  logFile << "  finalGameWorldAIRouteSpawners=" << screenRuntime.linuxAIRouteSpawners << "\n";
+  logFile << "  finalGameWorldAIRouteDestroyedQuarters=" << screenRuntime.linuxAIRouteDestroyedQuarters << "\n";
+  logFile << "  finalGameWorldAIRouteBorders=" << screenRuntime.linuxAIRouteBorders << "\n";
   logFile << "  finalGameWorldAICreepSpawnEnabled=" << screenRuntime.worldAICreepSpawnEnabled << "\n";
   logFile << "  finalGameWorldAINeutralSpawnEnabled=" << screenRuntime.worldAINeutralCreepSpawnEnabled << "\n";
   logFile << "  finalGameWorldAIMaxCreeps=" << screenRuntime.worldAIMaxCreepsCount << "\n";
@@ -66487,7 +66531,7 @@ int main(int argc, char** argv)
     screenRuntime.linuxBotCommandLastAction.empty() ?
       "none" :
       screenRuntime.linuxBotCommandLastAction.c_str());
-  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d registry=%lu/%lu/%lu/%lu/%lu/%lu/%lu bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
+  fprintf(stdout, "Final Linux AI controllers: auto=%d/%d add=%d/%d remove=%d/%d steps=%d active=%d registry=%lu/%lu/%lu/%lu/%lu/%lu/%lu routes=%lu/%lu/%lu/%lu/%lu/%lu/%lu bots=%d/%d last=%d/%d/%d/%d commands=%d/%d fallback=%d move=%d combat=%d stop=%d follow=%d attack=%d activate=%d useTalent=%d buy=%d consumable=%d portal=%d pickup=%d raise=%d other=%d lastCmd=%d/%d/%d/%d/%d/%d\n",
     screenRuntime.linuxAIAutoStartAttempts,
     screenRuntime.linuxAIAutoStartSuccesses,
     screenRuntime.linuxAIAddRequests,
@@ -66503,6 +66547,13 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.linuxAIRegistryDeadNames),
     static_cast<unsigned long>(screenRuntime.linuxAIRegistryObjectNames),
     static_cast<unsigned long>(screenRuntime.linuxAIRegistryResources),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteCount),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteLevels),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteTowers),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteBuildings),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteSpawners),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteDestroyedQuarters),
+    static_cast<unsigned long>(screenRuntime.linuxAIRouteBorders),
     screenRuntime.linuxAIBotsSettingsAvailable,
     screenRuntime.linuxAIBotsEnabled,
     screenRuntime.linuxAILastHeroObjectId,

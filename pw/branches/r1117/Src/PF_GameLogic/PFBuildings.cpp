@@ -21,6 +21,7 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_LINUX_INLINE_NULL_USER_CAST
 
 #include "PFBuildings.h"
+#include "PFAIWorld.h"
 #include "PFWorld.h"
 #include "TileMap.h"
 
@@ -60,6 +61,12 @@ void PFBuilding::Init(NDb::AdvMapObject const&, NDb::Building const* pDesc, NDb:
   routeLevel = pDesc->routeLevel;
   levelUpInterval = pDesc->levelUpInterval;
   levelUpTimer = levelUpInterval;
+  if (PFAIWorld* pAIWorld = GetWorld() ? GetWorld()->GetAIWorld() : 0)
+  {
+    pAIWorld->OnBuildingCreate(pDesc->faction, pDesc->routeID, pDesc->routeLevel, this);
+    if (levelUpInterval > 0.0f)
+      levelUpTimer = pAIWorld->GetBattleStartDelay();
+  }
 }
 
 bool PFBuilding::CanDenyBuilding(CPtr<PFBaseHero>const&) const { return false; }
@@ -84,7 +91,12 @@ void PFBuilding::MakeLevelupsForTimeDelta(float dtInSeconds)
 }
 
 void PFBuilding::SetState(const string& newStateName) { stateName = newStateName; }
-void PFBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseUnit::OnUnitDie(pKiller, flags, pDamageDesc); }
+void PFBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
+{
+  if (PFAIWorld* pAIWorld = GetWorld() ? GetWorld()->GetAIWorld() : 0)
+    pAIWorld->OnBuildingDestroy(GetFaction(), routeID, routeLevel, GetObjectId(), dynamic_cast<PFQuarters*>(this) != 0);
+  PFBaseUnit::OnUnitDie(pKiller, flags, pDamageDesc);
+}
 bool PFBuilding::Step(float dtInSeconds) { MakeLevelupsForTimeDelta(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
 
 PFQuarters::PFQuarters(PFWorld* pWorld, NDb::AdvMapObject const& dbObject) : PFBuilding(pWorld, dbObject) {}

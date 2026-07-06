@@ -5,9 +5,14 @@
 #include "PFAIWorld.h"
 #include "DBGameLogic.h"
 #include "DBSessionRoots.h"
+#include "PFBaseUnit.h"
 #include "PFBehaviour.h"
+#include "PFBuildings.h"
+#include "PFCommonCreep.h"
 #include "PFGlyphManager.h"
 #include "PFPredefinedUnitVariables.h"
+#include "PFWorld.h"
+#include "PFWorldNatureMap.h"
 
 namespace NWorld
 {
@@ -89,6 +94,17 @@ float GetLinuxFallbackNaftaForKill(const PFAIWorld& aiWorld, const PFBaseUnit* v
   default:
     return 0.0f;
   }
+}
+
+void SetLinuxCreepSpawnLevel( const CPtr<PFWorld>& world, int spawnerObjectID, PFCreepSpawner::CreepsPower level )
+{
+  if (!world || spawnerObjectID == PF_Core::INVALID_OBJECT_ID)
+    return;
+
+  PF_Core::WorldObjectBase* object = world->GetObjectById(spawnerObjectID);
+  PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(object);
+  if (spawner)
+    spawner->SetCreepsPower(level);
 }
 }
 
@@ -226,8 +242,24 @@ CVec2 PFAIWorld::GetBorderAtRoute( NDb::EFaction faction, NDb::ERoute routeID ) 
 
 void PFAIWorld::SetRouteLevelVulnerable( BuildingsRoute::RouteLevel* level, bool bVulnerable )
 {
-  (void)level;
-  (void)bVulnerable;
+  if (!level)
+    return;
+
+  for (vector<int>::const_iterator it = level->towersIDs.begin(), end = level->towersIDs.end(); it != end; ++it)
+  {
+    PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(*it) : 0;
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(object);
+    if (unit && unit->IsVulnerable() != bVulnerable)
+      unit->SetVulnerable(bVulnerable);
+  }
+
+  for (vector<int>::const_iterator it = level->buildingsIDs.begin(), end = level->buildingsIDs.end(); it != end; ++it)
+  {
+    PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(*it) : 0;
+    PFBaseUnit* unit = dynamic_cast<PFBaseUnit*>(object);
+    if (unit && unit->IsVulnerable() != bVulnerable)
+      unit->SetVulnerable(bVulnerable);
+  }
 }
 
 vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator PFAIWorld::BuildingsRoute::GetLevel(int level)
@@ -243,41 +275,189 @@ vector<PFAIWorld::BuildingsRoute::RouteLevel>::iterator PFAIWorld::BuildingsRout
 
 int PFAIWorld::BuildingsRoute::GetTowerIDByIndex( int index )
 {
-  return PF_Core::INVALID_OBJECT_ID;
+  if (index < 0)
+    return PF_Core::INVALID_OBJECT_ID;
+
+  int numLevels = 0;
+  for (int i = 0; i < levels.size(); ++i)
+  {
+    if (!levels[i].towersIDs.empty())
+      ++numLevels;
+  }
+
+  vector<int> towerIDs;
+  for (int level = numLevels - 1; level >= 0; --level)
+  {
+    for (int i = 0; i < levels.size(); ++i)
+    {
+      if (levels[i].level == level)
+      {
+        towerIDs.insert(towerIDs.end(), levels[i].towersIDs.begin(), levels[i].towersIDs.end());
+        break;
+      }
+    }
+  }
+
+  return index < towerIDs.size() ? towerIDs[index] : PF_Core::INVALID_OBJECT_ID;
 }
 
 void PFAIWorld::RegisterCreepSpawner( NDb::EFaction faction, NDb::ERoute routeID, int spawnerObjectID )
 {
-  BuildingsRoute& route = *GetRoute(faction, routeID);
-  route.spawnerObjectID = spawnerObjectID;
+  if (routeID == NDb::ROUTE_UNASSIGNED || routeID == NDb::ROUTE_TREE || faction == NDb::FACTION_NEUTRAL)
+    return;
+
+  faction = (faction == NDb::FACTION_BURN) ? NDb::FACTION_FREEZE : NDb::FACTION_BURN;
+
+  vector<BuildingsRoute>::iterator route = GetRoute(faction, routeID);
+  if (route == buildingsRoutes.end())
+    return;
+
+  route->spawnerObjectID = spawnerObjectID;
 }
 
 void PFAIWorld::UpdateRouteBorderPoint( BuildingsRoute::RouteLevel const& borderLevel, BuildingsRoute& route )
 {
-  (void)borderLevel;
-  route.borderPoint = VNULL2;
+  if (borderLevel.towersIDs.empty())
+  {
+    route.borderPoint = VNULL2;
+    return;
+  }
+
+  PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(borderLevel.towersIDs.front()) : 0;
+  PFBaseUnit const* tower = dynamic_cast<PFBaseUnit const*>(object);
+  if (!tower)
+  {
+    route.borderPoint = VNULL2;
+    return;
+  }
+
+  CVec2 borderPos = tower->GetPosition().AsVec2D();
+  PFWorldNatureMap const* natureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  if (natureMap && route.routeID < NDb::ROUTE_TREE)
+  {
+    vector<CVec2> const& road = natureMap->GetLogicRoad((NDb::ENatureRoad)route.routeID);
+    if (road.size() > 1)
+      borderPos = GetNearestPathPoint(road, borderPos);
+  }
+
+  route.borderPoint = borderPos;
 }
 
 PFCreepSpawner* PFAIWorld::FindSpawnerWithRouteNearestToPoint( const CVec2& pos, const NDb::EFaction faction ) const
 {
-  (void)pos;
-  (void)faction;
-  return 0;
+  float minDist = MAXFLOAT;
+  PFCreepSpawner* nearestSpawner = 0;
+
+  for (vector<BuildingsRoute>::const_iterator route = buildingsRoutes.begin(); route != buildingsRoutes.end(); ++route)
+  {
+    if (route->faction == faction)
+      continue;
+
+    PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(route->spawnerObjectID) : 0;
+    PFCreepSpawner* spawner = dynamic_cast<PFCreepSpawner*>(object);
+    if (!spawner)
+      continue;
+
+    vector<CVec2> const& path = spawner->GetPath();
+    if (path.empty())
+      continue;
+
+    int pathIndex = 0;
+    float dist = fabs(GetNearestPathPoint(path, pos, pathIndex) - pos);
+    if (dist < minDist)
+    {
+      minDist = dist;
+      nearestSpawner = spawner;
+    }
+  }
+
+  return nearestSpawner;
 }
 
 void PFAIWorld::OnBuildingCreate( NDb::EFaction faction, NDb::ERoute routeID, int level, const CPtr<PFBuilding>& pBuilding )
 {
-  (void)pBuilding;
-  (void)GetRoute(faction, routeID)->GetLevel(level);
+  if (faction == NDb::FACTION_NEUTRAL || routeID == NDb::ROUTE_UNASSIGNED || !IsValid(pBuilding))
+    return;
+
+  const int objectID = pBuilding->GetObjectId();
+  vector<BuildingsRoute>::iterator route = GetRoute(faction, routeID);
+  vector<BuildingsRoute::RouteLevel>::iterator routeLevel = route->GetLevel(level);
+
+  if (find(routeLevel->towersIDs.begin(), routeLevel->towersIDs.end(), objectID) != routeLevel->towersIDs.end())
+    return;
+
+  vector<int>::iterator buildingIt = find(routeLevel->buildingsIDs.begin(), routeLevel->buildingsIDs.end(), objectID);
+  if (buildingIt != routeLevel->buildingsIDs.end())
+  {
+    if (pBuilding->GetUnitType() != NDb::UNITTYPE_TOWER)
+      return;
+    routeLevel->buildingsIDs.erase(buildingIt);
+  }
+
+  if (pBuilding->GetUnitType() == NDb::UNITTYPE_TOWER)
+    routeLevel->towersIDs.push_back(objectID);
+  else
+    routeLevel->buildingsIDs.push_back(objectID);
+
+  pBuilding->SetVulnerable(false);
+
+  if (routeLevel->level == 0)
+    UpdateRouteBorderPoint(*routeLevel, *route);
 }
 
 void PFAIWorld::OnBuildingDestroy( NDb::EFaction faction, NDb::ERoute routeID, int level, int objectID, bool isQuarter )
 {
-  (void)faction;
-  (void)routeID;
-  (void)level;
-  (void)objectID;
-  (void)isQuarter;
+  if (faction == NDb::FACTION_NEUTRAL || routeID == NDb::ROUTE_UNASSIGNED)
+    return;
+
+  vector<BuildingsRoute>::iterator route = GetRoute(faction, routeID);
+  vector<BuildingsRoute::RouteLevel>::iterator routeLevel = route->GetLevel(level);
+
+  vector<int>::iterator objectIt = find(routeLevel->towersIDs.begin(), routeLevel->towersIDs.end(), objectID);
+  if (objectIt != routeLevel->towersIDs.end())
+  {
+    routeLevel->towersIDs.erase(objectIt);
+  }
+  else
+  {
+    objectIt = find(routeLevel->buildingsIDs.begin(), routeLevel->buildingsIDs.end(), objectID);
+    if (objectIt == routeLevel->buildingsIDs.end())
+      return;
+
+    if (isQuarter)
+    {
+      SetLinuxCreepSpawnLevel(pWorld, route->spawnerObjectID, PFCreepSpawner::powerLarge);
+      route->quarterDestroyed = true;
+
+      SetRouteLevelVulnerable(GetRoute(faction, NDb::ROUTE_TREE)->GetLevel(0), true);
+
+      vector<BuildingsRoute>::iterator topRoute = GetRoute(faction, NDb::ROUTE_TOP);
+      vector<BuildingsRoute>::iterator centerRoute = GetRoute(faction, NDb::ROUTE_CENTER);
+      vector<BuildingsRoute>::iterator bottomRoute = GetRoute(faction, NDb::ROUTE_BOTTOM);
+      if (topRoute->quarterDestroyed && centerRoute->quarterDestroyed && bottomRoute->quarterDestroyed)
+      {
+        SetLinuxCreepSpawnLevel(pWorld, topRoute->spawnerObjectID, PFCreepSpawner::powerMega);
+        SetLinuxCreepSpawnLevel(pWorld, centerRoute->spawnerObjectID, PFCreepSpawner::powerMega);
+        SetLinuxCreepSpawnLevel(pWorld, bottomRoute->spawnerObjectID, PFCreepSpawner::powerMega);
+      }
+    }
+
+    routeLevel->buildingsIDs.erase(objectIt);
+  }
+
+  if (routeLevel->towersIDs.empty())
+  {
+    vector<BuildingsRoute::RouteLevel>::iterator nextLevel = find(route->levels.begin(), route->levels.end(), level + 1);
+    if (nextLevel != route->levels.end())
+    {
+      SetRouteLevelVulnerable(nextLevel, true);
+      UpdateRouteBorderPoint(*nextLevel, *route);
+    }
+    else
+    {
+      UpdateRouteBorderPoint(*routeLevel, *route);
+    }
+  }
 }
 
 bool PFAIWorld::IsNeutralSpecialAwardingRequired( PFBaseUnit const* pVictim ) const
@@ -437,11 +617,56 @@ float PFAIWorld::GetHeroLevelDiffCoeff( int difference, bool useAlternateTable )
 void PFAIWorld::RegisterHero(PFBaseHero* pHero) { (void)pHero; }
 void PFAIWorld::UnregisterHero(PFBaseHero* pHero) { (void)pHero; }
 
+void PFAIWorld::GetLinuxRouteRegistryCounts( size_t* routeCount, size_t* levelCount, size_t* towerCount, size_t* buildingCount, size_t* spawnerCount, size_t* quarterDestroyedCount, size_t* borderCount ) const
+{
+  size_t levels = 0;
+  size_t towers = 0;
+  size_t buildings = 0;
+  size_t spawners = 0;
+  size_t destroyedQuarters = 0;
+  size_t borders = 0;
+
+  for (vector<BuildingsRoute>::const_iterator route = buildingsRoutes.begin(); route != buildingsRoutes.end(); ++route)
+  {
+    if (route->spawnerObjectID != PF_Core::INVALID_OBJECT_ID)
+      ++spawners;
+    if (route->quarterDestroyed)
+      ++destroyedQuarters;
+    if (route->borderPoint.x != 0.0f || route->borderPoint.y != 0.0f)
+      ++borders;
+
+    levels += route->levels.size();
+    for (vector<BuildingsRoute::RouteLevel>::const_iterator level = route->levels.begin(); level != route->levels.end(); ++level)
+    {
+      towers += level->towersIDs.size();
+      buildings += level->buildingsIDs.size();
+    }
+  }
+
+  if (routeCount)
+    *routeCount = buildingsRoutes.size();
+  if (levelCount)
+    *levelCount = levels;
+  if (towerCount)
+    *towerCount = towers;
+  if (buildingCount)
+    *buildingCount = buildings;
+  if (spawnerCount)
+    *spawnerCount = spawners;
+  if (quarterDestroyedCount)
+    *quarterDestroyedCount = destroyedQuarters;
+  if (borderCount)
+    *borderCount = borders;
+}
+
 const PFCreepSpawner* PFAIWorld::GetSpawner(NDb::EFaction faction, NDb::ERoute routeID) const
 {
-  (void)faction;
-  (void)routeID;
-  return 0;
+  vector<BuildingsRoute>::const_iterator route = FindRoute(faction, routeID);
+  if (route == buildingsRoutes.end())
+    return 0;
+
+  PF_Core::WorldObjectBase* object = pWorld ? pWorld->GetObjectById(route->spawnerObjectID) : 0;
+  return dynamic_cast<PFCreepSpawner*>(object);
 }
 
 void PFAIWorld::OnNatureGlyphUsed( NDb::ERoute routeID, const CPtr<PFBaseMaleHero>& pHero)

@@ -219,6 +219,8 @@ public:
   float GetLinuxLastAppliedAwardAmount() const { return linuxLastAppliedAwardAmount; }
   int GetLinuxLastAppliedAwardHeroGoldBefore() const { return linuxLastAppliedAwardHeroGoldBefore; }
   int GetLinuxLastAppliedAwardHeroGoldAfter() const { return linuxLastAppliedAwardHeroGoldAfter; }
+  // Linux bootstrap diagnostics for route/building bookkeeping restored without the visual client.
+  void GetLinuxRouteRegistryCounts( size_t* routeCount, size_t* levelCount, size_t* towerCount, size_t* buildingCount, size_t* spawnerCount, size_t* quarterDestroyedCount, size_t* borderCount ) const;
 #endif
 
 private:
