@@ -7,6 +7,7 @@
 #include "PFAbilityInstance.h"
 #include "PFAIWorld.h"
 #include "PFBaseUnit.h"
+#include "PFCastLimitations.h"
 #include "PFConsumable.h"
 #include "PFHero.h"
 #include "PFMicroAI.h"
@@ -307,7 +308,7 @@ int PFAbilityData::GetRandom(int from, int to ) const
   PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
   return pWorld ? pWorld->GetRndGen()->Next(from, to) : (from <= to ? from : to);
 }
-float PFAbilityData::GetRefineAbilityScale( float valueAtRefineLevel0, float incrementPerLevel ) const { return valueAtRefineLevel0 + incrementPerLevel * GetRefineRate(); }
+float PFAbilityData::GetRefineAbilityScale( float valueAtRefineLevel0, float incrementPerLevel ) const { return valueAtRefineLevel0 + incrementPerLevel * (float)(GetRefineRate() - 1); }
 bool PFAbilityData::GetSmartRoll( float probability, int maxFailReps, int maxSuccessReps, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond ) const
 {
   PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
@@ -325,16 +326,36 @@ int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, cons
 float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const { (void)name; (void)pSender; (void)pReceiver; (void)pMisc; return 0.0f; }
 NDb::UnitConstant const* PFAbilityData::GetConstant(char const *name) const { return pConstantsMap ? pConstantsMap->Get( name ) : 0; }
 float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { (void)name; (void)pSender; (void)pReceiver; return 0.0f; }
-bool PFAbilityData::CheckUpgradePerCastPerTarget() const { return false; }
-const IUnitFormulaPars* PFAbilityData::GetObjectOwner() const { return 0; }
+bool PFAbilityData::CheckUpgradePerCastPerTarget() const { return true; }
+const IUnitFormulaPars* PFAbilityData::GetObjectOwner() const { return pOwner.GetPtr(); }
 int PFAbilityData::GetScrollLevel() const
 {
   PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
   PFAIWorld* pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
   return pAIWorld && IsValid(pOwner) ? pAIWorld->GetAveragePriestessLvl(pOwner->GetFaction()) : 0;
 }
-bool PFAbilityData::IsNight() const { return false; }
-NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& target ) const { (void)target; return 0; }
+bool PFAbilityData::IsNight() const
+{
+  PFWorld* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
+  return pWorld ? pWorld->IsNight() : false;
+}
+NDb::CastLimitation const* PFAbilityData::CheckCastLimitations( const Target& target ) const
+{
+  if (!pDBDesc)
+    return 0;
+
+  const CastLimitationsCheckParams cp(*this, target);
+  typedef vector<NDb::Ptr<NDb::CastLimitation> > CastLimitations;
+  const CastLimitations& castLimitations = pDBDesc->castLimitations;
+  for (CastLimitations::const_iterator it = castLimitations.begin(); it != castLimitations.end(); ++it)
+  {
+    const NDb::Ptr<NDb::CastLimitation>& curLimit = *it;
+    if (curLimit && !curLimit->Check(cp))
+      return curLimit;
+  }
+
+  return 0;
+}
 ::DiAnimGraph* PFAbilityData::GetAG( NScene::SceneObject* so ) const { (void)so; return 0; }
 float PFAbilityData::GetAttackTimeOffset() const { return 0.0f; }
 float PFAbilityData::GetMarkerPlace( NScene::SceneObject* pSO, const nstl::string &nodeName, const nstl::string &markerName ) const { (void)pSO; (void)nodeName; (void)markerName; return 0.0f; }
