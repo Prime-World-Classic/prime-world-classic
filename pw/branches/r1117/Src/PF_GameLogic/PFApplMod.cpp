@@ -492,7 +492,7 @@ void PFApplAbilityUpgrade::UpgradeAbilityApplicators(CPtr<PFAbilityData> const& 
 
   ++appliesCount;
 }
-bool PFApplAbilityUpgrade::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
+bool PFApplAbilityUpgrade::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds) || !CheckAppliesCount(); }
 
 PFApplTechAbilityUpgrade::PFApplTechAbilityUpgrade(const PFApplCreatePars& cp) : Base(cp) {}
 PFApplTechAbilityUpgrade::PFApplTechAbilityUpgrade() {}
@@ -586,8 +586,31 @@ void PFApplFlags::Disable() { if (IsValid(pReceiver)) pReceiver->RemoveFlag(GetD
 void PFApplFlags::Reset() { PFApplBuff::Reset(); }
 void PFApplFlags::DumpInfo(NLogg::CChannelLogger&) const {}
 
-void PFApplChangeBaseAttack::Enable() { PFApplBuff::Enable(); pSavedBaseAttack = 0; }
-void PFApplChangeBaseAttack::Disable() { pSavedBaseAttack = 0; PFApplBuff::Disable(); }
+void PFApplChangeBaseAttack::Enable()
+{
+  PFApplBuff::Enable();
+
+  if (!IsValid(pReceiver) || !GetDB().attackAbility)
+  {
+    pSavedBaseAttack = 0;
+    return;
+  }
+
+  CObj<PFBaseAttackData> pNewAttack(new PFBaseAttackData(pReceiver, GetDB().attackAbility));
+  pNewAttack->LevelUp();
+  pSavedBaseAttack = pReceiver->ReplaceBaseAttack(pNewAttack);
+}
+
+void PFApplChangeBaseAttack::Disable()
+{
+  if (IsValid(pReceiver) && pSavedBaseAttack)
+  {
+    pReceiver->ReplaceBaseAttack(pSavedBaseAttack, GetDB().applyPassivePart);
+    pSavedBaseAttack = 0;
+  }
+
+  PFApplBuff::Disable();
+}
 
 bool PFApplCreepBehaviourChange::IsStackableWithTheSameType() const { return false; }
 void PFApplCreepBehaviourChange::Enable() { PFApplBuff::Enable(); }
