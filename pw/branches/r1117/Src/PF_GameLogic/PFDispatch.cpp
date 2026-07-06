@@ -8,12 +8,15 @@
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
 #include "PFApplMod.h"
+#include "PFAIWorld.h"
 
 namespace NWorld
 {
 
 void PFDispatch::OnDie()
 {
+  RegisterAggression();
+
   Clear(applicators);
   pAbility = NULL;
   pSender = NULL;
@@ -109,6 +112,9 @@ void PFDispatch::Apply( bool playApplyEffect )
 {
   (void)playApplyEffect;
   _ApplyInternal();
+
+  if (state == STATE_APPLIED && pDBDispatch && pDBDispatch->dieAfterApply)
+    Die();
 }
 
 bool PFDispatch::IsBaseAttack() const
@@ -120,7 +126,15 @@ void PFDispatch::Start()
 {
   if ( state != STATE_INIT )
     return;
+
+  if (target.IsUnit() && IsValid(target.GetUnit()))
+  {
+    targetFaction = target.GetUnit()->GetFaction();
+    targetWarfogFaction = target.GetUnit()->GetWarfogFaction();
+  }
+
   state = STATE_PROCEED;
+  OnStart();
 }
 
 bool PFDispatch::Step(float dtInSeconds)
@@ -135,41 +149,128 @@ bool PFDispatch::Step(float dtInSeconds)
 
 float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )
 {
-  (void)par;
-  return defaultValue;
+  IUnitFormulaPars * const pOriginalTarget = originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender.GetPtr();
+  IMiscFormulaPars * const pMisc = IsValid( pParentApplicator ) ? (IMiscFormulaPars*)pParentApplicator.GetPtr() : ( IsValid( pAbility ) ? (IMiscFormulaPars*)pAbility->GetData() : 0 );
+  return par( pSender, pOriginalTarget, pMisc, defaultValue );
 }
 
 void PFDispatch::OpenWarFog()
 {
+  if ( !IsValid( pAbility ) || !IsValid( pSender ) || pAbility->GetWarFogOpened( targetWarfogFaction ) )
+    return;
+
+  if ( pAbility->GetFlags() & NDb::ABILITYFLAGS_DONTOPENWARFOG )
+    return;
+
+  PFAbilityData const* const pAbilityData = pAbility->GetData();
+  NDb::Ability const* const pAbilityDesc = pAbilityData ? pAbilityData->GetDBDesc() : 0;
+  if ( !pAbilityDesc )
+    return;
+
+  float warFogRemoveTime = pAbilityDesc->warFogRemoveTime;
+  float warFogRemoveRadius = pAbilityDesc->warFogRemoveRadius;
+
+  if ( warFogRemoveTime <= 0.0f || warFogRemoveRadius <= 0.0f )
+  {
+    PFWorld const* const pWorld = GetWorld();
+    PFAIWorld const* const pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
+    if ( pAIWorld )
+    {
+      const NDb::AILogicParameters& aiParams = pAIWorld->GetAIParameters();
+      if ( warFogRemoveTime <= 0.0f )
+        warFogRemoveTime = aiParams.warFogRemoveTime;
+      if ( warFogRemoveRadius <= 0.0f )
+        warFogRemoveRadius = aiParams.warFogRemoveRadius;
+    }
+  }
+
+  if ( warFogRemoveTime > 0.0f && warFogRemoveRadius > 0.0f )
+  {
+    pSender->OpenWarFog( targetWarfogFaction, warFogRemoveTime, warFogRemoveRadius );
+    pAbility->SetWarFogOpened( targetWarfogFaction );
+  }
 }
 
 void PFDispatch::Reset()
 {
+  PFWorldObjectBase::Reset();
+  if ( target.IsObject() && IsObjectValid( target.GetObject() ) )
+    target.GetObject()->DoReset();
+  if ( originalTarget.IsObject() && IsObjectValid( originalTarget.GetObject() ) )
+    originalTarget.GetObject()->DoReset();
+  if ( source.IsObject() && IsObjectValid( source.GetObject() ) )
+    source.GetObject()->DoReset();
   state = STATE_INIT;
 }
 
 void PFDispatch::SetNewTarget( const Target & _target )
 {
   target = _target;
+  originalTarget = _target;
+
+  if ( target.IsUnitValid( true ) )
+  {
+    targetFaction = target.GetUnit()->GetFaction();
+    targetWarfogFaction = target.GetUnit()->GetWarfogFaction();
+  }
+
+  PFBaseApplicator * const last = applicators.last();
+  for (PFBaseApplicator *applicator = applicators.first(); applicator != last; applicator = applicators.next(applicator))
+  {
+    applicator->SetTarget( _target );
+    applicator->Init();
+  }
 }
 
 void PFDispatch::OnMissed() const
 {
+  if ( IsValid( pParentApplicator ) )
+    pParentApplicator->OnDispatchMissed( this );
 }
 
 bool PFDispatch::CheckEffectEnabled( const PF_Core::BasicEffect &effect )
 {
-  (void)effect;
-  return true;
+  bool enabled = true;
+
+  if ( effect.GetDBDesc() && !effect.GetDBDesc()->enableCondition.IsEmpty() )
+  {
+    IUnitFormulaPars* const pFirst = GetSender();
+    IUnitFormulaPars* pSecond = 0;
+    IMiscFormulaPars* const pMisc = IsValid( GetAbility() ) ? (IMiscFormulaPars*)GetAbility()->GetData() : 0;
+
+    if ( GetTarget().IsUnit() )
+      pSecond = GetTarget().GetUnit();
+
+    enabled = effect.GetDBDesc()->enableCondition->condition( pFirst, pSecond, pMisc, enabled );
+  }
+
+  return enabled;
 }
 
 void PFDispatch::RegisterAggression()
 {
+  if ( state != STATE_APPLIED )
+    return;
+
+  if ( !IsValid( pSender ) || !IsValid( pAbility ) || !pAbility->GetData() )
+    return;
+
+  if ( !target.IsUnitValid( true ) )
+    return;
+
+  if ( pAbility->GetData()->IsInteractionAbility() )
+    return;
+
+  if ( pSender->GetFaction() != targetFaction )
+    pSender->SetLastAttackDataEx( target.GetUnit(), IsBaseAttack(), IsAggressive(), targetFaction );
+
+  if ( pSender->GetWarfogFaction() != targetWarfogFaction )
+    OpenWarFog();
 }
 
 bool PFDispatch::IsAggressive() const
 {
-  return IsValid( pSender ) && target.IsUnit() && IsValid( target.GetUnit() ) && pSender->GetFaction() != target.GetUnit()->GetFaction();
+  return IsValid( pDBDispatch ) && ( pDBDispatch->flags & NDb::DISPATCHFLAGS_AGGRESSIVE );
 }
 
 } // namespace NWorld
