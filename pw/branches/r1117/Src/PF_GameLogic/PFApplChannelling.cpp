@@ -6,13 +6,26 @@
 
 #include "PFApplChannelling.h"
 #include "PFBaseUnit.h"
+#include "PFWorld.h"
+#include "PFAIWorld.h"
 #include "PFAbilityInstance.h"
+#include "PFAbilityData.h"
+#include "PFUnitAbilities.h"
+#include "PFApplUtils.h"
+#include "PFTargetSelector.h"
 
 namespace NWorld
 {
 
 bool PFApplChannelling::Start()
 {
+  if (IsValid(pOwner))
+  {
+    pOwner->AddFlag(NDb::UNITFLAG_FORBIDAUTOATTACK);
+    if (pOwner->IsInChannelling())
+      pOwner->CancelChannelling();
+  }
+
   if (PFApplBuff::Start())
     return true;
 
@@ -22,8 +35,20 @@ bool PFApplChannelling::Start()
   scale = 1.0f;
   SetOwnerProgress(0.0001f);
 
+  if (IsValid(pAbility))
+    CreateAndActivateApplicators(GetDB().applicatorsOnSelf, GetAbility(), Target(pReceiver), this);
+
   if (IsValid(pOwner))
     pOwner->AddEventListener(this);
+
+  if (IsValid(pAbility) && pAbility->GetData())
+    pAbility->GetData()->SubscribeChanneling(this);
+
+  if (GetDB().targetSelector)
+    pTargetSelector = GetDB().targetSelector->Create(GetWorld());
+
+  SendSpell2Targets(this, GetDB().startSpell, pTargetSelector);
+  Strike();
 
   return false;
 }
@@ -31,21 +56,80 @@ bool PFApplChannelling::Start()
 void PFApplChannelling::Stop()
 {
   if (IsValid(pOwner))
+  {
+    pOwner->RemoveFlag(NDb::UNITFLAG_FORBIDAUTOATTACK);
     pOwner->RemoveEventListener(this);
-  SetOwnerProgress(0.0f);
+  }
+
+  PFAbilityData* pData = IsValid(pAbility) ? pAbility->GetData() : 0;
+  if (pData)
+    pData->UnsubscribeChanneling(this);
+
+  if (IsUnitValid(pReceiver))
+  {
+    if ((state == STATE_CANCEL || state == STATE_INTERRUPT) && GetDB().removeStartSpellEffectOnInterrupt)
+    {
+      RemoveChildrenApplicators();
+      if (IsValid(pAbility))
+        pAbility->Interrupt();
+    }
+
+    bool const isTargetValid = IsChannelingTargetValid();
+    bool const fireSpell = (state == STATE_FIRE || !GetDB().cancelOnInterrupt) && isTargetValid;
+    if (fireSpell)
+      Fire();
+    else
+      Cancel();
+
+    if (GetDB().channelingType == NDb::CHANNELINGTYPE_CREATION && IsValid(pAbility) && pData)
+    {
+      pAbility->NotifyChannelingCreateStop(fireSpell);
+
+      if ((!isTargetValid && state != STATE_INTERRUPT) || (state == STATE_CANCEL && GetDB().cancelOnInterrupt))
+      {
+        pData->DropCooldown(false);
+      }
+      else if (pData->GetManaCost() > 0.0f)
+      {
+        pData->SpendMana();
+      }
+    }
+  }
+
+  if (state != STATE_CANCEL && state != STATE_INTERRUPT)
+  {
+    if (GetStopReason() != APPL_STOP_REASON_ONDEATH && pData)
+      pData->NotifyCastProcessed();
+    SetOwnerProgress(0.0f);
+  }
+  else
+  {
+    PFApplBuff::SetInterrupted(true);
+  }
+
   PFApplBuff::Stop();
 }
 
 bool PFApplChannelling::Step(float dtInSeconds)
 {
+  bool const commonBuffStepResult = PFApplBuff::Step(dtInSeconds);
+
+  if (GetDB().cancelOnDisable && !IsEnabled())
+  {
+    SetOwnerProgress(0.0f);
+    state = STATE_CANCEL;
+  }
+
   if (state == STATE_CANCEL || state == STATE_INTERRUPT)
     return true;
 
-  if (PFApplBuff::Step(dtInSeconds))
+  if (commonBuffStepResult)
   {
     state = STATE_FIRE;
     return true;
   }
+
+  SetOwnerProgress(CalculateProgress());
 
   timer += dtInSeconds;
   if (period > EPS_VALUE && timer > period)
@@ -54,20 +138,36 @@ bool PFApplChannelling::Step(float dtInSeconds)
     Strike();
   }
 
-  SetOwnerProgress(CalculateProgress());
   return state != STATE_CHANNELLING;
 }
 
-void PFApplChannelling::Strike() {}
-void PFApplChannelling::Fire() { state = STATE_FIRE; }
-void PFApplChannelling::Cancel() { state = STATE_CANCEL; }
+void PFApplChannelling::Strike()
+{
+  if (GetDB().periodicalSpell)
+    SendSpell2Targets(this, GetDB().periodicalSpell, pTargetSelector);
+}
+
+void PFApplChannelling::Fire()
+{
+  SendSpell2Targets(this, GetDB().stopSpell, pTargetSelector);
+}
+
+void PFApplChannelling::Cancel()
+{
+  SendSpell2Targets(this, GetDB().cancelSpell, pTargetSelector);
+}
 
 float PFApplChannelling::CalculateProgress() const
 {
   return GetLifetime() > 0.0f ? (GetLifetime() - GetDuration()) / GetLifetime() : 1.0f;
 }
 
-void PFApplChannelling::SetOwnerProgress(float) {}
+void PFApplChannelling::SetOwnerProgress(float progress)
+{
+  CDynamicCast<PFUnitAbilities> pUnitWithAbilities(pOwner);
+  if (pUnitWithAbilities)
+    pUnitWithAbilities->SetChannellingProgress(progress);
+}
 
 float PFApplChannelling::GetScale() const
 {
@@ -79,9 +179,42 @@ unsigned int PFApplChannelling::OnEvent(const PFBaseUnitEvent *pEvent)
   if (!pEvent)
     return PFBaseUnitEventListener::FLAGS_REMOVE;
 
-  if (pEvent->GetType() == NDb::BASEUNITEVENT_CHANNELINGCANCELED)
+  const NDb::EBaseUnitEvent& eventType = pEvent->GetType();
+
+  if (state == STATE_CANCEL || state == STATE_INTERRUPT)
+    return PFBaseUnitEventListener::FLAGS_REMOVE;
+
+  if ((GetDB().interruptEvents & ((int64)1 << eventType)) != 0 || eventType == NDb::BASEUNITEVENT_CHANNELINGCANCELED)
   {
-    state = STATE_CANCEL;
+    switch (eventType)
+    {
+      case NDb::BASEUNITEVENT_ABILITYSTART:
+      case NDb::BASEUNITEVENT_CASTMAGIC:
+      case NDb::BASEUNITEVENT_USETALENT:
+      case NDb::BASEUNITEVENT_USECONSUMABLE:
+      case NDb::BASEUNITEVENT_USEPORTAL:
+        if (pEvent->GetAbility() == pAbility)
+          return 0;
+      case NDb::BASEUNITEVENT_MOVE:
+      case NDb::BASEUNITEVENT_ATTACK:
+      case NDb::BASEUNITEVENT_ASSIGNTARGET:
+      case NDb::BASEUNITEVENT_ISOLATE:
+      case NDb::BASEUNITEVENT_PICKUP:
+      case NDb::BASEUNITEVENT_CHANNELINGCANCELED:
+      case NDb::BASEUNITEVENT_CONSUMABLEOBTAINED:
+        state = STATE_CANCEL;
+        break;
+
+      default:
+        if (pEvent->IsEventHostileTo(GetAbilityOwner()))
+          state = STATE_INTERRUPT;
+        break;
+    }
+
+    if (state != STATE_CANCEL && state != STATE_INTERRUPT)
+      return 0;
+
+    scale = RetrieveParam(GetDB().scaleWhenInterrupted, 1.0f);
     SetOwnerProgress(0.0f);
     return PFBaseUnitEventListener::FLAGS_REMOVE;
   }
@@ -91,7 +224,29 @@ unsigned int PFApplChannelling::OnEvent(const PFBaseUnitEvent *pEvent)
 
 bool PFApplChannelling::IsChannelingTargetValid() const
 {
-  return true;
+  if (!IsValid(pAbility) || !IsValid(pOwner) || !pAbility->GetData())
+    return false;
+
+  Target const& abilityTarget = pAbility->GetTarget();
+  if (!abilityTarget.IsValid())
+    return false;
+
+  if (abilityTarget.IsObject() && !abilityTarget.GetObject()->IsVisibleForFaction(pOwner->GetFaction()))
+    return false;
+
+  if ((pAbility->GetFlags() & NDb::ABILITYFLAGS_CANUSEOUTOFRANGE) != 0)
+    return true;
+
+  float castAllowRange = RetrieveParam(GetAbility()->GetData()->GetDBDesc()->castAllowRange, 0.0f);
+  if (castAllowRange < EPS_VALUE)
+  {
+    float rangeCoeff = 1.0f;
+    if (pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld())
+      rangeCoeff = pOwner->GetWorld()->GetAIWorld()->GetAIParameters().channelingAbilityRangeMultiplier;
+    castAllowRange = pAbility->GetData()->GetUseRange() * rangeCoeff;
+  }
+
+  return pOwner->IsTargetInRange(abilityTarget, castAllowRange);
 }
 
 float PFApplChannelling::GetVariable(const char* varName) const
