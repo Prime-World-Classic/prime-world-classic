@@ -3,6 +3,9 @@
 #if defined(PW_LINUX_NULL_RENDER)
 
 #include "uirenderer.h"
+#include "DBRenderResources.h"
+#include "MaterialSpec.h"
+#include "TextureManager.h"
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 #include "../System/MainFrame.h"
@@ -21,22 +24,129 @@ static const unsigned int LINUX_UI_QUAD_MAX_COUNT = 20000;
 LinuxOpenGLUiRendererStats g_linuxOpenGLUiRendererStats;
 #endif
 
+bool FillLinuxUIRenderMaterialSampler(
+  const NDb::Sampler& dbSampler,
+  Render::Sampler* sampler,
+  void* texturePool)
+{
+  if (!sampler)
+    return false;
+
+  sampler->SetSamplerState(dbSampler.samplerState);
+  sampler->SetTexture(0);
+
+  if (!IsValid(dbSampler.texture))
+    return false;
+
+  const NDb::Texture* texture = dynamic_cast<const NDb::Texture*>(dbSampler.texture.GetPtr());
+  if (!texture || texture->textureFileName.empty())
+    return false;
+
+  const Render::Texture2DRef loadedTexture =
+    Render::LoadTexture2DIntoPool(*texture, false, texturePool);
+  sampler->SetTexture(loadedTexture.GetPtr());
+  return sampler->GetTexture();
+}
+
+class LinuxUIRenderMaterial : public BaseMaterial
+{
+public:
+  LinuxUIRenderMaterial()
+    : BaseMaterial(0, 0, -1)
+    , useDiffuse(NDb::BOOLEANPIN_PRESENT)
+  {
+  }
+
+  void SetDBMaterial(const NDb::BaseUIMaterial* material, void* texturePool)
+  {
+    pDbMaterial = material;
+    diffuseMap.SetTexture(0);
+    useDiffuse = NDb::BOOLEANPIN_NONE;
+
+    if (!material)
+      return;
+
+    Render::Material::FillMaterial(material, texturePool, false);
+
+    if (const NDb::UIBaseMaterial* uiMaterial = dynamic_cast<const NDb::UIBaseMaterial*>(material))
+    {
+      FillLinuxUIRenderMaterialSampler(uiMaterial->DiffuseMap, &diffuseMap, texturePool);
+      useDiffuse = uiMaterial->UseDiffuse;
+      return;
+    }
+
+    if (const NDb::UIButtonMaterial* buttonMaterial = dynamic_cast<const NDb::UIButtonMaterial*>(material))
+    {
+      FillLinuxUIRenderMaterialSampler(buttonMaterial->DiffuseMap, &diffuseMap, texturePool);
+      useDiffuse = buttonMaterial->UseDiffusePin;
+      return;
+    }
+
+    if (const NDb::UIGlassMaterial* glassMaterial = dynamic_cast<const NDb::UIGlassMaterial*>(material))
+    {
+      FillLinuxUIRenderMaterialSampler(glassMaterial->DiffuseMap, &diffuseMap, texturePool);
+      useDiffuse = diffuseMap.GetTexture() ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE;
+    }
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+
+  virtual Render::Sampler* GetDiffuseMap()
+  {
+    return &diffuseMap;
+  }
+
+  virtual const Render::Sampler* GetDiffuseMap() const
+  {
+    return &diffuseMap;
+  }
+
+  bool IsDiffuseEnabled() const
+  {
+    return useDiffuse != NDb::BOOLEANPIN_NONE;
+  }
+
+  void SetUseDiffuse(const NDb::BooleanPin value)
+  {
+    useDiffuse = value;
+  }
+
+  virtual const NDb::Material* GetDBMaterial() const
+  {
+    return pDbMaterial.GetPtr();
+  }
+
+private:
+  NDb::Ptr<NDb::BaseUIMaterial> pDbMaterial;
+  Render::Sampler diffuseMap;
+  NDb::BooleanPin useDiffuse;
+};
+
 struct LinuxQueuedUIQuad
 {
   UIQuad quad;
   Render::Color color;
+  Render::Texture2DRef diffuseTexture;
   bool text;
 
   LinuxQueuedUIQuad()
     : quad()
     , color()
+    , diffuseTexture()
     , text(false)
   {
   }
 
-  LinuxQueuedUIQuad(const UIQuad& _quad, const Render::Color& _color, bool _text)
+  LinuxQueuedUIQuad(
+    const UIQuad& _quad,
+    const Render::Color& _color,
+    const Render::Texture2DRef& _diffuseTexture,
+    bool _text)
     : quad(_quad)
     , color(_color)
+    , diffuseTexture(_diffuseTexture)
     , text(_text)
   {
   }
@@ -62,9 +172,12 @@ unsigned char LimitLinuxUIAlpha(unsigned char alpha, bool text)
   return result < floorValue ? floorValue : result;
 }
 
-Render::Color ResolveLinuxUIFallbackColor(const Render::Color& color, bool text)
+Render::Color ResolveLinuxUIFallbackColor(const Render::Color& color, bool text, bool textured)
 {
   Render::Color result(color);
+  if (textured)
+    return result;
+
   if (!text && result.R > 238 && result.G > 238 && result.B > 238)
   {
     result.R = 82;
@@ -74,6 +187,23 @@ Render::Color ResolveLinuxUIFallbackColor(const Render::Color& color, bool text)
   result.A = LimitLinuxUIAlpha(result.A, text);
   return result;
 }
+
+Render::Texture2DRef ResolveLinuxUITexture(Render::BaseMaterial* renderMaterial)
+{
+  if (!renderMaterial)
+    return Render::Texture2DRef();
+
+  const LinuxUIRenderMaterial* linuxMaterial = dynamic_cast<const LinuxUIRenderMaterial*>(renderMaterial);
+  if (linuxMaterial && !linuxMaterial->IsDiffuseEnabled())
+    return Render::Texture2DRef();
+
+  const Render::Sampler* diffuseSampler = renderMaterial->GetDiffuseMap();
+  if (!diffuseSampler || !diffuseSampler->GetTexture())
+    return Render::Texture2DRef();
+
+  return Render::Texture2DRef(
+    dynamic_cast<Render::Texture2D*>(diffuseSampler->GetTexture().GetPtr()));
+}
 #endif
 
 bool CropLinuxUIQuad(UIQuad* quad, const UIRect& cropRect)
@@ -81,16 +211,42 @@ bool CropLinuxUIQuad(UIQuad* quad, const UIRect& cropRect)
   if (!quad)
     return false;
 
-  UIRect croppedRect(quad->tl.x, quad->tl.y, quad->br.x, quad->br.y);
+  const float originalLeft = quad->tl.x;
+  const float originalTop = quad->tl.y;
+  const float originalRight = quad->br.x;
+  const float originalBottom = quad->br.y;
+  const float originalWidth = originalRight - originalLeft;
+  const float originalHeight = originalBottom - originalTop;
+  if (originalWidth <= 0.0f || originalHeight <= 0.0f)
+    return false;
+
+  UIRect croppedRect(originalLeft, originalTop, originalRight, originalBottom);
   croppedRect.Intersect(cropRect);
 
   if (croppedRect.IsEmpty())
     return false;
 
+  const float u1 = (croppedRect.x1 - originalLeft) / originalWidth;
+  const float u2 = (croppedRect.x2 - originalLeft) / originalWidth;
+  const float v1 = (croppedRect.y1 - originalTop) / originalHeight;
+  const float v2 = (croppedRect.y2 - originalTop) / originalHeight;
+  const CVec2 uv(quad->uv);
+  const CVec2 uvl(quad->uvl);
+  const CVec2 uv2(quad->uv2);
+  const CVec2 uvl2(quad->uvl2);
+
   quad->tl.x = croppedRect.x1;
   quad->tl.y = croppedRect.y1;
   quad->br.x = croppedRect.x2;
   quad->br.y = croppedRect.y2;
+  quad->uv.x = uv.x + (uvl.x - uv.x) * u1;
+  quad->uv.y = uv.y + (uvl.y - uv.y) * v1;
+  quad->uvl.x = uv.x + (uvl.x - uv.x) * u2;
+  quad->uvl.y = uv.y + (uvl.y - uv.y) * v2;
+  quad->uv2.x = uv2.x + (uvl2.x - uv2.x) * u1;
+  quad->uv2.y = uv2.y + (uvl2.y - uv2.y) * v1;
+  quad->uvl2.x = uv2.x + (uvl2.x - uv2.x) * u2;
+  quad->uvl2.y = uv2.y + (uvl2.y - uv2.y) * v2;
   return true;
 }
 
@@ -123,7 +279,7 @@ void BuildLinuxUIQuadPoints(const UIQuad& quad, float points[4][2])
 }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
-// First-pass Linux UI proof: draw queued geometry without material or texture binding.
+// First-pass Linux UI proof: draw queued geometry, using real UI textures when available.
 void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec4& resolutionCoefs)
 {
   if (quads.empty() || !NMainFrame::MakeOpenGLContextCurrent())
@@ -134,13 +290,12 @@ void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec
   if (viewport[2] <= 0 || viewport[3] <= 0)
     return;
 
-  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT);
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT);
 
   glDisable(GL_DEPTH_TEST);
   glDepthMask(GL_FALSE);
   glDisable(GL_CULL_FACE);
   glDisable(GL_LIGHTING);
-  glDisable(GL_TEXTURE_2D);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -156,18 +311,53 @@ void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec
   glPushMatrix();
   glLoadIdentity();
 
-  glBegin(GL_QUADS);
   for (unsigned int i = 0; i < quads.size(); ++i)
   {
     const LinuxQueuedUIQuad& queuedQuad = quads[i];
+    const unsigned int openGLTexture = queuedQuad.diffuseTexture ?
+      queuedQuad.diffuseTexture->GetOpenGLTexture() :
+      0U;
+
+    if (openGLTexture)
+    {
+      glEnable(GL_TEXTURE_2D);
+      glBindTexture(GL_TEXTURE_2D, openGLTexture);
+    }
+    else
+    {
+      if (queuedQuad.diffuseTexture)
+        ++g_linuxOpenGLUiRendererStats.missingOpenGLTexture2DQuads;
+      glBindTexture(GL_TEXTURE_2D, 0);
+      glDisable(GL_TEXTURE_2D);
+    }
+
     float points[4][2];
     BuildLinuxUIQuadPoints(queuedQuad.quad, points);
 
     glColor4ub(queuedQuad.color.R, queuedQuad.color.G, queuedQuad.color.B, queuedQuad.color.A);
-    for (int point = 0; point < 4; ++point)
-      glVertex2f(points[point][0], points[point][1]);
+    glBegin(GL_QUADS);
+    if (openGLTexture)
+    {
+      glTexCoord2f(queuedQuad.quad.uv.x, queuedQuad.quad.uv.y);
+      glVertex2f(points[0][0], points[0][1]);
+      glTexCoord2f(queuedQuad.quad.uvl.x, queuedQuad.quad.uv.y);
+      glVertex2f(points[1][0], points[1][1]);
+      glTexCoord2f(queuedQuad.quad.uvl.x, queuedQuad.quad.uvl.y);
+      glVertex2f(points[2][0], points[2][1]);
+      glTexCoord2f(queuedQuad.quad.uv.x, queuedQuad.quad.uvl.y);
+      glVertex2f(points[3][0], points[3][1]);
+      ++g_linuxOpenGLUiRendererStats.renderedTextured2DQuads;
+    }
+    else
+    {
+      for (int point = 0; point < 4; ++point)
+        glVertex2f(points[point][0], points[point][1]);
+    }
+    glEnd();
   }
-  glEnd();
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
 
   glMatrixMode(GL_MODELVIEW);
   glPopMatrix();
@@ -242,8 +432,7 @@ public:
 
   virtual void AddQuad(UIQuad& quad, Render::BaseMaterial* renderMaterial, const SMaterialParams& params)
   {
-    (void)renderMaterial;
-    QueueQuad(quad, params.color0, false);
+    QueueQuad(quad, params.color0, false, renderMaterial);
   }
 
   virtual void BeginFlashParts(int startFlashElement) { (void)startFlashElement; }
@@ -260,7 +449,7 @@ public:
       return;
 
     quad.ext = false;
-    QueueQuad(quad, params.color0, true);
+    QueueQuad(quad, params.color0, true, 0);
   }
 
   virtual void EndText(Render::BaseMaterial* renderMaterial)
@@ -396,7 +585,7 @@ public:
   }
 
 private:
-  void QueueQuad(UIQuad quad, const Render::Color& color, bool text)
+  void QueueQuad(UIQuad quad, const Render::Color& color, bool text, Render::BaseMaterial* renderMaterial)
   {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     if (!initialized)
@@ -421,16 +610,22 @@ private:
       return;
     }
 
-    const Render::Color queuedColor = ResolveLinuxUIFallbackColor(color, text);
-    quads.push_back(LinuxQueuedUIQuad(quad, queuedColor, text));
+    const Render::Texture2DRef diffuseTexture = text ?
+      Render::Texture2DRef() :
+      ResolveLinuxUITexture(renderMaterial);
+    const Render::Color queuedColor = ResolveLinuxUIFallbackColor(color, text, diffuseTexture);
+    quads.push_back(LinuxQueuedUIQuad(quad, queuedColor, diffuseTexture, text));
     ++g_linuxOpenGLUiRendererStats.queued2DQuads;
     if (text)
       ++g_linuxOpenGLUiRendererStats.queued2DTextQuads;
+    if (diffuseTexture)
+      ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
     queueRendered = false;
 #else
     (void)quad;
     (void)color;
     (void)text;
+    (void)renderMaterial;
 #endif
   }
 
@@ -499,10 +694,15 @@ UIRenderMaterial::UIRenderMaterial(const NDb::BaseUIMaterial* material, void* te
 
 UIRenderMaterial::~UIRenderMaterial()
 {
+  if (renderMaterial)
+    delete renderMaterial;
 }
 
 void UIRenderMaterial::Release()
 {
+  if (renderMaterial)
+    delete renderMaterial;
+
   renderMaterial = 0;
   dbMaterial = 0;
   texturePoolId = 0;
@@ -510,16 +710,33 @@ void UIRenderMaterial::Release()
 
 void UIRenderMaterial::CreateDefaultMaterial()
 {
-  renderMaterial = 0;
+  if (renderMaterial)
+    delete renderMaterial;
+
+  renderMaterial = new LinuxUIRenderMaterial();
   texturePoolId = 0;
 }
 
 void UIRenderMaterial::SetDBMaterial(const NDb::BaseUIMaterial* material, void* texturePool, bool forceReload)
 {
-  (void)forceReload;
+  if ((material == dbMaterial) && !forceReload && renderMaterial)
+    return;
+
   dbMaterial = material;
-  renderMaterial = 0;
   texturePoolId = texturePool;
+
+  if (renderMaterial)
+    delete renderMaterial;
+
+  if (!material)
+  {
+    renderMaterial = 0;
+    return;
+  }
+
+  LinuxUIRenderMaterial* linuxMaterial = new LinuxUIRenderMaterial();
+  linuxMaterial->SetDBMaterial(material, texturePool);
+  renderMaterial = linuxMaterial;
 }
 
 Render::BaseMaterial* UIRenderMaterial::GetRenderMaterial()

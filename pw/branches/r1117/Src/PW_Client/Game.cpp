@@ -63609,6 +63609,10 @@ void AppendRuntimeInputLog(
           << realUiRendererStats.rendered2DQuads << "/"
           << realUiRendererStats.rendered2DTextQuads << "/"
           << realUiRendererStats.rendered3DQuads << "\n";
+  logFile << "  finalRealUiRendererTextured="
+          << realUiRendererStats.queuedTextured2DQuads << "/"
+          << realUiRendererStats.renderedTextured2DQuads << "/"
+          << realUiRendererStats.missingOpenGLTexture2DQuads << "\n";
   logFile << "  finalRealUiRendererCalls="
           << realUiRendererStats.render2DCalls << "/"
           << realUiRendererStats.render3DCalls << "\n";
@@ -67703,13 +67707,16 @@ int main(int argc, char** argv)
   {
     const Render::LinuxOpenGLUiRendererStats& finalRealUiRendererStats =
       Render::GetLinuxOpenGLUiRendererStats();
-    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu\n",
+    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu textured=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu\n",
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DTextQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued3DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.rendered2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.rendered2DTextQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.rendered3DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.queuedTextured2DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedTextured2DQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.missingOpenGLTexture2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.render2DCalls),
       static_cast<unsigned long>(finalRealUiRendererStats.render3DCalls),
       static_cast<unsigned long>(finalRealUiRendererStats.cropRejectedQuads));

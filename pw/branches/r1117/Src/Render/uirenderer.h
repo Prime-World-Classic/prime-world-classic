@@ -179,10 +179,13 @@ struct LinuxOpenGLUiRendererStats
 {
   unsigned int queued2DQuads;
   unsigned int queued2DTextQuads;
+  unsigned int queuedTextured2DQuads;
   unsigned int queued3DQuads;
   unsigned int rendered2DQuads;
   unsigned int rendered2DTextQuads;
+  unsigned int renderedTextured2DQuads;
   unsigned int rendered3DQuads;
+  unsigned int missingOpenGLTexture2DQuads;
   unsigned int cropRejectedQuads;
   unsigned int render2DCalls;
   unsigned int render3DCalls;
@@ -190,10 +193,13 @@ struct LinuxOpenGLUiRendererStats
   LinuxOpenGLUiRendererStats()
     : queued2DQuads(0)
     , queued2DTextQuads(0)
+    , queuedTextured2DQuads(0)
     , queued3DQuads(0)
     , rendered2DQuads(0)
     , rendered2DTextQuads(0)
+    , renderedTextured2DQuads(0)
     , rendered3DQuads(0)
+    , missingOpenGLTexture2DQuads(0)
     , cropRejectedQuads(0)
     , render2DCalls(0)
     , render3DCalls(0)
