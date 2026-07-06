@@ -9,7 +9,9 @@
 #include "PFApplUtils.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
+#include "PFBaseMovingUnit.h"
 #include "PFDispatchFactory.h"
+#include "PFGlyph.h"
 #include "PFTargetSelector.h"
 
 namespace NWorld
@@ -531,11 +533,64 @@ PFApplCreateGlyph::PFApplCreateGlyph(PFApplCreatePars const &cp)
   : Base(cp)
   , originalParentDir(VNULL2)
 {
+  PFBaseMovingUnit* pBaseMovingUnit = dynamic_cast<PFBaseMovingUnit*>(cp.target.GetUnit().GetPtr());
+  if (pBaseMovingUnit)
+    originalParentDir = pBaseMovingUnit->GetMoveDirection();
 }
 
 bool PFApplCreateGlyph::Start()
 {
   PFBaseApplicator::Start();
+  if (!IsValid(pOwner) || !GetDB().glyph)
+    return true;
+
+  Target const& targ = GetTarget();
+  CVec3 position = VNULL3;
+  if (targ.IsPosition())
+  {
+    position = targ.GetPosition();
+  }
+  else if (targ.GetObject())
+  {
+    position = targ.GetObject()->GetPosition();
+  }
+  else
+  {
+    return true;
+  }
+
+  const NDb::CreateGlyphApplicator* pCreateGlyphApplicator = &GetDBAppl<NDb::CreateGlyphApplicator>();
+  if (pCreateGlyphApplicator->angle < 0.0f && pCreateGlyphApplicator->distance < 0.0f && pCreateGlyphApplicator->radius < 0.0f)
+  {
+    position.x = pCreateGlyphApplicator->absolutePosition.x;
+    position.y = pCreateGlyphApplicator->absolutePosition.y;
+  }
+  else
+  {
+    PFBaseMovingUnit* pBaseMovingUnit = dynamic_cast<PFBaseMovingUnit*>(pOwner.GetPtr());
+    if (pBaseMovingUnit)
+    {
+      float angle = ToRadian(pCreateGlyphApplicator->angle);
+      if (pCreateGlyphApplicator->angleIsRelative)
+      {
+        float originalAngle = acos(originalParentDir.x);
+        if (originalParentDir.y < 0.0f)
+          originalAngle = FP_2PI - originalAngle;
+        angle += originalAngle;
+      }
+
+      const CVec2 newPos = (CVec2(cos(angle), sin(angle)) * pCreateGlyphApplicator->distance) + CVec2(position.x, position.y);
+      CVec2 foundPos;
+      if (pBaseMovingUnit->FindFreePlaceForDrop(newPos, pCreateGlyphApplicator->radius, foundPos, 2.0f, true, false))
+      {
+        position.x = foundPos.x;
+        position.y = foundPos.y;
+      }
+    }
+  }
+
+  CPtr<PFGlyph> pGlyph = new PFGlyph(pOwner->GetWorld(), GetDB().glyph, position);
+  pGlyph->SetScriptName(GetDB().scriptName);
   return true;
 }
 
