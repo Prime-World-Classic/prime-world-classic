@@ -43818,16 +43818,31 @@ bool HandleLinuxVisibleLobbyMouse(
       continue;
     }
 
-    if (HitLinuxLobbyBaseRect(baseX, baseY, 418, 849, 192, 59) ||
-        HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 418, 849, 192, 59))
     {
-      RecordLinuxVisibleLobbyMouseHit(runtime, "primary-button", message.x, message.y, baseX, baseY);
+      RecordLinuxVisibleLobbyMouseHit(runtime, "create-game-button", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PRIMARY;
       changed = ActivateLinuxVisibleMenuAction(
         mapCatalog,
         mapBrowserState,
         heroCatalog,
         localMatchPreview,
+        runtime
+      ) || changed;
+      if (consumedNavigation)
+      {
+        *consumedNavigation = true;
+      }
+      continue;
+    }
+
+    if (HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
+    {
+      RecordLinuxVisibleLobbyMouseHit(runtime, "start-session-button", message.x, message.y, baseX, baseY);
+      changed = ActivateLinuxLobbySelectedGame(
+        heroCatalog,
+        *localMatchPreview,
+        uiRootPreview,
         runtime
       ) || changed;
       if (consumedNavigation)
