@@ -355,6 +355,7 @@ public:
   void NotifyItemTransferForLinuxBootstrap(PFBaseHero* from, PFBaseHero* to, const NDb::Consumable* dbItem);
   void NotifyFlagRaisedForLinuxBootstrap(PFBaseUnit* raiser);
   void NotifyFlagDestroyedForLinuxBootstrap(PFBaseUnit* destroyer);
+  TriggerMarkerHandler* GetTriggerMarkerHandlerForLinuxBootstrap() const { return triggerMarkerHandler; }
 #endif
   FogOfWar          *GetFogOfWar() const {return warFog;}
   PFWorldNatureMap  *GetNatureMap()     { return pNatureMap; }

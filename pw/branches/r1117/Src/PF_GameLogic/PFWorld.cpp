@@ -360,6 +360,8 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
     pResolver = new CollisionResolver(this);
   if (!pAIContainer)
     pAIContainer = new PFAIContainer(this, 0);
+  if (pAIContainer && IsValid(advMapDescription) && IsValid(advMapDescription->map))
+    pAIContainer->SetScriptAreas(advMapDescription->map->scriptAreas);
   if (pAIWorld)
     pAIWorld->SetMapData(advMapDescription, advMapSettings);
 

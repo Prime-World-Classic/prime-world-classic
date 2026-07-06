@@ -48,6 +48,7 @@
 #include "PF_GameLogic/CollisionResolver.h"
 #include "PF_GameLogic/HeroActions.h"
 #include "PF_GameLogic/TileMap.h"
+#include "PF_GameLogic/TriggerMarkerHandler.h"
 #include "PF_GameLogic/WarFog.h"
 #include "PF_GameLogic/WebLauncher.h"
 #include "Core/CommandSerializer.h"
@@ -64379,6 +64380,8 @@ void AppendRuntimeInputLog(
     NWorld::PFWorld* finalWorld =
       dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr());
     NWorld::PFStatistics* finalStatistics = finalWorld ? finalWorld->GetStatistics() : 0;
+    NWorld::TriggerMarkerHandler* finalTriggerMarker =
+      finalWorld ? finalWorld->GetTriggerMarkerHandlerForLinuxBootstrap() : 0;
     logFile << "  finalLinuxFlagStatistics=raise="
             << (finalStatistics ? finalStatistics->GetLinuxFlagRaisedCalls() : -1) << "/"
             << (finalStatistics ? finalStatistics->GetLinuxFlagRaisedHeroCalls() : -1)
@@ -64388,6 +64391,31 @@ void AppendRuntimeInputLog(
             << " last="
             << (finalStatistics ? finalStatistics->GetLinuxLastFlagRaisedObjectId() : -1) << "/"
             << (finalStatistics ? finalStatistics->GetLinuxLastFlagDestroyedObjectId() : -1)
+            << "\n";
+    logFile << "  finalLinuxTriggerMarker=steps="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxStepCalls() : 0)
+            << " bindings="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerMarkerBindings() : 0)
+            << " states="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerMarkerStates() : 0)
+            << " triggerAreas="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerScriptAreasFound() : 0)
+            << " markerAreas="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxMarkerScriptAreasFound() : 0)
+            << " fog="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxFogFillCalls() : 0) << "/"
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxFogClearCalls() : 0)
+            << " changed="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxFogVisibilityChanges() : 0)
+            << " last="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTeam() : -1) << "/"
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTileX() : -1) << ","
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTileY() : -1) << "/"
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityBefore() : -1) << "->"
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityAfter() : -1)
+            << " revision="
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogRevisionBefore() : 0) << "->"
+            << (finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogRevisionAfter() : 0)
             << "\n";
   }
 #endif
@@ -67629,6 +67657,8 @@ int main(int argc, char** argv)
     NWorld::PFWorld* finalWorld =
       dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr());
     NWorld::PFStatistics* finalStatistics = finalWorld ? finalWorld->GetStatistics() : 0;
+    NWorld::TriggerMarkerHandler* finalTriggerMarker =
+      finalWorld ? finalWorld->GetTriggerMarkerHandlerForLinuxBootstrap() : 0;
     fprintf(stdout, "Final Linux flag statistics: raise=%d/%d destroyed=%d/%d last=%d/%d\n",
       finalStatistics ? finalStatistics->GetLinuxFlagRaisedCalls() : -1,
       finalStatistics ? finalStatistics->GetLinuxFlagRaisedHeroCalls() : -1,
@@ -67636,6 +67666,22 @@ int main(int argc, char** argv)
       finalStatistics ? finalStatistics->GetLinuxFlagDestroyedHeroCalls() : -1,
       finalStatistics ? finalStatistics->GetLinuxLastFlagRaisedObjectId() : -1,
       finalStatistics ? finalStatistics->GetLinuxLastFlagDestroyedObjectId() : -1);
+    fprintf(stdout, "Final Linux trigger marker: steps=%u bindings=%u states=%u triggerAreas=%u markerAreas=%u fog=%u/%u changed=%u last=%d/%d,%d/%d->%d revision=%u->%u\n",
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxStepCalls() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerMarkerBindings() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerMarkerStates() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxTriggerScriptAreasFound() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxMarkerScriptAreasFound() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxFogFillCalls() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxFogClearCalls() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxFogVisibilityChanges() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTeam() : -1,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTileX() : -1,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityTileY() : -1,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityBefore() : -1,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogVisibilityAfter() : -1,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogRevisionBefore() : 0,
+      finalTriggerMarker ? finalTriggerMarker->GetLinuxLastFogRevisionAfter() : 0);
   }
 #endif
   fprintf(stdout, "Final Linux creep combat: prepared=%s active=%s damage=%s sustained=%s hits=%lu killed=%s attacker=%d target=%d hp=%.0f->%.0f range=%.2f dist=%.1f->%.1f pos=%.1f,%.1f->%.1f,%.1f wait=%d samples=%lu\n",

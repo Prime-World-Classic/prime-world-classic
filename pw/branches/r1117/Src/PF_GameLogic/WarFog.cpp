@@ -693,6 +693,8 @@ void FogOfWar::FillVisibilityMap( const SVector & pos, const int visRad, const i
   bool isPositionInsideTheMap = ( x >= 0 ) && ( x < visMap.GetSizeX() ) && ( y >= 0 ) && ( y < visMap.GetSizeY() );
   NI_VERIFY( isPositionInsideTheMap, NStr::StrFmt( "Unit at (%6.2f, %6.2f) is not inside the map!", x, y ), return; );
 
+  ++revision;
+
   // Mark center
   if( unmark )
     visMap[x][y]--;
