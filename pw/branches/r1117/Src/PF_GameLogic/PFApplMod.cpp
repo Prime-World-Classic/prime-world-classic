@@ -8,9 +8,13 @@
 #include "DBUnit.h"
 #include "PFBaseUnit.h"
 #include "PFBaseAttackData.h"
+#include "PFCreep.h"
 #include "PFDispatchFactory.h"
 #include "PFHero.h"
+#include "PFMaleHero.h"
+#include "PFNeutralCreep.h"
 #include "PFPredefinedUnitVariables.h"
+#include "PFSummoned.h"
 #include "PFTalent.h"
 #include "PFTargetSelector.h"
 #include "libdb/ClonedPtr.h"
@@ -612,9 +616,125 @@ void PFApplChangeBaseAttack::Disable()
   PFApplBuff::Disable();
 }
 
-bool PFApplCreepBehaviourChange::IsStackableWithTheSameType() const { return false; }
-void PFApplCreepBehaviourChange::Enable() { PFApplBuff::Enable(); }
-void PFApplCreepBehaviourChange::Disable() { pBehaviour = 0; oldTargetingParams = 0; PFApplBuff::Disable(); }
+bool PFApplCreepBehaviourChange::IsStackableWithTheSameType() const
+{
+  return (GetDB().behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_CHANGEPERMANENTLY) == 0;
+}
+
+void PFApplCreepBehaviourChange::Enable()
+{
+  PFApplBuff::Enable();
+
+  PFBaseCreep* const pCreep = dynamic_cast<PFBaseCreep*>(pReceiver.GetPtr());
+  if (!pCreep)
+    return;
+
+  const NDb::CreepBehaviourChangeApplicator& db = GetDB();
+  if ((db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_DISABLEBEHAVIOUR) != 0 && pCreep->HasBehaviour())
+  {
+    pBehaviour = pCreep->Behaviour();
+    if (pBehaviour)
+      pBehaviour->Disable();
+    return;
+  }
+
+  CPtr<PFBaseUnit> pAbilityOwner = GetAbilityOwner();
+  CPtr<PFBaseMaleHero> pHero = dynamic_cast<PFBaseMaleHero*>(pAbilityOwner.GetPtr());
+  if (!IsValid(pHero) || pHero->IsDead())
+    return;
+
+  CObj<PFSummonBehaviour> pSummonBehaviour;
+  const NDb::SummonBehaviourBase* const pSummonBehaviourBase = db.behaviour;
+  const NDb::SummonBehaviourCommon* const pSummonBehaviourCommon = dynamic_cast<const NDb::SummonBehaviourCommon*>(pSummonBehaviourBase);
+  const float lifeTime = RetrieveParam(db.lifeTime, 0.0f);
+
+  if ((db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_DUMMYBEHAVIOUR) == 0)
+  {
+    const NDb::SummonType summonType = (db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_PRIMARYSUMMON) != 0
+      ? NDb::SUMMONTYPE_PRIMARY
+      : NDb::SUMMONTYPE_SECONDARY;
+
+    int maxSummonCount = 1;
+    if (pSummonBehaviourCommon)
+      maxSummonCount = RetrieveParam(pSummonBehaviourCommon->maxCount, 1);
+
+    if (pHero->GetSummonsCount(summonType, db.summonGroupName) == maxSummonCount)
+      pHero->RemoveSummons(1, summonType, db.summonGroupName);
+
+    pHero->SetMaxAllowedSummons(summonType, db.summonGroupName, maxSummonCount);
+    pSummonBehaviour = PFSummonedUnitAIBehaviour::Create(pCreep, pAbilityOwner, pSummonBehaviourBase, summonType, lifeTime, PFSummonedUnitBehaviour::BEHAVIOURFLAGS_NONE);
+  }
+  else
+  {
+    pSummonBehaviour = PFSummonedUnitBehaviour::Create(pCreep, pAbilityOwner, pSummonBehaviourBase, lifeTime, PFSummonedUnitBehaviour::BEHAVIOURFLAGS_NONE);
+  }
+
+  if (!pSummonBehaviour)
+    return;
+
+  pSummonBehaviour->SetGroupName(db.summonGroupName);
+  pBehaviour = pSummonBehaviour;
+
+  if ((db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_PRIMARYSUMMON) != 0)
+  {
+    if (PFNeutralCreep* const pNeutralCreep = dynamic_cast<PFNeutralCreep*>(pReceiver.GetPtr()))
+    {
+      pNeutralCreep->DettachFromSpawner();
+      pNeutralCreep->DisableLevelUps();
+    }
+  }
+
+  if ((db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_CHANGEFACTION) != 0 && IsValid(pAbilityOwner))
+  {
+    if (pBehaviour->GetFaction() != pAbilityOwner->GetFaction())
+      pAbilityOwner->CancelAllDispatchFromUnit(pCreep);
+    pBehaviour->SetFaction(pAbilityOwner->GetFaction());
+  }
+
+  if ((db.behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_CHANGETYPE2SUMMON) != 0)
+    pBehaviour->SetUnitType(NDb::UNITTYPE_SUMMON);
+
+  pCreep->AddBehaviourOnTop(pBehaviour);
+
+  if (pSummonBehaviourCommon)
+  {
+    if (pSummonBehaviourCommon->targetingParams)
+    {
+      oldTargetingParams = pCreep->GetTargetingParamsPtr();
+      pCreep->OverrideTargetingParams(pSummonBehaviourCommon->targetingParams);
+    }
+
+    pSummonBehaviour->SetLashRange(pSummonBehaviourCommon->lashRange(pOwner, pCreep, this, 15.0f));
+    pSummonBehaviour->SetResponseRange(pSummonBehaviourCommon->responseRange);
+    pSummonBehaviour->SetResponseTime(pSummonBehaviourCommon->responseTime);
+  }
+
+  CreateAndActivateApplicators(db.applicators, pAbility, Target(CPtr<PFBaseUnit>(pCreep)), this);
+}
+
+void PFApplCreepBehaviourChange::Disable()
+{
+  PFBaseCreep* const pCreep = dynamic_cast<PFBaseCreep*>(pReceiver.GetPtr());
+  if (pCreep)
+  {
+    if ((GetDB().behaviourChangeFlags & NDb::BEHAVIOURCHANGEFLAGS_DISABLEBEHAVIOUR) != 0)
+    {
+      if (pBehaviour)
+        pBehaviour->Enable();
+    }
+    else if (pBehaviour)
+    {
+      pCreep->RemoveBehaviour(pBehaviour);
+    }
+
+    if (oldTargetingParams)
+      pCreep->OverrideTargetingParams(oldTargetingParams);
+  }
+
+  pBehaviour = 0;
+  oldTargetingParams = 0;
+  PFApplBuff::Disable();
+}
 
 float PFApplDamageReflect::OnDamage(CPtr<PFBaseUnit>, float, float damage4Apply, int) { return damage4Apply * amountInPersent * 0.01f; }
 void PFApplOnDamage::Enable() { PFApplBuff::Enable(); if (IsValid(pReceiver)) pReceiver->AddEventListener(this); }
