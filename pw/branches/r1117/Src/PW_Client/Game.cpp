@@ -4877,6 +4877,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
+  bool visibleLoadingProgressDrawn;
+  int visibleLoadingProgressPercent;
+  size_t visibleLoadingProgressSamples;
+  std::string visibleLoadingProgressSource;
   bool visibleLoadingChatDrawn;
   size_t visibleLoadingChatChannelsDrawn;
   size_t visibleLoadingChatMessagesDrawn;
@@ -6145,6 +6149,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
+      visibleLoadingProgressDrawn(false),
+      visibleLoadingProgressPercent(0),
+      visibleLoadingProgressSamples(0),
+      visibleLoadingProgressSource("none"),
       visibleLoadingChatDrawn(false),
       visibleLoadingChatChannelsDrawn(0),
       visibleLoadingChatMessagesDrawn(0),
@@ -59420,6 +59428,102 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   }
 }
 
+void DrawLinuxLoadingProgressStripOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLoadingProgressDrawn = false;
+    runtime->visibleLoadingProgressPercent = 0;
+    runtime->visibleLoadingProgressSamples = 0;
+    runtime->visibleLoadingProgressSource = "none";
+  }
+  if (!overlay)
+  {
+    return;
+  }
+
+  float progress = 0.0f;
+  size_t samples = 0;
+  std::string source = "none";
+  const Game::LoadingFlashInterface* flashInterface =
+    ResolveLinuxLoadingOverlayFlashInterface(renderContext);
+  if (flashInterface && !flashInterface->GetHeroes().empty())
+  {
+    const vector<Game::LoadingFlashHeroState>& heroes = flashInterface->GetHeroes();
+    float totalProgress = 0.0f;
+    for (size_t i = 0; i < heroes.size(); ++i)
+    {
+      totalProgress += ClampLinuxDynamicMarkerPercent(heroes[i].loadProgress / 100.0f);
+      ++samples;
+    }
+    if (samples > 0)
+    {
+      progress = totalProgress / static_cast<float>(samples);
+      source = "live-loading-flash";
+    }
+  }
+
+  const LinuxUiRootPreview* uiRootPreview = renderContext.uiRootPreview;
+  if (samples == 0 && uiRootPreview && uiRootPreview->runtimeLoadingScreenReady)
+  {
+    progress = ClampLinuxDynamicMarkerPercent(uiRootPreview->runtimeLoadingProgress);
+    samples = uiRootPreview->runtimeLoadingPlayerEntryCount;
+    source = uiRootPreview->runtimeLoadingFlashSource.empty() ?
+      "runtime-loading" :
+      uiRootPreview->runtimeLoadingFlashSource;
+  }
+
+  if (source == "none")
+  {
+    return;
+  }
+
+  progress = ClampLinuxDynamicMarkerPercent(progress);
+  const int percent = std::max(0, std::min(100, static_cast<int>(progress * 100.0f + 0.5f)));
+  const int width = renderContext.width;
+  const int panelW = std::min(std::max(720, width - 160), std::max(1, width - 48));
+  const int panelX = std::max(12, (width - panelW) / 2);
+  const int panelY = 42;
+  const int panelH = 116;
+  const int padding = 12;
+  const int barX = panelX + padding;
+  const int barW = std::max(1, panelW - padding * 2);
+  const int barH = 7;
+  const int barY = panelY + panelH - padding + 2;
+
+  SetOpenGlColor(10, 15, 18, 220);
+  DrawOpenGlRect(barX, barY, barW, barH);
+  const int fillW = std::max(1, static_cast<int>(static_cast<float>(barW) * progress + 0.5f));
+  SetOpenGlColor(203, 169, 82, 238);
+  DrawOpenGlRect(barX + 1, barY + 1, std::max(1, fillW - 2), std::max(1, barH - 2));
+  SetOpenGlColor(124, 139, 143, 214);
+  DrawOpenGlBorderRect(barX, barY, barW, barH);
+
+  const std::string percentText = NStr::StrFmt("%d%%", percent);
+  SetOpenGlColor(236, 226, 190, 236);
+  DrawOpenGlTextInBox(
+    overlay,
+    barX,
+    barY - std::max(15, ResolveOpenGlTextLineHeight(overlay) + 1),
+    barW,
+    std::max(14, ResolveOpenGlTextLineHeight(overlay) + 1),
+    percentText,
+    LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  if (runtime)
+  {
+    runtime->visibleLoadingProgressDrawn = true;
+    runtime->visibleLoadingProgressPercent = percent;
+    runtime->visibleLoadingProgressSamples = samples;
+    runtime->visibleLoadingProgressSource = source;
+  }
+}
+
 void ResolveLinuxLoadingChatColor(
   uint channelColor,
   unsigned char* red,
@@ -60687,6 +60791,7 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
   if (loadingActive)
   {
     DrawLinuxLoadingInfoOverlay(renderContext);
+    DrawLinuxLoadingProgressStripOverlay(renderContext);
     DrawLinuxLoadingChatOverlay(renderContext);
     DrawLinuxLoadingRosterOverlay(renderContext);
   }
@@ -64054,6 +64159,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingInfoLinesDrawn << "\n";
   logFile << "  finalVisibleLoadingInfoIcons="
           << screenRuntime.visibleLoadingInfoIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingProgressDrawn="
+          << (screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingProgressPercent="
+          << screenRuntime.visibleLoadingProgressPercent << "\n";
+  logFile << "  finalVisibleLoadingProgressSamples="
+          << screenRuntime.visibleLoadingProgressSamples << "\n";
+  logFile << "  finalVisibleLoadingProgressSource="
+          << (screenRuntime.visibleLoadingProgressSource.empty() ? "none" : screenRuntime.visibleLoadingProgressSource) << "\n";
   logFile << "  finalVisibleLoadingChatDrawn="
           << (screenRuntime.visibleLoadingChatDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingChatChannels="
@@ -68193,6 +68306,11 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoIconsDrawn));
+  fprintf(stdout, "Final visible loading progress: drawn=%s percent=%d samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingProgressPercent,
+    static_cast<unsigned long>(screenRuntime.visibleLoadingProgressSamples),
+    screenRuntime.visibleLoadingProgressSource.empty() ? "none" : screenRuntime.visibleLoadingProgressSource.c_str());
   fprintf(stdout, "Final visible loading chat: drawn=%s channels=%lu messages=%lu\n",
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
