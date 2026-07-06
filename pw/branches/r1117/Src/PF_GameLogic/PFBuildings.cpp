@@ -121,7 +121,17 @@ NDb::Consumable const* PFShop::GetConsumableDesc(int item) const
     return 0;
   return pDesc->shop->items[item];
 }
-bool PFShop::CanBuyConsumable(PFBaseHero const*, int itemId) const { return GetConsumableDesc(itemId) != 0; }
+bool PFShop::CanBuyConsumable(PFBaseHero const* pHero, int itemId) const
+{
+  if (!IsValid(pHero) || !IsHeroNear(pHero))
+    return false;
+
+  const NDb::Consumable* pConsumable = GetConsumableDesc(itemId);
+  if (!pConsumable || !pHero->CanTakeConsumable(pConsumable, 1))
+    return false;
+
+  return pHero->GetConsumableCost(pConsumable) <= pHero->GetGold();
+}
 void PFShop::Reset() { PFBuilding::Reset(); }
 
 PFSimpleBuilding::PFSimpleBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject) : PFBuilding(pWorld, dbObject)
