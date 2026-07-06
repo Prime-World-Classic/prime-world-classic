@@ -4658,6 +4658,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyGameSelectedRowsDrawn;
   size_t visibleLobbyGameOpenRowsDrawn;
   size_t visibleLobbyGameFullRowsDrawn;
+  size_t visibleLobbyGameIndexLabelsDrawn;
   bool visibleLobbyGameScrollBarDrawn;
   size_t visibleLobbyGameScrollTotalRows;
   size_t visibleLobbyGameScrollVisibleRows;
@@ -5821,6 +5822,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyGameSelectedRowsDrawn(0),
       visibleLobbyGameOpenRowsDrawn(0),
       visibleLobbyGameFullRowsDrawn(0),
+      visibleLobbyGameIndexLabelsDrawn(0),
       visibleLobbyGameScrollBarDrawn(false),
       visibleLobbyGameScrollTotalRows(0),
       visibleLobbyGameScrollVisibleRows(0),
@@ -53612,6 +53614,7 @@ size_t DrawLinuxLobbyGameRows(
   size_t* selectedRowsDrawn,
   size_t* openRowsDrawn,
   size_t* fullRowsDrawn,
+  size_t* indexLabelsDrawn,
   bool* scrollBarDrawn,
   size_t* scrollTotalRows,
   size_t* scrollVisibleRows,
@@ -53629,6 +53632,10 @@ size_t DrawLinuxLobbyGameRows(
   if (fullRowsDrawn)
   {
     *fullRowsDrawn = 0;
+  }
+  if (indexLabelsDrawn)
+  {
+    *indexLabelsDrawn = 0;
   }
   if (scrollBarDrawn)
   {
@@ -53745,6 +53752,11 @@ size_t DrawLinuxLobbyGameRows(
     const std::string sessionId = emptyList ?
       std::string("") :
       NStr::StrFmt("# %d", gameInfo ? static_cast<int>(gameInfo->gameId) : 1001 + static_cast<int>(gameRow));
+    const std::string rowIndexText = NStr::StrFmt(
+      "%lu/%lu",
+      static_cast<unsigned long>(gameRow + 1),
+      static_cast<unsigned long>(rowCount)
+    );
     const std::string slots = emptyList ?
       "Refresh the list" :
       NStr::StrFmt(
@@ -53766,6 +53778,34 @@ size_t DrawLinuxLobbyGameRows(
       LINUX_OPENGL_TEXT_VALIGN_CENTER,
       false
     );
+
+    if (!emptyList && rowVisibleH > layout.H(28))
+    {
+      const int indexX = rowX + layout.W(452);
+      const int indexY = rowY + layout.H(7);
+      const int indexW = layout.W(56);
+      const int indexH = layout.H(18);
+      SetOpenGlColor(15, 22, 27, selected ? 190 : 150);
+      DrawOpenGlRect(indexX, indexY, indexW, indexH);
+      SetOpenGlColor(selected ? 233 : 145, selected ? 208 : 162, selected ? 130 : 166, 225);
+      DrawOpenGlBorderRect(indexX, indexY, indexW, indexH);
+      SetOpenGlColor(selected ? 255 : 205, selected ? 235 : 214, selected ? 180 : 208, 238);
+      DrawOpenGlTextInBox(
+        overlay,
+        indexX + layout.W(2),
+        indexY,
+        std::max(1, indexW - layout.W(4)),
+        indexH,
+        rowIndexText,
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      if (indexLabelsDrawn)
+      {
+        ++(*indexLabelsDrawn);
+      }
+    }
 
     if (emptyList)
     {
@@ -54062,6 +54102,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   size_t selectedGameRowsDrawn = 0;
   size_t openGameRowsDrawn = 0;
   size_t fullGameRowsDrawn = 0;
+  size_t gameIndexLabelsDrawn = 0;
   bool gameScrollBarDrawn = false;
   size_t gameScrollTotalRows = 0;
   size_t gameScrollVisibleRows = 0;
@@ -54077,6 +54118,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       &selectedGameRowsDrawn,
       &openGameRowsDrawn,
       &fullGameRowsDrawn,
+      &gameIndexLabelsDrawn,
       &gameScrollBarDrawn,
       &gameScrollTotalRows,
       &gameScrollVisibleRows,
@@ -54181,6 +54223,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyGameSelectedRowsDrawn = selectedGameRowsDrawn;
     runtime->visibleLobbyGameOpenRowsDrawn = openGameRowsDrawn;
     runtime->visibleLobbyGameFullRowsDrawn = fullGameRowsDrawn;
+    runtime->visibleLobbyGameIndexLabelsDrawn = gameIndexLabelsDrawn;
     runtime->visibleLobbyGameScrollBarDrawn = gameScrollBarDrawn;
     runtime->visibleLobbyGameScrollTotalRows = gameScrollTotalRows;
     runtime->visibleLobbyGameScrollVisibleRows = gameScrollVisibleRows;
@@ -60699,6 +60742,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyGameOpenRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameFullRows="
           << screenRuntime.visibleLobbyGameFullRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyGameIndexLabels="
+          << screenRuntime.visibleLobbyGameIndexLabelsDrawn << "\n";
   logFile << "  finalVisibleLobbyGameScrollBar="
           << (screenRuntime.visibleLobbyGameScrollBarDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyGameScrollRows="
@@ -64628,7 +64673,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -64646,6 +64691,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameOpenRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameFullRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyGameIndexLabelsDrawn),
     screenRuntime.visibleLobbyGameScrollBarDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollTotalRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyGameScrollVisibleRows),
