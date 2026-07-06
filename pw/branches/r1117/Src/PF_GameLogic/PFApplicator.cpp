@@ -7,7 +7,9 @@
 #include "PFAbilityData.h"
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
+#include "PFAIWorld.h"
 #include "PFWorld.h"
+#include "PFWorldNatureMap.h"
 #include "PFTalent.h"
 #include "TileMap.h"
 
@@ -18,6 +20,19 @@ namespace
 {
 const string g_emptyApplicatorName;
 NDb::Ptr<NDb::BaseApplicator> g_emptyApplicatorDb;
+
+const PFBaseApplicator* GoUpByApplicatorHierarchy(const PFBaseApplicator* pStart, int levelsUp = 100000)
+{
+  int count = levelsUp;
+  const PFBaseApplicator* pAppl = pStart;
+  while (pAppl && IsValid(pAppl->GetParentAppl()) && count > 0)
+  {
+    pAppl = pAppl->GetParentAppl().GetPtr();
+    --count;
+  }
+
+  return pAppl ? pAppl : pStart;
+}
 }
 
 #ifndef _SHIPPING
@@ -38,13 +53,40 @@ float PFBaseApplicator::GetDist2Target() const { return pOwner ? (target.Acquire
 float PFBaseApplicator::GetManaCost() const { return GetAbilityData() ? GetAbilityData()->GetManaCost() : 0.0f; }
 float PFBaseApplicator::GetPreparedness() const { return GetAbilityData() ? GetAbilityData()->GetPreparedness() : 0.0f; }
 int PFBaseApplicator::GetAbilityType() const { return GetAbilityData() ? GetAbilityData()->GetType() : 0; }
-int PFBaseApplicator::GetScrollLevel() const { return 0; }
+int PFBaseApplicator::GetScrollLevel() const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  PFAIWorld* pAIWorld = pWorld ? pWorld->GetAIWorld() : 0;
+  return pAIWorld && pOwner ? pAIWorld->GetAveragePriestessLvl(pOwner->GetFaction()) : 0;
+}
 bool PFBaseApplicator::IsNight() const { return pOwner && pOwner->GetWorld() ? pOwner->GetWorld()->IsNight() : false; }
 float PFBaseApplicator::GetParentScale() const { return IsValid(pParent) ? pParent->GetScale() : 1.0f; }
-bool PFBaseApplicator::Roll(float probability) const { return probability >= 1.0f; }
-int PFBaseApplicator::GetRandom(int from, int to) const { return (from + to) / 2; }
-bool PFBaseApplicator::GetSmartRoll(float probability, int, int, const IUnitFormulaPars*, const IUnitFormulaPars*) const { return Roll(probability); }
-int PFBaseApplicator::GetSmartRandom(int, float, const IUnitFormulaPars*, const IUnitFormulaPars*) const { return 0; }
+bool PFBaseApplicator::Roll(float probability) const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  return pWorld ? pWorld->GetRndGen()->Roll(probability) : probability >= 1.0f;
+}
+int PFBaseApplicator::GetRandom(int from, int to) const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  return pWorld ? pWorld->GetRndGen()->Next(from, to) : (from + to) / 2;
+}
+bool PFBaseApplicator::GetSmartRoll(float probability, int maxFailReps, int maxSuccessReps, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond) const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  const NDb::Ptr<NDb::BaseApplicator>& dbBase = GetDBBase();
+  return pWorld && dbBase && pFirst && pSecond
+    ? pWorld->GetSmartRndGen()->Roll(probability, maxFailReps, maxSuccessReps, pFirst, pSecond, dbBase->GetDBID().GetHashKey())
+    : Roll(probability);
+}
+int PFBaseApplicator::GetSmartRandom(int outcomesNumber, float probDecrement, const IUnitFormulaPars* pFirst, const IUnitFormulaPars* pSecond) const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  const NDb::Ptr<NDb::BaseApplicator>& dbBase = GetDBBase();
+  return pWorld && dbBase && pFirst && pSecond && outcomesNumber > 1
+    ? pWorld->GetSmartRndGen()->Random(outcomesNumber, probDecrement, pFirst, pSecond, dbBase->GetDBID().GetHashKey())
+    : 0;
+}
 
 float PFBaseApplicator::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const
 {
@@ -60,22 +102,48 @@ NDb::UnitConstant const* PFBaseApplicator::GetConstant(const char *name) const
   return GetAbilityData() ? GetAbilityData()->GetConstant(name) : 0;
 }
 
-int PFBaseApplicator::GetTerrainType() const { return 0; }
+int PFBaseApplicator::GetTerrainType() const
+{
+  PFWorld* pWorld = pOwner ? pOwner->GetWorld() : const_cast<PFWorld*>(GetWorld());
+  PFWorldNatureMap* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  if (!pNatureMap)
+    return 0;
+
+  CVec3 pos = AcquireApplicationPosition();
+  return pNatureMap->GetNatureInPoint(pos.x, pos.y);
+}
 
 IUnitFormulaPars const* PFBaseApplicator::GetObject(char const* objName) const
 {
   if (strcmp(objName, "Target") == 0)
-    return target.IsUnit() ? target.GetUnit() : 0;
-  if (strcmp(objName, "Receiver") == 0)
-    return pReceiver.GetPtr();
-  if (strcmp(objName, "Owner") == 0)
-    return GetAbilityOwner();
-  return 0;
+    return target.IsObjectValid(true) ? target.GetObject() : 0;
+  if (strcmp(objName, "AbilityTarget") == 0)
+  {
+    Target const& targ = GoUpByApplicatorHierarchy(this)->GetTarget();
+    return targ.IsObjectValid(true) ? targ.GetObject() : 0;
+  }
+  if (strcmp(objName, "InitialTarget") == 0 && pAbility)
+  {
+    AbilityTarget const& targ = pAbility->GetTarget();
+    return targ.IsObjectValid(true) ? targ.GetObject() : 0;
+  }
+
+  return pReceiver.GetPtr();
 }
 
-float PFBaseApplicator::GetAbilityScale(bool, float statValue, EAbilityScaleMode, float, float, bool) const { return statValue; }
-int PFBaseApplicator::GetAlternativeTargetIndex() const { return 0; }
-int PFBaseApplicator::MakeSpellTargetFactionFlags(NDb::ESpellTarget spellTarget) const { return static_cast<int>(spellTarget); }
+float PFBaseApplicator::GetAbilityScale(bool isDamage, float statValue, EAbilityScaleMode abScaleMode, float valueLeft, float valueRight, bool bRound) const
+{
+  const PFAbilityData* pData = GetAbilityData();
+  return pData ? pData->GetAbilityScale(isDamage, statValue, abScaleMode, valueLeft, valueRight, bRound) : statValue;
+}
+int PFBaseApplicator::GetAlternativeTargetIndex() const
+{
+  return pAbility && pAbility->GetTarget().GetDBAlternativeTarget() ? pAbility->GetTarget().GetDBAlternativeTarget()->index : -1;
+}
+int PFBaseApplicator::MakeSpellTargetFactionFlags(NDb::ESpellTarget spellTarget) const
+{
+  return pOwner ? NWorld::MakeSpellTargetFactionFlags(*pOwner, spellTarget) : static_cast<int>(spellTarget);
+}
 
 PFBaseApplicator::PFBaseApplicator(PFApplCreatePars const &cp)
   : PFWorldObjectBase(cp.pAbility ? cp.pAbility->GetWorld() : (IsValid(cp.pWorld) ? cp.pWorld.GetPtr() : 0), 0)
@@ -298,9 +366,19 @@ string const& PFBaseApplicator::GetApplicatorName() const
   return GetDBBase() ? GetDBBase()->formulaName : g_emptyApplicatorName;
 }
 
-float PFBaseApplicator::GetTerrainPart(int) const { return 0.0f; }
-int PFBaseApplicator::GetTerrianTypeUnderCursor() const { return 0; }
-int PFBaseApplicator::GetNatureTypeInPos(CVec2) const { return 0; }
+float PFBaseApplicator::GetTerrainPart(int faction) const
+{
+  PFWorld const* pWorld = GetWorld();
+  PFWorldNatureMap const* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  return pNatureMap ? pNatureMap->GetNaturePercent((NDb::EFaction)faction) : 0.0f;
+}
+int PFBaseApplicator::GetTerrianTypeUnderCursor() const { return GetTerrainType(); }
+int PFBaseApplicator::GetNatureTypeInPos(CVec2 pos) const
+{
+  PFWorld const* pWorld = GetWorld();
+  PFWorldNatureMap const* pNatureMap = pWorld ? pWorld->GetNatureMap() : 0;
+  return pNatureMap ? pNatureMap->GetNatureInPoint(pos.x, pos.y) : 0;
+}
 bool PFBaseApplicator::CheckUpgradePerCastPerTarget() const { return true; }
 int PFBaseApplicator::GetActivatedWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetActivatedWithinKit() : 0; }
 int PFBaseApplicator::GetTalentsWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetTalentsWithinKit() : 0; }
