@@ -166,25 +166,96 @@ PFNeutralCreep::PFNeutralCreep(PFWorld* pWorld, const NDb::AdvMapCreep& creepObj
   , specialAwarding(specialAwarding_)
   , positionBySpawner(placement.pos.AsVec2D())
 {
-  (void)waypoints;
+  initialPlacement.pos = GetPosition();
+
+  InitializeSummonBehavior();
+  if (GetBaseMoveSpeed() == 0.0f)
+    positionBySpawner = GetPosition().AsVec2D();
+  else
+    positionBySpawner = placement.pos.AsVec2D();
+
+  CObj<PFBaseBehaviour> behaviour(new PFNeutralCreepBehaviour(this, initialPlacement, waypoints));
+  AddBehaviourOnTop(behaviour);
+  nativeBehaviour = behaviour;
+
   if (useSpawnerWalkLimit && IsValid(spawner))
   {
     if (NDb::AdvMapNeutralCreepSpawner const* pSpawnerDesc = spawner->GetDBDesc())
       walkLimit = pSpawnerDesc->limitWalkDistance;
   }
-  InitializeSummonBehavior();
 }
 
 void PFNeutralCreep::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBaseCreep::OnUnitDie(pKiller, flags, pDamageDesc); DettachFromSpawner(); }
 void PFNeutralCreep::DettachFromSpawner() { if (attachedToSpawner && IsValid(spawner)) spawner->DropCreep(this); attachedToSpawner = false; }
 void PFNeutralCreep::DisableLevelUps() { levelUpInfo.timeLevelUpInterval = 0.0f; levelUpInfo.timeLevelUpIncrement = 0; }
 void PFNeutralCreep::OnAfterReset() { PFBaseCreep::OnAfterReset(); }
-void PFNeutralCreep::ChangeFaction(NDb::EFaction newFaction) { PFBaseCreep::ChangeFaction(newFaction); }
-void PFNeutralCreep::RotateIfNeeded() { needRotate = false; }
+void PFNeutralCreep::ChangeFaction(NDb::EFaction newFaction)
+{
+  if (GetFaction() == newFaction)
+    return;
+
+  PFBaseCreep::ChangeFaction(newFaction);
+  if (nativeBehaviour && nativeBehaviour == Behaviour())
+    nativeBehaviour->SetFaction(newFaction);
+}
+
+void PFNeutralCreep::RotateIfNeeded()
+{
+  if (GetNeedRotate() && !IsMoving())
+    SetNeedRotate(false);
+}
+
 const NDb::DBID* PFNeutralCreep::GetSpawnerDBID() const { return GetSpawner() && GetSpawner()->GetDBDesc() ? &(GetSpawner()->GetDBDesc()->GetDBID()) : 0; }
-const vector<CVec2>* PFNeutralCreep::GetWaypoints() const { static vector<CVec2> empty; return &empty; }
-bool PFNeutralCreep::SetCreepBehavior(const string& behavior, const vector<string>& params) { (void)behavior; (void)params; return false; }
-bool PFNeutralCreep::IsAggressiveNeutralCreep() const { return GetSpawner() && GetSpawner()->GetDBDesc() && GetSpawner()->GetDBDesc()->isAggressive; }
+const vector<CVec2>* PFNeutralCreep::GetWaypoints() const
+{
+  PFNeutralCreepBehaviour* behaviour = dynamic_cast<PFNeutralCreepBehaviour*>(Behaviour());
+  if (!behaviour)
+    return 0;
+  return &(behaviour->WayPoints());
+}
+
+bool PFNeutralCreep::SetCreepBehavior(const string& behavior, const vector<string>& params)
+{
+  CObj<PFBaseBehaviour> newBehaviour = 0;
+  if (behavior == "MoveTo")
+    newBehaviour = PFNeutralCreepMoveToPointBehaviour::CreateWithParams(this, params);
+  else if (behavior == "PathMove")
+    newBehaviour = PFNeutralCreepMoveByPathBehaviour::CreateWithParams(this, params);
+  else if (behavior == "Chase")
+    newBehaviour = PFNeutralCreepChaseBehaviour::CreateWithParams(this, params);
+
+  if (!newBehaviour)
+    return false;
+
+  if (IsValid(nativeBehaviour))
+  {
+    newBehaviour->SetFaction(nativeBehaviour->GetFaction());
+    newBehaviour->SetUnitType(nativeBehaviour->GetUnitType());
+    if (nativeBehaviour == Behaviour())
+    {
+      RemoveBehaviour(nativeBehaviour.GetPtr());
+      AddBehaviourOnTop(newBehaviour);
+    }
+    else
+    {
+      behaviourList.insertAfter(newBehaviour, nativeBehaviour);
+      behaviourList.remove(nativeBehaviour);
+      nativeBehaviour->OnStop();
+    }
+  }
+  else
+  {
+    AddBehaviourOnTop(newBehaviour);
+  }
+
+  nativeBehaviour = newBehaviour;
+  return true;
+}
+
+bool PFNeutralCreep::IsAggressiveNeutralCreep() const
+{
+  return nativeBehaviour == Behaviour() && GetSpawner() && GetSpawner()->GetDBDesc() && GetSpawner()->GetDBDesc()->isAggressive;
+}
 
 } // namespace NWorld
 

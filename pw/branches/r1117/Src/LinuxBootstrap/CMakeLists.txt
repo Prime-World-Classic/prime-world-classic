@@ -170,6 +170,7 @@ add_executable(
   ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFNeutralCreepBehavior.cpp
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
@@ -567,6 +568,7 @@ add_library(
   ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFNeutralCreepBehavior.cpp
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFPlayer.cpp
@@ -698,6 +700,7 @@ add_library(
   ../PF_GameLogic/PFMinigamePlace.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFNeutralCreepBehavior.cpp
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFRoadFlagpole.cpp
   ../PF_GameLogic/PFScriptedFlagpole.cpp
@@ -1124,6 +1127,7 @@ set_source_files_properties(
   ../PF_GameLogic/MapDescriptionLoader.cpp
   ../PF_GameLogic/PFMaleHero.cpp
   ../PF_GameLogic/PFNeutralCreep.cpp
+  ../PF_GameLogic/PFNeutralCreepBehavior.cpp
   ../PF_GameLogic/PFPet.cpp
   ../PF_GameLogic/PFPickupable.cpp
   ../PF_GameLogic/PFPlayer.cpp

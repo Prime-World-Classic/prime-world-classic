@@ -3,7 +3,9 @@
 #include "PFNeutralCreepBehavior.h"
 #include "PFCommonCreep.h"
 #include "TileMap.h"
+#ifndef VISUAL_CUTTED
 #include "PFClientBaseMovingUnit.h"
+#endif
 #include "PFAIContainer.h"
 
 #include "Scripts/FuncCallMacroses.h"
@@ -338,8 +340,10 @@ namespace NWorld
       if( !unsummoned && timerMovingStacked > movingTimerBlock )
       {
         pUnit->AddFlag(NDb::UNITFLAG_ISOLATED);
+#ifndef VISUAL_CUTTED
         if ( pUnit->ClientObject() )
           pUnit->ClientObject()->OnFakeUnsummon();
+#endif
         unsummoned = true;
       }
     }
