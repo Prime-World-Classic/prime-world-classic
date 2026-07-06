@@ -5,6 +5,46 @@
 namespace Render
 {
 
+namespace
+{
+
+// Linux OpenGL bootstrap reads draw data back from these byte buffers.
+bool EnsureBackingStorage(nstl::vector<unsigned char>& storage, int size)
+{
+  if (size <= 0)
+    return false;
+
+  if (storage.size() < size)
+    storage.resize(size);
+
+  return !storage.empty();
+}
+
+void CopyBackingStorage(nstl::vector<unsigned char>& storage, int size, void const *pData)
+{
+  if (!pData || !EnsureBackingStorage(storage, size))
+    return;
+
+  memcpy(&storage[0], pData, size);
+}
+
+IDirect3DVertexBuffer9* CreateVertexBackingBuffer(int size)
+{
+  IDirect3DVertexBuffer9* buffer = new IDirect3DVertexBuffer9();
+  EnsureBackingStorage(buffer->storage, size);
+  return buffer;
+}
+
+IDirect3DIndexBuffer9* CreateIndexBackingBuffer(int size, D3DFORMAT format)
+{
+  IDirect3DIndexBuffer9* buffer = new IDirect3DIndexBuffer9();
+  buffer->format = format;
+  EnsureBackingStorage(buffer->storage, size);
+  return buffer;
+}
+
+} // anonymous namespace
+
 void SetErrorMessage(HRESULT hr, const nstl::wstring &msg)
 {
   (void)hr;
@@ -46,11 +86,8 @@ void GetD3DPoolAndUsagesParamaters(DWORD& usage, D3DPOOL& pool, PoolType poolTyp
 DXVertexBufferRef CreateVB(int size, PoolType type, void const *pData)
 {
   (void)type;
-  IDirect3DVertexBuffer9* buffer = new IDirect3DVertexBuffer9();
-  if (size > 0)
-    buffer->storage.resize(size);
-  if (pData && size > 0)
-    memcpy(&buffer->storage[0], pData, size);
+  IDirect3DVertexBuffer9* buffer = CreateVertexBackingBuffer(size);
+  CopyBackingStorage(buffer->storage, size, pData);
   return buffer;
 }
 
@@ -66,32 +103,30 @@ void* LockVB(IDirect3DVertexBuffer9 *pBuff, unsigned int flags, int size)
 
 void FillVB(IDirect3DVertexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags)
 {
-  (void)pBuff;
-  (void)size;
-  (void)pData;
-  (void)lockFlags;
+  if (!pBuff || !pData || size <= 0)
+    return;
+
+  void *pDst = LockVB(pBuff, lockFlags, size);
+  if (pDst)
+  {
+    memcpy(pDst, pData, size);
+    pBuff->Unlock();
+  }
 }
 
 DXIndexBufferRef CreateIB(int size, PoolType poolType, UINT const *pData)
 {
   (void)poolType;
-  IDirect3DIndexBuffer9* buffer = new IDirect3DIndexBuffer9();
-  if (size > 0)
-    buffer->storage.resize(size);
-  if (pData && size > 0)
-    memcpy(&buffer->storage[0], pData, size);
+  IDirect3DIndexBuffer9* buffer = CreateIndexBackingBuffer(size, D3DFMT_INDEX32);
+  CopyBackingStorage(buffer->storage, size, pData);
   return buffer;
 }
 
 DXIndexBufferRef CreateIB16(int size, PoolType poolType, WORD const *pData)
 {
   (void)poolType;
-  IDirect3DIndexBuffer9* buffer = new IDirect3DIndexBuffer9();
-  buffer->format = D3DFMT_INDEX16;
-  if (size > 0)
-    buffer->storage.resize(size);
-  if (pData && size > 0)
-    memcpy(&buffer->storage[0], pData, size);
+  IDirect3DIndexBuffer9* buffer = CreateIndexBackingBuffer(size, D3DFMT_INDEX16);
+  CopyBackingStorage(buffer->storage, size, pData);
   return buffer;
 }
 
@@ -107,10 +142,15 @@ unsigned int* LockIB(IDirect3DIndexBuffer9 *pBuff, unsigned int flags, int size)
 
 void FillIB(IDirect3DIndexBuffer9 *pBuff, int size, void const *pData, unsigned int lockFlags)
 {
-  (void)pBuff;
-  (void)size;
-  (void)pData;
-  (void)lockFlags;
+  if (!pBuff || !pData || size <= 0)
+    return;
+
+  void *pDst = LockIB(pBuff, lockFlags, size);
+  if (pDst)
+  {
+    memcpy(pDst, pData, size);
+    pBuff->Unlock();
+  }
 }
 
 } // namespace Render
@@ -118,28 +158,36 @@ void FillIB(IDirect3DIndexBuffer9 *pBuff, int size, void const *pData, unsigned 
 bool Render::DXVertexBufferDynamicRef::Resize(int _size, bool nullOnLostDevice)
 {
   (void)nullOnLostDevice;
-  pDXBuffer = 0;
-  size = _size > 0 ? static_cast<UINT>(_size) : 0;
-  return false;
+  pDXBuffer.Attach(_size > 0 ? Render::CreateVertexBackingBuffer(_size) : 0);
+  size = pDXBuffer ? static_cast<UINT>(_size) : 0;
+  return Get(pDXBuffer) != 0;
 }
 
 void Render::DXVertexBufferDynamicRef::OnDeviceReset()
 {
-  pDXBuffer = 0;
+  if (size == 0)
+    return;
+
+  pDXBuffer.Attach(Render::CreateVertexBackingBuffer(size));
 }
 
 template<UINT elemSize>
 bool Render::DXIndexBufferDynamicRef_<elemSize>::Resize(int _size)
 {
-  pDXBuffer = 0;
-  size = _size > 0 ? static_cast<UINT>(_size) : 0;
-  return false;
+  const D3DFORMAT format = elemSize == 16 ? D3DFMT_INDEX16 : D3DFMT_INDEX32;
+  pDXBuffer.Attach(_size > 0 ? Render::CreateIndexBackingBuffer(_size, format) : 0);
+  size = pDXBuffer ? static_cast<UINT>(_size) : 0;
+  return Get(pDXBuffer) != 0;
 }
 
 template<UINT elemSize>
 void Render::DXIndexBufferDynamicRef_<elemSize>::OnDeviceReset()
 {
-  pDXBuffer = 0;
+  if (size == 0)
+    return;
+
+  const D3DFORMAT format = elemSize == 16 ? D3DFMT_INDEX16 : D3DFMT_INDEX32;
+  pDXBuffer.Attach(Render::CreateIndexBackingBuffer(size, format));
 }
 
 template bool Render::DXIndexBufferDynamicRef_<32>::Resize(int _size);
