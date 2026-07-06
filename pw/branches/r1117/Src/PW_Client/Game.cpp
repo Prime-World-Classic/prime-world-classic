@@ -15263,14 +15263,6 @@ void RecordLinuxRendererSmartTextureBindStats(
 }
 #endif
 
-void RecordLinuxRendererManualFallbackTextureBind(LinuxRendererMaterialSlotStats* stats)
-{
-  if (stats)
-  {
-    ++stats->manualFallbackBinds;
-  }
-}
-
 void CopyLinuxPreviewMaterialReferences(
   const std::vector<NDb::Ptr<NDb::Material> >& materialReferences,
   NDb::SkinPartBase* skinPart)
@@ -50843,7 +50835,6 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
   Render::SmartRenderer::ResetTriangleAndDipCount();
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
 
-  bool textureEnabled = false;
   size_t totalPayloads = 0;
   size_t totalBatches = 0;
   for (size_t payloadIndex = 0; payloadIndex < payloads.size(); ++payloadIndex)
@@ -50894,22 +50885,6 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
         Render::SmartRenderer::UnBindTexture(0u);
 #endif
         RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, materialStats);
-        if (diffuseTexture)
-        {
-          if (!textureEnabled)
-          {
-            glEnable(GL_TEXTURE_2D);
-            textureEnabled = true;
-          }
-          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
-          RecordLinuxRendererManualFallbackTextureBind(materialStats);
-        }
-        else if (textureEnabled)
-        {
-          glBindTexture(GL_TEXTURE_2D, 0);
-          glDisable(GL_TEXTURE_2D);
-          textureEnabled = false;
-        }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
@@ -50934,11 +50909,6 @@ size_t DrawLinuxMapRendererStaticMeshPayloadList(
     }
   }
 
-  if (textureEnabled)
-  {
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-  }
   Render::SmartRenderer::UnBindTexture(0u);
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
 
@@ -52590,7 +52560,6 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
   LinuxWindowOverlay* overlay,
   const LinuxSelectedHeroDbPreview* heroPreview,
   const Render::SkeletonWrapper* skeletonWrapper,
-  bool* textureEnabled,
   LinuxRendererMaterialSlotStats* materialStats,
   size_t* drawnPayloads,
   size_t* renderedTriangles
@@ -52605,7 +52574,7 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
     *renderedTriangles = 0;
   }
 
-  if (!overlay || !heroPreview || !textureEnabled)
+  if (!overlay || !heroPreview)
   {
     return 0;
   }
@@ -52671,22 +52640,6 @@ size_t DrawLinuxHeroRendererStaticMeshPayloads(
         Render::SmartRenderer::UnBindTexture(0u);
 #endif
         RecordLinuxRendererMaterialSlotStats(batch->pMaterial, textureIndex, materialStats);
-        if (diffuseTexture)
-        {
-          if (!*textureEnabled)
-          {
-            glEnable(GL_TEXTURE_2D);
-            *textureEnabled = true;
-          }
-          glBindTexture(GL_TEXTURE_2D, diffuseTexture);
-          RecordLinuxRendererManualFallbackTextureBind(materialStats);
-        }
-        else if (*textureEnabled)
-        {
-          glBindTexture(GL_TEXTURE_2D, 0);
-          glDisable(GL_TEXTURE_2D);
-          *textureEnabled = false;
-        }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
         const Render::SmartRenderer::OpenGLTextureBindStats bindStatsBefore =
@@ -52862,7 +52815,6 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
   Render::SmartRenderer::ResetTriangleAndDipCount();
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(true);
 
-  bool textureEnabled = false;
   size_t drawnBatches = 0;
   LinuxRendererMaterialSlotStats materialStats;
   for (int priority = 0; priority < NDb::MATERIALPRIORITY_COUNT; ++priority)
@@ -52900,18 +52852,12 @@ bool DrawLinuxHeroRendererSkeletalMeshPreview(
     overlay,
     heroPreview,
     skeletalMesh.GetSkeletonWrapper(),
-    &textureEnabled,
     &staticMaterialStats,
     &staticPayloads,
     &staticTriangles);
   drawnBatches += staticBatches;
 
   Render::SmartRenderer::SetOpenGLImmediateMeshDrawingEnabled(false);
-  if (textureEnabled)
-  {
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisable(GL_TEXTURE_2D);
-  }
 
   unsigned int renderedTriangles = 0;
   unsigned int renderedDips = 0;
