@@ -8,6 +8,8 @@
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
 #include "PFAIWorld.h"
+#include "PFApplInstant.h"
+#include "PFApplMod.h"
 #include "PFWorld.h"
 #include "PFWorldNatureMap.h"
 #include "PFTalent.h"
@@ -425,7 +427,45 @@ bool PFBaseApplicator::CheckUpgradePerCastPerTarget() const
 }
 int PFBaseApplicator::GetActivatedWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetActivatedWithinKit() : 0; }
 int PFBaseApplicator::GetTalentsWithinKit() const { return GetAbilityData() ? GetAbilityData()->GetTalentsWithinKit() : 0; }
-float PFBaseApplicator::GetStatusDispellPriority(const IUnitFormulaPars*, bool) const { return -1.0f; }
+float PFBaseApplicator::GetStatusDispellPriority(const IUnitFormulaPars* pUnitToCheck, bool returnDuration) const
+{
+  const PFBaseUnit* pUnit = dynamic_cast<const PFBaseUnit*>(pUnitToCheck);
+  if (!pUnit)
+    return -1.0f;
+
+  const int factionFlags = pOwner
+    ? pOwner->GetOppositeFactionFlags()
+    : ((1 << NDb::FACTION_BURN) | (1 << NDb::FACTION_FREEZE) | (1 << NDb::FACTION_NEUTRAL));
+
+  vector<PFBaseApplicator*> statuses;
+  PFApplDispell::SearchStatus2Dispell(vector<const PFBaseUnit*>(1, pUnit), factionFlags, GetTarget(), statuses);
+
+  if (statuses.empty())
+    return -1.0f;
+
+  if (!returnDuration)
+    return (float)(static_cast<const PFApplStatus*>(statuses[0])->GetDB().dispellPriority);
+
+  float maxDuration = 0.0f;
+  for (int i = 0, count = statuses.size(); i < count; ++i)
+  {
+    const PFApplStatus* pStatus = static_cast<const PFApplStatus*>(statuses[i]);
+    const float lifetime = pStatus->GetLifetime();
+    if (lifetime == -1.0f)
+    {
+      maxDuration = 1.0f;
+      break;
+    }
+    else if (lifetime < 0.1f)
+    {
+      continue;
+    }
+
+    maxDuration = max(pStatus->GetDuration() / lifetime, maxDuration);
+  }
+
+  return maxDuration;
+}
 bool PFBaseApplicator::CheckEffectEnabled(const PF_Core::BasicEffect&) { return true; }
 void PFBaseApplicator::OnAfterReset() { PFWorldObjectBase::OnAfterReset(); }
 
