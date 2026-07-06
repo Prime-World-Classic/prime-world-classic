@@ -153,7 +153,11 @@ void PFAbilityData::Update(float dt, bool fullUpdate)
     }
   }
 }
-float PFAbilityData::GetScale() const { return 1.0f; }
+float PFAbilityData::GetScale() const
+{
+  // Ability scale modifiers affect gameplay formulas even without client visuals.
+  return GetModifiedValue(1.0f, NDb::ABILITYMODMODE_SCALE);
+}
 bool PFAbilityData::FindAutoTarget(Target & target)
 {
   if (!pAutoTargetSelector)
