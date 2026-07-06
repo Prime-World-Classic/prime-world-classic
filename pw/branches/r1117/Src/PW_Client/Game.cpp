@@ -880,6 +880,9 @@ enum LinuxVisibleMenuAction
   LINUX_VISIBLE_MENU_ACTION_PRIMARY = 0,
   LINUX_VISIBLE_MENU_ACTION_START_SESSION,
   LINUX_VISIBLE_MENU_ACTION_REFRESH,
+  LINUX_VISIBLE_MENU_ACTION_JOIN_MODE,
+  LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX,
+  LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT,
   LINUX_VISIBLE_MENU_ACTION_MAP,
   LINUX_VISIBLE_MENU_ACTION_HERO,
   LINUX_VISIBLE_MENU_ACTION_DIAGNOSTICS,
@@ -30923,6 +30926,15 @@ std::string DescribeLinuxVisibleMenuAction(
     case LINUX_VISIBLE_MENU_ACTION_REFRESH:
       return "Refresh games";
 
+    case LINUX_VISIBLE_MENU_ACTION_JOIN_MODE:
+      return "Join mode";
+
+    case LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX:
+      return "Developer sex";
+
+    case LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT:
+      return "Player count";
+
     case LINUX_VISIBLE_MENU_ACTION_MAP:
       return "Cycle map";
 
@@ -41035,6 +41047,23 @@ bool ActivateLinuxLobbySelectedGame(
   LinuxBootstrapScreenRuntime* runtime
 );
 
+bool StepLinuxLobbyJoinMode(
+  LinuxBootstrapScreenRuntime* runtime,
+  int delta
+);
+
+bool StepLinuxLobbyPlayerCount(
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxHeroCatalog& heroCatalog,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  int delta,
+  const char* source
+);
+
+bool ToggleLinuxLobbyDeveloperSex(LinuxBootstrapScreenRuntime* runtime);
+
 bool ActivateLinuxVisibleMenuAction(
   const LinuxMapCatalog& mapCatalog,
   LinuxMapBrowserState* mapBrowserState,
@@ -41055,6 +41084,7 @@ bool ActivateLinuxVisibleMenuAction(
   }
 
   bool changed = false;
+  bool activationRecorded = false;
   switch (runtime->visibleMenuSelectedAction)
   {
     case LINUX_VISIBLE_MENU_ACTION_PRIMARY:
@@ -41108,6 +41138,7 @@ bool ActivateLinuxVisibleMenuAction(
         uiRootPreview,
         runtime
       );
+      activationRecorded = changed;
       break;
 
     case LINUX_VISIBLE_MENU_ACTION_REFRESH:
@@ -41117,6 +41148,32 @@ bool ActivateLinuxVisibleMenuAction(
       }
       runtime->visibleMenuLastAction = "refresh-games";
       changed = true;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_JOIN_MODE:
+      changed = StepLinuxLobbyJoinMode(runtime, 1);
+      activationRecorded = changed;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX:
+      changed = ToggleLinuxLobbyDeveloperSex(runtime);
+      activationRecorded = changed;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT:
+      if (mapBrowserState)
+      {
+        changed = StepLinuxLobbyPlayerCount(
+          mapCatalog,
+          *mapBrowserState,
+          heroCatalog,
+          localMatchPreview,
+          runtime,
+          1,
+          "visible-menu-activate-player-count"
+        );
+        activationRecorded = changed;
+      }
       break;
 
     case LINUX_VISIBLE_MENU_ACTION_MAP:
@@ -41155,7 +41212,7 @@ bool ActivateLinuxVisibleMenuAction(
       break;
   }
 
-  if (changed)
+  if (changed && !activationRecorded)
   {
     ++runtime->visibleMenuActivatedCount;
     UpdateLinuxVisibleMenuRuntime(runtime);
@@ -41241,6 +41298,97 @@ bool HandleLinuxVisibleMenuHotkeys(
           *consumedNavigation = true;
         }
         break;
+
+      case XK_Left:
+      case XK_minus:
+      case XK_Right:
+      case XK_plus:
+      {
+        const int delta =
+          message.nKey == XK_Right || message.nKey == XK_plus ? 1 : -1;
+        bool handledAdjustment = true;
+        bool adjusted = false;
+        switch (runtime->visibleMenuSelectedAction)
+        {
+          case LINUX_VISIBLE_MENU_ACTION_JOIN_MODE:
+            adjusted = StepLinuxLobbyJoinMode(runtime, delta);
+            break;
+
+          case LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX:
+            adjusted = ToggleLinuxLobbyDeveloperSex(runtime);
+            break;
+
+          case LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT:
+            if (mapBrowserState)
+            {
+              adjusted = StepLinuxLobbyPlayerCount(
+                mapCatalog,
+                *mapBrowserState,
+                heroCatalog,
+                localMatchPreview,
+                runtime,
+                delta,
+                "visible-menu-key-player-count"
+              );
+            }
+            break;
+
+          case LINUX_VISIBLE_MENU_ACTION_MAP:
+            if (mapBrowserState)
+            {
+              const size_t previousIndex = mapBrowserState->selectedIndex;
+              MoveMapSelection(mapCatalog, mapBrowserState, delta, "visible-menu-key-map");
+              adjusted = previousIndex != mapBrowserState->selectedIndex;
+              if (adjusted)
+              {
+                RegenerateLocalMatchPreview(
+                  heroCatalog,
+                  mapCatalog,
+                  *mapBrowserState,
+                  localMatchPreview,
+                  "visible-menu-key-map"
+                );
+              }
+              runtime->visibleMenuLastAction = adjusted ? "select-map-key" : "focus-map-key";
+            }
+            break;
+
+          case LINUX_VISIBLE_MENU_ACTION_HERO:
+            if (mapBrowserState)
+            {
+              StepSelectedSlotHero(
+                heroCatalog,
+                localMatchPreview,
+                delta,
+                "visible-menu-key-hero"
+              );
+              RegenerateLocalMatchPreview(
+                heroCatalog,
+                mapCatalog,
+                *mapBrowserState,
+                localMatchPreview,
+                "visible-menu-key-hero"
+              );
+              runtime->visibleMenuLastAction = "select-hero-key";
+              adjusted = true;
+            }
+            break;
+
+          default:
+            handledAdjustment = false;
+            break;
+        }
+
+        if (handledAdjustment)
+        {
+          changed = adjusted || changed;
+          if (consumedNavigation)
+          {
+            *consumedNavigation = true;
+          }
+        }
+        break;
+      }
 
       case XK_Return:
       case XK_KP_Enter:
@@ -44087,6 +44235,78 @@ bool SetLinuxLobbyJoinMode(
   return changed;
 }
 
+bool StepLinuxLobbyJoinMode(
+  LinuxBootstrapScreenRuntime* runtime,
+  int delta
+)
+{
+  if (!runtime || delta == 0)
+  {
+    return false;
+  }
+
+  int nextMode = static_cast<int>(runtime->visibleLobbyJoinMode) + delta;
+  const int modeCount = static_cast<int>(LINUX_LOBBY_JOIN_MODE_COUNT);
+  while (nextMode < 0)
+  {
+    nextMode += modeCount;
+  }
+  while (nextMode >= modeCount)
+  {
+    nextMode -= modeCount;
+  }
+
+  return SetLinuxLobbyJoinMode(runtime, static_cast<size_t>(nextMode));
+}
+
+bool StepLinuxLobbyPlayerCount(
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  const LinuxHeroCatalog& heroCatalog,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  int delta,
+  const char* source
+)
+{
+  if (!localMatchPreview || delta == 0)
+  {
+    return false;
+  }
+
+  const size_t previousTeamSize = localMatchPreview->requestedTeamSize;
+  AdjustRequestedTeamSize(
+    mapCatalog,
+    mapBrowserState,
+    localMatchPreview,
+    delta,
+    source ? source : "visible-menu-key-player-count"
+  );
+  const bool changed = previousTeamSize != localMatchPreview->requestedTeamSize;
+  if (changed)
+  {
+    RegenerateLocalMatchPreview(
+      heroCatalog,
+      mapCatalog,
+      mapBrowserState,
+      localMatchPreview,
+      source ? source : "visible-menu-key-player-count"
+    );
+  }
+
+  if (runtime)
+  {
+    runtime->visibleMenuLastAction = changed ? "set-player-count" : "focus-player-count";
+    if (changed)
+    {
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+    }
+  }
+
+  return changed;
+}
+
 bool SelectLinuxLobbyGameRowAt(
   const LinuxUiRootPreview& uiRootPreview,
   LinuxBootstrapScreenRuntime* runtime,
@@ -44379,6 +44599,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 975, 14, 289, 53))
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "developer-sex", message.x, message.y, baseX, baseY);
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX;
       changed = ToggleLinuxLobbyDeveloperSex(runtime) || changed;
       if (consumedNavigation)
       {
@@ -44390,6 +44611,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 679, 399, 561, 57))
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "join-mode", message.x, message.y, baseX, baseY);
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_JOIN_MODE;
       size_t joinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
       if (baseX >= 1053)
       {
@@ -44501,6 +44723,7 @@ bool HandleLinuxVisibleLobbyMouse(
     if (HitLinuxLobbyBaseRect(baseX, baseY, 69, 883, 247, 32))
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "player-count", message.x, message.y, baseX, baseY);
+      runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT;
       const bool playerCountChanged = SetLinuxLobbyPlayerCountFromSliderAt(
         mapCatalog,
         *mapBrowserState,
@@ -52778,6 +53001,15 @@ const char* ResolveLinuxLobbyKeyboardFocusSurface(size_t selectedAction)
     case LINUX_VISIBLE_MENU_ACTION_REFRESH:
       return "refresh-button";
 
+    case LINUX_VISIBLE_MENU_ACTION_JOIN_MODE:
+      return "join-mode";
+
+    case LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX:
+      return "developer-sex";
+
+    case LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT:
+      return "player-count";
+
     case LINUX_VISIBLE_MENU_ACTION_MAP:
       return "map-list";
 
@@ -52822,6 +53054,27 @@ bool DrawLinuxLobbyKeyboardFocus(
       y = 935;
       width = 324;
       height = 59;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_JOIN_MODE:
+      x = 679;
+      y = 399;
+      width = 561;
+      height = 57;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX:
+      x = 975;
+      y = 14;
+      width = 289;
+      height = 53;
+      break;
+
+    case LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT:
+      x = 69;
+      y = 878;
+      width = 330;
+      height = 40;
       break;
 
     case LINUX_VISIBLE_MENU_ACTION_MAP:
@@ -55123,8 +55376,12 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const bool normalJoinHovered = joinModeHovered && hoverBaseX < 866;
   const bool reconnectJoinHovered = joinModeHovered && hoverBaseX >= 866 && hoverBaseX < 1053;
   const bool spectateJoinHovered = joinModeHovered && hoverBaseX >= 1053;
-  const bool developerSexHovered = hoverSurface == "developer-sex";
-  const bool playerCountHovered = hoverSurface == "player-count";
+  const bool developerSexSelected =
+    runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX;
+  const bool playerCountSelected =
+    runtime && runtime->visibleMenuSelectedAction == LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT;
+  const bool developerSexHovered = hoverSurface == "developer-sex" || developerSexSelected;
+  const bool playerCountHovered = hoverSurface == "player-count" || playerCountSelected;
 
   DrawLinuxLobbyPanel(overlay, layout, 679, 399, 561, 57);
   ++lobbyPanelsDrawn;
