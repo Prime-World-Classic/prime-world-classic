@@ -4647,6 +4647,7 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLobbyMapPveRowsDrawn;
   size_t visibleLobbyMapTutorialRowsDrawn;
   size_t visibleLobbyMapOtherRowsDrawn;
+  size_t visibleLobbyMapIndexLabelsDrawn;
   bool visibleLobbyMapScrollBarDrawn;
   size_t visibleLobbyMapScrollTotalRows;
   size_t visibleLobbyMapScrollVisibleRows;
@@ -5809,6 +5810,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyMapPveRowsDrawn(0),
       visibleLobbyMapTutorialRowsDrawn(0),
       visibleLobbyMapOtherRowsDrawn(0),
+      visibleLobbyMapIndexLabelsDrawn(0),
       visibleLobbyMapScrollBarDrawn(false),
       visibleLobbyMapScrollTotalRows(0),
       visibleLobbyMapScrollVisibleRows(0),
@@ -53309,6 +53311,7 @@ size_t DrawLinuxLobbyMapRows(
   size_t* pveRowsDrawn,
   size_t* tutorialRowsDrawn,
   size_t* otherRowsDrawn,
+  size_t* indexLabelsDrawn,
   bool* scrollBarDrawn,
   size_t* scrollTotalRows,
   size_t* scrollVisibleRows,
@@ -53334,6 +53337,10 @@ size_t DrawLinuxLobbyMapRows(
   if (otherRowsDrawn)
   {
     *otherRowsDrawn = 0;
+  }
+  if (indexLabelsDrawn)
+  {
+    *indexLabelsDrawn = 0;
   }
   if (scrollBarDrawn)
   {
@@ -53449,6 +53456,34 @@ size_t DrawLinuxLobbyMapRows(
       LINUX_OPENGL_TEXT_VALIGN_CENTER,
       false
     );
+    if (rowVisibleH > layout.H(28))
+    {
+      const std::string rowIndexText = NStr::StrFmt(
+        "%lu/%lu",
+        static_cast<unsigned long>(entryIndex + 1),
+        static_cast<unsigned long>(mapCatalog.entries.size())
+      );
+      SetOpenGlColor(15, 22, 27, selected ? 190 : 150);
+      DrawOpenGlRect(rowX + layout.W(8), rowY + layout.H(7), layout.W(54), layout.H(18));
+      SetOpenGlColor(selected ? 233 : 145, selected ? 208 : 162, selected ? 130 : 166, 225);
+      DrawOpenGlBorderRect(rowX + layout.W(8), rowY + layout.H(7), layout.W(54), layout.H(18));
+      SetOpenGlColor(selected ? 255 : 205, selected ? 235 : 214, selected ? 180 : 208, 238);
+      DrawOpenGlTextInBox(
+        overlay,
+        rowX + layout.W(10),
+        rowY + layout.H(7),
+        layout.W(50),
+        layout.H(18),
+        rowIndexText,
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      if (indexLabelsDrawn)
+      {
+        ++(*indexLabelsDrawn);
+      }
+    }
     if (rowVisibleH > layout.H(34) && !body.empty())
     {
       SetOpenGlColor(151, 166, 166, 210);
@@ -54002,6 +54037,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   size_t pveMapRowsDrawn = 0;
   size_t tutorialMapRowsDrawn = 0;
   size_t otherMapRowsDrawn = 0;
+  size_t mapIndexLabelsDrawn = 0;
   bool mapScrollBarDrawn = false;
   size_t mapScrollTotalRows = 0;
   size_t mapScrollVisibleRows = 0;
@@ -54017,6 +54053,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
       &pveMapRowsDrawn,
       &tutorialMapRowsDrawn,
       &otherMapRowsDrawn,
+      &mapIndexLabelsDrawn,
       &mapScrollBarDrawn,
       &mapScrollTotalRows,
       &mapScrollVisibleRows,
@@ -54131,6 +54168,7 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     runtime->visibleLobbyMapPveRowsDrawn = pveMapRowsDrawn;
     runtime->visibleLobbyMapTutorialRowsDrawn = tutorialMapRowsDrawn;
     runtime->visibleLobbyMapOtherRowsDrawn = otherMapRowsDrawn;
+    runtime->visibleLobbyMapIndexLabelsDrawn = mapIndexLabelsDrawn;
     runtime->visibleLobbyMapScrollBarDrawn = mapScrollBarDrawn;
     runtime->visibleLobbyMapScrollTotalRows = mapScrollTotalRows;
     runtime->visibleLobbyMapScrollVisibleRows = mapScrollVisibleRows;
@@ -60642,6 +60680,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyMapTutorialRowsDrawn << "\n";
   logFile << "  finalVisibleLobbyMapOtherRows="
           << screenRuntime.visibleLobbyMapOtherRowsDrawn << "\n";
+  logFile << "  finalVisibleLobbyMapIndexLabels="
+          << screenRuntime.visibleLobbyMapIndexLabelsDrawn << "\n";
   logFile << "  finalVisibleLobbyMapScrollBar="
           << (screenRuntime.visibleLobbyMapScrollBarDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyMapScrollRows="
@@ -64588,13 +64628,14 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu actionButtons=%lu joinMode=%s playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPveRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapTutorialRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapOtherRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyMapIndexLabelsDrawn),
     screenRuntime.visibleLobbyMapScrollBarDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollTotalRows),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapScrollVisibleRows),
