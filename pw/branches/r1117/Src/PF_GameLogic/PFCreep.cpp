@@ -68,9 +68,50 @@ bool PFBaseCreep::Step(float dtInSeconds)
   return PFCreature::Step(dtInSeconds);
 }
 void PFBaseCreep::RemoveCorpse() { PFCreature::RemoveCorpse(); }
-void PFBaseCreep::OnDestroyContents() { PFCreature::OnDestroyContents(); }
-float PFBaseCreep::GetManaCostModifier(bool) const { return 1.0f; }
-NDb::EUnitType PFBaseCreep::GetUnitTypeByCreepType(NDb::ECreepType creepType) { switch (creepType) { case NDb::CREEPTYPE_FACTIONALSIEGE: return NDb::UNITTYPE_SIEGECREEP; case NDb::CREEPTYPE_FACTIONALCHAMPION: return NDb::UNITTYPE_FACTIONCHAMPION; case NDb::CREEPTYPE_NEUTRALMINION: case NDb::CREEPTYPE_NEUTRALNORMAL: return NDb::UNITTYPE_NEUTRALCREEP; case NDb::CREEPTYPE_NEUTRALCHAMPION: return NDb::UNITTYPE_NEUTRALCHAMPION; case NDb::CREEPTYPE_NEUTRALBOSS: return NDb::UNITTYPE_NEUTRALBOSS; default: return NDb::UNITTYPE_CREEP; } }
+void PFBaseCreep::OnDestroyContents()
+{
+  PFFsm::Cleanup();
+  PFCreature::OnDestroyContents();
+}
+
+float PFBaseCreep::GetManaCostModifier( bool altCost /*= false*/ ) const
+{
+  if (!stats)
+    return 1.0f;
+
+  return stats->GetIncrementForceModifier();
+}
+
+NDb::EUnitType PFBaseCreep::GetUnitTypeByCreepType( NDb::ECreepType creepType )
+{
+  switch ( creepType )
+  {
+    case NDb::CREEPTYPE_FACTIONALNORMAL:
+      return NDb::UNITTYPE_CREEP;
+
+    case NDb::CREEPTYPE_FACTIONALSIEGE:
+      return NDb::UNITTYPE_SIEGECREEP;
+
+    case NDb::CREEPTYPE_FACTIONALCHAMPION:
+      return NDb::UNITTYPE_FACTIONCHAMPION;
+
+    case NDb::CREEPTYPE_NEUTRALMINION:
+      return NDb::UNITTYPE_NEUTRALCREEP;
+
+    case NDb::CREEPTYPE_NEUTRALNORMAL:
+      return NDb::UNITTYPE_NEUTRALCREEP;
+
+    case NDb::CREEPTYPE_NEUTRALCHAMPION:
+      return NDb::UNITTYPE_NEUTRALCHAMPION;
+
+    case NDb::CREEPTYPE_NEUTRALBOSS:
+      return NDb::UNITTYPE_NEUTRALBOSS;
+
+    default:
+      NI_ALWAYS_ASSERT( "Unknown CreepType!" );
+      return NDb::UNITTYPE_CREEP;
+  }
+}
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFBaseCreep, NWorld)
