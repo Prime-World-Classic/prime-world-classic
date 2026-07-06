@@ -2,21 +2,39 @@
 
 #include "texture.h"
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include <GL/gl.h>
+
+namespace NMainFrame
+{
+bool MakeOpenGLContextCurrent();
+}
+#endif
+
 namespace Render
 {
 
 Texture::Texture()
   : pDXTexture(0)
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  , openGLTexture(0)
+#endif
 {
 }
 
 Texture::Texture(IDirect3DBaseTexture9 *pTex)
   : pDXTexture(pTex)
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  , openGLTexture(0)
+#endif
 {
 }
 
 Texture::~Texture()
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  ReleaseOpenGLTexture();
+#endif
   OnTextureDestruction(this);
 }
 
@@ -38,6 +56,29 @@ void Texture::SetTexture(IDirect3DBaseTexture9 *_tex)
 {
   pDXTexture = _tex;
 }
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+void Texture::SetOpenGLTexture(unsigned int texture)
+{
+  if (openGLTexture == texture)
+    return;
+
+  ReleaseOpenGLTexture();
+  openGLTexture = texture;
+}
+
+void Texture::ReleaseOpenGLTexture()
+{
+  if (!openGLTexture)
+    return;
+
+  GLuint texture = openGLTexture;
+  if (NMainFrame::MakeOpenGLContextCurrent())
+    glDeleteTextures(1, &texture);
+
+  openGLTexture = 0;
+}
+#endif
 
 Texture2D::Texture2D()
   : DeviceLostHandler(HANDLERPRIORITY_NORMAL)

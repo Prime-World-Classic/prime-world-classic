@@ -4,6 +4,7 @@
 
 #include "smartrenderer.h"
 #include "dipdescriptor.h"
+#include "texture.h"
 #include "vertexformatdescriptor.h"
 #include "../System/matrix43.h"
 
@@ -684,19 +685,60 @@ void BindPixelShader(IDirect3DPixelShader9 *shader)
 
 void BindTexture(unsigned int samplerIndex, const Texture* texture, bool bProtect)
 {
+  (void)bProtect;
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (samplerIndex != 0)
+    return;
+
+  if (!texture)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+    return;
+  }
+
+  const Texture2D* texture2D = dynamic_cast<const Texture2D*>(texture);
+  const unsigned int openGLTexture = texture2D ? texture2D->GetOpenGLTexture() : 0;
+  if (!openGLTexture)
+    return;
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, openGLTexture);
+#else
   (void)samplerIndex;
   (void)texture;
-  (void)bProtect;
+#endif
 }
 
 void UnBindTexture(unsigned int samplerIndex)
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (samplerIndex == 0)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+  }
+#else
   (void)samplerIndex;
+#endif
 }
 
 void UnBindTexture(const Texture* texture)
 {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (texture)
+  {
+    const Texture2D* texture2D = dynamic_cast<const Texture2D*>(texture);
+    if (texture2D && texture2D->GetOpenGLTexture())
+    {
+      glBindTexture(GL_TEXTURE_2D, 0);
+      glDisable(GL_TEXTURE_2D);
+    }
+  }
+#else
   (void)texture;
+#endif
 }
 
 void BindRenderTarget(const Texture2DRef& pColorTexture)

@@ -255,15 +255,36 @@ void RecolorableTexture::ResetDXTexture()
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#ifdef PW_LINUX_NULL_RENDER
+static Render::TextureRef LoadRecolorableMainTexture(const NDb::TextureRecolorable &tex, bool canBeVisualDegrade, void *texturePoolId)
+{
+  // Null-render bootstrap can load regular textures, but cannot safely enter the recolor manager yet.
+  Render::Texture2DRef mainTex = IsValid(tex.main) ? Render::LoadTexture2DIntoPool(*tex.main, canBeVisualDegrade, texturePoolId) : Render::GetWhiteTexture2D();
+  if (!IsValid(mainTex))
+    mainTex = Render::GetWhiteTexture2D();
+
+  return Render::TextureRef(mainTex.GetValidPtr());
+}
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Render::TextureRef LoadRecolorableTexture(const NDb::TextureRecolorable &tex)
 {
+#ifdef PW_LINUX_NULL_RENDER
+  return LoadRecolorableMainTexture(tex, false, 0);
+#else
 	return new Render::DeviceLostWrapper<RecolorableTexture>( tex );
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Render::TextureRef LoadRecolorableTextureInPool(const NDb::TextureRecolorable &tex, bool canBeVisualDegrade, void *texturePoolId )
 {
+#ifdef PW_LINUX_NULL_RENDER
+  return LoadRecolorableMainTexture(tex, canBeVisualDegrade, texturePoolId);
+#else
   return LoadRecolorableTexture( tex );
+#endif
 }
 
 #ifdef PW_LINUX_NULL_RENDER

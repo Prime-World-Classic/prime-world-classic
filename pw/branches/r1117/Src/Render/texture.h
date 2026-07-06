@@ -25,12 +25,20 @@ public:
 
   const DXBaseTextureRef& GetDXTexture() const { return pDXTexture; }
   void GenerateMipSubLevels();
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  unsigned int GetOpenGLTexture() const { return openGLTexture; }
+  void SetOpenGLTexture(unsigned int texture);
+  void ReleaseOpenGLTexture();
+#endif
 
 protected:
   virtual void GenerateMipSubLevels_();
   void SetTexture(IDirect3DBaseTexture9 *_tex);
 
   DXBaseTextureRef pDXTexture;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  unsigned int openGLTexture;
+#endif
 };
 
 template <typename T>

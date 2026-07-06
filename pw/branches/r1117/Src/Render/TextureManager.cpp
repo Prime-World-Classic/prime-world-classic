@@ -2,9 +2,19 @@
 
 #include "stdafx.h"
 #include "../System/Color.h"
+#include "../System/ImageDDS.h"
 #include "TextureManager.h"
 #include "DBRenderResources.h"
 #include "../System/nhash_map.h"
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include <GL/gl.h>
+
+namespace NMainFrame
+{
+bool MakeOpenGLContextCurrent();
+}
+#endif
 
 namespace Render
 {
@@ -112,6 +122,98 @@ TextureCubeRef CreatePlaceholderCubeTexture()
   return Create<TextureCube>(static_cast<IDirect3DCubeTexture9*>(0));
 }
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+bool LoadDdsTextureRgba(
+  nstl::string const& filename,
+  nstl::vector<unsigned char>* rgba,
+  unsigned int* width,
+  unsigned int* height)
+{
+  if (!rgba || !width || !height)
+    return false;
+
+  rgba->clear();
+  *width = 0;
+  *height = 0;
+
+  CObj<Stream> pStream = RootFileSystem::OpenFile(filename, FILEACCESS_READ, FILEOPEN_OPEN_EXISTING);
+  if (!pStream || !pStream->IsOk() || !NImage::RecognizeFormatDDS(pStream))
+    return false;
+
+  CArray2D<DWORD> pixels;
+  if (!NImage::LoadImageDDS(&pixels, pStream) || pixels.IsEmpty())
+    return false;
+
+  *width = static_cast<unsigned int>(pixels.GetSizeX());
+  *height = static_cast<unsigned int>(pixels.GetSizeY());
+  rgba->resize(static_cast<size_t>(*width) * static_cast<size_t>(*height) * 4U);
+
+  for (unsigned int y = 0; y < *height; ++y)
+  {
+    for (unsigned int x = 0; x < *width; ++x)
+    {
+      const DWORD argb = pixels[y][x];
+      const size_t pixelIndex = (static_cast<size_t>(y) * static_cast<size_t>(*width) + x) * 4U;
+      (*rgba)[pixelIndex + 0] = static_cast<unsigned char>((argb >> 16) & 0xFFU);
+      (*rgba)[pixelIndex + 1] = static_cast<unsigned char>((argb >> 8) & 0xFFU);
+      (*rgba)[pixelIndex + 2] = static_cast<unsigned char>(argb & 0xFFU);
+      (*rgba)[pixelIndex + 3] = static_cast<unsigned char>((argb >> 24) & 0xFFU);
+    }
+  }
+
+  return !rgba->empty();
+}
+
+unsigned int UploadOpenGLTexture2D(
+  const nstl::vector<unsigned char>& rgba,
+  unsigned int width,
+  unsigned int height)
+{
+  if (rgba.empty() || !width || !height || !NMainFrame::MakeOpenGLContextCurrent())
+    return 0;
+
+  GLuint texture = 0;
+  glGenTextures(1, &texture);
+  if (!texture)
+    return 0;
+
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glTexImage2D(
+    GL_TEXTURE_2D,
+    0,
+    GL_RGBA,
+    static_cast<GLsizei>(width),
+    static_cast<GLsizei>(height),
+    0,
+    GL_RGBA,
+    GL_UNSIGNED_BYTE,
+    &rgba[0]);
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  return texture;
+}
+
+Texture2DRef CreateTexture2DFromFile(nstl::string const& filename)
+{
+  nstl::vector<unsigned char> rgba;
+  unsigned int width = 0;
+  unsigned int height = 0;
+  if (!LoadDdsTextureRgba(filename, &rgba, &width, &height))
+    return CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+
+  const unsigned int openGLTexture = UploadOpenGLTexture2D(rgba, width, height);
+  Texture2DRef texture = CreatePlaceholderTexture2D(width, height, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+  if (openGLTexture && texture)
+    texture->SetOpenGLTexture(openGLTexture);
+  return texture;
+}
+#endif
+
 void EnsureDefaultTexturesInitialized()
 {
   if (!g_defaultTextures.pEmptyTexture.GetPtr() || !g_defaultTextures.pTexture.GetPtr() || !g_defaultTextures.pWhiteTexture.GetPtr())
@@ -138,7 +240,12 @@ Texture2DRef GetOrCreateTexture2D(nstl::string const& filename, void* poolId, bo
     return it->second.texture;
   }
 
-  Texture2DRef texture = CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+  Texture2DRef texture =
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    CreateTexture2DFromFile(normalized);
+#else
+    CreatePlaceholderTexture2D(1, 1, 0, D3DPOOL_MANAGED, D3DFMT_A8R8G8B8);
+#endif
   g_texture2DPool[normalized] = Texture2DPoolEntry(texture, poolId);
   return texture;
 }
