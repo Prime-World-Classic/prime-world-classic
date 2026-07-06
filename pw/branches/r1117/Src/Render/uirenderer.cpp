@@ -4,6 +4,7 @@
 
 #include "uirenderer.h"
 #include "DBRenderResources.h"
+#include "FlashRenderer.h"
 #include "MaterialSpec.h"
 #include "TextureManager.h"
 
@@ -176,6 +177,24 @@ struct LinuxQueuedUIQuad
     , color(_color)
     , diffuseTexture(_diffuseTexture)
     , text(_text)
+  {
+  }
+};
+
+struct LinuxQueuedFlashPart
+{
+  int firstElement;
+  int lastElement;
+
+  LinuxQueuedFlashPart()
+    : firstElement(0)
+    , lastElement(-1)
+  {
+  }
+
+  LinuxQueuedFlashPart(int _firstElement, int _lastElement)
+    : firstElement(_firstElement)
+    , lastElement(_lastElement)
   {
   }
 };
@@ -410,12 +429,19 @@ public:
     , textFirstQuad(0)
     , queueRendered(false)
     , queueOverflowed(false)
+    , currentFlashPart(-1)
   {
     quads.reserve(1024);
+    flashParts.reserve(32);
   }
 
   virtual bool Initialize()
   {
+    if (!flashRenderer)
+      flashRenderer = new FlashRenderer();
+    if (!flashRenderer->Initialize())
+      return false;
+
     initialized = true;
     StartFrame();
     return true;
@@ -430,6 +456,13 @@ public:
     textFirstQuad = 0;
     queueRendered = false;
     queueOverflowed = false;
+    currentFlashPart = -1;
+    flashParts.clear();
+    if (flashRenderer)
+    {
+      flashRenderer->Release();
+      flashRenderer = 0;
+    }
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     ResetLinuxOpenGLUiRendererStats();
 #endif
@@ -443,6 +476,10 @@ public:
     textFirstQuad = 0;
     queueRendered = false;
     queueOverflowed = false;
+    currentFlashPart = -1;
+    flashParts.clear();
+    if (flashRenderer)
+      flashRenderer->StartFrame();
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     ResetLinuxOpenGLUiRendererStats();
 #endif
@@ -469,8 +506,21 @@ public:
     QueueQuad(quad, params.color0, false, renderMaterial);
   }
 
-  virtual void BeginFlashParts(int startFlashElement) { (void)startFlashElement; }
-  virtual void EndFlashParts(int lastFlashElement) { (void)lastFlashElement; }
+  virtual void BeginFlashParts(int startFlashElement)
+  {
+    currentFlashPart = static_cast<int>(flashParts.size());
+    flashParts.push_back(LinuxQueuedFlashPart(startFlashElement, -1));
+  }
+
+  virtual void EndFlashParts(int lastFlashElement)
+  {
+    if (currentFlashPart < 0 || currentFlashPart >= static_cast<int>(flashParts.size()))
+      return;
+
+    flashParts[currentFlashPart].lastElement = lastFlashElement;
+    currentFlashPart = -1;
+    queueRendered = false;
+  }
 
   virtual void BeginText()
   {
@@ -554,6 +604,8 @@ public:
   virtual void SetResolutionCoefs(const float x, const float y, const float widthScale, const float heightScale)
   {
     resolutionCoefs.Set(x, y, widthScale, heightScale);
+    if (flashRenderer)
+      flashRenderer->SetResolutionCoefs(x, y, widthScale, heightScale);
   }
 
   virtual const CVec4& GetResolutionCoefs() const
@@ -570,10 +622,14 @@ public:
   virtual void BeginQueue()
   {
     StartFrame();
+    if (flashRenderer)
+      flashRenderer->BeginQueue();
   }
 
   virtual void EndQueue()
   {
+    if (flashRenderer)
+      flashRenderer->EndQueue();
   }
 
   virtual void Render(ERenderWhat::Enum what, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy)
@@ -587,6 +643,14 @@ public:
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     ++g_linuxOpenGLUiRendererStats.render2DCalls;
     RenderLinuxOpenGLUIQuads(quads, resolutionCoefs);
+    if (flashRenderer)
+    {
+      for (unsigned int i = 0; i < flashParts.size(); ++i)
+      {
+        if (flashParts[i].lastElement >= flashParts[i].firstElement)
+          flashRenderer->Render(flashParts[i].firstElement, flashParts[i].lastElement, pMainRT0, pMainRT0Copy);
+      }
+    }
     g_linuxOpenGLUiRendererStats.rendered2DQuads += quads.size();
     for (unsigned int i = 0; i < quads.size(); ++i)
       if (quads[i].text)
@@ -629,7 +693,7 @@ public:
 
   virtual IFlashRenderer* GetFlashRenderer()
   {
-    return 0;
+    return flashRenderer;
   }
 
   virtual IUITextureCache* GetTextureCache()
@@ -683,14 +747,17 @@ private:
   }
 
   bool initialized;
+  Strong<FlashRenderer> flashRenderer;
   CVec4 resolutionCoefs;
   bool forbidSaturation;
   bool textStarted;
   unsigned int textFirstQuad;
   bool queueRendered;
   bool queueOverflowed;
+  int currentFlashPart;
   vector<UIRect> cropRects;
   vector<LinuxQueuedUIQuad> quads;
+  vector<LinuxQueuedFlashPart> flashParts;
 };
 
 } // namespace

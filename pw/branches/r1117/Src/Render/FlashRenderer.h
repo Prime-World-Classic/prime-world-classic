@@ -79,6 +79,54 @@ public:
   virtual void ClearCaches();
 
   virtual void DebugNextBatch();
+
+private:
+  struct LinuxFlashDrawVertex
+  {
+    float x;
+    float y;
+    float u;
+    float v;
+    Color color;
+
+    LinuxFlashDrawVertex() : x(0.0f), y(0.0f), u(0.0f), v(0.0f), color(255, 255, 255, 255) {}
+    LinuxFlashDrawVertex(float _x, float _y, float _u, float _v, const Color& _color)
+      : x(_x), y(_y), u(_u), v(_v), color(_color) {}
+  };
+
+  struct LinuxFlashDrawCommand
+  {
+    bool textured;
+    bool smoothing;
+    Texture2DRef texture;
+    nstl::vector<LinuxFlashDrawVertex> vertices;
+
+    LinuxFlashDrawCommand() : textured(false), smoothing(true) {}
+  };
+
+  void TransformPoint(float x, float y, float* outX, float* outY) const;
+  Color TransformColor(const Color& color) const;
+  void AppendBitmapQuad(IBitmapInfo* bitmapInfo, float x1, float y1, float x2, float y2, float u1, float v1, float u2, float v2, bool smoothing);
+
+  flash::SWF_MATRIX currentMatrix;
+  flash::SWF_CXFORMWITHALPHA currentColorTransform;
+  EFlashBlendMode::Enum currentBlendMode;
+  float resolutionXCoef;
+  float resolutionYCoef;
+  float widthScale;
+  float heightScale;
+  int viewportX;
+  int viewportY;
+  int viewportWidth;
+  int viewportHeight;
+  float displayX0;
+  float displayX1;
+  float displayY0;
+  float displayY1;
+  bool displayActive;
+  float lineWidth;
+  Color lineColor;
+  nstl::vector<LinuxFlashDrawCommand> drawCommands;
 };
 
 #else

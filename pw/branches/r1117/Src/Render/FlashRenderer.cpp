@@ -2,7 +2,15 @@
 
 #if defined(PW_LINUX_NULL_RENDER)
 
+#include "../UI/Flash/GameSWFIntegration/Image.h"
 #include "FlashRenderer.h"
+#include "TextureManager.h"
+#include "uirenderer.h"
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+#include "../System/MainFrame.h"
+#include <GL/gl.h>
+#endif
 
 namespace Render
 {
@@ -10,12 +18,12 @@ namespace Render
 namespace
 {
 
-class NullBitmapInfo : public IBitmapInfo, public BaseObjectST
+class LinuxBitmapInfo : public IBitmapInfo, public BaseObjectST
 {
-  NI_DECLARE_REFCOUNT_CLASS_2( NullBitmapInfo, IBitmapInfo, BaseObjectST );
+  NI_DECLARE_REFCOUNT_CLASS_2( LinuxBitmapInfo, IBitmapInfo, BaseObjectST );
 
 public:
-  NullBitmapInfo()
+  LinuxBitmapInfo()
     : width(0)
     , height(0)
     , uv1(0.0f, 0.0f)
@@ -23,41 +31,116 @@ public:
   {
   }
 
-  NullBitmapInfo( int bitmapWidth, int bitmapHeight )
+  LinuxBitmapInfo( int bitmapWidth, int bitmapHeight )
     : width(bitmapWidth)
     , height(bitmapHeight)
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
   {
+    if (width > 0 && height > 0)
+      texture = Render::CreateTexture2D(width, height, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8);
   }
 
-  NullBitmapInfo( const Texture2DRef& texture )
+  LinuxBitmapInfo( const Texture2DRef& sourceTexture )
     : width(0)
     , height(0)
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
   {
-    (void)texture;
+    texture = sourceTexture;
+    if (texture)
+    {
+      width = static_cast<int>(texture->GetWidth());
+      height = static_cast<int>(texture->GetHeight());
+    }
+  }
+
+  LinuxBitmapInfo( image::rgba* im, bool repeatable )
+    : width(im ? im->m_width : 0)
+    , height(im ? im->m_height : 0)
+    , uv1(0.0f, 0.0f)
+    , uv2(1.0f, 1.0f)
+  {
+    (void)repeatable;
+    if (!im || width <= 0 || height <= 0)
+      return;
+
+    texture = Render::CreateTexture2D(width, height, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8);
+    if (!texture)
+      return;
+
+    LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return;
+
+    for (int y = 0; y < height; ++y)
+    {
+      unsigned char* dst = lockedRect.data + y * lockedRect.pitch;
+      const unsigned char* src = im->m_data + y * im->m_pitch;
+      for (int x = 0; x < width; ++x)
+      {
+        dst[x * 4 + 0] = src[x * 4 + 2];
+        dst[x * 4 + 1] = src[x * 4 + 1];
+        dst[x * 4 + 2] = src[x * 4 + 0];
+        dst[x * 4 + 3] = src[x * 4 + 3];
+      }
+    }
+
+    texture->UnlockRect(0);
   }
 
   virtual int GetWidth() const { return width; }
   virtual int GetHeight() const { return height; }
   virtual const CVec2& GetUV1() const { return uv1; }
   virtual const CVec2& GetUV2() const { return uv2; }
+  const Texture2DRef& GetTexture() const { return texture; }
 
   virtual IBitmapInfo* Clone()
   {
-    return new NullBitmapInfo( width, height );
+    LinuxBitmapInfo* clone = new LinuxBitmapInfo(width, height);
+    if (!texture || !clone->texture)
+      return clone;
+
+    LockedRect dstRect = clone->texture->LockRect(0, LOCK_DEFAULT);
+    LockedRect srcRect = texture->LockRect(0, LOCK_DEFAULT);
+    if (dstRect.data && srcRect.data)
+    {
+      for (int y = 0; y < height; ++y)
+        memcpy(dstRect.data + y * dstRect.pitch, srcRect.data + y * srcRect.pitch, width * 4);
+    }
+    texture->UnlockRect(0);
+    clone->texture->UnlockRect(0);
+    return clone;
   }
 
   virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& matrix, int x1, int y1, int x2, int y2 )
   {
-    (void)source;
     (void)matrix;
-    (void)x1;
-    (void)y1;
-    (void)x2;
-    (void)y2;
+    if (!texture || x1 > x2 || y1 > y2)
+      return;
+
+    LinuxBitmapInfo* sourceBitmap = dynamic_cast<LinuxBitmapInfo*>(source);
+    if (!sourceBitmap || !sourceBitmap->texture)
+      return;
+
+    x1 = Clamp(x1, 0, sourceBitmap->GetWidth() - 1);
+    x2 = Clamp(x2, 0, sourceBitmap->GetWidth() - 1);
+    y1 = Clamp(y1, 0, sourceBitmap->GetHeight() - 1);
+    y2 = Clamp(y2, 0, sourceBitmap->GetHeight() - 1);
+
+    LockedRect dstRect = texture->LockRect(0, LOCK_DEFAULT);
+    LockedRect srcRect = sourceBitmap->texture->LockRect(0, LOCK_DEFAULT);
+    if (dstRect.data && srcRect.data)
+    {
+      for (int y = y1; y <= y2 && y < height; ++y)
+      {
+        unsigned char* dst = dstRect.data + y * dstRect.pitch + x1 * 4;
+        const unsigned char* src = srcRect.data + y * srcRect.pitch + x1 * 4;
+        memcpy(dst, src, (x2 - x1 + 1) * 4);
+      }
+    }
+    sourceBitmap->texture->UnlockRect(0);
+    texture->UnlockRect(0);
   }
 
 private:
@@ -65,11 +148,42 @@ private:
   int height;
   CVec2 uv1;
   CVec2 uv2;
+  Texture2DRef texture;
 };
+
+LinuxBitmapInfo* GetLinuxBitmapInfo(IBitmapInfo* bitmapInfo)
+{
+  return dynamic_cast<LinuxBitmapInfo*>(bitmapInfo);
+}
+
+unsigned char ClampFlashColorChannel(float value)
+{
+  if (value <= 0.0f)
+    return 0;
+  if (value >= 255.0f)
+    return 255;
+  return static_cast<unsigned char>(value);
+}
 
 } // namespace
 
 FlashRenderer::FlashRenderer()
+  : currentBlendMode(EFlashBlendMode::NORMAL)
+  , resolutionXCoef(1.0f)
+  , resolutionYCoef(1.0f)
+  , widthScale(1.0f)
+  , heightScale(1.0f)
+  , viewportX(0)
+  , viewportY(0)
+  , viewportWidth(0)
+  , viewportHeight(0)
+  , displayX0(0.0f)
+  , displayX1(1.0f)
+  , displayY0(0.0f)
+  , displayY1(1.0f)
+  , displayActive(false)
+  , lineWidth(1.0f)
+  , lineColor(255, 255, 255, 255)
 {
 }
 
@@ -79,19 +193,23 @@ FlashRenderer::~FlashRenderer()
 
 bool FlashRenderer::Initialize()
 {
+  drawCommands.reserve(256);
   return true;
 }
 
 void FlashRenderer::Release()
 {
+  drawCommands.clear();
 }
 
 void FlashRenderer::StartFrame()
 {
+  drawCommands.clear();
 }
 
 void FlashRenderer::BeginQueue()
 {
+  drawCommands.clear();
 }
 
 void FlashRenderer::EndQueue()
@@ -104,33 +222,115 @@ void FlashRenderer::BreakQueue()
 
 void FlashRenderer::Render( int firstElement, int lastElement, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy )
 {
-  (void)firstElement;
-  (void)lastElement;
   (void)pMainRT0;
   (void)pMainRT0Copy;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (drawCommands.empty() || !NMainFrame::MakeOpenGLContextCurrent())
+    return;
+
+  if (firstElement < 0)
+    firstElement = 0;
+  if (lastElement < firstElement)
+    return;
+  if (lastElement > static_cast<int>(drawCommands.size()))
+    lastElement = static_cast<int>(drawCommands.size());
+
+  GLint previousViewport[4] = { 0, 0, 0, 0 };
+  glGetIntegerv(GL_VIEWPORT, previousViewport);
+
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT | GL_VIEWPORT_BIT);
+  glDisable(GL_DEPTH_TEST);
+  glDepthMask(GL_FALSE);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_LIGHTING);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+  if (viewportWidth > 0 && viewportHeight > 0)
+    glViewport(viewportX, previousViewport[3] - viewportY - viewportHeight, viewportWidth, viewportHeight);
+
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(displayX0, displayX1, displayY1, displayY0, -1.0, 1.0);
+
+  glMatrixMode(GL_MODELVIEW);
+  glPushMatrix();
+  glLoadIdentity();
+
+  for (int i = firstElement; i < lastElement; ++i)
+  {
+    const LinuxFlashDrawCommand& command = drawCommands[i];
+    if (command.vertices.empty())
+      continue;
+
+    unsigned int openGLTexture = 0;
+    if (command.textured && command.texture)
+    {
+      command.texture->EnsureOpenGLTexture();
+      openGLTexture = command.texture->GetOpenGLTexture();
+    }
+
+    if (openGLTexture)
+    {
+      glEnable(GL_TEXTURE_2D);
+      glBindTexture(GL_TEXTURE_2D, openGLTexture);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
+    }
+    else
+    {
+      glBindTexture(GL_TEXTURE_2D, 0);
+      glDisable(GL_TEXTURE_2D);
+    }
+
+    glBegin(GL_TRIANGLES);
+    for (unsigned int vertex = 0; vertex < command.vertices.size(); ++vertex)
+    {
+      const LinuxFlashDrawVertex& v = command.vertices[vertex];
+      glColor4ub(v.color.R, v.color.G, v.color.B, v.color.A);
+      if (openGLTexture)
+        glTexCoord2f(v.u, v.v);
+      glVertex2f(v.x, v.y);
+    }
+    glEnd();
+  }
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+  glDisable(GL_TEXTURE_2D);
+
+  glMatrixMode(GL_MODELVIEW);
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  glPopAttrib();
+#else
+  (void)firstElement;
+  (void)lastElement;
+#endif
 }
 
 void FlashRenderer::SetResolutionCoefs( float x, float y, float widthScale, float heightScale )
 {
-  (void)x;
-  (void)y;
-  (void)widthScale;
-  (void)heightScale;
+  resolutionXCoef = x;
+  resolutionYCoef = y;
+  this->widthScale = widthScale;
+  this->heightScale = heightScale;
 }
 
 void FlashRenderer::SetMatrix( const flash::SWF_MATRIX& matrix )
 {
-  (void)matrix;
+  currentMatrix = matrix;
 }
 
 void FlashRenderer::SetColorTransform( const flash::SWF_CXFORMWITHALPHA& cx )
 {
-  (void)cx;
+  currentColorTransform = cx;
 }
 
 void FlashRenderer::SetBlendMode( EFlashBlendMode::Enum blendMode )
 {
-  (void)blendMode;
+  currentBlendMode = blendMode;
 }
 
 void FlashRenderer::SetFillStyleBitmap( IBitmapInfo* bitmapInfo, const flash::SWF_MATRIX& matrix, EBitmapWrapMode::Enum wrapMode, bool primary )
@@ -143,41 +343,38 @@ void FlashRenderer::SetFillStyleBitmap( IBitmapInfo* bitmapInfo, const flash::SW
 
 void FlashRenderer::SetLineWidth( float width )
 {
-  (void)width;
+  lineWidth = width > 0.0f ? width : 1.0f;
 }
 
 void FlashRenderer::SetLineColor( const flash::SWF_RGBA& color )
 {
-  (void)color;
+  lineColor = Color(color.r, color.g, color.b, color.a);
 }
 
 IBitmapInfo* FlashRenderer::CreateBitmap( int width, int height )
 {
-  return new NullBitmapInfo( width, height );
+  return new LinuxBitmapInfo( width, height );
 }
 
 IBitmapInfo* FlashRenderer::CreateBitmapFromTexture( const Texture2DRef& texture )
 {
-  return new NullBitmapInfo( texture );
+  return new LinuxBitmapInfo( texture );
 }
 
 IBitmapInfo* FlashRenderer::CreateBitmapInfoRgba( image::rgba* im, bool repeatable )
 {
-  (void)im;
-  (void)repeatable;
-  return new NullBitmapInfo();
+  return new LinuxBitmapInfo( im, repeatable );
 }
 
 IBitmapInfo* FlashRenderer::CreateBitmapFromFile( const nstl::string& filename )
 {
-  (void)filename;
-  return new NullBitmapInfo();
+  return new LinuxBitmapInfo( Render::Load2DTextureFromFile( filename ) );
 }
 
 IBitmapInfo* FlashRenderer::CreateGradientBitmap( const flash::SWF_GRADIENT& gradient )
 {
   (void)gradient;
-  return new NullBitmapInfo( 1, 1 );
+  return new LinuxBitmapInfo( 1, 1 );
 }
 
 void FlashRenderer::BeginDisplay(
@@ -187,52 +384,160 @@ void FlashRenderer::BeginDisplay(
   bool useScissorRect )
 {
   (void)viewport_x0;
-  (void)viewport_y0;
-  (void)viewport_width;
-  (void)viewport_height;
-  (void)x0;
-  (void)x1;
-  (void)y0;
-  (void)y1;
+  viewportX = viewport_x0;
+  viewportY = viewport_y0;
+  viewportWidth = viewport_width;
+  viewportHeight = viewport_height;
+  displayX0 = x0;
+  displayX1 = x1;
+  displayY0 = y0;
+  displayY1 = y1;
+  displayActive = true;
   (void)useScissorRect;
+  GetUIRenderer()->BeginFlashParts( static_cast<int>(drawCommands.size()) );
 }
 
 void FlashRenderer::EndDisplay()
 {
+  displayActive = false;
+  GetUIRenderer()->EndFlashParts( static_cast<int>(drawCommands.size()) );
 }
 
 void FlashRenderer::DrawBitmap( IBitmapInfo* bitmapInfo, float width, float height, int uniqueID, bool smoothing )
 {
-  (void)bitmapInfo;
-  (void)width;
-  (void)height;
   (void)uniqueID;
-  (void)smoothing;
+  AppendBitmapQuad(bitmapInfo, 0.0f, 0.0f, width, height, bitmapInfo ? bitmapInfo->GetUV1().x : 0.0f, bitmapInfo ? bitmapInfo->GetUV1().y : 0.0f, bitmapInfo ? bitmapInfo->GetUV2().x : 1.0f, bitmapInfo ? bitmapInfo->GetUV2().y : 1.0f, smoothing);
 }
 
 void FlashRenderer::DrawBitmapScale9Grid( IBitmapInfo* bitmapInfo, float width, float height, const flash::SWF_RECT& scale9Grid, float aspectX, float aspectY, int uniqueID, bool smoothing )
 {
-  (void)bitmapInfo;
-  (void)width;
-  (void)height;
   (void)scale9Grid;
   (void)aspectX;
   (void)aspectY;
   (void)uniqueID;
-  (void)smoothing;
+  DrawBitmap(bitmapInfo, width, height, uniqueID, smoothing);
 }
 
 void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniqueID )
 {
-  (void)vertices;
-  (void)count;
   (void)uniqueID;
+  if (!vertices || count <= 0)
+    return;
+
+  LinuxFlashDrawCommand command;
+  command.textured = false;
+  command.vertices.reserve(count);
+
+  for (int i = 0; i < count; ++i)
+  {
+    float x = 0.0f;
+    float y = 0.0f;
+    TransformPoint(vertices[i].x, vertices[i].y, &x, &y);
+    command.vertices.push_back(LinuxFlashDrawVertex(x, y, 0.0f, 0.0f, TransformColor(vertices[i].color)));
+  }
+
+  drawCommands.push_back(command);
 }
 
 void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int uniqueID )
 {
-  (void)coords;
   (void)uniqueID;
+  if (coords.size() < 2)
+    return;
+
+  LinuxFlashDrawCommand command;
+  command.textured = false;
+  command.vertices.reserve((coords.size() - 1) * 6);
+
+  for (unsigned int i = 0; i + 1 < coords.size(); ++i)
+  {
+    float x1 = 0.0f;
+    float y1 = 0.0f;
+    float x2 = 0.0f;
+    float y2 = 0.0f;
+    TransformPoint(coords[i].x, coords[i].y, &x1, &y1);
+    TransformPoint(coords[i + 1].x, coords[i + 1].y, &x2, &y2);
+
+    const float dx = x2 - x1;
+    const float dy = y2 - y1;
+    const float len = sqrtf(dx * dx + dy * dy);
+    if (len <= 0.0001f)
+      continue;
+
+    const float half = lineWidth * 0.5f;
+    const float nx = -dy / len * half;
+    const float ny = dx / len * half;
+    const Color color = TransformColor(lineColor);
+    command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(x1 + nx, y1 + ny, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(x2 - nx, y2 - ny, 0.0f, 0.0f, color));
+  }
+
+  if (!command.vertices.empty())
+    drawCommands.push_back(command);
+}
+
+void FlashRenderer::TransformPoint(float x, float y, float* outX, float* outY) const
+{
+  *outX = currentMatrix.m_[0][0] * x + currentMatrix.m_[0][1] * y + currentMatrix.m_[0][2];
+  *outY = currentMatrix.m_[1][0] * x + currentMatrix.m_[1][1] * y + currentMatrix.m_[1][2];
+}
+
+Color FlashRenderer::TransformColor(const Color& color) const
+{
+  return Color(
+    ClampFlashColorChannel(color.R * currentColorTransform.m_[0][0] + currentColorTransform.m_[0][1]),
+    ClampFlashColorChannel(color.G * currentColorTransform.m_[1][0] + currentColorTransform.m_[1][1]),
+    ClampFlashColorChannel(color.B * currentColorTransform.m_[2][0] + currentColorTransform.m_[2][1]),
+    ClampFlashColorChannel(color.A * currentColorTransform.m_[3][0] + currentColorTransform.m_[3][1]));
+}
+
+void FlashRenderer::AppendBitmapQuad(
+  IBitmapInfo* bitmapInfo,
+  float x1,
+  float y1,
+  float x2,
+  float y2,
+  float u1,
+  float v1,
+  float u2,
+  float v2,
+  bool smoothing)
+{
+  LinuxBitmapInfo* bitmap = GetLinuxBitmapInfo(bitmapInfo);
+  if (!bitmap || !bitmap->GetTexture())
+    return;
+
+  float tx1 = 0.0f;
+  float ty1 = 0.0f;
+  float tx2 = 0.0f;
+  float ty2 = 0.0f;
+  float tx3 = 0.0f;
+  float ty3 = 0.0f;
+  float tx4 = 0.0f;
+  float ty4 = 0.0f;
+  TransformPoint(x1, y1, &tx1, &ty1);
+  TransformPoint(x2, y1, &tx2, &ty2);
+  TransformPoint(x2, y2, &tx3, &ty3);
+  TransformPoint(x1, y2, &tx4, &ty4);
+
+  LinuxFlashDrawCommand command;
+  command.textured = true;
+  command.smoothing = smoothing;
+  command.texture = bitmap->GetTexture();
+  command.vertices.reserve(6);
+
+  const Color color = TransformColor(Color(255, 255, 255, 255));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx1, ty1, u1, v1, color));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx2, ty2, u2, v1, color));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx3, ty3, u2, v2, color));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx1, ty1, u1, v1, color));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx3, ty3, u2, v2, color));
+  command.vertices.push_back(LinuxFlashDrawVertex(tx4, ty4, u1, v2, color));
+  drawCommands.push_back(command);
 }
 
 void FlashRenderer::SetMorph( float rate )
