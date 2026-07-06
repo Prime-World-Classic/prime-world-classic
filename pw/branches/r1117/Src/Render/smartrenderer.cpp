@@ -150,14 +150,39 @@ namespace
     return true;
   }
 
-  bool ReadIndex32(const nstl::vector<unsigned char>& storage, size_t indexNumber, unsigned int* value)
+  bool ReadIndex(const IDirect3DIndexBuffer9* buffer, size_t indexNumber, unsigned int* value)
   {
-    const size_t offset = indexNumber * sizeof(unsigned int);
-    if (!value || offset + sizeof(unsigned int) > storage.size())
+    if (!buffer || !value)
       return false;
 
-    memcpy(value, &storage[offset], sizeof(unsigned int));
-    return true;
+    // Null D3D buffers keep the original index format; OpenGL replay must match that stride.
+    switch (buffer->format)
+    {
+      case D3DFMT_INDEX16:
+      {
+        const size_t offset = indexNumber * sizeof(unsigned short);
+        if (offset + sizeof(unsigned short) > buffer->storage.size())
+          return false;
+
+        unsigned short indexValue = 0;
+        memcpy(&indexValue, &buffer->storage[offset], sizeof(indexValue));
+        *value = indexValue;
+        return true;
+      }
+
+      case D3DFMT_INDEX32:
+      {
+        const size_t offset = indexNumber * sizeof(unsigned int);
+        if (offset + sizeof(unsigned int) > buffer->storage.size())
+          return false;
+
+        memcpy(value, &buffer->storage[offset], sizeof(unsigned int));
+        return true;
+      }
+
+      default:
+        return false;
+    }
   }
 
   void ApplyOpenGLPreviewTransform(const CVec3& source, float* x, float* y, float* z)
@@ -355,8 +380,8 @@ namespace
       for (unsigned int corner = 0; corner < 3; ++corner)
       {
         unsigned int indexValue = 0;
-        if (!ReadIndex32(
-              g_boundIndexBuffer->storage,
+        if (!ReadIndex(
+              g_boundIndexBuffer,
               static_cast<size_t>(descr.startIndex) +
                 static_cast<size_t>(triangleIndex) * 3U +
                 static_cast<size_t>(corner),
