@@ -7,6 +7,7 @@
 #include "PFAbilityInstance.h"
 #include "PFAIWorld.h"
 #include "PFBaseUnit.h"
+#include "PFBaseUnitEvent.h"
 #include "PFCastLimitations.h"
 #include "PFConsumable.h"
 #include "PFHero.h"
@@ -691,9 +692,40 @@ int PFAbilityData::GetNatureTypeInPos(CVec2 pos) const
 int PFAbilityData::GetActivatedWithinKit() const { return 0; }
 int PFAbilityData::GetTalentsWithinKit() const { return 0; }
 float PFAbilityData::GetStatusDispellPriority( const IUnitFormulaPars* pUnitToCheck, bool returnDuration ) const { (void)pUnitToCheck; (void)returnDuration; return -1.0f; }
-void PFAbilityData::SubscribeChanneling( PFBaseUnitEventListener *pListener ) { if ( pListener ) channelings.push_back( pListener ); }
+void PFAbilityData::SubscribeChanneling( PFBaseUnitEventListener *pListener )
+{
+  if (!pListener)
+    return;
+
+  if (nstl::find(channelings.begin(), channelings.end(), pListener) == channelings.end())
+    channelings.push_back(pListener);
+}
 void PFAbilityData::UnsubscribeChanneling( PFBaseUnitEventListener *pListener ) { channelings.remove( pListener ); }
-void PFAbilityData::AddForbid( const PFBaseApplicator* pAppl ) { (void)pAppl; ++forbids; }
+void PFAbilityData::AddForbid( const PFBaseApplicator* pAppl )
+{
+  ++forbids;
+
+  if (!IsValid(pAppl) || channelings.empty())
+    return;
+
+  PFBaseUnitApplicatorEvent evt(NDb::BASEUNITEVENT_FORBIDCAST, pAppl);
+  for (nstl::list<CObj<PFBaseUnitEventListener> >::iterator it = channelings.begin(); it != channelings.end(); )
+  {
+    PFBaseUnitEventListener* pListener = *it;
+    if (pListener)
+    {
+      const unsigned int returnFlags = pListener->OnEvent(&evt);
+      if (returnFlags & PFBaseUnitEventListener::FLAGS_REMOVE)
+        it = channelings.erase(it);
+      else
+        ++it;
+    }
+    else
+    {
+      it = channelings.erase(it);
+    }
+  }
+}
 
 NNameMap::Variant * PFAbilityData::ConstantsResolver::ResolveVariant( const char * name, int length, const char * args, int argsLength, void* prms, bool readonly )
 {
