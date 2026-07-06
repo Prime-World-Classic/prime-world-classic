@@ -3,6 +3,7 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFApplFx.h"
+#include "PFTargetSelector.h"
 #include "PFBaseUnit.h"
 
 namespace NWorld
@@ -11,6 +12,17 @@ namespace NWorld
 bool PFApplFX::Start()
 {
   origin = GetTarget();
+
+  if (GetDB().auxillaryTarget)
+  {
+    CObj<PFSingleTargetSelector> pTargetSelector = static_cast<PFSingleTargetSelector*>(GetDB().auxillaryTarget->Create(GetWorld()));
+    if (pTargetSelector)
+    {
+      PFTargetSelector::RequestParams rp(*this, GetTarget());
+      pTargetSelector->FindTarget(rp, origin);
+    }
+  }
+
   return PFApplBuff::Start();
 }
 
@@ -21,6 +33,12 @@ PFLogicObject* PFApplFX::GetEffectOrigin()
 
 PFLogicObject* PFApplFX::GetEffectTarget()
 {
+  if ((GetDB().flags & NDb::FXFLAGS_APPLYFXTOAUX) != 0)
+  {
+    NI_VERIFY(origin.IsObjectValid(true), "Invalid FX target", return pReceiver);
+    return origin.GetObject();
+  }
+
   return pReceiver;
 }
 
