@@ -48,6 +48,18 @@ bool FillLinuxUIRenderMaterialSampler(
   return sampler->GetTexture();
 }
 
+bool FillLinuxUIRenderMaterialSamplerWithFallback(
+  const NDb::Sampler& primarySampler,
+  const NDb::Sampler& fallbackSampler,
+  Render::Sampler* sampler,
+  void* texturePool)
+{
+  if (FillLinuxUIRenderMaterialSampler(primarySampler, sampler, texturePool))
+    return true;
+
+  return FillLinuxUIRenderMaterialSampler(fallbackSampler, sampler, texturePool);
+}
+
 class LinuxUIRenderMaterial : public BaseMaterial
 {
 public:
@@ -77,14 +89,30 @@ public:
 
     if (const NDb::UIButtonMaterial* buttonMaterial = dynamic_cast<const NDb::UIButtonMaterial*>(material))
     {
-      FillLinuxUIRenderMaterialSampler(buttonMaterial->DiffuseMap, &diffuseMap, texturePool);
-      useDiffuse = buttonMaterial->UseDiffusePin;
+      if (buttonMaterial->UseDiffusePin != NDb::BOOLEANPIN_NONE)
+      {
+        FillLinuxUIRenderMaterialSamplerWithFallback(
+          buttonMaterial->DiffuseMap,
+          buttonMaterial->BackgroundMap,
+          &diffuseMap,
+          texturePool);
+      }
+      else
+      {
+        FillLinuxUIRenderMaterialSampler(buttonMaterial->BackgroundMap, &diffuseMap, texturePool);
+      }
+
+      useDiffuse = diffuseMap.GetTexture() ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE;
       return;
     }
 
     if (const NDb::UIGlassMaterial* glassMaterial = dynamic_cast<const NDb::UIGlassMaterial*>(material))
     {
-      FillLinuxUIRenderMaterialSampler(glassMaterial->DiffuseMap, &diffuseMap, texturePool);
+      FillLinuxUIRenderMaterialSamplerWithFallback(
+        glassMaterial->DiffuseMap,
+        glassMaterial->BackgroundMap,
+        &diffuseMap,
+        texturePool);
       useDiffuse = diffuseMap.GetTexture() ? NDb::BOOLEANPIN_PRESENT : NDb::BOOLEANPIN_NONE;
     }
   }
