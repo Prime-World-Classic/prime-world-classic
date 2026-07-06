@@ -3,6 +3,7 @@
 #if defined( PW_LINUX_NULL_RENDER )
 
 #include "PFApplInstant.h"
+#include "PFAIWorld.h"
 #include "PFBaseUnit.h"
 #include "PFHero.h"
 #include "PFApplMod.h"
@@ -12,7 +13,9 @@
 #include "PFBaseMovingUnit.h"
 #include "PFDispatchFactory.h"
 #include "PFGlyph.h"
+#include "PFMainBuilding.h"
 #include "PFTargetSelector.h"
+#include "PFWorld.h"
 
 namespace NWorld
 {
@@ -597,6 +600,38 @@ bool PFApplCreateGlyph::Start()
 bool PFApplVictory::Start()
 {
   PFBaseApplicator::Start();
+  if (!IsValid(pOwner) || !pOwner->GetWorld())
+    return true;
+
+  NDb::EFaction losingFaction = GetDB().oppositeFaction ? pOwner->GetFaction() : pOwner->GetOppositeFaction();
+  if (GetDB().destroyMainBuilding)
+  {
+    PFAIWorld* pAIWorld = pOwner->GetWorld()->GetAIWorld();
+    if (!pAIWorld)
+      return true;
+
+    struct MBFinder
+    {
+      explicit MBFinder(NDb::EFaction faction_) : faction(faction_), mainBuilding(0) {}
+      void operator()(PFLogicObject& object)
+      {
+        if (object.GetUnitType() == NDb::UNITTYPE_MAINBUILDING && object.GetFaction() == faction)
+          mainBuilding = &object;
+      }
+
+      NDb::EFaction faction;
+      PFLogicObject* mainBuilding;
+    } finder(losingFaction);
+
+    pAIWorld->ForAllUnits(finder);
+    if (CDynamicCast<PFMainBuilding> mainBuilding = finder.mainBuilding)
+      mainBuilding->OnUnitDie(pOwner.GetPtr(), PFBaseUnit::UNITDIEFLAGS_NONE);
+  }
+  else
+  {
+    pOwner->GetWorld()->OnGameFinished(losingFaction);
+  }
+
   return true;
 }
 
