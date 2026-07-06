@@ -194,11 +194,13 @@ struct LinuxBootstrapClickSpec
   int baseX;
   int baseY;
   bool doubleClick;
+  int wheelDelta;
 
   LinuxBootstrapClickSpec()
     : baseX(-1),
       baseY(-1),
-      doubleClick(false)
+      doubleClick(false),
+      wheelDelta(0)
   {
   }
 };
@@ -7002,6 +7004,7 @@ bool ParseBootstrapClickSpecToken(
   spec->baseX = baseX;
   spec->baseY = baseY;
   spec->doubleClick = defaultDoubleClick;
+  spec->wheelDelta = 0;
   if (optionPos != std::string::npos)
   {
     const std::string option = ToAsciiLower(TrimAscii(trimmed.substr(optionPos + 1)));
@@ -7011,6 +7014,16 @@ bool ParseBootstrapClickSpecToken(
     }
     else if (option == "single" || option == "click" || option == "1")
     {
+      spec->doubleClick = false;
+    }
+    else if (option == "wheel-up" || option == "wheelup" || option == "scroll-up" || option == "scrollup")
+    {
+      spec->wheelDelta = WHEEL_DELTA;
+      spec->doubleClick = false;
+    }
+    else if (option == "wheel-down" || option == "wheeldown" || option == "scroll-down" || option == "scrolldown")
+    {
+      spec->wheelDelta = -WHEEL_DELTA;
       spec->doubleClick = false;
     }
     else
@@ -29701,6 +29714,11 @@ void UpdateInputState(LinuxInputState* state)
   }
 }
 
+unsigned long MakeLinuxWheelMessageFlags(int wheelDelta)
+{
+  return static_cast<unsigned long>(static_cast<unsigned short>(wheelDelta) << 16);
+}
+
 bool InjectLinuxBootstrapLobbyClick(
   const LinuxClientLaunchSettings& settings,
   double elapsedSeconds,
@@ -29725,9 +29743,11 @@ bool InjectLinuxBootstrapLobbyClick(
   NMainFrame::SWindowsMsg message;
   memset(&message, 0, sizeof(message));
   NHPTimer::GetTime(message.time);
-  message.msg = click.doubleClick ?
-    NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
-    NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
+  message.msg = click.wheelDelta != 0 ?
+    NMainFrame::SWindowsMsg::MOUSE_WHEEL :
+    (click.doubleClick ?
+      NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
+      NMainFrame::SWindowsMsg::MOUSE_LB_DOWN);
   message.x = static_cast<int>(
     static_cast<double>(click.baseX) *
       static_cast<double>(settings.width) / 1280.0 + 0.5
@@ -29736,6 +29756,10 @@ bool InjectLinuxBootstrapLobbyClick(
     static_cast<double>(click.baseY) *
       static_cast<double>(settings.height) / 1024.0 + 0.5
   );
+  if (click.wheelDelta != 0)
+  {
+    message.dwFlags = MakeLinuxWheelMessageFlags(click.wheelDelta);
+  }
   inputState->rawMessages.push_back(message);
   return true;
 }
@@ -43787,6 +43811,35 @@ bool SelectLinuxLobbyGameFromScrollAt(
   return changed;
 }
 
+bool MoveLinuxLobbySelectedGameRow(
+  const LinuxUiRootPreview& uiRootPreview,
+  LinuxBootstrapScreenRuntime* runtime,
+  int delta,
+  const char* source
+)
+{
+  const size_t gameCount = ResolveLinuxLobbyVisibleGameCount(uiRootPreview, runtime);
+  if (!runtime || delta == 0 || gameCount == 0)
+  {
+    return false;
+  }
+
+  int nextRow = static_cast<int>(runtime->visibleLobbySelectedGameRow) + delta;
+  if (nextRow < 0)
+  {
+    nextRow = 0;
+  }
+  if (nextRow >= static_cast<int>(gameCount))
+  {
+    nextRow = static_cast<int>(gameCount) - 1;
+  }
+
+  const bool changed = runtime->visibleLobbySelectedGameRow != static_cast<size_t>(nextRow);
+  runtime->visibleLobbySelectedGameRow = static_cast<size_t>(nextRow);
+  runtime->visibleMenuLastAction = changed ? (source ? source : "select-game-wheel") : "focus-game-wheel";
+  return changed;
+}
+
 bool ActivateLinuxLobbySelectedGame(
   const LinuxHeroCatalog& heroCatalog,
   const LinuxLocalMatchPreview& localMatchPreview,
@@ -43881,6 +43934,61 @@ bool HandleLinuxVisibleLobbyMouse(
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
   {
     const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_WHEEL)
+    {
+      int baseX = 0;
+      int baseY = 0;
+      if (!ProjectLinuxLobbyMouseToBase(settings, message.x, message.y, &baseX, &baseY))
+      {
+        continue;
+      }
+
+      const int wheelDelta = GET_WHEEL_DELTA_WPARAM(message.dwFlags);
+      if (wheelDelta == 0)
+      {
+        continue;
+      }
+      const int selectionDelta = wheelDelta > 0 ? -1 : 1;
+
+      if (HitLinuxLobbyBaseRect(baseX, baseY, 65, 455, 546, 368))
+      {
+        RecordLinuxVisibleLobbyMouseHit(runtime, "map-wheel", message.x, message.y, baseX, baseY);
+        const size_t previousIndex = mapBrowserState->selectedIndex;
+        MoveMapSelection(mapCatalog, mapBrowserState, selectionDelta, "visible-menu-wheel-map");
+        const bool mapChanged = previousIndex != mapBrowserState->selectedIndex;
+        if (mapChanged)
+        {
+          RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu-wheel-map");
+        }
+        runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_MAP;
+        runtime->visibleMenuLastAction = mapChanged ? "scroll-map-wheel" : "focus-map-wheel";
+        changed = mapChanged || changed;
+        if (consumedNavigation)
+        {
+          *consumedNavigation = true;
+        }
+        continue;
+      }
+
+      if (HitLinuxLobbyBaseRect(baseX, baseY, 689, 454, 546, 449))
+      {
+        RecordLinuxVisibleLobbyMouseHit(runtime, "game-wheel", message.x, message.y, baseX, baseY);
+        changed = MoveLinuxLobbySelectedGameRow(
+          uiRootPreview,
+          runtime,
+          selectionDelta,
+          "select-game-wheel"
+        ) || changed;
+        if (consumedNavigation)
+        {
+          *consumedNavigation = true;
+        }
+        continue;
+      }
+
+      continue;
+    }
+
     if (message.msg != NMainFrame::SWindowsMsg::MOUSE_LB_DOWN &&
         message.msg != NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
     {
