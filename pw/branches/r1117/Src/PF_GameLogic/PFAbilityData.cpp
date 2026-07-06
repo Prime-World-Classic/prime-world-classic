@@ -675,7 +675,24 @@ float PFAbilityData::GetAbilityScale( bool isDamage, float statValue, EAbilitySc
 }
 bool PFAbilityData::IsAbilitySupposedToStopUnit() const { return false; }
 bool PFAbilityData::IsAbilitySupposedToSyncVisual() const { return false; }
-bool PFAbilityData::IsAbilitySuitable( NDb::Ability const* pDbAbility, vector<NDb::Ptr<NDb::Ability> > const& dbAbilities, NDb::EUseMode mode ) { (void)mode; return pDbAbility && dbAbilities.find( pDbAbility ) != dbAbilities.end(); }
+bool PFAbilityData::IsAbilitySuitable( NDb::Ability const* pDbAbility, vector<NDb::Ptr<NDb::Ability> > const& dbAbilities, NDb::EUseMode mode )
+{
+  if (!pDbAbility)
+    return false;
+
+  bool isTalentInList = false;
+  for (int j = 0; j < dbAbilities.size(); ++j)
+  {
+    if (dbAbilities[j] && pDbAbility->GetDBID() == dbAbilities[j]->GetDBID())
+    {
+      isTalentInList = true;
+      break;
+    }
+  }
+
+  return (mode == NDb::USEMODE_LISTASRULE && isTalentInList)
+    || (mode == NDb::USEMODE_LISTASEXCEPTION && !isTalentInList);
+}
 float PFAbilityData::GetTerrainPart(int faction) const
 {
   PFWorld const* pWorld = IsValid(pOwner) ? pOwner->GetWorld() : 0;
