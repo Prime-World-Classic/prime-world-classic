@@ -638,6 +638,15 @@ bool PFApplVictory::Start()
 bool PFApplChangeState::Start()
 {
   PFBaseApplicator::Start();
+  ILogicStatesMapObject* pLSMapObject = dynamic_cast<ILogicStatesMapObject*>(pReceiver.GetPtr());
+  if (!pLSMapObject)
+    return true;
+
+  string const& newStateName = GetDB().newStateName;
+  if (newStateName.empty())
+    return true;
+
+  pLSMapObject->SetState(newStateName);
   return true;
 }
 
