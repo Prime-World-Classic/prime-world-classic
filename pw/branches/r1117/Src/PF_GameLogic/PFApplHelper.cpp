@@ -90,6 +90,8 @@ bool PFApplSpellPeriodicallyVisual::Start()
   if (PFApplSpellPeriodically::Start())
     return true;
   attackTimeOffset = RetrieveParam(GetDB().attackTimeOffset, 0.0f);
+  NI_DATA_ASSERT(attackTimeOffset <= GetPeriod() && attackTimeOffset <= GetStartOffset(),
+                 ErrorStr("attackTimeOffset should be less then period and start offset"));
   strikeCountMarker = 0;
   return false;
 }
@@ -107,6 +109,8 @@ bool PFApplSpellPeriodicallyVisual::Step(float dtInSeconds)
 {
   if (PFApplSpellPeriodically::Step(dtInSeconds))
     return true;
+  if (!IsEnabled())
+    return false;
   strikeCountMarker = 0;
   return false;
 }
@@ -118,7 +122,7 @@ bool PFApplSpellProbability::Start()
   MakeApplicationTarget(targ);
 
   const float probability = RetrieveParam(GetDB().probability, 0.0f);
-  if (Roll(probability * 0.01f))
+  if (Roll(probability))
     CreateDispatch(pAbility, this, targ, targ, GetDB().spell);
   else if (GetDB().spellIfFailed)
     CreateDispatch(pAbility, this, targ, targ, GetDB().spellIfFailed);
