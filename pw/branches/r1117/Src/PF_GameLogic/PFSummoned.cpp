@@ -309,8 +309,25 @@ PFBaseSummonedUnit::PFBaseSummonedUnit(CPtr<PFWorld> const& pWorld, NDb::Creatur
   UpgradeAbilities();
 }
 
-float PFBaseSummonedUnit::OnBeforeDamage(const DamageDesc& desc) { return desc.amount * takeModDmg; }
-float PFBaseSummonedUnit::OnDamage(const DamageDesc& desc) { DamageDesc modified = desc; modified.amount *= takeModDmg; return PFBaseUnit::OnDamage(modified); }
+float PFBaseSummonedUnit::OnBeforeDamage(const DamageDesc& desc)
+{
+  if (IsValid(desc.pSender) && UnitMaskingPredicate(this, takeTypeUnit)(*desc.pSender))
+    return desc.amount * takeModDmg;
+
+  return PFBaseUnit::OnBeforeDamage(desc);
+}
+
+float PFBaseSummonedUnit::OnDamage(const DamageDesc& desc)
+{
+  if (IsValid(desc.pSender) && UnitMaskingPredicate(this, takeTypeUnit)(*desc.pSender))
+  {
+    DamageDesc modified = desc;
+    modified.amount *= takeModDmg;
+    return PFBaseUnit::OnDamage(modified);
+  }
+
+  return PFBaseUnit::OnDamage(desc);
+}
 void PFBaseSummonedUnit::Reset() { PFBaseCreep::Reset(); }
 void PFBaseSummonedUnit::OnAfterReset() { PFBaseCreep::OnAfterReset(); }
 bool PFBaseSummonedUnit::SetSkin(const nstl::string& skinId) { (void)skinId; pCurrentSkin = 0; return false; }
