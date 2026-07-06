@@ -17,6 +17,7 @@
 #include "PFSummoned.h"
 #include "PFTalent.h"
 #include "PFTargetSelector.h"
+#include "PFWorld.h"
 #include "libdb/ClonedPtr.h"
 
 namespace NWorld
@@ -954,11 +955,65 @@ float PFApplMarker::GetVariable(const char* varName) const
 }
 void PFApplMarker::Reset() { PFApplBuff::Reset(); pStat = 0; modifierID = INVALID_MODIFIER_ID; }
 
-void PFApplChangeHeroState::Enable() { PFApplBuff::Enable(); }
-void PFApplChangeHeroState::Disable() { PFApplBuff::Disable(); }
+void PFApplChangeHeroState::Enable()
+{
+  PFApplBuff::Enable();
 
-bool PFApplSceneObjectChange::Start() { sceneObjectIndex = -1; return PFApplBuff::Start(); }
-bool PFApplSceneObjectChange::Step(float dtInSeconds) { return PFApplBuff::Step(dtInSeconds); }
+  PFBaseHero* const pBaseHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
+  if (pBaseHero)
+    pBaseHero->SetHeroState(EHeroState::Second);
+}
+
+void PFApplChangeHeroState::Disable()
+{
+  if (PFBaseHero* const pBaseHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr()))
+    pBaseHero->SetHeroState(EHeroState::First);
+
+  PFApplBuff::Disable();
+}
+
+bool PFApplSceneObjectChange::Start()
+{
+  const NDb::SceneObjectChangeApplicator& db = GetDB();
+  sceneObjectIndex = RetrieveParam(db.sceneObjectIndex, 0);
+
+  if (db.sceneObjects.empty())
+  {
+    sceneObjectIndex = -1;
+    return PFApplBuff::Start();
+  }
+
+  if (sceneObjectIndex < 0 || sceneObjectIndex >= db.sceneObjects.size())
+    sceneObjectIndex = 0;
+
+  if (!db.sceneObjects[sceneObjectIndex])
+    return true;
+
+  return PFApplBuff::Start();
+}
+
+bool PFApplSceneObjectChange::Step(float dtInSeconds)
+{
+  if (PFApplBuff::Step(dtInSeconds))
+    return true;
+
+  if (!IsEnabled() || !IsValid(pReceiver))
+    return false;
+
+  if (pReceiver->IsTrueHero())
+  {
+    PFBaseHero* const pBaseHero = dynamic_cast<PFBaseHero*>(pReceiver.GetPtr());
+    PFWorld* const pWorld = GetWorld();
+    if (pBaseHero && pWorld)
+    {
+      const float timeToRespawn = pBaseHero->GetTimeToRespawn();
+      if (timeToRespawn > 0.0f && timeToRespawn <= pWorld->GetStepLengthInSeconds())
+        return true;
+    }
+  }
+
+  return false;
+}
 void PFApplSceneObjectChange::Enable() { PFApplBuff::Enable(); }
 void PFApplSceneObjectChange::Disable() { oldSceneObject = 0; sceneObjectIndex = -1; PFApplBuff::Disable(); }
 
