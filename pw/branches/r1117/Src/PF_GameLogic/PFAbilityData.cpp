@@ -67,7 +67,14 @@ PFAbilityData::PFAbilityData( CPtr<PFBaseUnit> const& pOwner_, NDb::Ptr<NDb::Abi
   if (pDBDesc && pDBDesc->autoTargetSelector)
     pAutoTargetSelector = static_cast<PFSingleTargetSelector*>(pDBDesc->autoTargetSelector->Create(needRegisterInWorld && IsValid(pOwner) ? pOwner->GetWorld() : 0));
 
+  ::Reset(pConstantsMap, new PFAbilityConstantsMap(this, pDBDesc));
+  constResolver.Init(this);
+  condsResolver.Init(this);
+
+  UpdateAbilityModifiers();
   pMicroAI = CreateMicroAI();
+  RecalculateCooldown();
+  RecalculateManaCost();
 }
 
 PFAbilityData::PFAbilityData()
@@ -92,6 +99,9 @@ PFAbilityData::PFAbilityData()
 void PFAbilityData::Reset()
 {
   PFWorldObjectBase::Reset();
+  ::Reset(pConstantsMap, new PFAbilityConstantsMap(this, pDBDesc));
+  constResolver.Init(this);
+  condsResolver.Init(this);
 }
 
 PFMicroAI* PFAbilityData::CreateMicroAI() const
@@ -104,13 +114,42 @@ PFMicroAI* PFAbilityData::CreateMicroAI() const
 }
 void PFAbilityData::Update(float dt, bool fullUpdate)
 {
-  (void)fullUpdate;
+  if (fullUpdate)
+  {
+    isInPassivePartUpdate = true;
+
+    if (IsValid(pPassiveInstance))
+      pPassiveInstance->Update(dt);
+
+    isInPassivePartUpdate = false;
+
+    UpdateAbilityModifiers();
+    RecalculateManaCost();
+  }
+
   for (int i = 0; i < EAbilityState::_Count; ++i)
   {
     if (cooldown[i] > 0.0f)
       cooldown[i] = max(0.0f, cooldown[i] - dt);
     if (cooldown[i] < dt / 2.0f)
       cooldown[i] = 0.0f;
+  }
+
+  if (!pDBDesc || !IsValid(pOwner))
+    return;
+
+  const bool bAbilityUsesAttackTarget = (pDBDesc->flags & NDb::ABILITYFLAGS_USEATTACKTARGET) != 0;
+  if (IsActive() && (GetTargetType() == 0 || bAbilityUsesAttackTarget))
+  {
+    castSelfLimitationPassed = CheckCastLimitations(Target(pOwner)) == 0;
+    if (bAbilityUsesAttackTarget && castSelfLimitationPassed)
+    {
+      PFBaseUnit const* pTarget = pOwner->GetCurrentTarget();
+      castSelfLimitationPassed = IsValid(pTarget)
+        && UnitMaskingPredicate(pOwner, pDBDesc->targetType)(*pTarget)
+        && pOwner->IsTargetInRange(pTarget, pDBDesc->useRange(pOwner, pTarget, this, 0.0f))
+        && !pTarget->IsInvalidAbilityTarget();
+    }
   }
 }
 float PFAbilityData::GetScale() const { return 1.0f; }
@@ -227,8 +266,16 @@ void PFAbilityData::RemoveApplicatorsFrom(CPtr<PFBaseUnit> const& pUnit) const
   if ( IsValid(pPassiveInstance) )
     pPassiveInstance->RemoveApplicatorsFrom(pOwner);
 }
-void PFAbilityData::LevelUp() { ++rank; }
-bool PFAbilityData::IsReady() const { return cooldown[abilityState] <= 0.0f && forbids <= 0; }
+void PFAbilityData::LevelUp()
+{
+  UpdateAbilityModifiers();
+  RecalculateCooldown();
+
+  if (!IsValid(pPassiveInstance))
+    ApplyPassivePart(true);
+}
+
+bool PFAbilityData::IsReady() const { return cooldown[abilityState] < EPS_VALUE; }
 bool PFAbilityData::IsEnoughMana() const
 {
   if (!IsValid(pOwner))
@@ -386,7 +433,11 @@ float PFAbilityData::GetUseRange(const NWorld::Target & target) const
 }
 NDb::AlternativeTarget const* PFAbilityData::GetAlternativeTarget( Target const& origTarget, const bool bFromMinimap, Target& altTarget ) const { (void)bFromMinimap; altTarget = origTarget; return 0; }
 void PFAbilityData::AddInstance(CObj<PFAbilityInstance> const& inst) { if (inst) rgInstances.push_back( inst ); }
-void PFAbilityData::SwitchOff() { isOn = false; }
+void PFAbilityData::SwitchOff()
+{
+  isOn = false;
+  RecalculateAndRestartCooldown();
+}
 void PFAbilityData::SwitchOn() { isOn = true; }
 void PFAbilityData::CancelAbility()
 {
