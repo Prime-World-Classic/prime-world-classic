@@ -4884,6 +4884,7 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingChatDrawn;
   size_t visibleLoadingChatChannelsDrawn;
   size_t visibleLoadingChatMessagesDrawn;
+  std::string visibleLoadingChatSource;
   bool visibleLoadingBackdropDrawn;
   bool visibleLoadingBackdropLiveBackDrawn;
   bool visibleLoadingBackdropLiveLogoDrawn;
@@ -6156,6 +6157,7 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingChatDrawn(false),
       visibleLoadingChatChannelsDrawn(0),
       visibleLoadingChatMessagesDrawn(0),
+      visibleLoadingChatSource("none"),
       visibleLoadingBackdropDrawn(false),
       visibleLoadingBackdropLiveBackDrawn(false),
       visibleLoadingBackdropLiveLogoDrawn(false),
@@ -59582,6 +59584,51 @@ const Game::LoadingFlashInterface* ResolveLinuxLoadingOverlayFlashInterface(
     0;
 }
 
+bool IsLinuxLoadingChatInterfaceDrawable(const Game::LoadingFlashInterface* flashInterface)
+{
+  return flashInterface &&
+    flashInterface->IsChatVisible() &&
+    !flashInterface->IsChatOff() &&
+    (!flashInterface->GetChatChannels().empty() ||
+      !flashInterface->GetChatMessages().empty());
+}
+
+const Game::LoadingFlashInterface* ResolveLinuxLoadingChatOverlayFlashInterface(
+  const LinuxOverlayUiRenderContext& renderContext,
+  std::string* source)
+{
+  if (source)
+  {
+    *source = "none";
+  }
+
+  const Game::LoadingFlashInterface* activeFlashInterface =
+    GetActiveLinuxLoadingFlashInterface(renderContext.screenRuntime);
+  if (IsLinuxLoadingChatInterfaceDrawable(activeFlashInterface))
+  {
+    if (source)
+    {
+      *source = "live-loading-flash";
+    }
+    return activeFlashInterface;
+  }
+
+  const Game::LoadingFlashInterface* runtimeFlashInterface =
+    renderContext.loadingRuntimeDriver ?
+      renderContext.loadingRuntimeDriver->flashInterface :
+      0;
+  if (IsLinuxLoadingChatInterfaceDrawable(runtimeFlashInterface))
+  {
+    if (source)
+    {
+      *source = "loading-runtime-probe";
+    }
+    return runtimeFlashInterface;
+  }
+
+  return 0;
+}
+
 void ResolveLinuxLoadingForceColor(
   const Game::LoadingFlashInterface* flashInterface,
   int force,
@@ -59634,12 +59681,17 @@ void DrawLinuxLoadingChatOverlay(const LinuxOverlayUiRenderContext& renderContex
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
   LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLoadingChatDrawn = false;
+    runtime->visibleLoadingChatChannelsDrawn = 0;
+    runtime->visibleLoadingChatMessagesDrawn = 0;
+    runtime->visibleLoadingChatSource = "none";
+  }
+  std::string chatSource;
   const Game::LoadingFlashInterface* flashInterface =
-    ResolveLinuxLoadingOverlayFlashInterface(renderContext);
-  if (!overlay ||
-      !flashInterface ||
-      !flashInterface->IsChatVisible() ||
-      flashInterface->IsChatOff())
+    ResolveLinuxLoadingChatOverlayFlashInterface(renderContext, &chatSource);
+  if (!overlay || !flashInterface)
   {
     return;
   }
@@ -59783,6 +59835,7 @@ void DrawLinuxLoadingChatOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingChatDrawn = channelsDrawn > 0 || messagesDrawn > 0;
     runtime->visibleLoadingChatChannelsDrawn = channelsDrawn;
     runtime->visibleLoadingChatMessagesDrawn = messagesDrawn;
+    runtime->visibleLoadingChatSource = chatSource;
   }
 }
 
@@ -64173,6 +64226,8 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingChatChannelsDrawn << "\n";
   logFile << "  finalVisibleLoadingChatMessages="
           << screenRuntime.visibleLoadingChatMessagesDrawn << "\n";
+  logFile << "  finalVisibleLoadingChatSource="
+          << (screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource) << "\n";
   logFile << "  finalVisibleLoadingBackdropDrawn="
           << (screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingBackdropLiveBack="
@@ -68311,10 +68366,11 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingProgressPercent,
     static_cast<unsigned long>(screenRuntime.visibleLoadingProgressSamples),
     screenRuntime.visibleLoadingProgressSource.empty() ? "none" : screenRuntime.visibleLoadingProgressSource.c_str());
-  fprintf(stdout, "Final visible loading chat: drawn=%s channels=%lu messages=%lu\n",
+  fprintf(stdout, "Final visible loading chat: drawn=%s channels=%lu messages=%lu source=%s\n",
     screenRuntime.visibleLoadingChatDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
-    static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn));
+    static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn),
+    screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource.c_str());
   fprintf(stdout, "Final visible loading backdrop: drawn=%s back=%s logo=%s source=%s\n",
     screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no",
