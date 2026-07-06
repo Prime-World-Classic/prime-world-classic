@@ -195,12 +195,14 @@ struct LinuxBootstrapClickSpec
   int baseY;
   bool doubleClick;
   int wheelDelta;
+  int keySym;
 
   LinuxBootstrapClickSpec()
     : baseX(-1),
       baseY(-1),
       doubleClick(false),
-      wheelDelta(0)
+      wheelDelta(0),
+      keySym(0)
   {
   }
 };
@@ -6973,6 +6975,99 @@ bool ReadBootstrapClickBase(int argc, char** argv, int* baseX, int* baseY)
   );
 }
 
+bool ResolveLinuxBootstrapKeySym(const std::string& keyName, int* keySym)
+{
+  if (!keySym)
+  {
+    return false;
+  }
+
+  const std::string key = ToAsciiLower(TrimAscii(keyName));
+  if (key.empty())
+  {
+    return false;
+  }
+
+  if (key == "up")
+  {
+    *keySym = XK_Up;
+  }
+  else if (key == "down")
+  {
+    *keySym = XK_Down;
+  }
+  else if (key == "left")
+  {
+    *keySym = XK_Left;
+  }
+  else if (key == "right")
+  {
+    *keySym = XK_Right;
+  }
+  else if (key == "page-up" || key == "pageup" || key == "prior")
+  {
+    *keySym = XK_Prior;
+  }
+  else if (key == "page-down" || key == "pagedown" || key == "next")
+  {
+    *keySym = XK_Next;
+  }
+  else if (key == "home")
+  {
+    *keySym = XK_Home;
+  }
+  else if (key == "end")
+  {
+    *keySym = XK_End;
+  }
+  else if (key == "enter" || key == "return")
+  {
+    *keySym = XK_Return;
+  }
+  else if (key == "space")
+  {
+    *keySym = XK_space;
+  }
+  else if (key == "tab")
+  {
+    *keySym = XK_Tab;
+  }
+  else if (key == "backspace")
+  {
+    *keySym = XK_BackSpace;
+  }
+  else if (key == "delete" || key == "del")
+  {
+    *keySym = XK_Delete;
+  }
+  else if (key == "f10")
+  {
+    *keySym = XK_F10;
+  }
+  else if (key == "w")
+  {
+    *keySym = XK_w;
+  }
+  else if (key == "s")
+  {
+    *keySym = XK_s;
+  }
+  else if (key == "plus")
+  {
+    *keySym = XK_plus;
+  }
+  else if (key == "minus")
+  {
+    *keySym = XK_minus;
+  }
+  else
+  {
+    return false;
+  }
+
+  return true;
+}
+
 bool ParseBootstrapClickSpecToken(
   const std::string& token,
   bool defaultDoubleClick,
@@ -6990,6 +7085,22 @@ bool ParseBootstrapClickSpecToken(
     return false;
   }
 
+  const std::string lowered = ToAsciiLower(trimmed);
+  if (lowered.find("key:") == 0 || lowered.find("key=") == 0)
+  {
+    int keySym = 0;
+    if (!ResolveLinuxBootstrapKeySym(trimmed.substr(4), &keySym))
+    {
+      return false;
+    }
+    spec->baseX = -1;
+    spec->baseY = -1;
+    spec->doubleClick = false;
+    spec->wheelDelta = 0;
+    spec->keySym = keySym;
+    return true;
+  }
+
   const size_t optionPos = trimmed.find(':');
   const std::string coordinateText = optionPos == std::string::npos ?
     trimmed :
@@ -7005,6 +7116,7 @@ bool ParseBootstrapClickSpecToken(
   spec->baseY = baseY;
   spec->doubleClick = defaultDoubleClick;
   spec->wheelDelta = 0;
+  spec->keySym = 0;
   if (optionPos != std::string::npos)
   {
     const std::string option = ToAsciiLower(TrimAscii(trimmed.substr(optionPos + 1)));
@@ -29743,6 +29855,15 @@ bool InjectLinuxBootstrapLobbyClick(
   NMainFrame::SWindowsMsg message;
   memset(&message, 0, sizeof(message));
   NHPTimer::GetTime(message.time);
+  if (click.keySym != 0)
+  {
+    message.msg = NMainFrame::SWindowsMsg::KEY_DOWN;
+    message.nKey = click.keySym;
+    message.nRep = 1;
+    inputState->rawMessages.push_back(message);
+    return true;
+  }
+
   message.msg = click.wheelDelta != 0 ?
     NMainFrame::SWindowsMsg::MOUSE_WHEEL :
     (click.doubleClick ?
