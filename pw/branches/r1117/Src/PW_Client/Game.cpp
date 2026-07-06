@@ -4678,6 +4678,9 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyDetailsMapBackDrawn;
   bool visibleLobbyDetailsMapLogoDrawn;
   bool visibleLobbyDetailsMapMinimapDrawn;
+  bool visibleLobbyDetailsMapBackSourceReady;
+  bool visibleLobbyDetailsMapLogoSourceReady;
+  bool visibleLobbyDetailsMapMinimapSourceReady;
   bool visibleLobbyDetailsMapSelectionDrawn;
   size_t visibleLobbyDetailsMapSelectedIndex;
   size_t visibleLobbyDetailsMapTotalCount;
@@ -5837,6 +5840,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyDetailsMapBackDrawn(false),
       visibleLobbyDetailsMapLogoDrawn(false),
       visibleLobbyDetailsMapMinimapDrawn(false),
+      visibleLobbyDetailsMapBackSourceReady(false),
+      visibleLobbyDetailsMapLogoSourceReady(false),
+      visibleLobbyDetailsMapMinimapSourceReady(false),
       visibleLobbyDetailsMapSelectionDrawn(false),
       visibleLobbyDetailsMapSelectedIndex(0),
       visibleLobbyDetailsMapTotalCount(0),
@@ -52476,6 +52482,15 @@ void DrawLinuxLobbySelectedMapDetails(
 
   const LinuxTextureAssetPreview* minimapPreview =
     ResolveLinuxLobbyPreferredMinimap(selectedMapPreview);
+  const bool backSourceReady =
+    selectedMapPreview &&
+    !selectedMapPreview->loadingBack.sourceFile.empty();
+  const bool logoSourceReady =
+    selectedMapPreview &&
+    !selectedMapPreview->loadingLogo.sourceFile.empty();
+  const bool minimapSourceReady =
+    minimapPreview &&
+    !minimapPreview->sourceFile.empty();
   if (minimapPreview &&
       ResolveLinuxLobbyTextureAsset(
         overlay,
@@ -52649,6 +52664,9 @@ void DrawLinuxLobbySelectedMapDetails(
     runtime->visibleLobbyDetailsMapBackDrawn = backDrawn;
     runtime->visibleLobbyDetailsMapLogoDrawn = logoDrawn;
     runtime->visibleLobbyDetailsMapMinimapDrawn = minimapDrawn;
+    runtime->visibleLobbyDetailsMapBackSourceReady = backSourceReady;
+    runtime->visibleLobbyDetailsMapLogoSourceReady = logoSourceReady;
+    runtime->visibleLobbyDetailsMapMinimapSourceReady = minimapSourceReady;
     runtime->visibleLobbyDetailsMapSelectionDrawn = selectedEntry != 0;
     runtime->visibleLobbyDetailsMapSelectedIndex = selectedMapIndex;
     runtime->visibleLobbyDetailsMapTotalCount = mapTotalCount;
@@ -60695,6 +60713,10 @@ void AppendRuntimeInputLog(
   logFile << "  finalVisibleLobbyDetailsMinimapTextureSize="
           << screenRuntime.visibleLobbyDetailsMinimapTextureWidth << "x"
           << screenRuntime.visibleLobbyDetailsMinimapTextureHeight << "\n";
+  logFile << "  finalVisibleLobbyDetailsMapAssetSources="
+          << (screenRuntime.visibleLobbyDetailsMapBackSourceReady ? "yes" : "no") << "/"
+          << (screenRuntime.visibleLobbyDetailsMapLogoSourceReady ? "yes" : "no") << "/"
+          << (screenRuntime.visibleLobbyDetailsMapMinimapSourceReady ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsMapSelection="
           << (screenRuntime.visibleLobbyDetailsMapSelectionDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyDetailsMapSelectionValues="
@@ -64525,7 +64547,7 @@ int main(int argc, char** argv)
     engineMapStartPreview,
     screenRuntime
   );
-  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu mapSelection=%s/%lu/%lu/%d rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu teams=%s/%lu/%lu localSlot=%d/%d\n",
+  fprintf(stdout, "Final visible lobby details: drawn=%s artwork=%s back=%s backSize=%dx%d logo=%s logoSize=%dx%d minimap=%s minimapSize=%dx%d textures=%lu assetRefs=%s/%s/%s mapSelection=%s/%lu/%lu/%d rules=%s/%d/%d/%d objectives=%s/%lu/%lu/%lu/%lu lineup=%lu portraits=%lu selected=%lu local=%lu human=%lu manual=%lu fallback=%lu teams=%s/%lu/%lu localSlot=%d/%d\n",
     screenRuntime.visibleLobbyDetailsDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsArtworkDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapBackDrawn ? "yes" : "no",
@@ -64538,6 +64560,9 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyDetailsMinimapTextureWidth,
     screenRuntime.visibleLobbyDetailsMinimapTextureHeight,
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsTextureCount),
+    screenRuntime.visibleLobbyDetailsMapBackSourceReady ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMapLogoSourceReady ? "yes" : "no",
+    screenRuntime.visibleLobbyDetailsMapMinimapSourceReady ? "yes" : "no",
     screenRuntime.visibleLobbyDetailsMapSelectionDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsMapSelectedIndex),
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsMapTotalCount),
