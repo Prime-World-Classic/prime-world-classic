@@ -196,13 +196,15 @@ struct LinuxBootstrapClickSpec
   bool doubleClick;
   int wheelDelta;
   int keySym;
+  bool moveOnly;
 
   LinuxBootstrapClickSpec()
     : baseX(-1),
       baseY(-1),
       doubleClick(false),
       wheelDelta(0),
-      keySym(0)
+      keySym(0),
+      moveOnly(false)
   {
   }
 };
@@ -4712,6 +4714,12 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLobbyPlayerCountDrawn;
   int visibleLobbyPlayerCountValue;
   size_t visibleLobbyMouseInputCount;
+  size_t visibleLobbyHoverInputCount;
+  int visibleLobbyHoverInputX;
+  int visibleLobbyHoverInputY;
+  int visibleLobbyHoverBaseX;
+  int visibleLobbyHoverBaseY;
+  bool visibleLobbyHoverSynthetic;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -5208,6 +5216,7 @@ struct LinuxBootstrapScreenRuntime
   std::string liveMapPreviewLastAction;
   std::string liveMapPreviewLastHitSurface;
   std::string liveMinimapLastAction;
+  std::string visibleLobbyHoverSurface;
   std::string visibleLobbyLastHitSurface;
   std::string replayCaptureValidationError;
   std::string replayStorageValidationError;
@@ -5887,6 +5896,12 @@ struct LinuxBootstrapScreenRuntime
       visibleLobbyPlayerCountDrawn(false),
       visibleLobbyPlayerCountValue(0),
       visibleLobbyMouseInputCount(0),
+      visibleLobbyHoverInputCount(0),
+      visibleLobbyHoverInputX(-1),
+      visibleLobbyHoverInputY(-1),
+      visibleLobbyHoverBaseX(-1),
+      visibleLobbyHoverBaseY(-1),
+      visibleLobbyHoverSynthetic(false),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -6373,6 +6388,7 @@ struct LinuxBootstrapScreenRuntime
       liveMapPreviewLastAction("none"),
       liveMapPreviewLastHitSurface("none"),
       liveMinimapLastAction("none"),
+      visibleLobbyHoverSurface("none"),
       replayCaptureValidationError("inactive"),
       replayStorageValidationError("inactive"),
       replayStorageHeaderMap("<none>"),
@@ -7098,6 +7114,7 @@ bool ParseBootstrapClickSpecToken(
     spec->doubleClick = false;
     spec->wheelDelta = 0;
     spec->keySym = keySym;
+    spec->moveOnly = false;
     return true;
   }
 
@@ -7117,6 +7134,7 @@ bool ParseBootstrapClickSpecToken(
   spec->doubleClick = defaultDoubleClick;
   spec->wheelDelta = 0;
   spec->keySym = 0;
+  spec->moveOnly = false;
   if (optionPos != std::string::npos)
   {
     const std::string option = ToAsciiLower(TrimAscii(trimmed.substr(optionPos + 1)));
@@ -7137,6 +7155,12 @@ bool ParseBootstrapClickSpecToken(
     {
       spec->wheelDelta = -WHEEL_DELTA;
       spec->doubleClick = false;
+    }
+    else if (option == "move" || option == "hover")
+    {
+      spec->moveOnly = true;
+      spec->doubleClick = false;
+      spec->wheelDelta = 0;
     }
     else
     {
@@ -29831,6 +29855,8 @@ unsigned long MakeLinuxWheelMessageFlags(int wheelDelta)
   return static_cast<unsigned long>(static_cast<unsigned short>(wheelDelta) << 16);
 }
 
+const unsigned long LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG = 0x01000000ul;
+
 bool InjectLinuxBootstrapLobbyClick(
   const LinuxClientLaunchSettings& settings,
   double elapsedSeconds,
@@ -29864,11 +29890,13 @@ bool InjectLinuxBootstrapLobbyClick(
     return true;
   }
 
-  message.msg = click.wheelDelta != 0 ?
+  message.msg = click.moveOnly ?
+    NMainFrame::SWindowsMsg::MOUSE_MOVE :
+    (click.wheelDelta != 0 ?
     NMainFrame::SWindowsMsg::MOUSE_WHEEL :
     (click.doubleClick ?
       NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
-      NMainFrame::SWindowsMsg::MOUSE_LB_DOWN);
+      NMainFrame::SWindowsMsg::MOUSE_LB_DOWN));
   message.x = static_cast<int>(
     static_cast<double>(click.baseX) *
       static_cast<double>(settings.width) / 1280.0 + 0.5
@@ -29880,6 +29908,10 @@ bool InjectLinuxBootstrapLobbyClick(
   if (click.wheelDelta != 0)
   {
     message.dwFlags = MakeLinuxWheelMessageFlags(click.wheelDelta);
+  }
+  else if (click.moveOnly)
+  {
+    message.dwFlags = LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG;
   }
   inputState->rawMessages.push_back(message);
   return true;
@@ -43695,6 +43727,80 @@ bool HitLinuxLobbyBaseRect(int baseX, int baseY, int x, int y, int width, int he
   return baseX >= x && baseX < x + width && baseY >= y && baseY < y + height;
 }
 
+bool IsLinuxLobbyBasePointInside(int baseX, int baseY)
+{
+  return baseX >= 0 && baseX < 1280 && baseY >= 0 && baseY < 1024;
+}
+
+const char* ResolveLinuxVisibleLobbySurface(int baseX, int baseY)
+{
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 975, 14, 289, 53))
+  {
+    return "developer-sex";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 679, 399, 561, 57))
+  {
+    return "join-mode";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 65, 455, 518, 368))
+  {
+    return "map-row";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 583, 455, 28, 368))
+  {
+    return "map-scrollbar";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 689, 454, 518, 449))
+  {
+    return "game-row";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 1207, 454, 28, 449))
+  {
+    return "game-scrollbar";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 69, 883, 247, 32))
+  {
+    return "player-count";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 418, 849, 192, 59))
+  {
+    return "create-game-button";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 186, 935, 309, 59))
+  {
+    return "start-session-button";
+  }
+  if (HitLinuxLobbyBaseRect(baseX, baseY, 807, 935, 324, 59))
+  {
+    return "refresh-button";
+  }
+  return "background";
+}
+
+void RecordLinuxVisibleLobbyHover(
+  LinuxBootstrapScreenRuntime* runtime,
+  const char* surface,
+  int inputX,
+  int inputY,
+  int baseX,
+  int baseY,
+  bool synthetic
+)
+{
+  if (!runtime)
+  {
+    return;
+  }
+
+  runtime->visibleLobbyHoverSurface = surface && *surface ? surface : "none";
+  runtime->visibleLobbyHoverInputX = inputX;
+  runtime->visibleLobbyHoverInputY = inputY;
+  runtime->visibleLobbyHoverBaseX = baseX;
+  runtime->visibleLobbyHoverBaseY = baseY;
+  runtime->visibleLobbyHoverSynthetic = synthetic;
+  ++runtime->visibleLobbyHoverInputCount;
+}
+
 void RecordLinuxVisibleLobbyMouseHit(
   LinuxBootstrapScreenRuntime* runtime,
   const char* surface,
@@ -44055,6 +44161,34 @@ bool HandleLinuxVisibleLobbyMouse(
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
   {
     const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
+    if (message.msg == NMainFrame::SWindowsMsg::MOUSE_MOVE)
+    {
+      int baseX = 0;
+      int baseY = 0;
+      if (ProjectLinuxLobbyMouseToBase(settings, message.x, message.y, &baseX, &baseY) &&
+          IsLinuxLobbyBasePointInside(baseX, baseY))
+      {
+        const bool syntheticMove = (message.dwFlags & LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG) != 0;
+        const char* surface = ResolveLinuxVisibleLobbySurface(baseX, baseY);
+        if (!syntheticMove &&
+            surface &&
+            strcmp(surface, "background") == 0 &&
+            runtime->visibleLobbyHoverSynthetic)
+        {
+          continue;
+        }
+        RecordLinuxVisibleLobbyHover(
+          runtime,
+          surface,
+          message.x,
+          message.y,
+          baseX,
+          baseY,
+          syntheticMove);
+      }
+      continue;
+    }
+
     if (message.msg == NMainFrame::SWindowsMsg::MOUSE_WHEEL)
     {
       int baseX = 0;
@@ -52446,15 +52580,17 @@ void DrawLinuxLobbyButton(
   int height,
   const std::string& text,
   bool selected,
-  bool enabled
+  bool enabled,
+  bool hovered
 )
 {
   const int rx = layout.X(x);
   const int ry = layout.Y(y);
   const int rw = layout.W(width);
   const int rh = layout.H(height);
+  const bool hot = selected || (enabled && hovered);
 
-  const LinuxWindowOverlay::OpenGlTexture& texture = selected && overlay->lobbyButtonOver.texture ?
+  const LinuxWindowOverlay::OpenGlTexture& texture = hot && overlay->lobbyButtonOver.texture ?
     overlay->lobbyButtonOver :
     overlay->lobbyButtonUp;
   if (texture.texture)
@@ -52469,21 +52605,21 @@ void DrawLinuxLobbyButton(
   else
   {
     SetOpenGlColor(
-      enabled ? (selected ? 234 : 177) : 78,
-      enabled ? (selected ? 184 : 127) : 76,
-      enabled ? (selected ? 75 : 50) : 70,
+      enabled ? (hot ? 234 : 177) : 78,
+      enabled ? (hot ? 184 : 127) : 76,
+      enabled ? (hot ? 75 : 50) : 70,
       245);
     DrawOpenGlRect(rx, ry, rw, rh);
     SetOpenGlColor(
-      enabled ? (selected ? 255 : 215) : 112,
-      enabled ? (selected ? 222 : 171) : 107,
-      enabled ? (selected ? 119 : 76) : 98,
+      enabled ? (hot ? 255 : 215) : 112,
+      enabled ? (hot ? 222 : 171) : 107,
+      enabled ? (hot ? 119 : 76) : 98,
       235);
     DrawOpenGlRect(rx + 2, ry + 2, std::max(1, rw - 4), std::max(1, rh / 2 - 2));
     SetOpenGlColor(
-      enabled ? (selected ? 87 : 63) : 42,
-      enabled ? (selected ? 58 : 41) : 42,
-      enabled ? (selected ? 29 : 21) : 39,
+      enabled ? (hot ? 87 : 63) : 42,
+      enabled ? (hot ? 58 : 41) : 42,
+      enabled ? (hot ? 29 : 21) : 39,
       245);
     DrawOpenGlRect(rx + 2, ry + rh / 2, std::max(1, rw - 4), std::max(1, rh / 2 - 2));
     SetOpenGlColor(37, 27, 18, 255);
@@ -52493,11 +52629,17 @@ void DrawLinuxLobbyButton(
   }
 
   SetOpenGlColor(
-    enabled ? (selected ? 255 : 244) : 174,
-    enabled ? (selected ? 239 : 226) : 172,
-    enabled ? (selected ? 190 : 183) : 164,
-    255);
+      enabled ? (selected ? 255 : 244) : 174,
+      enabled ? (selected ? 239 : 226) : 172,
+      enabled ? (selected ? 190 : 183) : 164,
+      255);
   DrawOpenGlTextCentered(overlay, rx, ry, rw, rh, text);
+
+  if (enabled && hovered && !selected)
+  {
+    SetOpenGlColor(255, 226, 132, 210);
+    DrawOpenGlBorderRect(rx + 2, ry + 2, std::max(1, rw - 4), std::max(1, rh - 4));
+  }
 }
 
 void DrawLinuxLobbyRadio(
@@ -54771,6 +54913,10 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
   const bool createGameSelected = primarySelected;
   const bool refreshEnabled = true;
   const bool refreshSelected = false;
+  const std::string hoverSurface = runtime ? runtime->visibleLobbyHoverSurface : std::string("none");
+  const bool startSessionHovered = hoverSurface == "start-session-button";
+  const bool createGameHovered = hoverSurface == "create-game-button";
+  const bool refreshHovered = hoverSurface == "refresh-button";
   DrawLinuxLobbyButton(
     overlay,
     layout,
@@ -54780,7 +54926,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     59,
     overlay->lobbyText.startSessionButton,
     startSessionSelected,
-    startSessionEnabled);
+    startSessionEnabled,
+    startSessionHovered);
   ++actionButtonsDrawn;
   if (startSessionEnabled)
   {
@@ -54800,7 +54947,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     59,
     overlay->lobbyText.createGameButton,
     createGameSelected,
-    createGameEnabled);
+    createGameEnabled,
+    createGameHovered);
   ++actionButtonsDrawn;
   if (createGameEnabled)
   {
@@ -54820,7 +54968,8 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     59,
     overlay->lobbyText.refreshButton,
     refreshSelected,
-    refreshEnabled);
+    refreshEnabled,
+    refreshHovered);
   ++actionButtonsDrawn;
   if (refreshEnabled)
   {
@@ -61434,6 +61583,20 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLobbyPlayerCountValue << "\n";
   logFile << "  finalVisibleLobbyMouseInputs="
           << screenRuntime.visibleLobbyMouseInputCount << "\n";
+  logFile << "  finalVisibleLobbyHoverInputs="
+          << screenRuntime.visibleLobbyHoverInputCount << "\n";
+  logFile << "  finalVisibleLobbyHoverSurface="
+          << (screenRuntime.visibleLobbyHoverSurface.empty() ?
+              "none" :
+              screenRuntime.visibleLobbyHoverSurface) << "\n";
+  logFile << "  finalVisibleLobbyHoverInput="
+          << screenRuntime.visibleLobbyHoverInputX << ","
+          << screenRuntime.visibleLobbyHoverInputY << "\n";
+  logFile << "  finalVisibleLobbyHoverBaseInput="
+          << screenRuntime.visibleLobbyHoverBaseX << ","
+          << screenRuntime.visibleLobbyHoverBaseY << "\n";
+  logFile << "  finalVisibleLobbyHoverSynthetic="
+          << (screenRuntime.visibleLobbyHoverSynthetic ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLobbyLastHitSurface="
           << (screenRuntime.visibleLobbyLastHitSurface.empty() ?
               "none" :
@@ -65369,7 +65532,7 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLobbyDetailsLineupTeam2SlotsDrawn),
     screenRuntime.visibleLobbyDetailsLineupLocalSlotIndex,
     screenRuntime.visibleLobbyDetailsLineupLocalTeam);
-  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu lastHit=%s at=%d,%d base=%d,%d\n",
+  fprintf(stdout, "Final visible lobby controls: mapRows=%lu selectedMapRows=%lu mapTypes=%lu/%lu/%lu/%lu mapIndexLabels=%lu mapScroll=%s/%lu/%lu/%lu mapRange=%lu..%lu gameRows=%lu selectedGameRows=%lu openGames=%lu fullGames=%lu gameIndexLabels=%lu gameScroll=%s/%lu/%lu/%lu gameRange=%lu..%lu joinButtons=%lu joinSelected=%lu actionButtons=%lu actionEnabled=%lu selectedAction=%lu/%s joinMode=%s developerSex=%s/%s layout=%lu/%lu joinResult=%s/%s/%lu playerCount=%s/%d mouse=%lu hover=%lu/%s at=%d,%d base=%d,%d lastHit=%s at=%d,%d base=%d,%d\n",
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapSelectedRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLobbyMapPvpRowsDrawn),
@@ -65413,6 +65576,14 @@ int main(int argc, char** argv)
     screenRuntime.visibleLobbyPlayerCountDrawn ? "yes" : "no",
     screenRuntime.visibleLobbyPlayerCountValue,
     static_cast<unsigned long>(screenRuntime.visibleLobbyMouseInputCount),
+    static_cast<unsigned long>(screenRuntime.visibleLobbyHoverInputCount),
+    screenRuntime.visibleLobbyHoverSurface.empty() ?
+      "none" :
+      screenRuntime.visibleLobbyHoverSurface.c_str(),
+    screenRuntime.visibleLobbyHoverInputX,
+    screenRuntime.visibleLobbyHoverInputY,
+    screenRuntime.visibleLobbyHoverBaseX,
+    screenRuntime.visibleLobbyHoverBaseY,
     screenRuntime.visibleLobbyLastHitSurface.empty() ?
       "none" :
       screenRuntime.visibleLobbyLastHitSurface.c_str(),
