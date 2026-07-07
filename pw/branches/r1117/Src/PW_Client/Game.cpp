@@ -4875,6 +4875,11 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingRosterPremiumBadgesDrawn;
   size_t visibleLoadingRosterTeamHeadersDrawn;
   std::string visibleLoadingRosterTeamHeaderSource;
+  size_t visibleLoadingRosterTeamReadyLabelsDrawn;
+  size_t visibleLoadingRosterTeam1ReadyHeroes;
+  size_t visibleLoadingRosterTeam1TotalHeroes;
+  size_t visibleLoadingRosterTeam2ReadyHeroes;
+  size_t visibleLoadingRosterTeam2TotalHeroes;
   std::string visibleLoadingRosterSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
@@ -6150,6 +6155,11 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingRosterPremiumBadgesDrawn(0),
       visibleLoadingRosterTeamHeadersDrawn(0),
       visibleLoadingRosterTeamHeaderSource("none"),
+      visibleLoadingRosterTeamReadyLabelsDrawn(0),
+      visibleLoadingRosterTeam1ReadyHeroes(0),
+      visibleLoadingRosterTeam1TotalHeroes(0),
+      visibleLoadingRosterTeam2ReadyHeroes(0),
+      visibleLoadingRosterTeam2TotalHeroes(0),
       visibleLoadingRosterSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
@@ -60371,6 +60381,11 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLoadingRosterSource = "none";
     runtime->visibleLoadingRosterTeamHeadersDrawn = 0;
     runtime->visibleLoadingRosterTeamHeaderSource = "none";
+    runtime->visibleLoadingRosterTeamReadyLabelsDrawn = 0;
+    runtime->visibleLoadingRosterTeam1ReadyHeroes = 0;
+    runtime->visibleLoadingRosterTeam1TotalHeroes = 0;
+    runtime->visibleLoadingRosterTeam2ReadyHeroes = 0;
+    runtime->visibleLoadingRosterTeam2TotalHeroes = 0;
   }
   if (!overlay)
   {
@@ -60397,7 +60412,8 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   const int panelX = std::max(12, (width - panelW) / 2);
   const int panelY = std::max(64, height - panelH - 48);
   const int gap = std::max(5, std::min(9, panelW / 150));
-  const int headerH = std::max(8, std::min(12, panelH / 12));
+  const int headerLineH = std::max(12, ResolveOpenGlTextLineHeight(overlay));
+  const int headerH = std::max(headerLineH + 10, std::min(34, panelH / 4));
   const int cardW = std::max(84, (panelW - gap * 6) / 5);
   const int cardH = std::max(46, (panelH - headerH - gap * 3) / 2);
 
@@ -60423,6 +60439,23 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     }
   }
 
+  size_t topReadyHeroes = 0;
+  size_t bottomReadyHeroes = 0;
+  for (size_t i = 0; i < topRow.size(); ++i)
+  {
+    if (ClampLinuxDynamicMarkerPercent(topRow[i]->progress) >= 0.995f)
+    {
+      ++topReadyHeroes;
+    }
+  }
+  for (size_t i = 0; i < bottomRow.size(); ++i)
+  {
+    if (ClampLinuxDynamicMarkerPercent(bottomRow[i]->progress) >= 0.995f)
+    {
+      ++bottomReadyHeroes;
+    }
+  }
+
   SetOpenGlColor(4, 7, 10, 190);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
   SetOpenGlColor(92, 103, 105, 198);
@@ -60434,9 +60467,10 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     ResolveLinuxLoadingTeamHeaderLabel(renderContext, true, &topHeaderSource);
   const std::string bottomHeaderText =
     ResolveLinuxLoadingTeamHeaderLabel(renderContext, false, &bottomHeaderSource);
-  const int headerLineH = std::max(12, ResolveOpenGlTextLineHeight(overlay));
   const int headerY = panelY + 1;
+  const int readyY = headerY + headerLineH;
   size_t teamHeadersDrawn = 0;
+  size_t teamReadyLabelsDrawn = 0;
   SetOpenGlColor(198, 216, 221, 226);
   if (!topHeaderText.empty())
   {
@@ -60467,6 +60501,44 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
       false
     );
     ++teamHeadersDrawn;
+  }
+
+  SetOpenGlColor(146, 168, 174, 218);
+  if (!topRow.empty())
+  {
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + gap,
+      readyY,
+      std::max(1, panelW / 2 - gap * 2),
+      headerLineH,
+      NStr::StrFmt(
+        "Loaded %lu/%lu",
+        static_cast<unsigned long>(topReadyHeroes),
+        static_cast<unsigned long>(topRow.size())),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++teamReadyLabelsDrawn;
+  }
+  if (!bottomRow.empty())
+  {
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + panelW / 2,
+      readyY,
+      std::max(1, panelW / 2 - gap),
+      headerLineH,
+      NStr::StrFmt(
+        "Loaded %lu/%lu",
+        static_cast<unsigned long>(bottomReadyHeroes),
+        static_cast<unsigned long>(bottomRow.size())),
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++teamReadyLabelsDrawn;
   }
 
   size_t rowsDrawn = 0;
@@ -60573,6 +60645,11 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
         bottomHeaderSource == "loading-flash-team-force") ?
       "loading-flash-team-force" :
       "fallback-team-labels";
+    runtime->visibleLoadingRosterTeamReadyLabelsDrawn = teamReadyLabelsDrawn;
+    runtime->visibleLoadingRosterTeam1ReadyHeroes = topReadyHeroes;
+    runtime->visibleLoadingRosterTeam1TotalHeroes = topRow.size();
+    runtime->visibleLoadingRosterTeam2ReadyHeroes = bottomReadyHeroes;
+    runtime->visibleLoadingRosterTeam2TotalHeroes = bottomRow.size();
     runtime->visibleLoadingRosterSource = rosterSource;
   }
 }
@@ -64356,6 +64433,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingRosterTeamHeadersDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterTeamHeaderSource="
           << (screenRuntime.visibleLoadingRosterTeamHeaderSource.empty() ? "none" : screenRuntime.visibleLoadingRosterTeamHeaderSource) << "\n";
+  logFile << "  finalVisibleLoadingRosterTeamReadyLabels="
+          << screenRuntime.visibleLoadingRosterTeamReadyLabelsDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterTeam1Ready="
+          << screenRuntime.visibleLoadingRosterTeam1ReadyHeroes << "/"
+          << screenRuntime.visibleLoadingRosterTeam1TotalHeroes << "\n";
+  logFile << "  finalVisibleLoadingRosterTeam2Ready="
+          << screenRuntime.visibleLoadingRosterTeam2ReadyHeroes << "/"
+          << screenRuntime.visibleLoadingRosterTeam2TotalHeroes << "\n";
   logFile << "  finalVisibleLoadingRosterSource="
           << (screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource) << "\n";
   logFile << "  finalGameSchedulerTicks=" << screenRuntime.schedulerTickCount << "\n";
@@ -68463,7 +68548,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropLiveLogoDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropSource.empty() ? "none" : screenRuntime.visibleLoadingBackdropSource.c_str());
-  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu headers=%lu headerSource=%s source=%s\n",
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu headers=%lu headerSource=%s readyLabels=%lu teamReady=%lu/%lu,%lu/%lu source=%s\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterLocalRowsDrawn),
@@ -68483,6 +68568,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPremiumBadgesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeamHeadersDrawn),
     screenRuntime.visibleLoadingRosterTeamHeaderSource.empty() ? "none" : screenRuntime.visibleLoadingRosterTeamHeaderSource.c_str(),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeamReadyLabelsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam1ReadyHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam1TotalHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam2ReadyHeroes),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeam2TotalHeroes),
     screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource.c_str());
   fprintf(stdout, "Final game transceiver runtime: ready=%s world=%s step=%d commands=%lu runtimeSent=%lu productionSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroCombatMoveSent=%s heroCombatMoveCommands=%lu heroCombatMoveType=0x%08X heroHoldSent=%s heroHoldCommands=%lu heroHoldType=0x%08X heroCancelSent=%s heroCancelCommands=%lu heroCancelType=0x%08X heroMinimapSignalSent=%s heroMinimapSignalCommands=%lu heroMinimapSignalType=0x%08X heroUseUnitSent=%s heroUseUnitCommands=%lu heroUseUnitType=0x%08X heroActivateTalentSent=%s heroActivateTalentCommands=%lu heroActivateTalentType=0x%08X heroUseTalentSent=%s heroUseTalentCommands=%lu heroUseTalentType=0x%08X heroUsePortalSent=%s heroUsePortalCommands=%lu heroUsePortalType=0x%08X heroUseConsumableSent=%s heroUseConsumableCommands=%lu heroUseConsumableType=0x%08X heroBuyConsumableSent=%s heroBuyConsumableCommands=%lu heroBuyConsumableType=0x%08X heroRaiseFlagSent=%s heroRaiseFlagCommands=%lu heroRaiseFlagType=0x%08X heroInitMinigameSent=%s heroInitMinigameCommands=%lu heroInitMinigameType=0x%08X heroPickupObjectSent=%s heroPickupObjectCommands=%lu heroPickupObjectType=0x%08X cmdType=0x%08X spawnedHeroes=%lu playerHeroes=%lu replayCommands=%lu replayBytes=%lu path=%s\n",
     screenRuntime.transceiverReady ? "yes" : "no",
