@@ -20,6 +20,7 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
 PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_LINUX_INLINE_NULL_USER_CAST
 
+#include "PFAdvMapObject.h"
 #include "PFBuildings.h"
 #include "PFAIWorld.h"
 #include "PFWorld.h"
@@ -38,6 +39,12 @@ PFBuilding::PFBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
   , levelUpInterval(0.0f)
   , levelUpTimer(0.0f)
 {
+  if (pWorld && pWorld->GetTileMap())
+  {
+    MarkObject(pWorld->GetTileMap(), dbObject, occupiedTiles);
+    pWorld->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+  }
+
   if (const NDb::Building* pDesc = dynamic_cast<NDb::Building const*>(dbObject.gameObject.GetPtr()))
   {
     isDecoration = pDesc->isDecoration;
@@ -56,6 +63,7 @@ void PFBuilding::Init(NDb::AdvMapObject const&, NDb::Building const* pDesc, NDb:
   data.playerId = -1;
   data.pObjectDesc = pDesc;
   Initialize(data);
+  InitBaseAttack();
 
   routeID = pDesc->routeID;
   routeLevel = pDesc->routeLevel;
@@ -67,15 +75,59 @@ void PFBuilding::Init(NDb::AdvMapObject const&, NDb::Building const* pDesc, NDb:
     if (levelUpInterval > 0.0f)
       levelUpTimer = pAIWorld->GetBattleStartDelay();
   }
+  UpgradeAbilities();
 }
 
 bool PFBuilding::CanDenyBuilding(CPtr<PFBaseHero>const&) const { return false; }
 void PFBuilding::DenyBuilding(CPtr<PFBaseHero>const&) {}
-bool PFBuilding::IsInRange(const CVec2& aimerPos, float range) const { return fabs2(aimerPos - GetPosition().AsVec2D()) <= fabs2(range + GetObjectSize() * 0.5f); }
+bool PFBuilding::IsInRange(const CVec2& aimerPos, float range) const
+{
+  if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+  {
+    const int rangeInTiles = GetWorld()->GetTileMap()->GetLenghtInTiles(range);
+    const SVector aimerTile = GetWorld()->GetTileMap()->GetTile(aimerPos);
+    for (int i = 0; i < occupiedTiles.size(); ++i)
+    {
+      if (fabs2(aimerTile - occupiedTiles[i]) <= fabs2(rangeInTiles))
+        return true;
+    }
+    return false;
+  }
+
+  return fabs2(aimerPos - GetPosition().AsVec2D()) <= fabs2(range + GetObjectSize() * 0.5f);
+}
 float PFBuilding::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods) { return PFBaseUnit::OnHeal(pSender, amount, ignoreHealingMods); }
 void PFBuilding::OnAfterReset() { PFBaseUnit::OnAfterReset(); }
 void PFBuilding::Reset() { PFBaseUnit::Reset(); }
-void PFBuilding::Hide(bool hide) { PFBaseUnit::Hide(hide); }
+void PFBuilding::Hide(bool hide)
+{
+  if (hide)
+  {
+    AddFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE);
+    if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+      GetWorld()->GetTileMap()->MarkObject(occupiedTiles, false, MAP_MODE_BUILDING);
+    if (!IsDead())
+    {
+      if (ringField.isLinked() && GetWorld() && GetWorld()->GetAIWorld())
+        GetWorld()->GetAIWorld()->UnregisterObjectOrUnit(this);
+      CloseWarFog(true);
+    }
+  }
+  else
+  {
+    RemoveFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE);
+    if (!IsDead())
+    {
+      if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+        GetWorld()->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+      if (GetWorld() && GetWorld()->GetAIWorld())
+        GetWorld()->GetAIWorld()->RegisterUnit(this);
+      OpenWarFog();
+    }
+  }
+
+  UpdateHiddenState(!hide);
+}
 
 void PFBuilding::MakeLevelupsForTimeDelta(float dtInSeconds)
 {
@@ -95,6 +147,8 @@ void PFBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamage
 {
   if (PFAIWorld* pAIWorld = GetWorld() ? GetWorld()->GetAIWorld() : 0)
     pAIWorld->OnBuildingDestroy(GetFaction(), routeID, routeLevel, GetObjectId(), dynamic_cast<PFQuarters*>(this) != 0);
+  if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+    GetWorld()->GetTileMap()->MarkObject(occupiedTiles, false, MAP_MODE_BUILDING);
   PFBaseUnit::OnUnitDie(pKiller, flags, pDamageDesc);
 }
 bool PFBuilding::Step(float dtInSeconds) { MakeLevelupsForTimeDelta(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }

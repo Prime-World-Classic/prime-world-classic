@@ -21,8 +21,11 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_LINUX_INLINE_NULL_USER_CAST
 
 #include "../Game/PF/Audit/ClientStubs.h"
+#include "PFAdvMapObject.h"
 #include "PFFlagpole.h"
+#include "PFAIWorld.h"
 #include "PFWorld.h"
+#include "TileMap.h"
 
 namespace NWorld
 {
@@ -43,12 +46,19 @@ PFFlagpole::PFFlagpole(PFWorld* pWorld, const NDb::AdvMapObject& _dbObject)
   data.playerId = -1;
   data.pObjectDesc = db;
   Initialize(data);
+  InitBaseAttack();
+  if (pWorld && pWorld->GetTileMap())
+  {
+    MarkObject(pWorld->GetTileMap(), dbObject, occupiedTiles);
+    pWorld->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+  }
   health = GetMaxHealth();
   AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
   AddFlag(NDb::UNITFLAG_FORBIDATTACK);
   AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
   SetVulnerable(false);
   lastSetVulnerable = false;
+  UpgradeAbilities();
 }
 
 void PFFlagpole::Reset()
@@ -122,7 +132,28 @@ void PFFlagpole::UpdateVulnerable()
 const PFFlagpole* PFFlagpole::GetPrevFlagpole(NDb::EFaction _faction) const { return const_cast<PFFlagpole*>(this)->GetPrevFlagpole(_faction); }
 const PFFlagpole* PFFlagpole::GetNextFlagpole(NDb::EFaction _faction) const { return const_cast<PFFlagpole*>(this)->GetNextFlagpole(_faction); }
 void PFFlagpole::OnAfterReset() { PFBaseUnit::OnAfterReset(); }
-void PFFlagpole::Hide(bool hide) { PFBaseUnit::Hide(hide); }
+void PFFlagpole::Hide(bool hide)
+{
+  if (hide)
+  {
+    AddFlag(NDb::UNITFLAG_ISOLATED);
+    if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+      GetWorld()->GetTileMap()->MarkObject(occupiedTiles, false, MAP_MODE_BUILDING);
+    if (ringField.isLinked() && GetWorld() && GetWorld()->GetAIWorld())
+      GetWorld()->GetAIWorld()->UnregisterObjectOrUnit(this);
+    WorldObjectBase::Reset();
+  }
+  else
+  {
+    RemoveFlag(NDb::UNITFLAG_ISOLATED);
+    if (GetWorld() && GetWorld()->GetTileMap() && !occupiedTiles.empty())
+      GetWorld()->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+    if (GetWorld() && GetWorld()->GetAIWorld())
+      GetWorld()->GetAIWorld()->RegisterUnit(this);
+    Reset();
+    OnAfterReset();
+  }
+}
 
 } // namespace NWorld
 
