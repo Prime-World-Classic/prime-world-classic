@@ -1013,6 +1013,7 @@ struct LinuxLoadingUiPreview
   std::vector<std::string> modeSamples;
   std::vector<std::string> chatChannelSamples;
   std::vector<std::string> reportTypeSamples;
+  std::vector<std::string> bindSamples;
   std::vector<std::string> smartChatSamples;
   std::vector<std::string> warnings;
 
@@ -4894,6 +4895,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingReportTypesDrawnCount;
   size_t visibleLoadingReportTypesAvailable;
   std::string visibleLoadingReportTypesSource;
+  bool visibleLoadingControlHintsDrawn;
+  size_t visibleLoadingControlHintsDrawnCount;
+  size_t visibleLoadingControlHintsAvailable;
+  std::string visibleLoadingControlHintsSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6187,6 +6192,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingReportTypesDrawnCount(0),
       visibleLoadingReportTypesAvailable(0),
       visibleLoadingReportTypesSource("none"),
+      visibleLoadingControlHintsDrawn(false),
+      visibleLoadingControlHintsDrawnCount(0),
+      visibleLoadingControlHintsAvailable(0),
+      visibleLoadingControlHintsSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -21106,6 +21115,22 @@ void ProbeLoadingUiPreview(
   for (int i = 0; i < uiData->reportTypes.size(); ++i)
   {
     AppendSampleValue(&preview->reportTypeSamples, ReadDbLocalizedText(uiData->reportTypes[i].name), 5);
+  }
+
+  for (int i = 0; i < uiData->binds.bindList.size(); ++i)
+  {
+    const NDb::HotkeyBind& bind = uiData->binds.bindList[i];
+    std::string bindName = ReadDbLocalizedText(bind.name);
+    if (bindName.empty())
+    {
+      bindName = ToStdString(bind.bindKey);
+    }
+    if (bindName.empty())
+    {
+      continue;
+    }
+
+    AppendSampleValue(&preview->bindSamples, bindName, 6);
   }
 }
 
@@ -59894,6 +59919,10 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     runtime->visibleLoadingReportTypesDrawnCount = 0;
     runtime->visibleLoadingReportTypesAvailable = 0;
     runtime->visibleLoadingReportTypesSource = "none";
+    runtime->visibleLoadingControlHintsDrawn = false;
+    runtime->visibleLoadingControlHintsDrawnCount = 0;
+    runtime->visibleLoadingControlHintsAvailable = 0;
+    runtime->visibleLoadingControlHintsSource = "none";
   }
   if (!overlay || !loadingUiPreview || !loadingUiPreview->smartChatReady ||
       loadingUiPreview->smartChatSamples.empty())
@@ -59910,8 +59939,8 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int panelX = 42 + chatPanelW + 14;
   const int panelRight = width - localPanelW - 42 - 14;
   const int panelW = panelRight - panelX;
-  const int panelY = std::max(164, std::min(186, rosterY - 168 - 12));
-  const int panelH = std::max(118, std::min(168, rosterY - panelY - 12));
+  const int panelY = std::max(164, std::min(186, rosterY - 196 - 12));
+  const int panelH = std::max(146, std::min(196, rosterY - panelY - 12));
   if (panelW < 260 || panelH <= 0)
   {
     return;
@@ -59920,11 +59949,13 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int padding = 10;
   const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
   const bool hasReportTypes = !loadingUiPreview->reportTypeSamples.empty();
+  const bool hasControlHints = !loadingUiPreview->bindSamples.empty();
   const int reportLineH = hasReportTypes ? lineH + 7 : 0;
+  const int controlLineH = hasControlHints ? lineH + 7 : 0;
   const size_t rowsLimit = std::min<size_t>(
     loadingUiPreview->smartChatSamples.size(),
     static_cast<size_t>(
-      std::max(1, (panelH - padding * 2 - lineH * 2 - reportLineH) / std::max(1, lineH + 5)))
+      std::max(1, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH) / std::max(1, lineH + 5)))
   );
   if (rowsLimit == 0)
   {
@@ -59995,6 +60026,8 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   }
 
   size_t reportTypesDrawn = 0;
+  size_t controlHintsDrawn = 0;
+  const int controlY = panelY + panelH - padding - lineH - 1;
   if (hasReportTypes)
   {
     std::string reportText = "Reports: ";
@@ -60015,7 +60048,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     }
     if (reportTypesDrawn > 0)
     {
-      const int reportY = panelY + panelH - padding - lineH - 1;
+      const int reportY = hasControlHints ? controlY - lineH - 7 : controlY;
       SetOpenGlColor(28, 18, 18, 146);
       DrawOpenGlRect(panelX + padding, reportY, panelW - padding * 2, lineH + 4);
       SetOpenGlColor(210, 180, 172, 224);
@@ -60026,6 +60059,42 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
         panelW - padding * 2 - 12,
         lineH,
         TruncateForOverlay(reportText, 58),
+        LINUX_OPENGL_TEXT_ALIGN_LEFT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+    }
+  }
+  if (hasControlHints)
+  {
+    std::string controlsText = "Controls: ";
+    const size_t controlLimit = std::min<size_t>(loadingUiPreview->bindSamples.size(), 4);
+    for (size_t i = 0; i < controlLimit; ++i)
+    {
+      std::string sample = StripLinuxLoadingFlashMarkup(loadingUiPreview->bindSamples[i]);
+      if (sample.empty())
+      {
+        continue;
+      }
+      if (controlHintsDrawn > 0)
+      {
+        controlsText += "  |  ";
+      }
+      controlsText += sample;
+      ++controlHintsDrawn;
+    }
+    if (controlHintsDrawn > 0)
+    {
+      SetOpenGlColor(16, 24, 28, 146);
+      DrawOpenGlRect(panelX + padding, controlY, panelW - padding * 2, lineH + 4);
+      SetOpenGlColor(186, 207, 207, 224);
+      DrawOpenGlTextInBox(
+        overlay,
+        panelX + padding + 6,
+        controlY + 2,
+        panelW - padding * 2 - 12,
+        lineH,
+        TruncateForOverlay(controlsText, 62),
         LINUX_OPENGL_TEXT_ALIGN_LEFT,
         LINUX_OPENGL_TEXT_VALIGN_CENTER,
         false
@@ -60046,6 +60115,12 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       loadingUiPreview->reportTypeSamples.size();
     runtime->visibleLoadingReportTypesSource =
       reportTypesDrawn > 0 ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingControlHintsDrawn = controlHintsDrawn > 0;
+    runtime->visibleLoadingControlHintsDrawnCount = controlHintsDrawn;
+    runtime->visibleLoadingControlHintsAvailable =
+      loadingUiPreview->bindSamples.size();
+    runtime->visibleLoadingControlHintsSource =
+      controlHintsDrawn > 0 ? "loading-ui-preview" : "none";
   }
 }
 
@@ -64267,6 +64342,10 @@ void WriteStartupLog(
   {
     logFile << "  loadingUiReportTypeSample[" << i << "]=" << loadingUiPreview.reportTypeSamples[i] << "\n";
   }
+  for (size_t i = 0; i < loadingUiPreview.bindSamples.size(); ++i)
+  {
+    logFile << "  loadingUiBindSample[" << i << "]=" << loadingUiPreview.bindSamples[i] << "\n";
+  }
   for (size_t i = 0; i < loadingUiPreview.smartChatSamples.size(); ++i)
   {
     logFile << "  loadingUiSmartChatSample[" << i << "]=" << loadingUiPreview.smartChatSamples[i] << "\n";
@@ -64842,6 +64921,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingReportTypesAvailable << "\n";
   logFile << "  finalVisibleLoadingReportTypesSource="
           << (screenRuntime.visibleLoadingReportTypesSource.empty() ? "none" : screenRuntime.visibleLoadingReportTypesSource) << "\n";
+  logFile << "  finalVisibleLoadingControlHintsDrawn="
+          << (screenRuntime.visibleLoadingControlHintsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingControlHints="
+          << screenRuntime.visibleLoadingControlHintsDrawnCount << "\n";
+  logFile << "  finalVisibleLoadingControlHintSamples="
+          << screenRuntime.visibleLoadingControlHintsAvailable << "\n";
+  logFile << "  finalVisibleLoadingControlHintsSource="
+          << (screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource) << "\n";
   logFile << "  finalVisibleLoadingLocalHeroDrawn="
           << (screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingLocalHeroPortrait="
@@ -67540,6 +67627,10 @@ int main(int argc, char** argv)
   {
     fprintf(stdout, "Loading report samples: %s\n", JoinPreviewSamples(loadingUiPreview.reportTypeSamples).c_str());
   }
+  if (!loadingUiPreview.bindSamples.empty())
+  {
+    fprintf(stdout, "Loading bind samples: %s\n", JoinPreviewSamples(loadingUiPreview.bindSamples).c_str());
+  }
   if (!loadingUiPreview.smartChatSamples.empty())
   {
     fprintf(stdout, "Loading smart-chat samples: %s\n", JoinPreviewSamples(loadingUiPreview.smartChatSamples).c_str());
@@ -69017,6 +69108,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingReportTypesDrawnCount),
     static_cast<unsigned long>(screenRuntime.visibleLoadingReportTypesAvailable),
     screenRuntime.visibleLoadingReportTypesSource.empty() ? "none" : screenRuntime.visibleLoadingReportTypesSource.c_str());
+  fprintf(stdout, "Final visible loading control hints: drawn=%s count=%lu samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingControlHintsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsDrawnCount),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsAvailable),
+    screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource.c_str());
   fprintf(stdout, "Final visible loading local hero: drawn=%s portrait=%s progress=%d source=%s\n",
     screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingLocalHeroPortraitDrawn ? "yes" : "no",
