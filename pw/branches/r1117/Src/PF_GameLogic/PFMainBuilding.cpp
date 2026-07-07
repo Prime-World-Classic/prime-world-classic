@@ -27,10 +27,85 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_LINUX_INLINE_NULL_USER_CAST
 
 #include "../Game/PF/Audit/ClientStubs.h"
+#include "PFAbilityData.h"
+#include "PFAbilityInstance.h"
+#include "PFAIWorld.h"
+#include "PFBaseAttackData.h"
 #include "PFMainBuilding.h"
+
+namespace
+{
+  struct UnitCounter
+  {
+    int count;
+    UnitCounter() : count(0) {}
+    void operator()(NWorld::PFBaseUnit const& unit)
+    {
+      if (!unit.IsDead() && !unit.CheckFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME))
+        ++count;
+    }
+  };
+}
 
 namespace NWorld
 {
+
+class PFMBGuardState : public PFMainBuildingState
+{
+  WORLD_OBJECT_METHODS(0x2C6CE400, PFMBGuardState);
+
+  ZDATA_(PFMainBuildingState)
+  CPtr<PFWorld> pWorld;
+public:
+  ZEND int operator&(IBinSaver& f) { f.Add(1, (PFMainBuildingState*)this); f.Add(2, &pWorld); return 0; }
+
+  PFMBGuardState(CPtr<PFWorld> const& pWorld, CPtr<PFMainBuilding> const& pOwner)
+    : PFMainBuildingState(pOwner)
+    , pWorld(pWorld)
+  {
+  }
+
+protected:
+  virtual bool OnStep(float);
+  virtual void OnLeave();
+  PFMBGuardState() {}
+};
+
+bool PFMBGuardState::OnStep(float)
+{
+  if (!IsUnitValid(pOwner))
+    return true;
+
+  if (pOwner->CanUseAOE() && pOwner->IsAttackFinished())
+  {
+    pOwner->UseAOE();
+    return false;
+  }
+
+  if (pOwner->IsAOEInProcess())
+    return false;
+
+  CPtr<PFBaseUnit> pTarget = pOwner->FindTarget(pOwner->GetAttackRange());
+  if (IsUnitValid(pTarget))
+  {
+    pOwner->AssignTarget(pTarget, false);
+    pOwner->SelectAttack();
+    if (pOwner->IsReadyToAttack())
+      pOwner->DoAttack();
+  }
+  else
+  {
+    pOwner->DropTarget();
+  }
+
+  return false;
+}
+
+void PFMBGuardState::OnLeave()
+{
+  if (IsUnitValid(pOwner))
+    pOwner->DropTarget();
+}
 
 PFMainBuilding::~PFMainBuilding() {}
 
@@ -63,8 +138,18 @@ PFMainBuilding::PFMainBuilding(PFWorld* pWorld, NDb::AdvMapObject const& dbObjec
   aoeUnitsTypes = pDesc->aoeUnitsTypes;
   aoeUnitsFactions = pDesc->aoeUnitsFactions;
 
+  pRangedAttack = pAttackAbility;
+  pAOEAttack = pDesc->aoeAttack ? new PFAbilityData(CPtr<PFBaseUnit>(this), pDesc->aoeAttack, NDb::ABILITYTYPEID_SPECIAL) : 0;
+
   SetBaseAngle(dbObject.offset.GetEulerRotation().z);
+  if (GetWorld() && GetWorld()->GetAIWorld())
+  {
+    NDb::AILogicParameters const& params = GetWorld()->GetAIWorld()->GetAIParameters();
+    const bool isTeamA = NDb::FACTION_FREEZE == GetFaction();
+    SetTurretParams(params.mainBuildingTurretParams[isTeamA ? NDb::TEAMID_A : NDb::TEAMID_B]);
+  }
   SetVulnerable(true);
+  OnActivated(true);
 }
 
 void PFMainBuilding::Reset()
@@ -78,9 +163,25 @@ void PFMainBuilding::Reset()
 
 bool PFMainBuilding::Step(float dtInSeconds)
 {
-  if (aoeCooldown > 0.0f)
-    aoeCooldown = Max(0.0f, aoeCooldown - dtInSeconds);
-  return PFBattleBuilding::Step(dtInSeconds);
+  PFBattleBuilding::Step(dtInSeconds);
+  Activate(true);
+
+  if (aoePending && IsAOEAttackReady())
+  {
+    CVec3 position = GetPosition();
+    pAOEInstance = CreateAbilityInstance(pAOEAttack, Target(position));
+    aoePending = false;
+  }
+
+  if (IsAOEInProcess() && pAOEInstance && pAOEInstance->IsCastDone())
+  {
+    SelectAttack();
+    ForceTargetAngle(false);
+    pAOEInstance = 0;
+  }
+
+  aoeCooldown = Max(0.0f, aoeCooldown - dtInSeconds);
+  return true;
 }
 
 void PFMainBuilding::Activate(bool activate)
@@ -88,38 +189,95 @@ void PFMainBuilding::Activate(bool activate)
   if (activate == activated)
     return;
   activated = activate;
-  OnActivated(activated);
+  ContolTurret(false);
 }
 
-void PFMainBuilding::OnActivated(bool)
+void PFMainBuilding::OnActivated(bool activated)
 {
+  if (activated)
+  {
+    StartAOECooldown();
+    PushState(new PFMBGuardState(GetWorld(), this));
+  }
   ContolTurret(false);
 }
 
 void PFMainBuilding::StartAOECooldown()
 {
-  aoeCooldown = maxAOEDelay > 0.0f ? maxAOEDelay : 0.0f;
+  if (GetWorld() && GetWorld()->GetRndGen())
+    aoeCooldown = GetWorld()->GetRndGen()->Next(minAOEDelay * 1e+3f, maxAOEDelay * 1e+3f) * 1e-3f;
+  else
+    aoeCooldown = maxAOEDelay > 0.0f ? maxAOEDelay : 0.0f;
 }
 
-bool PFMainBuilding::CanUseAOE() const { return false; }
-void PFMainBuilding::UseAOE() {}
-bool PFMainBuilding::IsAOEInProcess() const { return selectedAttack == AOE && aoePending; }
-bool PFMainBuilding::IsAOEAttackReady() const { return false; }
+bool PFMainBuilding::CanUseAOE() const
+{
+  if (!pAOEAttack || !IsAOEReady() || !GetWorld() || !GetWorld()->GetAIWorld())
+    return false;
+
+  UnitCounter counter;
+  GetWorld()->GetAIWorld()->ForAllUnitsInRange(
+    GetPosition(),
+    aoeRadius,
+    counter,
+    UnitMaskingPredicate(GetOppositeFactionFlags(), NDb::SPELLTARGET_ALL | NDb::SPELLTARGET_AFFECTMOUNTED | NDb::SPELLTARGET_FLYING));
+
+  return aoeUnitsCount <= counter.count;
+}
+
+void PFMainBuilding::UseAOE()
+{
+  if (pAOEAttack && IsAOEReady())
+  {
+    DropTarget();
+    SelectAttack();
+    StartAOECooldown();
+
+    selectedAttack = AOE;
+    aoePending = true;
+
+    ForceTargetAngle(true, ToDegree(baseAngle));
+  }
+}
+
+bool PFMainBuilding::IsAOEInProcess() const { return AOE == selectedAttack; }
+bool PFMainBuilding::IsAOEAttackReady() const { return (pAOEAttack ? (1.0f - pAOEAttack->GetPreparedness() < EPS_VALUE) : false) && IsInTargetPosition(); }
 
 void PFMainBuilding::SelectAttack()
 {
-  selectedAttack = IsTargetValid(GetCurrentTarget()) ? Ranged : Invalid;
+  CPtr<PFBaseUnit> pTarget = GetCurrentTarget();
+  if (IsTargetValid(pTarget))
+  {
+    if (Ranged != selectedAttack)
+    {
+      selectedAttack = Ranged;
+      ReplaceBaseAttack(pRangedAttack);
+    }
+    return;
+  }
+
+  selectedAttack = Invalid;
+  pAttackAbility = 0;
 }
 
 void PFMainBuilding::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc)
 {
+  const NDb::EFaction faction = GetFaction();
   if (GetWorld())
-    GetWorld()->SetDefeatedFaction(GetFaction());
+  {
+    GetWorld()->SetDefeatedFaction(faction);
+  }
   PFBattleBuilding::OnUnitDie(pKiller, flags, pDamageDesc);
+  if (GetWorld())
+    GetWorld()->OnGameFinished(faction);
 }
 
 void PFMainBuilding::OnDie()
 {
+  if (pAOEInstance)
+    pAOEInstance->Cancel();
+  if (pRangedAttack)
+    pRangedAttack->Cancel();
   pAOEInstance = 0;
   pRangedAttack = 0;
   pAOEAttack = 0;
@@ -129,6 +287,7 @@ void PFMainBuilding::OnDie()
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFMainBuilding, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFMBGuardState, NWorld)
 
 #else
 
