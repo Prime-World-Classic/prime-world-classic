@@ -4906,6 +4906,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingTipCounterIndex;
   size_t visibleLoadingTipCounterTotal;
   std::string visibleLoadingTipCounterSource;
+  bool visibleLoadingLocaleMatchupDrawn;
+  size_t visibleLoadingLocaleFlagsDrawn;
+  std::string visibleLoadingLocaleMatchupText;
+  std::string visibleLoadingLocaleMatchupSource;
   bool visibleLoadingProgressDrawn;
   int visibleLoadingProgressPercent;
   size_t visibleLoadingProgressSamples;
@@ -6207,6 +6211,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingTipCounterIndex(0),
       visibleLoadingTipCounterTotal(0),
       visibleLoadingTipCounterSource("none"),
+      visibleLoadingLocaleMatchupDrawn(false),
+      visibleLoadingLocaleFlagsDrawn(0),
+      visibleLoadingLocaleMatchupText("none"),
+      visibleLoadingLocaleMatchupSource("none"),
       visibleLoadingProgressDrawn(false),
       visibleLoadingProgressPercent(0),
       visibleLoadingProgressSamples(0),
@@ -59224,6 +59232,10 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingTipCounterIndex = 0;
     runtime->visibleLoadingTipCounterTotal = 0;
     runtime->visibleLoadingTipCounterSource = "none";
+    runtime->visibleLoadingLocaleMatchupDrawn = false;
+    runtime->visibleLoadingLocaleFlagsDrawn = 0;
+    runtime->visibleLoadingLocaleMatchupText = "none";
+    runtime->visibleLoadingLocaleMatchupSource = "none";
   }
   if (!overlay || !loadingUiPreview || !loadingUiState)
   {
@@ -59319,25 +59331,32 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   std::string enemyLocaleImageRef;
   std::string currentLocaleTooltip;
   std::string enemyLocaleTooltip;
+  std::string currentLocaleCode;
+  std::string enemyLocaleCode;
   if (currentLocale)
   {
+    currentLocaleCode = currentLocale->locale;
     currentLocaleImageRef = currentLocale->imageRef;
     currentLocaleTooltip = currentLocale->tooltip.empty() ? currentLocale->locale : currentLocale->tooltip;
   }
   if (enemyLocale)
   {
+    enemyLocaleCode = enemyLocale->locale;
     enemyLocaleImageRef = enemyLocale->imageRef;
     enemyLocaleTooltip = enemyLocale->tooltip.empty() ? enemyLocale->locale : enemyLocale->tooltip;
   }
+  bool liveLocaleUsed = false;
   if (flashInterface)
   {
     if (!flashInterface->GetLeftLocaleImage().empty())
     {
       currentLocaleImageRef = ToStdString(flashInterface->GetLeftLocaleImage());
+      liveLocaleUsed = true;
     }
     if (!flashInterface->GetRightLocaleImage().empty())
     {
       enemyLocaleImageRef = ToStdString(flashInterface->GetRightLocaleImage());
+      liveLocaleUsed = true;
     }
     const std::string liveLeftTooltip = StripLinuxLoadingFlashMarkup(
       ToStdString(NStr::ToMBCS(flashInterface->GetLeftLocaleTooltip())));
@@ -59346,11 +59365,21 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     if (!liveLeftTooltip.empty())
     {
       currentLocaleTooltip = liveLeftTooltip;
+      liveLocaleUsed = true;
     }
     if (!liveRightTooltip.empty())
     {
       enemyLocaleTooltip = liveRightTooltip;
+      liveLocaleUsed = true;
     }
+  }
+
+  std::string localeMatchupText;
+  if (!currentLocaleCode.empty() || !enemyLocaleCode.empty())
+  {
+    localeMatchupText = currentLocaleCode.empty() ? "?" : currentLocaleCode;
+    localeMatchupText += " vs ";
+    localeMatchupText += enemyLocaleCode.empty() ? "?" : enemyLocaleCode;
   }
 
   std::string localeText = currentLocaleTooltip;
@@ -59383,6 +59412,7 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
   size_t linesDrawn = 0;
   size_t iconsDrawn = 0;
+  size_t localeFlagsDrawn = 0;
 
   SetOpenGlColor(4, 7, 10, 182);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
@@ -59431,6 +59461,7 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
         flagSize
       );
       ++iconsDrawn;
+      ++localeFlagsDrawn;
     }
   }
   if (!enemyLocaleImageRef.empty())
@@ -59452,6 +59483,36 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
         flagSize
       );
       ++iconsDrawn;
+      ++localeFlagsDrawn;
+    }
+  }
+
+  bool localeMatchupDrawn = false;
+  if (!localeMatchupText.empty())
+  {
+    const int badgeW = std::max(rightIconW, flagSize * 2 + 18);
+    const int badgeH = lineH + 4;
+    const int badgeX = std::max(panelX + padding, flagsX - (badgeW - rightIconW) / 2);
+    const int badgeY = panelY + padding + flagSize + 7;
+    if (badgeY + badgeH <= panelY + panelH - padding)
+    {
+      SetOpenGlColor(18, 24, 28, 178);
+      DrawOpenGlRect(badgeX, badgeY, badgeW, badgeH);
+      SetOpenGlColor(102, 118, 122, 194);
+      DrawOpenGlBorderRect(badgeX, badgeY, badgeW, badgeH);
+      SetOpenGlColor(208, 220, 218, 230);
+      DrawOpenGlTextInBox(
+        overlay,
+        badgeX + 4,
+        badgeY + 2,
+        badgeW - 8,
+        lineH,
+        TruncateForOverlay(localeMatchupText, 18),
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      localeMatchupDrawn = true;
     }
   }
 
@@ -59554,6 +59615,12 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingTipCounterTotal = tipCounterTotal;
     runtime->visibleLoadingTipCounterSource =
       tipCounterDrawn ? (liveTipUsed ? "live-loading-flash" : "loading-ui-preview") : "none";
+    runtime->visibleLoadingLocaleMatchupDrawn = localeMatchupDrawn;
+    runtime->visibleLoadingLocaleFlagsDrawn = localeFlagsDrawn;
+    runtime->visibleLoadingLocaleMatchupText =
+      localeMatchupDrawn ? localeMatchupText : "none";
+    runtime->visibleLoadingLocaleMatchupSource =
+      localeMatchupDrawn ? (liveLocaleUsed ? "live-loading-flash" : "loading-ui-preview") : "none";
   }
 }
 
@@ -64959,6 +65026,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingTipCounterTotal << "\n";
   logFile << "  finalVisibleLoadingTipCounterSource="
           << (screenRuntime.visibleLoadingTipCounterSource.empty() ? "none" : screenRuntime.visibleLoadingTipCounterSource) << "\n";
+  logFile << "  finalVisibleLoadingLocaleMatchupDrawn="
+          << (screenRuntime.visibleLoadingLocaleMatchupDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingLocaleFlags="
+          << screenRuntime.visibleLoadingLocaleFlagsDrawn << "\n";
+  logFile << "  finalVisibleLoadingLocaleMatchup="
+          << (screenRuntime.visibleLoadingLocaleMatchupText.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupText) << "\n";
+  logFile << "  finalVisibleLoadingLocaleMatchupSource="
+          << (screenRuntime.visibleLoadingLocaleMatchupSource.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupSource) << "\n";
   logFile << "  finalVisibleLoadingProgressDrawn="
           << (screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingProgressPercent="
@@ -69163,6 +69238,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingTipCounterIndex),
     static_cast<unsigned long>(screenRuntime.visibleLoadingTipCounterTotal),
     screenRuntime.visibleLoadingTipCounterSource.empty() ? "none" : screenRuntime.visibleLoadingTipCounterSource.c_str());
+  fprintf(stdout, "Final visible loading locale matchup: drawn=%s flags=%lu text=%s source=%s\n",
+    screenRuntime.visibleLoadingLocaleMatchupDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingLocaleFlagsDrawn),
+    screenRuntime.visibleLoadingLocaleMatchupText.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupText.c_str(),
+    screenRuntime.visibleLoadingLocaleMatchupSource.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupSource.c_str());
   fprintf(stdout, "Final visible loading progress: drawn=%s percent=%d samples=%lu source=%s\n",
     screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingProgressPercent,
