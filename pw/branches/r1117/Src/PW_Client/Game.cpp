@@ -4873,6 +4873,8 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingRosterMetaLabelsDrawn;
   size_t visibleLoadingRosterRankIconsDrawn;
   size_t visibleLoadingRosterPremiumBadgesDrawn;
+  size_t visibleLoadingRosterTeamHeadersDrawn;
+  std::string visibleLoadingRosterTeamHeaderSource;
   std::string visibleLoadingRosterSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
@@ -6146,6 +6148,8 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingRosterMetaLabelsDrawn(0),
       visibleLoadingRosterRankIconsDrawn(0),
       visibleLoadingRosterPremiumBadgesDrawn(0),
+      visibleLoadingRosterTeamHeadersDrawn(0),
+      visibleLoadingRosterTeamHeaderSource("none"),
       visibleLoadingRosterSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
@@ -60221,6 +60225,36 @@ const LinuxLoadingRuntimeHeroEntry* FindLinuxLoadingRuntimeHeroBySlot(
   return 0;
 }
 
+std::string ResolveLinuxLoadingTeamHeaderLabel(
+  const LinuxOverlayUiRenderContext& renderContext,
+  bool topTeam,
+  std::string* source)
+{
+  if (source)
+  {
+    *source = "fallback-team-labels";
+  }
+
+  const Game::LoadingFlashInterface* flashInterface =
+    ResolveLinuxLoadingOverlayFlashInterface(renderContext);
+  if (flashInterface)
+  {
+    const wstring& forceText =
+      topTeam ? flashInterface->GetLeftTeamForce() : flashInterface->GetRightTeamForce();
+    std::string label = StripLinuxLoadingFlashMarkup(ToStdString(NStr::ToMBCS(forceText)));
+    if (!label.empty() && label != "0")
+    {
+      if (source)
+      {
+        *source = "loading-flash-team-force";
+      }
+      return label;
+    }
+  }
+
+  return topTeam ? "Team 1" : "Team 2";
+}
+
 void BuildLinuxVisibleLoadingRosterEntries(
   const LinuxOverlayUiRenderContext& renderContext,
   std::vector<LinuxLoadingRuntimeHeroEntry>* heroes,
@@ -60335,6 +60369,8 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   if (runtime)
   {
     runtime->visibleLoadingRosterSource = "none";
+    runtime->visibleLoadingRosterTeamHeadersDrawn = 0;
+    runtime->visibleLoadingRosterTeamHeaderSource = "none";
   }
   if (!overlay)
   {
@@ -60391,6 +60427,47 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
   SetOpenGlColor(92, 103, 105, 198);
   DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  std::string topHeaderSource;
+  std::string bottomHeaderSource;
+  const std::string topHeaderText =
+    ResolveLinuxLoadingTeamHeaderLabel(renderContext, true, &topHeaderSource);
+  const std::string bottomHeaderText =
+    ResolveLinuxLoadingTeamHeaderLabel(renderContext, false, &bottomHeaderSource);
+  const int headerLineH = std::max(12, ResolveOpenGlTextLineHeight(overlay));
+  const int headerY = panelY + 1;
+  size_t teamHeadersDrawn = 0;
+  SetOpenGlColor(198, 216, 221, 226);
+  if (!topHeaderText.empty())
+  {
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + gap,
+      headerY,
+      std::max(1, panelW / 2 - gap * 2),
+      headerLineH,
+      MakeOpenGlOverlayText(overlay, TruncateForOverlay(topHeaderText, 32), "Team 1"),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++teamHeadersDrawn;
+  }
+  if (!bottomHeaderText.empty())
+  {
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + panelW / 2,
+      headerY,
+      std::max(1, panelW / 2 - gap),
+      headerLineH,
+      MakeOpenGlOverlayText(overlay, TruncateForOverlay(bottomHeaderText, 32), "Team 2"),
+      LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++teamHeadersDrawn;
+  }
 
   size_t rowsDrawn = 0;
   size_t localRowsDrawn = 0;
@@ -60490,6 +60567,12 @@ void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderCont
     runtime->visibleLoadingRosterMetaLabelsDrawn = metaLabelsDrawn;
     runtime->visibleLoadingRosterRankIconsDrawn = rankIconsDrawn;
     runtime->visibleLoadingRosterPremiumBadgesDrawn = premiumBadgesDrawn;
+    runtime->visibleLoadingRosterTeamHeadersDrawn = teamHeadersDrawn;
+    runtime->visibleLoadingRosterTeamHeaderSource =
+      (topHeaderSource == "loading-flash-team-force" ||
+        bottomHeaderSource == "loading-flash-team-force") ?
+      "loading-flash-team-force" :
+      "fallback-team-labels";
     runtime->visibleLoadingRosterSource = rosterSource;
   }
 }
@@ -64269,6 +64352,10 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingRosterRankIconsDrawn << "\n";
   logFile << "  finalVisibleLoadingRosterPremiumBadges="
           << screenRuntime.visibleLoadingRosterPremiumBadgesDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterTeamHeaders="
+          << screenRuntime.visibleLoadingRosterTeamHeadersDrawn << "\n";
+  logFile << "  finalVisibleLoadingRosterTeamHeaderSource="
+          << (screenRuntime.visibleLoadingRosterTeamHeaderSource.empty() ? "none" : screenRuntime.visibleLoadingRosterTeamHeaderSource) << "\n";
   logFile << "  finalVisibleLoadingRosterSource="
           << (screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource) << "\n";
   logFile << "  finalGameSchedulerTicks=" << screenRuntime.schedulerTickCount << "\n";
@@ -68376,7 +68463,7 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropLiveLogoDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropSource.empty() ? "none" : screenRuntime.visibleLoadingBackdropSource.c_str());
-  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu source=%s\n",
+  fprintf(stdout, "Final visible loading roster: drawn=%s rows=%lu local=%lu team1=%lu team2=%lu other=%lu portraits=%lu flags=%lu progress=%lu range=%d..%d avg=%d localProgress=%d force=%lu meta=%lu rank=%lu premium=%lu headers=%lu headerSource=%s source=%s\n",
     screenRuntime.visibleLoadingRosterDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRowsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterLocalRowsDrawn),
@@ -68394,6 +68481,8 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterMetaLabelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterRankIconsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingRosterPremiumBadgesDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingRosterTeamHeadersDrawn),
+    screenRuntime.visibleLoadingRosterTeamHeaderSource.empty() ? "none" : screenRuntime.visibleLoadingRosterTeamHeaderSource.c_str(),
     screenRuntime.visibleLoadingRosterSource.empty() ? "none" : screenRuntime.visibleLoadingRosterSource.c_str());
   fprintf(stdout, "Final game transceiver runtime: ready=%s world=%s step=%d commands=%lu runtimeSent=%lu productionSent=%lu heroMoveSent=%s heroMoveCommands=%lu heroMoveType=0x%08X heroStopSent=%s heroStopCommands=%lu heroStopType=0x%08X heroAttackSent=%s heroAttackCommands=%lu heroAttackType=0x%08X heroFollowSent=%s heroFollowCommands=%lu heroFollowType=0x%08X heroCombatMoveSent=%s heroCombatMoveCommands=%lu heroCombatMoveType=0x%08X heroHoldSent=%s heroHoldCommands=%lu heroHoldType=0x%08X heroCancelSent=%s heroCancelCommands=%lu heroCancelType=0x%08X heroMinimapSignalSent=%s heroMinimapSignalCommands=%lu heroMinimapSignalType=0x%08X heroUseUnitSent=%s heroUseUnitCommands=%lu heroUseUnitType=0x%08X heroActivateTalentSent=%s heroActivateTalentCommands=%lu heroActivateTalentType=0x%08X heroUseTalentSent=%s heroUseTalentCommands=%lu heroUseTalentType=0x%08X heroUsePortalSent=%s heroUsePortalCommands=%lu heroUsePortalType=0x%08X heroUseConsumableSent=%s heroUseConsumableCommands=%lu heroUseConsumableType=0x%08X heroBuyConsumableSent=%s heroBuyConsumableCommands=%lu heroBuyConsumableType=0x%08X heroRaiseFlagSent=%s heroRaiseFlagCommands=%lu heroRaiseFlagType=0x%08X heroInitMinigameSent=%s heroInitMinigameCommands=%lu heroInitMinigameType=0x%08X heroPickupObjectSent=%s heroPickupObjectCommands=%lu heroPickupObjectType=0x%08X cmdType=0x%08X spawnedHeroes=%lu playerHeroes=%lu replayCommands=%lu replayBytes=%lu path=%s\n",
     screenRuntime.transceiverReady ? "yes" : "no",
