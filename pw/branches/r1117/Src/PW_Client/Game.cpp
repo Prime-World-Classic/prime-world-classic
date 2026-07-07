@@ -4910,6 +4910,13 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingMinimapLegendIconsDrawn;
   size_t visibleLoadingMinimapLegendIconsAvailable;
   std::string visibleLoadingMinimapLegendSource;
+  bool visibleLoadingModeChipsDrawn;
+  size_t visibleLoadingModeChipsDrawnCount;
+  size_t visibleLoadingModeChipsAvailable;
+  std::string visibleLoadingModeChipsSource;
+  bool visibleLoadingRecentPlayersDrawn;
+  int visibleLoadingRecentPlayersLimit;
+  std::string visibleLoadingRecentPlayersSource;
   bool visibleLoadingPremiumTooltipDrawn;
   size_t visibleLoadingPremiumTooltipBytes;
   std::string visibleLoadingPremiumTooltipText;
@@ -6229,6 +6236,13 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingMinimapLegendIconsDrawn(0),
       visibleLoadingMinimapLegendIconsAvailable(0),
       visibleLoadingMinimapLegendSource("none"),
+      visibleLoadingModeChipsDrawn(false),
+      visibleLoadingModeChipsDrawnCount(0),
+      visibleLoadingModeChipsAvailable(0),
+      visibleLoadingModeChipsSource("none"),
+      visibleLoadingRecentPlayersDrawn(false),
+      visibleLoadingRecentPlayersLimit(0),
+      visibleLoadingRecentPlayersSource("none"),
       visibleLoadingPremiumTooltipDrawn(false),
       visibleLoadingPremiumTooltipBytes(0),
       visibleLoadingPremiumTooltipText("none"),
@@ -60335,6 +60349,13 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     runtime->visibleLoadingMinimapLegendIconsDrawn = 0;
     runtime->visibleLoadingMinimapLegendIconsAvailable = 0;
     runtime->visibleLoadingMinimapLegendSource = "none";
+    runtime->visibleLoadingModeChipsDrawn = false;
+    runtime->visibleLoadingModeChipsDrawnCount = 0;
+    runtime->visibleLoadingModeChipsAvailable = 0;
+    runtime->visibleLoadingModeChipsSource = "none";
+    runtime->visibleLoadingRecentPlayersDrawn = false;
+    runtime->visibleLoadingRecentPlayersLimit = 0;
+    runtime->visibleLoadingRecentPlayersSource = "none";
   }
   if (!overlay || !loadingUiPreview)
   {
@@ -60347,7 +60368,10 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const bool hasControlHints = !loadingUiPreview->bindSamples.empty();
   const bool hasMinimapLegend =
     loadingUiPreview->minimapReady && !loadingUiPreview->minimapIcons.empty();
-  if (!hasSmartChat && !hasReportTypes && !hasControlHints && !hasMinimapLegend)
+  const bool hasModeChips = !loadingUiPreview->modes.empty();
+  const bool hasRecentPlayers = loadingUiPreview->recentPlayers > 0;
+  const bool hasModeHints = hasModeChips || hasRecentPlayers;
+  if (!hasSmartChat && !hasReportTypes && !hasControlHints && !hasMinimapLegend && !hasModeHints)
   {
     return;
   }
@@ -60362,7 +60386,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int panelRight = width - localPanelW - 42 - 14;
   const int panelW = panelRight - panelX;
   const int panelY = std::max(164, std::min(186, rosterY - 196 - 12));
-  const int panelH = std::max(146, std::min(196, rosterY - panelY - 12));
+  const int panelH = std::max(146, std::min(220, rosterY - panelY - 12));
   if (panelW < 260 || panelH <= 0)
   {
     return;
@@ -60373,8 +60397,9 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int reportLineH = hasReportTypes ? lineH + 7 : 0;
   const int controlLineH = hasControlHints ? lineH + 7 : 0;
   const int minimapLineH = hasMinimapLegend ? lineH + 7 : 0;
+  const int modeLineH = hasModeHints ? lineH + 7 : 0;
   const int rowsAvailable =
-    std::max(0, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH - minimapLineH) /
+    std::max(0, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH - minimapLineH - modeLineH) /
       std::max(1, lineH + 5));
   const size_t rowsLimit = hasSmartChat ?
     std::min<size_t>(
@@ -60400,6 +60425,25 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     false
   );
 
+  std::string hintSummary = hasSmartChat ?
+    NStr::StrFmt(
+      "%lu categories  %lu messages",
+      static_cast<unsigned long>(loadingUiPreview->smartChatCategoryCount),
+      static_cast<unsigned long>(loadingUiPreview->smartChatMessageCount)) :
+    NStr::StrFmt(
+      "%lu minimap icons",
+      static_cast<unsigned long>(loadingUiPreview->minimapIconCount));
+  if (hasModeChips)
+  {
+    hintSummary += NStr::StrFmt(
+      "  %lu modes",
+      static_cast<unsigned long>(loadingUiPreview->modes.size()));
+  }
+  if (hasRecentPlayers)
+  {
+    hintSummary += NStr::StrFmt("  recent %d", loadingUiPreview->recentPlayers);
+  }
+
   SetOpenGlColor(146, 168, 174, 218);
   DrawOpenGlTextInBox(
     overlay,
@@ -60407,14 +60451,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     panelY + 5 + lineH,
     panelW - padding * 2,
     lineH,
-    hasSmartChat ?
-      NStr::StrFmt(
-        "%lu categories  %lu messages",
-        static_cast<unsigned long>(loadingUiPreview->smartChatCategoryCount),
-        static_cast<unsigned long>(loadingUiPreview->smartChatMessageCount)) :
-      NStr::StrFmt(
-        "%lu minimap icons",
-        static_cast<unsigned long>(loadingUiPreview->minimapIconCount)),
+    TruncateForOverlay(hintSummary, 72),
     LINUX_OPENGL_TEXT_ALIGN_LEFT,
     LINUX_OPENGL_TEXT_VALIGN_CENTER,
     false
@@ -60452,6 +60489,8 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   size_t reportTypesDrawn = 0;
   size_t controlHintsDrawn = 0;
   size_t minimapIconsDrawn = 0;
+  size_t modeChipsDrawn = 0;
+  bool recentPlayersDrawn = false;
   int nextFooterY = panelY + panelH - padding - lineH - 1;
   const int minimapY = hasMinimapLegend ? nextFooterY : 0;
   if (hasMinimapLegend)
@@ -60464,6 +60503,11 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     nextFooterY -= lineH + 7;
   }
   const int reportY = hasReportTypes ? nextFooterY : 0;
+  if (hasReportTypes)
+  {
+    nextFooterY -= lineH + 7;
+  }
+  const int modeY = hasModeHints ? nextFooterY : 0;
   if (hasReportTypes)
   {
     std::string reportText = "Reports: ";
@@ -60609,6 +60653,90 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       ++minimapIconsDrawn;
     }
   }
+  if (hasModeHints)
+  {
+    SetOpenGlColor(20, 20, 26, 146);
+    DrawOpenGlRect(panelX + padding, modeY, panelW - padding * 2, lineH + 4);
+    SetOpenGlColor(204, 188, 146, 224);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 6,
+      modeY + 2,
+      48,
+      lineH,
+      hasModeChips ? "Modes:" : "Recent:",
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    int chipX = panelX + padding + 58;
+    const int rowRight = panelX + panelW - padding - 4;
+    const size_t modeLimit = std::min<size_t>(loadingUiPreview->modes.size(), 4);
+    for (size_t i = 0; i < modeLimit; ++i)
+    {
+      std::string modeLabel = StripLinuxLoadingFlashMarkup(loadingUiPreview->modes[i].id);
+      if (modeLabel.empty())
+      {
+        continue;
+      }
+
+      const int chipW = std::min(
+        64,
+        std::max(34, static_cast<int>(modeLabel.size()) * 6 + 12));
+      if (chipX + chipW > rowRight)
+      {
+        break;
+      }
+
+      SetOpenGlColor(34, 34, 30, 174);
+      DrawOpenGlRect(chipX, modeY + 1, chipW, lineH + 3);
+      SetOpenGlColor(166, 150, 96, 218);
+      DrawOpenGlBorderRect(chipX, modeY + 1, chipW, lineH + 3);
+      SetOpenGlColor(228, 216, 178, 226);
+      DrawOpenGlTextInBox(
+        overlay,
+        chipX + 4,
+        modeY + 2,
+        chipW - 8,
+        lineH,
+        TruncateForOverlay(modeLabel, 10),
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      chipX += chipW + 4;
+      ++modeChipsDrawn;
+    }
+
+    if (hasRecentPlayers)
+    {
+      const std::string recentText = NStr::StrFmt("Recent %d", loadingUiPreview->recentPlayers);
+      const int recentW = std::min(
+        78,
+        std::max(58, static_cast<int>(recentText.size()) * 6 + 12));
+      if (chipX + recentW <= rowRight)
+      {
+        SetOpenGlColor(24, 36, 38, 174);
+        DrawOpenGlRect(chipX, modeY + 1, recentW, lineH + 3);
+        SetOpenGlColor(96, 154, 150, 218);
+        DrawOpenGlBorderRect(chipX, modeY + 1, recentW, lineH + 3);
+        SetOpenGlColor(190, 222, 218, 226);
+        DrawOpenGlTextInBox(
+          overlay,
+          chipX + 4,
+          modeY + 2,
+          recentW - 8,
+          lineH,
+          recentText,
+          LINUX_OPENGL_TEXT_ALIGN_CENTER,
+          LINUX_OPENGL_TEXT_VALIGN_CENTER,
+          false
+        );
+        recentPlayersDrawn = true;
+      }
+    }
+  }
 
   if (runtime)
   {
@@ -60635,6 +60763,16 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       loadingUiPreview->minimapIconCount;
     runtime->visibleLoadingMinimapLegendSource =
       minimapIconsDrawn > 0 ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingModeChipsDrawn = modeChipsDrawn > 0;
+    runtime->visibleLoadingModeChipsDrawnCount = modeChipsDrawn;
+    runtime->visibleLoadingModeChipsAvailable = loadingUiPreview->modes.size();
+    runtime->visibleLoadingModeChipsSource =
+      modeChipsDrawn > 0 ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingRecentPlayersDrawn = recentPlayersDrawn;
+    runtime->visibleLoadingRecentPlayersLimit =
+      recentPlayersDrawn ? loadingUiPreview->recentPlayers : 0;
+    runtime->visibleLoadingRecentPlayersSource =
+      recentPlayersDrawn ? "loading-ui-preview" : "none";
   }
 }
 
@@ -65480,6 +65618,20 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingMinimapLegendIconsAvailable << "\n";
   logFile << "  finalVisibleLoadingMinimapLegendSource="
           << (screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource) << "\n";
+  logFile << "  finalVisibleLoadingModeChipsDrawn="
+          << (screenRuntime.visibleLoadingModeChipsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingModeChips="
+          << screenRuntime.visibleLoadingModeChipsDrawnCount << "\n";
+  logFile << "  finalVisibleLoadingModeChipSamples="
+          << screenRuntime.visibleLoadingModeChipsAvailable << "\n";
+  logFile << "  finalVisibleLoadingModeChipsSource="
+          << (screenRuntime.visibleLoadingModeChipsSource.empty() ? "none" : screenRuntime.visibleLoadingModeChipsSource) << "\n";
+  logFile << "  finalVisibleLoadingRecentPlayersDrawn="
+          << (screenRuntime.visibleLoadingRecentPlayersDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingRecentPlayersLimit="
+          << screenRuntime.visibleLoadingRecentPlayersLimit << "\n";
+  logFile << "  finalVisibleLoadingRecentPlayersSource="
+          << (screenRuntime.visibleLoadingRecentPlayersSource.empty() ? "none" : screenRuntime.visibleLoadingRecentPlayersSource) << "\n";
   logFile << "  finalVisibleLoadingPremiumTooltipDrawn="
           << (screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingPremiumTooltipBytes="
@@ -69695,6 +69847,15 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsAvailable),
     screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource.c_str());
+  fprintf(stdout, "Final visible loading mode chips: drawn=%s count=%lu samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingModeChipsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingModeChipsDrawnCount),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingModeChipsAvailable),
+    screenRuntime.visibleLoadingModeChipsSource.empty() ? "none" : screenRuntime.visibleLoadingModeChipsSource.c_str());
+  fprintf(stdout, "Final visible loading recent players: drawn=%s limit=%d source=%s\n",
+    screenRuntime.visibleLoadingRecentPlayersDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingRecentPlayersLimit,
+    screenRuntime.visibleLoadingRecentPlayersSource.empty() ? "none" : screenRuntime.visibleLoadingRecentPlayersSource.c_str());
   fprintf(stdout, "Final visible loading premium tooltip: drawn=%s bytes=%lu source=%s\n",
     screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingPremiumTooltipBytes),
