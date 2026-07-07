@@ -4882,6 +4882,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingRosterTeam2ReadyHeroes;
   size_t visibleLoadingRosterTeam2TotalHeroes;
   std::string visibleLoadingRosterSource;
+  bool visibleLoadingLocalHeroDrawn;
+  bool visibleLoadingLocalHeroPortraitDrawn;
+  int visibleLoadingLocalHeroProgressPercent;
+  std::string visibleLoadingLocalHeroSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6163,6 +6167,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingRosterTeam2ReadyHeroes(0),
       visibleLoadingRosterTeam2TotalHeroes(0),
       visibleLoadingRosterSource("none"),
+      visibleLoadingLocalHeroDrawn(false),
+      visibleLoadingLocalHeroPortraitDrawn(false),
+      visibleLoadingLocalHeroProgressPercent(-1),
+      visibleLoadingLocalHeroSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -60393,6 +60401,223 @@ void BuildLinuxVisibleLoadingRosterEntries(
   *source = "live-loading-flash";
 }
 
+void DrawLinuxLoadingLocalHeroOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  if (runtime)
+  {
+    runtime->visibleLoadingLocalHeroDrawn = false;
+    runtime->visibleLoadingLocalHeroPortraitDrawn = false;
+    runtime->visibleLoadingLocalHeroProgressPercent = -1;
+    runtime->visibleLoadingLocalHeroSource = "none";
+  }
+  if (!overlay)
+  {
+    return;
+  }
+
+  std::vector<LinuxLoadingRuntimeHeroEntry> heroes;
+  int ourHeroId = -1;
+  std::string heroSource;
+  BuildLinuxVisibleLoadingRosterEntries(
+    renderContext,
+    &heroes,
+    &ourHeroId,
+    &heroSource);
+  if (heroes.empty())
+  {
+    return;
+  }
+
+  const LinuxLoadingRuntimeHeroEntry* localEntry = 0;
+  for (size_t i = 0; i < heroes.size(); ++i)
+  {
+    if (heroes[i].slotId == ourHeroId)
+    {
+      localEntry = &heroes[i];
+      break;
+    }
+  }
+  if (!localEntry)
+  {
+    for (size_t i = 0; i < heroes.size(); ++i)
+    {
+      if (heroes[i].human)
+      {
+        localEntry = &heroes[i];
+        break;
+      }
+    }
+  }
+  if (!localEntry)
+  {
+    localEntry = &heroes[0];
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const int rosterH = std::max(150, std::min(188, height / 4 + 8));
+  const int rosterY = std::max(64, height - rosterH - 48);
+  const int panelW = std::min(std::max(330, width / 4), std::max(1, width - 84));
+  const int panelH = std::max(112, std::min(138, rosterY - 198));
+  if (panelW <= 0 || panelH <= 0)
+  {
+    return;
+  }
+
+  const int panelX = std::max(42, width - panelW - 42);
+  const int panelY = std::max(164, std::min(186, rosterY - panelH - 12));
+  const int padding = 10;
+  const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
+  const int portraitSize = std::max(56, std::min(82, panelH - padding * 2 - 12));
+  const int portraitX = panelX + padding;
+  const int portraitY = panelY + padding + lineH + 4;
+  const int textX = portraitX + portraitSize + padding;
+  const int textW = std::max(1, panelX + panelW - padding - textX);
+  const float progress = ClampLinuxDynamicMarkerPercent(localEntry->progress);
+  const int progressPercent =
+    std::max(0, std::min(100, static_cast<int>(progress * 100.0f + 0.5f)));
+
+  SetOpenGlColor(4, 7, 10, 174);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(91, 108, 115, 184);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  SetOpenGlColor(238, 228, 197, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 5,
+    panelW - padding * 2,
+    lineH,
+    "Your hero",
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  bool portraitDrawn = false;
+  const LinuxWindowOverlay::OpenGlTexture* portraitTexture =
+    ResolveLinuxLobbyCachedTextureReference(
+      overlay,
+      renderContext.environment,
+      localEntry->iconPath);
+  if (portraitTexture)
+  {
+    DrawOpenGlTextureCover(
+      portraitTexture->texture,
+      portraitTexture->width,
+      portraitTexture->height,
+      portraitX,
+      portraitY,
+      portraitSize,
+      portraitSize
+    );
+    portraitDrawn = true;
+  }
+  else
+  {
+    SetOpenGlColor(61, 86, 104, 180);
+    DrawOpenGlRect(portraitX, portraitY, portraitSize, portraitSize);
+  }
+  SetOpenGlColor(218, 208, 152, 224);
+  DrawOpenGlBorderRect(portraitX, portraitY, portraitSize, portraitSize);
+
+  const std::string playerText = MakeOpenGlOverlayText(
+    overlay,
+    localEntry->playerName.empty() ? std::string("Player") : localEntry->playerName,
+    localEntry->human ? std::string("Player") : std::string("Bot")
+  );
+  const std::string heroText = MakeOpenGlOverlayText(
+    overlay,
+    localEntry->heroTitle.empty() ? std::string("Hero") : localEntry->heroTitle,
+    std::string("Hero")
+  );
+
+  SetOpenGlColor(250, 236, 192, 246);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    portraitY,
+    textW,
+    lineH,
+    TruncateForOverlay(playerText, 32),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+  SetOpenGlColor(184, 204, 207, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    portraitY + lineH,
+    textW,
+    lineH,
+    TruncateForOverlay(heroText, 32),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  std::string metaText = NStr::StrFmt("Team %d  Force %d", localEntry->team, localEntry->force);
+  if (localEntry->heroLevel > 0)
+  {
+    metaText += NStr::StrFmt("  Lv %d", localEntry->heroLevel);
+  }
+  if (localEntry->rating != 0)
+  {
+    metaText += NStr::StrFmt("  R %d", localEntry->rating);
+  }
+  SetOpenGlColor(142, 164, 172, 218);
+  DrawOpenGlTextInBox(
+    overlay,
+    textX,
+    portraitY + lineH * 2,
+    textW,
+    lineH,
+    TruncateForOverlay(metaText, 42),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  const int barX = textX;
+  const int barY = panelY + panelH - padding - 10;
+  const int barW = std::max(1, textW);
+  SetOpenGlColor(16, 20, 24, 224);
+  DrawOpenGlRect(barX, barY, barW, 8);
+  SetOpenGlColor(203, 169, 82, 238);
+  DrawOpenGlRect(
+    barX + 1,
+    barY + 1,
+    std::max(1, static_cast<int>(static_cast<float>(barW - 2) * progress + 0.5f)),
+    6
+  );
+  SetOpenGlColor(103, 118, 126, 206);
+  DrawOpenGlBorderRect(barX, barY, barW, 8);
+  SetOpenGlColor(224, 218, 190, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    barX,
+    barY - lineH,
+    barW,
+    lineH,
+    NStr::StrFmt("%d%%", progressPercent),
+    LINUX_OPENGL_TEXT_ALIGN_RIGHT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  if (runtime)
+  {
+    runtime->visibleLoadingLocalHeroDrawn = true;
+    runtime->visibleLoadingLocalHeroPortraitDrawn = portraitDrawn;
+    runtime->visibleLoadingLocalHeroProgressPercent = progressPercent;
+    runtime->visibleLoadingLocalHeroSource = heroSource.empty() ? "none" : heroSource;
+  }
+}
+
 void DrawLinuxLoadingRosterOverlay(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -61031,6 +61256,7 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
     DrawLinuxLoadingInfoOverlay(renderContext);
     DrawLinuxLoadingProgressStripOverlay(renderContext);
     DrawLinuxLoadingChatOverlay(renderContext);
+    DrawLinuxLoadingLocalHeroOverlay(renderContext);
     DrawLinuxLoadingRosterOverlay(renderContext);
   }
 
@@ -64413,6 +64639,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingChatMessagesDrawn << "\n";
   logFile << "  finalVisibleLoadingChatSource="
           << (screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource) << "\n";
+  logFile << "  finalVisibleLoadingLocalHeroDrawn="
+          << (screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingLocalHeroPortrait="
+          << (screenRuntime.visibleLoadingLocalHeroPortraitDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingLocalHeroProgress="
+          << screenRuntime.visibleLoadingLocalHeroProgressPercent << "\n";
+  logFile << "  finalVisibleLoadingLocalHeroSource="
+          << (screenRuntime.visibleLoadingLocalHeroSource.empty() ? "none" : screenRuntime.visibleLoadingLocalHeroSource) << "\n";
   logFile << "  finalVisibleLoadingBackdropDrawn="
           << (screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingBackdropLiveBack="
@@ -68570,6 +68804,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn),
     screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource.c_str());
+  fprintf(stdout, "Final visible loading local hero: drawn=%s portrait=%s progress=%d source=%s\n",
+    screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingLocalHeroPortraitDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingLocalHeroProgressPercent,
+    screenRuntime.visibleLoadingLocalHeroSource.empty() ? "none" : screenRuntime.visibleLoadingLocalHeroSource.c_str());
   fprintf(stdout, "Final visible loading backdrop: drawn=%s back=%s logo=%s source=%s\n",
     screenRuntime.visibleLoadingBackdropDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingBackdropLiveBackDrawn ? "yes" : "no",
