@@ -4,6 +4,7 @@
 
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
+#include "PFAIWorld.h"
 #include "PFBaseUnit.h"
 #include "PFUnitAbilities.h"
 
@@ -27,7 +28,9 @@ void PFUnitAbilities::CreateAbilities(PFBaseUnit* pOwner, const NDb::Unit& unitD
     }
   }
 
-  globalCooldownTime = 0.0f;
+  globalCooldownTime = pOwner && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld()
+    ? pOwner->GetWorld()->GetAIWorld()->GetAIParameters().globalCooldownTime
+    : 0.0f;
   globalActionsCooldown = 0.0f;
 }
 
@@ -172,6 +175,11 @@ PFBaseUnitUseAbilityState::PFBaseUnitUseAbilityState(CPtr<PFWorld> const& pWorld
   , abilityID(id)
   , wait4channeling(false)
 {
+  if (IsValid(pOwner))
+  {
+    if (PFAbilityData const* pAbility = pOwner->GetAbility(id))
+      wait4channeling = pAbility->GetType() == NDb::ABILITYTYPE_CHANNELLING;
+  }
 }
 
 void PFBaseUnitUseAbilityState::OnEnter()
