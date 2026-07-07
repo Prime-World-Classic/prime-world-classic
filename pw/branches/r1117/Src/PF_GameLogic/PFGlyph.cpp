@@ -5,11 +5,88 @@
 #include "PFGlyph.h"
 #include "PFWorld.h"
 #include "DBAdvMap.h"
+#include "DBSessionRoots.h"
+#include "PFAdvMapObject.h"
 #include "PFBaseUnit.h"
+#include "PFBaseUnitEvent.h"
 #include "PFAIContainer.h"
+#include "PFAIWorld.h"
+#include "PFMaleHero.h"
+#include "TileMap.h"
+#include "WarFog.h"
 
 namespace NWorld
 {
+
+static void SetupLinuxGlyphTileState(PFWorld* pWorld, NDb::GameObject const* gameObject, const CVec3& position, PFPickupableObjectBase* pObject)
+{
+  if (!pObject)
+    return;
+
+  float objectSourceSize = gameObject && gameObject->lockMask.tileSize > 0.0f ? gameObject->lockMask.tileSize : 1.0f;
+  float objectSize = objectSourceSize;
+  int objectTileSize = static_cast<int>(ceil(objectSourceSize));
+  int objectDynTileSize = static_cast<int>(ceil(objectSourceSize));
+
+  if (pWorld && pWorld->GetTileMap() && gameObject)
+  {
+    NDb::AdvMapObject dbObject;
+    dbObject.gameObject = gameObject;
+    dbObject.offset = CPlacement(position, QNULL, CVec3(1.f, 1.f, 1.f));
+
+    vector<SVector> occupiedTiles;
+    MarkObject(pWorld->GetTileMap(), dbObject, occupiedTiles);
+    pWorld->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+
+    const float tileSize = pWorld->GetTileMap()->GetTileSize();
+    if (tileSize > 0.0f)
+    {
+      objectTileSize = static_cast<int>(ceil(objectSourceSize / tileSize));
+      objectDynTileSize = static_cast<int>(objectSourceSize);
+      objectSize = objectSourceSize * tileSize;
+    }
+  }
+
+  pObject->SetObjectSizes(objectSize, objectTileSize, objectDynTileSize);
+}
+
+static int ResolveLinuxGlyphNumber(PFWorld* pWorld, const NDb::Glyph* pGlyphDesc)
+{
+  if (!pGlyphDesc)
+    return -1;
+
+  const NDb::AdvMapSettings* mapSettings = 0;
+  if (pWorld && pWorld->GetMapDescription())
+  {
+    if (IsValid(pWorld->GetMapDescription()->mapSettings))
+      mapSettings = pWorld->GetMapDescription()->mapSettings.GetPtr();
+    else if (pWorld->GetMapDescription()->map && IsValid(pWorld->GetMapDescription()->map->mapSettings))
+      mapSettings = pWorld->GetMapDescription()->map->mapSettings.GetPtr();
+  }
+
+  if (mapSettings && IsValid(mapSettings->overrideGlyphSettings) && IsValid(mapSettings->overrideGlyphSettings->glyphs))
+  {
+    for (int i = 0; i < mapSettings->overrideGlyphSettings->glyphs->glyphs.size(); ++i)
+    {
+      if (mapSettings->overrideGlyphSettings->glyphs->glyphs[i].glyph &&
+          pGlyphDesc->GetDBID() == mapSettings->overrideGlyphSettings->glyphs->glyphs[i].glyph->GetDBID())
+        return i;
+    }
+  }
+
+  NDb::Ptr<NDb::SessionRoot> pRoot = NDb::SessionRoot::GetRoot();
+  if (pRoot && pRoot->logicRoot && pRoot->logicRoot->glyphsDB)
+  {
+    for (int i = 0; i < pRoot->logicRoot->glyphsDB->glyphs.size(); ++i)
+    {
+      if (pRoot->logicRoot->glyphsDB->glyphs[i].glyph &&
+          pGlyphDesc->GetDBID() == pRoot->logicRoot->glyphsDB->glyphs[i].glyph->GetDBID())
+        return i;
+    }
+  }
+
+  return -1;
+}
 
 PFGlyphSpawner::PFGlyphSpawner( const CPtr<PFWorld>& pWorld, const NDb::AdvMapObject &dbObject )
 : PFWorldObjectBase( pWorld, 1 )
@@ -54,7 +131,12 @@ CPtr<NWorld::PFGlyph> PFGlyphSpawner::CreateGlyph( CVec3 const& position )
 
 void PFGlyphSpawner::Hide(bool hide)
 {
+  if (hidden == hide)
+    return;
+
   hidden = hide;
+  if (IsValid(pSpawnedGlyph))
+    pSpawnedGlyph->Hide(hidden);
 }
 
 bool PFGlyphSpawner::Step(float dtInSeconds)
@@ -77,39 +159,78 @@ PFGlyph::PFGlyph( const CPtr<PFWorld>& pWorld, const NDb::Ptr<NDb::Glyph>& pGlyp
 , glyphNumber(-1)
 {
   if (pDesc && pDesc->gameObject)
-  {
-    const float objectSize = pDesc->gameObject->lockMask.tileSize > 0.0f ? pDesc->gameObject->lockMask.tileSize : 1.0f;
-    SetObjectSizes(objectSize, 1, 1);
-  }
+    SetupLinuxGlyphTileState(GetWorld(), pDesc->gameObject.GetPtr(), position, this);
+
+  glyphNumber = ResolveLinuxGlyphNumber(GetWorld(), pDesc.GetPtr());
+  OpenWarFog();
 }
 
 void PFGlyph::Reset()
 {
+  CloseWarFog();
   PFPickupableObjectBase::Reset();
   visUnitID1 = -1;
   visUnitID2 = -1;
+  if (!hidden)
+    OpenWarFog();
 }
 
 void PFGlyph::Hide(bool hide)
 {
+  if (hidden == hide)
+    return;
+
   hidden = hide;
+  if (hide)
+    CloseWarFog();
+  else
+    OpenWarFog();
+
   UpdateHiddenState(!hidden);
 }
 
 void PFGlyph::OpenWarFog()
 {
+  if (!pDesc || pDesc->openWarFogRadius <= 0.0f)
+    return;
+
+  PFWorld* pWorld = GetWorld();
+  if (!pWorld || !pWorld->GetTileMap() || !pWorld->GetFogOfWar())
+    return;
+
+  SVector pos = pWorld->GetTileMap()->GetTile(GetPosition().AsVec2D());
+  int tileRadius = pWorld->GetTileMap()->GetLenghtInTiles(pDesc->openWarFogRadius);
+
+  if (visUnitID1 < 0)
+    visUnitID1 = pWorld->GetFogOfWar()->AddObject(pos, NDb::FACTION_FREEZE, tileRadius);
+  if (visUnitID2 < 0)
+    visUnitID2 = pWorld->GetFogOfWar()->AddObject(pos, NDb::FACTION_BURN, tileRadius);
 }
 
 void PFGlyph::CloseWarFog()
 {
+  PFWorld* pWorld = GetWorld();
+  FogOfWar* pFog = pWorld ? pWorld->GetFogOfWar() : 0;
+
+  if (pFog && visUnitID1 >= 0)
+    pFog->RemoveObject(visUnitID1);
+  if (pFog && visUnitID2 >= 0)
+    pFog->RemoveObject(visUnitID2);
+
   visUnitID1 = -1;
   visUnitID2 = -1;
 }
 
 void PFGlyph::OnPickedUp( PFBaseUnit* pPicker )
 {
-  if (pPicker)
-    pPicker->OnGlyphPickUp(this);
+  if (!pPicker)
+    return;
+
+  pPicker->OnGlyphPickUp(this);
+  PFBaseUnitPickupEvent ev(NDb::BASEUNITEVENT_PICKUP, true, glyphNumber, scriptName);
+  pPicker->EventHappened(ev);
+  if (ev.NeedActivate() && pDesc)
+    pPicker->UseExternalAbility(pDesc.GetPtr(), Target(pPicker));
 }
 
 void PFGlyph::OnDie()
@@ -136,33 +257,68 @@ PFNatureGlyph::PFNatureGlyph( const CPtr<PFBaseMaleHero>& targetHero_, NDb::ERou
 , gameObject(_gameObject)
 {
   if (gameObject)
+    SetupLinuxGlyphTileState(GetWorld(), gameObject.GetPtr(), position, this);
+
+  if (IsValid(targetHero))
   {
-    const float objectSize = gameObject->lockMask.tileSize > 0.0f ? gameObject->lockMask.tileSize : 1.0f;
-    SetObjectSizes(objectSize, 1, 1);
+    ChangeFaction(targetHero->GetFaction());
+    if (targetHero->IsLocal())
+    {
+      PFWorld* pWorld = GetWorld();
+      if (pWorld && pWorld->GetTileMap() && pWorld->GetFogOfWar() && pWorld->GetAIWorld())
+      {
+        SVector tile = pWorld->GetTileMap()->GetTile(GetPosition().AsVec2D());
+        int tileRadius = pWorld->GetTileMap()->GetLenghtInTiles(pWorld->GetAIWorld()->GetAIParameters().expandNatureGlyphsVisibilityRadius);
+        visUnitID = pWorld->GetFogOfWar()->AddObject(tile, targetHero->GetFaction(), tileRadius);
+      }
+    }
   }
 }
 
 void PFNatureGlyph::SetPosition( const CVec3 newPosition )
 {
   position = newPosition;
+  PFWorld* pWorld = GetWorld();
+  if (visUnitID >= 0 && pWorld && pWorld->GetFogOfWar() && pWorld->GetTileMap())
+    pWorld->GetFogOfWar()->MoveObject(visUnitID, pWorld->GetTileMap()->GetTile(position.AsVec2D()));
 }
 
 void PFNatureGlyph::SetVisible( bool newVisible )
 {
+  if (bVisible == newVisible)
+    return;
+
   bVisible = newVisible;
   UpdateHiddenState(bVisible);
 }
 
 void PFNatureGlyph::Destroy()
 {
+  PFWorld* pWorld = GetWorld();
+  if (visUnitID >= 0 && pWorld && pWorld->GetFogOfWar())
+    pWorld->GetFogOfWar()->RemoveObject(visUnitID);
   visUnitID = -1;
   Die();
 }
 
 void PFNatureGlyph::Reset()
 {
+  PFWorld* pWorld = GetWorld();
+  if (visUnitID >= 0 && pWorld && pWorld->GetFogOfWar())
+    pWorld->GetFogOfWar()->RemoveObject(visUnitID);
+
   PFPickupableObjectBase::Reset();
   visUnitID = -1;
+  if (IsValid(targetHero) && targetHero->IsLocal())
+  {
+    pWorld = GetWorld();
+    if (pWorld && pWorld->GetTileMap() && pWorld->GetFogOfWar() && pWorld->GetAIWorld())
+    {
+      SVector tile = pWorld->GetTileMap()->GetTile(GetPosition().AsVec2D());
+      int tileRadius = pWorld->GetTileMap()->GetLenghtInTiles(pWorld->GetAIWorld()->GetAIParameters().expandNatureGlyphsVisibilityRadius);
+      visUnitID = pWorld->GetFogOfWar()->AddObject(tile, targetHero->GetFaction(), tileRadius);
+    }
+  }
 }
 
 void PFNatureGlyph::OnPickedUp( const CPtr<PFBaseHero>& pPicker )
