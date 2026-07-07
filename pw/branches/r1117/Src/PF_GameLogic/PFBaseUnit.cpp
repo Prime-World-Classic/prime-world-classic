@@ -1138,9 +1138,32 @@ void PFBaseUnit::DropTarget()
   }
 }
 void PFBaseUnit::ClearScreamTargets() { screamTargets.clear(); }
-void PFBaseUnit::DoScream(const CPtr<PFBaseUnit>&, ScreamTarget::ScreamType) {}
+void PFBaseUnit::DoScream(const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st)
+{
+  if (!IsUnitValid(pTarget) || !GetWorld() || !GetWorld()->GetAIWorld())
+    return;
+
+  if (!pTarget->IsVulnerable() || pTarget->GetFaction() == GetFaction())
+    return;
+
+  if (pTarget->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOTARGETME))
+    return;
+
+  if (HasBehaviour() && Behaviour()->IsEnabled())
+    Behaviour()->DoScream(pTarget, st);
+}
 void PFBaseUnit::Stacked(const bool) {}
-void PFBaseUnit::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
+void PFBaseUnit::OnScream(const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamType st)
+{
+  if (!IsUnitValid(pTarget))
+    return;
+
+  if (bStrongTarget || pCurrentTarget == pTarget || CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+    return;
+
+  ScreamTarget target = { st, pTarget };
+  screamTargets.push_back(target);
+}
 bool PFBaseUnit::IsTargetInRange(const Target& target, float range) const
 {
   if (target.IsObject())

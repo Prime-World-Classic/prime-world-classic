@@ -5,6 +5,7 @@
 #include "PFBaseUnit.h"
 #include "PFBaseMovingUnit.h"
 #include "PFBehaviour.h"
+#include "PFAIWorld.h"
 
 namespace NWorld
 {
@@ -29,7 +30,45 @@ void PFBaseBehaviour::Disable() { isEnabled = false; }
 bool PFBaseBehaviour::OnStep(float dtInSeconds) { (void)dtInSeconds; return true; }
 void PFBaseBehaviour::OnDamage(PFBaseUnitDamageDesc const& desc) { (void)desc; }
 bool PFBaseBehaviour::IsAttackedUnitAlly(const CPtr<PFBaseUnit>& pAttacked, NDb::EFaction originalAttackedFaction) const { (void)pAttacked; (void)originalAttackedFaction; return false; }
-void PFBaseBehaviour::DoScream(const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st) { (void)pTarget; (void)st; }
+
+struct Screamer : public NonCopyable
+{
+  Screamer(const CPtr<PFBaseUnit>& pSender, const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st)
+    : pSender(pSender)
+    , pTarget(pTarget)
+    , st(st)
+  {
+  }
+
+  void operator()(PFBaseUnit& unit)
+  {
+    const CPtr<PFBaseUnit> pUnit(&unit);
+    if (pSender == pUnit || !IsUnitValid(pUnit))
+      return;
+
+    const float maxAlarmOnScreamRange = pUnit->GetChaseRange() + pUnit->GetAttackRange();
+    if (!pUnit->IsTargetInRange(pTarget, maxAlarmOnScreamRange))
+      return;
+
+    if (st == ScreamTarget::ScreamAlert && !pUnit->IsTargetInRange(pTarget, pUnit->GetTargetingRange()))
+      return;
+
+    pUnit->OnScream(pTarget, st);
+  }
+
+  CPtr<PFBaseUnit> pSender;
+  CPtr<PFBaseUnit> pTarget;
+  const ScreamTarget::ScreamType st;
+};
+
+void PFBaseBehaviour::DoScream(const CPtr<PFBaseUnit>& pTarget, ScreamTarget::ScreamType st)
+{
+  if (!IsValid(pUnit) || !GetWorld() || !GetWorld()->GetAIWorld() || !IsUnitValid(pTarget))
+    return;
+
+  Screamer screamer(pUnit.GetPtr(), pTarget, st);
+  GetWorld()->GetAIWorld()->ForAllUnitsInRange(pUnit->GetPosition(), pUnit->GetScreamRange(), screamer, UnitMaskingPredicate(1 << pUnit->GetFaction()));
+}
 
 PFSummonBehaviour::PFSummonBehaviour(PFBaseMovingUnit* pUnit_, PFBaseUnit* pMaster_, const NDb::SummonBehaviourBase* pBehaviourData, float maxLifeTime_, int behaviourFlags_)
   : PFBaseBehaviour(pUnit_)
