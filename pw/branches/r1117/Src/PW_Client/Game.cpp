@@ -4906,6 +4906,9 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingModeBadgeDrawn;
   std::string visibleLoadingModeBadgeText;
   std::string visibleLoadingModeBadgeSource;
+  bool visibleLoadingForcePaletteDrawn;
+  size_t visibleLoadingForcePaletteSwatches;
+  std::string visibleLoadingForcePaletteSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6218,6 +6221,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingModeBadgeDrawn(false),
       visibleLoadingModeBadgeText("none"),
       visibleLoadingModeBadgeSource("none"),
+      visibleLoadingForcePaletteDrawn(false),
+      visibleLoadingForcePaletteSwatches(0),
+      visibleLoadingForcePaletteSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -59245,6 +59251,17 @@ std::string NormalizeLinuxLoadingTooltipLine(const std::string& value)
 const Game::LoadingFlashInterface* ResolveLinuxLoadingOverlayFlashInterface(
   const LinuxOverlayUiRenderContext& renderContext);
 
+void ResolveLinuxLoadingForceColor(
+  const Game::LoadingFlashInterface* flashInterface,
+  int force,
+  unsigned char fallbackRed,
+  unsigned char fallbackGreen,
+  unsigned char fallbackBlue,
+  unsigned char* red,
+  unsigned char* green,
+  unsigned char* blue
+);
+
 void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContext)
 {
   LinuxWindowOverlay* overlay = renderContext.overlay;
@@ -59264,6 +59281,9 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingModeBadgeDrawn = false;
     runtime->visibleLoadingModeBadgeText = "none";
     runtime->visibleLoadingModeBadgeSource = "none";
+    runtime->visibleLoadingForcePaletteDrawn = false;
+    runtime->visibleLoadingForcePaletteSwatches = 0;
+    runtime->visibleLoadingForcePaletteSource = "none";
   }
   if (!overlay || !loadingUiPreview || !loadingUiState)
   {
@@ -59423,7 +59443,46 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   }
   localeText = StripLinuxLoadingFlashMarkup(localeText);
 
-  if (statusText.empty() && tipText.empty() && modeText.empty() && localeText.empty())
+  std::vector<int> forcePalette;
+  std::string forcePaletteSource = "none";
+  if (flashInterface && !flashInterface->GetForceTable().empty())
+  {
+    const vector<int>& liveForces = flashInterface->GetForceTable();
+    for (size_t i = 0; i < liveForces.size() && forcePalette.size() < 6; ++i)
+    {
+      bool seen = false;
+      for (size_t j = 0; j < forcePalette.size(); ++j)
+      {
+        if (forcePalette[j] == liveForces[i])
+        {
+          seen = true;
+          break;
+        }
+      }
+      if (!seen)
+      {
+        forcePalette.push_back(liveForces[i]);
+      }
+    }
+    if (!forcePalette.empty())
+    {
+      forcePaletteSource = "live-loading-flash";
+    }
+  }
+  if (forcePalette.empty())
+  {
+    for (size_t i = 0; i < loadingUiPreview->forceColorSamples.size() && forcePalette.size() < 6; ++i)
+    {
+      forcePalette.push_back(atoi(loadingUiPreview->forceColorSamples[i].c_str()));
+    }
+    if (!forcePalette.empty())
+    {
+      forcePaletteSource = "loading-ui-preview";
+    }
+  }
+
+  if (statusText.empty() && tipText.empty() && modeText.empty() && localeText.empty() &&
+      forcePalette.empty())
   {
     return;
   }
@@ -59444,6 +59503,7 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t iconsDrawn = 0;
   size_t localeFlagsDrawn = 0;
   bool modeBadgeDrawn = false;
+  size_t forcePaletteSwatches = 0;
 
   SetOpenGlColor(4, 7, 10, 182);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
@@ -59535,6 +59595,47 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
       );
       ++iconsDrawn;
       ++localeFlagsDrawn;
+    }
+  }
+
+  if (!forcePalette.empty())
+  {
+    static const unsigned char kFallbackForceColors[][3] =
+    {
+      {206, 82, 72},
+      {76, 154, 220},
+      {214, 178, 78},
+      {112, 184, 116},
+      {184, 112, 208},
+      {214, 130, 78}
+    };
+    const int swatchSize = 7;
+    const int swatchGap = 3;
+    const size_t swatchLimit = std::min<size_t>(forcePalette.size(), 6);
+    const int paletteW = static_cast<int>(swatchLimit) * swatchSize +
+      std::max(0, static_cast<int>(swatchLimit) - 1) * swatchGap;
+    const int paletteX = flagsX + std::max(0, (rightIconW - paletteW) / 2);
+    const int paletteY = panelY + panelH - padding - swatchSize - 1;
+    for (size_t i = 0; i < swatchLimit; ++i)
+    {
+      unsigned char r = kFallbackForceColors[i % ARRAY_SIZE(kFallbackForceColors)][0];
+      unsigned char g = kFallbackForceColors[i % ARRAY_SIZE(kFallbackForceColors)][1];
+      unsigned char b = kFallbackForceColors[i % ARRAY_SIZE(kFallbackForceColors)][2];
+      ResolveLinuxLoadingForceColor(
+        flashInterface,
+        forcePalette[i],
+        r,
+        g,
+        b,
+        &r,
+        &g,
+        &b);
+      const int swatchX = paletteX + static_cast<int>(i) * (swatchSize + swatchGap);
+      SetOpenGlColor(r, g, b, 226);
+      DrawOpenGlRect(swatchX, paletteY, swatchSize, swatchSize);
+      SetOpenGlColor(20, 26, 30, 210);
+      DrawOpenGlBorderRect(swatchX, paletteY, swatchSize, swatchSize);
+      ++forcePaletteSwatches;
     }
   }
 
@@ -59676,6 +59777,10 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingModeBadgeText = modeBadgeDrawn ? modeBadgeText : "none";
     runtime->visibleLoadingModeBadgeSource =
       modeBadgeDrawn ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingForcePaletteDrawn = forcePaletteSwatches > 0;
+    runtime->visibleLoadingForcePaletteSwatches = forcePaletteSwatches;
+    runtime->visibleLoadingForcePaletteSource =
+      forcePaletteSwatches > 0 ? forcePaletteSource : "none";
   }
 }
 
@@ -65178,6 +65283,12 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLoadingModeBadgeText.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeText) << "\n";
   logFile << "  finalVisibleLoadingModeBadgeSource="
           << (screenRuntime.visibleLoadingModeBadgeSource.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeSource) << "\n";
+  logFile << "  finalVisibleLoadingForcePaletteDrawn="
+          << (screenRuntime.visibleLoadingForcePaletteDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingForcePaletteSwatches="
+          << screenRuntime.visibleLoadingForcePaletteSwatches << "\n";
+  logFile << "  finalVisibleLoadingForcePaletteSource="
+          << (screenRuntime.visibleLoadingForcePaletteSource.empty() ? "none" : screenRuntime.visibleLoadingForcePaletteSource) << "\n";
   logFile << "  finalVisibleLoadingProgressDrawn="
           << (screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingProgressPercent="
@@ -69399,6 +69510,10 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingModeBadgeDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingModeBadgeText.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeText.c_str(),
     screenRuntime.visibleLoadingModeBadgeSource.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeSource.c_str());
+  fprintf(stdout, "Final visible loading force palette: drawn=%s swatches=%lu source=%s\n",
+    screenRuntime.visibleLoadingForcePaletteDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingForcePaletteSwatches),
+    screenRuntime.visibleLoadingForcePaletteSource.empty() ? "none" : screenRuntime.visibleLoadingForcePaletteSource.c_str());
   fprintf(stdout, "Final visible loading progress: drawn=%s percent=%d samples=%lu source=%s\n",
     screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingProgressPercent,
