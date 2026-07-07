@@ -983,6 +983,14 @@ struct LinuxLoadingMinimapIconEntry
   std::string iconRef;
 };
 
+struct LinuxLoadingCountryFlagEntry
+{
+  std::string id;
+  std::string countryCode;
+  std::string tooltip;
+  std::string iconRef;
+};
+
 struct LinuxLoadingUiPreview
 {
   bool ready;
@@ -1018,6 +1026,7 @@ struct LinuxLoadingUiPreview
   std::vector<std::string> forceColorSamples;
   std::vector<std::string> modeSamples;
   std::vector<LinuxLoadingMinimapIconEntry> minimapIcons;
+  std::vector<LinuxLoadingCountryFlagEntry> countryFlags;
   std::vector<std::string> chatChannelSamples;
   std::vector<std::string> reportTypeSamples;
   std::vector<std::string> bindSamples;
@@ -4910,6 +4919,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingMinimapLegendIconsDrawn;
   size_t visibleLoadingMinimapLegendIconsAvailable;
   std::string visibleLoadingMinimapLegendSource;
+  bool visibleLoadingCountryFlagsDrawn;
+  size_t visibleLoadingCountryFlagsDrawnCount;
+  size_t visibleLoadingCountryFlagsAvailable;
+  std::string visibleLoadingCountryFlagsSource;
   bool visibleLoadingModeChipsDrawn;
   size_t visibleLoadingModeChipsDrawnCount;
   size_t visibleLoadingModeChipsAvailable;
@@ -6236,6 +6249,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingMinimapLegendIconsDrawn(0),
       visibleLoadingMinimapLegendIconsAvailable(0),
       visibleLoadingMinimapLegendSource("none"),
+      visibleLoadingCountryFlagsDrawn(false),
+      visibleLoadingCountryFlagsDrawnCount(0),
+      visibleLoadingCountryFlagsAvailable(0),
+      visibleLoadingCountryFlagsSource("none"),
       visibleLoadingModeChipsDrawn(false),
       visibleLoadingModeChipsDrawnCount(0),
       visibleLoadingModeChipsAvailable(0),
@@ -21149,6 +21166,26 @@ void ProbeLoadingUiPreview(
       entry.locale + "=" + entry.tooltip,
       5
     );
+  }
+
+  for (int i = 0; i < uiData->countryFlags.size() && preview->countryFlags.size() < 8; ++i)
+  {
+    const NDb::CountryFlag& flag = uiData->countryFlags[i];
+    LinuxLoadingCountryFlagEntry entry;
+    entry.id = ToStdString(flag.id);
+    entry.countryCode = ToStdString(flag.countryCode);
+    entry.tooltip = ReadDbLocalizedText(flag.tooltip);
+    if (entry.tooltip.empty())
+    {
+      entry.tooltip = ReadDbLocalizedText(flag.name);
+    }
+    entry.iconRef = DescribeDbResource(flag.icon);
+    if (entry.id.empty() && entry.countryCode.empty() && entry.tooltip.empty() && entry.iconRef.empty())
+    {
+      continue;
+    }
+
+    preview->countryFlags.push_back(entry);
   }
 
   for (int i = 0; i < uiData->forceColors.forceColors.size(); ++i)
@@ -60349,6 +60386,10 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     runtime->visibleLoadingMinimapLegendIconsDrawn = 0;
     runtime->visibleLoadingMinimapLegendIconsAvailable = 0;
     runtime->visibleLoadingMinimapLegendSource = "none";
+    runtime->visibleLoadingCountryFlagsDrawn = false;
+    runtime->visibleLoadingCountryFlagsDrawnCount = 0;
+    runtime->visibleLoadingCountryFlagsAvailable = 0;
+    runtime->visibleLoadingCountryFlagsSource = "none";
     runtime->visibleLoadingModeChipsDrawn = false;
     runtime->visibleLoadingModeChipsDrawnCount = 0;
     runtime->visibleLoadingModeChipsAvailable = 0;
@@ -60368,10 +60409,12 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const bool hasControlHints = !loadingUiPreview->bindSamples.empty();
   const bool hasMinimapLegend =
     loadingUiPreview->minimapReady && !loadingUiPreview->minimapIcons.empty();
+  const bool hasCountryFlags = !loadingUiPreview->countryFlags.empty();
   const bool hasModeChips = !loadingUiPreview->modes.empty();
   const bool hasRecentPlayers = loadingUiPreview->recentPlayers > 0;
   const bool hasModeHints = hasModeChips || hasRecentPlayers;
-  if (!hasSmartChat && !hasReportTypes && !hasControlHints && !hasMinimapLegend && !hasModeHints)
+  if (!hasSmartChat && !hasReportTypes && !hasControlHints &&
+      !hasMinimapLegend && !hasCountryFlags && !hasModeHints)
   {
     return;
   }
@@ -60386,7 +60429,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int panelRight = width - localPanelW - 42 - 14;
   const int panelW = panelRight - panelX;
   const int panelY = std::max(164, std::min(186, rosterY - 196 - 12));
-  const int panelH = std::max(146, std::min(220, rosterY - panelY - 12));
+  const int panelH = std::max(146, std::min(244, rosterY - panelY - 12));
   if (panelW < 260 || panelH <= 0)
   {
     return;
@@ -60397,9 +60440,10 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   const int reportLineH = hasReportTypes ? lineH + 7 : 0;
   const int controlLineH = hasControlHints ? lineH + 7 : 0;
   const int minimapLineH = hasMinimapLegend ? lineH + 7 : 0;
+  const int countryLineH = hasCountryFlags ? lineH + 7 : 0;
   const int modeLineH = hasModeHints ? lineH + 7 : 0;
   const int rowsAvailable =
-    std::max(0, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH - minimapLineH - modeLineH) /
+    std::max(0, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH - minimapLineH - countryLineH - modeLineH) /
       std::max(1, lineH + 5));
   const size_t rowsLimit = hasSmartChat ?
     std::min<size_t>(
@@ -60438,6 +60482,12 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     hintSummary += NStr::StrFmt(
       "  %lu modes",
       static_cast<unsigned long>(loadingUiPreview->modes.size()));
+  }
+  if (hasCountryFlags)
+  {
+    hintSummary += NStr::StrFmt(
+      "  %lu flags",
+      static_cast<unsigned long>(loadingUiPreview->countryFlagCount));
   }
   if (hasRecentPlayers)
   {
@@ -60489,6 +60539,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   size_t reportTypesDrawn = 0;
   size_t controlHintsDrawn = 0;
   size_t minimapIconsDrawn = 0;
+  size_t countryFlagsDrawn = 0;
   size_t modeChipsDrawn = 0;
   bool recentPlayersDrawn = false;
   int nextFooterY = panelY + panelH - padding - lineH - 1;
@@ -60504,6 +60555,11 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
   }
   const int reportY = hasReportTypes ? nextFooterY : 0;
   if (hasReportTypes)
+  {
+    nextFooterY -= lineH + 7;
+  }
+  const int countryY = hasCountryFlags ? nextFooterY : 0;
+  if (hasCountryFlags)
   {
     nextFooterY -= lineH + 7;
   }
@@ -60578,6 +60634,90 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
         LINUX_OPENGL_TEXT_VALIGN_CENTER,
         false
       );
+    }
+  }
+  if (hasCountryFlags)
+  {
+    SetOpenGlColor(18, 24, 22, 146);
+    DrawOpenGlRect(panelX + padding, countryY, panelW - padding * 2, lineH + 4);
+    SetOpenGlColor(174, 204, 178, 224);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 6,
+      countryY + 2,
+      48,
+      lineH,
+      "Flags:",
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    const int iconSize = std::max(10, std::min(13, lineH + 1));
+    int flagX = panelX + padding + 56;
+    const int flagY = countryY + std::max(2, (lineH + 4 - iconSize) / 2);
+    const int rowRight = panelX + panelW - padding - 4;
+    const size_t flagLimit = std::min<size_t>(loadingUiPreview->countryFlags.size(), 5);
+    for (size_t i = 0; i < flagLimit; ++i)
+    {
+      const LinuxLoadingCountryFlagEntry& entry = loadingUiPreview->countryFlags[i];
+      std::string flagLabel = entry.countryCode;
+      if (flagLabel.empty())
+      {
+        flagLabel = entry.id;
+      }
+      if (flagLabel.empty())
+      {
+        flagLabel = NStr::StrFmt("F%lu", static_cast<unsigned long>(i + 1));
+      }
+
+      const int labelW = std::min(
+        30,
+        std::max(18, static_cast<int>(flagLabel.size()) * 5 + 7));
+      const int chipW = iconSize + 3 + labelW;
+      if (flagX + chipW > rowRight)
+      {
+        break;
+      }
+
+      const LinuxWindowOverlay::OpenGlTexture* flagTexture =
+        ResolveLinuxLobbyCachedTextureReference(
+          overlay,
+          renderContext.environment,
+          entry.iconRef);
+      if (flagTexture)
+      {
+        DrawOpenGlTextureCover(
+          flagTexture->texture,
+          flagTexture->width,
+          flagTexture->height,
+          flagX,
+          flagY,
+          iconSize,
+          iconSize
+        );
+      }
+      else
+      {
+        SetOpenGlColor(92, 132, 94, 214);
+        DrawOpenGlRect(flagX, flagY, iconSize, iconSize);
+      }
+      SetOpenGlColor(34, 54, 42, 218);
+      DrawOpenGlBorderRect(flagX, flagY, iconSize, iconSize);
+      SetOpenGlColor(198, 220, 200, 224);
+      DrawOpenGlTextInBox(
+        overlay,
+        flagX + iconSize + 3,
+        countryY + 2,
+        labelW,
+        lineH,
+        TruncateForOverlay(flagLabel, 8),
+        LINUX_OPENGL_TEXT_ALIGN_LEFT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      flagX += chipW + 4;
+      ++countryFlagsDrawn;
     }
   }
   if (hasMinimapLegend)
@@ -60763,6 +60903,12 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       loadingUiPreview->minimapIconCount;
     runtime->visibleLoadingMinimapLegendSource =
       minimapIconsDrawn > 0 ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingCountryFlagsDrawn = countryFlagsDrawn > 0;
+    runtime->visibleLoadingCountryFlagsDrawnCount = countryFlagsDrawn;
+    runtime->visibleLoadingCountryFlagsAvailable =
+      loadingUiPreview->countryFlagCount;
+    runtime->visibleLoadingCountryFlagsSource =
+      countryFlagsDrawn > 0 ? "loading-ui-preview" : "none";
     runtime->visibleLoadingModeChipsDrawn = modeChipsDrawn > 0;
     runtime->visibleLoadingModeChipsDrawnCount = modeChipsDrawn;
     runtime->visibleLoadingModeChipsAvailable = loadingUiPreview->modes.size();
@@ -65618,6 +65764,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingMinimapLegendIconsAvailable << "\n";
   logFile << "  finalVisibleLoadingMinimapLegendSource="
           << (screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource) << "\n";
+  logFile << "  finalVisibleLoadingCountryFlagsDrawn="
+          << (screenRuntime.visibleLoadingCountryFlagsDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingCountryFlags="
+          << screenRuntime.visibleLoadingCountryFlagsDrawnCount << "\n";
+  logFile << "  finalVisibleLoadingCountryFlagSamples="
+          << screenRuntime.visibleLoadingCountryFlagsAvailable << "\n";
+  logFile << "  finalVisibleLoadingCountryFlagsSource="
+          << (screenRuntime.visibleLoadingCountryFlagsSource.empty() ? "none" : screenRuntime.visibleLoadingCountryFlagsSource) << "\n";
   logFile << "  finalVisibleLoadingModeChipsDrawn="
           << (screenRuntime.visibleLoadingModeChipsDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingModeChips="
@@ -69847,6 +70001,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsAvailable),
     screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource.c_str());
+  fprintf(stdout, "Final visible loading country flags: drawn=%s count=%lu samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingCountryFlagsDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingCountryFlagsDrawnCount),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingCountryFlagsAvailable),
+    screenRuntime.visibleLoadingCountryFlagsSource.empty() ? "none" : screenRuntime.visibleLoadingCountryFlagsSource.c_str());
   fprintf(stdout, "Final visible loading mode chips: drawn=%s count=%lu samples=%lu source=%s\n",
     screenRuntime.visibleLoadingModeChipsDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingModeChipsDrawnCount),
