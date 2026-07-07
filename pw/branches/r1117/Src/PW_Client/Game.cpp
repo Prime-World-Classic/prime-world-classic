@@ -4899,6 +4899,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingControlHintsDrawnCount;
   size_t visibleLoadingControlHintsAvailable;
   std::string visibleLoadingControlHintsSource;
+  bool visibleLoadingPremiumTooltipDrawn;
+  size_t visibleLoadingPremiumTooltipBytes;
+  std::string visibleLoadingPremiumTooltipText;
+  std::string visibleLoadingPremiumTooltipSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6204,6 +6208,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingControlHintsDrawnCount(0),
       visibleLoadingControlHintsAvailable(0),
       visibleLoadingControlHintsSource("none"),
+      visibleLoadingPremiumTooltipDrawn(false),
+      visibleLoadingPremiumTooltipBytes(0),
+      visibleLoadingPremiumTooltipText("none"),
+      visibleLoadingPremiumTooltipSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -59217,6 +59225,17 @@ std::string StripLinuxLoadingFlashMarkup(std::string value)
   return SanitizeLocalizedText(plain);
 }
 
+std::string NormalizeLinuxLoadingTooltipLine(const std::string& value)
+{
+  std::string normalized = TrimAscii(StripLinuxLoadingFlashMarkup(value));
+  while (!normalized.empty() && normalized[0] == '|')
+  {
+    normalized = TrimAscii(normalized.substr(1));
+  }
+
+  return normalized;
+}
+
 const Game::LoadingFlashInterface* ResolveLinuxLoadingOverlayFlashInterface(
   const LinuxOverlayUiRenderContext& renderContext);
 
@@ -59717,6 +59736,88 @@ void DrawLinuxLoadingProgressStripOverlay(const LinuxOverlayUiRenderContext& ren
     runtime->visibleLoadingProgressPercent = percent;
     runtime->visibleLoadingProgressSamples = samples;
     runtime->visibleLoadingProgressSource = source;
+  }
+}
+
+void DrawLinuxLoadingPremiumTooltipOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLoadingUiPreview* loadingUiPreview = renderContext.loadingUiPreview;
+  if (runtime)
+  {
+    runtime->visibleLoadingPremiumTooltipDrawn = false;
+    runtime->visibleLoadingPremiumTooltipBytes = 0;
+    runtime->visibleLoadingPremiumTooltipText = "none";
+    runtime->visibleLoadingPremiumTooltipSource = "none";
+  }
+  if (!overlay || !loadingUiPreview)
+  {
+    return;
+  }
+
+  const std::string premiumText =
+    NormalizeLinuxLoadingTooltipLine(loadingUiPreview->premiumTooltip);
+  if (premiumText.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const int panelW = std::min(std::max(720, width - 160), std::max(1, width - 48));
+  const int panelH = 116;
+  const int panelX = std::max(12, (width - panelW) / 2);
+  const int panelY = 42;
+  const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
+  const int stripH = std::max(18, lineH + 5);
+  const int stripY = panelY + panelH + 4;
+  if (stripY + stripH >= height)
+  {
+    return;
+  }
+
+  const int padding = 10;
+  const int labelW = 74;
+  SetOpenGlColor(8, 12, 14, 168);
+  DrawOpenGlRect(panelX, stripY, panelW, stripH);
+  SetOpenGlColor(126, 104, 52, 194);
+  DrawOpenGlBorderRect(panelX, stripY, panelW, stripH);
+
+  SetOpenGlColor(165, 124, 38, 224);
+  DrawOpenGlRect(panelX + padding, stripY + 3, labelW, std::max(1, stripH - 6));
+  SetOpenGlColor(236, 215, 142, 238);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding + 4,
+    stripY + 2,
+    labelW - 8,
+    lineH,
+    "Premium",
+    LINUX_OPENGL_TEXT_ALIGN_CENTER,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  SetOpenGlColor(224, 216, 190, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding + labelW + 10,
+    stripY + 2,
+    std::max(1, panelW - padding * 2 - labelW - 10),
+    lineH,
+    TruncateForOverlay(premiumText, 104),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  if (runtime)
+  {
+    runtime->visibleLoadingPremiumTooltipDrawn = true;
+    runtime->visibleLoadingPremiumTooltipBytes = premiumText.size();
+    runtime->visibleLoadingPremiumTooltipText = premiumText;
+    runtime->visibleLoadingPremiumTooltipSource = "loading-ui-preview";
   }
 }
 
@@ -61645,6 +61746,7 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
   {
     DrawLinuxLoadingInfoOverlay(renderContext);
     DrawLinuxLoadingProgressStripOverlay(renderContext);
+    DrawLinuxLoadingPremiumTooltipOverlay(renderContext);
     DrawLinuxLoadingChatOverlay(renderContext);
     DrawLinuxLoadingSmartChatOverlay(renderContext);
     DrawLinuxLoadingLocalHeroOverlay(renderContext);
@@ -65074,6 +65176,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingControlHintsAvailable << "\n";
   logFile << "  finalVisibleLoadingControlHintsSource="
           << (screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource) << "\n";
+  logFile << "  finalVisibleLoadingPremiumTooltipDrawn="
+          << (screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingPremiumTooltipBytes="
+          << screenRuntime.visibleLoadingPremiumTooltipBytes << "\n";
+  logFile << "  finalVisibleLoadingPremiumTooltip="
+          << (screenRuntime.visibleLoadingPremiumTooltipText.empty() ? "none" : screenRuntime.visibleLoadingPremiumTooltipText) << "\n";
+  logFile << "  finalVisibleLoadingPremiumTooltipSource="
+          << (screenRuntime.visibleLoadingPremiumTooltipSource.empty() ? "none" : screenRuntime.visibleLoadingPremiumTooltipSource) << "\n";
   logFile << "  finalVisibleLoadingLocalHeroDrawn="
           << (screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingLocalHeroPortrait="
@@ -69268,6 +69378,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsDrawnCount),
     static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsAvailable),
     screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource.c_str());
+  fprintf(stdout, "Final visible loading premium tooltip: drawn=%s bytes=%lu source=%s\n",
+    screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingPremiumTooltipBytes),
+    screenRuntime.visibleLoadingPremiumTooltipSource.empty() ? "none" : screenRuntime.visibleLoadingPremiumTooltipSource.c_str());
   fprintf(stdout, "Final visible loading local hero: drawn=%s portrait=%s progress=%d source=%s\n",
     screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingLocalHeroPortraitDrawn ? "yes" : "no",
