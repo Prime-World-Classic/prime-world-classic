@@ -4886,6 +4886,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingLocalHeroPortraitDrawn;
   int visibleLoadingLocalHeroProgressPercent;
   std::string visibleLoadingLocalHeroSource;
+  bool visibleLoadingSmartChatDrawn;
+  size_t visibleLoadingSmartChatRowsDrawn;
+  size_t visibleLoadingSmartChatSamplesAvailable;
+  std::string visibleLoadingSmartChatSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6171,6 +6175,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingLocalHeroPortraitDrawn(false),
       visibleLoadingLocalHeroProgressPercent(-1),
       visibleLoadingLocalHeroSource("none"),
+      visibleLoadingSmartChatDrawn(false),
+      visibleLoadingSmartChatRowsDrawn(0),
+      visibleLoadingSmartChatSamplesAvailable(0),
+      visibleLoadingSmartChatSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -59863,6 +59871,124 @@ void DrawLinuxLoadingChatOverlay(const LinuxOverlayUiRenderContext& renderContex
   }
 }
 
+void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderContext)
+{
+  LinuxWindowOverlay* overlay = renderContext.overlay;
+  LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
+  const LinuxLoadingUiPreview* loadingUiPreview = renderContext.loadingUiPreview;
+  if (runtime)
+  {
+    runtime->visibleLoadingSmartChatDrawn = false;
+    runtime->visibleLoadingSmartChatRowsDrawn = 0;
+    runtime->visibleLoadingSmartChatSamplesAvailable = 0;
+    runtime->visibleLoadingSmartChatSource = "none";
+  }
+  if (!overlay || !loadingUiPreview || !loadingUiPreview->smartChatReady ||
+      loadingUiPreview->smartChatSamples.empty())
+  {
+    return;
+  }
+
+  const int width = renderContext.width;
+  const int height = renderContext.height;
+  const int rosterH = std::max(150, std::min(188, height / 4 + 8));
+  const int rosterY = std::max(64, height - rosterH - 48);
+  const int chatPanelW = std::min(std::max(330, width / 3), std::max(1, width - 84));
+  const int localPanelW = std::min(std::max(330, width / 4), std::max(1, width - 84));
+  const int panelX = 42 + chatPanelW + 14;
+  const int panelRight = width - localPanelW - 42 - 14;
+  const int panelW = panelRight - panelX;
+  const int panelY = std::max(164, std::min(186, rosterY - 138 - 12));
+  const int panelH = std::max(96, std::min(138, rosterY - panelY - 12));
+  if (panelW < 260 || panelH <= 0)
+  {
+    return;
+  }
+
+  const int padding = 10;
+  const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
+  const size_t rowsLimit = std::min<size_t>(
+    loadingUiPreview->smartChatSamples.size(),
+    static_cast<size_t>(std::max(1, (panelH - padding * 2 - lineH * 2) / std::max(1, lineH + 5)))
+  );
+  if (rowsLimit == 0)
+  {
+    return;
+  }
+
+  SetOpenGlColor(4, 7, 10, 160);
+  DrawOpenGlRect(panelX, panelY, panelW, panelH);
+  SetOpenGlColor(82, 96, 101, 176);
+  DrawOpenGlBorderRect(panelX, panelY, panelW, panelH);
+
+  SetOpenGlColor(238, 228, 197, 232);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 5,
+    panelW - padding * 2,
+    lineH,
+    "Smart chat",
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  SetOpenGlColor(146, 168, 174, 218);
+  DrawOpenGlTextInBox(
+    overlay,
+    panelX + padding,
+    panelY + 5 + lineH,
+    panelW - padding * 2,
+    lineH,
+    NStr::StrFmt(
+      "%lu categories  %lu messages",
+      static_cast<unsigned long>(loadingUiPreview->smartChatCategoryCount),
+      static_cast<unsigned long>(loadingUiPreview->smartChatMessageCount)),
+    LINUX_OPENGL_TEXT_ALIGN_LEFT,
+    LINUX_OPENGL_TEXT_VALIGN_CENTER,
+    false
+  );
+
+  size_t rowsDrawn = 0;
+  const int firstRowY = panelY + padding + lineH * 2 + 4;
+  for (size_t i = 0; i < rowsLimit; ++i)
+  {
+    const int rowY = firstRowY + static_cast<int>(i) * (lineH + 5);
+    const std::string rowText =
+      StripLinuxLoadingFlashMarkup(loadingUiPreview->smartChatSamples[i]);
+    if (rowText.empty())
+    {
+      continue;
+    }
+
+    SetOpenGlColor(12, 18, 22, 132);
+    DrawOpenGlRect(panelX + padding, rowY, panelW - padding * 2, lineH + 3);
+    SetOpenGlColor(185, 199, 198, 224);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 6,
+      rowY + 1,
+      panelW - padding * 2 - 12,
+      lineH,
+      TruncateForOverlay(rowText, 46),
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    ++rowsDrawn;
+  }
+
+  if (runtime)
+  {
+    runtime->visibleLoadingSmartChatDrawn = rowsDrawn > 0;
+    runtime->visibleLoadingSmartChatRowsDrawn = rowsDrawn;
+    runtime->visibleLoadingSmartChatSamplesAvailable =
+      loadingUiPreview->smartChatSamples.size();
+    runtime->visibleLoadingSmartChatSource = "loading-ui-preview";
+  }
+}
+
 void DrawLinuxLoadingRosterCard(
   const LinuxOverlayUiRenderContext& renderContext,
   const LinuxLoadingRuntimeHeroEntry& entry,
@@ -61256,6 +61382,7 @@ void RenderWindowOverlayOpenGlVisibleMenu(const LinuxOverlayUiRenderContext& ren
     DrawLinuxLoadingInfoOverlay(renderContext);
     DrawLinuxLoadingProgressStripOverlay(renderContext);
     DrawLinuxLoadingChatOverlay(renderContext);
+    DrawLinuxLoadingSmartChatOverlay(renderContext);
     DrawLinuxLoadingLocalHeroOverlay(renderContext);
     DrawLinuxLoadingRosterOverlay(renderContext);
   }
@@ -64639,6 +64766,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingChatMessagesDrawn << "\n";
   logFile << "  finalVisibleLoadingChatSource="
           << (screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource) << "\n";
+  logFile << "  finalVisibleLoadingSmartChatDrawn="
+          << (screenRuntime.visibleLoadingSmartChatDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingSmartChatRows="
+          << screenRuntime.visibleLoadingSmartChatRowsDrawn << "\n";
+  logFile << "  finalVisibleLoadingSmartChatSamples="
+          << screenRuntime.visibleLoadingSmartChatSamplesAvailable << "\n";
+  logFile << "  finalVisibleLoadingSmartChatSource="
+          << (screenRuntime.visibleLoadingSmartChatSource.empty() ? "none" : screenRuntime.visibleLoadingSmartChatSource) << "\n";
   logFile << "  finalVisibleLoadingLocalHeroDrawn="
           << (screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingLocalHeroPortrait="
@@ -68804,6 +68939,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatChannelsDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingChatMessagesDrawn),
     screenRuntime.visibleLoadingChatSource.empty() ? "none" : screenRuntime.visibleLoadingChatSource.c_str());
+  fprintf(stdout, "Final visible loading smart chat: drawn=%s rows=%lu samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingSmartChatDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingSmartChatRowsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingSmartChatSamplesAvailable),
+    screenRuntime.visibleLoadingSmartChatSource.empty() ? "none" : screenRuntime.visibleLoadingSmartChatSource.c_str());
   fprintf(stdout, "Final visible loading local hero: drawn=%s portrait=%s progress=%d source=%s\n",
     screenRuntime.visibleLoadingLocalHeroDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingLocalHeroPortraitDrawn ? "yes" : "no",
