@@ -4902,6 +4902,10 @@ struct LinuxBootstrapScreenRuntime
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
+  bool visibleLoadingTipCounterDrawn;
+  size_t visibleLoadingTipCounterIndex;
+  size_t visibleLoadingTipCounterTotal;
+  std::string visibleLoadingTipCounterSource;
   bool visibleLoadingProgressDrawn;
   int visibleLoadingProgressPercent;
   size_t visibleLoadingProgressSamples;
@@ -6199,6 +6203,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
+      visibleLoadingTipCounterDrawn(false),
+      visibleLoadingTipCounterIndex(0),
+      visibleLoadingTipCounterTotal(0),
+      visibleLoadingTipCounterSource("none"),
       visibleLoadingProgressDrawn(false),
       visibleLoadingProgressPercent(0),
       visibleLoadingProgressSamples(0),
@@ -59210,6 +59218,13 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   LinuxBootstrapScreenRuntime* runtime = renderContext.screenRuntime;
   const LinuxLoadingUiPreview* loadingUiPreview = renderContext.loadingUiPreview;
   const LinuxLoadingUiState* loadingUiState = renderContext.loadingUiState;
+  if (runtime)
+  {
+    runtime->visibleLoadingTipCounterDrawn = false;
+    runtime->visibleLoadingTipCounterIndex = 0;
+    runtime->visibleLoadingTipCounterTotal = 0;
+    runtime->visibleLoadingTipCounterSource = "none";
+  }
   if (!overlay || !loadingUiPreview || !loadingUiState)
   {
     return;
@@ -59245,6 +59260,7 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   {
     tipText = loadingUiPreview->sampleTip;
   }
+  bool liveTipUsed = false;
   if (flashInterface)
   {
     const std::string liveTipText = StripLinuxLoadingFlashMarkup(
@@ -59252,9 +59268,21 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     if (!liveTipText.empty())
     {
       tipText = liveTipText;
+      liveTipUsed = true;
     }
   }
   tipText = StripLinuxLoadingFlashMarkup(tipText);
+  const size_t tipCounterTotal = loadingUiPreview->tips.size();
+  size_t tipCounterIndex = 0;
+  std::string tipCounterText;
+  if (tipCounterTotal > 0)
+  {
+    tipCounterIndex = std::min(loadingUiState->tipIndex, tipCounterTotal - 1) + 1;
+    tipCounterText = NStr::StrFmt(
+      "Tip %lu/%lu",
+      static_cast<unsigned long>(tipCounterIndex),
+      static_cast<unsigned long>(tipCounterTotal));
+  }
 
   const LinuxLoadingModeEntry* modeEntry = 0;
   if (!loadingUiPreview->modes.empty() &&
@@ -59461,6 +59489,35 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     ++linesDrawn;
   }
 
+  bool tipCounterDrawn = false;
+  if (!tipCounterText.empty())
+  {
+    const int badgeW = std::max(64, iconSize + 34);
+    const int badgeH = lineH + 4;
+    const int badgeX = panelX + padding;
+    const int badgeY = panelY + padding + iconSize + 8;
+    if (badgeY + badgeH <= panelY + panelH - padding)
+    {
+      SetOpenGlColor(22, 28, 32, 188);
+      DrawOpenGlRect(badgeX, badgeY, badgeW, badgeH);
+      SetOpenGlColor(116, 132, 134, 198);
+      DrawOpenGlBorderRect(badgeX, badgeY, badgeW, badgeH);
+      SetOpenGlColor(216, 222, 206, 230);
+      DrawOpenGlTextInBox(
+        overlay,
+        badgeX + 4,
+        badgeY + 2,
+        badgeW - 8,
+        lineH,
+        tipCounterText,
+        LINUX_OPENGL_TEXT_ALIGN_CENTER,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      tipCounterDrawn = true;
+    }
+  }
+
   std::string footerText = modeText;
   if (!localeText.empty())
   {
@@ -59492,6 +59549,11 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingInfoDrawn = linesDrawn > 0 || iconsDrawn > 0;
     runtime->visibleLoadingInfoLinesDrawn = linesDrawn;
     runtime->visibleLoadingInfoIconsDrawn = iconsDrawn;
+    runtime->visibleLoadingTipCounterDrawn = tipCounterDrawn;
+    runtime->visibleLoadingTipCounterIndex = tipCounterDrawn ? tipCounterIndex : 0;
+    runtime->visibleLoadingTipCounterTotal = tipCounterTotal;
+    runtime->visibleLoadingTipCounterSource =
+      tipCounterDrawn ? (liveTipUsed ? "live-loading-flash" : "loading-ui-preview") : "none";
   }
 }
 
@@ -64889,6 +64951,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingInfoLinesDrawn << "\n";
   logFile << "  finalVisibleLoadingInfoIcons="
           << screenRuntime.visibleLoadingInfoIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingTipCounterDrawn="
+          << (screenRuntime.visibleLoadingTipCounterDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingTipCounterIndex="
+          << screenRuntime.visibleLoadingTipCounterIndex << "\n";
+  logFile << "  finalVisibleLoadingTipCounterTotal="
+          << screenRuntime.visibleLoadingTipCounterTotal << "\n";
+  logFile << "  finalVisibleLoadingTipCounterSource="
+          << (screenRuntime.visibleLoadingTipCounterSource.empty() ? "none" : screenRuntime.visibleLoadingTipCounterSource) << "\n";
   logFile << "  finalVisibleLoadingProgressDrawn="
           << (screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingProgressPercent="
@@ -69088,6 +69158,11 @@ int main(int argc, char** argv)
     screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoLinesDrawn),
     static_cast<unsigned long>(screenRuntime.visibleLoadingInfoIconsDrawn));
+  fprintf(stdout, "Final visible loading tip counter: drawn=%s index=%lu total=%lu source=%s\n",
+    screenRuntime.visibleLoadingTipCounterDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingTipCounterIndex),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingTipCounterTotal),
+    screenRuntime.visibleLoadingTipCounterSource.empty() ? "none" : screenRuntime.visibleLoadingTipCounterSource.c_str());
   fprintf(stdout, "Final visible loading progress: drawn=%s percent=%d samples=%lu source=%s\n",
     screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingProgressPercent,
