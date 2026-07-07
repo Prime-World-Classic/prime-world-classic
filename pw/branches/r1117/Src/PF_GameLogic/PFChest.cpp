@@ -6,9 +6,11 @@
 #include "PFChest.h"
 #include "DBConsumable.h"
 #include "DBGameLogic.h"
+#include "PFAdvMapObject.h"
 #include "PFAIWorld.h"
 #include "PFHero.h"
 #include "PFWorld.h"
+#include "TileMap.h"
 
 namespace NWorld
 {
@@ -16,6 +18,53 @@ namespace NWorld
 NAMEMAP_BEGIN(PFConsumableChest)
   NAMEMAP_FUNC_RO(name, &PFConsumableChest::GetName )
 NAMEMAP_END
+
+struct LinuxFreePlaceForChestChecker
+{
+  LinuxFreePlaceForChestChecker(PFWorld const* pWorld, CVec3 position, float objectSize, float searchRadius)
+    : pMap(pWorld->GetTileMap())
+    , objectTileSize(1)
+    , objectSize2(objectSize * objectSize)
+    , mapModeChanger(MAP_MODE_ALL, pWorld->GetTileMap())
+  {
+    const float tileSize = pMap->GetTileSize();
+    if (tileSize > 0.0f)
+      objectTileSize = static_cast<int>(ceil(objectSize / tileSize));
+    if (objectTileSize < 1)
+      objectTileSize = 1;
+
+    if (pWorld->GetAIWorld())
+      pWorld->GetAIWorld()->ForAllObjectsInRange(position, searchRadius, *this);
+  }
+
+  bool operator()(CVec2 const& pos)
+  {
+    SVector tile = pMap->GetTile(pos);
+    if (!pMap->CanUnitGo(objectTileSize, tile))
+      return false;
+
+    for (vector<CVec2>::const_iterator iObject = nearestObjects.begin(), iEnd = nearestObjects.end(); iObject != iEnd; ++iObject)
+    {
+      if (objectSize2 > fabs2((*iObject) - pos))
+        return false;
+    }
+    return true;
+  }
+
+  void operator()(const PFLogicObject& obj)
+  {
+    PFLogicObject const* pObject = &obj;
+    if (dynamic_cast<PFConsumableChest const*>(pObject))
+      nearestObjects.push_back(pObject->GetPosition().AsVec2D());
+  }
+
+private:
+  TileMap*      pMap;
+  int           objectTileSize;
+  float         objectSize2;
+  vector<CVec2> nearestObjects;
+  MapModeChanger mapModeChanger;
+};
 
 CObj<PFConsumableChest> PFConsumableChest::Create(PFWorld* pWorld, NDb::Ptr<NDb::Consumable> const& dbConsumable, const CVec2& pos, int quantity, NDb::GameObject const* gameObject)
 {
@@ -25,10 +74,35 @@ CObj<PFConsumableChest> PFConsumableChest::Create(PFWorld* pWorld, NDb::Ptr<NDb:
   if (!amChest.gameObject)
     amChest.gameObject = dbConsumable->gameObject.GetPtr();
   amChest.offset = CPlacement(CVec3(pos, 0.0f), QNULL, CVec3(1.0f, 1.0f, 1.0f));
+  float objectSourceSize = amChest.gameObject ? amChest.gameObject->lockMask.tileSize : 1.0f;
+  if (objectSourceSize <= 0.0f)
+    objectSourceSize = 1.0f;
+
+  float objectSize = objectSourceSize;
+  int objectTileSize = static_cast<int>(ceil(objectSourceSize));
+  int objectDynTileSize = static_cast<int>(ceil(objectSourceSize));
+
+  if (pWorld && pWorld->GetTileMap())
+  {
+    LinuxFreePlaceForChestChecker checker(pWorld, CVec3(pos, 0.0f), objectSourceSize, 100.0f);
+    amChest.offset = CPlacement(PFLogicObject::GetFreePlaceForObject(CVec3(pos, 0.0f), objectSourceSize, checker), QNULL, CVec3(1.f, 1.f, 1.f));
+
+    const float tileSize = pWorld->GetTileMap()->GetTileSize();
+    objectTileSize = (tileSize == 0.0f) ? 0 : static_cast<int>(ceil(objectSourceSize / tileSize));
+    objectDynTileSize = static_cast<int>(objectSourceSize);
+    objectSize = objectSourceSize * tileSize;
+  }
+
   CObj<PFConsumableChest> pChest(new PFConsumableChest(pWorld, dbConsumable, quantity, amChest));
-  const float objectTileSize = amChest.gameObject ? amChest.gameObject->lockMask.tileSize : 1.0f;
-  const float objectSize = objectTileSize > 0.0f ? objectTileSize : 1.0f;
-  pChest->SetObjectSizes(objectSize, static_cast<int>(ceil(objectSize)), static_cast<int>(ceil(objectSize)));
+  pChest->SetObjectSizes(objectSize, objectTileSize, objectDynTileSize);
+
+  if (pWorld && pWorld->GetTileMap() && amChest.gameObject)
+  {
+    vector<SVector> occupiedTiles;
+    MarkObject(pWorld->GetTileMap(), amChest, occupiedTiles);
+    pWorld->GetTileMap()->MarkObject(occupiedTiles, true, MAP_MODE_BUILDING);
+  }
+
   return pChest;
 }
 
