@@ -977,6 +977,12 @@ struct LinuxLoadingModeEntry
   std::string iconRef;
 };
 
+struct LinuxLoadingMinimapIconEntry
+{
+  std::string name;
+  std::string iconRef;
+};
+
 struct LinuxLoadingUiPreview
 {
   bool ready;
@@ -1011,6 +1017,7 @@ struct LinuxLoadingUiPreview
   std::vector<std::string> localeSamples;
   std::vector<std::string> forceColorSamples;
   std::vector<std::string> modeSamples;
+  std::vector<LinuxLoadingMinimapIconEntry> minimapIcons;
   std::vector<std::string> chatChannelSamples;
   std::vector<std::string> reportTypeSamples;
   std::vector<std::string> bindSamples;
@@ -4899,6 +4906,10 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingControlHintsDrawnCount;
   size_t visibleLoadingControlHintsAvailable;
   std::string visibleLoadingControlHintsSource;
+  bool visibleLoadingMinimapLegendDrawn;
+  size_t visibleLoadingMinimapLegendIconsDrawn;
+  size_t visibleLoadingMinimapLegendIconsAvailable;
+  std::string visibleLoadingMinimapLegendSource;
   bool visibleLoadingPremiumTooltipDrawn;
   size_t visibleLoadingPremiumTooltipBytes;
   std::string visibleLoadingPremiumTooltipText;
@@ -6214,6 +6225,10 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingControlHintsDrawnCount(0),
       visibleLoadingControlHintsAvailable(0),
       visibleLoadingControlHintsSource("none"),
+      visibleLoadingMinimapLegendDrawn(false),
+      visibleLoadingMinimapLegendIconsDrawn(0),
+      visibleLoadingMinimapLegendIconsAvailable(0),
+      visibleLoadingMinimapLegendSource("none"),
       visibleLoadingPremiumTooltipDrawn(false),
       visibleLoadingPremiumTooltipBytes(0),
       visibleLoadingPremiumTooltipText("none"),
@@ -20979,6 +20994,28 @@ void ProbeLoadingUiPreview(
   if (uiData->minimap)
   {
     preview->minimapIconCount = uiData->minimap->icons.size();
+    const int knownIconCount = NDb::KnownEnum<NDb::EMinimapIcons>::SizeOf();
+    for (int i = 0; i < uiData->minimap->icons.size() && preview->minimapIcons.size() < 8; ++i)
+    {
+      const NDb::Ptr<NDb::Texture>& icon = uiData->minimap->icons[i];
+      if (!icon)
+      {
+        continue;
+      }
+
+      LinuxLoadingMinimapIconEntry entry;
+      if (i >= 0 && i < knownIconCount)
+      {
+        entry.name = NDb::KnownEnum<NDb::EMinimapIcons>::ToString(
+          static_cast<NDb::EMinimapIcons>(i));
+      }
+      else
+      {
+        entry.name = NStr::StrFmt("Icon%d", i);
+      }
+      entry.iconRef = DescribeDbResource(icon);
+      preview->minimapIcons.push_back(entry);
+    }
   }
 
   if (uiData->smartChat)
@@ -60294,9 +60331,23 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     runtime->visibleLoadingControlHintsDrawnCount = 0;
     runtime->visibleLoadingControlHintsAvailable = 0;
     runtime->visibleLoadingControlHintsSource = "none";
+    runtime->visibleLoadingMinimapLegendDrawn = false;
+    runtime->visibleLoadingMinimapLegendIconsDrawn = 0;
+    runtime->visibleLoadingMinimapLegendIconsAvailable = 0;
+    runtime->visibleLoadingMinimapLegendSource = "none";
   }
-  if (!overlay || !loadingUiPreview || !loadingUiPreview->smartChatReady ||
-      loadingUiPreview->smartChatSamples.empty())
+  if (!overlay || !loadingUiPreview)
+  {
+    return;
+  }
+
+  const bool hasSmartChat =
+    loadingUiPreview->smartChatReady && !loadingUiPreview->smartChatSamples.empty();
+  const bool hasReportTypes = !loadingUiPreview->reportTypeSamples.empty();
+  const bool hasControlHints = !loadingUiPreview->bindSamples.empty();
+  const bool hasMinimapLegend =
+    loadingUiPreview->minimapReady && !loadingUiPreview->minimapIcons.empty();
+  if (!hasSmartChat && !hasReportTypes && !hasControlHints && !hasMinimapLegend)
   {
     return;
   }
@@ -60319,19 +60370,17 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
 
   const int padding = 10;
   const int lineH = std::max(14, ResolveOpenGlTextLineHeight(overlay) + 2);
-  const bool hasReportTypes = !loadingUiPreview->reportTypeSamples.empty();
-  const bool hasControlHints = !loadingUiPreview->bindSamples.empty();
   const int reportLineH = hasReportTypes ? lineH + 7 : 0;
   const int controlLineH = hasControlHints ? lineH + 7 : 0;
-  const size_t rowsLimit = std::min<size_t>(
-    loadingUiPreview->smartChatSamples.size(),
-    static_cast<size_t>(
-      std::max(1, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH) / std::max(1, lineH + 5)))
-  );
-  if (rowsLimit == 0)
-  {
-    return;
-  }
+  const int minimapLineH = hasMinimapLegend ? lineH + 7 : 0;
+  const int rowsAvailable =
+    std::max(0, (panelH - padding * 2 - lineH * 2 - reportLineH - controlLineH - minimapLineH) /
+      std::max(1, lineH + 5));
+  const size_t rowsLimit = hasSmartChat ?
+    std::min<size_t>(
+      loadingUiPreview->smartChatSamples.size(),
+      static_cast<size_t>(std::max(1, rowsAvailable))) :
+    0;
 
   SetOpenGlColor(4, 7, 10, 160);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
@@ -60345,7 +60394,7 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     panelY + 5,
     panelW - padding * 2,
     lineH,
-    "Smart chat",
+    hasSmartChat ? "Smart chat" : "Loading hints",
     LINUX_OPENGL_TEXT_ALIGN_LEFT,
     LINUX_OPENGL_TEXT_VALIGN_CENTER,
     false
@@ -60358,10 +60407,14 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     panelY + 5 + lineH,
     panelW - padding * 2,
     lineH,
-    NStr::StrFmt(
-      "%lu categories  %lu messages",
-      static_cast<unsigned long>(loadingUiPreview->smartChatCategoryCount),
-      static_cast<unsigned long>(loadingUiPreview->smartChatMessageCount)),
+    hasSmartChat ?
+      NStr::StrFmt(
+        "%lu categories  %lu messages",
+        static_cast<unsigned long>(loadingUiPreview->smartChatCategoryCount),
+        static_cast<unsigned long>(loadingUiPreview->smartChatMessageCount)) :
+      NStr::StrFmt(
+        "%lu minimap icons",
+        static_cast<unsigned long>(loadingUiPreview->minimapIconCount)),
     LINUX_OPENGL_TEXT_ALIGN_LEFT,
     LINUX_OPENGL_TEXT_VALIGN_CENTER,
     false
@@ -60398,7 +60451,19 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
 
   size_t reportTypesDrawn = 0;
   size_t controlHintsDrawn = 0;
-  const int controlY = panelY + panelH - padding - lineH - 1;
+  size_t minimapIconsDrawn = 0;
+  int nextFooterY = panelY + panelH - padding - lineH - 1;
+  const int minimapY = hasMinimapLegend ? nextFooterY : 0;
+  if (hasMinimapLegend)
+  {
+    nextFooterY -= lineH + 7;
+  }
+  const int controlY = hasControlHints ? nextFooterY : 0;
+  if (hasControlHints)
+  {
+    nextFooterY -= lineH + 7;
+  }
+  const int reportY = hasReportTypes ? nextFooterY : 0;
   if (hasReportTypes)
   {
     std::string reportText = "Reports: ";
@@ -60419,7 +60484,6 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
     }
     if (reportTypesDrawn > 0)
     {
-      const int reportY = hasControlHints ? controlY - lineH - 7 : controlY;
       SetOpenGlColor(28, 18, 18, 146);
       DrawOpenGlRect(panelX + padding, reportY, panelW - padding * 2, lineH + 4);
       SetOpenGlColor(210, 180, 172, 224);
@@ -60472,6 +60536,79 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       );
     }
   }
+  if (hasMinimapLegend)
+  {
+    SetOpenGlColor(18, 22, 28, 146);
+    DrawOpenGlRect(panelX + padding, minimapY, panelW - padding * 2, lineH + 4);
+    SetOpenGlColor(168, 196, 206, 224);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 6,
+      minimapY + 2,
+      62,
+      lineH,
+      "Minimap:",
+      LINUX_OPENGL_TEXT_ALIGN_LEFT,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+
+    const int iconSize = std::max(10, std::min(13, lineH + 1));
+    int iconX = panelX + padding + 70;
+    const int iconY = minimapY + std::max(2, (lineH + 4 - iconSize) / 2);
+    const size_t iconLimit = std::min<size_t>(loadingUiPreview->minimapIcons.size(), 6);
+    for (size_t i = 0; i < iconLimit; ++i)
+    {
+      const LinuxLoadingMinimapIconEntry& entry = loadingUiPreview->minimapIcons[i];
+      const int labelW = std::min(
+        34,
+        std::max(26, static_cast<int>(entry.name.size()) * 4 + 8));
+      const int chipW = iconSize + 3 + labelW;
+      if (iconX + chipW > panelX + panelW - padding - 4)
+      {
+        break;
+      }
+
+      const LinuxWindowOverlay::OpenGlTexture* iconTexture =
+        ResolveLinuxLobbyCachedTextureReference(
+          overlay,
+          renderContext.environment,
+          entry.iconRef);
+      if (iconTexture)
+      {
+        DrawOpenGlTextureCover(
+          iconTexture->texture,
+          iconTexture->width,
+          iconTexture->height,
+          iconX,
+          iconY,
+          iconSize,
+          iconSize
+        );
+      }
+      else
+      {
+        SetOpenGlColor(80, 126, 150, 214);
+        DrawOpenGlRect(iconX, iconY, iconSize, iconSize);
+      }
+      SetOpenGlColor(38, 52, 60, 218);
+      DrawOpenGlBorderRect(iconX, iconY, iconSize, iconSize);
+      SetOpenGlColor(196, 214, 214, 224);
+      DrawOpenGlTextInBox(
+        overlay,
+        iconX + iconSize + 3,
+        minimapY + 2,
+        labelW,
+        lineH,
+        TruncateForOverlay(entry.name, 10),
+        LINUX_OPENGL_TEXT_ALIGN_LEFT,
+        LINUX_OPENGL_TEXT_VALIGN_CENTER,
+        false
+      );
+      iconX += chipW + 4;
+      ++minimapIconsDrawn;
+    }
+  }
 
   if (runtime)
   {
@@ -60492,6 +60629,12 @@ void DrawLinuxLoadingSmartChatOverlay(const LinuxOverlayUiRenderContext& renderC
       loadingUiPreview->bindSamples.size();
     runtime->visibleLoadingControlHintsSource =
       controlHintsDrawn > 0 ? "loading-ui-preview" : "none";
+    runtime->visibleLoadingMinimapLegendDrawn = minimapIconsDrawn > 0;
+    runtime->visibleLoadingMinimapLegendIconsDrawn = minimapIconsDrawn;
+    runtime->visibleLoadingMinimapLegendIconsAvailable =
+      loadingUiPreview->minimapIconCount;
+    runtime->visibleLoadingMinimapLegendSource =
+      minimapIconsDrawn > 0 ? "loading-ui-preview" : "none";
   }
 }
 
@@ -65329,6 +65472,14 @@ void AppendRuntimeInputLog(
           << screenRuntime.visibleLoadingControlHintsAvailable << "\n";
   logFile << "  finalVisibleLoadingControlHintsSource="
           << (screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource) << "\n";
+  logFile << "  finalVisibleLoadingMinimapLegendDrawn="
+          << (screenRuntime.visibleLoadingMinimapLegendDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingMinimapLegendIcons="
+          << screenRuntime.visibleLoadingMinimapLegendIconsDrawn << "\n";
+  logFile << "  finalVisibleLoadingMinimapLegendSamples="
+          << screenRuntime.visibleLoadingMinimapLegendIconsAvailable << "\n";
+  logFile << "  finalVisibleLoadingMinimapLegendSource="
+          << (screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource) << "\n";
   logFile << "  finalVisibleLoadingPremiumTooltipDrawn="
           << (screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingPremiumTooltipBytes="
@@ -69539,6 +69690,11 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsDrawnCount),
     static_cast<unsigned long>(screenRuntime.visibleLoadingControlHintsAvailable),
     screenRuntime.visibleLoadingControlHintsSource.empty() ? "none" : screenRuntime.visibleLoadingControlHintsSource.c_str());
+  fprintf(stdout, "Final visible loading minimap legend: drawn=%s icons=%lu samples=%lu source=%s\n",
+    screenRuntime.visibleLoadingMinimapLegendDrawn ? "yes" : "no",
+    static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsDrawn),
+    static_cast<unsigned long>(screenRuntime.visibleLoadingMinimapLegendIconsAvailable),
+    screenRuntime.visibleLoadingMinimapLegendSource.empty() ? "none" : screenRuntime.visibleLoadingMinimapLegendSource.c_str());
   fprintf(stdout, "Final visible loading premium tooltip: drawn=%s bytes=%lu source=%s\n",
     screenRuntime.visibleLoadingPremiumTooltipDrawn ? "yes" : "no",
     static_cast<unsigned long>(screenRuntime.visibleLoadingPremiumTooltipBytes),
