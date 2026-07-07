@@ -4903,6 +4903,9 @@ struct LinuxBootstrapScreenRuntime
   size_t visibleLoadingPremiumTooltipBytes;
   std::string visibleLoadingPremiumTooltipText;
   std::string visibleLoadingPremiumTooltipSource;
+  bool visibleLoadingModeBadgeDrawn;
+  std::string visibleLoadingModeBadgeText;
+  std::string visibleLoadingModeBadgeSource;
   bool visibleLoadingInfoDrawn;
   size_t visibleLoadingInfoLinesDrawn;
   size_t visibleLoadingInfoIconsDrawn;
@@ -6212,6 +6215,9 @@ struct LinuxBootstrapScreenRuntime
       visibleLoadingPremiumTooltipBytes(0),
       visibleLoadingPremiumTooltipText("none"),
       visibleLoadingPremiumTooltipSource("none"),
+      visibleLoadingModeBadgeDrawn(false),
+      visibleLoadingModeBadgeText("none"),
+      visibleLoadingModeBadgeSource("none"),
       visibleLoadingInfoDrawn(false),
       visibleLoadingInfoLinesDrawn(0),
       visibleLoadingInfoIconsDrawn(0),
@@ -59255,6 +59261,9 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
     runtime->visibleLoadingLocaleFlagsDrawn = 0;
     runtime->visibleLoadingLocaleMatchupText = "none";
     runtime->visibleLoadingLocaleMatchupSource = "none";
+    runtime->visibleLoadingModeBadgeDrawn = false;
+    runtime->visibleLoadingModeBadgeText = "none";
+    runtime->visibleLoadingModeBadgeSource = "none";
   }
   if (!overlay || !loadingUiPreview || !loadingUiState)
   {
@@ -59337,8 +59346,10 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   }
 
   std::string modeText;
+  std::string modeBadgeText;
   if (modeEntry)
   {
+    modeBadgeText = modeEntry->id;
     modeText = StripLinuxLoadingFlashMarkup(modeEntry->tooltip);
     if (modeText.empty())
     {
@@ -59432,6 +59443,7 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
   size_t linesDrawn = 0;
   size_t iconsDrawn = 0;
   size_t localeFlagsDrawn = 0;
+  bool modeBadgeDrawn = false;
 
   SetOpenGlColor(4, 7, 10, 182);
   DrawOpenGlRect(panelX, panelY, panelW, panelH);
@@ -59458,6 +59470,26 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
       );
       ++iconsDrawn;
     }
+  }
+  if (!modeBadgeText.empty())
+  {
+    const int badgeH = std::max(12, lineH - 2);
+    const int badgeY = panelY + padding + iconSize - badgeH;
+    SetOpenGlColor(12, 18, 22, 186);
+    DrawOpenGlRect(panelX + padding, badgeY, iconSize, badgeH);
+    SetOpenGlColor(214, 222, 210, 232);
+    DrawOpenGlTextInBox(
+      overlay,
+      panelX + padding + 2,
+      badgeY,
+      iconSize - 4,
+      badgeH,
+      TruncateForOverlay(modeBadgeText, 8),
+      LINUX_OPENGL_TEXT_ALIGN_CENTER,
+      LINUX_OPENGL_TEXT_VALIGN_CENTER,
+      false
+    );
+    modeBadgeDrawn = true;
   }
 
   const int flagsX = panelX + panelW - padding - rightIconW;
@@ -59640,6 +59672,10 @@ void DrawLinuxLoadingInfoOverlay(const LinuxOverlayUiRenderContext& renderContex
       localeMatchupDrawn ? localeMatchupText : "none";
     runtime->visibleLoadingLocaleMatchupSource =
       localeMatchupDrawn ? (liveLocaleUsed ? "live-loading-flash" : "loading-ui-preview") : "none";
+    runtime->visibleLoadingModeBadgeDrawn = modeBadgeDrawn;
+    runtime->visibleLoadingModeBadgeText = modeBadgeDrawn ? modeBadgeText : "none";
+    runtime->visibleLoadingModeBadgeSource =
+      modeBadgeDrawn ? "loading-ui-preview" : "none";
   }
 }
 
@@ -65136,6 +65172,12 @@ void AppendRuntimeInputLog(
           << (screenRuntime.visibleLoadingLocaleMatchupText.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupText) << "\n";
   logFile << "  finalVisibleLoadingLocaleMatchupSource="
           << (screenRuntime.visibleLoadingLocaleMatchupSource.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupSource) << "\n";
+  logFile << "  finalVisibleLoadingModeBadgeDrawn="
+          << (screenRuntime.visibleLoadingModeBadgeDrawn ? "yes" : "no") << "\n";
+  logFile << "  finalVisibleLoadingModeBadge="
+          << (screenRuntime.visibleLoadingModeBadgeText.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeText) << "\n";
+  logFile << "  finalVisibleLoadingModeBadgeSource="
+          << (screenRuntime.visibleLoadingModeBadgeSource.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeSource) << "\n";
   logFile << "  finalVisibleLoadingProgressDrawn="
           << (screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingProgressPercent="
@@ -69353,6 +69395,10 @@ int main(int argc, char** argv)
     static_cast<unsigned long>(screenRuntime.visibleLoadingLocaleFlagsDrawn),
     screenRuntime.visibleLoadingLocaleMatchupText.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupText.c_str(),
     screenRuntime.visibleLoadingLocaleMatchupSource.empty() ? "none" : screenRuntime.visibleLoadingLocaleMatchupSource.c_str());
+  fprintf(stdout, "Final visible loading mode badge: drawn=%s text=%s source=%s\n",
+    screenRuntime.visibleLoadingModeBadgeDrawn ? "yes" : "no",
+    screenRuntime.visibleLoadingModeBadgeText.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeText.c_str(),
+    screenRuntime.visibleLoadingModeBadgeSource.empty() ? "none" : screenRuntime.visibleLoadingModeBadgeSource.c_str());
   fprintf(stdout, "Final visible loading progress: drawn=%s percent=%d samples=%lu source=%s\n",
     screenRuntime.visibleLoadingProgressDrawn ? "yes" : "no",
     screenRuntime.visibleLoadingProgressPercent,
