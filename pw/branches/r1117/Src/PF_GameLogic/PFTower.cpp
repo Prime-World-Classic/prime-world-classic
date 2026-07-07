@@ -20,10 +20,59 @@ PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFBehaviourGroup)
 PW_LINUX_INLINE_NULL_USER_CAST(NWorld::PFDispatchUniformLinearMove)
 #undef PW_LINUX_INLINE_NULL_USER_CAST
 
+#include "PFAIWorld.h"
 #include "PFTower.h"
 
 namespace NWorld
 {
+
+class PFTowerGuardState : public PFBaseUnitState
+{
+public:
+  PFTowerGuardState(CPtr<PFWorld> const& pWorld, CPtr<PFBaseUnit> const& pOwner);
+  WORLD_OBJECT_METHODS(0xF5CC38B, PFTowerGuardState);
+protected:
+  virtual bool OnStep(float dt);
+  virtual void OnLeave();
+  PFTowerGuardState() {}
+private:
+  ZDATA_(PFBaseUnitState)
+  CPtr<PFWorld> pWorld;
+public:
+  ZEND int operator&(IBinSaver& f) { f.Add(1, (PFBaseUnitState*)this); f.Add(2, &pWorld); return 0; }
+};
+
+PFTowerGuardState::PFTowerGuardState(CPtr<PFWorld> const& pWorld, CPtr<PFBaseUnit> const& pOwner)
+  : PFBaseUnitState(pOwner)
+  , pWorld(pWorld)
+{
+}
+
+bool PFTowerGuardState::OnStep(float)
+{
+  if (!IsUnitValid(pOwner))
+    return true;
+
+  CPtr<PFBaseUnit> pTarget = pOwner->FindTarget(pOwner->GetAttackRange(), false);
+  if (IsUnitValid(pTarget))
+  {
+    pOwner->AssignTarget(pTarget, false);
+    if (pOwner->IsReadyToAttack())
+      pOwner->DoAttack();
+  }
+  else
+  {
+    pOwner->DropTarget();
+  }
+
+  return false;
+}
+
+void PFTowerGuardState::OnLeave()
+{
+  if (IsUnitValid(pOwner))
+    pOwner->DropTarget();
+}
 
 PFTower::PFTower(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
   : PFBattleBuilding(pWorld, dbObject)
@@ -35,6 +84,9 @@ PFTower::PFTower(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
     Init(dbObject, pDesc, NDb::UNITTYPE_TOWER);
     ContolTurret(true);
     SetBaseAngle(pDesc->baseRotation);
+    if (GetWorld() && GetWorld()->GetAIWorld())
+      SetTurretParams(GetWorld()->GetAIWorld()->GetAIParameters().towerTurretParams);
+    PushState(new PFTowerGuardState(pWorld, this));
   }
 }
 
@@ -48,8 +100,29 @@ bool PFTower::Step(float dtInSeconds)
   return PFBattleBuilding::Step(dtInSeconds);
 }
 
-float PFTower::OnDamage(const DamageDesc& desc) { return PFBattleBuilding::OnDamage(desc); }
-void PFTower::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
+float PFTower::OnDamage(const DamageDesc& desc)
+{
+  const float ret = PFBattleBuilding::OnDamage(desc);
+
+  if (IsDead())
+    PFFsm::Cleanup();
+
+  if (screamCooldown < 0.0f && IsTargetValid(desc.pSender) && desc.pSender->GetFaction() != GetFaction())
+  {
+    if (GetWorld() && GetWorld()->GetAIWorld())
+      screamCooldown = GetWorld()->GetAIWorld()->GetAIParameters().heroScreamDelay;
+    DoScream(desc.pSender, ScreamTarget::ScreamForHelp);
+  }
+
+  return ret;
+}
+
+void PFTower::OnScream(const CPtr<PFBaseUnit> pTarget, ScreamTarget::ScreamType st)
+{
+  if (st == ScreamTarget::ScreamAlert || !IsTargetInAttackRange(pTarget))
+    return;
+  PFBattleBuilding::OnScream(pTarget, st);
+}
 void PFTower::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFBattleBuilding::OnUnitDie(pKiller, flags, pDamageDesc); }
 void PFTower::OnTargetAssigned() { PFBattleBuilding::OnTargetAssigned(); lastAngleResetDelay = -1.0f; }
 void PFTower::OnTargetDropped() { lastAngleResetDelay = lastAngleResetDelayTime; }
@@ -57,13 +130,29 @@ void PFTower::OnTargetDropped() { lastAngleResetDelay = lastAngleResetDelayTime;
 PFControllableTower::PFControllableTower(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
   : PFTower(pWorld, dbObject)
 {
-  SetVulnerable(true);
+  if (!IsVulnerable())
+    SetVulnerable(true);
+  Cleanup(true);
 }
 
-bool PFControllableTower::Step(float dtInSeconds) { return PFTower::Step(dtInSeconds); }
+bool PFControllableTower::Step(float dtInSeconds)
+{
+  const CPtr<PFBaseUnit>& pTarget = GetCurrentTarget();
+  if (IsUnitValid(pTarget))
+  {
+    if (IsTargetInAttackRange(pTarget) && IsReadyToAttack())
+      DoAttack();
+  }
+  else
+  {
+    DropTarget();
+  }
+
+  return PFTower::Step(dtInSeconds);
+}
 float PFControllableTower::OnDamage(const DamageDesc& desc) { return PFTower::OnDamage(desc); }
 void PFControllableTower::OnUnitDie(CPtr<PFBaseUnit> pKiller, int flags, PFBaseUnitDamageDesc const* pDamageDesc) { PFTower::OnUnitDie(pKiller, flags, pDamageDesc); }
-void PFControllableTower::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { AssignTarget(pTarget, bStrongTarget); }
+void PFControllableTower::OnTarget(const CPtr<PFBaseUnit>&, bool) {}
 void PFControllableTower::OnScream(const CPtr<PFBaseUnit>, ScreamTarget::ScreamType) {}
 
 PFFountain::PFFountain(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
@@ -71,19 +160,23 @@ PFFountain::PFFountain(PFWorld* pWorld, NDb::AdvMapObject const& dbObject)
 {
   pDesc = dynamic_cast<NDb::Fountain const*>(dbObject.gameObject.GetPtr());
   if (pDesc)
+  {
     Init(dbObject, pDesc, NDb::UNITTYPE_BUILDING);
+    PushState(new PFTowerGuardState(pWorld, this));
+  }
   SetVulnerable(false);
 }
 
 void PFFountain::Reset() { PFBuilding::Reset(); SetVulnerable(false); }
-void PFFountain::OnDestroyContents() { PFBuilding::OnDestroyContents(); }
-void PFFountain::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { AssignTarget(pTarget, bStrongTarget); }
+void PFFountain::OnDestroyContents() { PFFsm::Cleanup(); PFBuilding::OnDestroyContents(); }
+void PFFountain::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget) { AssignTarget(pTarget, bStrongTarget); PFBuilding::OnTarget(pTarget, bStrongTarget); }
 
 } // namespace NWorld
 
 REGISTER_WORLD_OBJECT_NM(PFTower, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFControllableTower, NWorld)
 REGISTER_WORLD_OBJECT_NM(PFFountain, NWorld)
+REGISTER_WORLD_OBJECT_NM(PFTowerGuardState, NWorld)
 
 #else
 
