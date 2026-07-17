@@ -452,37 +452,19 @@ bool FlashRenderer::Initialize()
 void FlashRenderer::Release()
 {
   drawCommands.clear();
-  colorMatrixStack.clear();
-  nextTextTexture = Texture2DRef();
-  nextTextWithBevel = false;
-  nextTextBevelColor = Color(0, 0, 0, 255);
-  scale9GridActive = false;
+  ResetTransientState();
 }
 
 void FlashRenderer::StartFrame()
 {
   drawCommands.clear();
-  colorMatrixStack.clear();
-  nextTextTexture = Texture2DRef();
-  nextTextWithBevel = false;
-  nextTextBevelColor = Color(0, 0, 0, 255);
-  ClearFillStyles();
-  currentDisplayState = LinuxFlashDisplayState();
-  displayActive = false;
-  scale9GridActive = false;
+  ResetTransientState();
 }
 
 void FlashRenderer::BeginQueue()
 {
   drawCommands.clear();
-  colorMatrixStack.clear();
-  nextTextTexture = Texture2DRef();
-  nextTextWithBevel = false;
-  nextTextBevelColor = Color(0, 0, 0, 255);
-  ClearFillStyles();
-  currentDisplayState = LinuxFlashDisplayState();
-  displayActive = false;
-  scale9GridActive = false;
+  ResetTransientState();
 }
 
 void FlashRenderer::EndQueue()
@@ -491,6 +473,26 @@ void FlashRenderer::EndQueue()
 
 void FlashRenderer::BreakQueue()
 {
+}
+
+void FlashRenderer::ResetTransientState()
+{
+  currentMatrix = flash::SWF_MATRIX();
+  currentColorTransform = flash::SWF_CXFORMWITHALPHA();
+  currentBlendMode = EFlashBlendMode::NORMAL;
+  colorMatrixStack.clear();
+  nextTextTexture = Texture2DRef();
+  nextTextWithBevel = false;
+  nextTextBevelColor = Color(0, 0, 0, 255);
+  ClearFillStyles();
+  currentDisplayState = LinuxFlashDisplayState();
+  displayActive = false;
+  scale9GridActive = false;
+  scale9ConstX = CVec4(0.0f, 0.0f, 1.0f, 0.0f);
+  scale9ConstY = CVec4(0.0f, 0.0f, 1.0f, 0.0f);
+  scale9Trans = CVec4(1.0f, 1.0f, 0.0f, 0.0f);
+  lineWidth = 1.0f;
+  lineColor = Color(255, 255, 255, 255);
 }
 
 void FlashRenderer::Render( int firstElement, int lastElement, const Render::Texture2DRef& pMainRT0, const Render::Texture2DRef& pMainRT0Copy )
@@ -1219,10 +1221,7 @@ void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& colo
 
 void FlashRenderer::ClearCaches()
 {
-  colorMatrixStack.clear();
-  nextTextTexture = Texture2DRef();
-  nextTextWithBevel = false;
-  nextTextBevelColor = Color(0, 0, 0, 255);
+  ResetTransientState();
 }
 
 void FlashRenderer::DebugNextBatch()

@@ -210,6 +210,7 @@ private:
   void TransformPoint(float x, float y, float* outX, float* outY) const;
   void TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const;
   Color TransformColor(const Color& color) const;
+  void ResetTransientState();
   void ClearFillStyles();
   void QueueMaskCommand(LinuxFlashDrawCommand::Kind kind);
   void AppendBitmapQuad(IBitmapInfo* bitmapInfo, float x1, float y1, float x2, float y2, float u1, float v1, float u2, float v2, bool smoothing);

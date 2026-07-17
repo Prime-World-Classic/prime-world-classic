@@ -29902,8 +29902,6 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   uiRenderer->SetResolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f);
-  uiRenderer->BeginQueue();
-
   Render::IFlashRenderer* flashRenderer = uiRenderer->GetFlashRenderer();
   if (!flashRenderer)
   {
@@ -29911,6 +29909,11 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     uiRenderer->Release();
     return false;
   }
+  flashRenderer->SetScale9Grid(
+    CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
+    CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
+    CVec4(1.0f, 1.0f, 100.0f, 100.0f));
+  uiRenderer->BeginQueue();
 
   const int windowWidth = static_cast<int>(width);
   const int windowHeight = static_cast<int>(height);
