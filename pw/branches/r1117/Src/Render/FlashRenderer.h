@@ -126,6 +126,7 @@ private:
     enum Kind
     {
       DrawGeometry,
+      DrawText,
       BeginSubmitMaskCommand,
       EndSubmitMaskCommand,
       BeginUnSubmitMaskCommand,
@@ -139,6 +140,7 @@ private:
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
     LinuxFlashDisplayState displayState;
+    int textPartID;
     nstl::vector<LinuxFlashDrawVertex> vertices;
 
     LinuxFlashDrawCommand()
@@ -147,6 +149,7 @@ private:
       , smoothing(true)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
+      , textPartID(-1)
     {
     }
   };

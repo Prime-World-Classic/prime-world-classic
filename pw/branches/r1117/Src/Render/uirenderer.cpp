@@ -159,12 +159,14 @@ struct LinuxQueuedUIQuad
   Render::Color color;
   Render::Texture2DRef diffuseTexture;
   bool text;
+  bool flashText;
 
   LinuxQueuedUIQuad()
     : quad()
     , color()
     , diffuseTexture()
     , text(false)
+    , flashText(false)
   {
   }
 
@@ -177,6 +179,27 @@ struct LinuxQueuedUIQuad
     , color(_color)
     , diffuseTexture(_diffuseTexture)
     , text(_text)
+    , flashText(false)
+  {
+  }
+};
+
+// Minimal Linux-side UI part metadata used when Flash asks to replay text quads
+// at a specific point in the SWF command stream.
+struct LinuxQueuedRenderPart
+{
+  unsigned int firstQuad;
+  unsigned int quadCount;
+
+  LinuxQueuedRenderPart()
+    : firstQuad(0)
+    , quadCount(0)
+  {
+  }
+
+  LinuxQueuedRenderPart(unsigned int _firstQuad, unsigned int _quadCount)
+    : firstQuad(_firstQuad)
+    , quadCount(_quadCount)
   {
   }
 };
@@ -327,10 +350,19 @@ void BuildLinuxUIQuadPoints(const UIQuad& quad, float points[4][2])
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
 // First-pass Linux UI proof: draw queued geometry, using real UI textures when available.
-void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec4& resolutionCoefs)
+void RenderLinuxOpenGLUIQuads(
+  const vector<LinuxQueuedUIQuad>& quads,
+  const CVec4& resolutionCoefs,
+  unsigned int firstQuad,
+  unsigned int quadCount,
+  bool skipFlashText)
 {
-  if (quads.empty() || !NMainFrame::MakeOpenGLContextCurrent())
+  if (quads.empty() || firstQuad >= quads.size() || quadCount == 0 || !NMainFrame::MakeOpenGLContextCurrent())
     return;
+
+  unsigned int lastQuad = firstQuad + quadCount;
+  if (lastQuad > quads.size() || lastQuad < firstQuad)
+    lastQuad = quads.size();
 
   GLint viewport[4] = { 0, 0, 0, 0 };
   glGetIntegerv(GL_VIEWPORT, viewport);
@@ -358,9 +390,12 @@ void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec
   glPushMatrix();
   glLoadIdentity();
 
-  for (unsigned int i = 0; i < quads.size(); ++i)
+  for (unsigned int i = firstQuad; i < lastQuad; ++i)
   {
     const LinuxQueuedUIQuad& queuedQuad = quads[i];
+    if (skipFlashText && queuedQuad.flashText)
+      continue;
+
     if (queuedQuad.diffuseTexture)
       queuedQuad.diffuseTexture->EnsureOpenGLTexture();
 
@@ -404,6 +439,9 @@ void RenderLinuxOpenGLUIQuads(const vector<LinuxQueuedUIQuad>& quads, const CVec
         glVertex2f(points[point][0], points[point][1]);
     }
     glEnd();
+    ++g_linuxOpenGLUiRendererStats.rendered2DQuads;
+    if (queuedQuad.text)
+      ++g_linuxOpenGLUiRendererStats.rendered2DTextQuads;
   }
 
   glBindTexture(GL_TEXTURE_2D, 0);
@@ -458,6 +496,7 @@ public:
     queueOverflowed = false;
     currentFlashPart = -1;
     flashParts.clear();
+    renderParts.clear();
     if (flashRenderer)
     {
       flashRenderer->Release();
@@ -478,6 +517,7 @@ public:
     queueOverflowed = false;
     currentFlashPart = -1;
     flashParts.clear();
+    renderParts.clear();
     if (flashRenderer)
       flashRenderer->StartFrame();
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -542,10 +582,18 @@ public:
   virtual void EndText(Render::BaseMaterial* renderMaterial)
   {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    if (!textStarted)
+    {
+      (void)renderMaterial;
+      return;
+    }
+
+    const unsigned int textLastQuad = quads.size();
+    const bool hasTextQuads = textFirstQuad < textLastQuad;
     const Render::Texture2DRef textTexture = ResolveLinuxUITexture(renderMaterial);
     if (textTexture)
     {
-      for (unsigned int i = textFirstQuad; i < quads.size(); ++i)
+      for (unsigned int i = textFirstQuad; i < textLastQuad; ++i)
       {
         if (!quads[i].text || quads[i].diffuseTexture)
           continue;
@@ -553,6 +601,17 @@ public:
         quads[i].diffuseTexture = textTexture;
         ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
       }
+      queueRendered = false;
+    }
+
+    if (hasTextQuads && currentFlashPart >= 0)
+    {
+      for (unsigned int i = textFirstQuad; i < textLastQuad; ++i)
+        quads[i].flashText = true;
+
+      renderParts.push_back(LinuxQueuedRenderPart(textFirstQuad, textLastQuad - textFirstQuad));
+      if (flashRenderer)
+        flashRenderer->RenderText(static_cast<int>(renderParts.size() - 1));
       queueRendered = false;
     }
 #else
@@ -642,7 +701,7 @@ public:
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     ++g_linuxOpenGLUiRendererStats.render2DCalls;
-    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs);
+    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, 0, quads.size(), true);
     if (flashRenderer)
     {
       for (unsigned int i = 0; i < flashParts.size(); ++i)
@@ -651,10 +710,6 @@ public:
           flashRenderer->Render(flashParts[i].firstElement, flashParts[i].lastElement, pMainRT0, pMainRT0Copy);
       }
     }
-    g_linuxOpenGLUiRendererStats.rendered2DQuads += quads.size();
-    for (unsigned int i = 0; i < quads.size(); ++i)
-      if (quads[i].text)
-        ++g_linuxOpenGLUiRendererStats.rendered2DTextQuads;
     queueRendered = true;
 #else
     (void)what;
@@ -665,9 +720,17 @@ public:
   virtual void PrepareRenderFromFlash() {}
   virtual void RenderPart(int partID, ERenderWhat::Enum what, bool alphaTest)
   {
+    (void)alphaTest;
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    if (what != ERenderWhat::_2D || partID < 0 || partID >= static_cast<int>(renderParts.size()))
+      return;
+
+    const LinuxQueuedRenderPart& part = renderParts[partID];
+    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false);
+#else
     (void)partID;
     (void)what;
-    (void)alphaTest;
+#endif
   }
 
   virtual BaseMaterial* GetPartMaterial(int partID, ERenderWhat::Enum what)
@@ -758,6 +821,7 @@ private:
   vector<UIRect> cropRects;
   vector<LinuxQueuedUIQuad> quads;
   vector<LinuxQueuedFlashPart> flashParts;
+  vector<LinuxQueuedRenderPart> renderParts;
 };
 
 } // namespace

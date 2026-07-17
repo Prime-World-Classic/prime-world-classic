@@ -29972,6 +29972,18 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetColorTransform(colorTransform);
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->BeginDisplay(viewportX, viewportY, viewportWidth, viewportHeight, 0.0f, 320.0f, 0.0f, 240.0f, true);
+  Render::UIQuad flashTextQuad(
+    Render::UIPoint(112.0f, 86.0f),
+    Render::UIPoint(208.0f, 112.0f),
+    CVec2(0.0f, 0.0f),
+    CVec2(1.0f, 1.0f),
+    CVec2(0.0f, 0.0f),
+    CVec2(1.0f, 1.0f));
+  Render::SMaterialParams flashTextParams;
+  flashTextParams.color0 = Render::Color(255, 255, 255, 180);
+  uiRenderer->BeginText();
+  uiRenderer->AddTextQuad(flashTextQuad, flashTextParams);
+  uiRenderer->EndText(0);
   flashRenderer->BeginSubmitMask();
   flashRenderer->DrawTriangleList(maskVertices, 3, 1);
   flashRenderer->EndSubmitMask();
@@ -29991,19 +30003,23 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu text=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
     static_cast<unsigned long>(stats.renderedFlashMaskCommands),
-    static_cast<unsigned long>(stats.render2DCalls));
+    static_cast<unsigned long>(stats.render2DCalls),
+    static_cast<unsigned long>(stats.queued2DTextQuads),
+    static_cast<unsigned long>(stats.rendered2DTextQuads));
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 13 &&
-    stats.renderedFlashScissorCommands == 17 &&
+    stats.renderedFlashCommands == 14 &&
+    stats.renderedFlashScissorCommands == 18 &&
     stats.renderedFlashMaskCommands == 4 &&
-    stats.render2DCalls == 1;
+    stats.render2DCalls == 1 &&
+    stats.queued2DTextQuads == 1 &&
+    stats.rendered2DTextQuads == 1;
   if (!passed)
   {
     fprintf(stderr, "Flash renderer probe failed: unexpected Flash replay counters.\n");

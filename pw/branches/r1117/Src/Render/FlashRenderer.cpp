@@ -509,6 +509,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       ++renderedMaskCommands;
       continue;
 
+    case LinuxFlashDrawCommand::DrawText:
+      GetUIRenderer()->RenderPart(command.textPartID, ERenderWhat::_2D, false);
+      ++renderedCommands;
+      continue;
+
     default:
       break;
     }
@@ -970,7 +975,15 @@ void FlashRenderer::EndColorMatrix()
 
 void FlashRenderer::RenderText( int partID )
 {
-  (void)partID;
+  if (partID < 0)
+    return;
+
+  LinuxFlashDrawCommand command;
+  command.kind = LinuxFlashDrawCommand::DrawText;
+  command.displayState = currentDisplayState;
+  command.blendMode = currentBlendMode;
+  command.textPartID = partID;
+  drawCommands.push_back(command);
 }
 
 void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& color, Texture* fontTexture )
