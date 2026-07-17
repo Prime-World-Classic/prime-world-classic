@@ -218,6 +218,7 @@ struct LinuxOpenGLUiRendererStats
 const LinuxOpenGLUiRendererStats& GetLinuxOpenGLUiRendererStats();
 void ResetLinuxOpenGLUiRendererStats();
 void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands);
+void SetLinuxOpenGLUiRendererFlashTextTexture(int partID, const Texture2DRef& texture);
 #endif
 
 } // namespace Render

@@ -740,6 +740,32 @@ public:
     return 0;
   }
 
+  void SetFlashTextTexture(int partID, const Texture2DRef& texture)
+  {
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+    if (!texture || partID < 0 || partID >= static_cast<int>(renderParts.size()))
+      return;
+
+    const LinuxQueuedRenderPart& part = renderParts[partID];
+    unsigned int lastQuad = part.firstQuad + part.quadCount;
+    if (lastQuad > quads.size() || lastQuad < part.firstQuad)
+      lastQuad = quads.size();
+
+    for (unsigned int i = part.firstQuad; i < lastQuad; ++i)
+    {
+      if (!quads[i].text || !quads[i].flashText || quads[i].diffuseTexture)
+        continue;
+
+      quads[i].diffuseTexture = texture;
+      ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
+      queueRendered = false;
+    }
+#else
+    (void)partID;
+    (void)texture;
+#endif
+  }
+
   virtual void SetSaturation(float val, const CVec4& color, bool saturate)
   {
     (void)val;
@@ -849,6 +875,13 @@ void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int command
   g_linuxOpenGLUiRendererStats.renderedFlashCommands += commands;
   g_linuxOpenGLUiRendererStats.renderedFlashScissorCommands += scissorCommands;
   g_linuxOpenGLUiRendererStats.renderedFlashMaskCommands += maskCommands;
+}
+
+void SetLinuxOpenGLUiRendererFlashTextTexture(int partID, const Texture2DRef& texture)
+{
+  NullUIRenderer* uiRenderer = dynamic_cast<NullUIRenderer*>(GetUIRenderer());
+  if (uiRenderer)
+    uiRenderer->SetFlashTextTexture(partID, texture);
 }
 #endif
 

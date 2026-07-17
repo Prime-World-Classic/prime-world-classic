@@ -106,6 +106,7 @@
 #include "Render/smartrenderer.h"
 #include "Render/StaticMesh.h"
 #include "Render/FlashRendererInterface.h"
+#include "Render/TextureManager.h"
 #include "Render/uirenderer.h"
 #include "Scene/DBScene.h"
 #include "Terrain/DBTerrain.h"
@@ -29967,11 +29968,33 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashColorMatrix._11 = 0.0f;
   flashColorMatrix._12 = 1.0f;
   flashColorMatrix._22 = 0.0f;
+  Render::Texture2DRef flashTextTexture =
+    Render::CreateTexture2D(2, 2, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
+  if (flashTextTexture)
+  {
+    Render::LockedRect textRect = flashTextTexture->LockRect(0, Render::LOCK_DEFAULT);
+    if (textRect.data)
+    {
+      for (int y = 0; y < 2; ++y)
+      {
+        unsigned char* dst = textRect.data + y * textRect.pitch;
+        for (int x = 0; x < 2; ++x)
+        {
+          dst[x * 4 + 0] = 255;
+          dst[x * 4 + 1] = 255;
+          dst[x * 4 + 2] = 255;
+          dst[x * 4 + 3] = 255;
+        }
+      }
+      flashTextTexture->UnlockRect(0);
+    }
+  }
 
   flashRenderer->SetMatrix(matrix);
   flashRenderer->SetColorTransform(colorTransform);
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->BeginDisplay(viewportX, viewportY, viewportWidth, viewportHeight, 0.0f, 320.0f, 0.0f, 240.0f, true);
+  flashRenderer->RenderTextBevel(false, flash::SWF_RGBA(0, 0, 0, 255), flashTextTexture.GetPtr());
   Render::UIQuad flashTextQuad(
     Render::UIPoint(112.0f, 86.0f),
     Render::UIPoint(208.0f, 112.0f),
@@ -30003,14 +30026,16 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu text=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
     static_cast<unsigned long>(stats.renderedFlashMaskCommands),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
-    static_cast<unsigned long>(stats.rendered2DTextQuads));
+    static_cast<unsigned long>(stats.rendered2DTextQuads),
+    static_cast<unsigned long>(stats.queuedTextured2DQuads),
+    static_cast<unsigned long>(stats.renderedTextured2DQuads));
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
@@ -30019,7 +30044,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashMaskCommands == 4 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
-    stats.rendered2DTextQuads == 1;
+    stats.rendered2DTextQuads == 1 &&
+    stats.queuedTextured2DQuads == 1 &&
+    stats.renderedTextured2DQuads == 1;
   if (!passed)
   {
     fprintf(stderr, "Flash renderer probe failed: unexpected Flash replay counters.\n");

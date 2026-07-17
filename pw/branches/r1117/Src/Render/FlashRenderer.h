@@ -141,6 +141,7 @@ private:
     Texture2DRef texture;
     LinuxFlashDisplayState displayState;
     int textPartID;
+    Texture2DRef textTexture;
     nstl::vector<LinuxFlashDrawVertex> vertices;
 
     LinuxFlashDrawCommand()
@@ -210,6 +211,7 @@ private:
   Color lineColor;
   LinuxFlashFillStyle primaryFillStyle;
   LinuxFlashFillStyle secondaryFillStyle;
+  Texture2DRef nextTextTexture;
   nstl::vector<LinuxFlashColorMatrixState> colorMatrixStack;
   nstl::vector<LinuxFlashDrawCommand> drawCommands;
 };

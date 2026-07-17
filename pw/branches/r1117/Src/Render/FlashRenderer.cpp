@@ -383,12 +383,14 @@ void FlashRenderer::Release()
 {
   drawCommands.clear();
   colorMatrixStack.clear();
+  nextTextTexture = Texture2DRef();
 }
 
 void FlashRenderer::StartFrame()
 {
   drawCommands.clear();
   colorMatrixStack.clear();
+  nextTextTexture = Texture2DRef();
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -398,6 +400,7 @@ void FlashRenderer::BeginQueue()
 {
   drawCommands.clear();
   colorMatrixStack.clear();
+  nextTextTexture = Texture2DRef();
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -510,6 +513,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       continue;
 
     case LinuxFlashDrawCommand::DrawText:
+      SetLinuxOpenGLUiRendererFlashTextTexture(command.textPartID, command.textTexture);
       GetUIRenderer()->RenderPart(command.textPartID, ERenderWhat::_2D, false);
       ++renderedCommands;
       continue;
@@ -983,6 +987,7 @@ void FlashRenderer::RenderText( int partID )
   command.displayState = currentDisplayState;
   command.blendMode = currentBlendMode;
   command.textPartID = partID;
+  command.textTexture = nextTextTexture;
   drawCommands.push_back(command);
 }
 
@@ -990,12 +995,13 @@ void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& colo
 {
   (void)withBevel;
   (void)color;
-  (void)fontTexture;
+  nextTextTexture = Texture2DRef(dynamic_cast<Texture2D*>(fontTexture));
 }
 
 void FlashRenderer::ClearCaches()
 {
   colorMatrixStack.clear();
+  nextTextTexture = Texture2DRef();
 }
 
 void FlashRenderer::DebugNextBatch()
