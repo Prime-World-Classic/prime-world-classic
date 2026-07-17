@@ -139,6 +139,7 @@ private:
     bool line;
     bool scale9Grid;
     bool gradientFill;
+    flash::EGradientType::Enum gradientType;
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
@@ -156,6 +157,7 @@ private:
       , line(false)
       , scale9Grid(false)
       , gradientFill(false)
+      , gradientType(flash::EGradientType::Linear)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
       , textPartID(-1)
@@ -171,6 +173,7 @@ private:
     bool enabled;
     bool smoothing;
     bool gradientFill;
+    flash::EGradientType::Enum gradientType;
     EBitmapWrapMode::Enum wrapMode;
     Texture2DRef texture;
     flash::SWF_MATRIX matrix;
@@ -179,6 +182,7 @@ private:
       : enabled(false)
       , smoothing(true)
       , gradientFill(false)
+      , gradientType(flash::EGradientType::Linear)
       , wrapMode(EBitmapWrapMode::CLAMP)
     {
     }

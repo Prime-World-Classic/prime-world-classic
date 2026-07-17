@@ -29949,6 +29949,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   scale9Gradient.GradientRecords.push_back(scale9GradientStart);
   scale9Gradient.GradientRecords.push_back(scale9GradientEnd);
   Strong<Render::IBitmapInfo> scale9Bitmap = flashRenderer->CreateGradientBitmap(scale9Gradient);
+  flash::SWF_GRADIENT focalGradient = scale9Gradient;
+  focalGradient.type = flash::EGradientType::Focal;
+  focalGradient.FocalPoint = 0.35f;
+  Strong<Render::IBitmapInfo> focalBitmap = flashRenderer->CreateGradientBitmap(focalGradient);
   flash::SWF_MATRIX scale9Matrix;
   scale9Matrix.m_[0][2] = 200.0f;
   scale9Matrix.m_[1][2] = 136.0f;
@@ -29966,6 +29970,16 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   repeatFillVertices[2].x = 260.0f;
   repeatFillVertices[2].y = 112.0f;
   repeatFillVertices[2].color = Render::Color(255, 255, 255, 224);
+  Render::ShapeVertex focalFillVertices[3] = {};
+  focalFillVertices[0].x = 206.0f;
+  focalFillVertices[0].y = 118.0f;
+  focalFillVertices[0].color = Render::Color(255, 255, 255, 224);
+  focalFillVertices[1].x = 306.0f;
+  focalFillVertices[1].y = 126.0f;
+  focalFillVertices[1].color = Render::Color(255, 255, 255, 224);
+  focalFillVertices[2].x = 248.0f;
+  focalFillVertices[2].y = 168.0f;
+  focalFillVertices[2].color = Render::Color(255, 255, 255, 224);
   Render::ShapeVertex scale9ShapeVertices[3] = {};
   scale9ShapeVertices[0].x = 38.0f;
   scale9ShapeVertices[0].y = 92.0f;
@@ -30073,32 +30087,34 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetMatrix(matrix);
   flashRenderer->SetFillStyleBitmap(scale9Bitmap, repeatFillMatrix, EBitmapWrapMode::REPEAT, true);
   flashRenderer->DrawTriangleList(repeatFillVertices, 3, 5);
+  flashRenderer->SetFillStyleBitmap(focalBitmap, repeatFillMatrix, EBitmapWrapMode::CLAMP, true);
+  flashRenderer->DrawTriangleList(focalFillVertices, 3, 6);
   flashRenderer->SetFillStyleBitmap(scale9Bitmap, repeatFillMatrix, EBitmapWrapMode::CLAMP, true);
   flashRenderer->SetScale9Grid(
     CVec4(40.0f, 80.0f, 1.5f, 20.0f),
     CVec4(96.0f, 144.0f, 0.75f, -12.0f),
     CVec4(1.0f, 1.0f, 8.0f, 6.0f));
-  flashRenderer->DrawTriangleList(scale9ShapeVertices, 3, 6);
+  flashRenderer->DrawTriangleList(scale9ShapeVertices, 3, 7);
   flashRenderer->ResetScale9Grid();
   flashRenderer->BeginColorMatrix(flashColorMatrix, CVec4(0.0f, 0.0f, 0.0f, 0.0f));
-  flashRenderer->DrawTriangleList(colorMatrixVertices, 3, 7);
+  flashRenderer->DrawTriangleList(colorMatrixVertices, 3, 8);
   flashRenderer->EndColorMatrix();
   for (int blendIndex = 0; blendIndex < 4; ++blendIndex)
   {
     flashRenderer->SetBlendMode(blendModes[blendIndex]);
-    flashRenderer->DrawTriangleList(blendModeVertices[blendIndex], 3, 8 + blendIndex);
+    flashRenderer->DrawTriangleList(blendModeVertices[blendIndex], 3, 9 + blendIndex);
   }
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->SetLineWidth(8.0f);
   flashRenderer->SetLineColor(flash::SWF_RGBA(255, 224, 64, 220));
-  flashRenderer->DrawLineStrip(flashLine, 12);
+  flashRenderer->DrawLineStrip(flashLine, 13);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30112,6 +30128,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned long>(stats.renderedFlashScale9Commands),
     static_cast<unsigned long>(stats.renderedFlashScale9TexturedCommands),
     static_cast<unsigned long>(stats.renderedFlashGradientCommands),
+    static_cast<unsigned long>(stats.renderedFlashFocalGradientCommands),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30120,18 +30137,19 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 21 &&
-    stats.renderedFlashScissorCommands == 25 &&
+    stats.renderedFlashCommands == 22 &&
+    stats.renderedFlashScissorCommands == 26 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 4 &&
     stats.renderedFlashLineCommands == 1 &&
     stats.renderedFlashLineVertices == 18 &&
-    stats.renderedFlashTexturedCommands == 11 &&
+    stats.renderedFlashTexturedCommands == 12 &&
     stats.renderedFlashRepeatCommands == 1 &&
-    stats.renderedFlashClampCommands == 10 &&
+    stats.renderedFlashClampCommands == 11 &&
     stats.renderedFlashScale9Commands == 1 &&
     stats.renderedFlashScale9TexturedCommands == 1 &&
-    stats.renderedFlashGradientCommands == 11 &&
+    stats.renderedFlashGradientCommands == 12 &&
+    stats.renderedFlashFocalGradientCommands == 1 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

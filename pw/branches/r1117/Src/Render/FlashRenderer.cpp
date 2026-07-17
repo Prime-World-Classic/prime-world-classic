@@ -157,6 +157,7 @@ public:
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
     , gradientTexture(false)
+    , gradientType(flash::EGradientType::Linear)
   {
   }
 
@@ -166,17 +167,19 @@ public:
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
     , gradientTexture(false)
+    , gradientType(flash::EGradientType::Linear)
   {
     if (width > 0 && height > 0)
       texture = Render::CreateTexture2D(width, height, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8);
   }
 
-  LinuxBitmapInfo( const Texture2DRef& sourceTexture, bool gradient = false )
+  LinuxBitmapInfo( const Texture2DRef& sourceTexture, bool gradient = false, flash::EGradientType::Enum type = flash::EGradientType::Linear )
     : width(0)
     , height(0)
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
     , gradientTexture(gradient)
+    , gradientType(type)
   {
     texture = sourceTexture;
     if (texture)
@@ -192,6 +195,7 @@ public:
     , uv1(0.0f, 0.0f)
     , uv2(1.0f, 1.0f)
     , gradientTexture(false)
+    , gradientType(flash::EGradientType::Linear)
   {
     (void)repeatable;
     if (!im || width <= 0 || height <= 0)
@@ -227,11 +231,13 @@ public:
   virtual const CVec2& GetUV2() const { return uv2; }
   const Texture2DRef& GetTexture() const { return texture; }
   bool IsGradientTexture() const { return gradientTexture; }
+  flash::EGradientType::Enum GetGradientType() const { return gradientType; }
 
   virtual IBitmapInfo* Clone()
   {
     LinuxBitmapInfo* clone = new LinuxBitmapInfo(width, height);
     clone->gradientTexture = gradientTexture;
+    clone->gradientType = gradientType;
     if (!texture || !clone->texture)
       return clone;
 
@@ -285,6 +291,7 @@ private:
   Texture2DRef texture;
   // Tracks textures synthesized from SWF gradient fills for native replay diagnostics.
   bool gradientTexture;
+  flash::EGradientType::Enum gradientType;
 };
 
 LinuxBitmapInfo* GetLinuxBitmapInfo(IBitmapInfo* bitmapInfo)
@@ -532,6 +539,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedScale9Commands = 0;
   unsigned int renderedScale9TexturedCommands = 0;
   unsigned int renderedGradientCommands = 0;
+  unsigned int renderedFocalGradientCommands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -633,7 +641,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     {
       ++renderedTexturedCommands;
       if (command.gradientFill)
+      {
         ++renderedGradientCommands;
+        if (command.gradientType == flash::EGradientType::Focal)
+          ++renderedFocalGradientCommands;
+      }
       if (command.wrapMode == EBitmapWrapMode::REPEAT)
         ++renderedRepeatCommands;
       else
@@ -666,7 +678,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands, renderedScale9TexturedCommands, renderedGradientCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands, renderedScale9TexturedCommands, renderedGradientCommands, renderedFocalGradientCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -718,6 +730,7 @@ void FlashRenderer::SetFillStyleBitmap( IBitmapInfo* bitmapInfo, const flash::SW
   fillStyle.enabled = true;
   fillStyle.smoothing = true;
   fillStyle.gradientFill = bitmap->IsGradientTexture();
+  fillStyle.gradientType = bitmap->GetGradientType();
   fillStyle.wrapMode = wrapMode;
   fillStyle.texture = bitmap->GetTexture();
   fillStyle.matrix = matrix;
@@ -755,7 +768,7 @@ IBitmapInfo* FlashRenderer::CreateBitmapFromFile( const nstl::string& filename )
 
 IBitmapInfo* FlashRenderer::CreateGradientBitmap( const flash::SWF_GRADIENT& gradient )
 {
-  return new LinuxBitmapInfo( CreateLinuxGradientTexture(gradient), true );
+  return new LinuxBitmapInfo( CreateLinuxGradientTexture(gradient), true, gradient.type );
 }
 
 void FlashRenderer::BeginDisplay(
@@ -849,6 +862,7 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   command.smoothing = fillStyle ? fillStyle->smoothing : true;
   command.scale9Grid = scale9GridActive;
   command.gradientFill = fillStyle && fillStyle->gradientFill;
+  command.gradientType = fillStyle ? fillStyle->gradientType : flash::EGradientType::Linear;
   command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
@@ -1114,6 +1128,7 @@ void FlashRenderer::AppendBitmapQuad(
   command.smoothing = smoothing;
   command.scale9Grid = scale9GridActive;
   command.gradientFill = bitmap->IsGradientTexture();
+  command.gradientType = bitmap->GetGradientType();
   command.wrapMode = EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
