@@ -382,11 +382,13 @@ bool FlashRenderer::Initialize()
 void FlashRenderer::Release()
 {
   drawCommands.clear();
+  colorMatrixStack.clear();
 }
 
 void FlashRenderer::StartFrame()
 {
   drawCommands.clear();
+  colorMatrixStack.clear();
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -395,6 +397,7 @@ void FlashRenderer::StartFrame()
 void FlashRenderer::BeginQueue()
 {
   drawCommands.clear();
+  colorMatrixStack.clear();
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -808,11 +811,52 @@ void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float 
 
 Color FlashRenderer::TransformColor(const Color& color) const
 {
+  float red = ClampFlashColorChannel(color.R * currentColorTransform.m_[0][0] + currentColorTransform.m_[0][1]) / 255.0f;
+  float green = ClampFlashColorChannel(color.G * currentColorTransform.m_[1][0] + currentColorTransform.m_[1][1]) / 255.0f;
+  float blue = ClampFlashColorChannel(color.B * currentColorTransform.m_[2][0] + currentColorTransform.m_[2][1]) / 255.0f;
+  float alpha = ClampFlashColorChannel(color.A * currentColorTransform.m_[3][0] + currentColorTransform.m_[3][1]) / 255.0f;
+
+  if (!colorMatrixStack.empty())
+  {
+    const LinuxFlashColorMatrixState& state = colorMatrixStack.back();
+    const SHMatrix& matrix = state.colorMatrix;
+    const CVec4 addColor = state.addColor / 255.0f;
+    const float sourceRed = red;
+    const float sourceGreen = green;
+    const float sourceBlue = blue;
+    const float sourceAlpha = alpha;
+
+    red =
+      sourceRed * matrix._11 +
+      sourceGreen * matrix._21 +
+      sourceBlue * matrix._31 +
+      sourceAlpha * matrix._41 +
+      addColor.x;
+    green =
+      sourceRed * matrix._12 +
+      sourceGreen * matrix._22 +
+      sourceBlue * matrix._32 +
+      sourceAlpha * matrix._42 +
+      addColor.y;
+    blue =
+      sourceRed * matrix._13 +
+      sourceGreen * matrix._23 +
+      sourceBlue * matrix._33 +
+      sourceAlpha * matrix._43 +
+      addColor.z;
+    alpha =
+      sourceRed * matrix._14 +
+      sourceGreen * matrix._24 +
+      sourceBlue * matrix._34 +
+      sourceAlpha * matrix._44 +
+      addColor.w;
+  }
+
   return Color(
-    ClampFlashColorChannel(color.R * currentColorTransform.m_[0][0] + currentColorTransform.m_[0][1]),
-    ClampFlashColorChannel(color.G * currentColorTransform.m_[1][0] + currentColorTransform.m_[1][1]),
-    ClampFlashColorChannel(color.B * currentColorTransform.m_[2][0] + currentColorTransform.m_[2][1]),
-    ClampFlashColorChannel(color.A * currentColorTransform.m_[3][0] + currentColorTransform.m_[3][1]));
+    ClampFlashColorChannel(red * 255.0f),
+    ClampFlashColorChannel(green * 255.0f),
+    ClampFlashColorChannel(blue * 255.0f),
+    ClampFlashColorChannel(alpha * 255.0f));
 }
 
 void FlashRenderer::ClearFillStyles()
@@ -915,12 +959,13 @@ void FlashRenderer::DisableMask()
 
 void FlashRenderer::BeginColorMatrix( const SHMatrix& colorMatrix, const CVec4& addColor )
 {
-  (void)colorMatrix;
-  (void)addColor;
+  colorMatrixStack.push_back(LinuxFlashColorMatrixState(colorMatrix, addColor));
 }
 
 void FlashRenderer::EndColorMatrix()
 {
+  if (!colorMatrixStack.empty())
+    colorMatrixStack.pop_back();
 }
 
 void FlashRenderer::RenderText( int partID )
@@ -937,6 +982,7 @@ void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& colo
 
 void FlashRenderer::ClearCaches()
 {
+  colorMatrixStack.clear();
 }
 
 void FlashRenderer::DebugNextBatch()

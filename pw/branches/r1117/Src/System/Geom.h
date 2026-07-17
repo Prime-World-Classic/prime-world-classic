@@ -1260,7 +1260,8 @@ inline unsigned long SPlane::CheckPointUnderPlane( const CVec3 &pt ) const
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 inline void Identity( SHMatrix *pRes )
 {
-	MemSetDWord( reinterpret_cast<unsigned long*>(pRes), 0, 16 );
+	// Keep the clear byte-sized: unsigned long is 64-bit on native Linux.
+	Zero( *pRes );
 	pRes->_11 = pRes->_22 = pRes->_33 = pRes->_44 = 1.0f;
 }
 //#pragma optimize( "aw", off )
@@ -1276,7 +1277,7 @@ inline void Transpose( SHMatrix *p, const SHMatrix &m )
 inline void SHMatrix::Set( const CVec3 &vPos )
 {
 	// zero everything
-	MemSetDWord( reinterpret_cast<unsigned long*>(this), 0, 16 );
+	Zero( *this );
 	// identity
 	_11 = _22 = _33 = _44 = 1.0f;
 	// write position to last column

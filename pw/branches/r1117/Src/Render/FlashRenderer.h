@@ -168,6 +168,25 @@ private:
     }
   };
 
+  // Active SWF color-matrix filter state for the CPU-expanded Linux Flash queue.
+  struct LinuxFlashColorMatrixState
+  {
+    SHMatrix colorMatrix;
+    CVec4 addColor;
+
+    LinuxFlashColorMatrixState()
+      : addColor(0.0f, 0.0f, 0.0f, 0.0f)
+    {
+      Identity(&colorMatrix);
+    }
+
+    LinuxFlashColorMatrixState(const SHMatrix& _colorMatrix, const CVec4& _addColor)
+      : colorMatrix(_colorMatrix)
+      , addColor(_addColor)
+    {
+    }
+  };
+
   void TransformPoint(float x, float y, float* outX, float* outY) const;
   void TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const;
   Color TransformColor(const Color& color) const;
@@ -188,6 +207,7 @@ private:
   Color lineColor;
   LinuxFlashFillStyle primaryFillStyle;
   LinuxFlashFillStyle secondaryFillStyle;
+  nstl::vector<LinuxFlashColorMatrixState> colorMatrixStack;
   nstl::vector<LinuxFlashDrawCommand> drawCommands;
 };
 

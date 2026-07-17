@@ -29952,6 +29952,21 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   scale9Matrix.m_[0][2] = 200.0f;
   scale9Matrix.m_[1][2] = 136.0f;
   flash::SWF_RECT scale9Grid(6.0f, 6.0f, 18.0f, 18.0f);
+  Render::ShapeVertex colorMatrixVertices[3] = {};
+  colorMatrixVertices[0].x = 24.0f;
+  colorMatrixVertices[0].y = 180.0f;
+  colorMatrixVertices[0].color = Render::Color(255, 0, 0, 255);
+  colorMatrixVertices[1].x = 104.0f;
+  colorMatrixVertices[1].y = 180.0f;
+  colorMatrixVertices[1].color = Render::Color(255, 0, 0, 255);
+  colorMatrixVertices[2].x = 64.0f;
+  colorMatrixVertices[2].y = 228.0f;
+  colorMatrixVertices[2].color = Render::Color(255, 0, 0, 255);
+  SHMatrix flashColorMatrix;
+  Identity(&flashColorMatrix);
+  flashColorMatrix._11 = 0.0f;
+  flashColorMatrix._12 = 1.0f;
+  flashColorMatrix._22 = 0.0f;
 
   flashRenderer->SetMatrix(matrix);
   flashRenderer->SetColorTransform(colorTransform);
@@ -29966,6 +29981,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->DisableMask();
   flashRenderer->SetMatrix(scale9Matrix);
   flashRenderer->DrawBitmapScale9Grid(scale9Bitmap, 96.0f, 72.0f, scale9Grid, 1.0f, 1.0f, 4, true);
+  flashRenderer->SetMatrix(matrix);
+  flashRenderer->BeginColorMatrix(flashColorMatrix, CVec4(0.0f, 0.0f, 0.0f, 0.0f));
+  flashRenderer->DrawTriangleList(colorMatrixVertices, 3, 5);
+  flashRenderer->EndColorMatrix();
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
@@ -29981,8 +30000,8 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 12 &&
-    stats.renderedFlashScissorCommands == 16 &&
+    stats.renderedFlashCommands == 13 &&
+    stats.renderedFlashScissorCommands == 17 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.render2DCalls == 1;
   if (!passed)
