@@ -29994,7 +29994,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetColorTransform(colorTransform);
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->BeginDisplay(viewportX, viewportY, viewportWidth, viewportHeight, 0.0f, 320.0f, 0.0f, 240.0f, true);
-  flashRenderer->RenderTextBevel(false, flash::SWF_RGBA(0, 0, 0, 255), flashTextTexture.GetPtr());
+  flashRenderer->RenderTextBevel(true, flash::SWF_RGBA(0, 0, 0, 192), flashTextTexture.GetPtr());
   Render::UIQuad flashTextQuad(
     Render::UIPoint(112.0f, 86.0f),
     Render::UIPoint(208.0f, 112.0f),
@@ -30044,9 +30044,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashMaskCommands == 4 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
-    stats.rendered2DTextQuads == 1 &&
+    stats.rendered2DTextQuads == 5 &&
     stats.queuedTextured2DQuads == 1 &&
-    stats.renderedTextured2DQuads == 1;
+    stats.renderedTextured2DQuads == 5;
   if (!passed)
   {
     fprintf(stderr, "Flash renderer probe failed: unexpected Flash replay counters.\n");

@@ -366,6 +366,8 @@ FlashRenderer::FlashRenderer()
   , displayActive(false)
   , lineWidth(1.0f)
   , lineColor(255, 255, 255, 255)
+  , nextTextWithBevel(false)
+  , nextTextBevelColor(0, 0, 0, 255)
 {
 }
 
@@ -384,6 +386,8 @@ void FlashRenderer::Release()
   drawCommands.clear();
   colorMatrixStack.clear();
   nextTextTexture = Texture2DRef();
+  nextTextWithBevel = false;
+  nextTextBevelColor = Color(0, 0, 0, 255);
 }
 
 void FlashRenderer::StartFrame()
@@ -391,6 +395,8 @@ void FlashRenderer::StartFrame()
   drawCommands.clear();
   colorMatrixStack.clear();
   nextTextTexture = Texture2DRef();
+  nextTextWithBevel = false;
+  nextTextBevelColor = Color(0, 0, 0, 255);
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -401,6 +407,8 @@ void FlashRenderer::BeginQueue()
   drawCommands.clear();
   colorMatrixStack.clear();
   nextTextTexture = Texture2DRef();
+  nextTextWithBevel = false;
+  nextTextBevelColor = Color(0, 0, 0, 255);
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
@@ -513,7 +521,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       continue;
 
     case LinuxFlashDrawCommand::DrawText:
-      SetLinuxOpenGLUiRendererFlashTextTexture(command.textPartID, command.textTexture);
+      SetLinuxOpenGLUiRendererFlashTextStyle(
+        command.textPartID,
+        command.textTexture,
+        command.textWithBevel,
+        command.textBevelColor);
       GetUIRenderer()->RenderPart(command.textPartID, ERenderWhat::_2D, false);
       ++renderedCommands;
       continue;
@@ -988,13 +1000,15 @@ void FlashRenderer::RenderText( int partID )
   command.blendMode = currentBlendMode;
   command.textPartID = partID;
   command.textTexture = nextTextTexture;
+  command.textWithBevel = nextTextWithBevel;
+  command.textBevelColor = nextTextBevelColor;
   drawCommands.push_back(command);
 }
 
 void FlashRenderer::RenderTextBevel( bool withBevel, const flash::SWF_RGBA& color, Texture* fontTexture )
 {
-  (void)withBevel;
-  (void)color;
+  nextTextWithBevel = withBevel;
+  nextTextBevelColor = Color(color.r, color.g, color.b, color.a);
   nextTextTexture = Texture2DRef(dynamic_cast<Texture2D*>(fontTexture));
 }
 
@@ -1002,6 +1016,8 @@ void FlashRenderer::ClearCaches()
 {
   colorMatrixStack.clear();
   nextTextTexture = Texture2DRef();
+  nextTextWithBevel = false;
+  nextTextBevelColor = Color(0, 0, 0, 255);
 }
 
 void FlashRenderer::DebugNextBatch()

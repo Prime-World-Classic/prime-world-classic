@@ -142,6 +142,8 @@ private:
     LinuxFlashDisplayState displayState;
     int textPartID;
     Texture2DRef textTexture;
+    bool textWithBevel;
+    Color textBevelColor;
     nstl::vector<LinuxFlashDrawVertex> vertices;
 
     LinuxFlashDrawCommand()
@@ -151,6 +153,8 @@ private:
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
       , textPartID(-1)
+      , textWithBevel(false)
+      , textBevelColor(0, 0, 0, 255)
     {
     }
   };
@@ -212,6 +216,8 @@ private:
   LinuxFlashFillStyle primaryFillStyle;
   LinuxFlashFillStyle secondaryFillStyle;
   Texture2DRef nextTextTexture;
+  bool nextTextWithBevel;
+  Color nextTextBevelColor;
   nstl::vector<LinuxFlashColorMatrixState> colorMatrixStack;
   nstl::vector<LinuxFlashDrawCommand> drawCommands;
 };

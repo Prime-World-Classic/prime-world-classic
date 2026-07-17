@@ -190,16 +190,22 @@ struct LinuxQueuedRenderPart
 {
   unsigned int firstQuad;
   unsigned int quadCount;
+  bool drawBevel;
+  Render::Color bevelColor;
 
   LinuxQueuedRenderPart()
     : firstQuad(0)
     , quadCount(0)
+    , drawBevel(false)
+    , bevelColor(0, 0, 0, 255)
   {
   }
 
   LinuxQueuedRenderPart(unsigned int _firstQuad, unsigned int _quadCount)
     : firstQuad(_firstQuad)
     , quadCount(_quadCount)
+    , drawBevel(false)
+    , bevelColor(0, 0, 0, 255)
   {
   }
 };
@@ -355,7 +361,10 @@ void RenderLinuxOpenGLUIQuads(
   const CVec4& resolutionCoefs,
   unsigned int firstQuad,
   unsigned int quadCount,
-  bool skipFlashText)
+  bool skipFlashText,
+  const Render::Color* overrideColor,
+  float offsetX,
+  float offsetY)
 {
   if (quads.empty() || firstQuad >= quads.size() || quadCount == 0 || !NMainFrame::MakeOpenGLContextCurrent())
     return;
@@ -418,8 +427,14 @@ void RenderLinuxOpenGLUIQuads(
 
     float points[4][2];
     BuildLinuxUIQuadPoints(queuedQuad.quad, points);
+    for (int point = 0; point < 4; ++point)
+    {
+      points[point][0] += offsetX;
+      points[point][1] += offsetY;
+    }
 
-    glColor4ub(queuedQuad.color.R, queuedQuad.color.G, queuedQuad.color.B, queuedQuad.color.A);
+    const Render::Color& drawColor = overrideColor ? *overrideColor : queuedQuad.color;
+    glColor4ub(drawColor.R, drawColor.G, drawColor.B, drawColor.A);
     glBegin(GL_QUADS);
     if (openGLTexture)
     {
@@ -701,7 +716,7 @@ public:
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
     ++g_linuxOpenGLUiRendererStats.render2DCalls;
-    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, 0, quads.size(), true);
+    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, 0, quads.size(), true, 0, 0.0f, 0.0f);
     if (flashRenderer)
     {
       for (unsigned int i = 0; i < flashParts.size(); ++i)
@@ -726,7 +741,14 @@ public:
       return;
 
     const LinuxQueuedRenderPart& part = renderParts[partID];
-    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false);
+    if (part.drawBevel)
+    {
+      RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false, &part.bevelColor, -1.0f, 0.0f);
+      RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false, &part.bevelColor, 1.0f, 0.0f);
+      RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false, &part.bevelColor, 0.0f, -1.0f);
+      RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false, &part.bevelColor, 0.0f, 1.0f);
+    }
+    RenderLinuxOpenGLUIQuads(quads, resolutionCoefs, part.firstQuad, part.quadCount, false, 0, 0.0f, 0.0f);
 #else
     (void)partID;
     (void)what;
@@ -740,29 +762,37 @@ public:
     return 0;
   }
 
-  void SetFlashTextTexture(int partID, const Texture2DRef& texture)
+  void SetFlashTextStyle(int partID, const Texture2DRef& texture, bool drawBevel, const Render::Color& bevelColor)
   {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
-    if (!texture || partID < 0 || partID >= static_cast<int>(renderParts.size()))
+    if (partID < 0 || partID >= static_cast<int>(renderParts.size()))
       return;
 
-    const LinuxQueuedRenderPart& part = renderParts[partID];
+    LinuxQueuedRenderPart& part = renderParts[partID];
+    part.drawBevel = drawBevel;
+    part.bevelColor = bevelColor;
+
     unsigned int lastQuad = part.firstQuad + part.quadCount;
     if (lastQuad > quads.size() || lastQuad < part.firstQuad)
       lastQuad = quads.size();
 
-    for (unsigned int i = part.firstQuad; i < lastQuad; ++i)
+    if (texture)
     {
-      if (!quads[i].text || !quads[i].flashText || quads[i].diffuseTexture)
-        continue;
+      for (unsigned int i = part.firstQuad; i < lastQuad; ++i)
+      {
+        if (!quads[i].text || !quads[i].flashText || quads[i].diffuseTexture)
+          continue;
 
-      quads[i].diffuseTexture = texture;
-      ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
-      queueRendered = false;
+        quads[i].diffuseTexture = texture;
+        ++g_linuxOpenGLUiRendererStats.queuedTextured2DQuads;
+      }
     }
+    queueRendered = false;
 #else
     (void)partID;
     (void)texture;
+    (void)drawBevel;
+    (void)bevelColor;
 #endif
   }
 
@@ -877,11 +907,11 @@ void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int command
   g_linuxOpenGLUiRendererStats.renderedFlashMaskCommands += maskCommands;
 }
 
-void SetLinuxOpenGLUiRendererFlashTextTexture(int partID, const Texture2DRef& texture)
+void SetLinuxOpenGLUiRendererFlashTextStyle(int partID, const Texture2DRef& texture, bool drawBevel, const Color& bevelColor)
 {
   NullUIRenderer* uiRenderer = dynamic_cast<NullUIRenderer*>(GetUIRenderer());
   if (uiRenderer)
-    uiRenderer->SetFlashTextTexture(partID, texture);
+    uiRenderer->SetFlashTextStyle(partID, texture, drawBevel, bevelColor);
 }
 #endif
 
