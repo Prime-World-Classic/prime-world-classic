@@ -200,6 +200,7 @@ struct LinuxOpenGLUiRendererStats
   unsigned int renderedFlashRepeatCommands;
   unsigned int renderedFlashClampCommands;
   unsigned int renderedFlashScale9Commands;
+  unsigned int renderedFlashScale9TexturedCommands;
 
   LinuxOpenGLUiRendererStats()
     : queued2DQuads(0)
@@ -225,13 +226,14 @@ struct LinuxOpenGLUiRendererStats
     , renderedFlashRepeatCommands(0)
     , renderedFlashClampCommands(0)
     , renderedFlashScale9Commands(0)
+    , renderedFlashScale9TexturedCommands(0)
   {
   }
 };
 
 const LinuxOpenGLUiRendererStats& GetLinuxOpenGLUiRendererStats();
 void ResetLinuxOpenGLUiRendererStats();
-void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands, unsigned int lineCommands, unsigned int lineVertices, unsigned int texturedCommands, unsigned int repeatCommands, unsigned int clampCommands, unsigned int scale9Commands);
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands, unsigned int lineCommands, unsigned int lineVertices, unsigned int texturedCommands, unsigned int repeatCommands, unsigned int clampCommands, unsigned int scale9Commands, unsigned int scale9TexturedCommands);
 void SetLinuxOpenGLUiRendererFlashTextStyle(int partID, const Texture2DRef& texture, bool drawBevel, const Color& bevelColor);
 #endif
 

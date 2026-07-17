@@ -522,6 +522,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedRepeatCommands = 0;
   unsigned int renderedClampCommands = 0;
   unsigned int renderedScale9Commands = 0;
+  unsigned int renderedScale9TexturedCommands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -606,7 +607,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       renderedLineVertices += command.vertices.size();
     }
     if (command.scale9Grid)
+    {
       ++renderedScale9Commands;
+      if (command.textured)
+        ++renderedScale9TexturedCommands;
+    }
 
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
@@ -650,7 +655,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands, renderedScale9TexturedCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -980,6 +985,20 @@ void FlashRenderer::TransformPoint(float x, float y, float* outX, float* outY) c
 
 void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const
 {
+  if (scale9GridActive)
+  {
+    // Match UIFlashMaterial's scale9 UV source: remapped position before parent translation.
+    float sx = currentMatrix.m_[0][0] * x + currentMatrix.m_[0][1] * y + currentMatrix.m_[0][2];
+    float sy = currentMatrix.m_[1][0] * x + currentMatrix.m_[1][1] * y + currentMatrix.m_[1][2];
+    sx = ApplyLinuxFlashScale9GridCoord(sx, scale9ConstX);
+    sy = ApplyLinuxFlashScale9GridCoord(sy, scale9ConstY);
+
+    const float transScaleX = fabsf(scale9Trans.x) > 0.0001f ? scale9Trans.x : 1.0f;
+    const float transScaleY = fabsf(scale9Trans.y) > 0.0001f ? scale9Trans.y : 1.0f;
+    x = sx / transScaleX;
+    y = sy / transScaleY;
+  }
+
   *outU = fillStyle.matrix.m_[0][0] * x + fillStyle.matrix.m_[0][1] * y + fillStyle.matrix.m_[0][2];
   *outV = fillStyle.matrix.m_[1][0] * x + fillStyle.matrix.m_[1][1] * y + fillStyle.matrix.m_[1][2];
 }
