@@ -899,7 +899,7 @@ void ResetLinuxOpenGLUiRendererStats()
   g_linuxOpenGLUiRendererStats = LinuxOpenGLUiRendererStats();
 }
 
-void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands, unsigned int lineCommands, unsigned int lineVertices, unsigned int texturedCommands, unsigned int repeatCommands, unsigned int clampCommands, unsigned int scale9Commands, unsigned int scale9TexturedCommands)
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands, unsigned int lineCommands, unsigned int lineVertices, unsigned int texturedCommands, unsigned int repeatCommands, unsigned int clampCommands, unsigned int scale9Commands, unsigned int scale9TexturedCommands, unsigned int gradientCommands)
 {
   g_linuxOpenGLUiRendererStats.renderedFlashParts += parts;
   g_linuxOpenGLUiRendererStats.renderedFlashCommands += commands;
@@ -913,6 +913,7 @@ void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int command
   g_linuxOpenGLUiRendererStats.renderedFlashClampCommands += clampCommands;
   g_linuxOpenGLUiRendererStats.renderedFlashScale9Commands += scale9Commands;
   g_linuxOpenGLUiRendererStats.renderedFlashScale9TexturedCommands += scale9TexturedCommands;
+  g_linuxOpenGLUiRendererStats.renderedFlashGradientCommands += gradientCommands;
 }
 
 void SetLinuxOpenGLUiRendererFlashTextStyle(int partID, const Texture2DRef& texture, bool drawBevel, const Color& bevelColor)

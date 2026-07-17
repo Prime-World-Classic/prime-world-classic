@@ -138,6 +138,7 @@ private:
     bool smoothing;
     bool line;
     bool scale9Grid;
+    bool gradientFill;
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
@@ -154,6 +155,7 @@ private:
       , smoothing(true)
       , line(false)
       , scale9Grid(false)
+      , gradientFill(false)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
       , textPartID(-1)
@@ -168,6 +170,7 @@ private:
   {
     bool enabled;
     bool smoothing;
+    bool gradientFill;
     EBitmapWrapMode::Enum wrapMode;
     Texture2DRef texture;
     flash::SWF_MATRIX matrix;
@@ -175,6 +178,7 @@ private:
     LinuxFlashFillStyle()
       : enabled(false)
       , smoothing(true)
+      , gradientFill(false)
       , wrapMode(EBitmapWrapMode::CLAMP)
     {
     }

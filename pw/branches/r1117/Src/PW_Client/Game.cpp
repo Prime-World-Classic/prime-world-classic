@@ -30098,7 +30098,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30111,6 +30111,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned long>(stats.renderedFlashClampCommands),
     static_cast<unsigned long>(stats.renderedFlashScale9Commands),
     static_cast<unsigned long>(stats.renderedFlashScale9TexturedCommands),
+    static_cast<unsigned long>(stats.renderedFlashGradientCommands),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30130,6 +30131,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashClampCommands == 10 &&
     stats.renderedFlashScale9Commands == 1 &&
     stats.renderedFlashScale9TexturedCommands == 1 &&
+    stats.renderedFlashGradientCommands == 11 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
