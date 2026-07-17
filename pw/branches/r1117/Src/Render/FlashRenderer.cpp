@@ -501,6 +501,9 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedBlendCommands = 0;
   unsigned int renderedLineCommands = 0;
   unsigned int renderedLineVertices = 0;
+  unsigned int renderedTexturedCommands = 0;
+  unsigned int renderedRepeatCommands = 0;
+  unsigned int renderedClampCommands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -594,6 +597,12 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
 
     if (openGLTexture)
     {
+      ++renderedTexturedCommands;
+      if (command.wrapMode == EBitmapWrapMode::REPEAT)
+        ++renderedRepeatCommands;
+      else
+        ++renderedClampCommands;
+
       glEnable(GL_TEXTURE_2D);
       glBindTexture(GL_TEXTURE_2D, openGLTexture);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
@@ -621,7 +630,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
