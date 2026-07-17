@@ -29938,6 +29938,20 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   visibleVertices[2].x = 160.0f;
   visibleVertices[2].y = 208.0f;
   visibleVertices[2].color = Render::Color(64, 128, 255, 255);
+  flash::SWF_GRADIENT scale9Gradient;
+  flash::SWF_GRADRECORD scale9GradientStart;
+  scale9GradientStart.Ratio = 0;
+  scale9GradientStart.Color = flash::SWF_RGBA(255, 255, 255, 255);
+  flash::SWF_GRADRECORD scale9GradientEnd;
+  scale9GradientEnd.Ratio = 255;
+  scale9GradientEnd.Color = flash::SWF_RGBA(64, 128, 255, 255);
+  scale9Gradient.GradientRecords.push_back(scale9GradientStart);
+  scale9Gradient.GradientRecords.push_back(scale9GradientEnd);
+  Strong<Render::IBitmapInfo> scale9Bitmap = flashRenderer->CreateGradientBitmap(scale9Gradient);
+  flash::SWF_MATRIX scale9Matrix;
+  scale9Matrix.m_[0][2] = 200.0f;
+  scale9Matrix.m_[1][2] = 136.0f;
+  flash::SWF_RECT scale9Grid(6.0f, 6.0f, 18.0f, 18.0f);
 
   flashRenderer->SetMatrix(matrix);
   flashRenderer->SetColorTransform(colorTransform);
@@ -29950,6 +29964,8 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->BeginUnSubmitMask();
   flashRenderer->DrawTriangleList(maskVertices, 3, 3);
   flashRenderer->DisableMask();
+  flashRenderer->SetMatrix(scale9Matrix);
+  flashRenderer->DrawBitmapScale9Grid(scale9Bitmap, 96.0f, 72.0f, scale9Grid, 1.0f, 1.0f, 4, true);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
@@ -29965,8 +29981,8 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 3 &&
-    stats.renderedFlashScissorCommands == 7 &&
+    stats.renderedFlashCommands == 12 &&
+    stats.renderedFlashScissorCommands == 16 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.render2DCalls == 1;
   if (!passed)

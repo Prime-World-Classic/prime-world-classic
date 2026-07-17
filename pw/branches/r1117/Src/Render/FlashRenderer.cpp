@@ -672,11 +672,42 @@ void FlashRenderer::DrawBitmap( IBitmapInfo* bitmapInfo, float width, float heig
 
 void FlashRenderer::DrawBitmapScale9Grid( IBitmapInfo* bitmapInfo, float width, float height, const flash::SWF_RECT& scale9Grid, float aspectX, float aspectY, int uniqueID, bool smoothing )
 {
-  (void)scale9Grid;
-  (void)aspectX;
-  (void)aspectY;
   (void)uniqueID;
-  DrawBitmap(bitmapInfo, width, height, uniqueID, smoothing);
+  if (!bitmapInfo || bitmapInfo->GetWidth() <= 0 || bitmapInfo->GetHeight() <= 0)
+    return;
+
+  const float safeAspectX = fabsf(aspectX) > 0.0001f ? aspectX : 1.0f;
+  const float safeAspectY = fabsf(aspectY) > 0.0001f ? aspectY : 1.0f;
+
+  float u[4] = { 0.0f, scale9Grid.X1 / float(bitmapInfo->GetWidth()), scale9Grid.X2 / float(bitmapInfo->GetWidth()), 1.0f };
+  float v[4] = { 0.0f, scale9Grid.Y1 / float(bitmapInfo->GetHeight()), scale9Grid.Y2 / float(bitmapInfo->GetHeight()), 1.0f };
+  float x[4] = {
+    0.0f,
+    u[1] * width / safeAspectX,
+    (1.0f - (1.0f - u[2]) / safeAspectX) * width,
+    width
+  };
+  float y[4] = {
+    0.0f,
+    v[1] * height / safeAspectY,
+    (1.0f - (1.0f - v[2]) / safeAspectY) * height,
+    height
+  };
+
+  const float scaleU = bitmapInfo->GetUV2().x - bitmapInfo->GetUV1().x;
+  const float scaleV = bitmapInfo->GetUV2().y - bitmapInfo->GetUV1().y;
+  for (int i = 0; i < 4; ++i)
+  {
+    u[i] = bitmapInfo->GetUV1().x + u[i] * scaleU;
+    v[i] = bitmapInfo->GetUV1().y + v[i] * scaleV;
+  }
+
+  // Match the Windows Flash renderer by drawing the scaled bitmap as a 3x3 grid.
+  for (int i = 0; i < 3; ++i)
+  {
+    for (int j = 0; j < 3; ++j)
+      AppendBitmapQuad(bitmapInfo, x[i], y[j], x[i + 1], y[j + 1], u[i], v[j], u[i + 1], v[j + 1], smoothing);
+  }
 }
 
 void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniqueID )
