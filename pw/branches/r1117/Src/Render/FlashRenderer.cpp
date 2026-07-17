@@ -18,6 +18,124 @@ namespace Render
 namespace
 {
 
+flash::SWF_RGBA SampleLinuxGradient(const flash::SWF_GRADIENT& gradient, int ratio)
+{
+  if (gradient.GradientRecords.empty())
+    return flash::SWF_RGBA(0, 0, 0, 0);
+
+  if (ratio < gradient.GradientRecords[0].Ratio)
+    return gradient.GradientRecords[0].Color;
+
+  for (int i = 1; i < static_cast<int>(gradient.GradientRecords.size()); ++i)
+  {
+    if (gradient.GradientRecords[i].Ratio >= ratio)
+    {
+      const flash::SWF_GRADRECORD& gr0 = gradient.GradientRecords[i - 1];
+      const flash::SWF_GRADRECORD& gr1 = gradient.GradientRecords[i];
+      float f = 0.0f;
+      if (gr0.Ratio != gr1.Ratio)
+        f = (ratio - gr0.Ratio) / float(gr1.Ratio - gr0.Ratio);
+
+      flash::SWF_RGBA result;
+      result.Lerp(gr0.Color, gr1.Color, f);
+      return result;
+    }
+  }
+
+  return gradient.GradientRecords.back().Color;
+}
+
+void WriteLinuxGradientPixel(unsigned char* data, int pixelOffset, const flash::SWF_RGBA& color)
+{
+  data[pixelOffset + 0] = color.b;
+  data[pixelOffset + 1] = color.g;
+  data[pixelOffset + 2] = color.r;
+  data[pixelOffset + 3] = color.a;
+}
+
+float SolveLinuxFlashGradientRadius(float a, float b, float c)
+{
+  const float determinant = b * b - 4.0f * a * c;
+  if (determinant < 0.0f)
+    return 0.0f;
+
+  if (fabsf(a) < 0.00001f)
+  {
+    if (fabsf(b) < 0.00001f)
+      return 0.0f;
+    return -c / b;
+  }
+
+  const float root = sqrtf(determinant);
+  const float x1 = (-b - root) / (2.0f * a);
+  const float x2 = (-b + root) / (2.0f * a);
+  return x1 < 0.0f ? x2 : x1;
+}
+
+Texture2DRef CreateLinuxLinearGradientTexture(const flash::SWF_GRADIENT& gradient)
+{
+  const int gradientSize = 256;
+  Texture2DRef texture = Render::CreateTexture2D(gradientSize, 1, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8);
+  if (!texture)
+    return texture;
+
+  LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+  if (!lockedRect.data)
+    return texture;
+
+  for (int i = 0; i < gradientSize; ++i)
+    WriteLinuxGradientPixel(lockedRect.data, i * 4, SampleLinuxGradient(gradient, i));
+
+  texture->UnlockRect(0);
+  return texture;
+}
+
+Texture2DRef CreateLinuxRadialGradientTexture(const flash::SWF_GRADIENT& gradient)
+{
+  const int gradientWidth = 64;
+  const int gradientHeight = 64;
+  Texture2DRef texture = Render::CreateTexture2D(gradientWidth, gradientHeight, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8);
+  if (!texture)
+    return texture;
+
+  LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+  if (!lockedRect.data)
+    return texture;
+
+  const float radiusY = (gradientHeight - 1) / 2.0f;
+  const float radiusX = (gradientWidth - 1) / 2.0f;
+  const float focalPoint = gradient.type == flash::EGradientType::Focal ? gradient.FocalPoint : 0.0f;
+
+  for (int y = 0; y < gradientHeight; ++y)
+  {
+    for (int x = 0; x < gradientWidth; ++x)
+    {
+      const float nx = (x - radiusX) / radiusX;
+      const float ny = (y - radiusY) / radiusY;
+      const float ratioF = SolveLinuxFlashGradientRadius(
+        focalPoint * focalPoint - 1.0f,
+        2.0f * nx * focalPoint - 2.0f * focalPoint * focalPoint,
+        nx * nx - 2.0f * nx * focalPoint + focalPoint * focalPoint + ny * ny);
+      int ratio = static_cast<int>(floorf(255.5f * ratioF));
+      ratio = Clamp(ratio, 0, 255);
+
+      const int pixelOffset = (y * gradientWidth + x) * 4;
+      WriteLinuxGradientPixel(lockedRect.data, pixelOffset, SampleLinuxGradient(gradient, ratio));
+    }
+  }
+
+  texture->UnlockRect(0);
+  return texture;
+}
+
+Texture2DRef CreateLinuxGradientTexture(const flash::SWF_GRADIENT& gradient)
+{
+  if (gradient.type == flash::EGradientType::Linear)
+    return CreateLinuxLinearGradientTexture(gradient);
+
+  return CreateLinuxRadialGradientTexture(gradient);
+}
+
 class LinuxBitmapInfo : public IBitmapInfo, public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_2( LinuxBitmapInfo, IBitmapInfo, BaseObjectST );
@@ -156,6 +274,30 @@ LinuxBitmapInfo* GetLinuxBitmapInfo(IBitmapInfo* bitmapInfo)
   return dynamic_cast<LinuxBitmapInfo*>(bitmapInfo);
 }
 
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+void ApplyLinuxFlashBlendMode(EFlashBlendMode::Enum blendMode)
+{
+  switch (blendMode)
+  {
+  case EFlashBlendMode::ADD:
+    glBlendFunc(GL_ONE, GL_ONE);
+    break;
+
+  case EFlashBlendMode::MULTIPLY:
+    glBlendFunc(GL_ZERO, GL_SRC_COLOR);
+    break;
+
+  case EFlashBlendMode::SCREEN:
+    glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+    break;
+
+  default:
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    break;
+  }
+}
+#endif
+
 unsigned char ClampFlashColorChannel(float value)
 {
   if (value <= 0.0f)
@@ -205,11 +347,13 @@ void FlashRenderer::Release()
 void FlashRenderer::StartFrame()
 {
   drawCommands.clear();
+  ClearFillStyles();
 }
 
 void FlashRenderer::BeginQueue()
 {
   drawCommands.clear();
+  ClearFillStyles();
 }
 
 void FlashRenderer::EndQueue()
@@ -264,6 +408,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     if (command.vertices.empty())
       continue;
 
+    ApplyLinuxFlashBlendMode(command.blendMode);
+
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
     {
@@ -277,6 +423,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       glBindTexture(GL_TEXTURE_2D, openGLTexture);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
       glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, command.wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, command.wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP);
     }
     else
     {
@@ -335,10 +483,18 @@ void FlashRenderer::SetBlendMode( EFlashBlendMode::Enum blendMode )
 
 void FlashRenderer::SetFillStyleBitmap( IBitmapInfo* bitmapInfo, const flash::SWF_MATRIX& matrix, EBitmapWrapMode::Enum wrapMode, bool primary )
 {
-  (void)bitmapInfo;
-  (void)matrix;
-  (void)wrapMode;
-  (void)primary;
+  LinuxFlashFillStyle& fillStyle = primary ? primaryFillStyle : secondaryFillStyle;
+  fillStyle = LinuxFlashFillStyle();
+
+  LinuxBitmapInfo* bitmap = GetLinuxBitmapInfo(bitmapInfo);
+  if (!bitmap || !bitmap->GetTexture())
+    return;
+
+  fillStyle.enabled = true;
+  fillStyle.smoothing = true;
+  fillStyle.wrapMode = wrapMode;
+  fillStyle.texture = bitmap->GetTexture();
+  fillStyle.matrix = matrix;
 }
 
 void FlashRenderer::SetLineWidth( float width )
@@ -373,8 +529,7 @@ IBitmapInfo* FlashRenderer::CreateBitmapFromFile( const nstl::string& filename )
 
 IBitmapInfo* FlashRenderer::CreateGradientBitmap( const flash::SWF_GRADIENT& gradient )
 {
-  (void)gradient;
-  return new LinuxBitmapInfo( 1, 1 );
+  return new LinuxBitmapInfo( CreateLinuxGradientTexture(gradient) );
 }
 
 void FlashRenderer::BeginDisplay(
@@ -422,21 +577,40 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
 {
   (void)uniqueID;
   if (!vertices || count <= 0)
+  {
+    ClearFillStyles();
     return;
+  }
+
+  const LinuxFlashFillStyle* fillStyle = 0;
+  if (primaryFillStyle.enabled)
+    fillStyle = &primaryFillStyle;
+  else if (secondaryFillStyle.enabled)
+    fillStyle = &secondaryFillStyle;
 
   LinuxFlashDrawCommand command;
-  command.textured = false;
+  command.textured = fillStyle && fillStyle->texture;
+  command.smoothing = fillStyle ? fillStyle->smoothing : true;
+  command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
+  command.blendMode = currentBlendMode;
+  if (fillStyle)
+    command.texture = fillStyle->texture;
   command.vertices.reserve(count);
 
   for (int i = 0; i < count; ++i)
   {
     float x = 0.0f;
     float y = 0.0f;
+    float u = 0.0f;
+    float v = 0.0f;
     TransformPoint(vertices[i].x, vertices[i].y, &x, &y);
-    command.vertices.push_back(LinuxFlashDrawVertex(x, y, 0.0f, 0.0f, TransformColor(vertices[i].color)));
+    if (fillStyle)
+      TransformFillUV(*fillStyle, vertices[i].x, vertices[i].y, &u, &v);
+    command.vertices.push_back(LinuxFlashDrawVertex(x, y, u, v, TransformColor(vertices[i].color)));
   }
 
   drawCommands.push_back(command);
+  ClearFillStyles();
 }
 
 void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int uniqueID )
@@ -468,6 +642,7 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
     const float nx = -dy / len * half;
     const float ny = dx / len * half;
     const Color color = TransformColor(lineColor);
+    command.blendMode = currentBlendMode;
     command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
     command.vertices.push_back(LinuxFlashDrawVertex(x1 + nx, y1 + ny, 0.0f, 0.0f, color));
     command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
@@ -486,6 +661,12 @@ void FlashRenderer::TransformPoint(float x, float y, float* outX, float* outY) c
   *outY = currentMatrix.m_[1][0] * x + currentMatrix.m_[1][1] * y + currentMatrix.m_[1][2];
 }
 
+void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const
+{
+  *outU = fillStyle.matrix.m_[0][0] * x + fillStyle.matrix.m_[0][1] * y + fillStyle.matrix.m_[0][2];
+  *outV = fillStyle.matrix.m_[1][0] * x + fillStyle.matrix.m_[1][1] * y + fillStyle.matrix.m_[1][2];
+}
+
 Color FlashRenderer::TransformColor(const Color& color) const
 {
   return Color(
@@ -493,6 +674,12 @@ Color FlashRenderer::TransformColor(const Color& color) const
     ClampFlashColorChannel(color.G * currentColorTransform.m_[1][0] + currentColorTransform.m_[1][1]),
     ClampFlashColorChannel(color.B * currentColorTransform.m_[2][0] + currentColorTransform.m_[2][1]),
     ClampFlashColorChannel(color.A * currentColorTransform.m_[3][0] + currentColorTransform.m_[3][1]));
+}
+
+void FlashRenderer::ClearFillStyles()
+{
+  primaryFillStyle = LinuxFlashFillStyle();
+  secondaryFillStyle = LinuxFlashFillStyle();
 }
 
 void FlashRenderer::AppendBitmapQuad(
@@ -527,6 +714,8 @@ void FlashRenderer::AppendBitmapQuad(
   LinuxFlashDrawCommand command;
   command.textured = true;
   command.smoothing = smoothing;
+  command.wrapMode = EBitmapWrapMode::CLAMP;
+  command.blendMode = currentBlendMode;
   command.texture = bitmap->GetTexture();
   command.vertices.reserve(6);
 
