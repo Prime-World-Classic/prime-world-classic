@@ -29998,6 +29998,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashLine.push_back(CVec2(36.0f, 32.0f));
   flashLine.push_back(CVec2(104.0f, 36.0f));
   flashLine.push_back(CVec2(132.0f, 72.0f));
+  flashLine.push_back(CVec2(184.0f, 54.0f));
   Render::Texture2DRef flashTextTexture =
     Render::CreateTexture2D(2, 2, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
   if (flashTextTexture)
@@ -30065,13 +30066,14 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
     static_cast<unsigned long>(stats.renderedFlashMaskCommands),
     static_cast<unsigned long>(stats.renderedFlashBlendCommands),
     static_cast<unsigned long>(stats.renderedFlashLineCommands),
+    static_cast<unsigned long>(stats.renderedFlashLineVertices),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30085,6 +30087,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 4 &&
     stats.renderedFlashLineCommands == 1 &&
+    stats.renderedFlashLineVertices == 18 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

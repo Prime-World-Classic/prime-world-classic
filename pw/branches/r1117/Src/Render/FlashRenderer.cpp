@@ -500,6 +500,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedMaskCommands = 0;
   unsigned int renderedBlendCommands = 0;
   unsigned int renderedLineCommands = 0;
+  unsigned int renderedLineVertices = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -579,7 +580,10 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     if (IsLinuxFlashMappedBlendMode(command.blendMode))
       ++renderedBlendCommands;
     if (command.line)
+    {
       ++renderedLineCommands;
+      renderedLineVertices += command.vertices.size();
+    }
 
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
@@ -617,7 +621,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -826,50 +830,105 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   if (coords.size() < 2)
     return;
 
+  nstl::vector<CVec2> points;
+  points.reserve(coords.size());
+  for (unsigned int i = 0; i < coords.size(); ++i)
+  {
+    float x = 0.0f;
+    float y = 0.0f;
+    TransformPoint(coords[i].x, coords[i].y, &x, &y);
+    if (!points.empty())
+    {
+      const CVec2& last = points.back();
+      const float dx = x - last.x;
+      const float dy = y - last.y;
+      if (dx * dx + dy * dy <= 0.000001f)
+        continue;
+    }
+    points.push_back(CVec2(x, y));
+  }
+  if (points.size() < 2)
+    return;
+
   LinuxFlashDrawCommand command;
   command.textured = false;
   command.line = true;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
-  command.vertices.reserve((coords.size() - 1) * 6);
+  command.vertices.reserve((points.size() - 1) * 6);
 
-  for (unsigned int i = 0; i + 1 < coords.size(); ++i)
+  const float half = lineWidth * 0.5f;
+  const Color color = TransformColor(lineColor);
+  nstl::vector<CVec2> left;
+  nstl::vector<CVec2> right;
+  left.resize(points.size());
+  right.resize(points.size());
+
+  // Build one joined screen-space strip so Flash polylines keep continuous corners.
+  for (unsigned int i = 0; i < points.size(); ++i)
   {
-    float x1 = 0.0f;
-    float y1 = 0.0f;
-    float x2 = 0.0f;
-    float y2 = 0.0f;
-    TransformPoint(coords[i].x, coords[i].y, &x1, &y1);
-    TransformPoint(coords[i + 1].x, coords[i + 1].y, &x2, &y2);
+    CVec2 center = points[i];
+    CVec2 normal;
+    float scale = half;
 
-    const float dx = x2 - x1;
-    const float dy = y2 - y1;
-    const float len = sqrtf(dx * dx + dy * dy);
-    if (len <= 0.0001f)
-      continue;
+    if (i == 0 || i + 1 == points.size())
+    {
+      const CVec2& a = i == 0 ? points[0] : points[points.size() - 2];
+      const CVec2& b = i == 0 ? points[1] : points[points.size() - 1];
+      const float dx = b.x - a.x;
+      const float dy = b.y - a.y;
+      const float len = sqrtf(dx * dx + dy * dy);
+      if (len <= 0.0001f)
+        continue;
+      const CVec2 tangent(dx / len, dy / len);
+      normal = CVec2(-tangent.y, tangent.x);
+      center.x += (i == 0 ? -tangent.x : tangent.x) * half;
+      center.y += (i == 0 ? -tangent.y : tangent.y) * half;
+    }
+    else
+    {
+      const CVec2& prev = points[i - 1];
+      const CVec2& current = points[i];
+      const CVec2& next = points[i + 1];
+      const float prevDx = current.x - prev.x;
+      const float prevDy = current.y - prev.y;
+      const float nextDx = next.x - current.x;
+      const float nextDy = next.y - current.y;
+      const float prevLen = sqrtf(prevDx * prevDx + prevDy * prevDy);
+      const float nextLen = sqrtf(nextDx * nextDx + nextDy * nextDy);
+      if (prevLen <= 0.0001f || nextLen <= 0.0001f)
+        continue;
 
-    const float half = lineWidth * 0.5f;
-    const float tx = dx / len;
-    const float ty = dy / len;
-    const float nx = -dy / len * half;
-    const float ny = dx / len * half;
-    if (i == 0)
-    {
-      x1 -= tx * half;
-      y1 -= ty * half;
+      const CVec2 prevNormal(-prevDy / prevLen, prevDx / prevLen);
+      const CVec2 nextNormal(-nextDy / nextLen, nextDx / nextLen);
+      normal = CVec2(prevNormal.x + nextNormal.x, prevNormal.y + nextNormal.y);
+      const float normalLen = sqrtf(normal.x * normal.x + normal.y * normal.y);
+      if (normalLen <= 0.0001f)
+      {
+        normal = nextNormal;
+      }
+      else
+      {
+        normal.x /= normalLen;
+        normal.y /= normalLen;
+        const float dot = normal.x * nextNormal.x + normal.y * nextNormal.y;
+        if (fabsf(dot) > 0.2f)
+          scale = Clamp(half / dot, -half * 4.0f, half * 4.0f);
+      }
     }
-    if (i + 2 == coords.size())
-    {
-      x2 += tx * half;
-      y2 += ty * half;
-    }
-    const Color color = TransformColor(lineColor);
-    command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(x1 + nx, y1 + ny, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(x2 - nx, y2 - ny, 0.0f, 0.0f, color));
+
+    left[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
+    right[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
+  }
+
+  for (unsigned int i = 0; i + 1 < points.size(); ++i)
+  {
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i].x, right[i].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i + 1].x, left[i + 1].y, 0.0f, 0.0f, color));
   }
 
   if (!command.vertices.empty())
