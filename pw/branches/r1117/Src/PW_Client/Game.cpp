@@ -105,6 +105,7 @@
 #include "Render/SkeletonWrapper.h"
 #include "Render/smartrenderer.h"
 #include "Render/StaticMesh.h"
+#include "Render/FlashRendererInterface.h"
 #include "Render/uirenderer.h"
 #include "Scene/DBScene.h"
 #include "Terrain/DBTerrain.h"
@@ -134,6 +135,7 @@
 #include "UI/Resolution.h"
 #include "UI/User.h"
 #include "UI/Window.h"
+#include "UI/Flash/GameSWFIntegration/SwfTypes.h"
 #include "libdb/Db.h"
 #include "Version.h"
 #include "Vendor/JsonCpp/include/json/json.h"
@@ -225,6 +227,7 @@ struct LinuxClientLaunchSettings
   bool spectator;
   bool tutorial;
   bool bootstrapCreateGame;
+  bool bootstrapFlashRendererProbe;
   bool bootstrapClickEnabled;
   int bootstrapClickBaseX;
   int bootstrapClickBaseY;
@@ -254,6 +257,7 @@ struct LinuxClientLaunchSettings
       spectator(false),
       tutorial(false),
       bootstrapCreateGame(false),
+      bootstrapFlashRendererProbe(false),
       bootstrapClickEnabled(false),
       bootstrapClickBaseX(-1),
       bootstrapClickBaseY(-1),
@@ -7284,6 +7288,13 @@ bool ReadBootstrapCreateGameFlag(int argc, char** argv)
   (void)argc;
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-create-game");
+}
+
+bool ReadBootstrapFlashRendererProbeFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-renderer-probe");
 }
 
 bool ParseBootstrapClickBasePair(const char* value, int* baseX, int* baseY)
@@ -29860,6 +29871,99 @@ void ShutdownLinuxRenderBootstrap(LinuxRenderBootstrap* renderBootstrap)
   delete renderBootstrap->renderingInterface;
   renderBootstrap->renderingInterface = nullptr;
   renderBootstrap->started = false;
+}
+
+// Draws a single queued Flash shape through the native OpenGL UI renderer and checks
+// that the Linux replay path honors the scissored BeginDisplay batch state.
+bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
+{
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  if (!NMainFrame::MakeOpenGLContextCurrent())
+  {
+    fprintf(stderr, "Flash renderer probe failed: OpenGL context is not current.\n");
+    return false;
+  }
+
+  Render::IUIRenderer* uiRenderer = Render::GetUIRenderer();
+  if (!uiRenderer || !uiRenderer->Initialize())
+  {
+    fprintf(stderr, "Flash renderer probe failed: UI renderer initialization failed.\n");
+    return false;
+  }
+
+  const int viewportWidth = width > 128 ? static_cast<int>(width - 64) : static_cast<int>(width);
+  const int viewportHeight = height > 128 ? static_cast<int>(height - 64) : static_cast<int>(height);
+  if (viewportWidth <= 0 || viewportHeight <= 0)
+  {
+    fprintf(stderr, "Flash renderer probe failed: invalid viewport %dx%d.\n", viewportWidth, viewportHeight);
+    uiRenderer->Release();
+    return false;
+  }
+
+  uiRenderer->SetResolutionCoefs(1.0f, 1.0f, 1.0f, 1.0f);
+  uiRenderer->BeginQueue();
+
+  Render::IFlashRenderer* flashRenderer = uiRenderer->GetFlashRenderer();
+  if (!flashRenderer)
+  {
+    fprintf(stderr, "Flash renderer probe failed: Flash renderer is missing.\n");
+    uiRenderer->Release();
+    return false;
+  }
+
+  const int windowWidth = static_cast<int>(width);
+  const int windowHeight = static_cast<int>(height);
+  const int viewportX = windowWidth > viewportWidth ? (windowWidth - viewportWidth) / 2 : 0;
+  const int viewportY = windowHeight > viewportHeight ? (windowHeight - viewportHeight) / 2 : 0;
+
+  flash::SWF_MATRIX matrix;
+  flash::SWF_CXFORMWITHALPHA colorTransform;
+  Render::ShapeVertex vertices[3] = {};
+  vertices[0].x = 48.0f;
+  vertices[0].y = 48.0f;
+  vertices[0].color = Render::Color(255, 64, 64, 255);
+  vertices[1].x = 272.0f;
+  vertices[1].y = 56.0f;
+  vertices[1].color = Render::Color(64, 255, 128, 255);
+  vertices[2].x = 160.0f;
+  vertices[2].y = 208.0f;
+  vertices[2].color = Render::Color(64, 128, 255, 255);
+
+  flashRenderer->SetMatrix(matrix);
+  flashRenderer->SetColorTransform(colorTransform);
+  flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
+  flashRenderer->BeginDisplay(viewportX, viewportY, viewportWidth, viewportHeight, 0.0f, 320.0f, 0.0f, 240.0f, true);
+  flashRenderer->DrawTriangleList(vertices, 3, 1);
+  flashRenderer->EndDisplay();
+
+  uiRenderer->EndQueue();
+  uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
+
+  const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu render2D=%lu\n",
+    static_cast<unsigned long>(stats.renderedFlashParts),
+    static_cast<unsigned long>(stats.renderedFlashCommands),
+    static_cast<unsigned long>(stats.renderedFlashScissorCommands),
+    static_cast<unsigned long>(stats.render2DCalls));
+
+  const bool passed =
+    stats.renderedFlashParts == 1 &&
+    stats.renderedFlashCommands == 1 &&
+    stats.renderedFlashScissorCommands == 1 &&
+    stats.render2DCalls == 1;
+  if (!passed)
+  {
+    fprintf(stderr, "Flash renderer probe failed: unexpected Flash replay counters.\n");
+  }
+
+  uiRenderer->Release();
+  return passed;
+#else
+  (void)width;
+  (void)height;
+  fprintf(stderr, "Flash renderer probe failed: OpenGL bootstrap renderer is not compiled in.\n");
+  return false;
+#endif
 }
 
 bool InitializeWindowOverlay(LinuxWindowOverlay* overlay)
@@ -63201,6 +63305,7 @@ void WriteStartupLog(
   logFile << "  launchHeroSelector=" << (settings.heroSelector.empty() ? "<none>" : settings.heroSelector) << "\n";
   logFile << "  demoCycleSeconds=" << settings.demoCycleSeconds << "\n";
   logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
+  logFile << "  bootstrapFlashRendererProbe=" << (settings.bootstrapFlashRendererProbe ? "yes" : "no") << "\n";
   logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
   logFile << "  mapCatalogCount=" << mapCatalog.descriptorCount << "\n";
   logFile << "  mapCatalogSource=" << (mapCatalog.source.empty() ? "<none>" : mapCatalog.source) << "\n";
@@ -65681,6 +65786,10 @@ void AppendRuntimeInputLog(
           << realUiRendererStats.render3DCalls << "\n";
   logFile << "  finalRealUiRendererCropRejected="
           << realUiRendererStats.cropRejectedQuads << "\n";
+  logFile << "  finalRealUiRendererFlash="
+          << realUiRendererStats.renderedFlashParts << "/"
+          << realUiRendererStats.renderedFlashCommands << "/"
+          << realUiRendererStats.renderedFlashScissorCommands << "\n";
 #endif
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
@@ -67959,6 +68068,7 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
+  settings.bootstrapFlashRendererProbe = ReadBootstrapFlashRendererProbeFlag(argc, argv);
   settings.bootstrapClickDouble = ReadBootstrapClickDoubleFlag(argc, argv);
   settings.bootstrapClickAfterSeconds = ReadBootstrapClickAfterSeconds(argc, argv);
   settings.bootstrapClickIntervalSeconds = ReadBootstrapClickIntervalSeconds(argc, argv);
@@ -68134,6 +68244,32 @@ int main(int argc, char** argv)
     static_cast<unsigned int>(settings.width),
     static_cast<unsigned int>(settings.height)
   );
+  if (settings.bootstrapFlashRendererProbe)
+  {
+    bool flashRendererProbePassed = false;
+    if (renderBootstrapReady)
+    {
+      flashRendererProbePassed = RunLinuxFlashRendererProbe(
+        static_cast<unsigned int>(settings.width),
+        static_cast<unsigned int>(settings.height)
+      );
+    }
+    else
+    {
+      fprintf(stderr, "Flash renderer probe failed: render bootstrap did not start.\n");
+    }
+
+    ShutdownLinuxRenderBootstrap(&renderBootstrap);
+    ShutdownWindowOverlay(&overlay);
+    Input::BindsManager::Instance()->SetBinds(0);
+    ClearLoadingUiDataResourceCache();
+    NDb::SoundRoot::InitRoot(0);
+    NDb::SessionRoot::InitRoot(0);
+    NDb::SetResourceCache(0);
+    RootFileSystem::ClearFileSystems();
+    NMainFrame::ShutdownApplication();
+    return flashRendererProbePassed ? 0 : 1;
+  }
   if (renderBootstrapReady)
   {
     if (rootFileSystemPreview.dbCacheReady)
@@ -68607,6 +68743,7 @@ int main(int argc, char** argv)
   fprintf(stdout, "Artwork mode: %s\n", DescribeArtworkMode(artworkState.mode));
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
   fprintf(stdout, "Bootstrap create game: %s\n", settings.bootstrapCreateGame ? "yes" : "no");
+  fprintf(stdout, "Bootstrap Flash renderer probe: %s\n", settings.bootstrapFlashRendererProbe ? "yes" : "no");
   fprintf(stdout, "Replay header startup: requested=%s usable=%s adoptedMap=%s adoptedLineup=%s autoCreate=%s path=%s players=%lu humans=%lu bots=%lu client=%d team=%d stepLength=%d map=%s error=%s\n",
     replayHeaderPreview.requested ? "yes" : "no",
     replayHeaderPreview.usable ? "yes" : "no",
@@ -69910,7 +70047,7 @@ int main(int argc, char** argv)
   {
     const Render::LinuxOpenGLUiRendererStats& finalRealUiRendererStats =
       Render::GetLinuxOpenGLUiRendererStats();
-    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu textured=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu\n",
+    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu textured=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu flash=%lu/%lu/%lu\n",
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DTextQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued3DQuads),
@@ -69922,7 +70059,10 @@ int main(int argc, char** argv)
       static_cast<unsigned long>(finalRealUiRendererStats.missingOpenGLTexture2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.render2DCalls),
       static_cast<unsigned long>(finalRealUiRendererStats.render3DCalls),
-      static_cast<unsigned long>(finalRealUiRendererStats.cropRejectedQuads));
+      static_cast<unsigned long>(finalRealUiRendererStats.cropRejectedQuads),
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashParts),
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashCommands),
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashScissorCommands));
   }
 #endif
   fprintf(stdout, "Final hero renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",

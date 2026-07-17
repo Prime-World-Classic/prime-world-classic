@@ -315,14 +315,6 @@ FlashRenderer::FlashRenderer()
   , resolutionYCoef(1.0f)
   , widthScale(1.0f)
   , heightScale(1.0f)
-  , viewportX(0)
-  , viewportY(0)
-  , viewportWidth(0)
-  , viewportHeight(0)
-  , displayX0(0.0f)
-  , displayX1(1.0f)
-  , displayY0(0.0f)
-  , displayY1(1.0f)
   , displayActive(false)
   , lineWidth(1.0f)
   , lineColor(255, 255, 255, 255)
@@ -348,12 +340,16 @@ void FlashRenderer::StartFrame()
 {
   drawCommands.clear();
   ClearFillStyles();
+  currentDisplayState = LinuxFlashDisplayState();
+  displayActive = false;
 }
 
 void FlashRenderer::BeginQueue()
 {
   drawCommands.clear();
   ClearFillStyles();
+  currentDisplayState = LinuxFlashDisplayState();
+  displayActive = false;
 }
 
 void FlashRenderer::EndQueue()
@@ -382,7 +378,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   GLint previousViewport[4] = { 0, 0, 0, 0 };
   glGetIntegerv(GL_VIEWPORT, previousViewport);
 
-  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT | GL_VIEWPORT_BIT);
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT | GL_VIEWPORT_BIT | GL_SCISSOR_BIT);
   glDisable(GL_DEPTH_TEST);
   glDepthMask(GL_FALSE);
   glDisable(GL_CULL_FACE);
@@ -390,23 +386,51 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-  if (viewportWidth > 0 && viewportHeight > 0)
-    glViewport(viewportX, previousViewport[3] - viewportY - viewportHeight, viewportWidth, viewportHeight);
-
   glMatrixMode(GL_PROJECTION);
   glPushMatrix();
-  glLoadIdentity();
-  glOrtho(displayX0, displayX1, displayY1, displayY0, -1.0, 1.0);
 
   glMatrixMode(GL_MODELVIEW);
   glPushMatrix();
-  glLoadIdentity();
+
+  unsigned int renderedCommands = 0;
+  unsigned int renderedScissorCommands = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
   {
     const LinuxFlashDrawCommand& command = drawCommands[i];
     if (command.vertices.empty())
       continue;
+
+    const LinuxFlashDisplayState& displayState = command.displayState;
+    if (displayState.viewportWidth > 0 && displayState.viewportHeight > 0)
+    {
+      const GLint openGLViewportX = previousViewport[0] + displayState.viewportX;
+      const GLint openGLViewportY = previousViewport[1] + previousViewport[3] - displayState.viewportY - displayState.viewportHeight;
+      glViewport(openGLViewportX, openGLViewportY, displayState.viewportWidth, displayState.viewportHeight);
+
+      if (displayState.useScissorRect)
+      {
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(openGLViewportX, openGLViewportY, displayState.viewportWidth, displayState.viewportHeight);
+        ++renderedScissorCommands;
+      }
+      else
+      {
+        glDisable(GL_SCISSOR_TEST);
+      }
+    }
+    else
+    {
+      glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+      glDisable(GL_SCISSOR_TEST);
+    }
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    glOrtho(displayState.displayX0, displayState.displayX1, displayState.displayY1, displayState.displayY0, -1.0, 1.0);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
 
     ApplyLinuxFlashBlendMode(command.blendMode);
 
@@ -442,7 +466,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       glVertex2f(v.x, v.y);
     }
     glEnd();
+    ++renderedCommands;
   }
+
+  if (renderedCommands > 0)
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -538,17 +566,16 @@ void FlashRenderer::BeginDisplay(
   float x0, float x1, float y0, float y1,
   bool useScissorRect )
 {
-  (void)viewport_x0;
-  viewportX = viewport_x0;
-  viewportY = viewport_y0;
-  viewportWidth = viewport_width;
-  viewportHeight = viewport_height;
-  displayX0 = x0;
-  displayX1 = x1;
-  displayY0 = y0;
-  displayY1 = y1;
+  currentDisplayState.viewportX = viewport_x0;
+  currentDisplayState.viewportY = viewport_y0;
+  currentDisplayState.viewportWidth = viewport_width;
+  currentDisplayState.viewportHeight = viewport_height;
+  currentDisplayState.displayX0 = x0;
+  currentDisplayState.displayX1 = x1;
+  currentDisplayState.displayY0 = y0;
+  currentDisplayState.displayY1 = y1;
+  currentDisplayState.useScissorRect = useScissorRect;
   displayActive = true;
-  (void)useScissorRect;
   GetUIRenderer()->BeginFlashParts( static_cast<int>(drawCommands.size()) );
 }
 
@@ -593,6 +620,7 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   command.smoothing = fillStyle ? fillStyle->smoothing : true;
   command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
+  command.displayState = currentDisplayState;
   if (fillStyle)
     command.texture = fillStyle->texture;
   command.vertices.reserve(count);
@@ -621,6 +649,8 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
 
   LinuxFlashDrawCommand command;
   command.textured = false;
+  command.blendMode = currentBlendMode;
+  command.displayState = currentDisplayState;
   command.vertices.reserve((coords.size() - 1) * 6);
 
   for (unsigned int i = 0; i + 1 < coords.size(); ++i)
@@ -642,7 +672,6 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
     const float nx = -dy / len * half;
     const float ny = dx / len * half;
     const Color color = TransformColor(lineColor);
-    command.blendMode = currentBlendMode;
     command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
     command.vertices.push_back(LinuxFlashDrawVertex(x1 + nx, y1 + ny, 0.0f, 0.0f, color));
     command.vertices.push_back(LinuxFlashDrawVertex(x2 + nx, y2 + ny, 0.0f, 0.0f, color));
@@ -716,6 +745,7 @@ void FlashRenderer::AppendBitmapQuad(
   command.smoothing = smoothing;
   command.wrapMode = EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
+  command.displayState = currentDisplayState;
   command.texture = bitmap->GetTexture();
   command.vertices.reserve(6);
 

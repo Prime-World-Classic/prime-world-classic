@@ -778,6 +778,13 @@ void ResetLinuxOpenGLUiRendererStats()
 {
   g_linuxOpenGLUiRendererStats = LinuxOpenGLUiRendererStats();
 }
+
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands)
+{
+  g_linuxOpenGLUiRendererStats.renderedFlashParts += parts;
+  g_linuxOpenGLUiRendererStats.renderedFlashCommands += commands;
+  g_linuxOpenGLUiRendererStats.renderedFlashScissorCommands += scissorCommands;
+}
 #endif
 
 UIRenderMaterial::UIRenderMaterial()

@@ -94,6 +94,33 @@ private:
       : x(_x), y(_y), u(_u), v(_v), color(_color) {}
   };
 
+  // Snapshot of BeginDisplay parameters used when replaying queued Flash commands.
+  struct LinuxFlashDisplayState
+  {
+    int viewportX;
+    int viewportY;
+    int viewportWidth;
+    int viewportHeight;
+    float displayX0;
+    float displayX1;
+    float displayY0;
+    float displayY1;
+    bool useScissorRect;
+
+    LinuxFlashDisplayState()
+      : viewportX(0)
+      , viewportY(0)
+      , viewportWidth(0)
+      , viewportHeight(0)
+      , displayX0(0.0f)
+      , displayX1(1.0f)
+      , displayY0(0.0f)
+      , displayY1(1.0f)
+      , useScissorRect(false)
+    {
+    }
+  };
+
   struct LinuxFlashDrawCommand
   {
     bool textured;
@@ -101,6 +128,7 @@ private:
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
+    LinuxFlashDisplayState displayState;
     nstl::vector<LinuxFlashDrawVertex> vertices;
 
     LinuxFlashDrawCommand()
@@ -142,14 +170,7 @@ private:
   float resolutionYCoef;
   float widthScale;
   float heightScale;
-  int viewportX;
-  int viewportY;
-  int viewportWidth;
-  int viewportHeight;
-  float displayX0;
-  float displayX1;
-  float displayY0;
-  float displayY1;
+  LinuxFlashDisplayState currentDisplayState;
   bool displayActive;
   float lineWidth;
   Color lineColor;
