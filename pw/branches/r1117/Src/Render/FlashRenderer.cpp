@@ -136,6 +136,16 @@ Texture2DRef CreateLinuxGradientTexture(const flash::SWF_GRADIENT& gradient)
   return CreateLinuxRadialGradientTexture(gradient);
 }
 
+float ApplyLinuxFlashScale9GridCoord(float coord, const CVec4& consts)
+{
+  if (consts.x < coord && coord < consts.y)
+    return consts.x + (coord - consts.x) * consts.z;
+  if (consts.y <= coord)
+    return coord + consts.w;
+
+  return coord;
+}
+
 class LinuxBitmapInfo : public IBitmapInfo, public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_2( LinuxBitmapInfo, IBitmapInfo, BaseObjectST );
@@ -403,6 +413,10 @@ FlashRenderer::FlashRenderer()
   , widthScale(1.0f)
   , heightScale(1.0f)
   , displayActive(false)
+  , scale9GridActive(false)
+  , scale9ConstX(0.0f, 0.0f, 1.0f, 0.0f)
+  , scale9ConstY(0.0f, 0.0f, 1.0f, 0.0f)
+  , scale9Trans(1.0f, 1.0f, 0.0f, 0.0f)
   , lineWidth(1.0f)
   , lineColor(255, 255, 255, 255)
   , nextTextWithBevel(false)
@@ -427,6 +441,7 @@ void FlashRenderer::Release()
   nextTextTexture = Texture2DRef();
   nextTextWithBevel = false;
   nextTextBevelColor = Color(0, 0, 0, 255);
+  scale9GridActive = false;
 }
 
 void FlashRenderer::StartFrame()
@@ -439,6 +454,7 @@ void FlashRenderer::StartFrame()
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
+  scale9GridActive = false;
 }
 
 void FlashRenderer::BeginQueue()
@@ -451,6 +467,7 @@ void FlashRenderer::BeginQueue()
   ClearFillStyles();
   currentDisplayState = LinuxFlashDisplayState();
   displayActive = false;
+  scale9GridActive = false;
 }
 
 void FlashRenderer::EndQueue()
@@ -504,6 +521,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedTexturedCommands = 0;
   unsigned int renderedRepeatCommands = 0;
   unsigned int renderedClampCommands = 0;
+  unsigned int renderedScale9Commands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -587,6 +605,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       ++renderedLineCommands;
       renderedLineVertices += command.vertices.size();
     }
+    if (command.scale9Grid)
+      ++renderedScale9Commands;
 
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
@@ -630,7 +650,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -810,6 +830,7 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   LinuxFlashDrawCommand command;
   command.textured = fillStyle && fillStyle->texture;
   command.smoothing = fillStyle ? fillStyle->smoothing : true;
+  command.scale9Grid = scale9GridActive;
   command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
@@ -862,6 +883,7 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   LinuxFlashDrawCommand command;
   command.textured = false;
   command.line = true;
+  command.scale9Grid = scale9GridActive;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
   command.vertices.reserve((points.size() - 1) * 6);
@@ -948,6 +970,12 @@ void FlashRenderer::TransformPoint(float x, float y, float* outX, float* outY) c
 {
   *outX = currentMatrix.m_[0][0] * x + currentMatrix.m_[0][1] * y + currentMatrix.m_[0][2];
   *outY = currentMatrix.m_[1][0] * x + currentMatrix.m_[1][1] * y + currentMatrix.m_[1][2];
+
+  if (scale9GridActive)
+  {
+    *outX = ApplyLinuxFlashScale9GridCoord(*outX, scale9ConstX) + scale9Trans.z;
+    *outY = ApplyLinuxFlashScale9GridCoord(*outY, scale9ConstY) + scale9Trans.w;
+  }
 }
 
 void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const
@@ -1052,6 +1080,7 @@ void FlashRenderer::AppendBitmapQuad(
   LinuxFlashDrawCommand command;
   command.textured = true;
   command.smoothing = smoothing;
+  command.scale9Grid = scale9GridActive;
   command.wrapMode = EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
@@ -1075,13 +1104,15 @@ void FlashRenderer::SetMorph( float rate )
 
 void FlashRenderer::SetScale9Grid( const CVec4& constX, const CVec4& constY, const CVec4& trans )
 {
-  (void)constX;
-  (void)constY;
-  (void)trans;
+  scale9GridActive = true;
+  scale9ConstX = constX;
+  scale9ConstY = constY;
+  scale9Trans = trans;
 }
 
 void FlashRenderer::ResetScale9Grid()
 {
+  scale9GridActive = false;
 }
 
 void FlashRenderer::BeginSubmitMask()

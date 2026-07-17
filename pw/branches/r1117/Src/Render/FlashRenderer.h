@@ -137,6 +137,7 @@ private:
     bool textured;
     bool smoothing;
     bool line;
+    bool scale9Grid;
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
@@ -152,6 +153,7 @@ private:
       , textured(false)
       , smoothing(true)
       , line(false)
+      , scale9Grid(false)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
       , textPartID(-1)
@@ -213,6 +215,11 @@ private:
   float heightScale;
   LinuxFlashDisplayState currentDisplayState;
   bool displayActive;
+  // Parent scale9 grid constants are applied on CPU in the Linux bootstrap path.
+  bool scale9GridActive;
+  CVec4 scale9ConstX;
+  CVec4 scale9ConstY;
+  CVec4 scale9Trans;
   float lineWidth;
   Color lineColor;
   LinuxFlashFillStyle primaryFillStyle;
