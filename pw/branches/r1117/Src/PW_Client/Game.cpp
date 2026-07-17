@@ -29994,6 +29994,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     EFlashBlendMode::SUBTRACT,
     EFlashBlendMode::INVERT
   };
+  nstl::vector<CVec2> flashLine;
+  flashLine.push_back(CVec2(36.0f, 32.0f));
+  flashLine.push_back(CVec2(104.0f, 36.0f));
+  flashLine.push_back(CVec2(132.0f, 72.0f));
   Render::Texture2DRef flashTextTexture =
     Render::CreateTexture2D(2, 2, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
   if (flashTextTexture)
@@ -30052,18 +30056,22 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     flashRenderer->DrawTriangleList(blendModeVertices[blendIndex], 3, 6 + blendIndex);
   }
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
+  flashRenderer->SetLineWidth(8.0f);
+  flashRenderer->SetLineColor(flash::SWF_RGBA(255, 224, 64, 220));
+  flashRenderer->DrawLineStrip(flashLine, 10);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
     static_cast<unsigned long>(stats.renderedFlashMaskCommands),
     static_cast<unsigned long>(stats.renderedFlashBlendCommands),
+    static_cast<unsigned long>(stats.renderedFlashLineCommands),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30072,10 +30080,11 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 18 &&
-    stats.renderedFlashScissorCommands == 22 &&
+    stats.renderedFlashCommands == 19 &&
+    stats.renderedFlashScissorCommands == 23 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 4 &&
+    stats.renderedFlashLineCommands == 1 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

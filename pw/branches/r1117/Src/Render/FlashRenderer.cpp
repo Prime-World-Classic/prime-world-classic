@@ -499,6 +499,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedScissorCommands = 0;
   unsigned int renderedMaskCommands = 0;
   unsigned int renderedBlendCommands = 0;
+  unsigned int renderedLineCommands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -577,6 +578,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     ApplyLinuxFlashBlendMode(command.blendMode);
     if (IsLinuxFlashMappedBlendMode(command.blendMode))
       ++renderedBlendCommands;
+    if (command.line)
+      ++renderedLineCommands;
 
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
@@ -614,7 +617,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
@@ -825,6 +828,7 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
 
   LinuxFlashDrawCommand command;
   command.textured = false;
+  command.line = true;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
   command.vertices.reserve((coords.size() - 1) * 6);
@@ -845,8 +849,20 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
       continue;
 
     const float half = lineWidth * 0.5f;
+    const float tx = dx / len;
+    const float ty = dy / len;
     const float nx = -dy / len * half;
     const float ny = dx / len * half;
+    if (i == 0)
+    {
+      x1 -= tx * half;
+      y1 -= ty * half;
+    }
+    if (i + 2 == coords.size())
+    {
+      x2 += tx * half;
+      y2 += ty * half;
+    }
     const Color color = TransformColor(lineColor);
     command.vertices.push_back(LinuxFlashDrawVertex(x1 - nx, y1 - ny, 0.0f, 0.0f, color));
     command.vertices.push_back(LinuxFlashDrawVertex(x1 + nx, y1 + ny, 0.0f, 0.0f, color));

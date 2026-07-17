@@ -136,6 +136,7 @@ private:
     Kind kind;
     bool textured;
     bool smoothing;
+    bool line;
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
@@ -150,6 +151,7 @@ private:
       : kind(DrawGeometry)
       , textured(false)
       , smoothing(true)
+      , line(false)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
       , textPartID(-1)

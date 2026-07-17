@@ -899,13 +899,14 @@ void ResetLinuxOpenGLUiRendererStats()
   g_linuxOpenGLUiRendererStats = LinuxOpenGLUiRendererStats();
 }
 
-void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands)
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands, unsigned int blendCommands, unsigned int lineCommands)
 {
   g_linuxOpenGLUiRendererStats.renderedFlashParts += parts;
   g_linuxOpenGLUiRendererStats.renderedFlashCommands += commands;
   g_linuxOpenGLUiRendererStats.renderedFlashScissorCommands += scissorCommands;
   g_linuxOpenGLUiRendererStats.renderedFlashMaskCommands += maskCommands;
   g_linuxOpenGLUiRendererStats.renderedFlashBlendCommands += blendCommands;
+  g_linuxOpenGLUiRendererStats.renderedFlashLineCommands += lineCommands;
 }
 
 void SetLinuxOpenGLUiRendererFlashTextStyle(int partID, const Texture2DRef& texture, bool drawBevel, const Color& bevelColor)
