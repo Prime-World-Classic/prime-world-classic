@@ -275,8 +275,28 @@ LinuxBitmapInfo* GetLinuxBitmapInfo(IBitmapInfo* bitmapInfo)
 }
 
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+bool IsLinuxFlashMappedBlendMode(EFlashBlendMode::Enum blendMode)
+{
+  switch (blendMode)
+  {
+  case EFlashBlendMode::ADD:
+  case EFlashBlendMode::MULTIPLY:
+  case EFlashBlendMode::SCREEN:
+  case EFlashBlendMode::DARKEN:
+  case EFlashBlendMode::LIGHTEN:
+  case EFlashBlendMode::SUBTRACT:
+  case EFlashBlendMode::INVERT:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
 void ApplyLinuxFlashBlendMode(EFlashBlendMode::Enum blendMode)
 {
+  glBlendEquation(GL_FUNC_ADD);
+
   switch (blendMode)
   {
   case EFlashBlendMode::ADD:
@@ -289,6 +309,25 @@ void ApplyLinuxFlashBlendMode(EFlashBlendMode::Enum blendMode)
 
   case EFlashBlendMode::SCREEN:
     glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE);
+    break;
+
+  case EFlashBlendMode::DARKEN:
+    glBlendFunc(GL_ONE, GL_ONE);
+    glBlendEquation(GL_MIN);
+    break;
+
+  case EFlashBlendMode::LIGHTEN:
+    glBlendFunc(GL_ONE, GL_ONE);
+    glBlendEquation(GL_MAX);
+    break;
+
+  case EFlashBlendMode::SUBTRACT:
+    glBlendFunc(GL_ONE, GL_ONE);
+    glBlendEquation(GL_FUNC_REVERSE_SUBTRACT);
+    break;
+
+  case EFlashBlendMode::INVERT:
+    glBlendFunc(GL_ONE_MINUS_DST_COLOR, GL_ONE_MINUS_SRC_ALPHA);
     break;
 
   default:
@@ -459,6 +498,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedCommands = 0;
   unsigned int renderedScissorCommands = 0;
   unsigned int renderedMaskCommands = 0;
+  unsigned int renderedBlendCommands = 0;
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -535,6 +575,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     }
 
     ApplyLinuxFlashBlendMode(command.blendMode);
+    if (IsLinuxFlashMappedBlendMode(command.blendMode))
+      ++renderedBlendCommands;
 
     unsigned int openGLTexture = 0;
     if (command.textured && command.texture)
@@ -572,7 +614,7 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);

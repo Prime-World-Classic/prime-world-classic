@@ -29968,6 +29968,32 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashColorMatrix._11 = 0.0f;
   flashColorMatrix._12 = 1.0f;
   flashColorMatrix._22 = 0.0f;
+  Render::ShapeVertex blendModeVertices[4][3] = {};
+  const Render::Color blendModeColors[4] = {
+    Render::Color(96, 96, 255, 224),
+    Render::Color(255, 220, 96, 224),
+    Render::Color(255, 96, 96, 224),
+    Render::Color(96, 255, 220, 224)
+  };
+  for (int blendIndex = 0; blendIndex < 4; ++blendIndex)
+  {
+    const float left = 118.0f + blendIndex * 46.0f;
+    blendModeVertices[blendIndex][0].x = left;
+    blendModeVertices[blendIndex][0].y = 176.0f;
+    blendModeVertices[blendIndex][1].x = left + 36.0f;
+    blendModeVertices[blendIndex][1].y = 176.0f;
+    blendModeVertices[blendIndex][2].x = left + 18.0f;
+    blendModeVertices[blendIndex][2].y = 224.0f;
+    blendModeVertices[blendIndex][0].color = blendModeColors[blendIndex];
+    blendModeVertices[blendIndex][1].color = blendModeColors[blendIndex];
+    blendModeVertices[blendIndex][2].color = blendModeColors[blendIndex];
+  }
+  const EFlashBlendMode::Enum blendModes[4] = {
+    EFlashBlendMode::DARKEN,
+    EFlashBlendMode::LIGHTEN,
+    EFlashBlendMode::SUBTRACT,
+    EFlashBlendMode::INVERT
+  };
   Render::Texture2DRef flashTextTexture =
     Render::CreateTexture2D(2, 2, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
   if (flashTextTexture)
@@ -30020,17 +30046,24 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->BeginColorMatrix(flashColorMatrix, CVec4(0.0f, 0.0f, 0.0f, 0.0f));
   flashRenderer->DrawTriangleList(colorMatrixVertices, 3, 5);
   flashRenderer->EndColorMatrix();
+  for (int blendIndex = 0; blendIndex < 4; ++blendIndex)
+  {
+    flashRenderer->SetBlendMode(blendModes[blendIndex]);
+    flashRenderer->DrawTriangleList(blendModeVertices[blendIndex], 3, 6 + blendIndex);
+  }
+  flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
     static_cast<unsigned long>(stats.renderedFlashMaskCommands),
+    static_cast<unsigned long>(stats.renderedFlashBlendCommands),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30039,9 +30072,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 14 &&
-    stats.renderedFlashScissorCommands == 18 &&
+    stats.renderedFlashCommands == 18 &&
+    stats.renderedFlashScissorCommands == 22 &&
     stats.renderedFlashMaskCommands == 4 &&
+    stats.renderedFlashBlendCommands == 4 &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
