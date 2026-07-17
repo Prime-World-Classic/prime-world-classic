@@ -296,6 +296,54 @@ void ApplyLinuxFlashBlendMode(EFlashBlendMode::Enum blendMode)
     break;
   }
 }
+
+void BeginLinuxFlashSubmitMask(int& maskLevel)
+{
+  if (maskLevel == 0)
+  {
+    glEnable(GL_STENCIL_TEST);
+    glClearStencil(0);
+    glClear(GL_STENCIL_BUFFER_BIT);
+    glStencilMask(0xFFFFFFFFu);
+  }
+
+  glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+  glStencilFunc(GL_EQUAL, maskLevel, 0xFFFFFFFFu);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+  ++maskLevel;
+}
+
+void EndLinuxFlashSubmitMask(int maskLevel)
+{
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  glStencilFunc(GL_EQUAL, maskLevel, 0xFFFFFFFFu);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+}
+
+void BeginLinuxFlashUnsubmitMask(int maskLevel)
+{
+  glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+  glStencilFunc(GL_EQUAL, maskLevel, 0xFFFFFFFFu);
+  glStencilOp(GL_KEEP, GL_KEEP, GL_DECR);
+}
+
+void DisableLinuxFlashMask(int& maskLevel)
+{
+  if (maskLevel > 0)
+    --maskLevel;
+
+  if (maskLevel > 0)
+  {
+    EndLinuxFlashSubmitMask(maskLevel);
+  }
+  else
+  {
+    glDisable(GL_STENCIL_TEST);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+    glStencilFunc(GL_ALWAYS, 0, 0xFFFFFFFFu);
+  }
+}
 #endif
 
 unsigned char ClampFlashColorChannel(float value)
@@ -378,11 +426,13 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   GLint previousViewport[4] = { 0, 0, 0, 0 };
   glGetIntegerv(GL_VIEWPORT, previousViewport);
 
-  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT | GL_VIEWPORT_BIT | GL_SCISSOR_BIT);
+  glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_TRANSFORM_BIT | GL_TEXTURE_BIT | GL_VIEWPORT_BIT | GL_SCISSOR_BIT);
   glDisable(GL_DEPTH_TEST);
   glDepthMask(GL_FALSE);
   glDisable(GL_CULL_FACE);
   glDisable(GL_LIGHTING);
+  glDisable(GL_STENCIL_TEST);
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
   glEnable(GL_BLEND);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -394,11 +444,13 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
 
   unsigned int renderedCommands = 0;
   unsigned int renderedScissorCommands = 0;
+  unsigned int renderedMaskCommands = 0;
+  int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
   {
     const LinuxFlashDrawCommand& command = drawCommands[i];
-    if (command.vertices.empty())
+    if (command.kind == LinuxFlashDrawCommand::DrawGeometry && command.vertices.empty())
       continue;
 
     const LinuxFlashDisplayState& displayState = command.displayState;
@@ -431,6 +483,32 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+
+    switch (command.kind)
+    {
+    case LinuxFlashDrawCommand::BeginSubmitMaskCommand:
+      BeginLinuxFlashSubmitMask(maskLevel);
+      ++renderedMaskCommands;
+      continue;
+
+    case LinuxFlashDrawCommand::EndSubmitMaskCommand:
+      EndLinuxFlashSubmitMask(maskLevel);
+      ++renderedMaskCommands;
+      continue;
+
+    case LinuxFlashDrawCommand::BeginUnSubmitMaskCommand:
+      BeginLinuxFlashUnsubmitMask(maskLevel);
+      ++renderedMaskCommands;
+      continue;
+
+    case LinuxFlashDrawCommand::DisableMaskCommand:
+      DisableLinuxFlashMask(maskLevel);
+      ++renderedMaskCommands;
+      continue;
+
+    default:
+      break;
+    }
 
     ApplyLinuxFlashBlendMode(command.blendMode);
 
@@ -469,11 +547,12 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     ++renderedCommands;
   }
 
-  if (renderedCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands);
+  if (renderedCommands > 0 || renderedMaskCommands > 0)
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands);
 
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
   glMatrixMode(GL_MODELVIEW);
   glPopMatrix();
@@ -711,6 +790,14 @@ void FlashRenderer::ClearFillStyles()
   secondaryFillStyle = LinuxFlashFillStyle();
 }
 
+void FlashRenderer::QueueMaskCommand(LinuxFlashDrawCommand::Kind kind)
+{
+  LinuxFlashDrawCommand command;
+  command.kind = kind;
+  command.displayState = currentDisplayState;
+  drawCommands.push_back(command);
+}
+
 void FlashRenderer::AppendBitmapQuad(
   IBitmapInfo* bitmapInfo,
   float x1,
@@ -777,18 +864,22 @@ void FlashRenderer::ResetScale9Grid()
 
 void FlashRenderer::BeginSubmitMask()
 {
+  QueueMaskCommand(LinuxFlashDrawCommand::BeginSubmitMaskCommand);
 }
 
 void FlashRenderer::EndSubmitMask()
 {
+  QueueMaskCommand(LinuxFlashDrawCommand::EndSubmitMaskCommand);
 }
 
 void FlashRenderer::BeginUnSubmitMask()
 {
+  QueueMaskCommand(LinuxFlashDrawCommand::BeginUnSubmitMaskCommand);
 }
 
 void FlashRenderer::DisableMask()
 {
+  QueueMaskCommand(LinuxFlashDrawCommand::DisableMaskCommand);
 }
 
 void FlashRenderer::BeginColorMatrix( const SHMatrix& colorMatrix, const CVec4& addColor )

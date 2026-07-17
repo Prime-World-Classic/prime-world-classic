@@ -779,11 +779,12 @@ void ResetLinuxOpenGLUiRendererStats()
   g_linuxOpenGLUiRendererStats = LinuxOpenGLUiRendererStats();
 }
 
-void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands)
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands)
 {
   g_linuxOpenGLUiRendererStats.renderedFlashParts += parts;
   g_linuxOpenGLUiRendererStats.renderedFlashCommands += commands;
   g_linuxOpenGLUiRendererStats.renderedFlashScissorCommands += scissorCommands;
+  g_linuxOpenGLUiRendererStats.renderedFlashMaskCommands += maskCommands;
 }
 #endif
 

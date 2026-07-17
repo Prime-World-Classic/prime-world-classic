@@ -123,6 +123,16 @@ private:
 
   struct LinuxFlashDrawCommand
   {
+    enum Kind
+    {
+      DrawGeometry,
+      BeginSubmitMaskCommand,
+      EndSubmitMaskCommand,
+      BeginUnSubmitMaskCommand,
+      DisableMaskCommand
+    };
+
+    Kind kind;
     bool textured;
     bool smoothing;
     EBitmapWrapMode::Enum wrapMode;
@@ -132,7 +142,8 @@ private:
     nstl::vector<LinuxFlashDrawVertex> vertices;
 
     LinuxFlashDrawCommand()
-      : textured(false)
+      : kind(DrawGeometry)
+      , textured(false)
       , smoothing(true)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
@@ -161,6 +172,7 @@ private:
   void TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const;
   Color TransformColor(const Color& color) const;
   void ClearFillStyles();
+  void QueueMaskCommand(LinuxFlashDrawCommand::Kind kind);
   void AppendBitmapQuad(IBitmapInfo* bitmapInfo, float x1, float y1, float x2, float y2, float u1, float v1, float u2, float v2, bool smoothing);
 
   flash::SWF_MATRIX currentMatrix;

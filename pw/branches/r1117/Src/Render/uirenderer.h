@@ -192,6 +192,7 @@ struct LinuxOpenGLUiRendererStats
   unsigned int renderedFlashParts;
   unsigned int renderedFlashCommands;
   unsigned int renderedFlashScissorCommands;
+  unsigned int renderedFlashMaskCommands;
 
   LinuxOpenGLUiRendererStats()
     : queued2DQuads(0)
@@ -209,13 +210,14 @@ struct LinuxOpenGLUiRendererStats
     , renderedFlashParts(0)
     , renderedFlashCommands(0)
     , renderedFlashScissorCommands(0)
+    , renderedFlashMaskCommands(0)
   {
   }
 };
 
 const LinuxOpenGLUiRendererStats& GetLinuxOpenGLUiRendererStats();
 void ResetLinuxOpenGLUiRendererStats();
-void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands);
+void AddLinuxOpenGLUiRendererFlashStats(unsigned int parts, unsigned int commands, unsigned int scissorCommands, unsigned int maskCommands);
 #endif
 
 } // namespace Render

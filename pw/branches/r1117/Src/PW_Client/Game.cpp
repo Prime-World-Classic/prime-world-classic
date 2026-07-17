@@ -29918,38 +29918,56 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   flash::SWF_MATRIX matrix;
   flash::SWF_CXFORMWITHALPHA colorTransform;
-  Render::ShapeVertex vertices[3] = {};
-  vertices[0].x = 48.0f;
-  vertices[0].y = 48.0f;
-  vertices[0].color = Render::Color(255, 64, 64, 255);
-  vertices[1].x = 272.0f;
-  vertices[1].y = 56.0f;
-  vertices[1].color = Render::Color(64, 255, 128, 255);
-  vertices[2].x = 160.0f;
-  vertices[2].y = 208.0f;
-  vertices[2].color = Render::Color(64, 128, 255, 255);
+  Render::ShapeVertex maskVertices[3] = {};
+  maskVertices[0].x = 64.0f;
+  maskVertices[0].y = 48.0f;
+  maskVertices[0].color = Render::Color(255, 255, 255, 255);
+  maskVertices[1].x = 256.0f;
+  maskVertices[1].y = 48.0f;
+  maskVertices[1].color = Render::Color(255, 255, 255, 255);
+  maskVertices[2].x = 160.0f;
+  maskVertices[2].y = 220.0f;
+  maskVertices[2].color = Render::Color(255, 255, 255, 255);
+  Render::ShapeVertex visibleVertices[3] = {};
+  visibleVertices[0].x = 48.0f;
+  visibleVertices[0].y = 48.0f;
+  visibleVertices[0].color = Render::Color(255, 64, 64, 255);
+  visibleVertices[1].x = 272.0f;
+  visibleVertices[1].y = 56.0f;
+  visibleVertices[1].color = Render::Color(64, 255, 128, 255);
+  visibleVertices[2].x = 160.0f;
+  visibleVertices[2].y = 208.0f;
+  visibleVertices[2].color = Render::Color(64, 128, 255, 255);
 
   flashRenderer->SetMatrix(matrix);
   flashRenderer->SetColorTransform(colorTransform);
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->BeginDisplay(viewportX, viewportY, viewportWidth, viewportHeight, 0.0f, 320.0f, 0.0f, 240.0f, true);
-  flashRenderer->DrawTriangleList(vertices, 3, 1);
+  flashRenderer->BeginSubmitMask();
+  flashRenderer->DrawTriangleList(maskVertices, 3, 1);
+  flashRenderer->EndSubmitMask();
+  flashRenderer->DrawTriangleList(visibleVertices, 3, 2);
+  flashRenderer->BeginUnSubmitMask();
+  flashRenderer->DrawTriangleList(maskVertices, 3, 3);
+  flashRenderer->DisableMask();
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu render2D=%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu render2D=%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
+    static_cast<unsigned long>(stats.renderedFlashMaskCommands),
     static_cast<unsigned long>(stats.render2DCalls));
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 1 &&
-    stats.renderedFlashScissorCommands == 1 &&
+    stats.renderedFlashCommands == 3 &&
+    stats.renderedFlashScissorCommands == 7 &&
+    stats.renderedFlashMaskCommands == 4 &&
     stats.render2DCalls == 1;
   if (!passed)
   {
@@ -65789,7 +65807,8 @@ void AppendRuntimeInputLog(
   logFile << "  finalRealUiRendererFlash="
           << realUiRendererStats.renderedFlashParts << "/"
           << realUiRendererStats.renderedFlashCommands << "/"
-          << realUiRendererStats.renderedFlashScissorCommands << "\n";
+          << realUiRendererStats.renderedFlashScissorCommands << "/"
+          << realUiRendererStats.renderedFlashMaskCommands << "\n";
 #endif
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
@@ -70047,7 +70066,7 @@ int main(int argc, char** argv)
   {
     const Render::LinuxOpenGLUiRendererStats& finalRealUiRendererStats =
       Render::GetLinuxOpenGLUiRendererStats();
-    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu textured=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu flash=%lu/%lu/%lu\n",
+    fprintf(stdout, "Final real UI renderer: queued=%lu/%lu/%lu rendered=%lu/%lu/%lu textured=%lu/%lu/%lu calls=%lu/%lu cropRejected=%lu flash=%lu/%lu/%lu/%lu\n",
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued2DTextQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.queued3DQuads),
@@ -70062,7 +70081,8 @@ int main(int argc, char** argv)
       static_cast<unsigned long>(finalRealUiRendererStats.cropRejectedQuads),
       static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashParts),
       static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashCommands),
-      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashScissorCommands));
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashScissorCommands),
+      static_cast<unsigned long>(finalRealUiRendererStats.renderedFlashMaskCommands));
   }
 #endif
   fprintf(stdout, "Final hero renderer materials: authored=%lu diffuse=%lu textures=%lu fallback=%lu\n",
