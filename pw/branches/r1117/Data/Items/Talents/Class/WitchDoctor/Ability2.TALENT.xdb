@@ -1173,9 +1173,9 @@
 					<UnitConstant>
 						<name>BaseAttack_TT</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>15</sString>
+							<sString>30</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1203,9 +1203,9 @@
 					<UnitConstant>
 						<name>BurnEnergy_TT</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzczMPg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DzcxMPg==</compiledString>
 							<returnType>float</returnType>
-							<sString>0.4</sString>
+							<sString>0.2</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -1236,6 +1236,16 @@
 							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
 							<returnType>float</returnType>
 							<sString>15</sString>
+						</var>
+					</UnitConstant>
+				</Item>
+				<Item href="/Items/Talents/Class/WitchDoctor/Ability2.TALENT" id="B6F69591-5C5F-4EA3-9E5A-16CD6DD1300E">
+					<UnitConstant>
+						<name>BearDefence</name>
+						<var>
+							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAACgQAAA8EE=</compiledString>
+							<returnType>float</returnType>
+							<sString>damageScale(sStrength, 5, 30)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

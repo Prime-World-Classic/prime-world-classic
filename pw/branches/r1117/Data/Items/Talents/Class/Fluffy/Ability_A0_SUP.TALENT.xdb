@@ -59,9 +59,9 @@
 					<UnitConstant>
 						<name>A0_SUP_Damage</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABAQQ==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>12.0f</sString>
+							<sString>15.0f</sString>
 						</var>
 					</UnitConstant>
 				</Item>

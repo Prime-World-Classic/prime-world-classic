@@ -15,9 +15,9 @@
 	<providerName></providerName>
 	<reduceByPercent>true</reduceByPercent>
 	<reductionAmount>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DmpmZPg==</compiledString>
+		<compiledString>FREAAAACAAAAHgAAADEAAABBMV9TVVBfUmVmcmVzaENEAFWL7FGLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0twNPwAAANld/NlF/IvlXcN7FK5H4XqEPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>0.3</sString>
+		<sString>cA1_SUP_RefreshCD*0.01</sString>
 	</reductionAmount>
 	<refreshThis>false</refreshThis>
 	<talents>

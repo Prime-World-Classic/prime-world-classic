@@ -4,7 +4,7 @@
 	<BackLink DBID="/Items/Talents/TalentKits/RedSet2_4_Blow/G487_WaitStatus_Building.APLR" Count="1" />
 	<attachFlags>0</attachFlags>
 	<attachType>Above</attachType>
-	<component href="/Effects/Debuffs/Bomb/_TRS.PRXY" />
+	<component href="/Effects/Debuffs/Bomb/_BlowSetTRS.PRXY" />
 	<deathType>Manual</deathType>
 	<enableCondition href="" />
 	<fadeIn>0</fadeIn>

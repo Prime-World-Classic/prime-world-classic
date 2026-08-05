@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TalentKit>
+	<BackLink DBID="/GameLogic/AILogic.AILP" Count="1" />
+	<caption>Cataclysm</caption>
+	<kitCapacity>0</kitCapacity>
+	<name textref="/Items/Talents/TalentKits/Redset_Cataclysm/Redset_Cataclysm.TALKIT_name.txt" />
+	<special href="" />
+	<talents>
+		<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/G802_Cataclysm.TALENT" />
+		<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/G803_Cataclysm.TALENT" />
+		<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/G804_Cataclysm.TALENT" />
+		<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/G805_Cataclysm.TALENT" />
+		<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/G806_Cataclysm.TALENT" />
+	</talents>
+</TalentKit>

@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <StatusApplicator>
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1.TALENT" Count="1" />
 	<applicators>
 		<Item href="/Items/Talents/Class/Bomber/status_A1_BombCount.APLR" id="43C99CF2-89B8-41A2-AE91-C1375EF9682A">
@@ -59,9 +60,9 @@
 		<sString>f2l(sender.vBomberA1_BombCount)</sString>
 	</customCounter>
 	<customProgress>
-		<compiledString>FSQAAAACAAAAKwAAAEgAAABCb21iZXJBMV9Cb21iQ291bnQAAEExX01heEJvbWJDb3VudABVi+yD7BRoAAAAAItFCIsQi00Ii4KIAQAA/9CLTQxRi1UIUmgUAAAAi0UQixCLTRCLQlDdXfj/0Nxd+N/g9sRBdRaLTRCLEYtNEItCHP/Q2eje4d1d8OsF2ejdXfDdRfDZXezZReyL5V3DAAAAAAAA8D8=</compiledString>
+		<compiledString>FUoAAAAFAAAAUQAAAG4AAACTAAAAswAAAMUAAABCb21iZXJBMV9Cb21iQ291bnQAAEExX01heEJvbWJDb3VudABCb21iZXJfQTFfY3VzdG9tAAAAAGR1cmF0aW9uAAAAAEExX0NEAFWL7IPsIGgAAAAAi0UIixCLTQiLgogBAAD/0ItNDFGLVQhSaBQAAACLRRCLEItNEItCUN1d+P/Q3F343+D2xEF1VWoBi00QUWgkAAAAi1UIiwKLTQiLkJwBAAD/0olF9ItFDFCLTQhRaEQAAACLVRCLAotNEItQUP/SaDgAAACLRfSLEItN9ItCVN1d7P/Q3HXs3V3k6wXZ6N1d5N1F5Nld4NlF4IvlXcMAAAAAAADwPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>sender.vBomberA1_BombCount &lt; cA1_MaxBombCount ? 1 - mPreparedness : 1</sString>
+		<sString>sender.vBomberA1_BombCount &lt; cA1_MaxBombCount ? (sender.applBomber_A1_custom(UNIT).GetVariable("duration")/cA1_CD ) : 1</sString>
 	</customProgress>
 	<description textref="/Items/Talents/Class/Bomber/status_A1_BombCount.APLR_description.txt" />
 	<dispellPriority>NonDispellable</dispellPriority>

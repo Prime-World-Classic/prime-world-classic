@@ -54,9 +54,9 @@
 					<UnitConstant>
 						<name>BaseAttack_TT</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABwQQ==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACgQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>15</sString>
+							<sString>20</sString>
 						</var>
 					</UnitConstant>
 				</Item>

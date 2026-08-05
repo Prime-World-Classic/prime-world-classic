@@ -521,9 +521,9 @@
 					<UnitConstant>
 						<name>A2_Damage</name>
 						<var>
-							<compiledString>FQAAAAAFAAAAOAAAAEIAAAB4AAAAggAAALAAAABVi+yD7BSLRQiLEItNCIuCuAAAAP/Qi00IixGLTQiLgrwAAADdXfj/0Nxd+N/g9sRBekBqAVHZBdgAAADZHCRR2QXUAAAA2RwkagCLTQiLEYtNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d8OtEagFR2QXQAAAA2RwkUdkFzAAAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DcDcQAAADdXfDdRfDZXezZReyL5V3DzczMzMzM7D8AAL5CAAA0RAAAfEIAAOxD</compiledString>
+							<compiledString>FQAAAAAEAAAAOAAAAEIAAAB4AAAAggAAAFWL7IPsDItFCIsQi00Ii4K4AAAA/9CLTQiLEYtNCIuCvAAAAN1d+P/Q3F343+D2xEF6QGoBUdkFxAAAANkcJFHZBcAAAADZHCRqAItNCIsRi00Ii4IwAQAA/9BR2RwkagGLTRCLEYtNEItCYP/Q2V306z5qAVHZBbwAAADZHCRR2QW4AAAA2RwkagCLTQiLEYtNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0Nld9NlF9IvlXcMAAL5CAAA0RAAAfEIAAOxD</compiledString>
 							<returnType>float</returnType>
-							<sString>(sBaseStrength&gt;=sBaseIntellect)? damageScale(sStrength, 63, 472) : (damageScale(sIntellect, 95, 720)*0.9)</sString>
+							<sString>(sBaseStrength&gt;=sBaseIntellect)? damageScale(sStrength, 63, 472) : (damageScale(sIntellect, 95, 720))</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -724,9 +724,9 @@
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
-		<compiledString>FQ8AAAABAAAAGwAAAFJhbmdlSW50T3JlU3RyAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DADwcRg==</compiledString>
 		<returnType>float</returnType>
-		<sString>cRangeIntOreStr</sString>
+		<sString>9999</sString>
 	</useRange>
 	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
 	<variativeMaxTalentStats />

@@ -54,6 +54,7 @@
 		<UnitConstantsContainer>
 			<vars>
 				<Item href="/Items/Talents/Class/Faceless/const_A1_DamageInc" />
+				<Item href="/Items/Talents/Class/Faceless/const_A1_SUP_RefreshCD" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

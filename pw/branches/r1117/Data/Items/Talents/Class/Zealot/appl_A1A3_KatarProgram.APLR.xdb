@@ -292,15 +292,15 @@
 					<spell href="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" id="921CCD1E-E105-4BB6-81D9-47044E4DA115">
 						<Spell>
 							<applicators>
-								<Item href="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" id="45554D55-538A-46E3-B8A4-49EA22462557">
+								<Item href="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" id="F806A93E-E504-4E0E-ABA1-0E7434BA1EF7">
 									<DamageApplicator>
 										<applyTarget>ApplicatorTarget</applyTarget>
 										<cancelInvisibility>true</cancelInvisibility>
-										<caption>Урон</caption>
+										<caption>Урон (делится в случае героев и не делится в случае крипов и тд)</caption>
 										<damage>
-											<compiledString>FTYAAAAFAAAAPQAAAFYAAACUAAAApwAAALkAAABaZWFsb3RfQTFfU1VQAAAAWmVhbG90X0ExX1NVUAAAAEExX0RhbWFnZQAAAEExX0RhbWFnZQBVi+yD7BRoAAAAAItFCIsQi00Ii4KoAQAA/9CFwHQqaBAAAACLTQiLEYtNCIuCqAEAAP/QiUX8i038ixGLTfyLQgT/0IhF++sExkX7AA+2TfuFyXQli1UMUotFCFBoIAAAAItNEIsRi00Qi0JQ/9DcDdoAAADdXfDrHYtNDFGLVQhSaCwAAACLRRCLEItNEItCUP/Q3V3w3UXw2V3s2UXsi+Vdw5qZmZmZmfE/</compiledString>
+											<compiledString>FXYAAAAKAAAAqAAAAMEAAAD/AAAAEgEAACQBAABEAQAAXQEAAJsBAACuAQAAwAEAAFplYWxvdF9BMV9TVVAAAABaZWFsb3RfQTFfU1VQAAAAQTFfRGFtYWdlSGVybwAAAEExX0RhbWFnZUhlcm8AAABaZWFsb3RfQTFfU1VQAAAAWmVhbG90X0ExX1NVUAAAAEExX0RhbWFnZQAAAEExX0RhbWFnZQBVi+yD7CyLRQyLEItNDItCUP/QhcAPhLIAAACLTQyLEYtNDItCUP/Qg/gBD4ScAAAAaEAAAACLTQiLEYtNCIuCqAEAAP/QhcB0KmhQAAAAi00IixGLTQiLgqgBAAD/0IlF/ItN/IsRi038i0IE/9CIRfvrBMZF+wAPtk37hcl0JYtVDFKLRQhQaGAAAACLTRCLEYtNEItCUP/Q3A3nAQAA3V3w6x2LTQxRi1UIUmhsAAAAi0UQixCLTRCLQlD/0N1d8N1F8N1d6OmXAAAAaAAAAACLTQiLEYtNCIuCqAEAAP/QhcB0KmgQAAAAi00IixGLTQiLgqgBAAD/0IlF5ItN5IsRi03ki0IE/9CIRePrBMZF4wAPtk3jhcl0JYtVDFKLRQhQaCAAAACLTRCLEYtNEItCUP/Q3A3nAQAA3V3Y6x2LTQxRi1UIUmgwAAAAi0UQixCLTRCLQlD/0N1d2N1F2N1d6N1F6Nld1NlF1IvlXcOamZmZmZnxPw==</compiledString>
 											<returnType>float</returnType>
-											<sString>tal("Zealot_A1_SUP") ? cA1_Damage*1.1 : cA1_Damage</sString>
+											<sString>(rUnitKind == 0 || rUnitKind ==  1)? (tal("Zealot_A1_SUP")? cA1_DamageHero*1.1 : cA1_DamageHero) :  (tal("Zealot_A1_SUP") ? cA1_Damage*1.1 : cA1_Damage) </sString>
 										</damage>
 										<damageMode>0</damageMode>
 										<damageType>Material</damageType>
@@ -341,7 +341,7 @@
 						</Spell>
 					</spell>
 					<spellTarget>ApplicatorTarget</spellTarget>
-					<targetSelector href="/Items/Talents/Class/Zealot/tgsl_A1_capsule.TGSL" />
+					<targetSelector href="/Items/Talents/Class/Zealot/tgsl_A1_capsule_damage.TGSL" />
 				</SpellApplicator>
 			</applicator>
 			<continueCondition>

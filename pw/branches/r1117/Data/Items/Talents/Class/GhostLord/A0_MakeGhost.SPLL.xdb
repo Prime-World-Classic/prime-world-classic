@@ -87,6 +87,8 @@
 								<Item href="/Items/Talents/Class/GhostLord/A0_MakeGhost.SPLL" id="F41506B1-C9D8-4BDB-8CA9-217BE49E821F">
 									<SummonApplicator>
 										<applicators>
+											<Item href="/Items/Talents/Class/GhostLord/A0_AddIntellect.APLR" />
+											<Item href="/Items/Talents/Class/GhostLord/A0_AddStrength.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_AddStmn.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_AddWill.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_MakeGhost.SPLL" id="5AC13D1A-3700-4EFC-9D7E-AE5BC2A0FC6F">
@@ -365,6 +367,8 @@
 								<Item href="/Items/Talents/Class/GhostLord/A0_MakeGhost.SPLL" id="C8E8E1B5-E47D-4959-B218-2E1AEE1F2F53">
 									<CloneHeroApplicator>
 										<applicators>
+											<Item href="/Items/Talents/Class/GhostLord/A0_AddIntellect.APLR" />
+											<Item href="/Items/Talents/Class/GhostLord/A0_AddStrength.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_AddStmn.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_AddWill.APLR" />
 											<Item href="/Items/Talents/Class/GhostLord/A0_MakeGhost.SPLL" id="C5C3A417-16C3-4645-BF85-1C6B8DAB919F">

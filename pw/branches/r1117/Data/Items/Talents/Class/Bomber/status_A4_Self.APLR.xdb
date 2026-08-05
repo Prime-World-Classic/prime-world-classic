@@ -72,7 +72,7 @@
 					<sString>true</sString>
 				</startCondition>
 				<talents>
-					<Item href="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" />
+					<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" />
 				</talents>
 				<targetAbilities>128</targetAbilities>
 				<useListAs>ListAsRule</useListAs>
@@ -118,7 +118,7 @@
 					<sString>true</sString>
 				</startCondition>
 				<talents>
-					<Item href="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" />
+					<Item href="/Items/Talents/Class/Bomber/Ability_A1.TALENT" />
 				</talents>
 				<targetAbilities>128</targetAbilities>
 				<useListAs>ListAsRule</useListAs>

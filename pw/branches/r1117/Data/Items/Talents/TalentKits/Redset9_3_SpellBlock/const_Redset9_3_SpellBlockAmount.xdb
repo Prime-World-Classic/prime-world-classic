@@ -6,8 +6,8 @@
 	<BackLink DBID="/Items/Talents/Level4/G709_DexOrAtSpd_Life.TALENT" Count="1" />
 	<name>SpellBlock_Amount</name>
 	<var>
-		<compiledString>FRUAAAACAAAAMQAAAEcAAABTcGVsbEJsb2NrX0Ftb3VudF9UVABVi+yD7AyLRQiLEItNCItCDP/Qi00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V34/9DcDVgAAADcTfjZXfTZRfSL5V3DexSuR+F6hD8=</compiledString>
+		<compiledString>FRUAAAACAAAAMAAAAEYAAABTcGVsbEJsb2NrX0Ftb3VudF9UVABVi+yD7AyLRQiLEItNCIsC/9CLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfj/0NwNVwAAANxN+Nld9NlF9IvlXcN7FK5H4XqEPw==</compiledString>
 		<returnType>float</returnType>
-		<sString>sMaxLife * (cSpellBlock_Amount_TT * 0.01)</sString>
+		<sString>sLife * (cSpellBlock_Amount_TT * 0.01)</sString>
 	</var>
 </UnitConstant>

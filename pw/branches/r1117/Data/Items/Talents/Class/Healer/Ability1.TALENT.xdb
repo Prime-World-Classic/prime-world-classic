@@ -666,9 +666,9 @@
 					<UnitConstant>
 						<name>A1_HealAmount_Base</name>
 						<var>
-							<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAgQgAAlkM=</compiledString>
+							<compiledString>FQAAAAAFAAAALwAAADkAAABvAAAAeQAAAKcAAABVi+yD7AyLRQyLEItNDItCUP/Qg/gDdFKLTQyLEYtNDItCUP/Qg/gEdEBqAVHZBccAAADZHCRR2QXDAAAA2RwkagCLTQiLEYtNCIuCNAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0N1d+OtEagFR2QXHAAAA2RwkUdkFwwAAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DcDbsAAADdXfjdRfjZXfTZRfSL5V3DZmZmZmZm5j8AACBCAACWQw==</compiledString>
 							<returnType>float</returnType>
-							<sString>damageScale(sIntellect, 40, 300)</sString>
+							<sString> (rUnitKind == 3 || rUnitKind == 4)? damageScale(sIntellect, 40, 300) *0.7 : damageScale(sIntellect, 40, 300)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

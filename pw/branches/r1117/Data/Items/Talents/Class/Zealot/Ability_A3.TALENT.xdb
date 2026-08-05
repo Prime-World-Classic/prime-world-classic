@@ -924,6 +924,16 @@
 				<Item href="/Items/Talents/Class/Zealot/const_A1_SUP_Dec_MoveSpeed" />
 				<Item href="/Items/Talents/Class/Zealot/const_A1_SUP_Slow_Percentage" />
 				<Item href="/Items/Talents/Class/Zealot/const_A1_SUP_Slow_StartCondition" />
+				<Item href="/Items/Talents/Class/Zealot/Ability_A3.TALENT" id="115DB647-C210-4E79-AE1B-99D0FDD29F9B">
+					<UnitConstant>
+						<name>A1_DamageHero</name>
+						<var>
+							<compiledString>FRcAAAACAAAAJgAAAEAAAABBMV9EYW1hZ2UAAABBMV9UYXJnZXRzAFWL7IPsDItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/Si0UMUItNCFFoDAAAAItVEIsCi00Qi1BQ3V34/9LcffjZXfTZRfSL5V3D</compiledString>
+							<returnType>float</returnType>
+							<sString>cA1_Damage/cA1_Targets</sString>
+						</var>
+					</UnitConstant>
+				</Item>
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

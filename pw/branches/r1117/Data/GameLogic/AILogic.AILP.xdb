@@ -3121,9 +3121,9 @@
 					<UnitConstant>
 						<name>Max_TotalCooldownReduction</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQg==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>40</sString>
+							<sString>30</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -3821,6 +3821,7 @@
 				</Item>
 				<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/Redset_SeaSymbol.TALKIT" />
 				<Item href="/Items/Talents/TalentKits/Redset_Harpoon/Redset_Harpoon.TALKIT" />
+				<Item href="/Items/Talents/TalentKits/Redset_Cataclysm/Redset_Cataclysm.TALKIT" />
 			</kits>
 		</TalentKitList>
 	</talentKits>

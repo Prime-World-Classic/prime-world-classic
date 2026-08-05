@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A4_2.TALENT" Count="1" />
 	<name>A4_2u_SlowPercentage</name>
 	<var>
-		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADwQQ==</compiledString>
+		<compiledString>FSAAAAACAAAAJwAAAEAAAABDaHJvbmljbGVfQTRfMnUAQ2hyb25pY2xlX0E0XzJ1AFWL7IPsDGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+/fZG8mD4RSDwRSJTfTbRfSL5V3D</compiledString>
 		<returnType>float</returnType>
-		<sString>30</sString>
+		<sString>tal("Chronicle_A4_2u")? 40 : 20</sString>
 	</var>
 </UnitConstant>

@@ -177,6 +177,7 @@
 									</startCondition>
 								</ProgramApplicator>
 							</Item>
+							<Item href="/Items/Talents/TalentKits/Redset_SeaSymbol/APPL_SeaSymbol.APLR" />
 						</applicators>
 						<dispatch href="/Items/Talents/Class/GhostLord/Ability_A4_2.TALENT" id="7CFB746E-C375-4BF3-9D62-E7DA78000EBC">
 							<DispatchImmediate>
@@ -407,9 +408,9 @@
 					<UnitConstant>
 						<name>A4_2_Duration</name>
 						<var>
-							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAQQQ==</compiledString>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAAgQQ==</compiledString>
 							<returnType>float</returnType>
-							<sString>9</sString>
+							<sString>10</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -445,6 +446,8 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/GhostLord/const_A2_SUP_CD" />
+				<Item href="/Items/Talents/Class/GhostLord/const_A2_SUP_LifeFeedback" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

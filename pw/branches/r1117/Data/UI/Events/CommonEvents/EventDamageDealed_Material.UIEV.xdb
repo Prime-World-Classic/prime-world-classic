@@ -233,7 +233,7 @@
 	<BackLink DBID="/Items/Talents/Class/Witcher/Ability_A4.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/WraithKing/Ability_A1.TALENT" Count="2" />
 	<BackLink DBID="/Items/Talents/Class/WraithKing/status_A2.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Zealot/appl_A1A3_KatarProgram.APLR" Count="2" />
 	<BackLink DBID="/Items/Talents/Level1/status_G016_AntiCreepProc.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Level1/status_G273_AntiCreepProc.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Level1/status_G399_AntiCreepProc.APLR" Count="1" />

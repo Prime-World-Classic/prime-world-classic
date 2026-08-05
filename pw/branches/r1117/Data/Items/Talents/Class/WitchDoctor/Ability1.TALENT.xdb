@@ -89,9 +89,9 @@
 															<formulaName></formulaName>
 															<LoggingEvent>-1</LoggingEvent>
 															<maxDistance>
-																<compiledString>FQ0AAAABAAAAGQAAAFJhbmdlX01lZGl1bQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABgQQ==</compiledString>
 																<returnType>float</returnType>
-																<sString>cRange_Medium</sString>
+																<sString>14</sString>
 															</maxDistance>
 															<notifyInboundDispatches>true</notifyInboundDispatches>
 															<providerName></providerName>
@@ -113,9 +113,9 @@
 															<formulaName></formulaName>
 															<LoggingEvent>-1</LoggingEvent>
 															<maxDistance>
-																<compiledString>FQ0AAAABAAAAGQAAAFJhbmdlX01lZGl1bQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+																<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAABgQQ==</compiledString>
 																<returnType>float</returnType>
-																<sString>cRange_Medium</sString>
+																<sString>14</sString>
 															</maxDistance>
 															<notifyInboundDispatches>true</notifyInboundDispatches>
 															<providerName></providerName>
@@ -271,7 +271,7 @@
 												<checkLineOfSight>false</checkLineOfSight>
 												<nativeTerrainOnly>false</nativeTerrainOnly>
 												<passabilityCheckMode>6</passabilityCheckMode>
-												<radius>11</radius>
+												<radius>14</radius>
 												<targetSelector href="/Items/Talents/Class/WitchDoctor/Ability1.TALENT" id="5FC9DE14-6EB6-4244-AA21-02D472766A32">
 													<SelectApplicatorTarget>
 														<applicatorIndex>0</applicatorIndex>
@@ -1401,7 +1401,7 @@
 			<instantApply>false</instantApply>
 		</DispatchImmediate>
 	</dispatch>
-	<flags>259</flags>
+	<flags>323</flags>
 	<forceBonus>6</forceBonus>
 	<image href="/UI/Styles/Icons/Heroes/WitchDoctor/A1.ITEX" />
 	<imageSecondState href="/UI/Styles/Icons/Heroes/WitchDoctor/A1_1.ITEX" />
@@ -1482,9 +1482,9 @@
 	<type>Active</type>
 	<upgradeLevel>0</upgradeLevel>
 	<useRange>
-		<compiledString>FSkAAAADAAAANAAAAFYAAAB1AAAAQmVhckZvcm0AAAAAUmFuZ2VfRXhMb25nAAAAAFJhbmdlX01lZGl1bQBVi+xRagGLRRBQaAAAAACLTQiLEYtNCIuCnAEAAP/QO0UQdR+LTQxRi1UIUmgMAAAAi0UQixCLTRCLQlD/0Nld/Osdi00MUYtVCFJoHAAAAItFEIsQi00Qi0JQ/9DZXfzZRfyL5V3D</compiledString>
+		<compiledString>FRkAAAADAAAAJAAAAEYAAABeAAAAQmVhckZvcm0AAAAAUmFuZ2VfRXhMb25nAFWL7FFqAYtFEFBoAAAAAItNCIsRi00Ii4KcAQAA/9A7RRB1H4tNDFGLVQhSaAwAAACLRRCLEItNEItCUP/Q2V386wnZBWwAAADZXfzZRfyL5V3DAABgQQ==</compiledString>
 		<returnType>float</returnType>
-		<sString>sender.applBearForm(UNIT) == pMisc ? cRange_ExLong : cRange_Medium</sString>
+		<sString>sender.applBearForm(UNIT) == pMisc ? cRange_ExLong :14</sString>
 	</useRange>
 	<useRangeMaterial href="/Effects/UI/AOESelection/Radius.MTRL" />
 	<variativeMaxTalentStats />

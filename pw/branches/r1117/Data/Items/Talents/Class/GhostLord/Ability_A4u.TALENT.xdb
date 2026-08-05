@@ -99,6 +99,7 @@
 						</var>
 					</UnitConstant>
 				</Item>
+				<Item href="/Items/Talents/Class/GhostLord/const_A0_AddStrength" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

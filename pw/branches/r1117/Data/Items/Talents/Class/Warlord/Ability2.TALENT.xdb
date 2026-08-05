@@ -1042,7 +1042,7 @@
 	<persistentId>Warlord_A2</persistentId>
 	<prerequisiteTalents />
 	<rarity>Class</rarity>
-	<requireLineOfSight>true</requireLineOfSight>
+	<requireLineOfSight>false</requireLineOfSight>
 	<shortDescription textref="/Items/Talents/Class/Warlord/Ability2.TALENT_shortDescription.txt" />
 	<talentRollGroups>63</talentRollGroups>
 	<talentStats />

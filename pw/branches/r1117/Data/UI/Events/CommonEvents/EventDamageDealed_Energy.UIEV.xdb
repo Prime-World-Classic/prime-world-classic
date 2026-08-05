@@ -86,7 +86,7 @@
 	<BackLink DBID="/Items/Talents/Class/Bard/A4_SummonViolin.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bard/status_A1u_DoT.APLR" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/BladeDancer/appl_A4_2_Damage.APLR" Count="1" />
-	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1u.TALENT" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A1.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A2.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A0.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Chronicle/Ability_A1.TALENT" Count="2" />
@@ -280,6 +280,7 @@
 	<BackLink DBID="/Items/Talents/Level3/G101_LifeReg-Str.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/Class/Bomber/Ability_A3.TALENT" Count="1" />
 	<BackLink DBID="/Items/Talents/TalentKits/Redset7_2_Pirate/program_Redset7_2_EvadeOrRange.APLR" Count="1" />
+	<BackLink DBID="/Items/Talents/Class/Ratcatcher/Ability4.TALENT" Count="2" />
 	<signRecipients>EVENT_PARTICIPANTS</signRecipients>
 	<UISigns>
 		<Item href="/UI/Events/CommonEvents/EventDamageDealed_Energy.UIEV" id="FCDDC7F1-12E2-4611-8C2F-927182843C56">

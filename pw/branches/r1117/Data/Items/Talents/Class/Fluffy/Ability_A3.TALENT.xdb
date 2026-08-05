@@ -123,7 +123,7 @@
 													<returnType>bool</returnType>
 													<sString>0</sString>
 												</continueCondition>
-												<continueEvents>2</continueEvents>
+												<continueEvents>1</continueEvents>
 												<delay>
 													<compiledString></compiledString>
 													<returnType>float</returnType>
@@ -356,9 +356,9 @@
 					<UnitConstant>
 						<name>A3_FluffyDamage</name>
 						<var>
-							<compiledString>FR4AAAAHAAAAJQAAAD4AAAB4AAAAggAAALAAAAC+AAAAyAAAAEZsdWZmeV9BMF9TVVAAAABGbHVmZnlfQTBfU1VQAFWL7IPsFGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdEZqAVHZBRABAADZHCRR2QUMAQAA2RwkagCLVQiLAotNCIuQNAEAAP/SUdkcJGoBi0UQixCLTRCLQmD/0NwNBAEAAN1d8Os+agFR2QUQAQAA2RwkUdkFDAEAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DdXfDdRfDZXezZReyL5V3DmpmZmZmZ8T8AAIhBAAD6Qg==</compiledString>
+							<compiledString>FR4AAAAHAAAAJQAAAD4AAAB4AAAAggAAALAAAAC+AAAAyAAAAEZsdWZmeV9BMF9TVVAAAABGbHVmZnlfQTBfU1VQAFWL7IPsFGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdEZqAVHZBRABAADZHCRR2QUMAQAA2RwkagCLVQiLAotNCIuQNAEAAP/SUdkcJGoBi0UQixCLTRCLQmD/0NwNBAEAAN1d8Os+agFR2QUQAQAA2RwkUdkFDAEAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DdXfDdRfDZXezZReyL5V3DZmZmZmZm8j8AAJhBAAAJQw==</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Fluffy_A0_SUP") ? damageScale( sIntellect, 17, 125)*1.1 : damageScale( sIntellect, 17, 125)</sString>
+							<sString>tal("Fluffy_A0_SUP") ? damageScale( sIntellect, 19, 137)*1.15 : damageScale( sIntellect, 19, 137)</sString>
 						</var>
 					</UnitConstant>
 				</Item>
@@ -387,9 +387,9 @@
 					<UnitConstant>
 						<name>A3_MosterDamage</name>
 						<var>
-							<compiledString>FR4AAAAHAAAAJQAAAD4AAAB4AAAAggAAALAAAAC+AAAAyAAAAEZsdWZmeV9BMF9TVVAAAABGbHVmZnlfQTBfU1VQAFWL7IPsFGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdEZqAVHZBRABAADZHCRR2QUMAQAA2RwkagCLVQiLAotNCIuQNAEAAP/SUdkcJGoBi0UQixCLTRCLQmD/0NwNBAEAAN1d8Os+agFR2QUQAQAA2RwkUdkFDAEAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DdXfDdRfDZXezZReyL5V3DmpmZmZmZ8T8AAIpCAIABRA==</compiledString>
+							<compiledString>FR4AAAAHAAAAJQAAAD4AAAB4AAAAggAAALAAAAC+AAAAyAAAAEZsdWZmeV9BMF9TVVAAAABGbHVmZnlfQTBfU1VQAFWL7IPsFGgAAAAAi0UIixCLTQiLgqgBAAD/0IXAdCpoEAAAAItNCIsRi00Ii4KoAQAA/9CJRfyLTfyLEYtN/ItCBP/QiEX76wTGRfsAD7ZN+4XJdEZqAVHZBRABAADZHCRR2QUMAQAA2RwkagCLVQiLAotNCIuQNAEAAP/SUdkcJGoBi0UQixCLTRCLQmD/0NwNBAEAAN1d8Os+agFR2QUQAQAA2RwkUdkFDAEAANkcJGoAi00IixGLTQiLgjQBAAD/0FHZHCRqAYtNEIsRi00Qi0Jg/9DdXfDdRfDZXezZReyL5V3DZmZmZmZm8j8AAJhCAEAORA==</compiledString>
 							<returnType>float</returnType>
-							<sString>tal("Fluffy_A0_SUP") ? damageScale( sIntellect, 69, 518)*1.1 : damageScale( sIntellect, 69, 518)</sString>
+							<sString>tal("Fluffy_A0_SUP") ? damageScale( sIntellect, 76, 569)*1.15 : damageScale( sIntellect, 76, 569)</sString>
 						</var>
 					</UnitConstant>
 				</Item>

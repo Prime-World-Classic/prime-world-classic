@@ -4,8 +4,8 @@
 	<BackLink DBID="/Items/Talents/Class/IronKnight/Ability_A3u.TALENT" Count="1" />
 	<name>A3_Damage</name>
 	<var>
-		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAIQgAAgUM=</compiledString>
+		<compiledString>FQAAAAACAAAACAAAABIAAABVi+xqAVHZBUQAAADZHCRR2QVAAAAA2RwkagCLRQiLEItNCIuCMAEAAP/QUdkcJGoBi00QixGLTRCLQmD/0F3DAAAUQgCAjUM=</compiledString>
 		<returnType>float</returnType>
-		<sString>damageScale (sStrength, 34, 258)</sString>
+		<sString>damageScale (sStrength, 37, 283)</sString>
 	</var>
 </UnitConstant>

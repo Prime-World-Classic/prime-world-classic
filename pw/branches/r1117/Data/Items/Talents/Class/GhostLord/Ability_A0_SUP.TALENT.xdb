@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Talent>
 	<BackLink DBID="/Items/Talents/Class/GhostLord/Ability_A2_SUP.TALENT" Count="1" />
-	<BackLink DBID="/Items/Talents/GhostLord.TALENTSET" Count="1" />
+	<BackLink DBID="/Items/Talents/GhostLord.TALENTSET" Count="2" />
 	<BackLink DBID="/Items/Talents/TalentList_Mighty/GhostLord_Mighty.TALENTSET" Count="1" />
 	<BackLink DBID="/Social.ROOT" Count="1" />
 	<activationConditions />
@@ -66,6 +66,7 @@
 				</Item>
 				<Item href="/Items/Talents/Class/GhostLord/const_A0_SUP_BonusDefenceStats" />
 				<Item href="/Items/Talents/Class/GhostLord/const_A0_SUP_BonusDuration" />
+				<Item href="/Items/Talents/Class/GhostLord/const_A0_SUP_BonusDefenceStatsForHero" />
 			</vars>
 		</UnitConstantsContainer>
 	</constants>

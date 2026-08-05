@@ -99,72 +99,6 @@
 															<stopEvents>0</stopEvents>
 														</Item>
 														<Item>
-															<applicator href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="7407940B-EE1A-4320-9C5C-69CAB2B98376">
-																<SpellApplicator>
-																	<applyTarget>AbilityTarget</applyTarget>
-																	<caption>замедлить + Taunt</caption>
-																	<enabled>
-																		<compiledString></compiledString>
-																		<returnType>bool</returnType>
-																		<sString>true</sString>
-																	</enabled>
-																	<formulaName></formulaName>
-																	<LoggingEvent>-1</LoggingEvent>
-																	<providerName></providerName>
-																	<spell href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="8AC2C148-83F5-40AB-97AD-ABC112A3FE05">
-																		<Spell>
-																			<applicators>
-																				<Item href="/Heroes/DefaultStatus/_SLOW_MOVE.APLR" />
-																				<Item href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="6CF490A6-3138-45D9-B573-EC1D67B5E709">
-																					<StatusApplicator parent="/Heroes/DefaultStatus/_TAUNT_status.APLR">
-																						<image href="/UI/Styles/Icons/Heroes/Werewolf/A4.ITEX" />
-																					</StatusApplicator>
-																				</Item>
-																			</applicators>
-																			<dispatch href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="2F233B1F-7278-4CD4-87F4-3D459558A239">
-																				<DispatchImmediate>
-																					<alwaysApply>false</alwaysApply>
-																					<applyEffect>
-																						<Item href="" />
-																						<Item href="" />
-																					</applyEffect>
-																					<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
-																					<applyEffectOrientation>Default</applyEffectOrientation>
-																					<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
-																					<dieAfterApply>true</dieAfterApply>
-																					<dispatchEffect>
-																						<Item href="" />
-																						<Item href="" />
-																					</dispatchEffect>
-																					<flags>0</flags>
-																					<instantApply>false</instantApply>
-																				</DispatchImmediate>
-																			</dispatch>
-																		</Spell>
-																	</spell>
-																	<spellTarget>ApplicatorTarget</spellTarget>
-																	<targetSelector href="" />
-																</SpellApplicator>
-															</applicator>
-															<continueCondition>
-																<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
-																<returnType>bool</returnType>
-																<sString>0</sString>
-															</continueCondition>
-															<continueEvents>1</continueEvents>
-															<delay>
-																<compiledString></compiledString>
-																<returnType>float</returnType>
-																<sString>-1.0</sString>
-															</delay>
-															<stopCondition>
-																<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
-																<returnType>bool</returnType>
-																<sString>0</sString>
-															</stopCondition>
-															<stopEvents>0</stopEvents>
-														</Item>
-														<Item>
 															<applicator href="/Items/Talents/Class/Werewolf/A2_Jump.APLR" />
 															<continueCondition>
 																<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
@@ -298,6 +232,72 @@
 																<sString>0</sString>
 															</continueCondition>
 															<continueEvents>2</continueEvents>
+															<delay>
+																<compiledString></compiledString>
+																<returnType>float</returnType>
+																<sString>-1.0</sString>
+															</delay>
+															<stopCondition>
+																<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																<returnType>bool</returnType>
+																<sString>0</sString>
+															</stopCondition>
+															<stopEvents>0</stopEvents>
+														</Item>
+														<Item>
+															<applicator href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="7407940B-EE1A-4320-9C5C-69CAB2B98376">
+																<SpellApplicator>
+																	<applyTarget>AbilityTarget</applyTarget>
+																	<caption>замедлить + Taunt</caption>
+																	<enabled>
+																		<compiledString></compiledString>
+																		<returnType>bool</returnType>
+																		<sString>true</sString>
+																	</enabled>
+																	<formulaName></formulaName>
+																	<LoggingEvent>-1</LoggingEvent>
+																	<providerName></providerName>
+																	<spell href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="8AC2C148-83F5-40AB-97AD-ABC112A3FE05">
+																		<Spell>
+																			<applicators>
+																				<Item href="/Heroes/DefaultStatus/_SLOW_MOVE.APLR" />
+																				<Item href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="6CF490A6-3138-45D9-B573-EC1D67B5E709">
+																					<StatusApplicator parent="/Heroes/DefaultStatus/_TAUNT_status.APLR">
+																						<image href="/UI/Styles/Icons/Heroes/Werewolf/A4.ITEX" />
+																					</StatusApplicator>
+																				</Item>
+																			</applicators>
+																			<dispatch href="/Items/Talents/Class/Werewolf/Ability2.TALENT" id="2F233B1F-7278-4CD4-87F4-3D459558A239">
+																				<DispatchImmediate>
+																					<alwaysApply>false</alwaysApply>
+																					<applyEffect>
+																						<Item href="" />
+																						<Item href="" />
+																					</applyEffect>
+																					<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+																					<applyEffectOrientation>Default</applyEffectOrientation>
+																					<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+																					<dieAfterApply>true</dieAfterApply>
+																					<dispatchEffect>
+																						<Item href="" />
+																						<Item href="" />
+																					</dispatchEffect>
+																					<flags>0</flags>
+																					<instantApply>false</instantApply>
+																				</DispatchImmediate>
+																			</dispatch>
+																		</Spell>
+																	</spell>
+																	<spellTarget>ApplicatorTarget</spellTarget>
+																	<targetSelector href="" />
+																</SpellApplicator>
+															</applicator>
+															<continueCondition>
+																<compiledString>FQAAAAAAAAAAVYvsMsBdww==</compiledString>
+																<returnType>bool</returnType>
+																<sString>0</sString>
+															</continueCondition>
+															<continueEvents>1</continueEvents>
 															<delay>
 																<compiledString></compiledString>
 																<returnType>float</returnType>
