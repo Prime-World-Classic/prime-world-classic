@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "CommandSerializer.h"
 #include <CxxTest.h>
 #include "WorldCommand.h"

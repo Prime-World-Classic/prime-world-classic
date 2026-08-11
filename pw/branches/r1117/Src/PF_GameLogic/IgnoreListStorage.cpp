@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "IgnoreListStorage.h"
 #include "../System/ChunklessSaver.h"
 #include "../System/Crc32Checksum.h"
@@ -100,7 +100,7 @@ namespace
 
       TLines lines;
 
-      NStr::SplitString(szBuffer.c_str() + 1, &lines, L"\r\n"); // пропускаем один wchar_t с BOM
+      NStr::SplitString(szBuffer.c_str() + 1, &lines, L"\r\n"); //   wchar_t  BOM
 
       TLines::const_iterator it = lines.begin();
       TLines::const_iterator it_end = lines.end();
@@ -482,7 +482,7 @@ namespace NGameX
     if (!listener)
       return;
 
-    // TODO: не добавлять listener'а, если он уже зарегистрирован
+    // TODO:   listener',    
 
     listeners.push_back(listener);
   }

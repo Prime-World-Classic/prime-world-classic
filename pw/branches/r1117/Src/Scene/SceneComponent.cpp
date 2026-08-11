@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "../Render/MaterialSpec.h"
 #include "../Render/sceneconstants.h"
-#include "../Render/DebugRenderer.h"
+#include "../Render/debugrenderer.h"
 #include "HeightsController.h"
 #include "SceneObject.h"
 #include "SceneObjectUtils.h"

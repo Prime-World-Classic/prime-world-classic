@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmd4_vendor.a "CMakeFiles/md4_vendor.dir/home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/MD4/md4c.c.o"
+/usr/bin/ranlib libmd4_vendor.a

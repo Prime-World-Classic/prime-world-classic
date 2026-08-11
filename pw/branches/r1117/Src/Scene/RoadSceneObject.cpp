@@ -1,8 +1,8 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "RoadSceneObject.h"
 #include "../Render/MeshResource.h"
-#include <Terrain\RoadPrimitive.h>
-#include "../Render/debugRenderer.h"
+#include <Terrain/RoadPrimitive.h>
+#include "../Render/debugrenderer.h"
 #include "../Render/renderresourcemanager.h"
 #include "../Terrain/Terrain.h"
 

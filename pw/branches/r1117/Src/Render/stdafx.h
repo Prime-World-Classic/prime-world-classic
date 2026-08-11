@@ -4,7 +4,7 @@
 #include "../libdb/libdbStdAfx.h"
 #include "specific.h"
 
-#include "Vendor\DirectX\Include\DxErr.h"
+#include "Vendor/DirectX/Include/DxErr.h"
 #include "NullRenderSignal.h"
 
 #define NI_DX_THROW( hr, user_text ) NI_ASSERT_TRACE( hr == D3D_OK, NStr::StrFmt("%s; Failed code: 0x%08X, error: %s description: %s", user_text, hr, DXGetErrorStringA(hr), DXGetErrorDescriptionA(hr)) );

@@ -3,7 +3,7 @@
 #define AOERENDERER_H_INCLUDED
 
 #include "primitive.h"
-#include "Material.h"
+#include "material.h"
 
 namespace Render
 {

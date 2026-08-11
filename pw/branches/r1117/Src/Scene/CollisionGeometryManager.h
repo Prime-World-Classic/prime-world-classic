@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../libdb/db.h"
+#include "../libdb/Db.h"
 #include "DBSceneBase.h"
 
 namespace NScene

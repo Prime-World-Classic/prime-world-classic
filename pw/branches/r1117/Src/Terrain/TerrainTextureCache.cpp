@@ -1,8 +1,8 @@
-#include "StdAfx.h"
-#include <Render\batch.h>
+#include "stdafx.h"
+#include <Render/batch.h>
 #include "TerrainTextureCache.h"
-#include <System\BitData.h>
-#include <Terrain\TerrainElement.h>
+#include <System/BitData.h>
+#include <Terrain/TerrainElement.h>
 
 DEFINE_DEV_VAR(s_debugCache, false, "debug_TexCache", STORAGE_NONE)
 DEFINE_DEV_VAR(s_insideOnly, false, "gfx_CacheInsideOnly", STORAGE_NONE);

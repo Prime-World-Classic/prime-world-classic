@@ -1,5 +1,5 @@
 #pragma once
-#include "System\StarForce\HiddenVars.h"
+#include "System/StarForce/HiddenVars.h"
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 class CBSpline
 {
@@ -14,7 +14,7 @@ public:
 public:
 	CBSpline() : x( VNULL2 ), dx( VNULL2 ), d2x( VNULL2 ), d3x( VNULL2 ) {}
 
-	// для просмотра вперёд на предмет залоканных тайлов на пути
+	//         
 	const static int   N_OF_ITERATONS;
 
   void Init( const CVec2 &p3, const CVec2 &p2, const CVec2 &p1, const CVec2 &p0 );

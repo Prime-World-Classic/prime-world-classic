@@ -4,7 +4,7 @@
 
 #include "SceneObjectCreation.h"
 
-#include "../Render/DebugRenderer.h"
+#include "../Render/debugrenderer.h"
 #include "LightingScene.h"
 #include "SceneObjectUtils.h"
 
@@ -311,7 +311,7 @@ void SceneObject::UpdateForced( float timeDiff, bool isUnfreeze, bool isClientVi
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void SceneObject::Update( float timeDiff, bool isForcedUpdate )
 {
-  //Вызывается более 5000 раз
+  //  5000 
   //NI_PROFILE_HEAVY_FUNCTION
 
   if (!pScene) 

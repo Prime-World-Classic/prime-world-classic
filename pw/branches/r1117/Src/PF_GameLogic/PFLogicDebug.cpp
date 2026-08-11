@@ -8,7 +8,7 @@
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
 
-#include "../System/fixedstring.h"
+#include "../System/fixedString.h"
 #include "../System/nalgoritm.h"
 
 #ifdef WIN32

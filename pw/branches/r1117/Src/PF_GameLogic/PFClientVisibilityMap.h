@@ -12,7 +12,7 @@
 
 #include "../Scene/RenderableScene.h"
 #include "../Render/RenderInterface.h"
-#include "../Render/Renderer.h"
+#include "../Render/renderer.h"
 #include "../Render/batch.h"
 #include "../Render/texture.h"
 #include "../Render/Blur.h"
@@ -234,7 +234,7 @@ public:
 
   virtual void                  Update(float timeDelta);
   
-  static int GetStepCountDelay() { return 4; } //возвращаем номер степа, на котором варфог уже полностью сформирован - подобран эмпирическим путем.
+  static int GetStepCountDelay() { return 4; } //  ,       -   .
   const Render::Texture2DRef&   GetTextureSrc()     { return m_texSource; }
   const Render::Texture2DRef&   GetTexture()        { return m_texBlended; }
   const Render::Texture2DRef&   GetTexture(int i)   { return m_texStep[i == m_texIndex]; }

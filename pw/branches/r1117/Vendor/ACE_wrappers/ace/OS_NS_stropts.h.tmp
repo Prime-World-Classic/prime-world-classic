@@ -1,0 +1,6 @@
+
+#if defined (ACE_LACKS_STROPTS_H)
+// Stub for Linux - isastream not available
+  ACE_NAMESPACE_INLINE_FUNCTION
+  int isastream (ACE_HANDLE handle);
+#endif

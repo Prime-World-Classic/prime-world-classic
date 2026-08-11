@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <math.h>
 #include "NetAcks.h"
 #include "../System/BitStreams.h"
@@ -22,9 +22,9 @@ CAckTracker::CAckTracker()
 	fRTT = F_INITIAL_RTT;
 	fAvrgRTT = fRTT;
 	fAvrgRTT2 = sqr( fAvrgRTT );
-	// 1 мало, т.к. в начале первые пакеты с обоих сторон не имеют ack`ов. Как следствие обе стороны приходят в состояние
-	// "хочу послать подтверждение о первом приеме, но не могу, т.к. окно занято не подтвержденным первым сообщением"
-	// это состояние разрешается по таймауту. Чтобы это происходило сразу нужно окно как минимум 2
+	// 1 , ..          ack`.       
+	// "     ,   , ..      "
+	//     .         2
 	fWindow = MIN_WINDOWS_SIZE;
 	nFlyPackets = 0;
 	//fUpdateTimeDelay = 0.04f;// * ( 0.5f + (dwTick & 0xff ) / 255.0 );
@@ -44,7 +44,7 @@ CAckTracker::CAckTracker()
 	nPingPacketsReceived = 0;
 	fSumPktRTT4Period = 0;
 	fLastPingUpdateTime = fCurrentTime;
-	//bHasNewPacketToAck = true; // так делать нельзя: не все пакеты содержат данные!
+	//bHasNewPacketToAck = true; //   :     !
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*void CAckTracker::SetRate( int nBytesPerSec )

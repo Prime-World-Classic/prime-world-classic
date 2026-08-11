@@ -35,7 +35,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
  */
-#include "stdafx.h"
+#include "StdAfx.h"
 
 #include "npn.h"
 #include "Pluginhostctrl.h"

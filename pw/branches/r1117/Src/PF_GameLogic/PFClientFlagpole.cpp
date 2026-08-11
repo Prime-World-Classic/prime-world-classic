@@ -3,7 +3,7 @@
 #include "PFClientFlagpole.h"
 #include "../Scene/AnimatedSceneComponent.h"
 #include "../PF_Core/EffectsPool.h"
-#include <Render\SkeletalMesh.h>
+#include <Render/SkeletalMesh.h>
 
 #include "PFClientApplicators.h"
 #include "AdventureScreen.h"

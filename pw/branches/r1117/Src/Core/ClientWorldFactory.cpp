@@ -1,8 +1,8 @@
 #error "Removed from project by BVS (12.12.2008) due to world-client communication simplification"
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ClientWorldFactory.h"
-#include "..\System\StrProc.h"
+#include "../System/StrProc.h"
 
 namespace NClientFactory
 {
@@ -32,7 +32,7 @@ void RegisterClientType( int clientID, int worldID )
 	GetRegistry()[worldID] = clientID;
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// создать объект по его typeID
+//     typeID
 CObjectBase *MakeObject( int worldID )
 {
 	TClientToWorldHash::iterator it = GetRegistry().find( worldID );

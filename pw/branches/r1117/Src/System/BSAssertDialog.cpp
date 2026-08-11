@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "../MemoryLib/SymAccess.h"
 #include "StackWalk.h"

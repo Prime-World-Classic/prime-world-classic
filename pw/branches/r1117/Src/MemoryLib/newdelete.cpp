@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "newdelete.h"
+#include "NewDelete.h"
 #include "SymAccess.h"
 #ifndef NEW_NOT_THROWS
 #include "NewHandlerDetails.h"
@@ -602,15 +602,15 @@ void* NEWDEL_CCDECL operator new( size_t count )
   #ifndef ALLOC_DATA_DEBUG_INIT
     return MAlloc<false>(count, 0);
   #else
-    //На LittleEndian архитектурах, для всех типов, достаточно одного байта для определения 
-    //изменения младших разрядов справа от выделенной памяти
-    //Кроме того, для char, не надо отдельно заботится о выравнивании
-    //При проверки затирания памяти слева от запрошенной памяти становится острой проблема выравнивания.
-    //Дело в том, что malloc обеспечивает выравнивание памяти по 8/16 байтовой границе в 32/64
-    //разрядных системах (http://msdn.microsoft.com/en-us/library/ycsb6wwf(v=VS.100).aspx)
-    //и тратить на такую проверку дополнительно 8-16 байт на каждую аллокацию достаточно расточительно,
-    //но кроме того nedalloc::nedblksize возвращает размер >= запрошенному и для того чтобы гарантированно отловить 
-    //выход за границы хранить размер всё же придётся, тогда и проверку слева можно осуществить
+    // LittleEndian ,   ,      
+    //      
+    // ,  char,      
+    //           .
+    //  ,  malloc     8/16    32/64
+    //  (http://msdn.microsoft.com/en-us/library/ycsb6wwf(v=VS.100).aspx)
+    //      8-16      ,
+    //   nedalloc::nedblksize   >=        
+    //       ,      
     
     const size_t allocSize = sizeof(DebugHeader) + count + sizeof(unsigned char);
     void * const pRes = MAlloc<false>(allocSize, 0);

@@ -5,7 +5,7 @@
 #include "../UI/Window.h"
 #include "../UI/Resolution.h"
 
-#include "../Render/AABB.h"
+#include "../Render/aabb.h"
 #include "../Scene/SceneObject.h"
 #include "../Scene/Camera.h"
 

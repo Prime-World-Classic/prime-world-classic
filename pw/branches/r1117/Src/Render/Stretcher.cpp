@@ -1,7 +1,7 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ImmediateRenderer.h"
 #include "Stretcher.h"
-#include "..\System\Math\ieeehalfprecision.h"
+#include "../System/Math/ieeehalfprecision.h"
 
 namespace Render
 {

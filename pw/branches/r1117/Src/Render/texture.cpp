@@ -1,7 +1,7 @@
 #include "stdafx.h"
 
 #include "renderflagsconverter.h"
-#include "Texture.h"
+#include "texture.h"
 #include "renderresourcemanager.h"
 #include "IConfigManager.h"
 #include "ImmediateRenderer.h"

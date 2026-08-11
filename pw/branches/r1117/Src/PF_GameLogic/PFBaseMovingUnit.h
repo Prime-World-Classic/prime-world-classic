@@ -2,7 +2,7 @@
 
 #include "PathTools.h"
 #include "PFBaseUnit.h"
-#include "System\StarForce\HiddenVars.h"
+#include "System/StarForce/HiddenVars.h"
 
 class CCommonStaticPath;
 enum EPathRestriction;

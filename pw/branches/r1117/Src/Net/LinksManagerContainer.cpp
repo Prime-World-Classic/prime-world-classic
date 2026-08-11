@@ -2,7 +2,7 @@
 #include "NetDriver.h"
 #include "LinksManager.h"
 
-#include "..\System\Commands.h"
+#include "../System/Commands.h"
 
 const int N_DEFAULT_GAME_PORT = 8888;
 

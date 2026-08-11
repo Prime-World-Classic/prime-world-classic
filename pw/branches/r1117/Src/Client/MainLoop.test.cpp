@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include <CxxTest.h>
 
 #include "MainLoop.h"
@@ -99,23 +99,23 @@ void CScreenTests::IndependCommands()
 	const int nTotalScreensCount = NMainLoop::GetScreens().size();
 	const int nDrawCalles = pStubScreen->GetDraw();
 	pStubScreen->RemoveMeOnNextStep();
-	// OnBeforeClose должен возвращать false
+	// OnBeforeClose   false
 	pStubScreen->DoNotAllowRemoveMe();
 	TS_ASSERT_EQUALS( pStubScreen->OnBeforeClose(), false );
 	TS_ASSERT_EQUALS( NMainLoop::Step( true ), true);
-	// проверяем что команда на удаление не выполняется прямо в этом Step'е, выполниться она должна в следущем
+	//           Step',     
 	TS_ASSERT_EQUALS( NMainLoop::GetScreens().size(), nTotalScreensCount );
 	TS_ASSERT_EQUALS( NMainLoop::Step( true ), true);
-	// теперь команда должны была обламаться, т.к. OnBeforeClose нам вернул false, но мы поместили еще одну команду на удаление самих себя в стек!!!
+	//     , .. OnBeforeClose   false,            !!!
 	TS_ASSERT_EQUALS( NMainLoop::GetScreens().size(), nTotalScreensCount );
 	pStubScreen->AllowRemoveMe();
 	TS_ASSERT_DIFFERS( pStubScreen->OnBeforeClose(), false );
-	// а вот теперь нас должны были прибить, но сначала нам должны были позвать Draw, вообще нам Draw должны были позвать 3 (по количеству Step) раз
+	//       ,       Draw,   Draw    3 (  Step) 
 	TS_ASSERT_EQUALS( NMainLoop::Step( true ), false);
 	TS_ASSERT_EQUALS( NMainLoop::GetScreens().size(), nTotalScreensCount - 1 );
-	// я могу спросить ->GetDraw, т.к. сам держу на экран CObj, поэтому его уничтожение в стеке экранов меня не волнует
+	//    ->GetDraw, ..     CObj,         
 	TS_ASSERT_EQUALS( pStubScreen->GetDraw(), nDrawCalles + 3 );
-	// а вот тут я не должне упать, у меня есть команда, которая хочет удалить невалидный экран
+	//       ,    ,     
 	TS_ASSERT_EQUALS( NMainLoop::Step( true ), false);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

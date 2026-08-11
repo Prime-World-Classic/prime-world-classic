@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "FriendsController.h"
 
 #include "AdventureFlashInterface.h"
@@ -84,7 +84,7 @@ namespace NGameX
     if (!flashInterface || !socialServer)
       return;
 
-    //пока всего один листенер так что без свитча.
+    //       .
     int playerId;
     sscanf_s(args,"%d", &playerId);
 

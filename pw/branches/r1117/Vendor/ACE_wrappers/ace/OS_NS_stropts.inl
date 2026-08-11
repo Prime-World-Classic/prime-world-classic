@@ -1,6 +1,7 @@
 // -*- C++ -*-
 //
 // $Id: OS_NS_stropts.inl 80826 2008-03-04 14:51:23Z wotte $
+// Patched for Linux compatibility
 
 #include "ace/os_include/os_errno.h"
 #include "ace/OS_NS_unistd.h"
@@ -8,8 +9,11 @@
 #include "ace/OS_NS_macros.h"
 #include "ace/OS_Memory.h"
 #include "ace/OS_QoS.h"
+#include <sys/ioctl.h>
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
+
+#if !defined (ACE_LACKS_STROPTS_H)
 
 #if defined (ACE_LACKS_CONST_STRBUF_PTR)
 typedef struct strbuf *ACE_STRBUF_TYPE;
@@ -105,24 +109,6 @@ ACE_OS::fdetach (const char *file)
 }
 
 ACE_INLINE int
-ACE_OS::ioctl (ACE_HANDLE handle,
-               ACE_IOCTL_TYPE_ARG2 cmd,
-               void *val)
-{
-  ACE_OS_TRACE ("ACE_OS::ioctl");
-
-#if defined (ACE_WIN32)
-  ACE_SOCKET sock = (ACE_SOCKET) handle;
-  ACE_SOCKCALL_RETURN (::ioctlsocket (sock, cmd, reinterpret_cast<unsigned long *> (val)), int, -1);
-#elif defined (ACE_HAS_IOCTL_INT_3_PARAM)
-  ACE_OSCALL_RETURN (::ioctl (handle, cmd, reinterpret_cast<int> (val)),
-                     int, -1);
-#else
-  ACE_OSCALL_RETURN (::ioctl (handle, cmd, val), int, -1);
-#endif /* ACE_WIN32 */
-}
-
-ACE_INLINE int
 ACE_OS::isastream (ACE_HANDLE handle)
 {
   ACE_OS_TRACE ("ACE_OS::isastream");
@@ -196,6 +182,37 @@ ACE_OS::putpmsg (ACE_HANDLE handle,
   ACE_UNUSED_ARG (band);
   return ACE_OS::putmsg (handle, ctl, data, flags);
 #endif /* ACE_HAS_STREAM_PIPES */
+}
+
+#endif /* !ACE_LACKS_STROPTS_H */
+
+#if defined (ACE_LACKS_STROPTS_H)
+// Stub for isastream on Linux (always returns 0 - not a stream)
+ACE_INLINE int
+ACE_OS::isastream (ACE_HANDLE handle)
+{
+  ACE_UNUSED_ARG (handle);
+  return 0;
+}
+#endif
+
+// ioctl is always available (not STREAMS-specific)
+ACE_INLINE int
+ACE_OS::ioctl (ACE_HANDLE handle,
+               ACE_IOCTL_TYPE_ARG2 cmd,
+               void *val)
+{
+  ACE_OS_TRACE ("ACE_OS::ioctl");
+
+#if defined (ACE_WIN32)
+  ACE_SOCKET sock = (ACE_SOCKET) handle;
+  ACE_SOCKCALL_RETURN (::ioctlsocket (sock, cmd, reinterpret_cast<unsigned long *> (val)), int, -1);
+#elif defined (ACE_HAS_IOCTL_INT_3_PARAM)
+  ACE_OSCALL_RETURN (::ioctl (handle, cmd, reinterpret_cast<int> (val)),
+                     int, -1);
+#else
+  ACE_OSCALL_RETURN (::ioctl (handle, cmd, val), int, -1);
+#endif /* ACE_WIN32 */
 }
 
 ACE_END_VERSIONED_NAMESPACE_DECL

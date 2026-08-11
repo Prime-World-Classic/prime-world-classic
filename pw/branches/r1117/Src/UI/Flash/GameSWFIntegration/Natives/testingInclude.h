@@ -1,3 +1,3 @@
 #pragma once
-#include "testing\CoreWrapper.h"
-#include "testing\TestingFacility.h"
+#include "testing/CoreWrapper.h"
+#include "testing/TestingFacility.h"

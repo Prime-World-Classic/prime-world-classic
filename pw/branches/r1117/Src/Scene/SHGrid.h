@@ -1,5 +1,5 @@
 #pragma once
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "../Render/SHCoeffs.h"
 #include "../Render/MeshResource.h" // debug
 #include "../Render/texture.h"

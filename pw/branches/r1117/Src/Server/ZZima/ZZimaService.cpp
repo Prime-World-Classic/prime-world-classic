@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "ZzimaService.h"
-#include "Base64.h"
+#include "ZZimaService.h"
+#include "base64.h"
 #include <System/Math/MD4.h>
 #include <Vendor/wsdlpull/win32/w3c.h>
 

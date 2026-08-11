@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "CharInfoController.h"
 
 #include "../System/InlineProfiler.h"

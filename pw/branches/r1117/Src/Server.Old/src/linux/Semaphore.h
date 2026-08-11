@@ -10,7 +10,7 @@
 #ifndef _Semaphore_Posix_
 #define _Semaphore_Posix_
 
-#include <semaphore.h>
+#include <Semaphore.h<
 
 class Semaphore
 {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "../System/Array2DWrapper.h"
 
 #ifndef VISUAL_CUTTED

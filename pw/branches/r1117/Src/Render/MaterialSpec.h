@@ -5,9 +5,9 @@
 
 #include "../Render/renderer.h"
 #include "../Render/GlobalMasks.h"
-#include "../Render/Material.h"
+#include "../Render/material.h"
 #include "../Render/DBRender.h"
-#include "../Render/RenderResourceManager.h"
+#include "../Render/renderresourcemanager.h"
 #include "../libdb/AnimatedWrapper.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Render

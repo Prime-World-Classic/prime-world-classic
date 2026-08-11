@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "../System/BitData.h"
 #include "../System/fixedvector.h"
 #include "../Render/MaterialSpec.h"
-#include "../Render/RenderResourceManager.h"
+#include "../Render/renderresourcemanager.h"
 #include "../Render/aabb.h"
 #include "../System/BoundCalcer.h"
 #include "../MeshConverter/MeshHeader.h"

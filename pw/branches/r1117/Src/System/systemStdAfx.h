@@ -125,7 +125,7 @@ using namespace nstl;
 
 #include "DefaultTypes.h"
 #ifndef NI_PLATF_LINUX
-  #include "../MemoryLib/newdelete.h"
+  #include "../MemoryLib/NewDelete.h"
 #endif
 
 #define for if(false); else for					// to achive standard variable scope resolving, declared inside 'for'

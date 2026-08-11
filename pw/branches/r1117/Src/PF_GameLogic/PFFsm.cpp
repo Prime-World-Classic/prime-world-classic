@@ -1,6 +1,6 @@
 #include "stdafx.h"
-#include "PfFsm.h"
-#include "System\InlineProfiler.h"
+#include "PFFsm.h"
+#include "System/InlineProfiler.h"
 #include "PFHeroStates.h"
 
 static int dontClearMomentary = 1;
@@ -205,12 +205,12 @@ void PFHFSM::PushState( CObj<IPFState> const& pState )
   NI_VERIFY( pState, "Trying to push invalid state!", return; );
   if ( !GetCurrentState() || !GetCurrentState()->IsBlocking() )
   {
-    // ”бираем стейт, который должен покинуть стек при пуше нового стейта. —ейчас пока что только PFHeroHoldState.
+    //  ,        .     PFHeroHoldState.
     if ( GetCurrentState() && GetCurrentState()->IsEscaping() )
     {
       CObj<IPFState> curState = PopState();
       if(IsValid(curState))
-        curState->DoLeave( true ); // —читаем это очисткой
+        curState->DoLeave( true ); //   
     }
     //DevTrace("%08x : PFHFSM::PushState(%s)", int(this), pState->GetObjectTypeName());
     stateStack.push_back( pState );

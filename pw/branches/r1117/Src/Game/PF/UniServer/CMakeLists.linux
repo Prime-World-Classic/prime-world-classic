@@ -1,0 +1,283 @@
+cmake_minimum_required(VERSION 3.10)
+project(UniServerApp C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ============================================================
+# Platform detection
+# ============================================================
+if(WIN32)
+    add_definitions(-DNV_WIN_PLATFORM)
+else()
+    add_definitions(-DNV_LINUX_PLATFORM)
+endif()
+
+# ============================================================
+# Directories
+# ============================================================
+set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../../../..)
+set(SRC_DIR ${PROJECT_ROOT}/Src)
+set(VENDOR ${PROJECT_ROOT}/Vendor)
+set(AUTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../UniServerApp.auto)
+
+# ============================================================
+# Find system packages
+# ============================================================
+find_package(Threads REQUIRED)
+find_package(ZLIB REQUIRED)
+
+# ACE (system)
+find_path(ACE_INCLUDE_DIR ace/ACE.h PATHS /usr/include)
+find_library(ACE_LIBRARY NAMES ACE PATHS /usr/lib/x86_64-linux-gnu)
+
+# curl (system)
+find_path(CURL_INCLUDE_DIR curl/curl.h PATHS /usr/include/x86_64-linux-gnu)
+find_library(CURL_LIBRARY NAMES curl PATHS /usr/lib/x86_64-linux-gnu)
+
+# tinyxml (system)
+find_path(TINYXML_INCLUDE_DIR tinyxml.h PATHS /usr/include)
+find_library(TINYXML_LIBRARY NAMES tinyxml PATHS /usr/lib/x86_64-linux-gnu)
+
+# jsoncpp (system)
+find_path(JSONCPP_INCLUDE_DIR json/json.h PATHS /usr/include/jsoncpp)
+find_library(JSONCPP_LIBRARY NAMES jsoncpp PATHS /usr/lib/x86_64-linux-gnu)
+
+message(STATUS "ACE: ${ACE_INCLUDE_DIR} ${ACE_LIBRARY}")
+message(STATUS "curl: ${CURL_INCLUDE_DIR} ${CURL_LIBRARY}")
+message(STATUS "tinyxml: ${TINYXML_INCLUDE_DIR} ${TINYXML_LIBRARY}")
+message(STATUS "jsoncpp: ${JSONCPP_INCLUDE_DIR} ${JSONCPP_LIBRARY}")
+
+# ============================================================
+# Compiler flags
+# ============================================================
+add_definitions(
+    -DDO_NOT_USE_DLLMAIN
+    -DBOOST_ALL_NO_LIB
+    -DTRANSPORT_LAYER_COMPONENT
+    -DNI_FORCE_DISABLE_INLINE_PROFILER
+    -DNI_DISABLE_CRASHRPT
+    -DVISUAL_CUTTED
+    -DSERVER_DB
+    -D_DO_ASSERT
+    -DDB_TYPES_REGISTRATOR_SILENT
+    -DLOG_THREAD_EXIT
+    -DCHECK_TOWN_CONSISTENCY
+)
+
+# ACE_RCSID removed from system ACE 8.x - define as noop
+add_definitions(-DACE_RCSID="")
+
+# ============================================================
+# Include directories (system libs)
+# ============================================================
+include_directories(${ACE_INCLUDE_DIR})
+include_directories(${CURL_INCLUDE_DIR})
+include_directories(${TINYXML_INCLUDE_DIR})
+include_directories(${JSONCPP_INCLUDE_DIR})
+
+# Project includes
+include_directories(${SRC_DIR})
+include_directories(${PROJECT_ROOT})
+include_directories(${PROJECT_ROOT}/..)
+include_directories(${VENDOR})
+include_directories(${VENDOR}/boost)
+include_directories(${VENDOR}/Terabit)
+include_directories(${VENDOR}/Terabit/app)
+include_directories(${VENDOR}/OpenSSL/include)
+include_directories(${VENDOR}/zlib)
+include_directories(${VENDOR}/Thrift)
+include_directories(${VENDOR}/Thrift/thrift-0.9.1)
+include_directories(${VENDOR}/Thrift/thrift-0.9.1/lib/cpp/src)
+include_directories(${VENDOR}/mongoose)
+include_directories(${VENDOR}/UnixEnv)
+include_directories(${VENDOR}/MD4)
+include_directories(${VENDOR}/wsdlpull)
+include_directories(${VENDOR}/wsdlpull/src)
+include_directories(${SRC_DIR}/Game/PF)
+include_directories(${SRC_DIR}/Server)
+include_directories(${SRC_DIR}/Server/NetworkAIO)
+include_directories(${SRC_DIR}/System)
+include_directories(${SRC_DIR}/Network)
+include_directories(${SRC_DIR}/Core)
+include_directories(${SRC_DIR}/libdb)
+include_directories(${SRC_DIR}/MemoryLib)
+include_directories(${SRC_DIR}/Server/RPC)
+include_directories(${SRC_DIR}/Server/ServerAppBase)
+include_directories(${SRC_DIR}/Server/Coordinator)
+include_directories(${SRC_DIR}/Server/ClusterTypes)
+include_directories(${SRC_DIR}/Server/Monitoring)
+include_directories(${SRC_DIR}/Server/Monitoring/MonitoringSvc)
+include_directories(${SRC_DIR}/Server/Monitoring/PerfCounterProvider)
+include_directories(${SRC_DIR}/Server/ClusterAdmin)
+include_directories(${SRC_DIR}/Server/MatchMaking)
+include_directories(${SRC_DIR}/Server/Relay)
+include_directories(${SRC_DIR}/Server/Relay/RelayBalancer)
+include_directories(${SRC_DIR}/Server/Chat)
+include_directories(${SRC_DIR}/Server/Chat/ChatSvc)
+include_directories(${SRC_DIR}/Server/UserManager)
+include_directories(${SRC_DIR}/Server/UserManager/UserManagerSvc)
+include_directories(${SRC_DIR}/Server/ZZima)
+include_directories(${SRC_DIR}/Server/WebClient)
+include_directories(${SRC_DIR}/Server/WebServer)
+include_directories(${SRC_DIR}/Server/HttpGateway)
+include_directories(${SRC_DIR}/Server/RdpTransport)
+include_directories(${SRC_DIR}/Server/NewLogin)
+include_directories(${SRC_DIR}/Server/ClientControl)
+include_directories(${SRC_DIR}/Server/Db)
+include_directories(${SRC_DIR}/Server/AppFramework)
+include_directories(${SRC_DIR}/Server/DebugVarUpdate)
+include_directories(${SRC_DIR}/Server/LogMonitorAgent)
+include_directories(${SRC_DIR}/Network/RUDP)
+include_directories(${SRC_DIR}/System/FileSystem)
+include_directories(${SRC_DIR}/System/Pointers)
+include_directories(${SRC_DIR}/System/BlockData)
+include_directories(${SRC_DIR}/System/Node)
+include_directories(${SRC_DIR}/System/Math)
+include_directories(${SRC_DIR}/System/InlineProfiler3)
+include_directories(${SRC_DIR}/Game/PF/Server)
+include_directories(${SRC_DIR}/Game/PF/Server/Roll)
+include_directories(${SRC_DIR}/Game/PF/Server/LobbyPvx)
+include_directories(${SRC_DIR}/Game/PF/Server/LobbySocial)
+include_directories(${SRC_DIR}/Game/PF/Server/LiveMMaking)
+include_directories(${SRC_DIR}/Game/PF/Server/GameSession)
+include_directories(${SRC_DIR}/Game/PF/Server/GameChatController)
+include_directories(${SRC_DIR}/Game/PF/Server/Accounting)
+include_directories(${SRC_DIR}/Game/PF/Server/Statistic)
+include_directories(${SRC_DIR}/Game/PF/Server/TourneyCfg)
+include_directories(${SRC_DIR}/Game/PF/Server/Censorship)
+include_directories(${SRC_DIR}/Game/PF/Client/LobbyPvx)
+include_directories(${SRC_DIR}/Game/PF/HybridServer)
+include_directories(${SRC_DIR}/Game/PF/UniServer)
+include_directories(${SRC_DIR}/PF_GameLogic)
+
+# ============================================================
+# Build vendored libraries (only those without system equivalents)
+# ============================================================
+
+# --- Terabit (depends on ACE) ---
+file(GLOB_RECURSE TERABIT_SRCS ${VENDOR}/Terabit/*.cpp ${VENDOR}/Terabit/*.c)
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Win.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*windows.*")
+if(TERABIT_SRCS)
+    add_library(Terabit STATIC ${TERABIT_SRCS})
+    target_link_libraries(Terabit PRIVATE ${ACE_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
+else()
+    add_library(Terabit INTERFACE)
+endif()
+
+# --- Thrift (vendored) ---
+file(GLOB_RECURSE THRIFT_SRCS ${VENDOR}/Thrift/thrift-0.9.1/lib/cpp/src/*.cpp)
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*windows.*")
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*Evhttp.*")
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*SSL.*")
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*server/simple.*")
+if(THRIFT_SRCS)
+    add_library(thrift STATIC ${THRIFT_SRCS})
+    target_link_libraries(thrift PRIVATE ${CMAKE_THREAD_LIBS_INIT})
+
+else()
+    add_library(thrift INTERFACE)
+endif()
+
+# --- mongoose (vendored, single C file) ---
+if(EXISTS ${VENDOR}/mongoose/mongoose.c)
+    add_library(mongoose STATIC ${VENDOR}/mongoose/mongoose.c)
+    target_compile_options(mongoose PRIVATE "-include" "${VENDOR}/mongoose/mongoose_linux_prelude.h")
+else()
+    add_library(mongoose INTERFACE)
+endif()
+
+# --- wsdlpull (vendored) ---
+file(GLOB_RECURSE WSDLPULL_SRCS ${VENDOR}/wsdlpull/src/*.cpp)
+list(FILTER WSDLPULL_SRCS EXCLUDE REGEX ".*win32.*")
+if(WSDLPULL_SRCS)
+    add_library(wsdlpull STATIC ${WSDLPULL_SRCS})
+    target_compile_options(wsdlpull PRIVATE -include unistd.h)
+    target_compile_definitions(wsdlpull PRIVATE PACKAGE_VERSION="1.0")
+else()
+    add_library(wsdlpull INTERFACE)
+endif()
+
+# --- MD4 (vendored, skipped due to GCC 15 compatibility) ---
+add_library(md4 INTERFACE)
+
+# --- UnixEnv (vendored compat layer) ---
+file(GLOB UNIXENV_SRCS ${VENDOR}/UnixEnv/*.cpp ${VENDOR}/UnixEnv/*.c)
+if(UNIXENV_SRCS)
+    add_library(unixenv STATIC ${UNIXENV_SRCS})
+else()
+    add_library(unixenv INTERFACE)
+endif()
+
+# ============================================================
+# Collect UniServerApp sources
+# ============================================================
+set(ALL_SOURCES "")
+
+file(STRINGS ${AUTO_DIR}/CMakeLists.txt CMK_INCLUDES REGEX "^include\\(")
+foreach(INCLUDE_LINE ${CMK_INCLUDES})
+    string(REGEX MATCH "include\\((.+\\.cmake)\\)" _ "${INCLUDE_LINE}")
+    set(CMAKE_FILE "${CMAKE_MATCH_1}")
+    if(NOT CMAKE_FILE)
+        continue()
+    endif()
+    if(NOT IS_ABSOLUTE ${CMAKE_FILE})
+        set(CMAKE_FILE ${AUTO_DIR}/${CMAKE_FILE})
+    endif()
+    if(NOT EXISTS ${CMAKE_FILE})
+        continue()
+    endif()
+    file(READ ${CMAKE_FILE} CMK_CONTENT)
+    string(REGEX MATCH "set\\(SOURCES_[^ ]+ (.+)\\)" _ "${CMK_CONTENT}")
+    if(CMAKE_MATCH_1)
+        separate_arguments(SRC_LIST UNIX_COMMAND "${CMAKE_MATCH_1}")
+        foreach(SRC ${SRC_LIST})
+            get_filename_component(CMK_DIR ${CMAKE_FILE} DIRECTORY)
+            set(FULL_SRC ${CMK_DIR}/${SRC})
+            if(EXISTS ${FULL_SRC})
+                list(APPEND ALL_SOURCES ${FULL_SRC})
+            endif()
+        endforeach()
+    endif()
+endforeach()
+
+list(REMOVE_DUPLICATES ALL_SOURCES)
+list(LENGTH ALL_SOURCES SRC_COUNT)
+message(STATUS "Collected ${SRC_COUNT} source files")
+
+# ============================================================
+# Main executable
+# ============================================================
+add_executable(${PROJECT_NAME} ${ALL_SOURCES})
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${ACE_LIBRARY}        # system ACE
+    Terabit               # vendored
+    ${CURL_LIBRARY}       # system curl
+    ${TINYXML_LIBRARY}    # system tinyxml
+    ${JSONCPP_LIBRARY}    # system jsoncpp
+    thrift                # vendored
+    mongoose              # vendored
+    wsdlpull              # vendored
+    md4                   # vendored
+    unixenv               # vendored
+    ${ZLIB_LIB}           # system zlib
+    ${CMAKE_THREAD_LIBS_INIT}
+    ssl
+    crypto
+    dl
+    rt
+    pthread
+)
+
+# ============================================================
+# Build type defaults
+# ============================================================
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough")
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")

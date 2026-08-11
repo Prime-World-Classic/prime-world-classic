@@ -19,7 +19,7 @@
 
 //#pragma warning (push)
 
-#include "StdAfx.h"
+#include "stdafx.h"
 #pragma warning (disable : 4996 4201 4505)
 
 // standard

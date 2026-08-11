@@ -16,7 +16,7 @@
 #include "PFNeutralCreep.h"
 #include "PFMainBuilding.h"
 #include "PFSimpleObject.h"
-#include "PFRoadFlagPole.h"
+#include "PFRoadFlagpole.h"
 #include "PFTree.h"
 #include "PFImpulsiveBuffs.h"
 #include "Client/MainTimer.h"
@@ -637,7 +637,7 @@ void PFAIContainer::StepScript()
       }
       else if ( inString && ( line[i] == ' '  ) )
       {
-        line[i] = '©';
+        line[i] = '';
       }
     }
 
@@ -648,7 +648,7 @@ void PFAIContainer::StepScript()
 
     for( int i = 0; i < args.size(); ++i )
     {
-      NStr::ReplaceAllChars( &args[i], '©', ' ' );
+      NStr::ReplaceAllChars( &args[i], '', ' ' );
     }
 
     if ( line.find( "//" ) != 0 && !line.empty() )
