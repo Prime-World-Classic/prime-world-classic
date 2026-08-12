@@ -20,7 +20,11 @@
 ### Файлы
 - make-links.bat - создаёт junction ссылки на директории **Data**, **Localization**, **Profiles**, **Tools** из `pw\branches\r1117` в `pw_publish\branch\Client\PvP`
 - copy_data_patch.bat - копирует файлы, перечисленные в коммите из `pw\branches\r1117\Data` в `Data_Patch\Data`. Использование `copy_data_patch.bat ea03238`
-- setup_update_repos.bat - инициализирует репозитории обновлений - **content** и **PWCGitUpdates** (тестовые **-test** и публичные версии), с указанием дополнительных remote зеркал
+- `setup_update_repos_https.bat` — инициализирует репозитории обновлений (`content`, `PWCGitUpdates`, а также тестовые версии `content-test` и `pwc-gitupdates-test`) через HTTPS, автоматически добавляя GitLab и GitHub зеркала в список remote-репозиториев.
+- `setup_update_repos_ssh.bat` — инициализирует репозитории обновлений (`content`, `PWCGitUpdates`, а также тестовые версии `content-test` и `pwc-gitupdates-test`) через SSH, автоматически добавляя GitLab и GitHub зеркала в список remote-репозиториев.
+- `setup_update_repos_https.sh` — Linux/macOS-версия скрипта инициализации репозиториев обновлений через HTTPS с настройкой дополнительных remote-зеркал GitLab и GitHub.
+- `setup_update_repos_ssh.sh` — Linux/macOS-версия скрипта инициализации репозиториев обновлений через SSH с настройкой дополнительных remote-зеркал GitLab и GitHub.
+
 - update.sh - скрипт обновления для Linux - Lutris версии
 
 ## Компиляция клиента и сервера
