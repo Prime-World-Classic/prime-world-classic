@@ -19,6 +19,7 @@
 
 #ifndef _THRIFT_TRANSPORT_PLATFORM_SOCKET_H_
 #  define _THRIFT_TRANSPORT_PLATFORM_SOCKET_H_
+#include <sys/time.h>  // gettimeofday for Linux
 
 #ifdef _WIN32
 #  define THRIFT_GET_SOCKET_ERROR ::WSAGetLastError()

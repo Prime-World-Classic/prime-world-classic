@@ -20,7 +20,7 @@
 #ifndef _THRIFT_TREFLECTIONLOCAL_H_
 #define _THRIFT_TREFLECTIONLOCAL_H_ 1
 
-#include <thrift/windows/config.h>
+#include <thrift/thrift-config.h>
 #include <cstring>
 #include <thrift/protocol/TProtocol.h>
 

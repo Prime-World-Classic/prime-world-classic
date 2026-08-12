@@ -3,6 +3,7 @@ project(UniServerApp C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Uses system Boost 1.90 — fully compatible with C++17
 
 # ============================================================
 # Platform detection
@@ -65,8 +66,19 @@ add_definitions(
     -DCHECK_TOWN_CONSISTENCY
 )
 
-# ACE_RCSID removed from system ACE 8.x - define as noop
-add_definitions(-DACE_RCSID="")
+# ============================================================
+# ACE 8.x compatibility defines
+# ============================================================
+# ACE_static_cast removed in ACE 6.x+ — was just static_cast
+add_definitions(-DACE_static_cast=static_cast)
+# ACE::max_handles removed
+add_definitions(-DACE_LACKS_MAX_HANDLES=1)
+# Note: ACE_RCSID handled via ace_compat.h (included via -include)
+
+# ============================================================
+# Thrift 0.9.1 compatibility (uses system Boost 1.90)
+# ============================================================
+add_definitions(-DTHRIFT_STDINT_HEADER="<stdint.h>")
 
 # ============================================================
 # Include directories (system libs)
@@ -81,7 +93,7 @@ include_directories(${SRC_DIR})
 include_directories(${PROJECT_ROOT})
 include_directories(${PROJECT_ROOT}/..)
 include_directories(${VENDOR})
-include_directories(${VENDOR}/boost)
+# System Boost 1.90 at /usr/include/boost — no vendor Boost needed
 include_directories(${VENDOR}/Terabit)
 include_directories(${VENDOR}/Terabit/app)
 include_directories(${VENDOR}/OpenSSL/include)
@@ -159,8 +171,39 @@ include_directories(${SRC_DIR}/PF_GameLogic)
 file(GLOB_RECURSE TERABIT_SRCS ${VENDOR}/Terabit/*.cpp ${VENDOR}/Terabit/*.c)
 list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Win.*")
 list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*windows.*")
+# Exclude app/ subdirectory — examples/demos, all depend on ace/Synch_T.h
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*/app/.*")
+# Exclude tests
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*/tests/.*")
+# Asynch_Acceptor2/Connector2 include ace/Synch_T.h (removed in ACE 8.x)
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Asynch_Acceptor2.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Asynch_Connector2.*")
+# Proactor.cpp
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Proactor\.cpp$")
+# ALL POSIX_AIO files — they depend on POSIX_Asynch_IO.h → ace/Synch_T.h
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*POSIX_AIO_.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*POSIX_Asynch.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*POSIX_Proactor.*")
+# Asynch_IO_Impl uses ACE_static_cast (Windows-specific DWORD)
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*Asynch_IO_Impl\.cpp$")
+# WIN32 files
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*WIN32_.*")
+# SSL files — need ace/SSL (not available in system ACE 8.x)
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*SSL/.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*SSL_.*")
+# AsynchChannel/RefCntProtocol need ace/Synch_T.h via RefCount_T.h
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*AsynchChannel.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*RefCntProtocol.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*RefCount_T.*")
+# BaseAcceptor/BaseConnector need ace/Synch_T.h
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*BaseAcceptor.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*BaseConnector.*")
+# ChannelAcceptor/Connector also pull in ace/Synch_T.h
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*ChannelAcceptor.*")
+list(FILTER TERABIT_SRCS EXCLUDE REGEX ".*ChannelConnector.*")
 if(TERABIT_SRCS)
     add_library(Terabit STATIC ${TERABIT_SRCS})
+    target_compile_options(Terabit PRIVATE -fpermissive)
     target_link_libraries(Terabit PRIVATE ${ACE_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 else()
     add_library(Terabit INTERFACE)
@@ -172,10 +215,27 @@ list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*windows.*")
 list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*Evhttp.*")
 list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*SSL.*")
 list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*server/simple.*")
+# ThreadFactories have incompatible thread::id types with modern Boost/std
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*BoostThreadFactory.*")
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*StdThreadFactory.*")
+# ThreadManager not needed for server
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*ThreadManager.*")
+# H1 related — not needed
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*H1.*")
+# Qt transport not needed for server
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*qt/.*")
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*TQIODevice.*")
+# TNonblockingServer requires libevent (event.h) — not needed for server
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*TNonblockingServer.*")
+# THttpServer requires libevent
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*THttpServer.*")
+# THttpClient requires curl
+list(FILTER THRIFT_SRCS EXCLUDE REGEX ".*THttpClient.*")
 if(THRIFT_SRCS)
     add_library(thrift STATIC ${THRIFT_SRCS})
+    target_compile_options(thrift PRIVATE -fpermissive)
+    target_compile_definitions(thrift PRIVATE _GNU_SOURCE)
     target_link_libraries(thrift PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-
 else()
     add_library(thrift INTERFACE)
 endif()
@@ -278,6 +338,17 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wno-implicit-fallthrough -fpermissive")
+# Copy ACE compatibility header to build dir so -include works from any subdirectory
+# CMAKE_CURRENT_SOURCE_DIR points to build dir when CMakeLists.txt is copied there,
+# so we compute the source dir relative to the build dir (3 levels up)
+set(SRC_COMPAT_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../Src/Game/PF/UniServer/thrift_compat/ace_compat.h)
+if(NOT EXISTS ${SRC_COMPAT_HEADER})
+    # Fallback: if running directly from source dir
+    set(SRC_COMPAT_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/thrift_compat/ace_compat.h)
+endif()
+file(COPY ${SRC_COMPAT_HEADER} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/thrift_compat/)
+set(ACE_COMPAT_HEADER ${CMAKE_CURRENT_BINARY_DIR}/thrift_compat/ace_compat.h)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include${ACE_COMPAT_HEADER}")
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")

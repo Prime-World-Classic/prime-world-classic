@@ -212,7 +212,7 @@ TRB_Asynch_Result::set_completion (ssize_t nbytes, u_long errcode)
 {
   // do not pass -1 as transfer count
   if (nbytes  > 0 )
-    this->bytes_transferred_+= ACE_static_cast (u_long, nbytes);
+    this->bytes_transferred_+= static_cast<u_long>(nbytes);
 
   this->error_ = errcode;
 }

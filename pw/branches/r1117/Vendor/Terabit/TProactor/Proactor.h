@@ -136,14 +136,14 @@ class TPROACTOR_Export TRB_Proactor
 {
   // = Here are the private typedefs that the <TRB_Proactor> uses.
 
-  typedef ACE_Timer_Queue_Iterator_T<TRB_Handler *,
-    TRB_Proactor_Handle_Timeout_Upcall,
-    ACE_SYNCH_RECURSIVE_MUTEX>
+  // ACE 8.x: ACE_Timer_Queue_Iterator_T takes only 1 template arg (TYPE)
+  typedef ACE_Timer_Queue_Iterator_T<TRB_Handler *>
   TIMER_QUEUE_ITERATOR;
   typedef ACE_Timer_List_T<TRB_Handler *,
     TRB_Proactor_Handle_Timeout_Upcall,
     ACE_SYNCH_RECURSIVE_MUTEX>
   TIMER_LIST;
+  // ACE 8.x: ACE_Timer_List_Iterator_T takes 3-4 args (TIME_POLICY has default)
   typedef ACE_Timer_List_Iterator_T<TRB_Handler *,
     TRB_Proactor_Handle_Timeout_Upcall,
     ACE_SYNCH_RECURSIVE_MUTEX>
@@ -152,6 +152,7 @@ class TPROACTOR_Export TRB_Proactor
     TRB_Proactor_Handle_Timeout_Upcall,
     ACE_SYNCH_RECURSIVE_MUTEX>
   TIMER_HEAP;
+  // ACE 8.x: ACE_Timer_Heap_Iterator_T takes 3-4 args like Timer_List_Iterator_T
   typedef ACE_Timer_Heap_Iterator_T<TRB_Handler *,
     TRB_Proactor_Handle_Timeout_Upcall,
     ACE_SYNCH_RECURSIVE_MUTEX>

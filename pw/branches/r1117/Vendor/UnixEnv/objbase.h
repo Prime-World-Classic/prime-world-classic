@@ -1,67 +1,33 @@
 // Stub objbase.h for Linux (no COM support)
+// This file includes windows.h first, then adds COM-specific types
 #pragma once
 
-#include <stdint.h>
-#include <stddef.h>
+#include "windows.h"
 
 #ifndef _OBJBASE_H_STUB_
 #define _OBJBASE_H_STUB_
 
-// Basic Windows types needed by COM
-#ifndef __cplusplus
-typedef unsigned char BYTE;
-#endif
-
-typedef uint32_t DWORD;
-typedef uint16_t WORD;
-typedef uint8_t BYTE_;
-typedef int32_t LONG;
-typedef uint32_t ULONG;
-typedef int BOOL_;
-
-#ifndef BOOL
-#define BOOL int
-#endif
-
-#ifndef TRUE
-#define TRUE 1
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#ifndef WINAPI
-#define WINAPI
-#endif
-
-#ifndef STDMETHODCALLTYPE
-#define STDMETHODCALLTYPE
-#endif
-
+// ============================================================
 // GUID structure
+// ============================================================
+#ifndef _GUID_DEFINED
 typedef struct _GUID {
     unsigned long  Data1;
     unsigned short Data2;
     unsigned short Data3;
     unsigned char  Data4[8];
 } GUID;
+#define _GUID_DEFINED
+#endif
 
 typedef GUID CLSID;
 typedef GUID IID;
 typedef const GUID *REFCLSID;
 typedef const GUID *REFIID;
 
+// ============================================================
 // DEFINE_GUID macro
-#ifdef INITGUID
-#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-    EXTERN_C const GUID DECLSPEC_SELECTANY name = { l, w1, w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
-#else
-#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
-    EXTERN_C const GUID name
-#endif
-
-// Storage class specifiers (empty on Linux)
+// ============================================================
 #ifndef DECLSPEC_SELECTANY
 #ifdef __GNUC__
 #define DECLSPEC_SELECTANY __attribute__((weak))
@@ -82,63 +48,83 @@ typedef const GUID *REFIID;
 #endif
 #endif
 
-// IUnknown interface (stub)
+#ifdef INITGUID
+#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+    EXTERN_C const GUID DECLSPEC_SELECTANY name = { l, w1, w2, { b1, b2, b3, b4, b5, b6, b7, b8 } }
+#else
+#define DEFINE_GUID(name, l, w1, w2, b1, b2, b3, b4, b5, b6, b7, b8) \
+    EXTERN_C const GUID name
+#endif
+
+// ============================================================
+// IUnknown interface
+// ============================================================
 #ifdef __cplusplus
 struct IUnknown {
     virtual HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject) = 0;
     virtual ULONG STDMETHODCALLTYPE AddRef() = 0;
     virtual ULONG STDMETHODCALLTYPE Release() = 0;
+    virtual ~IUnknown() {}
 };
 #endif
 
-// HRESULT type
-#ifndef _HRESULT_DEFINED
-#define _HRESULT_DEFINED
-typedef unsigned long HRESULT;
+// ============================================================
+// CoInitialize / COM functions
+// ============================================================
+#ifndef CO_E_INIT_NOT_INITIALIZED
+#define CO_E_INIT_NOT_INITIALIZED 0x800401F0L
 #endif
 
-// COM inline functions
-#define S_OK            0L
-#define S_FALSE         0x0001L
-#define E_FAIL          0x80004005L
-#define E_NOINTERFACE   0x80004002L
-#define E_NOTIMPL       0x80004001L
-#define E_OUTOFMEMORY   0x8007000EL
-#define E_POINTER       0x80004003L
-#define E_UNEXPECTED    0x8000FFFFL
-#define CO_E_INIT_NOT_INITIALIZED 0x800401F0L
-
-// CoInitialize stub
 #ifdef __cplusplus
 extern "C" {
 #endif
-    HRESULT __attribute__((weak)) CoInitialize(void *pvReserved) { return S_OK; }
-    HRESULT __attribute__((weak)) CoInitializeEx(void *pvReserved, DWORD dwCoInit) { return S_OK; }
-    void __attribute__((weak)) CoUninitialize(void) {}
-    void* __attribute__((weak)) CoTaskMemAlloc(size_t cb) { return malloc(cb); }
-    void __attribute__((weak)) CoTaskMemFree(void *pv) { free(pv); }
-    void* __attribute__((weak)) CoTaskMemRealloc(void *pv, size_t cb) { return realloc(pv, cb); }
-    HRESULT __attribute__((weak)) CLSIDFromProgWStr(const wchar_t *lpszProgID, CLSID *pclsid) { return E_FAIL; }
-    HRESULT __attribute__((weak)) CLSIDFromProgID(const char *lpszProgID, CLSID *pclsid) { return E_FAIL; }
+    __attribute__((weak)) HRESULT CoInitialize(void *pvReserved) { return S_OK; }
+    __attribute__((weak)) HRESULT CoInitializeEx(void *pvReserved, DWORD dwCoInit) { return S_OK; }
+    __attribute__((weak)) void CoUninitialize(void) {}
+    __attribute__((weak)) void* CoTaskMemAlloc(size_t cb) { return malloc(cb); }
+    __attribute__((weak)) void CoTaskMemFree(void *pv) { free(pv); }
+    __attribute__((weak)) void* CoTaskMemRealloc(void *pv, size_t cb) { return realloc(pv, cb); }
+    __attribute__((weak)) HRESULT CLSIDFromProgWStr(const wchar_t *lpszProgID, CLSID *pclsid) { return E_FAIL; }
+    __attribute__((weak)) HRESULT CLSIDFromProgID(const char *lpszProgID, CLSID *pclsid) { return E_FAIL; }
 #ifdef __cplusplus
 }
 #endif
 
-// Interlocked functions (stub - use C11 atomics on Linux)
+// ============================================================
+// Interlocked functions
+// ============================================================
+#ifndef _INTERLOCKED_DEFINED
 #ifdef __cplusplus
 extern "C" {
 #endif
-    LONG __attribute__((weak)) InterlockedIncrement(LONG *Addend) { return __sync_add_and_fetch(Addend, 1); }
-    LONG __attribute__((weak)) InterlockedDecrement(LONG *Addend) { return __sync_sub_and_fetch(Addend, 1); }
-    LONG __attribute__((weak)) InterlockedCompareExchange(LONG *Destination, LONG ExChange, LONG Comperand) {
+    __attribute__((weak)) int InterlockedCompareExchange(LONG *Destination, LONG ExChange, LONG Comperand) {
         return __sync_val_compare_and_swap(Destination, Comperand, ExChange);
     }
+    __attribute__((weak)) LONG InterlockedIncrement(LONG *Addend) { return __sync_add_and_fetch(Addend, 1); }
+    __attribute__((weak)) LONG InterlockedDecrement(LONG *Addend) { return __sync_sub_and_fetch(Addend, 1); }
 #ifdef __cplusplus
 }
 #endif
+#define _INTERLOCKED_DEFINED
+#endif
 
-// Inline ISuccess/HResult check macros
+// ============================================================
+// SUCCEEDED/FAILED macros
+// ============================================================
+#ifndef SUCCEEDED
 #define SUCCEEDED(hr) (((HRESULT)(hr)) >= 0)
+#endif
+#ifndef FAILED
 #define FAILED(hr) (((HRESULT)(hr)) < 0)
+#endif
+
+// ============================================================
+// __uuidof stub (for MSVC extension compatibility)
+// ============================================================
+#ifdef __cplusplus
+// __uuidof is MSVC-specific; on GCC/Clang we can use __builtin_extracting_return_type
+// but for now just provide a no-op that works with DECLSPEC_UUID
+#define __uuidof(x) (*(const GUID*)(0))
+#endif
 
 #endif // _OBJBASE_H_STUB_
