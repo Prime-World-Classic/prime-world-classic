@@ -5,6 +5,7 @@
 #include "IEntityMap.h"
 #include "Transaction.h"
 #include "Types.h"
+#include "RpcMultiPacketPipe.h"
 
 
 namespace rpc 

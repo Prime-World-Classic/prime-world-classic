@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 namespace Meta
 {
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,12 +108,7 @@ namespace Meta
     template <class T, class U>
     struct Conversion
     {
-        typedef Private::ConversionHelper<T, U> H;
-#ifndef __MWERKS__
-        enum { exists = sizeof(typename H::Small) == sizeof((H::Test(H::MakeT()))) };
-#else
-        enum { exists = false };
-#endif
+        enum { exists = std::is_convertible<T, U>::value };
         enum { exists2Way = exists && Conversion<U, T>::exists };
         enum { sameType = false };
     };
@@ -153,8 +150,7 @@ namespace Meta
 template <class T, class U>
 struct SuperSubclass
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
-                  !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = std::is_base_of<T, U>::value && !std::is_same<T, void>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == sizeof (U) ) };
@@ -169,8 +165,7 @@ struct SuperSubclass<void, void>
 template <class U>
 struct SuperSubclass<void, U> 
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile void*>::exists &&
-                  !::Meta::Conversion<const volatile void*, const volatile void*>::sameType) };
+    enum { value = std::is_convertible<U*, void*>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( 0 == sizeof (U) ) };
@@ -179,8 +174,7 @@ struct SuperSubclass<void, U>
 template <class T>
 struct SuperSubclass<T, void> 
 {
-    enum { value = (::Meta::Conversion<const volatile void*, const volatile T*>::exists &&
-                  !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = std::is_convertible<void*, T*>::value };
       
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == 0 ) };
@@ -197,9 +191,7 @@ struct SuperSubclass<T, void>
 template<class T,class U>
 struct SuperSubclassStrict
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile T*>::exists &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile T*, const volatile U*>::sameType) };
+    enum { value = std::is_base_of<T, U>::value && !std::is_same<T, void>::value && !std::is_same<T, U>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == sizeof (U) ) };
@@ -214,9 +206,7 @@ struct SuperSubclassStrict<void, void>
 template<class U>
 struct SuperSubclassStrict<void, U> 
 {
-    enum { value = (::Meta::Conversion<const volatile U*, const volatile void*>::exists &&
-                 !::Meta::Conversion<const volatile void*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile void*, const volatile U*>::sameType) };
+    enum { value = std::is_convertible<U*, void*>::value && !std::is_same<void, U>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( 0 == sizeof (U) ) };
@@ -225,9 +215,7 @@ struct SuperSubclassStrict<void, U>
 template<class T>
 struct SuperSubclassStrict<T, void> 
 {
-    enum { value = (::Meta::Conversion<const volatile void*, const volatile T*>::exists &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType &&
-                 !::Meta::Conversion<const volatile T*, const volatile void*>::sameType) };
+    enum { value = std::is_convertible<void*, T*>::value && !std::is_same<T, void>::value };
     
     // Dummy enum to make sure that both classes are fully defined.
     enum{ dontUseWithIncompleteTypes = ( sizeof (T) == 0 ) };
