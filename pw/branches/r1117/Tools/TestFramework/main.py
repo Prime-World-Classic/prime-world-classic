@@ -1103,6 +1103,79 @@ def shortenLibName( name, all_names ) :
         return nn + str( i )
     return name
 
+def _isWindowsCompilerFlag( flag ):
+    """Check if a compiler flag is Windows/MSVC specific."""
+    msvc_prefixes = [ '/wd', '/W', '/MD', '/MDd', '/MT', '/MTd', '/Zi', '/EHa', '/EHsc',
+                      '/WX', '/GR', '/GS', '/RTC', '/Yu', '/Yc', '/FI', '/FI:', '/Za',
+                      '/Zc:', '/permissive-', '/experimental:' ]
+    flag_stripped = flag.lstrip('-').lstrip('/')
+    for prefix in msvc_prefixes:
+        if flag.lower().startswith( '/' + prefix.lstrip('/') ) or flag.lower().startswith( prefix ):
+            return True
+    # Windows-specific warning codes
+    if flag_stripped.startswith( 'wd' ) or flag_stripped.startswith( 'w3' ) or flag_stripped.startswith( 'w4' ):
+        return True
+    if flag_stripped in ( 'EHa', 'EHsc', 'MD', 'MDd', 'MT', 'MTd', 'Zi', 'WX', 'GR', 'GS' ):
+        return True
+    return False
+
+def _isWindowsDefine( define ):
+    """Check if a preprocessor define is Windows specific."""
+    windows_defines = [ 'NOMINMAX', '_CRT_SECURE_NO_WARNINGS', '_CRT_NONSTDC_NO_WARNINGS',
+                        '_SCL_SECURE_NO_WARNINGS', '_HAS_ITERATOR_DEBUGGING=0',
+                        'WIN32', '_WIN32', 'WINDOWS', '_WINDOWS', 'NT', '_NT',
+                        'NI_DISABLE_CRASHRPT', '_DO_ASSERT', 'CURL_STATICLIB' ]
+    for wd in windows_defines:
+        if define == wd or define.startswith( wd ):
+            return True
+    return False
+
+def _filterLinuxData( defines, compiler_options, include_paths, libPaths, libDeps ):
+    """Filter out Windows-specific data for Linux builds."""
+    # Filter compiler flags
+    filtered_compiler_options = set()
+    for flag in compiler_options:
+        if not _isWindowsCompilerFlag( flag ):
+            filtered_compiler_options.add( flag )
+
+    # Filter defines
+    filtered_defines = set()
+    for define in defines:
+        if not _isWindowsDefine( define ):
+            filtered_defines.add( define )
+
+    # Filter include paths - remove Windows-only paths
+    win_only_includes = [ 'CrashRpt', 'DirectX', 'WTL' ]
+    filtered_include_paths = set()
+    for path in include_paths:
+        is_win = False
+        for wpath in win_only_includes:
+            if wpath in path:
+                is_win = True
+                break
+        if not is_win:
+            filtered_include_paths.add( path )
+
+    # Filter link paths - remove Windows-only paths
+    win_only_libdirs = [ 'CrashRpt' ]
+    filtered_libPaths = set()
+    for path in libPaths:
+        is_win = False
+        for wpath in win_only_libdirs:
+            if wpath in path:
+                is_win = True
+                break
+        if not is_win:
+            filtered_libPaths.add( path )
+
+    # Filter library dependencies - remove .lib files
+    filtered_libDeps = set()
+    for lib in libDeps:
+        if not lib.endswith( '.lib' ):
+            filtered_libDeps.add( lib )
+
+    return filtered_defines, filtered_compiler_options, filtered_include_paths, filtered_libPaths, filtered_libDeps
+
 def generateCMakeProject( sources, projectName, components, componetsGraphFiles, options, maincomponent = None ):
 
     if options.verblevel >= 2:
@@ -1246,6 +1319,10 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
 
     # print libDeps
     # print libPaths
+
+    # Filter Windows-specific data for Linux builds
+    if options.platform == 'linux':
+        defines, compiler_options, include_paths, libPaths, libDeps = _filterLinuxData( defines, compiler_options, include_paths, libPaths, libDeps )
 
     flags = " ".join( [ "-D" + d for d in defines ] )
     flags += " " + " ".join( [ co for co in compiler_options ] )

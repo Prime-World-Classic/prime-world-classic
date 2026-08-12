@@ -13,7 +13,7 @@ namespace lifehack
 template <typename TContainer>
 typename TContainer::iterator StlErase( TContainer & _cont, typename TContainer::iterator _it )
 {
-  TContainer::iterator result = _it;
+  typename TContainer::iterator result = _it;
   ++result;
   _cont.erase( _it );
   return result;
@@ -24,6 +24,8 @@ typename TContainer::iterator StlErase( TContainer & _cont, typename TContainer:
 template<typename T>
 class EasyVector : public std::vector<T>
 {
+  using std::vector<T>::reserve;
+  using std::vector<T>::push_back;
 public:
   explicit EasyVector( T _x0 ) {
     push_back( _x0 );

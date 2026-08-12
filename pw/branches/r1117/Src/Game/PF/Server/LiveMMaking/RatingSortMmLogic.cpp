@@ -69,7 +69,7 @@ m_workersNumber( (size_t)m_config->threads ),
 m_simulationMode( false ),
 m_nextBasePointIdx( 0 ),
 m_proPlayerModeEndTime( -1 ), m_proPlayerModeStartTime( -1 ),
-m_random( GetTickCount() ),
+m_random( (unsigned int)clock() ),
 m_debugGameId( 1 )
 {
   SetupBasePoints( m_workersNumber );
@@ -793,7 +793,7 @@ void RatingSortMmLogic::PresampleByBasePoints( TPresample & presample, SampleCon
   const TGeoIndex donorLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.donorSide] : 0;
   TGeoindexVector sidesLoc; sidesLoc.push_back(primaryLoc);
 
-  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, m_settings, m_config, m_locales, false ); ; )
+  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, (const NDb::MapMMakingSettings*)m_settings, m_config, m_locales, false ); ; )
   {
     QueueIteratorCtx itCtx;
     StrongMT<MmRequest> req = it.NextRequest( itCtx );
@@ -838,7 +838,7 @@ void RatingSortMmLogic::PresampleNewbies( TPresample & presample, SampleContext 
   const TGeoIndex primaryLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.recipientSide] : basePoint.sidesLocale[0];
   const TGeoIndex donorLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.donorSide] : 0;
   TGeoindexVector sidesLoc; sidesLoc.push_back(primaryLoc);
-  for ( QueueIterator it( m_requests, mostPopularRevision, EBasket::Undefined, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, m_settings, m_config, m_locales, false ); ; )
+  for ( QueueIterator it( m_requests, mostPopularRevision, EBasket::Undefined, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, (const NDb::MapMMakingSettings*)m_settings, m_config, m_locales, false ); ; )
   {
     QueueIteratorCtx itCtx;
     StrongMT<MmRequest> req = it.NextRequest( itCtx );
@@ -895,7 +895,7 @@ void RatingSortMmLogic::PresampleLongWait( TPresample & presample, SampleContext
   const TGeoIndex primaryLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.recipientSide] : basePoint.sidesLocale[0];
   const TGeoIndex donorLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.donorSide] : 0;
   TGeoindexVector sidesLoc; sidesLoc.push_back(primaryLoc);
-  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, m_settings, m_config, m_locales, false ); ; )
+  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, (const NDb::MapMMakingSettings*)m_settings, m_config, m_locales, false ); ; )
   {
     QueueIteratorCtx itCtx;
     StrongMT<MmRequest> req = it.NextRequest( itCtx );
@@ -964,7 +964,7 @@ void RatingSortMmLogic::PresampleFullParties( TPresample & presample, SampleCont
   const TGeoIndex primaryLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.recipientSide] : basePoint.sidesLocale[0];
   const TGeoIndex donorLoc = basePoint.multipleLocales ? basePoint.sidesLocale[basePoint.donorSide] : 0;
   TGeoindexVector sidesLoc; sidesLoc.push_back(primaryLoc);
-  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, m_settings, m_config, m_locales, false ); ; )
+  for ( QueueIterator it( m_requests, mostPopularRevision, filterBasket, sidesLoc, donorLoc, basePoint.location, m_now, QueueIterator::F_RatingSortMode, (const NDb::MapMMakingSettings*)m_settings, m_config, m_locales, false ); ; )
   {
     QueueIteratorCtx itCtx;
     StrongMT<MmRequest> req = it.NextRequest( itCtx );
@@ -974,7 +974,7 @@ void RatingSortMmLogic::PresampleFullParties( TPresample & presample, SampleCont
     if ( req->Size() < m_teamSize )
       continue;
 
-    const int key = -req->EffectiveRating( false );
+    const int key = -req->EffectiveRating( nullptr );
     presample.insert( PresampleKey( key, req, itCtx.waitTime, itCtx.pingIsGood ) );
 
     UpdateSampleContext( sampleCtx, req, itCtx.waitTime );

@@ -7,8 +7,8 @@ sources = [
 # Enable CrashRpt
 settings.enableCrashRpt = True
 
-# Uncomment this to enable Inline Profiler
-settings.enableProfiler = True
+# Inline Profiler disabled on Linux (requires WTL - Windows only)
+settings.enableProfiler = False
 
 inlined = False
 
@@ -31,7 +31,7 @@ components = [
     'Server/LiveMMaking/LiveMMakingService',
     'Server/HttpGateway',
     'System/CrashRptWrapper',
-    'Server/LobbyPvx/Remote', # only for PF.sln build success
+    'Server/LobbyPvx/Remote',
     'Client/LobbyPvx/LobbyClientLInterface',
     'Monitoring/MonitoringSvc',
     'Server/GameSession/GameBalancerSvc',
@@ -51,9 +51,4 @@ globalCompilerKeys = [
   "/D SERVER_DB",
   "/D CHECK_TOWN_CONSISTENCY",
   "/D LOG_THREAD_EXIT",
-]
-
-
-libDependencies = [
-    'rpcrt4.lib' , 'shlwapi.lib'
 ]

@@ -34,7 +34,11 @@ private:
   EMode                                         mode;
   std::vector<StrongMT<threading::JobThread>>   threadObjects;
   std::vector<StrongMT<WorkerThread>>           workerThreads;
+#if defined(NV_WIN_PLATFORM)
   std::vector<HANDLE>                           completeEvents;
+#else
+  std::vector<void*>                            completeEvents;
+#endif
   size_t                                        activeJobNumber;
 };
 

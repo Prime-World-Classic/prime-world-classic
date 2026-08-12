@@ -1,9 +1,17 @@
 #pragma once
+#include <string>
+#include <cwchar>
+#include <cstdlib>
+
+// Platform-independent declarations for encoding helpers
+std::string WideCharToMultiByteString(const wchar_t* wideCharString);
+std::string Fix1251Encoding(std::string utf8String);
+
+#if defined( NV_WIN_PLATFORM )
 #include <vector>
 #include <Windows.h>
 #include <Wininet.h>
 #include <map>
-#include <string>
 #include <set>
 #include <json/json.h>
 #include "../PW_Game/server_ip.h"
@@ -212,5 +220,51 @@ extern map<int, WebLauncherPostRequest::PlayerInfoByUserId> userIdToNicknameMap;
 extern map<int, WebLauncherPostRequest::PlayerMetaInfo> userIdToMetaMap;
 
 std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int skinId);
-std::string WideCharToMultiByteString(const wchar_t* wideCharString);
-std::string Fix1251Encoding(std::string utf8String);
+// WideCharToMultiByteString and Fix1251Encoding — declared at top of file
+#endif // NV_WIN_PLATFORM
+
+// Linux implementations of encoding helpers
+#if defined( NV_LINUX_PLATFORM )
+#include <iconv.h>
+#include <cstring>
+inline std::string WideCharToMultiByteString(const wchar_t* wideCharString) {
+  // wchar_t -> UTF-8 using iconv
+  std::wstring ws(wideCharString);
+  size_t wcsLen = ws.size();
+  std::string out(wcsLen * 4, 0);
+  iconv_t cd = iconv_open("UTF-8", "WCHAR_T");
+  if (cd == (iconv_t)-1) {
+    // Fallback: manual conversion for BMP characters
+    out.clear();
+    for (wchar_t c : ws) {
+      if (c < 0x80) { out += (char)c; }
+      else if (c < 0x800) { out += (char)(0xC0 | (c >> 6)); out += (char)(0x80 | (c & 0x3F)); }
+      else { out += (char)(0xE0 | (c >> 12)); out += (char)(0x80 | ((c >> 6) & 0x3F)); out += (char)(0x80 | (c & 0x3F)); }
+    }
+    return out;
+  }
+  const char* inPtr = reinterpret_cast<const char*>(&ws[0]);
+  size_t inLeft = wcsLen * sizeof(wchar_t);
+  char* outBuf = &out[0];
+  size_t outLeft = out.size();
+  size_t res = iconv(cd, const_cast<char**>(&inPtr), &inLeft, &outBuf, &outLeft);
+  iconv_close(cd);
+  if (res == (size_t)-1) return std::string();
+  out.resize(out.size() - outLeft);
+  return out;
+}
+inline std::string Fix1251Encoding(std::string utf8String) {
+  iconv_t cd = iconv_open("CP1251", "UTF-8");
+  if (cd == (iconv_t)-1) return utf8String;
+  char* in = const_cast<char*>(utf8String.c_str());
+  size_t inLeft = utf8String.size();
+  std::string out(utf8String.size() * 2, 0);
+  char* outBuf = &out[0];
+  size_t outLeft = out.size();
+  size_t res = iconv(cd, &in, &inLeft, &outBuf, &outLeft);
+  iconv_close(cd);
+  if (res == (size_t)-1) return utf8String;
+  out.resize(out.size() - outLeft);
+  return out;
+}
+#endif

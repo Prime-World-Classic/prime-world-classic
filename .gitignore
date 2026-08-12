@@ -111,3 +111,24 @@ pw/branches/r1117/Src/Shared/Debug/BuildLog.htm
 pw/branches/r1117/Vendor/wsdlpull/win32/vs2008/*
 FlashUI/main.fla
 pw/branches/r1117/Src/Game/PF/UniServer/build_linux_test/
+
+# Python bytecode
+*.pyc
+
+# Merge artifacts
+*.orig
+
+# CMake generator output (UniServerApp.auto)
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/UniServerApp/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/debug/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/build/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/*.dublicates
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/*.graph
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/unittest.cfg
+
+# Local symlinks
+pw/branches/r1117/Src/Server/rpc
+pw/branches/r1117/Src/system
+
+# Generated wsdlpull file
+pw/branches/r1117/Vendor/wsdlpull/src/wsdlparser/Wsdlinvoker.h

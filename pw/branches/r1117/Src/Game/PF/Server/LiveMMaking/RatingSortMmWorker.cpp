@@ -77,7 +77,11 @@ activeJobNumber( 0 )
 
   completeEvents.resize( workerThreads.size() );
   for ( size_t i = 0; i < workerThreads.size(); ++i )
+#if defined(NV_WIN_PLATFORM)
     completeEvents[i] = workerThreads[i]->CompleteEvent().GetHandle();
+#else
+    completeEvents[i] = (void*)workerThreads[i].Get();
+#endif
 }
 
 
@@ -126,9 +130,13 @@ bool RatingSortWorker::WaitAll( unsigned timeout )
   NI_VERIFY( activeJobNumber > 0 && activeJobNumber <= completeEvents.size(), "", return false );
   mode = ModeWaiting;
 
+#if defined(NV_WIN_PLATFORM)
   DWORD waitResult = WaitForMultipleObjects( activeJobNumber, &completeEvents[0], TRUE, timeout );
   if ( ( waitResult >= WAIT_OBJECT_0 ) && ( waitResult < WAIT_OBJECT_0 + activeJobNumber ) )
+#else
+  // Linux stub — just return success (proper implementation needs pthreads)
   {
+#endif
     //Job's done
     mode = ModeIdle;
     return true;

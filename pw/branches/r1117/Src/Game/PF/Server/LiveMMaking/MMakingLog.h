@@ -42,7 +42,11 @@ private:
   const string      m_suffix;
   const string      m_logHeader;
   bool              m_debugOutput;
+#if defined(NV_WIN_PLATFORM)
   HANDLE            m_file;
+#else
+  FILE*             m_file;
+#endif
   ELogLevel::Enum   m_level;
   timer::Time       m_simTime;
   int               m_prevDay;

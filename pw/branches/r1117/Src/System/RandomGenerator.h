@@ -43,7 +43,7 @@ public:
     return seed.w;
   }
 
-  // для вкусностей
+  // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   int Next( int min, int max )
   {
     if ( min >= max )
@@ -69,7 +69,7 @@ public:
   }
 
   template <class TStlContainer>
-  const typename TStlContainer::value_type & RollFromContainer( const TStlContainer & _cont, const typename TStlContainer::value_type & _default = TStlContainer::value_type() )
+  const typename TStlContainer::value_type & RollFromContainer( const TStlContainer & _cont, const typename TStlContainer::value_type & _default = typename TStlContainer::value_type() )
   {
     if ( !_cont.size() )
       return _default;
