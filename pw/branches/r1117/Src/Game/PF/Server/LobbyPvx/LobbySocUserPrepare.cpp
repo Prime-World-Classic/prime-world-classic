@@ -4,7 +4,7 @@
 #include "ServerAppBase/ServerCfg.h"
 #include "ILoginSvcWrapper.h"
 #include "System/SafeTextFormatStl.h"
-#include "System/SafeTextFormatNStl.h"
+#include "System/SafeTextFormatNstl.h"
 #include "Network/ClusterConfiguration.h"
 #include "LobbyLog.h"
 

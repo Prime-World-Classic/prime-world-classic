@@ -9,8 +9,8 @@
 #include "MatchMakingSvc.h"
 #include "HybridServer/HybridServerNaming.h"
 #include "Server/GameSession/GameBalancer/GameBalancerTypes.h"
-#include "Matchmaking/MatchMakingNaming.h"
-#include "Matchmaking/MatchMakingSvcCfg.h"
+#include "MatchMaking/MatchMakingNaming.h"
+#include "MatchMaking/MatchMakingSvcCfg.h"
 #include "Server/Statistic/StatClientHttpDispatcher.h"
 
 namespace MatchMaking

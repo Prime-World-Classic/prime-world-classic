@@ -1,5 +1,5 @@
 #pragma once
-
+#if defined( NV_WIN_PLATFORM )
 #include <Windows.h>
 #include <Wininet.h>
 #include <vector>
@@ -26,3 +26,19 @@ extern std::string GetSessionData(const char* token, bool registerSession);
 extern int usedServer;
 
 std::string GetFormattedJson(Json::Value value);
+
+#elif defined( NV_LINUX_PLATFORM )
+#include <string>
+
+class WebPostRequest
+{
+public:
+  WebPostRequest(const wchar_t*, const wchar_t*, int, unsigned) {}
+  void Init(const wchar_t*, const wchar_t*, int, unsigned) {}
+  ~WebPostRequest() {}
+  std::string SendPostRequest(const std::string&) { return std::string(); }
+};
+
+inline std::string GetSessionData(const char*, bool) { return std::string(); }
+
+#endif

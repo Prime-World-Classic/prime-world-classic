@@ -804,12 +804,19 @@ void GameSession::OnGameFinish( EGameResult::Enum _gameResult, const StatisticSe
 
 
 
+#if defined( NV_WIN_PLATFORM )
 __time32_t GameSession::Timestamp()
 {
   __time32_t t;
   _time32( &t );
   return t;
 }
+#elif defined( NV_LINUX_PLATFORM )
+nival::uint32_t GameSession::Timestamp()
+{
+  return (nival::uint32_t)time(NULL);
+}
+#endif
 
 
 

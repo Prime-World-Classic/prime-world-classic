@@ -12,6 +12,7 @@
 #include <boost/thread/locks.hpp>
 #include <boost/thread/thread_time.hpp>
 #include <boost/thread/xtime.hpp>
+#include <boost/thread/xtime_helpers.hpp>
 #include <boost/assert.hpp>
 #include <errno.h>
 #include "timespec.hpp"
@@ -128,7 +129,7 @@ namespace boost
         }
         bool timed_lock(boost::xtime const & absolute_time)
         {
-            return timed_lock(system_time(absolute_time));
+            return timed_lock(xtime_to_system_time(absolute_time));
         }
 
 #ifdef BOOST_PTHREAD_HAS_TIMEDLOCK

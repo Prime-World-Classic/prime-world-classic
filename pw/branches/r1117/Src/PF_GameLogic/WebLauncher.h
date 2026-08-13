@@ -223,6 +223,40 @@ std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int s
 // WideCharToMultiByteString and Fix1251Encoding — declared at top of file
 #endif // NV_WIN_PLATFORM
 
+// Linux-compatible WebLauncher stub types (no networking, data structures only)
+#if defined( NV_LINUX_PLATFORM )
+#include <vector>
+#include <map>
+#include <json/json.h>
+
+class WebLauncherPostRequest {
+public:
+  WebLauncherPostRequest() {}
+  ~WebLauncherPostRequest() {}
+  void Init(const wchar_t*, const wchar_t*, int, unsigned) {}
+  enum LoginResponse { LoginResponse_WEB_FAIL, LoginResponse_WEB_JOIN, LoginResponse_WEB_FAILED_CONNECTION };
+  struct WebLoginResponse { std::string response; LoginResponse retCode; };
+  struct TalentWebData { int webTalentId; int activeSlot; bool isSmartCast; TalentWebData(): webTalentId(0), activeSlot(0), isSmartCast(false){} };
+  struct WebUserData {
+    WebUserData(): heroSkinID(0), currentRating(1100), victoryRating(1100), lossRating(1100), currentRatingAcc(1100), victoryRatingAcc(1100), lossRatingAcc(1100), userId(0), heroId(0), teamId(0), partyId(0) {}
+    std::vector<TalentWebData> talents;
+    int profileStats[9];
+    int heroSkinID, userId, heroId, teamId, partyId;
+    float playerRating, currentRating, victoryRating, lossRating, currentRatingAcc, victoryRatingAcc, lossRatingAcc;
+  };
+  struct PlayerInfoByUserId { nstl::wstring nickname; int teamId; bool isLeaver; int userId; };
+  struct PlayerMetaInfo { int leagueIdx; nstl::string flagId; };
+  enum RegisterSessionRequest { RegisterInSessionRequest_Create, RegisterInSessionRequest_Error };
+  WebLoginResponse GetSessionData(const char*, const char* = "") { return {}; }
+  std::string SendPostRequest(const std::string&) { return {}; }
+  std::string CreateDebugSession() { return {}; }
+};
+typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
+static std::string GetSkinByHeroPersistentId(const std::string&, int) { return {}; }
+static Json::Value ParseJson(const char* json) { Json::Value root; Json::Reader reader; reader.parse(json, root); return root; }
+static bool CheckPlayerInfo(const Json::Value& pi) { return !pi.empty() && pi.isMember("nickname") && pi.isMember("id"); }
+#endif
+
 // Linux implementations of encoding helpers
 #if defined( NV_LINUX_PLATFORM )
 #include <iconv.h>
@@ -251,6 +285,20 @@ inline std::string WideCharToMultiByteString(const wchar_t* wideCharString) {
   iconv_close(cd);
   if (res == (size_t)-1) return std::string();
   out.resize(out.size() - outLeft);
+  return out;
+}
+inline std::wstring Fix1251EncodingW(std::string utf8String) {
+  iconv_t cd = iconv_open("WCHAR_T", "UTF-8");
+  if (cd == (iconv_t)-1) return std::wstring(utf8String.begin(), utf8String.end());
+  const char* in = utf8String.c_str();
+  size_t inLeft = utf8String.size();
+  std::wstring out(inLeft, L'\0');
+  wchar_t* pout = &out[0];
+  size_t outLeft = inLeft * sizeof(wchar_t);
+  size_t res = iconv(cd, const_cast<char**>(&in), &inLeft, reinterpret_cast<char**>(&pout), &outLeft);
+  iconv_close(cd);
+  if (res == (size_t)-1) return std::wstring(utf8String.begin(), utf8String.end());
+  out.resize((inLeft * sizeof(wchar_t) - outLeft) / sizeof(wchar_t));
   return out;
 }
 inline std::string Fix1251Encoding(std::string utf8String) {

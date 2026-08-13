@@ -1367,7 +1367,10 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
             cmake_file.write( "{0:>54} {1}\n".format( " ", file_path ) )
         cmake_file.write( "{0:>55})\n".format( " " ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES OUTPUT_NAME {0} )\n".format( lib_name_var ) )
-        cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE CXX )\n\n".format( lib_name_var ) )
+        # Use C linker language if all sources are .c files
+        all_c = all( s.endswith('.c') for s in libs[c] ) if libs[c] else False
+        lang = 'C' if all_c else 'CXX'
+        cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE {1} )\n\n".format( lib_name_var, lang ) )
 
     print "PROJECT:", projectName
     if is_test :

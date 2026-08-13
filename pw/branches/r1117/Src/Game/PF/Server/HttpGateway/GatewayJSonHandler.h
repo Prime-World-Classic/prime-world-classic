@@ -28,10 +28,13 @@ namespace HttpGateway
 class PingContext;
 class ForgeRollRequest;
 
-namespace EContextState { enum Enum; }
+namespace EContextState
+{
+  enum Enum { New, ApprovedByLobby, Restored, Condemned };
+}
 
 
-// рабочий класс: парсит запросы, исполняет rpс-вызовы (через интерфейс ISocialLobby), кэширует данные и ответы
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ rpпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ISocialLobby), пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 class GatewayJsonHandler : public BaseObjectMT
 {
 public:

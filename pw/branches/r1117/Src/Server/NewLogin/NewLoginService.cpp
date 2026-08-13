@@ -62,9 +62,12 @@ public:
   {
     threading::MutexLock lock( mutex );
 
-    if ( StrongMT<clientCtl::IInterface> ptr = remote->iface() )
+    StrongMT<clientCtl::RIInterface> riptr = remote->iface();
+    StrongMT<clientCtl::IInterface> ptr = riptr.Get();
+    if ( ptr ) {
       if ( ptr->GetStatus() == rpc::Connected )
         return ptr;
+    }
     return 0;
   }
 

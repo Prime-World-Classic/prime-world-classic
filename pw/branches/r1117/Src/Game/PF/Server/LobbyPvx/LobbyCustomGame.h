@@ -20,7 +20,8 @@ namespace Peered
 
 namespace NDb
 {
-  enum EMmAlgorithm;
+  // Stub: EMmAlgorithm enum not used on Linux
+  enum EMmAlgorithm { EMmAlgorithm_None };
 }
 
 namespace lobby

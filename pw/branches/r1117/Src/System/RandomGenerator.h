@@ -82,7 +82,7 @@ public:
 
 
   template<class TStlContainer, class G>
-  const typename TStlContainer::value_type & RollFromContainerByWeight( const TStlContainer & _container, const G & weightGetter, const typename TStlContainer::value_type & _default = TStlContainer::value_type()  )
+  const typename TStlContainer::value_type & RollFromContainerByWeight( const TStlContainer & _container, const G & weightGetter, const typename TStlContainer::value_type & _default = typename TStlContainer::value_type()  )
   {
     if ( !_container.size() )
       return _default;

@@ -12,6 +12,7 @@
 #include <boost/thread/detail/move.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/xtime.hpp>
+#include <boost/thread/xtime_helpers.hpp>
 #include <boost/thread/detail/thread_heap_alloc.hpp>
 #include <boost/utility.hpp>
 #include <boost/assert.hpp>
@@ -382,7 +383,7 @@ namespace boost
 
         inline void sleep(xtime const& abs_time)
         {
-            sleep(system_time(abs_time));
+            sleep(xtime_to_system_time(abs_time));
         }
     }
 

@@ -1,5 +1,9 @@
 #include "stdafx.h"
 #include "SocialLobbyPvxServices.h"
+#if defined( NV_LINUX_PLATFORM ) && !defined(stricmp)
+#include <strings.h>
+#define stricmp strcasecmp
+#endif
 #include "ISocialLobbyPvxSvc.h"
 #include "SocialLobbyConfig.h"
 #include "SocialLobbyPinnedLocations.h"

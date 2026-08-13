@@ -17,6 +17,21 @@
 #include "LobbyServerConnection.h"
 #include "LobbyGameSession.h"
 #include "LobbyCustomGame.h"
+#include <json/json.h>
+
+// Linux stubs for server_ip.h (not versioned, see README.md)
+#ifndef SERVER_IP_W
+#define SERVER_IP_W L"127.0.0.1"
+#endif
+#ifndef SERVER_IP
+#define SERVER_IP "127.0.0.1"
+#endif
+#ifndef SYNCHRONIZER_PORT
+#define SYNCHRONIZER_PORT 27302
+#endif
+#ifndef API_KEY
+#define API_KEY "APIKEY00APIKEY00APIKEY00APIKEY00APIKEY00"
+#endif
 #include "SessionHybridLink.h"
 #include "LobbySocialProxy.h"
 #include "LobbyServerLoginWrapper.h"
@@ -171,7 +186,7 @@ clientsCounter("lobby_clients", "")
 
   socialPvxInterface = new SocialPvxInterface( this );
 
-  socialLobbyProxy = new SocialLobbyProxy( config, extClusterGateKeeper ? extClusterGateKeeper : BackendGk(), socialPvxInterface, SvcId() );
+  socialLobbyProxy = new SocialLobbyProxy( config, extClusterGateKeeper ? extClusterGateKeeper.Get() : BackendGk(), socialPvxInterface, SvcId() );
 
   LoadHeroes();
 
@@ -441,7 +456,7 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
     StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.userId, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
-    int heroId = std::min(std::max((size_t)(userData.heroId - 1), 0u), _countof(heroes) - 1u);
+    int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.heroId - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
     lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.teamId);
 
     const char* heroPersistentId = heroes[heroId];

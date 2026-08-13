@@ -23,7 +23,7 @@ private:
 };
 
 template <typename Type>
-inline ValuesSetChecker<Type> StateIsOneOf( Type v ) { ValuesSetChecker<Type>( v ); }
+inline ValuesSetChecker<Type> StateIsOneOf( Type val ) { return ValuesSetChecker<Type>( val ); }
 
 
 

@@ -3,6 +3,20 @@
 #include "System/LogFileName.h"
 #include "System/FileSystem/FileUtils.h"
 
+#if defined( NV_LINUX_PLATFORM )
+#include <unistd.h>
+#include <sys/types.h>
+#include <fcntl.h>
+typedef FILE* HANDLE;
+#define INVALID_HANDLE_VALUE ((FILE*)NULL)
+#define CloseHandle(fp) fclose(fp)
+inline DWORD WriteFile(HANDLE h, const char* buf, DWORD len, DWORD* written, void*) { *written = fwrite(buf, 1, len, h); return ferror(h) == 0; }
+inline void OutputDebugString(const char* s) { fprintf(stderr, "DEBUG: %s\n", s); }
+inline DWORD GetCurrentProcessId() { return getpid(); }
+#define sprintf_s(buf, sz, fmt, ...) snprintf(buf, sz, fmt, __VA_ARGS__)
+#define vsprintf_s(buf, fmt, ap) vsnprintf(buf, sizeof(buf), fmt, ap)
+#endif
+
 
 NI_DEFINE_REFCOUNT( mmaking::Loger );
 

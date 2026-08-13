@@ -507,7 +507,7 @@ static void FillPlayerInfo(NCore::PlayerInfo& playerInfo, const WebLauncherPostR
   playerInfo.heroRating = userData.currentRating;
   playerInfo.ratingDeltaPrediction.onVictory = userData.victoryRating - userData.currentRating;
   playerInfo.ratingDeltaPrediction.onDefeat = userData.lossRating - userData.currentRating;
-  int heroId = std::min(std::max((size_t)(userData.heroId - 1), 0u), _countof(heroes) - 1u);
+  int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.heroId - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
   playerInfo.heroId = Crc32Checksum().AddString( heroes[heroId] ).Get();
   const std::vector<WebLauncherPostRequest::TalentWebData>& talentSet = userData.talents;
 }
