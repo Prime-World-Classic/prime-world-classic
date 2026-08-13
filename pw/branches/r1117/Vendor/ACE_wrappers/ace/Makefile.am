@@ -292,6 +292,7 @@ libACE_la_SOURCES = \
   Sig_Adapter.cpp \
   Sig_Handler.cpp \
   Signal.cpp \
+  SPIPE_stubs.cpp \
   Sock_Connect.cpp \
   Stats.cpp \
   String_Base_Const.cpp \
