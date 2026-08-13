@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_LobbySocial_SocialLobby ISocialLobby.h ISocialLobbyUserCtx.h ISocialLobbyPvxAck.h SocialLobbyUserContext.h SocialLobbyUserContext.cpp SocialLobbyGame.h SocialLobbyGame.cpp SocialLobbyParty.h SocialLobbyParty.cpp SocialLobbyCtrl.h SocialLobby.h SocialLobby.cpp SocialLobbyStatistics.h SocialLobbyConfig.h SocialLobbyConfig.cpp SocialLobbyLog.h SocialLobbyRemoteMm.h SocialLobbyRemoteMm.cpp SocialLobbyPvxServices.h SocialLobbyPvxServices.cpp SocialLobbyPinnedLocations.h SocialLobbyClientRevisions.h SocialLobbyMMStatisticsEx.h SocialLobbyMMStatisticsEx.cpp)
-set(LIBRARIES_Src_Game_PF_Server_LobbySocial_SocialLobby )

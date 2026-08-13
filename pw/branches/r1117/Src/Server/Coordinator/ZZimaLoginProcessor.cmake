@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Coordinator_ZZimaLoginProcessor ZZimaLoginProcessor.h ZZimaLoginProcessor.cpp)
-set(LIBRARIES_Src_Server_Coordinator_ZZimaLoginProcessor )

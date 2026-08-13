@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Client_LobbyPvx_LobbyClientLInterface )
-set(LIBRARIES_Src_Game_PF_Client_LobbyPvx_LobbyClientLInterface )

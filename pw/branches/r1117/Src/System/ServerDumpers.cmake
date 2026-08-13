@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_ServerDumpers ServerStdOutDumper.cpp ServerStdOutDumper.h)
-set(LIBRARIES_Src_System_ServerDumpers )

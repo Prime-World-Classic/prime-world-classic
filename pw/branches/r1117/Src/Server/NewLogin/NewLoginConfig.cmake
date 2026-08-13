@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_NewLogin_NewLoginConfig NewLoginConfig.cpp NewLoginConfig.h)
-set(LIBRARIES_Src_Server_NewLogin_NewLoginConfig )

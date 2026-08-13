@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Chat_ChatSvc_LChatClientIface )
-set(LIBRARIES_Src_Server_Chat_ChatSvc_LChatClientIface )

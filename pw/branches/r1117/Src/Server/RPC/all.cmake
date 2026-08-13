@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RPC_all EntityMap.cpp CppWrapper.cpp CppWrapper.h Arguments.cpp Arguments.h ArgWriter.h Base.cpp Base.h RpcUtils.h RpcUtils.cpp RpcNode.h RpcNode.cpp RpcNodes.h RpcNodes.cpp RpcPipeEntities.h RpcPipeEntities.cpp RpcGate.h RpcGate.cpp RpcDataProcessor.h RpcDataProcessor.cpp RpcThreadPool.cpp RpcThreadPool.h RpcArgs.h RpcArgs.cpp RpcEntityHandler.h RpcEntityHandler.cpp RpcMultiPacketPipe.h RpcMultiPacketPipe.cpp ClassFactory.h ClassFactory.cpp Calls.h P2PNode.h ReplicationTypes.h GateKeeper.h GateKeeper.cpp Transaction.h Transaction.cpp EntityMap.h PollJob.cpp PollJob.h IfaceRequester.h TransportPipeTrackerFactory.cpp TransportPipeTrackerFactory.h TransportPipeTrafficTracker.cpp TransportPipeTrafficTracker.h)
-set(LIBRARIES_Src_Server_RPC_all )

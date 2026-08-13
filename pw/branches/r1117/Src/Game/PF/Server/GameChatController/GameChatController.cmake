@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_GameChatController_GameChatController IGameChatController.h GameChatController.cpp GameChatController.h GameChatContext.cpp GameChatContext.h GameChatLogging.h Types.h stdafx.cpp stdafx.h specific.h)
-set(LIBRARIES_Src_Game_PF_Server_GameChatController_GameChatController )

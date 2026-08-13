@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_HybridServer_PeeredClient )
-set(LIBRARIES_Src_Game_PF_HybridServer_PeeredClient )

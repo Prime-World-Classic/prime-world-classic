@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Network_TransportMessages TransportUtils.h TransportUtils.cpp TransportLoginData.h TransportMessages.h TransportMessages.cpp TransportChannelType.h TransportChannelType.cpp TransportMessagesResults.h)
-set(LIBRARIES_Src_Network_TransportMessages )

@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RdpTransport_RdpFrontendTransport RdpFrontendTransport.h RdpFrontendTransport.cpp RdpTransportFrontendListener.h RdpTransportFrontendListener.cpp RdpTransportFrontendChannel.h RdpTransportFrontendChannel.cpp)
-set(LIBRARIES_Src_Server_RdpTransport_RdpFrontendTransport )

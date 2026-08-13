@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Monitoring_PerfCounterProvider_RPerfCounterProviderIface )
-set(LIBRARIES_Src_Server_Monitoring_PerfCounterProvider_RPerfCounterProviderIface )

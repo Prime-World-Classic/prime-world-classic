@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ClusterAdmin_ClusterAdminSvc ClusterAdminSvc/ClusterAdminSvcIntf.h ClusterAdminSvc/ClusterAdminSvc.cpp ClusterAdminSvc/ClusterAdminSvc.h ClusterAdminSvc/ClusterAdminImpl.cpp ClusterAdminSvc/ClusterAdminImpl.h ClusterAdminSvc/ClusterAdminNaming.h ClusterAdminSvc/ThriftHandler.cpp ClusterAdminSvc/ThriftHandler.h ClusterAdminSvc/ThriftModule.cpp ClusterAdminSvc/ThriftModule.h ClusterAdminSvc/specific.h ClusterAdminSvc/stdafx.cpp ClusterAdminSvc/stdafx.h)
-set(LIBRARIES_Src_Server_ClusterAdmin_ClusterAdminSvc )

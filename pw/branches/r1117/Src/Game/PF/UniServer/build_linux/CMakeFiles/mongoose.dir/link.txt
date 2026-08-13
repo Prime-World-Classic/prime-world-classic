@@ -1,2 +1,0 @@
-/usr/bin/ar qc libmongoose.a "CMakeFiles/mongoose.dir/home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/mongoose/mongoose.c.o"
-/usr/bin/ranlib libmongoose.a

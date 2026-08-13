@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Network_RSessionKeyRegisterIface )
-set(LIBRARIES_Src_Network_RSessionKeyRegisterIface )

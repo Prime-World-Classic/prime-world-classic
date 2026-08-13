@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollTypes RollTypes.h RollTypes.cpp)
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollTypes )

@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollInstance RollInstance.h RollServiceInstanceRunner.cpp RollServiceInstanceRunner.h RollServiceInstance.cpp RollServiceInstance.h RollJob.h RollJob.cpp)
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollInstance )

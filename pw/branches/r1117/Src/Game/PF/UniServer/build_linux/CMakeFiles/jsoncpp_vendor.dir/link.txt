@@ -1,2 +1,0 @@
-/usr/bin/ar qc libjsoncpp_vendor.a "CMakeFiles/jsoncpp_vendor.dir/home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/JsonCpp/src/lib_json/json_reader.cpp.o" "CMakeFiles/jsoncpp_vendor.dir/home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/JsonCpp/src/lib_json/json_value.cpp.o" "CMakeFiles/jsoncpp_vendor.dir/home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/JsonCpp/src/lib_json/json_writer.cpp.o"
-/usr/bin/ranlib libjsoncpp_vendor.a

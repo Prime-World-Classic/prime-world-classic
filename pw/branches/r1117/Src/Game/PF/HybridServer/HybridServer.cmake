@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_HybridServer_HybridServer HybridServerDispencer.cpp HybridServerDispencer.h GameService.h GameService.cpp GameServerDispenserIface.h GameServerAllocatorIface.h GameServerRegistratorIface.h HybridServerNaming.h HybridServerDumpersIfaces.h HybridServerDumpers.h HybridServerDumpers.cpp HybridServerConfig.h HybridServerConfig.cpp HybridServerMulticastIface.h HybridServerMulticast.h HybridServerMulticast.cpp)
-set(LIBRARIES_Src_Game_PF_HybridServer_HybridServer )

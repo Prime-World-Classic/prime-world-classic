@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_UserManager_UserManagerSvc_UserNotificationIface UserNotificationIface.h UserInfo.cpp UserInfo.h)
-set(LIBRARIES_Src_Server_UserManager_UserManagerSvc_UserNotificationIface )

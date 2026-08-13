@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_AppFramework_TimeSlicer Interfaces.h TimeSlicer.h TimeSlicer.cpp)
-set(LIBRARIES_Src_Server_AppFramework_TimeSlicer )

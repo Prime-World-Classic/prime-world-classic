@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_MatchMaking_MatchMakingSvc MatchMakingSvc.cpp MatchMakingSvc.h MatchMakingSvcCfg.cpp MatchMakingSvcCfg.h MatchMakingManager.cpp MatchMakingManager.h MatchMakingSession.cpp MatchMakingSession.h MatchMakingSessionIface.h MatchMakingClient.cpp MatchMakingClient.h MatchMakingTypes.h MatchMakingNaming.h MatchMakingClientCtx.cpp MatchMakingClientCtx.h MatchMakingGameSvcMngrGetter.h specific.h stdafx.cpp stdafx.h)
-set(LIBRARIES_Src_Server_MatchMaking_MatchMakingSvc )

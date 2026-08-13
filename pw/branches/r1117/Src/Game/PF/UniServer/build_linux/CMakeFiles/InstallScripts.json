@@ -1,7 +1,0 @@
-{
-	"InstallScripts" : 
-	[
-		"/home/rekon/PW/prime-world-classic/pw/branches/r1117/Src/Game/PF/UniServer/build_linux/cmake_install.cmake"
-	],
-	"Parallel" : false
-}

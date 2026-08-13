@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_SafeTextFormat SafeTextFormat.h SafeTextFormat.cpp SafeTextFormatNstl.h SafeTextFormatStl.h SafeTextFormatBuffers.h SafeTextFormatEx.h SafeTextFormatCyclicBuffer.h SafeTextFormatHistogram.h)
-set(LIBRARIES_Src_System_SafeTextFormat )
