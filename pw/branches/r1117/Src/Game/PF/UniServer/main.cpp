@@ -121,15 +121,27 @@ bool UniServerApp::OnInitServerFactory( Transport::NivalServer * _fact )
     //Test services
     _fact->RegisterService<MatchMaking::Service>                  ( MatchMaking::ServiceClass,          0,  SInterfacePolicy( EServiceInstancing::SINGLE ) );
 #elif defined( NV_LINUX_PLATFORM )
-    // Linux: register TCP-only services (RDP/UDP transport not available)
-    // Services requiring RDP (client-facing): Login, NewLogin, HybridServer, Lobby, Roll are skipped
-    _fact->RegisterService<chat::Service>                         ( chat::ServiceClass,                 1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::EXTERNAL ) );
+    // Linux: register all services (RDP now available via SockSrvPosix)
+    _fact->RegisterServiceEx<Relay::RelayServerRunner2>           ( Relay::ServiceClass,                1,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::EXTERNAL ) );
     _fact->RegisterService<Relay::Balancer::Service>              ( Relay::Balancer::ServiceClass,      1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG ), Transport::CustomServiceParams( true, Relay::RBLOG ) );
+
+    _fact->RegisterService<Login::LoginServerAsync>               ( Login::serviceId,                   1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, LOGIN_CHNL ) );
     _fact->RegisterService<UserManager::Service>                  ( UserManager::ServiceClass,          1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, UserManager::UMLOG ) );
+    _fact->RegisterService<newLogin::InstanceSvc>                 ( newLogin::serviceIds::Service,      2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, 0 ), Transport::CustomServiceParams( true ) );
     _fact->RegisterService<clientCtl::InstanceSvc>                ( clientCtl::serviceIds::Service,     1,  SInterfacePolicy( EServiceInstancing::SINGLE, 0 ), Transport::CustomServiceParams( true, CLIENTCTL_SVC_CHNL ) );
+
     _fact->RegisterService<GameBalancer::Service>                 ( GameBalancer::ServiceClass,         1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, GameBalancer::GBALANCER ) );
+    _fact->RegisterService<HybridServer::GameService>             ( HybridServer::ServiceClass,         2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ), Transport::CustomServiceParams( false ) );
+    _fact->RegisterService<lobby::ServerNode>                     ( lobby::serviceIds::Service,         2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ), Transport::CustomServiceParams( false ) );
+    _fact->RegisterService<chat::Service>                         ( chat::ServiceClass,                 1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::EXTERNAL ) );
+
+    _fact->RegisterService<HttpGateway::Service>                  ( HttpGateway::ServiceInterfaceId,    1,  SInterfacePolicy( EServiceInstancing::MULTIPLE ) );
     _fact->RegisterService<mmaking::Service>                      ( mmaking::serviceIds::Service,       32, SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG ), Transport::CustomServiceParams( false ) );
     _fact->RegisterService<socialLobby::Service>                  ( socialLobby::serviceIds::Service,   1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ) );
+
+    _fact->RegisterService<roll::BalancerSvc>                     ( roll::serviceIds::BalancerService,  1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG ), Transport::CustomServiceParams( false ) );
+    _fact->RegisterService<roll::InstanceSvc>                     ( roll::serviceIds::InstanceService,  3,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG ) );
+
     _fact->RegisterService<MatchMaking::Service>                  ( MatchMaking::ServiceClass,          0,  SInterfacePolicy( EServiceInstancing::SINGLE ) );
 #endif
   }

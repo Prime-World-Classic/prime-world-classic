@@ -1,0 +1,9 @@
+sources = [
+  'SockSrvPosix.h',
+  'SockSrvPosix.cpp',
+]
+
+components = [
+  'Network/RUDP/UdpSocket',
+  'System/Threading',
+]

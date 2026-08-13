@@ -3,7 +3,11 @@
 #include "RdpTransportChannel.h"
 #include "RdpTransportListener.h"
 #include "RdpTransportMsg.h"
+#if defined( NV_WIN_PLATFORM )
 #include "Network/RUDP/SockSrvWinsockBlocking.h"
+#elif defined( NV_LINUX_PLATFORM )
+#include "Network/RUDP/SockSrvPosix.h"
+#endif
 #include "Network/RUDP/IRdp.h"
 #include "System/RandomInterfaceImpl.h"
 #include "RdpSocketFactory.h"
@@ -75,7 +79,11 @@ Network::NetAddress PrimaryBase::AllocateServerAddress( const Network::NetAddres
 
 StrongMT<PrimaryBase::Slot> PrimaryBase::NewSlot( const ni_udp::NetAddr & _sockAddr, bool _searchPort )
 {
+#if defined( NV_WIN_PLATFORM )
   StrongMT<ni_udp::ISocketServer> sockSrv = new ni_udp::BlockingUdpSocketServer( s_sockServerPriority, s_sockBufferSize );
+#elif defined( NV_LINUX_PLATFORM )
+  StrongMT<ni_udp::ISocketServer> sockSrv = new ni_udp::BlockingUdpSocketServerPosix( s_sockServerPriority, s_sockBufferSize );
+#endif
 
   StrongMT<SocketFactory> sockFact = new SocketFactory( sockSrv, _sockAddr, _searchPort ? 128 : 0, 0 );
 

@@ -3,7 +3,11 @@
 #include "RdpTransportChannel.h"
 #include "RdpTransportListener.h"
 #include "RdpTransportMsg.h"
+#if defined( NV_WIN_PLATFORM )
 #include "Network/RUDP/SockSrvWinsockBlocking.h"
+#elif defined( NV_LINUX_PLATFORM )
+#include "Network/RUDP/SockSrvPosix.h"
+#endif
 #include "Network/RUDP/IRdp.h"
 #include "System/SafeTextFormatStl.h"
 

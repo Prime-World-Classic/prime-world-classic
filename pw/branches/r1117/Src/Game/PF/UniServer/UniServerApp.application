@@ -53,6 +53,9 @@ components = [
     'NewLogin',
     'ClientControl',
     'System/DarkSide',
+    # RUDP transport for client-facing services
+    'Network/RUDP/Rdp',
+    'Server/RdpTransport/RdpTransport',
 ]
 
 globalCompilerKeys = [

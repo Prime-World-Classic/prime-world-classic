@@ -6,6 +6,7 @@
 #include "RdpHandshake.h"
 #include "RdpListenContext.h"
 #include "RdpEphMux.h"
+#include "RdpProto.h"
 #include "System/JobThread.h"
 #include "System/Histogram.h"
 #include <map>
@@ -14,12 +15,6 @@
 
 namespace ni_udp
 {
-
-namespace proto
-{
-  namespace EPktType { enum Enum; }
-}
-
 
 class RdpOptionsObject;
 class IRdpPacketAllocator;
