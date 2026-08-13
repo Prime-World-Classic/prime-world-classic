@@ -3,6 +3,7 @@
 #include "System/InlineProfiler.h"
 #if defined( NV_LINUX_PLATFORM )
 #include <fcntl.h>
+#include <sys/time.h>
 #endif
 
 
@@ -34,8 +35,13 @@ void UdpSocket::GlobalShutdown()
 
 inline bool SetSockOptTimeval( SOCKET s, int opt )
 {
-  int to = 300;
+#if defined( NV_WIN_PLATFORM )
+  int to = 300; // milliseconds on Windows
   return ::setsockopt( s, SOL_SOCKET, opt, (char *)&to, sizeof( to ) ) == 0;
+#else
+  struct timeval to = {0, 300000}; // 300ms on Linux
+  return ::setsockopt( s, SOL_SOCKET, opt, (char *)&to, sizeof( to ) ) == 0;
+#endif
 }
 
 

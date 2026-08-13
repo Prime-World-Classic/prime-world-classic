@@ -16,12 +16,10 @@
 
 #include "System/sleep.h"
 
-#if defined( NV_WIN_PLATFORM )
 #include "RdpTransport/RdpTransport.h"
 #include "RdpTransport/RdpFrontendTransport.h"
 
 #include "Network/RUDP/UdpAddr.h"
-#endif
 
 namespace Transport
 {
@@ -98,7 +96,6 @@ bool NivalServerBase::StartTransport( const TStartList & _startList, const TServ
 {
   NI_VERIFY( coordinatorClientRunner, "", return false );
 
-#if defined( NV_WIN_PLATFORM )
   if ( rdp_transport::RdpTransportEnabled() )
   {
     MessageTrace( "Starting RDP transport" );
@@ -120,7 +117,6 @@ bool NivalServerBase::StartTransport( const TStartList & _startList, const TServ
     }
   }
   else
-#endif
   {
     MessageTrace( "Starting TCP/IP transport" );
 
