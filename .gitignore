@@ -186,3 +186,19 @@ pw/branches/r1117/Vendor/ACE_wrappers/**/Makefile.in
 pw/branches/r1117/Vendor/ACE_wrappers/**/Makefile.am
 pw/branches/r1117/Vendor/ACE_wrappers/autom4te.cache/
 pw/branches/r1117/Vendor/Terabit/lib/libzdll.so
+
+# Linux build artifacts
+pw/branches/r1117/Src/Game/PF/UniServer/build_linux*/
+
+# Compiled object and shared library files
+*.o
+*.so
+*.so.fixed
+*.so.new2
+
+# CMake backup/variant files
+CMakeLists.txt.fixed
+CMakeLists.txt.system
+
+# Published logs
+pw_publish/branch/Server/PvX/Bin/logs/

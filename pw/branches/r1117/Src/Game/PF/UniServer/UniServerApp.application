@@ -13,6 +13,12 @@ else:
 # Inline Profiler disabled on Linux (requires WTL - Windows only)
 settings.enableProfiler = False
 
+# Linux-specific linker dependencies
+if platform != 'win32':
+  if 'libs' not in locals():
+    libs = []
+  libs = libs + ['libcrypto.so']
+
 inlined = False
 
 components = [

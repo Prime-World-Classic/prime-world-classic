@@ -1429,6 +1429,13 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
         for ln in libDeps :
             cmake_file.write( "SET( ALL_LIBS {0}           {1} )\n".format( all_libs_var, ln ) )
 
+        # Define SPIPE_Addr object target before executable (Linux only)
+        spipe_obj = ""
+        if options.platform != 'win32':
+            cmake_file.write( "ADD_LIBRARY(spip_e_addr_obj OBJECT /home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp)\n" )
+            cmake_file.write( "SET_TARGET_PROPERTIES(spip_e_addr_obj PROPERTIES COMPILE_FLAGS \"-fno-rtti\")\n" )
+            spipe_obj = "$<TARGET_OBJECTS:spip_e_addr_obj>"
+
         app_name = maincomponent.name.upper() + "_APP"
         app_name_var = "${" + app_name + "}"
         cmake_file.write( "##################################################################\n" )
@@ -1442,10 +1449,11 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
             file_path = src.file.replace( "\\", "/" )
             if file_path.endswith( ".cpp" ) :
                 cmake_file.write( "{0:>54} {1}\n".format( " ", file_path ) )
+        # SPIPE_Addr object target is defined above
         cmake_file.write( "{0:>55})\n".format( " " ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES OUTPUT_NAME {0} )\n".format( app_name_var ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE CXX )\n".format( app_name_var ) )
-        cmake_file.write( "TARGET_LINK_LIBRARIES( {0:<31} -Xlinker --start-group rt {1} -Xlinker --end-group )\n".format( app_name_var, all_libs_var ) )
+        cmake_file.write( "TARGET_LINK_LIBRARIES( {0:<31} -Wl,--export-dynamic -Xlinker --start-group rt {1} {2} -Xlinker --end-group )\n".format( app_name_var, all_libs_var, spipe_obj ) )
         
         #cmake_file.write('add_executable(' + projectName + ' ${SOURCE_FILES})\n')
 

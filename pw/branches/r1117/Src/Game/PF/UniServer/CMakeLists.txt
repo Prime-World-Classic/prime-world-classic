@@ -19,7 +19,7 @@ cmake_path(GET _p3 PARENT_PATH PROJECT_ROOT)
 
 set(SRC_DIR ${PROJECT_ROOT}/Src)
 set(VENDOR ${PROJECT_ROOT}/Vendor)
-set(AUTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/UniServerApp.auto)
+set(AUTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/UniServerApp.auto/UniServerApp)
 
 message(STATUS "PROJECT_ROOT: ${PROJECT_ROOT}")
 message(STATUS "SRC_DIR: ${SRC_DIR}")
@@ -136,7 +136,6 @@ set(COMMON_INCLUDES
     ${SRC_DIR}/Game/PF/Client/LobbyPvx
     ${SRC_DIR}/Game/PF/HybridServer
     ${SRC_DIR}/Game/PF/UniServer
-    ${SRC_DIR}/PF_GameLogic
 )
 
 # ============================================================
@@ -163,8 +162,14 @@ list(FILTER ACE_SRCS EXCLUDE REGEX ".*Tru64.*")
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*OSF.*")
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*VMS.*")
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*NT.*")
-list(FILTER ACE_SRCS EXCLUDE REGEX ".*SPIPE.*")
+
+# Exclude SPIPE/UPIPE files that fail with GCC 15, but keep SPIPE_Addr
+list(FILTER ACE_SRCS EXCLUDE REGEX ".*SPIPE_Stream.*")
+list(FILTER ACE_SRCS EXCLUDE REGEX ".*SPIPE_Acceptor.*")
+list(FILTER ACE_SRCS EXCLUDE REGEX ".*SPIPE_Connector.*")
+list(FILTER ACE_SRCS EXCLUDE REGEX ".*SPIPE_stubs.*")
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*UPIPE.*")
+
 # Exclude files that are known to fail with GCC 15
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*Caching_Strategies_T.*")
 list(FILTER ACE_SRCS EXCLUDE REGEX ".*Cleanup_Strategies_T.*")
@@ -364,35 +369,6 @@ else()
 endif()
 
 # ============================================================
-# 10. Build PF_GameLogic from source
-# ============================================================
-message(STATUS "=== Building PF_GameLogic ===")
-
-file(GLOB_RECURSE PF_GAMELOGIC_SRCS ${SRC_DIR}/PF_GameLogic/*.cpp)
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*[Ww]in.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*windows.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*[Tt]est.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*Render.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*[Cc]lient.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*[Ss]ound.*")
-list(FILTER PF_GAMELOGIC_SRCS EXCLUDE REGEX ".*[Uu][Ii].*")
-
-list(LENGTH PF_GAMELOGIC_SRCS PFGL_COUNT)
-message(STATUS "PF_GameLogic sources: ${PFGL_COUNT}")
-
-add_library(pf_gamelogic STATIC ${PF_GAMELOGIC_SRCS})
-target_include_directories(pf_gamelogic PUBLIC
-    ${SRC_DIR}/PF_GameLogic
-    ${COMMON_INCLUDES}
-    ${VENDOR}/ACE_wrappers
-)
-target_compile_definitions(pf_gamelogic PUBLIC ${COMMON_DEFS})
-target_compile_options(pf_gamelogic PRIVATE -fpermissive)
-target_link_libraries(pf_gamelogic PRIVATE
-    ace_vendor terabit thrift_vendor jsoncpp_vendor tinyxml_vendor
-    ${CMAKE_THREAD_LIBS_INIT}
-)
-
 # ============================================================
 # 11. Collect UniServerApp project sources
 # ============================================================
@@ -480,7 +456,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     tinyxml_vendor       # tinyxml (vendored or system)
     md4_vendor           # MD4 (vendored)
     unixenv              # UnixEnv (vendored)
-    pf_gamelogic         # PF_GameLogic (built from source)
     ${CURL_LIBRARIES}    # system curl
     ${OPENSSL_LIBRARIES} # system openssl
     ${ZLIB_LIBRARIES}    # system zlib
