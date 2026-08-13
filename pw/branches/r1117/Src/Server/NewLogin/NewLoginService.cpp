@@ -184,7 +184,13 @@ loadNotifyTimer()
 
   svcLinkDict = new SvcLinkDict( BackendGk(), CoordClient()->GetFrontendAddressTranslator() );
 
-  ni_udp::NetAddr loginAddr( Network::GetLoginServerAddress().c_str() );
+  ni_udp::NetAddr loginAddr;
+  unsigned loginMux = 0;
+  if ( !rdp_transport::ParseAddress( loginAddr, loginMux, Network::GetLoginServerAddress().c_str() ) )
+  {
+    NEWLOGIN_LOG_ERR( "Failed to parse login address: %s", Network::GetLoginServerAddress().c_str() );
+    return;
+  }
   logic = new Logic( loginAddr, config, auth, clientControl, svcLinkDict, Now(), SvcId() );
 
   auth->SetLoginAddress( logic->ListenAddress().c_str() );
