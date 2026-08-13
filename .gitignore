@@ -190,11 +190,30 @@ pw/branches/r1117/Vendor/Terabit/lib/libzdll.so
 # Linux build artifacts
 pw/branches/r1117/Src/Game/PF/UniServer/build_linux*/
 
+# CMake generated artifacts (any build dir)
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/Makefile
+**/*.cmake
+
+# Build output files
+*.a
+*.o.d
+a.out
+
 # Compiled object and shared library files
 *.o
 *.so
 *.so.fixed
 *.so.new2
+
+# Component auto-generated files
+**/*.auto/
+
+# Python cache
+__pycache__/
+*.pyc
 
 # CMake backup/variant files
 CMakeLists.txt.fixed
