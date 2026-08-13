@@ -125,7 +125,7 @@ bool UniServerApp::OnInitServerFactory( Transport::NivalServer * _fact )
     _fact->RegisterServiceEx<Relay::RelayServerRunner2>           ( Relay::ServiceClass,                1,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::EXTERNAL ) );
     _fact->RegisterService<Relay::Balancer::Service>              ( Relay::Balancer::ServiceClass,      1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG ), Transport::CustomServiceParams( true, Relay::RBLOG ) );
 
-    _fact->RegisterService<Login::LoginServerAsync>               ( Login::serviceId,                   1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, LOGIN_CHNL ) );
+    // Login skipped on Linux - requires WsdlPull (pre-built lib missing)
     _fact->RegisterService<UserManager::Service>                  ( UserManager::ServiceClass,          1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, UserManager::UMLOG ) );
     _fact->RegisterService<newLogin::InstanceSvc>                 ( newLogin::serviceIds::Service,      2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, 0 ), Transport::CustomServiceParams( true ) );
     _fact->RegisterService<clientCtl::InstanceSvc>                ( clientCtl::serviceIds::Service,     1,  SInterfacePolicy( EServiceInstancing::SINGLE, 0 ), Transport::CustomServiceParams( true, CLIENTCTL_SVC_CHNL ) );

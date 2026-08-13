@@ -28,7 +28,7 @@ components = [
     'Server/LobbySocial/SocialLobbyService',
     'Server/LiveMMaking/LiveMMakingService',
     'HybridServer/HybridServer',
-    'Coordinator/LoginServerRunner',  
+    # 'Coordinator/LoginServerRunner',  -- requires WsdlPull, skipped on Linux
     'MemoryLib/NewDelete',
     'Relay/RelaySvc',
     'main.ace',
@@ -51,11 +51,15 @@ components = [
     'UserManager/UserManagerSvc',
     'UserManager/UserManagerAgent',
     'NewLogin',
+    'Network/LoginTypes',  # for Login::ELoginResult::ToString
     'ClientControl',
     'System/DarkSide',
     # RUDP transport for client-facing services
     'Network/RUDP/Rdp',
     'Server/RdpTransport/RdpTransport',
+    'Server/RdpTransport/RdpFrontendAgent',
+    # Coordinator client for service registration
+    'Server/Coordinator/CoordinatorClient',
 ]
 
 globalCompilerKeys = [
