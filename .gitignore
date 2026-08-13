@@ -185,3 +185,4 @@ pw/branches/r1117/Vendor/ACE_wrappers/ace/config.h.in~
 pw/branches/r1117/Vendor/ACE_wrappers/**/Makefile.in
 pw/branches/r1117/Vendor/ACE_wrappers/**/Makefile.am
 pw/branches/r1117/Vendor/ACE_wrappers/autom4te.cache/
+pw/branches/r1117/Vendor/Terabit/lib/libzdll.so
