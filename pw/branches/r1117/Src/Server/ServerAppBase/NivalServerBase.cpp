@@ -78,7 +78,9 @@ bool NivalServerBase::Startup( const TStartList & _startList, const TServerCmdLi
       return false;
     if ( !StartCoordinatorService() )
       return false;
-    return true; // Coordinator only serves, doesn't connect to itself
+    // Start all services locally (no coordinator RPC needed)
+    StartLocalServices( _startList, _serverCmdLine );
+    return true;
   }
 
   if ( !StartTransport( _startList, _serverCmdLine ) )
@@ -254,19 +256,78 @@ bool NivalServerBase::SpawnServices( const TStartList & _startList, const TServe
     }
   }
 
-  coordinatorClientRunner->Open( backendTransport, frontendTransport, Network::GetCoordinatorAddress(), "pvx" );
-  coordinatorClientThread = new threading::JobThread( coordinatorClientRunner, "Coordinator Client" );
-
-  while( cli->state() == Coordinator::ClientState::OPENING )
-    nival::sleep( 10 );
-
-  if ( cli->state() != Coordinator::ClientState::OPEN )
+  // Skip coordinator client connection when running as coordinator service
+  if ( !startCoordinator )
   {
-    LOG_C(0) << "Can't connect to coordinator service OR coordinator refuse client"; 
-    return false;
+    coordinatorClientRunner->Open( backendTransport, frontendTransport, Network::GetCoordinatorAddress(), "pvx" );
+    coordinatorClientThread = new threading::JobThread( coordinatorClientRunner, "Coordinator Client" );
+
+    while( cli->state() == Coordinator::ClientState::OPENING )
+      nival::sleep( 10 );
+
+    if ( cli->state() != Coordinator::ClientState::OPEN )
+    {
+      LOG_C(0) << "Can't connect to coordinator service OR coordinator refuse client";
+      return false;
+    }
   }
 
   return true;
+}
+
+
+
+void NivalServerBase::StartLocalServices( const TStartList & _startList, const TServerCmdLine & _serverCmdLine )
+{
+  MessageTrace( "=== StartLocalServices called ===" );
+  StrongMT<Coordinator::CoordinatorClient> cli = coordinatorClientRunner->GetClient();
+  cli->SetIps( Network::GetBackendIPAddr(), Network::GetFrontendIPAddr() );
+  MessageTrace( "IP addresses: backend=%s, frontend=%s", Network::GetBackendIPAddr(), Network::GetFrontendIPAddr() );
+
+  for ( TStartList::const_iterator it = _startList.begin(); it != _startList.end(); ++it )
+  {
+    StrongMT<IServiceSpawner> spawner = it->spawner;
+    const TServiceId & serviceClass = spawner->ServiceClass();
+
+    // Skip coordinator service - already started
+    if ( serviceClass == "coordinator" )
+      continue;
+
+    const unsigned instanceNumber = it->instanceNumber ? it->instanceNumber : spawner->DefaultInstancesNumber();
+    for ( unsigned i = 0; i < instanceNumber; ++i )
+    {
+      char buf[128];
+      snprintf( buf, sizeof(buf), "%s_%02u", serviceClass.c_str(), i );
+      Transport::TServiceId serviceId( buf );
+
+      // Manually start service like CoordinatorClient::StartService
+      const bool extService = ( spawner->Policy().flags & Coordinator::ESvcFlags::EXTERNAL ) ? true : false;
+
+      ServiceOptions svcOpts;
+      svcOpts.commandLine = _serverCmdLine;
+      const Coordinator::TConfigServiceOptions & configOptions = Coordinator::GetConfigServiceOptions();
+      for( int idx = 0; idx < configOptions.size(); ++idx ) {
+        const Coordinator::SConfigServiceOption * cfgOpt = configOptions[idx];
+        if ( cfgOpt->IsGlobalOption() || ( serviceClass == cfgOpt->serviceId.c_str() ) )
+          svcOpts.options.insert( cfgOpt->option );
+      }
+
+      Transport::ServiceParams params( svcOpts );
+      params.serviceId = serviceId;
+      params.backendTransport = backendTransport;
+      params.frontendTransport = extService ? frontendTransport : 0;
+      params.driver = netDriver;
+      params.coordClient = cli->GetInterface();
+
+      // Spawn and start a new runner directly
+      StrongMT<IServerRunner> runner = spawner->SpawnService();
+      if ( runner )
+      {
+        runner->StartInstance( params );
+        MessageTrace( "Local service started: %s (ext=%d)", serviceId.c_str(), extService );
+      }
+    }
+  }
 }
 
 

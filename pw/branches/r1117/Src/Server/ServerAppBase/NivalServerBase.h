@@ -167,6 +167,7 @@ private:
   bool SpawnServices( const TStartList & _startList, const TServerCmdLine & _serverCmdLine );
   bool StartTransport( const TStartList & _startList, const TServerCmdLine & _serverCmdLine );
   bool StartCoordinatorService();
+  void StartLocalServices( const TStartList & _startList, const TServerCmdLine & _serverCmdLine );
 };
 
 } // namespace Transport
