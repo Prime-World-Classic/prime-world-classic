@@ -136,7 +136,7 @@ class TPROACTOR_Export TRB_Proactor
 {
   // = Here are the private typedefs that the <TRB_Proactor> uses.
 
-  // ACE 6.x: ACE_Timer_Queue_Iterator_T takes 3 template args
+  // ACE 8.x: ACE_Timer_Queue_Iterator_T takes 3 template args (TYPE, FUNCTOR, ACE_LOCK)
   typedef ACE_Timer_Queue_Iterator_T<TRB_Handler *,
     TRB_Proactor_Handle_Timeout_Upcall,
     ACE_SYNCH_RECURSIVE_MUTEX>
