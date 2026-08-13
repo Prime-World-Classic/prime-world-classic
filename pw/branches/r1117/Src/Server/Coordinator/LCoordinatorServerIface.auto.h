@@ -3,6 +3,7 @@
 
 #include <RPC/RPC.h>
 #include <RPC/CppWrapper.h>
+#include "Coordinator/LCoordinatorClientIface.auto.h"
 
 
 #include "CoordinatorServerIface.h"
