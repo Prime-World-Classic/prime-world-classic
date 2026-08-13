@@ -79,10 +79,13 @@ cd build_linux_test
 
 cmake ../UniServerApp.auto/UniServerApp \
   -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
-  -DCMAKE_BUILD_TYPE=Release
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_BINARY_DIR="$(pwd)"
 ```
 
 > **Примечание**: флаг `-DCMAKE_POLICY_VERSION_MINIMUM=3.5` необходим, т.к. генератор создаёт CMakeLists.txt с `cmake_minimum_required(VERSION 2.8)`, что несовместимо с CMake 4.x.
+>
+> **Важно**: флаг `-DCMAKE_BINARY_DIR="$(pwd)"` обязателен — сгенерированный CMakeLists.txt использует абсолютные пути для всех источников, из-за чего CMake 4.x может записать build-файлы в исходный каталог вместо `build_linux_test`. Явное указание `CMAKE_BINARY_DIR` предотвращает эту проблему.
 
 ### Шаг 3. Компиляция
 
