@@ -4,12 +4,16 @@
 #include "Network/AddressTranslator.h"
 #include "System/IDGenerator.h"
 #include "Network/LoginData.h"
+#include "CoordinatorClientIface.h"
 #include "RCoordinatorClientIface.auto.h"
 #include "ServiceAppearanceNotifySink.h"
 #include "Coordinator/CoordinatorServiceStatus.h"
 #include "Coordinator/CoordinatorServerIface.h"
 #include "Coordinator/CoordinatorClientContext.h"
 #include "Coordinator/CoordinatorSvcContext.h"
+
+// Force the RICoordinatorClientRemote factory to be linked (needed for local RPC calls)
+namespace Coordinator { FORCE_INIT_FACTORY(RICoordinatorClientRemote) }
 
 //#include "RPC/P2PNode.h"
 #include "RPC/GateKeeper.h"
@@ -56,14 +60,14 @@ public:
   virtual void SoftStopService(Transport::TServiceId const & _svcid);
   virtual void ReloadConfig( const Transport::TServiceId & svcid );
 
-  void Step(); // периодические таски (context timeouts и т.п.)
+  void Step(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (context timeouts пїЅ пїЅ.пїЅ.)
 
 protected:
 
   //  IClusterServicesInfo
   virtual void GetClusterSvcInfo(ClusterInfo & csi);
 
-  int RegisterClient_(Coordinator::ServerIdT _srvid, StrongMT<RICoordinatorClientRemote> const & _client, 
+  int RegisterClient_(Coordinator::ServerIdT _srvid, StrongMT<ICoordinatorClientRemote> const & _client,
     ServerDef const & _serverdef, StrongMT<ClientContext> & _ctx);
 
   int SoftStopService_(StrongMT<SvcContext> const & _svctx);
@@ -99,7 +103,7 @@ private:
   typedef nstl::vector<StrongMT<ClientContext> > ClientContextsT;
   ClientContextsT clientContexts;
 
-  StrongMT<rpc::GateKeeper> gateKeeper; // // был weak, но живем мы все равно только в CoordinatorRunner, у которого strong
+  StrongMT<rpc::GateKeeper> gateKeeper; // // пїЅпїЅпїЅ weak, пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ CoordinatorRunner, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ strong
   StrongMT<IServiceAppearanceNotifySink> serviceAppearanceNotify;
 
   StrongMT<ClientContext> FindClientContext(ServerIdT const & _srvid);

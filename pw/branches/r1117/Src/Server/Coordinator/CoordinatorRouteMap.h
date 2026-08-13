@@ -1,7 +1,7 @@
 #pragma once
 #include "Network/TransportAddress.h"
 #include "Network/Address.h"
-#include "Coordinator/RCoordinatorClientIface.auto.h"
+#include "Coordinator/CoordinatorClientIface.h"
 
 
 namespace Coordinator
@@ -15,7 +15,7 @@ public:
 private:
   typedef TServicesMap::iterator TIter;
   typedef map<Transport::TServiceId, vector<Transport::TServiceId> > TServicesByClass;
-  typedef vector<StrongMT<RICoordinatorClientRemote> > CoordinatorClientsT;
+  typedef vector<StrongMT<ICoordinatorClientRemote> > CoordinatorClientsT;
 
   TServicesMap routeMap;
   CoordinatorClientsT slaves;
@@ -30,8 +30,8 @@ public:
 
   bool FindRoute( SvcNetAddresses & _result, const Transport::TServiceId & _serviceId ) const;
 
-  void AddSlave( RICoordinatorClientRemote * cli );
-  void InitSlave( RICoordinatorClientRemote * cli );
+  void AddSlave( ICoordinatorClientRemote * cli );
+  void InitSlave( ICoordinatorClientRemote * cli );
 
   void RemoveSlaveCorpses();
 };
