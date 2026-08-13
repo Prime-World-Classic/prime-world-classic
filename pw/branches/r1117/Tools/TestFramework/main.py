@@ -1351,7 +1351,7 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
     cmake_file.write( "IF ( CXXTEST_FOUND )\n" )
     cmake_file.write( "  INCLUDE_DIRECTORIES( ${CXXTEST_INCLUDE_DIR} )\n" )
     cmake_file.write( "ELSE ( CXXTEST_FOUND )\n" )
-    cmake_file.write( "  MESSAGE( FATAL_ERROR \"CxxTest not found!\" )\n" )
+    cmake_file.write( "  MESSAGE( WARNING \"CxxTest not found, tests will be skipped\" )\n" )
     cmake_file.write( "ENDIF ( CXXTEST_FOUND )\n\n" )
 
     for c in libs :

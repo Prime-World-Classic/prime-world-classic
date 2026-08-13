@@ -1,0 +1,4 @@
+#ifndef NLIST_H__
+  #include <list>
+#endif
+// If nlist.h was included, std::list is already defined - skip system version

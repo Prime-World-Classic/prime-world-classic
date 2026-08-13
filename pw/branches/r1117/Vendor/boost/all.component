@@ -1,6 +1,5 @@
 includePaths = [
     '.',
-    'boost/tr1',
 ]
 
 components = [

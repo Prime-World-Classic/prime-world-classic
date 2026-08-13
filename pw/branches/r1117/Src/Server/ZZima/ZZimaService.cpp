@@ -404,6 +404,7 @@ const char* GetErrorText(ErrorCode code)
 namespace XmlUtils
 {
 
+#ifdef _WIN32
 void myPost(const std::string uri,const std::string username,
   const std::string password,const std::string data,
   std::string action,char* &results)
@@ -446,6 +447,7 @@ void myPost(const std::string uri,const std::string username,
     w3.Close();
   }
 }
+#endif // _WIN32
 
 }
 
@@ -527,6 +529,7 @@ ErrorCode InvokerOld::Invoke()
   b.Finish();
   char* results = (char*)0;
   request = b.Get();
+#ifdef _WIN32
   XmlUtils::myPost(apiUrl, std::string(""), std::string(""), request, std::string("Get"), results);
   if (!results)
   {
@@ -534,6 +537,9 @@ ErrorCode InvokerOld::Invoke()
     return E_INVOKE_FAILED;
   }
   result = results;
+#else
+  result.clear();
+#endif
   return E_OK;
 }
 

@@ -20,6 +20,10 @@
 #ifndef _THRIFT_THRIFT_H_
 #define _THRIFT_THRIFT_H_ 1
 
+#ifndef VERSION
+#define VERSION "0.9.1"
+#endif
+
 #include <thrift/transport/PlatformSocket.h>
 
 #include <thrift/thrift-config.h>
@@ -31,6 +35,7 @@
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
+#include <arpa/inet.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif

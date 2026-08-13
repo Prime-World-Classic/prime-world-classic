@@ -53,4 +53,12 @@
   #define ACE_LACKS_FCNTL 1
 #endif
 
+// ============================================================
+// sprintf_s compatibility: Windows-only safe sprintf.
+// On Linux, map to snprintf which is the POSIX safe version.
+// ============================================================
+#ifndef sprintf_s
+  #define sprintf_s(buf, sz, fmt, ...) snprintf(buf, sz, fmt, __VA_ARGS__)
+#endif
+
 #endif // ACE_COMPAT_H_INCLUDED

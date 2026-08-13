@@ -42,7 +42,7 @@ class ClusterManagementIfFactory {
 
 class ClusterManagementIfSingletonFactory : virtual public ClusterManagementIfFactory {
  public:
-  ClusterManagementIfSingletonFactory(const ::std::shared_ptr<ClusterManagementIf>& iface) : iface_(iface) {}
+  ClusterManagementIfSingletonFactory(const boost::shared_ptr<ClusterManagementIf>& iface) : iface_(iface) {}
   virtual ~ClusterManagementIfSingletonFactory() {}
 
   virtual ClusterManagementIf* getHandler(const ::apache::thrift::TConnectionInfo&) override {
@@ -51,7 +51,7 @@ class ClusterManagementIfSingletonFactory : virtual public ClusterManagementIfFa
   virtual void releaseHandler(ClusterManagementIf* /* handler */) override {}
 
  protected:
-  ::std::shared_ptr<ClusterManagementIf> iface_;
+  boost::shared_ptr<ClusterManagementIf> iface_;
 };
 
 class ClusterManagementNull : virtual public ClusterManagementIf {
@@ -701,7 +701,7 @@ class ClusterManagementClient : virtual public ClusterManagementIf {
 
 class ClusterManagementProcessor : public ::apache::thrift::TDispatchProcessor {
  protected:
-  ::std::shared_ptr<ClusterManagementIf> iface_;
+  boost::shared_ptr<ClusterManagementIf> iface_;
   virtual bool dispatchCall(::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, const std::string& fname, int32_t seqid, void* callContext) override;
  private:
   typedef  void (ClusterManagementProcessor::*ProcessFunction)(int32_t, ::apache::thrift::protocol::TProtocol*, ::apache::thrift::protocol::TProtocol*, void*);
@@ -714,7 +714,7 @@ class ClusterManagementProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_ExecuteCommand(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_ChangeParameters(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
-  ClusterManagementProcessor(::std::shared_ptr<ClusterManagementIf> iface) :
+  ClusterManagementProcessor(boost::shared_ptr<ClusterManagementIf> iface) :
     iface_(iface) {
     processMap_["GetServices"] = &ClusterManagementProcessor::process_GetServices;
     processMap_["GetServicesByMachine"] = &ClusterManagementProcessor::process_GetServicesByMachine;
@@ -732,7 +732,7 @@ class ClusterManagementProcessorFactory : public ::apache::thrift::TProcessorFac
   ClusterManagementProcessorFactory(const ::std::shared_ptr< ClusterManagementIfFactory >& handlerFactory) noexcept :
       handlerFactory_(handlerFactory) {}
 
-  ::std::shared_ptr< ::apache::thrift::TProcessor > getProcessor(const ::apache::thrift::TConnectionInfo& connInfo) override;
+  boost::shared_ptr< ::apache::thrift::TProcessor > getProcessor(const ::apache::thrift::TConnectionInfo& connInfo) override;
 
  protected:
   ::std::shared_ptr< ClusterManagementIfFactory > handlerFactory_;
@@ -746,7 +746,7 @@ class ClusterManagementMultiface : virtual public ClusterManagementIf {
  protected:
   std::vector<std::shared_ptr<ClusterManagementIf> > ifaces_;
   ClusterManagementMultiface() {}
-  void add(::std::shared_ptr<ClusterManagementIf> iface) {
+  void add(boost::shared_ptr<ClusterManagementIf> iface) {
     ifaces_.push_back(iface);
   }
  public:

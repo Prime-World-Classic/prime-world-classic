@@ -20,6 +20,13 @@
 #ifndef _THRIFT_TRANSPORT_PLATFORM_SOCKET_H_
 #  define _THRIFT_TRANSPORT_PLATFORM_SOCKET_H_
 #include <sys/time.h>  // gettimeofday for Linux
+#ifndef _WIN32
+#include <netdb.h>      // gai_strerror, getaddrinfo, freeaddrinfo, addrinfo
+#include <poll.h>       // poll, pollfd, POLLIN, POLLOUT
+#include <sys/socket.h> // sockaddr_un, SHUT_RDWR, SO_REUSEADDR
+#include <sys/un.h>     // sockaddr_un
+#include <netinet/tcp.h> // TCP_NODELAY
+#endif
 
 #ifdef _WIN32
 #  define THRIFT_GET_SOCKET_ERROR ::WSAGetLastError()

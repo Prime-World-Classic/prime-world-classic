@@ -6,6 +6,7 @@
 #include "rpc/IfaceRequester.h"
 #include "Server/LobbySocial/SocialLobbyTypes.h"
 #include "system/SpinLock.h"
+#include "GatewayPingContext.h"
 #include <list>
 #include <map>
 
@@ -28,10 +29,7 @@ namespace HttpGateway
 class PingContext;
 class ForgeRollRequest;
 
-namespace EContextState
-{
-  enum Enum { New, ApprovedByLobby, Restored, Condemned };
-}
+// EContextState defined in GatewayPingContext.h
 
 
 // ������� �����: ������ �������, ��������� rp�-������ (����� ��������� ISocialLobby), �������� ������ � ������

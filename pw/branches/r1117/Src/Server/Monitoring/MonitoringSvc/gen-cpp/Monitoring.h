@@ -42,7 +42,7 @@ class MonitoringIfFactory {
 
 class MonitoringIfSingletonFactory : virtual public MonitoringIfFactory {
  public:
-  MonitoringIfSingletonFactory(const ::std::shared_ptr<MonitoringIf>& iface) : iface_(iface) {}
+  MonitoringIfSingletonFactory(const boost::shared_ptr<MonitoringIf>& iface) : iface_(iface) {}
   virtual ~MonitoringIfSingletonFactory() {}
 
   virtual MonitoringIf* getHandler(const ::apache::thrift::TConnectionInfo&) override {
@@ -51,7 +51,7 @@ class MonitoringIfSingletonFactory : virtual public MonitoringIfFactory {
   virtual void releaseHandler(MonitoringIf* /* handler */) override {}
 
  protected:
-  ::std::shared_ptr<MonitoringIf> iface_;
+  boost::shared_ptr<MonitoringIf> iface_;
 };
 
 class MonitoringNull : virtual public MonitoringIf {
@@ -644,7 +644,7 @@ class MonitoringClient : virtual public MonitoringIf {
 
 class MonitoringProcessor : public ::apache::thrift::TDispatchProcessor {
  protected:
-  ::std::shared_ptr<MonitoringIf> iface_;
+  boost::shared_ptr<MonitoringIf> iface_;
   virtual bool dispatchCall(::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, const std::string& fname, int32_t seqid, void* callContext) override;
  private:
   typedef  void (MonitoringProcessor::*ProcessFunction)(int32_t, ::apache::thrift::protocol::TProtocol*, ::apache::thrift::protocol::TProtocol*, void*);
@@ -657,7 +657,7 @@ class MonitoringProcessor : public ::apache::thrift::TDispatchProcessor {
   void process_GetRegisteredPerfCounters(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
   void process_GetPerfCounterSamples(int32_t seqid, ::apache::thrift::protocol::TProtocol* iprot, ::apache::thrift::protocol::TProtocol* oprot, void* callContext);
  public:
-  MonitoringProcessor(::std::shared_ptr<MonitoringIf> iface) :
+  MonitoringProcessor(boost::shared_ptr<MonitoringIf> iface) :
     iface_(iface) {
     processMap_["GetPerfCounters"] = &MonitoringProcessor::process_GetPerfCounters;
     processMap_["RegisterPerfCounters"] = &MonitoringProcessor::process_RegisterPerfCounters;
@@ -675,7 +675,7 @@ class MonitoringProcessorFactory : public ::apache::thrift::TProcessorFactory {
   MonitoringProcessorFactory(const ::std::shared_ptr< MonitoringIfFactory >& handlerFactory) noexcept :
       handlerFactory_(handlerFactory) {}
 
-  ::std::shared_ptr< ::apache::thrift::TProcessor > getProcessor(const ::apache::thrift::TConnectionInfo& connInfo) override;
+  boost::shared_ptr< ::apache::thrift::TProcessor > getProcessor(const ::apache::thrift::TConnectionInfo& connInfo) override;
 
  protected:
   ::std::shared_ptr< MonitoringIfFactory > handlerFactory_;
@@ -689,7 +689,7 @@ class MonitoringMultiface : virtual public MonitoringIf {
  protected:
   std::vector<std::shared_ptr<MonitoringIf> > ifaces_;
   MonitoringMultiface() {}
-  void add(::std::shared_ptr<MonitoringIf> iface) {
+  void add(boost::shared_ptr<MonitoringIf> iface) {
     ifaces_.push_back(iface);
   }
  public:

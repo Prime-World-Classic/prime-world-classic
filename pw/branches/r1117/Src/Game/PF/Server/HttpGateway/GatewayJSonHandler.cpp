@@ -1117,13 +1117,13 @@ void GatewayJsonHandler::HandleServerStatus( Json::Value & pvxReply, const Json:
   { 
     SVC_LOG_MSG.Trace( "Sending server status..." );
 
-    // запрашиваем текущую статистику сервера
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if ( StrongMT<socialLobby::RISocialInterface> soclobby = SocLobbyThreadSafe() )
       soclobby->GetServerStatus( this, &GatewayJsonHandler::OnServerStatus );
 
     Json::Value status( Json::objectValue );
 
-    {// забираем значения из кэша
+    {// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
       threading::MutexLock lock(mutex); 
       status["accept_timeout"] = lastServerStatus.acceptTimeout;
       status["average_mm_time"] = lastServerStatus.averageMmTime;
@@ -1169,7 +1169,7 @@ void GatewayJsonHandler::HandleForgeRoll( Json::Value & reply, const Json::Value
 
   for ( size_t i = 0; i < reqObj.size(); ++i )
   {
-    Json::Value item = reqObj[i];
+    Json::Value item = reqObj[(int)i];
     if ( !item.isObject() ) {
       SVC_LOG_ERR.Trace( "Wrong json item fromat for forge roll" );
       continue;

@@ -5,6 +5,10 @@
 #include "System/StrProc.h"
 
 #include <string>
+#ifdef NV_LINUX_PLATFORM
+#include <unistd.h>
+#include <linux/limits.h>
+#endif
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -449,6 +453,7 @@ int CFilePath::operator&( IBinSaver &saver )
 
 void SetModuleCurrentDir()
 {
+#ifdef WIN32
     TCHAR szFileName[MAX_PATH];
     GetModuleFileName( NULL, szFileName, MAX_PATH );
 
@@ -457,6 +462,17 @@ void SetModuleCurrentDir()
     std::string szDirName = path.substr(0, n);
 
     SetCurrentDirectory(szDirName.c_str());
+#elif defined( NV_LINUX_PLATFORM )
+    char szFileName[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", szFileName, sizeof(szFileName) - 1);
+    if (len != -1) {
+        szFileName[len] = '\0';
+        std::string path(szFileName);
+        std::string::size_type n = path.rfind(NFile::FILE_SEPARATOR);
+        std::string szDirName = path.substr(0, n);
+        chdir(szDirName.c_str());
+    }
+#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -2,6 +2,28 @@
 #define SYSTEM_STD_AFX_H__
 
 #include "System/config.h"
+#include <stdexcept>  // std::runtime_error
+#include <cstdlib>    // wcstol, atoi
+#include <cerrno>     // errno, ERANGE
+
+// sprintf_s is Windows-only. On Linux map to sprintf for calls without size,
+// and snprintf for calls with size. We handle both via inline functions.
+#ifdef NV_LINUX_PLATFORM
+  #include <cstdio>
+  #include <cstdarg>
+  inline int sprintf_s(char *buf, const char *fmt, ...) {
+    va_list args; va_start(args, fmt); int r = vsprintf(buf, fmt, args); va_end(args); return r;
+  }
+  inline int sprintf_s(char *buf, size_t sz, const char *fmt, ...) {
+    va_list args; va_start(args, fmt); int r = vsnprintf(buf, sz, fmt, args); va_end(args); return r;
+  }
+#endif
+
+// Windows atomic operations compatibility on Linux
+#ifdef NV_LINUX_PLATFORM
+  #define InterlockedIncrement(x) __sync_fetch_and_add((x), 1)
+  #define InterlockedDecrement(x) __sync_fetch_and_sub((x), 1)
+#endif
 
 #ifdef STATIC_LIB
   #define DO_NOT_USE_DLLMAIN

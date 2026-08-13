@@ -4,8 +4,11 @@ sources = [
     'stdafx.h',    
 ]
 
-# Enable CrashRpt
-settings.enableCrashRpt = True
+# CrashRpt is Windows-only; disable on Linux
+if platform == 'win32':
+  settings.enableCrashRpt = True
+else:
+  settings.enableCrashRpt = False
 
 # Inline Profiler disabled on Linux (requires WTL - Windows only)
 settings.enableProfiler = False
@@ -24,7 +27,7 @@ components = [
     'Relay/RelaySvc',
     'main.ace',
     'MatchMaking/MatchMakingSvc',
-    'ClusterAdmin/ClusterAdminSvc',
+    # 'ClusterAdmin/ClusterAdminSvc',  -- requires Thrift, skipped on Linux
     'Server/AppFramework/TimeSlicer',
     'Server/DebugVarUpdate/Request',
     'Server/DebugVarUpdate/Report',
@@ -33,7 +36,7 @@ components = [
     'System/CrashRptWrapper',
     'Server/LobbyPvx/Remote',
     'Client/LobbyPvx/LobbyClientLInterface',
-    'Monitoring/MonitoringSvc',
+    # 'Monitoring/MonitoringSvc',  -- requires Thrift, skipped on Linux
     'Server/GameSession/GameBalancerSvc',
     'System/InlineProfilerUI',
     'Relay/RelayBalancerSvc',
