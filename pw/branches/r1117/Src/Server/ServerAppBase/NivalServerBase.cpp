@@ -67,18 +67,24 @@ bool NivalServerBase::Startup( const TStartList & _startList, const TServerCmdLi
 
   // Network initialization
   netDriver = Network::Initialize();
-  netDriver->SetTrafficType( Network::EDriverTrafficType::Light ); // было Heavy == 750К буферов на каждый несчастный Connection
+  netDriver->SetTrafficType( Network::EDriverTrafficType::Light ); // пїЅпїЅпїЅпїЅ Heavy == 750пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Connection
 
   netDriver->SetStreamAllocator( new Network::StreamAllocator() );
 
   coordinatorClientRunner = new Coordinator::CoordinatorClientRunner( svcpath, netDriver );
 
-  if ( !StartTransport( _startList, _serverCmdLine ) )
-    return false;
-
+  // When running as coordinator, skip connecting client to avoid self-communication deadlock
   if ( startCoordinator )
+  {
+    if ( !StartTransport( _startList, _serverCmdLine ) )
+      return false;
     if ( !StartCoordinatorService() )
       return false;
+    return true; // Coordinator only serves, doesn't connect to itself
+  }
+
+  if ( !StartTransport( _startList, _serverCmdLine ) )
+    return false;
 
   if ( !SpawnServices( _startList, _serverCmdLine ) )
     return false;
@@ -240,7 +246,7 @@ bool NivalServerBase::SpawnServices( const TStartList & _startList, const TServe
       ServiceOptions svcOpts;
       svcOpts.commandLine = _serverCmdLine;
 
-      // выбираем опции, относящиеся к данному сервису (+глобальные опции, относящиеся ко всем сервисам)
+      // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ (+пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
       const Coordinator::TConfigServiceOptions & configOptions = Coordinator::GetConfigServiceOptions();
       for( int idx = 0; idx < configOptions.size(); ++idx ) {
         const Coordinator::SConfigServiceOption * cfgOpt = configOptions[idx];

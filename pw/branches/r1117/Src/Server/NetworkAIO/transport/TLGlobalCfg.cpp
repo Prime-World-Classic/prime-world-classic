@@ -3,7 +3,7 @@
 
 namespace TransportLayer
 {
-  static int s_Threads = 0;
+  static int s_Threads = 1; // At least 1 thread for TCP I/O processing
   REGISTER_VAR("tl_threads", TransportLayer::s_Threads, STORAGE_GLOBAL);
   static int s_ReadBlockSize = 512*1024;
   REGISTER_VAR("tl_read_block_size", s_ReadBlockSize, STORAGE_GLOBAL);
