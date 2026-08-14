@@ -2,6 +2,7 @@
 #define RUDP_RDPPROTO_H_INCLUDED
 
 #include "System/EnumToString.h"
+#include <stdint.h>
 
 namespace ni_udp
 {
@@ -53,18 +54,22 @@ Int32 SeqIdxShortestDist( Int32 _from, Int32 _to, Int32 _seqIdxClamp ); // to - 
 
 #pragma pack(push, 1)
 
+// Explicit types instead of bit-fields to guarantee identical wire format
+// across MSVC (Windows client) and GCC (Linux server). Bit-field layout is
+// compiler-dependent and caused cross-platform connection failures.
 struct Header
 {
-  UInt32    type:8;
-  UInt32    index:16;
-  UInt32    sourceMux:16;
-  UInt32    destMux:16;
+  uint8_t   type;       // 1 byte
+  uint16_t  index;      // 2 bytes (little-endian)
+  uint16_t  sourceMux;  // 2 bytes (little-endian)
+  uint16_t  destMux;    // 2 bytes (little-endian)
+  // Total: 7 bytes, deterministic layout on all compilers
 
   Header( EPktType::Enum _type, UInt32 _srcMux, UInt32 _destMux, UInt32 _index ) :
-  type( (UInt32)_type ),
-  index( _index ),
-  sourceMux( _srcMux ),
-  destMux( _destMux )
+  type( (uint8_t)_type ),
+  index( (uint16_t)_index ),
+  sourceMux( (uint16_t)_srcMux ),
+  destMux( (uint16_t)_destMux )
   {}
 };
 
