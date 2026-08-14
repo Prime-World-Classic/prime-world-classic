@@ -221,3 +221,5 @@ CMakeLists.txt.system
 
 # Published logs
 pw_publish/branch/Server/PvX/Bin/logs/
+Client-Synchronizer-Server/pythonProject/sync_logs/sync_log.txt
+logs

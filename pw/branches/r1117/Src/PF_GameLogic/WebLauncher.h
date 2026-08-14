@@ -184,6 +184,11 @@ static bool CheckPlayerInfo(const Json::Value& playerInfo)
     OutputDebugStringA("Invalid rating");
     return false;
   }
+  Json::Value ratingAcc = playerInfo.get("ratingAcc", Json::Value());
+  if (ratingAcc.empty()) {
+    OutputDebugStringA("Invalid ratingAcc");
+    return false;
+  }
   {
     Json::Value current = rating.get("current", Json::Value());
     if (current.empty() || !current.isNumeric()) {
@@ -198,6 +203,23 @@ static bool CheckPlayerInfo(const Json::Value& playerInfo)
     Json::Value loss = rating.get("loss", Json::Value());
     if (loss.empty() || !loss.isNumeric()) {
       OutputDebugStringA("Invalid rating::loss");
+      return false;
+    }
+  }
+  {
+    Json::Value current = ratingAcc.get("currentRatingAcc", Json::Value());
+    if (current.empty() || !current.isNumeric()) {
+      OutputDebugStringA("Invalid ratingAcc::current");
+      return false;
+    }
+    Json::Value victory = ratingAcc.get("victoryRatingAcc", Json::Value());
+    if (victory.empty() || !victory.isNumeric()) {
+      OutputDebugStringA("Invalid ratingAcc::victory");
+      return false;
+    }
+    Json::Value loss = ratingAcc.get("lossRatingAcc", Json::Value());
+    if (loss.empty() || !loss.isNumeric()) {
+      OutputDebugStringA("Invalid ratingAcc::loss");
       return false;
     }
   }
