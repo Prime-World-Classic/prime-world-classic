@@ -192,7 +192,7 @@ int InstanceUpdater::Update(NHPTimer::STime& currentTime)
       lateTime = info->GetSleepTime(currentTime);
       if (!UpdateInstance(*it, currentTime, lateTime))
       {
-        InstancesMap::iterator mit = instances.find(DarkSide::ptr2int< int >(*it));
+        InstancesMap::iterator mit = instances.find(DarkSide::ptr2int< uintptr_t >(*it));
         if (mit != instances.end())
         {
           instances.erase(mit);
@@ -252,6 +252,17 @@ void InstanceUpdater::OutputStats(bool exitIfEmpty)
      //localLog(logStream, NLogg::LEVEL_DEBUG).Trace("%p count:%d late:%d", it->second->instance.GetPtr(), it->second->statistics.count, NHPTimer::Time2Milliseconds(-it->second->lateTime));
 #endif
     InstanceInfo* info = DarkSide::int2ptr< InstanceInfo* >(it->first);
+    if (!info)
+    {
+      MessageTrace("TimeSlicer: NULL info pointer! key=%d threadIndex=%d", it->first, threadIndex);
+      continue;
+    }
+    if (!info->classStatistics)
+    {
+      MessageTrace("TimeSlicer: NULL classStatistics! instance_id=%d info_ptr=%p threadIndex=%d",
+        info->instanceId, (void*)info, threadIndex);
+      continue;
+    }
     info->classStatistics->Add(info->work);
     info->Reset();
   }
@@ -485,7 +496,7 @@ bool InstanceUpdater::ProcessPendingInstances(const NHPTimer::STime& currentTime
     StrongMT<ITimedInstance> & timedInstance = info->Get();
     if ( timedInstance )
     {
-      instances.insertUnique(DarkSide::ptr2int< int >(info), 0);
+      instances.insertUnique(DarkSide::ptr2int< uintptr_t >(info), 0);
       ScheduleInstance(info, currentTime, true);
       localLog(logStream, NLogg::LEVEL_DEBUG).Trace(
         "TimeSlicer: Start instance (id=%d ptr=%p threadIndex=%d)", info->instanceId, info->instancePtr, threadIndex);

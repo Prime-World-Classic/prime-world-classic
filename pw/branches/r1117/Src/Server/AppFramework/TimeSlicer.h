@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include "Interfaces.h"
 #include <System/ThreadHelpers.h>
 #include "System/InlineProfiler.h"
@@ -76,7 +77,7 @@ typedef mpmc_bounded_queue<InstanceInfo*> InstancesPublicQueue;
 typedef nstl::vector<InstancesPublicQueue*> PendingInstances;
 typedef spsc_queue<InstanceInfo*> InstancesQueue;
 typedef nstl::vector<InstanceInfo*> InstancesArray;
-typedef nstl::hash_map<int, int> InstancesMap;
+typedef nstl::hash_map<uintptr_t, int> InstancesMap;
 typedef nstl::map<nstl::string, InstanceStatistics*> InstanceStatisticsMap;
 
 
