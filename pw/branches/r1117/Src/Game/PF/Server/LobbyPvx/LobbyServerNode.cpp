@@ -19,7 +19,10 @@
 #include "LobbyCustomGame.h"
 #include <json/json.h>
 
-// Linux stubs for server_ip.h (not versioned, see README.md)
+// Linux stubs for server_ip.h (not versioned, see README.md).
+// WARNING: hardcoded test values — this build does NOT talk to a real
+// web backend (WebLauncher is a stub returning fake rating data 1100/1100/1100).
+// For local testing only, not for production.
 #ifndef SERVER_IP_W
 #define SERVER_IP_W L"127.0.0.1"
 #endif
@@ -681,7 +684,7 @@ void ServerNode::LoadHeroes()
 #if defined( NV_LINUX_PLATFORM )
   // On Linux server build, the game database (SessionRoot) is not loaded.
   // Use hardcoded hero list as fallback.
-  MessageTrace( "Linux server: using fallback hero list (database not loaded)" );
+  LOBBY_LOG_WRN( "Linux test build: using fallback hero list (game database not loaded); WebLauncher is a stub (fake ratings 1100)" );
   for ( size_t i = 0; i < sizeof( heroes ) / sizeof( heroes[0] ); ++i )
   {
     mmaking::SHeroDescription descr;

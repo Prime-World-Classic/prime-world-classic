@@ -37,15 +37,17 @@ public:
     NiInterlockedExchangeAdd64( &(this->*_field), _inc );
   }
 #elif defined( NV_LINUX_PLATFORM )
-  // Linux: simple increment, not atomic (stats are debug-only)
+  // Linux: atomic increment (stats are updated from socket worker and logic threads)
   void Inc( volatile long RdpStats::*_field, int _inc = 1 )
   {
-    (this->*_field) += _inc;
+    volatile long &f = this->*_field;
+    __atomic_fetch_add( &f, _inc, __ATOMIC_RELAXED );
   }
 
   void Inc( volatile long long RdpStats::*_field, int _inc = 1 )
   {
-    (this->*_field) += _inc;
+    volatile long long &f = this->*_field;
+    __atomic_fetch_add( &f, _inc, __ATOMIC_RELAXED );
   }
 #endif
 };

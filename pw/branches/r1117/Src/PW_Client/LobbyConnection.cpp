@@ -1,14 +1,14 @@
 #include "stdafx.h"
 #include "LobbyConnection.h"
 #include <winsock2.h>
-#include "System/StarForce/StarForce.h"
+#include "System\StarForce\StarForce.h"
 #include <Tlhelp32.h>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//       boost::asio,  , 
-// boost::asio::io_service     Wine   WS8WineCXG10.1.1.
-//  wine-1.3.32   .  BOOST_ASIO_DISABLE_IOCP  .
+//Раньше этот класс был написан при помощи boost::asio, но выяснилось, что
+//конструктор boost::asio::io_service падает при запуске под Wine на движке WS8WineCXG10.1.1.
+//С обычным wine-1.3.32 всё в порядке. Определение BOOST_ASIO_DISABLE_IOCP не помогает.
 class CastleConnection: public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_1( CastleConnection, BaseObjectST )  

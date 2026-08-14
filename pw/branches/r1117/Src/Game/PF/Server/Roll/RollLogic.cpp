@@ -229,7 +229,11 @@ namespace roll
   DropNRoll::DropNRoll( IConfigProvider * _cfg, const NDb::RollSettings * _rollSettings, const NDb::Ptr<NDb::MapList>& _mapList, NWorld::PFResourcesCollection * _talentsCollection ) :
   config( _cfg ),
     rollSettings( _rollSettings ),
-    random( (uint)time(NULL) * 1000 ),
+#if defined( NV_LINUX_PLATFORM )
+    random( NRandom::RandomGenerator::SystemSeed() ),
+#else
+    random( (uint)GetTickCount() ),
+#endif
     talentsCollection( _talentsCollection )
   {
     rollDataCache = new TalentRollDataCache( timer::Now() );

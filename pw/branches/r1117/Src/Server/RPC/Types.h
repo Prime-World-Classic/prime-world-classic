@@ -5,7 +5,7 @@
 #include "System/ported/cwfn.h"
 #include "Packets.h"
 #if defined( NV_WIN_PLATFORM )
-#include <RPC.h< //WAT?
+#include <Rpc.h> //WAT?
 #endif
 
 namespace crt

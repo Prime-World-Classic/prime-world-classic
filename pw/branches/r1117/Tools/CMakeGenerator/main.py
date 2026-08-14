@@ -1,7 +1,5 @@
 import sys
 import os
-import fnmatch
-import re
 
 def ConvertPath(path):
     return path.replace('\\', '/') 
@@ -34,9 +32,9 @@ class Component:
         self.libraries = [name.replace('.lib', '') for name in libs]
         self.components = [name.replace('\\', '/') for name in l.get('components', [])]
         _sources = l.get('sources', [])
-        if isinstance(_sources, list):
+        if type(_sources) == list:
             sources = _sources
-        elif isinstance(_sources, dict):
+        elif type(_sources) == dict:
             sources = []
             for key, values in _sources.items():
                 for value in values:
@@ -92,8 +90,7 @@ def LoadComponent(path, minPath):
     l = {}
 
     os.chdir(head)
-    with open(path, 'r') as f:
-        exec(f.read(), g, l)
+    execfile(path, g, l)
 
     c = Component(cname, head, minPath)
     c.Process(g, l)
@@ -104,20 +101,16 @@ def LoadComponent(path, minPath):
 class ComponentFinder:
 
     def __init__(self):
-        rpath = os.getcwd()
+        path = '..'
         fpath = None
-        max_iter = 100
-        for _ in range(max_iter):
-            fpath = os.path.join(rpath, 'unittest.cfg')
+        rpath = None
+        while True: 
+            rpath = os.path.abspath(path)
+            fpath = os.path.join(rpath, 'unittest.cfg') 
             if os.path.isfile(fpath):
                 break
-            parent = os.path.dirname(rpath)
-            if parent == rpath:
-                raise Exception('unittest.cfg not found! Cannot locate project root.')
-            rpath = parent
-        else:
-            raise Exception('unittest.cfg not found! Cannot locate project root (max depth reached).')
-        rpath = rpath  # keep for use below
+            else:
+                path += '/..'
         l = {}  
 
         class Env:      
@@ -138,8 +131,7 @@ class ComponentFinder:
                 pass
 
         env = Env()
-        with open(fpath, 'r') as f:
-            exec(f.read(), {'env' : env}, l)
+        execfile(fpath, {'env' : env}, l)
 
         self.paths = []
         self.minPath = ''
@@ -167,18 +159,6 @@ class ComponentFinder:
 
         return None
 
-def matchPatterns(name, patterns, ignored = []):
-    for mask in ignored:
-        if re.match(fnmatch.translate(mask), name):
-            return None
-        if name.find(mask) != -1:
-            return None
-    for pattern in patterns:
-        if re.match(fnmatch.translate(pattern), name):
-            return pattern
-    return None
-
-
 def collectFiles(path, patterns, ignored = [], recursive=True, add_root=True):
     result = []
     for root, dirs, files in os.walk(path):
@@ -200,10 +180,10 @@ def getDefaultSources( patterns, ignored = [], recursive = True ):
     result = {}
     for source in sources:
         if os.path.isfile( source ):
-            key = os.path.dirname( source ).replace(".\\", "")
-            key = key.replace(".", "")
-            key = key.replace("\\\\", "\\")
-            key = key.replace("\\", "/")
+            key = string.replace( os.path.dirname( source ), ".\\", "" )
+            key = string.replace( key, ".", "" )
+            key = string.replace( key, "\\\\", "\\" )
+            key = string.replace( key, "\\", "/" )
 
             if key in result: result[key].append( source )
             else: result[key] = [ source ]
@@ -212,24 +192,22 @@ def getDefaultSources( patterns, ignored = [], recursive = True ):
 
 def ParseTestFile(finder, root, path):
     root.sources.append(path)
-    with open(os.path.join(root.path, path), 'rb') as f:
-        for _line in f.readlines():
-            line = _line.strip()
-            if isinstance(line, bytes):
-                line = line.decode('utf-8')
-            if line:
-                if line.startswith('//'):
-                    if line.startswith('//!Component('):
-                        line = line.replace('//!Component(', '').replace(')', '').replace('\'', '')
-                        root.components.append(line)
-                else:
-                    break
+    f = open(os.path.join(root.path, path), 'rb')
+    for _line in f.readlines():
+        line = _line.strip()
+        if line:
+            if line.startswith('//'):
+                if line.startswith('//!Component('):
+                    line = line.replace('//!Component(', '').replace(')', '').replace('\'', '')
+                    root.components.append(line)
+            else:
+                break
     root.components.append('Tools/TestFramework/cxxtest')
 
 def Main():
     app = os.path.abspath(sys.argv[1])
     if not os.path.isfile(app):
-        print('Error: file %r not found' % app)
+        print 'Error: file %r not found' % app
         return False
 
     head, tail = os.path.split(app)
@@ -240,14 +218,14 @@ def Main():
         application = True
 
     project = name.replace(' ', '_')    
-    print('Project: %r' % project)
+    print 'Project: %r' % project
 
     appPath = os.path.abspath(os.path.join(head, project+'.auto'))
     if not os.path.isdir(appPath):
         os.makedirs(appPath)
 
     finder = ComponentFinder()
-    print('Source root: %r' % finder.minPath)    
+    print 'Source root: %r' % finder.minPath    
 
     if application:
         root = LoadComponent(app, finder.minPath)
@@ -267,10 +245,10 @@ def Main():
         parent = pqueue.pop()
         processed.append(name)
         path = finder.Find(parent.path, name)
-        print('Searching component %r' % name, end=' ')
+        print 'Searching component %r' % name,
         
         if path:
-            print('-> %r' % path)
+            print '-> %r' % path
             assert path not in components
             c = LoadComponent(path, finder.minPath)
             components[c.fullName] = c
@@ -279,7 +257,7 @@ def Main():
                     queue.append( name )
                     pqueue.append( c )
         else:
-            print()
+            print
             raise Exception('Component %r not found' % name)
         count += 1
 
@@ -336,9 +314,8 @@ source_group(${folder} FILES ${SOURCES_${cname}_gen})
         }
         code = Template(componentTmpl).safe_substitute(params)    
         cpath = os.path.join(c.path, c.name)+'.cmake'
-        with open(cpath, 'w') as f:
-            f.write(code)
-        print('Component script written to %r' % cpath)
+        open(cpath, 'wb').write(code)
+        print 'Component script written to %r' % cpath
 
     globalCompilerKeys = []
     includePaths = []
@@ -351,11 +328,11 @@ source_group(${folder} FILES ${SOURCES_${cname}_gen})
     includePaths = set(includePaths+finder.paths)
     linkerKeys = set(linkerKeys)    
     if globalCompilerKeys:
-        print('Global compiler keys: %r' %  list(globalCompilerKeys))
+        print 'Global compiler keys: %r' %  list(globalCompilerKeys)
     if linkerKeys:
-        print('Linker keys: %r' %  list(linkerKeys))
+        print 'Linker keys: %r' %  list(linkerKeys)
     if includePaths:
-        print('Include paths: %r' %  list(includePaths))
+        print 'Include paths: %r' %  list(includePaths)
 
     params = {
         'project' : root.name,
@@ -367,8 +344,7 @@ source_group(${folder} FILES ${SOURCES_${cname}_gen})
         'linker_keys' : ' '.join(linkerKeys),
     }
     code = Template(mainTmpl).safe_substitute(params)    
-    with open(os.path.join(appPath, 'CMakeLists.txt'), 'w') as f:
-        f.write(code)
-    print('Application script written to %r' % appPath)
+    open(os.path.join(appPath, 'CMakeLists.txt'), 'wb').write(code)
+    print 'Application script written to %r' % appPath
     
 Main()

@@ -2,6 +2,10 @@
 
 #include "System/nalgoritm.h"
 
+#if defined( NV_LINUX_PLATFORM )
+#include <random>
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NRandom
 {
@@ -26,6 +30,16 @@ class RandomGenerator
     Seed seed;
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(2,&seed); return 0; }
+
+  // OS-level entropy for seeding (replaces GetTickCount on Linux, where
+  // time(NULL)*1000 / clock() give process-wide identical or CPU-time seeds)
+#if defined( NV_LINUX_PLATFORM )
+  static DWORD SystemSeed()
+  {
+    std::random_device rd;
+    return (DWORD)rd();
+  }
+#endif
 
   RandomGenerator() : seed() {}
   RandomGenerator( DWORD _seed ) : seed( _seed ) {}

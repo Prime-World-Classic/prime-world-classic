@@ -2,7 +2,7 @@
 
 #include "SwfStreamReader.h"
 
-#include <System/Math/ieeehalfprecision.h>
+#include <System\Math\ieeehalfprecision.h>
 #include "FlashMovie.h"
 
 namespace flash
@@ -318,8 +318,8 @@ void SwfStreamReader::readGradient( SWF_GRADIENT& _gradient, EGradientType::Enum
   _gradient.SpreadMode = readUBits(2);
   _gradient.InterpolationMode = readUBits(2);
 
-  _gradient.SpreadMode = 0; //         
-  _gradient.InterpolationMode = 0; //        
+  _gradient.SpreadMode = 0; // чтобы было меньше вариаций в кеше градиентных текстур 
+  _gradient.InterpolationMode = 0; // чтобы было меньше вариаций в кеше градиентных текстур
 
   _gradient.NumGradient = readUBits(4);
   _gradient.type = type;

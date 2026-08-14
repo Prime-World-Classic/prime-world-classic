@@ -16,7 +16,7 @@
 #include "PFNeutralCreep.h"
 #include "PFMainBuilding.h"
 #include "PFSimpleObject.h"
-#include "PFFlagpole.h"
+#include "PFFlagPole.h"
 #include "PFTree.h"
 #include "PFImpulsiveBuffs.h"
 #include "Client/MainTimer.h"
@@ -44,7 +44,7 @@
 #include "PFClientVisibilityMap.h"
 #include "PFConsumable.h"
 #include "Render/AOERenderer.h"
-#include "../PF_Core/EffectsPool.h"
+#include "..\PF_Core\EffectsPool.h"
 #include "PFClientHero.h"
 #include "ObjectsInfo2d.h"
 
@@ -3135,7 +3135,7 @@ static void CreateCameraSpline(NGameX::AdventureScreen* pAdvScreen, const NDb::A
   NScene::SCameraPosition posFrom;
   pAdvScreen->GetCamera()->GetCameraPosition(&posFrom);
 
-  //   ,       
+  // конвертация в градусы, потому что эйлеровы углы хранятся в градусах
   posFrom.ConvertFromRadToDeg();
 
   float pitch = posFrom.fPitch;

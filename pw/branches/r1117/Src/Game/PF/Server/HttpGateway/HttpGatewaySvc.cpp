@@ -8,14 +8,7 @@
 #include "System/InlineProfiler.h"
 #include "HttpGatewayLog.inl"
 
-// Linux-compatible Interlocked* atomic operations
-#if defined( NV_LINUX_PLATFORM )
-#include <atomic>
-#define InterlockedIncrement(ptr) __atomic_add_fetch((ptr), 1, __ATOMIC_SEQ_CST)
-#define InterlockedExchangeAdd(ptr, v) __atomic_add_fetch((ptr), (v), __ATOMIC_SEQ_CST)
-#define InterlockedExchange(ptr, v) __atomic_exchange_n((ptr), (v), __ATOMIC_SEQ_CST)
-#endif
-
+// Interlocked* on Linux: provided by System/systemStdAfx.h (via stdafx.h)
 namespace HttpGateway
 {
 

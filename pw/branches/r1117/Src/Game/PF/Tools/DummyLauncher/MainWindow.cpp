@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "MainWindow.h"
 #include "Application.h"
-#include "Log.h"
+#include "log.h"
 #include "Convert.h"
 #include "HttpRequest.h"
 #include "UsersInfo.h"
@@ -199,7 +199,7 @@ void MainWindow::ShowErrorMessage(const wchar_t* text)
     g_App->GetConsole().ShowWindow(SW_SHOW);
     ShowWindow(SW_SHOW);
   }
-  MessageBox(text, L"", MB_OK | MB_ICONERROR);
+  MessageBox(text, L"Ошибка", MB_OK | MB_ICONERROR);
 }
 
 LRESULT MainWindow::OnStartClick(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
@@ -450,13 +450,13 @@ void MainWindow::UpdateSocNetStatus(CWindow& labelWnd, SocNetStates state)
   switch(state)
   {
     case STATE_AUTH:
-      txt = L"";
+      txt = L"Авторизован";
       break;
     case STATE_NOT_AUTH:
-      txt = L" ";
+      txt = L"Не авторизован";
       break;
     case STATE_ERROR_REFRESH:
-      txt = L"   ";
+      txt = L"Не удалось получить токен";
       break;
   }
   labelWnd.SetWindowLongPtr(GWLP_USERDATA, state);

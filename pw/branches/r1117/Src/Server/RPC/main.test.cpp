@@ -12,7 +12,7 @@
 
 #include "stdafx.h"
 #if defined( NV_WIN_PLATFORM )
-#include <RPC.h<
+#include <rpc.h>
 #endif // defined( NV_WIN_PLATFORM )
 #include <cxxtest/TestSuite.h>
 

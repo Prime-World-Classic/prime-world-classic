@@ -7,10 +7,10 @@
 #include "PFHero.h"
 #include "PFTower.h"
 
-#include "System/nalgoritm.h"
+#include "System\nalgoritm.h"
 #include "Client/LobbyPvx/ClientAccountingGadget.h"
 
-#include "../Core/WorldCommand.h"
+#include "..\Core\WorldCommand.h"
 
 #include "../System/InlineProfiler.h"
 
@@ -71,11 +71,11 @@ void CmdUseImpulse::Execute( NCore::IWorldBase *pIWorld )
 //////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////
-//        ,
-//          . 
-//   ,      
-//        ,  
-//    
+// есть большой соблазн сделать юзание импульсов стейтом всегда,
+// но на самом деле это далеко не очень хорошая идея. 
+// ибо смена стейтов, которая может произойти далеко не всегда
+// половину импульсов нам обломает или отложит на время, что выглядеть
+// будет как явный баг
 //////////////////////////////////////////////////////////////////////////
 
 class PFUseImpulseState : public PFBaseHeroState

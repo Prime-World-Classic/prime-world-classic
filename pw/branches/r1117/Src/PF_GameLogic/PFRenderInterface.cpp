@@ -7,7 +7,7 @@
 
 #include "Scene/Scene.h"
 #include "Terrain/Terrain.h"
-#include <Terrain/TerrainTextureCache.h>
+#include <Terrain\TerrainTextureCache.h>
 
 #include "Render/ImmediateRenderer.h"
 #include "Render/renderresourcemanager.h"
@@ -1674,7 +1674,7 @@ void Interface::SetDefaultStates()
 
   IDirect3DDevice9* const pDevice = GetDevice();
   // GetStatesManagerOld()->SetMipMapBias( miplodbias );
-  //CRAP{   SamplerState
+  //CRAP{ Перенести в SamplerState
   for(size_t samplerIdx = 0; samplerIdx < 16; ++samplerIdx)
   {
     pDevice->SetSamplerState(samplerIdx, D3DSAMP_MIPMAPLODBIAS, (DWORD&)miplodbias);

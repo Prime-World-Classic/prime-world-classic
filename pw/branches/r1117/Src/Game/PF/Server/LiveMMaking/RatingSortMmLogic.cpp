@@ -69,7 +69,11 @@ m_workersNumber( (size_t)m_config->threads ),
 m_simulationMode( false ),
 m_nextBasePointIdx( 0 ),
 m_proPlayerModeEndTime( -1 ), m_proPlayerModeStartTime( -1 ),
-m_random( (unsigned int)clock() ),
+#if defined( NV_LINUX_PLATFORM )
+  m_random( NRandom::RandomGenerator::SystemSeed() ),
+#else
+  m_random( (unsigned int)GetTickCount() ),
+#endif
 m_debugGameId( 1 )
 {
   SetupBasePoints( m_workersNumber );

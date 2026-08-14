@@ -1,30 +1,30 @@
 #include "stdafx.h"
 #include "CleanGeometry.h"
-#include <Render/renderflagsconverter.h>
+#include <Render\renderflagsconverter.h>
 #include <System/InlineProfiler.h>
 
 namespace Render {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//  
+// наглый копипаст
 template<class T, size_t size>
 static void insertSort(T (&a)[size])
 {
   T x;
   long i, j;
 
-  //  , i -  
+  // цикл проходов, i - номер прохода
   for ( i = 0; i < size; i++ ) 
   {
     x = a[i];
 
-    //       
+    // поиск места элемента в готовой последовательности 
     for ( j = i - 1; j >= 0 && x < a[j]; j-- )
     {
-      a[j+1] = a[j];  	//   ,   
+      a[j+1] = a[j];  	// сдвигаем элемент направо, пока не дошли
     }
 
-    //  ,  
+    // место найдено, вставить элемент
     a[j+1] = x;
   }
 }

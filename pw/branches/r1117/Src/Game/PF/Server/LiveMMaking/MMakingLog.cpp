@@ -13,8 +13,7 @@ typedef FILE* HANDLE;
 inline DWORD WriteFile(HANDLE h, const char* buf, DWORD len, DWORD* written, void*) { *written = fwrite(buf, 1, len, h); return ferror(h) == 0; }
 inline void OutputDebugString(const char* s) { fprintf(stderr, "DEBUG: %s\n", s); }
 inline DWORD GetCurrentProcessId() { return getpid(); }
-#define sprintf_s(buf, sz, fmt, ...) snprintf(buf, sz, fmt, __VA_ARGS__)
-#define vsprintf_s(buf, fmt, ap) vsnprintf(buf, sizeof(buf), fmt, ap)
+// sprintf_s / vsprintf_s: provided by System/safeSprintf.h (via stdafx.h)
 #endif
 
 
@@ -84,7 +83,7 @@ void Loger::Log( ELogLevel::Enum level, const char * fmt, ... )
   va_list args;
   va_start( args, fmt );
   char buf[8192];
-  vsprintf_s( buf, fmt, args );
+  vsprintf_s( buf, sizeof( buf ), fmt, args );
   va_end( args);
   Write( buf );
 }

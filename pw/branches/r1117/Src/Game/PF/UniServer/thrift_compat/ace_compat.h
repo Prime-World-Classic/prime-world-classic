@@ -54,11 +54,9 @@
 #endif
 
 // ============================================================
-// sprintf_s compatibility: Windows-only safe sprintf.
-// On Linux, map to snprintf which is the POSIX safe version.
+// sprintf_s compatibility: single definition point in System/safeSprintf.h
+// (pulled in here for TUs that don't go through systemStdAfx.h).
 // ============================================================
-#ifndef sprintf_s
-  #define sprintf_s(buf, sz, fmt, ...) snprintf(buf, sz, fmt, __VA_ARGS__)
-#endif
+#include "System/safeSprintf.h"
 
 #endif // ACE_COMPAT_H_INCLUDED

@@ -6,23 +6,15 @@
 #include <cstdlib>    // wcstol, atoi
 #include <cerrno>     // errno, ERANGE
 
-// sprintf_s is Windows-only. On Linux map to sprintf for calls without size,
-// and snprintf for calls with size. We handle both via inline functions.
-#ifdef NV_LINUX_PLATFORM
-  #include <cstdio>
-  #include <cstdarg>
-  inline int sprintf_s(char *buf, const char *fmt, ...) {
-    va_list args; va_start(args, fmt); int r = vsprintf(buf, fmt, args); va_end(args); return r;
-  }
-  inline int sprintf_s(char *buf, size_t sz, const char *fmt, ...) {
-    va_list args; va_start(args, fmt); int r = vsnprintf(buf, sz, fmt, args); va_end(args); return r;
-  }
-#endif
+// sprintf_s is Windows-only. On Linux the port lives in one place:
+#include "safeSprintf.h"
 
-// Windows atomic operations compatibility on Linux
+// Windows atomic operations compatibility on Linux (single definition point)
 #ifdef NV_LINUX_PLATFORM
   #define InterlockedIncrement(x) __sync_fetch_and_add((x), 1)
   #define InterlockedDecrement(x) __sync_fetch_and_sub((x), 1)
+  #define InterlockedExchangeAdd(x, v) __sync_fetch_and_add((x), (v))
+  #define InterlockedExchange(x, v) __sync_lock_test_and_set((x), (v))
 #endif
 
 #ifdef STATIC_LIB
