@@ -265,10 +265,13 @@ static WebUsersDataMap GetUsersData(Json::Value usersData) {
 
     WebLauncherPostRequest::WebUserData resData;
     Json::Value rating = curPlayer.get("rating", Json::Value());
-    resData.playerRating = rating.get("player", Json::Value()).asFloat();
-    resData.currentRating = rating.get("current", Json::Value()).asFloat();
-    resData.victoryRating = rating.get("victory", Json::Value()).asFloat();
-    resData.lossRating = rating.get("loss", Json::Value()).asFloat();
+    Json::Value ratingAcc = curPlayer.get("ratingAcc", Json::Value());
+    resData.currentRatingAcc = ratingAcc.get("currentRatingAcc", Json::Value()).asFloat();
+    resData.victoryRatingAcc = ratingAcc.get("victoryRatingAcc", Json::Value()).asFloat();
+    resData.lossRatingAcc = ratingAcc.get("lossRatingAcc", Json::Value()).asFloat();
+    resData.currentRating = rating.get("currentRating", Json::Value()).asFloat();
+    resData.victoryRating = rating.get("victoryRating", Json::Value()).asFloat();
+    resData.lossRating = rating.get("lossRating", Json::Value()).asFloat();
     resData.heroSkinID = curPlayer.get("skin", Json::Value()).asInt();
     resData.userId = curPlayer.get("id", Json::Value()).asInt();
 
@@ -675,6 +678,20 @@ void ServerNode::LoadHeroes()
 {
   StrongMT<mmaking::HeroesTable> customHeroes = new mmaking::HeroesTable;
 
+#if defined( NV_LINUX_PLATFORM )
+  // On Linux server build, the game database (SessionRoot) is not loaded.
+  // Use hardcoded hero list as fallback.
+  MessageTrace( "Linux server: using fallback hero list (database not loaded)" );
+  for ( size_t i = 0; i < sizeof( heroes ) / sizeof( heroes[0] ); ++i )
+  {
+    mmaking::SHeroDescription descr;
+    descr.id = heroes[i];
+    customHeroes->Add( descr );
+    uint intHeroId = Crc32Checksum().AddString( heroes[i] ).Get();
+    heroIdMap[intHeroId] = heroes[i];
+  }
+  customGameHeroes = customHeroes;
+#else
   NDb::Ptr<NDb::HeroesDB> dbHeroes = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
 
   for ( int i = 0; i < dbHeroes->heroes.size(); ++i )
@@ -692,6 +709,7 @@ void ServerNode::LoadHeroes()
     heroIdMap[intHeroId] = dbHero->id.c_str();
   }
   customGameHeroes = customHeroes;
+#endif
 }
 
 
