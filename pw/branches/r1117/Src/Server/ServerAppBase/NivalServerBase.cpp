@@ -325,6 +325,8 @@ void NivalServerBase::StartLocalServices( const TStartList & _startList, const T
       {
         runner->StartInstance( params );
         MessageTrace( "Local service started: %s (ext=%d)", serviceId.c_str(), extService );
+        // Store runner to keep it alive for the lifetime of the server
+        localRunners.push_back( runner );
       }
     }
   }
@@ -335,6 +337,7 @@ void NivalServerBase::StartLocalServices( const TStartList & _startList, const T
 void NivalServerBase::Shutdown()
 {
   spawners.clear();
+  localRunners.clear();
 
   coordinatorClientRunner = 0;
   coordinatorClientThread = 0;

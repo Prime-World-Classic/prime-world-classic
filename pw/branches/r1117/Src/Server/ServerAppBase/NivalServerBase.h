@@ -161,6 +161,8 @@ private:
   StrongMT<TransportLayer::TransportModule> aioTransport;
 
   ServiceSpawners   spawners;
+  typedef list<StrongMT<IServerRunner> > LocalRunners;
+  LocalRunners localRunners;
 
   void StartLogMonitor( const TStartList & _startList );
   void LoadConfigs( const TStartList & _startList );
