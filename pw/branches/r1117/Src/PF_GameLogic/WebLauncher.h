@@ -275,8 +275,49 @@ public:
 };
 typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
 static std::string GetSkinByHeroPersistentId(const std::string&, int) { return {}; }
-static Json::Value ParseJson(const char* json) { Json::Value root; Json::Reader reader; reader.parse(json, root); return root; }
-static bool CheckPlayerInfo(const Json::Value& pi) { return !pi.empty() && pi.isMember("nickname") && pi.isMember("id"); }
+static Json::Value ParseJson(const char* json) { Json::Value root; Json::Reader jsonReader; bool isOk = jsonReader.parse(json, root, false); return isOk ? root : Json::Value(); }
+// Full validation, mirrors the Windows CheckPlayerInfo (WebLauncher.h, NV_WIN_PLATFORM block)
+static bool CheckPlayerInfo(const Json::Value& playerInfo)
+{
+  if (playerInfo.empty()) return false;
+  Json::Value nickname = playerInfo.get("nickname", Json::Value());
+  if (nickname.empty() || !nickname.isString()) return false;
+  Json::Value userId = playerInfo.get("id", Json::Value());
+  if (userId.empty() || !userId.isInt()) return false;
+  Json::Value hero = playerInfo.get("hero", Json::Value());
+  if (hero.empty() || !hero.isInt()) return false;
+  Json::Value team = playerInfo.get("team", Json::Value());
+  if (team.empty() || !team.isInt()) return false;
+  Json::Value party = playerInfo.get("party", Json::Value());
+  if (party.empty() || !party.isInt()) return false;
+  Json::Value skin = playerInfo.get("skin", Json::Value());
+  if (skin.empty() || !skin.isInt()) return false;
+  Json::Value rating = playerInfo.get("rating", Json::Value());
+  if (rating.empty()) return false;
+  Json::Value ratingAcc = playerInfo.get("ratingAcc", Json::Value());
+  if (ratingAcc.empty()) return false;
+  {
+    Json::Value current = rating.get("current", Json::Value());
+    if (current.empty() || !current.isNumeric()) return false;
+    Json::Value victory = rating.get("victory", Json::Value());
+    if (victory.empty() || !victory.isNumeric()) return false;
+    Json::Value loss = rating.get("loss", Json::Value());
+    if (loss.empty() || !loss.isNumeric()) return false;
+  }
+  {
+    Json::Value current = ratingAcc.get("currentRatingAcc", Json::Value());
+    if (current.empty() || !current.isNumeric()) return false;
+    Json::Value victory = ratingAcc.get("victoryRatingAcc", Json::Value());
+    if (victory.empty() || !victory.isNumeric()) return false;
+    Json::Value loss = ratingAcc.get("lossRatingAcc", Json::Value());
+    if (loss.empty() || !loss.isNumeric()) return false;
+  }
+  Json::Value build = playerInfo.get("build", Json::Value());
+  if (!build.isArray()) return false;
+  Json::Value bar = playerInfo.get("bar", Json::Value());
+  if (!bar.isArray()) return false;
+  return true;
+}
 #endif
 
 // Linux implementations of encoding helpers

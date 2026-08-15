@@ -133,16 +133,26 @@ bool RatingSortWorker::WaitAll( unsigned timeout )
 #if defined(NV_WIN_PLATFORM)
   DWORD waitResult = WaitForMultipleObjects( activeJobNumber, &completeEvents[0], TRUE, timeout );
   if ( ( waitResult >= WAIT_OBJECT_0 ) && ( waitResult < WAIT_OBJECT_0 + activeJobNumber ) )
-#else
-  // Linux stub — just return success (proper implementation needs pthreads)
   {
-#endif
     //Job's done
     mode = ModeIdle;
     return true;
   }
-
   return false;
+#else
+  // Linux: wait for each worker's complete event, honoring the total timeout
+  const double deadline = timer::Now() + (double)timeout * 0.001;
+  for ( size_t i = 0; i < activeJobNumber; ++i )
+  {
+    double remainMs = (double)( ( deadline - timer::Now() ) * 1000.0 );
+    unsigned waitMs = remainMs <= 0.0 ? 0 : (unsigned)remainMs;
+    if ( !workerThreads[i]->CompleteEvent().Wait( waitMs ) )
+      return false;
+  }
+  //Job's done
+  mode = ModeIdle;
+  return true;
+#endif
 }
 
 } //namespace mmaking

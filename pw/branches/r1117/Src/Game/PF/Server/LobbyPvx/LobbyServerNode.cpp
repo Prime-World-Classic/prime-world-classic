@@ -19,22 +19,7 @@
 #include "LobbyCustomGame.h"
 #include <json/json.h>
 
-// Linux stubs for server_ip.h (not versioned, see README.md).
-// WARNING: hardcoded test values — this build does NOT talk to a real
-// web backend (WebLauncher is a stub returning fake rating data 1100/1100/1100).
-// For local testing only, not for production.
-#ifndef SERVER_IP_W
-#define SERVER_IP_W L"127.0.0.1"
-#endif
-#ifndef SERVER_IP
-#define SERVER_IP "127.0.0.1"
-#endif
-#ifndef SYNCHRONIZER_PORT
-#define SYNCHRONIZER_PORT 27302
-#endif
-#ifndef API_KEY
-#define API_KEY "APIKEY00APIKEY00APIKEY00APIKEY00APIKEY00"
-#endif
+#include "PW_Game/server_ip.h"
 #include "SessionHybridLink.h"
 #include "LobbySocialProxy.h"
 #include "LobbyServerLoginWrapper.h"
@@ -681,20 +666,6 @@ void ServerNode::LoadHeroes()
 {
   StrongMT<mmaking::HeroesTable> customHeroes = new mmaking::HeroesTable;
 
-#if defined( NV_LINUX_PLATFORM )
-  // On Linux server build, the game database (SessionRoot) is not loaded.
-  // Use hardcoded hero list as fallback.
-  LOBBY_LOG_WRN( "Linux test build: using fallback hero list (game database not loaded); WebLauncher is a stub (fake ratings 1100)" );
-  for ( size_t i = 0; i < sizeof( heroes ) / sizeof( heroes[0] ); ++i )
-  {
-    mmaking::SHeroDescription descr;
-    descr.id = heroes[i];
-    customHeroes->Add( descr );
-    uint intHeroId = Crc32Checksum().AddString( heroes[i] ).Get();
-    heroIdMap[intHeroId] = heroes[i];
-  }
-  customGameHeroes = customHeroes;
-#else
   NDb::Ptr<NDb::HeroesDB> dbHeroes = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
 
   for ( int i = 0; i < dbHeroes->heroes.size(); ++i )
@@ -712,7 +683,6 @@ void ServerNode::LoadHeroes()
     heroIdMap[intHeroId] = dbHero->id.c_str();
   }
   customGameHeroes = customHeroes;
-#endif
 }
 
 

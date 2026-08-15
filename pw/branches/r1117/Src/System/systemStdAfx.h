@@ -9,10 +9,12 @@
 // sprintf_s is Windows-only. On Linux the port lives in one place:
 #include "safeSprintf.h"
 
-// Windows atomic operations compatibility on Linux (single definition point)
+// Windows atomic operations compatibility on Linux (single definition point).
+// NOTE: use *_and_fetch variants — Windows returns the NEW value
+// (InterlockedExchange/Add return the PREVIOUS value on Windows).
 #ifdef NV_LINUX_PLATFORM
-  #define InterlockedIncrement(x) __sync_fetch_and_add((x), 1)
-  #define InterlockedDecrement(x) __sync_fetch_and_sub((x), 1)
+  #define InterlockedIncrement(x) __sync_add_and_fetch((x), 1)
+  #define InterlockedDecrement(x) __sync_sub_and_fetch((x), 1)
   #define InterlockedExchangeAdd(x, v) __sync_fetch_and_add((x), (v))
   #define InterlockedExchange(x, v) __sync_lock_test_and_set((x), (v))
 #endif

@@ -20,7 +20,10 @@ namespace Peered
 
 namespace NDb
 {
-  // Stub: EMmAlgorithm enum not used on Linux
+  // C++17 (GCC): unscoped-enum forward declaration is ill-formed without a prior
+  // definition (MSVC accepted it as an extension). The real enum is not defined
+  // anywhere in this tree and no value is ever used — keep the single-value
+  // definition as the minimal valid stand-in for the original `enum EMmAlgorithm;`.
   enum EMmAlgorithm { EMmAlgorithm_None };
 }
 

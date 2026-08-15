@@ -95,34 +95,143 @@ public:
 class Event : public NonCopyable
 {
 private:
-
-  //HANDLE handle;
+  mutable pthread_mutex_t       m_mutex;
+  mutable pthread_cond_t        m_cond;
+  bool                  m_manualReset;
+  mutable bool                  m_flag;   // manual-reset state
+  mutable unsigned              m_count;  // auto-reset pending signal count
 
 public:
 
-  Event( bool manualReset = false, bool initialState = false, const char * name = NULL ) // : handle( 0 )
+  Event( bool manualReset = false, bool initialState = false, const char * name = NULL ) :
+  m_manualReset( manualReset ), m_flag( initialState ), m_count( initialState ? 1 : 0 )
   {
-    //handle = CreateEventA( 0, manualReset ? TRUE : FALSE, initialState ? TRUE : FALSE, name );
+    pthread_mutexattr_t attr;
+    pthread_mutexattr_init( &attr );
+    pthread_mutexattr_settype( &attr, PTHREAD_MUTEX_NORMAL );
+    pthread_mutex_init( &m_mutex, &attr );
+    pthread_mutexattr_destroy( &attr );
+
+    pthread_condattr_t cattr;
+    pthread_condattr_init( &cattr );
+    pthread_condattr_setclock( &cattr, CLOCK_MONOTONIC );
+    pthread_cond_init( &m_cond, &cattr );
+    pthread_condattr_destroy( &cattr );
   }
 
   ~Event()
   {
-    /*if ( handle )
-      CloseHandle( handle );*/
+    pthread_mutex_destroy( &m_mutex );
+    pthread_cond_destroy( &m_cond );
   }
 
-  void Reset() { /*ResetEvent( handle );*/ }
+  void Reset()
+  {
+    pthread_mutex_lock( &m_mutex );
+    if ( m_manualReset )
+      m_flag = false;
+    else
+      m_count = 0;
+    pthread_mutex_unlock( &m_mutex );
+  }
 
-  void Set() { /*SetEvent( handle );*/ }
+  void Set()
+  {
+    pthread_mutex_lock( &m_mutex );
+    if ( m_manualReset )
+      m_flag = true;
+    else
+      ++m_count;
+    pthread_cond_broadcast( &m_cond );
+    pthread_mutex_unlock( &m_mutex );
+  }
 
-  enum { NV_INFINITE = -1U };
+  enum { NV_INFINITE = (unsigned)-1 };
 
+  // time in milliseconds; 0 = non-blocking check (does not consume the signal)
   bool Wait( unsigned time = NV_INFINITE ) const
   {
-    return 1; //( WaitForSingleObject( handle, (DWORD)time ) == WAIT_OBJECT_0 );
-  }
+    pthread_mutex_lock( &m_mutex );
 
-  //HANDLE GetHandle() const { return handle; }
+    if ( m_manualReset )
+    {
+      if ( m_flag )
+      {
+        pthread_mutex_unlock( &m_mutex );
+        return true;
+      }
+      if ( time == 0 )
+      {
+        pthread_mutex_unlock( &m_mutex );
+        return false;
+      }
+
+      struct timespec deadline;
+      if ( time != NV_INFINITE )
+      {
+        clock_gettime( CLOCK_MONOTONIC, &deadline );
+        deadline.tv_sec += time / 1000;
+        deadline.tv_nsec += (long)( (time % 1000) * 1000000L );
+        if ( deadline.tv_nsec >= 1000000000L )
+        {
+          deadline.tv_sec += 1;
+          deadline.tv_nsec -= 1000000000L;
+        }
+      }
+
+      while ( !m_flag )
+      {
+        if ( time == NV_INFINITE )
+          pthread_cond_wait( &m_cond, &m_mutex );
+        else if ( pthread_cond_timedwait( &m_cond, &m_mutex, &deadline ) != 0 )
+          break; // timeout (or spurious)
+      }
+      bool res = m_flag;
+      pthread_mutex_unlock( &m_mutex );
+      return res;
+    }
+
+    // Auto-reset: Wait consumes the signal; timeout==0 only peeks.
+    if ( m_count > 0 )
+    {
+      if ( time != 0 )
+        --m_count;
+      pthread_mutex_unlock( &m_mutex );
+      return true;
+    }
+
+    if ( time == 0 )
+    {
+      pthread_mutex_unlock( &m_mutex );
+      return false;
+    }
+
+    struct timespec deadline;
+    if ( time != NV_INFINITE )
+    {
+      clock_gettime( CLOCK_MONOTONIC, &deadline );
+      deadline.tv_sec += time / 1000;
+      deadline.tv_nsec += (long)( (time % 1000) * 1000000L );
+      if ( deadline.tv_nsec >= 1000000000L )
+      {
+        deadline.tv_sec += 1;
+        deadline.tv_nsec -= 1000000000L;
+      }
+    }
+
+    while ( m_count == 0 )
+    {
+      if ( time == NV_INFINITE )
+        pthread_cond_wait( &m_cond, &m_mutex );
+      else if ( pthread_cond_timedwait( &m_cond, &m_mutex, &deadline ) != 0 )
+        break; // timeout (or spurious)
+    }
+    bool res = ( m_count > 0 );
+    if ( res )
+      --m_count;
+    pthread_mutex_unlock( &m_mutex );
+    return res;
+  }
 
 };
 
