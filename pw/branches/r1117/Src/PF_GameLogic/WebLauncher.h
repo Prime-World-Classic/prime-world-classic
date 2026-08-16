@@ -297,11 +297,14 @@ static bool CheckPlayerInfo(const Json::Value& playerInfo)
   Json::Value ratingAcc = playerInfo.get("ratingAcc", Json::Value());
   if (ratingAcc.empty()) return false;
   {
-    Json::Value current = rating.get("current", Json::Value());
+    // The synchronizer (Client-Synchronizer-Server) sends the rating keys as
+    // "currentRating"/"victoryRating"/"lossRating"; the older format used
+    // "current"/"victory"/"loss". Accept both.
+    Json::Value current = rating.get("current", rating.get("currentRating", Json::Value()));
     if (current.empty() || !current.isNumeric()) return false;
-    Json::Value victory = rating.get("victory", Json::Value());
+    Json::Value victory = rating.get("victory", rating.get("victoryRating", Json::Value()));
     if (victory.empty() || !victory.isNumeric()) return false;
-    Json::Value loss = rating.get("loss", Json::Value());
+    Json::Value loss = rating.get("loss", rating.get("lossRating", Json::Value()));
     if (loss.empty() || !loss.isNumeric()) return false;
   }
   {
@@ -355,13 +358,14 @@ inline std::wstring Fix1251EncodingW(std::string utf8String) {
   if (cd == (iconv_t)-1) return std::wstring(utf8String.begin(), utf8String.end());
   const char* in = utf8String.c_str();
   size_t inLeft = utf8String.size();
-  std::wstring out(inLeft, L'\0');
+  size_t inLeft0 = inLeft; // iconv() updates inLeft in-place; keep the original length for the result size
+  std::wstring out(inLeft0, L'\0');
   wchar_t* pout = &out[0];
-  size_t outLeft = inLeft * sizeof(wchar_t);
+  size_t outLeft = inLeft0 * sizeof(wchar_t);
   size_t res = iconv(cd, const_cast<char**>(&in), &inLeft, reinterpret_cast<char**>(&pout), &outLeft);
   iconv_close(cd);
   if (res == (size_t)-1) return std::wstring(utf8String.begin(), utf8String.end());
-  out.resize((inLeft * sizeof(wchar_t) - outLeft) / sizeof(wchar_t));
+  out.resize((inLeft0 * sizeof(wchar_t) - outLeft) / sizeof(wchar_t));
   return out;
 }
 inline std::string Fix1251Encoding(std::string utf8String) {

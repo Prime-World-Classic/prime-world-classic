@@ -59,3 +59,34 @@ void InstanceSvc::OnConfigReload()
 }
 
 } //namespace clientCtl
+
+// The auto-generated remote factories for the callback interfaces
+// (clientCtl::RIUserPresenceCallback, clientCtl::RILoginSvcAllocationCallback)
+// live in RClientControlRemote.auto.cpp, which is archived into the static
+// libClientControl-st. Nothing else references that object, so the linker
+// drops it and the factory static initializers (which register the factories
+// in the global remote factory container) never run. Without the factory the
+// receiving side cannot build the RI stub for a callback passed by reference
+// (e.g. newlogin -> clientctrl UserEnters), and the call is silently dropped.
+// Referencing the RegisterRemoteFactory specializations below forces the
+// object to be linked in. (The FORCE_INIT_FACTORY macro does not work on GCC:
+// the unused 'static int initX = dummyX;' gets optimized away.)
+namespace clientCtl { class RIUserPresenceCallback; class RILoginSvcAllocationCallback; }
+namespace rpc
+{
+template<> void RegisterRemoteFactory( clientCtl::RIUserPresenceCallback* instance );
+template<> void RegisterRemoteFactory( clientCtl::RILoginSvcAllocationCallback* instance );
+}
+namespace
+{
+  struct ClientCtlRemoteFactoryLinker
+  {
+    ClientCtlRemoteFactoryLinker()
+    {
+      rpc::RegisterRemoteFactory<clientCtl::RIUserPresenceCallback>( 0 );
+      rpc::RegisterRemoteFactory<clientCtl::RILoginSvcAllocationCallback>( 0 );
+    }
+  };
+  static ClientCtlRemoteFactoryLinker s_ClientCtlRemoteFactoryLinker;
+}
+

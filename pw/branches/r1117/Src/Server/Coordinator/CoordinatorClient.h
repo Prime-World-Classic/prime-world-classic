@@ -67,6 +67,11 @@ public:
   void AddServiceInstance( Transport::IServiceSpawner * _spawner, Transport::IServerRunner * _runner, const Transport::ServiceOptions & _options );
   void step();
 
+  // Public mirrors of the ICoordinatorClientRemote methods for the
+  // in-process local deployment proxy (NivalServerBase.cpp)
+  void LocalAddRoute( const Transport::TServiceId & _service, SvcNetAddresses const & _addrs ) { AddRoute( _service, _addrs ); }
+  void LocalRemoveRoute( const Transport::TServiceId & _service ) { RemoveRoute( _service ); }
+
 private:
   //mirror of ICoordinatorClientRemote
   void AddRoute( const Transport::TServiceId& service, SvcNetAddresses const & addrs );

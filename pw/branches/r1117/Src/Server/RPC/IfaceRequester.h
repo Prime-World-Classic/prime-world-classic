@@ -54,6 +54,7 @@ class IfaceRequester : public rpc::IGateKeeperCallback, public BaseObjectMT
   NHPTimer::FTime retryTimeout_;
   NHPTimer::FTime retryTimeoutStartPoint_;
   NHPTimer::FTime queryIfaceTimeout_;
+  unsigned requestNodeFails_;
 
 public:
   IfaceRequester(const char* _password=0)
@@ -61,7 +62,8 @@ public:
     logstrm( 0 ),
     logChnlName(0),
     retryTimeout_(0.0),
-    retryTimeoutStartPoint_(0.0)
+    retryTimeoutStartPoint_(0.0),
+    requestNodeFails_(0)
   {
     if (_password)
     {
@@ -236,8 +238,16 @@ public:
       rpcNode = gk->RequestNode(svcid_);
       if (rpcNode)
       {
+        requestNodeFails_ = 0;
         changeState(IfaceRequesterState::RPC_NODE_REQUESTED);
         LOGL_M(logstrm, logChnlName).Trace("Node requested successfully(svcid=%s)", svcid_.c_str());
+      }
+      else if ( ++requestNodeFails_ % 1000 == 1 )
+      {
+        // Untagged trace as well: channel logs are not routed on Linux.
+        ErrorTrace( "IfaceRequester: RequestNode keeps failing(svcid=%s fails=%u)", svcid_.c_str(), requestNodeFails_ );
+        LOGL_E(logstrm, logChnlName).Trace(
+          "RequestNode keeps failing(svcid=%s fails=%u)", svcid_.c_str(), requestNodeFails_ );
       }
     }
 

@@ -151,15 +151,25 @@ void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
       return;
     }
 
+    // Diagnostics: the per-service "newlogin" log channel is not routed on
+    // Linux, so use the untagged trace macros that reach the main log.
+    MessageTrace( "DevAuth: login_len=%d login0=0x%02X sessionkey_len=%zu response_len=%zu users=%u",
+      (int)_hello.login.size(), (unsigned char)_hello.login[0], _hello.sessionkey.size(), response.size(), (unsigned)usersData.size() );
+
     int playersCount = 0;
     Json::Value curPlayer = usersData[playersCount];
     while (!curPlayer.empty()) {
       if (!CheckPlayerInfo(curPlayer)) {
+        ErrorTrace( "DevAuth: CheckPlayerInfo failed for usersData[%d]",
+          playersCount );
         return;
       }
 
       nstl::string curNickname = Fix1251Encoding(curPlayer.get("nickname", Json::Value()).asString().c_str()).c_str();
       int userWebId = curPlayer.get("id", Json::Value()).asInt();
+
+      MessageTrace( "DevAuth: usersData[%d] nickname=%s expected=%s id=%d",
+        playersCount, curNickname.c_str(), (_hello.login.c_str() + 1), userWebId );
 
       if (curNickname == _hello.login.c_str() + 1) {
         s_userLoginsToIdMap[_hello.login] = userWebId;

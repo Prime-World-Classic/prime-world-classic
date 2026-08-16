@@ -26,7 +26,7 @@ class ClientCtrlAccessor : public clientCtl::IInterfaceAccessor, public BaseObje
 {
   NI_DECLARE_REFCOUNT_CLASS_2( ClientCtrlAccessor, clientCtl::IInterfaceAccessor, BaseObjectMT );
 public:
-  ClientCtrlAccessor( rpc::GateKeeper * _gk )
+  ClientCtrlAccessor( rpc::GateKeeper * _gk ) : pollCount( 0 )
   {
     remote = new rpc::IfaceRequester<clientCtl::RIInterface>;
     remote->init( _gk, clientCtl::serviceIds::Service, clientCtl::serviceIds::Gate );
@@ -42,8 +42,17 @@ public:
       rpc::IfaceRequesterState::Enum newSt = remote->PopNewState();
       if ( newSt == rpc::IfaceRequesterState::NONE )
         break;
+      // Diagnostics: the per-service log channel is not routed on Linux,
+      // use the untagged trace that reaches the main log.
+      MessageTrace( "NewLogin: clientctrl IfaceRequester state=%d", (int)newSt );
       if ( newSt == rpc::IfaceRequesterState::OPENED )
         newlyConnected = true;
+    }
+
+    if ( !newlyConnected )
+    {
+      if ( ++pollCount % 1000 == 0 )
+        MessageTrace( "NewLogin: clientctrl not connected yet, polls=%u", pollCount );
     }
   }
 
@@ -75,6 +84,7 @@ private:
   threading::Mutex mutex;
   StrongMT<rpc::IfaceRequester<clientCtl::RIInterface>>  remote;
   bool newlyConnected;
+  unsigned pollCount;
 };
 
 

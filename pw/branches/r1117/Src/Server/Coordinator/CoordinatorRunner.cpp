@@ -11,7 +11,7 @@
 namespace Coordinator
 {
 
-CoordinatorServerJob::CoordinatorServerJob( Transport::ITransportSystem * _transport, const string & coordinatorAddress )
+CoordinatorServerJob::CoordinatorServerJob( Transport::ITransportSystem * _transport, const string & coordinatorAddress ) : pendingAnnounceTask( 0 )
 {
   coordinatorServer = new Coordinator::CoordinatorServer;
 
@@ -25,6 +25,11 @@ CoordinatorServerJob::CoordinatorServerJob( Transport::ITransportSystem * _trans
 
 CoordinatorServerJob::~CoordinatorServerJob()
 {
+  LocalAnnounceTask * task = 0;
+  { threading::MutexLock lock( announceTaskMutex ); task = pendingAnnounceTask; pendingAnnounceTask = 0; }
+  if ( task )
+    delete task;
+
   if ( coordinatorServer )
     gateKeeper->GetGate()->UnregisterObject( coordinatorServer );
 
@@ -34,10 +39,27 @@ CoordinatorServerJob::~CoordinatorServerJob()
 
 
 
+void CoordinatorServerJob::PostLocalAnnounceTask( LocalAnnounceTask * _task )
+{
+  threading::MutexLock lock( announceTaskMutex );
+  NI_ASSERT( pendingAnnounceTask == 0, "Duplicate local announce task" );
+  pendingAnnounceTask = _task;
+}
+
+
+
 void CoordinatorServerJob::Work( volatile bool & isRunning )
 {
   while ( isRunning )
   {
+    LocalAnnounceTask * task = 0;
+    { threading::MutexLock lock( announceTaskMutex ); task = pendingAnnounceTask; pendingAnnounceTask = 0; }
+    if ( task )
+    {
+      task->Run( coordinatorServer.Get() );
+      delete task;
+    }
+
     coordinatorServer->Step();
     gateKeeper->Poll();
     nival::sleep( 10 );

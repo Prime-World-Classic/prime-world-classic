@@ -132,7 +132,7 @@ bool UniServerApp::OnInitServerFactory( Transport::NivalServer * _fact )
 
     _fact->RegisterService<GameBalancer::Service>                 ( GameBalancer::ServiceClass,         1,  SInterfacePolicy( EServiceInstancing::SINGLE ), Transport::CustomServiceParams( true, GameBalancer::GBALANCER ) );
     _fact->RegisterService<HybridServer::GameService>             ( HybridServer::ServiceClass,         2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ), Transport::CustomServiceParams( false ) );
-    _fact->RegisterService<lobby::ServerNode>                     ( lobby::serviceIds::Service,         2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ), Transport::CustomServiceParams( false ) );
+    _fact->RegisterService<lobby::ServerNode>                     ( lobby::serviceIds::Service,         2,  SInterfacePolicy( EServiceInstancing::MULTIPLE, Coordinator::ESvcFlags::CAN_RELOAD_CFG | Coordinator::ESvcFlags::EXTERNAL ) );
     _fact->RegisterService<chat::Service>                         ( chat::ServiceClass,                 1,  SInterfacePolicy( EServiceInstancing::SINGLE, Coordinator::ESvcFlags::EXTERNAL ) );
 
     _fact->RegisterService<HttpGateway::Service>                  ( HttpGateway::ServiceInterfaceId,    1,  SInterfacePolicy( EServiceInstancing::MULTIPLE ) );
