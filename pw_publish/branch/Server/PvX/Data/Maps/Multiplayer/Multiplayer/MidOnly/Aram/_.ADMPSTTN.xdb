@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AdvMapSettings>
+	<BackLink DBID="/Maps/Multiplayer/MidOnly/Aram/Aram.ADMPDSCR" Count="1" />
+	<battleStartDelay>30</battleStartDelay>
+	<creepAnnounceList href="" />
+	<creepLevelCap>-1</creepLevelCap>
+	<customBattleStartAnnouncement>
+		<announcementText textref="" />
+		<battleStartSound>
+			<eventName></eventName>
+			<groupName></groupName>
+			<projectName></projectName>
+		</battleStartSound>
+		<imageBurn href="" />
+		<imageFreeze href="" />
+	</customBattleStartAnnouncement>
+	<dialogsCollection href="" />
+	<dictionary href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" id="BF8885F0-DB4C-423F-A89B-50CDAB4C1BC0">
+		<DictionaryPreloadingResources>
+			<resources />
+		</DictionaryPreloadingResources>
+	</dictionary>
+	<emblemHeroNeeds>2</emblemHeroNeeds>
+	<enableAllScriptFunctions>false</enableAllScriptFunctions>
+	<enableAnnouncements>true</enableAnnouncements>
+	<enablePortalTalent>true</enablePortalTalent>
+	<enableStatistics>true</enableStatistics>
+	<force>105</force>
+	<fullPartyOnly>false</fullPartyOnly>
+	<heroRespawnParams href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" id="6D0F6463-34F6-4EF5-86CD-B1444B333500">
+		<HeroRespawnParams>
+			<heroBaseRespawnTime>8</heroBaseRespawnTime>
+			<heroMinRespawnTime>8</heroMinRespawnTime>
+			<heroRespawnDelayMultiplier>0</heroRespawnDelayMultiplier>
+			<overtimeRespawnParams>
+				<overtime>8</overtime>
+				<respawnDelayForOvertime>10</respawnDelayForOvertime>
+			</overtimeRespawnParams>
+		</HeroRespawnParams>
+	</heroRespawnParams>
+	<hintsCollection href="" />
+	<maxRequiredHeroForce>10000</maxRequiredHeroForce>
+	<minRequiredHeroForce>0</minRequiredHeroForce>
+	<overrideBotsSettings href="/Maps/Multiplayer/MidOnly/_.BOTS" />
+	<overrideGlyphSettings href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" id="17A0A7BA-9456-4BC0-A234-178560CCC9BC">
+		<GlyphManagerParams>
+			<glyphs href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" id="467E00E4-D9CD-4F18-BA67-D80BABA310C7">
+				<GlyphsDB>
+					<glyphs>
+						<Item>
+							<glyph href="/Glyphs/BoosterOld.GLPH" />
+							<weight>1</weight>
+						</Item>
+						<Item>
+							<glyph href="/Glyphs/DoubleDamagerOld.GLPH" />
+							<weight>1</weight>
+						</Item>
+						<Item>
+							<glyph href="/Glyphs/InvisiblerOld.GLPH" />
+							<weight>1</weight>
+						</Item>
+						<Item>
+							<glyph href="/Glyphs/RefresherOld.GLPH" />
+							<weight>1</weight>
+						</Item>
+					</glyphs>
+				</GlyphsDB>
+			</glyphs>
+			<settings>
+				<maxAfterPickupSpawnDelay>150</maxAfterPickupSpawnDelay>
+				<maxInstances>2</maxInstances>
+				<maxNormalSpawnDelay>120</maxNormalSpawnDelay>
+				<minAfterPickupSpawnDelay>50</minAfterPickupSpawnDelay>
+				<minNormalSpawnDelay>50</minNormalSpawnDelay>
+				<spawnAttemptDelayDecrease>50</spawnAttemptDelayDecrease>
+				<spawnMode>RandomWeight</spawnMode>
+			</settings>
+		</GlyphManagerParams>
+	</overrideGlyphSettings>
+	<overrideMinimapParams href="" />
+	<overridePortalTalent href="/Items/Talents/_commonData/Portal_MidOnly.TALENT" />
+	<overrideTooltipParams href="" />
+	<primeSettings>
+		<awardSpecRange>25</awardSpecRange>
+		<awardTeamRange>25</awardTeamRange>
+		<giveWorldPrimeAmount>15</giveWorldPrimeAmount>
+		<giveWorldPrimeRessurectDelay>0</giveWorldPrimeRessurectDelay>
+		<giveWorldPrimeToDead>true</giveWorldPrimeToDead>
+		<heroNaftaParams href="/Maps/Multiplayer/MOBA/PrimeForVictimKill.HNP" />
+		<multipliers />
+		<naftaForAssist>-1</naftaForAssist>
+		<naftaForKill>-1</naftaForKill>
+		<naftaSpecForKill>-1</naftaSpecForKill>
+		<neutralKillExperienceModifier href="" />
+		<startPrimePerTeam>3500</startPrimePerTeam>
+		<teamNaftaForPresence>-1</teamNaftaForPresence>
+	</primeSettings>
+	<questsCollection href="" />
+	<scriptFileName>/GameLogic/Scripts/Moba.lua</scriptFileName>
+	<showAllHeroes>true</showAllHeroes>
+	<towersVulnerabilityDelay>0</towersVulnerabilityDelay>
+	<trainingForceCoeff>1</trainingForceCoeff>
+	<triggerMarkerBinding />
+	<useCustomBattleStartAnnouncement>false</useCustomBattleStartAnnouncement>
+	<votingForSurrender href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" id="9CA459C0-C988-4751-BC0C-8AF6F6A6B0DC">
+		<VotingForSurrenderPerMission>
+			<cooldownAfterPrevisionVoting>60</cooldownAfterPrevisionVoting>
+			<cooldownAfterStart>420</cooldownAfterStart>
+			<maxUsersForFightIgnored>1</maxUsersForFightIgnored>
+			<timeDisconnectedPlayersVoteForFight>180</timeDisconnectedPlayersVoteForFight>
+		</VotingForSurrenderPerMission>
+	</votingForSurrender>
+</AdvMapSettings>

@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AdvMapDescription>
+	<BackLink DBID="/Maps/_.MAPLST" Count="1" />
+	<BackLink DBID="/Tech/Default/_.MAPLST" Count="2" />
+	<acceptNeeded>false</acceptNeeded>
+	<AvailableForLeavers>true</AvailableForLeavers>
+	<botsUseSkins>false</botsUseSkins>
+	<canUseSkins>true</canUseSkins>
+	<description textref="/Maps/Multiplayer/Tournament/_1.ADMPDSCR_description.txt" />
+	<FirstWinVisualInfo href="" />
+	<FWODGroup></FWODGroup>
+	<gameSvcSettings href="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" id="57D168BC-F08D-4E3D-8679-6749120CA3C9">
+		<GameSvcSettings>
+			<afkDisconnectTimer>0</afkDisconnectTimer>
+			<afkMessageTimer>0</afkMessageTimer>
+			<timeScale>1</timeScale>
+		</GameSvcSettings>
+	</gameSvcSettings>
+	<guardRollSettings href="" />
+	<heroesOverride href="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" id="AF3C1465-315A-438B-8850-03B7EC5CF32F">
+		<AdvMapHeroesOverride>
+			<shuffleHeroesInTeam>false</shuffleHeroesInTeam>
+			<singlePlayerFemale href="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" id="FD007BBF-D029-410D-AD84-9D7667215124">
+				<AdvMapHeroesOverrideData>
+					<allies>
+						<Item>
+							<hero href="/Heroes/Warlord/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Frogenglut/_.HROB" />
+							<nickname textref="" />
+						</Item>
+					</allies>
+					<enemies>
+						<Item>
+							<hero href="/Heroes/Rockman/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Ratcatcher/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Frogenglut/_.HROB" />
+							<nickname textref="" />
+						</Item>
+					</enemies>
+					<ownHero>
+						<hero href="/Heroes/Firefox/_.HROB" />
+						<nickname textref="" />
+					</ownHero>
+				</AdvMapHeroesOverrideData>
+			</singlePlayerFemale>
+			<singlePlayerMale href="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" id="5D30CA39-E4BB-4186-9C9A-9363F8F538A2">
+				<AdvMapHeroesOverrideData>
+					<allies>
+						<Item>
+							<hero href="/Heroes/Warlord/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Frogenglut/_.HROB" />
+							<nickname textref="" />
+						</Item>
+					</allies>
+					<enemies>
+						<Item>
+							<hero href="/Heroes/Rockman/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Ratcatcher/_.HROB" />
+							<nickname textref="" />
+						</Item>
+						<Item>
+							<hero href="/Heroes/Frogenglut/_.HROB" />
+							<nickname textref="" />
+						</Item>
+					</enemies>
+					<ownHero>
+						<hero href="/Heroes/Firefox/_.HROB" />
+						<nickname textref="" />
+					</ownHero>
+				</AdvMapHeroesOverrideData>
+			</singlePlayerMale>
+		</AdvMapHeroesOverride>
+	</heroesOverride>
+	<image href="/UI/Styles/Icons/Maps/Mod5.ITEX" />
+	<loadingBackgroundImages>
+		<back href="/UI/Styles/LoadingBack/PVP.ITEX" />
+		<logo href="/UI/Styles/LoadingBack/PVP_Logo.ITEX" />
+	</loadingBackgroundImages>
+	<map href="/Maps/Multiplayer/Tournament/_.ADMP" />
+	<mapSettings href="/Maps/Multiplayer/Tournament/_1.ADMPSTTN" />
+	<mapType>PvP</mapType>
+	<mapWithBots href="" />
+	<matchmakingSettings href="/Server/_.MAPMMAKING" />
+	<maxUncompleteTeamSize>-1</maxUncompleteTeamSize>
+	<minimalGuildFightTeam>3</minimalGuildFightTeam>
+	<minTeamSize>-1</minTeamSize>
+	<MinusPointsPerFullGame>true</MinusPointsPerFullGame>
+	<modeVisualDescription href="" />
+	<PartyMode>AlliesAndEnemies</PartyMode>
+	<playSameTeamTimeOut>30</playSameTeamTimeOut>
+	<PlusPointForLeave>true</PlusPointForLeave>
+	<productionMode>true</productionMode>
+	<rollSettings href="" />
+	<scoringTable href="" />
+	<statisticBackgroundImages>
+		<loose href="" />
+		<normal href="" />
+		<win href="" />
+	</statisticBackgroundImages>
+	<teamSize>2</teamSize>
+	<title textref="/Maps/Multiplayer/Tournament/_1.ADMPDSCR_title.txt" />
+	<victoryPoint>1</victoryPoint>
+</AdvMapDescription>

@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AdvMapModeDescription>
+	<icon href="/UI/Styles/Icons/Maps/MidOnlyMod1Small.ITEX" />
+	<tooltip textref="/Maps/Multiplayer/MidOnly/Aram/Mod1/_.MAPMODDESC_tooltip.txt" />
+</AdvMapModeDescription>

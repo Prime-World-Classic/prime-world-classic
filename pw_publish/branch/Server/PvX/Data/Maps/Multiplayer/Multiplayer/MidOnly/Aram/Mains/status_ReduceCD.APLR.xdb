@@ -1,0 +1,152 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<StatusApplicator>
+	<applicators>
+		<Item href="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR" id="60F658F5-C634-43CE-9FF8-F10882A86875">
+			<TriggerApplicator>
+				<actionsCount>
+					<compiledString></compiledString>
+					<returnType>int</returnType>
+					<sString>0</sString>
+				</actionsCount>
+				<applyTarget>ApplicatorTarget</applyTarget>
+				<behaviorFlags>0</behaviorFlags>
+				<caption></caption>
+				<effect>
+					<Item href="" />
+					<Item href="" />
+				</effect>
+				<enabled>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</enabled>
+				<formulaName></formulaName>
+				<lifeTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>-1.0</sString>
+				</lifeTime>
+				<LoggingEvent>-1</LoggingEvent>
+				<playAck>false</playAck>
+				<processor href="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR" id="F395DF67-7EC0-47BC-A794-F361FCED14F9">
+					<EventProcessorUnitDieNearMe>
+						<applyTarget>ApplicatorSelectedTarget</applyTarget>
+						<checkSender>0</checkSender>
+						<killerFlags>9</killerFlags>
+						<range>
+							<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAAD6Qw==</compiledString>
+							<returnType>float</returnType>
+							<sString>500</sString>
+						</range>
+						<senderMatchTarget>ApplicatorTarget</senderMatchTarget>
+						<spell href="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR" id="A1BA1611-4F74-4800-B4CD-15E01B27C78F">
+							<Spell>
+								<applicators>
+									<Item href="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR" id="381DF6D5-1223-428E-9AC8-D2F4A69CDEB4">
+										<RefreshCooldownApplicator>
+											<allowCdIncrease>false</allowCdIncrease>
+											<applyTarget>Hier1UpApplicatorTarget</applyTarget>
+											<caption> -- Уменьшаем кулдаун, если убили героя или сиджа</caption>
+											<enabled>
+												<compiledString></compiledString>
+												<returnType>bool</returnType>
+												<sString>true</sString>
+											</enabled>
+											<flags>128</flags>
+											<formulaName></formulaName>
+											<LoggingEvent>-1</LoggingEvent>
+											<providerName></providerName>
+											<reduceByPercent>true</reduceByPercent>
+											<reductionAmount>
+												<compiledString>FRIAAAACAAAAHwAAADIAAABDRF9SZWR1Y2VfcGVyY2VudABVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcNUAAAADZXfzZRfyL5V3DAAAAAAAAWUA=</compiledString>
+												<returnType>float</returnType>
+												<sString>cCD_Reduce_percent / 100</sString>
+											</reductionAmount>
+											<refreshThis>false</refreshThis>
+											<talents />
+											<useListAs>ListAsException</useListAs>
+										</RefreshCooldownApplicator>
+									</Item>
+								</applicators>
+								<dispatch href="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR" id="074A3AEC-CEAF-492A-94F5-9ACF81DBD129">
+									<DispatchImmediate>
+										<alwaysApply>false</alwaysApply>
+										<applyEffect>
+											<Item href="" />
+											<Item href="" />
+										</applyEffect>
+										<applyEffectIgnoreVisibility>false</applyEffectIgnoreVisibility>
+										<applyEffectOrientation>Default</applyEffectOrientation>
+										<applyEffectRandomAnglePoints>0</applyEffectRandomAnglePoints>
+										<dieAfterApply>true</dieAfterApply>
+										<dispatchEffect>
+											<Item href="" />
+											<Item href="" />
+										</dispatchEffect>
+										<flags>0</flags>
+										<instantApply>false</instantApply>
+									</DispatchImmediate>
+								</dispatch>
+							</Spell>
+						</spell>
+						<targets>537919507</targets>
+					</EventProcessorUnitDieNearMe>
+				</processor>
+				<providerName></providerName>
+				<startCondition>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</startCondition>
+				<useAbilityCooldown>false</useAbilityCooldown>
+				<useAbilityOwnerMana>false</useAbilityOwnerMana>
+			</TriggerApplicator>
+		</Item>
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>248</behaviorFlags>
+	<caption> -- Статус "Полигон" </caption>
+	<customCounter>
+		<compiledString></compiledString>
+		<returnType>int</returnType>
+		<sString>0</sString>
+	</customCounter>
+	<customProgress>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</customProgress>
+	<description textref="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR_description.txt" />
+	<dispellPriority>NonDispellable</dispellPriority>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<flags>64</flags>
+	<formulaName></formulaName>
+	<image href="/UI/Styles/Icons/Impulses/Isto4nik.ITEX" />
+	<lifeTime>
+		<compiledString></compiledString>
+		<returnType>float</returnType>
+		<sString>-1.0</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<name textref="/Maps/Multiplayer/MidOnly/Aram/Mains/status_ReduceCD.APLR_name.txt" />
+	<power>0</power>
+	<providerName></providerName>
+	<stackableAcrossUnits>Unstackable</stackableAcrossUnits>
+	<stackCount>0</stackCount>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<statusPosition>-1000</statusPosition>
+	<stopBehaviour>StopByTime</stopBehaviour>
+	<unstackableWith href="" />
+</StatusApplicator>

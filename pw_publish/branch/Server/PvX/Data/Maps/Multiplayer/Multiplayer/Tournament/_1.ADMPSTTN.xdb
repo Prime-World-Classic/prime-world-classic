@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AdvMapSettings parent="/Maps/Multiplayer/Tournament/_.ADMPSTTN">
+	<BackLink DBID="/Maps/Multiplayer/Tournament/_1.ADMPDSCR" Count="1" />
+	<battleStartDelay>30</battleStartDelay>
+	<dialogsCollection href="" />
+	<dictionary href="" />
+	<enableAnnouncements>true</enableAnnouncements>
+	<hintsCollection href="/Dialog/SessionTutorial/Tournament/Hint" />
+	<questsCollection href="/Dialog/SessionTutorial/Tournament/Quest" />
+	<scriptFileName></scriptFileName>
+	<useCustomBattleStartAnnouncement>false</useCustomBattleStartAnnouncement>
+</AdvMapSettings>

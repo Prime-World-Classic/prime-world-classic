@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Quarter parent="/Buildings/B/Barrack/_Parent.QRTR">
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMP" Count="1" />
+	<onDestructionEffect href="/Buildings/B/Barrack/FXcrashTutorial.EFFT" />
+	<routeID>Center</routeID>
+	<routeLevel>2</routeLevel>
+	<ruinSceneObject href="/Buildings/B/Barrack/Crash.SOBJ" />
+	<sceneObject href="/Buildings/B/Barrack/_Tutorial.SOBJ" />
+	<showRuinDelay>3</showRuinDelay>
+	<stats href="/Maps/Multiplayer/ARAM/Barracks/_B.QRTR" id="6FF89AE0-0CEB-4D39-AA2E-C973A7248AC3">
+		<StatsContainer parent="/Buildings/DefaultStats/Barrack.STCN">
+			<stats>
+				<Item>
+					<value>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIA7Rg==</compiledString>
+						<returnType>float</returnType>
+						<sString>12000</sString>
+					</value>
+				</Item>
+				<Item skip="1" />
+				<Item skip="1" />
+			</stats>
+		</StatsContainer>
+	</stats>
+</Quarter>

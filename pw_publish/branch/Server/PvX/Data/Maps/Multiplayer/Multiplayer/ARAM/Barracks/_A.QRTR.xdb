@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Quarter parent="/Buildings/A/Barrack/_Parent.QRTR">
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMP" Count="1" />
+	<routeID>Center</routeID>
+	<routeLevel>2</routeLevel>
+	<stats href="/Maps/Multiplayer/ARAM/Barracks/_A.QRTR" id="6D519E34-2874-43B1-A3D8-29E3B5AAF232">
+		<StatsContainer parent="/Buildings/DefaultStats/Barrack.STCN">
+			<stats>
+				<Item>
+					<value>
+						<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAIA7Rg==</compiledString>
+						<returnType>float</returnType>
+						<sString>12000</sString>
+					</value>
+				</Item>
+				<Item skip="1" />
+				<Item skip="1" />
+			</stats>
+		</StatsContainer>
+	</stats>
+</Quarter>
