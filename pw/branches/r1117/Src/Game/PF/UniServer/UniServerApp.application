@@ -68,3 +68,7 @@ globalCompilerKeys = [
   "/D CHECK_TOWN_CONSISTENCY",
   "/D LOG_THREAD_EXIT",
 ]
+
+# Release (shipping) configuration: disable debug logging / dev paths in game logic
+if configuration == "release":
+  globalCompilerKeys = globalCompilerKeys + [ "/D _SHIPPING" ]
