@@ -1838,6 +1838,8 @@
 	<BackLink DBID="/Effects/Debuffs/Bomb/_PointCast_1.PRXY" Count="2" />
 	<BackLink DBID="/Effects/Shots/Rocket/_S1_Pink_TRS.PRXY" Count="3" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_Gifts2_Pink.PRXY" Count="4" />
+	<BackLink DBID="/Effects/Buffs/Regen/_CyclePurple_S5.PRXY" Count="2" />
+	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" Count="2" />
 	<generatedFileName>atlas_0</generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>NoMips</mipLevelUsage>

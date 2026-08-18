@@ -12,6 +12,7 @@
 	<BackLink DBID="/Effects/Shots/Paint/TrailGreen2.TRSC" Count="1" />
 	<BackLink DBID="/Effects/Shots/Paint/TrailPurple1.TRSC" Count="1" />
 	<BackLink DBID="/Effects/Shots/Paint/TrailPurple2.TRSC" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

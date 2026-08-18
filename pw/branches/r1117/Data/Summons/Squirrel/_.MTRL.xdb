@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicMaterial>
 	<BackLink DBID="/Summons/Squirrel/_.PRXY" Count="1" />
+	<BackLink DBID="/Summons/Squirrel/_skat.PRXY" Count="1" />
 	<caption>lambert3</caption>
 	<diffuseColor>
 		<A>1</A>

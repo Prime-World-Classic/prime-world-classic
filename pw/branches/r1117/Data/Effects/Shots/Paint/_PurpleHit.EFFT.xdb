@@ -11,4 +11,9 @@
 	<fadeOut>0</fadeOut>
 	<groupFlags>0</groupFlags>
 	<lifeTime>0</lifeTime>
+	<__states>
+		<state name="artist_S5">
+			<component href="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" />
+		</state>
+	</__states>
 </BasicEffectAttached>

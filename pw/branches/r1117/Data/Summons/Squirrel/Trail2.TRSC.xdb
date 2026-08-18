@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBTraceSceneComponent>
 	<BackLink DBID="/Summons/Squirrel/_.PRXY" Count="1" />
+	<BackLink DBID="/Summons/Squirrel/_skat.PRXY" Count="1" />
 	<attached />
 	<caption>Trail2</caption>
 	<colorFirst>
