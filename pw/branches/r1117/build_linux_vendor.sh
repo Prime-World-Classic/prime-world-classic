@@ -133,9 +133,36 @@ log "4/5. Сборка ACE 5.7"
 mkdir -p "$ACE/build"
 cd "$ACE/build"
 ../configure --disable-tests --disable-samples
+
+# UniServerApp линкует только главную libACE. Остальные подпакеты отрезаем
+# из сгенерированных Makefile'ов (configure при каждом запуске их пересоздаёт):
+#  - ace/SSL: SSL_Context.cpp не компилируется под OpenSSL >= 1.1 (SSLv3_method,
+#    RAND_egd удалены), а ACE_SSL приложению не нужен (SSL идёт через Terabit);
+#  - ace/ETCL, ace/Monitor_Control: отдельные либы, не линкуются;
+#  - ACEXML/ASNMP/apps/bin/netsvcs/examples: не нужны; netsvcs под Linux бит
+#    (ACE_SPIPE на Linux — не класс, см. ace/SPIPE_Acceptor.h).
+# awk: заменяем блок SUBDIRS одной строкой; идемпотентно (короткую строку
+# перепечатывает как есть).
+trim_subdirs() {  # $1 = Makefile, $2 = значение SUBDIRS
+    awk -v val="$2" '
+        /^SUBDIRS = / {
+            if ($0 ~ /\\$/) { print "SUBDIRS = " val; inskip = 1 }
+            else print
+            next
+        }
+        inskip { if ($0 ~ /\\$/) next; else inskip = 0; next }
+        { print }
+    ' "$1" > "$1.tmp" && mv "$1.tmp" "$1"
+}
+trim_subdirs Makefile ace
+trim_subdirs ace/Makefile .
+
 make -j"$(nproc)"
-ls lib/libACE-5.7.so* >/dev/null 2>&1 || die "не найден результат сборки ACE (lib/libACE-5.7.so*)"
-cp -f lib/libACE-5.7.so* ../lib/
+
+ACE_LIB="$PWD/ace/.libs/libACE-5.7.so"
+[ -f "$ACE_LIB" ] || ACE_LIB="$PWD/lib/libACE-5.7.so"
+[ -f "$ACE_LIB" ] || die "не найден результат сборки ACE (ace/.libs/libACE-5.7.so)"
+cp -f "$ACE_LIB" ../lib/libACE-5.7.so
 ln -sf libACE-5.7.so ../lib/libACE.so
 echo "libACE-5.7.so / libACE.so -> Vendor/ACE_wrappers/lib/"
 
