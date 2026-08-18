@@ -194,7 +194,6 @@ pw/branches/r1117/Src/Game/PF/UniServer/build_linux*/
 **/CMakeCache.txt
 **/CMakeFiles/
 **/cmake_install.cmake
-**/Makefile
 **/*.cmake
 
 # Build output files
