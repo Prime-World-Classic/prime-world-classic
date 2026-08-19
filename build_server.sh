@@ -32,8 +32,9 @@
 #   * повреждённые токены 'fidone' в Vendor/ACE_wrappers/configure чинятся
 #     до запуска configure; каталог сборки ACE всегда чистый.
 #
-# Требования: Ubuntu/Debian x86_64; conda c окружением py27 (создаётся
-# автоматически, если не найдено) либо python2 в PATH.
+# Требования: Ubuntu/Debian x86_64. Python 2.7 ставится автоматически,
+# если не найден: Miniconda скачивается в ~/miniconda3, создаётся
+# окружение py27 (нужна сеть).
 # =============================================================================
 set -euo pipefail
 
@@ -298,13 +299,57 @@ find_py2() {
 
 PY2=$(find_py2 || true)
 if [ -z "$PY2" ]; then
+    # conda может быть установлен, но не активирован в этом shell —
+    # смотрим в стандартных местах, кроме PATH
     CONDA_BIN=$(command -v conda || true)
-    if [ -n "$CONDA_BIN" ]; then
-        warn "Python 2.7 не найден — создаю conda-окружение py27 (нужны сеть и время)"
-        "$CONDA_BIN" create -n py27 python=2.7 -y \
-            || "$CONDA_BIN" create -n py27 python=2.7 -c conda-forge -y
-        PY2=$(find_py2 || true)
+    for cbin in "$HOME/miniconda3/bin/conda" "$HOME/anaconda3/bin/conda" \
+                "$HOME/mambaforge/bin/conda" /opt/conda/bin/conda; do
+        [ -z "$CONDA_BIN" ] && [ -x "$cbin" ] && CONDA_BIN=$cbin
+    done
+
+    # conda нет вообще — устанавливаем Miniconda (нужна сеть)
+    if [ -z "$CONDA_BIN" ]; then
+        if [ -d "$HOME/miniconda3" ] && [ ! -x "$HOME/miniconda3/bin/conda" ]; then
+            die "~/miniconda3 существует, но в нём нет bin/conda — исправьте установку или удалите каталог, затем повторите"
+        fi
+        CONDA_DL=""
+        if command -v curl >/dev/null; then
+            CONDA_DL="curl -fL -o /tmp/miniconda.sh"
+        elif command -v wget >/dev/null; then
+            CONDA_DL="wget -q -O /tmp/miniconda.sh"
+        else
+            die "не найдены curl и wget — установите curl (apt install curl) и повторите"
+        fi
+        case "$(uname -m)" in
+            x86_64)          CONDA_ARCH=x86_64 ;;
+            aarch64|arm64)   CONDA_ARCH=aarch64 ;;
+            *) die "неподдерживаемая архитектура: $(uname -m)" ;;
+        esac
+        warn "conda не найден — устанавливаю Miniconda в ~/miniconda3 (нужна сеть)"
+        # shellcheck disable=SC2086
+        $CONDA_DL "https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-${CONDA_ARCH}.sh" \
+            || die "не удалось скачать Miniconda"
+        bash /tmp/miniconda.sh -b -p "$HOME/miniconda3" \
+            || die "не удалось установить Miniconda"
+        rm -f /tmp/miniconda.sh
+        CONDA_BIN="$HOME/miniconda3/bin/conda"
     fi
+
+    warn "Python 2.7 не найден — создаю conda-окружение py27 (нужны сеть и время)"
+    # Только conda-forge с --override-channels: в свежих conda дефолтные
+    # каналы Anaconda (pkgs/main, pkgs/r) требуют интерактивного принятия
+    # ToS, а python 2.7 в conda-forge доступен без этого.
+    "$CONDA_BIN" create -n py27 --override-channels -c conda-forge python=2.7 -y \
+        || die "не удалось создать окружение py27 (python 2.7 из conda-forge)"
+    PY2=$(find_py2 || true)
+    if [ -z "$PY2" ]; then
+        # окружение создано, но conda лежит в нестандартном месте
+        CB_BASE=$("$CONDA_BIN" info --base 2>/dev/null | tail -1 || true)
+        if [ -n "$CB_BASE" ] && [ -x "$CB_BASE/envs/py27/bin/python" ]; then
+            PY2="$CB_BASE/envs/py27/bin/python"
+        fi
+    fi
+    [ -n "$PY2" ] || die "окружение py27 создано, но python в нём не найден"
 fi
 [ -n "$PY2" ] || die "не найден Python 2.7. Установите: conda create -n py27 python=2.7 (conda-forge)"
 "$PY2" -c 'import sys; sys.exit(0 if sys.version_info[0] == 2 else 1)' \
