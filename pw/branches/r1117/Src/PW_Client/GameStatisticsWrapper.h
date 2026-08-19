@@ -20,7 +20,7 @@
 #ifndef GAMESTATISTICSWRAPPER_H_INCLUDED
 #define GAMESTATISTICSWRAPPER_H_INCLUDED
 
-#include <rpc/GateKeeper.h>
+#include <RPC/GateKeeper.h>
 #include "DebugVarUpdate/DebugVarReporter.h"
 
 namespace rpc

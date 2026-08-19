@@ -3,9 +3,9 @@
 #include "RPC/GateKeeper.h" 
 #include "json/reader.h"
 #include "json/writer.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "Server/LobbySocial/SocialLobbyTypes.h"
-#include "system/SpinLock.h"
+#include "System/SpinLock.h"
 #include "GatewayPingContext.h"
 #include <list>
 #include <map>

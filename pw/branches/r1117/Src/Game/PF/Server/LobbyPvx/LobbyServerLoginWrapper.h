@@ -2,7 +2,7 @@
 #define LOBBYSERVERLOGINWRAPPER_H_INCLUDED
 
 #include "ILoginSvcWrapper.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include <list>
 
 

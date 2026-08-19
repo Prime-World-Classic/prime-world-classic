@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "ChatSvc/stdafx.h"
 #include "StatClientDiskDispatcher.h"
-#include "system/math/md4.h"
+#include "System/Math/MD4.h"
 
 
 namespace StatisticService

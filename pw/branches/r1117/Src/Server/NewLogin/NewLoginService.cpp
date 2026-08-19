@@ -12,7 +12,7 @@
 #include "ClientControl/LClientControlRemote.auto.h"
 #include "RdpTransport/LRdpFrontendAgentRemote.auto.h"
 #include "RdpTransport/RdpTransportUtils.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "System/InlineProfiler.h"
 
 

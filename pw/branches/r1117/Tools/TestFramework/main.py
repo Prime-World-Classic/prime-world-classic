@@ -1429,10 +1429,35 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
         for ln in libDeps :
             cmake_file.write( "SET( ALL_LIBS {0}           {1} )\n".format( all_libs_var, ln ) )
 
-        # Define SPIPE_Addr object target before executable (Linux only)
+        # Define SPIPE_Addr object target before executable (Linux only).
+        # Path is resolved at generation time (no hardcoded absolute paths):
+        #   1. SPIPE_ADDR_CPP environment variable (explicit override)
+        #   2. Relative to TestFrameworkPath: <root>/Tools/TestFramework -> <root>/Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp
+        #   3. Fallback: walk up from the current directory looking for the file
         spipe_obj = ""
         if options.platform != 'win32':
-            cmake_file.write( "ADD_LIBRARY(spip_e_addr_obj OBJECT /home/rekon/PW/prime-world-classic/pw/branches/r1117/Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp)\n" )
+            spipe_src = os.environ.get( 'SPIPE_ADDR_CPP', '' )
+            if not spipe_src:
+                tf_path = os.environ.get( 'TestFrameworkPath', '' )
+                if tf_path:
+                    candidate = os.path.normpath( os.path.join( tf_path, '..', '..', 'Vendor', 'ACE_wrappers', 'ace', 'SPIPE_Addr.cpp' ) )
+                    if os.path.isfile( candidate ):
+                        spipe_src = candidate
+            if not spipe_src:
+                d = os.getcwd()
+                while True:
+                    candidate = os.path.normpath( os.path.join( d, 'Vendor', 'ACE_wrappers', 'ace', 'SPIPE_Addr.cpp' ) )
+                    if os.path.isfile( candidate ):
+                        spipe_src = candidate
+                        break
+                    parent = os.path.dirname( d )
+                    if parent == d: break
+                    d = parent
+            if not spipe_src:
+                sys.stderr.write( "ERROR: cannot locate Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp "
+                                  "(set SPIPE_ADDR_CPP or TestFrameworkPath)\n" )
+                return 0
+            cmake_file.write( "ADD_LIBRARY(spip_e_addr_obj OBJECT {0})\n".format( spipe_src ) )
             cmake_file.write( "SET_TARGET_PROPERTIES(spip_e_addr_obj PROPERTIES COMPILE_FLAGS \"-fno-rtti\")\n" )
             spipe_obj = "$<TARGET_OBJECTS:spip_e_addr_obj>"
 

@@ -1,5 +1,23 @@
 # Сборка Linux-версии UniServerApp
 
+## Быстрая сборка: `./build_server.sh`
+
+В корне репозитория есть скрипт, выполняющий всю цепочку одним запуском:
+сборка vendor-библиотек (ACE 5.7, Terabit) → генерация CMake через
+TestFramework (Python 2.7 / conda) → сборка UniServerApp → копирование
+бинарника в `pw_publish/branch/Server/PvX/Bin` → смоук-тест запуска:
+
+```bash
+cd prime-world-classic
+./build_server.sh
+```
+
+Флаги: `--vendor-only`, `--no-vendor`, `--rebuild-vendor`, `--no-deploy`.
+Скрипт идемпотентен: уже собранные vendor-библиотеки и актуальный
+`UniServerApp.auto` пропускаются.
+
+Вручную те же этапы расписаны ниже (полезно при отладке).
+
 ## Введение
 
 Инструкция описывает сборку серверной части Prime World Classic (UniServerApp) на Linux (Ubuntu 24.04+). Проект изначально разрабатывался под Windows (Visual Studio 2008), поэтому сборка на Linux требует обхода ряда проблем.
