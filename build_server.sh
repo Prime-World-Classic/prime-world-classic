@@ -158,6 +158,15 @@ else
               done )
     fi
 
+    # 2.4b. Запрет ложной регенерации configure. После git clone mtime у
+    #      m4/*.m4 / configure.ac может оказаться строго новее, чем у
+    #      configure (особенно на exFAT/NTFS, где точность меток — секунда),
+    #      и make пересоберёт configure системным autoconf. Свежий autoconf
+    #      (2.7x) для configure.ac 2009 г. выдаёт битый скрипт: незакрытый
+    #      `for' → "syntax error: unexpected end of file from `for' command".
+    #      touch делает configure новее всех зависимостей — make не тронет его.
+    touch "$ACE/configure"
+
     # 2.5. configure + make. UniServerApp линкует только главную libACE,
     #      поэтому SUBDIRS обрезаем: ace/SSL не компилируется под OpenSSL>=1.1,
     #      ETCL/Monitor_Control/ACEXML/netsvcs не нужны.
