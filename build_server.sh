@@ -20,6 +20,8 @@
 #   ./build_server.sh --no-vendor         # пропустить vendor (уже собран)
 #   ./build_server.sh --rebuild-vendor    # пересобрать vendor принудительно
 #   ./build_server.sh --no-deploy         # не копировать бинарник в pw_publish
+#   ./build_server.sh --shipping          # shipping-сборка: release-конфигурация
+#                                         # генератора, добавляет -D_SHIPPING
 #
 # Исправления, обеспечивающие рабочую сборку (см. BUILD_LINUX.md):
 #   * абсолютные пути: генератор запущен из каталога UniServer, а путь к
@@ -43,12 +45,14 @@ VENDOR_ONLY=0
 NO_VENDOR=0
 REBUILD_VENDOR=0
 NO_DEPLOY=0
+SHIPPING=0
 for arg in "$@"; do
     case "$arg" in
         --vendor-only)    VENDOR_ONLY=1 ;;
         --no-vendor)      NO_VENDOR=1 ;;
         --rebuild-vendor) REBUILD_VENDOR=1 ;;
         --no-deploy)      NO_DEPLOY=1 ;;
+        --shipping)       SHIPPING=1 ;;
         -h|--help)
             grep '^# ' "$0" | sed 's/^# \{0,1\}//' | head -30
             exit 0 ;;
@@ -364,10 +368,32 @@ echo "Python 2.7: $PY2"
 # чтобы не заставлять make пересобирать всё с нуля при каждом запуске.
 GEN_CMK=$UNI/UniServerApp.auto/UniServerApp/CMakeLists.txt
 SPIPE_PATH=$ACE/ace/SPIPE_Addr.cpp
+# Конфигурация генератора TestFramework:
+#   debug (по умолчанию, прежнее поведение) — без _SHIPPING, с -g;
+#   --shipping → release — добавляет -D_SHIPPING (выключает debug-логи
+#   и dev-пути в игровой логике, см. UniServerApp.application).
+if [ "$SHIPPING" = 1 ]; then
+    GEN_CONF_ARGS="--configuration release"
+else
+    GEN_CONF_ARGS=""
+fi
 done_generating=1
 if [ -f "$GEN_CMK" ] && \
    grep -q "ADD_LIBRARY(spip_e_addr_obj OBJECT $SPIPE_PATH)" "$GEN_CMK"; then
-    STALE_CMPS=$(find "$BR/Src" "$BR/Vendor" \( -name "*.application" -o -name "*.component" \) -newer "$GEN_CMK" 2>/dev/null | wc -l) || STALE_CMPS=1
+    # CMakeLists должен быть сгенерирован именно под нашу конфигурацию,
+    # иначе переключение debug/shipping даст старую генерацию
+    cfg_ok=1
+    if [ "$SHIPPING" = 1 ]; then
+        grep -q "_SHIPPING" "$GEN_CMK" || cfg_ok=0
+    else
+        grep -q "_SHIPPING" "$GEN_CMK" && cfg_ok=0
+    fi
+    STALE_CMPS=0
+    if [ "$cfg_ok" = 0 ]; then
+        STALE_CMPS=1
+    else
+        STALE_CMPS=$(find "$BR/Src" "$BR/Vendor" \( -name "*.application" -o -name "*.component" \) -newer "$GEN_CMK" 2>/dev/null | wc -l) || STALE_CMPS=1
+    fi
     # find может завершиться с ошибкой на нечитаемых каталогах — считаем,
     # что входные файлы изменились, и пересоздаём UniServerApp.auto
     if [ "$STALE_CMPS" -eq 0 ]; then
@@ -378,11 +404,15 @@ fi
 if [ "$done_generating" = 1 ]; then
     cd "$UNI"
     rm -rf UniServerApp.auto
+    # shellcheck disable=SC2086
     TestFrameworkPath="$TF" "$PY2" "$TF/run.py" \
-        --compiler cmake --platform linux --generateOnly \
+        --compiler cmake --platform linux --generateOnly $GEN_CONF_ARGS \
         UniServerApp.application
     [ -f "$GEN_CMK" ] || die "генератор не создал UniServerApp.auto/UniServerApp/CMakeLists.txt"
-    echo "CMakeLists.txt сгенерирован"
+    if [ "$SHIPPING" = 1 ]; then
+        grep -q "_SHIPPING" "$GEN_CMK" || die "в сгенерированном CMakeLists.txt нет -D_SHIPPING — shipping-конфигурация не применена"
+    fi
+    echo "CMakeLists.txt сгенерирован ($([ "$SHIPPING" = 1 ] && echo shipping || echo debug))"
 else
     echo "UniServerApp.auto актуален — генерация пропущена"
 fi
