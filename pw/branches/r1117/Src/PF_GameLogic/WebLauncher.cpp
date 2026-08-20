@@ -731,6 +731,10 @@ std::string WebLauncherPostRequest::CreateDebugSession()
   rating["current"] = Json::Value (2001.01234567);
   rating["victory"] = Json::Value (2021.987654321);
   rating["loss"] = Json::Value (1995.456789123123456);
+  Json::Value ratingAcc;
+  ratingAcc["current"] = Json::Value (2001.01234567);
+  ratingAcc["victory"] = Json::Value (2021.987654321);
+  ratingAcc["loss"] = Json::Value (1995.456789123123456);
 
   Json::Value build;
   build.resize(36);
@@ -746,6 +750,7 @@ std::string WebLauncherPostRequest::CreateDebugSession()
   }
 
   player["rating"] = rating;
+  player["ratingAcc"] = ratingAcc;
   player["build"] = build;
   player["bar"] = bar;
 
@@ -763,7 +768,7 @@ std::string WebLauncherPostRequest::CreateDebugSession()
   Json::Value data;
   data["sessionToken"] = Json::Value (SESSION_TOKEN);
   data["players"] = players;
-  data["mapId"] = Json::Value("Maps/Multiplayer/MOBA/Trening/_.ADMPDSCR.xdb");
+  data["mapId"] = Json::Value("Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb");
 
   Json::Value result;
   result["body"] = data;

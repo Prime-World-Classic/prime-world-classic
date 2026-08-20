@@ -308,11 +308,11 @@ static bool CheckPlayerInfo(const Json::Value& playerInfo)
     if (loss.empty() || !loss.isNumeric()) return false;
   }
   {
-    Json::Value current = ratingAcc.get("currentRatingAcc", Json::Value());
+    Json::Value current = ratingAcc.get("current", Json::Value());
     if (current.empty() || !current.isNumeric()) return false;
-    Json::Value victory = ratingAcc.get("victoryRatingAcc", Json::Value());
+    Json::Value victory = ratingAcc.get("victory", Json::Value());
     if (victory.empty() || !victory.isNumeric()) return false;
-    Json::Value loss = ratingAcc.get("lossRatingAcc", Json::Value());
+    Json::Value loss = ratingAcc.get("loss", Json::Value());
     if (loss.empty() || !loss.isNumeric()) return false;
   }
   Json::Value build = playerInfo.get("build", Json::Value());
