@@ -216,7 +216,6 @@ void GameSession::SetupFromCustomGame( CustomGame * _customGame )
 }
 
 
-extern nstl::map<nstl::wstring, int> playerNicknameToWebUserIdMap;
 EOperationResult::Enum GameSession::ReconnectToCustomGame( ServerConnection * player )
 {
   LOBBY_LOG_MSG( "Trying to rejoin player %d to custom game %s...", player->ClientId(), strGameId );
@@ -230,13 +229,12 @@ EOperationResult::Enum GameSession::ReconnectToCustomGame( ServerConnection * pl
   NI_VERIFY( ( gameServer || gameSvcInstId.Valid() ) && gameServerInternal, "", return EOperationResult::InternalError );
   NI_VERIFY( player->RemoteUser(), "", return EOperationResult::InternalError );
 
-  nstl::map<nstl::wstring, int>::iterator it = playerNicknameToWebUserIdMap.find(player->UserInfo().nickname.c_str());
-  if (it == playerNicknameToWebUserIdMap.end()) {
-    LOBBY_LOG_ERR( "Player is not found %s (%d)", player->UserInfo().nickname.c_str(), player->ClientId() );
-    return EOperationResult::InternalError;
-  }
-
-  gameServerInternal->OnRejoinClient( it->second, this, &GameSession::OnRejoinClientAnswer );
+  // The transport client id IS the web user id (newlogin DevAuth replies
+  // uid = web id, the client transport uses it as the channel client id, and
+  // the fake connections created in TryCreateWebSession use clientId = web id
+  // as well), so no nick-based lookup is needed. This also keeps rejoining
+  // independent of nickname encoding (cp1251 logins vs. UTF-8 session data).
+  gameServerInternal->OnRejoinClient( player->ClientId(), this, &GameSession::OnRejoinClientAnswer );
 
   player->RemoteUser()->StartSession( gameId, params, lineup, gameServer, gameSvcInstId, (unsigned)Timestamp() );
   return EOperationResult::Ok;

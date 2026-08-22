@@ -373,7 +373,6 @@ static const char* heroes [] = {
 };
 
 nstl::map<nstl::string, StrongMT<CustomGame>> g_games;
-nstl::map<nstl::wstring, int> playerNicknameToWebUserIdMap;
 lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
   std::string response = GetSessionData(token, true);
@@ -443,7 +442,6 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
     currentLogin[0] = 0x09;
 
     WebLauncherPostRequest::WebUserData userData = it->second;
-    playerNicknameToWebUserIdMap[currentLogin.c_str()] = userData.userId;
     StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.userId, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
