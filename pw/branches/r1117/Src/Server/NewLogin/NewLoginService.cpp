@@ -26,7 +26,7 @@ class ClientCtrlAccessor : public clientCtl::IInterfaceAccessor, public BaseObje
 {
   NI_DECLARE_REFCOUNT_CLASS_2( ClientCtrlAccessor, clientCtl::IInterfaceAccessor, BaseObjectMT );
 public:
-  ClientCtrlAccessor( rpc::GateKeeper * _gk ) : pollCount( 0 )
+  ClientCtrlAccessor( rpc::GateKeeper * _gk ) : pollCount( 0 ), newlyConnected( false ), everConnected( false )
   {
     remote = new rpc::IfaceRequester<clientCtl::RIInterface>;
     remote->init( _gk, clientCtl::serviceIds::Service, clientCtl::serviceIds::Gate );
@@ -46,14 +46,18 @@ public:
       // use the untagged trace that reaches the main log.
       MessageTrace( "NewLogin: clientctrl IfaceRequester state=%d", (int)newSt );
       if ( newSt == rpc::IfaceRequesterState::OPENED )
+      {
         newlyConnected = true;
+        everConnected = true;
+      }
     }
 
-    if ( !newlyConnected )
-    {
-      if ( ++pollCount % 1000 == 0 )
-        MessageTrace( "NewLogin: clientctrl not connected yet, polls=%u", pollCount );
-    }
+    // The "not connected yet" diagnostic is only meaningful before the first
+    // successful connection: newlyConnected is a one-shot flag consumed by
+    // RegisterLoginSvc, so without everConnected this message would spam
+    // forever even while the connection is alive (REPORT_server_profiling.md, A2).
+    if ( !everConnected && ( ++pollCount % 1000 == 0 ) )
+      MessageTrace( "NewLogin: clientctrl not connected yet, polls=%u", pollCount );
   }
 
   bool PopNewlyConnected()
@@ -84,6 +88,7 @@ private:
   threading::Mutex mutex;
   StrongMT<rpc::IfaceRequester<clientCtl::RIInterface>>  remote;
   bool newlyConnected;
+  bool everConnected;
   unsigned pollCount;
 };
 

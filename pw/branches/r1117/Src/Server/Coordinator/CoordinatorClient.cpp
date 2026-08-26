@@ -34,10 +34,10 @@ void LoadServiceConfig( const char * svcClass )
 
 
 
-// Интерфейс ICoordinatorClient реализует отдельный объект для предотвращения кольцевой ссылки:
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ICoordinatorClient пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ:
 //
-// Strong-указатель на ICoordinatorClient хранят в себе все сервисы
-// А сервисы создает и хранит в себе объект CoordinatorClient
+// Strong-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ ICoordinatorClient пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+// пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ CoordinatorClient
 class CoordinatorClientInterface : public ICoordinatorClient, public BaseObjectMT
 {
   NI_DECLARE_REFCOUNT_CLASS_2( CoordinatorClientInterface, ICoordinatorClient, BaseObjectMT );
@@ -71,12 +71,20 @@ private:
 
 
 
-class CoordinatorClient::CoordinatorClientRemoteProxy : public ICoordinatorClientRemote, public IRegisterClientCallback, public BaseObjectMT
+// The coordinator keeps two separate references to the client: the
+// long-lived ICoordinatorClientRemote handle (used to start/stop services)
+// and the one-shot IRegisterClientCallback (used to report the registration
+// result). They MUST be backed by two distinct objects: the RPC local entity
+// map keys entities by the raw instance pointer only (the classId is not part
+// of the key), so a single object passed as two different interface arguments
+// collapses into one local entity and all calls on the second interface are
+// dropped (symptom: "Entity id not correlated", StartService never delivered).
+class CoordinatorClient::ClientRemoteProxy : public ICoordinatorClientRemote, public BaseObjectMT
 {
-  NI_DECLARE_REFCOUNT_CLASS_3( CoordinatorClientRemoteProxy, ICoordinatorClientRemote, IRegisterClientCallback, BaseObjectMT );
+  NI_DECLARE_REFCOUNT_CLASS_2( ClientRemoteProxy, ICoordinatorClientRemote, BaseObjectMT );
 
 public:
-  CoordinatorClientRemoteProxy( CoordinatorClient * _owner ) :
+  ClientRemoteProxy( CoordinatorClient * _owner ) :
   owner( _owner )
   {}
 
@@ -88,6 +96,20 @@ public:
   virtual void SoftStopService( Transport::TServiceId const & _svcid )                          { if ( StrongMT<CoordinatorClient> locked = owner.Lock() ) locked->SoftStopService( _svcid ); }
   virtual void ReloadConfig( const Transport::TServiceId & service )                            { if ( StrongMT<CoordinatorClient> locked = owner.Lock() ) locked->ReloadConfig( service ); }
   virtual unsigned int Ping(unsigned int i)                                                     { if ( StrongMT<CoordinatorClient> locked = owner.Lock() ) return locked->Ping( i ); else return 0; };
+
+private:
+  WeakMT<CoordinatorClient> owner;
+};
+
+
+class CoordinatorClient::RegisterClientCallbackProxy : public IRegisterClientCallback, public BaseObjectMT
+{
+  NI_DECLARE_REFCOUNT_CLASS_2( RegisterClientCallbackProxy, IRegisterClientCallback, BaseObjectMT );
+
+public:
+  RegisterClientCallbackProxy( CoordinatorClient * _owner ) :
+  owner( _owner )
+  {}
 
   //mirror of IRegisterClientCallback
   virtual void OnRegisterClient(int _result, ServerIdT _clientid)                               { if ( StrongMT<CoordinatorClient> locked = owner.Lock() ) locked->OnRegisterClient( _result, _clientid ); }
@@ -114,7 +136,8 @@ clientid_(INVALID_SERVER_ID)
   serverDef_.pid = ::getpid();
 #endif
 
-  remoteProxy = new CoordinatorClientRemoteProxy( this );
+  clientRemoteProxy = new ClientRemoteProxy( this );
+  registerClientCallbackProxy = new RegisterClientCallbackProxy( this );
 
   classRoutes = new ClassRoutes;
   backendTranslator = new AddressTranslator( "backend", classRoutes );
@@ -365,7 +388,7 @@ void CoordinatorClient::onChangeState(rpc::IfaceRequesterState::Enum _st, Strong
         serverDef_.svcdefs.push_back( ServiceDef( svc->spawner->ServiceClass(), svc->runner->GetRole() ) );
       }
 
-    coordSrvIfaceReq->iface()->RegisterClient( clientid_, remoteProxy, serverDef_, remoteProxy );
+    coordSrvIfaceReq->iface()->RegisterClient( clientid_, clientRemoteProxy, serverDef_, registerClientCallbackProxy );
   }
   else if (rpc::IfaceRequesterState::CLOSED == _st)
   {

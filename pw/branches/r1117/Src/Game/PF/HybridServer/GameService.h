@@ -22,6 +22,9 @@ class IServicePollCallback : public IBaseInterfaceMT
   NI_DECLARE_CLASS_1( IServicePollCallback, IBaseInterfaceMT );
 public:
   virtual void PollCallback() = 0;
+  // Suggested poll interval (same units as game_polling_interval). 0 (default)
+  // means "use the default interval" (REPORT_server_profiling.md, B2).
+  virtual int PollIntervalHint() { return 0; }
 };
 
 
@@ -47,6 +50,7 @@ private:
 
   //IServicePollCallback
   virtual void PollCallback();
+  virtual int PollIntervalHint();
 
   int _RegisterDebugVarCounter(const wchar_t* name, const char* alias, bool toCumulate);
 

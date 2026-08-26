@@ -87,6 +87,9 @@ public:
   virtual void RegisterInstance( Peered::IGameServer * instance, const char * instanceId );
   virtual void UnregisterInstance( Peered::IGameServer * instance );
 
+  // Number of live game sessions on this instance (REPORT_server_profiling.md, B2).
+  unsigned ActiveGameCount() const { return activeGameCount; }
+
 private:
   struct MapReplaySettings
   {
@@ -137,6 +140,7 @@ private:
   StrongMT<rpc::GateKeeper> frontendGk;
 
   unsigned instanceIndex;
+  unsigned activeGameCount;
 };
 
 } //namespace HybridServer

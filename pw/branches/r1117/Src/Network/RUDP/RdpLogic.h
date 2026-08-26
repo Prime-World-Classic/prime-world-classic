@@ -81,6 +81,8 @@ private:
 
   threading::Mutex                mutex;
   timer::Time                     now;
+  unsigned                        activeConns; // live connections count for adaptive sleep in ParallelPoll
+  timer::Time                     lastDataTime; // last real (non Ping/Pong) packet, for adaptive sleep (B1+C2)
   RdpCommonCtx                    ctx;
   Connections                     connections;
   ListenContexts                  listenContexts;

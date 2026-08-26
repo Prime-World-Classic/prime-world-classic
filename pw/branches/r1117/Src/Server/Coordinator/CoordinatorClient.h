@@ -89,12 +89,14 @@ private:
   void onChangeState(rpc::IfaceRequesterState::Enum _st, StrongMT<rpc::IfaceRequester<RICoordinatorServerRemote> > const & _ifacereq);
 
 private:
-  class CoordinatorClientRemoteProxy;
+  class ClientRemoteProxy;
+  class RegisterClientCallbackProxy;
 
   ServerDef serverDef_;
   
   ServerIdT clientid_;
-  StrongMT<CoordinatorClientRemoteProxy> remoteProxy;
+  StrongMT<ClientRemoteProxy> clientRemoteProxy;
+  StrongMT<RegisterClientCallbackProxy> registerClientCallbackProxy;
   StrongMT<Transport::ITransportSystem> backendTransport, frontendTransport;
   StrongMT<Network::INetworkDriver> netdrv;
 

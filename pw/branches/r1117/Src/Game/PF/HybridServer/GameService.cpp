@@ -29,6 +29,11 @@ REGISTER_VAR("game_initialize_statistics", s_initializeStatistics, STORAGE_NONE)
 static int s_gamePollingInterval = 10;
 REGISTER_VAR("game_polling_interval", s_gamePollingInterval, STORAGE_NONE);
 
+// Poll interval for a gamesvc instance with no active game sessions
+// (REPORT_server_profiling.md, B2).
+static int s_gameIdlePollingInterval = 100;
+REGISTER_VAR("game_idle_polling_interval", s_gameIdlePollingInterval, STORAGE_NONE);
+
 static int s_gamePollingInSeparateThread = 0;
 REGISTER_VAR("game_polling_in_separate_thread", s_gamePollingInSeparateThread, STORAGE_NONE);
 
@@ -229,12 +234,17 @@ public:
   {
     NI_PROFILE_FUNCTION;
 
-    const int pollInterval = max( s_gamePollingInterval, 1 );
-
-    UpdateLagsStatistics( pollInterval );
+    int pollInterval = max( s_gamePollingInterval, 1 );
 
     if ( StrongMT<IServicePollCallback> locked = pollCallback.Lock() )
+    {
+      const int hint = locked->PollIntervalHint();
+      if ( hint > pollInterval )
+        pollInterval = hint;
       locked->PollCallback();
+    }
+
+    UpdateLagsStatistics( pollInterval );
 
     return pollInterval;
   }
@@ -250,7 +260,9 @@ public:
     {
       stats.Stop();
     } 
-    if (stats.GetCount() == 500)
+    // B3: 3000 samples (30 s at the default 100 Hz poll rate) instead of 500
+    // to amortize the per-window statistics finalization.
+    if (stats.GetCount() == 3000)
     {
       const AppFramework::InstanceStatistics::ValueAccumulator& info = stats.Finish();
       int average = NHPTimer::Time2Milliseconds(info.averageValue);
@@ -298,6 +310,16 @@ void GameService::PollCallback()
 
   if ( rollBalancer )
     rollBalancer->step();
+}
+
+int GameService::PollIntervalHint()
+{
+  // Without active game sessions the service poll can be relaxed: session
+  // creation is request-driven (RPC from gamebalancer) and tolerates the
+  // slower interval.
+  if ( server.Get() && server->ActiveGameCount() == 0 )
+    return max( s_gameIdlePollingInterval, s_gamePollingInterval );
+  return 0;
 }
 
 } //namespace HybridServer

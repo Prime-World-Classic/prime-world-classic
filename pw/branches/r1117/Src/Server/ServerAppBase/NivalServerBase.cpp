@@ -158,7 +158,7 @@ bool NivalServerBase::Startup( const TStartList & _startList, const TServerCmdLi
 
   // Network initialization
   netDriver = Network::Initialize();
-  netDriver->SetTrafficType( Network::EDriverTrafficType::Light ); // ���� Heavy == 750� ������� �� ������ ���������� Connection
+  netDriver->SetTrafficType( Network::EDriverTrafficType::Server ); // C3 (REPORT_server_profiling.md): 5 ms poll for sparse inter-service traffic (was Light/2 ms)
 
   netDriver->SetStreamAllocator( new Network::StreamAllocator() );
 

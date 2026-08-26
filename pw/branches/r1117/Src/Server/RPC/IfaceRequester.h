@@ -242,7 +242,11 @@ public:
         changeState(IfaceRequesterState::RPC_NODE_REQUESTED);
         LOGL_M(logstrm, logChnlName).Trace("Node requested successfully(svcid=%s)", svcid_.c_str());
       }
-      else if ( ++requestNodeFails_ % 1000 == 1 )
+      // Log the first failure and then only every 60000th retry (about 10 min
+      // at 100Hz step) instead of every 1000th: services that are intentionally
+      // not launched (monitoring, rollbalancer, social_lobby) used to produce
+      // most of the server log volume (REPORT_server_profiling.md, A3).
+      else if ( ++requestNodeFails_ == 1 || ( requestNodeFails_ % 60000 == 1 ) )
       {
         // Untagged trace as well: channel logs are not routed on Linux.
         ErrorTrace( "IfaceRequester: RequestNode keeps failing(svcid=%s fails=%u)", svcid_.c_str(), requestNodeFails_ );
