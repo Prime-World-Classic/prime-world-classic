@@ -14,4 +14,9 @@
 	<parentType>General</parentType>
 	<visibilityLimited>false</visibilityLimited>
 	<visibleTime>0</visibleTime>
+	<__states>
+		<state name="bomber_S2">
+			<component href="/Effects/Debuffs/Explosion/_KamikazeTRS_Pink.PRXY" />
+		</state>
+	</__states>
 </BasicEffectStandalone>

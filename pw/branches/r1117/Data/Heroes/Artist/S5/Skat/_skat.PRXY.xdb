@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DBSceneComponent>
+	<BackLink DBID="/Summons/Squirrel/_skat.PRXY" Count="1" />
+	<attached>
+		<Item>
+			<attachFlags>15</attachFlags>
+			<component href="/Heroes/Artist/S5/Skat/_skat.PRXY" id="7D85B224-984E-458F-A06C-F1EB3225F6F2">
+				<DBAnimatedSceneComponent>
+					<aabb>
+						<maxX>1</maxX>
+						<maxY>1.5</maxY>
+						<maxZ>2</maxZ>
+						<minX>-1</minX>
+						<minY>-1.5</minY>
+						<minZ>0</minZ>
+					</aabb>
+					<additionalGraph href="" />
+					<animations>
+						<Item>
+							<animationFileName>/Heroes/Artist/S5/Skat/move.anim</animationFileName>
+							<animkeys />
+							<compression>0</compression>
+							<mayaFileName>/Heroes/Artist/S5/Skat/move.mayaAnim</mayaFileName>
+							<name>move</name>
+							<srcFileName crc="0">/Heroes/Artist/S5/Skat/move.ma</srcFileName>
+						</Item>
+					</animations>
+					<animGraph href="" />
+					<anims />
+					<attached />
+					<caption></caption>
+					<faceFXAnims />
+					<groupFlags>0</groupFlags>
+					<keys />
+					<locatorList href="" />
+					<mayaFileName>/Heroes/Artist/S5/Skat/_root.mayaSkel</mayaFileName>
+					<orientation>Default</orientation>
+					<selection>root</selection>
+					<skeletonFileName>/Heroes/Artist/S5/Skat/_root.skel</skeletonFileName>
+					<skinOn />
+					<skins>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Artist/S5/Skat/_.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Artist/S5/Skat/_.MTRL" />
+							</materialsReferences>
+							<mayaFileName>/Heroes/Artist/S5/Skat/_.mayaSkin</mayaFileName>
+							<selection></selection>
+							<skinPartName></skinPartName>
+							<srcFileName crc="0">/Heroes/Artist/S5/Skat/_.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+					</skins>
+					<splitBoneName></splitBoneName>
+					<srcFileName crc="0">/Heroes/Artist/S5/Skat/_.mb</srcFileName>
+				</DBAnimatedSceneComponent>
+			</component>
+			<events href="" />
+			<id></id>
+			<locatorName></locatorName>
+			<placement>
+				<pos>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</pos>
+				<rot>
+					<w>1</w>
+					<x>0</x>
+					<y>0</y>
+					<z>0</z>
+				</rot>
+				<scale>
+					<x>1</x>
+					<y>1</y>
+					<z>1</z>
+				</scale>
+			</placement>
+			<timeController href="/Heroes/Artist/S5/Skat/_skat.PRXY" id="89D914BB-33C3-4D4E-9A61-88DA7D20E932">
+				<TimeController>
+					<cycleCount>0</cycleCount>
+					<cycleLength>0</cycleLength>
+					<fadein>0</fadein>
+					<fadeout>0</fadeout>
+					<firstCycleOffset>0</firstCycleOffset>
+					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
+					<speed>1</speed>
+					<startDelay>0</startDelay>
+				</TimeController>
+			</timeController>
+		</Item>
+	</attached>
+	<caption></caption>
+	<groupFlags>0</groupFlags>
+	<locatorList href="" />
+	<orientation>Default</orientation>
+</DBSceneComponent>

@@ -921,6 +921,7 @@
 		<Item href="/Heroes/Artist/S2/_.HEROSKIN" />
 		<Item href="/Heroes/Artist/S3/_.HEROSKIN" />
 		<Item href="/Heroes/Artist/S4/_.HEROSKIN" />
+		<Item href="/Heroes/Artist/S5/_.HEROSKIN" />
 	</heroSkins>
 	<id>artist</id>
 	<image href="" />

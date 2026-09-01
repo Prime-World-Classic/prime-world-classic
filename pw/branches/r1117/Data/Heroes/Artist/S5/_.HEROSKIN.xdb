@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<HeroSkin>
+	<BackLink DBID="/Heroes/Artist/_.HROB" Count="3" />
+	<antagonistSkinId></antagonistSkinId>
+	<askList href="" />
+	<askListSecondState href="" />
+	<botRoll>true</botRoll>
+	<cost>199</cost>
+	<deathParameters href="" />
+	<gender>Female</gender>
+	<heroImageA href="/UI/Styles/Icons/Heroes/Artist/Face_S5.ITEX" />
+	<heroImageB href="/UI/Styles/Icons/Heroes/Artist/Face_S5.ITEX" />
+	<heroName textref="/Heroes/Artist/S5/_.HEROSKIN_heroName.txt" />
+	<heroRace>3</heroRace>
+	<heroRenderA href="/UI/Styles/Icons/Heroes/Artist/Figure.ITEX" />
+	<heroRenderB href="/UI/Styles/Icons/Heroes/Artist/Figure.ITEX" />
+	<legal>true</legal>
+	<lobbyAskSound></lobbyAskSound>
+	<mute>false</mute>
+	<persistentId>artist_S5</persistentId>
+	<sceneObject href="/Heroes/Artist/S5/_.SOBJ" />
+</HeroSkin>

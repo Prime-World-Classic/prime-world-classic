@@ -518,7 +518,7 @@ std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int s
   skinMap[64].push_back("shaman_S1");
   skinMap[65].push_back("bomber");
   skinMap[65].push_back("Bomber_S1");
-
+  skinMap[65].push_back("bomber_S2");
 
   std::vector<std::string>& skins = skinMap[heroId];
   if (skins.empty()) {

@@ -17,5 +17,8 @@
 		<state name="plane_S1">
 			<component href="/Effects/Shots/Rocket/_S1_TRS.PRXY" />
 		</state>
+		<state name="bomber_S2">
+			<component href="/Effects/Shots/Rocket/_S1_Pink_TRS.PRXY" />
+		</state>
 	</__states>
 </BasicEffectStandalone>

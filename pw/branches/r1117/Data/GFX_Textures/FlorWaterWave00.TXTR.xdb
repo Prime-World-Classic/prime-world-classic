@@ -23,6 +23,7 @@
 	<BackLink DBID="/Terrain/BaseB/FrogFX.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_PinkGirl.PRXY" Count="1" />
 	<BackLink DBID="/Effects/Debuffs/Explosion/_PinkGirl_S1.PRXY" Count="1" />
+	<BackLink DBID="/Effects/Debuffs/Explosion/_Gifts2_Pink.PRXY" Count="1" />
 	<generatedFileName></generatedFileName>
 	<mipLevels>0</mipLevels>
 	<mipLevelUsage>AutoGenerate</mipLevelUsage>

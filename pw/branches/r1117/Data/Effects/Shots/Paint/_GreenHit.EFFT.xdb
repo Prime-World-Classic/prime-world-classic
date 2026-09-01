@@ -17,5 +17,8 @@
 		<state name="artist_S4">
 			<component href="/Effects/Shots/Paint/_GreenHit_S4TRS.PRXY" />
 		</state>
+		<state name="artist_S5">
+			<component href="/Effects/Shots/Paint/_GreenHit_S4TRS.PRXY" />
+		</state>
 	</__states>
 </BasicEffectAttached>
