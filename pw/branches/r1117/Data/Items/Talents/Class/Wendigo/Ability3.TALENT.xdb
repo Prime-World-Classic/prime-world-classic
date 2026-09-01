@@ -1184,7 +1184,7 @@
 						<checkLineOfSight>false</checkLineOfSight>
 						<nativeTerrainOnly>false</nativeTerrainOnly>
 						<passabilityCheckMode>4</passabilityCheckMode>
-						<radius>15</radius>
+						<radius>16</radius>
 						<targetSelector href="/Items/Talents/Class/Wendigo/Ability3.TALENT" id="31C3790B-23AC-4B5A-8AEE-E77F7F878EB5">
 							<SelectApplicatorTarget>
 								<applicatorIndex>0</applicatorIndex>

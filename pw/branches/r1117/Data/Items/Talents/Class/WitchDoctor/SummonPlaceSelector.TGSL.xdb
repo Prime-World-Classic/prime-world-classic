@@ -8,7 +8,7 @@
 	<checkLineOfSight>true</checkLineOfSight>
 	<nativeTerrainOnly>false</nativeTerrainOnly>
 	<passabilityCheckMode>7</passabilityCheckMode>
-	<radius>7</radius>
+	<radius>9</radius>
 	<targetSelector href="/Items/Talents/Class/WitchDoctor/SummonPlaceSelector.TGSL" id="B84AC77A-B022-4D40-A0AF-8D39B1467258">
 		<SelectApplicatorTarget>
 			<applicatorIndex>0</applicatorIndex>

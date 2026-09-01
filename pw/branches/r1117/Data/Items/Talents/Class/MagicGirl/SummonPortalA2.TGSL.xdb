@@ -5,9 +5,9 @@
 	<targetSelector href="/Items/Talents/Class/MagicGirl/SummonPortalA2.TGSL" id="32801A1C-3F65-40F2-87DB-214D419E4579">
 		<UnitPlaceCorrector>
 			<checkByRangeToRequester>false</checkByRangeToRequester>
-			<checkLineOfSight>true</checkLineOfSight>
+			<checkLineOfSight>false</checkLineOfSight>
 			<nativeTerrainOnly>false</nativeTerrainOnly>
-			<passabilityCheckMode>7</passabilityCheckMode>
+			<passabilityCheckMode>4</passabilityCheckMode>
 			<radius>7</radius>
 			<targetSelector href="/Items/Talents/Class/MagicGirl/SummonPortalA2.TGSL" id="7027F3B2-3D7E-4178-897C-3798334459B7">
 				<SelectApplicatorTarget>
