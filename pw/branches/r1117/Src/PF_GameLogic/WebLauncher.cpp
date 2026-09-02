@@ -266,6 +266,7 @@ std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int s
   skinMap[9].push_back("artist_S1");
   skinMap[9].push_back("artist_S2");
   skinMap[9].push_back("artist_S4");
+  skinMap[9].push_back("artist_S5");
   skinMap[10].push_back("highlander_S0_A");
   skinMap[10].push_back("highlander_S3_B");
   skinMap[10].push_back("highlander_S4");
