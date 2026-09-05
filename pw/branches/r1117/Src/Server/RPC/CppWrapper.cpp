@@ -38,10 +38,24 @@ bool FillStack(Arguments& args, Stack& w, uint paramsCount, const rpc::MethodInf
       case rpc::VectorOfStrings: w.Push(&args.PopVectorOfStrings<nstl::string>(result)); break;
       case rpc::RawStruct: 
         {
-          const byte* data = args.PopRawStruct(result);
+          int structSize=0;
+          const byte* data = args.PopRawStruct(result, &structSize);
           if (result)
           {
-            w.Push(data); // push pointer
+            if (data) // just in case, paranoid check
+            {
+              // Push the struct content, NOT a pointer (as RawStructByValue does).
+              // The generated VCall code value-copies each argument
+              // (P0 p0 = _mng_va_arg(...)), so it expects the data here.
+              // Pushing a pointer only "worked" on 32-bit, where a 4-byte
+              // pointer coincidentally preserved the layout of the following
+              // arguments (the callee received the pointer value itself as the
+              // argument). On 64-bit the pointer is 8 bytes, which shifts all
+              // subsequent arguments by 4 bytes and corrupts them, e.g.
+              // IOpenSessionCallback::OnOpenSession(Result::Enum rc, u64 sid):
+              // rc = lo32(ptr), sid = (hi32(ptr) << 32) | lo32(sid).
+              w.Push(data, structSize); // here we just fill the stack with struct content, hack !
+            }
           }
           break;
         } 
