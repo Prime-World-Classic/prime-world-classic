@@ -321,6 +321,7 @@ set(
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
 	../UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
 	../UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/display_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp
@@ -338,9 +339,16 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Loader.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/LoaderInfo.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/MovieClip.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/SimpleButton.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Sprite.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Stage.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/StageEnums.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
 	../UI/Flash/GameSWFIntegration/Natives/events/Event.cpp
 	../UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp
