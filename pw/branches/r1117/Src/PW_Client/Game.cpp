@@ -30184,6 +30184,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
   flashRenderer->SetLineWidth(8.0f);
   flashRenderer->SetLineColor(flash::SWF_RGBA(255, 224, 64, 220));
+  flashRenderer->SetFillStyleBitmap(morphEndBitmap, morphEndMatrix, EBitmapWrapMode::CLAMP, true);
   flashRenderer->DrawLineStrip(flashLine, 13);
   flashRenderer->SetFillStyleBitmap(morphStartBitmap, morphStartMatrix, EBitmapWrapMode::CLAMP, true);
   flashRenderer->SetFillStyleBitmap(morphEndBitmap, morphEndMatrix, EBitmapWrapMode::CLAMP, false);
@@ -30214,6 +30215,15 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     morphPixel[1] <= 8 &&
     morphPixel[2] >= 56 && morphPixel[2] <= 72 &&
     morphPixel[3] >= 247;
+  const int lineSampleX = probeViewport[0] + viewportX + static_cast<int>((70.0f / 320.0f) * viewportWidth);
+  const int lineSampleY = openGLViewportY + static_cast<int>(((240.0f - 34.0f) / 240.0f) * viewportHeight);
+  unsigned char linePixel[4] = { 0, 0, 0, 0 };
+  glReadPixels(lineSampleX, lineSampleY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, linePixel);
+  const bool linePixelMatches =
+    linePixel[0] <= 8 &&
+    linePixel[1] <= 8 &&
+    linePixel[2] >= 247 &&
+    linePixel[3] >= 247;
   const int primaryTextureMorphSampleX = probeViewport[0] + viewportX + static_cast<int>((136.0f / 320.0f) * viewportWidth);
   const int secondaryTextureMorphSampleX = probeViewport[0] + viewportX + static_cast<int>((204.0f / 320.0f) * viewportWidth);
   unsigned char primaryTextureMorphPixel[4] = { 0, 0, 0, 0 };
@@ -30232,7 +30242,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     secondaryTextureMorphPixel[3] >= 247;
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30240,6 +30250,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned long>(stats.renderedFlashBlendCommands),
     static_cast<unsigned long>(stats.renderedFlashLineCommands),
     static_cast<unsigned long>(stats.renderedFlashLineVertices),
+    static_cast<unsigned int>(linePixel[0]),
+    static_cast<unsigned int>(linePixel[1]),
+    static_cast<unsigned int>(linePixel[2]),
+    static_cast<unsigned int>(linePixel[3]),
     static_cast<unsigned long>(stats.renderedFlashTexturedCommands),
     static_cast<unsigned long>(stats.renderedFlashRepeatCommands),
     static_cast<unsigned long>(stats.renderedFlashClampCommands),
@@ -30275,9 +30289,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashBlendCommands == 4 &&
     stats.renderedFlashLineCommands == 1 &&
     stats.renderedFlashLineVertices == 18 &&
-    stats.renderedFlashTexturedCommands == 15 &&
+    linePixelMatches &&
+    stats.renderedFlashTexturedCommands == 16 &&
     stats.renderedFlashRepeatCommands == 1 &&
-    stats.renderedFlashClampCommands == 14 &&
+    stats.renderedFlashClampCommands == 15 &&
     stats.renderedFlashScale9Commands == 1 &&
     stats.renderedFlashScale9TexturedCommands == 1 &&
     stats.renderedFlashGradientCommands == 12 &&

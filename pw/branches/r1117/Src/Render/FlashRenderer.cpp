@@ -970,50 +970,12 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
     return;
   }
 
-  const bool primaryTextured = primaryFillStyle.enabled && primaryFillStyle.texture;
-  const bool secondaryTextured = secondaryFillStyle.enabled && secondaryFillStyle.texture;
-  const LinuxFlashFillStyle* fillStyle = 0;
   LinuxFlashFillStyle morphedFillStyle;
-  const bool hasDualMorphFill = morphActive && primaryTextured && secondaryTextured;
-  if (hasDualMorphFill)
-  {
-    morphedFillStyle = primaryFillStyle;
-    for (int row = 0; row < 2; ++row)
-    {
-      for (int column = 0; column < 3; ++column)
-      {
-        const float start = primaryFillStyle.matrix.m_[row][column];
-        const float end = secondaryFillStyle.matrix.m_[row][column];
-        morphedFillStyle.matrix.m_[row][column] = start + (end - start) * morphRate;
-      }
-    }
-    fillStyle = &morphedFillStyle;
-  }
-  else if (primaryFillStyle.enabled)
-    fillStyle = &primaryFillStyle;
-  else if (secondaryFillStyle.enabled)
-    fillStyle = &secondaryFillStyle;
-
   LinuxFlashDrawCommand command;
-  command.textured = morphActive ? primaryTextured : (primaryTextured || secondaryTextured);
-  command.smoothing = fillStyle ? fillStyle->smoothing : true;
   command.scale9Grid = scale9GridActive;
-  command.morph = morphActive;
-  command.morphRate = morphRate;
-  command.gradientFill = fillStyle && fillStyle->gradientFill;
-  command.gradientType = fillStyle ? fillStyle->gradientType : flash::EGradientType::Linear;
-  command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
-  if (command.textured)
-    command.texture = primaryTextured ? primaryFillStyle.texture : secondaryFillStyle.texture;
-  if (morphActive && secondaryTextured)
-  {
-    command.secondaryTextured = true;
-    command.secondarySmoothing = secondaryFillStyle.smoothing;
-    command.secondaryWrapMode = secondaryFillStyle.wrapMode;
-    command.secondaryTexture = secondaryFillStyle.texture;
-  }
+  const LinuxFlashFillStyle* fillStyle = ApplyFillStylesToCommand(&command, &morphedFillStyle);
   command.vertices.reserve(count);
 
   for (int i = 0; i < count; ++i)
@@ -1046,7 +1008,9 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   }
 
   nstl::vector<CVec2> points;
+  nstl::vector<CVec2> localPoints;
   points.reserve(coords.size());
+  localPoints.reserve(coords.size());
   for (unsigned int i = 0; i < coords.size(); ++i)
   {
     float x = 0.0f;
@@ -1061,6 +1025,7 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
         continue;
     }
     points.push_back(CVec2(x, y));
+    localPoints.push_back(coords[i]);
   }
   if (points.size() < 2)
   {
@@ -1071,21 +1036,25 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   }
 
   LinuxFlashDrawCommand command;
-  command.textured = false;
   command.line = true;
   command.scale9Grid = scale9GridActive;
-  command.morph = morphActive;
-  command.morphRate = morphRate;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
+  LinuxFlashFillStyle morphedFillStyle;
+  const LinuxFlashFillStyle* fillStyle = ApplyFillStylesToCommand(&command, &morphedFillStyle);
   command.vertices.reserve((points.size() - 1) * 6);
 
   const float half = lineWidth * 0.5f;
-  const Color color = TransformColor(lineColor);
+  const bool mixedMorphFill = command.morph && (command.textured != command.secondaryTextured);
+  const Color color = TransformColor(fillStyle && !mixedMorphFill ? Color(255, 255, 255, 255) : lineColor);
   nstl::vector<CVec2> left;
   nstl::vector<CVec2> right;
+  nstl::vector<CVec2> leftUV;
+  nstl::vector<CVec2> rightUV;
   left.resize(points.size());
   right.resize(points.size());
+  leftUV.resize(points.size());
+  rightUV.resize(points.size());
 
   // Build one joined screen-space strip so Flash polylines keep continuous corners.
   for (unsigned int i = 0; i < points.size(); ++i)
@@ -1142,16 +1111,21 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
 
     left[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
     right[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
+    if (fillStyle)
+    {
+      TransformLineFillUV(*fillStyle, localPoints[i], points[i], left[i], &leftUV[i].x, &leftUV[i].y);
+      TransformLineFillUV(*fillStyle, localPoints[i], points[i], right[i], &rightUV[i].x, &rightUV[i].y);
+    }
   }
 
   for (unsigned int i = 0; i + 1 < points.size(); ++i)
   {
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i].x, right[i].y, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, 0.0f, 0.0f, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i + 1].x, left[i + 1].y, 0.0f, 0.0f, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, leftUV[i].x, leftUV[i].y, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i].x, right[i].y, rightUV[i].x, rightUV[i].y, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, rightUV[i + 1].x, rightUV[i + 1].y, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, leftUV[i].x, leftUV[i].y, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, rightUV[i + 1].x, rightUV[i + 1].y, color));
+    command.vertices.push_back(LinuxFlashDrawVertex(left[i + 1].x, left[i + 1].y, leftUV[i + 1].x, leftUV[i + 1].y, color));
   }
 
   if (!command.vertices.empty())
@@ -1191,6 +1165,96 @@ void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float 
 
   *outU = fillStyle.matrix.m_[0][0] * x + fillStyle.matrix.m_[0][1] * y + fillStyle.matrix.m_[0][2];
   *outV = fillStyle.matrix.m_[1][0] * x + fillStyle.matrix.m_[1][1] * y + fillStyle.matrix.m_[1][2];
+}
+
+void FlashRenderer::TransformLineFillUV(
+  const LinuxFlashFillStyle& fillStyle,
+  const CVec2& localCenter,
+  const CVec2& transformedCenter,
+  const CVec2& transformedVertex,
+  float* outU,
+  float* outV) const
+{
+  float scaleX = 1.0f;
+  float scaleY = 1.0f;
+  if (scale9GridActive)
+  {
+    const float matrixX = currentMatrix.m_[0][0] * localCenter.x + currentMatrix.m_[0][1] * localCenter.y + currentMatrix.m_[0][2];
+    const float matrixY = currentMatrix.m_[1][0] * localCenter.x + currentMatrix.m_[1][1] * localCenter.y + currentMatrix.m_[1][2];
+    if (scale9ConstX.x < matrixX && matrixX < scale9ConstX.y)
+      scaleX = scale9ConstX.z;
+    if (scale9ConstY.x < matrixY && matrixY < scale9ConstY.y)
+      scaleY = scale9ConstY.z;
+  }
+
+  const float m00 = currentMatrix.m_[0][0] * scaleX;
+  const float m01 = currentMatrix.m_[0][1] * scaleX;
+  const float m10 = currentMatrix.m_[1][0] * scaleY;
+  const float m11 = currentMatrix.m_[1][1] * scaleY;
+  const float determinant = m00 * m11 - m01 * m10;
+  float localX = localCenter.x;
+  float localY = localCenter.y;
+  if (fabsf(determinant) > 0.000001f)
+  {
+    const float deltaX = transformedVertex.x - transformedCenter.x;
+    const float deltaY = transformedVertex.y - transformedCenter.y;
+    localX += (m11 * deltaX - m01 * deltaY) / determinant;
+    localY += (-m10 * deltaX + m00 * deltaY) / determinant;
+  }
+
+  TransformFillUV(fillStyle, localX, localY, outU, outV);
+}
+
+const FlashRenderer::LinuxFlashFillStyle* FlashRenderer::ApplyFillStylesToCommand(
+  LinuxFlashDrawCommand* command,
+  LinuxFlashFillStyle* morphedFillStyle) const
+{
+  const bool primaryTextured = primaryFillStyle.enabled && primaryFillStyle.texture;
+  const bool secondaryTextured = secondaryFillStyle.enabled && secondaryFillStyle.texture;
+  const bool dualMorphFill = morphActive && primaryTextured && secondaryTextured;
+  const LinuxFlashFillStyle* fillStyle = 0;
+
+  if (dualMorphFill)
+  {
+    *morphedFillStyle = primaryFillStyle;
+    for (int row = 0; row < 2; ++row)
+    {
+      for (int column = 0; column < 3; ++column)
+      {
+        const float start = primaryFillStyle.matrix.m_[row][column];
+        const float end = secondaryFillStyle.matrix.m_[row][column];
+        morphedFillStyle->matrix.m_[row][column] = start + (end - start) * morphRate;
+      }
+    }
+    fillStyle = morphedFillStyle;
+  }
+  else if (primaryTextured)
+  {
+    fillStyle = &primaryFillStyle;
+  }
+  else if (secondaryTextured)
+  {
+    fillStyle = &secondaryFillStyle;
+  }
+
+  command->textured = morphActive ? primaryTextured : (primaryTextured || secondaryTextured);
+  command->smoothing = fillStyle ? fillStyle->smoothing : true;
+  command->morph = morphActive;
+  command->morphRate = morphRate;
+  command->gradientFill = fillStyle && fillStyle->gradientFill;
+  command->gradientType = fillStyle ? fillStyle->gradientType : flash::EGradientType::Linear;
+  command->wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
+  if (command->textured)
+    command->texture = primaryTextured ? primaryFillStyle.texture : secondaryFillStyle.texture;
+  if (morphActive && secondaryTextured)
+  {
+    command->secondaryTextured = true;
+    command->secondarySmoothing = secondaryFillStyle.smoothing;
+    command->secondaryWrapMode = secondaryFillStyle.wrapMode;
+    command->secondaryTexture = secondaryFillStyle.texture;
+  }
+
+  return fillStyle;
 }
 
 Color FlashRenderer::TransformColor(const Color& color) const

@@ -220,7 +220,9 @@ private:
 
   void TransformPoint(float x, float y, float* outX, float* outY) const;
   void TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const;
+  void TransformLineFillUV(const LinuxFlashFillStyle& fillStyle, const CVec2& localCenter, const CVec2& transformedCenter, const CVec2& transformedVertex, float* outU, float* outV) const;
   Color TransformColor(const Color& color) const;
+  const LinuxFlashFillStyle* ApplyFillStylesToCommand(LinuxFlashDrawCommand* command, LinuxFlashFillStyle* morphedFillStyle) const;
   void ResetTransientState();
   void ClearFillStyles();
   void QueueMaskCommand(LinuxFlashDrawCommand::Kind kind);
