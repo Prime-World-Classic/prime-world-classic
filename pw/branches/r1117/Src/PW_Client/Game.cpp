@@ -30161,6 +30161,38 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     EFlashBlendMode::OVERLAY,
     EFlashBlendMode::HARDLIGHT
   };
+  Render::ShapeVertex alphaBlendBackgroundVertices[5][3] = {};
+  Render::ShapeVertex alphaBlendForegroundVertices[5][3] = {};
+  const Render::Color alphaBlendBackgroundColor(160, 128, 224, 255);
+  const Render::Color alphaBlendForegroundColor(64, 192, 32, 128);
+  const EFlashBlendMode::Enum alphaBlendModes[5] = {
+    EFlashBlendMode::ADD,
+    EFlashBlendMode::MULTIPLY,
+    EFlashBlendMode::SCREEN,
+    EFlashBlendMode::DARKEN,
+    EFlashBlendMode::INVERT
+  };
+  for (int blendIndex = 0; blendIndex < 5; ++blendIndex)
+  {
+    const float left = 6.0f + blendIndex * 62.0f;
+    for (int vertex = 0; vertex < 3; ++vertex)
+    {
+      alphaBlendBackgroundVertices[blendIndex][vertex].color = alphaBlendBackgroundColor;
+      alphaBlendForegroundVertices[blendIndex][vertex].color = alphaBlendForegroundColor;
+    }
+    alphaBlendBackgroundVertices[blendIndex][0].x = left;
+    alphaBlendBackgroundVertices[blendIndex][0].y = 4.0f;
+    alphaBlendBackgroundVertices[blendIndex][1].x = left + 50.0f;
+    alphaBlendBackgroundVertices[blendIndex][1].y = 4.0f;
+    alphaBlendBackgroundVertices[blendIndex][2].x = left + 25.0f;
+    alphaBlendBackgroundVertices[blendIndex][2].y = 32.0f;
+    memcpy(
+      alphaBlendForegroundVertices[blendIndex],
+      alphaBlendBackgroundVertices[blendIndex],
+      sizeof(alphaBlendBackgroundVertices[blendIndex]));
+    for (int vertex = 0; vertex < 3; ++vertex)
+      alphaBlendForegroundVertices[blendIndex][vertex].color = alphaBlendForegroundColor;
+  }
   nstl::vector<CVec2> flashLine;
   flashLine.push_back(CVec2(36.0f, 32.0f));
   flashLine.push_back(CVec2(104.0f, 36.0f));
@@ -30276,6 +30308,13 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     flashRenderer->DrawTriangleList(advancedBlendForegroundVertices[blendIndex], 3, 21 + blendIndex * 2);
   }
   flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
+  for (int blendIndex = 0; blendIndex < 5; ++blendIndex)
+  {
+    flashRenderer->DrawTriangleList(alphaBlendBackgroundVertices[blendIndex], 3, 26 + blendIndex * 2);
+    flashRenderer->SetBlendMode(alphaBlendModes[blendIndex]);
+    flashRenderer->DrawTriangleList(alphaBlendForegroundVertices[blendIndex], 3, 27 + blendIndex * 2);
+    flashRenderer->SetBlendMode(EFlashBlendMode::NORMAL);
+  }
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
@@ -30366,9 +30405,32 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     advancedBlendPixels[2][1] >= 56 && advancedBlendPixels[2][1] <= 72 &&
     advancedBlendPixels[2][2] >= 184 && advancedBlendPixels[2][2] <= 200 &&
     advancedBlendPixels[2][3] >= 247;
+  unsigned char alphaBlendPixels[5][4] = {};
+  const unsigned char expectedAlphaBlendPixels[5][3] = {
+    { 192, 224, 240 },
+    { 120, 128, 140 },
+    { 172, 176, 226 },
+    { 160, 128, 159 },
+    { 127, 128, 127 }
+  };
+  bool alphaBlendPixelsMatch = true;
+  for (int blendIndex = 0; blendIndex < 5; ++blendIndex)
+  {
+    const int sampleX = probeViewport[0] + viewportX + static_cast<int>(((31.0f + blendIndex * 62.0f) / 320.0f) * viewportWidth);
+    const int sampleY = openGLViewportY + static_cast<int>(((240.0f - 14.0f) / 240.0f) * viewportHeight);
+    glReadPixels(sampleX, sampleY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, alphaBlendPixels[blendIndex]);
+    for (int channel = 0; channel < 3; ++channel)
+    {
+      const int difference =
+        static_cast<int>(alphaBlendPixels[blendIndex][channel]) -
+        static_cast<int>(expectedAlphaBlendPixels[blendIndex][channel]);
+      if (difference < -8 || difference > 8)
+        alphaBlendPixelsMatch = false;
+    }
+  }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30425,6 +30487,21 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned int>(advancedBlendPixels[2][1]),
     static_cast<unsigned int>(advancedBlendPixels[2][2]),
     static_cast<unsigned int>(advancedBlendPixels[2][3]),
+    static_cast<unsigned int>(alphaBlendPixels[0][0]),
+    static_cast<unsigned int>(alphaBlendPixels[0][1]),
+    static_cast<unsigned int>(alphaBlendPixels[0][2]),
+    static_cast<unsigned int>(alphaBlendPixels[1][0]),
+    static_cast<unsigned int>(alphaBlendPixels[1][1]),
+    static_cast<unsigned int>(alphaBlendPixels[1][2]),
+    static_cast<unsigned int>(alphaBlendPixels[2][0]),
+    static_cast<unsigned int>(alphaBlendPixels[2][1]),
+    static_cast<unsigned int>(alphaBlendPixels[2][2]),
+    static_cast<unsigned int>(alphaBlendPixels[3][0]),
+    static_cast<unsigned int>(alphaBlendPixels[3][1]),
+    static_cast<unsigned int>(alphaBlendPixels[3][2]),
+    static_cast<unsigned int>(alphaBlendPixels[4][0]),
+    static_cast<unsigned int>(alphaBlendPixels[4][1]),
+    static_cast<unsigned int>(alphaBlendPixels[4][2]),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30433,10 +30510,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 35 &&
-    stats.renderedFlashScissorCommands == 39 &&
+    stats.renderedFlashCommands == 45 &&
+    stats.renderedFlashScissorCommands == 49 &&
     stats.renderedFlashMaskCommands == 4 &&
-    stats.renderedFlashBlendCommands == 7 &&
+    stats.renderedFlashBlendCommands == 12 &&
     stats.renderedFlashLineCommands == 2 &&
     stats.renderedFlashLineVertices == 24 &&
     linePixelMatches &&
@@ -30456,6 +30533,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     textureColorTransformPixelMatches &&
     textureColorMatrixPixelMatches &&
     advancedBlendPixelsMatch &&
+    alphaBlendPixelsMatch &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
