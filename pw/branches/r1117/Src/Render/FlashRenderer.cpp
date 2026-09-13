@@ -416,6 +416,28 @@ void ConfigureLinuxFlashMorphTexture(float morphRate)
   glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, morphColor);
 }
 
+// Blend a single textured morph endpoint with the solid endpoint in vertex color.
+void ConfigureLinuxFlashMixedMorphTexture(float textureWeight)
+{
+  const GLfloat morphColor[4] = { textureWeight, textureWeight, textureWeight, textureWeight };
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, GL_TEXTURE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, GL_PRIMARY_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_INTERPOLATE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PRIMARY_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_ALPHA, GL_CONSTANT);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_ALPHA, GL_SRC_ALPHA);
+  glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, morphColor);
+}
+
 void BeginLinuxFlashSubmitMask(int& maskLevel)
 {
   if (maskLevel == 0)
@@ -701,6 +723,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     const GLuint secondaryOpenGLTexture = command.secondaryTextured ? ResolveLinuxFlashTexture(command.secondaryTexture) : 0;
     const bool dualTextureMorph =
       command.morph && primaryOpenGLTexture && secondaryOpenGLTexture && maxTextureUnits >= 2;
+    const bool mixedTextureMorph =
+      command.morph && ((primaryOpenGLTexture != 0) != (secondaryOpenGLTexture != 0));
     const GLuint openGLTexture = primaryOpenGLTexture ? primaryOpenGLTexture : secondaryOpenGLTexture;
 
     if (openGLTexture)
@@ -733,6 +757,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
         glActiveTexture(GL_TEXTURE0);
         ++renderedDualTextureMorphCommands;
       }
+      else if (mixedTextureMorph)
+      {
+        const float textureWeight = primaryOpenGLTexture ? 1.0f - command.morphRate : command.morphRate;
+        ConfigureLinuxFlashMixedMorphTexture(textureWeight);
+      }
     }
     else
       BindLinuxFlashTexture(GL_TEXTURE0, 0, true, EBitmapWrapMode::CLAMP);
@@ -752,11 +781,12 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       glVertex2f(v.x, v.y);
     }
     glEnd();
-    if (dualTextureMorph)
+    if (dualTextureMorph || mixedTextureMorph)
     {
-      BindLinuxFlashTexture(GL_TEXTURE1, 0, true, EBitmapWrapMode::CLAMP);
-      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+      if (dualTextureMorph)
+        BindLinuxFlashTexture(GL_TEXTURE1, 0, true, EBitmapWrapMode::CLAMP);
       glActiveTexture(GL_TEXTURE0);
+      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     }
     ++renderedCommands;
   }
@@ -940,9 +970,11 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
     return;
   }
 
+  const bool primaryTextured = primaryFillStyle.enabled && primaryFillStyle.texture;
+  const bool secondaryTextured = secondaryFillStyle.enabled && secondaryFillStyle.texture;
   const LinuxFlashFillStyle* fillStyle = 0;
   LinuxFlashFillStyle morphedFillStyle;
-  const bool hasDualMorphFill = morphActive && primaryFillStyle.enabled && secondaryFillStyle.enabled;
+  const bool hasDualMorphFill = morphActive && primaryTextured && secondaryTextured;
   if (hasDualMorphFill)
   {
     morphedFillStyle = primaryFillStyle;
@@ -963,7 +995,7 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
     fillStyle = &secondaryFillStyle;
 
   LinuxFlashDrawCommand command;
-  command.textured = fillStyle && fillStyle->texture;
+  command.textured = morphActive ? primaryTextured : (primaryTextured || secondaryTextured);
   command.smoothing = fillStyle ? fillStyle->smoothing : true;
   command.scale9Grid = scale9GridActive;
   command.morph = morphActive;
@@ -973,11 +1005,11 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
-  if (fillStyle)
-    command.texture = fillStyle->texture;
-  if (hasDualMorphFill)
+  if (command.textured)
+    command.texture = primaryTextured ? primaryFillStyle.texture : secondaryFillStyle.texture;
+  if (morphActive && secondaryTextured)
   {
-    command.secondaryTextured = secondaryFillStyle.texture;
+    command.secondaryTextured = true;
     command.secondarySmoothing = secondaryFillStyle.smoothing;
     command.secondaryWrapMode = secondaryFillStyle.wrapMode;
     command.secondaryTexture = secondaryFillStyle.texture;
