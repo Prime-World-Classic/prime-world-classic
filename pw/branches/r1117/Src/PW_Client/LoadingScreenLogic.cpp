@@ -121,7 +121,9 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
   SetProgress( 0 );
 
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-  flashInterface = new LoadingFlashInterface( 0, "LoaderWindowInterface" );
+  flashWnd = UI::GetChildChecked<UI::FlashContainer2>( pBaseWindow, "FlashScreen", true );
+  NI_ASSERT(IsValid(flashWnd), "doesnt have FlashScreen in children, will crush!");
+  flashInterface = new LoadingFlashInterface( flashWnd, "LoaderWindowInterface" );
   loadingHeroes = new LoadingHeroes(flashInterface, m_heroDb);
 
   UI::ScreenLogicBase::OnLoadedScreenLayout();

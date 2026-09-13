@@ -304,6 +304,7 @@ set(
 	PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES
 	../UI/FlashContainer2.cpp
 	../UI/FlashFontsRender.cpp
+	../UI/FlashInterface.cpp
 	../UI/Flash/GameSWFIntegration/ButtonCharacter.cpp
 	../UI/Flash/GameSWFIntegration/Characters.cpp
 	../UI/Flash/GameSWFIntegration/DisplayTags.cpp

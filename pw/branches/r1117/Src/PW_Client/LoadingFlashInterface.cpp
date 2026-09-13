@@ -74,7 +74,8 @@ namespace Game
 {
 
 LoadingFlashInterface::LoadingFlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className )
-  : preloading(false),
+  : UI::FlashInterface(_flashWnd, _className),
+    preloading(false),
     spectatorMode(false),
     chatVisible(true),
     chatOff(false),
@@ -82,12 +83,28 @@ LoadingFlashInterface::LoadingFlashInterface( UI::FlashContainer2 * _flashWnd, c
     ourHeroId(-1),
     ourFaction(NDb::FACTION_NEUTRAL),
     leftFaction(NDb::FACTION_NEUTRAL),
-    rightFaction(NDb::FACTION_NEUTRAL)
+    rightFaction(NDb::FACTION_NEUTRAL),
+    productionCallCount(0)
 {
 }
 
 void LoadingFlashInterface::SetHeroIdentity( int heroID, NDb::EFaction faction, const wstring& heroName, const char * iconPath, int heroLevel, bool isMale, const char * classIcon, uint partyId, string & flagIcon, wstring & flagTooltip, bool isAnimatedAvatar, int leagueIndex )
 {
+  ForwardProductionCall(
+    "SetHeroIdentity",
+    heroID,
+    static_cast<int>(faction),
+    heroName,
+    iconPath ? iconPath : "",
+    heroLevel,
+    isMale,
+    classIcon ? classIcon : "",
+    static_cast<int>(partyId),
+    flagIcon,
+    flagTooltip,
+    isAnimatedAvatar,
+    leagueIndex);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroID);
   if (!state)
   {
@@ -109,6 +126,8 @@ void LoadingFlashInterface::SetHeroIdentity( int heroID, NDb::EFaction faction, 
 
 void LoadingFlashInterface::SetHeroLoadProgress( int heroId, float loadProgress, bool isLeftGame )
 {
+  ForwardProductionCall("SetHeroLoadProgress", heroId, loadProgress, isLeftGame);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (!state)
   {
@@ -121,12 +140,15 @@ void LoadingFlashInterface::SetHeroLoadProgress( int heroId, float loadProgress,
 
 void LoadingFlashInterface::SetOurHeroId( int heroID, NDb::EFaction faction )
 {
+  ForwardProductionCall("SetOurHeroId", heroID, static_cast<int>(faction));
   ourHeroId = heroID;
   ourFaction = faction;
 }
 
 void LoadingFlashInterface::SetHeroLevel( int heroId, int level )
 {
+  ForwardProductionCall("SetHeroLevel", heroId, level);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (state)
   {
@@ -136,30 +158,39 @@ void LoadingFlashInterface::SetHeroLevel( int heroId, int level )
 
 void LoadingFlashInterface::SetPlayersFaction( NDb::EFaction leftFaction, NDb::EFaction rightFaction )
 {
+  ForwardProductionCall(
+    "SetPlayersFaction",
+    static_cast<int>(leftFaction),
+    static_cast<int>(rightFaction));
   this->leftFaction = leftFaction;
   this->rightFaction = rightFaction;
 }
 
 void LoadingFlashInterface::SetMapBack( const char* back, const char* logo )
 {
+  ForwardProductionCall("SetMapBack", back ? back : "", logo ? logo : "");
   mapBackground = back ? back : "";
   mapLogo = logo ? logo : "";
 }
 
 void LoadingFlashInterface::SetForceColorTable( const vector<int> & forceTable,const vector<uint> & colorTable )
 {
+  ForwardProductionCall("SetForceColors", forceTable, colorTable);
   this->forceTable = forceTable;
   this->colorTable = colorTable;
 }
 
 void LoadingFlashInterface::SetTeamForce(const wstring & forceLeft,const wstring & forceRight)
 {
+  ForwardProductionCall("SetTeamForce", forceLeft, forceRight);
   leftTeamForce = forceLeft;
   rightTeamForce = forceRight;
 }
 
 void LoadingFlashInterface::SetHeroForce( int heroId, int force )
 {
+  ForwardProductionCall("SetHeroForce", heroId, force);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (state)
   {
@@ -169,6 +200,16 @@ void LoadingFlashInterface::SetHeroForce( int heroId, int force )
 
 void LoadingFlashInterface::SetHeroRaiting( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
 {
+  ForwardProductionCall(
+    "SetHeroRaiting",
+    heroId,
+    raiting,
+    deltaWin,
+    deltaLose,
+    isNovice,
+    rankIcon ? rankIcon : "",
+    rankName);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (state)
   {
@@ -181,6 +222,16 @@ void LoadingFlashInterface::SetHeroRaiting( int heroId, int raiting, float delta
 
 void LoadingFlashInterface::SetHeroRaitingAcc( int heroId, int raiting, float deltaWin, float deltaLose, bool isNovice, const char* rankIcon, const wstring & rankName )
 {
+  ForwardProductionCall(
+    "SetHeroRaitingAcc",
+    heroId,
+    raiting,
+    deltaWin,
+    deltaLose,
+    isNovice,
+    rankIcon ? rankIcon : "",
+    rankName);
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (state)
   {
@@ -193,6 +244,12 @@ void LoadingFlashInterface::SetHeroRaitingAcc( int heroId, int raiting, float de
 
 void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EFaction originalFraction )
 {
+  ForwardProductionCall(
+    "SetHeroPremium",
+    heroId,
+    hasPremium,
+    static_cast<int>(originalFraction));
+
   LoadingFlashHeroState* state = FindLoadingFlashHeroState(&heroes, heroId);
   if (state)
   {
@@ -203,6 +260,8 @@ void LoadingFlashInterface::SetHeroPremium( int heroId, bool hasPremium, NDb::EF
 
 void LoadingFlashInterface::AddModeDescription( const char * modeImage, int id )
 {
+  ForwardProductionCall("AddModeDescription", modeImage ? modeImage : "", id);
+
   LoadingFlashModeDescriptionState state;
   state.modeImage = modeImage ? modeImage : "";
   state.id = id;
@@ -211,11 +270,18 @@ void LoadingFlashInterface::AddModeDescription( const char * modeImage, int id )
 
 void LoadingFlashInterface::SetLoadingStatusText( const wstring & statusText )
 {
+  ForwardProductionCall("SetLoadingStatusText", statusText);
   loadingStatusText = statusText;
 }
 
 void LoadingFlashInterface::SetLocales( const char* imageLeft,const wstring & toolTipLeft, const char* imageRight, const wstring & toolTipRight )
 {
+  ForwardProductionCall(
+    "SetLocales",
+    imageLeft ? imageLeft : "",
+    toolTipLeft,
+    imageRight ? imageRight : "",
+    toolTipRight);
   leftLocaleImage = imageLeft ? imageLeft : "";
   rightLocaleImage = imageRight ? imageRight : "";
   leftLocaleTooltip = toolTipLeft;
@@ -224,21 +290,33 @@ void LoadingFlashInterface::SetLocales( const char* imageLeft,const wstring & to
 
 void LoadingFlashInterface::SetLoadingState( bool isPreloading )
 {
+  ForwardProductionCall("SetLoadingState", isPreloading);
   preloading = isPreloading;
 }
 
 void LoadingFlashInterface::SetTip( const wstring & tip )
 {
+  ForwardProductionCall("SetTip", tip);
   tipText = tip;
 }
 
 void LoadingFlashInterface::SwitchToSpectatorMode()
 {
+  ForwardProductionCall("SwitchToSpectatorMode");
   spectatorMode = true;
 }
 
 void LoadingFlashInterface::AddChannel( NDb::EChatChannel channel, const wstring & channelName, uint channelColor, bool showChannelName, bool showPlayerName, bool canWrite2Channel )
 {
+  ForwardProductionCall(
+    "AddChannel",
+    static_cast<int>(channel),
+    channelName,
+    channelColor,
+    showChannelName,
+    showPlayerName,
+    canWrite2Channel);
+
   LoadingFlashChatChannelState* state = FindLoadingFlashChatChannelState(&chatChannels, channel);
   if (!state)
   {
@@ -254,6 +332,8 @@ void LoadingFlashInterface::AddChannel( NDb::EChatChannel channel, const wstring
 
 void LoadingFlashInterface::AddChannelShortCut( NDb::EChatChannel channel, const wstring & shortcut )
 {
+  ForwardProductionCall("AddChannelShortCut", static_cast<int>(channel), shortcut);
+
   LoadingFlashChatChannelState* state = FindLoadingFlashChatChannelState(&chatChannels, channel);
   if (state)
   {
@@ -263,6 +343,8 @@ void LoadingFlashInterface::AddChannelShortCut( NDb::EChatChannel channel, const
 
 void LoadingFlashInterface::AddMessage( NDb::EChatChannel channel, const wstring & playerName, const wstring & message )
 {
+  ForwardProductionCall("AddMessage", static_cast<int>(channel), playerName, message);
+
   LoadingFlashChatMessageState state;
   state.channel = channel;
   state.playerName = playerName;
@@ -273,6 +355,8 @@ void LoadingFlashInterface::AddMessage( NDb::EChatChannel channel, const wstring
 
 void LoadingFlashInterface::AddMessage(NDb::EChatChannel channel, const wstring & playerName, const wstring & message, const int playerId)
 {
+  ForwardProductionCall("AddMessageEx", static_cast<int>(channel), playerName, message, playerId);
+
   LoadingFlashChatMessageState state;
   state.channel = channel;
   state.playerName = playerName;
@@ -284,21 +368,26 @@ void LoadingFlashInterface::AddMessage(NDb::EChatChannel channel, const wstring 
 
 void LoadingFlashInterface::SetDefaultChannel( NDb::EChatChannel channelID )
 {
+  ForwardProductionCall("SetDefaultChannel", static_cast<int>(channelID));
   defaultChannel = channelID;
 }
 
 void LoadingFlashInterface::SetChatVisible( bool visible )
 {
+  ForwardProductionCall("SetChatVisible", visible);
   chatVisible = visible;
 }
 
 void LoadingFlashInterface::SetChatOff( bool isChatOff )
 {
+  ForwardProductionCall("SetChatOff", isChatOff);
   chatOff = isChatOff;
 }
 
 void LoadingFlashInterface::SetPlayerIcon(const int playerId, const string& path)
 {
+  ForwardProductionCall("SetPlayerIcon", playerId, path);
+
   LoadingFlashPlayerBindingState* state = FindLoadingFlashPlayerBindingState(&playerBindings, playerId);
   if (!state)
   {
@@ -311,6 +400,8 @@ void LoadingFlashInterface::SetPlayerIcon(const int playerId, const string& path
 
 void LoadingFlashInterface::SetPlayerHeroId(const int playerId, const int heroId, const int teamId)
 {
+  ForwardProductionCall("SetPlayerHeroId", playerId, heroId, teamId);
+
   LoadingFlashPlayerBindingState* state = FindLoadingFlashPlayerBindingState(&playerBindings, playerId);
   if (!state)
   {
@@ -324,22 +415,27 @@ void LoadingFlashInterface::SetPlayerHeroId(const int playerId, const int heroId
 
 void LoadingFlashInterface::IgnoreUser( const int playerId )
 {
+  ForwardProductionCall("IgnoreUser", playerId);
 }
 
 void LoadingFlashInterface::RemoveIgnore( const int playerId )
 {
+  ForwardProductionCall("RemoveIgnore", playerId);
 }
 
 void LoadingFlashInterface::OpenCloseChat()
 {
+  ForwardProductionCall("EnterPressed");
 }
 
 void LoadingFlashInterface::OpenChanel(int channelID)
 {
+  ForwardProductionCall("OpenChanel", channelID);
 }
 
 void LoadingFlashInterface::OnEscape()
 {
+  ForwardProductionCall("OnEscape");
 }
 
 }

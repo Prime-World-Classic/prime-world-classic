@@ -2,15 +2,7 @@
 
 #include "../PF_GameLogic/DBStats.h"
 #include "../PF_GameLogic/IFlashChat.h"
-
-#if defined(PW_LINUX_DB_BOOTSTRAP)
-namespace UI
-{
-  class FlashContainer2;
-}
-#else
 #include "../UI/FlashInterface.h"
-#endif
 
 namespace Game
 {
@@ -129,9 +121,9 @@ struct LoadingFlashPlayerBindingState
   }
 };
 
-class LoadingFlashInterface : public BaseObjectST, public NGameX::IFlashChat
+class LoadingFlashInterface : public UI::FlashInterface, public NGameX::IFlashChat
 {
-  NI_DECLARE_REFCOUNT_CLASS_2( LoadingFlashInterface, BaseObjectST, NGameX::IFlashChat );
+  NI_DECLARE_REFCOUNT_CLASS_2( LoadingFlashInterface, UI::FlashInterface, NGameX::IFlashChat );
 
 public:
   LoadingFlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className );
@@ -192,6 +184,8 @@ public:
   NDb::EFaction GetOurFaction() const { return ourFaction; }
   NDb::EFaction GetLeftFaction() const { return leftFaction; }
   NDb::EFaction GetRightFaction() const { return rightFaction; }
+  bool IsProductionInterfaceBound() const { return IsBound(); }
+  unsigned int GetProductionCallCount() const { return productionCallCount; }
   const vector<LoadingFlashHeroState>& GetHeroes() const { return heroes; }
   const vector<LoadingFlashModeDescriptionState>& GetModeDescriptions() const { return modeDescriptions; }
   const vector<LoadingFlashChatChannelState>& GetChatChannels() const { return chatChannels; }
@@ -199,6 +193,18 @@ public:
   const vector<LoadingFlashPlayerBindingState>& GetPlayerBindings() const { return playerBindings; }
 
 private:
+  template <typename... TArgs>
+  void ForwardProductionCall(const char* method, TArgs... args)
+  {
+    if (!IsBound())
+    {
+      return;
+    }
+
+    CallMethod(method, args...);
+    ++productionCallCount;
+  }
+
   wstring loadingStatusText;
   wstring tipText;
   string mapBackground;
@@ -225,6 +231,7 @@ private:
   NDb::EFaction ourFaction;
   NDb::EFaction leftFaction;
   NDb::EFaction rightFaction;
+  unsigned int productionCallCount;
 };
 #else
   class LoadingFlashInterface:public UI::FlashInterface, public NGameX::IFlashChat

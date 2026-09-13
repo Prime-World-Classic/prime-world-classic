@@ -66607,6 +66607,15 @@ void AppendRuntimeInputLog(
           << realUiRendererStats.renderedFlashScissorCommands << "/"
           << realUiRendererStats.renderedFlashMaskCommands << "\n";
 #endif
+  const Game::LoadingFlashInterface* finalLoadingFlashInterface =
+    GetActiveLinuxLoadingFlashInterface(&screenRuntime);
+  logFile << "  finalProductionLoadingFlashInterface="
+          << (finalLoadingFlashInterface &&
+              finalLoadingFlashInterface->IsProductionInterfaceBound() ?
+              "yes" : "no") << "\n";
+  logFile << "  finalProductionLoadingFlashCalls="
+          << (finalLoadingFlashInterface ?
+              finalLoadingFlashInterface->GetProductionCallCount() : 0) << "\n";
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingInfoLines="
