@@ -152,6 +152,9 @@ private:
     bool useColorTransformShader;
     CVec4 colorMultiplier;
     CVec4 colorOffset;
+    bool colorMatrixActive;
+    SHMatrix colorMatrix;
+    CVec4 colorMatrixOffset;
     LinuxFlashDisplayState displayState;
     int textPartID;
     Texture2DRef textTexture;
@@ -177,10 +180,13 @@ private:
       , useColorTransformShader(false)
       , colorMultiplier(1.0f, 1.0f, 1.0f, 1.0f)
       , colorOffset(0.0f, 0.0f, 0.0f, 0.0f)
+      , colorMatrixActive(false)
+      , colorMatrixOffset(0.0f, 0.0f, 0.0f, 0.0f)
       , textPartID(-1)
       , textWithBevel(false)
       , textBevelColor(0, 0, 0, 255)
     {
+      Identity(&colorMatrix);
     }
   };
 

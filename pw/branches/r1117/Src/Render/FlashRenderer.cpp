@@ -314,6 +314,12 @@ struct LinuxFlashColorTransformShader
   GLint morphRate;
   GLint colorMultiplier;
   GLint colorOffset;
+  GLint useColorMatrix;
+  GLint colorMatrixRed;
+  GLint colorMatrixGreen;
+  GLint colorMatrixBlue;
+  GLint colorMatrixAlpha;
+  GLint colorMatrixOffset;
 
   LinuxFlashColorTransformShader()
     : attempted(false)
@@ -324,6 +330,12 @@ struct LinuxFlashColorTransformShader
     , morphRate(-1)
     , colorMultiplier(-1)
     , colorOffset(-1)
+    , useColorMatrix(-1)
+    , colorMatrixRed(-1)
+    , colorMatrixGreen(-1)
+    , colorMatrixBlue(-1)
+    , colorMatrixAlpha(-1)
+    , colorMatrixOffset(-1)
   {
   }
 };
@@ -378,6 +390,12 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
     "uniform float flashMorphRate;\n"
     "uniform vec4 flashColorMultiplier;\n"
     "uniform vec4 flashColorOffset;\n"
+    "uniform int flashUseColorMatrix;\n"
+    "uniform vec4 flashColorMatrixRed;\n"
+    "uniform vec4 flashColorMatrixGreen;\n"
+    "uniform vec4 flashColorMatrixBlue;\n"
+    "uniform vec4 flashColorMatrixAlpha;\n"
+    "uniform vec4 flashColorMatrixOffset;\n"
     "varying vec4 flashVertexColor;\n"
     "varying vec2 flashTextureUv;\n"
     "void main()\n"
@@ -390,7 +408,16 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
     "    sourceColor = mix(textureColor, flashVertexColor, flashMorphRate);\n"
     "  else if (flashSourceMode == 3)\n"
     "    sourceColor = mix(flashVertexColor, textureColor, flashMorphRate);\n"
-    "  gl_FragColor = clamp(sourceColor * flashColorMultiplier + flashColorOffset, 0.0, 1.0);\n"
+    "  vec4 transformedColor = sourceColor * flashColorMultiplier + flashColorOffset;\n"
+    "  if (flashUseColorMatrix != 0)\n"
+    "  {\n"
+    "    transformedColor = vec4(\n"
+    "      dot(transformedColor, flashColorMatrixRed),\n"
+    "      dot(transformedColor, flashColorMatrixGreen),\n"
+    "      dot(transformedColor, flashColorMatrixBlue),\n"
+    "      dot(transformedColor, flashColorMatrixAlpha)) + flashColorMatrixOffset;\n"
+    "  }\n"
+    "  gl_FragColor = clamp(transformedColor, 0.0, 1.0);\n"
     "}\n";
 
   GLuint vertexShader = 0;
@@ -429,6 +456,12 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
   shader.morphRate = glGetUniformLocation(shader.program, "flashMorphRate");
   shader.colorMultiplier = glGetUniformLocation(shader.program, "flashColorMultiplier");
   shader.colorOffset = glGetUniformLocation(shader.program, "flashColorOffset");
+  shader.useColorMatrix = glGetUniformLocation(shader.program, "flashUseColorMatrix");
+  shader.colorMatrixRed = glGetUniformLocation(shader.program, "flashColorMatrixRed");
+  shader.colorMatrixGreen = glGetUniformLocation(shader.program, "flashColorMatrixGreen");
+  shader.colorMatrixBlue = glGetUniformLocation(shader.program, "flashColorMatrixBlue");
+  shader.colorMatrixAlpha = glGetUniformLocation(shader.program, "flashColorMatrixAlpha");
+  shader.colorMatrixOffset = glGetUniformLocation(shader.program, "flashColorMatrixOffset");
   return shader;
 }
 
@@ -635,6 +668,19 @@ Color ApplyLinuxFlashColorTransform(const Color& color, const CVec4& multiplier,
     ClampFlashColorChannel(color.G * multiplier.y + offset.y * 255.0f),
     ClampFlashColorChannel(color.B * multiplier.z + offset.z * 255.0f),
     ClampFlashColorChannel(color.A * multiplier.w + offset.w * 255.0f));
+}
+
+Color ApplyLinuxFlashColorMatrix(const Color& color, const SHMatrix& matrix, const CVec4& offset)
+{
+  const float red = color.R / 255.0f;
+  const float green = color.G / 255.0f;
+  const float blue = color.B / 255.0f;
+  const float alpha = color.A / 255.0f;
+  return Color(
+    ClampFlashColorChannel((red * matrix._11 + green * matrix._21 + blue * matrix._31 + alpha * matrix._41 + offset.x) * 255.0f),
+    ClampFlashColorChannel((red * matrix._12 + green * matrix._22 + blue * matrix._32 + alpha * matrix._42 + offset.y) * 255.0f),
+    ClampFlashColorChannel((red * matrix._13 + green * matrix._23 + blue * matrix._33 + alpha * matrix._43 + offset.z) * 255.0f),
+    ClampFlashColorChannel((red * matrix._14 + green * matrix._24 + blue * matrix._34 + alpha * matrix._44 + offset.w) * 255.0f));
 }
 
 } // namespace
@@ -911,7 +957,8 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
     else
       BindLinuxFlashTexture(GL_TEXTURE0, 0, true, EBitmapWrapMode::CLAMP);
 
-    const bool useColorTransformShader = command.useColorTransformShader && colorTransformShader.program;
+    const bool useColorTransformShader =
+      command.useColorTransformShader && colorTransformShader.program && openGLTexture;
     if (useColorTransformShader)
     {
       int sourceMode = 0;
@@ -937,15 +984,48 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
         command.colorOffset.y,
         command.colorOffset.z,
         command.colorOffset.w);
+      glUniform1i(colorTransformShader.useColorMatrix, command.colorMatrixActive ? 1 : 0);
+      glUniform4f(
+        colorTransformShader.colorMatrixRed,
+        command.colorMatrix._11,
+        command.colorMatrix._21,
+        command.colorMatrix._31,
+        command.colorMatrix._41);
+      glUniform4f(
+        colorTransformShader.colorMatrixGreen,
+        command.colorMatrix._12,
+        command.colorMatrix._22,
+        command.colorMatrix._32,
+        command.colorMatrix._42);
+      glUniform4f(
+        colorTransformShader.colorMatrixBlue,
+        command.colorMatrix._13,
+        command.colorMatrix._23,
+        command.colorMatrix._33,
+        command.colorMatrix._43);
+      glUniform4f(
+        colorTransformShader.colorMatrixAlpha,
+        command.colorMatrix._14,
+        command.colorMatrix._24,
+        command.colorMatrix._34,
+        command.colorMatrix._44);
+      glUniform4f(
+        colorTransformShader.colorMatrixOffset,
+        command.colorMatrixOffset.x,
+        command.colorMatrixOffset.y,
+        command.colorMatrixOffset.z,
+        command.colorMatrixOffset.w);
     }
 
     glBegin(GL_TRIANGLES);
     for (unsigned int vertex = 0; vertex < command.vertices.size(); ++vertex)
     {
       const LinuxFlashDrawVertex& v = command.vertices[vertex];
-      const Color color = command.useColorTransformShader && !useColorTransformShader
+      Color color = command.useColorTransformShader && !useColorTransformShader
         ? ApplyLinuxFlashColorTransform(v.color, command.colorMultiplier, command.colorOffset)
         : v.color;
+      if (command.useColorTransformShader && !useColorTransformShader && command.colorMatrixActive)
+        color = ApplyLinuxFlashColorMatrix(color, command.colorMatrix, command.colorMatrixOffset);
       glColor4ub(color.R, color.G, color.B, color.A);
       if (dualTextureMorph)
       {
@@ -1472,8 +1552,14 @@ void FlashRenderer::CaptureColorTransform(LinuxFlashDrawCommand* command) const
     currentColorTransform.m_[1][1] / 255.0f,
     currentColorTransform.m_[2][1] / 255.0f,
     currentColorTransform.m_[3][1] / 255.0f);
-  command->useColorTransformShader =
-    colorMatrixStack.empty() && (command->textured || command->secondaryTextured);
+  if (!colorMatrixStack.empty())
+  {
+    const LinuxFlashColorMatrixState& state = colorMatrixStack.back();
+    command->colorMatrixActive = true;
+    command->colorMatrix = state.colorMatrix;
+    command->colorMatrixOffset = state.addColor / 255.0f;
+  }
+  command->useColorTransformShader = command->textured || command->secondaryTextured;
 }
 
 void FlashRenderer::ClearFillStyles()
