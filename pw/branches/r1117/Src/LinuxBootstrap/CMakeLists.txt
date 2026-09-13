@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 
 project(PrimeWorldLinuxBootstrap LANGUAGES CXX)
 
+find_package(Threads REQUIRED)
+
 file(
   GLOB PRIMEWORLD_LINUX_DB_SOURCES
   CONFIGURE_DEPENDS
@@ -263,6 +265,35 @@ target_link_libraries(
     PrimeWorldLinuxTamarinConfig
 )
 add_dependencies(PrimeWorldLinuxTamarinCore PrimeWorldLinuxTamarinPcre)
+
+add_library(
+  PrimeWorldLinuxTamarin
+  STATIC
+  $<TARGET_OBJECTS:PrimeWorldLinuxTamarinPlatform>
+  $<TARGET_OBJECTS:PrimeWorldLinuxTamarinMMgc>
+  $<TARGET_OBJECTS:PrimeWorldLinuxTamarinPcre>
+  $<TARGET_OBJECTS:PrimeWorldLinuxTamarinCore>
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarin
+  PUBLIC
+    PrimeWorldLinuxTamarinConfig
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+)
+
+add_executable(
+  PrimeWorldLinuxTamarinRuntimeProbe
+  tamarin_runtime_probe.cpp
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarinRuntimeProbe
+  PRIVATE
+    -Wl,--whole-archive
+    PrimeWorldLinuxTamarin
+    -Wl,--no-whole-archive
+    m
+)
 
 # Native Flash sources compiled by the Linux client-runtime portability gate.
 # Keep this list backend-neutral so the same implementations remain available
@@ -1225,7 +1256,7 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
-add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinCore)
+add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinRuntimeProbe)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
