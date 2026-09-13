@@ -150,6 +150,73 @@ float ApplyLinuxFlashScale9GridCoord(float coord, const CVec4& consts)
   return coord;
 }
 
+// Builds one joined, square-capped rail pair around a Flash polyline.
+void BuildLinuxFlashLineRails(
+  const nstl::vector<CVec2>& points,
+  float halfWidth,
+  nstl::vector<CVec2>* left,
+  nstl::vector<CVec2>* right)
+{
+  left->resize(points.size());
+  right->resize(points.size());
+
+  for (unsigned int i = 0; i < points.size(); ++i)
+  {
+    CVec2 center = points[i];
+    CVec2 normal;
+    float scale = halfWidth;
+
+    if (i == 0 || i + 1 == points.size())
+    {
+      const CVec2& a = i == 0 ? points[0] : points[points.size() - 2];
+      const CVec2& b = i == 0 ? points[1] : points[points.size() - 1];
+      const float dx = b.x - a.x;
+      const float dy = b.y - a.y;
+      const float len = sqrtf(dx * dx + dy * dy);
+      if (len <= 0.0001f)
+        continue;
+      const CVec2 tangent(dx / len, dy / len);
+      normal = CVec2(-tangent.y, tangent.x);
+      center.x += (i == 0 ? -tangent.x : tangent.x) * halfWidth;
+      center.y += (i == 0 ? -tangent.y : tangent.y) * halfWidth;
+    }
+    else
+    {
+      const CVec2& prev = points[i - 1];
+      const CVec2& current = points[i];
+      const CVec2& next = points[i + 1];
+      const float prevDx = current.x - prev.x;
+      const float prevDy = current.y - prev.y;
+      const float nextDx = next.x - current.x;
+      const float nextDy = next.y - current.y;
+      const float prevLen = sqrtf(prevDx * prevDx + prevDy * prevDy);
+      const float nextLen = sqrtf(nextDx * nextDx + nextDy * nextDy);
+      if (prevLen <= 0.0001f || nextLen <= 0.0001f)
+        continue;
+
+      const CVec2 prevNormal(-prevDy / prevLen, prevDx / prevLen);
+      const CVec2 nextNormal(-nextDy / nextLen, nextDx / nextLen);
+      normal = CVec2(prevNormal.x + nextNormal.x, prevNormal.y + nextNormal.y);
+      const float normalLen = sqrtf(normal.x * normal.x + normal.y * normal.y);
+      if (normalLen <= 0.0001f)
+      {
+        normal = nextNormal;
+      }
+      else
+      {
+        normal.x /= normalLen;
+        normal.y /= normalLen;
+        const float dot = normal.x * nextNormal.x + normal.y * nextNormal.y;
+        if (fabsf(dot) > 0.2f)
+          scale = Clamp(halfWidth / dot, -halfWidth * 4.0f, halfWidth * 4.0f);
+      }
+    }
+
+    (*left)[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
+    (*right)[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
+  }
+}
+
 class LinuxBitmapInfo : public IBitmapInfo, public BaseObjectST
 {
   NI_DECLARE_REFCOUNT_CLASS_2( LinuxBitmapInfo, IBitmapInfo, BaseObjectST );
@@ -410,11 +477,13 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
     "#version 120\n"
     "varying vec4 flashVertexColor;\n"
     "varying vec2 flashTextureUv;\n"
+    "varying float flashCoverage;\n"
     "void main()\n"
     "{\n"
     "  gl_Position = ftransform();\n"
     "  flashVertexColor = gl_Color;\n"
     "  flashTextureUv = gl_MultiTexCoord0.xy;\n"
+    "  flashCoverage = gl_MultiTexCoord2.x;\n"
     "}\n";
   static const char* fragmentSource =
     "#version 120\n"
@@ -436,6 +505,7 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
     "uniform int flashSourceBlendMode;\n"
     "varying vec4 flashVertexColor;\n"
     "varying vec2 flashTextureUv;\n"
+    "varying float flashCoverage;\n"
     "vec3 flashOverlay(vec3 firstColor, vec3 secondColor)\n"
     "{\n"
     "  vec3 low = clamp(2.0 * firstColor * secondColor, 0.0, 1.0);\n"
@@ -463,6 +533,7 @@ LinuxFlashColorTransformShader& GetLinuxFlashColorTransformShader()
     "      dot(transformedColor, flashColorMatrixBlue),\n"
     "      dot(transformedColor, flashColorMatrixAlpha)) + flashColorMatrixOffset;\n"
     "  }\n"
+    "  transformedColor.a *= clamp(flashCoverage, 0.0, 1.0);\n"
     "  if (flashSourceBlendMode == 1)\n"
     "    transformedColor.rgb += vec3(1.0 - transformedColor.a);\n"
     "  else if (flashSourceBlendMode == 2)\n"
@@ -1219,8 +1290,11 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       if (command.useColorTransformShader && !useColorTransformShader && command.colorMatrixActive)
         color = ApplyLinuxFlashColorMatrix(color, command.colorMatrix, command.colorMatrixOffset);
       if (!useColorTransformShader)
+        color.A = ClampFlashColorChannel(color.A * v.coverage);
+      if (!useColorTransformShader)
         color = ApplyLinuxFlashSourceBlendColor(color, command.blendMode);
       glColor4ub(color.R, color.G, color.B, color.A);
+      glMultiTexCoord1f(GL_TEXTURE2, v.coverage);
       if (dualTextureMorph)
       {
         glMultiTexCoord2f(GL_TEXTURE0, v.u, v.v);
@@ -1509,98 +1583,103 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   LinuxFlashFillStyle morphedFillStyle;
   const LinuxFlashFillStyle* fillStyle = ApplyFillStylesToCommand(&command, &morphedFillStyle);
   CaptureColorTransform(&command);
-  command.vertices.reserve((points.size() - 1) * 6);
+  command.vertices.reserve((points.size() - 1) * 18 + 12);
 
   const float half = lineWidth * 0.5f;
   const bool mixedMorphFill = command.morph && (command.textured != command.secondaryTextured);
   const Color sourceColor = fillStyle && !mixedMorphFill ? Color(255, 255, 255, 255) : lineColor;
   const Color color = command.useColorTransformShader ? sourceColor : TransformColor(sourceColor);
-  nstl::vector<CVec2> leftLocal;
-  nstl::vector<CVec2> rightLocal;
-  nstl::vector<CVec2> left;
-  nstl::vector<CVec2> right;
-  nstl::vector<CVec2> leftUV;
-  nstl::vector<CVec2> rightUV;
-  leftLocal.resize(points.size());
-  rightLocal.resize(points.size());
-  left.resize(points.size());
-  right.resize(points.size());
-  leftUV.resize(points.size());
-  rightUV.resize(points.size());
+  const float displayWidth = fabsf(command.displayState.displayX1 - command.displayState.displayX0);
+  const float displayHeight = fabsf(command.displayState.displayY1 - command.displayState.displayY0);
+  const float matrixScaleX = sqrtf(
+    currentMatrix.m_[0][0] * currentMatrix.m_[0][0] +
+    currentMatrix.m_[1][0] * currentMatrix.m_[1][0]);
+  const float matrixScaleY = sqrtf(
+    currentMatrix.m_[0][1] * currentMatrix.m_[0][1] +
+    currentMatrix.m_[1][1] * currentMatrix.m_[1][1]);
+  const float pixelsPerLocalX = displayWidth > 0.0001f
+    ? matrixScaleX * command.displayState.viewportWidth / displayWidth
+    : matrixScaleX;
+  const float pixelsPerLocalY = displayHeight > 0.0001f
+    ? matrixScaleY * command.displayState.viewportHeight / displayHeight
+    : matrixScaleY;
+  const float pixelsPerLocal = sqrtf(max(pixelsPerLocalX * pixelsPerLocalY, 0.0001f));
+  const float antialiasWidth = 1.0f / pixelsPerLocal;
+  const float innerHalf = max(0.0f, half - antialiasWidth);
+  const float outerHalf = half + antialiasWidth;
 
-  // Expand in local shape space before transforming, matching the Windows line path.
-  for (unsigned int i = 0; i < points.size(); ++i)
+  // Coverage is interpolated across a two-pixel fringe around the nominal stroke edge.
+  nstl::vector<CVec2> railLocal[4];
+  nstl::vector<CVec2> rail[4];
+  nstl::vector<CVec2> railUV[4];
+  BuildLinuxFlashLineRails(localPoints, outerHalf, &railLocal[0], &railLocal[3]);
+  BuildLinuxFlashLineRails(localPoints, innerHalf, &railLocal[1], &railLocal[2]);
+  for (int railIndex = 0; railIndex < 4; ++railIndex)
   {
-    CVec2 center = localPoints[i];
-    CVec2 normal;
-    float scale = half;
-
-    if (i == 0 || i + 1 == points.size())
+    rail[railIndex].resize(points.size());
+    railUV[railIndex].resize(points.size());
+    for (unsigned int i = 0; i < points.size(); ++i)
     {
-      const CVec2& a = i == 0 ? localPoints[0] : localPoints[localPoints.size() - 2];
-      const CVec2& b = i == 0 ? localPoints[1] : localPoints[localPoints.size() - 1];
-      const float dx = b.x - a.x;
-      const float dy = b.y - a.y;
-      const float len = sqrtf(dx * dx + dy * dy);
-      if (len <= 0.0001f)
-        continue;
-      const CVec2 tangent(dx / len, dy / len);
-      normal = CVec2(-tangent.y, tangent.x);
-      center.x += (i == 0 ? -tangent.x : tangent.x) * half;
-      center.y += (i == 0 ? -tangent.y : tangent.y) * half;
-    }
-    else
-    {
-      const CVec2& prev = localPoints[i - 1];
-      const CVec2& current = localPoints[i];
-      const CVec2& next = localPoints[i + 1];
-      const float prevDx = current.x - prev.x;
-      const float prevDy = current.y - prev.y;
-      const float nextDx = next.x - current.x;
-      const float nextDy = next.y - current.y;
-      const float prevLen = sqrtf(prevDx * prevDx + prevDy * prevDy);
-      const float nextLen = sqrtf(nextDx * nextDx + nextDy * nextDy);
-      if (prevLen <= 0.0001f || nextLen <= 0.0001f)
-        continue;
-
-      const CVec2 prevNormal(-prevDy / prevLen, prevDx / prevLen);
-      const CVec2 nextNormal(-nextDy / nextLen, nextDx / nextLen);
-      normal = CVec2(prevNormal.x + nextNormal.x, prevNormal.y + nextNormal.y);
-      const float normalLen = sqrtf(normal.x * normal.x + normal.y * normal.y);
-      if (normalLen <= 0.0001f)
+      TransformPoint(
+        railLocal[railIndex][i].x,
+        railLocal[railIndex][i].y,
+        &rail[railIndex][i].x,
+        &rail[railIndex][i].y);
+      if (fillStyle)
       {
-        normal = nextNormal;
+        TransformFillUV(
+          *fillStyle,
+          railLocal[railIndex][i].x,
+          railLocal[railIndex][i].y,
+          &railUV[railIndex][i].x,
+          &railUV[railIndex][i].y);
       }
-      else
-      {
-        normal.x /= normalLen;
-        normal.y /= normalLen;
-        const float dot = normal.x * nextNormal.x + normal.y * nextNormal.y;
-        if (fabsf(dot) > 0.2f)
-          scale = Clamp(half / dot, -half * 4.0f, half * 4.0f);
-      }
-    }
-
-    leftLocal[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
-    rightLocal[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
-    TransformPoint(leftLocal[i].x, leftLocal[i].y, &left[i].x, &left[i].y);
-    TransformPoint(rightLocal[i].x, rightLocal[i].y, &right[i].x, &right[i].y);
-    if (fillStyle)
-    {
-      TransformFillUV(*fillStyle, leftLocal[i].x, leftLocal[i].y, &leftUV[i].x, &leftUV[i].y);
-      TransformFillUV(*fillStyle, rightLocal[i].x, rightLocal[i].y, &rightUV[i].x, &rightUV[i].y);
     }
   }
+
+  const float railCoverage[4] = { 0.0f, 1.0f, 1.0f, 0.0f };
+  const auto appendVertex = [&](int railIndex, unsigned int pointIndex)
+  {
+    command.vertices.push_back(LinuxFlashDrawVertex(
+      rail[railIndex][pointIndex].x,
+      rail[railIndex][pointIndex].y,
+      railUV[railIndex][pointIndex].x,
+      railUV[railIndex][pointIndex].y,
+      color,
+      railCoverage[railIndex]));
+  };
+  const auto appendBand = [&](int firstRail, int secondRail, unsigned int firstPoint, unsigned int secondPoint)
+  {
+    appendVertex(firstRail, firstPoint);
+    appendVertex(secondRail, firstPoint);
+    appendVertex(secondRail, secondPoint);
+    appendVertex(firstRail, firstPoint);
+    appendVertex(secondRail, secondPoint);
+    appendVertex(firstRail, secondPoint);
+  };
 
   for (unsigned int i = 0; i + 1 < points.size(); ++i)
   {
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, leftUV[i].x, leftUV[i].y, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i].x, right[i].y, rightUV[i].x, rightUV[i].y, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, rightUV[i + 1].x, rightUV[i + 1].y, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i].x, left[i].y, leftUV[i].x, leftUV[i].y, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(right[i + 1].x, right[i + 1].y, rightUV[i + 1].x, rightUV[i + 1].y, color));
-    command.vertices.push_back(LinuxFlashDrawVertex(left[i + 1].x, left[i + 1].y, leftUV[i + 1].x, leftUV[i + 1].y, color));
+    appendBand(0, 1, i, i + 1);
+    appendBand(1, 2, i, i + 1);
+    appendBand(2, 3, i, i + 1);
   }
+
+  const auto appendCap = [&](unsigned int pointIndex, bool start)
+  {
+    const int first = start ? 0 : 1;
+    const int second = start ? 3 : 2;
+    const int third = start ? 2 : 3;
+    const int fourth = start ? 1 : 0;
+    appendVertex(first, pointIndex);
+    appendVertex(second, pointIndex);
+    appendVertex(third, pointIndex);
+    appendVertex(first, pointIndex);
+    appendVertex(third, pointIndex);
+    appendVertex(fourth, pointIndex);
+  };
+  appendCap(0, true);
+  appendCap(points.size() - 1, false);
 
   if (!command.vertices.empty())
     drawCommands.push_back(command);
@@ -1764,6 +1843,7 @@ void FlashRenderer::CaptureColorTransform(LinuxFlashDrawCommand* command) const
   }
   command->useColorTransformShader =
     command->textured || command->secondaryTextured ||
+    command->line ||
     IsLinuxFlashBackgroundBlendMode(command->blendMode) ||
     IsLinuxFlashSourceAdjustedBlendMode(command->blendMode);
 }

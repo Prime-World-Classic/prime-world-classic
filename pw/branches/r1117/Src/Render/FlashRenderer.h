@@ -87,11 +87,13 @@ private:
     float y;
     float u;
     float v;
+    float coverage;
     Color color;
 
-    LinuxFlashDrawVertex() : x(0.0f), y(0.0f), u(0.0f), v(0.0f), color(255, 255, 255, 255) {}
-    LinuxFlashDrawVertex(float _x, float _y, float _u, float _v, const Color& _color)
-      : x(_x), y(_y), u(_u), v(_v), color(_color) {}
+    LinuxFlashDrawVertex()
+      : x(0.0f), y(0.0f), u(0.0f), v(0.0f), coverage(1.0f), color(255, 255, 255, 255) {}
+    LinuxFlashDrawVertex(float _x, float _y, float _u, float _v, const Color& _color, float _coverage = 1.0f)
+      : x(_x), y(_y), u(_u), v(_v), coverage(_coverage), color(_color) {}
   };
 
   // Snapshot of BeginDisplay parameters used when replaying queued Flash commands.

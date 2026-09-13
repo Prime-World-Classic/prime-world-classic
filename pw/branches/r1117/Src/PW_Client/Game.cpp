@@ -30351,6 +30351,26 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     scaledLinePixel[1] <= 8 &&
     scaledLinePixel[2] >= 247 &&
     scaledLinePixel[3] >= 247;
+  const int scaledLineEdgeY =
+    openGLViewportY + static_cast<int>(((240.0f - 152.0f) / 240.0f) * viewportHeight);
+  unsigned char lineAntialiasPixel[4] = { 0, 0, 0, 0 };
+  int lineAntialiasDistance = 256;
+  for (int edgeOffset = -4; edgeOffset <= 4; ++edgeOffset)
+  {
+    unsigned char candidate[4] = { 0, 0, 0, 0 };
+    glReadPixels(scaledLineSampleX, scaledLineEdgeY + edgeOffset, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, candidate);
+    const int distance = abs(static_cast<int>(candidate[0]) - 128);
+    if (candidate[1] <= 8 && abs(static_cast<int>(candidate[0]) - static_cast<int>(candidate[2])) <= 8 && distance < lineAntialiasDistance)
+    {
+      memcpy(lineAntialiasPixel, candidate, sizeof(lineAntialiasPixel));
+      lineAntialiasDistance = distance;
+    }
+  }
+  const bool lineAntialiasPixelMatches =
+    lineAntialiasPixel[0] >= 16 && lineAntialiasPixel[0] <= 239 &&
+    lineAntialiasPixel[1] <= 8 &&
+    lineAntialiasPixel[2] >= 16 && lineAntialiasPixel[2] <= 239 &&
+    lineAntialiasPixel[3] >= 16 && lineAntialiasPixel[3] <= 239;
   const int primaryTextureMorphSampleX = probeViewport[0] + viewportX + static_cast<int>((136.0f / 320.0f) * viewportWidth);
   const int secondaryTextureMorphSampleX = probeViewport[0] + viewportX + static_cast<int>((204.0f / 320.0f) * viewportWidth);
   unsigned char primaryTextureMorphPixel[4] = { 0, 0, 0, 0 };
@@ -30430,7 +30450,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30446,6 +30466,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned int>(scaledLinePixel[1]),
     static_cast<unsigned int>(scaledLinePixel[2]),
     static_cast<unsigned int>(scaledLinePixel[3]),
+    static_cast<unsigned int>(lineAntialiasPixel[0]),
+    static_cast<unsigned int>(lineAntialiasPixel[1]),
+    static_cast<unsigned int>(lineAntialiasPixel[2]),
+    static_cast<unsigned int>(lineAntialiasPixel[3]),
     static_cast<unsigned long>(stats.renderedFlashTexturedCommands),
     static_cast<unsigned long>(stats.renderedFlashRepeatCommands),
     static_cast<unsigned long>(stats.renderedFlashClampCommands),
@@ -30515,9 +30539,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 12 &&
     stats.renderedFlashLineCommands == 2 &&
-    stats.renderedFlashLineVertices == 24 &&
+    stats.renderedFlashLineVertices == 96 &&
     linePixelMatches &&
     scaledLinePixelMatches &&
+    lineAntialiasPixelMatches &&
     stats.renderedFlashTexturedCommands == 18 &&
     stats.renderedFlashRepeatCommands == 1 &&
     stats.renderedFlashClampCommands == 17 &&
