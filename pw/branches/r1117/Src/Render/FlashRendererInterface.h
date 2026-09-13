@@ -51,6 +51,18 @@ namespace EBitmapWrapMode
 
 namespace Render
 {
+  struct BitmapColorTransform
+  {
+    double redMultiplier;
+    double greenMultiplier;
+    double blueMultiplier;
+    double alphaMultiplier;
+    double redOffset;
+    double greenOffset;
+    double blueOffset;
+    double alphaOffset;
+  };
+
   struct ShapeVertex
   {
     float x, y;
@@ -108,6 +120,40 @@ namespace Render
     virtual bool Scroll( int x, int y ) = 0;
     /// Replaces the connected region matching the seed pixel's exact ARGB value.
     virtual bool FloodFill( int x, int y, unsigned int argb ) = 0;
+    /// Copies one ActionScript BitmapDataChannel from a clipped source region.
+    virtual bool CopyChannel(
+      IBitmapInfo* source,
+      int sourceX,
+      int sourceY,
+      int width,
+      int height,
+      int destinationX,
+      int destinationY,
+      unsigned int sourceChannel,
+      unsigned int destinationChannel,
+      bool destinationTransparent ) = 0;
+    /// Applies an ActionScript color transform to an exclusive logical rectangle.
+    virtual bool ApplyColorTransform(
+      int x1,
+      int y1,
+      int x2,
+      int y2,
+      const BitmapColorTransform& transform,
+      bool destinationTransparent ) = 0;
+    /// Merges clipped source channels into destination channels with 0..256 weights.
+    virtual bool MergePixels(
+      IBitmapInfo* source,
+      int sourceX,
+      int sourceY,
+      int width,
+      int height,
+      int destinationX,
+      int destinationY,
+      unsigned int redMultiplier,
+      unsigned int greenMultiplier,
+      unsigned int blueMultiplier,
+      unsigned int alphaMultiplier,
+      bool destinationTransparent ) = 0;
 
     virtual IBitmapInfo* Clone() = 0;
     virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& _matrix, int x1, int y1, int x2, int y2 ) = 0;

@@ -177,8 +177,35 @@ void BitmapDataObject::fillRect(ScriptObject/*Rectangle*/ * rect, uint color)
 
 void BitmapDataObject::colorTransform(ScriptObject/*Rectangle*/ * rect, ScriptObject/*ColorTransform*/ * colorTransform)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo || !rect || !colorTransform )
+    return;
+
+  const int x = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "x" ) ) );
+  const int y = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "y" ) ) );
+  const int width = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "width" ) ) );
+  const int height = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "height" ) ) );
+  if ( width <= 0 || height <= 0 )
+    return;
+
+  const long long right = static_cast<long long>(x) + width;
+  const long long bottom = static_cast<long long>(y) + height;
+  const int bitmapWidth = bitmapInfo->GetWidth();
+  const int bitmapHeight = bitmapInfo->GetHeight();
+  const int x1 = x < 0 ? 0 : (x > bitmapWidth ? bitmapWidth : x);
+  const int y1 = y < 0 ? 0 : (y > bitmapHeight ? bitmapHeight : y);
+  const int x2 = right < 0 ? 0 : (right > bitmapWidth ? bitmapWidth : static_cast<int>(right));
+  const int y2 = bottom < 0 ? 0 : (bottom > bitmapHeight ? bitmapHeight : static_cast<int>(bottom));
+
+  Render::BitmapColorTransform nativeTransform;
+  nativeTransform.redMultiplier = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "redMultiplier" ) ) );
+  nativeTransform.greenMultiplier = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "greenMultiplier" ) ) );
+  nativeTransform.blueMultiplier = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "blueMultiplier" ) ) );
+  nativeTransform.alphaMultiplier = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "alphaMultiplier" ) ) );
+  nativeTransform.redOffset = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "redOffset" ) ) );
+  nativeTransform.greenOffset = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "greenOffset" ) ) );
+  nativeTransform.blueOffset = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "blueOffset" ) ) );
+  nativeTransform.alphaOffset = core()->number_d( colorTransform->getSlotAtom( GetSlotID( colorTransform, "alphaOffset" ) ) );
+  bitmapInfo->ApplyColorTransform( x1, y1, x2, y2, nativeTransform, transparent );
 }
 
 void BitmapDataObject::draw(ScriptObject/*IBitmapDrawable*/ * source, ScriptObject/*Matrix*/ * matrix, ScriptObject/*ColorTransform*/ * colorTransform, AvmString blendMode, ScriptObject/*Rectangle*/ * clipRect, bool smoothing)
@@ -230,8 +257,20 @@ int BitmapDataObject::get_width()
 
 void BitmapDataObject::copyChannel(BitmapDataObject* sourceBitmapData, ScriptObject/*Rectangle*/ * sourceRect, ScriptObject/*Point*/ * destPoint, uint sourceChannel, uint destChannel)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo || !sourceBitmapData || !sourceBitmapData->bitmapInfo || !sourceRect || !destPoint )
+    return;
+
+  bitmapInfo->CopyChannel(
+    sourceBitmapData->bitmapInfo,
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "x" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "y" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "width" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "height" ) ) ),
+    core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "x" ) ) ),
+    core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "y" ) ) ),
+    sourceChannel,
+    destChannel,
+    transparent );
 }
 
 uint BitmapDataObject::getPixel(int x, int y)
@@ -387,8 +426,22 @@ ByteArrayObject* BitmapDataObject::getPixels(ScriptObject/*Rectangle*/ * rect)
 
 void BitmapDataObject::merge(BitmapDataObject* sourceBitmapData, ScriptObject/*Rectangle*/ * sourceRect, ScriptObject/*Point*/ * destPoint, uint redMultiplier, uint greenMultiplier, uint blueMultiplier, uint alphaMultiplier)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo || !sourceBitmapData || !sourceBitmapData->bitmapInfo || !sourceRect || !destPoint )
+    return;
+
+  bitmapInfo->MergePixels(
+    sourceBitmapData->bitmapInfo,
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "x" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "y" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "width" ) ) ),
+    core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "height" ) ) ),
+    core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "x" ) ) ),
+    core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "y" ) ) ),
+    redMultiplier,
+    greenMultiplier,
+    blueMultiplier,
+    alphaMultiplier,
+    transparent );
 }
 
 AvmBox BitmapDataObject::_getVector(UIntVectorObject* v, int x, int y, int width, int height)

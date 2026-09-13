@@ -294,6 +294,329 @@ bool FloodFillBitmapTexturePixels(
   return true;
 }
 
+struct BitmapCopyRegion
+{
+  int sourceX;
+  int sourceY;
+  int destinationX;
+  int destinationY;
+  int width;
+  int height;
+};
+
+bool BuildBitmapCopyRegion(
+  int sourceX,
+  int sourceY,
+  int sourceWidth,
+  int sourceHeight,
+  int copyWidth,
+  int copyHeight,
+  int destinationX,
+  int destinationY,
+  int destinationWidth,
+  int destinationHeight,
+  BitmapCopyRegion* region )
+{
+  if (!region)
+    return false;
+
+  region->sourceX = 0;
+  region->sourceY = 0;
+  region->destinationX = 0;
+  region->destinationY = 0;
+  region->width = 0;
+  region->height = 0;
+  if (copyWidth <= 0 || copyHeight <= 0)
+    return true;
+
+  long long firstX = 0;
+  long long lastX = 0;
+  long long firstY = 0;
+  long long lastY = 0;
+  if (!ClipBitmapCopyAxis(
+        sourceX, sourceWidth, destinationX, destinationWidth,
+        0, 0, false, copyWidth, &firstX, &lastX) ||
+      !ClipBitmapCopyAxis(
+        sourceY, sourceHeight, destinationY, destinationHeight,
+        0, 0, false, copyHeight, &firstY, &lastY))
+  {
+    return true;
+  }
+
+  region->sourceX = static_cast<int>(static_cast<long long>(sourceX) + firstX);
+  region->sourceY = static_cast<int>(static_cast<long long>(sourceY) + firstY);
+  region->destinationX = static_cast<int>(static_cast<long long>(destinationX) + firstX);
+  region->destinationY = static_cast<int>(static_cast<long long>(destinationY) + firstY);
+  region->width = static_cast<int>(lastX - firstX);
+  region->height = static_cast<int>(lastY - firstY);
+  return true;
+}
+
+bool SnapshotBitmapTextureRegion(
+  const Texture2DRef& texture,
+  int originX,
+  int originY,
+  int x,
+  int y,
+  int width,
+  int height,
+  nstl::vector<unsigned int>* pixels )
+{
+  if (!texture || !pixels || width <= 0 || height <= 0)
+    return false;
+
+  pixels->resize(static_cast<size_t>(width) * static_cast<size_t>(height));
+  LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+  if (!lockedRect.data)
+    return false;
+  for (int rowIndex = 0; rowIndex < height; ++rowIndex)
+  {
+    const unsigned char* row = lockedRect.data +
+      (originY + y + rowIndex) * lockedRect.pitch +
+      (originX + x) * 4;
+    for (int columnIndex = 0; columnIndex < width; ++columnIndex)
+    {
+      (*pixels)[static_cast<size_t>(rowIndex) * width + columnIndex] =
+        ReadBitmapArgb(row + columnIndex * 4);
+    }
+  }
+  texture->UnlockRect(0);
+  return true;
+}
+
+int GetBitmapChannelShift(unsigned int channel)
+{
+  switch (channel)
+  {
+  case 1u: return 16;
+  case 2u: return 8;
+  case 4u: return 0;
+  case 8u: return 24;
+  default: return -1;
+  }
+}
+
+bool CopyBitmapTextureChannelPixels(
+  const Texture2DRef& destinationTexture,
+  int destinationWidth,
+  int destinationHeight,
+  int destinationOriginX,
+  int destinationOriginY,
+  const Texture2DRef& sourceTexture,
+  int sourceWidth,
+  int sourceHeight,
+  int sourceOriginX,
+  int sourceOriginY,
+  int sourceX,
+  int sourceY,
+  int copyWidth,
+  int copyHeight,
+  int destinationX,
+  int destinationY,
+  unsigned int sourceChannel,
+  unsigned int destinationChannel,
+  bool destinationTransparent )
+{
+  if (!destinationTexture || !sourceTexture)
+    return false;
+  const int sourceShift = GetBitmapChannelShift(sourceChannel);
+  const int destinationShift = GetBitmapChannelShift(destinationChannel);
+  if (sourceShift < 0 || destinationShift < 0)
+    return false;
+
+  BitmapCopyRegion region;
+  if (!BuildBitmapCopyRegion(
+        sourceX, sourceY, sourceWidth, sourceHeight, copyWidth, copyHeight,
+        destinationX, destinationY, destinationWidth, destinationHeight, &region))
+  {
+    return false;
+  }
+  if (region.width <= 0 || region.height <= 0)
+    return true;
+
+  nstl::vector<unsigned int> sourcePixels;
+  if (!SnapshotBitmapTextureRegion(
+        sourceTexture, sourceOriginX, sourceOriginY,
+        region.sourceX, region.sourceY, region.width, region.height, &sourcePixels))
+  {
+    return false;
+  }
+
+  const unsigned int destinationMask = 0xFFu << destinationShift;
+  LockedRect destinationRect = destinationTexture->LockRect(0, LOCK_DEFAULT);
+  if (!destinationRect.data)
+    return false;
+  for (int y = 0; y < region.height; ++y)
+  {
+    unsigned char* destinationRow = destinationRect.data +
+      (destinationOriginY + region.destinationY + y) * destinationRect.pitch +
+      (destinationOriginX + region.destinationX) * 4;
+    for (int x = 0; x < region.width; ++x)
+    {
+      const size_t pixelIndex = static_cast<size_t>(y) * region.width + x;
+      const unsigned int sourceValue = (sourcePixels[pixelIndex] >> sourceShift) & 0xFFu;
+      unsigned int destinationArgb = ReadBitmapArgb(destinationRow + x * 4);
+      destinationArgb = (destinationArgb & ~destinationMask) | (sourceValue << destinationShift);
+      if (!destinationTransparent)
+        destinationArgb |= 0xFF000000u;
+      WriteBitmapArgb(destinationRow + x * 4, destinationArgb);
+    }
+  }
+  destinationTexture->UnlockRect(0);
+  return true;
+}
+
+unsigned int ClampBitmapColorTransformChannel(double value)
+{
+  if (!(value > 0.0))
+    return 0u;
+  if (value >= 255.0)
+    return 255u;
+  return static_cast<unsigned int>(value);
+}
+
+bool TransformBitmapTexturePixels(
+  const Texture2DRef& texture,
+  int width,
+  int height,
+  int originX,
+  int originY,
+  int x1,
+  int y1,
+  int x2,
+  int y2,
+  const BitmapColorTransform& transform,
+  bool destinationTransparent )
+{
+  if (!texture)
+    return false;
+
+  x1 = Clamp(x1, 0, width);
+  y1 = Clamp(y1, 0, height);
+  x2 = Clamp(x2, 0, width);
+  y2 = Clamp(y2, 0, height);
+  if (x1 >= x2 || y1 >= y2)
+    return true;
+
+  LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+  if (!lockedRect.data)
+    return false;
+  for (int y = y1; y < y2; ++y)
+  {
+    unsigned char* row = lockedRect.data +
+      (originY + y) * lockedRect.pitch +
+      (originX + x1) * 4;
+    for (int x = x1; x < x2; ++x)
+    {
+      const unsigned int argb = ReadBitmapArgb(row);
+      unsigned int alpha = ClampBitmapColorTransformChannel(
+        ((argb >> 24) & 0xFFu) * transform.alphaMultiplier + transform.alphaOffset);
+      const unsigned int red = ClampBitmapColorTransformChannel(
+        ((argb >> 16) & 0xFFu) * transform.redMultiplier + transform.redOffset);
+      const unsigned int green = ClampBitmapColorTransformChannel(
+        ((argb >> 8) & 0xFFu) * transform.greenMultiplier + transform.greenOffset);
+      const unsigned int blue = ClampBitmapColorTransformChannel(
+        (argb & 0xFFu) * transform.blueMultiplier + transform.blueOffset);
+      if (!destinationTransparent)
+        alpha = 0xFFu;
+      WriteBitmapArgb(row, (alpha << 24) | (red << 16) | (green << 8) | blue);
+      row += 4;
+    }
+  }
+  texture->UnlockRect(0);
+  return true;
+}
+
+unsigned int ClampBitmapMergeMultiplier(unsigned int multiplier)
+{
+  return multiplier > 256u ? 256u : multiplier;
+}
+
+unsigned int MergeBitmapChannel(unsigned int source, unsigned int destination, unsigned int multiplier)
+{
+  return (source * multiplier + destination * (256u - multiplier)) / 256u;
+}
+
+bool MergeBitmapTexturePixels(
+  const Texture2DRef& destinationTexture,
+  int destinationWidth,
+  int destinationHeight,
+  int destinationOriginX,
+  int destinationOriginY,
+  const Texture2DRef& sourceTexture,
+  int sourceWidth,
+  int sourceHeight,
+  int sourceOriginX,
+  int sourceOriginY,
+  int sourceX,
+  int sourceY,
+  int copyWidth,
+  int copyHeight,
+  int destinationX,
+  int destinationY,
+  unsigned int redMultiplier,
+  unsigned int greenMultiplier,
+  unsigned int blueMultiplier,
+  unsigned int alphaMultiplier,
+  bool destinationTransparent )
+{
+  if (!destinationTexture || !sourceTexture)
+    return false;
+
+  BitmapCopyRegion region;
+  if (!BuildBitmapCopyRegion(
+        sourceX, sourceY, sourceWidth, sourceHeight, copyWidth, copyHeight,
+        destinationX, destinationY, destinationWidth, destinationHeight, &region))
+  {
+    return false;
+  }
+  if (region.width <= 0 || region.height <= 0)
+    return true;
+
+  nstl::vector<unsigned int> sourcePixels;
+  if (!SnapshotBitmapTextureRegion(
+        sourceTexture, sourceOriginX, sourceOriginY,
+        region.sourceX, region.sourceY, region.width, region.height, &sourcePixels))
+  {
+    return false;
+  }
+
+  redMultiplier = ClampBitmapMergeMultiplier(redMultiplier);
+  greenMultiplier = ClampBitmapMergeMultiplier(greenMultiplier);
+  blueMultiplier = ClampBitmapMergeMultiplier(blueMultiplier);
+  alphaMultiplier = ClampBitmapMergeMultiplier(alphaMultiplier);
+  LockedRect destinationRect = destinationTexture->LockRect(0, LOCK_DEFAULT);
+  if (!destinationRect.data)
+    return false;
+  for (int y = 0; y < region.height; ++y)
+  {
+    unsigned char* destinationRow = destinationRect.data +
+      (destinationOriginY + region.destinationY + y) * destinationRect.pitch +
+      (destinationOriginX + region.destinationX) * 4;
+    for (int x = 0; x < region.width; ++x)
+    {
+      const size_t pixelIndex = static_cast<size_t>(y) * region.width + x;
+      const unsigned int sourceArgb = sourcePixels[pixelIndex];
+      const unsigned int destinationArgb = ReadBitmapArgb(destinationRow + x * 4);
+      unsigned int alpha = MergeBitmapChannel(
+        (sourceArgb >> 24) & 0xFFu, (destinationArgb >> 24) & 0xFFu, alphaMultiplier);
+      const unsigned int red = MergeBitmapChannel(
+        (sourceArgb >> 16) & 0xFFu, (destinationArgb >> 16) & 0xFFu, redMultiplier);
+      const unsigned int green = MergeBitmapChannel(
+        (sourceArgb >> 8) & 0xFFu, (destinationArgb >> 8) & 0xFFu, greenMultiplier);
+      const unsigned int blue = MergeBitmapChannel(
+        sourceArgb & 0xFFu, destinationArgb & 0xFFu, blueMultiplier);
+      if (!destinationTransparent)
+        alpha = 0xFFu;
+      WriteBitmapArgb(
+        destinationRow + x * 4,
+        (alpha << 24) | (red << 16) | (green << 8) | blue);
+    }
+  }
+  destinationTexture->UnlockRect(0);
+  return true;
+}
+
 } // namespace
 
 } // namespace Render
@@ -711,6 +1034,64 @@ public:
   virtual bool FloodFill( int x, int y, unsigned int argb )
   {
     return FloodFillBitmapTexturePixels(texture, width, height, 0, 0, x, y, argb);
+  }
+
+  virtual bool CopyChannel(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    unsigned int sourceChannel,
+    unsigned int destinationChannel,
+    bool destinationTransparent )
+  {
+    LinuxBitmapInfo* sourceBitmap = dynamic_cast<LinuxBitmapInfo*>(source);
+    if (!sourceBitmap || !sourceBitmap->texture)
+      return false;
+    return CopyBitmapTextureChannelPixels(
+      texture, width, height, 0, 0,
+      sourceBitmap->texture, sourceBitmap->width, sourceBitmap->height, 0, 0,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      sourceChannel, destinationChannel, destinationTransparent);
+  }
+
+  virtual bool ApplyColorTransform(
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    const BitmapColorTransform& transform,
+    bool destinationTransparent )
+  {
+    return TransformBitmapTexturePixels(
+      texture, width, height, 0, 0, x1, y1, x2, y2, transform, destinationTransparent);
+  }
+
+  virtual bool MergePixels(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    unsigned int redMultiplier,
+    unsigned int greenMultiplier,
+    unsigned int blueMultiplier,
+    unsigned int alphaMultiplier,
+    bool destinationTransparent )
+  {
+    LinuxBitmapInfo* sourceBitmap = dynamic_cast<LinuxBitmapInfo*>(source);
+    if (!sourceBitmap || !sourceBitmap->texture)
+      return false;
+    return MergeBitmapTexturePixels(
+      texture, width, height, 0, 0,
+      sourceBitmap->texture, sourceBitmap->width, sourceBitmap->height, 0, 0,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      redMultiplier, greenMultiplier, blueMultiplier, alphaMultiplier, destinationTransparent);
   }
 
   virtual IBitmapInfo* Clone()
@@ -2666,6 +3047,77 @@ public:
     const int originX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
     const int originY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
     return FloodFillBitmapTexturePixels(m_texture, m_width, m_height, originX, originY, x, y, argb);
+  }
+
+  virtual bool CopyChannel(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    unsigned int sourceChannel,
+    unsigned int destinationChannel,
+    bool destinationTransparent )
+  {
+    BitmapInfoD3D* sourceBitmap = dynamic_cast<BitmapInfoD3D*>(source);
+    if (!m_texture || !sourceBitmap || !sourceBitmap->m_texture)
+      return false;
+    const int destinationOriginX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
+    const int destinationOriginY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
+    const int sourceOriginX = static_cast<int>(sourceBitmap->uv1.x * sourceBitmap->m_texture->GetWidth() + 0.5f);
+    const int sourceOriginY = static_cast<int>(sourceBitmap->uv1.y * sourceBitmap->m_texture->GetHeight() + 0.5f);
+    return CopyBitmapTextureChannelPixels(
+      m_texture, m_width, m_height, destinationOriginX, destinationOriginY,
+      sourceBitmap->m_texture, sourceBitmap->m_width, sourceBitmap->m_height, sourceOriginX, sourceOriginY,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      sourceChannel, destinationChannel, destinationTransparent);
+  }
+
+  virtual bool ApplyColorTransform(
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    const BitmapColorTransform& transform,
+    bool destinationTransparent )
+  {
+    if (!m_texture)
+      return false;
+    const int originX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
+    const int originY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
+    return TransformBitmapTexturePixels(
+      m_texture, m_width, m_height, originX, originY,
+      x1, y1, x2, y2, transform, destinationTransparent);
+  }
+
+  virtual bool MergePixels(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    unsigned int redMultiplier,
+    unsigned int greenMultiplier,
+    unsigned int blueMultiplier,
+    unsigned int alphaMultiplier,
+    bool destinationTransparent )
+  {
+    BitmapInfoD3D* sourceBitmap = dynamic_cast<BitmapInfoD3D*>(source);
+    if (!m_texture || !sourceBitmap || !sourceBitmap->m_texture)
+      return false;
+    const int destinationOriginX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
+    const int destinationOriginY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
+    const int sourceOriginX = static_cast<int>(sourceBitmap->uv1.x * sourceBitmap->m_texture->GetWidth() + 0.5f);
+    const int sourceOriginY = static_cast<int>(sourceBitmap->uv1.y * sourceBitmap->m_texture->GetHeight() + 0.5f);
+    return MergeBitmapTexturePixels(
+      m_texture, m_width, m_height, destinationOriginX, destinationOriginY,
+      sourceBitmap->m_texture, sourceBitmap->m_width, sourceBitmap->m_height, sourceOriginX, sourceOriginY,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      redMultiplier, greenMultiplier, blueMultiplier, alphaMultiplier, destinationTransparent);
   }
 
   virtual IBitmapInfo* Clone()

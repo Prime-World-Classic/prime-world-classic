@@ -30016,6 +30016,70 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
       bitmapFloodBarrier == 0xFF556677u &&
       bitmapFloodRight == 0xFF112233u;
   }
+  Strong<Render::IBitmapInfo> bitmapChannelSource = flashRenderer->CreateBitmap(3, 2);
+  Strong<Render::IBitmapInfo> bitmapChannelDestination = flashRenderer->CreateBitmap(3, 2);
+  Strong<Render::IBitmapInfo> bitmapTransformProbe = flashRenderer->CreateBitmap(3, 2);
+  Strong<Render::IBitmapInfo> bitmapMergeSource = flashRenderer->CreateBitmap(1, 1);
+  Strong<Render::IBitmapInfo> bitmapMergeTransparent = flashRenderer->CreateBitmap(1, 1);
+  Strong<Render::IBitmapInfo> bitmapMergeOpaque = flashRenderer->CreateBitmap(1, 1);
+  unsigned int bitmapCopiedColorChannel = 0;
+  unsigned int bitmapCopiedOpaqueAlpha = 0;
+  unsigned int bitmapTransformedPixel = 0;
+  unsigned int bitmapTransformOutside = 0;
+  unsigned int bitmapMergedChannels = 0;
+  unsigned int bitmapMergedOpaqueChannels = 0;
+  bool bitmapChannelOperationsMatch = false;
+  if (bitmapChannelSource && bitmapChannelDestination && bitmapTransformProbe &&
+      bitmapMergeSource && bitmapMergeTransparent && bitmapMergeOpaque)
+  {
+    const bool channelReady =
+      bitmapChannelSource->FillRect(0, 0, 3, 2, 0x80402010u) &&
+      bitmapChannelSource->SetPixel(1, 0, 0xC0112233u) &&
+      bitmapChannelDestination->FillRect(0, 0, 3, 2, 0x40778899u) &&
+      bitmapChannelDestination->CopyChannel(
+        bitmapChannelSource, 0, 0, 3, 1, -1, 0, 1u, 4u, true) &&
+      bitmapChannelDestination->CopyChannel(
+        bitmapChannelSource, 0, 0, 1, 1, 2, 1, 8u, 8u, false) &&
+      bitmapChannelDestination->GetPixel(0, 0, &bitmapCopiedColorChannel) &&
+      bitmapChannelDestination->GetPixel(2, 1, &bitmapCopiedOpaqueAlpha);
+
+    Render::BitmapColorTransform bitmapTransform;
+    bitmapTransform.redMultiplier = 0.5;
+    bitmapTransform.greenMultiplier = 1.5;
+    bitmapTransform.blueMultiplier = 0.25;
+    bitmapTransform.alphaMultiplier = 0.5;
+    bitmapTransform.redOffset = 16.0;
+    bitmapTransform.greenOffset = -16.0;
+    bitmapTransform.blueOffset = 8.0;
+    bitmapTransform.alphaOffset = 32.0;
+    const bool transformReady =
+      bitmapTransformProbe->FillRect(0, 0, 3, 2, 0x80406080u) &&
+      bitmapTransformProbe->ApplyColorTransform(0, 0, 2, 1, bitmapTransform, true) &&
+      bitmapTransformProbe->GetPixel(1, 0, &bitmapTransformedPixel) &&
+      bitmapTransformProbe->GetPixel(2, 0, &bitmapTransformOutside);
+
+    const bool mergeReady =
+      bitmapMergeSource->FillRect(0, 0, 1, 1, 0xC0804020u) &&
+      bitmapMergeTransparent->FillRect(0, 0, 1, 1, 0x4080A0C0u) &&
+      bitmapMergeOpaque->FillRect(0, 0, 1, 1, 0x4080A0C0u) &&
+      bitmapMergeTransparent->MergePixels(
+        bitmapMergeSource, 0, 0, 1, 1, 0, 0, 256u, 128u, 0u, 64u, true) &&
+      bitmapMergeOpaque->MergePixels(
+        bitmapMergeSource, 0, 0, 1, 1, 0, 0, 256u, 128u, 0u, 64u, false) &&
+      bitmapMergeTransparent->GetPixel(0, 0, &bitmapMergedChannels) &&
+      bitmapMergeOpaque->GetPixel(0, 0, &bitmapMergedOpaqueChannels);
+
+    bitmapChannelOperationsMatch =
+      channelReady &&
+      transformReady &&
+      mergeReady &&
+      bitmapCopiedColorChannel == 0x40778811u &&
+      bitmapCopiedOpaqueAlpha == 0xFF778899u &&
+      bitmapTransformedPixel == 0x60308028u &&
+      bitmapTransformOutside == 0x80406080u &&
+      bitmapMergedChannels == 0x608070C0u &&
+      bitmapMergedOpaqueChannels == 0xFF8070C0u;
+  }
   flashRenderer->SetScale9Grid(
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
@@ -30557,7 +30621,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X bitmapCopy=%s/%08X/%08X/%08X/%08X/%08X/%08X bitmapMutate=%s/%08X/%08X/%08X/%08X/%08X/%08X/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X bitmapCopy=%s/%08X/%08X/%08X/%08X/%08X/%08X bitmapMutate=%s/%08X/%08X/%08X/%08X/%08X/%08X/%08X/%08X bitmapChannels=%s/%08X/%08X/%08X/%08X/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30652,6 +30716,13 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     bitmapFloodLeft,
     bitmapFloodBarrier,
     bitmapFloodRight,
+    bitmapChannelOperationsMatch ? "yes" : "no",
+    bitmapCopiedColorChannel,
+    bitmapCopiedOpaqueAlpha,
+    bitmapTransformedPixel,
+    bitmapTransformOutside,
+    bitmapMergedChannels,
+    bitmapMergedOpaqueChannels,
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30688,6 +30759,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     bitmapPixelOperationsMatch &&
     bitmapCopyOperationsMatch &&
     bitmapMutationOperationsMatch &&
+    bitmapChannelOperationsMatch &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
