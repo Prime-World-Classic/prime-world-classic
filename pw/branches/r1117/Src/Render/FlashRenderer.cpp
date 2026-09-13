@@ -304,6 +304,79 @@ public:
   bool IsGradientTexture() const { return gradientTexture; }
   flash::EGradientType::Enum GetGradientType() const { return gradientType; }
 
+  virtual bool GetPixel( int x, int y, unsigned int* argb )
+  {
+    if (!texture || !argb || x < 0 || y < 0 || x >= width || y >= height)
+      return false;
+
+    LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    const unsigned char* pixel = lockedRect.data + y * lockedRect.pitch + x * 4;
+    *argb =
+      (static_cast<unsigned int>(pixel[3]) << 24) |
+      (static_cast<unsigned int>(pixel[2]) << 16) |
+      (static_cast<unsigned int>(pixel[1]) << 8) |
+      static_cast<unsigned int>(pixel[0]);
+    texture->UnlockRect(0);
+    return true;
+  }
+
+  virtual bool SetPixel( int x, int y, unsigned int argb )
+  {
+    if (!texture || x < 0 || y < 0 || x >= width || y >= height)
+      return false;
+
+    LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    unsigned char* pixel = lockedRect.data + y * lockedRect.pitch + x * 4;
+    pixel[0] = static_cast<unsigned char>(argb & 0xFFu);
+    pixel[1] = static_cast<unsigned char>((argb >> 8) & 0xFFu);
+    pixel[2] = static_cast<unsigned char>((argb >> 16) & 0xFFu);
+    pixel[3] = static_cast<unsigned char>((argb >> 24) & 0xFFu);
+    texture->UnlockRect(0);
+    return true;
+  }
+
+  virtual bool FillRect( int x1, int y1, int x2, int y2, unsigned int argb )
+  {
+    if (!texture)
+      return false;
+
+    x1 = Clamp(x1, 0, width);
+    y1 = Clamp(y1, 0, height);
+    x2 = Clamp(x2, 0, width);
+    y2 = Clamp(y2, 0, height);
+    if (x1 >= x2 || y1 >= y2)
+      return true;
+
+    LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    const unsigned char blue = static_cast<unsigned char>(argb & 0xFFu);
+    const unsigned char green = static_cast<unsigned char>((argb >> 8) & 0xFFu);
+    const unsigned char red = static_cast<unsigned char>((argb >> 16) & 0xFFu);
+    const unsigned char alpha = static_cast<unsigned char>((argb >> 24) & 0xFFu);
+    for (int y = y1; y < y2; ++y)
+    {
+      unsigned char* row = lockedRect.data + y * lockedRect.pitch + x1 * 4;
+      for (int x = x1; x < x2; ++x)
+      {
+        row[0] = blue;
+        row[1] = green;
+        row[2] = red;
+        row[3] = alpha;
+        row += 4;
+      }
+    }
+    texture->UnlockRect(0);
+    return true;
+  }
+
   virtual IBitmapInfo* Clone()
   {
     LinuxBitmapInfo* clone = new LinuxBitmapInfo(width, height);
@@ -2137,6 +2210,85 @@ public:
   virtual int GetHeight() const { return m_height; }
   virtual const CVec2& GetUV1() const { return uv1; }
   virtual const CVec2& GetUV2() const { return uv2; }
+
+  virtual bool GetPixel( int x, int y, unsigned int* argb )
+  {
+    if (!m_texture || !argb || x < 0 || y < 0 || x >= m_width || y >= m_height)
+      return false;
+
+    LockedRect lockedRect = m_texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    const int textureX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f) + x;
+    const int textureY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f) + y;
+    const unsigned char* pixel = lockedRect.data + textureY * lockedRect.pitch + textureX * 4;
+    *argb =
+      (static_cast<unsigned int>(pixel[3]) << 24) |
+      (static_cast<unsigned int>(pixel[2]) << 16) |
+      (static_cast<unsigned int>(pixel[1]) << 8) |
+      static_cast<unsigned int>(pixel[0]);
+    m_texture->UnlockRect(0);
+    return true;
+  }
+
+  virtual bool SetPixel( int x, int y, unsigned int argb )
+  {
+    if (!m_texture || x < 0 || y < 0 || x >= m_width || y >= m_height)
+      return false;
+
+    LockedRect lockedRect = m_texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    const int textureX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f) + x;
+    const int textureY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f) + y;
+    unsigned char* pixel = lockedRect.data + textureY * lockedRect.pitch + textureX * 4;
+    pixel[0] = static_cast<unsigned char>(argb & 0xFFu);
+    pixel[1] = static_cast<unsigned char>((argb >> 8) & 0xFFu);
+    pixel[2] = static_cast<unsigned char>((argb >> 16) & 0xFFu);
+    pixel[3] = static_cast<unsigned char>((argb >> 24) & 0xFFu);
+    m_texture->UnlockRect(0);
+    return true;
+  }
+
+  virtual bool FillRect( int x1, int y1, int x2, int y2, unsigned int argb )
+  {
+    if (!m_texture)
+      return false;
+
+    x1 = Clamp(x1, 0, m_width);
+    y1 = Clamp(y1, 0, m_height);
+    x2 = Clamp(x2, 0, m_width);
+    y2 = Clamp(y2, 0, m_height);
+    if (x1 >= x2 || y1 >= y2)
+      return true;
+
+    LockedRect lockedRect = m_texture->LockRect(0, LOCK_DEFAULT);
+    if (!lockedRect.data)
+      return false;
+
+    const int textureX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f) + x1;
+    const int textureY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f) + y1;
+    const unsigned char blue = static_cast<unsigned char>(argb & 0xFFu);
+    const unsigned char green = static_cast<unsigned char>((argb >> 8) & 0xFFu);
+    const unsigned char red = static_cast<unsigned char>((argb >> 16) & 0xFFu);
+    const unsigned char alpha = static_cast<unsigned char>((argb >> 24) & 0xFFu);
+    for (int y = 0; y < y2 - y1; ++y)
+    {
+      unsigned char* row = lockedRect.data + (textureY + y) * lockedRect.pitch + textureX * 4;
+      for (int x = x1; x < x2; ++x)
+      {
+        row[0] = blue;
+        row[1] = green;
+        row[2] = red;
+        row[3] = alpha;
+        row += 4;
+      }
+    }
+    m_texture->UnlockRect(0);
+    return true;
+  }
 
   virtual IBitmapInfo* Clone() 
   {

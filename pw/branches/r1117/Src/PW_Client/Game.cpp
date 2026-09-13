@@ -29909,6 +29909,17 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     uiRenderer->Release();
     return false;
   }
+  Strong<Render::IBitmapInfo> bitmapPixelProbe = flashRenderer->CreateBitmap(2, 2);
+  unsigned int bitmapPixel0 = 0;
+  unsigned int bitmapPixel1 = 0;
+  const bool bitmapPixelOperationsMatch =
+    bitmapPixelProbe &&
+    bitmapPixelProbe->FillRect(0, 0, 2, 2, 0xFF204060u) &&
+    bitmapPixelProbe->SetPixel(1, 0, 0x8044AA22u) &&
+    bitmapPixelProbe->GetPixel(0, 1, &bitmapPixel0) &&
+    bitmapPixelProbe->GetPixel(1, 0, &bitmapPixel1) &&
+    bitmapPixel0 == 0xFF204060u &&
+    bitmapPixel1 == 0x8044AA22u;
   flashRenderer->SetScale9Grid(
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
@@ -30450,7 +30461,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30526,6 +30537,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned int>(alphaBlendPixels[4][0]),
     static_cast<unsigned int>(alphaBlendPixels[4][1]),
     static_cast<unsigned int>(alphaBlendPixels[4][2]),
+    bitmapPixelOperationsMatch ? "yes" : "no",
+    bitmapPixel0,
+    bitmapPixel1,
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30559,6 +30573,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     textureColorMatrixPixelMatches &&
     advancedBlendPixelsMatch &&
     alphaBlendPixelsMatch &&
+    bitmapPixelOperationsMatch &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

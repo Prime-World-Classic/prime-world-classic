@@ -84,6 +84,13 @@ namespace Render
     virtual const CVec2& GetUV1() const = 0;
     virtual const CVec2& GetUV2() const = 0;
 
+    /// Reads one logical bitmap pixel as ActionScript ARGB (`0xAARRGGBB`).
+    virtual bool GetPixel( int x, int y, unsigned int* argb ) = 0;
+    /// Writes one logical bitmap pixel from ActionScript ARGB (`0xAARRGGBB`).
+    virtual bool SetPixel( int x, int y, unsigned int argb ) = 0;
+    /// Fills an exclusive logical rectangle from ActionScript ARGB (`0xAARRGGBB`).
+    virtual bool FillRect( int x1, int y1, int x2, int y2, unsigned int argb ) = 0;
+
     virtual IBitmapInfo* Clone() = 0;
     virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& _matrix, int x1, int y1, int x2, int y2 ) = 0;
   };

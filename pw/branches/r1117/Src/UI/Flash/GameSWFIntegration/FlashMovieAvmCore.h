@@ -1,10 +1,14 @@
 #pragma once
 
 #include <Vendor/Tamarin/source/platform/system-selection.h>
-#include <Vendor/Tamarin/source/platform/win32/win32-platform.h>
-#include <Vendor/Tamarin/source/Core/avmplus.h>
+#if AVMSYSTEM_WIN32
+  #include <Vendor/Tamarin/source/platform/win32/win32-platform.h>
+#elif AVMSYSTEM_UNIX
+  #include <Vendor/Tamarin/source/platform/unix/unix-platform.h>
+#endif
+#include <Vendor/Tamarin/source/core/avmplus.h>
 #include <Vendor/Tamarin/source/MMgc/MMgc.h>
-#include <Vendor/Tamarin/source/Core/AvmCore.h>
+#include <Vendor/Tamarin/source/core/AvmCore.h>
 
 #include "FlashClassesCache.h"
 #include "builtins/BuiltinPools.h"

@@ -611,6 +611,7 @@ add_library(
   ../Core/CoreFSM.cpp
   ../Core/GameCommand.cpp
   ../Core/Transceiver.cpp
+  ../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
   ../PF_GameLogic/DI/DI.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
@@ -1002,6 +1003,15 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/VMPI
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/platform
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/MMgc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/eval
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/pcre
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/shell
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/extensions
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
 )
 
@@ -1064,6 +1074,21 @@ target_compile_definitions(
   PRIVATE
     PW_LINUX_NULL_RENDER
     PW_LINUX_OPENGL_BOOTSTRAP
+)
+
+target_compile_definitions(
+  PrimeWorldLinuxClientRuntimeProbe
+  PRIVATE
+    PW_LINUX_NULL_RENDER
+    PW_LINUX_OPENGL_BOOTSTRAP
+    UNIX
+    USE_REAL2INT
+)
+
+set_source_files_properties(
+  ../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
+  PROPERTIES
+    COMPILE_OPTIONS -fno-exceptions
 )
 
 set_source_files_properties(

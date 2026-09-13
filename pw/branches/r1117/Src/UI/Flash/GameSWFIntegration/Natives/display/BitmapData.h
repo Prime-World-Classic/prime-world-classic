@@ -91,6 +91,9 @@ public:
 private:
   Strong<Render::IBitmapInfo> bitmapInfo;
 
+  // Preserves ActionScript BitmapData alpha-write semantics independently of storage.
+  bool transparent;
+
   DRCWB( BitmapObject* ) parentBitmap;
 
   DECLARE_SLOTS_BitmapDataObject;

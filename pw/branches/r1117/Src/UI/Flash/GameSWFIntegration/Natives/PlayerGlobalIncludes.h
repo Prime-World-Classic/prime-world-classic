@@ -1,9 +1,13 @@
 #pragma once
 #include <Vendor/Tamarin/source/platform/system-selection.h>
-#include <Vendor/Tamarin/source/platform/win32/win32-platform.h>
+#if AVMSYSTEM_WIN32
+  #include <Vendor/Tamarin/source/platform/win32/win32-platform.h>
+#elif AVMSYSTEM_UNIX
+  #include <Vendor/Tamarin/source/platform/unix/unix-platform.h>
+#endif
 #include <Vendor/Tamarin/source/core/avmplus.h>
 
-#include <UI/Flash/GameSWFIntegration/Builtins/NativesBuiltins.h>
+#include <UI/Flash/GameSWFIntegration/builtins/NativesBuiltins.h>
 #include "ClassMacros.h"
 #include <UI/Flash/GameSWFIntegration/SafeGCRoot.h>
 

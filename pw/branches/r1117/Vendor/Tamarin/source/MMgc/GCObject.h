@@ -177,6 +177,7 @@ namespace MMgc
 		friend class ZCT;
     
   public: //Suppress C4291 warning
+    static void operator delete( void * object ) { GCFinalizedObject::operator delete( object ); }
     static void operator delete( void *, GC *, size_t ) {}
     static void operator delete( void *, GC * ) {}
     

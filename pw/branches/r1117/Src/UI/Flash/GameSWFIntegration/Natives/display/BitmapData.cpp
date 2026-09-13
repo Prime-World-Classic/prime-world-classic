@@ -18,13 +18,17 @@ Atom BitmapDataClass::construct(int argc, Atom* argv)
 {
   int _width = 16;
   int _height = 16;
-  bool _transparent = false;
-  uint _fillColor = 1;
+  bool _transparent = true;
+  uint _fillColor = 0xFFFFFFFFu;
 
   if ( argc > 0 )
     _width =  core()->integer_i( argv[1] );
   if ( argc > 1 )
     _height = core()->integer_i( argv[2] );
+  if ( argc > 2 )
+    _transparent = AvmCore::boolean( argv[3] ) != 0;
+  if ( argc > 3 )
+    _fillColor = core()->integer_u( argv[4] );
 
   BitmapDataObject * object = new (core()->GetGC(), ivtable()->getExtraSize()) BitmapDataObject(this, _width, _height, _transparent, _fillColor );
   return object->atom();
@@ -32,25 +36,29 @@ Atom BitmapDataClass::construct(int argc, Atom* argv)
 
 
 BitmapDataObject::BitmapDataObject( BitmapDataClass * classType ) : 
-  FlashScriptObject(classType->ivtable(), classType->prototype )
+  FlashScriptObject(classType->ivtable(), classType->prototype ),
+  transparent(true)
 { 
 
 }
 
 BitmapDataObject::BitmapDataObject( BitmapDataClass * classType,  int width, int height, bool transparent, uint fillColor ) :
-  FlashScriptObject(classType->ivtable(), classType->prototype )
+  FlashScriptObject(classType->ivtable(), classType->prototype ),
+  transparent(true)
 {
   _Init( width, height, transparent, fillColor );
 }
 
 BitmapDataObject::BitmapDataObject( VTable* ivtable, ScriptObject* prototype ) : 
-  FlashScriptObject(ivtable, prototype)
+  FlashScriptObject(ivtable, prototype),
+  transparent(true)
 { 
 
 }
 
 void BitmapDataObject::_Init( int width, int height, bool transparent, uint fillColor )
 {
+  this->transparent = transparent;
   AvmString className = this->vtable->traits->formatClassName();
 
   //check. may be we have data associated with this class
@@ -63,11 +71,17 @@ void BitmapDataObject::_Init( int width, int height, bool transparent, uint fill
   else
   {
     bitmapInfo = FlashCore()->GetMovie()->GetFlashRenderer()->CreateBitmap( width, height );
+    if ( bitmapInfo )
+    {
+      const uint storageColor = transparent ? fillColor : (fillColor | 0xFF000000u);
+      bitmapInfo->FillRect( 0, 0, width, height, storageColor );
+    }
   }
 }
 
 void BitmapDataObject::SetTexture( const Render::Texture2DRef& _texture )
 {
+  transparent = true;
   bitmapInfo = FlashCore()->GetMovie()->GetFlashRenderer()->CreateBitmapFromTexture ( _texture );
 }
 
@@ -84,8 +98,15 @@ void BitmapDataObject::copyPixels(BitmapDataObject* sourceBitmapData, ScriptObje
 
 void BitmapDataObject::setPixel(int x, int y, uint color)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo )
+    return;
+
+  uint currentColor = 0;
+  if ( !bitmapInfo->GetPixel( x, y, &currentColor ) )
+    return;
+
+  const uint alpha = transparent ? (currentColor & 0xFF000000u) : 0xFF000000u;
+  bitmapInfo->SetPixel( x, y, alpha | (color & 0x00FFFFFFu) );
 }
 
 bool BitmapDataObject::hitTest(ScriptObject/*Point*/ * firstPoint, uint firstAlphaThreshold, AvmBox secondObject, ScriptObject/*Point*/ * secondBitmapDataPoint, uint secondAlphaThreshold)
@@ -167,8 +188,10 @@ void BitmapDataObject::copyChannel(BitmapDataObject* sourceBitmapData, ScriptObj
 
 uint BitmapDataObject::getPixel(int x, int y)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (uint)0;
+  uint color = 0;
+  if ( bitmapInfo )
+    bitmapInfo->GetPixel( x, y, &color );
+  return color & 0x00FFFFFFu;
 }
 
 ScriptObject/*Rectangle*/ * BitmapDataObject::generateFilterRect(ScriptObject/*Rectangle*/ * sourceRect, BitmapFilterObject* filter)
@@ -179,14 +202,12 @@ ScriptObject/*Rectangle*/ * BitmapDataObject::generateFilterRect(ScriptObject/*R
 
 bool BitmapDataObject::get_transparent()
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (bool)0;
+  return transparent;
 }
 
 void BitmapDataObject::unlock(ScriptObject/*Rectangle*/ * changeRect)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  (void)changeRect;
 }
 
 void BitmapDataObject::scroll(int x, int y)
@@ -222,6 +243,7 @@ BitmapDataObject* BitmapDataObject::clone()
     avmplus::BitmapDataObject * bitmapData =(avmplus::BitmapDataObject*)((flash::FlashMovieAvmCore*)core())->atomToScriptObject(classInstance->construct(0, args));
 
     bitmapData->SetBitmapInfo( bitmapInfo->Clone() );
+    bitmapData->transparent = transparent;
 
     return bitmapData;
   }
@@ -237,7 +259,7 @@ void BitmapDataObject::_setVector(UIntVectorObject* inputVector, int x, int y, i
 
 void BitmapDataObject::dispose()
 {
-
+  bitmapInfo = 0;
 }
 
 void BitmapDataObject::floodFill(int x, int y, uint color)
@@ -248,8 +270,8 @@ void BitmapDataObject::floodFill(int x, int y, uint color)
 
 void BitmapDataObject::setPixel32(int x, int y, uint color)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( bitmapInfo )
+    bitmapInfo->SetPixel( x, y, transparent ? color : (color | 0xFF000000u) );
 }
 
 AvmBox BitmapDataObject::compare(BitmapDataObject* otherBitmapData)
@@ -292,14 +314,15 @@ uint BitmapDataObject::threshold(BitmapDataObject* sourceBitmapData, ScriptObjec
 
 uint BitmapDataObject::getPixel32(int x, int y)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (uint)0;
+  uint color = 0;
+  if ( bitmapInfo )
+    bitmapInfo->GetPixel( x, y, &color );
+  return color;
 }
 
 void BitmapDataObject::lock()
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  // Texture-backed mutations are committed by each operation; batching is optional.
 }
 
 void BitmapDataObject::setPixels(ScriptObject/*Rectangle*/ * rect, ByteArrayObject* inputByteArray)
