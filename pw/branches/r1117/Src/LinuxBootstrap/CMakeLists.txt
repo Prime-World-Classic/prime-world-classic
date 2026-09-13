@@ -74,7 +74,16 @@ set(
 	../UI/Flash/GameSWFIntegration/TextContainer.cpp
 	../UI/Flash/GameSWFIntegration/TextTagsData.cpp
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
@@ -630,6 +639,12 @@ add_library(
 )
 
 add_library(
+  PrimeWorldLinuxFlashRuntimeProbe
+  OBJECT
+  ${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
+)
+
+add_library(
   PrimeWorldLinuxClientRuntimeProbe
   OBJECT
   ../Client/DefaultScreenBase.cpp
@@ -641,7 +656,6 @@ add_library(
   ../Core/CoreFSM.cpp
   ../Core/GameCommand.cpp
   ../Core/Transceiver.cpp
-  ${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
   ../PF_GameLogic/DI/DI.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
@@ -981,14 +995,18 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
+add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
+
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxSwfProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxFlashRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClientRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
 target_compile_options(PrimeWorldLinuxClient PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxGameplayProbe PRIVATE -fpermissive)
+target_compile_options(PrimeWorldLinuxFlashRuntimeProbe PRIVATE -fpermissive -fno-exceptions)
 target_compile_options(PrimeWorldLinuxClientRuntimeProbe PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxRenderProbe PRIVATE -fpermissive)
 
@@ -1021,6 +1039,27 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxFlashRuntimeProbe
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Game/PF
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/VMPI
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/platform
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/MMgc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/eval
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/pcre
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/shell
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/extensions
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
 )
 
@@ -1099,11 +1138,26 @@ target_include_directories(
     ${FREETYPE_INCLUDE_DIRS}
 )
 
+target_include_directories(
+  PrimeWorldLinuxFlashRuntimeProbe
+  PRIVATE
+    ${FREETYPE_INCLUDE_DIRS}
+)
+
 target_compile_definitions(
   PrimeWorldLinuxClient
   PRIVATE
     PW_LINUX_NULL_RENDER
     PW_LINUX_OPENGL_BOOTSTRAP
+)
+
+target_compile_definitions(
+  PrimeWorldLinuxFlashRuntimeProbe
+  PRIVATE
+    PW_LINUX_NULL_RENDER
+    PW_LINUX_OPENGL_BOOTSTRAP
+    UNIX
+    USE_REAL2INT
 )
 
 target_compile_definitions(
@@ -1113,12 +1167,6 @@ target_compile_definitions(
     PW_LINUX_OPENGL_BOOTSTRAP
     UNIX
     USE_REAL2INT
-)
-
-set_source_files_properties(
-	${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
-  PROPERTIES
-		COMPILE_OPTIONS -fno-exceptions
 )
 
 set_source_files_properties(

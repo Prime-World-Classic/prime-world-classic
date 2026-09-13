@@ -5,6 +5,11 @@
 #include "Tesselate.h"
 #include "MeshSet.h"
 
+#if defined(NI_PLATF_LINUX)
+void* Aligned_MAlloc(size_t size, size_t alignment);
+void Aligned_Free(void* ptr);
+#endif
+
 namespace flash
 {
 
@@ -687,4 +692,3 @@ namespace flash
 	}
 
 }
-
