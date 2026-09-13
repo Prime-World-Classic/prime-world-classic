@@ -61,6 +61,27 @@ set(
   ../../Vendor/Tamarin/source/platform/unix/unixcpuid.cpp
 )
 
+set(
+  PRIMEWORLD_LINUX_TAMARIN_MMGC_SOURCES
+  ../../Vendor/Tamarin/source/MMgc/FixedAlloc.cpp
+  ../../Vendor/Tamarin/source/MMgc/FixedMalloc.cpp
+  ../../Vendor/Tamarin/source/MMgc/GC.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCAlloc.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCAllocObject.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCDebug.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCGlobalNew.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCHashtable.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCHeap.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCLargeAlloc.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCLog.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCMemoryProfiler.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCObject.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCStack.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCTests.cpp
+  ../../Vendor/Tamarin/source/MMgc/GCThreads.cpp
+  ../../Vendor/Tamarin/source/MMgc/ZCT.cpp
+)
+
 add_library(PrimeWorldLinuxTamarinConfig INTERFACE)
 
 target_compile_features(PrimeWorldLinuxTamarinConfig INTERFACE cxx_std_17)
@@ -101,6 +122,18 @@ target_link_libraries(
   PRIVATE
     PrimeWorldLinuxTamarinConfig
 )
+
+add_library(
+  PrimeWorldLinuxTamarinMMgc
+  OBJECT
+  ${PRIMEWORLD_LINUX_TAMARIN_MMGC_SOURCES}
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarinMMgc
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
+add_dependencies(PrimeWorldLinuxTamarinMMgc PrimeWorldLinuxTamarinPlatform)
 
 # Native Flash sources compiled by the Linux client-runtime portability gate.
 # Keep this list backend-neutral so the same implementations remain available
@@ -1063,7 +1096,7 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
-add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinPlatform)
+add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinMMgc)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
