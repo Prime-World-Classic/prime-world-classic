@@ -74,7 +74,13 @@ set(
 	../UI/Flash/GameSWFIntegration/TextContainer.cpp
 	../UI/Flash/GameSWFIntegration/TextTagsData.cpp
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
+	../UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
+	../UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
@@ -85,6 +91,7 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
+	../UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
