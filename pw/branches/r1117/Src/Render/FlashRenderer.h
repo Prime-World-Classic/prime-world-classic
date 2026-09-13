@@ -149,6 +149,9 @@ private:
     bool secondarySmoothing;
     EBitmapWrapMode::Enum secondaryWrapMode;
     Texture2DRef secondaryTexture;
+    bool useColorTransformShader;
+    CVec4 colorMultiplier;
+    CVec4 colorOffset;
     LinuxFlashDisplayState displayState;
     int textPartID;
     Texture2DRef textTexture;
@@ -171,6 +174,9 @@ private:
       , secondaryTextured(false)
       , secondarySmoothing(true)
       , secondaryWrapMode(EBitmapWrapMode::CLAMP)
+      , useColorTransformShader(false)
+      , colorMultiplier(1.0f, 1.0f, 1.0f, 1.0f)
+      , colorOffset(0.0f, 0.0f, 0.0f, 0.0f)
       , textPartID(-1)
       , textWithBevel(false)
       , textBevelColor(0, 0, 0, 255)
@@ -221,6 +227,7 @@ private:
   void TransformPoint(float x, float y, float* outX, float* outY) const;
   void TransformFillUV(const LinuxFlashFillStyle& fillStyle, float x, float y, float* outU, float* outV) const;
   Color TransformColor(const Color& color) const;
+  void CaptureColorTransform(LinuxFlashDrawCommand* command) const;
   const LinuxFlashFillStyle* ApplyFillStylesToCommand(LinuxFlashDrawCommand* command, LinuxFlashFillStyle* morphedFillStyle) const;
   void ResetTransientState();
   void ClearFillStyles();

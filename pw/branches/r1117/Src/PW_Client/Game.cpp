@@ -30023,6 +30023,19 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   postMorphVertices[2].x = 10.0f;
   postMorphVertices[2].y = 236.0f;
   postMorphVertices[2].color = Render::Color(255, 255, 255, 255);
+  Render::ShapeVertex textureColorTransformVertices[3] = {};
+  textureColorTransformVertices[0].x = 24.0f;
+  textureColorTransformVertices[0].y = 118.0f;
+  textureColorTransformVertices[0].color = Render::Color(255, 255, 255, 255);
+  textureColorTransformVertices[1].x = 104.0f;
+  textureColorTransformVertices[1].y = 118.0f;
+  textureColorTransformVertices[1].color = Render::Color(255, 255, 255, 255);
+  textureColorTransformVertices[2].x = 64.0f;
+  textureColorTransformVertices[2].y = 166.0f;
+  textureColorTransformVertices[2].color = Render::Color(255, 255, 255, 255);
+  flash::SWF_CXFORMWITHALPHA textureColorTransform;
+  textureColorTransform.m_[0][0] = 0.25f;
+  textureColorTransform.m_[1][1] = 64.0f;
   Render::Texture2DRef morphStartTexture =
     Render::CreateTexture2D(1, 1, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
   Render::Texture2DRef morphEndTexture =
@@ -30207,6 +30220,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetMorph(0.25f);
   flashRenderer->DrawTriangleList(secondaryTextureMorphVertices, 3, 16);
   flashRenderer->DrawTriangleList(postMorphVertices, 3, 17);
+  flashRenderer->SetColorTransform(textureColorTransform);
+  flashRenderer->SetFillStyleBitmap(morphStartBitmap, morphStartMatrix, EBitmapWrapMode::CLAMP, true);
+  flashRenderer->DrawTriangleList(textureColorTransformVertices, 3, 18);
+  flashRenderer->SetColorTransform(colorTransform);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
@@ -30259,9 +30276,18 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     secondaryTextureMorphPixel[1] <= 8 &&
     secondaryTextureMorphPixel[2] >= 56 && secondaryTextureMorphPixel[2] <= 72 &&
     secondaryTextureMorphPixel[3] >= 247;
+  const int textureColorTransformSampleX = probeViewport[0] + viewportX + static_cast<int>((64.0f / 320.0f) * viewportWidth);
+  const int textureColorTransformSampleY = openGLViewportY + static_cast<int>(((240.0f - 140.0f) / 240.0f) * viewportHeight);
+  unsigned char textureColorTransformPixel[4] = { 0, 0, 0, 0 };
+  glReadPixels(textureColorTransformSampleX, textureColorTransformSampleY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, textureColorTransformPixel);
+  const bool textureColorTransformPixelMatches =
+    textureColorTransformPixel[0] >= 56 && textureColorTransformPixel[0] <= 72 &&
+    textureColorTransformPixel[1] >= 56 && textureColorTransformPixel[1] <= 72 &&
+    textureColorTransformPixel[2] <= 8 &&
+    textureColorTransformPixel[3] >= 247;
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30298,6 +30324,10 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned int>(secondaryTextureMorphPixel[1]),
     static_cast<unsigned int>(secondaryTextureMorphPixel[2]),
     static_cast<unsigned int>(secondaryTextureMorphPixel[3]),
+    static_cast<unsigned int>(textureColorTransformPixel[0]),
+    static_cast<unsigned int>(textureColorTransformPixel[1]),
+    static_cast<unsigned int>(textureColorTransformPixel[2]),
+    static_cast<unsigned int>(textureColorTransformPixel[3]),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30306,17 +30336,17 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 27 &&
-    stats.renderedFlashScissorCommands == 31 &&
+    stats.renderedFlashCommands == 28 &&
+    stats.renderedFlashScissorCommands == 32 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 4 &&
     stats.renderedFlashLineCommands == 2 &&
     stats.renderedFlashLineVertices == 24 &&
     linePixelMatches &&
     scaledLinePixelMatches &&
-    stats.renderedFlashTexturedCommands == 16 &&
+    stats.renderedFlashTexturedCommands == 17 &&
     stats.renderedFlashRepeatCommands == 1 &&
-    stats.renderedFlashClampCommands == 15 &&
+    stats.renderedFlashClampCommands == 16 &&
     stats.renderedFlashScale9Commands == 1 &&
     stats.renderedFlashScale9TexturedCommands == 1 &&
     stats.renderedFlashGradientCommands == 12 &&
@@ -30326,6 +30356,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     morphPixelMatches &&
     primaryTextureMorphPixelMatches &&
     secondaryTextureMorphPixelMatches &&
+    textureColorTransformPixelMatches &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
