@@ -50,6 +50,58 @@ set(
   ../../Vendor/JsonCpp/src/lib_json/json_writer.cpp
 )
 
+set(
+  PRIMEWORLD_LINUX_TAMARIN_PLATFORM_SOURCES
+  ../../Vendor/Tamarin/source/VMPI/MMgcPortUnix.cpp
+  ../../Vendor/Tamarin/source/VMPI/PosixPortUtils.cpp
+  ../../Vendor/Tamarin/source/VMPI/ThreadsPosix.cpp
+  ../../Vendor/Tamarin/source/VMPI/UnixDebugUtils.cpp
+  ../../Vendor/Tamarin/source/platform/unix/MathUtilsUnix.cpp
+  ../../Vendor/Tamarin/source/platform/unix/OSDepUnix.cpp
+  ../../Vendor/Tamarin/source/platform/unix/unixcpuid.cpp
+)
+
+add_library(PrimeWorldLinuxTamarinConfig INTERFACE)
+
+target_compile_features(PrimeWorldLinuxTamarinConfig INTERFACE cxx_std_17)
+target_compile_options(
+  PrimeWorldLinuxTamarinConfig
+  INTERFACE
+    -fpermissive
+    -fno-exceptions
+)
+target_compile_definitions(
+  PrimeWorldLinuxTamarinConfig
+  INTERFACE
+    AVMFEATURE_JIT=0
+    UNIX
+    USE_REAL2INT
+)
+target_include_directories(
+  PrimeWorldLinuxTamarinConfig
+  INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/VMPI
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/platform
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/MMgc
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/eval
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/pcre
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/shell
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/extensions
+)
+
+add_library(
+  PrimeWorldLinuxTamarinPlatform
+  OBJECT
+  ${PRIMEWORLD_LINUX_TAMARIN_PLATFORM_SOURCES}
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarinPlatform
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
+
 # Native Flash sources compiled by the Linux client-runtime portability gate.
 # Keep this list backend-neutral so the same implementations remain available
 # to the existing Windows GameSWFIntegration project.
@@ -654,6 +706,11 @@ add_library(
   OBJECT
   ${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
 )
+target_link_libraries(
+  PrimeWorldLinuxFlashRuntimeProbe
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
 
 add_library(
   PrimeWorldLinuxClientRuntimeProbe
@@ -1006,6 +1063,7 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
+add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinPlatform)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
