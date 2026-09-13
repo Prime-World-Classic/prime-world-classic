@@ -1047,26 +1047,30 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
   const float half = lineWidth * 0.5f;
   const bool mixedMorphFill = command.morph && (command.textured != command.secondaryTextured);
   const Color color = TransformColor(fillStyle && !mixedMorphFill ? Color(255, 255, 255, 255) : lineColor);
+  nstl::vector<CVec2> leftLocal;
+  nstl::vector<CVec2> rightLocal;
   nstl::vector<CVec2> left;
   nstl::vector<CVec2> right;
   nstl::vector<CVec2> leftUV;
   nstl::vector<CVec2> rightUV;
+  leftLocal.resize(points.size());
+  rightLocal.resize(points.size());
   left.resize(points.size());
   right.resize(points.size());
   leftUV.resize(points.size());
   rightUV.resize(points.size());
 
-  // Build one joined screen-space strip so Flash polylines keep continuous corners.
+  // Expand in local shape space before transforming, matching the Windows line path.
   for (unsigned int i = 0; i < points.size(); ++i)
   {
-    CVec2 center = points[i];
+    CVec2 center = localPoints[i];
     CVec2 normal;
     float scale = half;
 
     if (i == 0 || i + 1 == points.size())
     {
-      const CVec2& a = i == 0 ? points[0] : points[points.size() - 2];
-      const CVec2& b = i == 0 ? points[1] : points[points.size() - 1];
+      const CVec2& a = i == 0 ? localPoints[0] : localPoints[localPoints.size() - 2];
+      const CVec2& b = i == 0 ? localPoints[1] : localPoints[localPoints.size() - 1];
       const float dx = b.x - a.x;
       const float dy = b.y - a.y;
       const float len = sqrtf(dx * dx + dy * dy);
@@ -1079,9 +1083,9 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
     }
     else
     {
-      const CVec2& prev = points[i - 1];
-      const CVec2& current = points[i];
-      const CVec2& next = points[i + 1];
+      const CVec2& prev = localPoints[i - 1];
+      const CVec2& current = localPoints[i];
+      const CVec2& next = localPoints[i + 1];
       const float prevDx = current.x - prev.x;
       const float prevDy = current.y - prev.y;
       const float nextDx = next.x - current.x;
@@ -1109,12 +1113,14 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
       }
     }
 
-    left[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
-    right[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
+    leftLocal[i] = CVec2(center.x + normal.x * scale, center.y + normal.y * scale);
+    rightLocal[i] = CVec2(center.x - normal.x * scale, center.y - normal.y * scale);
+    TransformPoint(leftLocal[i].x, leftLocal[i].y, &left[i].x, &left[i].y);
+    TransformPoint(rightLocal[i].x, rightLocal[i].y, &right[i].x, &right[i].y);
     if (fillStyle)
     {
-      TransformLineFillUV(*fillStyle, localPoints[i], points[i], left[i], &leftUV[i].x, &leftUV[i].y);
-      TransformLineFillUV(*fillStyle, localPoints[i], points[i], right[i], &rightUV[i].x, &rightUV[i].y);
+      TransformFillUV(*fillStyle, leftLocal[i].x, leftLocal[i].y, &leftUV[i].x, &leftUV[i].y);
+      TransformFillUV(*fillStyle, rightLocal[i].x, rightLocal[i].y, &rightUV[i].x, &rightUV[i].y);
     }
   }
 
@@ -1165,44 +1171,6 @@ void FlashRenderer::TransformFillUV(const LinuxFlashFillStyle& fillStyle, float 
 
   *outU = fillStyle.matrix.m_[0][0] * x + fillStyle.matrix.m_[0][1] * y + fillStyle.matrix.m_[0][2];
   *outV = fillStyle.matrix.m_[1][0] * x + fillStyle.matrix.m_[1][1] * y + fillStyle.matrix.m_[1][2];
-}
-
-void FlashRenderer::TransformLineFillUV(
-  const LinuxFlashFillStyle& fillStyle,
-  const CVec2& localCenter,
-  const CVec2& transformedCenter,
-  const CVec2& transformedVertex,
-  float* outU,
-  float* outV) const
-{
-  float scaleX = 1.0f;
-  float scaleY = 1.0f;
-  if (scale9GridActive)
-  {
-    const float matrixX = currentMatrix.m_[0][0] * localCenter.x + currentMatrix.m_[0][1] * localCenter.y + currentMatrix.m_[0][2];
-    const float matrixY = currentMatrix.m_[1][0] * localCenter.x + currentMatrix.m_[1][1] * localCenter.y + currentMatrix.m_[1][2];
-    if (scale9ConstX.x < matrixX && matrixX < scale9ConstX.y)
-      scaleX = scale9ConstX.z;
-    if (scale9ConstY.x < matrixY && matrixY < scale9ConstY.y)
-      scaleY = scale9ConstY.z;
-  }
-
-  const float m00 = currentMatrix.m_[0][0] * scaleX;
-  const float m01 = currentMatrix.m_[0][1] * scaleX;
-  const float m10 = currentMatrix.m_[1][0] * scaleY;
-  const float m11 = currentMatrix.m_[1][1] * scaleY;
-  const float determinant = m00 * m11 - m01 * m10;
-  float localX = localCenter.x;
-  float localY = localCenter.y;
-  if (fabsf(determinant) > 0.000001f)
-  {
-    const float deltaX = transformedVertex.x - transformedCenter.x;
-    const float deltaY = transformedVertex.y - transformedCenter.y;
-    localX += (m11 * deltaX - m01 * deltaY) / determinant;
-    localY += (-m10 * deltaX + m00 * deltaY) / determinant;
-  }
-
-  TransformFillUV(fillStyle, localX, localY, outU, outV);
 }
 
 const FlashRenderer::LinuxFlashFillStyle* FlashRenderer::ApplyFillStylesToCommand(
