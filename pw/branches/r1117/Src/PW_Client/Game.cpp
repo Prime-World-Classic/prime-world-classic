@@ -130,10 +130,16 @@
 #include "MeshConverter/SkeletonHeader.h"
 #include "System/LoadingProgress.h"
 #include "UI/DBUI.h"
+#include "UI/Button.h"
 #include "UI/Cursor.h"
 #include "UI/ImageLabel.h"
+#include "UI/RadioButton.h"
+#include "UI/RadioPanel.h"
 #include "UI/Root.h"
 #include "UI/Resolution.h"
+#include "UI/ScrollBar.h"
+#include "UI/ScrollList.h"
+#include "UI/ScrollableWindow.h"
 #include "UI/User.h"
 #include "UI/Window.h"
 #include "UI/Flash/GameSWFIntegration/SwfTypes.h"
@@ -66326,6 +66332,84 @@ void AppendRuntimeInputLog(
   }
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  UI::Window* finalProductionLobbyRoot =
+    IsValid(screenRuntime.gameModeScreen) ?
+      screenRuntime.gameModeScreen->GetMainWindow() :
+      0;
+  UI::Button* finalStartSessionButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::Button*>(finalProductionLobbyRoot->FindChild("Btn_StartSession")) :
+    0;
+  UI::Button* finalStartServerButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::Button*>(finalProductionLobbyRoot->FindChild("Btn_StartServer")) :
+    0;
+  UI::Button* finalRefreshButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::Button*>(finalProductionLobbyRoot->FindChild("BtnRefresh")) :
+    0;
+  UI::ScrollableWindow* finalGamesWindow = finalProductionLobbyRoot ?
+    dynamic_cast<UI::ScrollableWindow*>(finalProductionLobbyRoot->FindChild("Games")) :
+    0;
+  UI::ScrollableWindow* finalMapsWindow = finalProductionLobbyRoot ?
+    dynamic_cast<UI::ScrollableWindow*>(finalProductionLobbyRoot->FindChild("Maps")) :
+    0;
+  UI::ScrollList* finalGamesList = finalGamesWindow ?
+    dynamic_cast<UI::ScrollList*>(finalGamesWindow->FindChild("List")) :
+    0;
+  UI::ScrollList* finalMapsList = finalMapsWindow ?
+    dynamic_cast<UI::ScrollList*>(finalMapsWindow->FindChild("List")) :
+    0;
+  UI::ScrollBar* finalPlayerCountBar = finalProductionLobbyRoot ?
+    dynamic_cast<UI::ScrollBar*>(finalProductionLobbyRoot->FindChild("PlayerCount")) :
+    0;
+  UI::ScrollBar* finalGamesBar = finalGamesWindow ?
+    dynamic_cast<UI::ScrollBar*>(finalGamesWindow->FindChild("ScrollBar")) :
+    0;
+  UI::ScrollBar* finalMapsBar = finalMapsWindow ?
+    dynamic_cast<UI::ScrollBar*>(finalMapsWindow->FindChild("ScrollBar")) :
+    0;
+  UI::RadioPanel* finalJoinModePanel = finalProductionLobbyRoot ?
+    dynamic_cast<UI::RadioPanel*>(finalProductionLobbyRoot->FindChild("Panel")) :
+    0;
+  UI::RadioButton* finalJoinNormalButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::RadioButton*>(finalProductionLobbyRoot->FindChild("JoinModeNormal")) :
+    0;
+  UI::RadioButton* finalJoinReconnectButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::RadioButton*>(finalProductionLobbyRoot->FindChild("JoinModeReconnect")) :
+    0;
+  UI::RadioButton* finalJoinSpectateButton = finalProductionLobbyRoot ?
+    dynamic_cast<UI::RadioButton*>(finalProductionLobbyRoot->FindChild("JoinModeSpectate")) :
+    0;
+  const int finalProductionLobbyLuaSubclasses =
+    (finalProductionLobbyRoot && finalProductionLobbyRoot->IsSubclassed() ? 1 : 0) +
+    (finalStartSessionButton && finalStartSessionButton->IsSubclassed() ? 1 : 0) +
+    (finalStartServerButton && finalStartServerButton->IsSubclassed() ? 1 : 0) +
+    (finalRefreshButton && finalRefreshButton->IsSubclassed() ? 1 : 0) +
+    (finalGamesWindow && finalGamesWindow->IsSubclassed() ? 1 : 0) +
+    (finalMapsWindow && finalMapsWindow->IsSubclassed() ? 1 : 0) +
+    (finalJoinModePanel && finalJoinModePanel->IsSubclassed() ? 1 : 0) +
+    (finalJoinNormalButton && finalJoinNormalButton->IsSubclassed() ? 1 : 0) +
+    (finalJoinReconnectButton && finalJoinReconnectButton->IsSubclassed() ? 1 : 0) +
+    (finalJoinSpectateButton && finalJoinSpectateButton->IsSubclassed() ? 1 : 0);
+  logFile << "  finalProductionLobbyControlTypes="
+          << "buttons:"
+          << (finalStartSessionButton ? 1 : 0) +
+             (finalStartServerButton ? 1 : 0) +
+             (finalRefreshButton ? 1 : 0)
+          << "/3 scrollable:"
+          << (finalGamesWindow ? 1 : 0) + (finalMapsWindow ? 1 : 0)
+          << "/2 lists:"
+          << (finalGamesList ? 1 : 0) + (finalMapsList ? 1 : 0)
+          << "/2 bars:"
+          << (finalPlayerCountBar ? 1 : 0) +
+             (finalGamesBar ? 1 : 0) +
+             (finalMapsBar ? 1 : 0)
+          << "/3 radioPanel:" << (finalJoinModePanel ? 1 : 0)
+          << "/1 radioButtons:"
+          << (finalJoinNormalButton ? 1 : 0) +
+             (finalJoinReconnectButton ? 1 : 0) +
+             (finalJoinSpectateButton ? 1 : 0)
+          << "/3\n";
+  logFile << "  finalProductionLobbyLuaSubclasses="
+          << finalProductionLobbyLuaSubclasses << "/10\n";
   logFile << "  finalVisibleMenuSelectedAction="
           << screenRuntime.visibleMenuSelectedAction << "\n";
   logFile << "  finalVisibleMenuActivatedCount="

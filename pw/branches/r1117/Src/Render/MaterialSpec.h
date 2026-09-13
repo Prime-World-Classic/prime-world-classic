@@ -110,7 +110,22 @@ public:
     debugPinValue = value;
   }
 
+  virtual void SetDisablePin( const NDb::BooleanPin value )
+  {
+    (void)value;
+  }
+
+  virtual void SetHighlightPin( const NDb::BooleanPin value )
+  {
+    (void)value;
+  }
+
   virtual void SetOrientTypePin( const NDb::OrientTypePin value )
+  {
+    (void)value;
+  }
+
+  virtual void SetPressedPin( const NDb::BooleanPin value )
   {
     (void)value;
   }

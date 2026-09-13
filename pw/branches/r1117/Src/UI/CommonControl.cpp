@@ -2,6 +2,7 @@
 #include "CommonControl.h"
 #include "Sound/EventScene.h"
 #include "Render/MaterialSpec.h"
+#include "Render/TextureManager.h"
 
 
 namespace UI

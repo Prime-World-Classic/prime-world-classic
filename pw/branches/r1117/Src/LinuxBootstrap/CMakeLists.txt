@@ -53,6 +53,18 @@ set(
 )
 
 set(
+  PRIMEWORLD_LINUX_LOBBY_UI_SOURCES
+  ../UI/Button.cpp
+  ../UI/CommonControl.cpp
+  ../UI/RadioButton.cpp
+  ../UI/RadioPanel.cpp
+  ../UI/ScrollArea.cpp
+  ../UI/ScrollBar.cpp
+  ../UI/ScrollList.cpp
+  ../UI/ScrollableWindow.cpp
+)
+
+set(
   PRIMEWORLD_LINUX_TAMARIN_PLATFORM_SOURCES
   ../../Vendor/Tamarin/source/VMPI/MMgcPortUnix.cpp
   ../../Vendor/Tamarin/source/VMPI/PosixPortUtils.cpp
@@ -800,6 +812,7 @@ add_executable(
   ../UI/View.cpp
   ../UI/Window.cpp
   ../UI/WindowPointJob.cpp
+  ${PRIMEWORLD_LINUX_LOBBY_UI_SOURCES}
   ../System/ImageDDS.cpp
   ../System/ImageInternal.cpp
   ../System/ImageTGA.cpp
@@ -1145,6 +1158,7 @@ add_library(
   ../UI/User.cpp
   ../UI/View.cpp
   ../UI/WindowPointJob.cpp
+  ${PRIMEWORLD_LINUX_LOBBY_UI_SOURCES}
   ../System/MemoryStream.cpp
 )
 
