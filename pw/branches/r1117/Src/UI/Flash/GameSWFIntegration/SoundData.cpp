@@ -4,8 +4,6 @@
 #include "swf_parse.h"
 #include <math.h>
 
-#include "../../../Sound/SoundScene.h"
-
 /*
 rate5512Hz = 0,
 rate11025Hz = 1,
@@ -82,4 +80,3 @@ void SoundData::Load( SwfStreamReader & streamReader, TagInfo & tagInfo )
 }
 
 NI_DEFINE_REFCOUNT(flash::SoundData);
-

@@ -1,6 +1,10 @@
 #pragma once
 
+#if defined(_WIN32)
 #include <Gl.h>
+#else
+#include <GL/gl.h>
+#endif
 
 namespace flash
 {

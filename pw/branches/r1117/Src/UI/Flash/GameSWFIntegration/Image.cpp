@@ -1,6 +1,6 @@
 #include "TamarinPCH.h"
 
-#include "image.h"
+#include "Image.h"
 
 namespace image
 {
@@ -42,4 +42,3 @@ namespace image
 		return s;
 	}
 }
-

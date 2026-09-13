@@ -2,7 +2,7 @@
 
 #include "SwfStreamReader.h"
 
-#include <System\Math\ieeehalfprecision.h>
+#include <System/Math/ieeehalfprecision.h>
 #include "FlashMovie.h"
 
 namespace flash
@@ -208,10 +208,12 @@ void SwfStreamReader::readUTF8String( nstl::wstring & result )
 
 int SwfStreamReader::readBuffer( UI8 * buffer, int bytesToRead )
 {
-  int actualBytesToRead = min( uint32_t(bytesToRead), swf.getSize() - pos ); 
-
-  if ( actualBytesToRead <= 0 )
+  if ( bytesToRead <= 0 || pos >= swf.getSize() )
     return 0;
+
+  const size_t availableBytes = swf.getSize() - pos;
+  const size_t requestedBytes = static_cast<size_t>( bytesToRead );
+  const int actualBytesToRead = static_cast<int>( min( requestedBytes, availableBytes ) );
 
   memcpy( buffer, (byte*)swf + pos, actualBytesToRead );
   pos += actualBytesToRead;
