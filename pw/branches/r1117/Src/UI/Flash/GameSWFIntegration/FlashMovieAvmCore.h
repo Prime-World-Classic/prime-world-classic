@@ -125,11 +125,7 @@ public:
   
   
 private:
-  void setStackLimit()
-  {
-    uintptr_t minstack = 327680;
-    AvmCore::setStackLimit(minstack);
-  }
+  void setStackLimit();
 
   void InitializePlayerBuiltins();
   avmplus::ScriptEnv * PrepareAndStorePool(avmplus::PoolObject * pool, PoolType::Type poolType);

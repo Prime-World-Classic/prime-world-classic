@@ -946,10 +946,23 @@ target_link_libraries(
     PrimeWorldLinuxTamarinConfig
 )
 
+add_library(
+  PrimeWorldLinuxFlashVmRuntimeProbe
+  OBJECT
+  flash_vm_runtime_probe.cpp
+)
+target_link_libraries(
+  PrimeWorldLinuxFlashVmRuntimeProbe
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
+add_dependencies(PrimeWorldLinuxFlashVmRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
+
 target_sources(
   PrimeWorldLinuxClient
   PRIVATE
     $<TARGET_OBJECTS:PrimeWorldLinuxFlashRuntimeProbe>
+    $<TARGET_OBJECTS:PrimeWorldLinuxFlashVmRuntimeProbe>
 )
 
 add_library(
@@ -1311,11 +1324,13 @@ target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxSwfProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxFlashRuntimeProbe PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxFlashVmRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClientRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
 target_compile_options(PrimeWorldLinuxClient PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxGameplayProbe PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxFlashRuntimeProbe PRIVATE -fpermissive -fno-exceptions)
+target_compile_options(PrimeWorldLinuxFlashVmRuntimeProbe PRIVATE -fpermissive -fno-exceptions)
 target_compile_options(PrimeWorldLinuxClientRuntimeProbe PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxRenderProbe PRIVATE -fpermissive)
 
@@ -1372,6 +1387,16 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/shell
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/extensions
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxFlashVmRuntimeProbe
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../UI/Flash/GameSWFIntegration
 )
 
 target_include_directories(
@@ -1469,6 +1494,15 @@ target_compile_definitions(
 
 target_compile_definitions(
   PrimeWorldLinuxFlashRuntimeProbe
+  PRIVATE
+    PW_LINUX_NULL_RENDER
+    PW_LINUX_OPENGL_BOOTSTRAP
+    UNIX
+    USE_REAL2INT
+)
+
+target_compile_definitions(
+  PrimeWorldLinuxFlashVmRuntimeProbe
   PRIVATE
     PW_LINUX_NULL_RENDER
     PW_LINUX_OPENGL_BOOTSTRAP

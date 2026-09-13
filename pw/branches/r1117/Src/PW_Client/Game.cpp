@@ -137,6 +137,7 @@
 #include "UI/User.h"
 #include "UI/Window.h"
 #include "UI/Flash/GameSWFIntegration/SwfTypes.h"
+#include "LinuxBootstrap/flash_vm_runtime_probe.h"
 #include "libdb/Db.h"
 #include "Version.h"
 #include "Vendor/JsonCpp/include/json/json.h"
@@ -68878,6 +68879,9 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+
+  if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-vm-probe"))
+    return RunPrimeWorldLinuxFlashVmRuntimeProbe() ? 0 : 1;
 
   LinuxClientLaunchSettings settings;
   settings.runSeconds = ReadRunSeconds(argc, argv);

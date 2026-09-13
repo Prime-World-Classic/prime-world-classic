@@ -6,6 +6,9 @@
 #include "Natives/events/Event.h"
 
 #include <cstdio>
+#if defined(__linux__)
+#include <pthread.h>
+#endif
 
 using namespace avmplus;
 
@@ -17,8 +20,11 @@ namespace flash
   FlashMovieAvmCore::FlashMovieAvmCore( MMgc::GC *gc ) : 
     avmplus::AvmCore(gc),
     classesCache(gc),
-    eventTypes(this),
-    movie(0)
+    topLevel(0),
+    domain(0),
+    domainEnv(0),
+    movie(0),
+    eventTypes(this)
   {
     //TODO remove this garbage
     static const uint32_t _min_version_num = 0;
@@ -34,6 +40,29 @@ namespace flash
       _uris_count,
       (const char**) _uris,
       (int32_t*) _api_compat);
+  }
+
+  void FlashMovieAvmCore::setStackLimit()
+  {
+    uintptr_t minstack = 327680;
+
+#if defined(__linux__)
+    pthread_attr_t attributes;
+    if (pthread_getattr_np(pthread_self(), &attributes) == 0)
+    {
+      void* stackBase = 0;
+      size_t stackSize = 0;
+      if (pthread_attr_getstack(&attributes, &stackBase, &stackSize) == 0)
+      {
+        const size_t stackMargin = sizeof(uintptr_t) == 8 ? 262144 : 131072;
+        if (stackSize > stackMargin)
+          minstack = reinterpret_cast<uintptr_t>(stackBase) + stackMargin;
+      }
+      pthread_attr_destroy(&attributes);
+    }
+#endif
+
+    AvmCore::setStackLimit(minstack);
   }
 
   FlashMovieAvmCore::~FlashMovieAvmCore()
@@ -109,10 +138,10 @@ namespace flash
     };*/
 
     scripts.push_back( PrepareAndStorePool( BuiltinPools::GetXMLPool(this) , PoolType::XML) );
-    scripts.push_back( prepareActionPool( BuiltinPools::GetByteArrayPool(this) , topLevel->domainEnv(), topLevel, NULL ) );
+    scripts.push_back( PrepareAndStorePool( BuiltinPools::GetByteArrayPool(this) , PoolType::ByteArray) );
     scripts.push_back( PrepareAndStorePool( BuiltinPools::GetGeomPool(this) , PoolType::Geom)) ;
-    scripts.push_back( prepareActionPool( BuiltinPools::GetNetPool(this) , topLevel->domainEnv(), topLevel, NULL ) );
-    scripts.push_back( prepareActionPool( BuiltinPools::GetTestingPool(this) , topLevel->domainEnv(), topLevel, NULL ) );
+    scripts.push_back( PrepareAndStorePool( BuiltinPools::GetNetPool(this) , PoolType::Net) );
+    scripts.push_back( PrepareAndStorePool( BuiltinPools::GetTestingPool(this) , PoolType::Testing) );
 
     scripts.push_back( PrepareAndStorePool( BuiltinPools::GetEventsPool(this) , PoolType::Events));
     scripts.push_back( PrepareAndStorePool( BuiltinPools::GetSoundPool(this) , PoolType::Sound)) ;

@@ -49,13 +49,14 @@ int main()
     MMGC_GCENTER(&gc);
     allocated = gc.Alloc(64) != 0;
     {
-      ProbeCore core(&gc);
-      core.setActiveAPI(0);
+      ProbeCore* core = new ProbeCore(&gc);
+      core->setActiveAPI(0);
       avmplus::AvmCore::CacheSizes cacheSizes;
-      core.setCacheSizes(cacheSizes);
-      core.initBuiltinPool();
-      builtinPool = core.builtinPool != 0;
-      topLevel = core.initTopLevel() != 0;
+      core->setCacheSizes(cacheSizes);
+      core->initBuiltinPool();
+      builtinPool = core->builtinPool != 0;
+      topLevel = core->initTopLevel() != 0;
+      delete core;
     }
     gc.Collect(false);
   }

@@ -15,6 +15,9 @@ namespace PoolType
     Utils,
     XML,
     Sound,
+    ByteArray,
+    Net,
+    Testing,
 
     Last
   };
@@ -46,4 +49,3 @@ public:
   static PoolObject * GetTestingPool( AvmCore * core );
 };
 }
-
