@@ -4,10 +4,215 @@
 
 #include "stdafx.h"
 
-#if defined(PW_LINUX_NULL_RENDER)
-
 #include "../UI/Flash/GameSWFIntegration/Image.h"
 #include "FlashRenderer.h"
+
+namespace Render
+{
+
+namespace
+{
+
+bool ClipBitmapCopyAxis(
+  int sourceStart,
+  int sourceSize,
+  int destinationStart,
+  int destinationSize,
+  int alphaStart,
+  int alphaSize,
+  bool hasAlpha,
+  int requestedSize,
+  long long* first,
+  long long* last )
+{
+  if (!first || !last || requestedSize <= 0)
+    return false;
+
+  long long clippedFirst = 0;
+  long long clippedLast = requestedSize;
+  const long long sourceFirst = -static_cast<long long>(sourceStart);
+  const long long sourceLast = static_cast<long long>(sourceSize) - sourceStart;
+  const long long destinationFirst = -static_cast<long long>(destinationStart);
+  const long long destinationLast = static_cast<long long>(destinationSize) - destinationStart;
+  if (sourceFirst > clippedFirst)
+    clippedFirst = sourceFirst;
+  if (destinationFirst > clippedFirst)
+    clippedFirst = destinationFirst;
+  if (sourceLast < clippedLast)
+    clippedLast = sourceLast;
+  if (destinationLast < clippedLast)
+    clippedLast = destinationLast;
+
+  if (hasAlpha)
+  {
+    const long long alphaFirst = -static_cast<long long>(alphaStart);
+    const long long alphaLast = static_cast<long long>(alphaSize) - alphaStart;
+    if (alphaFirst > clippedFirst)
+      clippedFirst = alphaFirst;
+    if (alphaLast < clippedLast)
+      clippedLast = alphaLast;
+  }
+
+  *first = clippedFirst;
+  *last = clippedLast;
+  return clippedFirst < clippedLast;
+}
+
+unsigned int ReadBitmapArgb(const unsigned char* pixel)
+{
+  return
+    (static_cast<unsigned int>(pixel[3]) << 24) |
+    (static_cast<unsigned int>(pixel[2]) << 16) |
+    (static_cast<unsigned int>(pixel[1]) << 8) |
+    static_cast<unsigned int>(pixel[0]);
+}
+
+void WriteBitmapArgb(unsigned char* pixel, unsigned int argb)
+{
+  pixel[0] = static_cast<unsigned char>(argb & 0xFFu);
+  pixel[1] = static_cast<unsigned char>((argb >> 8) & 0xFFu);
+  pixel[2] = static_cast<unsigned char>((argb >> 16) & 0xFFu);
+  pixel[3] = static_cast<unsigned char>((argb >> 24) & 0xFFu);
+}
+
+bool CopyBitmapTexturePixels(
+  const Texture2DRef& destinationTexture,
+  int destinationWidth,
+  int destinationHeight,
+  int destinationOriginX,
+  int destinationOriginY,
+  const Texture2DRef& sourceTexture,
+  int sourceWidth,
+  int sourceHeight,
+  int sourceOriginX,
+  int sourceOriginY,
+  int sourceX,
+  int sourceY,
+  int copyWidth,
+  int copyHeight,
+  int destinationX,
+  int destinationY,
+  const Texture2DRef& alphaTexture,
+  int alphaWidth,
+  int alphaHeight,
+  int alphaOriginX,
+  int alphaOriginY,
+  int alphaX,
+  int alphaY,
+  bool mergeAlpha,
+  bool destinationTransparent )
+{
+  if (!destinationTexture || !sourceTexture)
+    return false;
+  if (copyWidth <= 0 || copyHeight <= 0)
+    return true;
+
+  const bool hasAlpha = alphaTexture != 0;
+  long long firstX = 0;
+  long long lastX = 0;
+  long long firstY = 0;
+  long long lastY = 0;
+  if (!ClipBitmapCopyAxis(
+        sourceX, sourceWidth, destinationX, destinationWidth,
+        alphaX, alphaWidth, hasAlpha, copyWidth, &firstX, &lastX) ||
+      !ClipBitmapCopyAxis(
+        sourceY, sourceHeight, destinationY, destinationHeight,
+        alphaY, alphaHeight, hasAlpha, copyHeight, &firstY, &lastY))
+  {
+    return true;
+  }
+
+  const int clippedWidth = static_cast<int>(lastX - firstX);
+  const int clippedHeight = static_cast<int>(lastY - firstY);
+  const int clippedSourceX = static_cast<int>(static_cast<long long>(sourceX) + firstX);
+  const int clippedSourceY = static_cast<int>(static_cast<long long>(sourceY) + firstY);
+  const int clippedDestinationX = static_cast<int>(static_cast<long long>(destinationX) + firstX);
+  const int clippedDestinationY = static_cast<int>(static_cast<long long>(destinationY) + firstY);
+  const int clippedAlphaX = static_cast<int>(static_cast<long long>(alphaX) + firstX);
+  const int clippedAlphaY = static_cast<int>(static_cast<long long>(alphaY) + firstY);
+  const size_t pixelCount = static_cast<size_t>(clippedWidth) * static_cast<size_t>(clippedHeight);
+
+  // Snapshot source data before touching the destination so self-overlapping copies are deterministic.
+  nstl::vector<unsigned int> sourcePixels;
+  sourcePixels.resize(pixelCount);
+  LockedRect sourceRect = sourceTexture->LockRect(0, LOCK_DEFAULT);
+  if (!sourceRect.data)
+    return false;
+  for (int y = 0; y < clippedHeight; ++y)
+  {
+    const unsigned char* sourceRow = sourceRect.data +
+      (sourceOriginY + clippedSourceY + y) * sourceRect.pitch +
+      (sourceOriginX + clippedSourceX) * 4;
+    for (int x = 0; x < clippedWidth; ++x)
+      sourcePixels[static_cast<size_t>(y) * clippedWidth + x] = ReadBitmapArgb(sourceRow + x * 4);
+  }
+  sourceTexture->UnlockRect(0);
+
+  nstl::vector<unsigned char> alphaPixels;
+  if (hasAlpha)
+  {
+    alphaPixels.resize(pixelCount);
+    LockedRect alphaRect = alphaTexture->LockRect(0, LOCK_DEFAULT);
+    if (!alphaRect.data)
+      return false;
+    for (int y = 0; y < clippedHeight; ++y)
+    {
+      const unsigned char* alphaRow = alphaRect.data +
+        (alphaOriginY + clippedAlphaY + y) * alphaRect.pitch +
+        (alphaOriginX + clippedAlphaX) * 4;
+      for (int x = 0; x < clippedWidth; ++x)
+        alphaPixels[static_cast<size_t>(y) * clippedWidth + x] = alphaRow[x * 4 + 3];
+    }
+    alphaTexture->UnlockRect(0);
+  }
+
+  LockedRect destinationRect = destinationTexture->LockRect(0, LOCK_DEFAULT);
+  if (!destinationRect.data)
+    return false;
+  for (int y = 0; y < clippedHeight; ++y)
+  {
+    unsigned char* destinationRow = destinationRect.data +
+      (destinationOriginY + clippedDestinationY + y) * destinationRect.pitch +
+      (destinationOriginX + clippedDestinationX) * 4;
+    for (int x = 0; x < clippedWidth; ++x)
+    {
+      const size_t pixelIndex = static_cast<size_t>(y) * clippedWidth + x;
+      const unsigned int sourceArgb = sourcePixels[pixelIndex];
+      unsigned int sourceAlpha = (sourceArgb >> 24) & 0xFFu;
+      if (hasAlpha)
+        sourceAlpha = (sourceAlpha * alphaPixels[pixelIndex] + 127u) / 255u;
+
+      unsigned int resultAlpha = sourceAlpha;
+      unsigned int resultRed = (sourceArgb >> 16) & 0xFFu;
+      unsigned int resultGreen = (sourceArgb >> 8) & 0xFFu;
+      unsigned int resultBlue = sourceArgb & 0xFFu;
+      if (mergeAlpha)
+      {
+        const unsigned int destinationArgb = ReadBitmapArgb(destinationRow + x * 4);
+        const unsigned int inverseAlpha = 255u - sourceAlpha;
+        resultAlpha = sourceAlpha + ((((destinationArgb >> 24) & 0xFFu) * inverseAlpha + 127u) / 255u);
+        resultRed = (resultRed * sourceAlpha + ((destinationArgb >> 16) & 0xFFu) * inverseAlpha + 127u) / 255u;
+        resultGreen = (resultGreen * sourceAlpha + ((destinationArgb >> 8) & 0xFFu) * inverseAlpha + 127u) / 255u;
+        resultBlue = (resultBlue * sourceAlpha + (destinationArgb & 0xFFu) * inverseAlpha + 127u) / 255u;
+      }
+      if (!destinationTransparent)
+        resultAlpha = 0xFFu;
+
+      WriteBitmapArgb(
+        destinationRow + x * 4,
+        (resultAlpha << 24) | (resultRed << 16) | (resultGreen << 8) | resultBlue);
+    }
+  }
+  destinationTexture->UnlockRect(0);
+  return true;
+}
+
+} // namespace
+
+} // namespace Render
+
+#if defined(PW_LINUX_NULL_RENDER)
+
 #include "TextureManager.h"
 #include "uirenderer.h"
 
@@ -377,6 +582,36 @@ public:
     return true;
   }
 
+  virtual bool CopyPixels(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    IBitmapInfo* alphaSource,
+    int alphaX,
+    int alphaY,
+    bool mergeAlpha,
+    bool destinationTransparent )
+  {
+    LinuxBitmapInfo* sourceBitmap = dynamic_cast<LinuxBitmapInfo*>(source);
+    LinuxBitmapInfo* alphaBitmap = alphaSource ? dynamic_cast<LinuxBitmapInfo*>(alphaSource) : 0;
+    if (!sourceBitmap || !sourceBitmap->texture || (alphaSource && (!alphaBitmap || !alphaBitmap->texture)))
+      return false;
+
+    const Texture2DRef alphaTexture = alphaBitmap ? alphaBitmap->texture : Texture2DRef();
+    return CopyBitmapTexturePixels(
+      texture, width, height, 0, 0,
+      sourceBitmap->texture, sourceBitmap->width, sourceBitmap->height, 0, 0,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      alphaTexture,
+      alphaBitmap ? alphaBitmap->width : 0,
+      alphaBitmap ? alphaBitmap->height : 0,
+      0, 0, alphaX, alphaY, mergeAlpha, destinationTransparent);
+  }
+
   virtual IBitmapInfo* Clone()
   {
     LinuxBitmapInfo* clone = new LinuxBitmapInfo(width, height);
@@ -384,16 +619,7 @@ public:
     clone->gradientType = gradientType;
     if (!texture || !clone->texture)
       return clone;
-
-    LockedRect dstRect = clone->texture->LockRect(0, LOCK_DEFAULT);
-    LockedRect srcRect = texture->LockRect(0, LOCK_DEFAULT);
-    if (dstRect.data && srcRect.data)
-    {
-      for (int y = 0; y < height; ++y)
-        memcpy(dstRect.data + y * dstRect.pitch, srcRect.data + y * srcRect.pitch, width * 4);
-    }
-    texture->UnlockRect(0);
-    clone->texture->UnlockRect(0);
+    clone->CopyPixels(this, 0, 0, width, height, 0, 0, 0, 0, 0, false, true);
     return clone;
   }
 
@@ -2077,10 +2303,7 @@ NI_DEFINE_REFCOUNT( Render::IBitmapInfo );
 
 #else
 
-#include "../UI/Flash/GameSWFIntegration/Image.h"
-
 #include "batch.h"
-#include "FlashRenderer.h"
 #include "MaterialSpec.h"
 #include "smartrenderer.h"
 #include "uirenderer.h"
@@ -2290,22 +2513,48 @@ public:
     return true;
   }
 
-  virtual IBitmapInfo* Clone() 
+  virtual bool CopyPixels(
+    IBitmapInfo* source,
+    int sourceX,
+    int sourceY,
+    int copyWidth,
+    int copyHeight,
+    int destinationX,
+    int destinationY,
+    IBitmapInfo* alphaSource,
+    int alphaX,
+    int alphaY,
+    bool mergeAlpha,
+    bool destinationTransparent )
   {
-    BitmapInfoD3D * cloneBmp = new BitmapInfoD3D();
-    cloneBmp->m_texture = Render::CreateTexture2D( m_width, m_height, 1, RENDER_POOL_MANAGED, FORMAT_A8R8G8B8 );
+    BitmapInfoD3D* sourceBitmap = dynamic_cast<BitmapInfoD3D*>(source);
+    BitmapInfoD3D* alphaBitmap = alphaSource ? dynamic_cast<BitmapInfoD3D*>(alphaSource) : 0;
+    if (!sourceBitmap || !sourceBitmap->m_texture || (alphaSource && (!alphaBitmap || !alphaBitmap->m_texture)))
+      return false;
 
-    LockedRect lockedRectDest = cloneBmp->m_texture->LockRect( 0, LOCK_DEFAULT );
-    LockedRect lockedRectSource = m_texture->LockRect( 0, LOCK_DEFAULT );
+    const int destinationOriginX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
+    const int destinationOriginY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
+    const int sourceOriginX = static_cast<int>(sourceBitmap->uv1.x * sourceBitmap->m_texture->GetWidth() + 0.5f);
+    const int sourceOriginY = static_cast<int>(sourceBitmap->uv1.y * sourceBitmap->m_texture->GetHeight() + 0.5f);
+    const Texture2DRef alphaTexture = alphaBitmap ? alphaBitmap->m_texture : Texture2DRef();
+    const int alphaOriginX = alphaBitmap ? static_cast<int>(alphaBitmap->uv1.x * alphaBitmap->m_texture->GetWidth() + 0.5f) : 0;
+    const int alphaOriginY = alphaBitmap ? static_cast<int>(alphaBitmap->uv1.y * alphaBitmap->m_texture->GetHeight() + 0.5f) : 0;
+    return CopyBitmapTexturePixels(
+      m_texture, m_width, m_height, destinationOriginX, destinationOriginY,
+      sourceBitmap->m_texture, sourceBitmap->m_width, sourceBitmap->m_height, sourceOriginX, sourceOriginY,
+      sourceX, sourceY, copyWidth, copyHeight, destinationX, destinationY,
+      alphaTexture,
+      alphaBitmap ? alphaBitmap->m_width : 0,
+      alphaBitmap ? alphaBitmap->m_height : 0,
+      alphaOriginX, alphaOriginY, alphaX, alphaY, mergeAlpha, destinationTransparent);
+  }
 
-    memcpy( lockedRectDest.data, lockedRectSource.data, m_width * m_height * 4 );
-
-    cloneBmp->m_texture->UnlockRect( 0 );
-    m_texture->UnlockRect( 0 );
-
-    cloneBmp->m_width = m_width;
-    cloneBmp->m_height = m_height;
-
+  virtual IBitmapInfo* Clone()
+  {
+    BitmapInfoD3D* cloneBmp = new BitmapInfoD3D(m_width, m_height);
+    cloneBmp->m_lineID = m_lineID;
+    if (m_texture && cloneBmp->m_texture)
+      cloneBmp->CopyPixels(this, 0, 0, m_width, m_height, 0, 0, 0, 0, 0, false, true);
     return cloneBmp;
   }
 

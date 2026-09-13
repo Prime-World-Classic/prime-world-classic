@@ -29920,6 +29920,55 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     bitmapPixelProbe->GetPixel(1, 0, &bitmapPixel1) &&
     bitmapPixel0 == 0xFF204060u &&
     bitmapPixel1 == 0x8044AA22u;
+  Strong<Render::IBitmapInfo> bitmapCopySource = flashRenderer->CreateBitmap(4, 2);
+  Strong<Render::IBitmapInfo> bitmapCopyDestination = flashRenderer->CreateBitmap(4, 2);
+  Strong<Render::IBitmapInfo> bitmapCopyAlpha = flashRenderer->CreateBitmap(4, 2);
+  unsigned int bitmapMergedPixel0 = 0;
+  unsigned int bitmapMergedPixel1 = 0;
+  unsigned int bitmapMergedSentinel = 0;
+  unsigned int bitmapOpaquePixel = 0;
+  unsigned int bitmapOverlapPixel = 0;
+  unsigned int bitmapClonePixel = 0;
+  bool bitmapCopyOperationsMatch = false;
+  if (bitmapCopySource && bitmapCopyDestination && bitmapCopyAlpha)
+  {
+    const bool sourceReady =
+      bitmapCopySource->FillRect(0, 0, 4, 2, 0xFF101010u) &&
+      bitmapCopySource->SetPixel(0, 0, 0xFF101010u) &&
+      bitmapCopySource->SetPixel(1, 0, 0x80FF0000u) &&
+      bitmapCopySource->SetPixel(2, 0, 0xFF00FF00u) &&
+      bitmapCopySource->SetPixel(3, 0, 0xFF000000u) &&
+      bitmapCopySource->SetPixel(0, 1, 0xFF112233u) &&
+      bitmapCopySource->SetPixel(1, 1, 0xFF445566u) &&
+      bitmapCopySource->SetPixel(2, 1, 0xFF778899u) &&
+      bitmapCopySource->SetPixel(3, 1, 0xFFAABBCCu) &&
+      bitmapCopyDestination->FillRect(0, 0, 4, 2, 0xFF0000FFu) &&
+      bitmapCopyAlpha->FillRect(0, 0, 4, 2, 0x80000000u);
+    const bool clippedMerged = sourceReady && bitmapCopyDestination->CopyPixels(
+      bitmapCopySource, 0, 0, 4, 1, -1, 0, bitmapCopyAlpha, 0, 0, true, true);
+    const bool opaqueCopied = clippedMerged && bitmapCopyDestination->CopyPixels(
+      bitmapCopySource, 1, 0, 1, 1, 3, 1, 0, 0, 0, false, false);
+    const bool overlapCopied = opaqueCopied && bitmapCopySource->CopyPixels(
+      bitmapCopySource, 0, 1, 3, 1, 1, 1, 0, 0, 0, false, true);
+    Strong<Render::IBitmapInfo> bitmapClone = overlapCopied ? bitmapCopySource->Clone() : 0;
+    const bool cloneReady =
+      bitmapClone &&
+      bitmapCopySource->SetPixel(1, 1, 0xFFDEADBEu) &&
+      bitmapClone->GetPixel(1, 1, &bitmapClonePixel);
+    bitmapCopyOperationsMatch =
+      cloneReady &&
+      bitmapCopyDestination->GetPixel(0, 0, &bitmapMergedPixel0) &&
+      bitmapCopyDestination->GetPixel(1, 0, &bitmapMergedPixel1) &&
+      bitmapCopyDestination->GetPixel(3, 0, &bitmapMergedSentinel) &&
+      bitmapCopyDestination->GetPixel(3, 1, &bitmapOpaquePixel) &&
+      bitmapCopySource->GetPixel(3, 1, &bitmapOverlapPixel) &&
+      bitmapMergedPixel0 == 0xFF4000BFu &&
+      bitmapMergedPixel1 == 0xFF00807Fu &&
+      bitmapMergedSentinel == 0xFF0000FFu &&
+      bitmapOpaquePixel == 0xFFFF0000u &&
+      bitmapOverlapPixel == 0xFF778899u &&
+      bitmapClonePixel == 0xFF112233u;
+  }
   flashRenderer->SetScale9Grid(
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
@@ -30461,7 +30510,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X bitmapCopy=%s/%08X/%08X/%08X/%08X/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30540,6 +30589,13 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     bitmapPixelOperationsMatch ? "yes" : "no",
     bitmapPixel0,
     bitmapPixel1,
+    bitmapCopyOperationsMatch ? "yes" : "no",
+    bitmapMergedPixel0,
+    bitmapMergedPixel1,
+    bitmapMergedSentinel,
+    bitmapOpaquePixel,
+    bitmapOverlapPixel,
+    bitmapClonePixel,
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30574,6 +30630,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     advancedBlendPixelsMatch &&
     alphaBlendPixelsMatch &&
     bitmapPixelOperationsMatch &&
+    bitmapCopyOperationsMatch &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

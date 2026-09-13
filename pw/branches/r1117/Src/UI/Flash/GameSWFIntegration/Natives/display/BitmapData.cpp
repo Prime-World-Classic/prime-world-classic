@@ -92,8 +92,38 @@ BitmapDataObject::~BitmapDataObject()
 
 void BitmapDataObject::copyPixels(BitmapDataObject* sourceBitmapData, ScriptObject/*Rectangle*/ * sourceRect, ScriptObject/*Point*/ * destPoint, BitmapDataObject* alphaBitmapData, ScriptObject/*Point*/ * alphaPoint, bool mergeAlpha)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo || !sourceBitmapData || !sourceBitmapData->bitmapInfo || !sourceRect || !destPoint )
+    return;
+
+  const int sourceX = core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "x" ) ) );
+  const int sourceY = core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "y" ) ) );
+  const int width = core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "width" ) ) );
+  const int height = core()->integer_i( sourceRect->getSlotAtom( GetSlotID( sourceRect, "height" ) ) );
+  const int destinationX = core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "x" ) ) );
+  const int destinationY = core()->integer_i( destPoint->getSlotAtom( GetSlotID( destPoint, "y" ) ) );
+
+  Render::IBitmapInfo* alphaInfo = alphaBitmapData ? alphaBitmapData->bitmapInfo.Get() : 0;
+  int alphaX = 0;
+  int alphaY = 0;
+  if ( alphaInfo && alphaPoint )
+  {
+    alphaX = core()->integer_i( alphaPoint->getSlotAtom( GetSlotID( alphaPoint, "x" ) ) );
+    alphaY = core()->integer_i( alphaPoint->getSlotAtom( GetSlotID( alphaPoint, "y" ) ) );
+  }
+
+  bitmapInfo->CopyPixels(
+    sourceBitmapData->bitmapInfo,
+    sourceX,
+    sourceY,
+    width,
+    height,
+    destinationX,
+    destinationY,
+    alphaInfo,
+    alphaX,
+    alphaY,
+    mergeAlpha,
+    transparent );
 }
 
 void BitmapDataObject::setPixel(int x, int y, uint color)

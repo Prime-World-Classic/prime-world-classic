@@ -90,6 +90,20 @@ namespace Render
     virtual bool SetPixel( int x, int y, unsigned int argb ) = 0;
     /// Fills an exclusive logical rectangle from ActionScript ARGB (`0xAARRGGBB`).
     virtual bool FillRect( int x1, int y1, int x2, int y2, unsigned int argb ) = 0;
+    /// Copies a clipped logical rectangle, optionally applying an alpha bitmap and source-over blending.
+    virtual bool CopyPixels(
+      IBitmapInfo* source,
+      int sourceX,
+      int sourceY,
+      int width,
+      int height,
+      int destinationX,
+      int destinationY,
+      IBitmapInfo* alphaSource,
+      int alphaX,
+      int alphaY,
+      bool mergeAlpha,
+      bool destinationTransparent ) = 0;
 
     virtual IBitmapInfo* Clone() = 0;
     virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& _matrix, int x1, int y1, int x2, int y2 ) = 0;
