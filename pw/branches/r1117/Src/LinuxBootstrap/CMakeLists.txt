@@ -55,16 +55,25 @@ set(
 # to the existing Windows GameSWFIntegration project.
 set(
 	PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES
+	../UI/Flash/GameSWFIntegration/ButtonCharacter.cpp
+	../UI/Flash/GameSWFIntegration/Characters.cpp
+	../UI/Flash/GameSWFIntegration/DisplayTags.cpp
+	../UI/Flash/GameSWFIntegration/EditTextCharacter.cpp
+	../UI/Flash/GameSWFIntegration/FontTags.cpp
 	../UI/Flash/GameSWFIntegration/FontsDict.cpp
 	../UI/Flash/GameSWFIntegration/Image.cpp
 	../UI/Flash/GameSWFIntegration/ImageData.cpp
 	../UI/Flash/GameSWFIntegration/JPEGReader.cpp
+	../UI/Flash/GameSWFIntegration/MorphCharacter.cpp
 	../UI/Flash/GameSWFIntegration/MorphData.cpp
 	../UI/Flash/GameSWFIntegration/ShapeData.cpp
 	../UI/Flash/GameSWFIntegration/SoundData.cpp
 	../UI/Flash/GameSWFIntegration/SwfStreamReader.cpp
 	../UI/Flash/GameSWFIntegration/SwfTypes.cpp
+	../UI/Flash/GameSWFIntegration/TextCharacter.cpp
+	../UI/Flash/GameSWFIntegration/TextContainer.cpp
 	../UI/Flash/GameSWFIntegration/TextTagsData.cpp
+	../UI/Flash/GameSWFIntegration/swf_parse.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
