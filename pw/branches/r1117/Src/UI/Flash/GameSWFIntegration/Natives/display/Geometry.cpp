@@ -1,8 +1,8 @@
 #include "TamarinPCH.h"
 
-#include <GLU.h>
+#include <Vendor/Gl/include/GLU.h>
 
-#include "geometry.h"
+#include "Geometry.h"
 
 // void GeomShape::SetStyles(const std::list<FILLSTYLE>* styles)
 // {
@@ -47,13 +47,15 @@ namespace flash
 
 void GeomShape::TessellateGLU()
 {
+	typedef void (CALLBACK *GLUCallbackType)();
+
 	//NOTE: do not invalidate the contents of outline in this function
 	GLUtesselator* tess = gluNewTess();
 
-	gluTessCallback(tess, GLU_TESS_BEGIN_DATA, (void (_stdcall*)())GLUCallbackBegin );
-	gluTessCallback(tess, GLU_TESS_VERTEX_DATA, (void(_stdcall*)())GLUCallbackVertex );
-	gluTessCallback(tess, GLU_TESS_END_DATA, (void(_stdcall*)())GLUCallbackEnd );
-	gluTessCallback(tess, GLU_TESS_COMBINE_DATA, (void(_stdcall*)())GLUCallbackCombine );
+	gluTessCallback(tess, GLU_TESS_BEGIN_DATA, reinterpret_cast<GLUCallbackType>(GLUCallbackBegin) );
+	gluTessCallback(tess, GLU_TESS_VERTEX_DATA, reinterpret_cast<GLUCallbackType>(GLUCallbackVertex) );
+	gluTessCallback(tess, GLU_TESS_END_DATA, reinterpret_cast<GLUCallbackType>(GLUCallbackEnd) );
+	gluTessCallback(tess, GLU_TESS_COMBINE_DATA, reinterpret_cast<GLUCallbackType>(GLUCallbackCombine) );
 	gluTessProperty(tess, GLU_TESS_WINDING_RULE,GLU_TESS_WINDING_ODD);
 	
 	//Let's create a vector of pointers to store temporary coordinates

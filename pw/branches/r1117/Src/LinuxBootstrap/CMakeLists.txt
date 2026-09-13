@@ -323,6 +323,7 @@ set(
 	../UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp
@@ -330,9 +331,13 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/DisplayObject.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/DisplayObjectContainer.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/ear_clip_triangulate_float.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/FlashMeshCollection.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/Geometry.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Graphics.cpp
+	../UI/Flash/GameSWFIntegration/Natives/display/InteractiveObject.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/MeshSet.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp

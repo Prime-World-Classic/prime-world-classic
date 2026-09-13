@@ -1,5 +1,7 @@
 #include "TamarinPCH.h"
 
+#include <cstdio>
+
 #include "Render/FlashRendererInterface.h"
 
 #include "../../FlashMovie.h"
@@ -121,7 +123,7 @@ Atom DisplayObjectObject::toString()
 {
   char pointerStr[32];
 
-  sprintf_s( pointerStr, "[object (%p)", this );
+  std::snprintf( pointerStr, sizeof(pointerStr), "[object (%p)", static_cast<void*>(this) );
 
   AvmCore* core = this->core();
   Stringp s = core->concatStrings(core->newConstantStringLatin1( pointerStr ), get_name());
