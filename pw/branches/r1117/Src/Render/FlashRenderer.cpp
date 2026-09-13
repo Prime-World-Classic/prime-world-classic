@@ -361,6 +361,61 @@ void ApplyLinuxFlashBlendMode(EFlashBlendMode::Enum blendMode)
   }
 }
 
+GLuint ResolveLinuxFlashTexture(const Texture2DRef& texture)
+{
+  if (!texture)
+    return 0;
+
+  texture->EnsureOpenGLTexture();
+  return texture->GetOpenGLTexture();
+}
+
+void BindLinuxFlashTexture(
+  GLenum textureUnit,
+  GLuint texture,
+  bool smoothing,
+  EBitmapWrapMode::Enum wrapMode)
+{
+  glActiveTexture(textureUnit);
+  if (!texture)
+  {
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+    return;
+  }
+
+  glEnable(GL_TEXTURE_2D);
+  glBindTexture(GL_TEXTURE_2D, texture);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, smoothing ? GL_LINEAR : GL_NEAREST);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, smoothing ? GL_LINEAR : GL_NEAREST);
+  // D3D clamp repeats the edge texel; legacy GL_CLAMP blends with the border color.
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP_TO_EDGE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+}
+
+// Unit one blends the end fill over unit zero using the same rate as UIFlashMaterial.
+void ConfigureLinuxFlashMorphTexture(float morphRate)
+{
+  const GLfloat morphColor[4] = { morphRate, morphRate, morphRate, morphRate };
+  glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_INTERPOLATE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_RGB, GL_TEXTURE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_RGB, GL_PREVIOUS);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_RGB, GL_CONSTANT);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_RGB, GL_SRC_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_RGB, GL_SRC_COLOR);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_RGB, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_INTERPOLATE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE0_ALPHA, GL_TEXTURE);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE1_ALPHA, GL_PREVIOUS);
+  glTexEnvi(GL_TEXTURE_ENV, GL_SOURCE2_ALPHA, GL_CONSTANT);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND0_ALPHA, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND1_ALPHA, GL_SRC_ALPHA);
+  glTexEnvi(GL_TEXTURE_ENV, GL_OPERAND2_ALPHA, GL_SRC_ALPHA);
+  glTexEnvfv(GL_TEXTURE_ENV, GL_TEXTURE_ENV_COLOR, morphColor);
+}
+
 void BeginLinuxFlashSubmitMask(int& maskLevel)
 {
   if (maskLevel == 0)
@@ -432,6 +487,8 @@ FlashRenderer::FlashRenderer()
   , scale9ConstX(0.0f, 0.0f, 1.0f, 0.0f)
   , scale9ConstY(0.0f, 0.0f, 1.0f, 0.0f)
   , scale9Trans(1.0f, 1.0f, 0.0f, 0.0f)
+  , morphActive(false)
+  , morphRate(0.0f)
   , lineWidth(1.0f)
   , lineColor(255, 255, 255, 255)
   , nextTextWithBevel(false)
@@ -491,6 +548,8 @@ void FlashRenderer::ResetTransientState()
   scale9ConstX = CVec4(0.0f, 0.0f, 1.0f, 0.0f);
   scale9ConstY = CVec4(0.0f, 0.0f, 1.0f, 0.0f);
   scale9Trans = CVec4(1.0f, 1.0f, 0.0f, 0.0f);
+  morphActive = false;
+  morphRate = 0.0f;
   lineWidth = 1.0f;
   lineColor = Color(255, 255, 255, 255);
 }
@@ -542,6 +601,10 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
   unsigned int renderedScale9TexturedCommands = 0;
   unsigned int renderedGradientCommands = 0;
   unsigned int renderedFocalGradientCommands = 0;
+  unsigned int renderedMorphCommands = 0;
+  unsigned int renderedDualTextureMorphCommands = 0;
+  GLint maxTextureUnits = 1;
+  glGetIntegerv(GL_MAX_TEXTURE_UNITS, &maxTextureUnits);
   int maskLevel = 0;
 
   for (int i = firstElement; i < lastElement; ++i)
@@ -631,13 +694,14 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       if (command.textured)
         ++renderedScale9TexturedCommands;
     }
+    if (command.morph)
+      ++renderedMorphCommands;
 
-    unsigned int openGLTexture = 0;
-    if (command.textured && command.texture)
-    {
-      command.texture->EnsureOpenGLTexture();
-      openGLTexture = command.texture->GetOpenGLTexture();
-    }
+    const GLuint primaryOpenGLTexture = command.textured ? ResolveLinuxFlashTexture(command.texture) : 0;
+    const GLuint secondaryOpenGLTexture = command.secondaryTextured ? ResolveLinuxFlashTexture(command.secondaryTexture) : 0;
+    const bool dualTextureMorph =
+      command.morph && primaryOpenGLTexture && secondaryOpenGLTexture && maxTextureUnits >= 2;
+    const GLuint openGLTexture = primaryOpenGLTexture ? primaryOpenGLTexture : secondaryOpenGLTexture;
 
     if (openGLTexture)
     {
@@ -653,35 +717,56 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       else
         ++renderedClampCommands;
 
-      glEnable(GL_TEXTURE_2D);
-      glBindTexture(GL_TEXTURE_2D, openGLTexture);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, command.smoothing ? GL_LINEAR : GL_NEAREST);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, command.wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP);
-      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, command.wrapMode == EBitmapWrapMode::REPEAT ? GL_REPEAT : GL_CLAMP);
+      BindLinuxFlashTexture(
+        GL_TEXTURE0,
+        openGLTexture,
+        primaryOpenGLTexture ? command.smoothing : command.secondarySmoothing,
+        primaryOpenGLTexture ? command.wrapMode : command.secondaryWrapMode);
+      if (dualTextureMorph)
+      {
+        BindLinuxFlashTexture(
+          GL_TEXTURE1,
+          secondaryOpenGLTexture,
+          command.secondarySmoothing,
+          command.secondaryWrapMode);
+        ConfigureLinuxFlashMorphTexture(command.morphRate);
+        glActiveTexture(GL_TEXTURE0);
+        ++renderedDualTextureMorphCommands;
+      }
     }
     else
-    {
-      glBindTexture(GL_TEXTURE_2D, 0);
-      glDisable(GL_TEXTURE_2D);
-    }
+      BindLinuxFlashTexture(GL_TEXTURE0, 0, true, EBitmapWrapMode::CLAMP);
 
     glBegin(GL_TRIANGLES);
     for (unsigned int vertex = 0; vertex < command.vertices.size(); ++vertex)
     {
       const LinuxFlashDrawVertex& v = command.vertices[vertex];
       glColor4ub(v.color.R, v.color.G, v.color.B, v.color.A);
-      if (openGLTexture)
+      if (dualTextureMorph)
+      {
+        glMultiTexCoord2f(GL_TEXTURE0, v.u, v.v);
+        glMultiTexCoord2f(GL_TEXTURE1, v.u, v.v);
+      }
+      else if (openGLTexture)
         glTexCoord2f(v.u, v.v);
       glVertex2f(v.x, v.y);
     }
     glEnd();
+    if (dualTextureMorph)
+    {
+      BindLinuxFlashTexture(GL_TEXTURE1, 0, true, EBitmapWrapMode::CLAMP);
+      glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+      glActiveTexture(GL_TEXTURE0);
+    }
     ++renderedCommands;
   }
 
   if (renderedCommands > 0 || renderedMaskCommands > 0)
-    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands, renderedScale9TexturedCommands, renderedGradientCommands, renderedFocalGradientCommands);
+    AddLinuxOpenGLUiRendererFlashStats(1, renderedCommands, renderedScissorCommands, renderedMaskCommands, renderedBlendCommands, renderedLineCommands, renderedLineVertices, renderedTexturedCommands, renderedRepeatCommands, renderedClampCommands, renderedScale9Commands, renderedScale9TexturedCommands, renderedGradientCommands, renderedFocalGradientCommands, renderedMorphCommands, renderedDualTextureMorphCommands);
 
+  if (maxTextureUnits >= 2)
+    BindLinuxFlashTexture(GL_TEXTURE1, 0, true, EBitmapWrapMode::CLAMP);
+  glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_2D, 0);
   glDisable(GL_TEXTURE_2D);
   glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -850,11 +935,29 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   if (!vertices || count <= 0)
   {
     ClearFillStyles();
+    morphActive = false;
+    morphRate = 0.0f;
     return;
   }
 
   const LinuxFlashFillStyle* fillStyle = 0;
-  if (primaryFillStyle.enabled)
+  LinuxFlashFillStyle morphedFillStyle;
+  const bool hasDualMorphFill = morphActive && primaryFillStyle.enabled && secondaryFillStyle.enabled;
+  if (hasDualMorphFill)
+  {
+    morphedFillStyle = primaryFillStyle;
+    for (int row = 0; row < 2; ++row)
+    {
+      for (int column = 0; column < 3; ++column)
+      {
+        const float start = primaryFillStyle.matrix.m_[row][column];
+        const float end = secondaryFillStyle.matrix.m_[row][column];
+        morphedFillStyle.matrix.m_[row][column] = start + (end - start) * morphRate;
+      }
+    }
+    fillStyle = &morphedFillStyle;
+  }
+  else if (primaryFillStyle.enabled)
     fillStyle = &primaryFillStyle;
   else if (secondaryFillStyle.enabled)
     fillStyle = &secondaryFillStyle;
@@ -863,6 +966,8 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   command.textured = fillStyle && fillStyle->texture;
   command.smoothing = fillStyle ? fillStyle->smoothing : true;
   command.scale9Grid = scale9GridActive;
+  command.morph = morphActive;
+  command.morphRate = morphRate;
   command.gradientFill = fillStyle && fillStyle->gradientFill;
   command.gradientType = fillStyle ? fillStyle->gradientType : flash::EGradientType::Linear;
   command.wrapMode = fillStyle ? fillStyle->wrapMode : EBitmapWrapMode::CLAMP;
@@ -870,6 +975,13 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
   command.displayState = currentDisplayState;
   if (fillStyle)
     command.texture = fillStyle->texture;
+  if (hasDualMorphFill)
+  {
+    command.secondaryTextured = secondaryFillStyle.texture;
+    command.secondarySmoothing = secondaryFillStyle.smoothing;
+    command.secondaryWrapMode = secondaryFillStyle.wrapMode;
+    command.secondaryTexture = secondaryFillStyle.texture;
+  }
   command.vertices.reserve(count);
 
   for (int i = 0; i < count; ++i)
@@ -886,13 +998,20 @@ void FlashRenderer::DrawTriangleList( ShapeVertex* vertices, int count, int uniq
 
   drawCommands.push_back(command);
   ClearFillStyles();
+  morphActive = false;
+  morphRate = 0.0f;
 }
 
 void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int uniqueID )
 {
   (void)uniqueID;
   if (coords.size() < 2)
+  {
+    ClearFillStyles();
+    morphActive = false;
+    morphRate = 0.0f;
     return;
+  }
 
   nstl::vector<CVec2> points;
   points.reserve(coords.size());
@@ -912,12 +1031,19 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
     points.push_back(CVec2(x, y));
   }
   if (points.size() < 2)
+  {
+    ClearFillStyles();
+    morphActive = false;
+    morphRate = 0.0f;
     return;
+  }
 
   LinuxFlashDrawCommand command;
   command.textured = false;
   command.line = true;
   command.scale9Grid = scale9GridActive;
+  command.morph = morphActive;
+  command.morphRate = morphRate;
   command.blendMode = currentBlendMode;
   command.displayState = currentDisplayState;
   command.vertices.reserve((points.size() - 1) * 6);
@@ -998,6 +1124,9 @@ void FlashRenderer::DrawLineStrip( const nstl::vector<CVec2>& coords, int unique
 
   if (!command.vertices.empty())
     drawCommands.push_back(command);
+  ClearFillStyles();
+  morphActive = false;
+  morphRate = 0.0f;
 }
 
 void FlashRenderer::TransformPoint(float x, float y, float* outX, float* outY) const
@@ -1149,7 +1278,8 @@ void FlashRenderer::AppendBitmapQuad(
 
 void FlashRenderer::SetMorph( float rate )
 {
-  (void)rate;
+  morphActive = true;
+  morphRate = Clamp(rate, 0.0f, 1.0f);
 }
 
 void FlashRenderer::SetScale9Grid( const CVec4& constX, const CVec4& constY, const CVec4& trans )

@@ -29874,8 +29874,8 @@ void ShutdownLinuxRenderBootstrap(LinuxRenderBootstrap* renderBootstrap)
   renderBootstrap->started = false;
 }
 
-// Draws a single queued Flash shape through the native OpenGL UI renderer and checks
-// that the Linux replay path honors the scissored BeginDisplay batch state.
+// Exercises queued Flash commands through the native OpenGL UI renderer and checks
+// replay state, texturing, masking, fill morphing, and framebuffer output.
 bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 {
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
@@ -29983,6 +29983,60 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   focalFillVertices[2].x = 248.0f;
   focalFillVertices[2].y = 168.0f;
   focalFillVertices[2].color = Render::Color(255, 255, 255, 224);
+  Render::ShapeVertex morphFillVertices[3] = {};
+  morphFillVertices[0].x = 260.0f;
+  morphFillVertices[0].y = 184.0f;
+  morphFillVertices[0].color = Render::Color(255, 255, 255, 255);
+  morphFillVertices[1].x = 316.0f;
+  morphFillVertices[1].y = 184.0f;
+  morphFillVertices[1].color = Render::Color(255, 255, 255, 255);
+  morphFillVertices[2].x = 288.0f;
+  morphFillVertices[2].y = 232.0f;
+  morphFillVertices[2].color = Render::Color(255, 255, 255, 255);
+  Render::ShapeVertex postMorphVertices[3] = {};
+  postMorphVertices[0].x = 4.0f;
+  postMorphVertices[0].y = 220.0f;
+  postMorphVertices[0].color = Render::Color(255, 255, 255, 255);
+  postMorphVertices[1].x = 16.0f;
+  postMorphVertices[1].y = 220.0f;
+  postMorphVertices[1].color = Render::Color(255, 255, 255, 255);
+  postMorphVertices[2].x = 10.0f;
+  postMorphVertices[2].y = 236.0f;
+  postMorphVertices[2].color = Render::Color(255, 255, 255, 255);
+  Render::Texture2DRef morphStartTexture =
+    Render::CreateTexture2D(1, 1, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
+  Render::Texture2DRef morphEndTexture =
+    Render::CreateTexture2D(1, 1, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
+  if (morphStartTexture)
+  {
+    Render::LockedRect morphStartRect = morphStartTexture->LockRect(0, Render::LOCK_DEFAULT);
+    if (morphStartRect.data)
+    {
+      morphStartRect.data[0] = 0;
+      morphStartRect.data[1] = 0;
+      morphStartRect.data[2] = 255;
+      morphStartRect.data[3] = 255;
+      morphStartTexture->UnlockRect(0);
+    }
+  }
+  if (morphEndTexture)
+  {
+    Render::LockedRect morphEndRect = morphEndTexture->LockRect(0, Render::LOCK_DEFAULT);
+    if (morphEndRect.data)
+    {
+      morphEndRect.data[0] = 255;
+      morphEndRect.data[1] = 0;
+      morphEndRect.data[2] = 0;
+      morphEndRect.data[3] = 255;
+      morphEndTexture->UnlockRect(0);
+    }
+  }
+  Strong<Render::IBitmapInfo> morphStartBitmap = flashRenderer->CreateBitmapFromTexture(morphStartTexture);
+  Strong<Render::IBitmapInfo> morphEndBitmap = flashRenderer->CreateBitmapFromTexture(morphEndTexture);
+  flash::SWF_MATRIX morphStartMatrix;
+  flash::SWF_MATRIX morphEndMatrix;
+  morphEndMatrix.m_[0][2] = 0.25f;
+  morphEndMatrix.m_[1][2] = 0.25f;
   Render::ShapeVertex scale9ShapeVertices[3] = {};
   scale9ShapeVertices[0].x = 38.0f;
   scale9ShapeVertices[0].y = 92.0f;
@@ -30111,13 +30165,32 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   flashRenderer->SetLineWidth(8.0f);
   flashRenderer->SetLineColor(flash::SWF_RGBA(255, 224, 64, 220));
   flashRenderer->DrawLineStrip(flashLine, 13);
+  flashRenderer->SetFillStyleBitmap(morphStartBitmap, morphStartMatrix, EBitmapWrapMode::CLAMP, true);
+  flashRenderer->SetFillStyleBitmap(morphEndBitmap, morphEndMatrix, EBitmapWrapMode::CLAMP, false);
+  flashRenderer->SetMorph(0.25f);
+  flashRenderer->DrawTriangleList(morphFillVertices, 3, 14);
+  flashRenderer->DrawTriangleList(postMorphVertices, 3, 15);
   flashRenderer->EndDisplay();
 
   uiRenderer->EndQueue();
   uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
 
+  // Flash restores the caller's viewport, so use it to mirror the replay mapping.
+  GLint probeViewport[4] = { 0, 0, 0, 0 };
+  glGetIntegerv(GL_VIEWPORT, probeViewport);
+  const int morphSampleX = probeViewport[0] + viewportX + static_cast<int>((288.0f / 320.0f) * viewportWidth);
+  const int openGLViewportY = probeViewport[1] + probeViewport[3] - viewportY - viewportHeight;
+  const int morphSampleY = openGLViewportY + static_cast<int>(((240.0f - 200.0f) / 240.0f) * viewportHeight);
+  unsigned char morphPixel[4] = { 0, 0, 0, 0 };
+  glReadPixels(morphSampleX, morphSampleY, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, morphPixel);
+  const bool morphPixelMatches =
+    morphPixel[0] >= 183 && morphPixel[0] <= 199 &&
+    morphPixel[1] <= 8 &&
+    morphPixel[2] >= 56 && morphPixel[2] <= 72 &&
+    morphPixel[3] >= 247;
+
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30132,6 +30205,12 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     static_cast<unsigned long>(stats.renderedFlashScale9TexturedCommands),
     static_cast<unsigned long>(stats.renderedFlashGradientCommands),
     static_cast<unsigned long>(stats.renderedFlashFocalGradientCommands),
+    static_cast<unsigned long>(stats.renderedFlashMorphCommands),
+    static_cast<unsigned long>(stats.renderedFlashDualTextureMorphCommands),
+    static_cast<unsigned int>(morphPixel[0]),
+    static_cast<unsigned int>(morphPixel[1]),
+    static_cast<unsigned int>(morphPixel[2]),
+    static_cast<unsigned int>(morphPixel[3]),
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30140,19 +30219,22 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
 
   const bool passed =
     stats.renderedFlashParts == 1 &&
-    stats.renderedFlashCommands == 22 &&
-    stats.renderedFlashScissorCommands == 26 &&
+    stats.renderedFlashCommands == 24 &&
+    stats.renderedFlashScissorCommands == 28 &&
     stats.renderedFlashMaskCommands == 4 &&
     stats.renderedFlashBlendCommands == 4 &&
     stats.renderedFlashLineCommands == 1 &&
     stats.renderedFlashLineVertices == 18 &&
-    stats.renderedFlashTexturedCommands == 12 &&
+    stats.renderedFlashTexturedCommands == 13 &&
     stats.renderedFlashRepeatCommands == 1 &&
-    stats.renderedFlashClampCommands == 11 &&
+    stats.renderedFlashClampCommands == 12 &&
     stats.renderedFlashScale9Commands == 1 &&
     stats.renderedFlashScale9TexturedCommands == 1 &&
     stats.renderedFlashGradientCommands == 12 &&
     stats.renderedFlashFocalGradientCommands == 1 &&
+    stats.renderedFlashMorphCommands == 1 &&
+    stats.renderedFlashDualTextureMorphCommands == 1 &&
+    morphPixelMatches &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&
@@ -30160,7 +30242,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     stats.renderedTextured2DQuads == 5;
   if (!passed)
   {
-    fprintf(stderr, "Flash renderer probe failed: unexpected Flash replay counters.\n");
+    fprintf(stderr, "Flash renderer probe failed: unexpected replay state or framebuffer output.\n");
   }
 
   uiRenderer->Release();

@@ -138,11 +138,17 @@ private:
     bool smoothing;
     bool line;
     bool scale9Grid;
+    bool morph;
+    float morphRate;
     bool gradientFill;
     flash::EGradientType::Enum gradientType;
     EBitmapWrapMode::Enum wrapMode;
     EFlashBlendMode::Enum blendMode;
     Texture2DRef texture;
+    bool secondaryTextured;
+    bool secondarySmoothing;
+    EBitmapWrapMode::Enum secondaryWrapMode;
+    Texture2DRef secondaryTexture;
     LinuxFlashDisplayState displayState;
     int textPartID;
     Texture2DRef textTexture;
@@ -156,10 +162,15 @@ private:
       , smoothing(true)
       , line(false)
       , scale9Grid(false)
+      , morph(false)
+      , morphRate(0.0f)
       , gradientFill(false)
       , gradientType(flash::EGradientType::Linear)
       , wrapMode(EBitmapWrapMode::CLAMP)
       , blendMode(EFlashBlendMode::NORMAL)
+      , secondaryTextured(false)
+      , secondarySmoothing(true)
+      , secondaryWrapMode(EBitmapWrapMode::CLAMP)
       , textPartID(-1)
       , textWithBevel(false)
       , textBevelColor(0, 0, 0, 255)
@@ -229,6 +240,9 @@ private:
   CVec4 scale9ConstX;
   CVec4 scale9ConstY;
   CVec4 scale9Trans;
+  // SetMorph applies to the next shape or line command, matching a Windows batch.
+  bool morphActive;
+  float morphRate;
   float lineWidth;
   Color lineColor;
   LinuxFlashFillStyle primaryFillStyle;
