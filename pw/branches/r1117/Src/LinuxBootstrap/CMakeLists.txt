@@ -321,6 +321,7 @@ set(
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
 	../UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
 	../UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/events_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
@@ -336,6 +337,11 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/display/MorphShape.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Shape.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Tesselate.cpp
+	../UI/Flash/GameSWFIntegration/Natives/events/Event.cpp
+	../UI/Flash/GameSWFIntegration/Natives/events/EventDispatcher.cpp
+	../UI/Flash/GameSWFIntegration/Natives/events/KeyboardEvent.cpp
+	../UI/Flash/GameSWFIntegration/Natives/events/MouseEvent.cpp
+	../UI/Flash/GameSWFIntegration/Natives/events/TimerEvent.cpp
 	../UI/Flash/GameSWFIntegration/Natives/filters/ColorMatrixFilter.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
