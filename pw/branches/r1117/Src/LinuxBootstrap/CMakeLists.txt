@@ -74,6 +74,7 @@ set(
 	../UI/Flash/GameSWFIntegration/TextContainer.cpp
 	../UI/Flash/GameSWFIntegration/TextTagsData.cpp
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
+	../UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BlendMode.cpp
@@ -87,6 +88,9 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
+	../UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp
+	../UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp
+	../UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp
 )
 
 add_executable(
@@ -1051,6 +1055,8 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
+    ${CMAKE_CURRENT_SOURCE_DIR}/../UI/Flash/GameSWFIntegration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../UI/Flash/GameSWFIntegration/Natives
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/VMPI
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/Tamarin/source/platform

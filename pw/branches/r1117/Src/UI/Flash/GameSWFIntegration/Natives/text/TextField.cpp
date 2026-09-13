@@ -1,5 +1,10 @@
 #include "TamarinPCH.h"
 
+#include <System/VirtualKey.h>
+
+#include <wchar.h>
+#include <wctype.h>
+
 #include "TextField.h"
 #include "TextFieldAutoSize.h"
 #include "TextFormat.h"
@@ -336,12 +341,12 @@ void TextFieldObject::OnChar( int ch )
 {
   if ( !iswprint( (wint_t)ch ) )
     return;
-  if ( ch == VK_BACK )
+  if ( ch == NMainFrame::EVirtualKeyCode::Backspace )
     return;
 
   // NUM_TASK
   if ( iswspace( (wint_t)ch ) )
-    if (ch != VK_SPACE)
+    if (ch != NMainFrame::EVirtualKeyCode::Space)
       return;
 
   wchar_t str[2] = { (wchar_t)ch, 0 };
@@ -383,21 +388,21 @@ void TextFieldObject::OnKeyPressed( int code, bool down )
   if ( !down )
     return;
 
-  if ( code == VK_LEFT )
+  if ( code == NMainFrame::EVirtualKeyCode::Left )
     MoveCaret( -1 );
-  else if ( code == VK_RIGHT )
+  else if ( code == NMainFrame::EVirtualKeyCode::Right )
     MoveCaret( +1 );
-  else if ( code == VK_DELETE )
+  else if ( code == NMainFrame::EVirtualKeyCode::Delete )
     ReplaceText( caretIndex, caretIndex + 1, L"" );
-  else if ( code == VK_BACK )
+  else if ( code == NMainFrame::EVirtualKeyCode::Backspace )
   {
     int newCaret = caretIndex - 1;
     ReplaceText( caretIndex - 1, caretIndex, L"" );
     SetCaret( newCaret );
   }
-  else if ( code == VK_HOME )
+  else if ( code == NMainFrame::EVirtualKeyCode::Home )
     SetCaret( 0 );
-  else if ( code == VK_END )
+  else if ( code == NMainFrame::EVirtualKeyCode::End )
     SetCaret( textContainer->Text().size() );
 }
 
