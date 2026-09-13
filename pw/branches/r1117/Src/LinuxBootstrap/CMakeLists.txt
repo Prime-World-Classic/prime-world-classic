@@ -103,6 +103,90 @@ set(
   ../../Vendor/Tamarin/source/pcre/pcre_xclass.cpp
 )
 
+set(
+  PRIMEWORLD_LINUX_TAMARIN_CORE_SOURCES
+  ../../Vendor/Tamarin/source/core/AbcData.cpp
+  ../../Vendor/Tamarin/source/core/AbcEnv.cpp
+  ../../Vendor/Tamarin/source/core/AbcGen.cpp
+  ../../Vendor/Tamarin/source/core/AbcParser.cpp
+  ../../Vendor/Tamarin/source/core/ActionBlockConstants.cpp
+  ../../Vendor/Tamarin/source/core/ArrayClass.cpp
+  ../../Vendor/Tamarin/source/core/ArrayObject.cpp
+  ../../Vendor/Tamarin/source/core/AtomArray.cpp
+  ../../Vendor/Tamarin/source/core/AvmCore.cpp
+  ../../Vendor/Tamarin/source/core/AvmLog.cpp
+  ../../Vendor/Tamarin/source/core/AvmPlusScriptableObject.cpp
+  ../../Vendor/Tamarin/source/core/BigInteger.cpp
+  ../../Vendor/Tamarin/source/core/BooleanClass.cpp
+  ../../Vendor/Tamarin/source/core/BuiltinTraits.cpp
+  ../../Vendor/Tamarin/source/core/ClassClass.cpp
+  ../../Vendor/Tamarin/source/core/ClassClosure.cpp
+  ../../Vendor/Tamarin/source/core/CodegenLIR.cpp
+  ../../Vendor/Tamarin/source/core/Coder.cpp
+  ../../Vendor/Tamarin/source/core/Date.cpp
+  ../../Vendor/Tamarin/source/core/DateClass.cpp
+  ../../Vendor/Tamarin/source/core/DateObject.cpp
+  ../../Vendor/Tamarin/source/core/DescribeTypeClass.cpp
+  ../../Vendor/Tamarin/source/core/Domain.cpp
+  ../../Vendor/Tamarin/source/core/DomainEnv.cpp
+  ../../Vendor/Tamarin/source/core/E4XNode.cpp
+  ../../Vendor/Tamarin/source/core/ErrorClass.cpp
+  ../../Vendor/Tamarin/source/core/ErrorConstants.cpp
+  ../../Vendor/Tamarin/source/core/Exception.cpp
+  ../../Vendor/Tamarin/source/core/FrameState.cpp
+  ../../Vendor/Tamarin/source/core/FunctionClass.cpp
+  ../../Vendor/Tamarin/source/core/IntClass.cpp
+  ../../Vendor/Tamarin/source/core/Interpreter.cpp
+  ../../Vendor/Tamarin/source/core/MathClass.cpp
+  ../../Vendor/Tamarin/source/core/MathUtils.cpp
+  ../../Vendor/Tamarin/source/core/MethodClosure.cpp
+  ../../Vendor/Tamarin/source/core/MethodEnv.cpp
+  ../../Vendor/Tamarin/source/core/MethodInfo.cpp
+  ../../Vendor/Tamarin/source/core/Multiname.cpp
+  ../../Vendor/Tamarin/source/core/MultinameHashtable.cpp
+  ../../Vendor/Tamarin/source/core/Namespace.cpp
+  ../../Vendor/Tamarin/source/core/NamespaceClass.cpp
+  ../../Vendor/Tamarin/source/core/NamespaceSet.cpp
+  ../../Vendor/Tamarin/source/core/NativeFunction.cpp
+  ../../Vendor/Tamarin/source/core/NumberClass.cpp
+  ../../Vendor/Tamarin/source/core/ObjectClass.cpp
+  ../../Vendor/Tamarin/source/core/PoolObject.cpp
+  ../../Vendor/Tamarin/source/core/PrintWriter.cpp
+  ../../Vendor/Tamarin/source/core/QCache.cpp
+  ../../Vendor/Tamarin/source/core/RegExpClass.cpp
+  ../../Vendor/Tamarin/source/core/RegExpObject.cpp
+  ../../Vendor/Tamarin/source/core/Sampler.cpp
+  ../../Vendor/Tamarin/source/core/ScopeChain.cpp
+  ../../Vendor/Tamarin/source/core/ScriptBuffer.cpp
+  ../../Vendor/Tamarin/source/core/ScriptObject.cpp
+  ../../Vendor/Tamarin/source/core/StackTrace.cpp
+  ../../Vendor/Tamarin/source/core/StringBuffer.cpp
+  ../../Vendor/Tamarin/source/core/StringClass.cpp
+  ../../Vendor/Tamarin/source/core/StringObject.cpp
+  ../../Vendor/Tamarin/source/core/Toplevel.cpp
+  ../../Vendor/Tamarin/source/core/Traits.cpp
+  ../../Vendor/Tamarin/source/core/TypeDescriber.cpp
+  ../../Vendor/Tamarin/source/core/UnicodeUtils.cpp
+  ../../Vendor/Tamarin/source/core/VTable.cpp
+  ../../Vendor/Tamarin/source/core/VectorClass.cpp
+  ../../Vendor/Tamarin/source/core/Verifier.cpp
+  ../../Vendor/Tamarin/source/core/WordcodeEmitter.cpp
+  ../../Vendor/Tamarin/source/core/WordcodeTranslator.cpp
+  ../../Vendor/Tamarin/source/core/XMLClass.cpp
+  ../../Vendor/Tamarin/source/core/XMLListClass.cpp
+  ../../Vendor/Tamarin/source/core/XMLListObject.cpp
+  ../../Vendor/Tamarin/source/core/XMLObject.cpp
+  ../../Vendor/Tamarin/source/core/XMLParser16.cpp
+  ../../Vendor/Tamarin/source/core/avm.cpp
+  ../../Vendor/Tamarin/source/core/avmfeatures.cpp
+  ../../Vendor/Tamarin/source/core/avmplusDebugger.cpp
+  ../../Vendor/Tamarin/source/core/avmplusHashtable.cpp
+  ../../Vendor/Tamarin/source/core/avmplusProfiler.cpp
+  ../../Vendor/Tamarin/source/core/instr.cpp
+  ../../Vendor/Tamarin/source/core/peephole.cpp
+  ../../Vendor/Tamarin/source/core/wopcodes.cpp
+)
+
 add_library(PrimeWorldLinuxTamarinConfig INTERFACE)
 
 target_compile_features(PrimeWorldLinuxTamarinConfig INTERFACE cxx_std_17)
@@ -167,6 +251,18 @@ target_link_libraries(
     PrimeWorldLinuxTamarinConfig
 )
 add_dependencies(PrimeWorldLinuxTamarinPcre PrimeWorldLinuxTamarinMMgc)
+
+add_library(
+  PrimeWorldLinuxTamarinCore
+  OBJECT
+  ${PRIMEWORLD_LINUX_TAMARIN_CORE_SOURCES}
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarinCore
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
+add_dependencies(PrimeWorldLinuxTamarinCore PrimeWorldLinuxTamarinPcre)
 
 # Native Flash sources compiled by the Linux client-runtime portability gate.
 # Keep this list backend-neutral so the same implementations remain available
@@ -1129,7 +1225,7 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
-add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinPcre)
+add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinCore)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
