@@ -326,8 +326,12 @@ set(
 	../UI/Flash/GameSWFIntegration/builtins/filters_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/geom_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/net_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/sound_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/system_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/text_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/testing_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/ui_builtin.cpp
+	../UI/Flash/GameSWFIntegration/builtins/utils_builtin.cpp
 	../UI/Flash/GameSWFIntegration/builtins/xml_builtin.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/Bitmap.cpp
 	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
@@ -359,9 +363,16 @@ set(
 	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
 	../UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
+	../UI/Flash/GameSWFIntegration/Natives/media/Sound.cpp
+	../UI/Flash/GameSWFIntegration/Natives/system/ApplicationDomain.cpp
+	../UI/Flash/GameSWFIntegration/Natives/system/FSCommand.cpp
 	../UI/Flash/GameSWFIntegration/Natives/text/StaticText.cpp
 	../UI/Flash/GameSWFIntegration/Natives/text/TextField.cpp
 	../UI/Flash/GameSWFIntegration/Natives/text/TextFieldAutoSize.cpp
+	../UI/Flash/GameSWFIntegration/Natives/testing/CoreWrapper.cpp
+	../UI/Flash/GameSWFIntegration/Natives/testing/TestingFacility.cpp
+	../UI/Flash/GameSWFIntegration/Natives/utils/Timer.cpp
+	../UI/Flash/GameSWFIntegration/Natives/utils/UtilsScripts.cpp
 )
 
 add_executable(
