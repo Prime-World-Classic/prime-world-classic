@@ -50,6 +50,17 @@ set(
   ../../Vendor/JsonCpp/src/lib_json/json_writer.cpp
 )
 
+# Native Flash sources compiled by the Linux client-runtime portability gate.
+# Keep this list backend-neutral so the same implementations remain available
+# to the existing Windows GameSWFIntegration project.
+set(
+	PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES
+	../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
+	../UI/Flash/GameSWFIntegration/Natives/geom/Matrix3D.cpp
+	../UI/Flash/GameSWFIntegration/Natives/geom/PerspectiveProjection.cpp
+	../UI/Flash/GameSWFIntegration/Natives/geom/Transform.cpp
+)
+
 add_executable(
   PrimeWorldLinuxBootstrap
   main.cpp
@@ -611,7 +622,7 @@ add_library(
   ../Core/CoreFSM.cpp
   ../Core/GameCommand.cpp
   ../Core/Transceiver.cpp
-  ../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
+  ${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
   ../PF_GameLogic/DI/DI.cpp
   ../PF_GameLogic/PFAuraEffect.cpp
   ../PF_GameLogic/PFEffectRandom.cpp
@@ -1086,9 +1097,9 @@ target_compile_definitions(
 )
 
 set_source_files_properties(
-  ../UI/Flash/GameSWFIntegration/Natives/display/BitmapData.cpp
+	${PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES}
   PROPERTIES
-    COMPILE_OPTIONS -fno-exceptions
+		COMPILE_OPTIONS -fno-exceptions
 )
 
 set_source_files_properties(
