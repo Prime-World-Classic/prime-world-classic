@@ -3,7 +3,14 @@
 #include "SwfStreamReader.h"
 #include "JPEGReader.h"
 
+#if defined( NI_PLATF_LINUX )
+extern "C"
+{
 #include <Vendor/jpeglib/include/jpeglib.h>
+}
+#else
+#include <Vendor/jpeglib/include/jpeglib.h>
+#endif
 
 namespace jpegreader
 {
@@ -239,4 +246,3 @@ IInput* CreateHeaderOnly( flash::SwfStreamReader * streamReader )
 }
 
 }
-

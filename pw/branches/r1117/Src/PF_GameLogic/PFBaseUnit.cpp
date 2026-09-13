@@ -35,7 +35,6 @@ void luaValueSetter::Set(lua_State* L, const ILuaValueSettable& value) { value.S
 void luaValueSetter::Set(lua_State* L, const CVec2& value) { (void)L; (void)value; }
 void luaValueSetter::Set(lua_State* L, const CVec3& value) { (void)L; (void)value; }
 
-bool IsProcessorStateForLogic() { return false; }
 
 namespace NDebug
 {

@@ -61,14 +61,18 @@
 
 //#include <string.h>
 
+#if defined(_MSC_VER)
 #pragma warning(disable:4127) //conditional expression is constant
+#endif
 
 // Macros ---------------------------------------------------------------------
 
-#define  INT16_TYPE          short
-#define UINT16_TYPE unsigned short
-#define  INT32_TYPE          long
-#define UINT32_TYPE unsigned long
+#include <stdint.h>
+
+#define  INT16_TYPE  int16_t
+#define UINT16_TYPE uint16_t
+#define  INT32_TYPE  int32_t
+#define UINT32_TYPE uint32_t
 
 #define NULL 0
 

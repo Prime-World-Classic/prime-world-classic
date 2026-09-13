@@ -1314,15 +1314,6 @@ nstl::string GenerateDebugFileName(const char* suffix, const char* extension, co
 }
 }
 
-namespace utils
-{
-bool GetMemoryStatus(size_t& virtualSize)
-{
-  virtualSize = 0;
-  return false;
-}
-}
-
 namespace NWorld
 {
 string GetRandomHeroSkin(uint, const NDb::AdvMapDescription*, NRandom::RandomGenerator&, NCore::ETeam::Enum)

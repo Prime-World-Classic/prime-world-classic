@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(PrimeWorldLinuxBootstrap LANGUAGES CXX)
+project(PrimeWorldLinuxBootstrap LANGUAGES C CXX)
 
 find_package(Threads REQUIRED)
 
@@ -276,8 +276,9 @@ add_library(
 )
 target_link_libraries(
   PrimeWorldLinuxTamarin
-  PUBLIC
+  PRIVATE
     PrimeWorldLinuxTamarinConfig
+  PUBLIC
     Threads::Threads
     ${CMAKE_DL_LIBS}
 )
@@ -289,6 +290,7 @@ add_executable(
 target_link_libraries(
   PrimeWorldLinuxTamarinRuntimeProbe
   PRIVATE
+    PrimeWorldLinuxTamarinConfig
     -Wl,--whole-archive
     PrimeWorldLinuxTamarin
     -Wl,--no-whole-archive
@@ -764,8 +766,10 @@ add_executable(
   ../System/Stream.cpp
   ../System/StrProc.cpp
   ../System/NameMap.cpp
+  ../System/SyncProcessorState.cpp
   ../System/SystemLog.cpp
   ../System/Transform.cpp
+  ../System/Math/ieeehalfprecision.c
   ../Sound/DummySound.cpp
   ../UI/Cursor.cpp
   ../UI/DebugDraw.cpp
@@ -823,6 +827,7 @@ add_executable(
   ${PRIMEWORLD_LINUX_DB_SOURCES}
   ${PRIMEWORLD_LINUX_LIBDB_SOURCES}
   ${PRIMEWORLD_LINUX_JSONCPP_SOURCES}
+  flash_runtime_link_support.cpp
   runtime_stubs.cpp
 )
 
@@ -939,6 +944,12 @@ target_link_libraries(
   PrimeWorldLinuxFlashRuntimeProbe
   PRIVATE
     PrimeWorldLinuxTamarinConfig
+)
+
+target_sources(
+  PrimeWorldLinuxClient
+  PRIVATE
+    $<TARGET_OBJECTS:PrimeWorldLinuxFlashRuntimeProbe>
 )
 
 add_library(
@@ -1399,6 +1410,7 @@ find_package(X11 REQUIRED)
 set(OpenGL_GL_PREFERENCE LEGACY)
 find_package(OpenGL REQUIRED)
 find_package(Freetype REQUIRED)
+find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
@@ -1414,9 +1426,13 @@ target_link_libraries(
   PRIVATE
     X11::X11
     OpenGL::GL
+    OpenGL::GLU
     ${FREETYPE_LIBRARIES}
+    JPEG::JPEG
     ZLIB::ZLIB
     ${PNG_LIBRARIES}
+    PrimeWorldLinuxTamarin
+    m
 )
 
 target_link_libraries(

@@ -1,5 +1,8 @@
 #include "stdafx.h"
 
+#include "../Scene/DBScene.h"
+#include "SoundScene.h"
+
 namespace FMOD
 {
 class Event;
@@ -22,3 +25,7 @@ namespace NSoundScene
   bool EventStop( FMOD::Event *pEvent, bool immediatly = false ) { return false; }
   bool SetEventPos( FMOD::Event * pEvent, const CVec3 * pPosition ) { return false; }
 }
+
+#if defined( NI_PLATF_LINUX )
+BASIC_REGISTER_CLASS(NSoundScene::ISimpleSound)
+#endif
