@@ -306,6 +306,11 @@ set(
 	../UI/Flash/GameSWFIntegration/EditTextCharacter.cpp
 	../UI/Flash/GameSWFIntegration/FontTags.cpp
 	../UI/Flash/GameSWFIntegration/FontsDict.cpp
+	../UI/Flash/GameSWFIntegration/FlashBaseClasses.cpp
+	../UI/Flash/GameSWFIntegration/FlashEnterFunction.cpp
+	../UI/Flash/GameSWFIntegration/FlashMovie.cpp
+	../UI/Flash/GameSWFIntegration/FlashMovieAvmCore.cpp
+	../UI/Flash/GameSWFIntegration/FlashPlayer.cpp
 	../UI/Flash/GameSWFIntegration/Image.cpp
 	../UI/Flash/GameSWFIntegration/ImageData.cpp
 	../UI/Flash/GameSWFIntegration/JPEGReader.cpp
@@ -318,6 +323,7 @@ set(
 	../UI/Flash/GameSWFIntegration/TextCharacter.cpp
 	../UI/Flash/GameSWFIntegration/TextContainer.cpp
 	../UI/Flash/GameSWFIntegration/TextTagsData.cpp
+	../UI/Flash/GameSWFIntegration/TamarinPCH.cpp
 	../UI/Flash/GameSWFIntegration/swf_parse.cpp
 	../UI/Flash/GameSWFIntegration/builtins/ByteArray_builtin_Wrapper.cpp
 	../UI/Flash/GameSWFIntegration/builtins/accessibility_builtin.cpp

@@ -9,7 +9,7 @@
 
 #include "FontsRenderInterface.h"
 
-#include "Natives/display/Loaderinfo.h"
+#include "Natives/display/LoaderInfo.h"
 #include "Natives/display/MovieClip.h"
 #include "Natives/display/Bitmap.h"
 #include "Natives/display/BitmapData.h"
@@ -39,6 +39,8 @@
 
 #include "System/InlineProfiler.h"
 #include <Render/NullRenderSignal.h>
+
+#include <cstdio>
 
 //FIXME: We dont have special place for these
 NI_DEFINE_REFCOUNT( flash::IFontInstance );
@@ -1459,7 +1461,7 @@ avmplus::DisplayObjectObject* Movie::CreateObjectByCharacter( int characterId, P
   // set default name
   {
     static char name[100];
-    sprintf_s( name, "Character_%d", characterId );
+    std::snprintf( name, sizeof(name), "Character_%d", characterId );
     newDisplayObject->set_name( core->newStringLatin1( name ) );
   }
   

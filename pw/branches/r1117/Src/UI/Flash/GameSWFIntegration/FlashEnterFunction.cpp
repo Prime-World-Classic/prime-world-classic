@@ -19,6 +19,7 @@ FlashEnterFunction::~FlashEnterFunction()
 
 void FlashEnterFunction::SaveFloatState()
 {
+#if !defined( NI_PLATF_LINUX )
   WORD _nFPUStatus;
 
   __asm 
@@ -26,6 +27,7 @@ void FlashEnterFunction::SaveFloatState()
     fstcw _nFPUStatus
     wait
   }
+#endif
 
   nFPUStatus = GetProcessorState();
 

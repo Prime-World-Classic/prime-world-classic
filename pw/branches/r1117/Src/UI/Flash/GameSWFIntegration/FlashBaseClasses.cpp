@@ -2,6 +2,8 @@
 
 #include "FlashBaseClasses.h"
 
+#include <cstring>
+
 
 namespace avmplus
 {
@@ -227,8 +229,12 @@ ScriptObject* FlashScriptObject::FindChild( ScriptObject* _parentObject, const c
   if ( nextPos )
   {
     char pathPart[1000];
-    strncpy_s( pathPart, path, nextPos - path );
-    pathPart[ nextPos - path ] = 0;
+    const size_t pathPartLength = static_cast<size_t>( nextPos - path );
+    if ( pathPartLength >= sizeof( pathPart ) )
+      return 0;
+
+    std::memcpy( pathPart, path, pathPartLength );
+    pathPart[pathPartLength] = 0;
     ScriptObject* next = _parentObject->core()->atomToScriptObject( GetMultinamePropertyFromObject( _parentObject, pathPart ) );
     
     if ( next )

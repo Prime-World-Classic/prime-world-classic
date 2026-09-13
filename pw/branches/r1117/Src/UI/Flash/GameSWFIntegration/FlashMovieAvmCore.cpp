@@ -5,6 +5,8 @@
 
 #include "Natives/events/Event.h"
 
+#include <cstdio>
+
 using namespace avmplus;
 
 namespace flash
@@ -237,7 +239,7 @@ namespace flash
   {
     static int instanceIndex = 0;
     static char name[100];
-    sprintf_s(name,"instance%d",instanceIndex);
+    std::snprintf(name, sizeof(name), "instance%d", instanceIndex);
     instanceIndex++;
     return newStringLatin1(name);
   }
