@@ -29969,6 +29969,53 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
       bitmapOverlapPixel == 0xFF778899u &&
       bitmapClonePixel == 0xFF112233u;
   }
+  Strong<Render::IBitmapInfo> bitmapMutationProbe = flashRenderer->CreateBitmap(6, 4);
+  Strong<Render::IBitmapInfo> bitmapFloodProbe = flashRenderer->CreateBitmap(6, 4);
+  unsigned int bitmapRectInside = 0;
+  unsigned int bitmapRectOutside = 0;
+  unsigned int bitmapScrollPixel0 = 0;
+  unsigned int bitmapScrollPixel2 = 0;
+  unsigned int bitmapScrollExposed = 0;
+  unsigned int bitmapFloodLeft = 0;
+  unsigned int bitmapFloodBarrier = 0;
+  unsigned int bitmapFloodRight = 0;
+  bool bitmapMutationOperationsMatch = false;
+  if (bitmapMutationProbe && bitmapFloodProbe)
+  {
+    const bool rectangleReady =
+      bitmapMutationProbe->FillRect(0, 0, 6, 4, 0xFF102030u) &&
+      bitmapMutationProbe->FillRect(-2, 1, 3, 3, 0x804488CCu) &&
+      bitmapMutationProbe->GetPixel(2, 2, &bitmapRectInside) &&
+      bitmapMutationProbe->GetPixel(3, 2, &bitmapRectOutside);
+    const bool scrollReady =
+      rectangleReady &&
+      bitmapMutationProbe->SetPixel(0, 0, 0xFFA00001u) &&
+      bitmapMutationProbe->SetPixel(1, 0, 0xFFB00002u) &&
+      bitmapMutationProbe->SetPixel(2, 0, 0xFFC00003u) &&
+      bitmapMutationProbe->SetPixel(3, 0, 0xFFD00004u) &&
+      bitmapMutationProbe->Scroll(1, 1) &&
+      bitmapMutationProbe->GetPixel(1, 1, &bitmapScrollPixel0) &&
+      bitmapMutationProbe->GetPixel(3, 1, &bitmapScrollPixel2) &&
+      bitmapMutationProbe->GetPixel(3, 0, &bitmapScrollExposed);
+    const bool floodReady =
+      bitmapFloodProbe->FillRect(0, 0, 6, 4, 0xFF112233u) &&
+      bitmapFloodProbe->FillRect(2, 0, 3, 4, 0xFF556677u) &&
+      bitmapFloodProbe->FloodFill(0, 0, 0x40708090u) &&
+      bitmapFloodProbe->GetPixel(1, 3, &bitmapFloodLeft) &&
+      bitmapFloodProbe->GetPixel(2, 2, &bitmapFloodBarrier) &&
+      bitmapFloodProbe->GetPixel(3, 2, &bitmapFloodRight);
+    bitmapMutationOperationsMatch =
+      scrollReady &&
+      floodReady &&
+      bitmapRectInside == 0x804488CCu &&
+      bitmapRectOutside == 0xFF102030u &&
+      bitmapScrollPixel0 == 0xFFA00001u &&
+      bitmapScrollPixel2 == 0xFFC00003u &&
+      bitmapScrollExposed == 0xFFD00004u &&
+      bitmapFloodLeft == 0x40708090u &&
+      bitmapFloodBarrier == 0xFF556677u &&
+      bitmapFloodRight == 0xFF112233u;
+  }
   flashRenderer->SetScale9Grid(
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
     CVec4(-1000.0f, -900.0f, 2.0f, 100.0f),
@@ -30510,7 +30557,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
   const Render::LinuxOpenGLUiRendererStats& stats = Render::GetLinuxOpenGLUiRendererStats();
-  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X bitmapCopy=%s/%08X/%08X/%08X/%08X/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
+  fprintf(stdout, "Flash renderer probe: parts=%lu commands=%lu scissor=%lu mask=%lu blend=%lu line=%lu/%lu/%u,%u,%u,%u/%u,%u,%u,%u/aa:%u,%u,%u,%u flashTex=%lu/%lu/%lu scale9=%lu/%lu gradient=%lu/%lu morph=%lu/%lu/%u,%u,%u,%u mixed=%u,%u,%u,%u/%u,%u,%u,%u cxform=%u,%u,%u,%u matrix=%u,%u,%u,%u advanced=%u,%u,%u,%u/%u,%u,%u,%u/%u,%u,%u,%u alphaBlend=%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u/%u,%u,%u bitmapData=%s/%08X/%08X bitmapCopy=%s/%08X/%08X/%08X/%08X/%08X/%08X bitmapMutate=%s/%08X/%08X/%08X/%08X/%08X/%08X/%08X/%08X render2D=%lu text=%lu/%lu textured=%lu/%lu\n",
     static_cast<unsigned long>(stats.renderedFlashParts),
     static_cast<unsigned long>(stats.renderedFlashCommands),
     static_cast<unsigned long>(stats.renderedFlashScissorCommands),
@@ -30596,6 +30643,15 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     bitmapOpaquePixel,
     bitmapOverlapPixel,
     bitmapClonePixel,
+    bitmapMutationOperationsMatch ? "yes" : "no",
+    bitmapRectInside,
+    bitmapRectOutside,
+    bitmapScrollPixel0,
+    bitmapScrollPixel2,
+    bitmapScrollExposed,
+    bitmapFloodLeft,
+    bitmapFloodBarrier,
+    bitmapFloodRight,
     static_cast<unsigned long>(stats.render2DCalls),
     static_cast<unsigned long>(stats.queued2DTextQuads),
     static_cast<unsigned long>(stats.rendered2DTextQuads),
@@ -30631,6 +30687,7 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     alphaBlendPixelsMatch &&
     bitmapPixelOperationsMatch &&
     bitmapCopyOperationsMatch &&
+    bitmapMutationOperationsMatch &&
     stats.render2DCalls == 1 &&
     stats.queued2DTextQuads == 1 &&
     stats.rendered2DTextQuads == 5 &&

@@ -207,6 +207,93 @@ bool CopyBitmapTexturePixels(
   return true;
 }
 
+bool FloodFillBitmapTexturePixels(
+  const Texture2DRef& texture,
+  int width,
+  int height,
+  int originX,
+  int originY,
+  int seedX,
+  int seedY,
+  unsigned int replacementArgb )
+{
+  if (!texture || seedX < 0 || seedY < 0 || seedX >= width || seedY >= height)
+    return false;
+
+  LockedRect lockedRect = texture->LockRect(0, LOCK_DEFAULT);
+  if (!lockedRect.data)
+    return false;
+
+  unsigned char* seedPixel = lockedRect.data +
+    (originY + seedY) * lockedRect.pitch +
+    (originX + seedX) * 4;
+  const unsigned int targetArgb = ReadBitmapArgb(seedPixel);
+  if (targetArgb == replacementArgb)
+  {
+    texture->UnlockRect(0);
+    return true;
+  }
+
+  nstl::vector<size_t> pendingPixels;
+  WriteBitmapArgb(seedPixel, replacementArgb);
+  pendingPixels.push_back(static_cast<size_t>(seedY) * width + seedX);
+  while (!pendingPixels.empty())
+  {
+    const size_t pixelIndex = pendingPixels.back();
+    pendingPixels.pop_back();
+    const int pixelX = static_cast<int>(pixelIndex % width);
+    const int pixelY = static_cast<int>(pixelIndex / width);
+
+    if (pixelX > 0)
+    {
+      unsigned char* neighbor = lockedRect.data +
+        (originY + pixelY) * lockedRect.pitch +
+        (originX + pixelX - 1) * 4;
+      if (ReadBitmapArgb(neighbor) == targetArgb)
+      {
+        WriteBitmapArgb(neighbor, replacementArgb);
+        pendingPixels.push_back(pixelIndex - 1);
+      }
+    }
+    if (pixelX + 1 < width)
+    {
+      unsigned char* neighbor = lockedRect.data +
+        (originY + pixelY) * lockedRect.pitch +
+        (originX + pixelX + 1) * 4;
+      if (ReadBitmapArgb(neighbor) == targetArgb)
+      {
+        WriteBitmapArgb(neighbor, replacementArgb);
+        pendingPixels.push_back(pixelIndex + 1);
+      }
+    }
+    if (pixelY > 0)
+    {
+      unsigned char* neighbor = lockedRect.data +
+        (originY + pixelY - 1) * lockedRect.pitch +
+        (originX + pixelX) * 4;
+      if (ReadBitmapArgb(neighbor) == targetArgb)
+      {
+        WriteBitmapArgb(neighbor, replacementArgb);
+        pendingPixels.push_back(pixelIndex - width);
+      }
+    }
+    if (pixelY + 1 < height)
+    {
+      unsigned char* neighbor = lockedRect.data +
+        (originY + pixelY + 1) * lockedRect.pitch +
+        (originX + pixelX) * 4;
+      if (ReadBitmapArgb(neighbor) == targetArgb)
+      {
+        WriteBitmapArgb(neighbor, replacementArgb);
+        pendingPixels.push_back(pixelIndex + width);
+      }
+    }
+  }
+
+  texture->UnlockRect(0);
+  return true;
+}
+
 } // namespace
 
 } // namespace Render
@@ -610,6 +697,20 @@ public:
       alphaBitmap ? alphaBitmap->width : 0,
       alphaBitmap ? alphaBitmap->height : 0,
       0, 0, alphaX, alphaY, mergeAlpha, destinationTransparent);
+  }
+
+  virtual bool Scroll( int x, int y )
+  {
+    if (!texture)
+      return false;
+    if (x == 0 && y == 0)
+      return true;
+    return CopyPixels(this, 0, 0, width, height, x, y, 0, 0, 0, false, true);
+  }
+
+  virtual bool FloodFill( int x, int y, unsigned int argb )
+  {
+    return FloodFillBitmapTexturePixels(texture, width, height, 0, 0, x, y, argb);
   }
 
   virtual IBitmapInfo* Clone()
@@ -2529,7 +2630,7 @@ public:
   {
     BitmapInfoD3D* sourceBitmap = dynamic_cast<BitmapInfoD3D*>(source);
     BitmapInfoD3D* alphaBitmap = alphaSource ? dynamic_cast<BitmapInfoD3D*>(alphaSource) : 0;
-    if (!sourceBitmap || !sourceBitmap->m_texture || (alphaSource && (!alphaBitmap || !alphaBitmap->m_texture)))
+    if (!m_texture || !sourceBitmap || !sourceBitmap->m_texture || (alphaSource && (!alphaBitmap || !alphaBitmap->m_texture)))
       return false;
 
     const int destinationOriginX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
@@ -2547,6 +2648,24 @@ public:
       alphaBitmap ? alphaBitmap->m_width : 0,
       alphaBitmap ? alphaBitmap->m_height : 0,
       alphaOriginX, alphaOriginY, alphaX, alphaY, mergeAlpha, destinationTransparent);
+  }
+
+  virtual bool Scroll( int x, int y )
+  {
+    if (!m_texture)
+      return false;
+    if (x == 0 && y == 0)
+      return true;
+    return CopyPixels(this, 0, 0, m_width, m_height, x, y, 0, 0, 0, false, true);
+  }
+
+  virtual bool FloodFill( int x, int y, unsigned int argb )
+  {
+    if (!m_texture)
+      return false;
+    const int originX = static_cast<int>(uv1.x * m_texture->GetWidth() + 0.5f);
+    const int originY = static_cast<int>(uv1.y * m_texture->GetHeight() + 0.5f);
+    return FloodFillBitmapTexturePixels(m_texture, m_width, m_height, originX, originY, x, y, argb);
   }
 
   virtual IBitmapInfo* Clone()

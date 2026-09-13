@@ -104,6 +104,10 @@ namespace Render
       int alphaY,
       bool mergeAlpha,
       bool destinationTransparent ) = 0;
+    /// Scrolls logical pixels while leaving newly exposed edges unchanged.
+    virtual bool Scroll( int x, int y ) = 0;
+    /// Replaces the connected region matching the seed pixel's exact ARGB value.
+    virtual bool FloodFill( int x, int y, unsigned int argb ) = 0;
 
     virtual IBitmapInfo* Clone() = 0;
     virtual void Draw( IBitmapInfo* source, const flash::SWF_MATRIX& _matrix, int x1, int y1, int x2, int y2 ) = 0;

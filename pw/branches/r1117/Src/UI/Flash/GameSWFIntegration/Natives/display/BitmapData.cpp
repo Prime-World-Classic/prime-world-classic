@@ -153,8 +153,26 @@ void BitmapDataObject::applyFilter(BitmapDataObject* sourceBitmapData, ScriptObj
 
 void BitmapDataObject::fillRect(ScriptObject/*Rectangle*/ * rect, uint color)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( !bitmapInfo || !rect )
+    return;
+
+  const int x = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "x" ) ) );
+  const int y = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "y" ) ) );
+  const int width = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "width" ) ) );
+  const int height = core()->integer_i( rect->getSlotAtom( GetSlotID( rect, "height" ) ) );
+  if ( width <= 0 || height <= 0 )
+    return;
+
+  const long long right = static_cast<long long>(x) + width;
+  const long long bottom = static_cast<long long>(y) + height;
+  const int bitmapWidth = bitmapInfo->GetWidth();
+  const int bitmapHeight = bitmapInfo->GetHeight();
+  const int x1 = x < 0 ? 0 : (x > bitmapWidth ? bitmapWidth : x);
+  const int y1 = y < 0 ? 0 : (y > bitmapHeight ? bitmapHeight : y);
+  const int x2 = right < 0 ? 0 : (right > bitmapWidth ? bitmapWidth : static_cast<int>(right));
+  const int y2 = bottom < 0 ? 0 : (bottom > bitmapHeight ? bitmapHeight : static_cast<int>(bottom));
+  const uint storageColor = transparent ? color : (color | 0xFF000000u);
+  bitmapInfo->FillRect( x1, y1, x2, y2, storageColor );
 }
 
 void BitmapDataObject::colorTransform(ScriptObject/*Rectangle*/ * rect, ScriptObject/*ColorTransform*/ * colorTransform)
@@ -242,8 +260,8 @@ void BitmapDataObject::unlock(ScriptObject/*Rectangle*/ * changeRect)
 
 void BitmapDataObject::scroll(int x, int y)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( bitmapInfo )
+    bitmapInfo->Scroll( x, y );
 }
 
 ScriptObject/*Rectangle*/ * BitmapDataObject::getColorBoundsRect(uint mask, uint color, bool findColor)
@@ -294,8 +312,8 @@ void BitmapDataObject::dispose()
 
 void BitmapDataObject::floodFill(int x, int y, uint color)
 {
-  NI_ALWAYS_ASSERT("Not yet implemented");
-  return (void)0;
+  if ( bitmapInfo )
+    bitmapInfo->FloodFill( x, y, transparent ? color : (color | 0xFF000000u) );
 }
 
 void BitmapDataObject::setPixel32(int x, int y, uint color)
