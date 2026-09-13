@@ -82,6 +82,27 @@ set(
   ../../Vendor/Tamarin/source/MMgc/ZCT.cpp
 )
 
+set(
+  PRIMEWORLD_LINUX_TAMARIN_PCRE_SOURCES
+  ../../Vendor/Tamarin/source/pcre/pcre_chartables.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_compile.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_config.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_exec.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_fullinfo.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_get.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_globals.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_info.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_newline.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_ord2utf8.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_refcount.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_study.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_tables.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_try_flipped.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_valid_utf8.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_version.cpp
+  ../../Vendor/Tamarin/source/pcre/pcre_xclass.cpp
+)
+
 add_library(PrimeWorldLinuxTamarinConfig INTERFACE)
 
 target_compile_features(PrimeWorldLinuxTamarinConfig INTERFACE cxx_std_17)
@@ -134,6 +155,18 @@ target_link_libraries(
     PrimeWorldLinuxTamarinConfig
 )
 add_dependencies(PrimeWorldLinuxTamarinMMgc PrimeWorldLinuxTamarinPlatform)
+
+add_library(
+  PrimeWorldLinuxTamarinPcre
+  OBJECT
+  ${PRIMEWORLD_LINUX_TAMARIN_PCRE_SOURCES}
+)
+target_link_libraries(
+  PrimeWorldLinuxTamarinPcre
+  PRIVATE
+    PrimeWorldLinuxTamarinConfig
+)
+add_dependencies(PrimeWorldLinuxTamarinPcre PrimeWorldLinuxTamarinMMgc)
 
 # Native Flash sources compiled by the Linux client-runtime portability gate.
 # Keep this list backend-neutral so the same implementations remain available
@@ -1096,7 +1129,7 @@ add_library(
   ../Terrain/TerrainElementManager.cpp
 )
 
-add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinMMgc)
+add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinPcre)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
