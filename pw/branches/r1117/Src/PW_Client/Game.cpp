@@ -68883,6 +68883,9 @@ int main(int argc, char** argv)
   if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-vm-probe"))
     return RunPrimeWorldLinuxFlashVmRuntimeProbe() ? 0 : 1;
 
+  if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-ui-host-probe"))
+    return RunPrimeWorldLinuxFlashUiHostProbe() ? 0 : 1;
+
   LinuxClientLaunchSettings settings;
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);

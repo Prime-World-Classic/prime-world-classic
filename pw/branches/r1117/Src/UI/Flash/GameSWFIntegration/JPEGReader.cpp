@@ -4,10 +4,18 @@
 #include "JPEGReader.h"
 
 #if defined( NI_PLATF_LINUX )
+#if !defined( XMD_H )
+#define PW_RESTORE_XMD_H_AFTER_JPEGLIB
+#define XMD_H
+#endif
 extern "C"
 {
-#include <Vendor/jpeglib/include/jpeglib.h>
+#include <jpeglib.h>
 }
+#if defined( PW_RESTORE_XMD_H_AFTER_JPEGLIB )
+#undef XMD_H
+#undef PW_RESTORE_XMD_H_AFTER_JPEGLIB
+#endif
 #else
 #include <Vendor/jpeglib/include/jpeglib.h>
 #endif

@@ -129,7 +129,7 @@ typedef void *maddr_ptr;
 #ifdef __GNUC__
 #define REALLY_INLINE inline __attribute__((always_inline))
 // only define FASTCALL for x86-32; other gcc versions will spew warnings
-#ifdef AVMPLUS_IA32
+#if AVMSYSTEM_IA32
 	#define FASTCALL __attribute__((fastcall))
 #endif
 #endif
@@ -157,7 +157,10 @@ typedef void *maddr_ptr;
 * Type defintion for an opaque data type representing platform-defined spin lock 
 * @see VMPI_lockInit(), VMPI_lockAcquire()
 */
-#if defined(__GNUC__) && (defined(AVMPLUS_IA32) || defined(AVMPLUS_AMD64))
+// AVMSYSTEM_* is available before this header is included directly by the host.
+// AVMPLUS_* is generated later by avmfeatures.h and is therefore include-order
+// dependent, which can give GCHeap and its clients incompatible lock layouts.
+#if defined(__GNUC__) && (AVMSYSTEM_IA32 || AVMSYSTEM_AMD64)
 
 struct vmpi_spin_lock_t 
 {

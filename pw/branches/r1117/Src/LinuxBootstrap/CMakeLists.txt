@@ -302,6 +302,8 @@ target_link_libraries(
 # to the existing Windows GameSWFIntegration project.
 set(
 	PRIMEWORLD_LINUX_FLASH_RUNTIME_SOURCES
+	../UI/FlashContainer2.cpp
+	../UI/FlashFontsRender.cpp
 	../UI/Flash/GameSWFIntegration/ButtonCharacter.cpp
 	../UI/Flash/GameSWFIntegration/Characters.cpp
 	../UI/Flash/GameSWFIntegration/DisplayTags.cpp
@@ -827,7 +829,6 @@ add_executable(
   ${PRIMEWORLD_LINUX_DB_SOURCES}
   ${PRIMEWORLD_LINUX_LIBDB_SOURCES}
   ${PRIMEWORLD_LINUX_JSONCPP_SOURCES}
-  flash_runtime_link_support.cpp
   runtime_stubs.cpp
 )
 

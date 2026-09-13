@@ -5,11 +5,17 @@
 #include "NameMappedWindow.h"
 #include "IStageFocusHandler.h"
 
+#include <stdint.h>
+
 namespace avmplus
 {
   class ScriptObject;
+#if defined(__linux__)
+  typedef intptr_t Atom;
+#else
   typedef __int32	int32_t;
   typedef int32_t Atom;
+#endif
 }
 
 namespace NDb
@@ -101,6 +107,10 @@ public:
   // Movie control
   void SetManualMode( bool _manual ) { manualMode = _manual; }
   void AdvanceOneFrame();
+
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+  bool IsRuntimeReadyForBootstrapProbe() const { return flashMovie && garbageCollector; }
+#endif
 
   //flash::IStageFocusHandler
 

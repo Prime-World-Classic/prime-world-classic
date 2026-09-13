@@ -1,6 +1,8 @@
 #include "TamarinPCH.h"
 
 #include "flash_vm_runtime_probe.h"
+#include "UI/DBUI.h"
+#include "UI/FlashContainer2.h"
 #include "UI/Flash/GameSWFIntegration/FlashMovieAvmCore.h"
 
 #include <cstdio>
@@ -81,4 +83,34 @@ bool RunPrimeWorldLinuxFlashVmRuntimeProbe()
     leakedBytes);
 
   return passed;
+}
+
+bool RunPrimeWorldLinuxFlashUiHostProbe()
+{
+  bool factory = false;
+  bool runtime = false;
+  bool advanced = false;
+
+  {
+    NDb::Ptr<NDb::UIFlashLayout2> layout = new NDb::UIFlashLayout2;
+    Strong<UI::Window> window = UI::CreateUIWindow(layout, 0, 0, 0, 0, false);
+    UI::FlashContainer2* flashWindow = dynamic_cast<UI::FlashContainer2*>(window.Get());
+    factory = flashWindow != 0;
+
+    if (flashWindow)
+    {
+      runtime = flashWindow->IsRuntimeReadyForBootstrapProbe();
+      flashWindow->SetManualMode(true);
+      flashWindow->AdvanceOneFrame();
+      advanced = true;
+    }
+  }
+
+  std::printf(
+    "Flash UI host probe: factory=%s runtime=%s advanced=%s teardown=yes\n",
+    factory ? "yes" : "no",
+    runtime ? "yes" : "no",
+    advanced ? "yes" : "no");
+
+  return factory && runtime && advanced;
 }

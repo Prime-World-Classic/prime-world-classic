@@ -17,6 +17,39 @@ const static float FLASH_SCALE_HACK = 0.7f; //HACK: גמ פכ‎רו נאחלונ רנטפעא חאהאו
 namespace UI
 {
 
+#if defined(PW_LINUX_NULL_RENDER)
+namespace
+{
+
+class LinuxFlashFontMaterial : public Render::BaseMaterial
+{
+public:
+  LinuxFlashFontMaterial()
+    : Render::BaseMaterial(NDb::MATERIALPRIORITY_TRANSPARENT, 0, -1)
+  {
+  }
+
+  virtual void PrepareRenderer()
+  {
+  }
+
+  virtual Render::Sampler* GetDiffuseMap()
+  {
+    return &diffuseMap;
+  }
+
+  virtual const Render::Sampler* GetDiffuseMap() const
+  {
+    return &diffuseMap;
+  }
+
+private:
+  Render::Sampler diffuseMap;
+};
+
+} // namespace
+#endif
+
 FlashFontInstance::FlashFontInstance( FlashFontsRender * _owner, float _originalHeight, const char * _name, bool _bold, int _italic ) :
 owner( _owner ),
 material( 0 ),
@@ -73,11 +106,16 @@ void FlashFontInstance::SetupRenderMaterial( bool _drawBevel, const flash::SWF_R
   fontMaterialDesc.DiffuseMap.samplerState.mipFilter = NDb::MIPFILTERTYPE_POINT;
 
   if ( !material )
+#if defined(PW_LINUX_NULL_RENDER)
+    material = new LinuxFlashFontMaterial();
+#else
     material = static_cast<Render::BaseMaterial*>( Render::CreateRenderMaterial( NDb::UIFontMaterial::typeId ) );
+#endif
 
+#if !defined(PW_LINUX_NULL_RENDER)
   material->FillMaterial( &fontMaterialDesc, 0, false );
-
   material->SetUseDiffuse( NDb::BOOLEANPIN_PRESENT );
+#endif
   material->GetDiffuseMap()->SetTexture( UI::GetFontRenderer()->GetFontsTexture() );
 }
 

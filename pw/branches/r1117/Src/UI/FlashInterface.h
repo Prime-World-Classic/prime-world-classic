@@ -1,9 +1,15 @@
 #pragma once
 
+#include <stdint.h>
+
 namespace avmplus
 {
+#if defined(__linux__)
+  typedef intptr_t Atom;
+#else
   typedef __int32	int32_t;
   typedef int32_t Atom;
+#endif
 
   class ScriptObject;
   class AvmCore;

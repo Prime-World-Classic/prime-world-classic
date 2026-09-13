@@ -525,7 +525,7 @@ static TResult *GetChildChecked( Window * parent, const char * name, bool recurs
 
 
 #define REGISTER_CONTROLTYPE( layoutType, controlType ) \
-static Window * ConstructControl_##controlType##() \
+static Window * ConstructControl_##controlType() \
 { \
   return new controlType; \
 } \
