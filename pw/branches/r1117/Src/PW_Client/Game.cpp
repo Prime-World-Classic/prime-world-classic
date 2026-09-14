@@ -3594,10 +3594,13 @@ public:
       setDeveloperSexCalls(0),
       refreshGamesListCalls(0),
       createGameCalls(0),
+      singlePlayerCreateCalls(0),
+      multiplayerCreateCalls(0),
       joinGameCalls(0),
       reconnectCalls(0),
       spectateCalls(0),
-      lastGameId(-1)
+      lastGameId(-1),
+      lastLobbyAction("none")
   {
     StrongMT<NWorld::PWMapCollection> maps = new NWorld::PWMapCollection;
     maps->ScanForMaps();
@@ -3785,6 +3788,16 @@ public:
   virtual void CreateGame(const char* mapId, int _maxPlayers)
   {
     ++createGameCalls;
+    if (_maxPlayers == 1)
+    {
+      ++singlePlayerCreateCalls;
+      lastLobbyAction = "create-single";
+    }
+    else
+    {
+      ++multiplayerCreateCalls;
+      lastLobbyAction = "create-multiplayer";
+    }
     createdMapId = mapId ? mapId : "";
     maxPlayers = _maxPlayers;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
@@ -3794,6 +3807,7 @@ public:
   virtual void JoinGame(int gameId)
   {
     ++joinGameCalls;
+    lastLobbyAction = "join";
     lastGameId = gameId;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
     lastLobbyOperationResult = lobby::EOperationResult::Ok;
@@ -3809,6 +3823,7 @@ public:
   virtual void Reconnect(int gameId, int team, const string& heroId)
   {
     ++reconnectCalls;
+    lastLobbyAction = "reconnect";
     lastGameId = gameId;
     selectedTeam = team;
     selectedHeroId = heroId;
@@ -3819,6 +3834,7 @@ public:
   virtual void Spectate(int gameId)
   {
     ++spectateCalls;
+    lastLobbyAction = "spectate";
     lastGameId = gameId;
     lobbyStatus = lobby::EClientStatus::InGameSession;
     lastLobbyOperationResult = lobby::EOperationResult::Ok;
@@ -3891,10 +3907,13 @@ public:
   size_t GetSetDeveloperSexCalls() const { return setDeveloperSexCalls; }
   size_t GetRefreshGamesListCalls() const { return refreshGamesListCalls; }
   size_t GetCreateGameCalls() const { return createGameCalls; }
+  size_t GetSinglePlayerCreateCalls() const { return singlePlayerCreateCalls; }
+  size_t GetMultiplayerCreateCalls() const { return multiplayerCreateCalls; }
   size_t GetJoinGameCalls() const { return joinGameCalls; }
   size_t GetReconnectCalls() const { return reconnectCalls; }
   size_t GetSpectateCalls() const { return spectateCalls; }
   int GetLastGameId() const { return lastGameId; }
+  const string& GetLastLobbyAction() const { return lastLobbyAction; }
 
 private:
   StrongMT<NWorld::IMapCollection> mapCollection;
@@ -3911,10 +3930,13 @@ private:
   size_t setDeveloperSexCalls;
   size_t refreshGamesListCalls;
   size_t createGameCalls;
+  size_t singlePlayerCreateCalls;
+  size_t multiplayerCreateCalls;
   size_t joinGameCalls;
   size_t reconnectCalls;
   size_t spectateCalls;
   int lastGameId;
+  string lastLobbyAction;
   string createdMapId;
   string selectedHeroId;
 };
@@ -4853,6 +4875,8 @@ struct LinuxBootstrapScreenRuntime
   size_t productionLobbyPlayerSyncCount;
   std::string productionLobbyJoinMode;
   size_t productionLobbyJoinModeSyncCount;
+  size_t productionLobbyTransitionCount;
+  std::string productionLobbyTransitionSource;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6194,6 +6218,8 @@ struct LinuxBootstrapScreenRuntime
       productionLobbyPlayerSyncCount(0),
       productionLobbyJoinMode("none"),
       productionLobbyJoinModeSyncCount(0),
+      productionLobbyTransitionCount(0),
+      productionLobbyTransitionSource("none"),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -41997,6 +42023,9 @@ void EnsureLinuxBootstrapHeroScreen(
       runtime->heroInitialized = true;
       runtime->heroScreen->OnNewFront(runtime->heroScreen);
       runtime->heroScreen->OnBecameFront();
+      runtime->gameModeScreen->ShowMainWindow(false);
+      ++runtime->productionLobbyTransitionCount;
+      runtime->productionLobbyTransitionSource = runtime->gameContext->GetLastLobbyAction().c_str();
     }
     else
     {
@@ -42438,6 +42467,9 @@ void DriveLinuxBootstrapScreenRuntime(
   runtime->gameModeScreen->Step(NMainFrame::IsAppActive());
   runtime->gameModeScreen->CommonStep(NMainFrame::IsAppActive());
   preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
+  EnsureLinuxBootstrapHeroScreen(runtime, preview);
+  SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
+  UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
   UpdateLinuxVisibleMenuRuntime(runtime);
   UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
@@ -66624,10 +66656,13 @@ void AppendRuntimeInputLog(
             << "sex:" << screenRuntime.gameContext->GetSetDeveloperSexCalls()
             << " refresh:" << screenRuntime.gameContext->GetRefreshGamesListCalls()
             << " create:" << screenRuntime.gameContext->GetCreateGameCalls()
+            << " createSingle:" << screenRuntime.gameContext->GetSinglePlayerCreateCalls()
+            << " createMulti:" << screenRuntime.gameContext->GetMultiplayerCreateCalls()
             << " join:" << screenRuntime.gameContext->GetJoinGameCalls()
             << " reconnect:" << screenRuntime.gameContext->GetReconnectCalls()
             << " spectate:" << screenRuntime.gameContext->GetSpectateCalls()
-            << " lastGame:" << screenRuntime.gameContext->GetLastGameId() << "\n";
+            << " lastGame:" << screenRuntime.gameContext->GetLastGameId()
+            << " lastAction:" << screenRuntime.gameContext->GetLastLobbyAction().c_str() << "\n";
     logFile << "  finalProductionLobbyCreatedGame="
             << (screenRuntime.gameContext->GetCreatedMapId().empty() ?
                 "none" :
@@ -66644,6 +66679,13 @@ void AppendRuntimeInputLog(
               screenRuntime.productionLobbyPlayerCaption)
           << " sync:" << screenRuntime.productionLobbyMapSyncCount
           << "/" << screenRuntime.productionLobbyPlayerSyncCount << "\n";
+  logFile << "  finalProductionLobbyTransition="
+          << screenRuntime.productionLobbyTransitionCount << "/"
+          << (screenRuntime.productionLobbyTransitionSource.empty() ?
+              "none" :
+              screenRuntime.productionLobbyTransitionSource)
+          << " hero:" << (screenRuntime.heroInitialized ? "yes" : "no")
+          << " active:" << (IsLinuxBootstrapHeroScreenActive(&screenRuntime) ? "yes" : "no") << "\n";
   UI::Window* finalProductionLobbyRoot =
     IsValid(screenRuntime.gameModeScreen) ?
       screenRuntime.gameModeScreen->GetMainWindow() :
@@ -66718,6 +66760,7 @@ void AppendRuntimeInputLog(
   const UI::Rect& firstMapRowRect = finalFirstMapRow ? finalFirstMapRow->GetWindowRect() : absentRect;
   const UI::Rect& secondMapRowRect = finalSecondMapRow ? finalSecondMapRow->GetWindowRect() : absentRect;
   const UI::Rect& playerCountRect = finalPlayerCountBar ? finalPlayerCountBar->GetWindowRect() : absentRect;
+  const UI::Rect& singleRect = finalStartSessionButton ? finalStartSessionButton->GetWindowRect() : absentRect;
   const UI::Rect& createRect = finalStartServerButton ? finalStartServerButton->GetWindowRect() : absentRect;
   const UI::Rect& gamesPanelRect = finalGamesPanel ? finalGamesPanel->GetWindowRect() : absentRect;
   const UI::Rect& gamesWindowRect = finalGamesWindow ? finalGamesWindow->GetWindowRect() : absentRect;
@@ -66736,6 +66779,7 @@ void AppendRuntimeInputLog(
           << " row0:" << firstMapRowRect.x1 << "," << firstMapRowRect.y1 << "," << firstMapRowRect.x2 << "," << firstMapRowRect.y2
           << " row1:" << secondMapRowRect.x1 << "," << secondMapRowRect.y1 << "," << secondMapRowRect.x2 << "," << secondMapRowRect.y2
           << " players:" << playerCountRect.x1 << "," << playerCountRect.y1 << "," << playerCountRect.x2 << "," << playerCountRect.y2
+          << " single:" << singleRect.x1 << "," << singleRect.y1 << "," << singleRect.x2 << "," << singleRect.y2
           << " create:" << createRect.x1 << "," << createRect.y1 << "," << createRect.x2 << "," << createRect.y2 << "\n";
   logFile << "  finalProductionLobbyJoinRects="
           << "panel:" << gamesPanelRect.x1 << "," << gamesPanelRect.y1 << "," << gamesPanelRect.x2 << "," << gamesPanelRect.y2
@@ -71008,7 +71052,6 @@ int main(int argc, char** argv)
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;
     const bool productionLobbyChanged =
-      !IsLinuxBootstrapHeroScreenActive(&screenRuntime) &&
       !IsLinuxBootstrapLoadingScreenActive(&screenRuntime) &&
       SyncLinuxProductionLobbyState(
         mapCatalog,
