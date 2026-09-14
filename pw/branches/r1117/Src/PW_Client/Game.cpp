@@ -3599,8 +3599,16 @@ public:
       joinGameCalls(0),
       reconnectCalls(0),
       spectateCalls(0),
+      changeCustomGameSettingsCalls(0),
+      changeTeamCalls(0),
+      changeFactionCalls(0),
+      selectHeroCalls(0),
+      setReadyCalls(0),
+      setDeveloperPartyCalls(0),
+      connectToClusterCalls(0),
       lastGameId(-1),
-      lastLobbyAction("none")
+      lastLobbyAction("none"),
+      lastHeroAction("none")
   {
     StrongMT<NWorld::PWMapCollection> maps = new NWorld::PWMapCollection;
     maps->ScanForMaps();
@@ -3633,6 +3641,8 @@ public:
     (void)password;
     (void)sessionToken;
     (void)_loginType;
+    ++connectToClusterCalls;
+    lastHeroAction = "leave-lobby";
     lobbyStatus = lobby::EClientStatus::Connected;
   }
 
@@ -3842,16 +3852,23 @@ public:
 
   virtual void ChangeCustomGameSettings(lobby::ETeam::Enum team, lobby::ETeam::Enum faction, const string& heroId)
   {
+    ++changeCustomGameSettingsCalls;
     if (team != static_cast<lobby::ETeam::Enum>(-1))
     {
+      ++changeTeamCalls;
+      lastHeroAction = "change-team";
       selectedTeam = static_cast<int>(team);
     }
     if (faction != static_cast<lobby::ETeam::Enum>(-1))
     {
+      ++changeFactionCalls;
+      lastHeroAction = "change-faction";
       selectedFaction = static_cast<int>(faction);
     }
     if (!heroId.empty())
     {
+      ++selectHeroCalls;
+      lastHeroAction = "select-hero";
       selectedHeroId = heroId;
     }
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
@@ -3860,12 +3877,16 @@ public:
 
   virtual void SetReady(lobby::EGameMemberReadiness::Enum readiness)
   {
+    ++setReadyCalls;
+    lastHeroAction = readiness == lobby::EGameMemberReadiness::NotReady ? "not-ready" : "ready";
     readyState = readiness;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
   }
 
   virtual void SetDeveloperParty(int party)
   {
+    ++setDeveloperPartyCalls;
+    lastHeroAction = "set-party";
     developerParty = party;
   }
 
@@ -3904,6 +3925,8 @@ public:
     return readyState;
   }
 
+  int GetDeveloperParty() const { return developerParty; }
+
   size_t GetSetDeveloperSexCalls() const { return setDeveloperSexCalls; }
   size_t GetRefreshGamesListCalls() const { return refreshGamesListCalls; }
   size_t GetCreateGameCalls() const { return createGameCalls; }
@@ -3912,8 +3935,16 @@ public:
   size_t GetJoinGameCalls() const { return joinGameCalls; }
   size_t GetReconnectCalls() const { return reconnectCalls; }
   size_t GetSpectateCalls() const { return spectateCalls; }
+  size_t GetChangeCustomGameSettingsCalls() const { return changeCustomGameSettingsCalls; }
+  size_t GetChangeTeamCalls() const { return changeTeamCalls; }
+  size_t GetChangeFactionCalls() const { return changeFactionCalls; }
+  size_t GetSelectHeroCalls() const { return selectHeroCalls; }
+  size_t GetSetReadyCalls() const { return setReadyCalls; }
+  size_t GetSetDeveloperPartyCalls() const { return setDeveloperPartyCalls; }
+  size_t GetConnectToClusterCalls() const { return connectToClusterCalls; }
   int GetLastGameId() const { return lastGameId; }
   const string& GetLastLobbyAction() const { return lastLobbyAction; }
+  const string& GetLastHeroAction() const { return lastHeroAction; }
 
 private:
   StrongMT<NWorld::IMapCollection> mapCollection;
@@ -3935,8 +3966,16 @@ private:
   size_t joinGameCalls;
   size_t reconnectCalls;
   size_t spectateCalls;
+  size_t changeCustomGameSettingsCalls;
+  size_t changeTeamCalls;
+  size_t changeFactionCalls;
+  size_t selectHeroCalls;
+  size_t setReadyCalls;
+  size_t setDeveloperPartyCalls;
+  size_t connectToClusterCalls;
   int lastGameId;
   string lastLobbyAction;
+  string lastHeroAction;
   string createdMapId;
   string selectedHeroId;
 };
@@ -4877,6 +4916,8 @@ struct LinuxBootstrapScreenRuntime
   size_t productionLobbyJoinModeSyncCount;
   size_t productionLobbyTransitionCount;
   std::string productionLobbyTransitionSource;
+  size_t productionHeroTeamSyncCount;
+  size_t productionHeroSelectionSyncCount;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6220,6 +6261,8 @@ struct LinuxBootstrapScreenRuntime
       productionLobbyJoinModeSyncCount(0),
       productionLobbyTransitionCount(0),
       productionLobbyTransitionSource("none"),
+      productionHeroTeamSyncCount(0),
+      productionHeroSelectionSyncCount(0),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -7465,7 +7508,8 @@ bool ParseBootstrapClickBasePair(const char* value, int* baseX, int* baseY)
     return false;
   }
 
-  if (parsedX < 0 || parsedX > 1279 || parsedY < 0 || parsedY > 1023)
+  // Widescreen production layouts extend past the centered 1280-wide authored canvas.
+  if (parsedX < -4096 || parsedX > 4095 || parsedY < 0 || parsedY > 1023)
   {
     return false;
   }
@@ -31977,6 +32021,7 @@ bool IsLinuxVisibleMenuActive(
 {
   return runtime &&
     runtime->visibleMenuReady &&
+    !IsLinuxBootstrapHeroScreenActive(runtime) &&
     !IsLinuxBootstrapLoadingScreenActive(runtime) &&
     !IsLinuxDiagnosticsOverlayActive(settings, runtime);
 }
@@ -32992,9 +33037,9 @@ void SyncLinuxBootstrapHeroScreenSelection(
   const string desiredHeroId = ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview);
   const string& currentHeroId = runtime->gameContext->GetSelectedHeroId();
 
-  const bool teamChanged = currentTeam != desiredTeam;
-  const bool factionChanged = currentFaction != desiredFaction;
-  const bool heroChanged = !desiredHeroId.empty() && currentHeroId != desiredHeroId;
+  const bool teamChanged = currentTeam == 0;
+  const bool factionChanged = currentFaction == 0;
+  const bool heroChanged = !desiredHeroId.empty() && currentHeroId.empty();
   if (!teamChanged && !factionChanged && !heroChanged)
   {
     return;
@@ -46209,6 +46254,57 @@ bool SyncLinuxProductionLobbyState(
     localMatchPreview->generationSource = "production-lua-player-count";
     ++runtime->productionLobbyPlayerSyncCount;
     changed = true;
+  }
+
+  return changed;
+}
+
+bool SyncLinuxProductionHeroLobbyState(
+  const LinuxHeroCatalog& heroCatalog,
+  const LinuxMapCatalog& mapCatalog,
+  const LinuxMapBrowserState& mapBrowserState,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!localMatchPreview || !runtime || !IsLinuxBootstrapHeroScreenActive(runtime) ||
+      !IsValid(runtime->gameContext))
+  {
+    return false;
+  }
+
+  bool changed = false;
+  const int selectedTeam = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedTeam());
+  if ((selectedTeam == 1 || selectedTeam == 2) && selectedTeam != localMatchPreview->humanTeam)
+  {
+    localMatchPreview->humanTeam = selectedTeam;
+    ++runtime->productionHeroTeamSyncCount;
+    changed = true;
+  }
+
+  const string& selectedHeroId = runtime->gameContext->GetSelectedHeroId();
+  if (!selectedHeroId.empty())
+  {
+    const size_t selectedHeroIndex = FindHeroCatalogIndex(heroCatalog, selectedHeroId.c_str());
+    if (selectedHeroIndex != static_cast<size_t>(-1) &&
+        selectedHeroIndex != localMatchPreview->selectedHeroIndex)
+    {
+      localMatchPreview->selectedHeroIndex = selectedHeroIndex;
+      ++runtime->productionHeroSelectionSyncCount;
+      changed = true;
+    }
+  }
+
+  if (changed)
+  {
+    RegenerateLocalMatchPreview(
+      heroCatalog,
+      mapCatalog,
+      mapBrowserState,
+      localMatchPreview,
+      "production-lua-hero-lobby"
+    );
+    localMatchPreview->selectedSlotIndex = ResolveHumanSlotIndex(*localMatchPreview);
   }
 
   return changed;
@@ -66668,6 +66764,23 @@ void AppendRuntimeInputLog(
                 "none" :
                 screenRuntime.gameContext->GetCreatedMapId().c_str())
             << "/" << screenRuntime.gameContext->GetMaxPlayers() << "\n";
+    logFile << "  finalProductionHeroCallbacks="
+            << "settings:" << screenRuntime.gameContext->GetChangeCustomGameSettingsCalls()
+            << " team:" << screenRuntime.gameContext->GetChangeTeamCalls()
+            << " faction:" << screenRuntime.gameContext->GetChangeFactionCalls()
+            << " hero:" << screenRuntime.gameContext->GetSelectHeroCalls()
+            << " ready:" << screenRuntime.gameContext->GetSetReadyCalls()
+            << " party:" << screenRuntime.gameContext->GetSetDeveloperPartyCalls()
+            << " leave:" << screenRuntime.gameContext->GetConnectToClusterCalls()
+            << " lastAction:" << screenRuntime.gameContext->GetLastHeroAction().c_str() << "\n";
+    logFile << "  finalProductionHeroState="
+            << ConvertLobbyTeamSelectionToDisplayTeam(screenRuntime.gameContext->GetSelectedTeam()) << "/"
+            << ConvertLobbyTeamSelectionToDisplayTeam(screenRuntime.gameContext->GetSelectedFaction()) << "/"
+            << (screenRuntime.gameContext->GetSelectedHeroId().empty() ?
+                "none" :
+                screenRuntime.gameContext->GetSelectedHeroId().c_str()) << "/"
+            << DescribeLinuxBootstrapReadyState(screenRuntime.gameContext->GetReadyState()) << "/"
+            << screenRuntime.gameContext->GetDeveloperParty() << "\n";
   }
   logFile << "  finalProductionLobbySelection="
           << (screenRuntime.productionLobbySelectedMapId.empty() ?
@@ -66848,6 +66961,102 @@ void AppendRuntimeInputLog(
           << finalProductionLobbyMapLuaRows << " games:"
           << finalProductionLobbyGameRows << "/"
           << finalProductionLobbyGameLuaRows << "\n";
+  UI::Window* finalProductionHeroRoot =
+    IsValid(screenRuntime.heroScreen) ? screenRuntime.heroScreen->GetMainWindow() : 0;
+  UI::Window* finalProductionHeroMain = finalProductionHeroRoot ?
+    finalProductionHeroRoot->FindChild("MainFrame") : 0;
+  UI::RadioPanel* finalProductionHeroPanel = finalProductionHeroRoot ?
+    dynamic_cast<UI::RadioPanel*>(finalProductionHeroRoot->FindChild("ChooseHero_Frame")) : 0;
+  UI::RadioButton* finalProductionHeroBard = finalProductionHeroRoot ?
+    dynamic_cast<UI::RadioButton*>(finalProductionHeroRoot->FindChild("bard")) : 0;
+  UI::RadioButton* finalProductionHeroPlane = finalProductionHeroRoot ?
+    dynamic_cast<UI::RadioButton*>(finalProductionHeroRoot->FindChild("plane")) : 0;
+  UI::Button* finalProductionHeroReady = finalProductionHeroRoot ?
+    dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild("Btn_StartSession")) : 0;
+  UI::Button* finalProductionHeroTeam1 = finalProductionHeroRoot ?
+    dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild("Btn_Team1")) : 0;
+  UI::Button* finalProductionHeroTeam2 = finalProductionHeroRoot ?
+    dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild("Btn_Team2")) : 0;
+  UI::Button* finalProductionHeroFaction1 = finalProductionHeroRoot ?
+    dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild("Btn_Faction1")) : 0;
+  UI::Button* finalProductionHeroFaction2 = finalProductionHeroRoot ?
+    dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild("Btn_Faction2")) : 0;
+  UI::Button* finalProductionHeroPartyButtons[6] = {0, 0, 0, 0, 0, 0};
+  int finalProductionHeroButtonCount =
+    (finalProductionHeroReady ? 1 : 0) +
+    (finalProductionHeroTeam1 ? 1 : 0) +
+    (finalProductionHeroTeam2 ? 1 : 0) +
+    (finalProductionHeroFaction1 ? 1 : 0) +
+    (finalProductionHeroFaction2 ? 1 : 0);
+  for (int i = 0; i < 6; ++i)
+  {
+    const std::string partyName = NStr::StrFmt("Btn_Party%d", i);
+    finalProductionHeroPartyButtons[i] = finalProductionHeroRoot ?
+      dynamic_cast<UI::Button*>(finalProductionHeroRoot->FindChild(partyName.c_str())) : 0;
+    finalProductionHeroButtonCount += finalProductionHeroPartyButtons[i] ? 1 : 0;
+  }
+  const int finalProductionHeroRows = finalProductionHeroPanel ?
+    finalProductionHeroPanel->GetChildrenCount() : 0;
+  int finalProductionHeroRadioRows = 0;
+  int finalProductionHeroLuaRows = 0;
+  for (int i = 0; i < finalProductionHeroRows; ++i)
+  {
+    UI::Window* heroRow = finalProductionHeroPanel->GetChild(i);
+    finalProductionHeroRadioRows += dynamic_cast<UI::RadioButton*>(heroRow) ? 1 : 0;
+    finalProductionHeroLuaRows += heroRow && heroRow->IsSubclassed() ? 1 : 0;
+  }
+  logFile << "  finalProductionHeroControlTypes="
+          << "main:" << (finalProductionHeroMain ? 1 : 0) << "/1"
+          << " panel:" << (finalProductionHeroPanel ? 1 : 0) << "/1"
+          << " heroes:" << finalProductionHeroRadioRows << "/" << finalProductionHeroRows
+          << " lua:" << finalProductionHeroLuaRows << "/" << finalProductionHeroRows
+          << " buttons:" << finalProductionHeroButtonCount << "/11\n";
+  const UI::Rect& finalProductionHeroRootRect = finalProductionHeroRoot ?
+    finalProductionHeroRoot->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroMainRect = finalProductionHeroMain ?
+    finalProductionHeroMain->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroPanelRect = finalProductionHeroPanel ?
+    finalProductionHeroPanel->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroBardRect = finalProductionHeroBard ?
+    finalProductionHeroBard->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroPlaneRect = finalProductionHeroPlane ?
+    finalProductionHeroPlane->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroReadyRect = finalProductionHeroReady ?
+    finalProductionHeroReady->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroTeam1Rect = finalProductionHeroTeam1 ?
+    finalProductionHeroTeam1->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroTeam2Rect = finalProductionHeroTeam2 ?
+    finalProductionHeroTeam2->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroFaction1Rect = finalProductionHeroFaction1 ?
+    finalProductionHeroFaction1->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroFaction2Rect = finalProductionHeroFaction2 ?
+    finalProductionHeroFaction2->GetWindowRect() : absentRect;
+  const UI::Rect& finalProductionHeroParty3Rect = finalProductionHeroPartyButtons[3] ?
+    finalProductionHeroPartyButtons[3]->GetWindowRect() : absentRect;
+  logFile << "  finalProductionHeroRects="
+          << "root:" << finalProductionHeroRootRect.x1 << "," << finalProductionHeroRootRect.y1 << "," << finalProductionHeroRootRect.x2 << "," << finalProductionHeroRootRect.y2
+          << " main:" << finalProductionHeroMainRect.x1 << "," << finalProductionHeroMainRect.y1 << "," << finalProductionHeroMainRect.x2 << "," << finalProductionHeroMainRect.y2
+          << " panel:" << finalProductionHeroPanelRect.x1 << "," << finalProductionHeroPanelRect.y1 << "," << finalProductionHeroPanelRect.x2 << "," << finalProductionHeroPanelRect.y2
+          << " bard:" << finalProductionHeroBardRect.x1 << "," << finalProductionHeroBardRect.y1 << "," << finalProductionHeroBardRect.x2 << "," << finalProductionHeroBardRect.y2
+          << " plane:" << finalProductionHeroPlaneRect.x1 << "," << finalProductionHeroPlaneRect.y1 << "," << finalProductionHeroPlaneRect.x2 << "," << finalProductionHeroPlaneRect.y2
+          << " ready:" << finalProductionHeroReadyRect.x1 << "," << finalProductionHeroReadyRect.y1 << "," << finalProductionHeroReadyRect.x2 << "," << finalProductionHeroReadyRect.y2 << "\n";
+  logFile << "  finalProductionHeroActionRects="
+          << "team:" << finalProductionHeroTeam1Rect.x1 << "," << finalProductionHeroTeam1Rect.y1 << "," << finalProductionHeroTeam1Rect.x2 << "," << finalProductionHeroTeam1Rect.y2
+          << "/" << finalProductionHeroTeam2Rect.x1 << "," << finalProductionHeroTeam2Rect.y1 << "," << finalProductionHeroTeam2Rect.x2 << "," << finalProductionHeroTeam2Rect.y2
+          << " faction:" << finalProductionHeroFaction1Rect.x1 << "," << finalProductionHeroFaction1Rect.y1 << "," << finalProductionHeroFaction1Rect.x2 << "," << finalProductionHeroFaction1Rect.y2
+          << "/" << finalProductionHeroFaction2Rect.x1 << "," << finalProductionHeroFaction2Rect.y1 << "," << finalProductionHeroFaction2Rect.x2 << "," << finalProductionHeroFaction2Rect.y2
+          << " party3:" << finalProductionHeroParty3Rect.x1 << "," << finalProductionHeroParty3Rect.y1 << "," << finalProductionHeroParty3Rect.x2 << "," << finalProductionHeroParty3Rect.y2 << "\n";
+  logFile << "  finalProductionHeroRadioSelection="
+          << "bard:" << (finalProductionHeroBard && finalProductionHeroBard->IsSelected() ? 1 : 0)
+          << " plane:" << (finalProductionHeroPlane && finalProductionHeroPlane->IsSelected() ? 1 : 0) << "\n";
+  logFile << "  finalProductionHeroPreview="
+          << localMatchPreview.humanTeam << "/"
+          << ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview).c_str()
+          << " source:" << (localMatchPreview.generationSource.empty() ?
+              "none" :
+              localMatchPreview.generationSource)
+          << " sync:" << screenRuntime.productionHeroTeamSyncCount
+          << "/" << screenRuntime.productionHeroSelectionSyncCount << "\n";
   logFile << "  finalVisibleMenuSelectedAction="
           << screenRuntime.visibleMenuSelectedAction << "\n";
   logFile << "  finalVisibleMenuActivatedCount="
@@ -71059,8 +71268,15 @@ int main(int argc, char** argv)
         &localMatchPreview,
         &screenRuntime
       );
+    const bool productionHeroLobbyChanged = SyncLinuxProductionHeroLobbyState(
+      heroCatalog,
+      mapCatalog,
+      mapBrowserState,
+      &localMatchPreview,
+      &screenRuntime
+    );
     bool visibleMenuConsumedNavigation = false;
-    bool visibleMenuChanged = productionLobbyChanged;
+    bool visibleMenuChanged = productionLobbyChanged || productionHeroLobbyChanged;
     visibleMenuChanged = HandleLinuxVisibleMenuHotkeys(
       settings,
       inputState,
