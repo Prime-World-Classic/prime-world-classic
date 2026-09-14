@@ -209,7 +209,7 @@ public:
   int AtomGetInt( avmplus::Atom atom );
 
 protected:
-  FlashInterface() {};
+  FlashInterface() : mainInterface(0) {};
 
   avmplus::ScriptObject * AtomToObject( avmplus::Atom atom );
 

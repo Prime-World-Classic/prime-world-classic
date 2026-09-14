@@ -4918,6 +4918,13 @@ struct LinuxBootstrapScreenRuntime
   std::string productionLobbyTransitionSource;
   size_t productionHeroTeamSyncCount;
   size_t productionHeroSelectionSyncCount;
+  size_t productionHeroLoadingTransitionCount;
+  std::string productionHeroLoadingTransitionSource;
+  int productionLoadingPreviewTeam;
+  std::string productionLoadingPreviewHeroId;
+  int productionLoadingMapStartTeam;
+  uint productionLoadingMapStartHeroChecksum;
+  bool productionLoadingMapStartMatchesPreview;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6263,6 +6270,13 @@ struct LinuxBootstrapScreenRuntime
       productionLobbyTransitionSource("none"),
       productionHeroTeamSyncCount(0),
       productionHeroSelectionSyncCount(0),
+      productionHeroLoadingTransitionCount(0),
+      productionHeroLoadingTransitionSource("none"),
+      productionLoadingPreviewTeam(0),
+      productionLoadingPreviewHeroId("none"),
+      productionLoadingMapStartTeam(0),
+      productionLoadingMapStartHeroChecksum(0),
+      productionLoadingMapStartMatchesPreview(false),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -13691,6 +13705,23 @@ bool TryBuildLinuxBootstrapLoadingContext(
 
   lobby::TGameLineUp gameLineUp;
   BuildLinuxPreviewGameLineup(sessionPreview, localMatchPreview, &gameLineUp);
+  runtime->productionLoadingPreviewTeam = 0;
+  runtime->productionLoadingPreviewHeroId = "none";
+  runtime->productionLoadingMapStartTeam = 0;
+  runtime->productionLoadingMapStartHeroChecksum = 0;
+  runtime->productionLoadingMapStartMatchesPreview = false;
+  for (size_t memberIndex = 0; memberIndex < gameLineUp.size(); ++memberIndex)
+  {
+    const lobby::SGameMember& member = gameLineUp[memberIndex];
+    if (member.context.playerType != lobby::EPlayerType::Human)
+    {
+      continue;
+    }
+
+    runtime->productionLoadingPreviewTeam = ConvertLobbyTeamToDisplayTeam(member.context.team);
+    runtime->productionLoadingPreviewHeroId = member.context.hero.c_str();
+    break;
+  }
   std::vector<LinuxSyntheticClientInfo> clientInfos;
   BuildLinuxPreviewClientInfos(sessionPreview, localMatchPreview, defaultLocale, gameLineUp, &clientInfos);
 
@@ -13741,6 +13772,26 @@ bool TryBuildLinuxBootstrapLoadingContext(
         MergeLinuxPreviewPlayerInfoMetadata(&player.playerInfo, clientInfo->info);
       }
     }
+  }
+
+  for (size_t slotIndex = 0; slotIndex < runtime->loadingMapStartInfo.playersInfo.size(); ++slotIndex)
+  {
+    const NCore::PlayerStartInfo& player = runtime->loadingMapStartInfo.playersInfo[slotIndex];
+    if (player.playerType != NCore::EPlayerType::Human)
+    {
+      continue;
+    }
+
+    runtime->productionLoadingMapStartTeam = ConvertCoreTeamToDisplayTeam(player.teamID);
+    runtime->productionLoadingMapStartHeroChecksum = player.playerInfo.heroId;
+    const uint expectedHeroChecksum =
+      runtime->productionLoadingPreviewHeroId == "none" ?
+        0 :
+        Crc32Checksum().AddString(runtime->productionLoadingPreviewHeroId.c_str()).Get();
+    runtime->productionLoadingMapStartMatchesPreview =
+      runtime->productionLoadingMapStartTeam == runtime->productionLoadingPreviewTeam &&
+      runtime->productionLoadingMapStartHeroChecksum == expectedHeroChecksum;
+    break;
   }
 
   runtime->loadingGameContext = new Game::LoadingGameContext(runtime->loadingMapStartInfo);
@@ -33080,67 +33131,6 @@ void MaybeAutoReadyLinuxBootstrapCreateGame(
   runtime->gameContext->SetReady(lobby::EGameMemberReadiness::ReadyForAnything);
 }
 
-bool HandleLinuxBootstrapHeroScreenHotkeys(
-  const LinuxInputState& inputState,
-  LinuxBootstrapScreenRuntime* runtime
-)
-{
-  if (!IsLinuxBootstrapHeroScreenActive(runtime))
-  {
-    return false;
-  }
-
-  bool changed = false;
-  for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
-  {
-    const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
-    if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN)
-    {
-      continue;
-    }
-
-    switch (message.nKey)
-    {
-      case XK_f:
-      case XK_F:
-      {
-        int currentFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedFaction());
-        if (currentFaction == 0)
-        {
-          currentFaction = ConvertLobbyTeamSelectionToDisplayTeam(runtime->gameContext->GetSelectedTeam());
-        }
-
-        const int nextFaction = currentFaction == 2 ? 1 : 2;
-        runtime->gameContext->ChangeCustomGameSettings(
-          static_cast<lobby::ETeam::Enum>(-1),
-          ConvertDisplayTeamToLobbyTeam(nextFaction),
-          string()
-        );
-        changed = true;
-        break;
-      }
-
-      case XK_r:
-      case XK_R:
-      {
-        const lobby::EGameMemberReadiness::Enum currentReadyState = runtime->gameContext->GetReadyState();
-        runtime->gameContext->SetReady(
-          currentReadyState == lobby::EGameMemberReadiness::NotReady ?
-            lobby::EGameMemberReadiness::ReadyForAnything :
-            lobby::EGameMemberReadiness::NotReady
-        );
-        changed = true;
-        break;
-      }
-
-      default:
-        break;
-    }
-  }
-
-  return changed;
-}
-
 void UpdateLinuxBootstrapHeroScreenPreview(
   const LinuxBootstrapScreenRuntime& runtime,
   LinuxUiRootPreview* preview
@@ -42449,7 +42439,6 @@ void DriveLinuxBootstrapScreenRuntime(
   UpdateLinuxVisibleMenuRuntime(runtime);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
-  HandleLinuxBootstrapHeroScreenHotkeys(inputState, runtime);
   SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
   MaybeAutoReadyLinuxBootstrapCreateGame(settings, runtime);
   UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
@@ -48090,7 +48079,7 @@ std::vector<std::string> BuildOverlayLines(
     snprintf(
       buffer,
       sizeof(buffer),
-      "UI hero state: team=%d faction=%d ready=%s hero=%s | Tab side [/] hero F faction R ready",
+      "UI hero state: team=%d faction=%d ready=%s hero=%s",
       uiRootPreview.runtimeHeroSelectedTeam,
       uiRootPreview.runtimeHeroSelectedFaction,
       uiRootPreview.runtimeHeroReady ? "yes" : "no",
@@ -66799,6 +66788,20 @@ void AppendRuntimeInputLog(
               screenRuntime.productionLobbyTransitionSource)
           << " hero:" << (screenRuntime.heroInitialized ? "yes" : "no")
           << " active:" << (IsLinuxBootstrapHeroScreenActive(&screenRuntime) ? "yes" : "no") << "\n";
+  logFile << "  finalProductionHeroLoadingTransition="
+          << screenRuntime.productionHeroLoadingTransitionCount << "/"
+          << (screenRuntime.productionHeroLoadingTransitionSource.empty() ?
+              "none" :
+              screenRuntime.productionHeroLoadingTransitionSource)
+          << " loading:" << (IsLinuxBootstrapLoadingScreenActive(&screenRuntime) ? "yes" : "no") << "\n";
+  logFile << "  finalProductionLoadingSelection="
+          << screenRuntime.productionLoadingPreviewTeam << "/"
+          << (screenRuntime.productionLoadingPreviewHeroId.empty() ?
+              "none" :
+              screenRuntime.productionLoadingPreviewHeroId)
+          << " mapStart:" << screenRuntime.productionLoadingMapStartTeam << "/"
+          << screenRuntime.productionLoadingMapStartHeroChecksum
+          << " match:" << (screenRuntime.productionLoadingMapStartMatchesPreview ? "yes" : "no") << "\n";
   UI::Window* finalProductionLobbyRoot =
     IsValid(screenRuntime.gameModeScreen) ?
       screenRuntime.gameModeScreen->GetMainWindow() :
@@ -71275,6 +71278,29 @@ int main(int argc, char** argv)
       &localMatchPreview,
       &screenRuntime
     );
+    const bool loadingActiveBeforeProductionHeroHandoff =
+      IsLinuxBootstrapLoadingScreenActive(&screenRuntime);
+    EnsureLinuxBootstrapLoadingScreen(
+      sessionPreview,
+      loadingUiPreview,
+      settings,
+      heroCatalog,
+      mapCatalog,
+      mapBrowserState,
+      selectedMapPreview,
+      localMatchPreview,
+      replayHeaderPreview,
+      contentProbe.locale,
+      &screenRuntime,
+      &uiRootPreview
+    );
+    if (!loadingActiveBeforeProductionHeroHandoff &&
+        IsLinuxBootstrapLoadingScreenActive(&screenRuntime))
+    {
+      ++screenRuntime.productionHeroLoadingTransitionCount;
+      screenRuntime.productionHeroLoadingTransitionSource =
+        screenRuntime.gameContext->GetLastHeroAction().c_str();
+    }
     bool visibleMenuConsumedNavigation = false;
     bool visibleMenuChanged = productionLobbyChanged || productionHeroLobbyChanged;
     visibleMenuChanged = HandleLinuxVisibleMenuHotkeys(

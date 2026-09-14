@@ -63,7 +63,8 @@ avmplus::Atom FVar::GetAtom( avmplus::Toplevel * _toplevel ) const
   return avmplus::AtomConstants::nullObjectAtom;
 }
 
-FlashInterface::FlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className ) 
+FlashInterface::FlashInterface( UI::FlashContainer2 * _flashWnd, const char* _className )
+  : mainInterface(0)
 {
   if ( !_flashWnd )
     return;
