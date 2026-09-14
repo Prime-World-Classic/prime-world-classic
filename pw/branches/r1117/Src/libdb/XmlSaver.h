@@ -282,7 +282,6 @@ private:
 			Add( "w3", &( pData->_34 ) );
 			FinishChunk();
 		}
-		#ifdef WIN32
 		template <class T> 
 		void CCDECL AddInternal( const chunk_id idChunk, int nChunkNumber, T *p, Render::HDRColor *pData ) 
 		{
@@ -294,7 +293,6 @@ private:
 			Add( "A", &( pData->A ) );
 			FinishChunk();
 		}
-		#endif
 
 	template <class T> 
 		void CCDECL AddInternal( const chunk_id idChunk, int nChunkNumber, T *p, CQuat *pData ) 
@@ -593,4 +591,3 @@ inline char operator&( T &c, IXmlSaver &ss ) { return 0; }
 IXmlSaver *CreateXmlSaver( Stream *pStream, bool reading, IResourceReader* pResourceHandler = 0 );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
-

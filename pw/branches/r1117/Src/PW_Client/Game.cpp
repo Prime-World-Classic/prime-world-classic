@@ -141,6 +141,7 @@
 #include "UI/ScrollBar.h"
 #include "UI/ScrollList.h"
 #include "UI/ScrollableWindow.h"
+#include "UI/SkinStyles.h"
 #include "UI/User.h"
 #include "UI/Window.h"
 #include "UI/Flash/GameSWFIntegration/SwfTypes.h"
@@ -247,6 +248,10 @@ struct LinuxClientLaunchSettings
   double bootstrapClickIntervalSeconds;
   std::vector<LinuxBootstrapClickSpec> bootstrapClickScript;
   bool diagnosticsOverlay;
+  bool bootstrapLegacyHeroOverlay;
+  bool bootstrapNetworkStatusProbe;
+  std::string bootstrapFrameCapturePath;
+  double bootstrapFrameCaptureAfterSeconds;
   bool replayStartPaused;
   size_t replayInitialStepBudget;
   size_t replaySpeedMultiplier;
@@ -276,6 +281,9 @@ struct LinuxClientLaunchSettings
       bootstrapClickAfterSeconds(0.5),
       bootstrapClickIntervalSeconds(0.25),
       diagnosticsOverlay(false),
+      bootstrapLegacyHeroOverlay(false),
+      bootstrapNetworkStatusProbe(false),
+      bootstrapFrameCaptureAfterSeconds(2.0),
       replayStartPaused(false),
       replayInitialStepBudget(0),
       replaySpeedMultiplier(1),
@@ -4918,6 +4926,16 @@ struct LinuxBootstrapScreenRuntime
   std::string productionLobbyTransitionSource;
   size_t productionHeroTeamSyncCount;
   size_t productionHeroSelectionSyncCount;
+  size_t productionHeroRadioSelectionSyncCount;
+  bool productionHeroRadioSelectionReady;
+  std::string productionHeroRadioSelectionId;
+  size_t productionHeroPresentationFrames;
+  size_t legacyHeroOverlayPresentationFrames;
+  bool bootstrapFrameCaptureAttempted;
+  bool bootstrapFrameCaptureSucceeded;
+  double bootstrapFrameCaptureElapsedSeconds;
+  std::string bootstrapFrameCapturePath;
+  std::string bootstrapFrameCaptureError;
   size_t productionHeroLoadingTransitionCount;
   std::string productionHeroLoadingTransitionSource;
   int productionLoadingPreviewTeam;
@@ -6270,6 +6288,16 @@ struct LinuxBootstrapScreenRuntime
       productionLobbyTransitionSource("none"),
       productionHeroTeamSyncCount(0),
       productionHeroSelectionSyncCount(0),
+      productionHeroRadioSelectionSyncCount(0),
+      productionHeroRadioSelectionReady(false),
+      productionHeroRadioSelectionId("none"),
+      productionHeroPresentationFrames(0),
+      legacyHeroOverlayPresentationFrames(0),
+      bootstrapFrameCaptureAttempted(false),
+      bootstrapFrameCaptureSucceeded(false),
+      bootstrapFrameCaptureElapsedSeconds(0.0),
+      bootstrapFrameCapturePath("none"),
+      bootstrapFrameCaptureError("inactive"),
       productionHeroLoadingTransitionCount(0),
       productionHeroLoadingTransitionSource("none"),
       productionLoadingPreviewTeam(0),
@@ -7842,6 +7870,37 @@ bool ReadDiagnosticsOverlayFlag(int argc, char** argv)
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--diagnostics-overlay") ||
     CmdLineLite::Instance().IsKeyDefined("--debug-overlay");
+}
+
+bool ReadBootstrapLegacyHeroOverlayFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--bootstrap-legacy-hero-overlay");
+}
+
+bool ReadBootstrapNetworkStatusProbeFlag(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  return CmdLineLite::Instance().IsKeyDefined("--bootstrap-network-status-probe");
+}
+
+std::string ReadBootstrapFrameCapturePath(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const char* value = CmdLineLite::Instance().GetStringKey("--bootstrap-frame-capture", 0);
+  return value && value[0] ? std::string(value) : std::string();
+}
+
+double ReadBootstrapFrameCaptureAfterSeconds(int argc, char** argv)
+{
+  (void)argc;
+  (void)argv;
+  const double value =
+    CmdLineLite::Instance().GetFloatKey("--bootstrap-frame-capture-after", 2.0f);
+  return value > 0.0 ? value : 0.0;
 }
 
 bool ReadReplayStartPausedFlag(int argc, char** argv)
@@ -33045,7 +33104,7 @@ void BuildLinuxBootstrapHeroPlayerPreview(
       const wchar_t* readyText = ready ? L"<style:green>ready</style>" : L"<style:money>not ready</style>";
 
       lines->push_back(NStr::StrFmtW(
-        L"<space:2>%s as %s, %s",
+        L"<space:2>%ls as %ls, %ls",
         nicknameW.c_str(),
         heroTitleW.c_str(),
         readyText
@@ -33101,6 +33160,39 @@ void SyncLinuxBootstrapHeroScreenSelection(
     factionChanged ? ConvertDisplayTeamToLobbyTeam(desiredFaction) : static_cast<lobby::ETeam::Enum>(-1),
     heroChanged ? desiredHeroId : string()
   );
+}
+
+void SyncLinuxBootstrapHeroScreenRadioSelection(LinuxBootstrapScreenRuntime* runtime)
+{
+  if (!runtime || !IsLinuxBootstrapHeroScreenActive(runtime) ||
+      !IsValid(runtime->gameContext) || !IsValid(runtime->heroScreen))
+  {
+    return;
+  }
+
+  const string& selectedHeroId = runtime->gameContext->GetSelectedHeroId();
+  UI::Window* root = runtime->heroScreen->GetMainWindow();
+  UI::RadioButton* selectedButton =
+    root && !selectedHeroId.empty() ?
+      dynamic_cast<UI::RadioButton*>(root->FindChild(selectedHeroId.c_str())) :
+      0;
+
+  runtime->productionHeroRadioSelectionId =
+    selectedHeroId.empty() ? std::string("none") : std::string(selectedHeroId.c_str());
+  runtime->productionHeroRadioSelectionReady =
+    selectedButton && selectedButton->IsSelected();
+  if (!selectedButton || selectedButton->IsSelected())
+  {
+    return;
+  }
+
+  // Mirror context state into the real radio group without dispatching its Lua action twice.
+  selectedButton->SetSelected(true, selectedButton->RadioGroup());
+  runtime->productionHeroRadioSelectionReady = selectedButton->IsSelected();
+  if (runtime->productionHeroRadioSelectionReady)
+  {
+    ++runtime->productionHeroRadioSelectionSyncCount;
+  }
 }
 
 void MaybeAutoReadyLinuxBootstrapCreateGame(
@@ -40302,7 +40394,7 @@ void UpdateLinuxBootstrapNetworkStatusPreview(
   preview->runtimeNetworkStatusVisible = false;
   preview->runtimeNetworkStatusWindow.clear();
   preview->runtimeNetworkStatusPath = preview->runtimeNetworkStatusReady ?
-    "Game::NetworkStatusScreen::Init/SetClientAsync/Step/Draw" :
+    "Game::NetworkStatusScreen::Init/Step/Draw" :
     "inactive";
 
   if (!preview->runtimeNetworkStatusReady)
@@ -40318,7 +40410,9 @@ void UpdateLinuxBootstrapNetworkStatusPreview(
     return;
   }
 
-  preview->runtimeNetworkStatusVisible = mainWindow->IsVisible();
+  UI::Window* statusWindow = mainWindow->FindChild("Main");
+  preview->runtimeNetworkStatusVisible =
+    statusWindow && statusWindow->IsVisible();
   const string& windowName = mainWindow->GetWindowName();
   if (!windowName.empty())
   {
@@ -40376,6 +40470,7 @@ void EnsureLinuxBootstrapDebugVarsSender(
 }
 
 void EnsureLinuxBootstrapNetworkStatusScreen(
+  const LinuxClientLaunchSettings& settings,
   LinuxBootstrapScreenRuntime* runtime,
   LinuxUiRootPreview* preview
 )
@@ -40397,7 +40492,10 @@ void EnsureLinuxBootstrapNetworkStatusScreen(
       runtime->networkStatusInitialized = true;
       runtime->networkStatusScreen->OnNewFront(runtime->networkStatusScreen);
       runtime->networkStatusScreen->OnBecameFront();
-      runtime->networkStatusScreen->SetClientAsync();
+      if (settings.bootstrapNetworkStatusProbe)
+      {
+        runtime->networkStatusScreen->SetClientAsync();
+      }
     }
     else
     {
@@ -42349,10 +42447,11 @@ void InitializeLinuxBootstrapScreenRuntime(
   }
 
   UpdateLinuxVisibleMenuRuntime(runtime);
-  EnsureLinuxBootstrapNetworkStatusScreen(runtime, preview);
+  EnsureLinuxBootstrapNetworkStatusScreen(settings, runtime, preview);
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
   SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
+  SyncLinuxBootstrapHeroScreenRadioSelection(runtime);
   MaybeAutoReadyLinuxBootstrapCreateGame(settings, runtime);
   UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
   EnsureLinuxBootstrapLoadingScreen(
@@ -42440,6 +42539,7 @@ void DriveLinuxBootstrapScreenRuntime(
   MaybeRequestLinuxBootstrapCreateGame(settings, mapCatalog, mapBrowserState, localMatchPreview, runtime);
   EnsureLinuxBootstrapHeroScreen(runtime, preview);
   SyncLinuxBootstrapHeroScreenSelection(heroCatalog, localMatchPreview, runtime);
+  SyncLinuxBootstrapHeroScreenRadioSelection(runtime);
   MaybeAutoReadyLinuxBootstrapCreateGame(settings, runtime);
   UpdateLinuxBootstrapHeroScreenPlayers(heroCatalog, localMatchPreview, runtime);
   EnsureLinuxBootstrapLoadingScreen(
@@ -42456,7 +42556,7 @@ void DriveLinuxBootstrapScreenRuntime(
     runtime,
     preview
   );
-  EnsureLinuxBootstrapNetworkStatusScreen(runtime, preview);
+  EnsureLinuxBootstrapNetworkStatusScreen(settings, runtime, preview);
   EnsureLinuxBootstrapDebugVarsSender(runtime, preview);
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
@@ -43693,6 +43793,12 @@ bool HandleLinuxCharacterPreviewInput(
 {
   if (!runtime || IsLinuxDiagnosticsOverlayActive(settings, runtime))
   {
+    return false;
+  }
+
+  if (IsLinuxBootstrapHeroScreenActive(runtime) && !settings.bootstrapLegacyHeroOverlay)
+  {
+    runtime->characterPreviewDragging = false;
     return false;
   }
 
@@ -63691,7 +63797,20 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
     }
     else if (IsLinuxBootstrapHeroScreenActive(renderContext.screenRuntime))
     {
-      RenderWindowOverlayOpenGlLobbyHeroScreen(renderContext);
+      if (renderContext.settings && renderContext.settings->bootstrapLegacyHeroOverlay)
+      {
+        renderContext.screenRuntime->visibleMenuPath =
+          "Legacy Linux hero overlay + NGameX::SelectHeroScreen";
+        ++renderContext.screenRuntime->legacyHeroOverlayPresentationFrames;
+        RenderWindowOverlayOpenGlLobbyHeroScreen(renderContext);
+      }
+      else
+      {
+        ResetLinuxVisibleHeroLobbyRuntime(renderContext.screenRuntime);
+        renderContext.screenRuntime->visibleMenuPath =
+          "Production LobbyScreen XDB/Lua + NGameX::SelectHeroScreen";
+        ++renderContext.screenRuntime->productionHeroPresentationFrames;
+      }
     }
     else
     {
@@ -63848,6 +63967,144 @@ void RenderWindowOverlayOpenGlUiCallback(void* userData, unsigned int width, uns
   RenderWindowOverlayOpenGlUi(*renderContext);
 }
 
+bool CaptureLinuxOpenGlBackBufferPng(
+  const std::string& path,
+  int width,
+  int height,
+  std::string* error
+)
+{
+  if (error)
+  {
+    error->clear();
+  }
+  if (path.empty() || width <= 0 || height <= 0)
+  {
+    if (error)
+    {
+      *error = "invalid capture path or dimensions";
+    }
+    return false;
+  }
+
+  const size_t rowBytes = static_cast<size_t>(width) * 4u;
+  std::vector<unsigned char> pixels(rowBytes * static_cast<size_t>(height));
+  GLint previousReadBuffer = GL_BACK;
+  GLint previousPackAlignment = 4;
+  glGetIntegerv(GL_READ_BUFFER, &previousReadBuffer);
+  glGetIntegerv(GL_PACK_ALIGNMENT, &previousPackAlignment);
+  while (glGetError() != GL_NO_ERROR)
+  {
+  }
+  glReadBuffer(GL_BACK);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glFinish();
+  glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, &pixels[0]);
+  const GLenum readError = glGetError();
+  glReadBuffer(previousReadBuffer);
+  glPixelStorei(GL_PACK_ALIGNMENT, previousPackAlignment);
+  if (readError != GL_NO_ERROR)
+  {
+    if (error)
+    {
+      *error = NStr::StrFmt("glReadPixels failed: 0x%04X", static_cast<unsigned int>(readError));
+    }
+    return false;
+  }
+
+  FILE* output = fopen(path.c_str(), "wb");
+  if (!output)
+  {
+    if (error)
+    {
+      *error = std::string("cannot open capture file: ") + strerror(errno);
+    }
+    return false;
+  }
+
+  png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+  png_infop info = png ? png_create_info_struct(png) : 0;
+  if (!png || !info)
+  {
+    if (png)
+    {
+      png_destroy_write_struct(&png, 0);
+    }
+    fclose(output);
+    if (error)
+    {
+      *error = "cannot initialize PNG writer";
+    }
+    return false;
+  }
+
+  if (setjmp(png_jmpbuf(png)))
+  {
+    png_destroy_write_struct(&png, &info);
+    fclose(output);
+    if (error)
+    {
+      *error = "PNG writer failed";
+    }
+    return false;
+  }
+
+  png_init_io(png, output);
+  png_set_IHDR(
+    png,
+    info,
+    static_cast<png_uint_32>(width),
+    static_cast<png_uint_32>(height),
+    8,
+    PNG_COLOR_TYPE_RGBA,
+    PNG_INTERLACE_NONE,
+    PNG_COMPRESSION_TYPE_DEFAULT,
+    PNG_FILTER_TYPE_DEFAULT);
+  png_set_compression_level(png, 3);
+  png_write_info(png, info);
+
+  std::vector<png_bytep> rows(static_cast<size_t>(height));
+  for (int y = 0; y < height; ++y)
+  {
+    rows[static_cast<size_t>(y)] =
+      &pixels[static_cast<size_t>(height - y - 1) * rowBytes];
+  }
+  png_write_image(png, &rows[0]);
+  png_write_end(png, info);
+  png_destroy_write_struct(&png, &info);
+  fclose(output);
+  return true;
+}
+
+void MaybeCaptureLinuxOpenGlFrame(
+  const LinuxClientLaunchSettings& settings,
+  LinuxBootstrapScreenRuntime* runtime,
+  double elapsedSeconds,
+  int width,
+  int height
+)
+{
+  if (!runtime || runtime->bootstrapFrameCaptureAttempted ||
+      settings.bootstrapFrameCapturePath.empty() ||
+      elapsedSeconds < settings.bootstrapFrameCaptureAfterSeconds)
+  {
+    return;
+  }
+
+  runtime->bootstrapFrameCaptureAttempted = true;
+  runtime->bootstrapFrameCaptureElapsedSeconds = elapsedSeconds;
+  runtime->bootstrapFrameCapturePath = settings.bootstrapFrameCapturePath;
+  runtime->bootstrapFrameCaptureSucceeded = CaptureLinuxOpenGlBackBufferPng(
+    settings.bootstrapFrameCapturePath,
+    width,
+    height,
+    &runtime->bootstrapFrameCaptureError);
+  if (runtime->bootstrapFrameCaptureSucceeded)
+  {
+    runtime->bootstrapFrameCaptureError = "none";
+  }
+}
+
 bool DrawWindowOverlayOpenGl(
   LinuxWindowOverlay* overlay,
   LinuxRenderBootstrap* renderBootstrap,
@@ -63949,6 +64206,7 @@ bool DrawWindowOverlayOpenGl(
     {
       UI::PresentFrame(uiSyncTime, true);
     }
+    MaybeCaptureLinuxOpenGlFrame(settings, screenRuntime, elapsedSeconds, width, height);
     renderBootstrap->renderingInterface->Present();
   }
   else
@@ -63961,6 +64219,7 @@ bool DrawWindowOverlayOpenGl(
     {
       UI::PresentFrame(uiSyncTime, true);
     }
+    MaybeCaptureLinuxOpenGlFrame(settings, screenRuntime, elapsedSeconds, width, height);
     NMainFrame::SwapOpenGLBuffers();
   }
 
@@ -64523,6 +64782,15 @@ void WriteStartupLog(
   logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
   logFile << "  bootstrapFlashRendererProbe=" << (settings.bootstrapFlashRendererProbe ? "yes" : "no") << "\n";
   logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
+  logFile << "  bootstrapLegacyHeroOverlay="
+          << (settings.bootstrapLegacyHeroOverlay ? "yes" : "no") << "\n";
+  logFile << "  bootstrapNetworkStatusProbe="
+          << (settings.bootstrapNetworkStatusProbe ? "yes" : "no") << "\n";
+  logFile << "  bootstrapFrameCapture="
+          << (settings.bootstrapFrameCapturePath.empty() ?
+              "<none>" :
+              settings.bootstrapFrameCapturePath)
+          << " after:" << settings.bootstrapFrameCaptureAfterSeconds << "\n";
   logFile << "  mapCatalogCount=" << mapCatalog.descriptorCount << "\n";
   logFile << "  mapCatalogSource=" << (mapCatalog.source.empty() ? "<none>" : mapCatalog.source) << "\n";
   logFile << "  mapCatalogScannedCount=" << mapCatalog.scannedDescriptorCount << "\n";
@@ -66968,6 +67236,8 @@ void AppendRuntimeInputLog(
     IsValid(screenRuntime.heroScreen) ? screenRuntime.heroScreen->GetMainWindow() : 0;
   UI::Window* finalProductionHeroMain = finalProductionHeroRoot ?
     finalProductionHeroRoot->FindChild("MainFrame") : 0;
+  UI::Window* finalProductionHeroBackground = finalProductionHeroRoot ?
+    finalProductionHeroRoot->FindChild("Background") : 0;
   UI::RadioPanel* finalProductionHeroPanel = finalProductionHeroRoot ?
     dynamic_cast<UI::RadioPanel*>(finalProductionHeroRoot->FindChild("ChooseHero_Frame")) : 0;
   UI::RadioButton* finalProductionHeroBard = finalProductionHeroRoot ?
@@ -67014,6 +67284,94 @@ void AppendRuntimeInputLog(
           << " heroes:" << finalProductionHeroRadioRows << "/" << finalProductionHeroRows
           << " lua:" << finalProductionHeroLuaRows << "/" << finalProductionHeroRows
           << " buttons:" << finalProductionHeroButtonCount << "/11\n";
+  logFile << "  finalProductionHeroVisibility="
+          << "root:" << (finalProductionHeroRoot && finalProductionHeroRoot->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroRoot ? finalProductionHeroRoot->GetOpacity() : -1)
+          << " background:" << (finalProductionHeroBackground && finalProductionHeroBackground->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroBackground ? finalProductionHeroBackground->GetOpacity() : -1)
+          << " main:" << (finalProductionHeroMain && finalProductionHeroMain->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroMain ? finalProductionHeroMain->GetOpacity() : -1)
+          << " panel:" << (finalProductionHeroPanel && finalProductionHeroPanel->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroPanel ? finalProductionHeroPanel->GetOpacity() : -1)
+          << " bard:" << (finalProductionHeroBard && finalProductionHeroBard->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroBard ? finalProductionHeroBard->GetOpacity() : -1)
+          << " plane:" << (finalProductionHeroPlane && finalProductionHeroPlane->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroPlane ? finalProductionHeroPlane->GetOpacity() : -1)
+          << " ready:" << (finalProductionHeroReady && finalProductionHeroReady->IsVisible() ? 1 : 0)
+          << "/" << (finalProductionHeroReady ? finalProductionHeroReady->GetOpacity() : -1) << "\n";
+  UI::ImageLabel* finalProductionHeroBackgroundImage =
+    dynamic_cast<UI::ImageLabel*>(finalProductionHeroBackground);
+  Render::BaseMaterial* finalProductionHeroBackgroundMaterial =
+    finalProductionHeroBackgroundImage ?
+      finalProductionHeroBackgroundImage->GetRenderMaterial().GetRenderMaterial() :
+      0;
+  Render::BaseMaterial* finalProductionHeroPlaneMaterial =
+    finalProductionHeroPlane ?
+      finalProductionHeroPlane->GetRenderMaterial().GetRenderMaterial() :
+      0;
+  Render::BaseMaterial* finalProductionHeroReadyMaterial =
+    finalProductionHeroReady ?
+      finalProductionHeroReady->GetRenderMaterial().GetRenderMaterial() :
+      0;
+  const Render::Sampler* finalProductionHeroBackgroundSampler =
+    finalProductionHeroBackgroundMaterial ? finalProductionHeroBackgroundMaterial->GetDiffuseMap() : 0;
+  const Render::Sampler* finalProductionHeroPlaneSampler =
+    finalProductionHeroPlaneMaterial ? finalProductionHeroPlaneMaterial->GetDiffuseMap() : 0;
+  const Render::Sampler* finalProductionHeroReadySampler =
+    finalProductionHeroReadyMaterial ? finalProductionHeroReadyMaterial->GetDiffuseMap() : 0;
+  Render::Texture2D* finalProductionHeroBackgroundTexture =
+    finalProductionHeroBackgroundSampler ?
+      dynamic_cast<Render::Texture2D*>(finalProductionHeroBackgroundSampler->GetTexture().GetPtr()) :
+      0;
+  Render::Texture2D* finalProductionHeroPlaneTexture =
+    finalProductionHeroPlaneSampler ?
+      dynamic_cast<Render::Texture2D*>(finalProductionHeroPlaneSampler->GetTexture().GetPtr()) :
+      0;
+  Render::Texture2D* finalProductionHeroReadyTexture =
+    finalProductionHeroReadySampler ?
+      dynamic_cast<Render::Texture2D*>(finalProductionHeroReadySampler->GetTexture().GetPtr()) :
+      0;
+  logFile << "  finalProductionHeroTextures="
+          << "background:"
+          << (finalProductionHeroBackgroundTexture ? finalProductionHeroBackgroundTexture->GetWidth() : 0)
+          << "x"
+          << (finalProductionHeroBackgroundTexture ? finalProductionHeroBackgroundTexture->GetHeight() : 0)
+          << "/gl:"
+          << (finalProductionHeroBackgroundTexture ? finalProductionHeroBackgroundTexture->GetOpenGLTexture() : 0)
+          << " plane:"
+          << (finalProductionHeroPlaneTexture ? finalProductionHeroPlaneTexture->GetWidth() : 0)
+          << "x"
+          << (finalProductionHeroPlaneTexture ? finalProductionHeroPlaneTexture->GetHeight() : 0)
+          << "/gl:"
+          << (finalProductionHeroPlaneTexture ? finalProductionHeroPlaneTexture->GetOpenGLTexture() : 0)
+          << " ready:"
+          << (finalProductionHeroReadyTexture ? finalProductionHeroReadyTexture->GetWidth() : 0)
+          << "x"
+          << (finalProductionHeroReadyTexture ? finalProductionHeroReadyTexture->GetHeight() : 0)
+          << "/gl:"
+          << (finalProductionHeroReadyTexture ? finalProductionHeroReadyTexture->GetOpenGLTexture() : 0)
+          << "\n";
+  const NDb::UIFontStyle* finalProductionDefaultFont =
+    UI::SkinStyles::GetFontStyle("default");
+  Render::Texture2DRef finalProductionFontTexture =
+    UI::GetFontRenderer()->GetFontsTexture();
+  logFile << "  finalProductionHeroFont="
+          << (finalProductionDefaultFont ? "default" : "missing")
+          << "/"
+          << (finalProductionDefaultFont ? finalProductionDefaultFont->primaryColor.R : -1.0f)
+          << ","
+          << (finalProductionDefaultFont ? finalProductionDefaultFont->primaryColor.G : -1.0f)
+          << ","
+          << (finalProductionDefaultFont ? finalProductionDefaultFont->primaryColor.B : -1.0f)
+          << ","
+          << (finalProductionDefaultFont ? finalProductionDefaultFont->primaryColor.A : -1.0f)
+          << "/texture:"
+          << (finalProductionFontTexture ? finalProductionFontTexture->GetWidth() : 0)
+          << "x"
+          << (finalProductionFontTexture ? finalProductionFontTexture->GetHeight() : 0)
+          << "/gl:"
+          << (finalProductionFontTexture ? finalProductionFontTexture->GetOpenGLTexture() : 0)
+          << "\n";
   const UI::Rect& finalProductionHeroRootRect = finalProductionHeroRoot ?
     finalProductionHeroRoot->GetWindowRect() : absentRect;
   const UI::Rect& finalProductionHeroMainRect = finalProductionHeroMain ?
@@ -67052,6 +67410,30 @@ void AppendRuntimeInputLog(
   logFile << "  finalProductionHeroRadioSelection="
           << "bard:" << (finalProductionHeroBard && finalProductionHeroBard->IsSelected() ? 1 : 0)
           << " plane:" << (finalProductionHeroPlane && finalProductionHeroPlane->IsSelected() ? 1 : 0) << "\n";
+  logFile << "  finalProductionHeroRadioSync="
+          << (screenRuntime.productionHeroRadioSelectionReady ? "yes" : "no") << "/"
+          << (screenRuntime.productionHeroRadioSelectionId.empty() ?
+              "none" :
+              screenRuntime.productionHeroRadioSelectionId)
+          << "/" << screenRuntime.productionHeroRadioSelectionSyncCount << "\n";
+  logFile << "  finalHeroLobbyPresentation="
+          << (screenRuntime.legacyHeroOverlayPresentationFrames > 0 ?
+              "legacy-linux-overlay" :
+              (screenRuntime.productionHeroPresentationFrames > 0 ?
+                "production-xdb-lua" :
+                "inactive"))
+          << " productionFrames:" << screenRuntime.productionHeroPresentationFrames
+          << " legacyFrames:" << screenRuntime.legacyHeroOverlayPresentationFrames << "\n";
+  logFile << "  finalBootstrapFrameCapture="
+          << (screenRuntime.bootstrapFrameCaptureAttempted ? "attempted" : "inactive") << "/"
+          << (screenRuntime.bootstrapFrameCaptureSucceeded ? "yes" : "no") << "/"
+          << screenRuntime.bootstrapFrameCaptureElapsedSeconds << "/"
+          << (screenRuntime.bootstrapFrameCapturePath.empty() ?
+              "none" :
+              screenRuntime.bootstrapFrameCapturePath) << "/"
+          << (screenRuntime.bootstrapFrameCaptureError.empty() ?
+              "none" :
+              screenRuntime.bootstrapFrameCaptureError) << "\n";
   logFile << "  finalProductionHeroPreview="
           << localMatchPreview.humanTeam << "/"
           << ResolveLinuxBootstrapSelectedHeroId(heroCatalog, localMatchPreview).c_str()
@@ -69651,6 +70033,10 @@ int main(int argc, char** argv)
   ReadBootstrapClickScript(argc, argv, settings.bootstrapClickDouble, &settings.bootstrapClickScript);
   settings.bootstrapClickEnabled = !settings.bootstrapClickScript.empty();
   settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
+  settings.bootstrapLegacyHeroOverlay = ReadBootstrapLegacyHeroOverlayFlag(argc, argv);
+  settings.bootstrapNetworkStatusProbe = ReadBootstrapNetworkStatusProbeFlag(argc, argv);
+  settings.bootstrapFrameCapturePath = ReadBootstrapFrameCapturePath(argc, argv);
+  settings.bootstrapFrameCaptureAfterSeconds = ReadBootstrapFrameCaptureAfterSeconds(argc, argv);
   settings.replayStartPaused = ReadReplayStartPausedFlag(argc, argv);
   settings.replayInitialStepBudget = ReadReplayStepBudget(argc, argv);
   settings.replaySpeedMultiplier = ReadReplaySpeedMultiplier(argc, argv);
@@ -70312,6 +70698,15 @@ int main(int argc, char** argv)
   fprintf(stdout, "Demo cycle: %s\n", settings.demoCycleSeconds > 0.0 ? NStr::StrFmt("%.1fs", settings.demoCycleSeconds) : "off");
   fprintf(stdout, "Bootstrap create game: %s\n", settings.bootstrapCreateGame ? "yes" : "no");
   fprintf(stdout, "Bootstrap Flash renderer probe: %s\n", settings.bootstrapFlashRendererProbe ? "yes" : "no");
+  fprintf(stdout, "Hero lobby presentation: %s\n",
+    settings.bootstrapLegacyHeroOverlay ? "legacy Linux overlay" : "production XDB/Lua UI");
+  fprintf(stdout, "Network status probe: %s\n",
+    settings.bootstrapNetworkStatusProbe ? "async dialog" : "off");
+  fprintf(stdout, "OpenGL frame capture: %s after %.2fs\n",
+    settings.bootstrapFrameCapturePath.empty() ?
+      "off" :
+      settings.bootstrapFrameCapturePath.c_str(),
+    settings.bootstrapFrameCaptureAfterSeconds);
   fprintf(stdout, "Replay header startup: requested=%s usable=%s adoptedMap=%s adoptedLineup=%s autoCreate=%s path=%s players=%lu humans=%lu bots=%lu client=%d team=%d stepLength=%d map=%s error=%s\n",
     replayHeaderPreview.requested ? "yes" : "no",
     replayHeaderPreview.usable ? "yes" : "no",
@@ -71662,6 +72057,25 @@ int main(int argc, char** argv)
     screenRuntime.visibleHeroLobbySelectedHeroId.empty() ?
       "<none>" :
       screenRuntime.visibleHeroLobbySelectedHeroId.c_str());
+  fprintf(stdout, "Final hero lobby presentation: mode=%s productionFrames=%lu legacyFrames=%lu radio=%s/%s sync=%lu\n",
+    settings.bootstrapLegacyHeroOverlay ? "legacy-linux-overlay" : "production-xdb-lua",
+    static_cast<unsigned long>(screenRuntime.productionHeroPresentationFrames),
+    static_cast<unsigned long>(screenRuntime.legacyHeroOverlayPresentationFrames),
+    screenRuntime.productionHeroRadioSelectionReady ? "selected" : "not-selected",
+    screenRuntime.productionHeroRadioSelectionId.empty() ?
+      "none" :
+      screenRuntime.productionHeroRadioSelectionId.c_str(),
+    static_cast<unsigned long>(screenRuntime.productionHeroRadioSelectionSyncCount));
+  fprintf(stdout, "Final OpenGL frame capture: attempted=%s success=%s elapsed=%.2f path=%s error=%s\n",
+    screenRuntime.bootstrapFrameCaptureAttempted ? "yes" : "no",
+    screenRuntime.bootstrapFrameCaptureSucceeded ? "yes" : "no",
+    screenRuntime.bootstrapFrameCaptureElapsedSeconds,
+    screenRuntime.bootstrapFrameCapturePath.empty() ?
+      "none" :
+      screenRuntime.bootstrapFrameCapturePath.c_str(),
+    screenRuntime.bootstrapFrameCaptureError.empty() ?
+      "none" :
+      screenRuntime.bootstrapFrameCaptureError.c_str());
 #if defined(PW_LINUX_OPENGL_BOOTSTRAP)
   {
     const Render::LinuxOpenGLUiRendererStats& finalRealUiRendererStats =
