@@ -4846,6 +4846,11 @@ struct LinuxBootstrapScreenRuntime
   size_t productionUiEventsHandled;
   size_t productionUiMouseEventsHandled;
   std::string productionUiLastHandledEvent;
+  std::string productionLobbySelectedMapId;
+  int productionLobbyPlayerCount;
+  std::string productionLobbyPlayerCaption;
+  size_t productionLobbyMapSyncCount;
+  size_t productionLobbyPlayerSyncCount;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6180,6 +6185,11 @@ struct LinuxBootstrapScreenRuntime
       productionUiEventsHandled(0),
       productionUiMouseEventsHandled(0),
       productionUiLastHandledEvent("none"),
+      productionLobbySelectedMapId("none"),
+      productionLobbyPlayerCount(0),
+      productionLobbyPlayerCaption("none"),
+      productionLobbyMapSyncCount(0),
+      productionLobbyPlayerSyncCount(0),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -31695,6 +31705,29 @@ unsigned long MakeLinuxWheelMessageFlags(int wheelDelta)
 
 const unsigned long LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG = 0x01000000ul;
 
+double ResolveLinuxLobbyBaseScale(int width, int height)
+{
+  if (width <= 0 || height <= 0)
+  {
+    return 1.0;
+  }
+
+  return std::min(
+    static_cast<double>(width) / 1280.0,
+    static_cast<double>(height) / 1024.0
+  );
+}
+
+double ResolveLinuxLobbyBaseOffsetX(int width, double scale)
+{
+  return (static_cast<double>(width) - 1280.0 * scale) * 0.5;
+}
+
+double ResolveLinuxLobbyBaseOffsetY(int height, double scale)
+{
+  return (static_cast<double>(height) - 1024.0 * scale) * 0.5;
+}
+
 bool InjectLinuxBootstrapLobbyClick(
   const LinuxClientLaunchSettings& settings,
   double elapsedSeconds,
@@ -31735,14 +31768,11 @@ bool InjectLinuxBootstrapLobbyClick(
     return true;
   }
 
-  message.x = static_cast<int>(
-    static_cast<double>(click.baseX) *
-      static_cast<double>(settings.width) / 1280.0 + 0.5
-  );
-  message.y = static_cast<int>(
-    static_cast<double>(click.baseY) *
-      static_cast<double>(settings.height) / 1024.0 + 0.5
-  );
+  const double lobbyScale = ResolveLinuxLobbyBaseScale(settings.width, settings.height);
+  const double lobbyOffsetX = ResolveLinuxLobbyBaseOffsetX(settings.width, lobbyScale);
+  const double lobbyOffsetY = ResolveLinuxLobbyBaseOffsetY(settings.height, lobbyScale);
+  message.x = static_cast<int>(lobbyOffsetX + static_cast<double>(click.baseX) * lobbyScale + 0.5);
+  message.y = static_cast<int>(lobbyOffsetY + static_cast<double>(click.baseY) * lobbyScale + 0.5);
   if (click.moveOnly)
   {
     message.msg = NMainFrame::SWindowsMsg::MOUSE_MOVE;
@@ -45869,12 +45899,11 @@ bool ProjectLinuxLobbyMouseToBase(
     return false;
   }
 
-  *baseX = static_cast<int>(
-    static_cast<double>(mouseX) * 1280.0 / static_cast<double>(settings.width) + 0.5
-  );
-  *baseY = static_cast<int>(
-    static_cast<double>(mouseY) * 1024.0 / static_cast<double>(settings.height) + 0.5
-  );
+  const double scale = ResolveLinuxLobbyBaseScale(settings.width, settings.height);
+  const double offsetX = ResolveLinuxLobbyBaseOffsetX(settings.width, scale);
+  const double offsetY = ResolveLinuxLobbyBaseOffsetY(settings.height, scale);
+  *baseX = static_cast<int>((static_cast<double>(mouseX) - offsetX) / scale + 0.5);
+  *baseY = static_cast<int>((static_cast<double>(mouseY) - offsetY) / scale + 0.5);
   return true;
 }
 
@@ -46045,41 +46074,75 @@ bool SelectLinuxLobbyMapFromScrollAt(
   return previousIndex != mapBrowserState->selectedIndex;
 }
 
-bool SetLinuxLobbyPlayerCountFromSliderAt(
-  const LinuxMapCatalog& mapCatalog,
-  const LinuxMapBrowserState& mapBrowserState,
-  LinuxLocalMatchPreview* localMatchPreview,
-  int baseX,
-  const char* source
+int ResolveLinuxProductionLobbyPlayerCount(
+  const LinuxBootstrapScreenRuntime* runtime
 )
 {
-  if (!localMatchPreview)
+  if (!runtime || !IsValid(runtime->gameModeScreen))
+  {
+    return 0;
+  }
+
+  UI::Window* root = runtime->gameModeScreen->GetMainWindow();
+  UI::ScrollBar* playerCount = root ?
+    dynamic_cast<UI::ScrollBar*>(root->FindChild("PlayerCount")) :
+    0;
+  return playerCount ? playerCount->GetScrollPosition() + 2 : 0;
+}
+
+bool SyncLinuxProductionLobbyState(
+  const LinuxMapCatalog& mapCatalog,
+  LinuxMapBrowserState* mapBrowserState,
+  LinuxLocalMatchPreview* localMatchPreview,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!runtime || !mapBrowserState || !localMatchPreview || !IsValid(runtime->gameModeScreen))
   {
     return false;
   }
 
-  const size_t maxTeamSize = ResolveSelectedMapMaxTeamSize(mapCatalog, mapBrowserState);
-  if (maxTeamSize == 0)
+  bool changed = false;
+  const string selectedMapId = NGlobal::GetVar("last_map", NGlobal::VariantValue("")).Get<string>();
+  runtime->productionLobbySelectedMapId = selectedMapId.empty() ? "none" : selectedMapId.c_str();
+  if (!selectedMapId.empty())
   {
-    return false;
+    const size_t selectedMapIndex = FindMapCatalogIndex(mapCatalog, selectedMapId.c_str());
+    if (selectedMapIndex != static_cast<size_t>(-1) && selectedMapIndex != mapBrowserState->selectedIndex)
+    {
+      SelectAbsoluteMapIndex(mapCatalog, mapBrowserState, selectedMapIndex, "production-lua-map");
+      ++runtime->productionLobbyMapSyncCount;
+      changed = true;
+    }
   }
 
-  const int sliderX = 69;
-  const int sliderW = 247;
-  const int clampedX = std::max(0, std::min(sliderW, baseX - sliderX));
-  const size_t nextTeamSize = maxTeamSize <= 1 ? 1 : static_cast<size_t>(
-    1 + (static_cast<long long>(clampedX) * static_cast<long long>(maxTeamSize - 1) +
-      static_cast<long long>(sliderW / 2)) / static_cast<long long>(sliderW)
+  UI::Window* root = runtime->gameModeScreen->GetMainWindow();
+  UI::ImageLabel* playerCaption = root ?
+    dynamic_cast<UI::ImageLabel*>(root->FindChild("PlayerNum")) :
+    0;
+  runtime->productionLobbyPlayerCaption = playerCaption ? playerCaption->GetCaptionText().c_str() : "none";
+
+  const int players = ResolveLinuxProductionLobbyPlayerCount(runtime);
+  runtime->productionLobbyPlayerCount = players;
+  if (players < 2)
+  {
+    return changed;
+  }
+
+  const size_t maxTeamSize = ResolveSelectedMapMaxTeamSize(mapCatalog, *mapBrowserState);
+  const size_t nextTeamSize = std::min(
+    maxTeamSize,
+    static_cast<size_t>(std::max(1, (players + 1) / 2))
   );
-
-  if (localMatchPreview->requestedTeamSize == nextTeamSize)
+  if (localMatchPreview->requestedTeamSize != nextTeamSize)
   {
-    return false;
+    localMatchPreview->requestedTeamSize = nextTeamSize;
+    localMatchPreview->generationSource = "production-lua-player-count";
+    ++runtime->productionLobbyPlayerSyncCount;
+    changed = true;
   }
 
-  localMatchPreview->requestedTeamSize = nextTeamSize;
-  localMatchPreview->generationSource = source ? source : "visible-menu-mouse";
-  return true;
+  return changed;
 }
 
 size_t ResolveLinuxLobbyVisibleGameCount(
@@ -46613,19 +46676,10 @@ bool HandleLinuxVisibleLobbyMouse(
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "player-count", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PLAYER_COUNT;
-      const bool playerCountChanged = SetLinuxLobbyPlayerCountFromSliderAt(
-        mapCatalog,
-        *mapBrowserState,
-        localMatchPreview,
-        baseX,
-        "visible-menu-click-player-count"
-      );
-      if (playerCountChanged)
-      {
-        RegenerateLocalMatchPreview(heroCatalog, mapCatalog, *mapBrowserState, localMatchPreview, "visible-menu-click-player-count");
-      }
-      runtime->visibleMenuLastAction = playerCountChanged ? "set-player-count" : "focus-player-count";
-      changed = playerCountChanged || changed;
+      runtime->visibleMenuLastAction = "set-player-count";
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -54480,33 +54534,35 @@ void DrawLinuxBootstrapCharacterPreview(const LinuxOverlayUiRenderContext& rende
 
 struct LinuxLobbyLayoutTransform
 {
-  float scaleX;
-  float scaleY;
+  float scale;
+  float offsetX;
+  float offsetY;
 
   LinuxLobbyLayoutTransform(int width, int height)
-    : scaleX(width > 0 ? static_cast<float>(width) / 1280.0f : 1.0f),
-      scaleY(height > 0 ? static_cast<float>(height) / 1024.0f : 1.0f)
+    : scale(static_cast<float>(ResolveLinuxLobbyBaseScale(width, height))),
+      offsetX(static_cast<float>(ResolveLinuxLobbyBaseOffsetX(width, scale))),
+      offsetY(static_cast<float>(ResolveLinuxLobbyBaseOffsetY(height, scale)))
   {
   }
 
   int X(int value) const
   {
-    return static_cast<int>(static_cast<float>(value) * scaleX + (value >= 0 ? 0.5f : -0.5f));
+    return static_cast<int>(offsetX + static_cast<float>(value) * scale + (value >= 0 ? 0.5f : -0.5f));
   }
 
   int Y(int value) const
   {
-    return static_cast<int>(static_cast<float>(value) * scaleY + (value >= 0 ? 0.5f : -0.5f));
+    return static_cast<int>(offsetY + static_cast<float>(value) * scale + (value >= 0 ? 0.5f : -0.5f));
   }
 
   int W(int value) const
   {
-    return std::max(1, static_cast<int>(static_cast<float>(value) * scaleX + 0.5f));
+    return std::max(1, static_cast<int>(static_cast<float>(value) * scale + 0.5f));
   }
 
   int H(int value) const
   {
-    return std::max(1, static_cast<int>(static_cast<float>(value) * scaleY + 0.5f));
+    return std::max(1, static_cast<int>(static_cast<float>(value) * scale + 0.5f));
   }
 };
 
@@ -57219,6 +57275,7 @@ int DrawLinuxLobbyPlayerCount(
   LinuxWindowOverlay* overlay,
   const LinuxLobbyLayoutTransform& layout,
   const LinuxLocalMatchPreview& localMatchPreview,
+  const LinuxBootstrapScreenRuntime* runtime,
   bool hovered
 )
 {
@@ -57232,9 +57289,13 @@ int DrawLinuxLobbyPlayerCount(
   const int sliderW = layout.W(247);
   const int sliderH = layout.H(32);
 
-  int players = localMatchPreview.requestedTeamSize > 0 ?
-    static_cast<int>(localMatchPreview.requestedTeamSize * 2) :
-    10;
+  int players = ResolveLinuxProductionLobbyPlayerCount(runtime);
+  if (players < 2)
+  {
+    players = localMatchPreview.requestedTeamSize > 0 ?
+      static_cast<int>(localMatchPreview.requestedTeamSize * 2) :
+      10;
+  }
   players = std::max(2, std::min(10, players));
 
   const int buttonW = std::max(14, layout.W(24));
@@ -57990,7 +58051,13 @@ void RenderWindowOverlayOpenGlLobbySelectGameMode(const LinuxOverlayUiRenderCont
     developerFemale ? overlay->lobbyText.developerFemale : overlay->lobbyText.developerMale
   );
 
-  const int playerCountValue = DrawLinuxLobbyPlayerCount(overlay, layout, localMatchPreview, playerCountHovered);
+  const int playerCountValue = DrawLinuxLobbyPlayerCount(
+    overlay,
+    layout,
+    localMatchPreview,
+    runtime,
+    playerCountHovered
+  );
 
   std::string joinResultText =
     uiRootPreview.runtimeBootstrapJoinResultReady ?
@@ -66520,7 +66587,22 @@ void AppendRuntimeInputLog(
             << " reconnect:" << screenRuntime.gameContext->GetReconnectCalls()
             << " spectate:" << screenRuntime.gameContext->GetSpectateCalls()
             << " lastGame:" << screenRuntime.gameContext->GetLastGameId() << "\n";
+    logFile << "  finalProductionLobbyCreatedGame="
+            << (screenRuntime.gameContext->GetCreatedMapId().empty() ?
+                "none" :
+                screenRuntime.gameContext->GetCreatedMapId().c_str())
+            << "/" << screenRuntime.gameContext->GetMaxPlayers() << "\n";
   }
+  logFile << "  finalProductionLobbySelection="
+          << (screenRuntime.productionLobbySelectedMapId.empty() ?
+              "none" :
+              screenRuntime.productionLobbySelectedMapId)
+          << "/" << screenRuntime.productionLobbyPlayerCount
+          << "/" << (screenRuntime.productionLobbyPlayerCaption.empty() ?
+              "none" :
+              screenRuntime.productionLobbyPlayerCaption)
+          << " sync:" << screenRuntime.productionLobbyMapSyncCount
+          << "/" << screenRuntime.productionLobbyPlayerSyncCount << "\n";
   UI::Window* finalProductionLobbyRoot =
     IsValid(screenRuntime.gameModeScreen) ?
       screenRuntime.gameModeScreen->GetMainWindow() :
@@ -66555,6 +66637,11 @@ void AppendRuntimeInputLog(
   UI::ScrollBar* finalMapsBar = finalMapsWindow ?
     dynamic_cast<UI::ScrollBar*>(finalMapsWindow->FindChild("ScrollBar")) :
     0;
+  UI::Window* finalMapsPanel = finalProductionLobbyRoot ?
+    finalProductionLobbyRoot->FindChild("MapsPanel") :
+    0;
+  UI::Window* finalFirstMapRow = finalMapsList ? finalMapsList->GetItemByIndex(0) : 0;
+  UI::Window* finalSecondMapRow = finalMapsList ? finalMapsList->GetItemByIndex(1) : 0;
   UI::RadioPanel* finalJoinModePanel = finalProductionLobbyRoot ?
     dynamic_cast<UI::RadioPanel*>(finalProductionLobbyRoot->FindChild("Panel")) :
     0;
@@ -66567,6 +66654,24 @@ void AppendRuntimeInputLog(
   UI::RadioButton* finalJoinSpectateButton = finalProductionLobbyRoot ?
     dynamic_cast<UI::RadioButton*>(finalProductionLobbyRoot->FindChild("JoinModeSpectate")) :
     0;
+  const UI::Rect absentRect(-1, -1, -1, -1);
+  const UI::Rect& rootRect = finalProductionLobbyRoot ? finalProductionLobbyRoot->GetWindowRect() : absentRect;
+  const UI::Rect& mapsPanelRect = finalMapsPanel ? finalMapsPanel->GetWindowRect() : absentRect;
+  const UI::Rect& mapsWindowRect = finalMapsWindow ? finalMapsWindow->GetWindowRect() : absentRect;
+  const UI::Rect& mapsListRect = finalMapsList ? finalMapsList->GetWindowRect() : absentRect;
+  const UI::Rect& firstMapRowRect = finalFirstMapRow ? finalFirstMapRow->GetWindowRect() : absentRect;
+  const UI::Rect& secondMapRowRect = finalSecondMapRow ? finalSecondMapRow->GetWindowRect() : absentRect;
+  const UI::Rect& playerCountRect = finalPlayerCountBar ? finalPlayerCountBar->GetWindowRect() : absentRect;
+  const UI::Rect& createRect = finalStartServerButton ? finalStartServerButton->GetWindowRect() : absentRect;
+  logFile << "  finalProductionLobbyRects="
+          << "root:" << rootRect.x1 << "," << rootRect.y1 << "," << rootRect.x2 << "," << rootRect.y2
+          << " mapPanel:" << mapsPanelRect.x1 << "," << mapsPanelRect.y1 << "," << mapsPanelRect.x2 << "," << mapsPanelRect.y2
+          << " maps:" << mapsWindowRect.x1 << "," << mapsWindowRect.y1 << "," << mapsWindowRect.x2 << "," << mapsWindowRect.y2
+          << " list:" << mapsListRect.x1 << "," << mapsListRect.y1 << "," << mapsListRect.x2 << "," << mapsListRect.y2
+          << " row0:" << firstMapRowRect.x1 << "," << firstMapRowRect.y1 << "," << firstMapRowRect.x2 << "," << firstMapRowRect.y2
+          << " row1:" << secondMapRowRect.x1 << "," << secondMapRowRect.y1 << "," << secondMapRowRect.x2 << "," << secondMapRowRect.y2
+          << " players:" << playerCountRect.x1 << "," << playerCountRect.y1 << "," << playerCountRect.x2 << "," << playerCountRect.y2
+          << " create:" << createRect.x1 << "," << createRect.y1 << "," << createRect.x2 << "," << createRect.y2 << "\n";
   const int finalProductionLobbyLuaSubclasses =
     (finalProductionLobbyRoot && finalProductionLobbyRoot->IsSubclassed() ? 1 : 0) +
     (finalStartSessionButton && finalStartSessionButton->IsSubclassed() ? 1 : 0) +
@@ -70769,28 +70874,38 @@ int main(int argc, char** argv)
     NHPTimer::GetTime(now);
     const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
     const size_t firstSyntheticMessage = inputState.rawMessages.size();
-    if (bootstrapClickNextIndex < settings.bootstrapClickScript.size() &&
-        elapsedSeconds >= bootstrapClickNextTime &&
-        InjectLinuxBootstrapLobbyClick(
-          settings,
-          elapsedSeconds,
-          screenRuntime,
-          bootstrapClickNextIndex,
-          &inputState))
+    while (bootstrapClickNextIndex < settings.bootstrapClickScript.size() &&
+           elapsedSeconds >= bootstrapClickNextTime)
     {
-      const double nextDelay =
-        settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds > 0.0 ?
-          settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds :
-          settings.bootstrapClickIntervalSeconds;
+      if (!InjectLinuxBootstrapLobbyClick(
+            settings,
+            elapsedSeconds,
+            screenRuntime,
+            bootstrapClickNextIndex,
+            &inputState))
+      {
+        break;
+      }
+
+      const bool explicitWait = settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds > 0.0;
+      const double nextDelay = explicitWait ?
+        settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds :
+        settings.bootstrapClickIntervalSeconds;
       ++screenRuntime.bootstrapInputScriptTokens;
-      if (settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds > 0.0)
+      if (explicitWait)
       {
         ++screenRuntime.bootstrapInputScriptWaitTokens;
         screenRuntime.bootstrapInputScriptWaitSeconds +=
           settings.bootstrapClickScript[bootstrapClickNextIndex].waitSeconds;
       }
       ++bootstrapClickNextIndex;
-      bootstrapClickNextTime = elapsedSeconds + nextDelay;
+      bootstrapClickNextTime = explicitWait ?
+        elapsedSeconds + nextDelay :
+        bootstrapClickNextTime + nextDelay;
+      if (explicitWait)
+      {
+        break;
+      }
     }
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
     if (uiRootPreview.runtimeInitialized)
@@ -70817,8 +70932,18 @@ int main(int argc, char** argv)
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;
     const size_t previousLoadingUiChangeCount = loadingUiState.changeCount;
+    const bool productionLobbyChanged =
+      !IsLinuxBootstrapHeroScreenActive(&screenRuntime) &&
+      !IsLinuxBootstrapLoadingScreenActive(&screenRuntime) &&
+      SyncLinuxProductionLobbyState(
+        mapCatalog,
+        &mapBrowserState,
+        &localMatchPreview,
+        &screenRuntime
+      );
     bool visibleMenuConsumedNavigation = false;
-    bool visibleMenuChanged = HandleLinuxVisibleMenuHotkeys(
+    bool visibleMenuChanged = productionLobbyChanged;
+    visibleMenuChanged = HandleLinuxVisibleMenuHotkeys(
       settings,
       inputState,
       mapCatalog,
@@ -70828,7 +70953,7 @@ int main(int argc, char** argv)
       uiRootPreview,
       &screenRuntime,
       &visibleMenuConsumedNavigation
-    );
+    ) || visibleMenuChanged;
     visibleMenuChanged = HandleLinuxVisibleLobbyMouse(
       settings,
       inputState,
