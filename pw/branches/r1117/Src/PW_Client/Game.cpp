@@ -18,6 +18,7 @@
 #include "NivalInput/Binds.h"
 #include "NivalInput/InputEvent.h"
 #include "NivalInput/HwInputInterface.h"
+#include "NivalInput/SystemInputEvents.h"
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #include "PF_GameLogic/DBAdvMap.h"
 #include "PF_GameLogic/DBGuild.h"
@@ -862,12 +863,14 @@ struct LinuxInputState
 {
   CObj<LinuxHwInput> hwInput;
   CObj<Input::Binds> binds;
+  CObj<Input::SystemEvents> systemEvents;
   vector<Input::Event> frameEvents;
   TLinuxMainFrameMessages rawMessages;
   std::vector<std::string> recentEvents;
   std::vector<std::string> warnings;
   NHPTimer::STime lastUpdateTime;
   size_t totalEvents;
+  size_t systemEventCount;
   size_t bindStringCount;
   size_t bindContextCount;
   size_t commandBindingHits;
@@ -880,6 +883,7 @@ struct LinuxInputState
   LinuxInputState()
     : lastUpdateTime(0),
       totalEvents(0),
+      systemEventCount(0),
       bindStringCount(0),
       bindContextCount(0),
       commandBindingHits(0),
@@ -3586,7 +3590,14 @@ public:
       lobbyStatus(lobby::EClientStatus::Connected),
       selectedTeam(static_cast<int>(static_cast<lobby::ETeam::Enum>(-1))),
       selectedFaction(static_cast<int>(static_cast<lobby::ETeam::Enum>(-1))),
-      maxPlayers(0)
+      maxPlayers(0),
+      setDeveloperSexCalls(0),
+      refreshGamesListCalls(0),
+      createGameCalls(0),
+      joinGameCalls(0),
+      reconnectCalls(0),
+      spectateCalls(0),
+      lastGameId(-1)
   {
     StrongMT<NWorld::PWMapCollection> maps = new NWorld::PWMapCollection;
     maps->ScanForMaps();
@@ -3601,6 +3612,7 @@ public:
   virtual void SetDeveloperSex(lobby::ESex::Enum _sex)
   {
     developerSex = _sex;
+    ++setDeveloperSexCalls;
   }
 
   lobby::ESex::Enum GetDeveloperSex() const
@@ -3667,6 +3679,7 @@ public:
 
   virtual void RefreshGamesList()
   {
+    ++refreshGamesListCalls;
     devGamesList.clear();
 
     const int fallbackMaxPlayers = maxPlayers > 0 ? maxPlayers : 10;
@@ -3771,6 +3784,7 @@ public:
 
   virtual void CreateGame(const char* mapId, int _maxPlayers)
   {
+    ++createGameCalls;
     createdMapId = mapId ? mapId : "";
     maxPlayers = _maxPlayers;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
@@ -3779,7 +3793,8 @@ public:
 
   virtual void JoinGame(int gameId)
   {
-    (void)gameId;
+    ++joinGameCalls;
+    lastGameId = gameId;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
     lastLobbyOperationResult = lobby::EOperationResult::Ok;
   }
@@ -3793,7 +3808,8 @@ public:
 
   virtual void Reconnect(int gameId, int team, const string& heroId)
   {
-    (void)gameId;
+    ++reconnectCalls;
+    lastGameId = gameId;
     selectedTeam = team;
     selectedHeroId = heroId;
     lobbyStatus = lobby::EClientStatus::InCustomLobby;
@@ -3802,7 +3818,8 @@ public:
 
   virtual void Spectate(int gameId)
   {
-    (void)gameId;
+    ++spectateCalls;
+    lastGameId = gameId;
     lobbyStatus = lobby::EClientStatus::InGameSession;
     lastLobbyOperationResult = lobby::EOperationResult::Ok;
   }
@@ -3871,6 +3888,14 @@ public:
     return readyState;
   }
 
+  size_t GetSetDeveloperSexCalls() const { return setDeveloperSexCalls; }
+  size_t GetRefreshGamesListCalls() const { return refreshGamesListCalls; }
+  size_t GetCreateGameCalls() const { return createGameCalls; }
+  size_t GetJoinGameCalls() const { return joinGameCalls; }
+  size_t GetReconnectCalls() const { return reconnectCalls; }
+  size_t GetSpectateCalls() const { return spectateCalls; }
+  int GetLastGameId() const { return lastGameId; }
+
 private:
   StrongMT<NWorld::IMapCollection> mapCollection;
   lobby::TDevGamesList devGamesList;
@@ -3883,6 +3908,13 @@ private:
   int selectedTeam;
   int selectedFaction;
   int maxPlayers;
+  size_t setDeveloperSexCalls;
+  size_t refreshGamesListCalls;
+  size_t createGameCalls;
+  size_t joinGameCalls;
+  size_t reconnectCalls;
+  size_t spectateCalls;
+  int lastGameId;
   string createdMapId;
   string selectedHeroId;
 };
@@ -4810,6 +4842,10 @@ struct LinuxBootstrapScreenRuntime
   size_t bootstrapInputScriptTokens;
   size_t bootstrapInputScriptWaitTokens;
   double bootstrapInputScriptWaitSeconds;
+  size_t productionUiEventsDispatched;
+  size_t productionUiEventsHandled;
+  size_t productionUiMouseEventsHandled;
+  std::string productionUiLastHandledEvent;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6140,6 +6176,10 @@ struct LinuxBootstrapScreenRuntime
       bootstrapInputScriptTokens(0),
       bootstrapInputScriptWaitTokens(0),
       bootstrapInputScriptWaitSeconds(0.0),
+      productionUiEventsDispatched(0),
+      productionUiEventsHandled(0),
+      productionUiMouseEventsHandled(0),
+      productionUiLastHandledEvent("none"),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -8797,11 +8837,15 @@ void InitializeInputState(const LinuxClientEnvironment& environment, LinuxInputS
 
   state->hwInput = new LinuxHwInput();
   state->binds = new Input::Binds(state->hwInput.GetPtr());
+  state->systemEvents = new Input::SystemEvents(state->binds.GetPtr());
   Input::BindsManager::Instance()->SetBinds(state->binds.GetPtr());
   state->hardwareControlCount = state->hwInput->ControlCount();
 
   NHPTimer::GetTime(state->lastUpdateTime);
-  state->initialized = IsValid(state->hwInput) && IsValid(state->binds);
+  state->initialized =
+    IsValid(state->hwInput) &&
+    IsValid(state->binds) &&
+    IsValid(state->systemEvents);
 }
 
 void FinalizeInputState(LinuxInputState* state)
@@ -31558,16 +31602,51 @@ void DrainMainFrameMessages(TLinuxMainFrameMessages* messages)
   }
 }
 
+void RecordLinuxInputEvents(LinuxInputState* state, size_t firstEvent)
+{
+  if (!state || firstEvent >= state->frameEvents.size())
+  {
+    return;
+  }
+
+  state->totalEvents += state->frameEvents.size() - firstEvent;
+  for (size_t i = firstEvent; i < state->frameEvents.size(); ++i)
+  {
+    const Input::Event& event = state->frameEvents[i];
+    if (RunLinuxCommandBinding(event))
+    {
+      ++state->commandBindingHits;
+    }
+
+    state->recentEvents.push_back(DescribeInputEvent(event));
+  }
+
+  const size_t maxRecentEvents = 6;
+  if (state->recentEvents.size() > maxRecentEvents)
+  {
+    state->recentEvents.erase(state->recentEvents.begin(), state->recentEvents.end() - maxRecentEvents);
+  }
+}
+
 void UpdateInputState(LinuxInputState* state)
 {
   state->frameEvents.clear();
   state->rawMessages.clear();
   DrainMainFrameMessages(&state->rawMessages);
 
-  if (!state->initialized || !IsValid(state->hwInput) || !IsValid(state->binds))
+  if (!state->initialized ||
+      !IsValid(state->hwInput) ||
+      !IsValid(state->binds) ||
+      !IsValid(state->systemEvents))
   {
     return;
   }
+
+  for (size_t i = 0; i < state->rawMessages.size(); ++i)
+  {
+    state->systemEvents->ProcessMessage(state->rawMessages[i], state->frameEvents);
+  }
+  state->systemEventCount += state->frameEvents.size();
 
   state->hwInput->SetFrameMessages(state->rawMessages);
 
@@ -31589,26 +31668,24 @@ void UpdateInputState(LinuxInputState* state)
     state->frameEvents.push_back(bindEvents[i]);
   }
 
-  state->totalEvents += state->frameEvents.size();
-
-  for (size_t i = 0; i < state->frameEvents.size(); ++i)
-  {
-    const Input::Event& event = state->frameEvents[i];
-    if (RunLinuxCommandBinding(event))
-    {
-      ++state->commandBindingHits;
-    }
-
-    state->recentEvents.push_back(DescribeInputEvent(event));
-  }
-
+  RecordLinuxInputEvents(state, 0);
   state->binds->ClearEvents();
+}
 
-  const size_t maxRecentEvents = 6;
-  if (state->recentEvents.size() > maxRecentEvents)
+void AppendLinuxSystemInputEvents(LinuxInputState* state, size_t firstMessage)
+{
+  if (!state || !state->initialized || !IsValid(state->systemEvents) || firstMessage >= state->rawMessages.size())
   {
-    state->recentEvents.erase(state->recentEvents.begin(), state->recentEvents.end() - maxRecentEvents);
+    return;
   }
+
+  const size_t firstEvent = state->frameEvents.size();
+  for (size_t i = firstMessage; i < state->rawMessages.size(); ++i)
+  {
+    state->systemEvents->ProcessMessage(state->rawMessages[i], state->frameEvents);
+  }
+  state->systemEventCount += state->frameEvents.size() - firstEvent;
+  RecordLinuxInputEvents(state, firstEvent);
 }
 
 unsigned long MakeLinuxWheelMessageFlags(int wheelDelta)
@@ -31653,16 +31730,11 @@ bool InjectLinuxBootstrapLobbyClick(
     message.nKey = click.keySym;
     message.nRep = 1;
     inputState->rawMessages.push_back(message);
+    message.msg = NMainFrame::SWindowsMsg::KEY_UP;
+    inputState->rawMessages.push_back(message);
     return true;
   }
 
-  message.msg = click.moveOnly ?
-    NMainFrame::SWindowsMsg::MOUSE_MOVE :
-    (click.wheelDelta != 0 ?
-    NMainFrame::SWindowsMsg::MOUSE_WHEEL :
-    (click.doubleClick ?
-      NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK :
-      NMainFrame::SWindowsMsg::MOUSE_LB_DOWN));
   message.x = static_cast<int>(
     static_cast<double>(click.baseX) *
       static_cast<double>(settings.width) / 1280.0 + 0.5
@@ -31671,15 +31743,39 @@ bool InjectLinuxBootstrapLobbyClick(
     static_cast<double>(click.baseY) *
       static_cast<double>(settings.height) / 1024.0 + 0.5
   );
+  if (click.moveOnly)
+  {
+    message.msg = NMainFrame::SWindowsMsg::MOUSE_MOVE;
+    message.dwFlags = LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG;
+    inputState->rawMessages.push_back(message);
+    return true;
+  }
+
   if (click.wheelDelta != 0)
   {
+    message.msg = NMainFrame::SWindowsMsg::MOUSE_WHEEL;
     message.dwFlags = MakeLinuxWheelMessageFlags(click.wheelDelta);
+    inputState->rawMessages.push_back(message);
+    return true;
   }
-  else if (click.moveOnly)
-  {
-    message.dwFlags = LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG;
-  }
+
+  message.msg = NMainFrame::SWindowsMsg::MOUSE_MOVE;
+  message.dwFlags = LINUX_BOOTSTRAP_SYNTHETIC_MOUSE_FLAG;
   inputState->rawMessages.push_back(message);
+
+  message.dwFlags = 0;
+  message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
+  inputState->rawMessages.push_back(message);
+  message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_UP;
+  inputState->rawMessages.push_back(message);
+
+  if (click.doubleClick)
+  {
+    message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK;
+    inputState->rawMessages.push_back(message);
+    message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_UP;
+    inputState->rawMessages.push_back(message);
+  }
   return true;
 }
 
@@ -31701,17 +31797,7 @@ void DriveLinuxUiUser(
     return;
   }
 
-  preview->runtimeUserPath = "UI::User::StartEvent/EndEvent/Step";
-
-  for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
-  {
-    user->StartEvent(inputState.frameEvents[i]);
-  }
-
-  for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
-  {
-    user->EndEvent(inputState.frameEvents[i]);
-  }
+  preview->runtimeUserPath = "UI::User::StartEvent/screen/EndEvent/Step";
 
   user->Step(inputState.lastDeltaSeconds);
   preview->runtimeUserEventCount += inputState.frameEvents.size();
@@ -42189,6 +42275,47 @@ void InitializeLinuxBootstrapScreenRuntime(
   UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
 }
 
+bool DispatchLinuxBootstrapUiEvent(
+  NMainLoop::IScreenBase* screen,
+  const Input::Event& event,
+  LinuxBootstrapScreenRuntime* runtime
+)
+{
+  if (!screen || !runtime)
+  {
+    return false;
+  }
+
+  UI::User* user = UI::GetUser();
+  if (user)
+  {
+    user->StartEvent(event);
+  }
+
+  const bool handled = screen->ProcessUIEvent(event);
+
+  if (user)
+  {
+    user->EndEvent(event);
+  }
+
+  ++runtime->productionUiEventsDispatched;
+  if (handled)
+  {
+    ++runtime->productionUiEventsHandled;
+    const char* commandName = event.Command() ? event.Command()->Name().c_str() : "<null>";
+    runtime->productionUiLastHandledEvent = commandName;
+    if (strncmp(commandName, "win_mouse", 9) == 0 ||
+        strncmp(commandName, "win_left_button", 15) == 0 ||
+        strncmp(commandName, "win_right_button", 16) == 0)
+    {
+      ++runtime->productionUiMouseEventsHandled;
+    }
+  }
+
+  return handled;
+}
+
 void DriveLinuxBootstrapScreenRuntime(
   const LinuxInputState& inputState,
   const LinuxSessionPreview& sessionPreview,
@@ -42240,7 +42367,7 @@ void DriveLinuxBootstrapScreenRuntime(
     HandleLinuxReplayInputControls(inputState, settings.width, settings.height, runtime);
     for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
     {
-      runtime->loadingScreen->ProcessUIEvent(inputState.frameEvents[i]);
+      DispatchLinuxBootstrapUiEvent(runtime->loadingScreen, inputState.frameEvents[i], runtime);
     }
 
     EnsureLinuxBootstrapGameScheduler(settings, runtime);
@@ -42257,7 +42384,7 @@ void DriveLinuxBootstrapScreenRuntime(
   {
     for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
     {
-      runtime->heroScreen->ProcessUIEvent(inputState.frameEvents[i]);
+      DispatchLinuxBootstrapUiEvent(runtime->heroScreen, inputState.frameEvents[i], runtime);
     }
 
     runtime->heroScreen->Step(NMainFrame::IsAppActive());
@@ -42271,7 +42398,7 @@ void DriveLinuxBootstrapScreenRuntime(
 
   for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
   {
-    runtime->gameModeScreen->ProcessUIEvent(inputState.frameEvents[i]);
+    DispatchLinuxBootstrapUiEvent(runtime->gameModeScreen, inputState.frameEvents[i], runtime);
   }
 
   runtime->gameModeScreen->Step(NMainFrame::IsAppActive());
@@ -46362,7 +46489,16 @@ bool HandleLinuxVisibleLobbyMouse(
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "developer-sex", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_DEVELOPER_SEX;
-      changed = ToggleLinuxLobbyDeveloperSex(runtime) || changed;
+      if (IsValid(runtime->gameContext))
+      {
+        runtime->visibleMenuLastAction =
+          runtime->gameContext->GetDeveloperSex() == lobby::ESex::Female ?
+            "developer-sex-female" :
+            "developer-sex-male";
+      }
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -46455,15 +46591,6 @@ bool HandleLinuxVisibleLobbyMouse(
       RecordLinuxVisibleLobbyMouseHit(runtime, "game-row", message.x, message.y, baseX, baseY);
       const bool gameChanged = SelectLinuxLobbyGameRowAt(uiRootPreview, runtime, baseY);
       changed = gameChanged || changed;
-      if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK)
-      {
-        changed = ActivateLinuxLobbySelectedGame(
-          heroCatalog,
-          *localMatchPreview,
-          uiRootPreview,
-          runtime
-        ) || changed;
-      }
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -46510,14 +46637,10 @@ bool HandleLinuxVisibleLobbyMouse(
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "create-game-button", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_PRIMARY;
-      changed = ActivateLinuxVisibleMenuAction(
-        mapCatalog,
-        mapBrowserState,
-        heroCatalog,
-        localMatchPreview,
-        uiRootPreview,
-        runtime
-      ) || changed;
+      runtime->visibleMenuLastAction = "create-game";
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -46529,12 +46652,10 @@ bool HandleLinuxVisibleLobbyMouse(
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "start-session-button", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_START_SESSION;
-      changed = ActivateLinuxLobbySelectedGame(
-        heroCatalog,
-        *localMatchPreview,
-        uiRootPreview,
-        runtime
-      ) || changed;
+      runtime->visibleMenuLastAction = "start-session";
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -46546,10 +46667,6 @@ bool HandleLinuxVisibleLobbyMouse(
     {
       RecordLinuxVisibleLobbyMouseHit(runtime, "refresh-button", message.x, message.y, baseX, baseY);
       runtime->visibleMenuSelectedAction = LINUX_VISIBLE_MENU_ACTION_REFRESH;
-      if (IsValid(runtime->gameContext))
-      {
-        runtime->gameContext->RefreshGamesList();
-      }
       runtime->visibleMenuLastAction = "refresh-games";
       ++runtime->visibleMenuActivatedCount;
       UpdateLinuxVisibleMenuRuntime(runtime);
@@ -66384,7 +66501,26 @@ void AppendRuntimeInputLog(
     logFile << "  replayHeaderWarning[" << i << "]=" << replayHeaderPreview.warnings[i] << "\n";
   }
   logFile << "  inputTotalEvents=" << inputState.totalEvents << "\n";
+  logFile << "  inputSystemEvents=" << inputState.systemEventCount << "\n";
   logFile << "  inputCommandBindingsTriggered=" << inputState.commandBindingHits << "\n";
+  logFile << "  finalProductionLobbyInput="
+          << screenRuntime.productionUiEventsDispatched << "/"
+          << screenRuntime.productionUiEventsHandled << "/"
+          << screenRuntime.productionUiMouseEventsHandled << "/"
+          << (screenRuntime.productionUiLastHandledEvent.empty() ?
+              "none" :
+              screenRuntime.productionUiLastHandledEvent) << "\n";
+  if (IsValid(screenRuntime.gameContext))
+  {
+    logFile << "  finalProductionLobbyCallbacks="
+            << "sex:" << screenRuntime.gameContext->GetSetDeveloperSexCalls()
+            << " refresh:" << screenRuntime.gameContext->GetRefreshGamesListCalls()
+            << " create:" << screenRuntime.gameContext->GetCreateGameCalls()
+            << " join:" << screenRuntime.gameContext->GetJoinGameCalls()
+            << " reconnect:" << screenRuntime.gameContext->GetReconnectCalls()
+            << " spectate:" << screenRuntime.gameContext->GetSpectateCalls()
+            << " lastGame:" << screenRuntime.gameContext->GetLastGameId() << "\n";
+  }
   UI::Window* finalProductionLobbyRoot =
     IsValid(screenRuntime.gameModeScreen) ?
       screenRuntime.gameModeScreen->GetMainWindow() :
@@ -70629,30 +70765,10 @@ int main(int argc, char** argv)
   {
     NMainFrame::PumpMessages();
     UpdateInputState(&inputState);
-    if (uiRootPreview.runtimeInitialized)
-    {
-      NMainLoop::SetTemporaryTimeDelta(inputState.lastDeltaSeconds);
-      DriveLinuxUiUser(inputState, &uiRootPreview);
-      DriveLinuxBootstrapScreenRuntime(
-        inputState,
-        sessionPreview,
-        loadingUiPreview,
-        settings,
-        heroCatalog,
-        mapCatalog,
-        mapBrowserState,
-        selectedMapPreview,
-        localMatchPreview,
-        replayHeaderPreview,
-        contentProbe.locale,
-        &screenRuntime,
-        &uiRootPreview
-      );
-      DriveLinuxUiCursor(&uiRootPreview);
-    }
     NHPTimer::STime now = 0;
     NHPTimer::GetTime(now);
     const double elapsedSeconds = NHPTimer::Time2Seconds(now - start);
+    const size_t firstSyntheticMessage = inputState.rawMessages.size();
     if (bootstrapClickNextIndex < settings.bootstrapClickScript.size() &&
         elapsedSeconds >= bootstrapClickNextTime &&
         InjectLinuxBootstrapLobbyClick(
@@ -70675,6 +70791,28 @@ int main(int argc, char** argv)
       }
       ++bootstrapClickNextIndex;
       bootstrapClickNextTime = elapsedSeconds + nextDelay;
+    }
+    AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
+    if (uiRootPreview.runtimeInitialized)
+    {
+      NMainLoop::SetTemporaryTimeDelta(inputState.lastDeltaSeconds);
+      DriveLinuxBootstrapScreenRuntime(
+        inputState,
+        sessionPreview,
+        loadingUiPreview,
+        settings,
+        heroCatalog,
+        mapCatalog,
+        mapBrowserState,
+        selectedMapPreview,
+        localMatchPreview,
+        replayHeaderPreview,
+        contentProbe.locale,
+        &screenRuntime,
+        &uiRootPreview
+      );
+      DriveLinuxUiUser(inputState, &uiRootPreview);
+      DriveLinuxUiCursor(&uiRootPreview);
     }
     const size_t previousArtworkChangeCount = artworkState.changeCount;
     const size_t previousSelectedIndex = mapBrowserState.selectedIndex;

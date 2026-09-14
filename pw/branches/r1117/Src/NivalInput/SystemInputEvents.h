@@ -1,6 +1,11 @@
 #ifndef SYSTEMINPUTEVENTS_H_INCLUDED
 #define SYSTEMINPUTEVENTS_H_INCLUDED
 
+namespace NMainFrame
+{
+  struct SWindowsMsg;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace Input
 {
@@ -19,6 +24,7 @@ public:
   SystemEvents( Binds * binds );
 
   void Pump( vector<Input::Event> & events );
+  void ProcessMessage( const NMainFrame::SWindowsMsg & message, vector<Input::Event> & events );
 
 private:
   CPtr<ICommandInstance>   cmdChar, cmdKeyDown, cmdKeyUp;

@@ -71,90 +71,95 @@ void SystemEvents::Pump( vector<Input::Event> & events )
 {
   NMainFrame::SWindowsMsg winMsg;
 	while ( NMainFrame::GetMessage( &winMsg ) )
-	{
-    //keyboard section
-    switch ( winMsg.msg )
-    {
-      default:
-        break;
+    ProcessMessage( winMsg, events );
+}
 
-      case NMainFrame::SWindowsMsg::KEY_CHAR:
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void SystemEvents::ProcessMessage( const NMainFrame::SWindowsMsg & winMsg, vector<Input::Event> & events )
+{
+  //keyboard section
+  switch ( winMsg.msg )
+  {
+    default:
+      break;
+
+    case NMainFrame::SWindowsMsg::KEY_CHAR:
+    {
+      if (winMsg.nKey < 256)
       {
-
-        if (winMsg.nKey < 256)
-        {
-          char sz[2] = { (char)winMsg.nKey, 0 };
-          wstring wcharBuffer;
-          NStr::ToUnicode( &wcharBuffer, string( sz ) );
-          if ( wcharBuffer.size() == 1 )
-            events.push_back( Event( cmdChar, SSysParams( wcharBuffer[0], winMsg.nRep ) ) );
-        }
-        else
-          events.push_back( Event( cmdChar, SSysParams( winMsg.nKey < 0xD800 ? winMsg.nKey : L'?', winMsg.nRep ) ) );
-        continue;
+        char sz[2] = { (char)winMsg.nKey, 0 };
+        wstring wcharBuffer;
+        NStr::ToUnicode( &wcharBuffer, string( sz ) );
+        if ( wcharBuffer.size() == 1 )
+          events.push_back( Event( cmdChar, SSysParams( wcharBuffer[0], winMsg.nRep ) ) );
       }
-
-      case NMainFrame::SWindowsMsg::KEY_DOWN:
-        events.push_back( Event( cmdKeyDown, SSysParams( winMsg.nKey, winMsg.nRep ) ) );
-        continue;
-
-      case NMainFrame::SWindowsMsg::KEY_UP:
-        events.push_back( Event( cmdKeyUp, SSysParams( winMsg.nKey, winMsg.nRep ) ) );
-        continue;
+      else
+        events.push_back( Event( cmdChar, SSysParams( winMsg.nKey < 0xD800 ? winMsg.nKey : L'?', winMsg.nRep ) ) );
+      return;
     }
 
-    //mouse section
-    CPtr<ICommandInstance> cmd;
-    switch ( winMsg.msg )
-    {
-      default:
-        NI_ALWAYS_ASSERT( "Unknown main frame message" );
-        break;
+    case NMainFrame::SWindowsMsg::KEY_DOWN:
+      events.push_back( Event( cmdKeyDown, SSysParams( winMsg.nKey, winMsg.nRep ) ) );
+      return;
 
-      case NMainFrame::SWindowsMsg::MOUSE_MOVE:
-        cmd = cmdMouseMove;
-        break;
+    case NMainFrame::SWindowsMsg::KEY_UP:
+      events.push_back( Event( cmdKeyUp, SSysParams( winMsg.nKey, winMsg.nRep ) ) );
+      return;
+  }
 
-      case NMainFrame::SWindowsMsg::MOUSE_OUT:
-        cmd = cmdMouseOut;
-        break;
-        
-      case NMainFrame::SWindowsMsg::MOUSE_DISABLED:
-       cmd = cmdMouseDisabled;
-       break;
-       
-      case NMainFrame::SWindowsMsg::MOUSE_WHEEL: 
-        cmd = ( GET_WHEEL_DELTA_WPARAM( winMsg.dwFlags ) < 0 ) ? cmdWheelDown : cmdWheelUp;
-        break;
+  //mouse section
+  CPtr<ICommandInstance> cmd;
+  switch ( winMsg.msg )
+  {
+    default:
+      NI_ALWAYS_ASSERT( "Unknown main frame message" );
+      break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_RB_DBLCLK: 
-        cmd = cmdMouseRightDblClick;
-        break;
+    case NMainFrame::SWindowsMsg::MOUSE_MOVE:
+      cmd = cmdMouseMove;
+      break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK: 
-        cmd = cmdMouseLeftDblClick;
-        break;
+    case NMainFrame::SWindowsMsg::MOUSE_OUT:
+      cmd = cmdMouseOut;
+      break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN: 
-        cmd = cmdMouseRightDown;
-        break;
+    case NMainFrame::SWindowsMsg::MOUSE_DISABLED:
+     cmd = cmdMouseDisabled;
+     break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN: 
-        cmd = cmdMouseLeftDown;
-        break;
+    case NMainFrame::SWindowsMsg::MOUSE_WHEEL:
+      cmd = ( GET_WHEEL_DELTA_WPARAM( winMsg.dwFlags ) < 0 ) ? cmdWheelDown : cmdWheelUp;
+      break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_RB_UP: 
-        cmd = cmdMouseRightUp;
-        break;
+    case NMainFrame::SWindowsMsg::MOUSE_RB_DBLCLK:
+      cmd = cmdMouseRightDblClick;
+      break;
 
-      case NMainFrame::SWindowsMsg::MOUSE_LB_UP: 
-        cmd = cmdMouseLeftUp;
-        break;
-    }
+    case NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK:
+      cmd = cmdMouseLeftDblClick;
+      break;
 
-    if ( IsValid( cmd ) )
-      events.push_back( Event( cmd, SSysParams( winMsg.x, winMsg.y, winMsg.dwFlags ) ) );
-	}
+    case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
+      cmd = cmdMouseRightDown;
+      break;
+
+    case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+      cmd = cmdMouseLeftDown;
+      break;
+
+    case NMainFrame::SWindowsMsg::MOUSE_RB_UP:
+      cmd = cmdMouseRightUp;
+      break;
+
+    case NMainFrame::SWindowsMsg::MOUSE_LB_UP:
+      cmd = cmdMouseLeftUp;
+      break;
+  }
+
+  if ( IsValid( cmd ) )
+    events.push_back( Event( cmd, SSysParams( winMsg.x, winMsg.y, winMsg.dwFlags ) ) );
 }
 
 

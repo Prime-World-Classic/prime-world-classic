@@ -867,6 +867,7 @@ add_executable(
   ../NivalInput/InputConsoleCommands.cpp
   ../NivalInput/InputEvent.cpp
   ../NivalInput/Section.cpp
+  ../NivalInput/SystemInputEvents.cpp
   ../Server/RPC/RpcDataFactory.cpp
   ${PRIMEWORLD_LINUX_DB_SOURCES}
   ${PRIMEWORLD_LINUX_LIBDB_SOURCES}
