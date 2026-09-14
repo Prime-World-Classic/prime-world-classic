@@ -44,17 +44,29 @@ bool FillStack(Arguments& args, Stack& w, uint paramsCount, const rpc::MethodInf
           {
             if (data) // just in case, paranoid check
             {
-              // Push the struct content, NOT a pointer (as RawStructByValue does).
-              // The generated VCall code value-copies each argument
-              // (P0 p0 = _mng_va_arg(...)), so it expects the data here.
-              // Pushing a pointer only "worked" on 32-bit, where a 4-byte
-              // pointer coincidentally preserved the layout of the following
-              // arguments (the callee received the pointer value itself as the
-              // argument). On 64-bit the pointer is 8 bytes, which shifts all
-              // subsequent arguments by 4 bytes and corrupts them, e.g.
-              // IOpenSessionCallback::OnOpenSession(Result::Enum rc, u64 sid):
-              // rc = lo32(ptr), sid = (hi32(ptr) << 32) | lo32(sid).
-              w.Push(data, structSize); // here we just fill the stack with struct content, hack !
+              if (i < 32 && (minfo.structPtrParams & (1u << i)))
+              {
+                // C++ parameter is a pointer/reference to a plain struct (the
+                // generated VCall pops T* and the callee dereferences it). Pass a
+                // POINTER to the struct content living in the packet buffer — the
+                // legacy 32-bit contract. (Pushing the content here would make the
+                // pop read the first 8 content bytes as a pointer and shift every
+                // following argument: IGameServer::AddClient got a garbage
+                // IGameClient* and crashed on 64-bit after the 2026-09-05 fix.)
+                w.Push(data); // pointer to the content
+              }
+              else
+              {
+                // C++ parameter is taken by value (enum / small struct): the
+                // generated VCall code value-copies each argument
+                // (P0 p0 = _mng_va_arg(...)), so the stack must contain the
+                // struct CONTENT, not a pointer. Pushing a pointer only
+                // "worked" on 32-bit for by-value params (the callee received the
+                // pointer value itself as a garbage-but-tolerated value); on
+                // 64-bit it corrupted the argument and every following one, e.g.
+                // IOpenSessionCallback::OnOpenSession(Result::Enum rc, u64 sid).
+                w.Push(data, structSize); // here we just fill the stack with struct content, hack !
+              }
             }
           }
           break;

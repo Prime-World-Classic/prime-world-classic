@@ -39,10 +39,10 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::IPvxAcknowledge::NewGameAck", 1, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewGameAck) },
-        { "socialLobby::IPvxAcknowledge::NewReconnectingUserAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewReconnectingUserAck) },
-        { "socialLobby::IPvxAcknowledge::NewSpectatorAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewSpectatorAck) },
-        { "socialLobby::IPvxAcknowledge::UserLeftTheGameInCastleAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::UserLeftTheGameInCastleAck) },
+        { "socialLobby::IPvxAcknowledge::NewGameAck", 1, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewGameAck), 0 },
+        { "socialLobby::IPvxAcknowledge::NewReconnectingUserAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewReconnectingUserAck), 0 },
+        { "socialLobby::IPvxAcknowledge::NewSpectatorAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::NewSpectatorAck), 0 },
+        { "socialLobby::IPvxAcknowledge::UserLeftTheGameInCastleAck", 2, false, rpc::GetMethodCode(&socialLobby::IPvxAcknowledge::UserLeftTheGameInCastleAck), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

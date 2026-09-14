@@ -39,7 +39,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Coordinator::IRegisterClientCallback::OnRegisterClient", 2, false, rpc::GetMethodCode(&Coordinator::IRegisterClientCallback::OnRegisterClient) },
+        { "Coordinator::IRegisterClientCallback::OnRegisterClient", 2, false, rpc::GetMethodCode(&Coordinator::IRegisterClientCallback::OnRegisterClient), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -114,13 +114,13 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Coordinator::ICoordinatorServerRemote::RegisterClient", 4, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::RegisterClient) },
-        { "Coordinator::ICoordinatorServerRemote::ServicesStarted", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ServicesStarted) },
-        { "Coordinator::ICoordinatorServerRemote::Shutdown", 0, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::Shutdown) },
-        { "Coordinator::ICoordinatorServerRemote::StopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::StopService) },
-        { "Coordinator::ICoordinatorServerRemote::ServiceStopped", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ServiceStopped) },
-        { "Coordinator::ICoordinatorServerRemote::SoftStopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::SoftStopService) },
-        { "Coordinator::ICoordinatorServerRemote::ReloadConfig", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ReloadConfig) },
+        { "Coordinator::ICoordinatorServerRemote::RegisterClient", 4, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::RegisterClient), 14 },
+        { "Coordinator::ICoordinatorServerRemote::ServicesStarted", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ServicesStarted), 1 },
+        { "Coordinator::ICoordinatorServerRemote::Shutdown", 0, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::Shutdown), 0 },
+        { "Coordinator::ICoordinatorServerRemote::StopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::StopService), 1 },
+        { "Coordinator::ICoordinatorServerRemote::ServiceStopped", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ServiceStopped), 1 },
+        { "Coordinator::ICoordinatorServerRemote::SoftStopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::SoftStopService), 1 },
+        { "Coordinator::ICoordinatorServerRemote::ReloadConfig", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorServerRemote::ReloadConfig), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

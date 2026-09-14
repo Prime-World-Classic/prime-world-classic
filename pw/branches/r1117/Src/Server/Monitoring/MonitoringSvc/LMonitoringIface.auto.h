@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Monitoring::IMonitor::RegisterPerfCounter", 5, false, rpc::GetMethodCode(&Monitoring::IMonitor::RegisterPerfCounter) },
-        { "Monitoring::IMonitor::UnregisterPerfCounter", 2, false, rpc::GetMethodCode(&Monitoring::IMonitor::UnregisterPerfCounter) },
+        { "Monitoring::IMonitor::RegisterPerfCounter", 5, false, rpc::GetMethodCode(&Monitoring::IMonitor::RegisterPerfCounter), 3 },
+        { "Monitoring::IMonitor::UnregisterPerfCounter", 2, false, rpc::GetMethodCode(&Monitoring::IMonitor::UnregisterPerfCounter), 3 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

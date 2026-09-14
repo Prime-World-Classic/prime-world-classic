@@ -40,9 +40,9 @@ public:
     {
         { "test::SimpleRPCRabbit::process", 0, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::process) },
         { "test::SimpleRPCRabbit::processIntWithReturnValueIntAsync", 1, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::processIntWithReturnValueIntAsync) },
-        { "test::SimpleRPCRabbit::processSnapshot", 1, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::processSnapshot) },
+        { "test::SimpleRPCRabbit::processSnapshot", 1, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::processSnapshot), 1 },
         { "test::SimpleRPCRabbit::GetServerDef", 0, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::GetServerDef) },
-        { "test::SimpleRPCRabbit::Roll", 3, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::Roll) },
+        { "test::SimpleRPCRabbit::Roll", 3, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::Roll), 7 },
         { "test::SimpleRPCRabbit::probeEnumU64", 2, false, rpc::GetMethodCode(&test::SimpleRPCRabbit::probeEnumU64) },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
@@ -119,7 +119,7 @@ public:
     static const rpc::MethodInfo methods[] = 
     {
         { "test::SimpleRefCountedRPCRabbit::process", 0, false, rpc::GetMethodCode(&test::SimpleRefCountedRPCRabbit::process) },
-        { "test::SimpleRefCountedRPCRabbit::processWithRecieveTime", 1, false, rpc::GetMethodCode(&test::SimpleRefCountedRPCRabbit::processWithRecieveTime) },
+        { "test::SimpleRefCountedRPCRabbit::processWithRecieveTime", 1, false, rpc::GetMethodCode(&test::SimpleRefCountedRPCRabbit::processWithRecieveTime), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

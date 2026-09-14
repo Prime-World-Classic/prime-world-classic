@@ -38,9 +38,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "chat::IChatClient::RegisterUser", 4, false, rpc::GetMethodCode(&chat::IChatClient::RegisterUser) },
-        { "chat::IChatClient::SendMsg", 4, false, rpc::GetMethodCode(&chat::IChatClient::SendMsg) },
-        { "chat::IChatClient::UnregisterUser", 2, false, rpc::GetMethodCode(&chat::IChatClient::UnregisterUser) },
+        { "chat::IChatClient::RegisterUser", 4, false, rpc::GetMethodCode(&chat::IChatClient::RegisterUser), 12 },
+        { "chat::IChatClient::SendMsg", 4, false, rpc::GetMethodCode(&chat::IChatClient::SendMsg), 10 },
+        { "chat::IChatClient::UnregisterUser", 2, false, rpc::GetMethodCode(&chat::IChatClient::UnregisterUser), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -39,11 +39,11 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::ISocialInterface::RegisterMmLogic", 3, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::RegisterMmLogic) },
-        { "socialLobby::ISocialInterface::AddRequest", 2, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::AddRequest) },
-        { "socialLobby::ISocialInterface::Spectate", 3, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::Spectate) },
-        { "socialLobby::ISocialInterface::GetRequest", 2, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::GetRequest) },
-        { "socialLobby::ISocialInterface::GetServerStatus", 0, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::GetServerStatus) },
+        { "socialLobby::ISocialInterface::RegisterMmLogic", 3, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::RegisterMmLogic), 3 },
+        { "socialLobby::ISocialInterface::AddRequest", 2, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::AddRequest), 3 },
+        { "socialLobby::ISocialInterface::Spectate", 3, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::Spectate), 5 },
+        { "socialLobby::ISocialInterface::GetRequest", 2, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::GetRequest), 2 },
+        { "socialLobby::ISocialInterface::GetServerStatus", 0, false, rpc::GetMethodCode(&socialLobby::ISocialInterface::GetServerStatus), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -118,13 +118,13 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::IPvxInterface::PvxInstance", 4, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvxInstance) },
-        { "socialLobby::IPvxInterface::UpdatePvxSettings", 3, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UpdatePvxSettings) },
-        { "socialLobby::IPvxInterface::PvxInstanceLoadNotify", 3, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvxInstanceLoadNotify) },
-        { "socialLobby::IPvxInterface::PvXPreparedForUser", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvXPreparedForUser) },
-        { "socialLobby::IPvxInterface::UserEnteredPvX", 1, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UserEnteredPvX) },
-        { "socialLobby::IPvxInterface::UserDroppedFromPvX", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UserDroppedFromPvX) },
-        { "socialLobby::IPvxInterface::GameFinished", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::GameFinished) },
+        { "socialLobby::IPvxInterface::PvxInstance", 4, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvxInstance), 15 },
+        { "socialLobby::IPvxInterface::UpdatePvxSettings", 3, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UpdatePvxSettings), 7 },
+        { "socialLobby::IPvxInterface::PvxInstanceLoadNotify", 3, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvxInstanceLoadNotify), 3 },
+        { "socialLobby::IPvxInterface::PvXPreparedForUser", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::PvXPreparedForUser), 2 },
+        { "socialLobby::IPvxInterface::UserEnteredPvX", 1, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UserEnteredPvX), 0 },
+        { "socialLobby::IPvxInterface::UserDroppedFromPvX", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::UserDroppedFromPvX), 0 },
+        { "socialLobby::IPvxInterface::GameFinished", 2, false, rpc::GetMethodCode(&socialLobby::IPvxInterface::GameFinished), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -199,7 +199,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::IDevSocLobby::AcquireUIdRange", 1, false, rpc::GetMethodCode(&socialLobby::IDevSocLobby::AcquireUIdRange) },
+        { "socialLobby::IDevSocLobby::AcquireUIdRange", 1, false, rpc::GetMethodCode(&socialLobby::IDevSocLobby::AcquireUIdRange), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

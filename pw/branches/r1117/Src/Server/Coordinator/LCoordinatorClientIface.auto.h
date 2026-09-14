@@ -38,13 +38,13 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Coordinator::ICoordinatorClientRemote::AddRoute", 2, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::AddRoute) },
-        { "Coordinator::ICoordinatorClientRemote::RemoveRoute", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::RemoveRoute) },
-        { "Coordinator::ICoordinatorClientRemote::StartService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::StartService) },
-        { "Coordinator::ICoordinatorClientRemote::StopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::StopService) },
-        { "Coordinator::ICoordinatorClientRemote::SoftStopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::SoftStopService) },
-        { "Coordinator::ICoordinatorClientRemote::ReloadConfig", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::ReloadConfig) },
-        { "Coordinator::ICoordinatorClientRemote::Ping", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::Ping) },
+        { "Coordinator::ICoordinatorClientRemote::AddRoute", 2, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::AddRoute), 3 },
+        { "Coordinator::ICoordinatorClientRemote::RemoveRoute", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::RemoveRoute), 1 },
+        { "Coordinator::ICoordinatorClientRemote::StartService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::StartService), 1 },
+        { "Coordinator::ICoordinatorClientRemote::StopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::StopService), 1 },
+        { "Coordinator::ICoordinatorClientRemote::SoftStopService", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::SoftStopService), 1 },
+        { "Coordinator::ICoordinatorClientRemote::ReloadConfig", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::ReloadConfig), 1 },
+        { "Coordinator::ICoordinatorClientRemote::Ping", 1, false, rpc::GetMethodCode(&Coordinator::ICoordinatorClientRemote::Ping), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

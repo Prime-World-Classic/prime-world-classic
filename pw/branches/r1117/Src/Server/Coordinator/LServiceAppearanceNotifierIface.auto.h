@@ -38,12 +38,12 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Coordinator::IServiceAppearanceSubscriber::OnRegisterSubscriber", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnRegisterSubscriber) },
-        { "Coordinator::IServiceAppearanceSubscriber::OnRegisterService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnRegisterService) },
-        { "Coordinator::IServiceAppearanceSubscriber::OnUnregisterService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnUnregisterService) },
-        { "Coordinator::IServiceAppearanceSubscriber::OnStartService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnStartService) },
-        { "Coordinator::IServiceAppearanceSubscriber::OnStopService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnStopService) },
-        { "Coordinator::IServiceAppearanceSubscriber::OnChangeServiceStatus", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnChangeServiceStatus) },
+        { "Coordinator::IServiceAppearanceSubscriber::OnRegisterSubscriber", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnRegisterSubscriber), 2 },
+        { "Coordinator::IServiceAppearanceSubscriber::OnRegisterService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnRegisterService), 1 },
+        { "Coordinator::IServiceAppearanceSubscriber::OnUnregisterService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnUnregisterService), 1 },
+        { "Coordinator::IServiceAppearanceSubscriber::OnStartService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnStartService), 1 },
+        { "Coordinator::IServiceAppearanceSubscriber::OnStopService", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnStopService), 1 },
+        { "Coordinator::IServiceAppearanceSubscriber::OnChangeServiceStatus", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearanceSubscriber::OnChangeServiceStatus), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -118,10 +118,10 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Coordinator::IServiceAppearancePublisher::RegisterSubscriber", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::RegisterSubscriber) },
-        { "Coordinator::IServiceAppearancePublisher::UnregisterSubscriber", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::UnregisterSubscriber) },
-        { "Coordinator::IServiceAppearancePublisher::Subscribe", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::Subscribe) },
-        { "Coordinator::IServiceAppearancePublisher::Unsubscribe", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::Unsubscribe) },
+        { "Coordinator::IServiceAppearancePublisher::RegisterSubscriber", 1, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::RegisterSubscriber), 1 },
+        { "Coordinator::IServiceAppearancePublisher::UnregisterSubscriber", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::UnregisterSubscriber), 2 },
+        { "Coordinator::IServiceAppearancePublisher::Subscribe", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::Subscribe), 2 },
+        { "Coordinator::IServiceAppearancePublisher::Unsubscribe", 2, false, rpc::GetMethodCode(&Coordinator::IServiceAppearancePublisher::Unsubscribe), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

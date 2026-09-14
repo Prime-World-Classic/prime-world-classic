@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Monitoring::IPerfCounterProvider::GetPerfCountersList", 0, false, rpc::GetMethodCode(&Monitoring::IPerfCounterProvider::GetPerfCountersList) },
-        { "Monitoring::IPerfCounterProvider::GetPerfCounterSample", 1, false, rpc::GetMethodCode(&Monitoring::IPerfCounterProvider::GetPerfCounterSample) },
+        { "Monitoring::IPerfCounterProvider::GetPerfCountersList", 0, false, rpc::GetMethodCode(&Monitoring::IPerfCounterProvider::GetPerfCountersList), 0 },
+        { "Monitoring::IPerfCounterProvider::GetPerfCounterSample", 1, false, rpc::GetMethodCode(&Monitoring::IPerfCounterProvider::GetPerfCounterSample), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
