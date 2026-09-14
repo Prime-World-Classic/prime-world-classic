@@ -4851,6 +4851,8 @@ struct LinuxBootstrapScreenRuntime
   std::string productionLobbyPlayerCaption;
   size_t productionLobbyMapSyncCount;
   size_t productionLobbyPlayerSyncCount;
+  std::string productionLobbyJoinMode;
+  size_t productionLobbyJoinModeSyncCount;
   int visibleLobbyLastInputX;
   int visibleLobbyLastInputY;
   int visibleLobbyLastBaseX;
@@ -6190,6 +6192,8 @@ struct LinuxBootstrapScreenRuntime
       productionLobbyPlayerCaption("none"),
       productionLobbyMapSyncCount(0),
       productionLobbyPlayerSyncCount(0),
+      productionLobbyJoinMode("none"),
+      productionLobbyJoinModeSyncCount(0),
       visibleLobbyLastInputX(-1),
       visibleLobbyLastInputY(-1),
       visibleLobbyLastBaseX(-1),
@@ -46122,6 +46126,39 @@ bool SyncLinuxProductionLobbyState(
     0;
   runtime->productionLobbyPlayerCaption = playerCaption ? playerCaption->GetCaptionText().c_str() : "none";
 
+  UI::RadioButton* joinNormal = root ?
+    dynamic_cast<UI::RadioButton*>(root->FindChild("JoinModeNormal")) :
+    0;
+  UI::RadioButton* joinReconnect = root ?
+    dynamic_cast<UI::RadioButton*>(root->FindChild("JoinModeReconnect")) :
+    0;
+  UI::RadioButton* joinSpectate = root ?
+    dynamic_cast<UI::RadioButton*>(root->FindChild("JoinModeSpectate")) :
+    0;
+  size_t productionJoinMode = LINUX_LOBBY_JOIN_MODE_COUNT;
+  if (joinSpectate && joinSpectate->IsSelected())
+  {
+    productionJoinMode = LINUX_LOBBY_JOIN_MODE_SPECTATE;
+  }
+  else if (joinReconnect && joinReconnect->IsSelected())
+  {
+    productionJoinMode = LINUX_LOBBY_JOIN_MODE_RECONNECT;
+  }
+  else if (joinNormal && joinNormal->IsSelected())
+  {
+    productionJoinMode = LINUX_LOBBY_JOIN_MODE_NORMAL;
+  }
+  runtime->productionLobbyJoinMode = productionJoinMode < LINUX_LOBBY_JOIN_MODE_COUNT ?
+    DescribeLinuxLobbyJoinMode(productionJoinMode) :
+    "none";
+  if (productionJoinMode < LINUX_LOBBY_JOIN_MODE_COUNT &&
+      runtime->visibleLobbyJoinMode != productionJoinMode)
+  {
+    runtime->visibleLobbyJoinMode = productionJoinMode;
+    ++runtime->productionLobbyJoinModeSyncCount;
+    changed = true;
+  }
+
   const int players = ResolveLinuxProductionLobbyPlayerCount(runtime);
   runtime->productionLobbyPlayerCount = players;
   if (players < 2)
@@ -46583,7 +46620,11 @@ bool HandleLinuxVisibleLobbyMouse(
         joinMode = LINUX_LOBBY_JOIN_MODE_RECONNECT;
       }
 
-      changed = SetLinuxLobbyJoinMode(runtime, joinMode) || changed;
+      runtime->visibleMenuLastAction =
+        std::string("select-join-mode-") + DescribeLinuxLobbyJoinMode(joinMode);
+      ++runtime->visibleMenuActivatedCount;
+      UpdateLinuxVisibleMenuRuntime(runtime);
+      changed = true;
       if (consumedNavigation)
       {
         *consumedNavigation = true;
@@ -66640,8 +66681,14 @@ void AppendRuntimeInputLog(
   UI::Window* finalMapsPanel = finalProductionLobbyRoot ?
     finalProductionLobbyRoot->FindChild("MapsPanel") :
     0;
+  UI::Window* finalGamesPanel = finalProductionLobbyRoot ?
+    finalProductionLobbyRoot->FindChild("GamesPanel") :
+    0;
   UI::Window* finalFirstMapRow = finalMapsList ? finalMapsList->GetItemByIndex(0) : 0;
   UI::Window* finalSecondMapRow = finalMapsList ? finalMapsList->GetItemByIndex(1) : 0;
+  UI::Window* finalFirstGameRow = finalGamesList ? finalGamesList->GetItemByIndex(0) : 0;
+  UI::Window* finalSecondGameRow = finalGamesList ? finalGamesList->GetItemByIndex(1) : 0;
+  UI::Window* finalThirdGameRow = finalGamesList ? finalGamesList->GetItemByIndex(2) : 0;
   UI::RadioPanel* finalJoinModePanel = finalProductionLobbyRoot ?
     dynamic_cast<UI::RadioPanel*>(finalProductionLobbyRoot->FindChild("Panel")) :
     0;
@@ -66654,6 +66701,15 @@ void AppendRuntimeInputLog(
   UI::RadioButton* finalJoinSpectateButton = finalProductionLobbyRoot ?
     dynamic_cast<UI::RadioButton*>(finalProductionLobbyRoot->FindChild("JoinModeSpectate")) :
     0;
+  logFile << "  finalProductionLobbyJoinMode="
+          << (screenRuntime.productionLobbyJoinMode.empty() ?
+              "none" :
+              screenRuntime.productionLobbyJoinMode)
+          << " selected:"
+          << (finalJoinNormalButton && finalJoinNormalButton->IsSelected() ? 1 : 0) << "/"
+          << (finalJoinReconnectButton && finalJoinReconnectButton->IsSelected() ? 1 : 0) << "/"
+          << (finalJoinSpectateButton && finalJoinSpectateButton->IsSelected() ? 1 : 0)
+          << " sync:" << screenRuntime.productionLobbyJoinModeSyncCount << "\n";
   const UI::Rect absentRect(-1, -1, -1, -1);
   const UI::Rect& rootRect = finalProductionLobbyRoot ? finalProductionLobbyRoot->GetWindowRect() : absentRect;
   const UI::Rect& mapsPanelRect = finalMapsPanel ? finalMapsPanel->GetWindowRect() : absentRect;
@@ -66663,6 +66719,15 @@ void AppendRuntimeInputLog(
   const UI::Rect& secondMapRowRect = finalSecondMapRow ? finalSecondMapRow->GetWindowRect() : absentRect;
   const UI::Rect& playerCountRect = finalPlayerCountBar ? finalPlayerCountBar->GetWindowRect() : absentRect;
   const UI::Rect& createRect = finalStartServerButton ? finalStartServerButton->GetWindowRect() : absentRect;
+  const UI::Rect& gamesPanelRect = finalGamesPanel ? finalGamesPanel->GetWindowRect() : absentRect;
+  const UI::Rect& gamesWindowRect = finalGamesWindow ? finalGamesWindow->GetWindowRect() : absentRect;
+  const UI::Rect& gamesListRect = finalGamesList ? finalGamesList->GetWindowRect() : absentRect;
+  const UI::Rect& firstGameRowRect = finalFirstGameRow ? finalFirstGameRow->GetWindowRect() : absentRect;
+  const UI::Rect& secondGameRowRect = finalSecondGameRow ? finalSecondGameRow->GetWindowRect() : absentRect;
+  const UI::Rect& thirdGameRowRect = finalThirdGameRow ? finalThirdGameRow->GetWindowRect() : absentRect;
+  const UI::Rect& normalRect = finalJoinNormalButton ? finalJoinNormalButton->GetWindowRect() : absentRect;
+  const UI::Rect& reconnectRect = finalJoinReconnectButton ? finalJoinReconnectButton->GetWindowRect() : absentRect;
+  const UI::Rect& spectateRect = finalJoinSpectateButton ? finalJoinSpectateButton->GetWindowRect() : absentRect;
   logFile << "  finalProductionLobbyRects="
           << "root:" << rootRect.x1 << "," << rootRect.y1 << "," << rootRect.x2 << "," << rootRect.y2
           << " mapPanel:" << mapsPanelRect.x1 << "," << mapsPanelRect.y1 << "," << mapsPanelRect.x2 << "," << mapsPanelRect.y2
@@ -66672,6 +66737,16 @@ void AppendRuntimeInputLog(
           << " row1:" << secondMapRowRect.x1 << "," << secondMapRowRect.y1 << "," << secondMapRowRect.x2 << "," << secondMapRowRect.y2
           << " players:" << playerCountRect.x1 << "," << playerCountRect.y1 << "," << playerCountRect.x2 << "," << playerCountRect.y2
           << " create:" << createRect.x1 << "," << createRect.y1 << "," << createRect.x2 << "," << createRect.y2 << "\n";
+  logFile << "  finalProductionLobbyJoinRects="
+          << "panel:" << gamesPanelRect.x1 << "," << gamesPanelRect.y1 << "," << gamesPanelRect.x2 << "," << gamesPanelRect.y2
+          << " games:" << gamesWindowRect.x1 << "," << gamesWindowRect.y1 << "," << gamesWindowRect.x2 << "," << gamesWindowRect.y2
+          << " list:" << gamesListRect.x1 << "," << gamesListRect.y1 << "," << gamesListRect.x2 << "," << gamesListRect.y2
+          << " row0:" << firstGameRowRect.x1 << "," << firstGameRowRect.y1 << "," << firstGameRowRect.x2 << "," << firstGameRowRect.y2
+          << " row1:" << secondGameRowRect.x1 << "," << secondGameRowRect.y1 << "," << secondGameRowRect.x2 << "," << secondGameRowRect.y2
+          << " row2:" << thirdGameRowRect.x1 << "," << thirdGameRowRect.y1 << "," << thirdGameRowRect.x2 << "," << thirdGameRowRect.y2
+          << " modes:" << normalRect.x1 << "," << normalRect.y1 << "," << normalRect.x2 << "," << normalRect.y2
+          << "/" << reconnectRect.x1 << "," << reconnectRect.y1 << "," << reconnectRect.x2 << "," << reconnectRect.y2
+          << "/" << spectateRect.x1 << "," << spectateRect.y1 << "," << spectateRect.x2 << "," << spectateRect.y2 << "\n";
   const int finalProductionLobbyLuaSubclasses =
     (finalProductionLobbyRoot && finalProductionLobbyRoot->IsSubclassed() ? 1 : 0) +
     (finalStartSessionButton && finalStartSessionButton->IsSubclassed() ? 1 : 0) +

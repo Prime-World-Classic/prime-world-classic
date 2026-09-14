@@ -24,6 +24,7 @@ public:
   RadioButton() : buttonStyle( ERBS_None ), isSelected( false ) {}
 
   int RadioGroup() const { return GetRadioLayout()->group; }
+  bool IsSelected() const { return isSelected; }
   void SetSelected( bool selected, int group );
   void Flash() { SetButtonStyle( ERBS_Flashing ); } 
 
