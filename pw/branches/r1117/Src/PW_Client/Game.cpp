@@ -144,6 +144,8 @@
 #include "UI/Window.h"
 #include "UI/Flash/GameSWFIntegration/SwfTypes.h"
 #include "LinuxBootstrap/flash_vm_runtime_probe.h"
+#include "Scripts/Script.h"
+#include "Scripts/lua.hpp"
 #include "libdb/Db.h"
 #include "Version.h"
 #include "Vendor/JsonCpp/include/json/json.h"
@@ -7303,6 +7305,53 @@ bool ReadBootstrapFlashRendererProbeFlag(int argc, char** argv)
   (void)argc;
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-renderer-probe");
+}
+
+bool RunPrimeWorldLinuxLuaRuntimeProbe()
+{
+  NScript::Script script;
+  script.RegisterGlobals();
+
+  lua_State* state = script.GetState();
+  const bool stateReady = state != 0;
+  const int executeResult = stateReady
+    ? script.DoString("pw_linux_lua_probe = { value = 6 * 7, text = string.upper('native') }")
+    : 1;
+
+  bool tableReady = false;
+  bool numberReady = false;
+  bool stringReady = false;
+  double numberValue = 0.0;
+  const char* stringValue = 0;
+  if (stateReady && executeResult == 0)
+  {
+    lua_getglobal(state, "pw_linux_lua_probe");
+    tableReady = lua_istable(state, -1) != 0;
+    if (tableReady)
+    {
+      lua_getfield(state, -1, "value");
+      numberValue = lua_tonumber(state, -1);
+      numberReady = lua_isnumber(state, -1) != 0 && numberValue == 42.0;
+      lua_pop(state, 1);
+
+      lua_getfield(state, -1, "text");
+      stringValue = lua_tostring(state, -1);
+      stringReady = stringValue && strcmp(stringValue, "NATIVE") == 0;
+      lua_pop(state, 1);
+    }
+    lua_pop(state, 1);
+  }
+
+  fprintf(
+    stdout,
+    "PrimeWorld Linux Lua runtime probe: state=%s execute=%s table=%s number=%.0f string=%s\n",
+    stateReady ? "yes" : "no",
+    executeResult == 0 ? "yes" : "no",
+    tableReady ? "yes" : "no",
+    numberValue,
+    stringValue ? stringValue : "<none>");
+
+  return stateReady && executeResult == 0 && tableReady && numberReady && stringReady;
 }
 
 bool ParseBootstrapClickBasePair(const char* value, int* baseX, int* baseY)
@@ -68972,6 +69021,9 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+
+  if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-lua-runtime-probe"))
+    return RunPrimeWorldLinuxLuaRuntimeProbe() ? 0 : 1;
 
   if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-flash-vm-probe"))
     return RunPrimeWorldLinuxFlashVmRuntimeProbe() ? 0 : 1;

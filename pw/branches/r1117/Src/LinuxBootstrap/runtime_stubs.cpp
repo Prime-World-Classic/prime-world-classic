@@ -401,6 +401,7 @@ void ReplayWriter::WriteSessionInfoToFile(const StatisticService::RPC::SessionCl
 }
 }
 
+#if !defined(PW_LINUX_REAL_LUA)
 extern "C"
 {
 int lua_gc(lua_State* L, int what, int data)
@@ -465,6 +466,7 @@ int lua_type(lua_State* L, int idx)
   return 0;
 }
 }
+#endif
 
 IMPLEMENT_SIMPLE_SIGNAL_ST(NullRenderSignal)
 
@@ -706,6 +708,7 @@ namespace NRandom
 class RandomGenerator;
 }
 
+#if !defined(PW_LINUX_REAL_LUA)
 namespace NScript
 {
 namespace
@@ -1218,6 +1221,7 @@ int lua_values<LuaSubclass const*>::put(lua_State* L, LuaSubclass const* value)
   return 1;
 }
 }
+#endif
 
 namespace profiler3
 {

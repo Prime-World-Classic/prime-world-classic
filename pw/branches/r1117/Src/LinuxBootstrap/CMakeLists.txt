@@ -64,6 +64,28 @@ set(
   ../UI/ScrollableWindow.cpp
 )
 
+file(
+  GLOB PRIMEWORLD_LINUX_LUA_C_SOURCES
+  CONFIGURE_DEPENDS
+  ../Scripts/lua/*.c
+)
+
+set(
+  PRIMEWORLD_LINUX_SCRIPT_RUNTIME_SOURCES
+  ../Scripts/CAsserts.cpp
+  ../Scripts/LuaCommon.cpp
+  ../Scripts/LuaComplexTypes.cpp
+  ../Scripts/LuaConstants.cpp
+  ../Scripts/LuaPreprocessor.cpp
+  ../Scripts/LuaSubclass.cpp
+  ../Scripts/LuaTableLinks.cpp
+  ../Scripts/LuaValues.cpp
+  ../Scripts/NameMap.cpp
+  ../Scripts/Script.cpp
+  ../Scripts/ScriptLog.cpp
+  ${PRIMEWORLD_LINUX_LUA_C_SOURCES}
+)
+
 set(
   PRIMEWORLD_LINUX_TAMARIN_PLATFORM_SOURCES
   ../../Vendor/Tamarin/source/VMPI/MMgcPortUnix.cpp
@@ -404,6 +426,12 @@ add_executable(
   ../System/MainFrame_linux.cpp
   ../System/HPTimer.cpp
   ../System/HPTimer_linux.cpp
+)
+
+add_library(
+  PrimeWorldLinuxLuaRuntime
+  OBJECT
+  ${PRIMEWORLD_LINUX_SCRIPT_RUNTIME_SOURCES}
 )
 
 add_executable(
@@ -976,6 +1004,7 @@ add_dependencies(PrimeWorldLinuxFlashVmRuntimeProbe PrimeWorldLinuxFlashRuntimeP
 target_sources(
   PrimeWorldLinuxClient
   PRIVATE
+    $<TARGET_OBJECTS:PrimeWorldLinuxLuaRuntime>
     $<TARGET_OBJECTS:PrimeWorldLinuxFlashRuntimeProbe>
     $<TARGET_OBJECTS:PrimeWorldLinuxFlashVmRuntimeProbe>
 )
@@ -1333,9 +1362,11 @@ add_library(
 )
 
 add_dependencies(PrimeWorldLinuxFlashRuntimeProbe PrimeWorldLinuxTamarinRuntimeProbe)
+add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxLuaRuntime)
 add_dependencies(PrimeWorldLinuxClientRuntimeProbe PrimeWorldLinuxFlashRuntimeProbe)
 
 target_compile_features(PrimeWorldLinuxBootstrap PRIVATE cxx_std_17)
+target_compile_features(PrimeWorldLinuxLuaRuntime PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClient PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxSwfProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxGameplayProbe PRIVATE cxx_std_17)
@@ -1344,6 +1375,7 @@ target_compile_features(PrimeWorldLinuxFlashVmRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxClientRuntimeProbe PRIVATE cxx_std_17)
 target_compile_features(PrimeWorldLinuxRenderProbe PRIVATE cxx_std_17)
 target_compile_options(PrimeWorldLinuxClient PRIVATE -fpermissive)
+target_compile_options(PrimeWorldLinuxLuaRuntime PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 target_compile_options(PrimeWorldLinuxGameplayProbe PRIVATE -fpermissive)
 target_compile_options(PrimeWorldLinuxFlashRuntimeProbe PRIVATE -fpermissive -fno-exceptions)
 target_compile_options(PrimeWorldLinuxFlashVmRuntimeProbe PRIVATE -fpermissive -fno-exceptions)
@@ -1369,6 +1401,14 @@ target_include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../Server/Chat
     ${CMAKE_CURRENT_SOURCE_DIR}/../System
     ${CMAKE_CURRENT_SOURCE_DIR}/../../Vendor/JsonCpp/include
+)
+
+target_include_directories(
+  PrimeWorldLinuxLuaRuntime
+  PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../System
 )
 
 target_include_directories(
@@ -1473,6 +1513,7 @@ target_link_libraries(
     ZLIB::ZLIB
     ${PNG_LIBRARIES}
     PrimeWorldLinuxTamarin
+    ${CMAKE_DL_LIBS}
     m
 )
 
@@ -1506,6 +1547,7 @@ target_compile_definitions(
   PRIVATE
     PW_LINUX_NULL_RENDER
     PW_LINUX_OPENGL_BOOTSTRAP
+    PW_LINUX_REAL_LUA
 )
 
 target_compile_definitions(
@@ -1987,4 +2029,12 @@ set_source_files_properties(
   ../Terrain/TerrainGeometryManager.cpp
   PROPERTIES
     COMPILE_DEFINITIONS "PW_LINUX_NULL_RENDER;PW_LINUX_DB_BOOTSTRAP;PW_LINUX_TERRAIN_RUNTIME_PROBE"
+)
+
+set_property(
+  SOURCE ../PF_GameLogic/PFBaseUnit.cpp
+  APPEND
+  PROPERTY COMPILE_DEFINITIONS
+    lua_createtable=pw_linux_null_lua_createtable
+    lua_settable=pw_linux_null_lua_settable
 )
