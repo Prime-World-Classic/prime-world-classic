@@ -208,6 +208,15 @@ namespace
   int ErrorHook(lua_State* L)
   {
     const char* message = lua_tostring(L, -1);
+
+#if defined(__linux__)
+    fprintf(
+      stderr,
+      "Lua callback failed%s%s: %s\n",
+      errDebugName ? " in " : "",
+      errDebugName ? errDebugName : "",
+      message ? message : "<no message>");
+#endif
     
     systemLog(NLogg::LEVEL_ASSERT) << "Lua: ";
     if (errDebugName)

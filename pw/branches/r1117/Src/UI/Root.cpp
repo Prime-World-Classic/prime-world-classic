@@ -465,9 +465,10 @@ void Initialize( const NDb::UIRoot *pRoot )
     s_textSubsts[id] = pRoot->substitutes[i].captionText.GetText();
   }
 
-#if !defined(PW_LINUX_UI_BOOTSTRAP)
   // Startup
   UI::GetUIScript()->RegisterGlobals(); //IREF
+
+#if !defined(PW_LINUX_UI_BOOTSTRAP)
   NCursor::Init(); //IREF
   flash::InitializeFlash();
 #endif

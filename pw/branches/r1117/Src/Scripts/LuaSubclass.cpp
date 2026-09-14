@@ -33,7 +33,9 @@ namespace Lua
     Reset(pTable, new ObjectTableLink(pState) );
      
     bool success = pTable->CreateLinkedTable(pThis, pTypeInfo, ClassName(), subclass);
-    //NI_ASSERT(success, "Subclassing failed!")
+    if (!success)
+      UnSubclass();
+
     return success;
   }
 

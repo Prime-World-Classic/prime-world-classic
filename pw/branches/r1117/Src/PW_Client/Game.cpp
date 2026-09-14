@@ -3734,8 +3734,12 @@ public:
 
   virtual void PopGameList(lobby::TDevGamesList& buffer)
   {
-    const int fallbackMaxPlayers = maxPlayers > 0 ? maxPlayers : 10;
-    EnsureFallbackDevGamesList(1001, fallbackMaxPlayers);
+    if (devGamesList.empty())
+    {
+      buffer.clear();
+      return;
+    }
+
     visibleGamesList = devGamesList;
     buffer = devGamesList;
     devGamesList.clear();
@@ -66438,6 +66442,26 @@ void AppendRuntimeInputLog(
     (finalJoinNormalButton && finalJoinNormalButton->IsSubclassed() ? 1 : 0) +
     (finalJoinReconnectButton && finalJoinReconnectButton->IsSubclassed() ? 1 : 0) +
     (finalJoinSpectateButton && finalJoinSpectateButton->IsSubclassed() ? 1 : 0);
+  const int finalProductionLobbyMapRows = finalMapsList ? finalMapsList->GetChildrenCount() : 0;
+  const int finalProductionLobbyGameRows = finalGamesList ? finalGamesList->GetChildrenCount() : 0;
+  int finalProductionLobbyMapLuaRows = 0;
+  int finalProductionLobbyGameLuaRows = 0;
+  if (finalMapsList)
+  {
+    for (int i = 0; i < finalMapsList->GetChildrenCount(); ++i)
+    {
+      UI::Window* row = finalMapsList->GetChild(i);
+      finalProductionLobbyMapLuaRows += row && row->IsSubclassed() ? 1 : 0;
+    }
+  }
+  if (finalGamesList)
+  {
+    for (int i = 0; i < finalGamesList->GetChildrenCount(); ++i)
+    {
+      UI::Window* row = finalGamesList->GetChild(i);
+      finalProductionLobbyGameLuaRows += row && row->IsSubclassed() ? 1 : 0;
+    }
+  }
   logFile << "  finalProductionLobbyControlTypes="
           << "buttons:"
           << (finalStartSessionButton ? 1 : 0) +
@@ -66459,6 +66483,11 @@ void AppendRuntimeInputLog(
           << "/3\n";
   logFile << "  finalProductionLobbyLuaSubclasses="
           << finalProductionLobbyLuaSubclasses << "/10\n";
+  logFile << "  finalProductionLobbyScriptRows=maps:"
+          << finalProductionLobbyMapRows << "/"
+          << finalProductionLobbyMapLuaRows << " games:"
+          << finalProductionLobbyGameRows << "/"
+          << finalProductionLobbyGameLuaRows << "\n";
   logFile << "  finalVisibleMenuSelectedAction="
           << screenRuntime.visibleMenuSelectedAction << "\n";
   logFile << "  finalVisibleMenuActivatedCount="
