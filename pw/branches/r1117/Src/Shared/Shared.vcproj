@@ -233,6 +233,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\ServerIps.h"
+				>
+			</File>
+			<File
 				RelativePath=".\WebRequests.h"
 				>
 			</File>

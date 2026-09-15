@@ -3,23 +3,19 @@
 #include "System/Commands.h"
 #include "Network/FreePortsFinder.h"
 #include "PW_Game/server_ip.h"
+#include <Shared/ServerIps.h>
 
 
 namespace 
 {
+  // Initialized with the static server_ip.h values (static initialization order is
+  // not safe across modules). Network::GetCoordinatorAddress()/GetLoginServerAddress()
+  // re-resolve the address from the dynamic server IP registry on every call, so the
+  // values below are always up to date by the time the network stack uses them.
   string coordinatorAddr = string(SERVER_IP) + ":" + SERVER_PORT;
   string loginAddr = string(SERVER_IP) + ":" + LOGIN_PORT + "@10";
   int firstServerPort = SERVER_CLUSTER_PORT_BACK;
   int firstServerPortFront = SERVER_CLUSTER_PORT_FRONT;
-
-  string mirror_coordinatorAddr = string(MIRROR_SERVER_IP) + ":" + SERVER_PORT;
-  string mirror_loginAddr = string(MIRROR_SERVER_IP) + ":" + LOGIN_PORT + "@10";
-
-  string proxy_coordinatorAddr = string(SERVER_PROXY_IP) + ":" + SERVER_PORT;
-  string proxy_loginAddr = string(SERVER_PROXY_IP) + ":" + LOGIN_PORT + "@10";
-
-  string* serverAddrs_coordinator[] = {&coordinatorAddr, &mirror_coordinatorAddr, &proxy_coordinatorAddr};
-  string* serverAddrs_login[] = {&loginAddr, &mirror_loginAddr, &proxy_loginAddr};
 
   string frontendIPAddr = "localhost";
   string backendIPAddr = "localhost";
@@ -37,12 +33,14 @@ namespace Network
 
 const string & GetCoordinatorAddress()
 {
-  return *(serverAddrs_coordinator[usedServer]);
+  coordinatorAddr = string(GetServerIpA(usedServer)) + ":" + SERVER_PORT;
+  return coordinatorAddr;
 }
 
 const string & GetLoginServerAddress()
 {
-  return *(serverAddrs_login[usedServer]);
+  loginAddr = string(GetServerIpA(usedServer)) + ":" + LOGIN_PORT + "@10";
+  return loginAddr;
 }
 
 int GetFirstServerPortBack()

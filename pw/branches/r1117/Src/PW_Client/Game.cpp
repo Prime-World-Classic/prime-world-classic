@@ -1266,6 +1266,24 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     const char* versionStr = allTokens[3].c_str();
     const char* goMirrorFirst = allTokens[4].c_str();
     usedServer = goMirrorFirst[0] - (int('0'));
+    if (usedServer < 0)
+      usedServer = 0;
+
+    // Optional dynamic server IP block (8 hex chars per IPv4, e.g. "7f000001" == "127.0.0.1").
+    // An invalid block is a hard error: the client must not silently connect to the wrong server.
+    if (allTokens.size() >= 6 && !allTokens[5].empty()) {
+      std::vector<std::string> protocolServerIps;
+      if (!ParseServerIpsFromHex(allTokens[5].c_str(), protocolServerIps)) {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid server IP block in protocol: \"" << allTokens[5].c_str() << "\"" << endl;
+        ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [invalid server IP block]! Please start the game via the launcher." );
+        return 0;
+      }
+      SetDynamicServerIps(protocolServerIps);
+      for (size_t ipIndex = 0; ipIndex < protocolServerIps.size(); ++ipIndex)
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP #" << ipIndex << ": " << protocolServerIps[ipIndex].c_str() << endl;
+    }
+
+    usedServer = usedServer % GetServerIpCount();
 
     int versionMajor = VERSION_MAJOR;
     int versionMinor = VERSION_MINOR;
@@ -1286,11 +1304,11 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       WebLauncherPostRequest rprequest;
       response = rprequest.GetSessionData(protocolToken);
       if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-       usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
+       usedServer = (usedServer + 1) % GetServerIpCount();
        WebLauncherPostRequest mirror_rprequest;
        response = mirror_rprequest.GetSessionData(protocolToken);
        if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-         usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
+         usedServer = (usedServer + 1) % GetServerIpCount();
          WebLauncherPostRequest proxy_rprequest;
          response = proxy_rprequest.GetSessionData(protocolToken);
        }

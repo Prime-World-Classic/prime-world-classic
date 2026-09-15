@@ -25,4 +25,6 @@ extern std::string GetSessionData(const char* token, bool registerSession);
 
 extern int usedServer;
 
+#include "ServerIps.h"
+
 std::string GetFormattedJson(Json::Value value);

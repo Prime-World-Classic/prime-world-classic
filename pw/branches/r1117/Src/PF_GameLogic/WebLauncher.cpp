@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "WebLauncher.h"
+#include <Shared/ServerIps.h>
 #include <iostream>
 #include <map>
 
@@ -48,7 +49,7 @@ std::string GetFormattedJson(Json::Value value);
 
 WebLauncherPostRequest::WebLauncherPostRequest()
 {
-  Init(SERVER_IP_W_ARRAY[usedServer], L"/api", SYNCHRONIZER_PORT, 0);
+  Init(GetServerIpW(usedServer), L"/api", SYNCHRONIZER_PORT, 0);
 }
 
 void WebLauncherPostRequest::Init(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags)
