@@ -1,7 +1,11 @@
 #pragma once
 
-#include <string>
-#include <vector>
+// The game's own STL (nstl) is used for the dynamic IP registry: the MSVC
+// std::vector<std::string> path in this build misbehaves under LTCG (release
+// invariant check fires on the hex string pointer), while nstl is the STL the
+// rest of the game is built on.
+#include "../System/nstring.h"
+#include "../System/nvector.h"
 
 // Dynamic server address registry.
 // IPv4 addresses can be delivered in the launch protocol as a hex-encoded block
@@ -11,8 +15,8 @@
 //
 // Kept in a dependency-free header so projects without the JsonCpp include
 // path (e.g. Network) can use it without pulling in WebRequests.h.
-bool ParseServerIpsFromHex(const char* hexBlock, std::vector<std::string>& outIps);
-void SetDynamicServerIps(const std::vector<std::string>& ips);
+bool ParseServerIpsFromHex(const char* hexBlock, nstl::vector<nstl::string>& outIps);
+void SetDynamicServerIps(const nstl::vector<nstl::string>& ips);
 int GetServerIpCount();
 const char* GetServerIpA(int index);
 const wchar_t* GetServerIpW(int index);

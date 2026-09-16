@@ -5,8 +5,8 @@ int usedServer = 0;
 
 #pragma comment(lib, "wininet.lib")
 
-static std::vector<std::string> g_dynamicServerIpsA;
-static std::vector<std::wstring> g_dynamicServerIpsW;
+static nstl::vector<nstl::string> g_dynamicServerIpsA;
+static nstl::vector<nstl::wstring> g_dynamicServerIpsW;
 
 static bool IsHexDigit(char c)
 {
@@ -22,7 +22,7 @@ static int HexCharToInt(char c)
   return c - 'A' + 10;
 }
 
-bool ParseServerIpsFromHex(const char* hexBlock, std::vector<std::string>& outIps)
+bool ParseServerIpsFromHex(const char* hexBlock, nstl::vector<nstl::string>& outIps)
 {
   outIps.clear();
 
@@ -42,23 +42,26 @@ bool ParseServerIpsFromHex(const char* hexBlock, std::vector<std::string>& outIp
     }
     char buf[16];
     sprintf(buf, "%u.%u.%u.%u", (unsigned)octet[0], (unsigned)octet[1], (unsigned)octet[2], (unsigned)octet[3]);
-    outIps.push_back(buf);
+    outIps.push_back(nstl::string(buf));
   }
 
   return !outIps.empty();
 }
 
-void SetDynamicServerIps(const std::vector<std::string>& ips)
+void SetDynamicServerIps(const nstl::vector<nstl::string>& ips)
 {
   g_dynamicServerIpsA = ips;
   g_dynamicServerIpsW.clear();
   g_dynamicServerIpsW.reserve(ips.size());
-  for (size_t i = 0; i < ips.size(); ++i) {
+  for (int i = 0; i < ips.size(); ++i) {
     int wideLen = MultiByteToWideChar(CP_UTF8, 0, ips[i].c_str(), (int)ips[i].size(), NULL, 0);
-    std::wstring wideStr(wideLen, L'\0');
-    if (wideLen > 0)
-      MultiByteToWideChar(CP_UTF8, 0, ips[i].c_str(), (int)ips[i].size(), &wideStr[0], wideLen);
-    g_dynamicServerIpsW.push_back(wideStr);
+    if (wideLen <= 0)
+      continue;
+    wchar_t* wbuf = new wchar_t[wideLen + 1];
+    MultiByteToWideChar(CP_UTF8, 0, ips[i].c_str(), (int)ips[i].size(), wbuf, wideLen);
+    wbuf[wideLen] = 0;
+    g_dynamicServerIpsW.push_back(nstl::wstring(wbuf, (size_t)wideLen));
+    delete[] wbuf;
   }
 }
 
