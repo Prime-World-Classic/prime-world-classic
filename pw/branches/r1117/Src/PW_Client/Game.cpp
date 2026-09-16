@@ -1243,16 +1243,28 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
   } else {
-    const char* protocolLine = protocolLineStr.c_str();
-    const char* delimiter = "/";
-
-    char* token = strtok(const_cast<char*>(protocolLine), delimiter);
+    // Manual tokenization instead of strtok. The protocol line has a fixed,
+    // predictable structure: "scheme://method/<token>/<version>/<mirror>[/ipBlock]".
+    // strtok would overwrite the internal buffer of protocolLineStr (std::string)
+    // with NUL separators, which is undefined behavior and can corrupt adjacent
+    // state; here the separators are only located and the tokens are copied.
+    // Consecutive delimiters are collapsed, exactly like strtok did.
     std::vector<std::string> allTokens;
-    allTokens.reserve(5);
-
-    while (token != 0) {
-      allTokens.push_back(token);
-      token = strtok(0, delimiter);
+    allTokens.reserve(6);
+    {
+      const size_t protocolLen = protocolLineStr.size();
+      size_t tokenBegin = 0;
+      while (tokenBegin < protocolLen) {
+        while (tokenBegin < protocolLen && protocolLineStr[tokenBegin] == '/')
+          ++tokenBegin;
+        if (tokenBegin >= protocolLen)
+          break;
+        size_t tokenEnd = protocolLineStr.find('/', tokenBegin);
+        if (tokenEnd == std::string::npos)
+          tokenEnd = protocolLen;
+        allTokens.push_back(protocolLineStr.substr(tokenBegin, tokenEnd - tokenBegin));
+        tokenBegin = tokenEnd;
+      }
     }
 
     if(allTokens.size() < 5) {
