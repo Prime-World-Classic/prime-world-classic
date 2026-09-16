@@ -1249,7 +1249,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     // with NUL separators, which is undefined behavior and can corrupt adjacent
     // state; here the separators are only located and the tokens are copied.
     // Consecutive delimiters are collapsed, exactly like strtok did.
-    std::vector<std::string> allTokens;
+    nstl::vector<nstl::string> allTokens;
     allTokens.reserve(6);
     {
       const size_t protocolLen = protocolLineStr.size();
@@ -1262,7 +1262,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
         size_t tokenEnd = protocolLineStr.find('/', tokenBegin);
         if (tokenEnd == std::string::npos)
           tokenEnd = protocolLen;
-        allTokens.push_back(protocolLineStr.substr(tokenBegin, tokenEnd - tokenBegin));
+        allTokens.push_back(nstl::string(protocolLineStr.c_str() + tokenBegin, tokenEnd - tokenBegin));
         tokenBegin = tokenEnd;
       }
     }
