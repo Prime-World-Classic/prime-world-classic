@@ -16,6 +16,9 @@
 #include "Network/FreePortsFinder.h"
 #include "Network/StreamAllocator.h"
 
+extern string g_sessionToken;
+extern string g_playerToken;
+
 
 #include "Client/ScreenCommands.h"
 #include "NetworkStatusScreen.h"

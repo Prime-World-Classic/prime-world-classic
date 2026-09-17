@@ -727,7 +727,7 @@ void ApplyWebSessionData(const newLogin::LoginReply & reply)
   g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoin;
 
   g_playersCount = 0;
-  for (size_t p = 0; p < ws.players.size(); ++p)
+  for (int p = 0; p < ws.players.size(); ++p)
   {
     const newLogin::WebPlayerData & pl = ws.players[p];
 
@@ -775,7 +775,7 @@ void ApplyWebSessionData(const newLogin::LoginReply & reply)
       resData.profileStats[i] = pl.profileStats[i];
     }
 
-    g_usersData[wideNick] = resData;
+    g_usersData[wideNick.c_str()] = resData;
 
     WebLauncherPostRequest::PlayerMetaInfo playerMetaInfo;
     playerMetaInfo.leagueIdx = pl.leagueIdx;

@@ -5485,7 +5485,7 @@ void AdventureScreen::FillSessionResults( StatisticService::RPC::SessionClientRe
   // is excluded from operator==) and posts the result to the synchronizer —
   // the client makes no HTTP call for it. Sorted for a deterministic merge.
   _info.playerKills.clear();
-  for ( nstl::vector<std::pair<int, int> >::size_type k = 0; k < playersKills.size(); ++k )
+  for ( int k = 0; k < playersKills.size(); ++k )
     _info.playerKills.push_back( nstl::pair<int, int>( playersKills[k].first, playersKills[k].second ) );
   nstl::sort( _info.playerKills.begin(), _info.playerKills.end() );
 }
