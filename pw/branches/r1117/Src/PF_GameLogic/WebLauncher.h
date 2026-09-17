@@ -7,6 +7,7 @@
 #include <set>
 #include <json/json.h>
 #include "../PW_Game/server_ip.h"
+#include "../Server/NewLogin/NewLoginTypes.h"
 
 
 class WebLauncherPostRequest
@@ -214,3 +215,9 @@ extern map<int, WebLauncherPostRequest::PlayerMetaInfo> userIdToMetaMap;
 std::string GetSkinByHeroPersistentId(const std::string& heroPersistentId, int skinId);
 std::string WideCharToMultiByteString(const wchar_t* wideCharString);
 std::string Fix1251Encoding(std::string utf8String);
+
+// Fills the web-session globals (g_mapId, g_usersData, g_playersCount,
+// g_playerHeroId/TeamId/PartyId, ...) from the login reply — replaces the
+// pre-login HTTP GetSessionData. Must be called on the main thread right
+// after a successful login (before the lobby client starts).
+void ApplyWebSessionData(const newLogin::LoginReply & reply);

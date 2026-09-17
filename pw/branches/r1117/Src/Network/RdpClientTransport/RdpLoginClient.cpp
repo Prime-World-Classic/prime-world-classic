@@ -15,11 +15,12 @@ namespace rdp_transport
 
 #pragma warning( disable: 4355 ) //'this' : used in base member initializer list
 
-LoginClient::LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey ) :
+LoginClient::LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, const nstl::string & _playerKey ) :
 state( ELoginClientState::Connecting ),
 login( _login ),
 password( _password ),
 sessionKey( _sessionKey ),
+playerKey( _playerKey ),
 loginSvcAddr( _loginSvcAddr ),
 rdp( _rdp ),
 timeout( operationTimeout, this, &LoginClient::OnTimeout ),
@@ -140,6 +141,7 @@ void LoginClient::OnConnectionEstablished( ni_udp::IRdpConnection * _conn )
   hello.login = login;
   hello.password = password;
   hello.sessionkey = sessionKey;
+  hello.playerKey = playerKey;
 
   writer->Send( hello );
 

@@ -709,6 +709,95 @@ WebLauncherPostRequest::WebLoginResponse WebLauncherPostRequest::GetSessionData(
 
   return res;
 }
+
+
+// Fills the web-session globals from the login reply (LoginReply::webSession).
+// Mirrors the JSON parsing in GetSessionData: the synchronizer data arrives
+// here as binary WebPlayerData instead of JSON. The local player is
+// identified by reply.uid. Called on the main thread right after a
+// successful login, so no locking against the web-thread is needed.
+void ApplyWebSessionData(const newLogin::LoginReply & reply)
+{
+  const newLogin::WebSessionData & ws = reply.webSession;
+  if (!ws.valid) {
+    return;
+  }
+
+  g_mapId = ws.mapId.c_str();
+  g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoin;
+
+  g_playersCount = 0;
+  for (size_t p = 0; p < ws.players.size(); ++p)
+  {
+    const newLogin::WebPlayerData & pl = ws.players[p];
+
+    // Nicknames are UTF-8; the game uses wide (UTF-16) keys internally.
+    std::wstring wideNick = Fix1251EncodingW(std::string(pl.nickname.c_str()));
+
+    s_userNicknameToUserIdMap[wideNick] = pl.id;
+
+    WebLauncherPostRequest::WebUserData resData;
+    resData.currentRating = pl.ratingCurrent;
+    resData.victoryRating = pl.ratingVictory;
+    resData.lossRating = pl.ratingLoss;
+    resData.currentRatingAcc = pl.ratingAccCurrent;
+    resData.victoryRatingAcc = pl.ratingAccVictory;
+    resData.lossRatingAcc = pl.ratingAccLoss;
+    resData.heroSkinID = pl.skin;
+    resData.userId = pl.id;
+
+    resData.talents.resize(36);
+    for (int i = 0; i < 36; ++i)
+    {
+      if (pl.build[i] == 0)
+      {
+        resData.talents.clear();
+        break; // empty slot in build
+      }
+      resData.talents[i].webTalentId = pl.build[i];
+    }
+    if (!resData.talents.empty())
+    {
+      for (int a = 0; a < 24; ++a)
+      {
+        int activeRaw = pl.bar[a];
+        if (activeRaw != 0)
+        {
+          int activeRef = abs(activeRaw) - 1;
+          resData.talents[activeRef].activeSlot = a;
+          resData.talents[activeRef].isSmartCast = activeRaw < 0;
+        }
+      }
+    }
+
+    for (int i = 0; i < 9; ++i)
+    {
+      resData.profileStats[i] = pl.profileStats[i];
+    }
+
+    g_usersData[wideNick] = resData;
+
+    WebLauncherPostRequest::PlayerMetaInfo playerMetaInfo;
+    playerMetaInfo.leagueIdx = pl.leagueIdx;
+    playerMetaInfo.flagId = pl.flagId.c_str();
+    userIdToMetaMap[pl.id] = playerMetaInfo;
+
+    // Local player: the server identifies it by uid (reply.uid == pl.id).
+    if (pl.id == reply.uid)
+    {
+      g_playerHeroId = pl.hero;
+      g_playerTeamId = pl.team - 1;
+      g_playerPartyId = pl.party;
+      if (pl.muteChat)
+      {
+        g_playerPwcChatMute = true;
+      }
+    }
+
+    g_playersCount++;
+  }
+}
+
 #pragma optimize("", off)
 std::string WebLauncherPostRequest::CreateDebugSession()
 {

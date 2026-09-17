@@ -25,6 +25,7 @@
 #include "Network/RdpClientTransport/RdpClientTransport.h"
 
 #include "PF_GameLogic/MapCollection.h"
+#include "PF_GameLogic/WebLauncher.h"
 #include "PF_GameLogic/DbSessionRoots.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
 
@@ -284,6 +285,12 @@ int GameContext::Poll( float dt )
         loadingStatusHandler->OnLoginStatus( res );
       if ( res == Login::ELoginResult::Success )
       {
+        // Web-session data (mapId, players, builds) arrives in the login
+        // reply — no pre-login HTTP to the synchronizer anymore.
+        newLogin::LoginReply loginReply = clientTransportSystem->GetLoginReply();
+        if ( loginReply.webSession.valid )
+          ApplyWebSessionData( loginReply );
+
         if ( isSpectator )
         {
           StartLobbyClient();
@@ -623,7 +630,14 @@ void GameContext::ConnectToCluster( const string & login, const string & passwor
   NI_VERIFY( status == EContextStatus::Ready, "", return );
   NI_VERIFY( clientTransportSystem, "Client transport system could not be initialized!", return );
 
-  clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, sessionToken, _loginType );
+  // Web-session login: the player is identified by playerKey (launcher URL,
+  // g_playerToken) instead of the nickname; the server delivers the session
+  // data in the login reply. The same token/key pair is reused for fast
+  // reconnects (the session outlives a single login).
+  string token = sessionToken.empty() ? g_sessionToken : sessionToken;
+  string playerKey = g_playerToken;
+
+  clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, token, playerKey, _loginType );
   lastLogin = login;
 
   status = EContextStatus::WaitingLogin;

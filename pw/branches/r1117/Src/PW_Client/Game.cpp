@@ -1194,8 +1194,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
   NFile::DeleteOldFiles( NProfile::GetRootLogsFolder().c_str(), double(g_deleteLogFilesAfterDays) * 60 * 60 * 24 );
   NFile::DeleteOldFiles( NProfile::GetFullFolderPath(NProfile::FOLDER_REPLAYS).c_str(), double(g_deleteLogFilesAfterDays) * 60 * 60 * 24 );
-  static std::string currentLogin = "";
-
+  (void)0; // static currentLogin removed with the pre-login HTTP
   if ( s_localGame || isReplay )
   {
     context = new Game::LocalGameContext( isSpectator );
@@ -1309,52 +1308,33 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       return 0;
     }
 
-    WebLauncherPostRequest::WebLoginResponse response;
-    if (protocolMethod == "runGame" || protocolMethod == "reconnect") {
-      //WebLauncherPostRequest cprequest;
-      //cprequest.CreateDebugSession();
-      WebLauncherPostRequest rprequest;
-      response = rprequest.GetSessionData(protocolToken);
-      if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-       usedServer = (usedServer + 1) % GetServerIpCount();
-       WebLauncherPostRequest mirror_rprequest;
-       response = mirror_rprequest.GetSessionData(protocolToken);
-       if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-         usedServer = (usedServer + 1) % GetServerIpCount();
-         WebLauncherPostRequest proxy_rprequest;
-         response = proxy_rprequest.GetSessionData(protocolToken);
-       }
-      }
-    } else {
+    if (protocolMethod != "runGame" && protocolMethod != "reconnect") {
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol syntax" );
       return 0;
     }
 
-    if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAIL) {
-      systemLog( NLogg::LEVEL_MESSAGE ).Trace("Failed connection with reason: %s", response.response.c_str());
-      ShowLocalizedErrorMB( L"Connection failed", L"Game server response error!" );
+    // No pre-login HTTP to the synchronizer: the protocol token carries the
+    // sessionToken (32 chars) and the playerKey (64 chars,
+    // sha256(user_id+sessionToken+api_key)). The server authenticates by
+    // playerKey and delivers the session data in the login reply
+    // (LoginReply::webSession, applied in GameContext::Poll).
+    if (strlen(protocolToken) < 96) {
+      systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid protocol token length: " << strlen(protocolToken) << endl;
+      ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [bad token length]! Please start the game via the launcher." );
       return 0;
     }
+    g_sessionToken = string(protocolToken, 32);
+    g_playerToken = string(protocolToken + 32, 64);
 
+    // The web session always goes through the network path: the players
+    // count is unknown before the login. A solo session becomes a 1-slot
+    // custom game on the server lobby side.
+    g_localGameRun = false;
+    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoin;
 
-    if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_JOIN) {
-        // Login success
-        currentLogin = std::string(" ") + response.response;
-        currentLogin[0] = 0x09;
-        g_devLogin = currentLogin.c_str();
-
-        const char * mapId = CmdLineLite::Instance().GetStringKey( "mapId", "" );
-        if (g_localGameRun) {
-          context = new Game::LocalGameContext( false );
-          g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebCreate;
-        } else {
-          context = new Game::GameContext(g_sessionToken.c_str(), g_devLogin.c_str(), mapId, socialServer, guildEmblem, isSpectator, false );
-        }
-        context->Start();
-    } else {
-      ShowLocalizedErrorMB( L"Error", L"Unknown response" );
-      return 0;
-    }
+    const char * mapId = CmdLineLite::Instance().GetStringKey( "mapId", "" );
+    context = new Game::GameContext(g_sessionToken.c_str(), "", mapId, socialServer, guildEmblem, isSpectator, false );
+    context->Start();
   }
 
   mainVars.initContext = true;

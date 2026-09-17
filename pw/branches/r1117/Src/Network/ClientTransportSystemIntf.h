@@ -4,6 +4,7 @@
 #include "Network/Address.h"
 #include "Network/TransportDefaults.h"
 #include "Network/LoginTypes.h"
+#include "Server/NewLogin/NewLoginTypes.h"
 
 struct ssl_ctx_st;
 typedef struct ssl_ctx_st SSL_CTX;
@@ -31,10 +32,15 @@ namespace Transport
       unsigned int pingperiod = Defaults::GetPingPeriod(), unsigned int to = Defaults::GetOpenChannelTimeout()) = 0;
     virtual void GetNewAcceptedChannels(vector< StrongMT< Transport::IChannel > > & _chnls) { _chnls; }
 
-    virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
+    // playerKey: web-session player key (sha256(user_id+sessionToken+api_key),
+    // from the launcher URL). Empty = legacy login by nickname. The session
+    // data is delivered by the server in GetLoginReply().webSession.
+    virtual void Login( const Network::NetAddress& loginServerAddress, const nstl::string& login, const nstl::string& _password, const nstl::string& sessionKey="", const nstl::string& playerKey="", Login::LoginType::Enum _loginType = Login::LoginType::ORDINARY ) = 0;
     virtual void Logout() = 0;
     virtual Login::ELoginResult::Enum GetLoginResult() const = 0;
-    virtual EStatus::Enum GetStatus() = 0; // в частности, по CRITICAL_FAIL можно прибивать
+    // Full login reply (webSession is empty unless the server sent it).
+    virtual newLogin::LoginReply GetLoginReply() const { return newLogin::LoginReply(); }
+    virtual EStatus::Enum GetStatus() = 0; // пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ CRITICAL_FAIL пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     virtual TServiceId GetSessionPath() const { return TServiceId(); };
     virtual Network::NetAddress GetRelayAddress() const = 0;
     virtual Network::NetAddress GetSecondaryRelayAddress() const = 0;
