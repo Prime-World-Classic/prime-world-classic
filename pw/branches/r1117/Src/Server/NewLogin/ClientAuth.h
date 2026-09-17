@@ -46,15 +46,30 @@ private:
   typedef std::map<std::string, SessionKey>   Keys;
   typedef std::map<std::string, Transport::TClientId> DevLoginHistory;
 
+  // Cache of web-session lookups, keyed by "<sessionToken>|<playerKey>".
+  // The session data is static for the lifetime of the session, so the
+  // (uid, webSession) pair can be cached across reconnects.
+  struct WebSessionCacheEntry
+  {
+    Transport::TClientId  uid;
+    WebSessionData        webSession;
+    timer::Time           cachedAt;
+
+    WebSessionCacheEntry() : uid( 0 ), cachedAt( 0 ) {}
+  };
+  typedef std::map<std::string, WebSessionCacheEntry> WebSessionCache;
+
   StrongMT<IConfigProvider>   config;
   timer::Time                 now;
   Transport::TClientId        nextDevUserId;
   Keys                        keys;
   string                      loginAddress;
   DevLoginHistory             devLoginHistory;
+  WebSessionCache             webSessionCache;
   threading::Mutex            mutex;
 
   void DevAuth( LoginReply & _reply, const LoginHello & _hello );
+  void DevWebAuth( LoginReply & _reply, const LoginHello & _hello );
   bool RestoreDevAuth( LoginReply & _reply, const LoginHello & _hello );
   void CleanupDevLoginHistory();
 };

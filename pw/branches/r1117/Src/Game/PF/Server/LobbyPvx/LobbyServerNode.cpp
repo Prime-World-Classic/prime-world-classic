@@ -565,6 +565,63 @@ static void SendFinishGameRequest(const char* sessionToken, const StatisticServi
 }
 
 
+// Per-player statistics + killer/victim pairs for the backend. Sent by the
+// lobby (not by the client) so that the game client makes no HTTP calls to
+// the synchronizer: the client ships the data through the standard
+// OnGameFinish RPC (SessionClientResults::playerKills), the lobby forwards
+// it. The synchronizer dedupes via the 'playerInfoSend' flag and forwards
+// the payload to the backend 'sendSessionPlayersData'.
+static void SendFinishGameLegacyRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info)
+{
+  if ( !sessionToken )
+    return;
+
+  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
+
+  Json::Value data;
+  data["sessionToken"] = Json::Value (sessionToken);
+  data["apiKey"] = Json::Value (API_KEY);
+  data["sideWon"] = Json::Value ((int)_info.sideWon);
+
+  Json::Value playersInfo(Json::arrayValue);
+  for (int pId = 0; pId < _info.players.size(); ++pId) {
+    const StatisticService::RPC::SessionClientResultsPlayer& player = _info.players[pId];
+
+    Json::Value playerInfo(Json::objectValue);
+    playerInfo["uid"] = Json::Value (player.userid);
+    playerInfo["kills"] = Json::Value (player.scoring.kills);
+    playerInfo["deaths"] = Json::Value (player.scoring.deaths);
+    playerInfo["assists"] = Json::Value (player.scoring.assists);
+    playerInfo["timeInIdle"] = Json::Value (player.scoring.timeInIdle);
+    playerInfo["timeAtHome"] = Json::Value (player.scoring.timeAtHome);
+    playerInfo["timeInDeath"] = Json::Value (player.scoring.timeInDeath);
+    playerInfo["timeElapsed"] = Json::Value (player.scoring.timeElapsed);
+    playerInfo["badBehaviourDetected"] = Json::Value (player.extra.badBehaviourDetected);
+    playerInfo["badBehaviourReported"] = Json::Value (player.extra.badBehaviourReported);
+    playersInfo.append(playerInfo);
+  }
+  data["playersInfo"] = playersInfo;
+
+  Json::Value playersKillsJson(Json::arrayValue);
+  for (int killId = 0; killId < _info.playerKills.size(); ++killId) {
+    Json::Value killerAndVictim(Json::objectValue);
+    killerAndVictim["killer"] = Json::Value (_info.playerKills[killId].first);
+    killerAndVictim["victim"] = Json::Value (_info.playerKills[killId].second);
+    playersKillsJson.append(killerAndVictim);
+  }
+  data["playerKills"] = playersKillsJson;
+
+  Json::Value result;
+  result["data"] = data;
+  result["method"] = Json::Value("notifyGameFinishLegacy");
+
+  Json::FastWriter writer;
+  std::string res = writer.write(result);
+
+  request.SendPostRequest(res);
+}
+
+
 void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum _gameResult, const StatisticService::RPC::SessionClientResults & _info, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics )
 {
   NI_PROFILE_FUNCTION;
@@ -576,6 +633,7 @@ void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum 
   GameSession * game = FindGame( _sessionId );
   if ( game ) {
     SendFinishGameRequest(game->GetSessionToken(), _info, _clientsStatistics);
+    SendFinishGameLegacyRequest(game->GetSessionToken(), _info);
     game->OnGameFinish( _gameResult, _info, _clientsStatistics );
 
     StatisticService::RPC::SessionResultEvent info;

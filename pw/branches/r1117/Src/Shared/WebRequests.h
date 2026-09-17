@@ -22,6 +22,10 @@ public:
 };
 
 extern std::string GetSessionData(const char* token, bool registerSession);
+// Web-session lookup by player key (synchronizer 'connectToWebSession'; no apiKey needed).
+// Returns the raw JSON response ('{"error":"", "playerInfo":{...}, "usersData":[...], "mapId":...}'
+// on success, '{"error":"..."}' otherwise, empty string when the synchronizer is unreachable).
+extern std::string GetWebSessionData(const char* token, const char* playerKey);
 
 extern int usedServer;
 
@@ -116,6 +120,24 @@ inline std::string GetSessionData(const char* token, bool registerSession)
   Json::Value result;
   result["data"] = data;
   result["method"] = Json::Value("createWebSession");
+
+  Json::FastWriter writer;
+  std::string res = writer.write(result);
+
+  return request.SendPostRequest(res);
+}
+
+inline std::string GetWebSessionData(const char* token, const char* playerKey)
+{
+  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
+
+  Json::Value data;
+  data["sessionToken"] = Json::Value(std::string(token, 32));
+  data["playerKey"] = Json::Value(playerKey);
+
+  Json::Value result;
+  result["data"] = data;
+  result["method"] = Json::Value("connectToWebSession");
 
   Json::FastWriter writer;
   std::string res = writer.write(result);

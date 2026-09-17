@@ -2,12 +2,13 @@
 #include "Server/RPC/Base.h"
 #include "SessionPlayerScoring.h"
 #include "SessionPlayerExtra.h"
+#include "System/npair.h"
 
 //
 // ATTENTION!
 // AHTUNG!
-// У этих структур есть двойники в коде статистики, C#
-// Перед любыми изменениями посоветоваться с програмистами сервиса статистики
+// пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, C#
+// пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 //
 
 namespace StatisticService
@@ -38,9 +39,9 @@ namespace StatisticService
 
 
     //
-    //Эта структура заполняется на клиентах, проходит верификацию на game server,
-    //попадает на лобби и отправляется в статистику
-    //Кроме статистики, данные из нее используются в lobby и roll service
+    //пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ game server,
+    //пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    //пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ lobby пїЅ roll service
     //
     struct SessionClientResults : rpc::Data
     {
@@ -49,7 +50,12 @@ namespace StatisticService
         int sideWon; //lobby::ETeam::Enum
       int surrenderVote;
       vector<SessionClientResultsPlayer> players;
-      ZEND int operator&( IBinSaver &f ) { f.Add(2,&sideWon); f.Add(3,&surrenderVote); f.Add(4,&players); return 0; }
+      // Killer/victim pairs (user ids) collected by the client. Serialized as
+      // id 5 (count + raw pair block). NOT part of operator== on purpose:
+      // the majority-vote merge compares scoring only, and the pair order may
+      // differ between clients.
+      vector<nstl::pair<int,int> > playerKills;
+      ZEND int operator&( IBinSaver &f ) { f.Add(2,&sideWon); f.Add(3,&surrenderVote); f.Add(4,&players); f.Add(5,&playerKills); return 0; }
 
       SessionClientResults() :
       sideWon( -1 ), surrenderVote( 0 )

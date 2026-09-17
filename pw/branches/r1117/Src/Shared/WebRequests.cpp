@@ -96,6 +96,23 @@ std::string GetSessionData(const char* token, bool registerSession) {
   return request.SendPostRequest(res);
 }
 
+std::string GetWebSessionData(const char* token, const char* playerKey) {
+  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
+
+  Json::Value data;
+  data["sessionToken"] = Json::Value (std::string(token, 32));
+  data["playerKey"] = Json::Value (playerKey);
+
+  Json::Value result;
+  result["data"] = data;
+  result["method"] = Json::Value("connectToWebSession");
+
+  Json::FastWriter writer;
+  std::string res = writer.write(result);
+
+  return request.SendPostRequest(res);
+}
+
 static void FormatJsonValue(Json::Value value, std::string& stream) {
   if (value.isObject()) {
     stream += "{";
