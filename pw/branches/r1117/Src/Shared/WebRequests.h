@@ -1,5 +1,9 @@
 #pragma once
-#if defined( NV_WIN_PLATFORM )
+// The platform is selected by NV_LINUX_PLATFORM (defined only in the Linux build);
+// everything else is treated as Windows: WIN32 / NV_WIN_PLATFORM are not visible
+// to every project in this solution.
+
+#if !defined( NV_LINUX_PLATFORM )
 #include <Windows.h>
 #include <Wininet.h>
 #include <vector>
@@ -28,6 +32,9 @@ extern std::string GetSessionData(const char* token, bool registerSession);
 extern std::string GetWebSessionData(const char* token, const char* playerKey);
 
 extern int usedServer;
+
+// Dynamic server address registry (hex IP block from the launch protocol).
+#include "ServerIps.h"
 
 std::string GetFormattedJson(Json::Value value);
 

@@ -1,4 +1,8 @@
 #pragma once
+// The platform is selected by NV_LINUX_PLATFORM (defined only in the Linux build);
+// everything else is treated as Windows: WIN32 / NV_WIN_PLATFORM are not visible
+// to every project in this solution.
+
 // ============================================================================
 // Helpers for the web payloads (synchronizer / launcher JSON).
 //
@@ -9,7 +13,7 @@
 
 #include <string>
 
-#if !defined( NV_WIN_PLATFORM )
+#if defined( NV_LINUX_PLATFORM )
 #include <iconv.h>
 #endif
 
@@ -22,7 +26,7 @@ namespace WebSession
   // The synchronizer stores UTF-8; the game works with wide (UTF-16) nicknames
   // and CP1251 narrow strings. Implementations are moved out of WebLauncher.h
   // unchanged (Win32 API on Windows, iconv on Linux).
-#if defined( NV_WIN_PLATFORM )
+#if !defined( NV_LINUX_PLATFORM )
   inline std::wstring Utf8ToWide( const std::string & utf8String )
   {
     int utf8Length = static_cast<int>( utf8String.length() );

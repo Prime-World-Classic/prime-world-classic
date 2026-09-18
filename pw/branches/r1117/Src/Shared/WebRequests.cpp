@@ -5,6 +5,95 @@ int usedServer = 0;
 
 #pragma comment(lib, "wininet.lib")
 
+static nstl::vector<nstl::string> g_dynamicServerIpsA;
+static nstl::vector<nstl::wstring> g_dynamicServerIpsW;
+
+static bool IsHexDigit(char c)
+{
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+static int HexCharToInt(char c)
+{
+  if (c >= '0' && c <= '9')
+    return c - '0';
+  if (c >= 'a' && c <= 'f')
+    return c - 'a' + 10;
+  return c - 'A' + 10;
+}
+
+bool ParseServerIpsFromHex(const char* hexBlock, nstl::vector<nstl::string>& outIps)
+{
+  outIps.clear();
+
+  if (!hexBlock)
+    return false;
+
+  size_t len = strlen(hexBlock);
+  if (len == 0 || len % 8 != 0)
+    return false;
+
+  for (size_t i = 0; i < len; i += 8) {
+    unsigned char octet[4];
+    for (int j = 0; j < 4; ++j) {
+      if (!IsHexDigit(hexBlock[i + j * 2]) || !IsHexDigit(hexBlock[i + j * 2 + 1]))
+        return false;
+      octet[j] = (unsigned char)((HexCharToInt(hexBlock[i + j * 2]) << 4) | HexCharToInt(hexBlock[i + j * 2 + 1]));
+    }
+    char buf[16];
+    sprintf(buf, "%u.%u.%u.%u", (unsigned)octet[0], (unsigned)octet[1], (unsigned)octet[2], (unsigned)octet[3]);
+    outIps.push_back(nstl::string(buf));
+  }
+
+  return !outIps.empty();
+}
+
+void SetDynamicServerIps(const nstl::vector<nstl::string>& ips)
+{
+  g_dynamicServerIpsA = ips;
+  g_dynamicServerIpsW.clear();
+  g_dynamicServerIpsW.reserve(ips.size());
+  for (int i = 0; i < ips.size(); ++i) {
+    int wideLen = MultiByteToWideChar(CP_UTF8, 0, ips[i].c_str(), (int)ips[i].size(), NULL, 0);
+    if (wideLen <= 0)
+      continue;
+    wchar_t* wbuf = new wchar_t[wideLen + 1];
+    MultiByteToWideChar(CP_UTF8, 0, ips[i].c_str(), (int)ips[i].size(), wbuf, wideLen);
+    wbuf[wideLen] = 0;
+    g_dynamicServerIpsW.push_back(nstl::wstring(wbuf, (size_t)wideLen));
+    delete[] wbuf;
+  }
+}
+
+int GetServerIpCount()
+{
+  if (g_dynamicServerIpsA.empty())
+    return _countof(SERVER_IP_ARRAY);
+  return (int)g_dynamicServerIpsA.size();
+}
+
+const char* GetServerIpA(int index)
+{
+  if (g_dynamicServerIpsA.empty())
+    return SERVER_IP_ARRAY[index % _countof(SERVER_IP_ARRAY)];
+  int count = (int)g_dynamicServerIpsA.size();
+  index %= count;
+  if (index < 0)
+    index += count;
+  return g_dynamicServerIpsA[index].c_str();
+}
+
+const wchar_t* GetServerIpW(int index)
+{
+  if (g_dynamicServerIpsW.empty())
+    return SERVER_IP_W_ARRAY[index % _countof(SERVER_IP_W_ARRAY)];
+  int count = (int)g_dynamicServerIpsW.size();
+  index %= count;
+  if (index < 0)
+    index += count;
+  return g_dynamicServerIpsW[index].c_str();
+}
+
 
 WebPostRequest::WebPostRequest(const wchar_t* serverUrl, const wchar_t* objectName, int serverPort, DWORD flags)
 {
@@ -79,7 +168,7 @@ std::string WebPostRequest::SendPostRequest(const std::string& jsonData) {
 }
 
 std::string GetSessionData(const char* token, bool registerSession) {
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
+  WebPostRequest request(GetServerIpW(0), L"/api", SYNCHRONIZER_PORT, 0);
 
   Json::Value data;
   data["sessionToken"] = Json::Value (std::string(token, 32));

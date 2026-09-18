@@ -1,4 +1,8 @@
 #pragma once
+// The platform is selected by NV_LINUX_PLATFORM (defined only in the Linux build);
+// everything else is treated as Windows: WIN32 / NV_WIN_PLATFORM are not visible
+// to every project in this solution.
+
 // ============================================================================
 // Web skin index -> skin persistent id (moved verbatim out of
 // PF_GameLogic/WebLauncher.cpp:GetSkinByHeroPersistentId).
