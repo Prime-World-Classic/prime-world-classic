@@ -9,7 +9,6 @@ namespace newLogin
 
 struct SConfig
 {
-  unsigned    firstDevUid;
   float       sessionKeyExpire;
   float       helloWaitTimeout;
   float       processingTimeout;
@@ -19,6 +18,12 @@ struct SConfig
   unsigned    rdpLogEvents;
   int         udpSockBufferSize;
   int         threadPriority;
+
+  // Web session registry (the backend): address and shared key. Empty values
+  // keep the server_ip.h fallback (local development).
+  string      webSessionHost;
+  int         webSessionPort;
+  string      webSessionKey;
 
   SConfig();
 };

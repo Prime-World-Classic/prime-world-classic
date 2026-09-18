@@ -13,9 +13,13 @@ namespace newLogin
 
 ClientAuth::ClientAuth( IConfigProvider * _config, timer::Time _now ) :
 config( _config ),
-now( _now ),
-nextDevUserId( 0 )
+now( _now )
 {
+  // Web session registry (the backend) address and key. Empty cfg values keep
+  // the server_ip.h fallback (local development).
+  const Config & cfg = *config->Cfg();
+  SetWebSessionEndpoint( cfg.webSessionHost.c_str(), cfg.webSessionPort, cfg.webSessionKey.c_str() );
+  MessageTrace( "Web session registry: http://%s:%d", GetWebSessionEndpoint().host.c_str(), GetWebSessionEndpoint().port );
 }
 
 
@@ -137,10 +141,9 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
   cacheKey += _hello.playerKey.c_str();
 
   {
-    // The cache has a TTL: the synchronizer may invalidate the session at
-    // any moment (finishGame / kicked player), and the legacy path always did
-    // a fresh lookup. A 60-second TTL keeps relogins cheap while staying
-    // consistent with the synchronizer state.
+    // The cache has a TTL: the registry may close the session at any moment
+    // (finish / kicked player), so from time to time a fresh lookup is
+    // required. 60 seconds keeps relogins cheap and stays consistent.
     const timer::Time kWebSessionCacheTtl = 60.0;
     WebSessionCache::const_iterator it = webSessionCache.find( cacheKey );
     if ( it != webSessionCache.end() && ( it->second.cachedAt + kWebSessionCacheTtl >= now ) )
@@ -159,8 +162,8 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
   Json::Value parsedValue = WebSession::ParseJson( response.c_str() );
   if ( parsedValue.empty() )
   {
-    // Empty response / broken JSON: the synchronizer is unreachable.
-    ErrorTrace( "Failed to get web session from the synchronizer. token=%s", token );
+    // Empty response / broken JSON: the backend is unreachable.
+    ErrorTrace( "Failed to get web session from the backend. token=%s", token );
     _reply.code = Login::ELoginResult::ServerError;
     return;
   }
@@ -216,147 +219,19 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 }
 
 
-static nstl::map<nstl::string, int> s_userLoginsToIdMap;
+// Player identification on login: the only way in is the playerKey from the
+// launch URL. The nickname path (the old dev login) is gone together with the
+// synchronizer - no client arrives with a nickname any more.
 void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
 {
-  // New web-session path: playerKey is set by the client (from the launcher
-  // URL); the identity is resolved from the synchronizer here (server side).
-  if ( !_hello.playerKey.empty() )
-  {
-    DevWebAuth( _reply, _hello );
-    return;
-  }
-
-  _reply.code = Login::ELoginResult::ServerError;
-  if ( _hello.login.empty() )
+  if ( _hello.playerKey.empty() )
   {
     _reply.code = Login::ELoginResult::Refused;
-    WarningTrace( "Dev mode authorization refused, login is empty" );
+    WarningTrace( "Authorization refused: no player key (login is ignored)" );
     return;
   }
 
-  nstl::map<nstl::string, int>::iterator it = s_userLoginsToIdMap.find(_hello.login);
-  if (it == s_userLoginsToIdMap.end()) {
-    if (_hello.sessionkey.length() < 32) {
-      _reply.code = Login::ELoginResult::AccessDenied;
-      WarningTrace( "Dev mode authorization refused. Not valid session key. login=%s", _hello.login );
-      return;
-    }
-    const char* token = _hello.sessionkey.c_str();
-    std::string response = GetSessionData(token, false);
-
-    Json::Value parsedValue = WebSession::ParseJson(response.c_str());
-
-    if (parsedValue.empty()) {
-      ErrorTrace( "Failed to get info from the synchronizer %s", token );
-      return;
-    }
-    Json::Value errorSet = parsedValue.get("error", "ERROR");
-    if (!errorSet.asString().empty()) {
-      ErrorTrace( "Error occurred during session creation: %s (%s)", errorSet.asString().c_str(), token );
-      return;
-    }
-    Json::Value usersData = parsedValue.get("usersData", Json::Value());
-    if (usersData.empty() || !usersData.isArray()) {
-      ErrorTrace( "Error occurred during session creation: Empty usersData %s", token );
-      return;
-    }
-
-    // Diagnostics: the per-service "newlogin" log channel is not routed on
-    // Linux, so use the untagged trace macros that reach the main log.
-    MessageTrace( "DevAuth: login_len=%d login0=0x%02X sessionkey_len=%zu response_len=%zu users=%u",
-      (int)_hello.login.size(), (unsigned char)_hello.login[0], _hello.sessionkey.size(), response.size(), (unsigned)usersData.size() );
-
-    int playersCount = 0;
-    Json::Value curPlayer = usersData[playersCount];
-    while (!curPlayer.empty()) {
-      if (!WebSession::CheckPlayerInfo(curPlayer)) {
-        ErrorTrace( "DevAuth: CheckPlayerInfo failed for usersData[%d]",
-          playersCount );
-        return;
-      }
-
-      nstl::string curNickname = WebSession::Utf8ToCp1251(curPlayer.get("nickname", Json::Value()).asString()).c_str();
-      int userWebId = curPlayer.get("id", Json::Value()).asInt();
-
-      MessageTrace( "DevAuth: usersData[%d] nickname=%s expected=%s id=%d",
-        playersCount, curNickname.c_str(), (_hello.login.c_str() + 1), userWebId );
-
-      if (curNickname == _hello.login.c_str() + 1) {
-        s_userLoginsToIdMap[_hello.login] = userWebId;
-
-        _reply.code = Login::ELoginResult::Success;
-        _reply.uid = userWebId;
-        return;
-      }
-
-      playersCount++;
-      curPlayer = usersData[playersCount];
-    }
-
-    it = s_userLoginsToIdMap.find(_hello.login);
-  }
-  if (it == s_userLoginsToIdMap.end()) {
-    _reply.code = Login::ELoginResult::AccessDenied;
-    ErrorTrace( "Dev mode authorization failed! login=%s", _hello.login );
-    return;
-  }
-
-/*
-  unsigned firstDevUid = config->Cfg()->firstDevUid;
-
-  if ( !firstDevUid )
-  {
-    _reply.code = Login::ELoginResult::AccessDenied;
-    WarningTrace( "Dev mode authorization refused. login=%s", _hello.login );
-    return;
-  }
-*/
-
-  _reply.code = Login::ELoginResult::Success;
-  _reply.uid = it->second;
-/*
-  if ( !nextDevUserId )
-    nextDevUserId = firstDevUid;
-
-  if ( !RestoreDevAuth( _reply, _hello ) )
-    _reply.uid = nextDevUserId++;
-*/
-  MessageTrace( "Dev mode authorization ok. login=%s, uid=%d", _hello.login, _reply.uid );
-}
-
-
-
-bool ClientAuth::RestoreDevAuth( LoginReply & _reply, const LoginHello & _hello )
-{
-  if ( _hello.login[0] != '_' )
-    return false;
-
-  std::string login( _hello.login.c_str() );
-  DevLoginHistory::iterator it = devLoginHistory.find( login );
-  if ( it != devLoginHistory.end() )
-  {
-    _reply.uid = it->second;
-    DebugTrace( "Restored dev mode uid. login=%s, uid=%d", _hello.login, _reply.uid );
-  }
-  else
-  {
-    CleanupDevLoginHistory();
-
-    _reply.uid = nextDevUserId++;
-    devLoginHistory[login] = _reply.uid;
-  }
-  return true;
-}
-
-
-
-void ClientAuth::CleanupDevLoginHistory()
-{
-  const size_t HistoryCap = 100;
-
-  while ( devLoginHistory.size() >= HistoryCap )
-    devLoginHistory.erase( devLoginHistory.begin() );
+  DevWebAuth( _reply, _hello );
 }
 
 } //namespace newLogin

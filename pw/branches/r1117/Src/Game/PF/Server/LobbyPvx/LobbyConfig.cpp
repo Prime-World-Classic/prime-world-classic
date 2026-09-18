@@ -24,6 +24,12 @@ REGISTER_VAR( "lobby_game_finish_delivery_timeout",   s_config.gameFinishDeliver
 REGISTER_VAR( "lobby_dev_balancer_mode",              s_config.developerBalanceMode, STORAGE_NONE );
 REGISTER_VAR( "lobby_dev_balancer_uids",              s_config.developerBalanceUids, STORAGE_NONE );
 
+// Web session registry (backend) + game-result journal.
+REGISTER_VAR( "web_session_http_host",                    s_config.webSessionHost, STORAGE_NONE );
+REGISTER_VAR( "web_session_http_port",                    s_config.webSessionPort, STORAGE_NONE );
+REGISTER_VAR( "web_session_http_key",                     s_config.webSessionKey, STORAGE_NONE );
+REGISTER_VAR( "finish_journal_path",                      s_config.finishJournalPath, STORAGE_NONE );
+
 
 class ConfigProviderPolicy
 {

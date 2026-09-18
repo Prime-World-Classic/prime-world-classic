@@ -25,6 +25,14 @@ struct SLobbyConfigData
   int         developerBalanceMode;
   string      developerBalanceUids;
 
+  // Web session registry (the backend): address/key of its HTTP API and the
+  // path of the game-result journal. Empty values keep the server_ip.h
+  // fallbacks (local development).
+  string      webSessionHost;
+  int         webSessionPort;
+  string      webSessionKey;
+  string      finishJournalPath;
+
   SLobbyConfigData() :
   gameFixedRandom( 0 ),
   statusDumpInterval( 30.0f ),
@@ -40,7 +48,11 @@ struct SLobbyConfigData
   gameFinishDeliveryWait( 5.0f ),
   gameFinishDeliveryTimeout( 60.0f * 30.0f ),
   developerBalanceMode( 0 ),
-  developerBalanceUids( string() )
+  developerBalanceUids( string() ),
+  webSessionHost( "" ),
+  webSessionPort( 0 ),
+  webSessionKey( "" ),
+  finishJournalPath( "finish_journal.log" )
   {}
 };
 

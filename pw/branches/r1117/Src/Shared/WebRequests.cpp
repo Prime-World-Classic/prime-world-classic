@@ -167,39 +167,13 @@ std::string WebPostRequest::SendPostRequest(const std::string& jsonData) {
   return responseStream;
 }
 
-std::string GetSessionData(const char* token, bool registerSession) {
-  WebPostRequest request(GetServerIpW(0), L"/api", SYNCHRONIZER_PORT, 0);
-
-  Json::Value data;
-  data["sessionToken"] = Json::Value (std::string(token, 32));
-  data["apiKey"] = Json::Value (API_KEY);
-  data["create"] = Json::Value (registerSession);
-
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("createWebSession");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  return request.SendPostRequest(res);
-}
-
-std::string GetWebSessionData(const char* token, const char* playerKey) {
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
-
-  Json::Value data;
-  data["sessionToken"] = Json::Value (std::string(token, 32));
-  data["playerKey"] = Json::Value (playerKey);
-
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("connectToWebSession");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  return request.SendPostRequest(res);
+// Транспорт реестра веб-сессий (бэкенд). Адрес/порт — GetWebSessionEndpoint(),
+// сборка тела — BuildSessionRequest() (общие для обеих платформ).
+std::string WebSessionHttpPost(const std::string& host, int port, const std::string& body)
+{
+  const std::wstring wideHost(host.begin(), host.end());   // адрес — ASCII
+  WebPostRequest request(wideHost.c_str(), L"/", port, 0);
+  return request.SendPostRequest(body);
 }
 
 static void FormatJsonValue(Json::Value value, std::string& stream) {

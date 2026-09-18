@@ -107,7 +107,6 @@ public:
 
   WebLoginResponse GetSessionData(const char* token, const char* apiKey = "");
   std::string WebLauncherPostRequest::SendPostRequest(const std::string& jsonData);
-  std::string CreateDebugSession();
 };
 typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
 
@@ -271,7 +270,6 @@ public:
   enum RegisterSessionRequest { RegisterInSessionRequest_Create, RegisterInSessionRequest_Error };
   WebLoginResponse GetSessionData(const char*, const char* = "") { return {}; }
   std::string SendPostRequest(const std::string&) { return {}; }
-  std::string CreateDebugSession() { return {}; }
 };
 typedef std::map<std::wstring, WebLauncherPostRequest::WebUserData> WebUsersDataMap;
 static std::string GetSkinByHeroPersistentId(const std::string&, int) { return {}; }

@@ -134,6 +134,12 @@ clientsCounter("lobby_clients", "")
 {
   config = CreateConfigFromStatics();
 
+  // Web session registry (the backend) and the game-result journal.
+  SetWebSessionEndpoint( config->Cfg()->webSessionHost.c_str(),
+                         config->Cfg()->webSessionPort,
+                         config->Cfg()->webSessionKey.c_str() );
+  finishDelivery.Init( config->Cfg()->finishJournalPath.c_str() );
+
   if ( !s_externalSocialLobbyAddr.empty() )
   {
     LOBBY_LOG_MSG( "Connecting to external social lobby service. ext_addr=%s", s_externalSocialLobbyAddr );
@@ -329,7 +335,7 @@ static const char* heroes [] = {
 nstl::map<nstl::string, StrongMT<CustomGame>> g_games;
 lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
-  std::string response = GetSessionData(token, true);
+  std::string response = CreateWebSession(token, true);
 
   Json::Value parsedValue = WebSession::ParseJson(response.c_str());
 
@@ -479,20 +485,19 @@ Network::NetAddress ServerNode::GetSvcAddress( const Transport::TServiceId & _se
 }
 
 
-static void SendFinishGameRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _finishInfo, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics)
+// Game result for the backend. The synchronizer is gone, so the lobby delivers
+// it itself (through FinishDelivery: journaled, retried until the backend acks).
+// One event carries both halves the backend needs: the rating (win/afk) and the
+// per-player statistics with killer/victim pairs, which the client ships over
+// the regular OnGameFinish RPC (SessionClientResults::playerKills).
+static Json::Value BuildFinishEvent(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics)
 {
-  if (!sessionToken) { 
-    return; 
-  }
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
-
   Json::Value data;
   data["sessionToken"] = Json::Value (sessionToken);
-  data["apiKey"] = Json::Value (API_KEY);
-  data["win"] = Json::Value ((int)_finishInfo.sideWon + 1);
-  Json::Value afk = Json::arrayValue;
+  data["win"] = Json::Value ((int)_info.sideWon + 1);
 
-  if (_finishInfo.sideWon != -1) {
+  Json::Value afk = Json::arrayValue;
+  if (_info.sideWon != -1) {
     for (int pId = 0; pId < _clientsStatistics.size(); ++pId) {
       const Peered::SClientStatistics& clientStat = _clientsStatistics[pId];
       if (clientStat.clientState != Peered::EGameFinishClientState::FinishedGame) {
@@ -501,35 +506,6 @@ static void SendFinishGameRequest(const char* sessionToken, const StatisticServi
     }
   }
   data["afk"] = afk;
-
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("notifyGameFinish");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  request.SendPostRequest(res);
-}
-
-
-// Per-player statistics + killer/victim pairs for the backend. Sent by the
-// lobby (not by the client) so that the game client makes no HTTP calls to
-// the synchronizer: the client ships the data through the standard
-// OnGameFinish RPC (SessionClientResults::playerKills), the lobby forwards
-// it. The synchronizer dedupes via the 'playerInfoSend' flag and forwards
-// the payload to the backend 'sendSessionPlayersData'.
-static void SendFinishGameLegacyRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info)
-{
-  if ( !sessionToken )
-    return;
-
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
-
-  Json::Value data;
-  data["sessionToken"] = Json::Value (sessionToken);
-  data["apiKey"] = Json::Value (API_KEY);
-  data["sideWon"] = Json::Value ((int)_info.sideWon);
 
   Json::Value playersInfo(Json::arrayValue);
   for (int pId = 0; pId < _info.players.size(); ++pId) {
@@ -559,14 +535,7 @@ static void SendFinishGameLegacyRequest(const char* sessionToken, const Statisti
   }
   data["playerKills"] = playersKillsJson;
 
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("notifyGameFinishLegacy");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  request.SendPostRequest(res);
+  return data;
 }
 
 
@@ -580,8 +549,8 @@ void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum 
 
   GameSession * game = FindGame( _sessionId );
   if ( game ) {
-    SendFinishGameRequest(game->GetSessionToken(), _info, _clientsStatistics);
-    SendFinishGameLegacyRequest(game->GetSessionToken(), _info);
+    if ( const char * sessionToken = game->GetSessionToken() )
+      finishDelivery.Submit( BuildFinishEvent( sessionToken, _info, _clientsStatistics ) );
     game->OnGameFinish( _gameResult, _info, _clientsStatistics );
 
     StatisticService::RPC::SessionResultEvent info;
@@ -863,6 +832,8 @@ void ServerNode::Poll( timer::Time _now )
 
   if ( loginSvcAgent )
     loginSvcAgent->Poll();
+
+  finishDelivery.Poll( (float)now );
 
   PollGames();
   PollCustomGames();
