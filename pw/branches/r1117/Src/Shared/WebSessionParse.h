@@ -32,9 +32,9 @@
 #include "Server/RPC/RPC.h"
 #include "Core/GameTypes.h"
 
+#include "Shared/WebJson.h"            // ParseJson(), Utf8To*/WideToCp1251()
 #include "Shared/WebTalentNames.h"   // talentsMap[]  : web talent id -> persistent name
 #include "Shared/WebSkinNames.h"     // WebSession::ResolveSkin()
-#include "Shared/shared_data.h"      // ConvertFromClassID()
 #include "System/Crc32Checksum.h"    // Crc32Checksum
 
 
@@ -82,120 +82,6 @@ namespace WebSession
   typedef std::map<std::wstring, Player> PlayersByNickname;
 
 
-  // ---------------------------------------------------------------- encodings
-  // The synchronizer stores UTF-8; the game works with wide (UTF-16) nicknames
-  // and CP1251 narrow strings. Implementations are moved out of WebLauncher.h
-  // unchanged (Win32 API on Windows, iconv on Linux).
-#if defined( NV_WIN_PLATFORM )
-  inline std::wstring Utf8ToWide( const std::string & utf8String )
-  {
-    int utf8Length = static_cast<int>( utf8String.length() );
-    int wideCharLength = MultiByteToWideChar( CP_UTF8, 0, utf8String.c_str(), utf8Length, NULL, 0 );
-    std::wstring wideCharString;
-    wideCharString.resize( wideCharLength );
-    MultiByteToWideChar( CP_UTF8, 0, utf8String.c_str(), utf8Length, &wideCharString[0], wideCharLength );
-    return wideCharString;
-  }
-
-  inline std::string WideToUtf8( const std::wstring & wideCharString )
-  {
-    int size_needed = WideCharToMultiByte( CP_UTF8, 0, wideCharString.c_str(), -1, NULL, 0, NULL, NULL );
-    std::string result( size_needed, 0 );
-    WideCharToMultiByte( CP_UTF8, 0, wideCharString.c_str(), -1, &result[0], size_needed, NULL, NULL );
-    return result;
-  }
-
-  inline std::string Utf8ToCp1251( const std::string & utf8String )
-  {
-    std::wstring wideCharString = Utf8ToWide( utf8String );
-    int win1251Length = WideCharToMultiByte( 1251, 0, &wideCharString[0], -1, NULL, 0, NULL, NULL );
-    std::string win1251String;
-    win1251String.resize( win1251Length, ' ' );
-    WideCharToMultiByte( 1251, 0, &wideCharString[0], -1, &win1251String[0], win1251Length, NULL, NULL );
-    return win1251String;
-  }
-#else
-  inline std::wstring Utf8ToWide( const std::string & utf8String )
-  {
-    iconv_t cd = iconv_open( "WCHAR_T", "UTF-8" );
-    if ( cd == (iconv_t)-1 )
-      return std::wstring( utf8String.begin(), utf8String.end() );
-    const char * in = utf8String.c_str();
-    size_t inLeft = utf8String.size();
-    size_t inLeft0 = inLeft;
-    std::wstring out( inLeft0, L'\0' );
-    wchar_t * pout = &out[0];
-    size_t outLeft = inLeft0 * sizeof( wchar_t );
-    size_t res = iconv( cd, const_cast<char**>( &in ), &inLeft, reinterpret_cast<char**>( &pout ), &outLeft );
-    iconv_close( cd );
-    if ( res == (size_t)-1 )
-      return std::wstring( utf8String.begin(), utf8String.end() );
-    out.resize( ( inLeft0 * sizeof( wchar_t ) - outLeft ) / sizeof( wchar_t ) );
-    return out;
-  }
-
-  inline std::string WideToUtf8( const std::wstring & wideCharString )
-  {
-    iconv_t cd = iconv_open( "UTF-8", "WCHAR_T" );
-    if ( cd == (iconv_t)-1 )
-    {
-      std::string out;
-      for ( size_t i = 0; i < wideCharString.size(); ++i )
-      {
-        wchar_t c = wideCharString[i];
-        if ( c < 0x80 ) out += ( char )c;
-        else if ( c < 0x800 ) { out += ( char )( 0xC0 | ( c >> 6 ) ); out += ( char )( 0x80 | ( c & 0x3F ) ); }
-        else { out += ( char )( 0xE0 | ( c >> 12 ) ); out += ( char )( 0x80 | ( ( c >> 6 ) & 0x3F ) ); out += ( char )( 0x80 | ( c & 0x3F ) ); }
-      }
-      return out;
-    }
-    std::wstring ws( wideCharString );
-    std::string out( ws.size() * 4 + 4, 0 );
-    const char * inPtr = reinterpret_cast<const char*>( &ws[0] );
-    size_t inLeft = ws.size() * sizeof( wchar_t );
-    char * outBuf = &out[0];
-    size_t outLeft = out.size();
-    size_t res = iconv( cd, const_cast<char**>( &inPtr ), &inLeft, &outBuf, &outLeft );
-    iconv_close( cd );
-    if ( res == (size_t)-1 )
-      return std::string();
-    out.resize( out.size() - outLeft );
-    return out;
-  }
-
-  inline std::string Utf8ToCp1251( const std::string & utf8String )
-  {
-    iconv_t cd = iconv_open( "CP1251", "UTF-8" );
-    if ( cd == (iconv_t)-1 )
-      return utf8String;
-    char * in = const_cast<char*>( utf8String.c_str() );
-    size_t inLeft = utf8String.size();
-    std::string out( utf8String.size() * 2, 0 );
-    char * outBuf = &out[0];
-    size_t outLeft = out.size();
-    size_t res = iconv( cd, &in, &inLeft, &outBuf, &outLeft );
-    iconv_close( cd );
-    if ( res == (size_t)-1 )
-      return utf8String;
-    out.resize( out.size() - outLeft );
-    return out;
-  }
-#endif
-
-  inline std::string WideToCp1251( const std::wstring & wideCharString )
-  {
-    return Utf8ToCp1251( WideToUtf8( wideCharString ) );
-  }
-
-
-  // ------------------------------------------------------------------- json
-  inline Json::Value ParseJson( const char * json )
-  {
-    Json::Reader jsonReader;
-    Json::Value root;
-    const bool isOk = jsonReader.parse( json, root, false );
-    return isOk ? root : Json::Value();
-  }
 
   // Numeric getter that accepts both key spellings used by the back-end
   // ("current"/"victory"/"loss" and "currentRating"/... ).
@@ -294,13 +180,32 @@ namespace WebSession
 
   // -------------------------------------------------- web indexes -> game data
   // usersData[].build + usersData[].bar -> NCore::PlayerTalentSet.
-  // The talent persistent name is looked up in talentsMap[] (negative ids address
-  // the default class talent set, ConvertFromClassID), the same way the client
-  // used to do it before the data moved server-side.
-  // refineRate and the "active ability" check need the talent DB, which the lobby
-  // doesn't have: they are resolved by the client (see HeroSpawn.cpp).
+  // talentsMap[] resolves the web talent id to a persistent name; refineRate and
+  // the "is it an active ability" check need the talent DB, which the lobby does
+  // not have, so the client resolves them (see PF_GameLogic/HeroSpawn.cpp).
+
+  // A build is authoritative only when it is complete and every id is known: a
+  // single empty slot means the player has no finished build and the hero's
+  // default talent set is used (the same rule the client applied before the data
+  // moved server-side).
+  inline bool IsTalentBuildUsable( const Player & p )
+  {
+    const int namesCount = ( int )( sizeof( talentsMap ) / sizeof( talentsMap[0] ) );
+    for ( int i = 0; i < BUILD_SLOTS; ++i )
+    {
+      if ( p.build[i] <= 0 )
+        return false;
+      if ( p.build[i] - 1 >= namesCount )
+        return false;
+    }
+    return true;
+  }
+
   inline void BuildTalentSet( const Player & p, NCore::PlayerTalentSet & out )
   {
+    if ( !IsTalentBuildUsable( p ) )
+      return;   // stays empty -> hero defaults
+
     // bar[a] != 0 -> build slot abs(bar[a])-1 is placed on panel slot a, sign = smart cast.
     int  panelSlot[BUILD_SLOTS];
     bool smartCast[BUILD_SLOTS];
@@ -322,41 +227,20 @@ namespace WebSession
       }
     }
 
-    const int levels = TALENT_LEVELS;
-    const int slots  = TALENT_SLOTS;
-
-    for ( int level = 0; level < levels; ++level )
+    for ( int level = 0; level < TALENT_LEVELS; ++level )
     {
-      for ( int slot = 0; slot < slots; ++slot )
+      for ( int slot = 0; slot < TALENT_SLOTS; ++slot )
       {
-        // The web build is stored bottom-up relative to the in-game grid
-        // (same index math the client used before).
-        const unsigned tIndex  = ( unsigned )( level * slots + slot + 1 );
-        const unsigned tIndex2 = ( unsigned )( ( levels - 1 - level ) * slots + slot );
-
-        const int webTalentId = p.build[tIndex2];
-        if ( webTalentId == 0 )
-          continue;   // empty slot
-
-        std::string talentName;
-        if ( webTalentId > 0 )
-        {
-          const int nameIdx = webTalentId - 1;
-          const int namesCount = ( int )( sizeof( talentsMap ) / sizeof( talentsMap[0] ) );
-          if ( nameIdx < 0 || nameIdx >= namesCount )
-            continue;
-          talentName = talentsMap[nameIdx];
-        }
-        else
-        {
-          talentName = ConvertFromClassID( -webTalentId );
-        }
+        // The web build is stored bottom-up relative to the in-game grid (the
+        // same index math the client used before).
+        const unsigned tIndex  = ( unsigned )( level * TALENT_SLOTS + slot + 1 );
+        const unsigned tIndex2 = ( unsigned )( ( TALENT_LEVELS - 1 - level ) * TALENT_SLOTS + slot );
 
         NCore::TalentInfo ti;
-        ti.id           = Crc32Checksum().AddString( talentName.c_str() ).Get();
-        ti.refineRate   = 0;                                    // resolved from the DB by the client
-        ti.actionBarIdx = panelSlot[tIndex2];                   // -1 = not on the panel (client resolves)
-        ti.isInstaCast  = smartCast[tIndex2];
+        ti.id           = Crc32Checksum().AddString( talentsMap[p.build[tIndex2] - 1] ).Get();
+        ti.refineRate   = 0;                        // resolved from the DB by the client
+        ti.actionBarIdx = panelSlot[tIndex2];       // -1 = not placed on the panel
+        ti.isInstaCast  = smartCast[tIndex2];       // smart-cast request from the web bar
 
         out.insert( nstl::pair<const unsigned, NCore::TalentInfo >( tIndex, ti ) );
       }

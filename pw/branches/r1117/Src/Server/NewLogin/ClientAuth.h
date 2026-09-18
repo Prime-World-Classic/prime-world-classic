@@ -46,12 +46,13 @@ private:
   typedef std::map<std::string, SessionKey>   Keys;
   typedef std::map<std::string, Transport::TClientId> DevLoginHistory;
 
-  // Cache of web-session identity lookups, keyed by "<sessionToken>|<playerKey>".
-  // Only the uid is cached (the session data itself never reaches the login
-  // reply -- it is delivered by the lobby through NCore::PlayerInfo).
+  // Cache of web-session lookups, keyed by "<sessionToken>|<playerKey>".
+  // Only the identity and the match metadata are cached; per-player data is
+  // delivered by the lobby through NCore::PlayerInfo.
   struct WebSessionCacheEntry
   {
     Transport::TClientId  uid;
+    WebSessionData        webMatch;
     timer::Time           cachedAt;
 
     WebSessionCacheEntry() : uid( 0 ), cachedAt( 0 ) {}

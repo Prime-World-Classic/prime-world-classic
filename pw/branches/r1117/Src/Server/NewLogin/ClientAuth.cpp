@@ -147,7 +147,9 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
     {
       _reply.code = Login::ELoginResult::Success;
       _reply.uid = it->second.uid;
-      MessageTrace( "Web mode authorization ok (cache). uid=%d", _reply.uid );
+      _reply.webSession = it->second.webMatch;
+      MessageTrace( "Web mode authorization ok (cache). uid=%d, mapId=%s, players=%d",
+        _reply.uid, _reply.webSession.mapId.c_str(), _reply.webSession.playersCount );
       return;
     }
   }
@@ -183,9 +185,20 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 
   const Transport::TClientId uid = player.id;
 
+  // Match metadata for the lobby phase: which map to create / join and how many
+  // slots it needs. Players themselves are not part of the login reply.
+  WebSessionData webMatch;
+  webMatch.valid = true;
+  const Json::Value mapIdValue = parsedValue.get( "mapId", Json::Value() );
+  if ( !mapIdValue.empty() )
+    webMatch.mapId = mapIdValue.asString().c_str();
+  const Json::Value usersData = parsedValue.get( "usersData", Json::Value() );
+  webMatch.playersCount = usersData.isArray() ? (int)usersData.size() : 1;
+
   {
     WebSessionCacheEntry entry;
     entry.uid = uid;
+    entry.webMatch = webMatch;
     entry.cachedAt = now;
     webSessionCache[cacheKey] = entry;
 
@@ -196,8 +209,10 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 
   _reply.code = Login::ELoginResult::Success;
   _reply.uid = uid;
+  _reply.webSession = webMatch;
 
-  MessageTrace( "Web mode authorization ok. uid=%d", uid );
+  MessageTrace( "Web mode authorization ok. uid=%d, mapId=%s, players=%d",
+    uid, webMatch.mapId.c_str(), webMatch.playersCount );
 }
 
 

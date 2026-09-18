@@ -8,7 +8,6 @@
 #include "Server/LiveMMaking/IMMakingLogic.h" //To get to 'IHeroesTable'
 #include "LobbyLog.h"
 
-#include "Shared/shared_data.h"
 
 
 namespace lobby
