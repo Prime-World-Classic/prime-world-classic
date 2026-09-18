@@ -117,7 +117,7 @@
 #include "PlayerBehaviourTracking.h"
 #include "BadBehaviourComplaintCmd.hpp"
 #include "TargetSelectorHelper.hpp"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "SessionData.h"
 
 extern nstl::vector<std::pair<int, int>> playersKills;
 

@@ -335,18 +335,17 @@ public:
         continue;
 
       const Peered::ClientInfo * clientInfo = FindClientInfo( slot.userID, _clientInfos );
-      if ( clientInfo && clientInfo->info.talents.size() && clientInfo->info.heroId )
+      if ( clientInfo )
       {
+        // The server-delivered record is the only source of the player data:
+        // hero, skin, talents, ratings, flag, league, recommended stats.
         slot.playerInfo = clientInfo->info;
-        slot.usePlayerInfoTalentSet = true;
+        // Whether the delivered talent set can actually be used is decided by
+        // HeroSpawn, which checks it against the local talent DB.
+        slot.usePlayerInfoTalentSet = !clientInfo->info.talents.empty();
       }
       else if ( assertIfNoInfo )
         NI_ALWAYS_ASSERT( NStr::StrFmt( "No details for player %d", slot.userID ) );
-
-      if (clientInfo)
-      {
-        slot.playerInfo.partyId = clientInfo->info.partyId;
-      }
     }
 
     // Shuffle heroes if needed

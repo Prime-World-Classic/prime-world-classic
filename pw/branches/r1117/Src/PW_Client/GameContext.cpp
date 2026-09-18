@@ -290,9 +290,16 @@ int GameContext::Poll( float dt )
       {
         // Web-session data (mapId, players, builds) arrives in the login
         // reply — no pre-login HTTP to the synchronizer anymore.
+        // The login reply carries the web-session match metadata only (the map
+        // to create / join and how many slots). Players (hero, skin, talents,
+        // ratings, flag, league) are delivered with the map in
+        // NCore::PlayerInfo, so there is nothing else to apply here.
         newLogin::LoginReply loginReply = clientTransportSystem->GetLoginReply();
         if ( loginReply.webSession.valid )
-          ApplyWebSessionData( loginReply );
+        {
+          g_mapId = loginReply.webSession.mapId.c_str();
+          g_playersCount = loginReply.webSession.playersCount;
+        }
 
         if ( isSpectator )
         {

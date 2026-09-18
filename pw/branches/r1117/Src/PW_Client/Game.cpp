@@ -107,7 +107,8 @@
 #include "steam/steam_gameserver.h"
 
 #include "RegistryToolbox.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
+#include "Shared/WebJson.h"
 #include "../PW_Game/server_ip.h"
 #include "../Shared/WebRequests.h"
 
@@ -721,11 +722,9 @@ extern string g_sessionToken;
 extern string g_playerToken;
 
 extern string g_sessionName;
-extern WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;
-extern WebLauncherPostRequest::WebLoginResponse g_webLoginResponse;
+extern RegisterSessionRequest g_sessionStatus;
+extern WebLoginResponse g_webLoginResponse;
 extern int g_playerTeamId;
-extern int g_playerHeroId;
-extern int g_playerPartyId;
 
 std::string GetDirectoryFromPath(const std::string& fullPath) {
     std::size_t found = fullPath.find_last_of("/\\");
@@ -1212,7 +1211,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     WebPostRequest request(L"127.0.0.1", L"/getConnectionData", 34980, 0);
     std::string protocolResponse = request.SendPostRequest("getConnectionData");
 
-    Json::Value parsedValue = ParseJson(protocolResponse.c_str());
+    Json::Value parsedValue = WebSession::ParseJson(protocolResponse.c_str());
     systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol response: \"" << protocolResponse.c_str() << "\"" << endl;
 
     if (parsedValue.empty()) {
@@ -1330,7 +1329,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     // count is unknown before the login. A solo session becomes a 1-slot
     // custom game on the server lobby side.
     g_localGameRun = false;
-    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoin;
+    g_sessionStatus = RegisterInSessionRequest_WebJoin;
 
     const char * mapId = CmdLineLite::Instance().GetStringKey( "mapId", "" );
     context = new Game::GameContext(g_sessionToken.c_str(), "", mapId, socialServer, guildEmblem, isSpectator, false );

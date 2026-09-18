@@ -7,13 +7,12 @@
 #include "NewLobbyClientPW.h"
 
 #include "System/InlineProfiler.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
+#include "Shared/WebJson.h"
 
 extern string g_sessionName;
-extern WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;
+extern RegisterSessionRequest g_sessionStatus;
 extern int g_playerTeamId;
-extern int g_playerHeroId;
-extern int g_playerPartyId;
 extern int g_playersCount;
 extern std::string g_protocolToken;
 extern bool g_localGameRun;
@@ -142,62 +141,61 @@ void SelectGameModeScreen::Step( bool bAppActive )
     return;
 
   lobby::EOperationResult::Enum joinResult = locked->LastLobbyOperationResult();
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebJoinRetry) {
+  if (g_sessionStatus == RegisterInSessionRequest_WebJoinRetry) {
     if (joinResult == lobby::EOperationResult::InternalError) {
       locked->JoinWebGame(g_protocolToken.c_str());
       joinResult = lobby::EOperationResult::InProgress;
     }
     if (joinResult == lobby::EOperationResult::Ok) {
-      g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_Error;
+      g_sessionStatus = RegisterInSessionRequest_Error;
     }
   }
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebJoin) {
+  if (g_sessionStatus == RegisterInSessionRequest_WebJoin) {
     if (joinResult == lobby::EOperationResult::InternalError) {
       locked->JoinWebGame(g_protocolToken.c_str());
       joinResult = lobby::EOperationResult::InProgress;
     }
     if (joinResult == lobby::EOperationResult::Ok) {
       locked->JoinWebGame(g_protocolToken.c_str());
-      g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoinRetry;
+      g_sessionStatus = RegisterInSessionRequest_WebJoinRetry;
     }
   }
 
   // 3. Select hero
-  if (locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby && g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Joined) {
-    int heroId = std::min(std::max((size_t)(g_playerHeroId - 1), 0u), _countof(heroes) - 1u);
-    locked->ChangeCustomGameSettings(lobby::ETeam::Enum(g_playerTeamId), lobby::ETeam::Enum(g_playerTeamId), heroes[heroId]);
-    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_HeroSelected;
+  // A web game needs nothing here: the lobby server built the custom game from
+  // the synchronizer session (hero, team and party are already assigned).
+  if (locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby && g_sessionStatus == RegisterInSessionRequest_Joined) {
+    // Locally hosted game: the first hero of the list, as before.
+    locked->ChangeCustomGameSettings(lobby::ETeam::Enum(g_playerTeamId), lobby::ETeam::Enum(g_playerTeamId), heroes[0]);
+    g_sessionStatus = RegisterInSessionRequest_HeroSelected;
   }
-  if ((locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby || g_localGameRun) && g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebJoined) {
-    int heroId = std::min(std::max((size_t)(g_playerHeroId - 1), 0u), _countof(heroes) - 1u);
-    locked->ChangeCustomGameSettings(lobby::ETeam::Enum(g_playerTeamId), lobby::ETeam::Enum(g_playerTeamId), heroes[heroId]);
-    locked->SetDeveloperParty(g_playerPartyId);
-    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebHeroSelected;
+  if ((locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby || g_localGameRun) && g_sessionStatus == RegisterInSessionRequest_WebJoined) {
+    g_sessionStatus = RegisterInSessionRequest_WebHeroSelected;
   }
 
   lobby::TDevGamesList infos;
   //locked->PopGameList( infos );
 
   // 1. Create game for others
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Create) {
+  if (g_sessionStatus == RegisterInSessionRequest_Create) {
     locked->CreateGame("Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb", 10);
-    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_Joined;
+    g_sessionStatus = RegisterInSessionRequest_Joined;
   }
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebCreate) {
+  if (g_sessionStatus == RegisterInSessionRequest_WebCreate) {
     if (g_localGameRun) {
       locked->CreateGame(g_mapId.c_str(), 10);
-      g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoined;
+      g_sessionStatus = RegisterInSessionRequest_WebJoined;
     } else {
     locked->CreateGame("Maps/Multiplayer/MOBA/_.ADMPDSCR.xdb", g_playersCount);
-    g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoined;
+    g_sessionStatus = RegisterInSessionRequest_WebJoined;
     }
   }
 
   // xxx Reconnect xxx
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Reconnect || g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebReconnect) {
+  if (g_sessionStatus == RegisterInSessionRequest_Reconnect || g_sessionStatus == RegisterInSessionRequest_WebReconnect) {
     int requiredGameId = -1;
 
-    wstring nameTofind = Fix1251EncodingW(g_sessionName.c_str()).c_str();
+    wstring nameTofind = WebSession::Utf8ToWide( std::string( g_sessionName ) ).c_str();
     nameTofind += L"'s game";
 
     for( lobby::TDevGamesList::iterator it = infos.begin(); it != infos.end(); ++it ) {
@@ -208,10 +206,10 @@ void SelectGameModeScreen::Step( bool bAppActive )
     }
     if (requiredGameId != -1) {
       locked->Reconnect(requiredGameId, s_reconnect_team, s_reconnect_hero );
-      if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Reconnect) {
-        g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_Joined;
+      if (g_sessionStatus == RegisterInSessionRequest_Reconnect) {
+        g_sessionStatus = RegisterInSessionRequest_Joined;
       } else {
-        g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoined;
+        g_sessionStatus = RegisterInSessionRequest_WebJoined;
       }
     }
   }
@@ -221,10 +219,10 @@ void SelectGameModeScreen::Step( bool bAppActive )
     logic->UpdateSessionInfo( *it );
 
   // 2. Connect to existing lobby by... session name
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Connect || g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebConnect) {
+  if (g_sessionStatus == RegisterInSessionRequest_Connect || g_sessionStatus == RegisterInSessionRequest_WebConnect) {
     int requiredGameId = -1;
 
-    wstring nameTofind = Fix1251EncodingW(g_sessionName.c_str()).c_str();
+    wstring nameTofind = WebSession::Utf8ToWide( std::string( g_sessionName ) ).c_str();
     nameTofind += L"'s game";
 
     for( lobby::TDevGamesList::iterator it = infos.begin(); it != infos.end(); ++it ) {
@@ -235,10 +233,10 @@ void SelectGameModeScreen::Step( bool bAppActive )
     }
     if (requiredGameId != -1) {
       locked->JoinGame(requiredGameId);
-      if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_Connect) {
-        g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_Joined;
+      if (g_sessionStatus == RegisterInSessionRequest_Connect) {
+        g_sessionStatus = RegisterInSessionRequest_Joined;
       } else {
-        g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebJoined;
+        g_sessionStatus = RegisterInSessionRequest_WebJoined;
       }
     } 
   }
