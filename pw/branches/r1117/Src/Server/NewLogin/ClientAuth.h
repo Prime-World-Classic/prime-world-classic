@@ -46,15 +46,30 @@ private:
   typedef std::map<std::string, SessionKey>   Keys;
   typedef std::map<std::string, Transport::TClientId> DevLoginHistory;
 
+  // Cache of web-session lookups, keyed by "<sessionToken>|<playerKey>".
+  // Only the identity and the match metadata are cached; per-player data is
+  // delivered by the lobby through NCore::PlayerInfo.
+  struct WebSessionCacheEntry
+  {
+    Transport::TClientId  uid;
+    WebSessionData        webMatch;
+    timer::Time           cachedAt;
+
+    WebSessionCacheEntry() : uid( 0 ), cachedAt( 0 ) {}
+  };
+  typedef std::map<std::string, WebSessionCacheEntry> WebSessionCache;
+
   StrongMT<IConfigProvider>   config;
   timer::Time                 now;
   Transport::TClientId        nextDevUserId;
   Keys                        keys;
   string                      loginAddress;
   DevLoginHistory             devLoginHistory;
+  WebSessionCache             webSessionCache;
   threading::Mutex            mutex;
 
   void DevAuth( LoginReply & _reply, const LoginHello & _hello );
+  void DevWebAuth( LoginReply & _reply, const LoginHello & _hello );
   bool RestoreDevAuth( LoginReply & _reply, const LoginHello & _hello );
   void CleanupDevLoginHistory();
 };

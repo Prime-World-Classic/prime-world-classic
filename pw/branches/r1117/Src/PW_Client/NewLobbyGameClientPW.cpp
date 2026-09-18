@@ -51,7 +51,6 @@
 #include "PF_GameLogic/HeroSpawn.h"
 #include "../PW_Game/server_ip.h"
 #include <Shared/WebRequests.h>
-#include <PF_GameLogic/WebLauncher.h>
 
 extern string g_sessionToken;
 

@@ -3,7 +3,7 @@
 
 #include "CommonTypes.h"
 #include "LobbyConfig.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "Shared/WebSessionParse.h"
 
 
 namespace mmaking
@@ -20,7 +20,11 @@ namespace Peered
 
 namespace NDb
 {
-  enum EMmAlgorithm;
+  // C++17 (GCC): unscoped-enum forward declaration is ill-formed without a prior
+  // definition (MSVC accepted it as an extension). The real enum is not defined
+  // anywhere in this tree and no value is ever used — keep the single-value
+  // definition as the minimal valid stand-in for the original `enum EMmAlgorithm;`.
+  enum EMmAlgorithm { EMmAlgorithm_None };
 }
 
 namespace lobby
@@ -87,7 +91,7 @@ public:
   void SetSessionToken(const char* _sessionToken) { sessionToken = _sessionToken; }
   const char* GetSessionToken() { return sessionToken.c_str(); }
 
-  WebUsersDataMap                 playersUserData;
+  WebSession::PlayersByNickname   playersUserData;
 
 private:
   const TGameId                   id;

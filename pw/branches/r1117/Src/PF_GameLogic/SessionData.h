@@ -46,22 +46,6 @@ enum RegisterSessionRequest
 };
 
 // Result of the (optional) login handshake used by the dev/debug launch path.
-enum LoginResponse
-{
-  LoginResponse_WEB_FAIL,
-
-  LoginResponse_WEB_JOIN,
-  LoginResponse_WEB_FAILED_CONNECTION,
-};
-
-struct WebLoginResponse
-{
-  WebLoginResponse() : retCode( LoginResponse_WEB_FAIL ) {}
-
-  std::string      response;
-  LoginResponse    retCode;
-};
-
 // Per-player bookkeeping of the running map (who is who, who left). Built by
 // HeroSpawn from the player records the server delivered with the map.
 struct PlayerSpawnInfo
@@ -75,16 +59,15 @@ struct PlayerSpawnInfo
 
 
 // --- launch / login state ---------------------------------------------------
-extern std::string              g_devLogin;         // dev login name (debug launch)
-extern std::string              g_sessionToken;     // 32 chars, from the launch protocol
-extern std::string              g_playerToken;      // 64 chars playerKey, from the launch protocol
-extern std::string              g_sessionName;      // session display name (reconnect lookup)
-extern WebLoginResponse         g_webLoginResponse;
+extern nstl::string              g_devLogin;         // dev login name (debug launch)
+extern nstl::string              g_sessionToken;     // 32 chars, from the launch protocol
+extern nstl::string              g_playerToken;      // 64 chars playerKey, from the launch protocol
+extern nstl::string              g_sessionName;      // session display name (reconnect lookup)
 extern RegisterSessionRequest   g_sessionStatus;
 
 // Match metadata of the web session (the game to create/join in the lobby).
 // It describes the game, not the players, so it is not part of PlayerInfo.
-extern std::string              g_mapId;
+extern nstl::string              g_mapId;
 extern int                      g_playersCount;
 
 // true for a locally hosted (non-network) game.
@@ -93,6 +76,10 @@ extern bool                     g_localGameRun;
 // Chat mute of the local player, cached from NCore::PlayerInfo::chatMuted when
 // the map players are initialized (see AdventureScreen::InitPlayerNames).
 extern bool                     g_playerPwcChatMute;
+
+// Team of the local player: camera orientation (Scene / Render). Defined in
+// Shared/shared_data.cpp, cached from PlayerStartInfo::teamID at map load.
+extern int                      g_playerTeamId;
 
 // --- running map state ------------------------------------------------------
 extern std::map<int, PlayerSpawnInfo>       userIdToNicknameMap;

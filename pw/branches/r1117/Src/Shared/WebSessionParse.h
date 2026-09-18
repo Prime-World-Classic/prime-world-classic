@@ -1,4 +1,8 @@
 #pragma once
+// The platform is selected by NV_LINUX_PLATFORM (defined only in the Linux build);
+// everything else is treated as Windows: WIN32 / NV_WIN_PLATFORM are not visible
+// to every project in this solution.
+
 // ============================================================================
 // Web-session data layer for the SERVER (synchronizer 'usersData' JSON).
 // Replaces PF_GameLogic/WebLauncher.h.
@@ -23,7 +27,7 @@
 #include <cstring>
 #include <cstdlib>
 
-#if !defined( NV_WIN_PLATFORM )
+#if defined( NV_LINUX_PLATFORM )
 #include <iconv.h>
 #endif
 

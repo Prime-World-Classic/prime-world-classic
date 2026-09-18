@@ -4,14 +4,13 @@
 // Definitions of the client-side session state described in SessionData.h.
 // Player data is not here: it arrives from the server in NCore::PlayerInfo.
 
-std::string             g_devLogin;
-std::string             g_sessionToken;
-std::string             g_playerToken;
-std::string             g_sessionName;
-WebLoginResponse        g_webLoginResponse;
+nstl::string             g_devLogin;
+nstl::string             g_sessionToken;
+nstl::string             g_playerToken;
+nstl::string             g_sessionName;
 RegisterSessionRequest  g_sessionStatus = RegisterInSessionRequest_Create;
 
-std::string             g_mapId;
+nstl::string             g_mapId;
 int                     g_playersCount = 0;
 
 bool                    g_localGameRun = false;

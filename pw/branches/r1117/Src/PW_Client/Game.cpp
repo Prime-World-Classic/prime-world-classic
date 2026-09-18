@@ -723,7 +723,6 @@ extern string g_playerToken;
 
 extern string g_sessionName;
 extern RegisterSessionRequest g_sessionStatus;
-extern WebLoginResponse g_webLoginResponse;
 extern int g_playerTeamId;
 
 std::string GetDirectoryFromPath(const std::string& fullPath) {

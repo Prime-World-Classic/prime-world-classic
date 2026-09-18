@@ -28,7 +28,7 @@ extern string g_playerToken;
 #include "Network/RdpClientTransport/RdpClientTransport.h"
 
 #include "PF_GameLogic/MapCollection.h"
-#include "PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 #include "PF_GameLogic/DbSessionRoots.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
 

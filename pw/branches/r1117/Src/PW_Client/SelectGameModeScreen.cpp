@@ -195,7 +195,7 @@ void SelectGameModeScreen::Step( bool bAppActive )
   if (g_sessionStatus == RegisterInSessionRequest_Reconnect || g_sessionStatus == RegisterInSessionRequest_WebReconnect) {
     int requiredGameId = -1;
 
-    wstring nameTofind = WebSession::Utf8ToWide( std::string( g_sessionName ) ).c_str();
+    wstring nameTofind = WebSession::Utf8ToWide( g_sessionName.c_str() ).c_str();
     nameTofind += L"'s game";
 
     for( lobby::TDevGamesList::iterator it = infos.begin(); it != infos.end(); ++it ) {
@@ -222,7 +222,7 @@ void SelectGameModeScreen::Step( bool bAppActive )
   if (g_sessionStatus == RegisterInSessionRequest_Connect || g_sessionStatus == RegisterInSessionRequest_WebConnect) {
     int requiredGameId = -1;
 
-    wstring nameTofind = WebSession::Utf8ToWide( std::string( g_sessionName ) ).c_str();
+    wstring nameTofind = WebSession::Utf8ToWide( g_sessionName.c_str() ).c_str();
     nameTofind += L"'s game";
 
     for( lobby::TDevGamesList::iterator it = infos.begin(); it != infos.end(); ++it ) {

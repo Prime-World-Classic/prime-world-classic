@@ -17,6 +17,9 @@
 #include "LobbyServerConnection.h"
 #include "LobbyGameSession.h"
 #include "LobbyCustomGame.h"
+#include <json/json.h>
+
+#include "PW_Game/server_ip.h"
 #include "SessionHybridLink.h"
 #include "LobbySocialProxy.h"
 #include "LobbyServerLoginWrapper.h"
@@ -171,7 +174,7 @@ clientsCounter("lobby_clients", "")
 
   socialPvxInterface = new SocialPvxInterface( this );
 
-  socialLobbyProxy = new SocialLobbyProxy( config, extClusterGateKeeper ? extClusterGateKeeper : BackendGk(), socialPvxInterface, SvcId() );
+  socialLobbyProxy = new SocialLobbyProxy( config, extClusterGateKeeper ? extClusterGateKeeper.Get() : BackendGk(), socialPvxInterface, SvcId() );
 
   LoadHeroes();
 
@@ -233,64 +236,22 @@ RIServerInstance * ServerNode::AddClient( RILobbyUser * user, int clientRevision
 
 
 
-static WebUsersDataMap GetUsersData(Json::Value usersData) {
-  WebUsersDataMap resultMap;
-  // Get users data
+// usersData[] -> session players index, keyed by the wide nickname the lobby uses
+// for the connection (see TryCreateWebSession). Parsing, validation and the web
+// index semantics live in Shared/WebSessionParse.h, shared with newlogin.
+static WebSession::PlayersByNickname GetUsersData(Json::Value usersData) {
+  WebSession::PlayersByNickname resultMap;
+
   int playersCount = 0;
   Json::Value curPlayer = usersData[playersCount];
   while (!curPlayer.empty()) {
-    if (!CheckPlayerInfo(curPlayer)) {
-      WebUsersDataMap emptyMap;
-      return emptyMap;
+    WebSession::Player player;
+    if (!WebSession::ParsePlayer(curPlayer, player)) {
+      LOBBY_LOG_ERR("Invalid player record in usersData[%d]", playersCount);
+      return WebSession::PlayersByNickname();
     }
 
-    std::string curNickname = curPlayer.get("nickname", Json::Value()).asString();
-
-    std::wstring wideCharString = Fix1251EncodingW(curNickname);
-
-    WebLauncherPostRequest::WebUserData resData;
-    Json::Value rating = curPlayer.get("rating", Json::Value());
-    resData.playerRating = rating.get("player", Json::Value()).asFloat();
-    resData.currentRating = rating.get("current", Json::Value()).asFloat();
-    resData.victoryRating = rating.get("victory", Json::Value()).asFloat();
-    resData.lossRating = rating.get("loss", Json::Value()).asFloat();
-    resData.heroSkinID = curPlayer.get("skin", Json::Value()).asInt();
-    resData.userId = curPlayer.get("id", Json::Value()).asInt();
-
-    resData.talents.resize(36);
-
-    Json::Value dataTalents = curPlayer.get("build", Json::Value());
-    for (int i = 0; i < 36; ++i) {
-      if (dataTalents[i].empty() || dataTalents[i].asInt() == 0) {
-        resData.talents.clear();
-        break; // empty slot in build
-      }
-      resData.talents[i].webTalentId = dataTalents[i].asInt();
-    }
-    if (!resData.talents.empty()) {
-      Json::Value dataActives = curPlayer.get("bar", Json::Value());
-      for (int a = 0; a < 10; ++a) {
-        if (!dataActives[a].empty()) {
-          int activeRaw = dataActives[a].asInt();
-          if (activeRaw != 0) {
-            int activeRef = abs(activeRaw) - 1;
-            bool isSmartCast = activeRaw < 0;
-
-            resData.talents[activeRef].activeSlot = a;
-            resData.talents[activeRef].isSmartCast = isSmartCast;
-          }
-        }
-      }
-    }
-
-    Json::Value hero = curPlayer.get("hero", Json::Value());
-    Json::Value team = curPlayer.get("team", Json::Value());
-    Json::Value party = curPlayer.get("party", Json::Value());
-    resData.heroId = hero.asInt();
-    resData.teamId = team.asInt() - 1;
-    resData.partyId = party.asInt();
-
-    resultMap[wideCharString] = resData;
+    resultMap[WebSession::Utf8ToWide(player.nickname)] = player;
 
     playersCount++;
     curPlayer = usersData[playersCount];
@@ -367,12 +328,11 @@ static const char* heroes [] = {
 };
 
 nstl::map<nstl::string, StrongMT<CustomGame>> g_games;
-nstl::map<nstl::wstring, int> playerNicknameToWebUserIdMap;
 lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
   std::string response = GetSessionData(token, true);
 
-  Json::Value parsedValue = ParseJson(response.c_str());
+  Json::Value parsedValue = WebSession::ParseJson(response.c_str());
 
   if (parsedValue.empty()) {
     LOBBY_LOG_ERR( "Failed to get info from the synchronizer %s", token );
@@ -396,23 +356,17 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
     return EOperationResult::RestrictedAccess;
   }
 
-  WebUsersDataMap usersDataMap = GetUsersData(usersData);
+  WebSession::PlayersByNickname usersDataMap = GetUsersData(usersData);
   if (usersDataMap.empty()) {
     LOBBY_LOG_ERR( "Error occurred during session creation: Invalid usersData %s", token );
     return EOperationResult::RestrictedAccess;
   }
 
-  int maxPlayersCount[2];
-  int playersCount = 0;
-  Json::Value curPlayer = usersData[playersCount];
-  while (!curPlayer.empty()) {
-    Json::Value team = curPlayer.get("team", Json::Value());
-    if (team.asInt() - 1 >= 0 && team.asInt() - 1 < 2) {
-      ++maxPlayersCount[team.asInt() - 1];
-    }
-
-    playersCount++;
-    curPlayer = usersData[playersCount];
+  int maxPlayersCount[2] = { 0, 0 };
+  for (WebSession::PlayersByNickname::const_iterator itTeam = usersDataMap.begin(); itTeam != usersDataMap.end(); ++itTeam) {
+    const int teamIdx = itTeam->second.team - 1;
+    if (teamIdx >= 0 && teamIdx < 2)
+      ++maxPlayersCount[teamIdx];
   }
 
   SGameParameters params;
@@ -430,24 +384,23 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 
   game->playersUserData = usersDataMap;
 
-  for (WebUsersDataMap::iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
+  for (WebSession::PlayersByNickname::iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
     std::wstring nickname = it->first;
 
     std::wstring currentLogin = std::wstring(L" ") + nickname;
     currentLogin[0] = 0x09;
 
-    WebLauncherPostRequest::WebUserData userData = it->second;
-    playerNicknameToWebUserIdMap[currentLogin.c_str()] = userData.userId;
-    StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.userId, currentLogin.c_str());
+    const WebSession::Player userData = it->second;
+    StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.id, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
-    int heroId = std::min(std::max((size_t)(userData.heroId - 1), 0u), _countof(heroes) - 1u);
-    lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.teamId);
+    int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.hero - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
+    lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.team - 1);   // web team is 1-based
 
     const char* heroPersistentId = heroes[heroId];
 
     game->ChangeCustomGameSettings(fakeConnection.Get(), teamId, teamId, heroPersistentId);
-    game->SetDeveloperParty(fakeConnection.Get(), userData.partyId);
+    game->SetDeveloperParty(fakeConnection.Get(), userData.party);
     if ( result != EOperationResult::Ok ) {
       LOBBY_LOG_ERR( "Error occurred during session creation: Failed to add NewConnection %s", token );
       return EOperationResult::RestrictedAccess;
@@ -561,6 +514,63 @@ static void SendFinishGameRequest(const char* sessionToken, const StatisticServi
 }
 
 
+// Per-player statistics + killer/victim pairs for the backend. Sent by the
+// lobby (not by the client) so that the game client makes no HTTP calls to
+// the synchronizer: the client ships the data through the standard
+// OnGameFinish RPC (SessionClientResults::playerKills), the lobby forwards
+// it. The synchronizer dedupes via the 'playerInfoSend' flag and forwards
+// the payload to the backend 'sendSessionPlayersData'.
+static void SendFinishGameLegacyRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info)
+{
+  if ( !sessionToken )
+    return;
+
+  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
+
+  Json::Value data;
+  data["sessionToken"] = Json::Value (sessionToken);
+  data["apiKey"] = Json::Value (API_KEY);
+  data["sideWon"] = Json::Value ((int)_info.sideWon);
+
+  Json::Value playersInfo(Json::arrayValue);
+  for (int pId = 0; pId < _info.players.size(); ++pId) {
+    const StatisticService::RPC::SessionClientResultsPlayer& player = _info.players[pId];
+
+    Json::Value playerInfo(Json::objectValue);
+    playerInfo["uid"] = Json::Value (player.userid);
+    playerInfo["kills"] = Json::Value (player.scoring.kills);
+    playerInfo["deaths"] = Json::Value (player.scoring.deaths);
+    playerInfo["assists"] = Json::Value (player.scoring.assists);
+    playerInfo["timeInIdle"] = Json::Value (player.scoring.timeInIdle);
+    playerInfo["timeAtHome"] = Json::Value (player.scoring.timeAtHome);
+    playerInfo["timeInDeath"] = Json::Value (player.scoring.timeInDeath);
+    playerInfo["timeElapsed"] = Json::Value (player.scoring.timeElapsed);
+    playerInfo["badBehaviourDetected"] = Json::Value (player.extra.badBehaviourDetected);
+    playerInfo["badBehaviourReported"] = Json::Value (player.extra.badBehaviourReported);
+    playersInfo.append(playerInfo);
+  }
+  data["playersInfo"] = playersInfo;
+
+  Json::Value playersKillsJson(Json::arrayValue);
+  for (int killId = 0; killId < _info.playerKills.size(); ++killId) {
+    Json::Value killerAndVictim(Json::objectValue);
+    killerAndVictim["killer"] = Json::Value (_info.playerKills[killId].first);
+    killerAndVictim["victim"] = Json::Value (_info.playerKills[killId].second);
+    playersKillsJson.append(killerAndVictim);
+  }
+  data["playerKills"] = playersKillsJson;
+
+  Json::Value result;
+  result["data"] = data;
+  result["method"] = Json::Value("notifyGameFinishLegacy");
+
+  Json::FastWriter writer;
+  std::string res = writer.write(result);
+
+  request.SendPostRequest(res);
+}
+
+
 void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum _gameResult, const StatisticService::RPC::SessionClientResults & _info, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics )
 {
   NI_PROFILE_FUNCTION;
@@ -572,6 +582,7 @@ void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum 
   GameSession * game = FindGame( _sessionId );
   if ( game ) {
     SendFinishGameRequest(game->GetSessionToken(), _info, _clientsStatistics);
+    SendFinishGameLegacyRequest(game->GetSessionToken(), _info);
     game->OnGameFinish( _gameResult, _info, _clientsStatistics );
 
     StatisticService::RPC::SessionResultEvent info;
