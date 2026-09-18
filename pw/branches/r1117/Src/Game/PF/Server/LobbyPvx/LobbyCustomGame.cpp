@@ -502,14 +502,17 @@ static const char* heroes [] = {
   "bomber"
 };
 
-static void FillPlayerInfo(NCore::PlayerInfo& playerInfo, const WebLauncherPostRequest::WebUserData& userData) 
+// Fills the game-side player record from the web-session record: hero, skin,
+// talent set, ratings (+ win/loss predictions and the "accurate" rating),
+// recommended stats, flag and league. Everything a client needs about a player
+// is produced here and travels through Peered::ClientInfo -> gamesvc ->
+// MapStartInfo, so the client holds no second copy of the session data.
+static void FillPlayerInfo(NCore::PlayerInfo& playerInfo, const WebSession::Player& userData)
 {
-  playerInfo.heroRating = userData.currentRating;
-  playerInfo.ratingDeltaPrediction.onVictory = userData.victoryRating - userData.currentRating;
-  playerInfo.ratingDeltaPrediction.onDefeat = userData.lossRating - userData.currentRating;
-  int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.heroId - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
-  playerInfo.heroId = Crc32Checksum().AddString( heroes[heroId] ).Get();
-  const std::vector<WebLauncherPostRequest::TalentWebData>& talentSet = userData.talents;
+  // The web hero index is 1-based; the same clamp as in TryCreateWebSession keeps
+  // the hero, its skin and the lineup consistent.
+  int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.hero - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
+  WebSession::ApplyToPlayerInfo(userData, heroes[heroId], playerInfo);
 }
 
 
@@ -546,9 +549,9 @@ void CustomGame::SetupGameStartInfo( vector<Peered::ClientInfo> & _gameServerDat
     const CustomGameMember& member = players[i];
 
     _gameServerData[i].clientId = member.player->ClientId();
-    WebUsersDataMap::iterator itP = playersUserData.find(member.player->UserInfo().nickname.c_str() + 1);
+    WebSession::PlayersByNickname::iterator itP = playersUserData.find(member.player->UserInfo().nickname.c_str() + 1);
     if (itP != playersUserData.end()) {
-      const WebLauncherPostRequest::WebUserData& userData = itP->second;
+      const WebSession::Player& userData = itP->second;
       NCore::PlayerInfo& playerInfo = _gameServerData[i].info;
       FillPlayerInfo(playerInfo, userData);
     }

@@ -46,13 +46,12 @@ private:
   typedef std::map<std::string, SessionKey>   Keys;
   typedef std::map<std::string, Transport::TClientId> DevLoginHistory;
 
-  // Cache of web-session lookups, keyed by "<sessionToken>|<playerKey>".
-  // The session data is static for the lifetime of the session, so the
-  // (uid, webSession) pair can be cached across reconnects.
+  // Cache of web-session identity lookups, keyed by "<sessionToken>|<playerKey>".
+  // Only the uid is cached (the session data itself never reaches the login
+  // reply -- it is delivered by the lobby through NCore::PlayerInfo).
   struct WebSessionCacheEntry
   {
     Transport::TClientId  uid;
-    WebSessionData        webSession;
     timer::Time           cachedAt;
 
     WebSessionCacheEntry() : uid( 0 ), cachedAt( 0 ) {}

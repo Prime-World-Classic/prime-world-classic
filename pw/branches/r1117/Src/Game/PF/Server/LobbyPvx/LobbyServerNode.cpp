@@ -236,67 +236,22 @@ RIServerInstance * ServerNode::AddClient( RILobbyUser * user, int clientRevision
 
 
 
-static WebUsersDataMap GetUsersData(Json::Value usersData) {
-  WebUsersDataMap resultMap;
-  // Get users data
+// usersData[] -> session players index, keyed by the wide nickname the lobby uses
+// for the connection (see TryCreateWebSession). Parsing, validation and the web
+// index semantics live in Shared/WebSessionParse.h, shared with newlogin.
+static WebSession::PlayersByNickname GetUsersData(Json::Value usersData) {
+  WebSession::PlayersByNickname resultMap;
+
   int playersCount = 0;
   Json::Value curPlayer = usersData[playersCount];
   while (!curPlayer.empty()) {
-    if (!CheckPlayerInfo(curPlayer)) {
-      WebUsersDataMap emptyMap;
-      return emptyMap;
+    WebSession::Player player;
+    if (!WebSession::ParsePlayer(curPlayer, player)) {
+      LOBBY_LOG_ERR("Invalid player record in usersData[%d]", playersCount);
+      return WebSession::PlayersByNickname();
     }
 
-    std::string curNickname = curPlayer.get("nickname", Json::Value()).asString();
-
-    std::wstring wideCharString = Fix1251EncodingW(curNickname);
-
-    WebLauncherPostRequest::WebUserData resData;
-    Json::Value rating = curPlayer.get("rating", Json::Value());
-    Json::Value ratingAcc = curPlayer.get("ratingAcc", Json::Value());
-    resData.currentRatingAcc = ratingAcc.get("current", Json::Value()).asFloat();
-    resData.victoryRatingAcc = ratingAcc.get("victory", Json::Value()).asFloat();
-    resData.lossRatingAcc = ratingAcc.get("loss", Json::Value()).asFloat();
-    resData.currentRating = rating.get("current", Json::Value()).asFloat();
-    resData.victoryRating = rating.get("victory", Json::Value()).asFloat();
-    resData.lossRating = rating.get("loss", Json::Value()).asFloat();
-    resData.heroSkinID = curPlayer.get("skin", Json::Value()).asInt();
-    resData.userId = curPlayer.get("id", Json::Value()).asInt();
-
-    resData.talents.resize(36);
-
-    Json::Value dataTalents = curPlayer.get("build", Json::Value());
-    for (int i = 0; i < 36; ++i) {
-      if (dataTalents[i].empty() || dataTalents[i].asInt() == 0) {
-        resData.talents.clear();
-        break; // empty slot in build
-      }
-      resData.talents[i].webTalentId = dataTalents[i].asInt();
-    }
-    if (!resData.talents.empty()) {
-      Json::Value dataActives = curPlayer.get("bar", Json::Value());
-      for (int a = 0; a < 10; ++a) {
-        if (!dataActives[a].empty()) {
-          int activeRaw = dataActives[a].asInt();
-          if (activeRaw != 0) {
-            int activeRef = abs(activeRaw) - 1;
-            bool isSmartCast = activeRaw < 0;
-
-            resData.talents[activeRef].activeSlot = a;
-            resData.talents[activeRef].isSmartCast = isSmartCast;
-          }
-        }
-      }
-    }
-
-    Json::Value hero = curPlayer.get("hero", Json::Value());
-    Json::Value team = curPlayer.get("team", Json::Value());
-    Json::Value party = curPlayer.get("party", Json::Value());
-    resData.heroId = hero.asInt();
-    resData.teamId = team.asInt() - 1;
-    resData.partyId = party.asInt();
-
-    resultMap[wideCharString] = resData;
+    resultMap[WebSession::Utf8ToWide(player.nickname)] = player;
 
     playersCount++;
     curPlayer = usersData[playersCount];
@@ -377,7 +332,7 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
   std::string response = GetSessionData(token, true);
 
-  Json::Value parsedValue = ParseJson(response.c_str());
+  Json::Value parsedValue = WebSession::ParseJson(response.c_str());
 
   if (parsedValue.empty()) {
     LOBBY_LOG_ERR( "Failed to get info from the synchronizer %s", token );
@@ -401,23 +356,17 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
     return EOperationResult::RestrictedAccess;
   }
 
-  WebUsersDataMap usersDataMap = GetUsersData(usersData);
+  WebSession::PlayersByNickname usersDataMap = GetUsersData(usersData);
   if (usersDataMap.empty()) {
     LOBBY_LOG_ERR( "Error occurred during session creation: Invalid usersData %s", token );
     return EOperationResult::RestrictedAccess;
   }
 
-  int maxPlayersCount[2];
-  int playersCount = 0;
-  Json::Value curPlayer = usersData[playersCount];
-  while (!curPlayer.empty()) {
-    Json::Value team = curPlayer.get("team", Json::Value());
-    if (team.asInt() - 1 >= 0 && team.asInt() - 1 < 2) {
-      ++maxPlayersCount[team.asInt() - 1];
-    }
-
-    playersCount++;
-    curPlayer = usersData[playersCount];
+  int maxPlayersCount[2] = { 0, 0 };
+  for (WebSession::PlayersByNickname::const_iterator itTeam = usersDataMap.begin(); itTeam != usersDataMap.end(); ++itTeam) {
+    const int teamIdx = itTeam->second.team - 1;
+    if (teamIdx >= 0 && teamIdx < 2)
+      ++maxPlayersCount[teamIdx];
   }
 
   SGameParameters params;
@@ -435,23 +384,23 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 
   game->playersUserData = usersDataMap;
 
-  for (WebUsersDataMap::iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
+  for (WebSession::PlayersByNickname::iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
     std::wstring nickname = it->first;
 
     std::wstring currentLogin = std::wstring(L" ") + nickname;
     currentLogin[0] = 0x09;
 
-    WebLauncherPostRequest::WebUserData userData = it->second;
-    StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.userId, currentLogin.c_str());
+    const WebSession::Player userData = it->second;
+    StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.id, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
-    int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.heroId - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
-    lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.teamId);
+    int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.hero - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
+    lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.team - 1);   // web team is 1-based
 
     const char* heroPersistentId = heroes[heroId];
 
     game->ChangeCustomGameSettings(fakeConnection.Get(), teamId, teamId, heroPersistentId);
-    game->SetDeveloperParty(fakeConnection.Get(), userData.partyId);
+    game->SetDeveloperParty(fakeConnection.Get(), userData.party);
     if ( result != EOperationResult::Ok ) {
       LOBBY_LOG_ERR( "Error occurred during session creation: Failed to add NewConnection %s", token );
       return EOperationResult::RestrictedAccess;

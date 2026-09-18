@@ -3,7 +3,7 @@
 #include "System/SafeTextFormatStl.h"
 #include "System/SafeTextFormatNstl.h"
 #include <Shared/WebRequests.h>
-#include <PF_GameLogic/WebLauncher.h>
+#include <Shared/WebSessionParse.h>
 
 NI_DEFINE_REFCOUNT( newLogin::IClientAuth );
 
@@ -113,55 +113,12 @@ void ClientAuth::AuthorizeClient( LoginReply & _reply, const LoginHello & _hello
 }
 
 
-// Fills WebPlayerData from a synchronizer 'user' JSON object (UTF-8 nicknames
-// are passed through as-is; the client applies the same Fix1251* conversion as
-// in the pre-login HTTP flow).
-static WebPlayerData WebPlayerDataFromJson( const Json::Value & v )
-{
-  WebPlayerData d;
-
-  d.id = v.get( "id", Json::Value() ).asInt();
-  d.nickname = v.get( "nickname", Json::Value() ).asString().c_str();
-  d.hero = v.get( "hero", Json::Value() ).asInt();
-  d.team = v.get( "team", Json::Value() ).asInt();
-  d.party = v.get( "party", Json::Value() ).asInt();
-  d.skin = v.get( "skin", Json::Value() ).asInt();
-  d.muteChat = v.get( "muteChat", Json::Value( false ) ).asBool();
-
-  Json::Value rating = v.get( "rating", Json::Value() );
-  d.ratingCurrent = rating.get( "current", rating.get( "currentRating", Json::Value() ) ).asFloat();
-  d.ratingVictory = rating.get( "victory", rating.get( "victoryRating", Json::Value() ) ).asFloat();
-  d.ratingLoss = rating.get( "loss", rating.get( "lossRating", Json::Value() ) ).asFloat();
-
-  Json::Value ratingAcc = v.get( "ratingAcc", Json::Value() );
-  d.ratingAccCurrent = ratingAcc.get( "current", ratingAcc.get( "currentRating", Json::Value() ) ).asFloat();
-  d.ratingAccVictory = ratingAcc.get( "victory", ratingAcc.get( "victoryRating", Json::Value() ) ).asFloat();
-  d.ratingAccLoss = ratingAcc.get( "loss", ratingAcc.get( "lossRating", Json::Value() ) ).asFloat();
-
-  Json::Value build = v.get( "build", Json::Value() );
-  for ( int i = 0; i < 36; ++i )
-    d.build[i] = ( !build[i].empty() ) ? build[i].asInt() : 0;
-
-  Json::Value bar = v.get( "bar", Json::Value() );
-  for ( int i = 0; i < 24; ++i )
-    d.bar[i] = ( !bar[i].empty() ) ? bar[i].asInt() : 0;
-
-  Json::Value profileStats = v.get( "profileStats", Json::Value() );
-  for ( int i = 0; i < 9; ++i )
-    d.profileStats[i] = profileStats[i].asInt();
-
-  d.leagueIdx = v.get( "leagueIdx", Json::Value( 0 ) ).asInt();
-  d.flagId = v.get( "flagId", Json::Value( "" ) ).asString().c_str();
-
-  return d;
-}
-
-
 // Web-session authorization: the client identifies itself by playerKey
-// (sha256(str(user_id)+sessionToken+api_key)) instead of by nickname. The
-// synchronizer 'connectToWebSession' response (playerInfo + usersData + mapId)
-// is delivered to the client in LoginReply::webSession, so the client makes
-// no HTTP calls to the synchronizer at all.
+// (sha256(str(user_id)+sessionToken+api_key)) instead of by nickname.
+// Only the identity is resolved here: the session data itself is fetched by the
+// lobby and delivered to every client through NCore::PlayerInfo
+// (Peered::ClientInfo -> gamesvc -> MapStartInfo, see Shared/WebSessionParse.h),
+// so the client keeps no copy of it and makes no HTTP requests.
 void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 {
   _reply.code = Login::ELoginResult::ServerError;
@@ -173,7 +130,9 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
     return;
   }
 
-  std::string cacheKey( _hello.sessionkey.c_str() );
+  const char * token = _hello.sessionkey.c_str();
+
+  std::string cacheKey( token );
   cacheKey += "|";
   cacheKey += _hello.playerKey.c_str();
 
@@ -188,17 +147,14 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
     {
       _reply.code = Login::ELoginResult::Success;
       _reply.uid = it->second.uid;
-      _reply.webSession = it->second.webSession;
-      MessageTrace( "Web mode authorization ok (cache). uid=%d, players=%u, mapId=%s",
-        _reply.uid, (unsigned)_reply.webSession.players.size(), _reply.webSession.mapId.c_str() );
+      MessageTrace( "Web mode authorization ok (cache). uid=%d", _reply.uid );
       return;
     }
   }
 
-  const char * token = _hello.sessionkey.c_str();
   std::string response = GetWebSessionData( token, _hello.playerKey.c_str() );
 
-  Json::Value parsedValue = ParseJson( response.c_str() );
+  Json::Value parsedValue = WebSession::ParseJson( response.c_str() );
   if ( parsedValue.empty() )
   {
     // Empty response / broken JSON: the synchronizer is unreachable.
@@ -217,56 +173,19 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
   }
 
   Json::Value playerInfo = parsedValue.get( "playerInfo", Json::Value() );
-  if ( playerInfo.empty() || !CheckPlayerInfo( playerInfo ) )
+  WebSession::Player player;
+  if ( !WebSession::ParsePlayer( playerInfo, player ) )
   {
     ErrorTrace( "Web session playerInfo is missing or invalid. token=%s", token );
     _reply.code = Login::ELoginResult::ServerError;
     return;
   }
 
-  Json::Value usersData = parsedValue.get( "usersData", Json::Value() );
-  if ( usersData.empty() || !usersData.isArray() )
-  {
-    ErrorTrace( "Web session usersData is missing or invalid. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
-    return;
-  }
-
-  WebSessionData webSession;
-  webSession.valid = true;
-
-  Json::Value mapIdValue = parsedValue.get( "mapId", Json::Value() );
-  if ( !mapIdValue.empty() )
-    webSession.mapId = mapIdValue.asString().c_str();
-
-  int playersCount = 0;
-  Json::Value curPlayer = usersData[playersCount];
-  while ( !curPlayer.empty() )
-  {
-    if ( !CheckPlayerInfo( curPlayer ) )
-    {
-      ErrorTrace( "Web session: CheckPlayerInfo failed for usersData[%d]", playersCount );
-      _reply.code = Login::ELoginResult::ServerError;
-      return;
-    }
-    webSession.players.push_back( WebPlayerDataFromJson( curPlayer ) );
-    playersCount++;
-    curPlayer = usersData[playersCount];
-  }
-
-  if ( webSession.players.empty() )
-  {
-    ErrorTrace( "Web session: empty players list. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
-    return;
-  }
-
-  Transport::TClientId uid = playerInfo.get( "id", Json::Value() ).asInt();
+  const Transport::TClientId uid = player.id;
 
   {
     WebSessionCacheEntry entry;
     entry.uid = uid;
-    entry.webSession = webSession;
     entry.cachedAt = now;
     webSessionCache[cacheKey] = entry;
 
@@ -277,10 +196,8 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 
   _reply.code = Login::ELoginResult::Success;
   _reply.uid = uid;
-  _reply.webSession = webSession;
 
-  MessageTrace( "Web mode authorization ok. uid=%d, players=%u, mapId=%s",
-    uid, (unsigned)webSession.players.size(), webSession.mapId.c_str() );
+  MessageTrace( "Web mode authorization ok. uid=%d", uid );
 }
 
 
@@ -288,8 +205,7 @@ static nstl::map<nstl::string, int> s_userLoginsToIdMap;
 void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
 {
   // New web-session path: playerKey is set by the client (from the launcher
-  // URL). The session data is fetched from the synchronizer here (server side)
-  // and delivered in LoginReply::webSession.
+  // URL); the identity is resolved from the synchronizer here (server side).
   if ( !_hello.playerKey.empty() )
   {
     DevWebAuth( _reply, _hello );
@@ -314,7 +230,7 @@ void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
     const char* token = _hello.sessionkey.c_str();
     std::string response = GetSessionData(token, false);
 
-    Json::Value parsedValue = ParseJson(response.c_str());
+    Json::Value parsedValue = WebSession::ParseJson(response.c_str());
 
     if (parsedValue.empty()) {
       ErrorTrace( "Failed to get info from the synchronizer %s", token );
@@ -339,13 +255,13 @@ void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
     int playersCount = 0;
     Json::Value curPlayer = usersData[playersCount];
     while (!curPlayer.empty()) {
-      if (!CheckPlayerInfo(curPlayer)) {
+      if (!WebSession::CheckPlayerInfo(curPlayer)) {
         ErrorTrace( "DevAuth: CheckPlayerInfo failed for usersData[%d]",
           playersCount );
         return;
       }
 
-      nstl::string curNickname = Fix1251Encoding(curPlayer.get("nickname", Json::Value()).asString().c_str()).c_str();
+      nstl::string curNickname = WebSession::Utf8ToCp1251(curPlayer.get("nickname", Json::Value()).asString()).c_str();
       int userWebId = curPlayer.get("id", Json::Value()).asInt();
 
       MessageTrace( "DevAuth: usersData[%d] nickname=%s expected=%s id=%d",

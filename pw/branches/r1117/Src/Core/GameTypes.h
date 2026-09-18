@@ -157,7 +157,7 @@ typedef nstl::vector<nstl::string> TAwardsBuffs;
 struct PlayerInfo
 {
   ZDATA
-    TAuid             auid; //TEMP: Пока добавить ауид сюда. Надеюсь, временно
+    TAuid             auid; //TEMP: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     PlayerTalentSet   talents;
     nstl::vector<int> inventory;
     nstl::vector<int> friends;
@@ -206,7 +206,15 @@ struct PlayerInfo
     int               leagueIndex;
     int               ownLeaguePlace;
     nstl::vector<int> leaguePlaces;
-    ZEND int operator&( IBinSaver &f ) { f.Add(2,&auid); f.Add(3,&talents); f.Add(4,&inventory); f.Add(5,&friends); f.Add(6,&heroId); f.Add(7,&heroEnergy); f.Add(8,&avatarLevel); f.Add(9,&heroLevel); f.Add(10,&hsHealth); f.Add(11,&hsMana); f.Add(12,&hsStrength); f.Add(13,&hsIntellect); f.Add(14,&hsAgility); f.Add(15,&hsCunning); f.Add(16,&hsFortitude); f.Add(17,&hsWill); f.Add(18,&hsLifeRegen); f.Add(19,&hsManaRegen); f.Add(20,&heroExp); f.Add(21,&guardRating); f.Add(22,&playerRating); f.Add(23,&heroRating); f.Add(24,&talentRollData); f.Add(25,&dropRate); f.Add(26,&hasPremium); f.Add(27,&basket); f.Add(28,&heroSkin); f.Add(29,&locale); f.Add(30,&fwod); f.Add(31,&guildData); f.Add(32,&goldLampRollContainer); f.Add(33,&customGame); f.Add(34,&partyId); f.Add(35,&partyLeader); f.Add(36,&ratingDeltaPrediction); f.Add(37,&complaintsToday); f.Add(38,&complaintsMax); f.Add(39,&complaintsInfo); f.Add(40,&chatMuted); f.Add(41,&flagId); f.Add(42,&flagCustomPicture); f.Add(43,&flagCustomTooltip); f.Add(44,&hasFullLibrary); f.Add(45,&hBuffs); f.Add(46,&aBuffs); f.Add(47,&isAnimatedAvatar); f.Add(48,&leagueIndex); f.Add(49,&ownLeaguePlace); f.Add(50,&leaguePlaces); return 0; }
+    // Web-session ratings ("accurate" rating and its win/loss predictions) and the
+    // recommended stats mask (9 flags, see PFBaseHero::SetRecommendedStats). Filled by
+    // the lobby from the synchronizer data (Shared/WebSessionParse.h) and delivered to
+    // every client through Peered::ClientInfo -> MapStartInfo.
+    float             ratingAccCurrent;
+    float             ratingAccVictory;
+    float             ratingAccLoss;
+    nstl::vector<int> profileStats;
+    ZEND int operator&( IBinSaver &f ) { f.Add(2,&auid); f.Add(3,&talents); f.Add(4,&inventory); f.Add(5,&friends); f.Add(6,&heroId); f.Add(7,&heroEnergy); f.Add(8,&avatarLevel); f.Add(9,&heroLevel); f.Add(10,&hsHealth); f.Add(11,&hsMana); f.Add(12,&hsStrength); f.Add(13,&hsIntellect); f.Add(14,&hsAgility); f.Add(15,&hsCunning); f.Add(16,&hsFortitude); f.Add(17,&hsWill); f.Add(18,&hsLifeRegen); f.Add(19,&hsManaRegen); f.Add(20,&heroExp); f.Add(21,&guardRating); f.Add(22,&playerRating); f.Add(23,&heroRating); f.Add(24,&talentRollData); f.Add(25,&dropRate); f.Add(26,&hasPremium); f.Add(27,&basket); f.Add(28,&heroSkin); f.Add(29,&locale); f.Add(30,&fwod); f.Add(31,&guildData); f.Add(32,&goldLampRollContainer); f.Add(33,&customGame); f.Add(34,&partyId); f.Add(35,&partyLeader); f.Add(36,&ratingDeltaPrediction); f.Add(37,&complaintsToday); f.Add(38,&complaintsMax); f.Add(39,&complaintsInfo); f.Add(40,&chatMuted); f.Add(41,&flagId); f.Add(42,&flagCustomPicture); f.Add(43,&flagCustomTooltip); f.Add(44,&hasFullLibrary); f.Add(45,&hBuffs); f.Add(46,&aBuffs); f.Add(47,&isAnimatedAvatar); f.Add(48,&leagueIndex); f.Add(49,&ownLeaguePlace); f.Add(50,&leaguePlaces); f.Add(51,&ratingAccCurrent); f.Add(52,&ratingAccVictory); f.Add(53,&ratingAccLoss); f.Add(54,&profileStats); return 0; }
 
   PlayerInfo() : 
     auid( 0 ),
@@ -241,7 +249,10 @@ struct PlayerInfo
     chatMuted(false),
     isAnimatedAvatar(true),
     leagueIndex(0),
-    ownLeaguePlace(0)
+    ownLeaguePlace(0),
+    ratingAccCurrent( 0 ),
+    ratingAccVictory( 0 ),
+    ratingAccLoss( 0 )
     {}
 };
 
