@@ -15,6 +15,8 @@
 #pragma warning(pop)
 #include "Network/FreePortsFinder.h"
 #include "Network/StreamAllocator.h"
+#include "PW_Game/server_ip.h"
+#include <Shared/ServerIps.h>
 
 extern string g_sessionToken;
 extern string g_playerToken;
@@ -315,8 +317,25 @@ int GameContext::Poll( float dt )
       }
       else if ( res != Login::ELoginResult::NoResult )
       {
-        status = EContextStatus::Error;
-        persistentEvents::GetSingleton()->WriteEvent( fastReconnectCtx ? persistentEvents::EEvent::LoginFailedInFR : persistentEvents::EEvent::LoginFailed, (int)res );
+        // Server pool: the launch protocol carries ALL pool IPs and the client
+        // may land on a server that does not know the session (AccessDenied /
+        // Refused) or that is unreachable (NoConnection / ServerError). In that
+        // case go to the next IP of the pool (intermediate servers redirect the
+        // traffic to the target anyway); after walking the whole pool — the
+        // legacy error.
+        if ( ( res == Login::ELoginResult::NoConnection || res == Login::ELoginResult::Refused ||
+                res == Login::ELoginResult::AccessDenied || res == Login::ELoginResult::ServerError ) &&
+             usedServer + 1 < GetServerIpCount() )
+        {
+          MessageTrace( "Login failed on server #%d (code %d), trying the next server in the pool", usedServer, (int)res );
+          ++usedServer;
+          ConnectToCluster( lastLogin, "", sessionToken );
+        }
+        else
+        {
+          status = EContextStatus::Error;
+          persistentEvents::GetSingleton()->WriteEvent( fastReconnectCtx ? persistentEvents::EEvent::LoginFailedInFR : persistentEvents::EEvent::LoginFailed, (int)res );
+        }
       }
       break;
     }

@@ -1241,13 +1241,14 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     return 0;
   } else {
     // Manual tokenization instead of strtok. The protocol line has a fixed,
-    // predictable structure: "scheme://method/<token>/<version>/<mirror>[/ipBlock]".
+    // predictable structure:
+    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort]".
     // strtok would overwrite the internal buffer of protocolLineStr (std::string)
     // with NUL separators, which is undefined behavior and can corrupt adjacent
     // state; here the separators are only located and the tokens are copied.
     // Consecutive delimiters are collapsed, exactly like strtok did.
     nstl::vector<nstl::string> allTokens;
-    allTokens.reserve(6);
+    allTokens.reserve(7);
     {
       const size_t protocolLen = protocolLineStr.size();
       size_t tokenBegin = 0;
@@ -1290,6 +1291,35 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       SetDynamicServerIps(protocolServerIps);
       for (int ipIndex = 0; ipIndex < protocolServerIps.size(); ++ipIndex)
         systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP #" << ipIndex << ": " << protocolServerIps[ipIndex].c_str() << endl;
+    }
+
+    // Optional 6th token — base port of the TARGET server (decimal). The
+    // client dials base+1 (login) / base+10 (front) on every IP of the pool.
+    // Absent token keeps the legacy standard ports (server_ip.h). A present
+    // but malformed token is a hard error, like an invalid IP block.
+    if (allTokens.size() >= 7 && !allTokens[6].empty()) {
+      int basePort = 0;
+      bool portOk = true;
+      int portLen = (int)allTokens[6].size();
+      for (int portPos = 0; portPos < portLen; ++portPos) {
+        char portChar = allTokens[6][portPos];
+        if (portChar < '0' || portChar > '9') {
+          portOk = false;
+          break;
+        }
+        basePort = basePort * 10 + (portChar - '0');
+        if (basePort > 65535) {
+          portOk = false;
+          break;
+        }
+      }
+      if (!portOk) {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid server base port in protocol: \"" << allTokens[6].c_str() << "\"" << endl;
+        ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [invalid server port]! Please start the game via the launcher." );
+        return 0;
+      }
+      SetServerBasePort(basePort);
+      systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server base port: " << basePort << endl;
     }
 
     usedServer = usedServer % GetServerIpCount();

@@ -31,25 +31,34 @@ namespace
 namespace Network
 {
 
+// Ports are derived from the base port of the target server (6th token of
+// the launch protocol; default 27300 — the legacy server_ip.h offsets):
+// coordinator=base, login=base+1, front=base+10, back=base+40.
 const string & GetCoordinatorAddress()
 {
-  coordinatorAddr = string(GetServerIpA(usedServer)) + ":" + SERVER_PORT;
+  char portBuf[16];
+  sprintf(portBuf, "%d", GetServerBasePort());
+  coordinatorAddr = string(GetServerIpA(usedServer)) + ":" + portBuf;
   return coordinatorAddr;
 }
 
 const string & GetLoginServerAddress()
 {
-  loginAddr = string(GetServerIpA(usedServer)) + ":" + LOGIN_PORT + "@10";
+  char portBuf[16];
+  sprintf(portBuf, "%d", GetServerBasePort() + 1);
+  loginAddr = string(GetServerIpA(usedServer)) + ":" + portBuf + "@10";
   return loginAddr;
 }
 
 int GetFirstServerPortBack()
 {
+  firstServerPort = GetServerBasePort() + 40;
   return firstServerPort;
 }
 
 int GetFirstServerPortFront()
 {
+  firstServerPortFront = GetServerBasePort() + 10;
   return firstServerPortFront;
 }
 

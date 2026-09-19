@@ -20,3 +20,10 @@ void SetDynamicServerIps(const nstl::vector<nstl::string>& ips);
 int GetServerIpCount();
 const char* GetServerIpA(int index);
 const wchar_t* GetServerIpW(int index);
+
+// Base port of the TARGET server (6th token of the launch protocol, decimal).
+// Default 27300 — the legacy static-port behavior (server_ip.h). Ports are
+// derived from the base: coordinator=base, login=base+1, front=base+10,
+// back=base+40 (the same offsets server_ip.h uses for 27300).
+void SetServerBasePort(int basePort);
+int GetServerBasePort();
