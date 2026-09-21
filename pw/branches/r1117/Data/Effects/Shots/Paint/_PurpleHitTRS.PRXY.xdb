@@ -1,6 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <DBSceneComponent>
-	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit.EFFT" Count="1" />
+	<BackLink DBID="/Effects/Shots/Paint/_PurpleHit.EFFT" Count="2" />
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>
@@ -15,7 +15,7 @@
 					<z>0</z>
 				</pos>
 				<rot>
-					<w>8.944666E-08</w>
+					<w>7.549789E-08</w>
 					<x>8.944667E-08</x>
 					<y>8.944666E-08</y>
 					<z>1</z>

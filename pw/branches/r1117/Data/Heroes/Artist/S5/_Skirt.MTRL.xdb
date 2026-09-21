@@ -1,12 +1,12 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <BasicMaterial>
-	<BackLink DBID="/Heroes/Artist/S5/_.SOBJ" Count="2" />
+	<BackLink DBID="/Heroes/Artist/S5/_.SOBJ" Count="1" />
 	<caption></caption>
 	<diffuseColor>
 		<A>1</A>
-		<B>0.5333334</B>
-		<G>0.4666667</G>
-		<R>0.8509804</R>
+		<B>1</B>
+		<G>1</G>
+		<R>1</R>
 	</diffuseColor>
 	<DiffuseMap>
 		<samplerState>
@@ -17,7 +17,7 @@
 			<minFilter>Linear</minFilter>
 			<mipFilter>Linear</mipFilter>
 		</samplerState>
-		<texture href="/Heroes/Artist/S5/_Skirt.MTRL" id="301CE3A8-7F38-49AE-8626-24469BABD191">
+		<texture href="/Heroes/Artist/S5/_Skirt.MTRL" id="B8C37606-DD02-4D72-ADD0-EDA7358F1F68">
 			<TextureRecolorable>
 				<baseRGB>
 					<A>1</A>
@@ -25,7 +25,7 @@
 					<G>0</G>
 					<R>1.399</R>
 				</baseRGB>
-				<main href="/Heroes/Artist/S5/_Skirt.MTRL" id="52BEED4E-C26F-47DC-A107-0BA6790ECEC9">
+				<main href="/Heroes/Artist/S5/_Skirt.MTRL" id="341D04D6-688F-4412-AE13-179379DBB2F5">
 					<Texture>
 						<generatedFileName></generatedFileName>
 						<mipLevels>0</mipLevels>
@@ -42,7 +42,7 @@
 						<textureType>Color</textureType>
 					</Texture>
 				</main>
-				<mask href="/Heroes/Artist/S5/_Skirt.MTRL" id="DB9F8646-0369-41A4-91CD-45FE995006F5">
+				<mask href="/Heroes/Artist/S5/_Skirt.MTRL" id="89B560F4-1B1E-4081-8CF4-66E5F0CADD53">
 					<Texture>
 						<generatedFileName></generatedFileName>
 						<mipLevels>0</mipLevels>
@@ -103,11 +103,11 @@
 	</ReflectionMap>
 	<reflectivity>1</reflectivity>
 	<ReflectivityPinValue>ReflectivityOff</ReflectivityPinValue>
-	<renderFlags>7</renderFlags>
+	<renderFlags>2</renderFlags>
 	<renderState>
 		<alphaTest>On</alphaTest>
 		<alphaTestRef>127</alphaTestRef>
-		<blendMode>AddColorMulAlpha</blendMode>
+		<blendMode>Off</blendMode>
 		<culling>On</culling>
 	</renderState>
 	<SpecularMap>
@@ -131,24 +131,8 @@
 			<minFilter>Linear</minFilter>
 			<mipFilter>Linear</mipFilter>
 		</samplerState>
-		<texture href="/Heroes/Artist/S5/_Skirt.MTRL" id="BCEE311C-54AB-4E6C-8EFC-868D33996C17">
-			<Texture>
-				<generatedFileName></generatedFileName>
-				<mipLevels>0</mipLevels>
-				<mipLevelUsage>AutoGenerate</mipLevelUsage>
-				<mipSharpenPasses></mipSharpenPasses>
-				<pixelFormat>DXT1</pixelFormat>
-				<size>
-					<height>256</height>
-					<width>256</width>
-				</size>
-				<srcFileName crc="0">/Heroes/Artist/S5/SpecularSkirtS5.png</srcFileName>
-				<startMipLevel>1</startMipLevel>
-				<textureFileName>/Heroes/Artist/S5/SpecularSkirtS5.dds</textureFileName>
-				<textureType>Color</textureType>
-			</Texture>
-		</texture>
+		<texture href="" />
 	</SpecularMap>
-	<specularPower>6</specularPower>
+	<specularPower>0</specularPower>
 	<SubPriority>0</SubPriority>
 </BasicMaterial>

@@ -13,7 +13,7 @@
 	<lifeTime>0</lifeTime>
 	<__states>
 		<state name="artist_S5">
-			<component href="/Effects/Shots/Paint/_PurpleHit_S5.PRXY" />
+			<component href="/Effects/Shots/Paint/_PurpleHitTRS.PRXY" />
 		</state>
 	</__states>
 </BasicEffectAttached>

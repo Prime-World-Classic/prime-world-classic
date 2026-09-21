@@ -5,15 +5,15 @@
 	<caption>Trail2</caption>
 	<colorFirst>
 		<A>1</A>
-		<B>1</B>
-		<G>0.5019608</G>
-		<R>0</R>
+		<B>0.9137255</B>
+		<G>0.8705882</G>
+		<R>0.08627451</R>
 	</colorFirst>
 	<colorLast>
 		<A>3</A>
-		<B>1</B>
-		<G>0.5019608</G>
-		<R>0</R>
+		<B>0.9803922</B>
+		<G>0.1960784</G>
+		<R>0.6862745</R>
 	</colorLast>
 	<fadeoutSpeed>4</fadeoutSpeed>
 	<groupFlags>0</groupFlags>

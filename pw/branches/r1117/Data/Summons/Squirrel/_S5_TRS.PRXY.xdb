@@ -35,7 +35,7 @@
 					<firstCycleOffset>0</firstCycleOffset>
 					<firstCycleOffsetDelta>0</firstCycleOffsetDelta>
 					<speed>1</speed>
-					<startDelay>0.5</startDelay>
+					<startDelay>1</startDelay>
 				</TimeController>
 			</timeController>
 		</Item>
@@ -66,7 +66,7 @@
 			<timeController href="/Summons/Squirrel/_S5_TRS.PRXY" id="D83ACD1D-82B4-440C-BCFE-F451AC560197">
 				<TimeController>
 					<cycleCount>1</cycleCount>
-					<cycleLength>0.5</cycleLength>
+					<cycleLength>1</cycleLength>
 					<fadein>0</fadein>
 					<fadeout>0</fadeout>
 					<firstCycleOffset>0</firstCycleOffset>

@@ -4,7 +4,7 @@
 	<attached>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="9B1FFF85-ED36-47E7-9A58-1A1372B1F18F">
+			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="13E0BCBB-B443-4D87-817C-292CDB49F1A0">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.2585444</maxX>
@@ -20,7 +20,7 @@
 					<groupFlags>0</groupFlags>
 					<locatorList href="" />
 					<materialsReferences>
-						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="574B88C6-71B4-499E-B8A8-54C5E73ADAE4">
+						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="F058EFD6-DD7F-4905-A78D-03E55FE02E21">
 							<BasicFXMaterial>
 								<caption>Noise35Green_1Material</caption>
 								<DiffuseAdd>
@@ -38,13 +38,13 @@
 										<minFilter>Linear</minFilter>
 										<mipFilter>Linear</mipFilter>
 									</samplerState>
-									<texture href="/GFX_Textures/Noise35Blue.TXTR" />
+									<texture href="/GFX_Textures/Noise35Green.TXTR" />
 								</DiffuseMap>
 								<DiffuseMul>
 									<A>1</A>
-									<B>1.5</B>
-									<G>1</G>
-									<R>1.5</R>
+									<B>3</B>
+									<G>2</G>
+									<R>1</R>
 								</DiffuseMul>
 								<distortion>1</distortion>
 								<DistortionPinValue>DistortNone</DistortionPinValue>
@@ -142,7 +142,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="F49A28A3-B814-4630-9A02-EC28BD63CA1C">
+			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="5C091518-A483-4B0A-A2AC-5FED08C6A7C7">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>
@@ -157,7 +157,7 @@
 		</Item>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="71F01437-3477-41EA-9318-E55BE1E7E7B8">
+			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="52FFEAE6-5590-46A1-B4B9-E45F1B82BE6F">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.2723507</maxX>
@@ -173,7 +173,7 @@
 					<groupFlags>0</groupFlags>
 					<locatorList href="" />
 					<materialsReferences>
-						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="EB05C8F4-D427-4EC9-9A62-71289D01DABF">
+						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="DE51A170-66A2-4BB3-90A8-10F48AD82836">
 							<BasicFXMaterial>
 								<caption>Noise34White_3Material</caption>
 								<DiffuseAdd>
@@ -295,7 +295,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="3FEB4DCA-6B63-4125-89DE-DB79867BF229">
+			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="AC660BFD-97AC-4DCD-B802-9CCB3C2CCCA4">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>
@@ -310,7 +310,7 @@
 		</Item>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="4D5A8FE1-AC0D-43A7-B412-A54929A9FB89">
+			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="5552D439-E8D5-4A4B-A8B9-43A6F193839A">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.3694309</maxX>
@@ -326,7 +326,7 @@
 					<groupFlags>0</groupFlags>
 					<locatorList href="" />
 					<materialsReferences>
-						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="D185CF54-2A75-4EA6-8ABA-C3AA7FCD7F56">
+						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="DDBE4D54-3576-4FFB-BA72-A98C6C419550">
 							<BasicFXMaterial>
 								<caption>Rays07White_2Material</caption>
 								<DiffuseAdd>
@@ -347,10 +347,10 @@
 									<texture href="/GFX_Textures/Rays07White.TXTR" />
 								</DiffuseMap>
 								<DiffuseMul>
-									<A>0.7703598</A>
-									<B>1.199033</B>
-									<G>1.199033</G>
-									<R>0.3472612</R>
+									<A>0.5</A>
+									<B>3</B>
+									<G>1</G>
+									<R>1</R>
 								</DiffuseMul>
 								<distortion>1</distortion>
 								<DistortionPinValue>DistortNone</DistortionPinValue>
@@ -424,7 +424,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="A1E6A81A-44A9-4D17-BAEB-AAF6936AA644">
+			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="73698D41-E0E3-4D77-AB18-A11050647658">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>
@@ -439,7 +439,7 @@
 		</Item>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="164D9FBF-B1CC-4BE8-B888-A032237922A8">
+			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="AED9E399-2492-4177-964B-D5C1C0567DC8">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.4612848</maxX>
@@ -455,7 +455,7 @@
 					<groupFlags>0</groupFlags>
 					<locatorList href="" />
 					<materialsReferences>
-						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="C55EC9A5-DEE6-4A8A-9B4D-4B30689CC209">
+						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="263B353D-7A2C-4C36-85D5-6ED56AFE2287">
 							<BasicFXMaterial>
 								<caption>Flow03Green_6Material</caption>
 								<DiffuseAdd>
@@ -473,12 +473,12 @@
 										<minFilter>Linear</minFilter>
 										<mipFilter>Linear</mipFilter>
 									</samplerState>
-									<texture href="/GFX_Textures/Flow01Blue.TXTR" />
+									<texture href="/GFX_Textures/Flow03Green.TXTR" />
 								</DiffuseMap>
 								<DiffuseMul>
 									<A>1</A>
-									<B>1.69345</B>
-									<G>1</G>
+									<B>2</B>
+									<G>2</G>
 									<R>1</R>
 								</DiffuseMul>
 								<distortion>1</distortion>
@@ -491,7 +491,7 @@
 								<renderState>
 									<alphaTest>Off</alphaTest>
 									<alphaTestRef>127</alphaTestRef>
-									<blendMode>LerpByAlpha</blendMode>
+									<blendMode>AddColorMulAlpha</blendMode>
 									<culling>Off</culling>
 								</renderState>
 								<SkeletalMeshPinValue>None</SkeletalMeshPinValue>
@@ -553,7 +553,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="9195D111-D1BA-4191-A2C5-7B1897312293">
+			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="6509798C-DC9A-4A29-A53F-D5E1CF015960">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>
@@ -568,7 +568,7 @@
 		</Item>
 		<Item>
 			<attachFlags>15</attachFlags>
-			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="3951E97D-7692-44B5-B2D9-68EF84D6E36F">
+			<component href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="71938456-1280-49AF-BB73-967944F96307">
 				<DBStaticSceneComponent>
 					<aabb>
 						<maxX>0.5004293</maxX>
@@ -584,7 +584,7 @@
 					<groupFlags>0</groupFlags>
 					<locatorList href="" />
 					<materialsReferences>
-						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="22F3CD2A-8B3D-43FA-8FF0-F893B721F008">
+						<Item href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="CBD723C8-0786-4846-9073-D1254754EA77">
 							<BasicFXMaterial>
 								<caption>Flow03Green_4Material</caption>
 								<DiffuseAdd>
@@ -602,13 +602,13 @@
 										<minFilter>Linear</minFilter>
 										<mipFilter>Linear</mipFilter>
 									</samplerState>
-									<texture href="/GFX_Textures/Flow01Blue.TXTR" />
+									<texture href="/GFX_Textures/Flow03Green.TXTR" />
 								</DiffuseMap>
 								<DiffuseMul>
 									<A>1</A>
-									<B>2</B>
-									<G>1</G>
-									<R>-0.3889359</R>
+									<B>3</B>
+									<G>3</G>
+									<R>1</R>
 								</DiffuseMul>
 								<distortion>1</distortion>
 								<DistortionPinValue>DistortNone</DistortionPinValue>
@@ -682,7 +682,7 @@
 					<z>1</z>
 				</scale>
 			</placement>
-			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="979B4DB4-0A2B-474A-8936-F5243D76F9C2">
+			<timeController href="/Effects/Shots/Paint/_Purple_S5.PRXY" id="A09DBB82-5BA8-42A8-ADE9-5D5D23FD0558">
 				<TimeController>
 					<cycleCount>0</cycleCount>
 					<cycleLength>0</cycleLength>

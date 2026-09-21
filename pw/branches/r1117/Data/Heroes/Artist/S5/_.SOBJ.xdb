@@ -1646,7 +1646,7 @@
 					</attached>
 					<caption></caption>
 					<faceFXAnims />
-					<groupFlags>4</groupFlags>
+					<groupFlags>0</groupFlags>
 					<keys />
 					<locatorList href="/Heroes/Artist/_.LOLS" />
 					<mayaFileName>/Heroes/Artist/S5/_root.mayaSkel</mayaFileName>
@@ -1655,19 +1655,6 @@
 					<skeletonFileName>/Heroes/Artist/S5/_root.skel</skeletonFileName>
 					<skinOn />
 					<skins>
-						<Item>
-							<events href="" />
-							<geometryFileName>/Heroes/Artist/S5/_skirt.skin</geometryFileName>
-							<jointsCountPerVertex>4</jointsCountPerVertex>
-							<materialsReferences>
-								<Item href="/Heroes/Artist/S5/_Skirt.MTRL" />
-							</materialsReferences>
-							<mayaFileName>/Heroes/Artist/S5/_skirt.mayaSkin</mayaFileName>
-							<selection>_skirt</selection>
-							<skinPartName></skinPartName>
-							<srcFileName crc="0"></srcFileName>
-							<uvSetCount>1</uvSetCount>
-						</Item>
 						<Item>
 							<events href="" />
 							<geometryFileName>/Heroes/Artist/S5/_.skin</geometryFileName>
@@ -1679,6 +1666,19 @@
 							<selection></selection>
 							<skinPartName></skinPartName>
 							<srcFileName crc="0">/Heroes/Artist/S1/_.mb</srcFileName>
+							<uvSetCount>1</uvSetCount>
+						</Item>
+						<Item>
+							<events href="" />
+							<geometryFileName>/Heroes/Artist/S5/_skirt.skin</geometryFileName>
+							<jointsCountPerVertex>4</jointsCountPerVertex>
+							<materialsReferences>
+								<Item href="/Heroes/Artist/S5/_Skirt.MTRL" />
+							</materialsReferences>
+							<mayaFileName>/Heroes/Artist/S5/_skirt.mayaSkin</mayaFileName>
+							<selection>_skirt</selection>
+							<skinPartName></skinPartName>
+							<srcFileName crc="0"></srcFileName>
 							<uvSetCount>1</uvSetCount>
 						</Item>
 					</skins>
