@@ -46,7 +46,7 @@ void FinishDelivery::Submit( const Json::Value & _data )
   Entry entry;
 
   ++sequence;
-  entry.id   = std::to_string( (unsigned long)( timer::Now() * 1000.0 ) ) + "-" + std::to_string( sequence );
+  entry.id   = NStr::StrFmt( "%lu-%lu", (unsigned long)( timer::Now() * 1000.0 ), sequence );
   entry.data = _data;
 
   if ( entry.data.isObject() )

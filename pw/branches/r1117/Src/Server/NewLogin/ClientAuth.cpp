@@ -2,8 +2,9 @@
 #include "ClientAuth.h"
 #include "System/SafeTextFormatStl.h"
 #include "System/SafeTextFormatNstl.h"
-#include <Shared/WebRequests.h>
 #include <Shared/WebSessionParse.h>
+#include <Shared/WebSessionRegistry.h>
+#include <Shared/Sha256.h>
 
 NI_DEFINE_REFCOUNT( newLogin::IClientAuth );
 
@@ -15,11 +16,12 @@ ClientAuth::ClientAuth( IConfigProvider * _config, timer::Time _now ) :
 config( _config ),
 now( _now )
 {
-  // Web session registry (the backend) address and key. Empty cfg values keep
-  // the server_ip.h fallback (local development).
-  const Config & cfg = *config->Cfg();
-  SetWebSessionEndpoint( cfg.webSessionHost.c_str(), cfg.webSessionPort, cfg.webSessionKey.c_str() );
-  MessageTrace( "Web session registry: http://%s:%d", GetWebSessionEndpoint().host.c_str(), GetWebSessionEndpoint().port );
+  // Web-session player keys are verified locally against the process registry
+  // (the back-end pushes sessions to the game server; see
+  // Shared/WebSessionRegistry.h). The shared key for the key formula comes
+  // from the same cfg variable the back-end signs its requests with.
+  MessageTrace( "Web mode: player keys are verified locally (shared key %s)",
+    config->Cfg()->webSessionKey.empty() ? "NOT SET" : "set" );
 }
 
 
@@ -119,10 +121,14 @@ void ClientAuth::AuthorizeClient( LoginReply & _reply, const LoginHello & _hello
 
 // Web-session authorization: the client identifies itself by playerKey
 // (sha256(str(user_id)+sessionToken+api_key)) instead of by nickname.
-// Only the identity is resolved here: the session data itself is fetched by the
-// lobby and delivered to every client through NCore::PlayerInfo
-// (Peered::ClientInfo -> gamesvc -> MapStartInfo, see Shared/WebSessionParse.h),
-// so the client keeps no copy of it and makes no HTTP requests.
+//
+// The back-end pushed the session to the process registry when the match was
+// confirmed (HttpGateway "web_session_register"), so the whole check is local:
+// find the session, verify the key against each of its players. No HTTP is
+// involved, and the client makes no web requests either. Only the identity is
+// resolved here: per-player data is delivered by the lobby through
+// NCore::PlayerInfo (Peered::ClientInfo -> gamesvc -> MapStartInfo, see
+// Shared/WebSessionParse.h), so the client keeps no copy of it.
 void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 {
   _reply.code = Login::ELoginResult::ServerError;
@@ -134,81 +140,55 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
     return;
   }
 
-  const char * token = _hello.sessionkey.c_str();
+  const std::string token( _hello.sessionkey.c_str(), 32 );
 
-  std::string cacheKey( token );
-  cacheKey += "|";
-  cacheKey += _hello.playerKey.c_str();
-
+  WebSession::Record session;
+  if ( !WebSession::Registry::Instance().Find( token, session ) )
   {
-    // The cache has a TTL: the registry may close the session at any moment
-    // (finish / kicked player), so from time to time a fresh lookup is
-    // required. 60 seconds keeps relogins cheap and stays consistent.
-    const timer::Time kWebSessionCacheTtl = 60.0;
-    WebSessionCache::const_iterator it = webSessionCache.find( cacheKey );
-    if ( it != webSessionCache.end() && ( it->second.cachedAt + kWebSessionCacheTtl >= now ) )
-    {
-      _reply.code = Login::ELoginResult::Success;
-      _reply.uid = it->second.uid;
-      _reply.webSession = it->second.webMatch;
-      MessageTrace( "Web mode authorization ok (cache). uid=%d, mapId=%s, players=%d",
-        _reply.uid, _reply.webSession.mapId.c_str(), _reply.webSession.playersCount );
-      return;
-    }
-  }
-
-  std::string response = GetWebSessionData( token, _hello.playerKey.c_str() );
-
-  Json::Value parsedValue = WebSession::ParseJson( response.c_str() );
-  if ( parsedValue.empty() )
-  {
-    // Empty response / broken JSON: the backend is unreachable.
-    ErrorTrace( "Failed to get web session from the backend. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
-    return;
-  }
-
-  Json::Value errorSet = parsedValue.get( "error", "ERROR" );
-  if ( !errorSet.asString().empty() )
-  {
-    // Session not found or invalid player key.
-    ErrorTrace( "Web session lookup failed: %s (token=%s)", errorSet.asString().c_str(), token );
+    ErrorTrace( "Web session not found in the local registry. token=%s", token.c_str() );
     _reply.code = Login::ELoginResult::AccessDenied;
     return;
   }
 
-  Json::Value playerInfo = parsedValue.get( "playerInfo", Json::Value() );
-  WebSession::Player player;
-  if ( !WebSession::ParsePlayer( playerInfo, player ) )
+  // Verify the presented key against every session player with the same
+  // formula the back-end uses to compute it (objects/sessionStore.js).
+  const char * keyApi = config->Cfg()->webSessionKey.c_str();
+  unsigned char digest[32];
+  char hexKey[65];
+  char idBuf[16];
+  int uid = 0;
+  bool matched = false;
+  for ( size_t i = 0; i < session.players.size(); ++i )
   {
-    ErrorTrace( "Web session playerInfo is missing or invalid. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
+    const int playerId = session.players[i].id;
+    sprintf( idBuf, "%d", playerId );
+
+    WebSha256::Digest digestCalc;
+    digestCalc.AddString( idBuf );
+    digestCalc.AddString( token.c_str(), (unsigned)token.size() );
+    digestCalc.AddString( keyApi );
+    WebSha256::ToHex( digestCalc.Final( digest ), hexKey );
+
+    if ( 0 == strcmp( hexKey, _hello.playerKey.c_str() ) )
+    {
+      uid = playerId;
+      matched = true;
+      break;
+    }
+  }
+  if ( !matched )
+  {
+    ErrorTrace( "Invalid player key. token=%s", token.c_str() );
+    _reply.code = Login::ELoginResult::AccessDenied;
     return;
   }
 
-  const Transport::TClientId uid = player.id;
-
-  // Match metadata for the lobby phase: which map to create / join and how many
-  // slots it needs. Players themselves are not part of the login reply.
+  // Match metadata for the lobby phase: which map to create / join and how
+  // many slots it needs. Players themselves are not part of the login reply.
   WebSessionData webMatch;
   webMatch.valid = true;
-  const Json::Value mapIdValue = parsedValue.get( "mapId", Json::Value() );
-  if ( !mapIdValue.empty() )
-    webMatch.mapId = mapIdValue.asString().c_str();
-  const Json::Value usersData = parsedValue.get( "usersData", Json::Value() );
-  webMatch.playersCount = usersData.isArray() ? (int)usersData.size() : 1;
-
-  {
-    WebSessionCacheEntry entry;
-    entry.uid = uid;
-    entry.webMatch = webMatch;
-    entry.cachedAt = now;
-    webSessionCache[cacheKey] = entry;
-
-    const size_t CacheCap = 256;
-    while ( webSessionCache.size() > CacheCap )
-      webSessionCache.erase( webSessionCache.begin() );
-  }
+  webMatch.mapId = session.mapId.c_str();
+  webMatch.playersCount = (int)session.players.size();
 
   _reply.code = Login::ELoginResult::Success;
   _reply.uid = uid;

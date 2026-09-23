@@ -19,10 +19,8 @@ struct SConfig
   int         udpSockBufferSize;
   int         threadPriority;
 
-  // Web session registry (the backend): address and shared key. Empty values
-  // keep the server_ip.h fallback (local development).
-  string      webSessionHost;
-  int         webSessionPort;
+  // Shared key for the web-session player-key formula
+  // (sha256(str(user_id)+token+key)) — the same key the back-end uses.
   string      webSessionKey;
 
   SConfig();

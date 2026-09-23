@@ -95,6 +95,9 @@ private:
   void HandleServerStatus( Json::Value & pvxReply, const Json::Value & request );
   void OnServerStatus( socialLobby::SServerStatus result );
 
+  void HandleWebSessionRegister( Json::Value & pvxReply, const Json::Value & request );
+  void HandleWebSessionLoad( Json::Value & pvxReply, const Json::Value & request );
+
   void HandleForgeRoll( Json::Value & reply, const Json::Value & request );
   void PollForgeRollrequests();
 };

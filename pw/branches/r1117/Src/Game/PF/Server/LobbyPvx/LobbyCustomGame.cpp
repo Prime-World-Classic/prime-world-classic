@@ -123,7 +123,7 @@ EOperationResult::Enum CustomGame::AddPlayerToCustomLobby( ServerConnection * pl
     return EOperationResult::AlreadyInGame;
 
   if ( players.empty() )
-    params.name = NStr::StrFmtW( L"%s's game", player->UserInfo().nickname.c_str() );
+    params.name = player->UserInfo().nickname + L"'s game";   // nickname уже wstring
 
   for ( int i = 0; i < players.size(); ++i )
     if ( players[i].player->ClientRevision() != player->ClientRevision() )
@@ -548,7 +548,11 @@ void CustomGame::SetupGameStartInfo( vector<Peered::ClientInfo> & _gameServerDat
     const CustomGameMember& member = players[i];
 
     _gameServerData[i].clientId = member.player->ClientId();
-    WebSession::PlayersByNickname::iterator itP = playersUserData.find(member.player->UserInfo().nickname.c_str() + 1);
+    // The transport client id IS the web user id (newlogin replies uid = web id,
+    // and the fake connections created in TryCreateWebSession use clientId =
+    // web id as well), so the session record is looked up by id, not by
+    // nickname (encoding-independent).
+    WebSession::PlayersById::const_iterator itP = playersUserData.find((int)member.player->ClientId());
     if (itP != playersUserData.end()) {
       const WebSession::Player& userData = itP->second;
       NCore::PlayerInfo& playerInfo = _gameServerData[i].info;

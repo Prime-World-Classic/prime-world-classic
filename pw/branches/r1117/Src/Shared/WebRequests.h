@@ -11,8 +11,11 @@
 #include "../PW_Game/server_ip.h"
 
 // -----------------------------------------------------------------------------
-// Web-session registry (the backend). It replaced the standalone synchronizer:
-// the game server is just an HTTP client of the backend now.
+// HTTP client of the back-end HTTP API. The game server talks to the back-end
+// in one direction only: the lobby's finish-result delivery
+// (LobbyFinishDelivery -> "finishSession"). Web sessions travel the other way
+// (the back-end pushes them to the gateway, Shared/WebSessionRegistry.h), so
+// there is no session-query HTTP on the server any more.
 // Address and key come from the service configuration (web_session_http_*);
 // the constants in server_ip.h are only fallbacks for a local dev setup.
 // -----------------------------------------------------------------------------
@@ -78,30 +81,6 @@ inline std::string WebSessionRequest( const char * method, const Json::Value & d
   const WebSessionEndpoint & endpoint = GetWebSessionEndpoint();
   return WebSessionHttpPost( endpoint.host, endpoint.port, BuildSessionRequest( method, data ) );
 }
-
-// Идентификация игрока при логине (backend 'connectToWebSession').
-// Ответ: {"error":"", "playerInfo":{...}, "usersData":[...], "mapId":"..."}
-inline std::string GetWebSessionData( const char * token, const char * playerKey )
-{
-  Json::Value data;
-  data["sessionToken"] = Json::Value( std::string( token, 32 ) );
-  data["playerKey"]    = Json::Value( playerKey );
-
-  return WebSessionRequest( "connectToWebSession", data );
-}
-
-// Состав сессии и карта для лобби (backend 'createWebSession'); create=true
-// помечает игру созданной (защита от двойного создания).
-// Ответ: {"error":"", "usersData":[...], "mapId":"..."}
-inline std::string CreateWebSession( const char * token, bool create )
-{
-  Json::Value data;
-  data["sessionToken"] = Json::Value( std::string( token, 32 ) );
-  data["create"]       = Json::Value( create );
-
-  return WebSessionRequest( "createWebSession", data );
-}
-
 
 // -----------------------------------------------------------------------------
 // Платформенный слой HTTP-запросов.

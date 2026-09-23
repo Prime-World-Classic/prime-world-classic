@@ -17,8 +17,6 @@ loadUpdatePeriod( 10.0f ),
 rdpLogEvents( 1 ),
 udpSockBufferSize( 65536 ),
 threadPriority( 1 ),
-webSessionHost( "" ),
-webSessionPort( 0 ),
 webSessionKey( "" )
 {}
 
@@ -34,10 +32,12 @@ REGISTER_VAR( "login_load_update_period",                 s_config.loadUpdatePer
 REGISTER_VAR( "login_rdp_log_events",                     s_config.rdpLogEvents, STORAGE_NONE );
 REGISTER_VAR( "login_thread_priority",                    s_config.threadPriority, STORAGE_NONE );
 
-// Web session registry (backend): host/port/key of the backend HTTP API.
-REGISTER_VAR( "web_session_http_host",                    s_config.webSessionHost, STORAGE_NONE );
-REGISTER_VAR( "web_session_http_port",                    s_config.webSessionPort, STORAGE_NONE );
-REGISTER_VAR( "web_session_http_key",                     s_config.webSessionKey, STORAGE_NONE );
+// Shared key for the web-session player-key formula (the back-end signs its
+// requests with the same key; the sessions themselves arrive via the
+// gateway push, Shared/WebSessionRegistry.h). Separate name: in single-process
+// deployments the lobby also registers 'web_session_http_key' for its finish
+// delivery, and NGlobal keeps only the first registration of a name.
+REGISTER_VAR( "newlogin_web_session_key",                 s_config.webSessionKey, STORAGE_NONE );
 
 
 class ConfigProviderPolicy

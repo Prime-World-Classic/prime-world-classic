@@ -12,6 +12,7 @@
 #include "ForgeRollRequest.h"
 
 #include "HttpGatewayLog.inl"
+#include <Shared/WebSessionRegistry.h>
 #include <stdexcept>
 
 #pragma warning( disable : 4996)
@@ -24,6 +25,11 @@ static bool s_dumpJson = false;
 static bool s_prettyJson = false;
 REGISTER_VAR( "http_gateway_dump_json", s_dumpJson, STORAGE_NONE );
 REGISTER_VAR( "http_gateway_pretty_json", s_prettyJson, STORAGE_NONE );
+
+// Shared key for the back-end web-session push (the same keyApi the back-end
+// signs its requests with). Empty = the push endpoint refuses everything.
+static string s_webSessionPushKey;
+REGISTER_VAR( "web_session_push_key", s_webSessionPushKey, STORAGE_NONE );
 
 
 
@@ -41,7 +47,11 @@ gateKeeper( _gk )
 
 bool GatewayJsonHandler::Ready()
 {
-  return socialLobby->isopen();
+  // The web server no longer waits for the social lobby connection: the
+  // self-contained handlers (web_session_register) must work in the Linux dev
+  // set where the social lobby is absent. The lobby-dependent handlers guard
+  // on isopen() themselves (SocLobbyThreadSafe).
+  return true;
 }
 
 
@@ -171,7 +181,7 @@ bool GatewayJsonHandler::CheckVersion( const Json::Value & request )
   std::string verStr = ver.asString();
 
   int major = 0, minor = 0, patch = 0;
-  if ( sscanf( verStr.c_str(), "%d%.%d%.%d", &major, &minor, &patch ) != 3 ) {
+  if ( sscanf( verStr.c_str(), "%d.%d.%d", &major, &minor, &patch ) != 3 ) {
     SVC_LOG_ERR.Trace( "Wrong version string '%s' in JSON data!", verStr.c_str() );
     return false;
   }
@@ -236,6 +246,9 @@ void GatewayJsonHandler::HandleJsonThrow( std::string & json_reply, const std::s
       HandleGenericRequest( pvxReply, request, "ready",         &GatewayJsonHandler::HandleGuardReadyReq );
 
       HandleServerStatus( pvxReply, request );
+
+      HandleWebSessionRegister( pvxReply, request );
+      HandleWebSessionLoad( pvxReply, request );
 
       HandleForgeRoll( forgeRollReply, request );
     }
@@ -1153,6 +1166,79 @@ void GatewayJsonHandler::OnServerStatus( socialLobby::SServerStatus result )
 
   threading::MutexLock lock(mutex); 
   lastServerStatus = result;
+}
+
+
+
+// The back-end pushes a web session here when the match is confirmed
+// (mm.model.js finish()) or a dev session is created (devSession). It waits
+// for this ACK before handing the launch protocols to the clients, so a
+// refusal here means the match does not start. The session itself lives in
+// the process registry (Shared/WebSessionRegistry.h); no per-player data
+// ever leaves the game server.
+void GatewayJsonHandler::HandleWebSessionRegister( Json::Value & pvxReply, const Json::Value & request )
+{
+  NI_PROFILE_FUNCTION;
+
+  Json::Value reqObj = request.get( "web_session_register", Json::Value() );
+  if ( !reqObj.isObject() )
+    return;
+
+  const std::string apiKey = reqObj.get( "apiKey", "" ).asString();
+  if ( s_webSessionPushKey.empty() || apiKey != s_webSessionPushKey.c_str() )
+  {
+    SVC_LOG_ERR.Trace( "Web session register refused: invalid apiKey" );
+    pvxReply["web_session_register"] = "Invalid apiKey";
+    return;
+  }
+
+  const std::string token = reqObj.get( "sessionToken", "" ).asString();
+  const std::string mapId = reqObj.get( "mapId", "" ).asString();
+  const int         mode  = reqObj.get( "mode", 0 ).asInt();
+  const Json::Value players = reqObj.get( "players", Json::Value() );
+
+  const WebSession::ERegistryResult::Enum result = WebSession::Registry::Instance().Register( token, mapId, mode, players );
+  if ( result == WebSession::ERegistryResult::Ok )
+  {
+    // '' = ack. The back-end treats an empty string as success; Register is
+    // idempotent, so a back-end retry (the first ACK was lost) is acked too.
+    pvxReply["web_session_register"] = "";
+    SVC_LOG_MSG.Trace( "Web session registered. token=%s map=%s players=%u", token.c_str(), mapId.c_str(), (unsigned)players.size() );
+  }
+  else
+  {
+    pvxReply["web_session_register"] = "Invalid session payload";
+    SVC_LOG_ERR.Trace( "Web session register failed. token=%s map=%s", token.c_str(), mapId.c_str() );
+  }
+}
+
+
+// PLAN_game_server_load_balancing.md (v3) — the back-end (api.js, the process
+// that owns Mm) polls each game server before a push and on a 60 s tick:
+// the answer carries the number of in-progress web sessions from the process
+// registry (WebSession::Registry, same UniServerApp process as the lobby).
+// The gateway HTTP answer doubles as the server's liveness signal for the
+// pool (the push itself goes to the same gateway).
+void GatewayJsonHandler::HandleWebSessionLoad( Json::Value & pvxReply, const Json::Value & request )
+{
+  NI_PROFILE_FUNCTION;
+
+  Json::Value reqObj = request.get( "web_session_load", Json::Value() );
+  if ( !reqObj.isObject() )
+    return;
+
+  const std::string apiKey = reqObj.get( "apiKey", "" ).asString();
+  if ( s_webSessionPushKey.empty() || apiKey != s_webSessionPushKey.c_str() )
+  {
+    SVC_LOG_ERR.Trace( "Web session load query refused: invalid apiKey" );
+    pvxReply["web_session_load"] = "Invalid apiKey";
+    return;
+  }
+
+  // '' = ack (the back-end treats an empty string as success); the count is a
+  // sibling key so the method->status convention stays intact.
+  pvxReply["web_session_load"] = "";
+  pvxReply["active"] = (Json::UInt)WebSession::Registry::Instance().ActiveCount();
 }
 
 
