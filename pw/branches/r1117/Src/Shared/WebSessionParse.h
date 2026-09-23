@@ -75,15 +75,18 @@ namespace WebSession
     bool        muteChat;
     float       ratingCurrent, ratingVictory, ratingLoss;
     float       ratingAccCurrent, ratingAccVictory, ratingAccLoss;
-    int         build[BUILD_SLOTS];       // talent ids, 0 = empty slot
+    int         build[BUILD_SLOTS];       // +id = talent (talentsMap[id-1]), -id = class talent (classTalentsMap[id-2]), 0 = empty slot
     int         bar[BAR_SLOTS];           // sign = smart cast, abs(v)-1 = build slot
     int         profileStats[PROFILE_STATS];
     int         leagueIdx;
     std::string flagId;           // UTF-8
   };
 
-  // Lobby-side index of the session players by (wide) nickname.
-  typedef std::map<std::wstring, Player> PlayersByNickname;
+  // Lobby-side index of the session players by the web user id. The transport
+  // client id IS the web user id (newlogin replies uid = web id, and the fake
+  // lobby connections use clientId = web id as well), so the lookup is
+  // encoding-independent (no cp1251/UTF-8 nickname matching).
+  typedef std::map<int, Player> PlayersById;
 
 
 
@@ -188,27 +191,22 @@ namespace WebSession
   // the "is it an active ability" check need the talent DB, which the lobby does
   // not have, so the client resolves them (see PF_GameLogic/HeroSpawn.cpp).
 
-  // A build is authoritative only when it is complete and every id is known: a
-  // single empty slot means the player has no finished build and the hero's
-  // default talent set is used (the same rule the client applied before the data
-  // moved server-side).
-  inline bool IsTalentBuildUsable( const Player & p )
-  {
-    const int namesCount = ( int )( sizeof( talentsMap ) / sizeof( talentsMap[0] ) );
-    for ( int i = 0; i < BUILD_SLOTS; ++i )
-    {
-      if ( p.build[i] <= 0 )
-        return false;
-      if ( p.build[i] - 1 >= namesCount )
-        return false;
-    }
-    return true;
-  }
-
+  // The build is delivered as-is: an empty slot (0) or an unknown talent id
+  // (out of talentsMap/classTalentsMap) leaves a hole in the set; the rest of
+  // the build is still used. The client tolerates holes the same way it
+  // tolerates bot talent sets (PrepareCustomSet/LoadSet simply skip missing
+  // slots), so a player with a partial build gets his real talents instead of
+  // the hero's full default set.
+  //
+  // Entry semantics (as the old client WebLauncher/HeroSpawn parsed them):
+  //   v > 0  -> regular talent: talentsMap[v-1]
+  //   v < 0  -> class talent:   classTalentsMap[-v-2] (ConvertFromClassID)
+  //   v == 0 -> empty slot (hole)
+  // Class talents are a separate name namespace (hero class abilities), so a
+  // build mixing both is common and both must be delivered.
   inline void BuildTalentSet( const Player & p, NCore::PlayerTalentSet & out )
   {
-    if ( !IsTalentBuildUsable( p ) )
-      return;   // stays empty -> hero defaults
+    const int namesCount = ( int )( sizeof( talentsMap ) / sizeof( talentsMap[0] ) );
 
     // bar[a] != 0 -> build slot abs(bar[a])-1 is placed on panel slot a, sign = smart cast.
     int  panelSlot[BUILD_SLOTS];
@@ -240,8 +238,23 @@ namespace WebSession
         const unsigned tIndex  = ( unsigned )( level * TALENT_SLOTS + slot + 1 );
         const unsigned tIndex2 = ( unsigned )( ( TALENT_LEVELS - 1 - level ) * TALENT_SLOTS + slot );
 
+        const int webId = p.build[tIndex2];
+
+        const char * talentName = 0;
+        if ( webId > 0 && webId - 1 < namesCount )
+          talentName = talentsMap[ webId - 1 ];
+        else if ( webId < 0 )
+        {
+          const int cid             = -webId;
+          const int classNamesCount = ( int )( sizeof( classTalentsMap ) / sizeof( classTalentsMap[0] ) );
+          if ( cid - 2 >= 0 && cid - 2 < classNamesCount )
+            talentName = classTalentsMap[ cid - 2 ];
+        }
+        if ( !talentName )
+          continue;   // hole: no talent in this slot
+
         NCore::TalentInfo ti;
-        ti.id           = Crc32Checksum().AddString( talentsMap[p.build[tIndex2] - 1] ).Get();
+        ti.id           = Crc32Checksum().AddString( talentName ).Get();
         ti.refineRate   = 0;                        // resolved from the DB by the client
         ti.actionBarIdx = panelSlot[tIndex2];       // -1 = not placed on the panel
         ti.isInstaCast  = smartCast[tIndex2];       // smart-cast request from the web bar
