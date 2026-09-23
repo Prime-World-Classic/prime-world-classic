@@ -1,7 +1,7 @@
 #pragma once
 
 #include "gen-cpp/ClusterManagement.h"
-#include "system/Thread.h"
+#include "System/Thread.h"
 
 namespace apache { namespace thrift { namespace server {
   class TSimpleServer;

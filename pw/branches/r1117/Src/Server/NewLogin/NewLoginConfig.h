@@ -9,7 +9,6 @@ namespace newLogin
 
 struct SConfig
 {
-  unsigned    firstDevUid;
   float       sessionKeyExpire;
   float       helloWaitTimeout;
   float       processingTimeout;
@@ -19,6 +18,10 @@ struct SConfig
   unsigned    rdpLogEvents;
   int         udpSockBufferSize;
   int         threadPriority;
+
+  // Shared key for the web-session player-key formula
+  // (sha256(str(user_id)+token+key)) — the same key the back-end uses.
+  string      webSessionKey;
 
   SConfig();
 };

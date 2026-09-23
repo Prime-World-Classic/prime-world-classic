@@ -2,8 +2,9 @@
 #include "ClientAuth.h"
 #include "System/SafeTextFormatStl.h"
 #include "System/SafeTextFormatNstl.h"
-#include <Shared/WebRequests.h>
 #include <Shared/WebSessionParse.h>
+#include <Shared/WebSessionRegistry.h>
+#include <Shared/Sha256.h>
 
 NI_DEFINE_REFCOUNT( newLogin::IClientAuth );
 
@@ -13,9 +14,14 @@ namespace newLogin
 
 ClientAuth::ClientAuth( IConfigProvider * _config, timer::Time _now ) :
 config( _config ),
-now( _now ),
-nextDevUserId( 0 )
+now( _now )
 {
+  // Web-session player keys are verified locally against the process registry
+  // (the back-end pushes sessions to the game server; see
+  // Shared/WebSessionRegistry.h). The shared key for the key formula comes
+  // from the same cfg variable the back-end signs its requests with.
+  MessageTrace( "Web mode: player keys are verified locally (shared key %s)",
+    config->Cfg()->webSessionKey.empty() ? "NOT SET" : "set" );
 }
 
 
@@ -115,10 +121,14 @@ void ClientAuth::AuthorizeClient( LoginReply & _reply, const LoginHello & _hello
 
 // Web-session authorization: the client identifies itself by playerKey
 // (sha256(str(user_id)+sessionToken+api_key)) instead of by nickname.
-// Only the identity is resolved here: the session data itself is fetched by the
-// lobby and delivered to every client through NCore::PlayerInfo
-// (Peered::ClientInfo -> gamesvc -> MapStartInfo, see Shared/WebSessionParse.h),
-// so the client keeps no copy of it and makes no HTTP requests.
+//
+// The back-end pushed the session to the process registry when the match was
+// confirmed (HttpGateway "web_session_register"), so the whole check is local:
+// find the session, verify the key against each of its players. No HTTP is
+// involved, and the client makes no web requests either. Only the identity is
+// resolved here: per-player data is delivered by the lobby through
+// NCore::PlayerInfo (Peered::ClientInfo -> gamesvc -> MapStartInfo, see
+// Shared/WebSessionParse.h), so the client keeps no copy of it.
 void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 {
   _reply.code = Login::ELoginResult::ServerError;
@@ -130,82 +140,55 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
     return;
   }
 
-  const char * token = _hello.sessionkey.c_str();
+  const std::string token( _hello.sessionkey.c_str(), 32 );
 
-  std::string cacheKey( token );
-  cacheKey += "|";
-  cacheKey += _hello.playerKey.c_str();
-
+  WebSession::Record session;
+  if ( !WebSession::Registry::Instance().Find( token, session ) )
   {
-    // The cache has a TTL: the synchronizer may invalidate the session at
-    // any moment (finishGame / kicked player), and the legacy path always did
-    // a fresh lookup. A 60-second TTL keeps relogins cheap while staying
-    // consistent with the synchronizer state.
-    const timer::Time kWebSessionCacheTtl = 60.0;
-    WebSessionCache::const_iterator it = webSessionCache.find( cacheKey );
-    if ( it != webSessionCache.end() && ( it->second.cachedAt + kWebSessionCacheTtl >= now ) )
-    {
-      _reply.code = Login::ELoginResult::Success;
-      _reply.uid = it->second.uid;
-      _reply.webSession = it->second.webMatch;
-      MessageTrace( "Web mode authorization ok (cache). uid=%d, mapId=%s, players=%d",
-        _reply.uid, _reply.webSession.mapId.c_str(), _reply.webSession.playersCount );
-      return;
-    }
-  }
-
-  std::string response = GetWebSessionData( token, _hello.playerKey.c_str() );
-
-  Json::Value parsedValue = WebSession::ParseJson( response.c_str() );
-  if ( parsedValue.empty() )
-  {
-    // Empty response / broken JSON: the synchronizer is unreachable.
-    ErrorTrace( "Failed to get web session from the synchronizer. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
-    return;
-  }
-
-  Json::Value errorSet = parsedValue.get( "error", "ERROR" );
-  if ( !errorSet.asString().empty() )
-  {
-    // Session not found or invalid player key.
-    ErrorTrace( "Web session lookup failed: %s (token=%s)", errorSet.asString().c_str(), token );
+    ErrorTrace( "Web session not found in the local registry. token=%s", token.c_str() );
     _reply.code = Login::ELoginResult::AccessDenied;
     return;
   }
 
-  Json::Value playerInfo = parsedValue.get( "playerInfo", Json::Value() );
-  WebSession::Player player;
-  if ( !WebSession::ParsePlayer( playerInfo, player ) )
+  // Verify the presented key against every session player with the same
+  // formula the back-end uses to compute it (objects/sessionStore.js).
+  const char * keyApi = config->Cfg()->webSessionKey.c_str();
+  unsigned char digest[32];
+  char hexKey[65];
+  char idBuf[16];
+  int uid = 0;
+  bool matched = false;
+  for ( size_t i = 0; i < session.players.size(); ++i )
   {
-    ErrorTrace( "Web session playerInfo is missing or invalid. token=%s", token );
-    _reply.code = Login::ELoginResult::ServerError;
+    const int playerId = session.players[i].id;
+    sprintf( idBuf, "%d", playerId );
+
+    WebSha256::Digest digestCalc;
+    digestCalc.AddString( idBuf );
+    digestCalc.AddString( token.c_str(), (unsigned)token.size() );
+    digestCalc.AddString( keyApi );
+    WebSha256::ToHex( digestCalc.Final( digest ), hexKey );
+
+    if ( 0 == strcmp( hexKey, _hello.playerKey.c_str() ) )
+    {
+      uid = playerId;
+      matched = true;
+      break;
+    }
+  }
+  if ( !matched )
+  {
+    ErrorTrace( "Invalid player key. token=%s", token.c_str() );
+    _reply.code = Login::ELoginResult::AccessDenied;
     return;
   }
 
-  const Transport::TClientId uid = player.id;
-
-  // Match metadata for the lobby phase: which map to create / join and how many
-  // slots it needs. Players themselves are not part of the login reply.
+  // Match metadata for the lobby phase: which map to create / join and how
+  // many slots it needs. Players themselves are not part of the login reply.
   WebSessionData webMatch;
   webMatch.valid = true;
-  const Json::Value mapIdValue = parsedValue.get( "mapId", Json::Value() );
-  if ( !mapIdValue.empty() )
-    webMatch.mapId = mapIdValue.asString().c_str();
-  const Json::Value usersData = parsedValue.get( "usersData", Json::Value() );
-  webMatch.playersCount = usersData.isArray() ? (int)usersData.size() : 1;
-
-  {
-    WebSessionCacheEntry entry;
-    entry.uid = uid;
-    entry.webMatch = webMatch;
-    entry.cachedAt = now;
-    webSessionCache[cacheKey] = entry;
-
-    const size_t CacheCap = 256;
-    while ( webSessionCache.size() > CacheCap )
-      webSessionCache.erase( webSessionCache.begin() );
-  }
+  webMatch.mapId = session.mapId.c_str();
+  webMatch.playersCount = (int)session.players.size();
 
   _reply.code = Login::ELoginResult::Success;
   _reply.uid = uid;
@@ -216,147 +199,19 @@ void ClientAuth::DevWebAuth( LoginReply & _reply, const LoginHello & _hello )
 }
 
 
-static nstl::map<nstl::string, int> s_userLoginsToIdMap;
+// Player identification on login: the only way in is the playerKey from the
+// launch URL. The nickname path (the old dev login) is gone together with the
+// synchronizer - no client arrives with a nickname any more.
 void ClientAuth::DevAuth( LoginReply & _reply, const LoginHello & _hello )
 {
-  // New web-session path: playerKey is set by the client (from the launcher
-  // URL); the identity is resolved from the synchronizer here (server side).
-  if ( !_hello.playerKey.empty() )
-  {
-    DevWebAuth( _reply, _hello );
-    return;
-  }
-
-  _reply.code = Login::ELoginResult::ServerError;
-  if ( _hello.login.empty() )
+  if ( _hello.playerKey.empty() )
   {
     _reply.code = Login::ELoginResult::Refused;
-    WarningTrace( "Dev mode authorization refused, login is empty" );
+    WarningTrace( "Authorization refused: no player key (login is ignored)" );
     return;
   }
 
-  nstl::map<nstl::string, int>::iterator it = s_userLoginsToIdMap.find(_hello.login);
-  if (it == s_userLoginsToIdMap.end()) {
-    if (_hello.sessionkey.length() < 32) {
-      _reply.code = Login::ELoginResult::AccessDenied;
-      WarningTrace( "Dev mode authorization refused. Not valid session key. login=%s", _hello.login );
-      return;
-    }
-    const char* token = _hello.sessionkey.c_str();
-    std::string response = GetSessionData(token, false);
-
-    Json::Value parsedValue = WebSession::ParseJson(response.c_str());
-
-    if (parsedValue.empty()) {
-      ErrorTrace( "Failed to get info from the synchronizer %s", token );
-      return;
-    }
-    Json::Value errorSet = parsedValue.get("error", "ERROR");
-    if (!errorSet.asString().empty()) {
-      ErrorTrace( "Error occurred during session creation: %s (%s)", errorSet.asString().c_str(), token );
-      return;
-    }
-    Json::Value usersData = parsedValue.get("usersData", Json::Value());
-    if (usersData.empty() || !usersData.isArray()) {
-      ErrorTrace( "Error occurred during session creation: Empty usersData %s", token );
-      return;
-    }
-
-    // Diagnostics: the per-service "newlogin" log channel is not routed on
-    // Linux, so use the untagged trace macros that reach the main log.
-    MessageTrace( "DevAuth: login_len=%d login0=0x%02X sessionkey_len=%zu response_len=%zu users=%u",
-      (int)_hello.login.size(), (unsigned char)_hello.login[0], _hello.sessionkey.size(), response.size(), (unsigned)usersData.size() );
-
-    int playersCount = 0;
-    Json::Value curPlayer = usersData[playersCount];
-    while (!curPlayer.empty()) {
-      if (!WebSession::CheckPlayerInfo(curPlayer)) {
-        ErrorTrace( "DevAuth: CheckPlayerInfo failed for usersData[%d]",
-          playersCount );
-        return;
-      }
-
-      nstl::string curNickname = WebSession::Utf8ToCp1251(curPlayer.get("nickname", Json::Value()).asString()).c_str();
-      int userWebId = curPlayer.get("id", Json::Value()).asInt();
-
-      MessageTrace( "DevAuth: usersData[%d] nickname=%s expected=%s id=%d",
-        playersCount, curNickname.c_str(), (_hello.login.c_str() + 1), userWebId );
-
-      if (curNickname == _hello.login.c_str() + 1) {
-        s_userLoginsToIdMap[_hello.login] = userWebId;
-
-        _reply.code = Login::ELoginResult::Success;
-        _reply.uid = userWebId;
-        return;
-      }
-
-      playersCount++;
-      curPlayer = usersData[playersCount];
-    }
-
-    it = s_userLoginsToIdMap.find(_hello.login);
-  }
-  if (it == s_userLoginsToIdMap.end()) {
-    _reply.code = Login::ELoginResult::AccessDenied;
-    ErrorTrace( "Dev mode authorization failed! login=%s", _hello.login );
-    return;
-  }
-
-/*
-  unsigned firstDevUid = config->Cfg()->firstDevUid;
-
-  if ( !firstDevUid )
-  {
-    _reply.code = Login::ELoginResult::AccessDenied;
-    WarningTrace( "Dev mode authorization refused. login=%s", _hello.login );
-    return;
-  }
-*/
-
-  _reply.code = Login::ELoginResult::Success;
-  _reply.uid = it->second;
-/*
-  if ( !nextDevUserId )
-    nextDevUserId = firstDevUid;
-
-  if ( !RestoreDevAuth( _reply, _hello ) )
-    _reply.uid = nextDevUserId++;
-*/
-  MessageTrace( "Dev mode authorization ok. login=%s, uid=%d", _hello.login, _reply.uid );
-}
-
-
-
-bool ClientAuth::RestoreDevAuth( LoginReply & _reply, const LoginHello & _hello )
-{
-  if ( _hello.login[0] != '_' )
-    return false;
-
-  std::string login( _hello.login.c_str() );
-  DevLoginHistory::iterator it = devLoginHistory.find( login );
-  if ( it != devLoginHistory.end() )
-  {
-    _reply.uid = it->second;
-    DebugTrace( "Restored dev mode uid. login=%s, uid=%d", _hello.login, _reply.uid );
-  }
-  else
-  {
-    CleanupDevLoginHistory();
-
-    _reply.uid = nextDevUserId++;
-    devLoginHistory[login] = _reply.uid;
-  }
-  return true;
-}
-
-
-
-void ClientAuth::CleanupDevLoginHistory()
-{
-  const size_t HistoryCap = 100;
-
-  while ( devLoginHistory.size() >= HistoryCap )
-    devLoginHistory.erase( devLoginHistory.begin() );
+  DevWebAuth( _reply, _hello );
 }
 
 } //namespace newLogin

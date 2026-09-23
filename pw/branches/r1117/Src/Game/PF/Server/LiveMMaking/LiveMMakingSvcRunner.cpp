@@ -4,7 +4,7 @@
 #include "LILiveMMaking.auto.h"
 #include "LiveMMakingConfigVars.h"
 #include "Server/LobbySocial/RISocialLobby.auto.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "RPC/GateKeeper.h"
 #include "Server/RPC/LocalEntityFactory.h"
 #include "Monitoring/PerfCounterProvider/PerfCounterProvider.h"

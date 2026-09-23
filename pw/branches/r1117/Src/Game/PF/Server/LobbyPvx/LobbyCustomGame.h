@@ -91,7 +91,9 @@ public:
   void SetSessionToken(const char* _sessionToken) { sessionToken = _sessionToken; }
   const char* GetSessionToken() { return sessionToken.c_str(); }
 
-  WebSession::PlayersByNickname   playersUserData;
+  // Web-session players by web user id (transport clientId), filled by
+  // ServerNode::TryCreateWebSession from the process registry.
+  WebSession::PlayersById         playersUserData;
 
 private:
   const TGameId                   id;

@@ -3,7 +3,7 @@
 #include "MonitoringSvc/MonitoringIface.h"
 #include <Coordinator/ServiceAppearanceNotifierIface.h>
 #include <Coordinator/RServiceAppearanceNotifierIface.auto.h>
-#include <rpc/IfaceRequester.h>
+#include <RPC/IfaceRequester.h>
 #include "MonitoringSvc/CumulativePerfCounter.h"
 
 namespace Monitoring

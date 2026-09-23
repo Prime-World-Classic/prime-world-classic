@@ -8,7 +8,7 @@
 #include "System/InlineProfiler.h"
 #include "HttpGatewayLog.inl"
 
-
+// Interlocked* on Linux: provided by System/systemStdAfx.h (via stdafx.h)
 namespace HttpGateway
 {
 

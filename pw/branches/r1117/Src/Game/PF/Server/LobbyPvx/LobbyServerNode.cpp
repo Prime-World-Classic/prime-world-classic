@@ -45,7 +45,7 @@
 #include "System/InlineProfiler.h"
 #include "LobbyLog.h"
 #include <Shared/WebRequests.h>
-#include <PF_GameLogic/WebLauncher.h>
+#include <Shared/WebSessionRegistry.h>
 
 
 
@@ -134,6 +134,12 @@ nextStatusDump( 0 ), nextFatStatusDump( 0 ),
 clientsCounter("lobby_clients", "")
 {
   config = CreateConfigFromStatics();
+
+  // Web session registry (the backend) and the game-result journal.
+  SetWebSessionEndpoint( config->Cfg()->webSessionHost.c_str(),
+                         config->Cfg()->webSessionPort,
+                         config->Cfg()->webSessionKey.c_str() );
+  finishDelivery.Init( config->Cfg()->finishJournalPath.c_str() );
 
   if ( !s_externalSocialLobbyAddr.empty() )
   {
@@ -236,29 +242,6 @@ RIServerInstance * ServerNode::AddClient( RILobbyUser * user, int clientRevision
 
 
 
-// usersData[] -> session players index, keyed by the wide nickname the lobby uses
-// for the connection (see TryCreateWebSession). Parsing, validation and the web
-// index semantics live in Shared/WebSessionParse.h, shared with newlogin.
-static WebSession::PlayersByNickname GetUsersData(Json::Value usersData) {
-  WebSession::PlayersByNickname resultMap;
-
-  int playersCount = 0;
-  Json::Value curPlayer = usersData[playersCount];
-  while (!curPlayer.empty()) {
-    WebSession::Player player;
-    if (!WebSession::ParsePlayer(curPlayer, player)) {
-      LOBBY_LOG_ERR("Invalid player record in usersData[%d]", playersCount);
-      return WebSession::PlayersByNickname();
-    }
-
-    resultMap[WebSession::Utf8ToWide(player.nickname)] = player;
-
-    playersCount++;
-    curPlayer = usersData[playersCount];
-  }
-  return resultMap;
-}
-
 static const char* heroes [] = {
   "prince",
   "snowqueen",
@@ -330,40 +313,25 @@ static const char* heroes [] = {
 nstl::map<nstl::string, StrongMT<CustomGame>> g_games;
 lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
-  std::string response = GetSessionData(token, true);
-
-  Json::Value parsedValue = WebSession::ParseJson(response.c_str());
-
-  if (parsedValue.empty()) {
-    LOBBY_LOG_ERR( "Failed to get info from the synchronizer %s", token );
-    return EOperationResult::RestrictedAccess;
-  }
-  Json::Value errorSet = parsedValue.get("error", "ERROR");
-  if (!errorSet.asString().empty()) {
-    LOBBY_LOG_ERR( "Error occurred during session creation: %s (%s)", errorSet.asString().c_str(), token );
+  // The back-end pushes the session to the process registry when the match is
+  // confirmed (gateway "web_session_register"), so there is no HTTP on this
+  // path. No record here means either the push never happened (the back-end
+  // waits for the ACK before MMEnd, so a client should not arrive without it)
+  // or the TTL swept it.
+  WebSession::Record session;
+  if (!WebSession::Registry::Instance().Find(token, session)) {
+    LOBBY_LOG_ERR( "Web session not found in the local registry: %s", token );
     return EOperationResult::RestrictedAccess;
   }
 
-  Json::Value mapId = parsedValue.get("mapId", Json::Value());
-  if (mapId.empty() || !mapId.isString()) {
-    LOBBY_LOG_ERR( "Error occurred during session creation: Invalid mapId %s", token );
-    return EOperationResult::RestrictedAccess;
-  }
+  WebSession::PlayersById usersDataMap;
+  for (size_t i = 0; i < session.players.size(); ++i)
+    usersDataMap[session.players[i].id] = session.players[i];
 
-  Json::Value usersData = parsedValue.get("usersData", Json::Value());
-  if (usersData.empty() || !usersData.isArray()) {
-    LOBBY_LOG_ERR( "Error occurred during session creation: Empty usersData %s", token );
-    return EOperationResult::RestrictedAccess;
-  }
-
-  WebSession::PlayersByNickname usersDataMap = GetUsersData(usersData);
-  if (usersDataMap.empty()) {
-    LOBBY_LOG_ERR( "Error occurred during session creation: Invalid usersData %s", token );
-    return EOperationResult::RestrictedAccess;
-  }
+  WebSession::Registry::Instance().MarkStarted( token );
 
   int maxPlayersCount[2] = { 0, 0 };
-  for (WebSession::PlayersByNickname::const_iterator itTeam = usersDataMap.begin(); itTeam != usersDataMap.end(); ++itTeam) {
+  for (WebSession::PlayersById::const_iterator itTeam = usersDataMap.begin(); itTeam != usersDataMap.end(); ++itTeam) {
     const int teamIdx = itTeam->second.team - 1;
     if (teamIdx >= 0 && teamIdx < 2)
       ++maxPlayersCount[teamIdx];
@@ -372,9 +340,9 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
   SGameParameters params;
   params.gameType = EGameType::Custom;
   params.name = L"";
-  params.mapId = mapId.asString().c_str();
+  params.mapId = session.mapId.c_str();
   params.slotsCount = usersDataMap.size();
-  params.maxPlayersPerTeam = max(maxPlayersCount[0], maxPlayersCount[1]); // usersDataMap.size() / 2;
+  params.maxPlayersPerTeam = max(maxPlayersCount[0], maxPlayersCount[1]);
   params.randomSeed = GetGameRandom();
   params.manoeuvresFaction = lobby::ETeam::None;
 
@@ -384,13 +352,14 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 
   game->playersUserData = usersDataMap;
 
-  for (WebSession::PlayersByNickname::iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
-    std::wstring nickname = it->first;
+  for (WebSession::PlayersById::const_iterator it = usersDataMap.begin(); it != usersDataMap.end(); ++it) {
+    const WebSession::Player& userData = it->second;
 
-    std::wstring currentLogin = std::wstring(L" ") + nickname;
+    // The fake login keeps the session nickname (logs only); the real
+    // connection is bound to the slot by clientId (== web user id).
+    std::wstring currentLogin = std::wstring(L" ") + WebSession::Utf8ToWide(userData.nickname);
     currentLogin[0] = 0x09;
 
-    const WebSession::Player userData = it->second;
     StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.id, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
@@ -480,20 +449,19 @@ Network::NetAddress ServerNode::GetSvcAddress( const Transport::TServiceId & _se
 }
 
 
-static void SendFinishGameRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _finishInfo, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics)
+// Game result for the backend. The synchronizer is gone, so the lobby delivers
+// it itself (through FinishDelivery: journaled, retried until the backend acks).
+// One event carries both halves the backend needs: the rating (win/afk) and the
+// per-player statistics with killer/victim pairs, which the client ships over
+// the regular OnGameFinish RPC (SessionClientResults::playerKills).
+static Json::Value BuildFinishEvent(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info, const nstl::vector<Peered::SClientStatistics> & _clientsStatistics)
 {
-  if (!sessionToken) { 
-    return; 
-  }
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
-
   Json::Value data;
   data["sessionToken"] = Json::Value (sessionToken);
-  data["apiKey"] = Json::Value (API_KEY);
-  data["win"] = Json::Value ((int)_finishInfo.sideWon + 1);
-  Json::Value afk = Json::arrayValue;
+  data["win"] = Json::Value ((int)_info.sideWon + 1);
 
-  if (_finishInfo.sideWon != -1) {
+  Json::Value afk = Json::arrayValue;
+  if (_info.sideWon != -1) {
     for (int pId = 0; pId < _clientsStatistics.size(); ++pId) {
       const Peered::SClientStatistics& clientStat = _clientsStatistics[pId];
       if (clientStat.clientState != Peered::EGameFinishClientState::FinishedGame) {
@@ -502,35 +470,6 @@ static void SendFinishGameRequest(const char* sessionToken, const StatisticServi
     }
   }
   data["afk"] = afk;
-
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("notifyGameFinish");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  request.SendPostRequest(res);
-}
-
-
-// Per-player statistics + killer/victim pairs for the backend. Sent by the
-// lobby (not by the client) so that the game client makes no HTTP calls to
-// the synchronizer: the client ships the data through the standard
-// OnGameFinish RPC (SessionClientResults::playerKills), the lobby forwards
-// it. The synchronizer dedupes via the 'playerInfoSend' flag and forwards
-// the payload to the backend 'sendSessionPlayersData'.
-static void SendFinishGameLegacyRequest(const char* sessionToken, const StatisticService::RPC::SessionClientResults & _info)
-{
-  if ( !sessionToken )
-    return;
-
-  WebPostRequest request(SERVER_IP_W, L"/api", SYNCHRONIZER_PORT, 0);
-
-  Json::Value data;
-  data["sessionToken"] = Json::Value (sessionToken);
-  data["apiKey"] = Json::Value (API_KEY);
-  data["sideWon"] = Json::Value ((int)_info.sideWon);
 
   Json::Value playersInfo(Json::arrayValue);
   for (int pId = 0; pId < _info.players.size(); ++pId) {
@@ -560,14 +499,7 @@ static void SendFinishGameLegacyRequest(const char* sessionToken, const Statisti
   }
   data["playerKills"] = playersKillsJson;
 
-  Json::Value result;
-  result["data"] = data;
-  result["method"] = Json::Value("notifyGameFinishLegacy");
-
-  Json::FastWriter writer;
-  std::string res = writer.write(result);
-
-  request.SendPostRequest(res);
+  return data;
 }
 
 
@@ -581,8 +513,11 @@ void ServerNode::OnGameFinish( Peered::TSessionId _sessionId, EGameResult::Enum 
 
   GameSession * game = FindGame( _sessionId );
   if ( game ) {
-    SendFinishGameRequest(game->GetSessionToken(), _info, _clientsStatistics);
-    SendFinishGameLegacyRequest(game->GetSessionToken(), _info);
+    if ( const char * sessionToken = game->GetSessionToken() )
+    {
+      finishDelivery.Submit( BuildFinishEvent( sessionToken, _info, _clientsStatistics ) );
+      WebSession::Registry::Instance().MarkFinished( sessionToken );
+    }
     game->OnGameFinish( _gameResult, _info, _clientsStatistics );
 
     StatisticService::RPC::SessionResultEvent info;
@@ -864,6 +799,8 @@ void ServerNode::Poll( timer::Time _now )
 
   if ( loginSvcAgent )
     loginSvcAgent->Poll();
+
+  finishDelivery.Poll( (float)now );
 
   PollGames();
   PollCustomGames();

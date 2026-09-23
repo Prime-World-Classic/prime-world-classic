@@ -2,7 +2,7 @@
 #define ROLL_SERVICE_INSTANCE_H_INCLUDED
 
 #include "RollInstance.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "System/JobThread.h"
 #include "RollConfig.h"
 #include <list>
