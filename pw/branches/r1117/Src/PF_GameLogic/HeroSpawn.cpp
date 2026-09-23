@@ -509,7 +509,11 @@ namespace NWorld
       }
 
       NCore::PlayerTalentSet & panelTalents = heroSpawnDesc.playerInfo.talents;
-      heroSpawnDesc.usePlayerInfoTalentSet = false;
+      // Web-сет талантов применяется безусловно: сервер собирает его из профиля
+      // игрока (WebSession::BuildTalentSet) и допускает «дырки» (пустые и
+      // неизвестные таланты) — PrepareCustomSet/LoadSet пропускает отсутствующие
+      // слоты, как у ботов.
+      heroSpawnDesc.usePlayerInfoTalentSet = !panelTalents.empty();
 
       if (!panelTalents.empty())
       {
@@ -527,7 +531,15 @@ namespace NWorld
         }
 
         int actionBarIdx = 0;
-        int numUltimates = 0;
+        // TEMP talent-delivery probe (removed after the VPS check).
+        {
+          char talentIds[512] = "";
+          int shown = 0;
+          for (NCore::PlayerTalentSet::const_iterator t = panelTalents.begin(); t != panelTalents.end() && shown < 8; ++t, ++shown)
+            sprintf(talentIds + strlen(talentIds), "%s%u", shown ? "," : "", t->second.id);
+          DebugTrace("TALENTS-APPLY: player=%d count=%d useUserSlots=%d first=[%s]", heroSpawnDesc.playerId, (int)panelTalents.size(), (int)useUserSlots, talentIds);
+        }
+
 
         for (NCore::PlayerTalentSet::iterator t = panelTalents.begin(); t != panelTalents.end(); ++t)
         {
@@ -536,9 +548,6 @@ namespace NWorld
             continue;   // unknown to the local DB: keep the talent as delivered
 
           const NDb::Ptr<NDb::Talent> & talentPtr = talentIt->second;
-
-          if (talentPtr->naftaCost == 0)  // a default class talent confirms the set belongs to this hero
-            heroSpawnDesc.usePlayerInfoTalentSet = true;
 
           const bool isTalentActive =
               talentPtr->type == NDb::ABILITYTYPE_ACTIVE ||
@@ -555,15 +564,7 @@ namespace NWorld
             t->second.actionBarIdx = -1;
 
           t->second.refineRate = TalentRarityToRefineRemap[talentPtr->rarity];
-
-          if (talentPtr->isUltimateTalent && talentPtr->rarity == NDb::TALENTRARITY_CLASS)
-            numUltimates++;
         }
-
-        // An impossible combination means the received set does not describe this
-        // hero: use the hero's own talent set instead.
-        if (numUltimates > 1)
-          heroSpawnDesc.usePlayerInfoTalentSet = false;
       }
     }
 

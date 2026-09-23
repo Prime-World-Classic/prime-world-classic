@@ -343,6 +343,15 @@ public:
         // Whether the delivered talent set can actually be used is decided by
         // HeroSpawn, which checks it against the local talent DB.
         slot.usePlayerInfoTalentSet = !clientInfo->info.talents.empty();
+        // TEMP talent-delivery probe (removed after the VPS check): proves the
+        // server-delivered talent set survived the game-channel deserialization.
+        {
+          char talentIds[512] = "";
+          int shown = 0;
+          for ( NCore::PlayerTalentSet::const_iterator t = clientInfo->info.talents.begin(); t != clientInfo->info.talents.end() && shown < 8; ++t, ++shown )
+            sprintf( talentIds + strlen( talentIds ), "%s%u", shown ? "," : "", t->second.id );
+          DebugTrace( "TALENTS-DELIVERY: uid=%d count=%d hero=%u first=[%s]", slot.userID, (int)clientInfo->info.talents.size(), clientInfo->info.heroId, talentIds );
+        }
       }
       else if ( assertIfNoInfo )
         NI_ALWAYS_ASSERT( NStr::StrFmt( "No details for player %d", slot.userID ) );
