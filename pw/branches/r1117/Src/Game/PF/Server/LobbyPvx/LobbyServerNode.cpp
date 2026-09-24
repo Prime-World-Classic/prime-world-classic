@@ -242,74 +242,6 @@ RIServerInstance * ServerNode::AddClient( RILobbyUser * user, int clientRevision
 
 
 
-static const char* heroes [] = {
-  "prince",
-  "snowqueen",
-  "faceless",
-  "warlord",
-  "thundergod",
-  "invisible",
-  "mowgly",
-  "inventor",
-  "artist",
-  "highlander",
-  "marine",
-  "firefox",
-  "healer",
-  "night",
-  "rockman",
-  "assassin",
-  "unicorn",
-  "hunter",
-  "ghostlord",
-  "ratcatcher",
-  "archeress",
-  "werewolf",
-  "frogenglut",
-  "witchdoctor",
-  "manawyrm",
-  "bard",
-  "naga",
-  "mage",
-  "fairy",
-  "witcher",
-  "alchemist",
-  "demonolog",
-  "vampire",
-  "witch",
-  "crusader_A",
-  "crusader_B",
-  "monster",
-  "angel",
-  "freeze",
-  "gunslinger",
-  "reaper",
-  "fluffy",
-  "rifleman",
-  "magicgirl",
-  "pinkgirl",
-  "ironknight",
-  "fallenangel",
-  "bladedancer",
-  "ent",
-  "plaguedoctor",
-  "katana",
-  "plane",
-  "zealot",
-  "wraithking",
-  "dryad",
-  "stalker",
-  "gunner",
-  "chronicle",
-  "brewer",
-  "shadow",
-  "wendigo",
-  "trickster",
-  "banshee",
-  "shaman",
-  "bomber"
-};
-
 nstl::map<nstl::string, StrongMT<CustomGame>> g_games;
 lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
 {
@@ -363,12 +295,13 @@ lobby::EOperationResult::Enum ServerNode::TryCreateWebSession(const char* token)
     StrongMT<lobby::ServerConnection> fakeConnection = NewConnection(userData.id, currentLogin.c_str());
     EOperationResult::Enum result = game->SetupCustom( fakeConnection.Get() );
 
-    int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.hero - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
     lobby::ETeam::Enum teamId = lobby::ETeam::Enum(userData.team - 1);   // web team is 1-based
 
-    const char* heroPersistentId = heroes[heroId];
-
-    game->ChangeCustomGameSettings(fakeConnection.Get(), teamId, teamId, heroPersistentId);
+    // The hero is the back-end-delivered persistentId: the web-id ->
+    // persistentId conversion lives in the back-end DB (pw-api
+    // objects/persistentIds.js), so there is no heroes[] table (or clamp)
+    // on the server any more.
+    game->ChangeCustomGameSettings(fakeConnection.Get(), teamId, teamId, userData.hero.c_str());
     game->SetDeveloperParty(fakeConnection.Get(), userData.party);
     if ( result != EOperationResult::Ok ) {
       LOBBY_LOG_ERR( "Error occurred during session creation: Failed to add NewConnection %s", token );
