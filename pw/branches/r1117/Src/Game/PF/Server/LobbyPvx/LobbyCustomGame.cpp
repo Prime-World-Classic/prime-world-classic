@@ -433,74 +433,6 @@ void CustomGame::DropReadinessAndBroadcast()
   }
 }
 
-static const char* heroes [] = {
-  "prince",
-  "snowqueen",
-  "faceless",
-  "warlord",
-  "thundergod",
-  "invisible",
-  "mowgly",
-  "inventor",
-  "artist",
-  "highlander",
-  "marine",
-  "firefox",
-  "healer",
-  "night",
-  "rockman",
-  "assassin",
-  "unicorn",
-  "hunter",
-  "ghostlord",
-  "ratcatcher",
-  "archeress",
-  "werewolf",
-  "frogenglut",
-  "witchdoctor",
-  "manawyrm",
-  "bard",
-  "naga",
-  "mage",
-  "fairy",
-  "witcher",
-  "alchemist",
-  "demonolog",
-  "vampire",
-  "witch",
-  "crusader_A",
-  "crusader_B",
-  "monster",
-  "angel",
-  "freeze",
-  "gunslinger",
-  "reaper",
-  "fluffy",
-  "rifleman",
-  "magicgirl",
-  "pinkgirl",
-  "ironknight",
-  "fallenangel",
-  "bladedancer",
-  "ent",
-  "plaguedoctor",
-  "katana",
-  "plane",
-  "zealot",
-  "wraithking",
-  "dryad",
-  "stalker",
-  "gunner",
-  "chronicle",
-  "brewer",
-  "shadow",
-  "wendigo",
-  "trickster",
-  "banshee",
-  "shaman",
-  "bomber"
-};
-
 // Fills the game-side player record from the web-session record: hero, skin,
 // talent set, ratings (+ win/loss predictions and the "accurate" rating),
 // recommended stats, flag and league. Everything a client needs about a player
@@ -508,10 +440,11 @@ static const char* heroes [] = {
 // MapStartInfo, so the client holds no second copy of the session data.
 static void FillPlayerInfo(NCore::PlayerInfo& playerInfo, const WebSession::Player& userData)
 {
-  // The web hero index is 1-based; the same clamp as in TryCreateWebSession keeps
-  // the hero, its skin and the lineup consistent.
-  int heroId = std::min<size_t>(std::max<size_t>((size_t)(userData.hero - 1), (size_t)0), sizeof(heroes)/sizeof(heroes[0]) - 1);
-  WebSession::ApplyToPlayerInfo(userData, heroes[heroId], playerInfo);
+  // The hero/skin/talents arrive as the back-end-delivered persistentIds
+  // (the web-id -> persistentId conversion lives in the back-end DB, pw-api
+  // objects/persistentIds.js), consistent with the lineup assigned in
+  // TryCreateWebSession — nothing to clamp on the server.
+  WebSession::ApplyToPlayerInfo(userData, playerInfo);
 }
 
 

@@ -4,21 +4,31 @@
 // to every project in this solution.
 
 // ============================================================================
-// Web-session data layer for the SERVER (synchronizer 'usersData' JSON).
-// Replaces PF_GameLogic/WebLauncher.h.
+// Web-session data layer for the SERVER (the 'players' JSON the back-end
+// pushes via gateway "web_session_register").
 //
-// Only the server talks to the synchronizer (Shared/WebRequests.h). The parsed
-// record (WebSession::Player) is a server-side state; it is converted into
-// NCore::PlayerInfo (Shared/WebSessionParse.h::ApplyToPlayerInfo) and delivered
-// to every client through Peered::ClientInfo -> gamesvc -> MapStartInfo. The
-// client keeps no second copy of this data and no web indexes.
+// The parsed record (WebSession::Player) is a server-side state; it is
+// converted into NCore::PlayerInfo (Shared/WebSessionParse.h::
+// ApplyToPlayerInfo) and delivered to every client through
+// Peered::ClientInfo -> gamesvc -> MapStartInfo. The client keeps no second
+// copy of this data.
 //
-// Synchronizer record (verified against sync logs / client_sync.py):
-//   {"id":131, "nickname":"...", "hero":65, "team":1, "party":0, "skin":2,
-//    "muteChat":false,
+// The record carries game persistentIds (PvX Data), NOT web indexes: the
+// web-id -> persistentId conversion happens on the back-end (MariaDB tables
+// persistent_hero / persistent_skin / persistent_talents, see pw-api
+// objects/persistentIds.js), so a new hero/skin/talent is a DB row, not a
+// server rebuild. Record format (back-end, ver 2.15.5+):
+//   {"id":131, "nickname":"...", "hero":"bomber", "team":1, "party":0,
+//    "skin":"Bomber_S1", "muteChat":false,
 //    "rating":    {"current":2001, "victory":2022, "loss":1995},
 //    "ratingAcc": {"current":2001, "victory":2022, "loss":1995},
-//    "build":[36], "bar":[24], "profileStats":[9], "leagueIdx":7, "flagId":"guide"}
+//    "build":["G123", null, ... 36], "bar":[24], "profileStats":[9],
+//    "leagueIdx":7, "flagId":"guide"}
+//
+//   hero  — hero persistentId (string, required);
+//   skin  — skin persistentId (string, "" = default skin);
+//   build — 36 entries: talent/class-talent persistentId (string) or null
+//           (empty slot); bar/profileStats/rating — as before.
 // ============================================================================
 
 #include <string>
@@ -37,8 +47,6 @@
 #include "Core/GameTypes.h"
 
 #include "Shared/WebJson.h"            // ParseJson(), Utf8To*/WideToCp1251()
-#include "Shared/WebTalentNames.h"   // talentsMap[]  : web talent id -> persistent name
-#include "Shared/WebSkinNames.h"     // WebSession::ResolveSkin()
 #include "System/Crc32Checksum.h"    // Crc32Checksum
 
 
@@ -56,26 +64,25 @@ namespace WebSession
   struct Player
   {
     Player()
-      : id( 0 ), hero( 0 ), team( 0 ), party( 0 ), skin( 0 ), muteChat( false )
+      : id( 0 ), team( 0 ), party( 0 ), muteChat( false )
       , ratingCurrent( 1100 ), ratingVictory( 1100 ), ratingLoss( 1100 )
       , ratingAccCurrent( 1100 ), ratingAccVictory( 1100 ), ratingAccLoss( 1100 )
       , leagueIdx( 0 )
     {
-      memset( build, 0, sizeof( build ) );
       memset( bar, 0, sizeof( bar ) );
       memset( profileStats, 0, sizeof( profileStats ) );
     }
 
     int         id;
-    std::string nickname;         // UTF-8, as stored by the synchronizer
-    int         hero;             // 1-based index into the lobby heroes[] table
+    std::string nickname;         // UTF-8, as delivered by the back-end
+    std::string hero;             // hero persistentId (PvX Data)
     int         team;             // 1..2
     int         party;
-    int         skin;             // 1-based index into WebSession::ResolveSkin()
+    std::string skin;             // skin persistentId ("" = default skin)
     bool        muteChat;
     float       ratingCurrent, ratingVictory, ratingLoss;
     float       ratingAccCurrent, ratingAccVictory, ratingAccLoss;
-    int         build[BUILD_SLOTS];       // +id = talent (talentsMap[id-1]), -id = class talent (classTalentsMap[id-2]), 0 = empty slot
+    std::string build[BUILD_SLOTS];       // talent/class-talent persistentId (PvX Data) or "" = empty slot
     int         bar[BAR_SLOTS];           // sign = smart cast, abs(v)-1 = build slot
     int         profileStats[PROFILE_STATS];
     int         leagueIdx;
@@ -112,7 +119,7 @@ namespace WebSession
     if ( userId.empty() || !userId.isInt() )
       return false;
     Json::Value hero = playerInfo.get( "hero", Json::Value() );
-    if ( hero.empty() || !hero.isInt() )
+    if ( hero.empty() || !hero.isString() || hero.asString().empty() )
       return false;
     Json::Value team = playerInfo.get( "team", Json::Value() );
     if ( team.empty() || !team.isInt() )
@@ -120,8 +127,10 @@ namespace WebSession
     Json::Value party = playerInfo.get( "party", Json::Value() );
     if ( party.empty() || !party.isInt() )
       return false;
+    // Skin is a string too: it may legitimately be empty (default skin), so
+    // only the type is checked.
     Json::Value skin = playerInfo.get( "skin", Json::Value() );
-    if ( skin.empty() || !skin.isInt() )
+    if ( !skin.isString() )
       return false;
 
     const Json::Value rating = playerInfo.get( "rating", Json::Value() );
@@ -149,7 +158,19 @@ namespace WebSession
     }
   }
 
-  // usersData[] entry -> Player. Returns false for a record that fails CheckPlayerInfo.
+  // build[] entry: string (talent/class-talent persistentId) or null (empty
+  // slot -> ""). Anything else is normalized to an empty slot as well: the
+  // back-end (objects/persistentIds.js) is the only producer of this format.
+  inline void FillStringArray( const Json::Value & arr, std::string * dst, int count )
+  {
+    for ( int i = 0; i < count; ++i )
+    {
+      const Json::Value v = arr[( unsigned )i];
+      dst[i] = ( !v.empty() && v.isString() ) ? v.asString() : std::string();
+    }
+  }
+
+  // players[] entry -> Player. Returns false for a record that fails CheckPlayerInfo.
   inline bool ParsePlayer( const Json::Value & v, Player & out )
   {
     if ( !CheckPlayerInfo( v ) )
@@ -158,10 +179,10 @@ namespace WebSession
     out = Player();
     out.id = v.get( "id", Json::Value() ).asInt();
     out.nickname = v.get( "nickname", Json::Value() ).asString();
-    out.hero = v.get( "hero", Json::Value() ).asInt();
+    out.hero = v.get( "hero", Json::Value() ).asString();
     out.team = v.get( "team", Json::Value() ).asInt();
     out.party = v.get( "party", Json::Value() ).asInt();
-    out.skin = v.get( "skin", Json::Value() ).asInt();
+    out.skin = v.get( "skin", Json::Value() ).asString();
     out.muteChat = v.get( "muteChat", Json::Value( false ) ).asBool();
 
     const Json::Value rating = v.get( "rating", Json::Value() );
@@ -174,7 +195,7 @@ namespace WebSession
     out.ratingAccVictory = GetRatingValue( ratingAcc, "victory", "victoryRatingAcc" );
     out.ratingAccLoss    = GetRatingValue( ratingAcc, "loss", "lossRatingAcc" );
 
-    FillIntArray( v.get( "build", Json::Value() ), out.build, BUILD_SLOTS );
+    FillStringArray( v.get( "build", Json::Value() ), out.build, BUILD_SLOTS );
     FillIntArray( v.get( "bar", Json::Value() ), out.bar, BAR_SLOTS );
     FillIntArray( v.get( "profileStats", Json::Value() ), out.profileStats, PROFILE_STATS );
 
@@ -185,29 +206,26 @@ namespace WebSession
   }
 
 
-  // -------------------------------------------------- web indexes -> game data
-  // usersData[].build + usersData[].bar -> NCore::PlayerTalentSet.
-  // talentsMap[] resolves the web talent id to a persistent name; refineRate and
-  // the "is it an active ability" check need the talent DB, which the lobby does
-  // not have, so the client resolves them (see PF_GameLogic/HeroSpawn.cpp).
+  // -------------------------------------------------- build -> game data
+  // players[].build + players[].bar -> NCore::PlayerTalentSet.
+  // The entries are already the game persistentIds (the back-end resolves the
+  // web indexes, objects/persistentIds.js); the server only maps them to the
+  // panel layout and to TalentInfo. refineRate and the "is it an active
+  // ability" check need the talent DB, which the lobby does not have, so the
+  // client resolves them (see PF_GameLogic/HeroSpawn.cpp).
 
-  // The build is delivered as-is: an empty slot (0) or an unknown talent id
-  // (out of talentsMap/classTalentsMap) leaves a hole in the set; the rest of
-  // the build is still used. The client tolerates holes the same way it
-  // tolerates bot talent sets (PrepareCustomSet/LoadSet simply skip missing
-  // slots), so a player with a partial build gets his real talents instead of
-  // the hero's full default set.
+  // The build is delivered as-is: an empty slot (""/null) leaves a hole in
+  // the set; the rest of the build is still used. The client tolerates holes
+  // the same way it tolerates bot talent sets (PrepareCustomSet/LoadSet
+  // simply skip missing slots), so a player with a partial build gets his
+  // real talents instead of the hero's full default set.
   //
-  // Entry semantics (as the old client WebLauncher/HeroSpawn parsed them):
-  //   v > 0  -> regular talent: talentsMap[v-1]
-  //   v < 0  -> class talent:   classTalentsMap[-v-2] (ConvertFromClassID)
-  //   v == 0 -> empty slot (hole)
-  // Class talents are a separate name namespace (hero class abilities), so a
-  // build mixing both is common and both must be delivered.
+  // Entry semantics:
+  //   ""  -> empty slot (hole)
+  //   else -> talent or class-talent persistentId (a separate name namespace,
+  //           a build mixing both is common and both are delivered)
   inline void BuildTalentSet( const Player & p, NCore::PlayerTalentSet & out )
   {
-    const int namesCount = ( int )( sizeof( talentsMap ) / sizeof( talentsMap[0] ) );
-
     // bar[a] != 0 -> build slot abs(bar[a])-1 is placed on panel slot a, sign = smart cast.
     int  panelSlot[BUILD_SLOTS];
     bool smartCast[BUILD_SLOTS];
@@ -238,23 +256,12 @@ namespace WebSession
         const unsigned tIndex  = ( unsigned )( level * TALENT_SLOTS + slot + 1 );
         const unsigned tIndex2 = ( unsigned )( ( TALENT_LEVELS - 1 - level ) * TALENT_SLOTS + slot );
 
-        const int webId = p.build[tIndex2];
-
-        const char * talentName = 0;
-        if ( webId > 0 && webId - 1 < namesCount )
-          talentName = talentsMap[ webId - 1 ];
-        else if ( webId < 0 )
-        {
-          const int cid             = -webId;
-          const int classNamesCount = ( int )( sizeof( classTalentsMap ) / sizeof( classTalentsMap[0] ) );
-          if ( cid - 2 >= 0 && cid - 2 < classNamesCount )
-            talentName = classTalentsMap[ cid - 2 ];
-        }
-        if ( !talentName )
+        const std::string & talentId = p.build[tIndex2];
+        if ( talentId.empty() )
           continue;   // hole: no talent in this slot
 
         NCore::TalentInfo ti;
-        ti.id           = Crc32Checksum().AddString( talentName ).Get();
+        ti.id           = Crc32Checksum().AddString( talentId.c_str() ).Get();
         ti.refineRate   = 0;                        // resolved from the DB by the client
         ti.actionBarIdx = panelSlot[tIndex2];       // -1 = not placed on the panel
         ti.isInstaCast  = smartCast[tIndex2];       // smart-cast request from the web bar
@@ -264,12 +271,13 @@ namespace WebSession
     }
   }
 
-  // Fills the game-side player record from the web record. heroPersistentId is the
-  // hero the lobby assigns to this player (its own heroes[] table), so the hero id,
-  // the skin and the talent set are all consistent with the custom game lineup.
-  inline void ApplyToPlayerInfo( const Player & p, const std::string & heroPersistentId, NCore::PlayerInfo & info )
+  // Fills the game-side player record from the web record. The hero, the skin
+  // and the talent set are the back-end-delivered persistentIds, consistent
+  // with the custom game lineup (the lobby assigns the same hero string to the
+  // lineup, see ServerNode::TryCreateWebSession).
+  inline void ApplyToPlayerInfo( const Player & p, NCore::PlayerInfo & info )
   {
-    info.heroId    = Crc32Checksum().AddString( heroPersistentId.c_str() ).Get();
+    info.heroId    = Crc32Checksum().AddString( p.hero.c_str() ).Get();
     info.heroRating        = p.ratingCurrent;
     info.playerRating      = p.ratingCurrent;
     info.ratingDeltaPrediction.onVictory = p.ratingVictory - p.ratingCurrent;
@@ -282,8 +290,8 @@ namespace WebSession
     for ( int i = 0; i < PROFILE_STATS; ++i )
       info.profileStats[i] = p.profileStats[i];
 
-    if ( p.skin > 0 )
-      info.heroSkin = ResolveSkin( heroPersistentId, p.skin - 1 ).c_str();
+    if ( !p.skin.empty() )
+      info.heroSkin = p.skin.c_str();
 
     info.leagueIndex = p.leagueIdx;
     info.flagId      = p.flagId.c_str();
