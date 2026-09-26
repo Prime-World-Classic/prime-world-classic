@@ -28,7 +28,11 @@
 //   hero  — hero persistentId (string, required);
 //   skin  — skin persistentId (string, "" = default skin);
 //   build — 36 entries: talent/class-talent persistentId (string) or null
-//           (empty slot); bar/profileStats/rating — as before.
+//           (empty slot); bar/profileStats/rating — as before;
+//   buildRefine — optional 36-entry int array aligned with build[]: the
+//           refine rate (заточка) of the slot's talent, resolved by the
+//           back-end from MariaDB (persistent_talents.refineRate). 0/missing
+//           = unknown (the client falls back to its local rarity remap).
 // ============================================================================
 
 #include <string>
@@ -70,6 +74,7 @@ namespace WebSession
       , leagueIdx( 0 )
     {
       memset( bar, 0, sizeof( bar ) );
+      memset( buildRefine, 0, sizeof( buildRefine ) );
       memset( profileStats, 0, sizeof( profileStats ) );
     }
 
@@ -83,6 +88,7 @@ namespace WebSession
     float       ratingCurrent, ratingVictory, ratingLoss;
     float       ratingAccCurrent, ratingAccVictory, ratingAccLoss;
     std::string build[BUILD_SLOTS];       // talent/class-talent persistentId (PvX Data) or "" = empty slot
+    int         buildRefine[BUILD_SLOTS]; // refine rate per build slot (0 = unknown; client fallback)
     int         bar[BAR_SLOTS];           // sign = smart cast, abs(v)-1 = build slot
     int         profileStats[PROFILE_STATS];
     int         leagueIdx;
@@ -196,6 +202,11 @@ namespace WebSession
     out.ratingAccLoss    = GetRatingValue( ratingAcc, "loss", "lossRatingAcc" );
 
     FillStringArray( v.get( "build", Json::Value() ), out.build, BUILD_SLOTS );
+    // buildRefine is optional (older back-ends do not send it): all zeros
+    // then, and the client resolves the refine rate from its local DB.
+    const Json::Value buildRefine = v.get( "buildRefine", Json::Value() );
+    if ( buildRefine.isArray() )
+      FillIntArray( buildRefine, out.buildRefine, BUILD_SLOTS );
     FillIntArray( v.get( "bar", Json::Value() ), out.bar, BAR_SLOTS );
     FillIntArray( v.get( "profileStats", Json::Value() ), out.profileStats, PROFILE_STATS );
 
@@ -207,12 +218,15 @@ namespace WebSession
 
 
   // -------------------------------------------------- build -> game data
-  // players[].build + players[].bar -> NCore::PlayerTalentSet.
+  // players[].build (+ players[].buildRefine) + players[].bar ->
+  // NCore::PlayerTalentSet.
   // The entries are already the game persistentIds (the back-end resolves the
   // web indexes, objects/persistentIds.js); the server only maps them to the
-  // panel layout and to TalentInfo. refineRate and the "is it an active
-  // ability" check need the talent DB, which the lobby does not have, so the
-  // client resolves them (see PF_GameLogic/HeroSpawn.cpp).
+  // panel layout and to TalentInfo. refineRate comes from the back-end too
+  // (persistent_talents.refineRate -> players[].buildRefine); 0 = unknown and
+  // the client falls back to its local rarity remap. The "is it an active
+  // ability" check still needs the talent DB, which the lobby does not have,
+  // so the client resolves it (see PF_GameLogic/HeroSpawn.cpp).
 
   // The build is delivered as-is: an empty slot (""/null) leaves a hole in
   // the set; the rest of the build is still used. The client tolerates holes
@@ -262,7 +276,7 @@ namespace WebSession
 
         NCore::TalentInfo ti;
         ti.id           = Crc32Checksum().AddString( talentId.c_str() ).Get();
-        ti.refineRate   = 0;                        // resolved from the DB by the client
+        ti.refineRate   = p.buildRefine[tIndex2];   // 0 = unknown -> client fallback
         ti.actionBarIdx = panelSlot[tIndex2];       // -1 = not placed on the panel
         ti.isInstaCast  = smartCast[tIndex2];       // smart-cast request from the web bar
 
