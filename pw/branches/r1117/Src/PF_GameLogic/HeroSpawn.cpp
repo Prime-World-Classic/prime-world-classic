@@ -536,7 +536,7 @@ namespace NWorld
           char talentIds[512] = "";
           int shown = 0;
           for (NCore::PlayerTalentSet::const_iterator t = panelTalents.begin(); t != panelTalents.end() && shown < 8; ++t, ++shown)
-            sprintf(talentIds + strlen(talentIds), "%s%u", shown ? "," : "", t->second.id);
+            sprintf(talentIds + strlen(talentIds), "%s%u:%d", shown ? "," : "", t->second.id, t->second.refineRate);
           DebugTrace("TALENTS-APPLY: player=%d count=%d useUserSlots=%d first=[%s]", heroSpawnDesc.playerId, (int)panelTalents.size(), (int)useUserSlots, talentIds);
         }
 
@@ -563,7 +563,11 @@ namespace NWorld
           else
             t->second.actionBarIdx = -1;
 
-          t->second.refineRate = TalentRarityToRefineRemap[talentPtr->rarity];
+          // The server delivers the final refine rate (backend DB -> session
+          // push -> buildRefine); the local rarity remap is a fallback for
+          // servers that deliver 0 (unknown).
+          if ( t->second.refineRate == 0 )
+            t->second.refineRate = TalentRarityToRefineRemap[talentPtr->rarity];
         }
       }
     }
