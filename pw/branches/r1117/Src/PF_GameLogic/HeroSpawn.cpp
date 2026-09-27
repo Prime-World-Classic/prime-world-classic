@@ -536,7 +536,7 @@ namespace NWorld
           char talentIds[512] = "";
           int shown = 0;
           for (NCore::PlayerTalentSet::const_iterator t = panelTalents.begin(); t != panelTalents.end() && shown < 8; ++t, ++shown)
-            sprintf(talentIds + strlen(talentIds), "%s%u:%d", shown ? "," : "", t->second.id, t->second.refineRate);
+            sprintf(talentIds + strlen(talentIds), "%s%u", shown ? "," : "", t->second.id);
           DebugTrace("TALENTS-APPLY: player=%d count=%d useUserSlots=%d first=[%s]", heroSpawnDesc.playerId, (int)panelTalents.size(), (int)useUserSlots, talentIds);
         }
 
