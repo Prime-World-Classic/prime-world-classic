@@ -13,6 +13,7 @@
 
 #include "HttpGatewayLog.inl"
 #include <Shared/WebSessionRegistry.h>
+#include <Shared/GameHealthSnapshot.h>
 #include <stdexcept>
 
 #pragma warning( disable : 4996)
@@ -1239,6 +1240,22 @@ void GatewayJsonHandler::HandleWebSessionLoad( Json::Value & pvxReply, const Jso
   // sibling key so the method->status convention stays intact.
   pvxReply["web_session_load"] = "";
   pvxReply["active"] = (Json::UInt)WebSession::Registry::Instance().ActiveCount();
+
+  // Self-measured health (PLAN_server_pick_ping.md, wave 2): the back-end
+  // uses resp/players/delta/period in the server-cost model and treats the
+  // fields as optional (an old gateway sends none of them). Sources: the
+  // per-game tick stats reported by Peered::CommandsScheduler (work/late via
+  // the slicer tick, players via Clients::GetPlayingCount, period — the
+  // Step return).
+  double respMs = 0;
+  int healthPlayers = 0;
+  double deltaMs = 0;
+  double periodMs = 0;
+  GameHealth::Snapshot::Instance().Get( respMs, healthPlayers, deltaMs, periodMs );
+  pvxReply["resp"] = respMs;
+  pvxReply["players"] = (Json::UInt)healthPlayers;
+  pvxReply["delta"] = deltaMs;
+  pvxReply["period"] = periodMs;
 }
 
 

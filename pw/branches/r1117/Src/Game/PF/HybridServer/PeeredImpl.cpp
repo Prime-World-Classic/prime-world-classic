@@ -2,6 +2,7 @@
 
 #include "PeeredImpl.h"
 #include "System/InlineProfiler.h"
+#include <Shared/GameHealthSnapshot.h>
 #include "HybridServer/GameServerAllocatorIface.h"
 #include "RPeered.auto.h"
 #include "HybridServerNaming.h"
@@ -78,6 +79,11 @@ CommandsScheduler::CommandsScheduler(
   handler(_handler),
   statsLink( _statsLink ),
   stats(NHPTimer::Milliseconds2Time(_data.sessionSettings.simulationStep + _data.sessionSettings.simulationStep*_data.sessionSettings.stepsDelayMin), true),
+  healthWorkSumMs(0),
+  healthLateSumMs(0),
+  healthTickCount(0),
+  healthPeriodMs(0),
+  healthLastFlush(0),
   logStream(_logStream),
   clients(_clientInfos?true:false, _logStream, _log, _crcDumper, data, _handler, _statsLink, _statisticsWrapper, _mcChannelWrapper),
   lastConnectionTimeoutTimer(0),
@@ -140,6 +146,9 @@ CommandsScheduler::CommandsScheduler(
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CommandsScheduler::~CommandsScheduler()
 {
+  // Drop the tick-health counters (Shared/GameHealthSnapshot.h).
+  GameHealth::Snapshot::Instance().ForgetGame( data.serverId );
+
   if (gameServerReconnect)
     gameServerReconnect->SetPointers(0, 0);
 
@@ -658,9 +667,37 @@ void CommandsScheduler::SetTimeScale(int clientIndex, float _scale)
 static TSessionId serverIdToLog = -1;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Tick-health measurement (Shared/GameHealthSnapshot.h, PLAN_server_pick_ping.md):
+// a RAII around the Step body — records the tick wall time and the lateness
+// (the Step delta parameter, ms) and reports the per-second aggregates to
+// the process snapshot. Step has several return points, so the measurement
+// lives in the guard, not in the body.
+struct HealthStepGuard
+{
+  CommandsScheduler* owner;
+  int lateDelta;
+  NHPTimer::STime start;
+
+  HealthStepGuard( CommandsScheduler* _owner, int _lateDelta ) : owner( _owner ), lateDelta( _lateDelta )
+  {
+    NHPTimer::GetTime( start );
+  }
+
+  ~HealthStepGuard()
+  {
+    NHPTimer::STime stop;
+    NHPTimer::GetTime( stop );
+    // double ms (Time2Milliseconds truncates to int — sub-ms ticks would read 0)
+    owner->AccumulateHealth( NHPTimer::Time2Seconds( stop - start ) * 1000.0, lateDelta );
+  }
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int CommandsScheduler::Step(int delta)
 {
   NI_PROFILE_FUNCTION;
+
+  HealthStepGuard healthGuard( this, delta );
 
   UpdateLagsStatistics(delta);
 
@@ -895,6 +932,36 @@ bool CommandsScheduler::StepFinished()
   }
 
   return finishGame;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void CommandsScheduler::AccumulateHealth( double workMs, int lateDeltaMs )
+{
+  healthWorkSumMs += ( workMs > 0 ) ? workMs : 0.0;
+  healthLateSumMs += ( lateDeltaMs > 0 ) ? (double)lateDeltaMs : 0.0;
+  healthTickCount++;
+  healthPeriodMs = (double)(int)(data.sessionSettings.simulationStep * timeScaleOO);
+
+  NHPTimer::STime now;
+  NHPTimer::GetTime( now );
+
+  if( now - healthLastFlush >= NHPTimer::Seconds2Time(1) )
+  {
+    if( healthTickCount > 0 )
+    {
+      GameHealth::Snapshot::Instance().ReportGame(
+        data.serverId,
+        clients.GetPlayingCount(),
+        healthWorkSumMs / (double)healthTickCount,
+        healthLateSumMs / (double)healthTickCount,
+        healthPeriodMs,
+        healthTickCount );
+    }
+    healthWorkSumMs = 0;
+    healthLateSumMs = 0;
+    healthTickCount = 0;
+    healthLastFlush = now;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
