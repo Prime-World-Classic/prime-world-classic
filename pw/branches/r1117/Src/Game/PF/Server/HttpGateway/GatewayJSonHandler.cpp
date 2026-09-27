@@ -15,6 +15,7 @@
 #include <Shared/WebSessionRegistry.h>
 #include <Shared/GameHealthSnapshot.h>
 #include <stdexcept>
+#include <ctime>
 
 #pragma warning( disable : 4996)
 
@@ -31,6 +32,11 @@ REGISTER_VAR( "http_gateway_pretty_json", s_prettyJson, STORAGE_NONE );
 // signs its requests with). Empty = the push endpoint refuses everything.
 static string s_webSessionPushKey;
 REGISTER_VAR( "web_session_push_key", s_webSessionPushKey, STORAGE_NONE );
+
+// Process start (PLAN_pool_uptime.md): initialized at load time, before main;
+// the web_session_load answer carries the uptime in seconds (not an epoch —
+// no cross-machine clocks involved).
+static const time_t s_processStart = time( nullptr );
 
 
 
@@ -1256,6 +1262,10 @@ void GatewayJsonHandler::HandleWebSessionLoad( Json::Value & pvxReply, const Jso
   pvxReply["players"] = (Json::UInt)healthPlayers;
   pvxReply["delta"] = deltaMs;
   pvxReply["period"] = periodMs;
+
+  // Process uptime in seconds (PLAN_pool_uptime.md); an old binary sends no
+  // field at all — the back-end treats it as optional.
+  pvxReply["uptime"] = (Json::UInt)( time( nullptr ) - s_processStart );
 }
 
 
