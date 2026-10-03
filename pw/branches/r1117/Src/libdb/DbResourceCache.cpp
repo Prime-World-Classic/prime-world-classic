@@ -171,6 +171,7 @@ DbResourceCache::DbResourceCache( IFileSystem* _fileSystem )
 : fileSystem( _fileSystem )
 , changesProcessor( 0 )
 , assertionLoadingFiles( false )
+, destroyed( false )
 {
 
 }
@@ -205,12 +206,23 @@ DbResourceCache::~DbResourceCache()
 {
   DumpResources();
 	Clear();
+
+  // Деструкторы и статические объекты других TU (указатели NDb::Ptr<DbResource>:
+  // SoundRoot::instance, SessionRoot::instance ...) могут разрушаться из doexit
+  // ПОСЛЕ этого синглтона — порядок вызова статических деструкторов зависит от
+  // порядка линковки. Вызов после Clear() недопустим: mutex уже уничтожен и
+  // RtlEnterCriticalSection получает NULL -> AV при выходе из игры
+  // (Wine-сборка, проверено 2026-10-03).
+  destroyed = true;
 }
 
 
 
 Ptr<DbResource> DbResourceCache::Create( const DBID &dbid, const char *typeName )
 {
+  if ( destroyed )
+    return Ptr<DbResource>();
+
   threading::MutexLock lock( mutex );
 
   DbResource *pResult = GetFromCache( dbid );
@@ -228,6 +240,9 @@ Ptr<DbResource> DbResourceCache::Create( const DBID &dbid, const char *typeName 
 
 void DbResourceCache::Reset( const DBID &dbid )
 {
+  if ( destroyed )
+    return;
+
   threading::MutexLock lock( mutex );
 
   TResources::iterator it = resources.find( dbid.GetFileName() );
@@ -240,6 +255,9 @@ void DbResourceCache::Reset( const DBID &dbid )
 
 void DbResourceCache::ReleaseResourceRef( DbResource* resource )
 {
+  if ( destroyed )
+    return;
+
   NI_ASSERT( resource, "" );
   NI_ASSERT( resource->refCount > 0, "" );
 
@@ -291,6 +309,9 @@ void DbResourceCache::Remove( DbResource* resource )
 
 void DbResourceCache::ResetFile( const string& _fileName )
 {
+  if ( destroyed )
+    return;
+
   threading::MutexLock lock( mutex );
 
   string fileName = _fileName;
@@ -307,6 +328,9 @@ void DbResourceCache::ResetFile( const string& _fileName )
 
 void DbResourceCache::SetNeedReload( const DBID &dbid )
 {
+  if ( destroyed )
+    return;
+
   threading::MutexLock lock( mutex );
 
   DbResource *pResource = GetFromCache( dbid );
@@ -351,6 +375,9 @@ bool DbResourceCache::EnableAssertionLoadingFiles( bool enable/*=true */ )
 
 Ptr<DbResource> DbResourceCache::Get( const DBID &dbid, IXmlSaver *_pSaver, bool fullRead )
 {
+  if ( destroyed )
+    return Ptr<DbResource>();
+
   NI_PROFILE_FUNCTION_MEM
 
   threading::MutexLock lock( mutex );
@@ -376,6 +403,9 @@ Ptr<DbResource> DbResourceCache::Get( const DBID &dbid, IXmlSaver *_pSaver, bool
 
 Ptr<DbResource> DbResourceCache::GetForce( const DBID &dbid, IXmlSaver *_pSaver, bool fullRead )
 {
+  if ( destroyed )
+    return Ptr<DbResource>();
+
   NI_PROFILE_FUNCTION_MEM
 
     threading::MutexLock lock( mutex );
@@ -464,6 +494,9 @@ DbResource * DbResourceCache::GetFromCache( const DBID &dbid )
 
 TDBResourceNotifier* DbResourceCache::GetChangeNotifier( const DBID &dbid )
 {
+  if ( destroyed )
+    return 0;
+
   threading::MutexLock lock( mutex );
 
   TNotifiers::iterator it = notifiers.find( dbid );
@@ -653,6 +686,9 @@ DbResource *DbResourceCache::Read( const DBID &dbid, IXmlSaver *_pSaver, const b
 
 Ptr<DbResource> DbResourceCache::Precache( const DBID& dbid, const int depth )
 {
+  if ( destroyed )
+    return Ptr<DbResource>();
+
   threading::MutexLock lock( mutex );
 
   NI_PROFILE_FUNCTION
@@ -696,6 +732,9 @@ Ptr<DbResource> DbResourceCache::Precache( const DBID& dbid, const int depth )
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 Ptr<DbResource> DbResourceCache::PrecacheForce( const DBID& _dbid, const int depth )
 {
+  if ( destroyed )
+    return Ptr<DbResource>();
+
   threading::MutexLock lock( mutex );
 
   const DBID dbid = DBID( _dbid.GetFileName() );
