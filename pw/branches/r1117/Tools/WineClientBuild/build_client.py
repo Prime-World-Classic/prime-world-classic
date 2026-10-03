@@ -168,6 +168,13 @@ class Project:
         self.base_warning_level = wl
         self.base_warnaserror = cl.get("WarnAsError") == "true"
         self.defines = to_dflags(cl.get("PreprocessorDefinitions", ""))
+        # PW_EXTRA_DEFS="A=1;B" — дополнительные /D во ВСЕ TU. Нужно для
+        # диагностических сборок: MAX_STACK_SIZE=10 (реестр аллокаций со
+        # стеками вызовов в MemoryLib) + NI_DUMP_LEAKS_TO_FILE (писать
+        # MemoryLeaks-<ts>-<module>.log в CWD). Определять именно глобально:
+        # AllocInfo содержит stack[MAX_STACK_SIZE], разный MAX_STACK_SIZE в
+        # разных TU = разное расположение полей структуры.
+        self.defines += to_dflags(os.environ.get("PW_EXTRA_DEFS", ""))
         self.pch_through = cl.get("PrecompiledHeaderThrough", "stdafx.h")
         self.pch_on = cl.get("UsePrecompiledHeader", "0")
         self.includes = []
