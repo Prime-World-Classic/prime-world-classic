@@ -3,7 +3,7 @@
 
 #include "Server/LobbySocial/SocialLobbyTypes.h"
 #include "Server/Roll/RollClient.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 
 namespace roll
 {

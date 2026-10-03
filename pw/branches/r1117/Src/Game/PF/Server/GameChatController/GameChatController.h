@@ -1,8 +1,8 @@
 #pragma once
 #include <GameChatController/IGameChatController.h>
 #include <ChatSvc/RChatManagementIface.auto.h>
-#include <rpc/IfaceRequester.h>
-#include <rpc/LocalEntityFactory.h>
+#include <RPC/IfaceRequester.h>
+#include <RPC/LocalEntityFactory.h>
 #include <GameChatController/GameChatContext.h>
 
 namespace gamechat

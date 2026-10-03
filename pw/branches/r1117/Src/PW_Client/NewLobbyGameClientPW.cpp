@@ -47,15 +47,12 @@
 #include "UI/FrameTimeRender.h"
 #include "PF_GameLogic/SocialConnection.h"
 #include "PF_GameLogic/PlayerBehaviourTracking.h"
-#include "PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 #include "PF_GameLogic/HeroSpawn.h"
 #include "../PW_Game/server_ip.h"
 #include <Shared/WebRequests.h>
-#include <PF_GameLogic/WebLauncher.h>
 
 extern string g_sessionToken;
-
-extern nstl::vector<std::pair<int, int>> playersKills;
 
 static bool s_threaded_loading = true;
 REGISTER_VAR( "threaded_loading", s_threaded_loading, STORAGE_NONE );
@@ -561,7 +558,6 @@ void GameClientPW::OnPlayerInfoLoaded()
     }  
   }
 
-  NDb::Ptr<NDb::HeroesDB> m_heroDb = NDb::SessionRoot::GetRoot()->logicRoot->heroes;
   for( int i = 0; i < startInfo.playersInfo.size(); ++i )
   {
     const NCore::PlayerStartInfo & playerStartInfo = startInfo.playersInfo[i];
@@ -573,27 +569,28 @@ void GameClientPW::OnPlayerInfoLoaded()
 
     if (playerStartInfo.playerType == NCore::EPlayerType::Human)
     {
-      WebLauncherPostRequest::WebUserData userData = g_usersData[playerStartInfo.nickname.c_str() + 1];
+      const NCore::PlayerInfo & serverInfo = playerStartInfo.playerInfo;
       float force = NWorld::Force::CalculateForce(playerStartInfo.playerInfo, playerStartInfo.usePlayerInfoTalentSet, resourceCollection, MapDescription()->Description);
 
       info.exp = playerStartInfo.playerInfo.heroExp;
       info.force = force;
 		
-      info.raitingAcc = (int)(userData.currentRatingAcc);
-      info.winDeltaRaitingAcc = userData.victoryRatingAcc - userData.currentRatingAcc;
-      info.loseDeltaRaitingAcc = userData.lossRatingAcc - userData.currentRatingAcc;
+      // Ratings, skin and league are delivered by the server in the player
+      // record (NCore::PlayerInfo) -- the client keeps no web-session copy.
+      info.raitingAcc = (int)(serverInfo.ratingAccCurrent);
+      info.winDeltaRaitingAcc = serverInfo.ratingAccVictory - serverInfo.ratingAccCurrent;
+      info.loseDeltaRaitingAcc = serverInfo.ratingAccLoss - serverInfo.ratingAccCurrent;
 
-      info.raiting = (int)( userData.currentRating );
-      info.winDeltaRaiting = userData.victoryRating - userData.currentRating;
-      info.loseDeltaRaiting = userData.lossRating - userData.currentRating;
-      NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( m_heroDb, NULL, playerStartInfo.playerInfo.heroId );
-      info.skinId = string(GetSkinByHeroPersistentId(hero->persistentId.c_str(), userData.heroSkinID - 1).c_str());
+      info.raiting = (int)( serverInfo.heroRating );
+      info.winDeltaRaiting = serverInfo.ratingDeltaPrediction.onVictory;
+      info.loseDeltaRaiting = serverInfo.ratingDeltaPrediction.onDefeat;
+      info.skinId = string(serverInfo.heroSkin.c_str());
 
       info.isNovice = ( playerStartInfo.playerInfo.basket == NCore::EBasket::Newbie );
       info.isPremium = playerStartInfo.playerInfo.hasPremium;
       info.partyId = playerStartInfo.playerInfo.partyId;
       info.basket = playerStartInfo.playerInfo.basket;
-      info.leagueIndex = userIdToMetaMap.find(userData.userId) == userIdToMetaMap.end() ? info.leagueIndex : userIdToMetaMap[userData.userId].leagueIdx;
+      info.leagueIndex = serverInfo.leagueIndex;
 
       DevTrace("SetHeroInfo user = %d, force = %f, raiting = %f, deltaWin = %f, deltaLose = %f, partyId = %d, leagueIndex = %d, ownLeaguePlace = %d",
         playerStartInfo.userID, force, playerStartInfo.playerInfo.heroRating,
@@ -790,52 +787,6 @@ void GameClientPW::OnCombatScreenStarted( NCore::IWorldBase * _world, const NGam
 }
 
 
-static void SendFinishGameRequest(const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo)
-{
-  Json::Value data(Json::objectValue);
-  data["sessionToken"] = Json::Value (g_sessionToken.c_str());
-  data["sideWon"] = Json::Value (_sessionResults.sideWon);
-
-  data["isWon"] = Json::Value (_replayInfo.isWon);
-
-  Json::Value playersInfo(Json::arrayValue);
-  nstl::vector<Json::Value> playerInfosValues(_sessionResults.players.size());
-  for (int pId = 0; pId < _sessionResults.players.size(); ++pId) {
-    const StatisticService::RPC::SessionClientResultsPlayer& infoFromPlayer = _sessionResults.players[pId];
-    Json::Value& playerInfo = playerInfosValues[pId];
-
-    playerInfo["uid"] = Json::Value (infoFromPlayer.userid); 
-    playerInfo["kills"] = Json::Value (infoFromPlayer.scoring.kills);
-    playerInfo["deaths"] = Json::Value (infoFromPlayer.scoring.deaths);
-    playerInfo["assists"] = Json::Value (infoFromPlayer.scoring.assists);
-    playerInfo["timeInIdle"] = Json::Value(infoFromPlayer.scoring.timeInIdle);
-    playerInfo["timeAtHome"] = Json::Value(infoFromPlayer.scoring.timeAtHome);
-    playerInfo["timeInDeath"] = Json::Value(infoFromPlayer.scoring.timeInDeath);
-    playerInfo["timeElapsed"] = Json::Value(infoFromPlayer.scoring.timeElapsed);
-    playerInfo["badBehaviourDetected"] = Json::Value(infoFromPlayer.extra.badBehaviourDetected);
-    playerInfo["badBehaviourReported"] = Json::Value(infoFromPlayer.extra.badBehaviourReported);
-    playersInfo.append(playerInfo);
-  }
-  data["playersInfo"] = playersInfo;
-
-  Json::Value playersKillsJson(Json::arrayValue);
-  for (int killId = 0; killId < playersKills.size(); ++killId) {
-    Json::Value killerAndVictim(Json::objectValue);
-    killerAndVictim["killer"] = playersKills[killId].first;
-    killerAndVictim["victim"] = playersKills[killId].second;
-    playersKillsJson.append(killerAndVictim);
-  }
-  data["playerKills"] = playersKillsJson;
-
-  Json::Value sessionResultsJson = Json::objectValue;
-  sessionResultsJson["data"] = data;
-  sessionResultsJson["method"] = Json::Value("notifyGameFinishLegacy");
-
-  std::string res = GetFormattedJson(sessionResultsJson);
-  WebPostRequest request(SERVER_IP_W_ARRAY[usedServer], L"/api", SYNCHRONIZER_PORT, 0);
-  request.SendPostRequest(res);
-}
-
 void GameClientPW::OnVictory( const StatisticService::RPC::SessionClientResults & _sessionResults, const NGameX::ReplayInfo & _replayInfo )
 {
   //Session finished, kill network status screen
@@ -843,9 +794,10 @@ void GameClientPW::OnVictory( const StatisticService::RPC::SessionClientResults 
     NScreenCommands::PushCommand( NScreenCommands::CreatePopScreenCommand( networkStatusScreen ) );
   networkStatusScreen = 0;
 
+  // The finish data (playersInfo + playerKills) is posted to the
+  // synchronizer by the lobby server (notifyGameFinishLegacy) — the client
+  // makes no HTTP call at game end anymore.
   GameClient::OnVictory( _sessionResults, _replayInfo );
-
-  SendFinishGameRequest(_sessionResults, _replayInfo);
 }
 
 

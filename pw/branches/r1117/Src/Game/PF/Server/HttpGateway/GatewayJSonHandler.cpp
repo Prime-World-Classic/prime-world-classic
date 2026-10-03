@@ -12,6 +12,7 @@
 #include "ForgeRollRequest.h"
 
 #include "HttpGatewayLog.inl"
+#include <Shared/WebSessionRegistry.h>
 #include <stdexcept>
 
 #pragma warning( disable : 4996)
@@ -24,6 +25,11 @@ static bool s_dumpJson = false;
 static bool s_prettyJson = false;
 REGISTER_VAR( "http_gateway_dump_json", s_dumpJson, STORAGE_NONE );
 REGISTER_VAR( "http_gateway_pretty_json", s_prettyJson, STORAGE_NONE );
+
+// Shared key for the back-end web-session push (the same keyApi the back-end
+// signs its requests with). Empty = the push endpoint refuses everything.
+static string s_webSessionPushKey;
+REGISTER_VAR( "web_session_push_key", s_webSessionPushKey, STORAGE_NONE );
 
 
 
@@ -41,7 +47,11 @@ gateKeeper( _gk )
 
 bool GatewayJsonHandler::Ready()
 {
-  return socialLobby->isopen();
+  // The web server no longer waits for the social lobby connection: the
+  // self-contained handlers (web_session_register) must work in the Linux dev
+  // set where the social lobby is absent. The lobby-dependent handlers guard
+  // on isopen() themselves (SocLobbyThreadSafe).
+  return true;
 }
 
 
@@ -171,7 +181,7 @@ bool GatewayJsonHandler::CheckVersion( const Json::Value & request )
   std::string verStr = ver.asString();
 
   int major = 0, minor = 0, patch = 0;
-  if ( sscanf( verStr.c_str(), "%d%.%d%.%d", &major, &minor, &patch ) != 3 ) {
+  if ( sscanf( verStr.c_str(), "%d.%d.%d", &major, &minor, &patch ) != 3 ) {
     SVC_LOG_ERR.Trace( "Wrong version string '%s' in JSON data!", verStr.c_str() );
     return false;
   }
@@ -236,6 +246,8 @@ void GatewayJsonHandler::HandleJsonThrow( std::string & json_reply, const std::s
       HandleGenericRequest( pvxReply, request, "ready",         &GatewayJsonHandler::HandleGuardReadyReq );
 
       HandleServerStatus( pvxReply, request );
+
+      HandleWebSessionRegister( pvxReply, request );
 
       HandleForgeRoll( forgeRollReply, request );
     }
@@ -1117,13 +1129,13 @@ void GatewayJsonHandler::HandleServerStatus( Json::Value & pvxReply, const Json:
   { 
     SVC_LOG_MSG.Trace( "Sending server status..." );
 
-    // запрашиваем текущую статистику сервера
+    // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     if ( StrongMT<socialLobby::RISocialInterface> soclobby = SocLobbyThreadSafe() )
       soclobby->GetServerStatus( this, &GatewayJsonHandler::OnServerStatus );
 
     Json::Value status( Json::objectValue );
 
-    {// забираем значения из кэша
+    {// пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ
       threading::MutexLock lock(mutex); 
       status["accept_timeout"] = lastServerStatus.acceptTimeout;
       status["average_mm_time"] = lastServerStatus.averageMmTime;
@@ -1157,6 +1169,50 @@ void GatewayJsonHandler::OnServerStatus( socialLobby::SServerStatus result )
 
 
 
+// The back-end pushes a web session here when the match is confirmed
+// (mm.model.js finish()) or a dev session is created (devSession). It waits
+// for this ACK before handing the launch protocols to the clients, so a
+// refusal here means the match does not start. The session itself lives in
+// the process registry (Shared/WebSessionRegistry.h); no per-player data
+// ever leaves the game server.
+void GatewayJsonHandler::HandleWebSessionRegister( Json::Value & pvxReply, const Json::Value & request )
+{
+  NI_PROFILE_FUNCTION;
+
+  Json::Value reqObj = request.get( "web_session_register", Json::Value() );
+  if ( !reqObj.isObject() )
+    return;
+
+  const std::string apiKey = reqObj.get( "apiKey", "" ).asString();
+  if ( s_webSessionPushKey.empty() || apiKey != s_webSessionPushKey.c_str() )
+  {
+    SVC_LOG_ERR.Trace( "Web session register refused: invalid apiKey" );
+    pvxReply["web_session_register"] = "Invalid apiKey";
+    return;
+  }
+
+  const std::string token = reqObj.get( "sessionToken", "" ).asString();
+  const std::string mapId = reqObj.get( "mapId", "" ).asString();
+  const int         mode  = reqObj.get( "mode", 0 ).asInt();
+  const Json::Value players = reqObj.get( "players", Json::Value() );
+
+  const WebSession::ERegistryResult::Enum result = WebSession::Registry::Instance().Register( token, mapId, mode, players );
+  if ( result == WebSession::ERegistryResult::Ok )
+  {
+    // '' = ack. The back-end treats an empty string as success; Register is
+    // idempotent, so a back-end retry (the first ACK was lost) is acked too.
+    pvxReply["web_session_register"] = "";
+    SVC_LOG_MSG.Trace( "Web session registered. token=%s map=%s players=%u", token.c_str(), mapId.c_str(), (unsigned)players.size() );
+  }
+  else
+  {
+    pvxReply["web_session_register"] = "Invalid session payload";
+    SVC_LOG_ERR.Trace( "Web session register failed. token=%s map=%s", token.c_str(), mapId.c_str() );
+  }
+}
+
+
+
 void GatewayJsonHandler::HandleForgeRoll( Json::Value & reply, const Json::Value & request )
 {
   NI_PROFILE_FUNCTION;
@@ -1169,7 +1225,7 @@ void GatewayJsonHandler::HandleForgeRoll( Json::Value & reply, const Json::Value
 
   for ( size_t i = 0; i < reqObj.size(); ++i )
   {
-    Json::Value item = reqObj[i];
+    Json::Value item = reqObj[(int)i];
     if ( !item.isObject() ) {
       SVC_LOG_ERR.Trace( "Wrong json item fromat for forge roll" );
       continue;

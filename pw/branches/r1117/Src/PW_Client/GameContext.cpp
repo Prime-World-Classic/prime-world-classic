@@ -15,6 +15,11 @@
 #pragma warning(pop)
 #include "Network/FreePortsFinder.h"
 #include "Network/StreamAllocator.h"
+#include "PW_Game/server_ip.h"
+#include <Shared/ServerIps.h>
+
+extern string g_sessionToken;
+extern string g_playerToken;
 
 
 #include "Client/ScreenCommands.h"
@@ -25,6 +30,7 @@
 #include "Network/RdpClientTransport/RdpClientTransport.h"
 
 #include "PF_GameLogic/MapCollection.h"
+#include "PF_GameLogic/SessionData.h"
 #include "PF_GameLogic/DbSessionRoots.h"
 #include "PF_GameLogic/MapDescriptionLoader.h"
 
@@ -284,6 +290,19 @@ int GameContext::Poll( float dt )
         loadingStatusHandler->OnLoginStatus( res );
       if ( res == Login::ELoginResult::Success )
       {
+        // Web-session data (mapId, players, builds) arrives in the login
+        // reply — no pre-login HTTP to the synchronizer anymore.
+        // The login reply carries the web-session match metadata only (the map
+        // to create / join and how many slots). Players (hero, skin, talents,
+        // ratings, flag, league) are delivered with the map in
+        // NCore::PlayerInfo, so there is nothing else to apply here.
+        newLogin::LoginReply loginReply = clientTransportSystem->GetLoginReply();
+        if ( loginReply.webSession.valid )
+        {
+          g_mapId = loginReply.webSession.mapId.c_str();
+          g_playersCount = loginReply.webSession.playersCount;
+        }
+
         if ( isSpectator )
         {
           StartLobbyClient();
@@ -298,8 +317,25 @@ int GameContext::Poll( float dt )
       }
       else if ( res != Login::ELoginResult::NoResult )
       {
-        status = EContextStatus::Error;
-        persistentEvents::GetSingleton()->WriteEvent( fastReconnectCtx ? persistentEvents::EEvent::LoginFailedInFR : persistentEvents::EEvent::LoginFailed, (int)res );
+        // Server pool: the launch protocol carries ALL pool IPs and the client
+        // may land on a server that does not know the session (AccessDenied /
+        // Refused) or that is unreachable (NoConnection / ServerError). In that
+        // case go to the next IP of the pool (intermediate servers redirect the
+        // traffic to the target anyway); after walking the whole pool — the
+        // legacy error.
+        if ( ( res == Login::ELoginResult::NoConnection || res == Login::ELoginResult::Refused ||
+                res == Login::ELoginResult::AccessDenied || res == Login::ELoginResult::ServerError ) &&
+             usedServer + 1 < GetServerIpCount() )
+        {
+          MessageTrace( "Login failed on server #%d (code %d), trying the next server in the pool", usedServer, (int)res );
+          ++usedServer;
+          ConnectToCluster( lastLogin, "", sessionToken );
+        }
+        else
+        {
+          status = EContextStatus::Error;
+          persistentEvents::GetSingleton()->WriteEvent( fastReconnectCtx ? persistentEvents::EEvent::LoginFailedInFR : persistentEvents::EEvent::LoginFailed, (int)res );
+        }
       }
       break;
     }
@@ -623,7 +659,14 @@ void GameContext::ConnectToCluster( const string & login, const string & passwor
   NI_VERIFY( status == EContextStatus::Ready, "", return );
   NI_VERIFY( clientTransportSystem, "Client transport system could not be initialized!", return );
 
-  clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, sessionToken, _loginType );
+  // Web-session login: the player is identified by playerKey (launcher URL,
+  // g_playerToken) instead of the nickname; the server delivers the session
+  // data in the login reply. The same token/key pair is reused for fast
+  // reconnects (the session outlives a single login).
+  string token = sessionToken.empty() ? g_sessionToken : sessionToken;
+  string playerKey = g_playerToken;
+
+  clientTransportSystem->Login( Transport::ClientCfg::GetLoginAddress(), login, password, token, playerKey, _loginType );
   lastLogin = login;
 
   status = EContextStatus::WaitingLogin;

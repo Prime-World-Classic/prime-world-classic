@@ -10,6 +10,7 @@
 
 //#include "ZZima/BillingProcessor.h"
 #include "LobbyConfig.h"
+#include "LobbyFinishDelivery.h"
 #include "LobbyGameSession.h"
 
 #include "System/JobThread.h"
@@ -132,6 +133,9 @@ private:
   typedef std::list<StrongMT<SocUserPrepareItem> >  TSocUserPrepareLine;
 
   StrongMT<IConfigProvider>         config;
+
+  // Game results -> backend, journaled and retried (see LobbyFinishDelivery.h)
+  FinishDelivery                  finishDelivery;
 
   StrongMT<Transport::ITransportSystem> extClusterTransport;
   StrongMT<Transport::IAddressTranslator> extClusterAddrTranslator;

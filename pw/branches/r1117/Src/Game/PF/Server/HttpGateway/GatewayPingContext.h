@@ -4,7 +4,7 @@
 #include "json/writer.h"
 #include "Server/LobbySocial/SocialLobbyTypes.h"
 #include "Server/LobbySocial/ISocialLobbyNotify.h"
-#include "system/SpinLock.h"
+#include "System/SpinLock.h"
 
 namespace socialLobby
 {

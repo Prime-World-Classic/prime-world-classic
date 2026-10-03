@@ -1,6 +1,6 @@
 #pragma once
 
-#include <wsdlparser/Wsdlinvoker.h>
+#include <wsdlparser/WsdlInvoker.h>
 #include <string>
 
 namespace ZZima

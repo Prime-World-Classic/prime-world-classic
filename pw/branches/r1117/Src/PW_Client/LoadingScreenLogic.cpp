@@ -25,7 +25,7 @@
 #include "PF_GameLogic/HeroSpawn.h"
 #include "PF_GameLogic/PFHero.h"
 #include "PF_GameLogic/AdventureScreen.h"
-#include "PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 
 
 namespace 
@@ -356,26 +356,11 @@ void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& in
     string flagIcon;
     wstring flagTooltip;
 
-    int webUserId = userId;
-    nstl::wstring nick = info.nickname.c_str() + 1;
+    // Skin, flag and league come from the player record delivered by the server
+    // (NCore::PlayerInfo).
     nstl::string skinId = info.playerInfo.heroSkin;
-    if (g_usersData.find(nick) != g_usersData.end()) {
-      WebLauncherPostRequest::WebUserData& userData = g_usersData[nick];
-      NDb::Ptr<NDb::Hero> hero = NWorld::FindHero( m_heroDb, NULL, heroInfo.heroId );
-
-      int heroSkinId = userData.heroSkinID;
-      if(heroSkinId > 0){
-        skinId = GetSkinByHeroPersistentId(hero->persistentId.c_str(), heroSkinId - 1).c_str();
-      }
-      webUserId = userData.userId;
-    }
-
-    const nstl::string& flagId = (userIdToMetaMap.find(webUserId) == userIdToMetaMap.end()) 
-      ? info.playerInfo.flagId
-      : userIdToMetaMap[webUserId].flagId;
-    int leagueIdx = (userIdToMetaMap.find(webUserId) == userIdToMetaMap.end()) 
-      ? heroInfo.leagueIndex
-      : userIdToMetaMap[webUserId].leagueIdx;;
+    const nstl::string& flagId = info.playerInfo.flagId;
+    int leagueIdx = heroInfo.leagueIndex;
 
     if(!flagId.empty())
     {

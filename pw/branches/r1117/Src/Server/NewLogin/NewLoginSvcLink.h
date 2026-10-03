@@ -3,7 +3,7 @@
 
 #include "NewLoginSvcLinkInterface.h"
 #include "RdpTransport/RRdpFrontendAgentInterface.auto.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 
 namespace rdp_transport
 {

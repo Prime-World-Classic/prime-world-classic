@@ -5,7 +5,7 @@
 #include <Coordinator/ServiceAppearanceNotifierIface.h>
 #include <Coordinator/RServiceAppearanceNotifierIface.auto.h>
 #include <Coordinator/RCoordinatorServerIface.auto.h>
-#include <rpc/IfaceRequester.h>
+#include <RPC/IfaceRequester.h>
 #include "gen-cpp/ClusterManagementAPI_types.h"
 
 namespace ClusterAdmin

@@ -32,7 +32,8 @@ public:
   virtual StrongMT<Transport::IChannel> OpenChannel( Transport::TServiceId interfaceId, unsigned int pingperiod, unsigned int to );
   virtual void GetNewAcceptedChannels(vector<StrongMT<Transport::IChannel>> & _chnls);
 
-  virtual void Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, Login::LoginType::Enum _loginType );
+  virtual void Login( const Network::NetAddress & _loginServerAddress, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, const nstl::string & _playerKey, Login::LoginType::Enum _loginType );
+  virtual newLogin::LoginReply GetLoginReply() const;
   virtual void Logout();
   virtual Login::ELoginResult::Enum GetLoginResult() const;
   virtual Transport::EStatus::Enum GetStatus();

@@ -10,9 +10,8 @@
 #include "Server/LobbyPvx/CommonTypes.h"
 #include "PF_GameLogic/HeroSpawn.h"
 #include "LoadingScreenLogic.h"
-#include "PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 
-map<int, WebLauncherPostRequest::PlayerMetaInfo> userIdToMetaMap;
 
 namespace Game
 {

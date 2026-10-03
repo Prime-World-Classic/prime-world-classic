@@ -107,7 +107,8 @@
 #include "steam/steam_gameserver.h"
 
 #include "RegistryToolbox.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
+#include "Shared/WebJson.h"
 #include "../PW_Game/server_ip.h"
 #include "../Shared/WebRequests.h"
 
@@ -721,11 +722,8 @@ extern string g_sessionToken;
 extern string g_playerToken;
 
 extern string g_sessionName;
-extern WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;
-extern WebLauncherPostRequest::WebLoginResponse g_webLoginResponse;
+extern RegisterSessionRequest g_sessionStatus;
 extern int g_playerTeamId;
-extern int g_playerHeroId;
-extern int g_playerPartyId;
 
 std::string GetDirectoryFromPath(const std::string& fullPath) {
     std::size_t found = fullPath.find_last_of("/\\");
@@ -1194,8 +1192,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
 
   NFile::DeleteOldFiles( NProfile::GetRootLogsFolder().c_str(), double(g_deleteLogFilesAfterDays) * 60 * 60 * 24 );
   NFile::DeleteOldFiles( NProfile::GetFullFolderPath(NProfile::FOLDER_REPLAYS).c_str(), double(g_deleteLogFilesAfterDays) * 60 * 60 * 24 );
-  static std::string currentLogin = "";
-
+  (void)0; // static currentLogin removed with the pre-login HTTP
   if ( s_localGame || isReplay )
   {
     context = new Game::LocalGameContext( isSpectator );
@@ -1213,7 +1210,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     WebPostRequest request(L"127.0.0.1", L"/getConnectionData", 34980, 0);
     std::string protocolResponse = request.SendPostRequest("getConnectionData");
 
-    Json::Value parsedValue = ParseJson(protocolResponse.c_str());
+    Json::Value parsedValue = WebSession::ParseJson(protocolResponse.c_str());
     systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol response: \"" << protocolResponse.c_str() << "\"" << endl;
 
     if (parsedValue.empty()) {
@@ -1243,16 +1240,29 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid arguments [empty protocol]! Please start the game via the launcher." );
     return 0;
   } else {
-    const char* protocolLine = protocolLineStr.c_str();
-    const char* delimiter = "/";
-
-    char* token = strtok(const_cast<char*>(protocolLine), delimiter);
-    std::vector<std::string> allTokens;
-    allTokens.reserve(5);
-
-    while (token != 0) {
-      allTokens.push_back(token);
-      token = strtok(0, delimiter);
+    // Manual tokenization instead of strtok. The protocol line has a fixed,
+    // predictable structure:
+    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort]".
+    // strtok would overwrite the internal buffer of protocolLineStr (std::string)
+    // with NUL separators, which is undefined behavior and can corrupt adjacent
+    // state; here the separators are only located and the tokens are copied.
+    // Consecutive delimiters are collapsed, exactly like strtok did.
+    nstl::vector<nstl::string> allTokens;
+    allTokens.reserve(7);
+    {
+      const size_t protocolLen = protocolLineStr.size();
+      size_t tokenBegin = 0;
+      while (tokenBegin < protocolLen) {
+        while (tokenBegin < protocolLen && protocolLineStr[tokenBegin] == '/')
+          ++tokenBegin;
+        if (tokenBegin >= protocolLen)
+          break;
+        size_t tokenEnd = protocolLineStr.find('/', tokenBegin);
+        if (tokenEnd == std::string::npos)
+          tokenEnd = protocolLen;
+        allTokens.push_back(nstl::string(protocolLineStr.c_str() + tokenBegin, tokenEnd - tokenBegin));
+        tokenBegin = tokenEnd;
+      }
     }
 
     if(allTokens.size() < 5) {
@@ -1266,6 +1276,53 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     const char* versionStr = allTokens[3].c_str();
     const char* goMirrorFirst = allTokens[4].c_str();
     usedServer = goMirrorFirst[0] - (int('0'));
+    if (usedServer < 0)
+      usedServer = 0;
+
+    // Optional dynamic server IP block (8 hex chars per IPv4, e.g. "7f000001" == "127.0.0.1").
+    // An invalid block is a hard error: the client must not silently connect to the wrong server.
+    if (allTokens.size() >= 6 && !allTokens[5].empty()) {
+      nstl::vector<nstl::string> protocolServerIps;
+      if (!ParseServerIpsFromHex(allTokens[5].c_str(), protocolServerIps)) {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid server IP block in protocol: \"" << allTokens[5].c_str() << "\"" << endl;
+        ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [invalid server IP block]! Please start the game via the launcher." );
+        return 0;
+      }
+      SetDynamicServerIps(protocolServerIps);
+      for (int ipIndex = 0; ipIndex < protocolServerIps.size(); ++ipIndex)
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server IP #" << ipIndex << ": " << protocolServerIps[ipIndex].c_str() << endl;
+    }
+
+    // Optional 6th token — base port of the TARGET server (decimal). The
+    // client dials base+1 (login) / base+10 (front) on every IP of the pool.
+    // Absent token keeps the legacy standard ports (server_ip.h). A present
+    // but malformed token is a hard error, like an invalid IP block.
+    if (allTokens.size() >= 7 && !allTokens[6].empty()) {
+      int basePort = 0;
+      bool portOk = true;
+      int portLen = (int)allTokens[6].size();
+      for (int portPos = 0; portPos < portLen; ++portPos) {
+        char portChar = allTokens[6][portPos];
+        if (portChar < '0' || portChar > '9') {
+          portOk = false;
+          break;
+        }
+        basePort = basePort * 10 + (portChar - '0');
+        if (basePort > 65535) {
+          portOk = false;
+          break;
+        }
+      }
+      if (!portOk) {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid server base port in protocol: \"" << allTokens[6].c_str() << "\"" << endl;
+        ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [invalid server port]! Please start the game via the launcher." );
+        return 0;
+      }
+      SetServerBasePort(basePort);
+      systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server base port: " << basePort << endl;
+    }
+
+    usedServer = usedServer % GetServerIpCount();
 
     int versionMajor = VERSION_MAJOR;
     int versionMinor = VERSION_MINOR;
@@ -1279,52 +1336,33 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       return 0;
     }
 
-    WebLauncherPostRequest::WebLoginResponse response;
-    if (protocolMethod == "runGame" || protocolMethod == "reconnect") {
-      //WebLauncherPostRequest cprequest;
-      //cprequest.CreateDebugSession();
-      WebLauncherPostRequest rprequest;
-      response = rprequest.GetSessionData(protocolToken);
-      if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-       usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
-       WebLauncherPostRequest mirror_rprequest;
-       response = mirror_rprequest.GetSessionData(protocolToken);
-       if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAILED_CONNECTION) {
-         usedServer = (usedServer + 1) % _countof(SERVER_IP_ARRAY);
-         WebLauncherPostRequest proxy_rprequest;
-         response = proxy_rprequest.GetSessionData(protocolToken);
-       }
-      }
-    } else {
+    if (protocolMethod != "runGame" && protocolMethod != "reconnect") {
       ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol syntax" );
       return 0;
     }
 
-    if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_FAIL) {
-      systemLog( NLogg::LEVEL_MESSAGE ).Trace("Failed connection with reason: %s", response.response.c_str());
-      ShowLocalizedErrorMB( L"Connection failed", L"Game server response error!" );
+    // No pre-login HTTP to the synchronizer: the protocol token carries the
+    // sessionToken (32 chars) and the playerKey (64 chars,
+    // sha256(user_id+sessionToken+api_key)). The server authenticates by
+    // playerKey and delivers the session data in the login reply
+    // (LoginReply::webSession, applied in GameContext::Poll).
+    if (strlen(protocolToken) < 96) {
+      systemLog( NLogg::LEVEL_MESSAGE ) << "Invalid protocol token length: " << strlen(protocolToken) << endl;
+      ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [bad token length]! Please start the game via the launcher." );
       return 0;
     }
+    g_sessionToken = string(protocolToken, 32);
+    g_playerToken = string(protocolToken + 32, 64);
 
+    // The web session always goes through the network path: the players
+    // count is unknown before the login. A solo session becomes a 1-slot
+    // custom game on the server lobby side.
+    g_localGameRun = false;
+    g_sessionStatus = RegisterInSessionRequest_WebJoin;
 
-    if (response.retCode == WebLauncherPostRequest::LoginResponse_WEB_JOIN) {
-        // Login success
-        currentLogin = std::string(" ") + response.response;
-        currentLogin[0] = 0x09;
-        g_devLogin = currentLogin.c_str();
-
-        const char * mapId = CmdLineLite::Instance().GetStringKey( "mapId", "" );
-        if (g_localGameRun) {
-          context = new Game::LocalGameContext( false );
-          g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_WebCreate;
-        } else {
-          context = new Game::GameContext(g_sessionToken.c_str(), g_devLogin.c_str(), mapId, socialServer, guildEmblem, isSpectator, false );
-        }
-        context->Start();
-    } else {
-      ShowLocalizedErrorMB( L"Error", L"Unknown response" );
-      return 0;
-    }
+    const char * mapId = CmdLineLite::Instance().GetStringKey( "mapId", "" );
+    context = new Game::GameContext(g_sessionToken.c_str(), "", mapId, socialServer, guildEmblem, isSpectator, false );
+    context->Start();
   }
 
   mainVars.initContext = true;

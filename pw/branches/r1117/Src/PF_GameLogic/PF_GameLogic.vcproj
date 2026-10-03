@@ -3223,14 +3223,14 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="WebLauncherInteraction"
+			Name="SessionData"
 			>
 			<File
-				RelativePath=".\WebLauncher.cpp"
+				RelativePath=".\SessionData.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\WebLauncher.h"
+				RelativePath=".\SessionData.h"
 				>
 			</File>
 		</Filter>
