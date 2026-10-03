@@ -684,6 +684,12 @@ def main():
         parts.append("/LIBPATH:" + ld)
     parts.append("/SUBSYSTEM:" + subsys)
     parts.append("/MACHINE:X86")
+    # /MAP — карта символов для разбора крашей Wine-билда (в cdb кадры идут как
+    # PW_Game+0xNNNN, PDB без /DEBUG не делается, а /DEBUG меняет сам exe).
+    # На образ exe не влияет — проверено: sha256 совпадает с билдом без карты.
+    # Отключается PW_NO_MAP=1.
+    if not os.environ.get("PW_NO_MAP"):
+        parts.append("/MAP:" + winpath(os.path.join(pwg.intdir, "PW_Game.map")))
     if laa == "2" and not os.environ.get("PW_NO_LAA"):
         parts.append("/LARGEADDRESSAWARE")
     elif laa == "1":
