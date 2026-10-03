@@ -102,9 +102,12 @@ private:
     int delta = size+asize-buffer.size();
     if (delta > 0)
     {
-      static const int MAX_STACK_SIZE = 64*1024;
+      // »м€ локальной константы не должно совпадать с глобальным /DMAX_STACK_SIZE
+      // (реестр аллокаций MemoryLib со стеками вызовов) Ч иначе эта строка
+      // не компилируетс€ в диагностической сборке.
+      static const int MAX_RPC_STACK_SIZE = 64*1024;
       int newSize = buffer.size()+delta;
-      if (newSize <= MAX_STACK_SIZE)
+      if (newSize <= MAX_RPC_STACK_SIZE)
       {
         buffer.resize(newSize);
       }

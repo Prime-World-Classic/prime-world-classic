@@ -160,14 +160,21 @@ void RegisterMalloc( size_t size, void *p )
   allocInfo.pData = p;
 
 #if MAX_STACK_SIZE > 0
-  LockSymEngine().QuickCollectCallStack( allocInfo.stack, MAX_STACK_SIZE, 1 );
-  ReleaseSymEngine();
+  // ƒвижок может быть не назначен: аллокации случаютс€ вне окна жизни
+  // RegisterDumpMemoryLeaks (до его ctor и после dtor). “огда пишем без стека,
+  // иначе LockSymEngine() = EnterCriticalSection по null+offset -> AV.
+  if ( CSymEngine* en = GetSymEngine() )
+  {
+    en->QuickCollectCallStack( allocInfo.stack, MAX_STACK_SIZE, 1 );
+  }
 #endif // #if MAX_STACK_SIZE > 0
 #ifdef PERF_LOG_NEWDELETE
   if ( g_performaceLogOn.GetValue() )
   {
-    LockSymEngine().QuickCollectCallStack( g_stackPerf, MAX_PERFORMANCE_STACK_SIZE, 1 );
-    ReleaseSymEngine();
+    if ( CSymEngine* en = GetSymEngine() )
+    {
+      en->QuickCollectCallStack( g_stackPerf, MAX_PERFORMANCE_STACK_SIZE, 1 );
+    }
 
     g_perfLogAllocCallback( allocInfo.mallocIndex, size, p, g_stackPerf, MAX_PERFORMANCE_STACK_SIZE );
   }
