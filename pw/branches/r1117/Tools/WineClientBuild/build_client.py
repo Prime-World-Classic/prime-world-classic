@@ -666,6 +666,14 @@ def main():
         libdirs_win.append(winpath(real))
     nodflt = [x for x in (link.get("IgnoreDefaultLibraryNames", "") or "").split(";") if x]
     subsys = {1: "CONSOLE", 2: "WINDOWS"}.get(int(link.get("SubSystem", "2")), "WINDOWS")
+    # LargeAddressAware из vcproj (VS отдаёт /LARGEADDRESSAWARE). Без него у
+    # 32-битного процесса потолок адресного пространства 2 ГБ: в бою клиент
+    # упирается в него, nedmalloc возвращает NULL и срабатывает new-handler
+    # ("The program ran out of memory" / RaiseException 0xC000008C), а под
+    # WARP ещё и CreateTexture отдаёт E_OUTOFMEMORY. Проверено 2026-10-03:
+    # без бита пик commit 1748 mb + E_OUTOFMEMORY, с битом 2178 mb и чисто.
+    # PW_NO_LAA=1 — собрать без флага (для A/B-замеров).
+    laa = str(link.get("LargeAddressAware", "")).strip()
 
     parts = ["link", "/nologo", "/OUT:" + winpath(os.path.join(pwg.outdir, "PW_Game.exe")),
              winpath(os.path.join(pwg.intdir, "PW_Game.obj"))]
@@ -676,6 +684,10 @@ def main():
         parts.append("/LIBPATH:" + ld)
     parts.append("/SUBSYSTEM:" + subsys)
     parts.append("/MACHINE:X86")
+    if laa == "2" and not os.environ.get("PW_NO_LAA"):
+        parts.append("/LARGEADDRESSAWARE")
+    elif laa == "1":
+        parts.append("/LARGEADDRESSAWARE:NO")
     for nd in nodflt:
         parts.append("/NODEFAULTLIB:" + nd)
     # /MANIFESTINPUT в link 9.0 нет (это опция VS2010+): манифест собирается mt.exe
