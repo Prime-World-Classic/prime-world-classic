@@ -175,6 +175,11 @@ class Project:
         # AllocInfo содержит stack[MAX_STACK_SIZE], разный MAX_STACK_SIZE в
         # разных TU = разное расположение полей структуры.
         self.defines += to_dflags(os.environ.get("PW_EXTRA_DEFS", ""))
+        # PW_EXTRA_OPTS="/Oy- /Od" — дополнительные флаги cl во все TU.
+        # /Oy- (не оптимизировать кадровые указатели) нужен диагностике стеков:
+        # в 32-битном процессе на x64 (WOW64) RtlCaptureStackBackTrace без
+        # EBP-цепочки возвращает 0 кадров.
+        self.extra_opts = [o for o in os.environ.get("PW_EXTRA_OPTS", "").split() if o]
         self.pch_through = cl.get("PrecompiledHeaderThrough", "stdafx.h")
         self.pch_on = cl.get("UsePrecompiledHeader", "0")
         self.includes = []
@@ -323,6 +328,7 @@ class Project:
                 parts.remove("/EHsc")
             parts.append("/EHa")
         parts += self.defines
+        parts += self.extra_opts
         parts += to_dflags(per.get("PreprocessorDefinitions", ""))
         parts += parse_extra_options(per.get("AdditionalOptions", ""))
         return parts
