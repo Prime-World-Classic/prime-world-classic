@@ -368,6 +368,20 @@ static bool CompareAllocInfo( const AllocInfo &a1, const AllocInfo &a2 )
   return a1.mallocIndex < a2.mallocIndex;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static bool CompareAllocInfoSize( const AllocInfo &a1, const AllocInfo &a2 )
+{
+  return a1.size > a2.size;
+}
+#if MAX_STACK_SIZE > 0
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+static bool CompareAllocInfoStack( const AllocInfo &a1, const AllocInfo &a2 )
+{
+  if ( a1.stack[0] != a2.stack[0] ) return a1.stack[0] < a2.stack[0];
+  if ( a1.stack[1] != a2.stack[1] ) return a1.stack[1] < a2.stack[1];
+  return a1.stack[2] < a2.stack[2];
+}
+#endif // MAX_STACK_SIZE > 0
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static const char hex[17] = "0123456789ABCDEF";
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static void OutputDebugData( char *pData, int size )
@@ -400,7 +414,7 @@ static void OutputDebugData( char *pData, int size )
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-static void DumpMemoryLeaks()
+void DumpMemoryLeaksNow()
 {
   printf( "Memory leaks info START\n" );
   if ( g_unfreeMaloc == 0 )
@@ -422,6 +436,68 @@ static void DumpMemoryLeaks()
     int index = 0;
     for( nstl::hash_map<void*, AllocInfo>::const_iterator it = g_allocs->begin(); it != g_allocs->end(); ++it, ++index )
         sortedAllocs[index] = it->second;
+
+    nstl::sort( sortedAllocs.begin(), sortedAllocs.end(), CompareAllocInfoSize );
+
+#if MAX_STACK_SIZE > 0
+    // Снимок «кто держит память»: суммы живых аллокаций по стеку вызовов.
+    // Группировка по первым трём кадрам: обычно это new-обёртка, функция-владелец
+    // и её вызывающий. Топ-40 групп по суммарному размеру.
+    {
+      nstl::sort( sortedAllocs.begin(), sortedAllocs.end(), CompareAllocInfoStack );
+      const int MAX_AGG = 40;
+      struct AggInfo { DWORD f0, f1, f2; long size; int count; };
+      AggInfo top[MAX_AGG];
+      int topN = 0;
+      int from = 0;
+      while ( from < sortedAllocs.size() )
+      {
+        int to = from + 1;
+        while ( to < sortedAllocs.size() &&
+                sortedAllocs[to].stack[0] == sortedAllocs[from].stack[0] &&
+                sortedAllocs[to].stack[1] == sortedAllocs[from].stack[1] &&
+                sortedAllocs[to].stack[2] == sortedAllocs[from].stack[2] )
+          ++to;
+        long sum = 0;
+        for ( int k = from; k < to; ++k )
+          sum += sortedAllocs[k].size;
+        if ( topN < MAX_AGG || sum > top[MAX_AGG-1].size )
+        {
+          int pos = topN < MAX_AGG ? topN++ : MAX_AGG-1;
+          while ( pos > 0 && top[pos-1].size < sum ) { top[pos] = top[pos-1]; --pos; }
+          top[pos].f0 = sortedAllocs[from].stack[0];
+          top[pos].f1 = sortedAllocs[from].stack[1];
+          top[pos].f2 = sortedAllocs[from].stack[2];
+          top[pos].size = sum;
+          top[pos].count = (int)(to - from);
+        }
+        from = to;
+      }
+      CSymEngine& eng = LockSymEngine();
+      int withStack = 0;
+      for ( int q = 0; q < (int)sortedAllocs.size(); ++q )
+        if ( sortedAllocs[q].stack[0] ) ++withStack;
+      char const *hdr = StrFmt( "=== allocation snapshot: top %d stacks of %d allocations; engine=%p, withStack=%d ===\n",
+          MAX_AGG, (int)sortedAllocs.size(), (void*)GetSymEngine(), withStack );
+      printf("%s", hdr); DumpString(hdr);
+      for ( int g = 0; g < topN; ++g )
+      {
+        char const *cp = StrFmt( "#%d  %d bytes in %d allocs  %08X %08X %08X\n",
+            g+1, top[g].size, top[g].count, top[g].f0, top[g].f1, top[g].f2 );
+        printf("%s", cp); DumpString(cp);
+        const DWORD frames[3] = { top[g].f0, top[g].f1, top[g].f2 };
+        for ( int f = 0; f < 3 && frames[f]; ++f )
+        {
+          CSymString fn;
+          if ( eng.GetSymbol( frames[f], 0, &fn, 0, 0 ) )
+          { char const *s = StrFmt( "    %08X %s\n", frames[f], fn.szStr ); printf("%s", s); DumpString(s); }
+          else
+          { char const *s = StrFmt( "    %08X\n", frames[f] ); printf("%s", s); DumpString(s); }
+        }
+      }
+      ReleaseSymEngine();
+    }
+#endif // MAX_STACK_SIZE > 0
 
     nstl::sort( sortedAllocs.begin(), sortedAllocs.end(), CompareAllocInfo );
 
@@ -754,7 +830,7 @@ static struct RegisterDumpMemoryLeaks
 
   ~RegisterDumpMemoryLeaks()
   {
-    DumpMemoryLeaks();
+    DumpMemoryLeaksNow();
     AssignSymEngine( 0 );
   }
 

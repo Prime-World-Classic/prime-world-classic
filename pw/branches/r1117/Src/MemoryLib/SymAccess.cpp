@@ -23,7 +23,11 @@ static void Assign( ADDRESS64 *pRes, DWORD /*dwSeg*/, DWORD64 dwOffset )
 CSymEngine::CSymEngine()
 {
   InitializeCriticalSection( &block );
-  Init();
+  // Init() (SymInitialize) в конструкторе делать нельзя: он сам аллоцирует
+  // память, а аллокация зовёт LockSymEngine(); в этот момент движок ещё не
+  // назначен (AssignSymEngine вызывается позже) -> EnterCriticalSection по
+  // null -> AV, и AssignSymEngine уже никогда не выполняется: стеки аллокаций
+  // остаются пустыми. Init() вызывается лениво там, где нужны символы.
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 CSymEngine::~CSymEngine()
@@ -68,6 +72,7 @@ void CSymEngine::Term()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 bool CSymEngine::GetSymbol( DWORD64 dwAddress, CSymString *pszModule, CSymString *pszFile, int *pnLine, CSymString *pszFunc )
 {
+  Init();
 	Clear( pszModule );
 	Clear( pszFile );
 	Clear( pszFunc );
