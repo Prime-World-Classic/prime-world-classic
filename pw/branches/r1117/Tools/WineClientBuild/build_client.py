@@ -518,6 +518,15 @@ def run_jobs(all_jobs):
 
 
 def main():
+    if not DRY:
+        cl = os.path.join(WINEPREFIX, "drive_c", "Program Files (x86)",
+                          "Microsoft Visual Studio 9.0", "VC", "bin", "cl.exe")
+        if not os.path.isfile(cl):
+            sys.exit("ERROR: в WINEPREFIX нет VS2008 cl.exe: %s\n"
+                     "Задайте WINEPREFIX=<префикс с VS2008 SP1 + SDK v6.0A> "
+                     "(см. BUILD_CLIENT_WINE.md): иначе wine молча создаст пустой "
+                     "префикс, а все cl-вызовы упадут с «не является программой»."
+                     % WINEPREFIX)
     model = json.load(open(os.environ.get("PW_MODEL", os.path.join(LOGDIR, "model.json"))))
     if ONLY:
         model = OrderedDict([(ONLY, model[ONLY])])

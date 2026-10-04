@@ -115,3 +115,6 @@ pw/branches/r1117/Src/MemoryLib/stdafx.pch
 # Wine client build (Tools/WineClientBuild): генерируемые model.json, response-файлы,
 # логи ошибок и runtime-копия
 pw/branches/r1117/Tools/WineClientBuild/runtime/
+
+# локальные значения для server_ip.h (IP/токены конкретного стенда)
+pw/branches/r1117/Tools/WineClientBuild/server_ip.env

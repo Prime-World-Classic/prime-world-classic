@@ -9,23 +9,28 @@ Professional SP1** (MSVC 15.00.30729.01) по решению
 `Tools/WineClientBuild/build_client.py`: он читает `.vcproj`, воспроизводит флаги
 конфигурации и вызывает `cl`/`lib`/`rc`/`link`/`mt` напрямую.
 
-Быстрая сборка одним запуском:
+Быстрая сборка одним запуском (из чистого клона — других условий нет):
 
 ```bash
 cd prime-world-classic-new-client
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh
+./build_client_wine.sh
 ```
 
-Два предварительных условия:
+Что обёртка делает сама:
 
-* **Wine-префикс с VS2008 SP1.** На этой машине он один —
-  `/home/rekon/pwbuild/wine32` (в обёртке по умолчанию `~/.wine-vs2008`, его нет,
-  поэтому `WINEPREFIX=` указывать обязательно). `rc.exe`/`mt.exe`/`midl.exe`
-  лежат в `C:\vcbin` префикса — каталог `SDK\Bin` пуст.
-* **`Src/PW_Game/server_ip.h`** — per-deploy файл, в git не лежит
-  (`.gitignore`). Без него `C1083: Cannot open include file: 'PW_Game/server_ip.h'`
-  на Network, Shared и PF_GameLogic. Образец —
-  `prime-world-classic-main/pw/branches/r1117/Src/PW_Game/server_ip.h`.
+* **Wine-префикс ищется сам** — перебираются `~/pwbuild/wine32`, `~/.wine-vs2008`,
+  `~/.wine`, `~/<каталог>/wine*`; пригодность проверяется по наличию `cl.exe`
+  VS2008 и `Include`/`Lib` Windows SDK v6.0A. Вручную — `--prefix=PATH` или
+  `WINEPREFIX=`. На этой машине подходящий префикс один —
+  `/home/rekon/pwbuild/wine32`; `rc.exe`/`mt.exe`/`midl.exe` лежат в `C:\vcbin`
+  префикса (каталог `SDK\Bin` пуст).
+* **`Src/PW_Game/server_ip.h`** — per-deploy файл, в git не лежит (`.gitignore`);
+  без него `C1083: Cannot open include file: 'PW_Game/server_ip.h'` на Network,
+  Shared и PF_GameLogic. Если файла нет, он генерируется из
+  `Tools/WineClientBuild/server_ip.h.template`; значения берутся из переменных
+  `PW_SERVER_IP`, `PW_SESSION_TOKEN`, `PW_API_KEY`, `PW_SERVER_PORT`, … либо из
+  `Tools/WineClientBuild/server_ip.env` (тоже gitignored — там лежат значения
+  стенда). Существующий файл не перезаписывается; `--regen-ip` — пересоздать.
 
 **Результат (чистая сборка ветки `new-client`, 2026-10-03, wine-10.0):** 0 ошибок —
 `pw/branches/r1117/Src/_ShippingSingleExe/PW_Game.exe` (PE32 i386, 9 809 920 байт;
@@ -223,15 +228,25 @@ tiny10** (скил `pw-client`, «E2E-стенд на tiny10»): бэкап `PW_
 
 ```bash
 cd prime-world-classic-new-client
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh                    # полная сборка
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --config="ReleaseSingleExe|Win32"   # тестовая (с читами)
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --only=PW_Client    # один проект
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --dryrun            # план jobs без запуска
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --keep-going        # все ошибки за проход
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --clean             # пересобрать всё
-WINEPREFIX=/home/rekon/pwbuild/wine32 ./build_client_wine.sh --deploy            # копирует exe в pw_publish/branch/Client/PvP/Bin
-PW_LINK_LIBS=1 PW_BUILD_JOBS=8 ./build_client_wine.sh                            # линковка на .lib (не рекомендуется)
+./build_client_wine.sh                                        # полная сборка
+./build_client_wine.sh --config="ReleaseSingleExe|Win32"      # тестовая (с читами)
+./build_client_wine.sh --only=PW_Client                       # один проект
+./build_client_wine.sh --dryrun                               # план jobs без запуска
+./build_client_wine.sh --keep-going                           # все ошибки за проход
+./build_client_wine.sh --clean                                # пересобрать всё
+./build_client_wine.sh --deploy                               # exe в pw_publish/branch/Client/PvP/Bin
+./build_client_wine.sh --regen-ip                             # пересоздать server_ip.h из шаблона
+PW_SERVER_IP=10.0.0.1 ./build_client_wine.sh --regen-ip        # значения стенда через окружение
+PW_LINK_LIBS=1 PW_BUILD_JOBS=8 ./build_client_wine.sh          # линковка на .lib (не рекомендуется)
+
+# диагностическая сборка (реестр аллокаций со стеками); /Oy- обязателен:
+# в 32-битном процессе на x64 без кадровых указателей стеки не собираются
+PW_EXTRA_DEFS='MAX_STACK_SIZE=10;NI_DUMP_LEAKS_TO_FILE' PW_EXTRA_OPTS='/Oy-' \
+  ./build_client_wine.sh --clean
 ```
+
+Смена `PW_EXTRA_DEFS`/`PW_EXTRA_OPTS`/`PW_CFG` не видна логике актуальности TU —
+такую сборку запускать только с `--clean`.
 
 Вручную (этапы):
 
