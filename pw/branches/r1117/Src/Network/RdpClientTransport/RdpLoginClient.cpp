@@ -4,6 +4,7 @@
 #include "Network/PacketDispatcher.h"
 #include "RdpClientChannel.h"
 #include "PW_Game/server_ip.h"
+#include <Shared/ServerIps.h>
 
 static float operationTimeout = 30.0f;
 REGISTER_VAR( "login_timeout", operationTimeout, STORAGE_NONE );
@@ -14,11 +15,12 @@ namespace rdp_transport
 
 #pragma warning( disable: 4355 ) //'this' : used in base member initializer list
 
-LoginClient::LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey ) :
+LoginClient::LoginClient( ni_udp::IRdp * _rdp, const ni_udp::NetAddr & _loginSvcAddr, unsigned _loginSvcMux, const nstl::string & _login, const nstl::string & _password, const nstl::string & _sessionKey, const nstl::string & _playerKey ) :
 state( ELoginClientState::Connecting ),
 login( _login ),
 password( _password ),
 sessionKey( _sessionKey ),
+playerKey( _playerKey ),
 loginSvcAddr( _loginSvcAddr ),
 rdp( _rdp ),
 timeout( operationTimeout, this, &LoginClient::OnTimeout ),
@@ -139,6 +141,7 @@ void LoginClient::OnConnectionEstablished( ni_udp::IRdpConnection * _conn )
   hello.login = login;
   hello.password = password;
   hello.sessionkey = sessionKey;
+  hello.playerKey = playerKey;
 
   writer->Send( hello );
 
@@ -228,14 +231,14 @@ void LoginClient::OnSvcReqReply( const newLogin::ServiceReqReply  & _reply )
 
 
   if (portSize) {
-  const char* whiteIp = SERVER_IP_ARRAY[usedServer];
+  const char* whiteIp = GetServerIpA(usedServer);
   char newAddress[64];
     ZeroMemory(newAddress, sizeof(newAddress));
   memcpy((void*)newAddress, whiteIp, strlen(whiteIp) + 1);
   memcpy((void*)(newAddress + strlen(whiteIp)), (void*)port, portSize + 1);
     _reply.externalAddress = newAddress;
   } else {
-    string newAddress = SERVER_IP_ARRAY[usedServer];
+    string newAddress = GetServerIpA(usedServer);
     newAddress += ':';
     newAddress += _reply.externalAddress;
   _reply.externalAddress = newAddress;

@@ -3,9 +3,10 @@
 #include "RPC/GateKeeper.h" 
 #include "json/reader.h"
 #include "json/writer.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "Server/LobbySocial/SocialLobbyTypes.h"
-#include "system/SpinLock.h"
+#include "System/SpinLock.h"
+#include "GatewayPingContext.h"
 #include <list>
 #include <map>
 
@@ -28,10 +29,10 @@ namespace HttpGateway
 class PingContext;
 class ForgeRollRequest;
 
-namespace EContextState { enum Enum; }
+// EContextState defined in GatewayPingContext.h
 
 
-// рабочий класс: парсит запросы, исполняет rpс-вызовы (через интерфейс ISocialLobby), кэширует данные и ответы
+// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ rpпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ISocialLobby), пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 class GatewayJsonHandler : public BaseObjectMT
 {
 public:
@@ -93,6 +94,8 @@ private:
 
   void HandleServerStatus( Json::Value & pvxReply, const Json::Value & request );
   void OnServerStatus( socialLobby::SServerStatus result );
+
+  void HandleWebSessionRegister( Json::Value & pvxReply, const Json::Value & request );
 
   void HandleForgeRoll( Json::Value & reply, const Json::Value & request );
   void PollForgeRollrequests();

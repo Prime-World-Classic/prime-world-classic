@@ -6,11 +6,11 @@
 #include "SelectHeroScreenLogic.h"
 #include "Client/MainTimer.h"
 #include "System/InlineProfiler.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 #include "../PW_Game/server_ip.h"
 
 extern string g_devLogin;
-extern WebLauncherPostRequest::RegisterSessionRequest g_sessionStatus;
+extern RegisterSessionRequest g_sessionStatus;
 extern string g_sessionToken;
 extern int g_playersCount;
 extern bool g_localGameRun;
@@ -59,9 +59,9 @@ void SelectHeroScreen::CommonStep( bool bAppActive )
   const float timeToReady = 60.0f;
 
   // 4. SetReady with all players connected or 
-  if (g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_HeroSelected || g_sessionStatus == WebLauncherPostRequest::RegisterInSessionRequest_WebHeroSelected) {
+  if (g_sessionStatus == RegisterInSessionRequest_HeroSelected || g_sessionStatus == RegisterInSessionRequest_WebHeroSelected) {
     if (!logic->IsPlayerReady() && g_localGameRun) {
-      g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_InReadyState;
+      g_sessionStatus = RegisterInSessionRequest_InReadyState;
       logic->PlayerReady();
       if ( StrongMT<Game::IGameContextUiInterface> locked = GameCtx().Lock() ) {
         if (locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby) {
@@ -71,7 +71,7 @@ void SelectHeroScreen::CommonStep( bool bAppActive )
     } else {
       lobbyTimeout += dt;
       if (!logic->IsPlayerReady() && (debugPlayerIds.size() == g_playersCount + 2 || lobbyTimeout > timeToReady)) {
-        g_sessionStatus = WebLauncherPostRequest::RegisterInSessionRequest_InReadyState;
+        g_sessionStatus = RegisterInSessionRequest_InReadyState;
         logic->PlayerReady();
         if ( StrongMT<Game::IGameContextUiInterface> locked = GameCtx().Lock() ) {
           if (locked->GetLobbyStatus() == lobby::EClientStatus::InCustomLobby) {

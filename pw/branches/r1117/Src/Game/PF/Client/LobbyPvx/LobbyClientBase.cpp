@@ -9,7 +9,7 @@
 #include "LLobbyClientInterface.auto.h"
 #include "Version.h"
 #include "UI/FrameTimeRender.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "PF_GameLogic/SessionData.h"
 #include "../PW_Game/server_ip.h"
 
 extern string g_devLogin;

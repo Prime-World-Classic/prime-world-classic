@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "SimpleLoginProcessor.h"
 
-//#include "rpc/P2PNode.h"
+//#include "RPC/P2PNode.h"
 #include "Network/AddressTranslator.h"
 #include "Network/ClusterConfiguration.h"
 #include "Server/ZZima/ZZimaService.h" // E_XXX error codes

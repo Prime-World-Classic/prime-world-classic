@@ -82,7 +82,7 @@
 #include "DayNightController.h"
 
 #include "Version.h"
-#include "../PF_GameLogic/WebLauncher.h"
+#include "SessionData.h"
 
 extern bool g_localGameRun;
 
@@ -503,10 +503,9 @@ void AdventureScreenLogic::SetHero(NWorld::PFBaseHero const *pHero)
   {
     const PlayerData & playerData = playersData->GetPlayerData(pHero->GetPlayerId());
     heroExp = playerData.GetHeroExperience();
-    heroRating = 1100;
-    if (userIdToNicknameMap.find(pHero->GetPlayerId()) != userIdToNicknameMap.end()) {
-      heroRating = (int)g_usersData[userIdToNicknameMap[pHero->GetPlayerId()].nickname].currentRating; //playerData.GetHeroRating();
-    }
+    // The rating comes from the player record the server delivered with the map;
+    // 1100 stays as the default for players without a rating (bots).
+    heroRating = playerData.GetHeroRating() ? playerData.GetHeroRating() : 1100;
   }
 
   awardsController = new AwardsController(flashWnd, m_owner->GetWorld()->GetAIWorld()->GetAIParameters(),  uiData, generalTooltip, flashInterface, m_owner->GetWorld()->GetResourcesCollection(), pHero->GetOriginalFaction(), heroExp, heroRating, rankCalculator, playersData );

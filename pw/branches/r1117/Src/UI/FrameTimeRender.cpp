@@ -2,6 +2,7 @@
 #include "FrameTimeRender.h"
 #include "System/LogFileName.h"
 #include "System/SyncProcessorState.h"
+#include "MemoryLib/newdelete.h"
 #include "Render/Renderer.h"
 #include "Render/UIRenderer.h"
 #include "Render/smartrenderer.h"
@@ -47,6 +48,12 @@ static bool g_showInfoGraph = false;
 static bool g_showInfoGraph = true;
 #endif
 REGISTER_VAR( "show_info_graph", g_showInfoGraph, STORAGE_NONE );
+
+// Снимок таблицы аллокаций, когда commit процесса достигнет порога (МБ). 0 — выкл.
+// Работает только в сборке с реестром аллокаций (/DMAX_STACK_SIZE>0) и пишет в
+// MemoryLeaks-<ts>-<module>.log при /DNI_DUMP_LEAKS_TO_FILE.
+static int debug_dump_allocs_at_mb = 0;
+REGISTER_VAR( "debug_dump_allocs_at_mb", debug_dump_allocs_at_mb, STORAGE_NONE );
 
 
 static int lastStep = 0;
@@ -254,6 +261,18 @@ void DumpSystemStatistics()
   size_t virtualSize = 0;
   utils::GetMemoryStatus( virtualSize );
   MessageTrace( "Virtual Memory Usage: %u mb", virtualSize / ( 1024 * 1024 ) );
+
+  // Порог срабатывает один раз за сеанс — иначе дамп (он медленный и блокирует
+  // регистрацию аллокаций на время вывода) будет повторяться каждые 30 с.
+  static bool debug_allocs_dumped = false;
+  if ( debug_dump_allocs_at_mb > 0 && !debug_allocs_dumped &&
+       virtualSize / ( 1024 * 1024 ) >= (size_t)debug_dump_allocs_at_mb )
+  {
+    debug_allocs_dumped = true;
+    MessageTrace( "Dumping allocation table at %u mb (debug_dump_allocs_at_mb=%d)...",
+        virtualSize / ( 1024 * 1024 ), debug_dump_allocs_at_mb );
+    DumpMemoryLeaksNow();
+  }
 }
 
 

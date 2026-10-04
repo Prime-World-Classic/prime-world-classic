@@ -44,19 +44,15 @@ private:
   };
 
   typedef std::map<std::string, SessionKey>   Keys;
-  typedef std::map<std::string, Transport::TClientId> DevLoginHistory;
 
   StrongMT<IConfigProvider>   config;
   timer::Time                 now;
-  Transport::TClientId        nextDevUserId;
   Keys                        keys;
   string                      loginAddress;
-  DevLoginHistory             devLoginHistory;
   threading::Mutex            mutex;
 
   void DevAuth( LoginReply & _reply, const LoginHello & _hello );
-  bool RestoreDevAuth( LoginReply & _reply, const LoginHello & _hello );
-  void CleanupDevLoginHistory();
+  void DevWebAuth( LoginReply & _reply, const LoginHello & _hello );
 };
 
 } //namespace newLogin

@@ -39,8 +39,9 @@ namespace Transport
   }
 
   void ClientTransportSystem3::Login( const Network::NetAddress& _loginServerAddress, const string& _login, const string& _password, 
-    const string& _sessionKey, Login::LoginType::Enum _loginType )
+    const string& _sessionKey, const string& _playerKey, Login::LoginType::Enum _loginType )
   {
+    (void)_playerKey; // TCP transport: web-session login is not supported (UDP/RDP path only)
     if ( state == LoggingIn || state == ContactingRelay )
       return;
 
