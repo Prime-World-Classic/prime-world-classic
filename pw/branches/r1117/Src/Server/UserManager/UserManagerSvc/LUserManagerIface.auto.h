@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "UserManager::IPrepareUserEnvCallback::OnPrepareUserEnv", 4, false, rpc::GetMethodCode(&UserManager::IPrepareUserEnvCallback::OnPrepareUserEnv) },
+        { "UserManager::IPrepareUserEnvCallback::OnPrepareUserEnv", 4, false, rpc::GetMethodCode(&UserManager::IPrepareUserEnvCallback::OnPrepareUserEnv), 12 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -113,11 +113,11 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "UserManager::IUserManager::AddUser", 4, false, rpc::GetMethodCode(&UserManager::IUserManager::AddUser) },
-        { "UserManager::IUserManager::RemoveUser", 1, false, rpc::GetMethodCode(&UserManager::IUserManager::RemoveUser) },
-        { "UserManager::IUserManager::FindUserSession", 2, false, rpc::GetMethodCode(&UserManager::IUserManager::FindUserSession) },
-        { "UserManager::IUserManager::PrepareUserEnv", 2, false, rpc::GetMethodCode(&UserManager::IUserManager::PrepareUserEnv) },
-        { "UserManager::IUserManager::OnUserLeave", 3, false, rpc::GetMethodCode(&UserManager::IUserManager::OnUserLeave) },
+        { "UserManager::IUserManager::AddUser", 4, false, rpc::GetMethodCode(&UserManager::IUserManager::AddUser), 14 },
+        { "UserManager::IUserManager::RemoveUser", 1, false, rpc::GetMethodCode(&UserManager::IUserManager::RemoveUser), 0 },
+        { "UserManager::IUserManager::FindUserSession", 2, false, rpc::GetMethodCode(&UserManager::IUserManager::FindUserSession), 1 },
+        { "UserManager::IUserManager::PrepareUserEnv", 2, false, rpc::GetMethodCode(&UserManager::IUserManager::PrepareUserEnv), 3 },
+        { "UserManager::IUserManager::OnUserLeave", 3, false, rpc::GetMethodCode(&UserManager::IUserManager::OnUserLeave), 6 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

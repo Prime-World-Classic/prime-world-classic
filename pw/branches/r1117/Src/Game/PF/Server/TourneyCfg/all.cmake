@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_TourneyCfg_all TourneyCfg.h TourneyCfg.cpp)
-set(LIBRARIES_Src_Game_PF_Server_TourneyCfg_all )

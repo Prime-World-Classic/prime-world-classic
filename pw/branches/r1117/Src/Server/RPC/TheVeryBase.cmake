@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RPC_TheVeryBase RpcDataFactory.h RpcDataFactory.cpp)
-set(LIBRARIES_Src_Server_RPC_TheVeryBase )

@@ -265,11 +265,6 @@ libACE_la_SOURCES = \
   SOCK_SEQPACK_Association.cpp \
   SOCK_SEQPACK_Connector.cpp \
   SOCK_Stream.cpp \
-  SPIPE.cpp \
-  SPIPE_Acceptor.cpp \
-  SPIPE_Addr.cpp \
-  SPIPE_Connector.cpp \
-  SPIPE_Stream.cpp \
   SString.cpp \
   Stack_Trace.cpp \
   SUN_Proactor.cpp \
@@ -297,6 +292,7 @@ libACE_la_SOURCES = \
   Sig_Adapter.cpp \
   Sig_Handler.cpp \
   Signal.cpp \
+  SPIPE_stubs.cpp \
   Sock_Connect.cpp \
   Stats.cpp \
   String_Base_Const.cpp \

@@ -87,7 +87,7 @@ void FileWriteBufferedStream::OpenInternal(const string & _fileName)
 {
   //file = CreateFileA(_fileName.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, creationMode, 
                       //FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN | FILE_FLAG_WRITE_THROUGH, NULL);
-  file = ::open( _fileName.c_str(), creationMode );
+  file = ::open( _fileName.c_str(), creationMode, 0644 );
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -39,12 +39,12 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "clientCtl::IInterface::RegisterLoginSvc", 2, false, rpc::GetMethodCode(&clientCtl::IInterface::RegisterLoginSvc) },
-        { "clientCtl::IInterface::UpdateLoginSvc", 3, false, rpc::GetMethodCode(&clientCtl::IInterface::UpdateLoginSvc) },
-        { "clientCtl::IInterface::AllocateLoginSvc", 2, false, rpc::GetMethodCode(&clientCtl::IInterface::AllocateLoginSvc) },
-        { "clientCtl::IInterface::UserEnters", 4, false, rpc::GetMethodCode(&clientCtl::IInterface::UserEnters) },
-        { "clientCtl::IInterface::UserLeft", 3, false, rpc::GetMethodCode(&clientCtl::IInterface::UserLeft) },
-        { "clientCtl::IInterface::KickUser", 1, false, rpc::GetMethodCode(&clientCtl::IInterface::KickUser) },
+        { "clientCtl::IInterface::RegisterLoginSvc", 2, false, rpc::GetMethodCode(&clientCtl::IInterface::RegisterLoginSvc), 3 },
+        { "clientCtl::IInterface::UpdateLoginSvc", 3, false, rpc::GetMethodCode(&clientCtl::IInterface::UpdateLoginSvc), 1 },
+        { "clientCtl::IInterface::AllocateLoginSvc", 2, false, rpc::GetMethodCode(&clientCtl::IInterface::AllocateLoginSvc), 2 },
+        { "clientCtl::IInterface::UserEnters", 4, false, rpc::GetMethodCode(&clientCtl::IInterface::UserEnters), 9 },
+        { "clientCtl::IInterface::UserLeft", 3, false, rpc::GetMethodCode(&clientCtl::IInterface::UserLeft), 1 },
+        { "clientCtl::IInterface::KickUser", 1, false, rpc::GetMethodCode(&clientCtl::IInterface::KickUser), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

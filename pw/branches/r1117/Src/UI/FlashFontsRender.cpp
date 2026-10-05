@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "FlashFontsRender.h"
 
 #include "FontRender.h"
@@ -11,7 +11,7 @@
 static bool gDebugDrawFonts = false;
 REGISTER_DEV_VAR( "flash_debug_fonts", gDebugDrawFonts, STORAGE_NONE );
 
-const static float FLASH_SCALE_HACK = 0.7f; //HACK: во флэше размер шрифта задается как row step, у нас - как ascent
+const static float FLASH_SCALE_HACK = 0.7f; //HACK:       row step,   -  ascent
 
 
 namespace UI

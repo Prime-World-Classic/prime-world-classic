@@ -9,7 +9,7 @@ void CoordinatorRouteMap::AddRoute( const Transport::TServiceId& service, SvcNet
 {
   routeMap[ service ] = addrs;
 
-  // routes апдейтим всему кластеру
+  // routes пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   for ( int i = 0; i < slaves.size(); ++i )
     slaves[i]->AddRoute( service, addrs );
 }
@@ -20,7 +20,7 @@ void CoordinatorRouteMap::RemoveRoute( const Transport::TServiceId& service )
 {
   routeMap.erase( service );
 
-  // routes апдейтим всему кластеру
+  // routes пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   for ( int i = 0; i < slaves.size(); ++i )
     slaves[i]->RemoveRoute( service );
 }
@@ -41,31 +41,48 @@ bool CoordinatorRouteMap::FindRoute( SvcNetAddresses & _result, const Transport:
 
 
 
-void CoordinatorRouteMap::AddSlave( RICoordinatorClientRemote * _cli )
+void CoordinatorRouteMap::AddSlave( ICoordinatorClientRemote * _cli )
 {
-  for ( CoordinatorClientsT::iterator it = slaves.begin(); it != slaves.end(); ++it )
-    if ( _cli->GetInfo().entityGUID == (*it)->GetInfo().entityGUID )
+  // For remote clients, check for duplicates by entity GUID
+  const RICoordinatorClientRemote* remoteCli = dynamic_cast<const RICoordinatorClientRemote*>(_cli);
+  if (remoteCli)
+  {
+    for ( CoordinatorClientsT::iterator it = slaves.begin(); it != slaves.end(); ++it )
     {
-      *it = _cli;
-      return;
+      const RICoordinatorClientRemote* existingRemote = dynamic_cast<const RICoordinatorClientRemote*>(&**it);
+      if (existingRemote && remoteCli->GetInfo().entityGUID == existingRemote->GetInfo().entityGUID)
+      {
+        *it = _cli;
+        return;
+      }
     }
+  }
 
   slaves.push_back( _cli );
 }
 
 
 
-void CoordinatorRouteMap::InitSlave( RICoordinatorClientRemote * _cli )
+void CoordinatorRouteMap::InitSlave( ICoordinatorClientRemote * _cli )
 {
-  for ( CoordinatorClientsT::const_iterator cit = slaves.begin(); cit != slaves.end(); ++cit )
-    if ( _cli->GetInfo().entityGUID == (*cit)->GetInfo().entityGUID )
+  // For remote clients, find by entity GUID; for local clients just apply routes directly
+  const RICoordinatorClientRemote* remoteCli = dynamic_cast<const RICoordinatorClientRemote*>(_cli);
+  if (remoteCli)
+  {
+    for ( CoordinatorClientsT::const_iterator cit = slaves.begin(); cit != slaves.end(); ++cit )
     {
-      for( TServicesMap::iterator it = routeMap.begin(); it != routeMap.end(); ++it )
-        _cli->AddRoute( it->first, it->second );
-      return;
+      const RICoordinatorClientRemote* existingRemote = dynamic_cast<const RICoordinatorClientRemote*>(&**cit);
+      if (existingRemote && remoteCli->GetInfo().entityGUID == existingRemote->GetInfo().entityGUID)
+      {
+        for( TServicesMap::iterator it = routeMap.begin(); it != routeMap.end(); ++it )
+          _cli->AddRoute( it->first, it->second );
+        return;
+      }
     }
-
-  LOG_A(0) << "CoordinatorRouteMap::InitSlave slave=" << _cli << " NOT FOUND!";
+  }
+  // For local clients, just apply all routes
+  for( TServicesMap::iterator it = routeMap.begin(); it != routeMap.end(); ++it )
+    _cli->AddRoute( it->first, it->second );
 }
 
 
@@ -74,7 +91,9 @@ void CoordinatorRouteMap::RemoveSlaveCorpses()
 {
   for ( CoordinatorClientsT::iterator it = slaves.begin(); it != slaves.end(); )
   {
-    if ( (*it)->GetStatus() ==  rpc::Connected)
+    // Remote clients can disconnect; local clients are always "connected"
+    RICoordinatorClientRemote* remote = dynamic_cast<RICoordinatorClientRemote*>(&**it);
+    if (!remote || (remote->GetStatus() == rpc::Connected))
       ++it;
     else
       it = slaves.erase( it );

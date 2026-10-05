@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "MinimapController.h"
 #include "UIEventHandler.h"
 #include "FlashFSCommands.h"

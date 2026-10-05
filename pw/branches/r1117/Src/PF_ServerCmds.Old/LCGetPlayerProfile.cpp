@@ -20,7 +20,7 @@ using namespace nstl;
 #include <typeinfo>
 #include <math.h>
 #include "../System/ScopedArray.h"
-#include "../System/basic.h"
+#include "../System/Basic.h"
 #include "../System/nalgoritm.h"
 #include "../Server/src/ClientThread.h"
 #include "LCGetPlayerProfile.h"

@@ -2,15 +2,16 @@ sources = [
 ]
 
 
-builders = [ 
-  RPCBuilder( 'Local', 'CoordinatorServerIface.h', '' ), 
+builders = [
+  RPCBuilder( 'Local', 'CoordinatorServerIface.h', '', ['Coordinator/LCoordinatorClientIface.auto.h'] ),
 ]
 
 includePaths = [
   '..',
 ]
 
-components = [ 
+components = [
   'Vendor/Libc',
   'RPC/all',
+  'Coordinator/LCoordinatorClientIface',
 ]

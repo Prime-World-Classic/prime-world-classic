@@ -39,7 +39,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "lobby::IEntrance::RequestServerInstance", 2, false, rpc::GetMethodCode(&lobby::IEntrance::RequestServerInstance) },
+        { "lobby::IEntrance::RequestServerInstance", 2, false, rpc::GetMethodCode(&lobby::IEntrance::RequestServerInstance), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

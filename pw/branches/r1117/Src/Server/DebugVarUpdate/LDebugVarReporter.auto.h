@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "NDebug::DebugVarReporter::GetDebugVar", 1, false, rpc::GetMethodCode(&NDebug::DebugVarReporter::GetDebugVar) },
-        { "NDebug::DebugVarReporter::RunRemoteCommand", 1, false, rpc::GetMethodCode(&NDebug::DebugVarReporter::RunRemoteCommand) },
+        { "NDebug::DebugVarReporter::GetDebugVar", 1, false, rpc::GetMethodCode(&NDebug::DebugVarReporter::GetDebugVar), 1 },
+        { "NDebug::DebugVarReporter::RunRemoteCommand", 1, false, rpc::GetMethodCode(&NDebug::DebugVarReporter::RunRemoteCommand), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

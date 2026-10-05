@@ -13,7 +13,9 @@
 
 #include "HttpGatewayLog.inl"
 #include <Shared/WebSessionRegistry.h>
+#include <Shared/GameHealthSnapshot.h>
 #include <stdexcept>
+#include <ctime>
 
 #pragma warning( disable : 4996)
 
@@ -30,6 +32,11 @@ REGISTER_VAR( "http_gateway_pretty_json", s_prettyJson, STORAGE_NONE );
 // signs its requests with). Empty = the push endpoint refuses everything.
 static string s_webSessionPushKey;
 REGISTER_VAR( "web_session_push_key", s_webSessionPushKey, STORAGE_NONE );
+
+// Process start (PLAN_pool_uptime.md): initialized at load time, before main;
+// the web_session_load answer carries the uptime in seconds (not an epoch —
+// no cross-machine clocks involved).
+static const time_t s_processStart = time( nullptr );
 
 
 
@@ -248,6 +255,7 @@ void GatewayJsonHandler::HandleJsonThrow( std::string & json_reply, const std::s
       HandleServerStatus( pvxReply, request );
 
       HandleWebSessionRegister( pvxReply, request );
+      HandleWebSessionLoad( pvxReply, request );
 
       HandleForgeRoll( forgeRollReply, request );
     }
@@ -1209,6 +1217,55 @@ void GatewayJsonHandler::HandleWebSessionRegister( Json::Value & pvxReply, const
     pvxReply["web_session_register"] = "Invalid session payload";
     SVC_LOG_ERR.Trace( "Web session register failed. token=%s map=%s", token.c_str(), mapId.c_str() );
   }
+}
+
+
+// PLAN_game_server_load_balancing.md (v3) — the back-end (api.js, the process
+// that owns Mm) polls each game server before a push and on a 60 s tick:
+// the answer carries the number of in-progress web sessions from the process
+// registry (WebSession::Registry, same UniServerApp process as the lobby).
+// The gateway HTTP answer doubles as the server's liveness signal for the
+// pool (the push itself goes to the same gateway).
+void GatewayJsonHandler::HandleWebSessionLoad( Json::Value & pvxReply, const Json::Value & request )
+{
+  NI_PROFILE_FUNCTION;
+
+  Json::Value reqObj = request.get( "web_session_load", Json::Value() );
+  if ( !reqObj.isObject() )
+    return;
+
+  const std::string apiKey = reqObj.get( "apiKey", "" ).asString();
+  if ( s_webSessionPushKey.empty() || apiKey != s_webSessionPushKey.c_str() )
+  {
+    SVC_LOG_ERR.Trace( "Web session load query refused: invalid apiKey" );
+    pvxReply["web_session_load"] = "Invalid apiKey";
+    return;
+  }
+
+  // '' = ack (the back-end treats an empty string as success); the count is a
+  // sibling key so the method->status convention stays intact.
+  pvxReply["web_session_load"] = "";
+  pvxReply["active"] = (Json::UInt)WebSession::Registry::Instance().ActiveCount();
+
+  // Self-measured health (PLAN_server_pick_ping.md, wave 2): the back-end
+  // uses resp/players/delta/period in the server-cost model and treats the
+  // fields as optional (an old gateway sends none of them). Sources: the
+  // per-game tick stats reported by Peered::CommandsScheduler (work/late via
+  // the slicer tick, players via Clients::GetPlayingCount, period — the
+  // Step return).
+  double respMs = 0;
+  int healthPlayers = 0;
+  double deltaMs = 0;
+  double periodMs = 0;
+  GameHealth::Snapshot::Instance().Get( respMs, healthPlayers, deltaMs, periodMs );
+  pvxReply["resp"] = respMs;
+  pvxReply["players"] = (Json::UInt)healthPlayers;
+  pvxReply["delta"] = deltaMs;
+  pvxReply["period"] = periodMs;
+
+  // Process uptime in seconds (PLAN_pool_uptime.md); an old binary sends no
+  // field at all — the back-end treats it as optional.
+  pvxReply["uptime"] = (Json::UInt)( time( nullptr ) - s_processStart );
 }
 
 

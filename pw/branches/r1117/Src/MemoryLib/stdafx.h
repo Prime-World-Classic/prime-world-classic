@@ -16,7 +16,7 @@
 #include <assert.h>
 
 #include "../System/DefaultTypes.h"
-#include "../MemoryLib/newdelete.h"
+#include "../MemoryLib/NewDelete.h"
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma warning( disable: 4800 ) // warning C4800: 'type' : forcing value to bool 'true' or 'false' (performance warning)
 #pragma warning( disable: 4100 ) // warning C4100: 'identifier' : unreferenced formal parameter

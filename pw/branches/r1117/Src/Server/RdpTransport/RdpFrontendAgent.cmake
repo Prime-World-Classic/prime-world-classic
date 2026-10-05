@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_RdpTransport_RdpFrontendAgent RdpFrontendAgent.h RdpFrontendAgent.cpp RdpFrontendAgentInterface.h)
-set(LIBRARIES_Src_Server_RdpTransport_RdpFrontendAgent )

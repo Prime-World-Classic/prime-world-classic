@@ -21,6 +21,8 @@ RdpLogic::RdpLogic( const RdpOptions & _opt, ni_rnd::IGenerator * _rnd, timer::I
 rnd( _rnd ),
 clock( _clock ),
 now( _clock->Now() ),
+activeConns( 0 ),
+lastDataTime( 0 ),
 tempDbgNextDump( 30.0 ),
 tempDbgDgSent( 0 ), tempDbgDgRecv( 0 ), tempDbgWarn( 0 ), tempDbgErr( 0 ), tempDbgRetr( 0 ), tempDbgDelivered( 0 ),
 tempDbgPollHisto( lifehack::EasyVector<double>( 0.0, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0 ) ),
@@ -110,14 +112,25 @@ void RdpLogic::ParallelPoll()
 {
   NI_PROFILE_FUNCTION;
 
+#ifndef _SHIPPING
   timer::Time beforeSleep = clock->Now();
+#endif
 
   {
     NI_PROFILE_HEAVY_BLOCK( "Sleep" );
-    threading::Sleep( 1 );
+    // Adaptive sleep (REPORT_server_profiling.md, B1+C2): 1 ms cycle while
+    // live connections carry real traffic (anything except Ping/Pong
+    // keepalives, see ParsePacket), 5 ms otherwise. A quiet lobby connection
+    // thus relaxes within ~150 ms, while active play (input datagrams, acks)
+    // keeps the fast cycle. Worst-case idle datagram-processing latency grows
+    // by up to 4 ms, negligible against the 100 ms game step.
+    const bool busy = ( activeConns > 0 ) && ( now - lastDataTime ) < 0.15;
+    threading::Sleep( busy ? 1 : 5 );
   }
 
   timer::Time _now = clock->Now();
+
+#ifndef _SHIPPING
   tempDbgSleepHisto.AddData( 1e3 * ( _now - beforeSleep ) );
 
   if ( _now > tempDbgNextDump )
@@ -141,6 +154,7 @@ void RdpLogic::ParallelPoll()
     tempDbgPollHisto.ResetData();
     tempDbgSleepHisto.ResetData();
   }
+#endif
 
   {
     threading::MutexLock lock( mutex );
@@ -153,9 +167,12 @@ void RdpLogic::ParallelPoll()
     threading::MutexLock lock( mutex );
     PollConnections();
     PollListenContexts();
+    activeConns = (unsigned)connections.size();
   }
 
+#ifndef _SHIPPING
   tempDbgPollHisto.AddData( 1e3 * ( clock->Now() - _now ) );
+#endif
 }
 
 
@@ -445,6 +462,13 @@ void RdpLogic::ParsePacket( const IncomingPkt & _slot )
   const proto::EPktType::Enum pktType = _slot.pktType;
   const unsigned seqIdx = _slot.seqIndex;
   const ConnDescriptor & descr = _slot.descr;
+
+  // B1+C2: track real (non-keepalive) incoming traffic to drive the adaptive
+  // poll rate in ParallelPoll. Runs on the same thread as ParallelPoll, so
+  // no extra synchronization is required. DatagramAck counts as traffic:
+  // it means the peer is actively receiving our data (bulk transfer).
+  if ( pktType != proto::EPktType::Ping && pktType != proto::EPktType::Pong )
+    lastDataTime = now;
 
   if ( ctx.options->logEvents & RdpOptions::LogPackets )
     MessageTrace( "Processing packet. local_addr=%s, descr=%s, type=%d, size=%d, seq=%d", localAddr, descr, PktTypeToString( pktType ), _slot.data ? _slot.data->Size() : 0, seqIdx );

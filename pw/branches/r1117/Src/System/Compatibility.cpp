@@ -5,6 +5,7 @@
 
 namespace Compatibility
 {
+#ifdef NV_WINDOWS_PLATFORM
 static bool g_isRunnedUnderWine = false;
 static bool g_isCrossOverWine = false;
 
@@ -41,5 +42,9 @@ bool IsRunnedUnderCrossOverWine()
 {
   return g_isCrossOverWine;
 }
-
+#else
+void Init() {}
+bool IsRunnedUnderWine() { return false; }
+bool IsRunnedUnderCrossOverWine() { return false; }
+#endif
 }

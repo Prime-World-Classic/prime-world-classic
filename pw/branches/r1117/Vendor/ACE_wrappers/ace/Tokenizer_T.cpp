@@ -1,6 +1,7 @@
 // $Id: Tokenizer_T.cpp 85547 2009-06-07 17:57:11Z johnnyw $
 
 #ifndef ACE_TOKENIZER_T_CPP
+#include "ace/Tokenizer_T.h"
 #define ACE_TOKENIZER_T_CPP
 
 #include "ace/ACE.h"

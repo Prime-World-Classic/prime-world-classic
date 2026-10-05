@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Coordinator_CoordinatorCommon CoordinatorRouteMap.cpp CoordinatorRouteMap.h Interface.h ServiceRole.h ServerDef.cpp ServerDef.h ServicesStartInfo.cpp ServicesStartInfo.h ConfigServiceOption.cpp ConfigServiceOption.h CoordinatorTypes.h SvcNetAddresses.cpp SvcNetAddresses.h)
-set(LIBRARIES_Src_Server_Coordinator_CoordinatorCommon )

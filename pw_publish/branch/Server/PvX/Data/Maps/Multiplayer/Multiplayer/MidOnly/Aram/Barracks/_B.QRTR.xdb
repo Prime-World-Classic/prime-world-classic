@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Quarter parent="/Buildings/B/Barrack/_Parent.QRTR">
+	<onDestructionEffect href="/Buildings/B/Barrack/FXcrashTutorial.EFFT" />
+	<routeID>Center</routeID>
+	<routeLevel>2</routeLevel>
+	<ruinSceneObject href="/Buildings/B/Barrack/Crash.SOBJ" />
+	<sceneObject href="/Buildings/B/Barrack/_Tutorial.SOBJ" />
+	<showRuinDelay>3</showRuinDelay>
+</Quarter>

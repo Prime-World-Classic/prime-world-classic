@@ -39,14 +39,14 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::IUserContext::AcceptGameSession", 1, false, rpc::GetMethodCode(&socialLobby::IUserContext::AcceptGameSession) },
-        { "socialLobby::IUserContext::ChangeGuardHero", 1, false, rpc::GetMethodCode(&socialLobby::IUserContext::ChangeGuardHero) },
-        { "socialLobby::IUserContext::GuardReady", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::GuardReady) },
-        { "socialLobby::IUserContext::ReconnectToGame", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::ReconnectToGame) },
-        { "socialLobby::IUserContext::LeaveGame", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::LeaveGame) },
-        { "socialLobby::IUserContext::CancelRequest", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::CancelRequest) },
-        { "socialLobby::IUserContext::CancelPartyRequest", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::CancelPartyRequest) },
-        { "socialLobby::IUserContext::EmergencyCancel", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::EmergencyCancel) },
+        { "socialLobby::IUserContext::AcceptGameSession", 1, false, rpc::GetMethodCode(&socialLobby::IUserContext::AcceptGameSession), 1 },
+        { "socialLobby::IUserContext::ChangeGuardHero", 1, false, rpc::GetMethodCode(&socialLobby::IUserContext::ChangeGuardHero), 1 },
+        { "socialLobby::IUserContext::GuardReady", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::GuardReady), 0 },
+        { "socialLobby::IUserContext::ReconnectToGame", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::ReconnectToGame), 0 },
+        { "socialLobby::IUserContext::LeaveGame", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::LeaveGame), 0 },
+        { "socialLobby::IUserContext::CancelRequest", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::CancelRequest), 0 },
+        { "socialLobby::IUserContext::CancelPartyRequest", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::CancelPartyRequest), 0 },
+        { "socialLobby::IUserContext::EmergencyCancel", 0, false, rpc::GetMethodCode(&socialLobby::IUserContext::EmergencyCancel), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

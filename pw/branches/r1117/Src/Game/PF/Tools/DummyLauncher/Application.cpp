@@ -2,7 +2,7 @@
 #include "Application.h"
 #include "MainWindow.h"
 #include "Convert.h"
-#include "log.h"
+#include "Log.h"
 
 Application* g_App = NULL;
 

@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "UdpAddr.h"
+#if defined( NV_LINUX_PLATFORM )
+#include <netdb.h>
+#endif
 
 
 namespace ni_udp
@@ -167,15 +170,22 @@ void NetAddr::Str( char * _buf, size_t _bufSz ) const
 {
   if ( ( sin_family == AF_INET ) && ( sin_addr.s_addr == INADDR_ANY ) )
   {
-    int len = _snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
+    int len = snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
     _buf[len] = 0;
   }
   else
   {
+#if defined( NV_WIN_PLATFORM )
     int len = _snprintf( _buf, _bufSz - 1, "%d.%d.%d.%d:%u", 
-      (unsigned)sin_addr.s_net, (unsigned)sin_addr.s_host, 
-      (unsigned)sin_addr.s_lh, (unsigned)sin_addr.s_impno, 
+      (unsigned)sin_addr.S_un.S_un_b.s_b1, (unsigned)sin_addr.S_un.S_un_b.s_b2, 
+      (unsigned)sin_addr.S_un.S_un_b.s_b3, (unsigned)sin_addr.S_un.S_un_b.s_b4, 
       (unsigned)Port() );
+#else
+    unsigned char *bytes = (unsigned char *)&sin_addr.s_addr;
+    int len = snprintf( _buf, _bufSz - 1, "%d.%d.%d.%d:%u",
+      bytes[0], bytes[1], bytes[2], bytes[3],
+      (unsigned)Port() );
+#endif
     _buf[len] = 0;
   }
 }
@@ -184,9 +194,15 @@ void NetAddr::Str( char * _buf, size_t _bufSz ) const
 
 void NetAddr::StrIp( char * _buf, size_t _bufSz ) const
 {
-  int len = _snprintf( _buf, _bufSz - 1, "%d.%d.%d.%d", 
-    (unsigned)sin_addr.s_net, (unsigned)sin_addr.s_host, 
-    (unsigned)sin_addr.s_lh, (unsigned)sin_addr.s_impno );
+#if defined( NV_WIN_PLATFORM )
+  int len = _snprintf( _buf, _bufSz - 1, "%d.%d.%d.%d",
+    (unsigned)sin_addr.S_un.S_un_b.s_b1, (unsigned)sin_addr.S_un.S_un_b.s_b2,
+    (unsigned)sin_addr.S_un.S_un_b.s_b3, (unsigned)sin_addr.S_un.S_un_b.s_b4 );
+#else
+  unsigned char *bytes = (unsigned char *)&sin_addr.s_addr;
+  int len = snprintf( _buf, _bufSz - 1, "%d.%d.%d.%d",
+    bytes[0], bytes[1], bytes[2], bytes[3] );
+#endif
   _buf[len] = 0;
 }
 

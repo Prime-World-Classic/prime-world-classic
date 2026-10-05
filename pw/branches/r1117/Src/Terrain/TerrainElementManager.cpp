@@ -5,7 +5,7 @@
 #include "Terrain.h"
 #include "../Render/MeshResource.h"
 #include "../Render/MaterialSpec.h"
-#include "../Render/RenderResourceManager.h"
+#include "../Render/renderresourcemanager.h"
 
 namespace Terrain {
 

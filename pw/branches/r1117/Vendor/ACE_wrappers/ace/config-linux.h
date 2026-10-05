@@ -73,3 +73,4 @@
 #include /**/ "ace/post.h"
 
 #endif /* ACE_CONFIG_LINUX_H */
+#define ACE_LACKS_STREAMS 1

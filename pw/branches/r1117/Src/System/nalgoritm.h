@@ -45,7 +45,8 @@ inline void iter_swap(_ForwardIter1 __i1, _ForwardIter2 __i2)
 template<class _InIt, class _Diff> inline
 void advance(_InIt& _Where, _Diff _Off)
 {	// increment iterator by offset, arbitrary iterators
-	_Advance(_Where, _Off );
+	for (; 0 < _Off; --_Off)
+		++_Where;
 }
 
 template<class _InIt, class _Diff> inline

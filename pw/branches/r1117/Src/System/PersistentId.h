@@ -14,9 +14,13 @@ public:
   PersistentId() :
   startupKey( 0 ), counter( 1 )
   {
+#if defined( NV_WIN_PLATFORM )
     __time32_t t = 0;
     _time32( &t );
     startupKey = (ni_detail::UInt32)t;
+#elif defined( NV_LINUX_PLATFORM )
+    startupKey = (ni_detail::UInt32)time(NULL);
+#endif
   }
 
   TId GetNext()

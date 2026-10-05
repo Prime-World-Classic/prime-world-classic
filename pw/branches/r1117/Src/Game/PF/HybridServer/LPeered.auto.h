@@ -39,23 +39,23 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Peered::IGameClient::Start", 2, false, rpc::GetMethodCode(&Peered::IGameClient::Start) },
-        { "Peered::IGameClient::Step", 6, true, rpc::GetMethodCode(&Peered::IGameClient::Step) },
-        { "Peered::IGameClient::StepLoading", 5, false, rpc::GetMethodCode(&Peered::IGameClient::StepLoading) },
-        { "Peered::IGameClient::StepBatch", 2, false, rpc::GetMethodCode(&Peered::IGameClient::StepBatch) },
-        { "Peered::IGameClient::OnAsync", 2, false, rpc::GetMethodCode(&Peered::IGameClient::OnAsync) },
-        { "Peered::IGameClient::OnStart", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnStart) },
-        { "Peered::IGameClient::OnTimeScaleChanged", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnTimeScaleChanged) },
-        { "Peered::IGameClient::OnChangeClientStatus", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnChangeClientStatus) },
-        { "Peered::IGameClient::OnDisconnect", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnDisconnect) },
-        { "Peered::IGameClient::OnRejoin", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnRejoin) },
-        { "Peered::IGameClient::RequestWorldData", 1, false, rpc::GetMethodCode(&Peered::IGameClient::RequestWorldData) },
-        { "Peered::IGameClient::RequestCrcData", 1, false, rpc::GetMethodCode(&Peered::IGameClient::RequestCrcData) },
-        { "Peered::IGameClient::Award", 1, false, rpc::GetMethodCode(&Peered::IGameClient::Award) },
-        { "Peered::IGameClient::OnSpectate", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnSpectate) },
-        { "Peered::IGameClient::OnPlaySameTeamDecision", 2, false, rpc::GetMethodCode(&Peered::IGameClient::OnPlaySameTeamDecision) },
-        { "Peered::IGameClient::OnBadBehaviourComplaint", 3, false, rpc::GetMethodCode(&Peered::IGameClient::OnBadBehaviourComplaint) },
-        { "Peered::IGameClient::OnProtectionAsync", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnProtectionAsync) },
+        { "Peered::IGameClient::Start", 2, false, rpc::GetMethodCode(&Peered::IGameClient::Start), 3 },
+        { "Peered::IGameClient::Step", 6, true, rpc::GetMethodCode(&Peered::IGameClient::Step), 60 },
+        { "Peered::IGameClient::StepLoading", 5, false, rpc::GetMethodCode(&Peered::IGameClient::StepLoading), 28 },
+        { "Peered::IGameClient::StepBatch", 2, false, rpc::GetMethodCode(&Peered::IGameClient::StepBatch), 2 },
+        { "Peered::IGameClient::OnAsync", 2, false, rpc::GetMethodCode(&Peered::IGameClient::OnAsync), 2 },
+        { "Peered::IGameClient::OnStart", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnStart), 0 },
+        { "Peered::IGameClient::OnTimeScaleChanged", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnTimeScaleChanged), 0 },
+        { "Peered::IGameClient::OnChangeClientStatus", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnChangeClientStatus), 1 },
+        { "Peered::IGameClient::OnDisconnect", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnDisconnect), 0 },
+        { "Peered::IGameClient::OnRejoin", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnRejoin), 0 },
+        { "Peered::IGameClient::RequestWorldData", 1, false, rpc::GetMethodCode(&Peered::IGameClient::RequestWorldData), 1 },
+        { "Peered::IGameClient::RequestCrcData", 1, false, rpc::GetMethodCode(&Peered::IGameClient::RequestCrcData), 0 },
+        { "Peered::IGameClient::Award", 1, false, rpc::GetMethodCode(&Peered::IGameClient::Award), 1 },
+        { "Peered::IGameClient::OnSpectate", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnSpectate), 1 },
+        { "Peered::IGameClient::OnPlaySameTeamDecision", 2, false, rpc::GetMethodCode(&Peered::IGameClient::OnPlaySameTeamDecision), 0 },
+        { "Peered::IGameClient::OnBadBehaviourComplaint", 3, false, rpc::GetMethodCode(&Peered::IGameClient::OnBadBehaviourComplaint), 0 },
+        { "Peered::IGameClient::OnProtectionAsync", 1, false, rpc::GetMethodCode(&Peered::IGameClient::OnProtectionAsync), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -130,8 +130,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Peered::IGameClientReconnect::ApplyWorldDataInfo", 1, false, rpc::GetMethodCode(&Peered::IGameClientReconnect::ApplyWorldDataInfo) },
-        { "Peered::IGameClientReconnect::ApplyWorldDataPart", 1, false, rpc::GetMethodCode(&Peered::IGameClientReconnect::ApplyWorldDataPart) },
+        { "Peered::IGameClientReconnect::ApplyWorldDataInfo", 1, false, rpc::GetMethodCode(&Peered::IGameClientReconnect::ApplyWorldDataInfo), 1 },
+        { "Peered::IGameClientReconnect::ApplyWorldDataPart", 1, false, rpc::GetMethodCode(&Peered::IGameClientReconnect::ApplyWorldDataPart), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -206,22 +206,22 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Peered::IGameServer::AddClient", 4, false, rpc::GetMethodCode(&Peered::IGameServer::AddClient) },
-        { "Peered::IGameServer::AddClientFast", 4, false, rpc::GetMethodCode(&Peered::IGameServer::AddClientFast) },
-        { "Peered::IGameServer::SendCommand", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendCommand) },
-        { "Peered::IGameServer::OnFinishStep", 3, false, rpc::GetMethodCode(&Peered::IGameServer::OnFinishStep) },
-        { "Peered::IGameServer::OnClientReady", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnClientReady) },
-        { "Peered::IGameServer::SetTimeScale", 2, false, rpc::GetMethodCode(&Peered::IGameServer::SetTimeScale) },
-        { "Peered::IGameServer::Ping", 1, false, rpc::GetMethodCode(&Peered::IGameServer::Ping) },
-        { "Peered::IGameServer::OnGameFinish", 3, false, rpc::GetMethodCode(&Peered::IGameServer::OnGameFinish) },
-        { "Peered::IGameServer::RequestWorldData", 1, false, rpc::GetMethodCode(&Peered::IGameServer::RequestWorldData) },
-        { "Peered::IGameServer::OnGameLeave", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnGameLeave) },
-        { "Peered::IGameServer::SendCrcData", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendCrcData) },
-        { "Peered::IGameServer::OnDisconnectAck", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnDisconnectAck) },
-        { "Peered::IGameServer::DispatchPlaySameTeamDecision", 2, false, rpc::GetMethodCode(&Peered::IGameServer::DispatchPlaySameTeamDecision) },
-        { "Peered::IGameServer::DispatchBadBehaviourComplaint", 3, false, rpc::GetMethodCode(&Peered::IGameServer::DispatchBadBehaviourComplaint) },
-        { "Peered::IGameServer::OnProtectionError", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnProtectionError) },
-        { "Peered::IGameServer::SendProtectionMagic", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendProtectionMagic) },
+        { "Peered::IGameServer::AddClient", 4, false, rpc::GetMethodCode(&Peered::IGameServer::AddClient), 13 },
+        { "Peered::IGameServer::AddClientFast", 4, false, rpc::GetMethodCode(&Peered::IGameServer::AddClientFast), 4 },
+        { "Peered::IGameServer::SendCommand", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendCommand), 2 },
+        { "Peered::IGameServer::OnFinishStep", 3, false, rpc::GetMethodCode(&Peered::IGameServer::OnFinishStep), 0 },
+        { "Peered::IGameServer::OnClientReady", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnClientReady), 0 },
+        { "Peered::IGameServer::SetTimeScale", 2, false, rpc::GetMethodCode(&Peered::IGameServer::SetTimeScale), 0 },
+        { "Peered::IGameServer::Ping", 1, false, rpc::GetMethodCode(&Peered::IGameServer::Ping), 1 },
+        { "Peered::IGameServer::OnGameFinish", 3, false, rpc::GetMethodCode(&Peered::IGameServer::OnGameFinish), 4 },
+        { "Peered::IGameServer::RequestWorldData", 1, false, rpc::GetMethodCode(&Peered::IGameServer::RequestWorldData), 0 },
+        { "Peered::IGameServer::OnGameLeave", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnGameLeave), 0 },
+        { "Peered::IGameServer::SendCrcData", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendCrcData), 4 },
+        { "Peered::IGameServer::OnDisconnectAck", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnDisconnectAck), 0 },
+        { "Peered::IGameServer::DispatchPlaySameTeamDecision", 2, false, rpc::GetMethodCode(&Peered::IGameServer::DispatchPlaySameTeamDecision), 0 },
+        { "Peered::IGameServer::DispatchBadBehaviourComplaint", 3, false, rpc::GetMethodCode(&Peered::IGameServer::DispatchBadBehaviourComplaint), 0 },
+        { "Peered::IGameServer::OnProtectionError", 1, false, rpc::GetMethodCode(&Peered::IGameServer::OnProtectionError), 0 },
+        { "Peered::IGameServer::SendProtectionMagic", 3, false, rpc::GetMethodCode(&Peered::IGameServer::SendProtectionMagic), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -296,9 +296,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Peered::IGameServerInternal::OnRejoinClient", 1, false, rpc::GetMethodCode(&Peered::IGameServerInternal::OnRejoinClient) },
-        { "Peered::IGameServerInternal::AddSpectator", 2, false, rpc::GetMethodCode(&Peered::IGameServerInternal::AddSpectator) },
-        { "Peered::IGameServerInternal::UserLeftTheGameInCastle", 1, false, rpc::GetMethodCode(&Peered::IGameServerInternal::UserLeftTheGameInCastle) },
+        { "Peered::IGameServerInternal::OnRejoinClient", 1, false, rpc::GetMethodCode(&Peered::IGameServerInternal::OnRejoinClient), 0 },
+        { "Peered::IGameServerInternal::AddSpectator", 2, false, rpc::GetMethodCode(&Peered::IGameServerInternal::AddSpectator), 2 },
+        { "Peered::IGameServerInternal::UserLeftTheGameInCastle", 1, false, rpc::GetMethodCode(&Peered::IGameServerInternal::UserLeftTheGameInCastle), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -373,9 +373,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Peered::IGameServerReconnect::SendWorldDataInfo", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SendWorldDataInfo) },
-        { "Peered::IGameServerReconnect::SendWorldDataPart", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SendWorldDataPart) },
-        { "Peered::IGameServerReconnect::SetGameClientReconnect", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SetGameClientReconnect) },
+        { "Peered::IGameServerReconnect::SendWorldDataInfo", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SendWorldDataInfo), 2 },
+        { "Peered::IGameServerReconnect::SendWorldDataPart", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SendWorldDataPart), 2 },
+        { "Peered::IGameServerReconnect::SetGameClientReconnect", 2, false, rpc::GetMethodCode(&Peered::IGameServerReconnect::SetGameClientReconnect), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

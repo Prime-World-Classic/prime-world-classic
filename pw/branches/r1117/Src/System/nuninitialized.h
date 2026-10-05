@@ -37,7 +37,7 @@
 //  #include <new>
 //#else
 #if defined( NV_WIN_PLATFORM )
-  #include "../MemoryLib/newdelete.h"
+  #include "../MemoryLib/NewDelete.h"
 #endif
 
 namespace nstl

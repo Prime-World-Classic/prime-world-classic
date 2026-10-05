@@ -39,10 +39,10 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::INotify::Open", 1, false, rpc::GetMethodCode(&socialLobby::INotify::Open) },
-        { "socialLobby::INotify::Failure", 0, false, rpc::GetMethodCode(&socialLobby::INotify::Failure) },
-        { "socialLobby::INotify::UpdateStatus", 1, false, rpc::GetMethodCode(&socialLobby::INotify::UpdateStatus) },
-        { "socialLobby::INotify::Close", 0, false, rpc::GetMethodCode(&socialLobby::INotify::Close) },
+        { "socialLobby::INotify::Open", 1, false, rpc::GetMethodCode(&socialLobby::INotify::Open), 1 },
+        { "socialLobby::INotify::Failure", 0, false, rpc::GetMethodCode(&socialLobby::INotify::Failure), 0 },
+        { "socialLobby::INotify::UpdateStatus", 1, false, rpc::GetMethodCode(&socialLobby::INotify::UpdateStatus), 1 },
+        { "socialLobby::INotify::Close", 0, false, rpc::GetMethodCode(&socialLobby::INotify::Close), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -10,7 +10,7 @@
 
 #include "TypeProxy.h"
 #include <time.h>
-#include "../../System/basic.h"
+#include "../../System/Basic.h"
 #include "ServerThread.h"
 #include "../../Net/TSList.h"
 #include "../../System/Ring.h"

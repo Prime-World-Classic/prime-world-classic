@@ -2,6 +2,10 @@
 
 #include "System/nalgoritm.h"
 
+#if defined( NV_LINUX_PLATFORM )
+#include <random>
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NRandom
 {
@@ -27,6 +31,16 @@ class RandomGenerator
 public:
   ZEND int operator&( IBinSaver &f ) { f.Add(2,&seed); return 0; }
 
+  // OS-level entropy for seeding (replaces GetTickCount on Linux, where
+  // time(NULL)*1000 / clock() give process-wide identical or CPU-time seeds)
+#if defined( NV_LINUX_PLATFORM )
+  static DWORD SystemSeed()
+  {
+    std::random_device rd;
+    return (DWORD)rd();
+  }
+#endif
+
   RandomGenerator() : seed() {}
   RandomGenerator( DWORD _seed ) : seed( _seed ) {}
 
@@ -43,7 +57,7 @@ public:
     return seed.w;
   }
 
-  // для вкусностей
+  // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   int Next( int min, int max )
   {
     if ( min >= max )
@@ -69,7 +83,7 @@ public:
   }
 
   template <class TStlContainer>
-  const typename TStlContainer::value_type & RollFromContainer( const TStlContainer & _cont, const typename TStlContainer::value_type & _default = TStlContainer::value_type() )
+  const typename TStlContainer::value_type & RollFromContainer( const TStlContainer & _cont, const typename TStlContainer::value_type & _default = typename TStlContainer::value_type() )
   {
     if ( !_cont.size() )
       return _default;
@@ -82,7 +96,7 @@ public:
 
 
   template<class TStlContainer, class G>
-  const typename TStlContainer::value_type & RollFromContainerByWeight( const TStlContainer & _container, const G & weightGetter, const typename TStlContainer::value_type & _default = TStlContainer::value_type()  )
+  const typename TStlContainer::value_type & RollFromContainerByWeight( const TStlContainer & _container, const G & weightGetter, const typename TStlContainer::value_type & _default = typename TStlContainer::value_type()  )
   {
     if ( !_container.size() )
       return _default;

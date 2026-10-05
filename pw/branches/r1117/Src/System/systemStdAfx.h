@@ -2,6 +2,22 @@
 #define SYSTEM_STD_AFX_H__
 
 #include "System/config.h"
+#include <stdexcept>  // std::runtime_error
+#include <cstdlib>    // wcstol, atoi
+#include <cerrno>     // errno, ERANGE
+
+// sprintf_s is Windows-only. On Linux the port lives in one place:
+#include "safeSprintf.h"
+
+// Windows atomic operations compatibility on Linux (single definition point).
+// NOTE: use *_and_fetch variants — Windows returns the NEW value
+// (InterlockedExchange/Add return the PREVIOUS value on Windows).
+#ifdef NV_LINUX_PLATFORM
+  #define InterlockedIncrement(x) __sync_add_and_fetch((x), 1)
+  #define InterlockedDecrement(x) __sync_sub_and_fetch((x), 1)
+  #define InterlockedExchangeAdd(x, v) __sync_fetch_and_add((x), (v))
+  #define InterlockedExchange(x, v) __sync_lock_test_and_set((x), (v))
+#endif
 
 #ifdef STATIC_LIB
   #define DO_NOT_USE_DLLMAIN
@@ -125,7 +141,7 @@ using namespace nstl;
 
 #include "DefaultTypes.h"
 #ifndef NI_PLATF_LINUX
-  #include "../MemoryLib/newdelete.h"
+  #include "../MemoryLib/NewDelete.h"
 #endif
 
 #define for if(false); else for					// to achive standard variable scope resolving, declared inside 'for'

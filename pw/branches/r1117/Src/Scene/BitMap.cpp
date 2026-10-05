@@ -1,6 +1,6 @@
 #include "stdafx.h"
 
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "../System/Bresenham.h"
 #include "../System/ChunklessSaver.h"
 #include "BitMap.h"

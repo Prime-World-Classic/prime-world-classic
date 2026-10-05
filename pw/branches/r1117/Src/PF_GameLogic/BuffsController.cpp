@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "BuffsController.h"
 
 #include "../ui/FlashContainer2.h"

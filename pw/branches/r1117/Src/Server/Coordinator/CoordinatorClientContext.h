@@ -1,5 +1,5 @@
 #pragma once
-#include "Coordinator/RCoordinatorClientIface.auto.h"
+#include "Coordinator/CoordinatorClientIface.h"
 #include "Coordinator/ServerDef.h"
 #include "Coordinator/CoordinatorTypes.h"
 #include "Coordinator/CoordinatorSvcContext.h"
@@ -30,7 +30,7 @@ public:
   typedef list<StrongMT<SvcContext> > SvcContextsT;
 
 public:
-  ClientContext( RICoordinatorClientRemote * cl );
+  ClientContext( ICoordinatorClientRemote * cl );
   ~ClientContext();
 
 public:
@@ -44,8 +44,8 @@ public:
   State::Enum state() const { return state_; }
   void state(State::Enum _st) { state_ = _st; }
 
-  StrongMT<RICoordinatorClientRemote> client() const { return client_; }
-  void client( RICoordinatorClientRemote * _client ) { client_ = _client; }
+  StrongMT<ICoordinatorClientRemote> client() const { return client_; }
+  void client( ICoordinatorClientRemote * _client ) { client_ = _client; }
 
   bool isopen() const { return (State::OPEN == state()); }
   bool isclose() const { return (State::CLOSE == state()); }
@@ -64,7 +64,7 @@ public:
   StrongMT<SvcContext> findSvcContext(Transport::TServiceId const & _svcid);
 
 private:
-  StrongMT<RICoordinatorClientRemote> client_;
+  StrongMT<ICoordinatorClientRemote> client_;
   rpc::Status prevClientStatus_;
   State::Enum state_;
   NHPTimer::FTime repairStartTime_;

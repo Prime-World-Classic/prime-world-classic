@@ -1,0 +1,24 @@
+# Standalone console test for the ni_udp (RUDP) transport - see RdpStallTest.cpp.
+# Not part of PF.sln / UniServerApp; generated on its own:
+#   cd Src/Network/RUDP
+#   TestFrameworkPath=.../Tools/TestFramework python .../Tools/TestFramework/run.py \
+#       --compiler cmake --platform linux --generateOnly RdpStallTest.application
+
+sources = [
+  'RdpStallTest.cpp',
+]
+
+inlined = False
+
+components = [
+  'Network/RUDP/Rdp',
+  'Network/RUDP/SockSrv',
+  'Network/RUDP/SockSrvLocal',
+  'Network/RUDP/UdpSocket',
+  # SockSrvPosix needs ACE headers (the TestFramework also compiles
+  # Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp for every linux app).
+  'Vendor/ACE_wrappers',
+  'System/Asserts',
+]
+
+platformFeatures = { 'win32' : Win32Features( 'stdafx.h' ) }
