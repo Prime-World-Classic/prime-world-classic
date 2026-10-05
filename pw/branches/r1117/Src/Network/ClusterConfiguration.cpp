@@ -11,9 +11,9 @@
 namespace 
 {
   // Initialized with the static server_ip.h values (static initialization order is
-  // not safe across modules). Network::GetCoordinatorAddress()/GetLoginServerAddress()
-  // re-resolve the address from the dynamic server IP registry on every call, so the
-  // values below are always up to date by the time the network stack uses them.
+  // not safe across modules). These are the SERVER values: cfg may override them
+  // (REGISTER_VAR below), and nothing recomputes them unless the CLIENT called
+  // Network::SetClusterBasePort() (see s_clusterFromProtocolBase).
   string coordinatorAddr = string(SERVER_IP) + ":" + SERVER_PORT;
   string loginAddr = string(SERVER_IP) + ":" + LOGIN_PORT + "@10";
   int firstServerPort = SERVER_CLUSTER_PORT_BACK;
