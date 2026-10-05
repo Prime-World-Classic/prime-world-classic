@@ -24,6 +24,16 @@ REGISTER_VAR( "lobby_cl_svc_timeout", s_servicesTimeout, STORAGE_NONE );
 static float s_leaveTimeout = 5.0f;
 REGISTER_VAR( "lobby_cl_leave_timeout", s_leaveTimeout, STORAGE_NONE );
 
+// Web-session join watchdog: how long to wait for the answer to
+// IServerInstance::ConnectToWebLobby before re-issuing it, and how many retries
+// are allowed before the lobby client gives up. A lost call or a wedged lobby
+// channel used to leave the client sitting on the lobby screen forever.
+static float s_webJoinTimeout = 6.0f;
+REGISTER_VAR( "lobby_cl_webjoin_timeout", s_webJoinTimeout, STORAGE_NONE );
+
+static int s_webJoinRetries = 3;
+REGISTER_VAR( "lobby_cl_webjoin_retries", s_webJoinRetries, STORAGE_NONE );
+
 static int s_overrideManoeuvresFaction = lobby::ETeam::None;
 REGISTER_DEV_VAR( "override_manoeuvres_faction", s_overrideManoeuvresFaction, STORAGE_NONE );
 
@@ -62,6 +72,8 @@ lastLobbyOperationResult( EOperationResult::InternalError ),
 clientId( _clientId ),
 now( 0 ),
 statusTimeLimit( -1 ),
+webJoinDeadline( -1 ),
+webJoinRetriesLeft( 0 ),
 gameSessionId( 0 ),
 serverTimestamp( 0 ),
 timeDelta( 0 ),
@@ -206,6 +218,7 @@ void ClientBase::Poll()
     }
 
     case EClientStatus::Connected:
+      PollWebJoin();
       break;
 
     //TODO
@@ -271,6 +284,12 @@ void ClientBase::OnOperatioResult( EOperationResult::Enum result )
 
     case EClientStatus::Connected:
       lastLobbyOperationResult = result;
+
+      if ( result != EOperationResult::InProgress )
+      {
+        webJoinDeadline = -1;
+        webJoinRetriesLeft = s_webJoinRetries;
+      }
 
       if ( inSocialMode && ( result != EOperationResult::Ok ) )
         SetError( EClientError::ServiceDenial );
@@ -593,6 +612,38 @@ void ClientBase::JoinWebGame(const string & token)
   serverInst->ConnectToWebLobby( token, this, &ClientBase::OnOperatioResult );
   lastLobbyOperationResult = EOperationResult::InProgress;
 
+  webJoinToken = token;
+  webJoinDeadline = now + s_webJoinTimeout;
+  if ( webJoinRetriesLeft <= 0 )
+    webJoinRetriesLeft = s_webJoinRetries;
+}
+
+
+
+// No status timeout is armed in EClientStatus::Connected on purpose: that is
+// also the state where a human player sits in the lobby picking a game mode.
+// A web-launched client has nothing to pick - it waits for the lobby to build
+// the game - so the pending join request is watched here instead.
+void ClientBase::PollWebJoin()
+{
+  if ( ( webJoinDeadline < 0 ) || ( lastLobbyOperationResult != EOperationResult::InProgress ) )
+    return;
+
+  if ( now < webJoinDeadline )
+    return;
+
+  if ( webJoinRetriesLeft > 0 )
+  {
+    --webJoinRetriesLeft;
+    ErrorTrace( "Lobby: no answer to the web join request for %.0f s, retrying (%d left)...", s_webJoinTimeout, webJoinRetriesLeft );
+    JoinWebGame( webJoinToken );
+  }
+  else
+  {
+    ErrorTrace( "Lobby: web join request never answered by the server." );
+    webJoinDeadline = -1;
+    SetError( EClientError::ServiceTimeOut );
+  }
 }
 
 void ClientBase::ReconnectGame( int gameId, int team, const string& heroId )
