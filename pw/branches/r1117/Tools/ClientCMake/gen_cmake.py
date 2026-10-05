@@ -378,7 +378,8 @@ def main():
         '<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security>'
         '<requestedPrivileges><requestedExecutionLevel level="asInvoker" '
         'uiAccess="false"/></requestedPrivileges></security></trustInfo>\n')
-    manifest_rc = None
+    manifest_cmd = None
+    manifest_res = None
     if os.path.isfile(app_manifest):
         text = open(app_manifest, encoding="utf-8-sig").read()
         merged = text.replace("</assembly>", crt_and_priv + "</assembly>")
@@ -389,7 +390,6 @@ def main():
         with open(os.path.join(out, "wine_manifest.rc"), "w") as fh:
             fh.write('1 24 "wine_app.manifest"\n')
         # тоже custom command: rc ищет wine_app.manifest относительно CWD
-        manifest_rc = None
         manifest_cmd = ('add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res\n'
                         '  COMMAND rc /fo${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res wine_manifest.rc\n'
                         '  DEPENDS ${CMAKE_CURRENT_LIST_DIR}/wine_manifest.rc\n'
@@ -426,8 +426,17 @@ def main():
     # отсутствует -> нет зависимости VC90.CRT, на клиентской ВМ процесс стартует
     # и сразу выходит)
     top.append(f"add_executable(PW_Game WIN32 {exe_srcs} {objs})")
-    if res_all:
-        top.append("set_source_files_properties(" + " ".join(res_all) +
+    # ВСЕ .res (в т.ч. wine_manifest.res) обязаны быть помечены
+    # EXTERNAL_OBJECT/GENERATED: без этого CMake не кладёт файл в линковку —
+    # молча, без ошибки. Проверено: манифест 1/24 генерировался (rc отрабатывал,
+    # wine_manifest.res 1116 Б), но в build.ninja в `build PW_Game.exe:` его не
+    # было → в exe нет ни Microsoft.VC90.CRT, ни asInvoker → на Windows процесс
+    # падает сразу (0xC0000135, лог-папка не создаётся).
+    ext_obj = list(res_all)
+    if manifest_res:
+        ext_obj.append(manifest_res)
+    if ext_obj:
+        top.append("set_source_files_properties(" + " ".join(ext_obj) +
                    " PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)")
     if pwg.includes:
         top.append("target_include_directories(PW_Game PRIVATE " +
