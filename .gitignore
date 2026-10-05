@@ -193,3 +193,7 @@ logs
 pw/branches/r1117/Src/Game/PF/UniServer/build_shipping/build.log
 pw/branches/r1117/Src/Game/PF/UniServer/build_shipping/UniServerApp
 pw_publish/branch/Server/PvX/Bin/UniServerApp
+
+# RdpStallTest build dir + generator backup
+pw/branches/r1117/Src/Network/RUDP/build_test/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto.bak-debug/
