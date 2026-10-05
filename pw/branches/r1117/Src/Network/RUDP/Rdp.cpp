@@ -43,7 +43,7 @@ historyLen( 7 ),
 // can never retransmit the rest (RdpOutPktQueue::Poll only retransmits
 // ConnCbCurrentWindowSize() datagrams), the peer keeps answering for already
 // received datagrams ("Datagram sequence out of range") and the connection
-// stays stuck until the ping retransmit limit kills it. 2026-11-05.
+// stays stuck until the ping retransmit limit kills it. 2026-10-05.
 initWindowSize( 16 ), maxWindowSize( 256 ),
 windowSizeInc( 1 ), windowSizeDec( 4 ),
 initRetransmitTime( 0.3f ), maxRetransmitTime( 4.0f ),

@@ -174,7 +174,7 @@ void RdpOutPktQueue::Poll( timer::Time _now )
   // (and never acknowledges) anything past the first windowSize ring slots, the
   // window has no way to grow back and the connection wedges for good - it just
   // keeps re-sending the same couple of datagrams until the retransmit limit
-  // kills it. 2026-11-05.
+  // kills it. 2026-10-05.
   const size_t windowSize = (size_t)callback->ConnCbCurrentWindowSize();
 
   for ( size_t i = 0; i < buffer.Size(); ++i )
