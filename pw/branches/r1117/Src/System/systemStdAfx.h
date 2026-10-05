@@ -2,11 +2,21 @@
 #define SYSTEM_STD_AFX_H__
 
 #include "System/config.h"
-#include <stdexcept>  // std::runtime_error
-#include <cstdlib>    // wcstol, atoi
-#include <cerrno>     // errno, ERANGE
 
-// sprintf_s is Windows-only. On Linux the port lives in one place:
+// Linux-port helpers. They MUST stay out of the Windows PCH chain: several
+// projects of the MSVC solution are built with ExceptionHandling="0" (no /EHsc)
+// and /WX, so pulling <stdexcept> into their precompiled header turns
+// C4530 ("C++ exception handler used, but unwind semantics are not enabled")
+// into a hard error (verified on the ShippingSingleExe|Win32 build of Core and
+// Client). MSVC provides sprintf_s natively, so none of this is needed there.
+#if defined( NV_LINUX_PLATFORM )
+  #include <stdexcept>  // std::runtime_error
+  #include <cstdlib>    // wcstol, atoi
+  #include <cerrno>     // errno, ERANGE
+#endif
+
+// sprintf_s is Windows-only. On Linux the port lives in one place
+// (the header itself is empty on Windows):
 #include "safeSprintf.h"
 
 // Windows atomic operations compatibility on Linux (single definition point).

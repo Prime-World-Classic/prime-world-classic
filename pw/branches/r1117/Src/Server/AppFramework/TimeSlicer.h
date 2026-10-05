@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include "System/stdint_compat.h"   // <stdint.h> is missing in the VS2008 CRT
 #include "Interfaces.h"
 #include <System/ThreadHelpers.h>
 #include "System/InlineProfiler.h"

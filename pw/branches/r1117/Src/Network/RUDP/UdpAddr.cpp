@@ -170,7 +170,13 @@ void NetAddr::Str( char * _buf, size_t _bufSz ) const
 {
   if ( ( sin_family == AF_INET ) && ( sin_addr.s_addr == INADDR_ANY ) )
   {
+#if defined( NV_WIN_PLATFORM )
+    int len = _snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
+#else
     int len = snprintf( _buf, _bufSz - 1, "%u", (unsigned)Port() );
+#endif
+    if ( len < 0 )
+      len = (int)_bufSz - 1;
     _buf[len] = 0;
   }
   else

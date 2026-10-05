@@ -99,6 +99,10 @@ long GetMallocsUnfree();
 long GetMallocsSize();
 size_t GetAllocatedFootprint();    // info from allocator library
 
+// Немедленный снимок таблицы аллокаций (top-N сайтов по размеру). Нужен, чтобы
+// смотреть владельцев памяти в момент пика: на выходе процесса g_unfreeMaloc == 0
+// (клиент всё освобождает), и штатный дамп утечек ничего не показывает.
+void DumpMemoryLeaksNow();
 void SetMemoryLeaksDumpLevel( bool dumpOnlyAmount );
 void SetMallocThreadMask( unsigned long threadId );
 

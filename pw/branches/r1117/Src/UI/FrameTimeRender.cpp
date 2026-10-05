@@ -2,7 +2,7 @@
 #include "FrameTimeRender.h"
 #include "System/LogFileName.h"
 #include "System/SyncProcessorState.h"
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 #include "Render/Renderer.h"
 #include "Render/UIRenderer.h"
 #include "Render/smartrenderer.h"
