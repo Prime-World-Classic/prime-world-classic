@@ -9,7 +9,12 @@
 #include "ace/OS_NS_macros.h"
 #include "ace/OS_Memory.h"
 #include "ace/OS_QoS.h"
+#if !defined (ACE_WIN32)
+// POSIX ioctl() is used by the Linux build of ACE_OS::ioctl below; on
+// Windows that path goes through ioctlsocket() and <sys/ioctl.h> does not
+// exist in the MSVC CRT (VS2008 reference build of the client).
 #include <sys/ioctl.h>
+#endif
 
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
 

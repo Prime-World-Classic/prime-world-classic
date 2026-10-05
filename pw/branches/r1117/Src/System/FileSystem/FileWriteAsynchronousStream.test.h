@@ -10,7 +10,7 @@
 #include "../Stream.h"
 #include "FileWriteBufferedStream.h"
 #include "FileWriteAsynchronousStream.h"
-#include "MemoryLib/newdelete.h"
+#include "MemoryLib/NewDelete.h"
 #include "System/sleep.h"
 
 #include <iostream>

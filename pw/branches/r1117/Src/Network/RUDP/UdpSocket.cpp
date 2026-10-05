@@ -53,6 +53,15 @@ inline bool SetSockOptTimeval( SOCKET s, int opt )
 #define LAST_SOCKET_ERROR() errno
 #endif
 
+// Socket handle close: Winsock uses closesocket(), POSIX uses close().
+// The Linux port replaced closesocket() with close() unconditionally, which
+// breaks the Windows (VS2008 reference) build.
+#if defined( NV_WIN_PLATFORM )
+#define CLOSE_SOCKET( s ) ::closesocket( s )
+#else
+#define CLOSE_SOCKET( s ) ::close( s )
+#endif
+
 SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _options )
 {
   SOCKET s = ::socket( AF_INET, SOCK_DGRAM, IPPROTO_UDP );
@@ -67,7 +76,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
   if ( ::setsockopt( s, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof( on ) ) != 0 )
   {
     ErrorTrace( "Failed to set SO_REUSEADDR. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-    ::close( s );
+    CLOSE_SOCKET( s );
     return INVALID_SOCKET;
   }
 
@@ -76,14 +85,14 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
     if ( !SetSockOptTimeval( s, SO_RCVTIMEO ) )
     {
       ErrorTrace( "Failed to set SO_RCVTIMEO. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-      ::close( s );
+      CLOSE_SOCKET( s );
       return INVALID_SOCKET;
     }
   
     if ( !SetSockOptTimeval( s, SO_SNDTIMEO ) )
     {
       ErrorTrace( "Failed to set SO_SNDTIMEO. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-      ::close( s );
+      CLOSE_SOCKET( s );
       return INVALID_SOCKET;
     }
   }
@@ -98,7 +107,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
     if ( ::setsockopt( s, SOL_SOCKET, SO_SNDBUF, (const char *)&opt, sizeof( int ) ) != 0 )
     {
       ErrorTrace( "Failed to set SO_SNDBUF. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-      ::close( s );
+      CLOSE_SOCKET( s );
       return INVALID_SOCKET;
     }
     opt = 0;
@@ -118,7 +127,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
     if ( ::setsockopt( s, SOL_SOCKET, SO_RCVBUF, (const char *)&opt, sizeof( int ) ) != 0 )
     {
       ErrorTrace( "Failed to set SO_RCVBUF. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-      ::close( s );
+      CLOSE_SOCKET( s );
       return INVALID_SOCKET;
     }
     opt = 0;
@@ -133,7 +142,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
   if ( ::ioctlsocket( s, FIONBIO, &nbon ) != 0 )
   {
     ErrorTrace( "Failed to set FIONBIO. code=%d, value=%d, addr=%s", LAST_SOCKET_ERROR(), nbon, _bindAddr );
-    ::close( s );
+    CLOSE_SOCKET( s );
     return INVALID_SOCKET;
   }
 #else
@@ -145,7 +154,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
       if ( ::fcntl( s, F_SETFL, flags & ~O_NONBLOCK ) != 0 )
       {
         ErrorTrace( "Failed to set blocking mode. code=%d, addr=%s", errno, _bindAddr );
-        ::close( s );
+        CLOSE_SOCKET( s );
         return INVALID_SOCKET;
       }
     }
@@ -158,7 +167,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
       if ( ::fcntl( s, F_SETFL, flags | O_NONBLOCK ) != 0 )
       {
         ErrorTrace( "Failed to set non-blocking mode. code=%d, addr=%s", errno, _bindAddr );
-        ::close( s );
+        CLOSE_SOCKET( s );
         return INVALID_SOCKET;
       }
     }
@@ -168,7 +177,7 @@ SOCKET UdpSocket::CreateSocket( const NetAddr & _bindAddr, const Options & _opti
   if ( ::bind( s, (const sockaddr *)&_bindAddr, sizeof( _bindAddr ) ) != 0 )
   {
     WarningTrace( "Failed to bind socket. code=%d, addr=%s", LAST_SOCKET_ERROR(), _bindAddr );
-    ::close( s );
+    CLOSE_SOCKET( s );
     return INVALID_SOCKET;
   }
 
@@ -199,11 +208,7 @@ void UdpSocket::Close()
 {
   if ( sock != INVALID_SOCKET )
   {
-#if defined( NV_WIN_PLATFORM )
-    ::closesocket( sock );
-#else
-    ::close( sock );
-#endif
+    CLOSE_SOCKET( sock );
     sock = INVALID_SOCKET;
   }
 }

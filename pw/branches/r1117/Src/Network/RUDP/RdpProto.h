@@ -2,7 +2,7 @@
 #define RUDP_RDPPROTO_H_INCLUDED
 
 #include "System/EnumToString.h"
-#include <stdint.h>
+#include "System/stdint_compat.h"   // <stdint.h> is missing in the VS2008 CRT
 
 namespace ni_udp
 {

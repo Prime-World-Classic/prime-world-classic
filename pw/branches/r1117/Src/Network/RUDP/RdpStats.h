@@ -1,6 +1,26 @@
 #ifndef RUDP_RDPSTATS_H_INCLUDED
 #define RUDP_RDPSTATS_H_INCLUDED
 
+#if defined( NV_WIN_PLATFORM )
+// Restored: the Linux port dropped this helper, but the Windows overload of
+// Inc() below still calls it (it is not the same as InterlockedExchangeAdd64,
+// which is not an intrinsic on WinXP/x86).
+#include <intrin.h>
+#pragma intrinsic(_InterlockedCompareExchange64)
+
+namespace
+{
+  void NiInterlockedExchangeAdd64(__int64 volatile *Addend, __int64 Value)
+  {
+      __int64 Comperand;
+      do
+      {
+          Comperand = *Addend;
+      } while (Comperand != _InterlockedCompareExchange64(Addend, Comperand + Value, Comperand));
+  }
+} // namespace
+#endif
+
 namespace ni_udp
 {
 

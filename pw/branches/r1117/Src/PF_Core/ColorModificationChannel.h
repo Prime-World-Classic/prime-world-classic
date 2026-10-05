@@ -1,6 +1,10 @@
 #pragma once
 
 #include "../System/Ring.h"
+// The header uses NDb::BlendMode (and Render::HDRColor via the PCH chain).
+// ClientObject.h includes it directly, i.e. in translation units where the
+// project PCH has not pulled Render/DBRender.h yet - so include it here.
+#include "../Render/DBRender.h"
 
 namespace PF_Core
 {
