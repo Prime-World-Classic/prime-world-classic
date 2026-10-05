@@ -120,8 +120,13 @@ pw/branches/r1117/Tools/WineClientBuild/runtime/
 pw/branches/r1117/Tools/WineClientBuild/server_ip.env
 
 # client-modern: out-of-source CMake-сборки клиента (см. PLAN_client_modern.md)
+# в Tools/ClientCMake в ветке только генератор gen_cmake.py; модель, сгенерированный
+# граф (gen/), build-каталог и wine_env.cmd — артефакты
 pw/branches/r1117/Build/
 pw/branches/r1117/Tools/ClientCMake/*.json
+pw/branches/r1117/Tools/ClientCMake/gen/
+pw/branches/r1117/Tools/ClientCMake/build/
+pw/branches/r1117/Tools/ClientCMake/wine_env.cmd
 pw/branches/r1117/Src/_Modern*/
 pw/branches/r1117/Src/Game/PF/UniServer/build_linux_test/
 
