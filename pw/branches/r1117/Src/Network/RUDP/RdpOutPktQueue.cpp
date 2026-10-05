@@ -167,15 +167,27 @@ void RdpOutPktQueue::Poll( timer::Time _now )
 {
   NI_PROFILE_FUNCTION;
 
-  size_t count = Min( buffer.Size(), (size_t)callback->ConnCbCurrentWindowSize() );
+  // The congestion window gates *new* traffic (AddImpl()/WriteFreshPackets()).
+  // Datagrams that have already been transmitted once must be re-sent no matter
+  // what the window currently allows: when the window drops below the number of
+  // outstanding datagrams, throttling retransmissions means the peer never sees
+  // (and never acknowledges) anything past the first windowSize ring slots, the
+  // window has no way to grow back and the connection wedges for good - it just
+  // keeps re-sending the same couple of datagrams until the retransmit limit
+  // kills it. 2026-11-05.
+  const size_t windowSize = (size_t)callback->ConnCbCurrentWindowSize();
 
-  for ( size_t i = 0; i < count; ++i )
+  for ( size_t i = 0; i < buffer.Size(); ++i )
   {
     NI_PROFILE_HEAVY_BLOCK( "Packet" );
 
     RdpPacket * pkt = buffer.AtTail( i );
 
     if ( !pkt )
+      continue;
+
+    // Never-sent datagrams beyond the congestion window stay queued.
+    if ( !pkt->TryIndex() && ( i >= windowSize ) )
       continue;
 
     if ( pkt->TryIndex() > 0 )
