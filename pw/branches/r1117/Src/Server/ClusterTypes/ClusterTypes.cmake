@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ClusterTypes_ClusterTypes ClusterTypes.h ClusterTypes.cpp)
-set(LIBRARIES_Src_Server_ClusterTypes_ClusterTypes )

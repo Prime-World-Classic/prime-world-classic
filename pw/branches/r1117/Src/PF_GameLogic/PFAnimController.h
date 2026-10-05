@@ -3,7 +3,7 @@
 #include "../Scene/DiAnGr.h"
 #include "../Scene/DiAnGrNLinker.h"
 #include "../System/AutoPtr.h"
-#include "../System/FixedString.h"
+#include "../System/fixedString.h"
 #include "../Scene/AnimGraphBlender.h"
 
 namespace NScene

@@ -5,7 +5,7 @@
 
 #include "smartrenderer.h"
 #include "ImmediateRenderer.h"
-#include "rect.h"
+#include "Rect.h"
 #include "ShadowManager.h"
 #include "texture.h"
 #include "WaterMesh.h"

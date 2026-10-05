@@ -12,7 +12,7 @@
 #include "ClientControl/LClientControlRemote.auto.h"
 #include "RdpTransport/LRdpFrontendAgentRemote.auto.h"
 #include "RdpTransport/RdpTransportUtils.h"
-#include "rpc/IfaceRequester.h"
+#include "RPC/IfaceRequester.h"
 #include "System/InlineProfiler.h"
 
 
@@ -26,7 +26,7 @@ class ClientCtrlAccessor : public clientCtl::IInterfaceAccessor, public BaseObje
 {
   NI_DECLARE_REFCOUNT_CLASS_2( ClientCtrlAccessor, clientCtl::IInterfaceAccessor, BaseObjectMT );
 public:
-  ClientCtrlAccessor( rpc::GateKeeper * _gk )
+  ClientCtrlAccessor( rpc::GateKeeper * _gk ) : pollCount( 0 ), newlyConnected( false ), everConnected( false )
   {
     remote = new rpc::IfaceRequester<clientCtl::RIInterface>;
     remote->init( _gk, clientCtl::serviceIds::Service, clientCtl::serviceIds::Gate );
@@ -42,9 +42,22 @@ public:
       rpc::IfaceRequesterState::Enum newSt = remote->PopNewState();
       if ( newSt == rpc::IfaceRequesterState::NONE )
         break;
+      // Diagnostics: the per-service log channel is not routed on Linux,
+      // use the untagged trace that reaches the main log.
+      MessageTrace( "NewLogin: clientctrl IfaceRequester state=%d", (int)newSt );
       if ( newSt == rpc::IfaceRequesterState::OPENED )
+      {
         newlyConnected = true;
+        everConnected = true;
+      }
     }
+
+    // The "not connected yet" diagnostic is only meaningful before the first
+    // successful connection: newlyConnected is a one-shot flag consumed by
+    // RegisterLoginSvc, so without everConnected this message would spam
+    // forever even while the connection is alive (REPORT_server_profiling.md, A2).
+    if ( !everConnected && ( ++pollCount % 1000 == 0 ) )
+      MessageTrace( "NewLogin: clientctrl not connected yet, polls=%u", pollCount );
   }
 
   bool PopNewlyConnected()
@@ -62,9 +75,12 @@ public:
   {
     threading::MutexLock lock( mutex );
 
-    if ( StrongMT<clientCtl::IInterface> ptr = remote->iface() )
+    StrongMT<clientCtl::RIInterface> riptr = remote->iface();
+    StrongMT<clientCtl::IInterface> ptr = riptr.Get();
+    if ( ptr ) {
       if ( ptr->GetStatus() == rpc::Connected )
         return ptr;
+    }
     return 0;
   }
 
@@ -72,6 +88,8 @@ private:
   threading::Mutex mutex;
   StrongMT<rpc::IfaceRequester<clientCtl::RIInterface>>  remote;
   bool newlyConnected;
+  bool everConnected;
+  unsigned pollCount;
 };
 
 
@@ -181,7 +199,13 @@ loadNotifyTimer()
 
   svcLinkDict = new SvcLinkDict( BackendGk(), CoordClient()->GetFrontendAddressTranslator() );
 
-  ni_udp::NetAddr loginAddr( Network::GetLoginServerAddress().c_str() );
+  ni_udp::NetAddr loginAddr;
+  unsigned loginMux = 0;
+  if ( !rdp_transport::ParseAddress( loginAddr, loginMux, Network::GetLoginServerAddress().c_str() ) )
+  {
+    NEWLOGIN_LOG_ERR( "Failed to parse login address: %s", Network::GetLoginServerAddress().c_str() );
+    return;
+  }
   logic = new Logic( loginAddr, config, auth, clientControl, svcLinkDict, Now(), SvcId() );
 
   auth->SetLoginAddress( logic->ListenAddress().c_str() );

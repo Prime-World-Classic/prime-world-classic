@@ -39,10 +39,10 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "socialLobby::IPvxSvc::NewGame", 4, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewGame) },
-        { "socialLobby::IPvxSvc::NewReconnectingUser", 3, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewReconnectingUser) },
-        { "socialLobby::IPvxSvc::NewSpectator", 5, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewSpectator) },
-        { "socialLobby::IPvxSvc::UserLeftTheGameInCastle", 3, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::UserLeftTheGameInCastle) },
+        { "socialLobby::IPvxSvc::NewGame", 4, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewGame), 14 },
+        { "socialLobby::IPvxSvc::NewReconnectingUser", 3, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewReconnectingUser), 4 },
+        { "socialLobby::IPvxSvc::NewSpectator", 5, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::NewSpectator), 28 },
+        { "socialLobby::IPvxSvc::UserLeftTheGameInCastle", 3, false, rpc::GetMethodCode(&socialLobby::IPvxSvc::UserLeftTheGameInCastle), 4 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

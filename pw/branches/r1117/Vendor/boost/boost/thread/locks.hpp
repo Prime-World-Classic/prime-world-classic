@@ -14,11 +14,10 @@
 #include <boost/type_traits/is_class.hpp>
 
 #include <boost/config/abi_prefix.hpp>
+#include <boost/thread/xtime_fwd.hpp>
 
 namespace boost
 {
-    struct xtime;
-
 #if defined(BOOST_NO_SFINAE) ||                           \
     BOOST_WORKAROUND(__IBMCPP__, BOOST_TESTED_AT(600)) || \
     BOOST_WORKAROUND(__SUNPRO_CC, BOOST_TESTED_AT(0x590))

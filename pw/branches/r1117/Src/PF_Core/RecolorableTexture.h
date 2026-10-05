@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../System/Singleton4DLL.h"
-#include "../Render/Texture.h"
+#include "../Render/texture.h"
 #include "../Render/material.h"
 #include "DBEffect.h"
 

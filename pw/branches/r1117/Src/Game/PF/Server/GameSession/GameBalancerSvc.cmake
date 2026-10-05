@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_GameSession_GameBalancerSvc GameBalancer/GameBalancerCfg.cpp GameBalancer/GameBalancerCfg.h GameBalancer/GameBalancerIface.h GameBalancer/GameBalancerImpl.cpp GameBalancer/GameBalancerImpl.h GameBalancer/GameBalancerSvc.cpp GameBalancer/GameBalancerSvc.h GameBalancer/GameBalancerTypes.h GameBalancer/specific.h GameBalancer/stdafx.cpp GameBalancer/stdafx.h GameBalancer/SvcAllocContext.cpp GameBalancer/SvcAllocContext.h GameBalancer/SvcContext.cpp GameBalancer/SvcContext.h GameBalancer/GameSvcHostContext.cpp GameBalancer/GameSvcHostContext.h GameBalancer/IGameCCUCounter.h)
-set(LIBRARIES_Src_Game_PF_Server_GameSession_GameBalancerSvc )

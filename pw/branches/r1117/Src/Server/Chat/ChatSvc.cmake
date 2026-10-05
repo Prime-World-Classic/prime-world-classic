@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Chat_ChatSvc ChatSvc/ChatCensorCheckOp.cpp ChatSvc/ChatCensorCheckOp.h ChatSvc/ChatSvc.cpp ChatSvc/ChatSvc.h ChatSvc/ChatSvcCfg.cpp ChatSvc/ChatSvcCfg.h ChatSvc/ChatSvcImpl.cpp ChatSvc/ChatSvcImpl.h ChatSvc/ChatSvcLogging.h ChatSvc/ChatSvcNaming.h ChatSvc/ChatContext.h ChatSvc/ChatSessionContext.cpp ChatSvc/ChatSessionContext.h ChatSvc/ChatChannelContext.cpp ChatSvc/ChatChannelContext.h ChatSvc/ChatChannelHistory.cpp ChatSvc/ChatChannelHistory.h ChatSvc/ChatUserContext.cpp ChatSvc/ChatUserContext.h ChatSvc/ChatManagementIface.cpp ChatSvc/ChatManagementIface.h ChatSvc/ChatClientIface.h ChatSvc/ChatClientIfaceCallback.h ChatSvc/Types.h ChatSvc/stdafx.cpp ChatSvc/stdafx.h ChatSvc/specific.h)
-set(LIBRARIES_Src_Server_Chat_ChatSvc )

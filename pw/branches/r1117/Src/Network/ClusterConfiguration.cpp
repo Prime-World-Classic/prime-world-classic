@@ -5,6 +5,9 @@
 #include "PW_Game/server_ip.h"
 #include <Shared/ServerIps.h>
 
+// Definition of `usedServer` (declared extern in server_ip.h and WebRequests.h).
+// WebRequests.cpp isn't part of the server build on Linux, so we provide it here.
+int usedServer = 0;
 
 namespace 
 {

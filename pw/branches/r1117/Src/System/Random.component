@@ -1,7 +1,7 @@
 if platform == 'win32' :
   sources = [
-    'RandomGen.cpp', 
-    'RandomGen.h', 
+    'RandomGen.cpp',
+    'RandomGen.h',
     'Win32Random.cpp',
     'Win32Random.h',
     'RandomGenerator.cpp',
@@ -13,6 +13,9 @@ else :
   sources = [
     'Win32Random.cpp',
     'RandomGenerator.cpp',
+    'RandomGenerator.h',
+    'RandomInterfaceImpl.cpp',
+    'RandomInterfaceImpl.h',
   ]
 
 components = [

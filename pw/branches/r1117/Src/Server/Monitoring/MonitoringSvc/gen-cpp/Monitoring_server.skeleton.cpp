@@ -12,8 +12,6 @@ using namespace ::apache::thrift::protocol;
 using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
 
-using boost::shared_ptr;
-
 using namespace  ::Monitoring::Thrift;
 
 class MonitoringHandler : virtual public MonitoringIf {
@@ -56,11 +54,11 @@ class MonitoringHandler : virtual public MonitoringIf {
 
 int main(int argc, char **argv) {
   int port = 9090;
-  shared_ptr<MonitoringHandler> handler(new MonitoringHandler());
-  shared_ptr<TProcessor> processor(new MonitoringProcessor(handler));
-  shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
-  shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
-  shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
+  ::std::shared_ptr<MonitoringHandler> handler(new MonitoringHandler());
+  ::std::shared_ptr<TProcessor> processor(new MonitoringProcessor(handler));
+  ::std::shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
+  ::std::shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
+  ::std::shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
 
   TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
   server.serve();

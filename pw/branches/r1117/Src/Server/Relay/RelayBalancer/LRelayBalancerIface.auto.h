@@ -38,7 +38,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Relay::IBalancerCallback::OnRelayAllocated", 6, false, rpc::GetMethodCode(&Relay::IBalancerCallback::OnRelayAllocated) },
+        { "Relay::IBalancerCallback::OnRelayAllocated", 6, false, rpc::GetMethodCode(&Relay::IBalancerCallback::OnRelayAllocated), 60 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -113,7 +113,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Relay::IBalancer::AllocateRelay", 6, false, rpc::GetMethodCode(&Relay::IBalancer::AllocateRelay) },
+        { "Relay::IBalancer::AllocateRelay", 6, false, rpc::GetMethodCode(&Relay::IBalancer::AllocateRelay), 44 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

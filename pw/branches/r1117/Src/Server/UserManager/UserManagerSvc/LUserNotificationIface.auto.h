@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "UserManager::IUserNotificationSubscriber::OnUserLoggedIn", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationSubscriber::OnUserLoggedIn) },
-        { "UserManager::IUserNotificationSubscriber::OnUserLoggedOut", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationSubscriber::OnUserLoggedOut) },
+        { "UserManager::IUserNotificationSubscriber::OnUserLoggedIn", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationSubscriber::OnUserLoggedIn), 1 },
+        { "UserManager::IUserNotificationSubscriber::OnUserLoggedOut", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationSubscriber::OnUserLoggedOut), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -114,8 +114,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "UserManager::IUserNotificationPublisher::RegisterSubscriber", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationPublisher::RegisterSubscriber) },
-        { "UserManager::IUserNotificationPublisher::UnregisterSubscriber", 2, false, rpc::GetMethodCode(&UserManager::IUserNotificationPublisher::UnregisterSubscriber) },
+        { "UserManager::IUserNotificationPublisher::RegisterSubscriber", 1, false, rpc::GetMethodCode(&UserManager::IUserNotificationPublisher::RegisterSubscriber), 1 },
+        { "UserManager::IUserNotificationPublisher::UnregisterSubscriber", 2, false, rpc::GetMethodCode(&UserManager::IUserNotificationPublisher::UnregisterSubscriber), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

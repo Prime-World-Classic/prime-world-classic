@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_NetworkAIO_naio naio/stdafx.cpp naio/stdafx.h naio/specific.h naio/Acceptor.cpp naio/Acceptor.h naio/AcceptorHandle.cpp naio/AcceptorHandle.h naio/BaseProtocol.cpp naio/BaseProtocol.h naio/BaseProtocolFactory.cpp naio/BaseProtocolFactory.h naio/Cfg.cpp naio/Cfg.h naio/Channel.cpp naio/Channel.h naio/ChannelContext.cpp naio/ChannelContext.h naio/ChannelManager.cpp naio/ChannelManager.h naio/ConnectionContext.cpp naio/ConnectionContext.h naio/Connector.cpp naio/Connector.h naio/Driver.cpp naio/Driver.h naio/Operation.cpp naio/Operation.h naio/Ops.cpp naio/Ops.h naio/ProtocolHandler.h naio/Status.h naio/Types.h naio/ThreadPool.cpp naio/ThreadPool.h naio/OpScope.h naio/Ptr.h)
-set(LIBRARIES_Src_Server_NetworkAIO_naio )

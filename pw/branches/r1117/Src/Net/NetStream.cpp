@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "NetStream.h"
 #include "../System/BitStreams.h"
 #include "NetLog.h"

@@ -65,7 +65,7 @@ void GameEstimFun::Reset()
 
 template <class TRec, class TValue>
 void AddToLinearSet( vector<TRec> & linset, TValue val ) {
-  for ( vector<TRec>::iterator i = linset.begin(); i != linset.end(); ++i )
+  for ( typename vector<TRec>::iterator i = linset.begin(); i != linset.end(); ++i )
     if ( i->value == val ) {
       ++i->count;
       return;
@@ -77,7 +77,7 @@ void AddToLinearSet( vector<TRec> & linset, TValue val ) {
 
 template <class TRec, class TValue>
 bool RemoveFromLinearSet( vector<TRec> & linset, TValue val ) {
-  for ( vector<TRec>::iterator i = linset.begin(); i != linset.end(); ++i )
+  for ( typename vector<TRec>::iterator i = linset.begin(); i != linset.end(); ++i )
     if ( i->count && i->value == val ) {
       --(i->count);
       if ( !i->count ) {

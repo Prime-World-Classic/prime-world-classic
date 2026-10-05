@@ -1,3 +1,0 @@
-C:/Users/rekon/source/repos/Prime-World-2022/pw/branches/r1117/Src/UniServerApp/CMakeFiles/UniServerApp.dir
-C:/Users/rekon/source/repos/Prime-World-2022/pw/branches/r1117/Src/UniServerApp/CMakeFiles/ALL_BUILD.dir
-C:/Users/rekon/source/repos/Prime-World-2022/pw/branches/r1117/Src/UniServerApp/CMakeFiles/ZERO_CHECK.dir

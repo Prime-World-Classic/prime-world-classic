@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<HintsCollection>
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMPSTTN" Count="1" />
+	<hints>
+		<Item>
+			<id>welcome</id>
+			<text textref="/Maps/Multiplayer/ARAM/Hint_hints_0_text.txt" />
+		</Item>
+	</hints>
+</HintsCollection>

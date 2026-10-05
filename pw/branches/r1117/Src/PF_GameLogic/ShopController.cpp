@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ShopController.h"
 
 #include "../UI/FlashContainer2.h"

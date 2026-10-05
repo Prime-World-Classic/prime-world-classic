@@ -118,3 +118,78 @@ pw/branches/r1117/Tools/WineClientBuild/runtime/
 
 # локальные значения для server_ip.h (IP/токены конкретного стенда)
 pw/branches/r1117/Tools/WineClientBuild/server_ip.env
+
+# client-modern: out-of-source CMake-сборки клиента (см. PLAN_client_modern.md)
+pw/branches/r1117/Build/
+pw/branches/r1117/Tools/ClientCMake/*.json
+pw/branches/r1117/Src/_Modern*/
+pw/branches/r1117/Src/Game/PF/UniServer/build_linux_test/
+
+# Python bytecode
+*.pyc
+
+# Merge artifacts
+*.orig
+
+# CMake generator output (UniServerApp.auto)
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/UniServerApp/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/debug/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/build/
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/*.dublicates
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/*.graph
+pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto/unittest.cfg
+
+# Local symlinks
+pw/branches/r1117/Src/Server/rpc
+pw/branches/r1117/Src/system
+
+# Generated wsdlpull file
+pw/branches/r1117/Vendor/wsdlpull/src/wsdlparser/Wsdlinvoker.h
+
+# ACE build directory
+pw/branches/r1117/Vendor/ACE_wrappers/build/
+
+# Terabit build directory
+pw/branches/r1117/Vendor/Terabit/build/
+
+pw/branches/r1117/Vendor/ACE_wrappers/autom4te.cache/
+pw/branches/r1117/Vendor/Terabit/lib/libzdll.so
+
+# Linux build artifacts
+pw/branches/r1117/Src/Game/PF/UniServer/build_linux*/
+
+# CMake generated artifacts (any build dir)
+**/CMakeCache.txt
+**/CMakeFiles/
+**/cmake_install.cmake
+**/*.cmake
+
+# Build output files
+*.a
+*.o.d
+a.out
+
+# Compiled object and shared library files
+*.o
+*.so
+*.so.fixed
+*.so.new2
+
+# Component auto-generated files
+**/*.auto/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# CMake backup/variant files
+CMakeLists.txt.fixed
+CMakeLists.txt.system
+
+# Published logs
+pw_publish/branch/Server/PvX/Bin/logs/
+Client-Synchronizer-Server/pythonProject/sync_logs/sync_log*
+logs
+pw/branches/r1117/Src/Game/PF/UniServer/build_shipping/build.log
+pw/branches/r1117/Src/Game/PF/UniServer/build_shipping/UniServerApp
+pw_publish/branch/Server/PvX/Bin/UniServerApp

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "EditorScene.h"
 #include "RoadWrapper.h"
 

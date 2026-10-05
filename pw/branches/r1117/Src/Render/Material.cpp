@@ -2,11 +2,11 @@
 
 #include "../System/Crc32Checksum.h"
 
-#include "Renderer.h"
+#include "renderer.h"
 #include "texture.h"
-#include "RenderResourceManager.h"
-#include "MultiShader.h"
-#include "Material.h"
+#include "renderresourcemanager.h"
+#include "multishader.h"
+#include "material.h"
 #include "MaterialSpec.h"
 
 
@@ -638,7 +638,7 @@ bool MaterialManager::ResetSortIDs(const char*, const vector<wstring>&)
 
 UINT MaterialManager::GetShadersID(const Material *_pMat)
 {
-  static const UINT shaderIdBits = 22; // Волюнтаризм чистой воды
+  static const UINT shaderIdBits = 22; //   
   static const UINT shaderIdMask = (1 << shaderIdBits) - 1;
 
   const int  idMulti = _pMat->GetResourceManagerShaderIndex();

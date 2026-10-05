@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AuraApplicator>
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/Dragon/status_AuraDragonPower.APLR" Count="1" />
+	<BackLink DBID="/Buildings/DefaultStats/CheckCatKill.ABLT" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Mains/Dragon/aura_NearDragon_1.APLR" Count="1" />
+	<applicators>
+		<Item href="/Maps/Multiplayer/MOBA/Mains/Dragon/status_DragonPower.APLR" />
+		<Item href="/Buildings/DefaultStats/fx_DragonPower.APLR" />
+	</applicators>
+	<applyTarget>ApplicatorTarget</applyTarget>
+	<behaviorFlags>0</behaviorFlags>
+	<caption> - Аура, которая вешает статус на всех союзников вокруг о том, что они рядом</caption>
+	<effect>
+		<Item href="" />
+		<Item href="" />
+	</effect>
+	<enabled>
+		<compiledString>FQAAAAAAAAAAVYvssAFdww==</compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</enabled>
+	<formulaName></formulaName>
+	<lifeTime>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+		<returnType>float</returnType>
+		<sString>-1</sString>
+	</lifeTime>
+	<LoggingEvent>-1</LoggingEvent>
+	<providerName></providerName>
+	<range>
+		<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAEAcRg==</compiledString>
+		<returnType>float</returnType>
+		<sString>10000</sString>
+	</range>
+	<startCondition>
+		<compiledString></compiledString>
+		<returnType>bool</returnType>
+		<sString>true</sString>
+	</startCondition>
+	<targets>10428927</targets>
+	<targetSelector href="/Maps/Multiplayer/MOBA/Mains/Dragon/aura_NearDragon_1.APLR" id="F75A66CC-E579-4F87-9A44-8F375A02CA48">
+		<AreaTargetSelector>
+			<absolutePosition>
+				<x>0</x>
+				<y>0</y>
+			</absolutePosition>
+			<flags>0</flags>
+			<mode>Normal</mode>
+			<range>
+				<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAEAcRg==</compiledString>
+				<returnType>float</returnType>
+				<sString>10000</sString>
+			</range>
+			<targetFilter>268435483</targetFilter>
+			<targetSelector href="" />
+		</AreaTargetSelector>
+	</targetSelector>
+	<type>None</type>
+</AuraApplicator>

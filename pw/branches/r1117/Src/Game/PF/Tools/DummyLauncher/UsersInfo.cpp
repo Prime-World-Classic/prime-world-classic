@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "Application.h"
-#include "log.h"
+#include "Log.h"
 #include "UsersInfo.h"
 #include "Convert.h"
 #include "FbNetInfo.h"

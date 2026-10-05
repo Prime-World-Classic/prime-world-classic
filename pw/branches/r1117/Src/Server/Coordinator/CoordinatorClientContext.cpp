@@ -1,11 +1,12 @@
 #include "stdafx.h"
 #include "Coordinator/CoordinatorClientContext.h"
 #include "Coordinator/CoordinatorServerCfg.h"
+#include "RCoordinatorClientIface.auto.h"
 
 namespace Coordinator
 {
 
-ClientContext::ClientContext( RICoordinatorClientRemote * cl ) :
+ClientContext::ClientContext( ICoordinatorClientRemote * cl ) :
 client_(cl),
 srvid_(0), serverDef(), state_(State::INIT), repairStartTime_(0), prevClientStatus_(rpc::Unknown), pingSeqNum_(0), lastPingTime_(0)
 {
@@ -25,15 +26,28 @@ void ClientContext::step()
   if (isclose())
     return;
 
-  if (rpc::Connected == client_->GetStatus())
+  // RPC-specific status/ping checks only apply to remote clients
+  RICoordinatorClientRemote* remote = dynamic_cast<RICoordinatorClientRemote*>(client_.Get());
+  if (!remote)
   {
-    if (prevClientStatus_ != client_->GetStatus())
+    // Local client — always connected, no ping needed
+    if (state_ != State::OPEN)
+    {
+      state(State::OPEN);
+      repairStartTime_ = 0;
+    }
+    return;
+  }
+
+  if (rpc::Connected == remote->GetStatus())
+  {
+    if (prevClientStatus_ != remote->GetStatus())
     {
       LOG_M(0).Trace( "Coord client connected (srvid=%d)", srvid_ );
 
       state(State::OPEN);
       repairStartTime_ = 0;
-      prevClientStatus_ = client_->GetStatus();
+      prevClientStatus_ = remote->GetStatus();
     }
     else
     {
@@ -41,20 +55,20 @@ void ClientContext::step()
       NHPTimer::FTime currTime = NHPTimer::GetScalarTime();
       if (lastPingTime_ + Cfg::GetClientPingPeriod() < currTime)
       {
-        client_->Ping(++pingSeqNum_, this, &ClientContext::OnPingReturn, 0, Cfg::GetClientPingResponseTimeout());
+        remote->Ping(++pingSeqNum_, this, &ClientContext::OnPingReturn, 0, Cfg::GetClientPingResponseTimeout());
         lastPingTime_ = currTime;
       }
     }
   }
   else
-  if (rpc::Disconnected == client_->GetStatus())
+  if (rpc::Disconnected == remote->GetStatus())
   {
-    if (prevClientStatus_ != client_->GetStatus())
+    if (prevClientStatus_ != remote->GetStatus())
     {
       LOG_W(0).Trace( "Coord client disconnected. Waiting for it(srvid=%d to=%d)", srvid_, Cfg::GetClientRepairTimeout() );
       state(State::REOPENING);
       repairStartTime_ = NHPTimer::GetScalarTime();
-      prevClientStatus_ = client_->GetStatus();
+      prevClientStatus_ = remote->GetStatus();
     }
     else
     {

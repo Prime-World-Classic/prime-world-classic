@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_FileSystem_FileSystemChangesProcessor FileSystemChangesProcessor.cpp FileSystemChangesProcessor.h)
-set(LIBRARIES_Src_System_FileSystem_FileSystemChangesProcessor )

@@ -41,3 +41,9 @@ components = [
   'System/RandomInterface',
   'System/Histogram',
 ]
+
+# Platform-specific socket server
+if platform == 'win32':
+  components = components + ['Network/RUDP/SockSrvWinsock']
+else:
+  components = components + ['Network/RUDP/SockSrvPosix']

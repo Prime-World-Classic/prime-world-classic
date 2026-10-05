@@ -1,9 +1,11 @@
-sources = [
-  'SockSrvWinsockAsync.h',
-  'SockSrvWinsockAsync.cpp',
-  'SockSrvWinsockBlocking.h',
-  'SockSrvWinsockBlocking.cpp',
-]
+# Windows-only component - skip on Linux
+if platform == 'win32':
+  sources = [
+    'SockSrvWinsockAsync.h',
+    'SockSrvWinsockAsync.cpp',
+    'SockSrvWinsockBlocking.h',
+    'SockSrvWinsockBlocking.cpp',
+  ]
 
 components = [ 
   'Network/RUDP/SockSrv',

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 
 #include "JSONChunkSerializer.h"
 #include "JSONReader.h"
@@ -39,7 +39,7 @@ bool JSONChunkSerializer::StartChunk( const string& idChunk, int nChunkNumber )
 {
   if (IsReading())
   {
-    // если в стеке только рут - читаем текущий объект относительно него
+    //      -     
     if (idChunk != "__root__") 
     {
       Json::Value& current = serializationStack.Top()->value;

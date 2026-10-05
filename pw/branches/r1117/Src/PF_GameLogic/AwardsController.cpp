@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "AwardsController.h"
 
 #include "../UI/FlashContainer2.h"
@@ -285,7 +285,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 		int filteredIndex = -1;
 		for(int j = 0; j<filteredAwards.size(); j++)
 		{
-			//сравниваем по картинке
+			//  
 			if (resourceAwards[i].image == filteredAwards[j].image)
 			{
 				filteredIndex = j;
@@ -293,7 +293,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 			}
 		}
 		
-		//не нашли уже такой элемент
+		//    
 		if (filteredIndex == -1)
 		{
 			filteredAwards.push_back(resourceAwards[i]);
@@ -301,7 +301,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 		}
 
 		
-		//Ќашли уже нужный. надо теперь сложить две награды
+		//  .     
 		Award & finalAward = filteredAwards[filteredIndex];
 		Award & curAward = resourceAwards[i];
 
@@ -310,7 +310,7 @@ void AwardsController::AwardUser( const nstl::vector<AwardData> & _awards )
 	}
 
 
-	//теперь уже добавл€ем полную сумму
+	//    
 	for(int i = 0; i<filteredAwards.size(); i++)
 		awards.push_back(filteredAwards[i]);
 

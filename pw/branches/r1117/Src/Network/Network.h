@@ -25,6 +25,10 @@ namespace EDriverTrafficType
     Light,
     // server-server: small number of connections, high traffic
     Heavy,
+    // UniServerApp backend (35000): few inter-service connections with sparse
+    // traffic; 5 ms poll instead of Light's 2 ms saves ~2% of one core in
+    // idle (REPORT_server_profiling.md, C3)
+    Server,
   };
 }		
 
@@ -51,8 +55,8 @@ _interface IConnection: public IBaseInterfaceMT
 
   virtual void AsyncClose() = 0;
 
-  //Тут мы отходим от стандарта и возвращаем из функций CObj<> по значению и передаем его по константной ссылке
-  //Почему? -А потому, что мы имеем большие проблемы с временем жизни объектов Stream из-за хранения и распространения raw-указателей
+  //пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ CObj<> пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+  //пїЅпїЅпїЅпїЅпїЅпїЅ? -пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Stream пїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ raw-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
   virtual CObj<Stream> GetBufferToSend() = 0;
   virtual bool Send( const CObj<Stream> & data ) = 0;
 
@@ -67,8 +71,8 @@ _interface IConnection: public IBaseInterfaceMT
   static void DumpCompressionStatistics();
 };
 
-typedef vector<StrongMT<IConnection> > TConnections; // это для хранения original connection-ов
-typedef vector<StrongMT<IConnection> > TNewConnections; // а это будем использовать для того, что передается через GetNewConnections
+typedef vector<StrongMT<IConnection> > TConnections; // пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ original connection-пїЅпїЅ
+typedef vector<StrongMT<IConnection> > TNewConnections; // пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ GetNewConnections
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 _interface IConnectionsManager: public IBaseInterfaceMT

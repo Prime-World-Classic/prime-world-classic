@@ -167,7 +167,7 @@ void RdpOutPktQueue::Poll( timer::Time _now )
 {
   NI_PROFILE_FUNCTION;
 
-  size_t count = Min( buffer.Size(), callback->ConnCbCurrentWindowSize() );
+  size_t count = Min( buffer.Size(), (size_t)callback->ConnCbCurrentWindowSize() );
 
   for ( size_t i = 0; i < count; ++i )
   {
@@ -214,7 +214,7 @@ void RdpOutPktQueue::WriteFreshPackets( timer::Time _now, size_t _pktNumber )
   NI_VERIFY( _pktNumber <= buffer.Size(), "", return );
 
   size_t begin = buffer.Size() - _pktNumber;
-  size_t end = Min( buffer.Size(), callback->ConnCbCurrentWindowSize() );
+  size_t end = Min( buffer.Size(), (size_t)callback->ConnCbCurrentWindowSize() );
 
   for ( size_t i = begin; i < end; ++i )
   {

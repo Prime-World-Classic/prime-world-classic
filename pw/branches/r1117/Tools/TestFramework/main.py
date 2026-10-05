@@ -1103,6 +1103,79 @@ def shortenLibName( name, all_names ) :
         return nn + str( i )
     return name
 
+def _isWindowsCompilerFlag( flag ):
+    """Check if a compiler flag is Windows/MSVC specific."""
+    msvc_prefixes = [ '/wd', '/W', '/MD', '/MDd', '/MT', '/MTd', '/Zi', '/EHa', '/EHsc',
+                      '/WX', '/GR', '/GS', '/RTC', '/Yu', '/Yc', '/FI', '/FI:', '/Za',
+                      '/Zc:', '/permissive-', '/experimental:' ]
+    flag_stripped = flag.lstrip('-').lstrip('/')
+    for prefix in msvc_prefixes:
+        if flag.lower().startswith( '/' + prefix.lstrip('/') ) or flag.lower().startswith( prefix ):
+            return True
+    # Windows-specific warning codes
+    if flag_stripped.startswith( 'wd' ) or flag_stripped.startswith( 'w3' ) or flag_stripped.startswith( 'w4' ):
+        return True
+    if flag_stripped in ( 'EHa', 'EHsc', 'MD', 'MDd', 'MT', 'MTd', 'Zi', 'WX', 'GR', 'GS' ):
+        return True
+    return False
+
+def _isWindowsDefine( define ):
+    """Check if a preprocessor define is Windows specific."""
+    windows_defines = [ 'NOMINMAX', '_CRT_SECURE_NO_WARNINGS', '_CRT_NONSTDC_NO_WARNINGS',
+                        '_SCL_SECURE_NO_WARNINGS', '_HAS_ITERATOR_DEBUGGING=0',
+                        'WIN32', '_WIN32', 'WINDOWS', '_WINDOWS', 'NT', '_NT',
+                        'NI_DISABLE_CRASHRPT', '_DO_ASSERT', 'CURL_STATICLIB' ]
+    for wd in windows_defines:
+        if define == wd or define.startswith( wd ):
+            return True
+    return False
+
+def _filterLinuxData( defines, compiler_options, include_paths, libPaths, libDeps ):
+    """Filter out Windows-specific data for Linux builds."""
+    # Filter compiler flags
+    filtered_compiler_options = set()
+    for flag in compiler_options:
+        if not _isWindowsCompilerFlag( flag ):
+            filtered_compiler_options.add( flag )
+
+    # Filter defines
+    filtered_defines = set()
+    for define in defines:
+        if not _isWindowsDefine( define ):
+            filtered_defines.add( define )
+
+    # Filter include paths - remove Windows-only paths
+    win_only_includes = [ 'CrashRpt', 'DirectX', 'WTL' ]
+    filtered_include_paths = set()
+    for path in include_paths:
+        is_win = False
+        for wpath in win_only_includes:
+            if wpath in path:
+                is_win = True
+                break
+        if not is_win:
+            filtered_include_paths.add( path )
+
+    # Filter link paths - remove Windows-only paths
+    win_only_libdirs = [ 'CrashRpt' ]
+    filtered_libPaths = set()
+    for path in libPaths:
+        is_win = False
+        for wpath in win_only_libdirs:
+            if wpath in path:
+                is_win = True
+                break
+        if not is_win:
+            filtered_libPaths.add( path )
+
+    # Filter library dependencies - remove .lib files
+    filtered_libDeps = set()
+    for lib in libDeps:
+        if not lib.endswith( '.lib' ):
+            filtered_libDeps.add( lib )
+
+    return filtered_defines, filtered_compiler_options, filtered_include_paths, filtered_libPaths, filtered_libDeps
+
 def generateCMakeProject( sources, projectName, components, componetsGraphFiles, options, maincomponent = None ):
 
     if options.verblevel >= 2:
@@ -1247,6 +1320,10 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
     # print libDeps
     # print libPaths
 
+    # Filter Windows-specific data for Linux builds
+    if options.platform == 'linux':
+        defines, compiler_options, include_paths, libPaths, libDeps = _filterLinuxData( defines, compiler_options, include_paths, libPaths, libDeps )
+
     flags = " ".join( [ "-D" + d for d in defines ] )
     flags += " " + " ".join( [ co for co in compiler_options ] )
     if len( flags ) > 0 :
@@ -1274,7 +1351,7 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
     cmake_file.write( "IF ( CXXTEST_FOUND )\n" )
     cmake_file.write( "  INCLUDE_DIRECTORIES( ${CXXTEST_INCLUDE_DIR} )\n" )
     cmake_file.write( "ELSE ( CXXTEST_FOUND )\n" )
-    cmake_file.write( "  MESSAGE( FATAL_ERROR \"CxxTest not found!\" )\n" )
+    cmake_file.write( "  MESSAGE( WARNING \"CxxTest not found, tests will be skipped\" )\n" )
     cmake_file.write( "ENDIF ( CXXTEST_FOUND )\n\n" )
 
     for c in libs :
@@ -1290,7 +1367,10 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
             cmake_file.write( "{0:>54} {1}\n".format( " ", file_path ) )
         cmake_file.write( "{0:>55})\n".format( " " ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES OUTPUT_NAME {0} )\n".format( lib_name_var ) )
-        cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE CXX )\n\n".format( lib_name_var ) )
+        # Use C linker language if all sources are .c files
+        all_c = all( s.endswith('.c') for s in libs[c] ) if libs[c] else False
+        lang = 'C' if all_c else 'CXX'
+        cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE {1} )\n\n".format( lib_name_var, lang ) )
 
     print "PROJECT:", projectName
     if is_test :
@@ -1349,6 +1429,38 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
         for ln in libDeps :
             cmake_file.write( "SET( ALL_LIBS {0}           {1} )\n".format( all_libs_var, ln ) )
 
+        # Define SPIPE_Addr object target before executable (Linux only).
+        # Path is resolved at generation time (no hardcoded absolute paths):
+        #   1. SPIPE_ADDR_CPP environment variable (explicit override)
+        #   2. Relative to TestFrameworkPath: <root>/Tools/TestFramework -> <root>/Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp
+        #   3. Fallback: walk up from the current directory looking for the file
+        spipe_obj = ""
+        if options.platform != 'win32':
+            spipe_src = os.environ.get( 'SPIPE_ADDR_CPP', '' )
+            if not spipe_src:
+                tf_path = os.environ.get( 'TestFrameworkPath', '' )
+                if tf_path:
+                    candidate = os.path.normpath( os.path.join( tf_path, '..', '..', 'Vendor', 'ACE_wrappers', 'ace', 'SPIPE_Addr.cpp' ) )
+                    if os.path.isfile( candidate ):
+                        spipe_src = candidate
+            if not spipe_src:
+                d = os.getcwd()
+                while True:
+                    candidate = os.path.normpath( os.path.join( d, 'Vendor', 'ACE_wrappers', 'ace', 'SPIPE_Addr.cpp' ) )
+                    if os.path.isfile( candidate ):
+                        spipe_src = candidate
+                        break
+                    parent = os.path.dirname( d )
+                    if parent == d: break
+                    d = parent
+            if not spipe_src:
+                sys.stderr.write( "ERROR: cannot locate Vendor/ACE_wrappers/ace/SPIPE_Addr.cpp "
+                                  "(set SPIPE_ADDR_CPP or TestFrameworkPath)\n" )
+                return 0
+            cmake_file.write( "ADD_LIBRARY(spip_e_addr_obj OBJECT {0})\n".format( spipe_src ) )
+            cmake_file.write( "SET_TARGET_PROPERTIES(spip_e_addr_obj PROPERTIES COMPILE_FLAGS \"-fno-rtti\")\n" )
+            spipe_obj = "$<TARGET_OBJECTS:spip_e_addr_obj>"
+
         app_name = maincomponent.name.upper() + "_APP"
         app_name_var = "${" + app_name + "}"
         cmake_file.write( "##################################################################\n" )
@@ -1362,10 +1474,11 @@ def generateCMakeProject( sources, projectName, components, componetsGraphFiles,
             file_path = src.file.replace( "\\", "/" )
             if file_path.endswith( ".cpp" ) :
                 cmake_file.write( "{0:>54} {1}\n".format( " ", file_path ) )
+        # SPIPE_Addr object target is defined above
         cmake_file.write( "{0:>55})\n".format( " " ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES OUTPUT_NAME {0} )\n".format( app_name_var ) )
         cmake_file.write( "SET_TARGET_PROPERTIES( {0:<31} PROPERTIES LINKER_LANGUAGE CXX )\n".format( app_name_var ) )
-        cmake_file.write( "TARGET_LINK_LIBRARIES( {0:<31} -Xlinker --start-group rt {1} -Xlinker --end-group )\n".format( app_name_var, all_libs_var ) )
+        cmake_file.write( "TARGET_LINK_LIBRARIES( {0:<31} -Wl,--export-dynamic -Xlinker --start-group rt {1} {2} -Xlinker --end-group )\n".format( app_name_var, all_libs_var, spipe_obj ) )
         
         #cmake_file.write('add_executable(' + projectName + ' ${SOURCE_FILES})\n')
 

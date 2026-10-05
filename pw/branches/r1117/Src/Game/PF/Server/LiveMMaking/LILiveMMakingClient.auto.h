@@ -38,14 +38,14 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "mmaking::ILiveMMakingClient::MmLogicSetupResult", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmLogicSetupResult) },
-        { "mmaking::ILiveMMakingClient::GameMatchmaked", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::GameMatchmaked) },
-        { "mmaking::ILiveMMakingClient::GameMatchmakedForReconnect", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::GameMatchmakedForReconnect) },
-        { "mmaking::ILiveMMakingClient::MmResultAddRequest", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultAddRequest) },
-        { "mmaking::ILiveMMakingClient::MmResultRemoveRequest", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultRemoveRequest) },
-        { "mmaking::ILiveMMakingClient::MmResultAddReconnectGame", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultAddReconnectGame) },
-        { "mmaking::ILiveMMakingClient::MmResultRemoveReconnectGame", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultRemoveReconnectGame) },
-        { "mmaking::ILiveMMakingClient::MmDebugStatus", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmDebugStatus) },
+        { "mmaking::ILiveMMakingClient::MmLogicSetupResult", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmLogicSetupResult), 1 },
+        { "mmaking::ILiveMMakingClient::GameMatchmaked", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::GameMatchmaked), 1 },
+        { "mmaking::ILiveMMakingClient::GameMatchmakedForReconnect", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::GameMatchmakedForReconnect), 1 },
+        { "mmaking::ILiveMMakingClient::MmResultAddRequest", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultAddRequest), 0 },
+        { "mmaking::ILiveMMakingClient::MmResultRemoveRequest", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultRemoveRequest), 0 },
+        { "mmaking::ILiveMMakingClient::MmResultAddReconnectGame", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultAddReconnectGame), 0 },
+        { "mmaking::ILiveMMakingClient::MmResultRemoveReconnectGame", 2, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmResultRemoveReconnectGame), 0 },
+        { "mmaking::ILiveMMakingClient::MmDebugStatus", 1, false, rpc::GetMethodCode(&mmaking::ILiveMMakingClient::MmDebugStatus), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

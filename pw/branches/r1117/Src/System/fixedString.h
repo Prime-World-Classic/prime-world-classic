@@ -24,6 +24,12 @@ public:
   bool operator < ( const TChar * str ) const { return Compare( str ) < 0; }
   bool operator > ( const TChar * str ) const { return Compare( str ) > 0; }
 
+  // Same-size FixedString comparison (non-template for when OTHER_SIZE == _capacity)
+  bool operator == ( const FixedString & other ) const { return Compare( other.buffer ) == 0; }
+  bool operator != ( const FixedString & other ) const { return Compare( other.buffer ) != 0; }
+  bool operator < ( const FixedString & other ) const { return Compare( other.buffer ) < 0; }
+  bool operator > ( const FixedString & other ) const { return Compare( other.buffer ) > 0; }
+
   template< size_t OTHER_SIZE>
   bool operator == ( const FixedString<OTHER_SIZE, TChar> & other ) const { return Compare( other.buffer ) == 0; }
 

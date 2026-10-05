@@ -41,8 +41,16 @@ namespace Coordinator
       StrongMT<RIServiceAppearanceSubscriber> curr = it->second.iface;
       if (curr->GetInfo().entityGUID == ss->GetInfo().entityGUID)
       {
-        LOG_W(0).Trace("Subscriber already registered in publisher");
-        break;
+        // Re-subscription (a startup race where the initial snapshot was taken
+        // before the local services were announced to the coordinator, or a
+        // pipe reconnect): resend the CURRENT cluster info so the subscriber
+        // can resync. Previously this returned an empty cluster with rc=-1,
+        // which left a subscriber that missed both the snapshot and the
+        // OnStartService notifications without any way to catch up.
+        LOG_W(0).Trace("Subscriber already registered in publisher(id=%d) — resending current cluster info", it->first);
+        svcInfoGetter->GetClusterSvcInfo(csi);
+        subscriber->OnRegisterSubscriber(it->first, csi);
+        return;
       }
     }
 

@@ -19,8 +19,8 @@
 #include "System/DebugTraceDumper.h"
 #include "System/EditBoxDumper.h"
 #include "System/CrashRptWrapper.h"
-#include "system/BSUtil.h" //TODO: Remove this header (NUM_TASK)
-#include "system/expreport.h"
+#include "System/BSUtil.h" //TODO: Remove this header (NUM_TASK)
+#include "System/expreport.h"
 #include "System/meminfo.h"
 #include "Render/renderer.h"
 #include "System/TextFileDumper.h"

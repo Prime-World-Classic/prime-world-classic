@@ -39,8 +39,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "HybridServer::IGameServerAllocatorNotify::AllocNotify", 2, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocatorNotify::AllocNotify) },
-        { "HybridServer::IGameServerAllocatorNotify::FreeNotify", 1, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocatorNotify::FreeNotify) },
+        { "HybridServer::IGameServerAllocatorNotify::AllocNotify", 2, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocatorNotify::AllocNotify), 0 },
+        { "HybridServer::IGameServerAllocatorNotify::FreeNotify", 1, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocatorNotify::FreeNotify), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -115,7 +115,7 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "HybridServer::IGameServerAllocator::AllocateServer", 2, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocator::AllocateServer) },
+        { "HybridServer::IGameServerAllocator::AllocateServer", 2, false, rpc::GetMethodCode(&HybridServer::IGameServerAllocator::AllocateServer), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

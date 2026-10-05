@@ -50,11 +50,19 @@ public:
   virtual void Format( IBuffer * buffer, const SFormatSpecs & specs ) const
   {
     char buf[48] = "";
+#if defined( NV_WIN_PLATFORM )
     _snprintf( buf, 47, "(%d.%d.%d.%d:%u %u:%u)", 
-      (unsigned)descr.remote.sin_addr.s_net, (unsigned)descr.remote.sin_addr.s_host, 
-      (unsigned)descr.remote.sin_addr.s_lh, (unsigned)descr.remote.sin_addr.s_impno, 
+      (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b1, (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b2,
+      (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b3, (unsigned)descr.remote.sin_addr.S_un.S_un_b.s_b4,
       (unsigned)descr.remote.Port(),
       descr.localMux, descr.remoteMux );
+#else
+    unsigned char *bytes = (unsigned char *)&descr.remote.sin_addr.s_addr;
+    snprintf( buf, 47, "(%d.%d.%d.%d:%u %u:%u)",
+      bytes[0], bytes[1], bytes[2], bytes[3],
+      (unsigned)descr.remote.Port(),
+      descr.localMux, descr.remoteMux );
+#endif
     buf[47] = 0;
 
     FormatString( buffer, buf, specs );

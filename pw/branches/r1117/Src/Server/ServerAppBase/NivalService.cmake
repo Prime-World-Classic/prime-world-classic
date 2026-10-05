@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ServerAppBase_NivalService NivalService.h NivalService.cpp NivalServiceRunner.h NivalServiceRunner.cpp ConfigProvider.h PerfCounters.h)
-set(LIBRARIES_Src_Server_ServerAppBase_NivalService )

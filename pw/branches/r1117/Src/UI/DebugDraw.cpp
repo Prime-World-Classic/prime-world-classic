@@ -2,7 +2,7 @@
 
 #include "Resolution.h"
 #include "DebugDraw.h"
-#include "../Render/DebugRenderer.h"
+#include "../Render/debugrenderer.h"
 
 namespace UI
 {

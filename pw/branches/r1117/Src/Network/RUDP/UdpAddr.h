@@ -1,8 +1,14 @@
 #ifndef RUDP_UDPADDR_H_INCLUDED
 #define RUDP_UDPADDR_H_INCLUDED
 
+#if defined( NV_WIN_PLATFORM )
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#elif defined( NV_LINUX_PLATFORM )
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
 
 namespace ni_udp
 {
