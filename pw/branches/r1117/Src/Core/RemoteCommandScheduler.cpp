@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "RemoteCommandScheduler.h"
 #include "SessionRunner.h"
 #include "GameCommand.h"

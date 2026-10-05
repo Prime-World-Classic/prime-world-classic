@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Shop parent="/Buildings/A/Shop/_Parent.SHOP">
+	<BackLink DBID="/Maps/Multiplayer/ARAM/_.ADMP" Count="1" />
+	<faction>Freeze</faction>
+	<shop href="/Maps/Multiplayer/ARAM/Shops/_A.SHOP" id="DBA24BCE-D757-4917-BD75-5FA283FB73F7">
+		<ConsumablesShop>
+			<interactionRadius>30</interactionRadius>
+			<items>
+				<Item href="/Items/Consumables/HealingPotion.ARCT" />
+				<Item href="/Items/Consumables/EnergyPotion.ARCT" />
+				<Item href="/Items/Consumables/SpeedPotion.ARCT" />
+				<Item href="/Items/Consumables/CleansingPotion.ARCT" />
+				<Item href="/Items/Consumables/EyeOfSeeing_ARAM.ARCT" />
+			</items>
+			<secretShop>false</secretShop>
+		</ConsumablesShop>
+	</shop>
+	<stats href="/Buildings/DefaultStats/Shop.STCN" />
+</Shop>

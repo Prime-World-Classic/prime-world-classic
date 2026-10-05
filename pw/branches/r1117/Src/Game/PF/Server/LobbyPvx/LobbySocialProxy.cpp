@@ -62,6 +62,16 @@ bool SocialLobbyProxy::UserDroppedFromPvX( socialLobby::TUserIdPvX _userId, bool
 
 bool SocialLobbyProxy::GameFinished( TSocialGameId _gameId, ETeam::Enum _winner )
 {
+  // Web-session games are created by the lobby straight from the pushed session
+  // and have no social-lobby counterpart, and the social lobby service is not
+  // started in our deployment (no service in the list, lobby_ext_social_addr is
+  // commented out). Queueing an event here only produced a retry loop that
+  // logged 'Connection to social lobby is dead' until the delivery timeout.
+  // Nothing to notify -> do not queue. Game results still reach the back-end
+  // through FinishDelivery (finish_journal), which is a separate path.
+  if ( !GetRemotePtr() )
+    return true;
+
   gameFinishEvents.push_back( new GameFinishEvent( _gameId, _winner, GameFinishEvent::State::OnPause, now, now, config->Cfg()->gameFinishDeliveryWait ) );
   return true;
 }

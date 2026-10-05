@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "soundscene.h"
+#include "SoundScene.h"
 #include "../Scene/DBScene.h"
 #include "../Render/DBRender.h"
 #include "../Sound/SoundUI.h"

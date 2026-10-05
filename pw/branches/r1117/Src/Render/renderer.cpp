@@ -4,9 +4,9 @@
 #include "System/AssertDumper.h"
 #include "System/InlineProfiler.h"
 #include "System/CrashRptWrapper.h"
-#include "RenderStatesManager.h"
+#include "renderstatesmanager.h"
 #include "renderflagsconverter.h"
-#include "RenderResourceManager.h"
+#include "renderresourcemanager.h"
 
 #include "vertexformatdescriptor.h"
 #include "texture.h"
@@ -90,7 +90,7 @@ Renderer::Renderer(unsigned int _hWnd) :
 	pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 	if (pD3D == 0)
 	{
-		//Log.Add(MAIN_LOG, "[!] ќшибка Direct3DCreate9\n"); FIXME
+		//Log.Add(MAIN_LOG, "[!]  Direct3DCreate9\n"); FIXME
 	}
 
 	hWnd = _hWnd;
@@ -145,18 +145,18 @@ void Renderer::CorrectResolution( unsigned int &width, unsigned int &height ) co
     float deltaWidth =  (float)curWidth - width;
     float deltaHeight = (float)curHeight - height;  
 
-    //Ќайти разрешение больше запрошенного намного предпочтительнее чем меньше,
-    //поэтому дл€ всех разрешений меньше запрошенного будет искусственно завышать 
-    //коэффициент, тем самым разделив разрешени€ на два класса
+    //       ,
+    //         
+    //,       
     //
-    //ƒл€ отрицательных разрешений искусственно добавл€ем следующую разницу 
-    //в процентах
+    //       
+    // 
     const float additionalDeltaPercent = 0.1f;
 
     if( deltaWidth < 0 )  deltaWidth  -= width * additionalDeltaPercent;
     if( deltaHeight < 0 ) deltaHeight -= height * additionalDeltaPercent;
 
-    //—реднеквадратичное отклонение текущего разрешени€ к запрошенному
+    //     
     float curCoef = deltaWidth * deltaWidth + deltaHeight * deltaHeight;
 
     //DebugTrace( "Relation %dx%d to %dx%d is %g", width, height, curWidth, curHeight, curCoef );
@@ -241,12 +241,12 @@ void Renderer::UpdateRealRenderMode( const RenderMode &configRenderMode )
   D3DDISPLAYMODE mode = {};
   pDevice->GetDisplayMode( 0, &mode );
   
-  //¬ оконном режиме режиме mode.Width и mode.Height содержат разрешение 
-  //рабочего стола, поэтому воспользуемс€ данными presentParams
+  //    mode.Width  mode.Height   
+  // ,    presentParams
   realRenderMode.width = presentParams.BackBufferWidth;
   realRenderMode.height = presentParams.BackBufferHeight;
   
-  //≈сли в настройках refreshRate равен 0, то так мы точно получаем насто€щее значение
+  //   refreshRate  0,       
   realRenderMode.refreshRate = mode.RefreshRate; 
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,9 +266,9 @@ bool Renderer::NeedToFilterResolutionFromUser( unsigned int width, unsigned int 
   
   const float desktopAspectRatio = float(deskWidth) / deskHeight;
   
-  //Ѕудем считать, что разрешение можно показывать пользователю если 
-  //его соотношение сторон отличаетс€ от соотношени€ сторон рабочего стола 
-  //менее чем на aspectRatioThreshold процентов
+  // ,       
+  //         
+  //   aspectRatioThreshold 
   const float aspectRatioThreshold = 0.1f;
   
   const float ratio = (curAspectRatio - desktopAspectRatio) / desktopAspectRatio;
@@ -696,7 +696,7 @@ void Renderer::Synchronize()
           break;
         }
 
-        // «десь можно что-нибудь сделать
+        //   - 
 
         Sleep(1);
       }

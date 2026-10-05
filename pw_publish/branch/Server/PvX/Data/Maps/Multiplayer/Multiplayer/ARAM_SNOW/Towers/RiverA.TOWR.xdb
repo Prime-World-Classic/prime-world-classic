@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Tower parent="/Buildings/A/Tower/_Parent.TOWR">
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
+	<attackAbility href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="0E3DC170-40A3-4096-B6FC-A2BE20C3C60F">
+		<BaseAttack parent="/Buildings/DefaultStats/ability_AParent_AttackAbility.ATCK">
+			<applicators>
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="95F5667B-0EA0-433E-84E4-58A493D7C884">
+					<DamageApplicator>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<cancelInvisibility>false</cancelInvisibility>
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FSQAAAAEAAAAlwAAAMcAAADdAAAA7QAAAEJvbnVzRGFtYWdlUGVyY2VudAAATG93RG1nVnNTb2xkZXJzAFWL7IPsFItFCIsQi00Ii0Jg/9CFwHQVi00IixGLTQiLgjQBAAD/0Nld/OsTi00IixGLTQiLgjABAAD/0Nld/ItNDIsRi00Mi0JQ/9CD+AN0GYtNDIsRi00Mi0JQ/9CD+AR0B9no2V346x2LTQxRi1UIUmgUAAAAi0UQixCLTRCLQlD/0Nld+ItNCIsRi00Ii4I8AQAA/9DYTfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfD/0Nw1CwEAANno3sHcTfDYTfjcDfsAAADZXezZReyL5V3DmpmZmZmZ2T8AAAAAAADwPwAAAAAAAFlAAACAPw==</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * (1 + cBonusDamagePercent / 100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1)) * 0.4</sString>
+						</damage>
+						<damageMode>4</damageMode>
+						<damageType>Material</damageType>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<timeLimiter>-1</timeLimiter>
+						<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed_Material.UIEV" />
+					</DamageApplicator>
+				</Item>
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="B5AE0393-47C5-474B-BA12-36EF49E32E40">
+					<DamageApplicator parent="/Buildings/DefaultStats/MainBuildingAutoAttackEnergy.APLR">
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FTgAAAAFAAAAqwAAANsAAAD7AAAAEQEAACEBAABBdGtEYW1hZ2VEaXNwX1Rvd2VyAEJvbnVzRGFtYWdlUGVyY2VudAAATG93RG1nVnNTb2xkZXJzAFWL7IPsHItFCIsQi00Ii0Jg/9CFwHQVi00IixGLTQiLgjQBAAD/0Nld/OsTi00IixGLTQiLgjABAAD/0Nld/ItNDIsRi00Mi0JQ/9CD+AN0GYtNDIsRi00Mi0JQ/9CD+AR0B9no2V346x2LTQxRi1UIUmgoAAAAi0UQixCLTRCLQlD/0Nld+ItNCIsRi00Ii4I8AQAA/9DYTfyLTQxRi1UIUmgAAAAAi0UQixCLTRCLQlDdXfD/0NxN8ItNDFGLVQhSaBQAAACLRRCLEItNEItCUN1d6P/Q3DU/AQAA2ejewdxN6NhN+NwNLwEAANld5NlF5IvlXcOamZmZmZnZPwAAAAAAAPA/AAAAAAAAWUAAAIA/</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * cAtkDamageDisp_Tower * (1.0 + cBonusDamagePercent/100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1))*0.4</sString>
+						</damage>
+					</DamageApplicator>
+				</Item>
+				<Item skip="1" />
+				<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="6ACD9100-2D9E-4A44-B68E-070F612C5D27">
+					<DamageApplicator>
+						<applyTarget>ApplicatorTarget</applyTarget>
+						<cancelInvisibility>false</cancelInvisibility>
+						<caption> -- Стандартный урон автоатаки башни</caption>
+						<damage>
+							<compiledString>FSQAAAAFAAAAlwAAAMcAAADdAAAA7QAAAAMBAABCb251c0RhbWFnZVBlcmNlbnQAAExvd0RtZ1ZzU29sZGVycwBVi+yD7ByLRQiLEItNCItCYP/QhcB0FYtNCIsRi00Ii4I0AQAA/9DZXfzrE4tNCIsRi00Ii4IwAQAA/9DZXfyLTQyLEYtNDItCUP/Qg/gDdBmLTQyLEYtNDItCUP/Qg/gEdAfZ6Nld+Osdi00MUYtVCFJoFAAAAItFEIsQi00Qi0JQ/9DZXfiLTQiLEYtNCIuCPAEAAP/Q2E38i00MUYtVCFJoAAAAAItFEIsQi00Qi0JQ3V3w/9DcNSwBAADZ6N7B3E3w2E343A0cAQAAi00MixGLTQyLQgzdXej/0NwNFAEAANxF6Nld5NlF5IvlXcO4HoXrUbiOP5qZmZmZmdk/AAAAAAAA8D8AAAAAAABZQAAAgD8=</compiledString>
+							<returnType>float</returnType>
+							<sString>((sBaseAttack *( sNativeAttackIndex ? sIntellect : sStrength )) * (1 + cBonusDamagePercent / 100) * ((rUnitKind == 3 || rUnitKind == 4) ? cLowDmgVsSolders : 1)) * 0.4 + (rMaxLife * 0.015)</sString>
+						</damage>
+						<damageMode>4</damageMode>
+						<damageType>Pure</damageType>
+						<enabled>
+							<compiledString></compiledString>
+							<returnType>bool</returnType>
+							<sString>true</sString>
+						</enabled>
+						<formulaName></formulaName>
+						<LoggingEvent>-1</LoggingEvent>
+						<providerName></providerName>
+						<timeLimiter>-1</timeLimiter>
+						<uiEvent href="/UI/Events/CommonEvents/EventDamageDealed.UIEV" />
+					</DamageApplicator>
+				</Item>
+			</applicators>
+			<constants href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="3CF0634E-5B66-4BEB-B52E-52443802B29B">
+				<UnitConstantsContainer parent="/Buildings/DefaultStats/StackTowerDamage_const.UCCN">
+					<vars>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="FD8646D8-4D87-403A-8EEF-018138B728D5">
+							<UnitConstant>
+								<name>Tower_AttackSpeed</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAADAPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>1.5</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="9665B607-8132-499E-AB17-F8F4BC131961">
+							<UnitConstant>
+								<name>LowDmgVsSolders</name>
+								<var>
+									<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DZmamPw==</compiledString>
+									<returnType>float</returnType>
+									<sString>0.65f*2</sString>
+								</var>
+							</UnitConstant>
+						</Item>
+						<Item skip="1" />
+						<Item skip="1" />
+						<Item skip="1" />
+					</vars>
+				</UnitConstantsContainer>
+			</constants>
+		</BaseAttack>
+	</attackAbility>
+	<routeID>Center</routeID>
+	<stats href="/Maps/Multiplayer/ARAM_SNOW/Towers/River.STCN" />
+	<targetingParams href="/Maps/Multiplayer/ARAM_SNOW/Towers/RiverA.TOWR" id="75F78F1E-9CDC-43CD-9C4C-1E05DE75D473">
+		<UnitTargetingParameters parent="/GameLogic/Tower.UNTP">
+			<nearbyRange>16</nearbyRange>
+		</UnitTargetingParameters>
+	</targetingParams>
+</Tower>

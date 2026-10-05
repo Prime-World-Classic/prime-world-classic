@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Quarter parent="/Buildings/A/Barrack/_Parent.QRTR">
+	<BackLink DBID="/Maps/Multiplayer/MidOnly/_.ADMP" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/MidOnly/Aram/_.ADMP" Count="1" />
+	<routeID>Center</routeID>
+	<routeLevel>2</routeLevel>
+</Quarter>

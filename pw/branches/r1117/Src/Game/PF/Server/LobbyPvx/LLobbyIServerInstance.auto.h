@@ -38,17 +38,17 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "lobby::IServerInstance::SetDeveloperSex", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetDeveloperSex) },
-        { "lobby::IServerInstance::RequestGamesList", 0, false, rpc::GetMethodCode(&lobby::IServerInstance::RequestGamesList) },
-        { "lobby::IServerInstance::JoinGame", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::JoinGame) },
-        { "lobby::IServerInstance::ReconnectToCustomGame", 3, false, rpc::GetMethodCode(&lobby::IServerInstance::ReconnectToCustomGame) },
-        { "lobby::IServerInstance::CreateCustomGame", 4, false, rpc::GetMethodCode(&lobby::IServerInstance::CreateCustomGame) },
-        { "lobby::IServerInstance::SpectateCustomGame", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SpectateCustomGame) },
-        { "lobby::IServerInstance::ChangeCustomGameSettings", 3, false, rpc::GetMethodCode(&lobby::IServerInstance::ChangeCustomGameSettings) },
-        { "lobby::IServerInstance::SetReady", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetReady) },
-        { "lobby::IServerInstance::SetDeveloperParty", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetDeveloperParty) },
-        { "lobby::IServerInstance::JoinSocialGame", 0, false, rpc::GetMethodCode(&lobby::IServerInstance::JoinSocialGame) },
-        { "lobby::IServerInstance::ConnectToWebLobby", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::ConnectToWebLobby) },
+        { "lobby::IServerInstance::SetDeveloperSex", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetDeveloperSex), 0 },
+        { "lobby::IServerInstance::RequestGamesList", 0, false, rpc::GetMethodCode(&lobby::IServerInstance::RequestGamesList), 0 },
+        { "lobby::IServerInstance::JoinGame", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::JoinGame), 0 },
+        { "lobby::IServerInstance::ReconnectToCustomGame", 3, false, rpc::GetMethodCode(&lobby::IServerInstance::ReconnectToCustomGame), 4 },
+        { "lobby::IServerInstance::CreateCustomGame", 4, false, rpc::GetMethodCode(&lobby::IServerInstance::CreateCustomGame), 4 },
+        { "lobby::IServerInstance::SpectateCustomGame", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SpectateCustomGame), 0 },
+        { "lobby::IServerInstance::ChangeCustomGameSettings", 3, false, rpc::GetMethodCode(&lobby::IServerInstance::ChangeCustomGameSettings), 4 },
+        { "lobby::IServerInstance::SetReady", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetReady), 0 },
+        { "lobby::IServerInstance::SetDeveloperParty", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::SetDeveloperParty), 0 },
+        { "lobby::IServerInstance::JoinSocialGame", 0, false, rpc::GetMethodCode(&lobby::IServerInstance::JoinSocialGame), 0 },
+        { "lobby::IServerInstance::ConnectToWebLobby", 1, false, rpc::GetMethodCode(&lobby::IServerInstance::ConnectToWebLobby), 1 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

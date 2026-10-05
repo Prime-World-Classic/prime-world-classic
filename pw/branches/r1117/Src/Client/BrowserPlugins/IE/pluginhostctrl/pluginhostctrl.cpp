@@ -43,7 +43,7 @@
 //      To build a separate proxy/stub DLL, 
 //      run nmake -f pluginhostctrlps.mk in the project directory.
 
-#include "stdafx.h"
+#include "StdAfx.h"
 #include "resource.h"
 #include <initguid.h>
 #include "pluginhostctrl.h"

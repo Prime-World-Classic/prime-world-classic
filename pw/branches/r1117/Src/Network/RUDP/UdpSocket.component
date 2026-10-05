@@ -10,4 +10,6 @@ components = [
   'System/Pointers',
 ]
 
-libDependencies = [ 'ws2_32.lib' ]
+# Linux doesn't need ws2_32 (sockets are in libc)
+if platform == 'win32':
+  libDependencies = [ 'ws2_32.lib' ]

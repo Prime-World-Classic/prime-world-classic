@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Coordinator_LCoordinatorClientIface )
-set(LIBRARIES_Src_Server_Coordinator_LCoordinatorClientIface )

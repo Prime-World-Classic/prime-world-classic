@@ -38,9 +38,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "chat::IChatClientCallback::OnRegisterUser", 3, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnRegisterUser) },
-        { "chat::IChatClientCallback::OnJoinChannel", 2, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnJoinChannel) },
-        { "chat::IChatClientCallback::OnNewMessage", 6, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnNewMessage) },
+        { "chat::IChatClientCallback::OnRegisterUser", 3, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnRegisterUser), 0 },
+        { "chat::IChatClientCallback::OnJoinChannel", 2, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnJoinChannel), 2 },
+        { "chat::IChatClientCallback::OnNewMessage", 6, false, rpc::GetMethodCode(&chat::IChatClientCallback::OnNewMessage), 54 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -39,9 +39,9 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "clientCtl::IUserPresenceCallback::LetUserIn", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::LetUserIn) },
-        { "clientCtl::IUserPresenceCallback::DenyUser", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::DenyUser) },
-        { "clientCtl::IUserPresenceCallback::KickUser", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::KickUser) },
+        { "clientCtl::IUserPresenceCallback::LetUserIn", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::LetUserIn), 0 },
+        { "clientCtl::IUserPresenceCallback::DenyUser", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::DenyUser), 0 },
+        { "clientCtl::IUserPresenceCallback::KickUser", 0, false, rpc::GetMethodCode(&clientCtl::IUserPresenceCallback::KickUser), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -116,8 +116,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocated", 3, false, rpc::GetMethodCode(&clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocated) },
-        { "clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocationFailed", 1, false, rpc::GetMethodCode(&clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocationFailed) },
+        { "clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocated", 3, false, rpc::GetMethodCode(&clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocated), 6 },
+        { "clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocationFailed", 1, false, rpc::GetMethodCode(&clientCtl::ILoginSvcAllocationCallback::LoginSvcAllocationFailed), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

@@ -12,8 +12,6 @@ using namespace ::apache::thrift::protocol;
 using namespace ::apache::thrift::transport;
 using namespace ::apache::thrift::server;
 
-using boost::shared_ptr;
-
 using namespace  ::ClusterAdmin::Thrift;
 
 class ClusterManagementHandler : virtual public ClusterManagementIf {
@@ -56,11 +54,11 @@ class ClusterManagementHandler : virtual public ClusterManagementIf {
 
 int main(int argc, char **argv) {
   int port = 9090;
-  shared_ptr<ClusterManagementHandler> handler(new ClusterManagementHandler());
-  shared_ptr<TProcessor> processor(new ClusterManagementProcessor(handler));
-  shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
-  shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
-  shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
+  ::std::shared_ptr<ClusterManagementHandler> handler(new ClusterManagementHandler());
+  ::std::shared_ptr<TProcessor> processor(new ClusterManagementProcessor(handler));
+  ::std::shared_ptr<TServerTransport> serverTransport(new TServerSocket(port));
+  ::std::shared_ptr<TTransportFactory> transportFactory(new TBufferedTransportFactory());
+  ::std::shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
 
   TSimpleServer server(processor, serverTransport, transportFactory, protocolFactory);
   server.serve();

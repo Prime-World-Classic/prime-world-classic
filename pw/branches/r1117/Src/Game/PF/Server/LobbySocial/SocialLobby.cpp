@@ -354,7 +354,7 @@ void SocialLobby::MmResultAddRequest( mmaking::TRequestUId _requestUId, bool _ok
 
   TPartiesByMmRequest::iterator it = partiesByMmReq.find( _requestUId );
   if ( it != partiesByMmReq.end() )
-    if ( Strong<Party> party = it->second )
+    if ( Strong<Party> party = it->second.Get() )
       if ( party->State() == EPartyState::InLine )
       {
         party->RemoveAllRequests( false );

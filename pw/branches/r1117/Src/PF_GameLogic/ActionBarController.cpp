@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "ActionBarController.h"
 
 #include "PFMaleHero.h"
@@ -309,7 +309,7 @@ void ActionBarController::OnFSCommand( UI::FlashContainer2* _wnd, const char* li
     }
   }
 
-  //NOTE: этот код отрабатывает только в случае тултипов тк в последних двух случаях стоит return
+  //NOTE:              return
   tooltip->Show(show);
   if (!show)
     eventHandler->TargetZoneTooltip(0);

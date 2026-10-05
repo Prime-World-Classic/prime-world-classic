@@ -19,8 +19,8 @@
 #include "System/DebugTraceDumper.h"
 #include "System/EditBoxDumper.h"
 #include "System/CrashRptWrapper.h"
-#include "system/BSUtil.h" //TODO: Remove this header (NUM_TASK)
-#include "system/expreport.h"
+#include "System/BSUtil.h" //TODO: Remove this header (NUM_TASK)
+#include "System/expreport.h"
 #include "System/meminfo.h"
 #include "Render/renderer.h"
 #include "System/TextFileDumper.h"
@@ -111,6 +111,7 @@
 #include "Shared/WebJson.h"
 #include "../PW_Game/server_ip.h"
 #include "../Shared/WebRequests.h"
+#include "../Network/ClusterConfiguration.h"   // SetClusterBasePort (launch-protocol addressing)
 
 static int    g_VideoFPS = 10;
 static float  g_RecordingTime = 10.0f;
@@ -1318,7 +1319,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
         ShowLocalizedErrorMB( L"StartViaLauncher", L"Invalid protocol [invalid server port]! Please start the game via the launcher." );
         return 0;
       }
-      SetServerBasePort(basePort);
+      Network::SetClusterBasePort(basePort);
       systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server base port: " << basePort << endl;
     }
 

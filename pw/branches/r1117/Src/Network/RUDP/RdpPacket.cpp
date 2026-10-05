@@ -51,7 +51,7 @@ void RdpPacket::Setup( proto::EPktType::Enum _type, unsigned _srcMux, unsigned _
   bytes.resize( sz, 0 );
 
   proto::Header * hdr = (proto::Header *)&bytes[0];
-  hdr->Header::Header( _type, _srcMux, _destMux, _index );
+  new(hdr) proto::Header( _type, _srcMux, _destMux, _index );
 
   if ( _data && _size )
     memcpy( hdr + 1, _data, _size );

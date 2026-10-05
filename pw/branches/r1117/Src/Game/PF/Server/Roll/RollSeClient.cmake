@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Game_PF_Server_Roll_RollSeClient RollSeClient.cpp RollSeClient.h RollSeMessage.cpp RollSeMessage.h)
-set(LIBRARIES_Src_Game_PF_Server_Roll_RollSeClient )

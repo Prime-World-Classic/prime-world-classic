@@ -4,7 +4,7 @@
 #include "../Render/smartrenderer.h"
 #include "../Render/batch.h"
 #include "../Render/GlobalMasks.h"
-#include "../Render/SceneConstants.h"
+#include "../Render/sceneconstants.h"
 #include "../Render/ImmediateRenderer.h"
 #include "../Render/IConfigManager.h"
 #include "../Render/NullRenderSignal.h"

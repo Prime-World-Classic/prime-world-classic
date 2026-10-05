@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_Coordinator_LoginServerRunner SimpleLoginProcessor.h SimpleLoginProcessor.cpp LoginProcessorBase.h LoginProcessorBase.cpp LoginServerNaming.h)
-set(LIBRARIES_Src_Server_Coordinator_LoginServerRunner )

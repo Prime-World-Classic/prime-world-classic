@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "FrustumCuller.h"
 #include "../System/InlineProfiler.h"
 

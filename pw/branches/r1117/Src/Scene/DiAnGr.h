@@ -19,7 +19,7 @@
 #include "DiAnGrMarker.h"
 #include "DiAnGrSStorage.h"
 
-#include "../Render/dbRenderResources.h"
+#include "../Render/DBRenderResources.h"
 
 
 #include "DiGraph.h"

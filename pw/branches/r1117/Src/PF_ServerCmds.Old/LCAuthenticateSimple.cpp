@@ -19,7 +19,7 @@ using namespace nstl;
 #include <typeinfo>
 #include <math.h>
 #include <stdio.h>
-#include "../System/basic.h"
+#include "../System/Basic.h"
 #include "../System/nalgoritm.h"
 #include "LCAuthenticateSimple.h"
 

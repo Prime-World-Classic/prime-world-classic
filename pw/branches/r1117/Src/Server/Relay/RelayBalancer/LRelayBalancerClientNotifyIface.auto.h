@@ -38,8 +38,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Relay::IOutgoingClientNotifySink::OutgoingClientNotify", 2, false, rpc::GetMethodCode(&Relay::IOutgoingClientNotifySink::OutgoingClientNotify) },
-        { "Relay::IOutgoingClientNotifySink::ClientConnectedNotify", 1, false, rpc::GetMethodCode(&Relay::IOutgoingClientNotifySink::ClientConnectedNotify) },
+        { "Relay::IOutgoingClientNotifySink::OutgoingClientNotify", 2, false, rpc::GetMethodCode(&Relay::IOutgoingClientNotifySink::OutgoingClientNotify), 0 },
+        { "Relay::IOutgoingClientNotifySink::ClientConnectedNotify", 1, false, rpc::GetMethodCode(&Relay::IOutgoingClientNotifySink::ClientConnectedNotify), 0 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {
@@ -114,8 +114,8 @@ public:
     
     static const rpc::MethodInfo methods[] = 
     {
-        { "Relay::IIncomingClientNotifySink::RegisterOutgoingClientNotifySink", 1, false, rpc::GetMethodCode(&Relay::IIncomingClientNotifySink::RegisterOutgoingClientNotifySink) },
-        { "Relay::IIncomingClientNotifySink::IncomingClientNotify", 2, false, rpc::GetMethodCode(&Relay::IIncomingClientNotifySink::IncomingClientNotify) },
+        { "Relay::IIncomingClientNotifySink::RegisterOutgoingClientNotifySink", 1, false, rpc::GetMethodCode(&Relay::IIncomingClientNotifySink::RegisterOutgoingClientNotifySink), 1 },
+        { "Relay::IIncomingClientNotifySink::IncomingClientNotify", 2, false, rpc::GetMethodCode(&Relay::IIncomingClientNotifySink::IncomingClientNotify), 2 },
     };
     if (call.id >= sizeof(methods)/sizeof(rpc::MethodInfo) || call.id < 0)
     {

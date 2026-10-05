@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<LightEnvironment parent="/Maps/Multiplayer/ARAM_SNOW/_.LTEN">
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMP" Count="1" />
+	<Light1DiffuseColor>
+		<R>0.3</R>
+	</Light1DiffuseColor>
+	<shadowFar>95</shadowFar>
+	<shadowMode>SAESM</shadowMode>
+	<warFogType>SingleLayer</warFogType>
+</LightEnvironment>

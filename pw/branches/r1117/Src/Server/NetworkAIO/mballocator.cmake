@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_NetworkAIO_mballocator mballocator/stdafx.h mballocator/stdafx.cpp mballocator/specific.h mballocator/MessageBlockFactory.cpp mballocator/MessageBlockFactory.h mballocator/MessageBlockAllocator.cpp mballocator/MessageBlockAllocator.h mballocator/MessageBlock.cpp mballocator/MessageBlock.h mballocator/MessageBlockType.h mballocator/Types.h)
-set(LIBRARIES_Src_Server_NetworkAIO_mballocator )

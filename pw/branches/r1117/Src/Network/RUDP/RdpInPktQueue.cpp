@@ -276,7 +276,7 @@ StrongMT<RdpPacket> RdpInPktQueue::AssembleDatagramFromTail( int _chunks, size_t
   for ( int i = 0; i < _chunks; ++i )
   {
     RdpPacket * pkt = buffer.AtTail();
-    NI_VERIFY( pkt, "", return false );
+    NI_VERIFY( pkt, "", return 0 );
 
     if ( pkt->PayloadSize() )
       memcpy( dest, pkt->Payload(), pkt->PayloadSize() );
@@ -306,7 +306,7 @@ StrongMT<RdpPacket> RdpInPktQueue::PopDatagramFromTail()
 
   StrongMT<RdpPacket> pkt = buffer.AtTail();
   buffer.PopTail();
-  NI_VERIFY( pkt, "", return false );
+  NI_VERIFY( pkt, "", return 0 );
   sequenceIdx = proto::NextSeqIndex( sequenceIdx );
   ReportWindowChange();
 

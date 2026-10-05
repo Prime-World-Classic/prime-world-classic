@@ -6,7 +6,7 @@
 #include "../../System/nvector.h"
 #include "../../System/nstring.h"
 #include "../../System/nlist.h"
-#include "../../System/basic.h"
+#include "../../System/Basic.h"
 using namespace nstl;
 #include "../../System/StrProc.h"
 #include "../../System/Logger.h"

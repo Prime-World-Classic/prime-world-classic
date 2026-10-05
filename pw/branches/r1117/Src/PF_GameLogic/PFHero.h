@@ -4,7 +4,7 @@
 #include "PFPlayer.h"
 #include "PFApplMod.h"
 #include "InventoryInterface.h"
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
 
 namespace NDb
 {

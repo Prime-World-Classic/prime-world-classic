@@ -1,7 +1,7 @@
 #pragma once
 
 #include "PFTower.h"
-#include "System\StarForce\StarForce.h"
+#include "System/StarForce/StarForce.h"
 
 namespace NWorld
 {

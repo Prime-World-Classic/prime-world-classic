@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_System_EventAccumulator EventAccumulator.h)
-set(LIBRARIES_Src_System_EventAccumulator )

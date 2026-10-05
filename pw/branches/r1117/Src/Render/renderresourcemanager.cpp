@@ -13,9 +13,9 @@
 #include "smartrenderer.h"
 #include "../System/memorypool.h"
 #include "multishader.h"
-#include "materialspec.h"
+#include "MaterialSpec.h"
 
-#include "../System/2Darray.h"
+#include "../System/2DArray.h"
 #include "../System/InlineProfiler.h"
 
 #include "../MeshConverter/SkeletonHeader.h"

@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_WebClient_WebJsonClient WebJsonClient.h WebJsonClient.cpp)
-set(LIBRARIES_Src_Server_WebClient_WebJsonClient )

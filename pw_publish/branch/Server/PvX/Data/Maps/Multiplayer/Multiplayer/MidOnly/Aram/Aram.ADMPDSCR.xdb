@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AdvMapDescription parent="/Maps/Multiplayer/MidOnly/Aram/_.ADMPDSCR">
+	<description textref="/Maps/Multiplayer/MidOnly/Aram/Aram.ADMPDSCR_description.txt" />
+	<guardRollSettings href="/Server/MidOnly/_.MODEROLL" />
+	<map href="/Maps/Multiplayer/MidOnly/Aram/_.ADMP" />
+	<mapSettings href="/Maps/Multiplayer/MidOnly/Aram/_.ADMPSTTN" />
+	<matchmakingSettings href="/Server/MidOnly/_.MAPMMAKING" />
+	<rollSettings href="/Server/MidOnly/_.MODEROLL" />
+	<scoringTable href="/Maps/Multiplayer/MidOnly/Aram/Scoring.SCTB" />
+	<teamSize>5</teamSize>
+	<title textref="/Maps/Multiplayer/MidOnly/Aram/Aram.ADMPDSCR_title.txt" />
+</AdvMapDescription>

@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "DerStatsNameMap.h"
 
 #include "DBStats.h"

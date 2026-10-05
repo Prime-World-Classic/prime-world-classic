@@ -24,7 +24,17 @@ void ClassRoutes::AddClassRoute( const Transport::TServiceId & _svcId )
 Transport::TServiceId ClassRoutes::FindClassLastService( const Transport::TServiceId & _svcClass ) const
 {
   threading::MutexLock lock( mutex );
-  TMap::const_iterator it = routes.find( _svcClass );
+
+  // The map is keyed by service class, but callers may pass a full instance
+  // id ("lobby/1", "lobby_00") — extract the class before the lookup.
+  // (Without this, lookups by instance id never hit, and clients requesting
+  // "lobby/1" could not be mapped to the local "lobby_00" instance.)
+  Transport::TServiceId classKey = _svcClass;
+  Transport::TServiceId svcClass;
+  if ( Transport::GetServiceClass( _svcClass, &svcClass ) )
+    classKey = svcClass;
+
+  TMap::const_iterator it = routes.find( classKey );
   if ( it != routes.end() )
     return it->second;
   return _svcClass;
@@ -68,10 +78,11 @@ void AddressTranslator::RemoveRoute( const Transport::TServiceId & _svcId )
 
 Network::NetAddress AddressTranslator::GetSvcAddress( const Transport::TServiceId & _serviceId )
 {
-  Transport::TServiceId serviceId = classRoutes->FindClassLastService( _serviceId );
-
   threading::MutexLock lock( mutex );
-   
+
+  // 1) Exact lookup: works when the route is defined for this very id
+  //    (the original behavior; routes are keyed by instance id on Windows
+  //    and by "class_NN" on the Linux single-process deployment).
   TRouteMap::const_iterator it = freshRoutes.find( _serviceId );
   if( it != freshRoutes.end() )
     return it->second;
@@ -79,6 +90,20 @@ Network::NetAddress AddressTranslator::GetSvcAddress( const Transport::TServiceI
   TRouteMap::const_iterator it2 = permanentRoutes.find( _serviceId );
   if ( it2 != permanentRoutes.end() )
     return it2->second;
+
+  // 2) Resolve the service class ("lobby/1" -> class "lobby") to the last
+  //    registered instance and look the route up by the resolved id.
+  Transport::TServiceId serviceId = classRoutes->FindClassLastService( _serviceId );
+  if ( serviceId != _serviceId )
+  {
+    TRouteMap::const_iterator it3 = freshRoutes.find( serviceId );
+    if( it3 != freshRoutes.end() )
+      return it3->second;
+
+    TRouteMap::const_iterator it4 = permanentRoutes.find( serviceId );
+    if ( it4 != permanentRoutes.end() )
+      return it4->second;
+  }
 
   return Network::NetAddress();
 }

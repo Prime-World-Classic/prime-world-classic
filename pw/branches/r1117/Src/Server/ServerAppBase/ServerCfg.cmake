@@ -1,3 +1,0 @@
-
-set(SOURCES_Src_Server_ServerAppBase_ServerCfg ServerCfg.cpp ServerCfg.h)
-set(LIBRARIES_Src_Server_ServerAppBase_ServerCfg )

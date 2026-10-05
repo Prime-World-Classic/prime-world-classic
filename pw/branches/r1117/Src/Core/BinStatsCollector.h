@@ -1,5 +1,5 @@
 #pragma once
-#include "System\Crc32Calculator.h"
+#include "System/Crc32Calculator.h"
 
 _interface IPointerHolder;
 namespace NCore
@@ -303,9 +303,9 @@ inline void BinStatsCollector::OnDataChunk( const IBinSaver::chunk_id idChunk, c
     dr.SetCrc( *static_cast<const DWORD*>( pData ) );
     break;
 
-  //Гипотетически здесь можно записать текущее значение CRC 
-  //и ничего дополнительно не вычислять, но тогда разность CRC распространится на 
-  //все последующие после и понять где именно было расхождение будет сложнее
+  //      CRC 
+  //    ,    CRC   
+  //          
   default:
     dr.SetCrc( Crc32ChecksumFast::CalcForSmallLength((const unsigned char*)pData, nSize) );
   }

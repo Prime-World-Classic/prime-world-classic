@@ -183,6 +183,7 @@ transport(_transport),
 logStream(_logStream),
 preallocid(0),
 instanceIndex( 1 ),
+activeGameCount( 0 ),
 serviceId( _serviceId ),
 reconnectIfaceId(_reconnectIfaceId),
 rollBalancer(_rollBalancer),
@@ -282,6 +283,7 @@ void HybridServerDispencer::AcquireNewServer( const Peered::SAllocationParams & 
   }
 
   runner.AddInstance(instance);
+  ++activeGameCount;
 
   StrongMT<Peered::RIGameServer> frontendGs;
 
@@ -349,6 +351,8 @@ void HybridServerDispencer::RegisterInstance( Peered::IGameServer * instance, co
 void HybridServerDispencer::UnregisterInstance( Peered::IGameServer * instance )
 {
   frontendGk->GetGate()->UnregisterObject<Peered::IGameServer>( instance );
+  if ( activeGameCount )
+    --activeGameCount;
 }
 
 
@@ -511,7 +515,7 @@ ICommandsLog * HybridServerDispencer::GetReplayWriter(Peered::TSessionId session
     if (!replaysTerminator.Get())
       return GetDummyReplayWriter();
 
-    // NUM_TASK папки для категорий; BDS использует std::ofstream, а он папок не создает
+    // NUM_TASK пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ; BDS пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ std::ofstream, пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     // HACKY
     // TODO: verify?
     if (replayCategory)
@@ -521,7 +525,7 @@ ICommandsLog * HybridServerDispencer::GetReplayWriter(Peered::TSessionId session
       NFile::CreatePath(NFile::Combine(replaysFolder, *replayCategory));
     }
 
-    // NUM_TASK представление sessionID в имени реплея в 10-чной системе
+    // NUM_TASK пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ sessionID пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ 10-пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     const nstl::string fileName = replayCategory
       ? NDebug::GenerateDebugFileName(NI_STRFMT("%llu", sessionId), "pwrp", replayCategory->c_str(), true)
       : NDebug::GenerateDebugFileName(NI_STRFMT("%llu", sessionId), "pwrp", 0, false);

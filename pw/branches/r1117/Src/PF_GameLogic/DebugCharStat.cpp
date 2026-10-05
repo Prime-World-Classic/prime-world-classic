@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "DebugCharStat.h"
 #include "../ui/Window.h"
 #include "../UI/ImageLabel.h"

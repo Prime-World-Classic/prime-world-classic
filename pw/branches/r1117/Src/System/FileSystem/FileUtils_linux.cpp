@@ -27,7 +27,7 @@ CFileIterator::CFileIterator( const CFileIterator::filename_type & mask ) :
   data_.gl_pathc = 0;
   data_.gl_pathv = NULL;
   data_.gl_offs = 1;
-  // HACK: пока так, потом надо исправить на более высоком уровне
+  // HACK: пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   CFileIterator::filename_type msk( mask );
   std::replace( msk.begin(), msk.end(), '\\', '/' );
   const int globRes = ::glob( msk.c_str(), 0, NULL, &data_ );
@@ -40,7 +40,7 @@ CFileIterator::CFileIterator( const CFileIterator::filename_type & mask ) :
   }
   else
   {
-    // На всякий случай - убедиться, что IsValid() вернет false
+    // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ - пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ IsValid() пїЅпїЅпїЅпїЅпїЅпїЅ false
     data_.gl_pathc = 0;
   }
 }
@@ -67,7 +67,7 @@ void CFileIterator::Close()
 
 const CFileIterator & CFileIterator::Next()
 {
-  // Если это итератор на end - просто ничего не делать
+  // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ end - пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
   if ( IsValid() )
   {
     ++ind_;
@@ -243,7 +243,7 @@ static int OpenFileWithDirInt( const char* fileName, int createMode )
     if ( !DoesFolderExist( filePath ) )
       return -1;
   }
-  return open( fullFileName.c_str(), createMode );
+  return open( fullFileName.c_str(), createMode, 0644 );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int CreateFileWithDir( const char* fileName )

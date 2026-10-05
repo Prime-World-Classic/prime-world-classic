@@ -75,16 +75,23 @@ private:
     NI_PROFILE_THREAD;
 
     bool sleep = true;
+    // C1 (REPORT_server_profiling.md): the console log does not need 1 ms
+    // resolution. The old code polled at ~900 Hz even when there was nothing
+    // to print (~2.8% of one core in idle). Grow the idle sleep up to 16 ms
+    // and drop back to 1 ms as soon as messages flow; worst-case added log
+    // latency is 16 ms, which is irrelevant for console output.
+    unsigned idleSleepMs = 1;
     while ( isRunning )
     {
       if ( sleep ) {
         NI_PROFILE_BLOCK( "Sleep" );
-        threading::Sleep( 1 );
+        threading::Sleep( idleSleepMs );
       }
 
       NI_PROFILE_BLOCK( "Work" );
       int readLine = activeLine ? 0 : 1;
       std::vector<SLogItem> & source = lines[readLine];
+      const bool hasWork = source.size() > 0;
 
       for ( size_t i = 0; i < source.size(); ++i )
         PrintMsg( source[i].level, (const char *)source[i].textMemBlock.buffer() );
@@ -101,6 +108,11 @@ private:
       //Sleep only if next read line is empty
       int newReadLine = activeLine ? 0 : 1;
       sleep = lines[newReadLine].empty();
+
+      if ( hasWork || !sleep )
+        idleSleepMs = 1;
+      else if ( idleSleepMs < 16 )
+        idleSleepMs *= 2;
     }
   }
 

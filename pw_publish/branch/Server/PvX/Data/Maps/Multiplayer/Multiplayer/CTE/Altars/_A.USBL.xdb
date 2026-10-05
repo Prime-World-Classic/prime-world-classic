@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<UsableBuilding parent="/Buildings/A/Altar/_Parent.USBL">
+	<BackLink DBID="/Maps/Multiplayer/CTE/_.ADMP" Count="1" />
+	<BackLink DBID="/Maps/Test/PlaneMap/_.ADMP" Count="1" />
+	<abilities>
+		<Item skip="1" />
+		<Item href="/Buildings/A/Altar/CTFAltarSettings.ABLT" />
+		<Item skip="1" />
+		<Item href="/Maps/Multiplayer/CTE/Altars/_A.USBL" id="093B1297-1348-45AC-B550-E3463A273D7D">
+			<Ability>
+				<activeCustomTrigger>true</activeCustomTrigger>
+				<allowChase>
+					<compiledString></compiledString>
+					<returnType>bool</returnType>
+					<sString>true</sString>
+				</allowChase>
+				<alternativeTargets />
+				<aoeDisplayOnMinimap>false</aoeDisplayOnMinimap>
+				<aoeHeight>0</aoeHeight>
+				<aoeMaterial href="" />
+				<aoePassabilityCheckMode>0</aoePassabilityCheckMode>
+				<aoeSize>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</aoeSize>
+				<aoeType>None</aoeType>
+				<applicators />
+				<autoTargetSelector href="" />
+				<caption></caption>
+				<castAllowRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</castAllowRange>
+				<castLimitations />
+				<commonDescription textref="" />
+				<compiledDescriptionA textref="" />
+				<compiledDescriptionB textref="" />
+				<conditionFormulas />
+				<constants href="" />
+				<cooldownTime>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTime>
+				<cooldownTimeSecondState>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</cooldownTimeSecondState>
+				<description textref="" />
+				<dispatch href="" />
+				<flags>1</flags>
+				<image href="" />
+				<imageSecondState href="" />
+				<isUnitFreeAfterCast>true</isUnitFreeAfterCast>
+				<manaCost>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</manaCost>
+				<marker></marker>
+				<microAI href="" />
+				<minUseRangeCorrection>0</minUseRangeCorrection>
+				<name textref="" />
+				<node></node>
+				<passiveApplicators>
+					<Item href="" />
+				</passiveApplicators>
+				<requireLineOfSight>true</requireLineOfSight>
+				<shortDescription textref="" />
+				<targetType>136258047</targetType>
+				<type>Passive</type>
+				<useRange>
+					<compiledString></compiledString>
+					<returnType>float</returnType>
+					<sString>0.0f</sString>
+				</useRange>
+				<useRangeMaterial href="" />
+				<warFogRemoveRadius>0</warFogRemoveRadius>
+				<warFogRemoveTime>0</warFogRemoveTime>
+			</Ability>
+		</Item>
+		<Item skip="1" />
+	</abilities>
+	<interaction href="" />
+</UsableBuilding>

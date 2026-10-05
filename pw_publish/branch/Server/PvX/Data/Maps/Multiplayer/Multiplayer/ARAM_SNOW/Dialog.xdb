@@ -1,0 +1,237 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<DialogsCollection>
+	<BackLink DBID="/Maps/Multiplayer/MOBA/Tutorial/_.ADMPSTTN" Count="1" />
+	<BackLink DBID="/Maps/Multiplayer/ARAM_SNOW/_.ADMPSTTN" Count="1" />
+	<dialogs>
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Dialog" id="E4557B71-F153-4AD6-B9CD-FC09866EE7F2">
+			<Dialog>
+				<caption></caption>
+				<id>Sound_1</id>
+				<phrasesA>
+					<Item>
+						<actorFemale href="" />
+						<actorMale href="/Dialog/SessionTutorial/Actors/_pause" />
+						<caption></caption>
+						<colorTextFemale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextFemale>
+						<colorTextMale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextMale>
+						<duration>-1</duration>
+						<hintImages />
+						<orientation>Left</orientation>
+						<scriptName></scriptName>
+						<socialSoundFemale></socialSoundFemale>
+						<socialSoundMale></socialSoundMale>
+						<soundFemale>
+							<eventName></eventName>
+							<groupName></groupName>
+							<projectName></projectName>
+						</soundFemale>
+						<soundMale>
+							<eventName>QuestRecieved</eventName>
+							<groupName>Announcements/Male</groupName>
+							<projectName>PrimeWorld</projectName>
+						</soundMale>
+						<terminate>Time</terminate>
+						<textFemale textref="" />
+						<textMale textref="" />
+					</Item>
+				</phrasesA>
+				<phrasesB />
+				<title textref="" />
+			</Dialog>
+		</Item>
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Dialog" id="B6F3F375-C196-4292-91CA-FC70A411B8A5">
+			<Dialog>
+				<caption></caption>
+				<id>Sound_2</id>
+				<phrasesA>
+					<Item>
+						<actorFemale href="" />
+						<actorMale href="/Dialog/SessionTutorial/Actors/_pause" />
+						<caption></caption>
+						<colorTextFemale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextFemale>
+						<colorTextMale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextMale>
+						<duration>-1</duration>
+						<hintImages />
+						<orientation>Left</orientation>
+						<scriptName></scriptName>
+						<socialSoundFemale></socialSoundFemale>
+						<socialSoundMale></socialSoundMale>
+						<soundFemale>
+							<eventName></eventName>
+							<groupName></groupName>
+							<projectName></projectName>
+						</soundFemale>
+						<soundMale>
+							<eventName>10</eventName>
+							<groupName>Tutorial/Warlord_A</groupName>
+							<projectName>PrimeWorld</projectName>
+						</soundMale>
+						<terminate>Time</terminate>
+						<textFemale textref="" />
+						<textMale textref="" />
+					</Item>
+				</phrasesA>
+				<phrasesB />
+				<title textref="" />
+			</Dialog>
+		</Item>
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Dialog" id="B1FE1FE7-6E70-4288-9557-AFE5DFCB7FA3">
+			<Dialog>
+				<caption></caption>
+				<id>Sound_3</id>
+				<phrasesA>
+					<Item>
+						<actorFemale href="" />
+						<actorMale href="/Dialog/SessionTutorial/Actors/_pause" />
+						<caption></caption>
+						<colorTextFemale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextFemale>
+						<colorTextMale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextMale>
+						<duration>-1</duration>
+						<hintImages />
+						<orientation>Left</orientation>
+						<scriptName></scriptName>
+						<socialSoundFemale></socialSoundFemale>
+						<socialSoundMale></socialSoundMale>
+						<soundFemale>
+							<eventName></eventName>
+							<groupName></groupName>
+							<projectName></projectName>
+						</soundFemale>
+						<soundMale>
+							<eventName>firefox_b_1_2</eventName>
+							<groupName>Tutorial/Firefox_B</groupName>
+							<projectName>PrimeWorld</projectName>
+						</soundMale>
+						<terminate>Time</terminate>
+						<textFemale textref="" />
+						<textMale textref="" />
+					</Item>
+				</phrasesA>
+				<phrasesB />
+				<title textref="" />
+			</Dialog>
+		</Item>
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Dialog" id="58BC6477-A553-45FB-B2B1-341468116A84">
+			<Dialog>
+				<caption></caption>
+				<id>Sound_4</id>
+				<phrasesA>
+					<Item>
+						<actorFemale href="" />
+						<actorMale href="/Dialog/SessionTutorial/Actors/_pause" />
+						<caption></caption>
+						<colorTextFemale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextFemale>
+						<colorTextMale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextMale>
+						<duration>-1</duration>
+						<hintImages />
+						<orientation>Left</orientation>
+						<scriptName></scriptName>
+						<socialSoundFemale></socialSoundFemale>
+						<socialSoundMale></socialSoundMale>
+						<soundFemale>
+							<eventName></eventName>
+							<groupName></groupName>
+							<projectName></projectName>
+						</soundFemale>
+						<soundMale>
+							<eventName>BossSpawn</eventName>
+							<groupName>Announcements/Male</groupName>
+							<projectName>PrimeWorld</projectName>
+						</soundMale>
+						<terminate>Time</terminate>
+						<textFemale textref="" />
+						<textMale textref="" />
+					</Item>
+				</phrasesA>
+				<phrasesB />
+				<title textref="" />
+			</Dialog>
+		</Item>
+		<Item href="/Maps/Multiplayer/ARAM_SNOW/Dialog" id="8D9E950E-8563-4C1B-8B6B-8F32883A500B">
+			<Dialog>
+				<caption></caption>
+				<id>Sound_5</id>
+				<phrasesA>
+					<Item>
+						<actorFemale href="" />
+						<actorMale href="/Dialog/SessionTutorial/Actors/_pause" />
+						<caption></caption>
+						<colorTextFemale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextFemale>
+						<colorTextMale>
+							<A>255</A>
+							<B>122</B>
+							<G>216</G>
+							<R>249</R>
+						</colorTextMale>
+						<duration>-1</duration>
+						<hintImages />
+						<orientation>Left</orientation>
+						<scriptName></scriptName>
+						<socialSoundFemale></socialSoundFemale>
+						<socialSoundMale></socialSoundMale>
+						<soundFemale>
+							<eventName></eventName>
+							<groupName></groupName>
+							<projectName></projectName>
+						</soundFemale>
+						<soundMale>
+							<eventName>iva_towerRepaired2_1</eventName>
+							<groupName>PVE/Episode1</groupName>
+							<projectName>PrimeWorld</projectName>
+						</soundMale>
+						<terminate>Time</terminate>
+						<textFemale textref="" />
+						<textMale textref="" />
+					</Item>
+				</phrasesA>
+				<phrasesB />
+				<title textref="" />
+			</Dialog>
+		</Item>
+	</dialogs>
+</DialogsCollection>

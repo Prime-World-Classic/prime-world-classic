@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "PersistEvents.h"
-#include "system/math/md4.h"
-#include "system/filesystem/fileutils.h"
+#include "System/Math/MD4.h"
+#include "System/FileSystem/FileUtils.h"
 
 namespace persistentEvents
 {

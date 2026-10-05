@@ -1,14 +1,17 @@
 #pragma once
 
 #include "Parser.h"
+#include "System/Pointers/Pointers.h"  // StrongMT definition for Linux (missing without PCH)
 #include "Calls.h"
 #include "IEntityMap.h"
 #include "Transaction.h"
 #include "Types.h"
+#include "RpcMultiPacketPipe.h"
 
 
 namespace rpc 
 {
+  using ::StrongMT;  // StrongMT is in global namespace, needed for Linux without PCH
 
 class Transaction;
 class MultiPacketPipe;
@@ -305,6 +308,7 @@ public:
   bool Push(rpc::Transaction* transaction, const rpc::MemoryBlock& value) { return transaction?transaction->GetArgs().Push(value):false; }
   template <typename T> bool Push(rpc::Transaction* transaction, const nstl::vector<T>& value) { return transaction?transaction->GetArgs().Push(value):false; }
   template <typename T, unsigned int capacity> bool Push(rpc::Transaction* transaction, const FixedVector<T, capacity>& value) { return transaction?transaction->GetArgs().Push(value):false; }
+  template <unsigned int capacity, typename TChar = char> bool Push(rpc::Transaction* transaction, const FixedString<capacity, TChar>& value) { return transaction?transaction->GetArgs().Push(value.c_str()):false; }
 
   template <typename T> bool Push(rpc::Transaction* transaction, T* value) 
   { 
@@ -316,12 +320,18 @@ public:
     return false;
   }
 
-  template <typename T> bool Push(rpc::Transaction* transaction, const T& value) 
-  { 
+  template <typename T> bool Push(rpc::Transaction* transaction, const T& value)
+  {
     if (transaction)
     {
       transaction->GetArgs().SetPipe(multiPipe);
-      return transaction->GetArgs().Push( value ); 
+      // For IRemoteEntity/rpc::Data derived types, use PushRemoteEntity
+      if (SUPERSUBCLASS(rpc::IRemoteEntity, T))
+      {
+        rpc::StrongMT<rpc::IRemoteEntity> tmp(reinterpret_cast<rpc::IRemoteEntity*>(const_cast<T*>(&value)));
+        return transaction->GetArgs().PushRemoteEntity(tmp, false);
+      }
+      return transaction->GetArgs().Push(value);
     }
     return false;
   }

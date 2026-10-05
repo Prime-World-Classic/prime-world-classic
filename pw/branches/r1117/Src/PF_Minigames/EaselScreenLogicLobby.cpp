@@ -21,7 +21,7 @@
 #include "../ui/ImageLabel.h"
 #include "../ui/Button.h"
 
-#include "../Render/materialspec.h"
+#include "../Render/MaterialSpec.h"
 
 
 namespace PF_Minigames
@@ -171,7 +171,7 @@ void EaselScreenLogicLobby::ExitGame()
   if ( IsValid( easelMinigame ) )
     easelMinigame->OnExitImmediate();
 
-  //Мы пока не убиваем экран изела, т.к. в нем лежит камера, она должна доинтерполироваться
+  //     , ..    ,   
   MinigameLobbyScreenLogic::ExitLobby();
 }
 
@@ -217,7 +217,7 @@ void EaselScreenLogicLobby::OnRegenerateClicked()
   if( !IsCanBuyBoostsRegen() )
     return;
 
-  // метод должен вызываться у EaselMinigame (для транспорта по сети)
+  //     EaselMinigame (   )
   if ( easelMinigame->RegenerateBoosts( true, currentLevel - 1 ) )
     UpdateBoostsImages();
 }
