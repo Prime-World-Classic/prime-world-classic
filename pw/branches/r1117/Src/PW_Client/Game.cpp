@@ -20,7 +20,9 @@
 #include "System/EditBoxDumper.h"
 #include "System/CrashRptWrapper.h"
 #include "System/BSUtil.h" //TODO: Remove this header (NUM_TASK)
+#if !defined(_M_X64) // см. System/expreport.cpp: ATL/WTL нет в тулчейне VS2022
 #include "System/expreport.h"
+#endif
 #include "System/meminfo.h"
 #include "Render/renderer.h"
 #include "System/TextFileDumper.h"
@@ -1381,11 +1383,13 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
     mainVars.logBox = new NLogg::EditBoxDumper( &GetSystemLog(), NMainFrame::GetWnd() );
   }
 
+#if !defined(_M_X64) // SystemReport построен на ATL/WTL Ч на x64 выключен
   if ( g_DebugDumpInfo )
   {
     NBSU::SystemReport sysRep;
     sysRep.dumpSystemInfo(true);
   }
+#endif
 
   Render::RenderMode renderMode;
   

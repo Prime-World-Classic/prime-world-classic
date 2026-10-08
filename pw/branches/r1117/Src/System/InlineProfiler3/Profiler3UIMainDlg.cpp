@@ -1,3 +1,6 @@
+#if !defined(_M_X64)
+// ATL/WTL (atlbase.h) в тулчейне VS2022 BuildTools нет — компонент VC.ATL
+// не устанавливался. На x64 эти TU пока выключены; x86-эталон (cl 15) не затронут.
 #include "stdafx.h"
 
 #include "Profiler3UIMainDlg.h"
@@ -851,3 +854,5 @@ bool CMainDlg::CopyStringToClipboard( const string & text )
 }
 
 } //namespace profiler3ui
+
+#endif // !_M_X64

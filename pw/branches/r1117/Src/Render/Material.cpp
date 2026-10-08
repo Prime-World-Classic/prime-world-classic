@@ -22,9 +22,7 @@ static struct SRegister_MaterialHelper
   SRegister_MaterialHelper() 
   {
     void *p = &GetMaterials(); 
-    __asm {
-      mov eax, p
-    }
+    (void)p; // был мЄртвый __asm { mov eax, p } Ч на x64 MSVC его не компилирует
   }
 } materialVarRegistrar;
 

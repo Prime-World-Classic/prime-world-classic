@@ -94,8 +94,8 @@ const char *RegistersToString( const EXCEPTION_POINTERS *pExPtrs )
 		pExPtrs->ContextRecord->SegEs,
 		pExPtrs->ContextRecord->SegFs,
 		pExPtrs->ContextRecord->SegGs ) ;
-#endif
 	return buff;
+#endif
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 static BOOL CALLBACK ReportExceptionDlgProc( HWND hwndDlg, UINT message, WPARAM wParam, LPARAM lParam );
