@@ -72,6 +72,11 @@ def load_vtable(formulapars_h):
 # смешанная ширина lookbehind запрещена, но все эти правила стоят перед
 # буквой/цифрой, поэтому эквивалентно \b. Правила с (?:(?<=\->)|(?<=\.))
 # оставлены чередованием lookbehind'ов (каждый фиксированной ширины).
+def GET_OBJECT_EVAL(m):
+    name = m.group(1)
+    return "GetObject%s%s()->" % (name[0].upper(), name[1:].replace(".", ""))
+
+
 PREV = r"\b"
 DOTARROW = r"(?:(?<=\->)|(?<=\.))"
 
@@ -108,7 +113,14 @@ RULES = [
                                                           r'GetConstant("\1", pFirst, pSecond)'),
     (DOTARROW + r"o([A-Z][A-Za-z_0-9]*)\.",                              r'GetObject("\1")->'),
     (DOTARROW + r"([A-Z][A-Za-z_0-9]*)(?:(?=[\s\+\-\?\\\/\*><=\),])|(?=$))", r"Get\1()"),
-    (r"(?<=\->)([a-z]+?)\.",                                             r"GetObjectName()"),
+    # (?<=->)<lowercase>. -> GetObject<Name>()->  (порт MatchEvaluator
+    # RegExMatcher::GetObjectNameEvaluator: первая буква заглавная, точки убрать)
+    # В FormulaBuilder lookbehind только `->`; в уже сконвертированном тексте
+    # цепочка `appl.parent.parent` даёт второй `parent.` после `.`, и он не
+    # конвертируется (формула не компилируется). В контенте такие формулы
+    # откомпилированы, значит пайплайн применяет правило шире — здесь lookbehind
+    # `->` или `.`.
+    (r"(?:(?<=\->)|(?<=\.))([a-z]+?)\.",                                GET_OBJECT_EVAL),
 ]
 RULES_C = [(re.compile(p), r) for p, r in RULES]
 

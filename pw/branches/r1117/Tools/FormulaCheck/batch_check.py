@@ -50,7 +50,12 @@ def gen_batch_cpp(items):
     Стартовые строки нужны, чтобы по сообщению cl «b.cpp(NNN) : error» сразу
     определить, какие формулы не компилируются: перекомпиляция по одной на
     пачку из 100 — это часы под Wine."""
-    out = ['#include <math.h>\n#include "FormulaPars.h"\n    \n']
+    out = ['#include <math.h>\n#include "FormulaPars.h"\n'
+           # В современном FormulaPars.h DSL-функция round() переименована в
+           # ni_round() (современный CRT не даёт переопределить round). Старые
+           # формулы в контенте вызывают round( — для сверки возвращаем имя
+           # макросом ПОСЛЕ include, чтобы не трогать игровой код.
+           '#define round(a) ni_round(a)\n    \n']
     start_line = {}
     for tag, s, rt in items:
         body = VF.convert_formula(s)
@@ -275,7 +280,7 @@ def fmt_rel(rel):
         off, val = item[0], item[1]
         kind = val[0]
         if kind == "f4":
-            out.append("%d:f%s=%s" % (off, len(val[1]), struct.unpack("<f", val[1] + b"\0" * (4 - len(val[1])))[0]))
+            out.append("%d:%s" % (off, RC.content_hint(val)))
         else:
             out.append("%d:%s=%s" % (off, kind, val[1]))
     return out

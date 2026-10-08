@@ -141,13 +141,27 @@ def read_cstr(buf, off):
 
 
 def target_content(buf, off):
-    """содержимое цели релокации: строка (если читается) либо 4 байта."""
+    """Содержимое цели релокации для СРАВНЕНИЯ — всегда 4 байта.
+
+    Раньше цель классифицировалась как строка/число по признаку «читаемые байты
+    до NUL». Из-за этого одна и та же константа в свежей (много-TU) и в
+    контентной (одно-TU) сборке получала разную метку — соседние байты разные,
+    длина «читаемого»run'а разная. Итог: ложные CONST_DIFF. Теперь метка одна,
+    человекоразборчивый вид даёт fmt_rel."""
     if buf is None:
         return ("sym", off)
-    raw = read_cstr(buf, off)
-    if 0 < len(raw) < 64 and all(32 <= c < 127 for c in raw):
-        return ("str", raw.decode("ascii"))
-    return ("f4", buf[off:off + 4])
+    return ("b4", buf[off:off + 4])
+
+
+def content_hint(val):
+    """человекочитаемое представление цели релокации"""
+    b = val[1]
+    if isinstance(b, (bytes, bytearray)) and len(b) == 4:
+        raw = b
+        if all(32 <= c < 127 for c in raw):
+            return "str?%s f?%s" % (raw.decode("ascii"), struct.unpack("<f", raw)[0])
+        return "f%g" % struct.unpack("<f", raw)[0]
+    return repr(b)
 
 
 def fresh_signature(obj_path):
