@@ -45,7 +45,7 @@ public:
     if(IsValid(NGameX::AdventureScreen::Instance()->GetWorld()))
       defStepLength = NGameX::AdventureScreen::Instance()->GetWorld()->GetStepLength();
 
-    return round(100.f * (10.f / defStepLength ));
+    return ni_round(100.f * (10.f / defStepLength ));
   };
 
   // All delays are in Step() units 

@@ -96,7 +96,7 @@ namespace NWorld
     }
     
     int stepLength = pWorld->GetStepLength();
-    timeForHealing = round(stepLength * (TIME_FOR_HEALING_DEFAULT / stepLength));
+    timeForHealing = ni_round(stepLength * (TIME_FOR_HEALING_DEFAULT / stepLength));
   }
 
   void PFNeutralCreepEvadeState::OnEnter()

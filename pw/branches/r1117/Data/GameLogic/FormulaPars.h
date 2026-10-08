@@ -75,8 +75,11 @@ inline bool isinbounds( float x, float left, float right )
 	return left <= x && x <= right;
 }
 
-#ifndef round
-__forceinline float round( float fVal )
+// ni_round: раньше называлась round Ч в новых CRT (начина€ с VS2015) round есть
+// в <cmath>, и оба определени€ дают C2382 внутри <cmath> в cl 14.44. ѕереименование
+// безопасно: в таблице символов формул (ExecutionMemoryManager::pLinkTable) round
+// нет, вызовов в коде два (PFAIHelper.h, PFNeutralCreepBehavior.cpp).
+__forceinline float ni_round( float fVal )
 {
   if (fVal >= 0.0f)
     return (floor(fVal + 0.5f));

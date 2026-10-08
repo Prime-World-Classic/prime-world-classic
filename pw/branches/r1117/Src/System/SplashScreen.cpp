@@ -44,7 +44,7 @@ public:
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 LRESULT CALLBACK SplashScreenWndProc( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
-	CSplashScreen* pSplashScreen = reinterpret_cast<CSplashScreen*>( ::GetWindowLong( hWnd, GWL_USERDATA ) );
+	CSplashScreen* pSplashScreen = reinterpret_cast<CSplashScreen*>( ::GetWindowLongPtr( hWnd, GWLP_USERDATA ) );
 	switch ( uMsg ) 
 	{
 	case WM_SYSCOMMAND:
@@ -236,7 +236,7 @@ bool CSplashScreen::Create( const string &_szImageFileName, bool bTopMost )
 		const int nX = ( nScreenSizeX - bitmapSize.x ) / 2;
 		const int nY = ( nScreenSizeY - bitmapSize.y ) / 2;
 		::MoveWindow( hWnd, nX, nY, bitmapSize.x, bitmapSize.y, false );
-		::SetWindowLong( hWnd, GWL_USERDATA, reinterpret_cast<LONG>( this ) );
+		::SetWindowLongPtr( hWnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>( this ) );
 		::UpdateWindow( hWnd ); 
 	}
 	return ::IsWindow( hWnd ) == TRUE;

@@ -68,8 +68,8 @@ void PutProcessInWindowTitle( HWND hWnd )
 
 void* SetWindowUserData( HWND hwndDlg, const int nElementID, void *pUserData )
 {
-	return reinterpret_cast<void*>( SetWindowLong( GetDlgItem(hwndDlg, nElementID), 
-																								 GWL_USERDATA, reinterpret_cast<LONG>(pUserData) ) );
+	return reinterpret_cast<void*>( SetWindowLongPtr( GetDlgItem(hwndDlg, nElementID), 
+																								 GWLP_USERDATA, reinterpret_cast<LONG_PTR>(pUserData) ) );
 }
 
 
