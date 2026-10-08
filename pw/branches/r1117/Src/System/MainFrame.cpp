@@ -617,7 +617,7 @@ bool NMainFrame::InitApplication( HINSTANCE hInstance, const char *pszAppName, c
 void ShutdownApplication()
 {
   if ( hWnd && s_OldWindowProc )
-    SetWindowLong( hWnd, GWL_WNDPROC, (LONG)s_OldWindowProc );
+    SetWindowLongPtr( hWnd, GWLP_WNDPROC, (LONG_PTR)s_OldWindowProc );
 }
 
 

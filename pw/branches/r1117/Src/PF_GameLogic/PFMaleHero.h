@@ -16,7 +16,7 @@ _interface ITalentCalculator;
 class PFBaseMaleHero : public PFEaselPlayer
 {
   WORLD_OBJECT_METHODS_WITH_CLIENT(0x2C61EC00, PFBaseMaleHero, NGameX::PFBaseClientHero )
-    NAMEMAP_DECLARE();
+    NAMEMAP_DECLARE;
 
   struct PersistentBuff
   {
