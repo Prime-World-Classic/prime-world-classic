@@ -189,7 +189,7 @@ case "$TOOLCHAIN" in
 esac
 export PW_MACHINE
 export PW_EXTRA_OPTS
-export PW_DROP_LIBS
+export PW_DROP_LIBS="${PW_DROP_LIBS:-}"
 echo "== мишень: /MACHINE:$PW_MACHINE"
 echo "== доп. флаги cl: ${PW_EXTRA_OPTS:-<нет>}"
 [ -n "$PW_DROP_LIBS" ] && echo "== снимаемые из линковки .lib: $PW_DROP_LIBS"
