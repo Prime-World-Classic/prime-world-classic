@@ -208,7 +208,8 @@ void SwfStreamReader::readUTF8String( nstl::wstring & result )
 
 int SwfStreamReader::readBuffer( UI8 * buffer, int bytesToRead )
 {
-  int actualBytesToRead = min( uint32_t(bytesToRead), swf.getSize() - pos ); 
+  // swf.getSize() на x64 Ч size_t (64 бита), min() требует одинаковых типов
+  int actualBytesToRead = min( uint32_t(bytesToRead), uint32_t(swf.getSize() - pos) ); 
 
   if ( actualBytesToRead <= 0 )
     return 0;
