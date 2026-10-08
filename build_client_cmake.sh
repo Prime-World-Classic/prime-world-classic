@@ -180,16 +180,23 @@ case "$TOOLCHAIN" in
     # Для нового тулчейна /WX снимаем по умолчанию: сначала компиляция и
     # линковка, аудит предупреждений — отдельным проходом (C4244/C4267 на x64
     # = сигнал о 64-битных сужениях, их разбирать списком, а не молча гасить).
-    : "${PW_EXTRA_OPTS:=/WX-}"
+    # /MT вместо /MD из vcproj: в этом префиксе нет msvcprt.lib (импорт-либа
+    # msvcp140.dll), зато есть весь статический CRT x64 (libcmt/libcpmt/
+    # libvcruntime) — проверено 2026-10-08. cl берёт последнее вхождение флага.
+    # Внимание: все вендорные .lib под x64 надо собирать тоже /MT.
+    : "${PW_EXTRA_OPTS:=/WX- /MT}"
     # comsuppw.lib/comsuppwd.lib удалены из VC начиная с VS2017 15.3 — _com_error и
     # _com_ptr_t переехали в <comdef.h>, линковать их нечем. vcproj их всё ещё
     # просит → снимаем только для нового тулчейна.
     : "${PW_DROP_LIBS:=comsuppw comsuppwd}"
+    # vcproj запрещает libcmt.lib (он же /MD); для /MT он нужен.
+    : "${PW_DROP_NODEFAULT:=libcmt.lib}"
     ;;
 esac
 export PW_MACHINE
 export PW_EXTRA_OPTS
 export PW_DROP_LIBS="${PW_DROP_LIBS:-}"
+export PW_DROP_NODEFAULT="${PW_DROP_NODEFAULT:-}"
 echo "== мишень: /MACHINE:$PW_MACHINE"
 echo "== доп. флаги cl: ${PW_EXTRA_OPTS:-<нет>}"
 [ -n "$PW_DROP_LIBS" ] && echo "== снимаемые из линковки .lib: $PW_DROP_LIBS"

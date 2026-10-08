@@ -301,6 +301,13 @@ class Proj:
                 continue
             self.link_dirs.append(rel_to(R1117, real))
         self.nodefault = [x for x in (link.get("IgnoreDefaultLibraryNames", "") or "").split(";") if x]
+        # PW_DROP_NODEFAULT — убрать из vcproj-списка «не линковать эти CRT»:
+        # x64-сборка идёт на /MT (статический CRT), а vcproj запрещает libcmt.lib,
+        # потому что сам он /MD.
+        drop_nd = {x.strip().lower() for x in os.environ.get("PW_DROP_NODEFAULT", "").split()}
+        if drop_nd:
+            self.nodefault = [x for x in self.nodefault
+                              if x.strip().lower() not in drop_nd]
         self.subsys = {1: "CONSOLE", 2: "WINDOWS"}.get(int(link.get("SubSystem", "2")), "WINDOWS")
         self.laa = str(link.get("LargeAddressAware", "")).strip()
 
