@@ -181,12 +181,18 @@ case "$TOOLCHAIN" in
     # линковка, аудит предупреждений — отдельным проходом (C4244/C4267 на x64
     # = сигнал о 64-битных сужениях, их разбирать списком, а не молча гасить).
     : "${PW_EXTRA_OPTS:=/WX-}"
+    # comsuppw.lib/comsuppwd.lib удалены из VC начиная с VS2017 15.3 — _com_error и
+    # _com_ptr_t переехали в <comdef.h>, линковать их нечем. vcproj их всё ещё
+    # просит → снимаем только для нового тулчейна.
+    : "${PW_DROP_LIBS:=comsuppw comsuppwd}"
     ;;
 esac
 export PW_MACHINE
 export PW_EXTRA_OPTS
+export PW_DROP_LIBS
 echo "== мишень: /MACHINE:$PW_MACHINE"
 echo "== доп. флаги cl: ${PW_EXTRA_OPTS:-<нет>}"
+[ -n "$PW_DROP_LIBS" ] && echo "== снимаемые из линковки .lib: $PW_DROP_LIBS"
 
 # ------------------------------------------------------- 1. модель + генерация
 echo "== 1/3. model.json + генерация CMake"

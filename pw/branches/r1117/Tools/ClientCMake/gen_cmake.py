@@ -283,6 +283,13 @@ class Proj:
         # исключены, иначе линкер тянул бы из них лишние члены.
         self.link_libs = [x.strip() for x in (link.get("AdditionalDependencies", "") or "").split()
                           if x.strip() and os.path.splitext(os.path.basename(x.strip()))[0] not in PROJ_NAMES]
+        # PW_DROP_LIBS — библиотеки, которые тулчейн не даёт (или давать не должен).
+        # Например comsuppw.lib удалён из VC начиная с VS2017 15.3: _com_error /
+        # _com_ptr_t переехали в заголовки (<comdef.h>), линковать их нечем и не нужно.
+        drop = {x.strip().lower() for x in os.environ.get("PW_DROP_LIBS", "").split()}
+        if drop:
+            self.link_libs = [x for x in self.link_libs
+                              if os.path.splitext(os.path.basename(x))[0].lower() not in drop]
         self.link_dirs = []
         for d in (link.get("AdditionalLibraryDirectories", "") or "").split(";"):
             d = d.strip().strip('"').strip()
