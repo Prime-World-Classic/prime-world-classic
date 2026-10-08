@@ -166,6 +166,7 @@ def main():
     os.makedirs(args.work, exist_ok=True)
     stats = collections.Counter()
     bad = []
+    printed = 0
 
     for bi in range(0, len(items), args.batch):
         chunk = items[bi:bi + args.batch]
@@ -217,6 +218,9 @@ def main():
             except Exception as e:          # одна кривая формула не роняет прогон
                 stats["check_error"] += 1
                 bad.append(("CHECK", tag_of[tag][0], tag_of[tag][1][:70], repr(e)[:160]))
+        for kind, path, src, info in bad[printed:]:
+            print("%-8s %s\n         src=%s\n         %s" % (kind, path, src, info), flush=True)
+        printed = len(bad)
         if not args.keep:
             shutil.rmtree(d, ignore_errors=True)
         print("  пачка %d: %d формул, всего %s" % (bi // args.batch, len(chunk), dict(stats)), flush=True)
@@ -307,7 +311,7 @@ def check_one(tag, item, fresh, stats, bad):
         bad.append(("CONST", path, s[:70], "fresh=%s\n         stored=%s" % (fmt_rel(f_rel)[:8], fmt_rel(s_rel)[:8])))
     else:
         stats["CODE_DIFF"] += 1
-        bad.append(("CODE", path, s[:70],
+        bad.append(("CODE", path, s[:70],  # печатаем сразу: прогон долгий, хвост не дождаться
                     "fresh(len=%d)=%s\n         stored(len=%d)=%s\n         fresh_rel=%s\n         stored_rel=%s" %
                     (len(f_code), f_code.hex(" ")[:180], len(s_code), s_code.hex(" ")[:180],
                      f_rel[:4], s_rel[:4])))
