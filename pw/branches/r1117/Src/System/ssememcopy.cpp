@@ -24,7 +24,8 @@ void GuardedSSEMemCopy(void* _pDestination, void* _pSource, unsigned __int32 _si
 // поддерживаетс€. Ёквивалент на intrinsics: тот же цикл по сегментам
 // BUS_SEGMENT_SIZE, те же non-temporal stores (_mm_stream_si128 == movntdq).
 // ¬ызов идЄт только через GuardedSSEMemCopy, котора€ требует 16-байтной
-// выравниваемости и кратности BUS_SEGMENT_SIZE Ч условие то же, что дл€ asm.void __stdcall ssememcopy(void* _pDestination, void* _pSource, unsigned __int32 _size)
+// выравниваемости и кратности BUS_SEGMENT_SIZE Ч условие то же, что дл€ asm.
+void __stdcall ssememcopy(void* _pDestination, void* _pSource, unsigned __int32 _size)
 {
 	char* dst = (char*)_pDestination;
 	const char* src = (const char*)_pSource;

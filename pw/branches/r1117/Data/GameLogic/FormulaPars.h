@@ -86,7 +86,6 @@ __forceinline float ni_round( float fVal )
   else
     return (ceil(fVal - 0.5f));
 };
-#endif
 
 inline float t(int index, float neutral, float a, float b)
 {
