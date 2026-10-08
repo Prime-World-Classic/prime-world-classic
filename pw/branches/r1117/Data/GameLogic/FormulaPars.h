@@ -113,6 +113,15 @@ inline float SwitchByBool(bool bVal, float trueVal, float falseVal)
 	return bVal ? trueVal : falseVal;
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+// x64: MSVC не компилирует __asm (C4235), и на x64 SSE2 — базовый набор.
+// Все три варианта сводятся к одному действию: приведение float->int без округления
+// (truncate toward zero) — это тот же cvttss2si, который выбирал и первый вариант f2l
+// на x86 (после CPUID), и то же делают f2l_nosse (RC_TRUNCATE + fistp) и f2l_sse3 (fisttp).
+inline int f2l_nosse(float f) { return (int)f; }
+inline int f2l_sse3(float f)  { return (int)f; }
+inline int f2l(float f)       { return (int)f; }
+#else
 inline int f2l_nosse(float f)
 {
   unsigned short int cwOld;
@@ -159,6 +168,7 @@ noSSE:
   {
     jmp f2l_nosse
   }
+#endif
 }
 
 enum EAbilityScaleMode

@@ -541,12 +541,18 @@ diINLINE DiBool DiIsFinite(DiFloat rValue)
 #define diFPU_ROUND_MODE_TRUNCATE   3<<10
 diINLINE DiInt32 DiF2L(DiFloat rValue)
 {
-  DiInt16 nOldMode, nNewMode;
   DiInt32 nRet;
 
   DIFUNCTION("DiF2L");
   
-
+#if defined(_M_X64) || defined(__x86_64__)
+  // x64: MSVC не компилирует __asm (C4235). Блок ниже на x86 делает
+  // «поставить RC_TRUNCATE -> fld/fistp -> вернуть старое слово управления»,
+  // т.е. преобразование float->int усечением к нулю. На x64 то же самое даёт
+  // обычное приведение (генерируется cvttss2si), состояние FPU трогать не нужно.
+  nRet = (DiInt32)rValue;
+#else
+  DiInt16 nOldMode, nNewMode;
   __asm
   {
     // flag setting
@@ -564,6 +570,7 @@ diINLINE DiInt32 DiF2L(DiFloat rValue)
     // back old flag
     fldcw   WORD PTR nOldMode
   }
+#endif
 
   DIRETURN(nRet);
 } // end of DiF2L

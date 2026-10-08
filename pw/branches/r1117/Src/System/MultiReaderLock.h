@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "noncopyable.h"
+#include "auto_ptr_compat.h"
 
 namespace threading
 {
@@ -19,7 +20,7 @@ public:
 
 private:
   class MultiReaderLockImpl;
-  const std::auto_ptr< MultiReaderLockImpl > impl_;
+  const NV_AUTO_PTR( MultiReaderLockImpl ) impl_;
 };
 
 

@@ -74,6 +74,7 @@ public:
   ~DataExecutor();
   bool IsValid() { return pBinaryCode != NULL;}           
   static int GetLastExecutionStatus();
+#if !defined(_M_X64) && !defined(__x86_64__)
   #ifndef _DEBUG
     #pragma optimize("", off)
     #pragma warning(push)
@@ -95,6 +96,11 @@ public:
   #ifndef _DEBUG
      #pragma warning(pop)
      #pragma optimize("", on)
+  #endif
+#if defined(_M_X64) || defined(__x86_64__)
+  // x64: трюк «xchg ebp,esp» (смена стека, чтобы вызвать скомпилированную
+  // формулу без пролога) не компилируется и не работает на x64. Мёртвый код:
+  // USE_FREE_EXECUTOR в дереве не определён, вызов ExecuteFree не instantiated.
   #endif
 
   void Execute(char const retType, char const *argsType, ...) const;

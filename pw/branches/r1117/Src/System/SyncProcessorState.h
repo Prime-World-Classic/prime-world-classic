@@ -13,6 +13,24 @@ bool IsProcessorStateForUI();
 
 #if !defined( NI_PLATF_LINUX )
 
+#if defined(_M_X64) || defined(__x86_64__)
+
+// x64: MSVC не компилирует __asm вообще (C4235), а у x87-слова управлени€ там
+// нет пол€ precision control (_PC_24/_PC_64 игнорируютс€ Ч арифметика SSE2
+// всегда double). _control87 читает/восстанавливает то же состо€ние, с которым
+// работают fstcw/fldcw на x86. —мысл блока (зафиксировать состо€ние FPU вокруг
+// игрового шага) на x64 сохран€етс€ частично: rounding (_MCW_RC) и маски
+// исключений общие дл€ x87 и SSE, precision control Ч нет.
+#define NI_SYNC_FPU_START   \
+  unsigned int nFPUStatus;  \
+  nFPUStatus = (unsigned int)_control87( 0, 0 ); \
+  SyncProcessorState();
+
+#define NI_SYNC_FPU_END     \
+  _control87( (unsigned int)nFPUStatus, _MCW_EM | _MCW_RC | _MCW_IC )
+
+#else
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define NI_SYNC_FPU_START   \
   WORD nFPUStatus;          \
@@ -30,6 +48,8 @@ bool IsProcessorStateForUI();
     __asm fldcw nFPUStatus  \
     __asm wait              \
   }
+
+#endif  // _M_X64
 
 #endif  // !defined( NI_PLATF_LINUX )
 

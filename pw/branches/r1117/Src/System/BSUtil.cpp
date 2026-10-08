@@ -94,16 +94,16 @@ static void WriteEntriesToLogFile( HANDLE logFile, const vector<SCallStackEntry>
     if ( strlen( rightSlash ) == 0 )
     {
       if ( strlen( e.szFunc.szStr ) == 0 )
-        bytesToWrite = sprintf_s( buffer, "0x%08X\r\n", e.dwAddress );
+        bytesToWrite = sprintf_s( buffer, "0x%08llX\r\n", (unsigned long long)e.dwAddress );
       else
-        bytesToWrite = sprintf_s( buffer, "%s (0x%08X)\r\n", e.szFunc.szStr, e.dwAddress );
+        bytesToWrite = sprintf_s( buffer, "%s (0x%08llX)\r\n", e.szFunc.szStr, (unsigned long long)e.dwAddress );
     }
     else
     {
       if ( strlen( e.szFunc.szStr ) == 0 )
-        bytesToWrite = sprintf_s( buffer, "%s(%d): 0x%08X\r\n", rightSlash, e.nLine, e.dwAddress );
+        bytesToWrite = sprintf_s( buffer, "%s(%d): 0x%08llX\r\n", rightSlash, e.nLine, (unsigned long long)e.dwAddress );
       else
-        bytesToWrite = sprintf_s( buffer, "%s(%d): %s (0x%08X)\r\n", rightSlash, e.nLine, e.szFunc.szStr, e.dwAddress );
+        bytesToWrite = sprintf_s( buffer, "%s(%d): %s (0x%08llX)\r\n", rightSlash, e.nLine, e.szFunc.szStr, (unsigned long long)e.dwAddress );
     }
     WriteFile( logFile, buffer, bytesToWrite, &bytesWritten, 0 );
   }

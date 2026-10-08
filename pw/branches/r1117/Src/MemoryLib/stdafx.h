@@ -7,10 +7,8 @@
 
 #if defined( NV_WIN_PLATFORM )
 #include <windows.h>
-#include <typeinfo.h>
-#elif defined( NV_LINUX_PLATFORM )
-#include <typeinfo>
 #endif
+#include "../System/typeinfo_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>

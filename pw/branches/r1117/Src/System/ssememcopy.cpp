@@ -1,5 +1,8 @@
 #include "stdafx.h"
 #include "ssememcopy.h"
+#if defined(_M_X64) || defined(__x86_64__)
+#include <emmintrin.h>   // _mm_stream_si128 / _mm_prefetch / _mm_sfence
+#endif
 
 void CompileTimeCheck()
 {
@@ -9,13 +12,53 @@ void CompileTimeCheck()
 
 void GuardedSSEMemCopy(void* _pDestination, void* _pSource, unsigned __int32 _size)
 {
-	NI_ASSERT( !((unsigned __int32) _pDestination & 0xF), "destination memory is NOT 16-byte aligned" );
-	NI_ASSERT( !((unsigned __int32) _pSource & 0xF), "source memory is NOT 16-byte aligned" );
+	NI_ASSERT( !((size_t) _pDestination & 0xF), "destination memory is NOT 16-byte aligned" );
+	NI_ASSERT( !((size_t) _pSource & 0xF), "source memory is NOT 16-byte aligned" );
 	NI_ASSERT( _size > BUS_SEGMENT_SIZE, "size should be more than BUS_SEGMENT_SIZE" );
 	NI_ASSERT( !(_size % BUS_SEGMENT_SIZE), "size should be divisible by BUS_SEGMENT_SIZE" );	
 	ssememcopy(_pDestination, _pSource, _size);
 }
 
+#if defined(_M_X64) || defined(__x86_64__)
+// x64: MSVC не компилирует __asm (C4235), а __declspec(naked) на x64 не
+// поддерживаетс€. Ёквивалент на intrinsics: тот же цикл по сегментам
+// BUS_SEGMENT_SIZE, те же non-temporal stores (_mm_stream_si128 == movntdq).
+// ¬ызов идЄт только через GuardedSSEMemCopy, котора€ требует 16-байтной
+// выравниваемости и кратности BUS_SEGMENT_SIZE Ч условие то же, что дл€ asm.void __stdcall ssememcopy(void* _pDestination, void* _pSource, unsigned __int32 _size)
+{
+	char* dst = (char*)_pDestination;
+	const char* src = (const char*)_pSource;
+	for (unsigned __int32 done = 0; done < _size; done += BUS_SEGMENT_SIZE)
+	{
+		for (unsigned __int32 off = 0; off < BUS_SEGMENT_SIZE; off += 128)
+		{
+			// prefetch (как movaps-чтени€ в asm-варианте)
+			_mm_prefetch( src + done + off, _MM_HINT_T0 );
+			_mm_prefetch( src + done + off + 64, _MM_HINT_T0 );
+		}
+		for (unsigned __int32 off = 0; off < BUS_SEGMENT_SIZE; off += 128)
+		{
+			__m128i r0 = _mm_load_si128( (const __m128i*)(src + done + off + 0) );
+			__m128i r1 = _mm_load_si128( (const __m128i*)(src + done + off + 16) );
+			__m128i r2 = _mm_load_si128( (const __m128i*)(src + done + off + 32) );
+			__m128i r3 = _mm_load_si128( (const __m128i*)(src + done + off + 48) );
+			__m128i r4 = _mm_load_si128( (const __m128i*)(src + done + off + 64) );
+			__m128i r5 = _mm_load_si128( (const __m128i*)(src + done + off + 80) );
+			__m128i r6 = _mm_load_si128( (const __m128i*)(src + done + off + 96) );
+			__m128i r7 = _mm_load_si128( (const __m128i*)(src + done + off + 112) );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 0), r0 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 16), r1 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 32), r2 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 48), r3 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 64), r4 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 80), r5 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 96), r6 );
+			_mm_stream_si128( (__m128i*)(dst + done + off + 112), r7 );
+		}
+	}
+	_mm_sfence();
+}
+#else
 __declspec(naked) void __stdcall ssememcopy(void* _pDestination, void* _pSource, unsigned __int32 _size)
 {
 	__asm
@@ -73,4 +116,5 @@ copy_loop:
 		ret 12
 	}
 }
+#endif
 

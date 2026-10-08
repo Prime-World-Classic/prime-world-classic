@@ -24,7 +24,7 @@ struct CSymString
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct SCallStackEntry
 {
-  DWORD dwAddress;
+  DWORD_PTR dwAddress;   // адрес кадра — указательного размера (x64: 64 бита)
   CSymString szFile, szFunc;
   int nLine;
   SCallStackEntry() : dwAddress(0), nLine(-1) {}

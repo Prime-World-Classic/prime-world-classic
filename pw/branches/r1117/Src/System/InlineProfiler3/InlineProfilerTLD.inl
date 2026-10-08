@@ -1,3 +1,7 @@
+#if defined(_MSC_VER) && (defined(_M_X64) || defined(__x86_64__))
+#include <intrin.h>   // __rdtsc (x64: __asm не компилируетс€)
+#endif
+
 namespace profiler3
 {
 
@@ -33,7 +37,10 @@ __forceinline
 TTime ThreadLocalData::GetCpuTickCount()
 {
   TTime register result;
-#if defined( NV_WIN_PLATFORM )
+#if defined( NV_WIN_PLATFORM ) && (defined(_M_X64) || defined(__x86_64__))
+  // x64: MSVC не компилирует __asm (C4235); __rdtsc() Ч тот же rdtsc
+  result = (TTime)__rdtsc();
+#elif defined( NV_WIN_PLATFORM )
   __asm {
     rdtsc
     mov DWORD PTR result, eax

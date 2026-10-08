@@ -109,7 +109,7 @@ bool CSymEngine::GetSymbol( DWORD64 dwAddress, CSymString *pszModule, CSymString
 		if ( SymFromAddr( hProcess, dwAddress, &dwDisplacement, pSymbol ) )
 			*pszFunc = pSymbol->Name;
 	  else
-	    sprintf_s( pszFunc->szStr, pszFunc->N_STRING_CHARS, "??? (0x%X)", dwAddress ); 
+	    sprintf_s( pszFunc->szStr, pszFunc->N_STRING_CHARS, "??? (0x%llX)", (unsigned long long)dwAddress ); 
 	}
 
 	if ( pnLine || pszFile )
@@ -136,6 +136,34 @@ int CSymEngine::QuickCollectCallStack( DWORD *addresses, int maxEntries, int ski
   return RtlCaptureStackBackTrace( skipEntries, maxEntries, (PVOID*)addresses, 0 );
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(_M_X64) || defined(__x86_64__)
+// x64: StackWalk64 требует IMAGE_FILE_MACHINE_AMD64 и полей Rip/Rbp/Rsp;
+#else-ветка — прежний 32-битный разбор (эталон VS2008/x86 не меняется).
+int CSymEngine::CollectCallStack( SCallStackEntry *callStack, int maxEntries, int skipEntries, const CONTEXT* context )
+{
+  STACKFRAME64 stkFrame;
+
+  ZeroSA( stkFrame );
+  Assign( &stkFrame.AddrPC, context->SegCs, context->Rip );
+  Assign( &stkFrame.AddrFrame, context->SegSs, context->Rbp );
+  Assign( &stkFrame.AddrStack, context->SegSs, context->Rsp );
+
+  int nEntry = 0;
+  for ( nEntry = -skipEntries; nEntry < maxEntries; ++nEntry )
+  {
+    BOOL bRes = StackWalk64( IMAGE_FILE_MACHINE_AMD64, hProcess, GetCurrentThread(), &stkFrame, (PVOID)context, 0, SymFunctionTableAccess64, SymGetModuleBase64, 0 );
+    if ( !bRes || stkFrame.AddrPC.Offset == 0 )
+      break;
+    SCallStackEntry &res = callStack[nEntry];
+    res.dwAddress = (DWORD_PTR)stkFrame.AddrPC.Offset;
+
+    GetSymbol( res.dwAddress, 0, &res.szFile, &res.nLine, &res.szFunc );
+  }
+
+  return nEntry;
+}
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#else
 int CSymEngine::CollectCallStack( SCallStackEntry *callStack, int maxEntries, int skipEntries, const CONTEXT* context )
 {
   STACKFRAME64 stkFrame;
@@ -161,8 +189,16 @@ int CSymEngine::CollectCallStack( SCallStackEntry *callStack, int maxEntries, in
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma warning( disable : 4740 ) //warning C4740: flow in or out of inline asm code suppresses global optimization
+#endif
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 int CSymEngine::CollectCallStack( SCallStackEntry *callStack, int maxEntries, int skipEntries )
 {
+#if defined(_M_X64) || defined(__x86_64__)
+  // x64: MSVC не компилирует __asm (C4235); RtlCaptureContext заполняет тот же
+  // CONTEXT (Rip/Rbp/Rsp), который читает x64-ветка CollectCallStack выше.
+  CONTEXT ctx;
+  RtlCaptureContext( &ctx );
+#else
   DWORD dwAddr, dwEbp, dwEsp;
   __asm
   {
@@ -177,6 +213,7 @@ nxt:
   ctx.Eip = dwAddr;
   ctx.Ebp = dwEbp;
   ctx.Esp = dwEsp;
+#endif
 
   return CollectCallStack( callStack, maxEntries, skipEntries, &ctx );
 }

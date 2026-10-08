@@ -4,6 +4,7 @@
 #include "RenderComponent.h"
 #include "renderableprimitive.h"
 #include "../System/noncopyable.h"
+#include "../System/auto_ptr_compat.h"
 
 namespace Render
 {
@@ -76,7 +77,7 @@ private:
 	const SHShaderConstants   *pCurSHConsts;
 	int                       index;
 
-  std::auto_ptr<class DXManager>  resourceManager;
+  NV_AUTO_PTR(class DXManager)  resourceManager;
 
 	static void RenderBatchesList(Batch *pBatch);
   static void RenderBatchesPtrArray(UINT numBatches, Batch **pBatches);

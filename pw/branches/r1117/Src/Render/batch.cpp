@@ -367,7 +367,7 @@ void BatchQueue::EnableResourceManagment(bool _enable)
   if( _enable && resourceManager.get() )
     return;
 
-  resourceManager = std::auto_ptr<DXManager>(_enable ? new DeviceLostWrapper<DXManager> : 0);
+  resourceManager = NV_AUTO_PTR(DXManager)(_enable ? new DeviceLostWrapper<DXManager> : 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

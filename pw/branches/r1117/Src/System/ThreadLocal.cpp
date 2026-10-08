@@ -11,18 +11,25 @@
 
 #if defined( NV_WIN_PLATFORM )
 
-	#pragma pack(push, 1)
-	typedef struct _CLIENT_ID
+	// Ёти структуры NT в файле описаны вручную (32-битные раскладки) Ч ранний
+// Windows SDK их не отдавал. —овременный SDK (Windows Kits 10) объ€вл€ет
+// _CLIENT_ID/_PEB_LDR_DATA/KPRIORITY/... сам, поэтому локальные копии
+// переименованы с префиксом NI_: имена SDK не перекрываютс€, а коду нужны
+// именно локальные раскладки. ¬Ќ»ћјЌ»≈: раскладки 32-битные; на x64
+// ThreadLocalGetTLSBitmap() не портирован (единственный потребитель
+// PMyPEB; в дереве его вызовов нет Ч только объ€вление в ThreadLocal.h).
+#pragma pack(push, 1)
+	typedef struct NI_CLIENT_ID
 	{
 	  PVOID UniqueProcess;
 	  PVOID UniqueThread;
-	} CLIENT_ID, *PCLIENT_ID;
+	} NI_CLIENT_ID, *NI_PCLIENT_ID;
 
 	typedef struct My_TEB 
 	{
 	  NT_TIB Tib; 
 	  PVOID EnvironmentPointer; 
-	  CLIENT_ID Cid; 
+	  NI_CLIENT_ID Cid; 
 	  PVOID ActiveRpcInfo; 
 	  PVOID ThreadLocalStoragePointer; 
 	  PPEB Peb; 
@@ -42,7 +49,7 @@
 	  ULONG GdiRgn; 
 	  ULONG GdiPen; 
 	  ULONG GdiBrush; 
-	  CLIENT_ID RealClientId; 
+	  NI_CLIENT_ID RealClientId; 
 	  PVOID GdiCachedProcessHandle; 
 	  ULONG GdiClientPID; 
 	  ULONG GdiClientTID; 
@@ -79,20 +86,20 @@
 	  PVOID StackReserved;
 	} MyTEB, *PMyTEB;
 
-	typedef int KPRIORITY;
+	typedef int NI_KPRIORITY;
 
-	typedef struct _THREAD_BASIC_INFORMATION {
+	typedef struct NI_THREAD_BASIC_INFORMATION {
 
 	  NTSTATUS  ExitStatus; 
 	  PTEB      TebBaseAddress; 
-	  CLIENT_ID ClientId; 
+	  NI_CLIENT_ID ClientId; 
 	  KAFFINITY AffinityMask; 
-	  KPRIORITY Priority; 
-	  KPRIORITY BasePriority;
+	  NI_KPRIORITY Priority; 
+	  NI_KPRIORITY BasePriority;
 
-	} THREAD_BASIC_INFORMATION, *PTHREAD_BASIC_INFORMATION;
+	} NI_THREAD_BASIC_INFORMATION, *NI_PTHREAD_BASIC_INFORMATION;
 
-	typedef struct _PEB_LDR_DATA
+	typedef struct NI_PEB_LDR_DATA
 	{
 	  ULONG Length;
 	  UCHAR Initialized;
@@ -101,23 +108,23 @@
 	  LIST_ENTRY InMemoryOrderModuleList;
 	  LIST_ENTRY InInitializationOrderModuleList;
 	  PVOID EntryInProgress;
-	} PEB_LDR_DATA, *PPEB_LDR_DATA;
+	} NI_PEB_LDR_DATA, *NI_PPEB_LDR_DATA;
 
-	typedef struct _CURDIR
+	typedef struct NI_CURDIR
 	{
 	  UNICODE_STRING DosPath;
 	  PVOID Handle;
-	} CURDIR, *PCURDIR;
+	} NI_CURDIR, *NI_PCURDIR;
 
-	typedef struct _RTL_DRIVE_LETTER_CURDIR
+	typedef struct NI_RTL_DRIVE_LETTER_CURDIR
 	{
 	  WORD Flags;
 	  WORD Length;
 	  ULONG TimeStamp;
 	  STRING DosPath;
-	} RTL_DRIVE_LETTER_CURDIR, *PRTL_DRIVE_LETTER_CURDIR;
+	} NI_RTL_DRIVE_LETTER_CURDIR, *NI_PRTL_DRIVE_LETTER_CURDIR;
 
-	typedef struct _RTL_USER_PROCESS_PARAMETERS
+	typedef struct NI_RTL_USER_PROCESS_PARAMETERS
 	{
 	  ULONG MaximumLength;
 	  ULONG Length;
@@ -128,7 +135,7 @@
 	  PVOID StandardInput;
 	  PVOID StandardOutput;
 	  PVOID StandardError;
-	  CURDIR CurrentDirectory;
+	  NI_CURDIR CurrentDirectory;
 	  UNICODE_STRING DllPath;
 	  UNICODE_STRING ImagePathName;
 	  UNICODE_STRING CommandLine;
@@ -146,9 +153,9 @@
 	  UNICODE_STRING DesktopInfo;
 	  UNICODE_STRING ShellInfo;
 	  UNICODE_STRING RuntimeData;
-	  RTL_DRIVE_LETTER_CURDIR CurrentDirectores[32];
+	  NI_RTL_DRIVE_LETTER_CURDIR CurrentDirectores[32];
 	  ULONG EnvironmentSize;
-	} RTL_USER_PROCESS_PARAMETERS, *PRTL_USER_PROCESS_PARAMETERS;
+	} NI_RTL_USER_PROCESS_PARAMETERS, *NI_PRTL_USER_PROCESS_PARAMETERS;
 
 	typedef struct _PEB_FREE_BLOCK
 	{
@@ -164,8 +171,8 @@
 	  UCHAR SpareBits;
 	  PVOID Mutant;
 	  PVOID ImageBaseAddress;
-	  PPEB_LDR_DATA Ldr;
-	  PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
+	  NI_PPEB_LDR_DATA Ldr;
+	  NI_PRTL_USER_PROCESS_PARAMETERS ProcessParameters;
 	  PVOID SubSystemData;
 	  PVOID ProcessHeap;
 	  PRTL_CRITICAL_SECTION FastPebLock;
@@ -239,7 +246,7 @@ void ClearThreadTLSData()
 {
 #if defined( NV_WIN_PLATFORM )
 
-  THREAD_BASIC_INFORMATION threadInfo;
+  NI_THREAD_BASIC_INFORMATION threadInfo;
   HMODULE hNTDll = GetModuleHandleA("ntdll.dll");
   FARPROC pNtQueryInformationThread = GetProcAddress(hNTDll, "NtQueryInformationThread");
   NTSTATUS nRet = ((NTSTATUS (CALLBACK *)(HANDLE, THREADINFOCLASS, PVOID, ULONG, PULONG))pNtQueryInformationThread)(GetCurrentThread(), (THREADINFOCLASS)0 /*ThreadBasicInformation*/, &threadInfo, sizeof(threadInfo), NULL);
