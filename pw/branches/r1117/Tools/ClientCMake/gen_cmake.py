@@ -175,6 +175,11 @@ class Proj:
         # C4519 — консервативное предупреждение MSVC 9 (легальный C++), при /WX
         # ломает RpcArgs.h, добавленный Linux-портом. Совпадает с драйвером.
         self.opts.append("/wd4519")
+        # доп. флаги cl из окружения (аналог PW_EXTRA_OPTS в build_client.py):
+        # этапы 2-3 (современный компилятор) — /std:c++17, /wdNNNN, /WX-.
+        # Добавляются ПОСЛЕ vcproj-флагов: cl берёт последнее вхождение (/WX-
+        # перебивает /WX из vcproj, /std: перебивает дефолт).
+        self.opts += os.environ.get("PW_EXTRA_OPTS", "").split()
 
         self.defs = to_defs(cl.get("PreprocessorDefinitions", ""))
         self.defs += to_defs(os.environ.get("PW_EXTRA_DEFS", ""))
@@ -370,14 +375,26 @@ def main():
 
     # --- манифест (аналог wine_app.manifest/wine_manifest.rc в драйвере) ----
     app_manifest = os.path.join(SRC, "Application.manifest")
-    crt_and_priv = (
-        '<dependency><dependentAssembly><assemblyIdentity type="win32" '
-        'name="Microsoft.VC90.CRT" version="9.0.21022.8" '
-        'processorArchitecture="x86" publicKeyToken="1fc8b3b9a1e18e3b"/>'
-        '</dependentAssembly></dependency>'
-        '<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security>'
-        '<requestedPrivileges><requestedExecutionLevel level="asInvoker" '
-        'uiAccess="false"/></requestedPrivileges></security></trustInfo>\n')
+    # CRT-зависимость манифеста — по компилятору/мишени: VS2008/x86 — VC90.CRT,
+    # VS2022 — VC143.CRT (для x64-сборок этапа 3)
+    if os.environ.get("PW_MACHINE", "X86") == "X64":
+        crt_and_priv = (
+            '<dependency><dependentAssembly><assemblyIdentity type="win32" '
+            'name="Microsoft.VC143.CRT" version="14.44.35207" '
+            'processorArchitecture="x64" publicKeyToken="1fc8b3b9a1e18e3b"/>'
+            '</dependentAssembly></dependency>'
+            '<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security>'
+            '<requestedPrivileges><requestedExecutionLevel level="asInvoker" '
+            'uiAccess="false"/></requestedPrivileges></security></trustInfo>\n')
+    else:
+        crt_and_priv = (
+            '<dependency><dependentAssembly><assemblyIdentity type="win32" '
+            'name="Microsoft.VC90.CRT" version="9.0.21022.8" '
+            'processorArchitecture="x86" publicKeyToken="1fc8b3b9a1e18e3b"/>'
+            '</dependentAssembly></dependency>'
+            '<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security>'
+            '<requestedPrivileges><requestedExecutionLevel level="asInvoker" '
+            'uiAccess="false"/></requestedPrivileges></security></trustInfo>\n')
     manifest_cmd = None
     manifest_res = None
     if os.path.isfile(app_manifest):
@@ -449,7 +466,7 @@ def main():
                    " ".join(f"${{R1117}}/{d}" for d in pwg.link_dirs) + ")")
     if pwg.link_libs:
         top.append("target_link_libraries(PW_Game PRIVATE " + " ".join(pwg.link_libs) + ")")
-    lf = ["/MACHINE:X86"] + WINE_LINK_FLAGS
+    lf = ["/MACHINE:" + os.environ.get("PW_MACHINE", "X86")] + WINE_LINK_FLAGS
     if pwg.laa == "2":
         lf.append("/LARGEADDRESSAWARE")     # бит LAA: 4 ГБ вместо 2 ГБ (см. PLAN_client_oom.md)
     elif pwg.laa == "1":
