@@ -215,6 +215,13 @@ NINJA_FWD="$(zfwd "$NINJA")"
 
 # компиляторное окружение (CL_PATH/CL_INC/CL_LIB/PW_MACHINE) задано в 0c выше
 mkdir -p "$BUILD"
+# ninja держит .ninja_lock; после kill/обрыва он остаётся и следующий запуск
+# даёт «ninja: error: failed recompaction: Permission denied» (cmake generate
+# падает). Снимать можно только когда параллельной сборки в этом каталоге нет.
+if [ -f "$BUILD/.ninja_lock" ] && ! pgrep -x ninja >/dev/null && ! pgrep -f "wintools/ninja" >/dev/null; then
+    echo "== снимаю зависший .ninja_lock в $BUILD"
+    rm -f "$BUILD/.ninja_lock"
+fi
 # CMakeCache хранит абсолютные пути build- и gen-каталогов: перенос каталога под
 # тулчейн (build/ -> build/vs2008/) делает старый кэш невалидным — configure
 # падает («CMakeCache.txt directory ... is different than ...»). Как в
