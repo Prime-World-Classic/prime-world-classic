@@ -168,8 +168,8 @@ noSSE:
   {
     jmp f2l_nosse
   }
-#endif
 }
+#endif
 
 enum EAbilityScaleMode
 {

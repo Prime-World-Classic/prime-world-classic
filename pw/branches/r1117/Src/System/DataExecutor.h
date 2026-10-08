@@ -97,7 +97,7 @@ public:
      #pragma warning(pop)
      #pragma optimize("", on)
   #endif
-#if defined(_M_X64) || defined(__x86_64__)
+#else
   // x64: трюк «xchg ebp,esp» (смена стека, чтобы вызвать скомпилированную
   // формулу без пролога) не компилируется и не работает на x64. Мёртвый код:
   // USE_FREE_EXECUTOR в дереве не определён, вызов ExecuteFree не instantiated.

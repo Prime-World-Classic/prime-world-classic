@@ -123,7 +123,8 @@ const DWORD CPUID_SSE_FEATURE_PRESENT = 0x02000000;
 #if defined(_M_X64) || defined(__x86_64__)
 // x64: MSVC не компилирует __asm (C4235). “рюк с pushfd/popfd ниже провер€ет,
 // поддерживаетс€ ли CPUID (бит 21 EFLAGS) Ч на x64 CPUID поддерживаетс€ всегда,
-// а лист 1 отдаЄт флаги возможностей в EDX так же, как GET_CPUID на x86.inline DWORD GetCPUID()
+// а лист 1 отдаЄт флаги возможностей в EDX так же, как GET_CPUID на x86.
+inline DWORD GetCPUID()
 {
 	int info[4];
 	__cpuid( info, 1 );

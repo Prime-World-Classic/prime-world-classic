@@ -138,7 +138,7 @@ int CSymEngine::QuickCollectCallStack( DWORD *addresses, int maxEntries, int ski
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if defined(_M_X64) || defined(__x86_64__)
 // x64: StackWalk64 требует IMAGE_FILE_MACHINE_AMD64 и полей Rip/Rbp/Rsp;
-#else-ветка — прежний 32-битный разбор (эталон VS2008/x86 не меняется).
+// #else-ветка — прежний 32-битный разбор (эталон VS2008/x86 не меняется).
 int CSymEngine::CollectCallStack( SCallStackEntry *callStack, int maxEntries, int skipEntries, const CONTEXT* context )
 {
   STACKFRAME64 stkFrame;
