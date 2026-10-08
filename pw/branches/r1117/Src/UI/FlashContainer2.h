@@ -8,8 +8,13 @@
 namespace avmplus
 {
   class ScriptObject;
+  // Atom указателЄразмерный (Vendor/Tamarin/source/core/atom.h) Ч см. UI/FlashInterface.h
+#if defined(_M_X64) || defined(__x86_64__)
+  typedef __int64	Atom;
+#else
   typedef __int32	int32_t;
   typedef int32_t Atom;
+#endif
 }
 
 namespace NDb
