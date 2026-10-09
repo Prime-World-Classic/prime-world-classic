@@ -55,6 +55,17 @@ namespace
   static bool g_fillBufferAfterLag = false;
   static bool g_enableAdaptiveBuffer = true;
 
+  // Minimal steps buffer on the client. It changes only WHEN the client executes a step already received
+  // from the server, not WHAT it executes, so it can't cause desync between clients.
+  // 0 - execute a step as soon as it arrives (lowest input latency), -1 - use server's game_steps_delay_min
+  static int g_stepsBufferMin = 0;
+  // Adaptive buffer statistics window in seconds
+  static float g_stepsBufferWindow = 30.0f;
+  // Percent of steps in the window allowed to come with a freeze; the buffer grows only if there are more
+  static float g_stepsBufferFreezeBudget = 1.0f;
+  // Pause between executed steps (in steps) which is considered as a noticeable freeze
+  static float g_stepsBufferFreezeFactor = 1.5f;
+
   static int g_needCrcStats = 0;
   REGISTER_DEV_VAR( "need_crc_stats", g_needCrcStats, STORAGE_NONE );
 
@@ -147,6 +158,7 @@ Transceiver::Transceiver(ICommandScheduler *_scheduler,
   precalcCrcOnce( false ),
   slowDownFactor(1.0f),
   noData(false),
+  clockMs(0),
   stepLength(_stepLength),
   pmsc(),
   lastProtectionMagicAsyncStep(INVALID_STEP)
@@ -644,10 +656,6 @@ bool Transceiver::CanProcessStep()
       worldTimeElapsed = stepLength;
       delaySteps = g_fillBufferAfterLag;
     }
-    if (localTimeElapsed >= stepLength)
-    {
-      stepsBufferLimit.AdjustByLag(localTimeElapsed, nextStep);
-    }
     return false;
   }
   else
@@ -674,11 +682,6 @@ bool Transceiver::CanProcessStep()
   // stepLength passed 
   if ( worldTimeElapsed >= slowDownFactor * stepLength && ( stepsDelayed == currentBufferLimit || !delaySteps ) )
     canProcessStep = true;
-
-  if (canProcessStep)
-  {
-    stepsBufferLimit.Update( nextStep );
-  }
 
   return canProcessStep;
 }
@@ -775,6 +778,8 @@ void Transceiver::Step( float dt )
   if ( !delaySteps )
     worldTimeElapsed += dt;
   localTimeElapsed += dt;
+  clockMs += dt;
+  stepsBufferLimit.OnStepsArrived( scheduler->GetNextStep( false ), clockMs );
   if ( checkTime > dt )
     checkTime -= dt;
   else if ( checkTime > 0 )
@@ -945,141 +950,136 @@ int Transceiver::GetBufferLimit() const
 //////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////
 
+StepsBufferLimit::StepsBufferLimit() :
+stepLength( DEFAULT_GAME_STEP_LENGTH ),
+currentBufferLimit( 1 ),
+lastArrivedStep( INVALID_STEP ),
+windowSteps( 0 ),
+arrivalsCapacity( 0 ),
+arrivalsHead( 0 ),
+arrivalsCount( 0 )
+{
+}
+
+
+
 void StepsBufferLimit::Init( const StepsDelaySettings& settings, int _stepLength )
 {
   bufferLimitSettings = settings;
-  stepLength = _stepLength;
+  if ( g_stepsBufferMin >= 0 )
+    bufferLimitSettings.stepsDelayMin = g_stepsBufferMin;
+  if ( !g_enableAdaptiveBuffer || bufferLimitSettings.stepsDelayMax < bufferLimitSettings.stepsDelayMin )
+    bufferLimitSettings.stepsDelayMax = bufferLimitSettings.stepsDelayMin;
 
-  int levels = bufferLimitSettings.stepsDelayMax - bufferLimitSettings.stepsDelayMin + 1;
-  bufferLimitsTimes.resize(levels);
+  stepLength = max( _stepLength, 1 );
+  currentBufferLimit = bufferLimitSettings.stepsDelayMin;
 
-
-  int curLevel = bufferLimitSettings.stepsDelayMax;
-  while ( curLevel >= bufferLimitSettings.stepsDelayMin )
-  {
-    int idx = curLevel - bufferLimitSettings.stepsDelayMin;
-    NI_ASSERT( idx >= 0, "wrong buffer init index" );
-
-    bufferLimitsTimes[idx] = CalcBaseTimeForBufferLimit(curLevel);
-    --curLevel;
-  }
-
-  //будем регистрировать только те лаги, что приходят не более чем через время действия повышенного буфера (в степах, от последнего лага)
-  lagsHistory.SetMinLagDistance( bufferLimitSettings.stepsDelayFrame * levels );
+  windowSteps = max( (int)( g_stepsBufferWindow * 1000.0f / stepLength ), 10 );
+  arrivalsCapacity = windowSteps + bufferLimitSettings.stepsDelayMax + 1;
+  arrivals.resize( arrivalsCapacity );
+  ResetHistory();
 }
 
-void StepsBufferLimit::AdjustByLag( int newLagTime, int trascieverStep )
+
+
+void StepsBufferLimit::ResetHistory()
 {
-  lagsHistory.Update(trascieverStep);
-
-  // регистрируем новый лаг и в случае необходимости повышаем/обновляем время текущего лимита буфера  
-  int newBufferLimit = min( (int)newLagTime / stepLength, 
-    (g_enableAdaptiveBuffer)?(bufferLimitSettings.stepsDelayMax):(bufferLimitSettings.stepsDelayMin) );
-
-  if (newBufferLimit >= currentBufferLimit)
-  {
-    currentBufferLimit = newBufferLimit;
-    bufferLimitTimer = GetBufferLimitTime( currentBufferLimit );
-  }
-
-  if (newBufferLimit > bufferLimitSettings.stepsDelayMin)
-    lagsHistory.RegisterLag(newBufferLimit, trascieverStep);
-
+  lastArrivedStep = INVALID_STEP;
+  arrivalsHead = 0;
+  arrivalsCount = 0;
 }
 
-void StepsBufferLimit::Update( int trascieverStep )
+
+
+void StepsBufferLimit::PushArrival( double timeMs )
 {
-  lagsHistory.Update( trascieverStep );
-
-  //со временем понижаем лимит
-  if (bufferLimitTimer > 0)
+  if ( arrivalsCount < arrivalsCapacity )
   {
-    --bufferLimitTimer;
-
-    if (bufferLimitTimer <= 0)
-    {
-      --currentBufferLimit;
-      if (currentBufferLimit > bufferLimitSettings.stepsDelayMin)
-        bufferLimitTimer = GetBufferLimitTime( currentBufferLimit );
-    }
+    arrivals[( arrivalsHead + arrivalsCount ) % arrivalsCapacity] = timeMs;
+    ++arrivalsCount;
+  }
+  else
+  {
+    arrivals[arrivalsHead] = timeMs;
+    arrivalsHead = ( arrivalsHead + 1 ) % arrivalsCapacity;
   }
 }
 
 
-int StepsBufferLimit::GetBufferLimitTime( int bufferLimit )
+
+void StepsBufferLimit::OnStepsArrived( int lastStep, double timeMs )
 {
-  //для текущего лимита вычисляем надо ли увеличивать его длительность, на основании того, 
-  //какие лаги случались за последнее время
-  int idx = bufferLimit - bufferLimitSettings.stepsDelayMin;
-  NI_ASSERT( idx >=0 && idx < bufferLimitsTimes.size(), "invalid delay level" )
-  int adaptiveTime = bufferLimitsTimes[idx];
-
-  float avLagsLevel = lagsHistory.GetAvgLagsLevel();
-  if (avLagsLevel >= bufferLimit)
-    adaptiveTime = bufferLimitSettings.stepsDelayFrame;
-
-  return adaptiveTime;
-}
-
-int StepsBufferLimit::CalcBaseTimeForBufferLimit(int bufferLimit )
-{
-  //вычисляем длительность каждого лимита в идеальных условиях - разовый лаг
-  if (bufferLimit <= bufferLimitSettings.stepsDelayMin)
-    return bufferLimitSettings.stepsDelayFrame;
-
-  return  max( bufferLimitSettings.stepsDelayFrame / (bufferLimit - bufferLimitSettings.stepsDelayMin), 10);
-}
-
-
-void StepsBufferLimit::LagsHistory::RegisterLag( int level, int step )
-{
-  if (step == stepOfLastLag && !lagsHistory.empty())
-  {
-    lagsHistory.back() = level;
+  if ( arrivalsCapacity <= 0 || lastStep < 0 || lastStep == lastArrivedStep )
     return;
-  }
 
-  lagsHistory.push_back( level );
-  stepOfLastLag = step;
-
-  if (lagsHistory.size() > maxEntries) 
-    lagsHistory.pop_front();
-}
-
-void StepsBufferLimit::LagsHistory::Update( int step )
-{
-  if ( stepOfLastLag < 0 )
+  // first step, reconnect or restarted step numbering - start the history over
+  if ( lastArrivedStep < 0 || lastStep < lastArrivedStep || lastStep - lastArrivedStep > arrivalsCapacity )
   {
-    stepOfLastLag = step;
-    return;
+    ResetHistory();
+    lastArrivedStep = lastStep - 1;
   }
 
-  if( step - stepOfLastLag > minValidLagDistance )
-    lagsHistory.clear();
+  // steps are delivered in order, so all the steps up to lastStep have arrived by now
+  for ( ; lastArrivedStep < lastStep; ++lastArrivedStep )
+    PushArrival( timeMs );
+
+  Recalc();
 }
 
 
-float StepsBufferLimit::LagsHistory::GetAvgLagsLevel()
+
+// Replays the recent arrivals through the transceiver's playback rules (see Transceiver::CanProcessStep) as if
+// the buffer limit was bufferLimit and counts moments when the world would stand still noticeably long.
+int StepsBufferLimit::CountFreezes( int bufferLimit ) const
 {
-  if (lagsHistory.size() < 3)
+  if ( arrivalsCount <= bufferLimit + 1 )
     return 0;
 
-  float avgLevel = 0.0f;
+  const double catchUpGap = g_catchUpFactor * stepLength;
+  const double slowGap = g_slowDownFactor * stepLength;
+  const double freezeGap = g_stepsBufferFreezeFactor * stepLength;
 
-  list<int>::iterator it = lagsHistory.begin();
-  for ( ; it != lagsHistory.end(); ++it )
+  int freezes = 0;
+  double prev = GetArrival( bufferLimit );
+  for ( int s = 1; s + bufferLimit < arrivalsCount; ++s )
   {
-    avgLevel += (*it);
+    // there are more steps buffered than the limit - catch up
+    double play = max( GetArrival( s + bufferLimit ), prev + catchUpGap );
+    // the buffer is exactly at the limit - play at a slightly slowed down pace
+    if ( bufferLimit > 0 )
+      play = min( play, max( GetArrival( s + bufferLimit - 1 ), prev + slowGap ) );
+
+    if ( play - prev > freezeGap )
+      ++freezes;
+    prev = play;
   }
 
-  avgLevel /= lagsHistory.size();
-
-  return avgLevel;
+  return freezes;
 }
 
-void StepsBufferLimit::LagsHistory::SetMinLagDistance( int distance )
+
+
+void StepsBufferLimit::Recalc()
 {
-  minValidLagDistance = distance;
+  const int allowedFreezes = (int)( g_stepsBufferFreezeBudget * 0.01f * windowSteps );
+
+  int newBufferLimit = bufferLimitSettings.stepsDelayMax;
+  for ( int limit = bufferLimitSettings.stepsDelayMin; limit < bufferLimitSettings.stepsDelayMax; ++limit )
+  {
+    // going down needs a clear margin, otherwise the buffer would flap on the budget boundary
+    if ( CountFreezes( limit ) <= ( limit >= currentBufferLimit ? allowedFreezes : allowedFreezes / 2 ) )
+    {
+      newBufferLimit = limit;
+      break;
+    }
+  }
+
+  if ( newBufferLimit != currentBufferLimit )
+  {
+    DebugTrace( "Steps buffer %d -> %d: freezes in the last %d steps with buffer %d: %d, allowed: %d (step %d)",
+      currentBufferLimit, newBufferLimit, arrivalsCount, currentBufferLimit, CountFreezes( currentBufferLimit ), allowedFreezes, lastArrivedStep );
+    currentBufferLimit = newBufferLimit;
+  }
 }
 
 } // namespace NCore
@@ -1104,3 +1104,7 @@ REGISTER_DEV_VAR( "debug_crc_buffer_size", g_bufferSize, STORAGE_NONE );
 
 REGISTER_VAR( "fill_buffer_after_lag", g_fillBufferAfterLag, STORAGE_NONE );
 REGISTER_VAR( "enable_adaptive_buffer", g_enableAdaptiveBuffer, STORAGE_NONE );
+REGISTER_VAR( "steps_buffer_min", g_stepsBufferMin, STORAGE_NONE );
+REGISTER_VAR( "steps_buffer_window", g_stepsBufferWindow, STORAGE_NONE );
+REGISTER_VAR( "steps_buffer_freeze_budget", g_stepsBufferFreezeBudget, STORAGE_NONE );
+REGISTER_VAR( "steps_buffer_freeze_factor", g_stepsBufferFreezeFactor, STORAGE_NONE );
