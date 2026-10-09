@@ -69,9 +69,10 @@ set(CMAKE_CXX_FLAGS "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
 add_library(CensorDll SHARED ${c}/dllmain.cpp ${c}/stdafx.cpp ${c}/CensorTest.cpp)
 set_target_properties(CensorDll PROPERTIES OUTPUT_NAME CensorDll)
-target_include_directories(CensorDll PRIVATE ${c})
-target_compile_definitions(CensorDll PRIVATE CENSORLIB_EXPORT _CRT_SECURE_NO_WARNINGS WIN32 NDEBUG _WINDOWS)
-target_compile_options(CensorDll PRIVATE /O2 /MD /EHsc /std:c++14 /wd4996 /wd4267)
+# CensorTest.cpp тянет клиентский заголовок Game/PF/Server/CensorshipCore/Censor.h
+target_include_directories(CensorDll PRIVATE ${c} $(zfwd "$BR/Src") $(zfwd "$V/boost"))
+target_compile_definitions(CensorDll PRIVATE CENSORLIB_EXPORT _CRT_SECURE_NO_WARNINGS WIN32 NDEBUG _WINDOWS _UNICODE UNICODE)
+target_compile_options(CensorDll PRIVATE /O2 /MT /EHsc /std:c++14 /wd4996 /wd4267)
 EOF
     DEST="$out" ARTIFACTS="CensorDll.dll CensorDll.lib"
 }
@@ -166,7 +167,20 @@ gen_ace() {
     local out="$V/ACE_wrappers/lib/x64"
     local a="$(zfwd "$V/ACE_wrappers")"
     local ACE_INCL
-    ACE_INCL="$(cd "$V/ACE_wrappers/ace" && grep -hoE '#include "ace/[A-Za-z0-9_]+\.cpp"' *.h *.inl *.cpp 2>/dev/null | sed 's#.*ace/##; s/\.cpp"$//' | sort -u | paste -sd'|' -)"
+    # «не самостоятельные» .cpp: те, которые include-ются ЧУГИМИ файлами
+    # (Cleanup.cpp ← OS.cpp, OS_NS_* ← их .h c ACE_TEMPLATES_REQUIRE_SOURCE …).
+    # Файл, включаемый только собственным заголовком (String_Base.cpp ← String_Base.h),
+    # наоборот, компилируем: в нём явные инстанциации `template class ACE_Export …`,
+    # без них ACE.dll не экспортирует эти шаблоны, и Terabit не линкуется
+    # (__imp_?…ACE_String_Base…).
+    ACE_INCL="$(
+      cd "$V/ACE_wrappers/ace" || exit 1
+      for f in *.cpp; do
+        b="${f%.cpp}"
+        inc="$(grep -lE "#include "ace/$f"" *.h *.inl *.cpp 2>/dev/null | grep -v "^$b\.h$" | head -1)"
+        [ -n "$inc" ] && echo "$b"
+      done | paste -sd'|' -
+    )"
     ACE_INCL="${ACE_INCL:-__none__}"
     cat > "$BUILD/ace_posix_shim.c" <<'SHIM'
 /* x64 UCRT не даёт POSIX-имён, которые использует ACE 5.7 (OLDNAMES.lib —
@@ -183,7 +197,7 @@ SHIM
     SHIM_WIN="$(zfwd "$BUILD/ace_posix_shim.c")"
     cat > "$BUILD/ace/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.15)
-project(ace CXX)
+project(ace C CXX)   # C обязателен: без него CMake молча игнорирует .c-источник (шим)
 set(CMAKE_CXX_FLAGS "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
 # ВАЖНО: в include path НЕ добавляем $a/ace — иначе wine (case-insensitive)
@@ -204,17 +218,24 @@ file(GLOB ACE_SRC $a/ace/*.cpp)
 # компилируем отдельно, иначе LNK2005 (уже определено в двух obj). Список
 # вычисляется из самого дерева.
 set(ACE_INCL ${ACE_INCL})
+# ace/*_T.cpp — «источники шаблонов»: их определения дублируют .inl, которые
+# включены в тот же заголовок → C2995 при отдельной компиляции. В штатной сборке
+# ACE (MPC) в список источников не входят.
+list(FILTER ACE_SRC EXCLUDE REGEX "_T\\.cpp$")
 # «/» в начале обязательно: без якоря альтернатива Stream вырезала бы и
 # CDR_Stream.cpp (имена сравниваются по суффиксу).
 list(FILTER ACE_SRC EXCLUDE REGEX "/(${ACE_INCL})\\.cpp$")
-# ace/SPIPE_*.cpp — легаси-транспорт ACE (emulated pipes): в заголовках классы
-# закрыты #ifdef ACE_HAS_SPIPE (для MSVC 19 он не определён), а .cpp компилируются
-# → C2511/C2039. Клиент/Terabit SPIPE не используют.
-list(FILTER ACE_SRC EXCLUDE REGEX "SPIPE")
+# ace/SPIPE_*.cpp (легаси-транспорт «emulated pipes») и ace/UPIPE_*.cpp (Unix
+# domain pipes, наследуются от ACE_SPIPE_*): на Windows в штатной сборке ACE не
+# входят; компиляция их .cpp даёт C2511/C2039, а линковка — LNK2019 на ACE_SPIPE_*.
+# Клиент/Terabit ни SPIPE, ни UPIPE не используют.
+list(FILTER ACE_SRC EXCLUDE REGEX "/(SPIPE|UPIPE)[A-Za-z0-9_]*\\.cpp$")
 # POSIX-имена CRT (access/fdopen/strdup/unlink/rmdir): на x64 UCRT их не
 # экспортирует (OLDNAMES.lib — только x86), а /D-макросы ломают собственные
 # обёртки ACE_OS::fdopen (C2039). Поэтому — тонкий шим отдельным файлом.
-add_library(ACE SHARED \${ACE_SRC} $SHIM_WIN)
+# шим задаётся ОТНОСИТЕЛЬНО CMakeLists: CMake молча игнорирует источник с
+# диском вида Z:/… (в rsp его нет → POSIX-имена остаются незакрытыми)
+add_library(ACE SHARED \${ACE_SRC} ../ace_posix_shim.c)
 set_target_properties(ACE PROPERTIES OUTPUT_NAME ACE)
 # ACE_BUILD_DLL — без него ACE_Export разворачивается в dllimport и
 # определение ACE_Addr::sap_any (ACE/Addr.cpp) не линкуется (C2491).
@@ -234,7 +255,20 @@ gen_terabit() {
     local t="$(zfwd "$V/Terabit")"
     local a="$(zfwd "$V/ACE_wrappers")"
     local ACE_INCL
-    ACE_INCL="$(cd "$V/ACE_wrappers/ace" && grep -hoE '#include "ace/[A-Za-z0-9_]+\.cpp"' *.h *.inl *.cpp 2>/dev/null | sed 's#.*ace/##; s/\.cpp"$//' | sort -u | paste -sd'|' -)"
+    # «не самостоятельные» .cpp: те, которые include-ются ЧУГИМИ файлами
+    # (Cleanup.cpp ← OS.cpp, OS_NS_* ← их .h c ACE_TEMPLATES_REQUIRE_SOURCE …).
+    # Файл, включаемый только собственным заголовком (String_Base.cpp ← String_Base.h),
+    # наоборот, компилируем: в нём явные инстанциации `template class ACE_Export …`,
+    # без них ACE.dll не экспортирует эти шаблоны, и Terabit не линкуется
+    # (__imp_?…ACE_String_Base…).
+    ACE_INCL="$(
+      cd "$V/ACE_wrappers/ace" || exit 1
+      for f in *.cpp; do
+        b="${f%.cpp}"
+        inc="$(grep -lE "#include "ace/$f"" *.h *.inl *.cpp 2>/dev/null | grep -v "^$b\.h$" | head -1)"
+        [ -n "$inc" ] && echo "$b"
+      done | paste -sd'|' -
+    )"
     ACE_INCL="${ACE_INCL:-__none__}"
     cat > "$BUILD/ace_posix_shim.c" <<'SHIM'
 /* x64 UCRT не даёт POSIX-имён, которые использует ACE 5.7 (OLDNAMES.lib —
@@ -262,11 +296,11 @@ add_library(TProactor SHARED \${TPROACTOR_SRC})
 file(GLOB IOT_SRC $t/app/IOTerabit/*.cpp)
 add_library(IOTerabit SHARED \${IOT_SRC})
 target_include_directories(IOTerabit PRIVATE ${c} ${c}/TProactor)
-target_compile_definitions(IOTerabit PRIVATE AIO_ROOT _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE WIN32 NDEBUG)
-target_compile_options(IOTerabit PRIVATE /O2 /MD /EHsc /GR /std:c++14 /wd4996 /wd4267 /wd4244 /wd4100 /wd4101 /wd4189 /wd4018 /wd4099)
-target_link_libraries(IOTerabit PRIVATE TProactor ws2_32)
-target_compile_definitions(TProactor PRIVATE AIO_ROOT _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE WIN32 NDEBUG)
-target_compile_options(TProactor PRIVATE /O2 /MD /EHsc /GR /std:c++14 /wd4996 /wd4267 /wd4244 /wd4100 /wd4101 /wd4189 /wd4018 /wd4099)
+target_compile_definitions(IOTerabit PRIVATE IOTERABIT_BUILD_DLL AIO_ROOT _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE WIN32 NDEBUG)
+target_compile_options(IOTerabit PRIVATE /O2 /MT /EHsc /GR /std:c++14 /wd4996 /wd4267 /wd4244 /wd4100 /wd4101 /wd4189 /wd4018 /wd4099)
+target_link_libraries(IOTerabit PRIVATE TProactor $a/lib/x64/ACE.lib ws2_32)
+target_compile_definitions(TProactor PRIVATE TPROACTOR_BUILD_DLL AIO_ROOT _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE WIN32 NDEBUG)
+target_compile_options(TProactor PRIVATE /O2 /MT /EHsc /GR /std:c++14 /wd4996 /wd4267 /wd4244 /wd4100 /wd4101 /wd4189 /wd4018 /wd4099)
 target_link_libraries(TProactor PRIVATE $a/lib/x64/ACE.lib ws2_32)
 EOF
     DEST="$out" ARTIFACTS="TProactor.dll TProactor.lib IOTerabit.dll IOTerabit.lib"
