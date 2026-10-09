@@ -150,53 +150,38 @@ private:
 #endif // _SHIPPING
 };
 
+// Adaptive steps buffer (jitter buffer). Remembers when the recent steps arrived, replays these arrivals with
+// every possible buffer limit and picks the smallest one, which would have kept the world running without
+// noticeable freezes for all but a small budget of steps. A rare lost packet doesn't raise the buffer,
+// a constantly jittering connection does.
+// It changes only WHEN the client executes received steps, never WHAT it executes, so it can't cause desync.
 class StepsBufferLimit
 {
 public:
-  class LagsHistory
-  {
-    int stepOfLastLag;
-    int minValidLagDistance;
-    int maxEntries;
-
-    list<int> lagsHistory;
-
-  public:
-    LagsHistory() : 
-        minValidLagDistance(100)
-          , stepOfLastLag(-1)
-          , maxEntries(5)
-        {}
-        void RegisterLag( int level, int step );
-        float GetAvgLagsLevel();
-        void SetMinLagDistance( int distance );
-        void Update( int trascieverStep );
-  };
-
-
-private:
-  int currentBufferLimit;
-  int bufferLimitTimer;
-  vector<int> bufferLimitsTimes;
-  StepsDelaySettings bufferLimitSettings;
-  LagsHistory lagsHistory;
-  int stepLength;
-
-  int GetBufferLimitTime( int bufferLimit );
-  int CalcBaseTimeForBufferLimit( int bufferLimit );
-
-public:
-  StepsBufferLimit() :
-      currentBufferLimit(1),
-        bufferLimitTimer(0),
-        stepLength(DEFAULT_GAME_STEP_LENGTH)
-      { }
+  StepsBufferLimit();
 
   void Init( const StepsDelaySettings& settings, int _stepLength );
-  void Update( int trascieverStep );
-  void AdjustByLag( int newLagTime, int trascieverStep );
+  void OnStepsArrived( int lastArrivedStep, double timeMs );
   int GetValue() const { return currentBufferLimit; }
 
+private:
+  void ResetHistory();
+  void PushArrival( double timeMs );
+  double GetArrival( int index ) const { return arrivals[( arrivalsHead + index ) % arrivalsCapacity]; }
+  int CountFreezes( int bufferLimit ) const;
+  void Recalc();
+
+  StepsDelaySettings bufferLimitSettings;
+  int stepLength;
+  int currentBufferLimit;
+  int lastArrivedStep;
+  int windowSteps;
+
+  // ring buffer of the recent steps' arrival times (ms), the oldest first
+  vector<double> arrivals;
+  int arrivalsCapacity;
+  int arrivalsHead;
+  int arrivalsCount;
 };
 
 namespace
@@ -308,6 +293,7 @@ private:
   bool precalcCrcOnce;
   float slowDownFactor;
   bool noData;
+  double clockMs;
   //TODO: Add base class for transceivers and move there all common functionality
   int stepLength;
   float stepLengthInSeconds;

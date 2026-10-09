@@ -36,6 +36,7 @@ static float longPeriod = 0.f;
 
 static const float AggregationPeriod = 0.5f; //0.3 sec
 static float noDataTime = 0;
+static int lastProgressStep = -1;
 static int srv2ClientTimeDelta = 0;
 static bool showSrvTime = false;
 
@@ -204,10 +205,13 @@ void SetSteps( int _recieveStep, int _nextStep, float  dt, int bufferLimit)
 {
   if ( _nextStep >= 0 )
   {
-    if (_recieveStep < 0)
-      noDataTime += dt;
-    else
+    // With zero steps buffer a step is executed in the same frame it arrives, so the scheduler queue
+    // is empty almost all the time. Data is flowing while the transceiver advances.
+    if ( _nextStep != lastProgressStep || _recieveStep >= 0 )
       noDataTime = 0;
+    else
+      noDataTime += dt;
+    lastProgressStep = _nextStep;
 
     HasTrancieverData.SetValue( noDataTime < AggregationPeriod );
   }
@@ -218,7 +222,7 @@ void SetSteps( int _recieveStep, int _nextStep, float  dt, int bufferLimit)
   if ( _nextStep >= 0 )
   {
     if ( _recieveStep < 0 )
-      DataBufferSize.SetValue( -1, true );
+      DataBufferSize.SetValue( -1, noDataTime >= AggregationPeriod );
     else
       DataBufferSize.SetValue( _recieveStep - _nextStep, _recieveStep - _nextStep > 5 );
 
