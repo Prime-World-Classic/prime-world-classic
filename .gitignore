@@ -202,3 +202,8 @@ pw_publish/branch/Server/PvX/Bin/UniServerApp
 # RdpStallTest build dir + generator backup
 pw/branches/r1117/Src/Network/RUDP/build_test/
 pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto.bak-debug/
+
+# VendorX64: промежуточные CMake-деревья и env-скрипт (артефакты раскладываются
+# по Vendor/*/lib/x64 — их коммитим, как x86-ные .lib в дереве)
+pw/branches/r1117/Tools/VendorX64/build/
+pw/branches/r1117/Tools/VendorX64/vendor_env.cmd

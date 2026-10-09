@@ -58,9 +58,73 @@ PASSTHROUGH = {"/Od", "/O1", "/O2", "/Os", "/OX", "/Ob1", "/Ob2", "/Oy-",
 WINE_LINK_FLAGS = ["/MANIFEST:NO"]
 
 
+def write_if_changed(path, content):
+    """Пишет файл только если содержимое изменилось. gen/ пересоздаётся на каждый
+    прогон, и без этого у всех 1074 PCH-обёрток обновляется mtime — ninja
+    пересобирает весь граф (~40 мин) даже когда изменились только опции линковки."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="surrogateescape") as fh:
+            if fh.read() == content:
+                return False
+    except OSError:
+        pass
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8", errors="surrogateescape") as fh:
+        fh.write(content)
+    return True
+
+
 def q(p):
     """CMake-экранирование пути (в CMakeLists все пути прямые слебы)."""
     return p.replace("\\", "/")
+
+
+# --- x64: вендорские имена/пути из vcproj описаны для x86 -------------------
+# При PW_MACHINE=X64 подменяем только то, что реально есть в дереве (проверено
+# по Vendor/): DirectX Lib/x64, DTW lib/amd64, FMOD x64-либы. Пересобранное
+# нашим скриптом (Tools/VendorX64/build_vendor_x64.sh) кладётся в <dir>/x64 рядом
+# с x86-ной либой: zlib/lib/x64, jpeglib/lib/x64, JsonCpp/lib/Release/x64.
+# Остальное (ACE, Terabit, Tamarin, libcurl, OpenSSL, freetype, CrashRpt,
+# CxxTest) под x64 ещё не собрано — см. PLAN_client_modern.md, этап 3.
+X64_LIB_RENAME = {
+    "fmodex_vc": "fmodex64_vc",
+    "fmodexl_vc": "fmodexl64_vc",
+    "fmod_event": "fmod_event64",
+    "fmod_event_net": "fmod_event_net64",
+    # Steam: в вендоре есть redistributable_bin/win64/steam_api64.lib
+    "steam_api": "steam_api64",
+    # GlU32.Lib — x86-ный GLU; под x64 берём Glu32.lib из Windows SDK (он в LIB)
+    "glu32": "Glu32",
+}
+X64_DIR_REMAP = (("Lib/x86", "Lib/x64"), ("lib/i386", "lib/amd64"), ("lib/x86", "lib/x64"),
+                 ("redistributable_bin", "redistributable_bin/win64"))
+# x86-only вендор, под x64 отсутствует в дереве и не пересобирается:
+#   gtrtst32.lib — DirectShow-хелпер (Vendor/DirectShow/Lib): ссылок из Src/ нет;
+#   sakijapi.lib — StarForce (Vendor/StarForce): x64-дистрибутива нет, но вызовы
+#   PSA_* есть в Src/System/StarForce/StarForce.cpp (строки 73/104/110/117/148) —
+#   под x64 эти места надо глушить (_M_X64-guard в StarForce.cpp), иначе LNK2019 на PSA_*.
+# Возврат любой либы — PW_DROP_LIBS="".
+X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32"}
+
+
+def x64_lib(name):
+    stem, ext = os.path.splitext(os.path.basename(name))
+    new = X64_LIB_RENAME.get(stem.lower())
+    return name if not new else os.path.join(os.path.dirname(name), new + ext)
+
+
+def x64_libdir(rel, R1117):
+    r = q(rel)
+    for a, b in X64_DIR_REMAP:
+        if r.endswith(a):
+            cand = r[:-len(a)] + b
+            if os.path.isdir(os.path.join(R1117, cand)):
+                return cand
+    # общее правило: пересобранные под x64 либы лежат в <dir>/x64
+    cand = r + "/x64"
+    if os.path.isdir(os.path.join(R1117, cand)):
+        return cand
+    return r
 
 
 def rel_to(base, target):
@@ -301,6 +365,13 @@ class Proj:
                 continue
             self.link_dirs.append(rel_to(R1117, real))
         self.nodefault = [x for x in (link.get("IgnoreDefaultLibraryNames", "") or "").split(";") if x]
+        # x64: подмена x86-ных вендорских имён и каталогов (см. X64_LIB_RENAME)
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            drop = {x.strip().lower() for x in os.environ.get("PW_DROP_LIBS", "").split()}
+            drop |= X64_LIB_DROP_DEFAULT
+            self.link_libs = [x64_lib(x) for x in self.link_libs
+                              if os.path.splitext(os.path.basename(x))[0].lower() not in drop]
+            self.link_dirs = [x64_libdir(d, R1117) for d in self.link_dirs]
         # PW_DROP_NODEFAULT — убрать из vcproj-списка «не линковать эти CRT»:
         # x64-сборка идёт на /MT (статический CRT), а vcproj запрещает libcmt.lib,
         # потому что сам он /MD.
@@ -384,8 +455,8 @@ def main():
 
     # порядок не важен для OBJECT-библиотек (линковка одна), но детерминизм полезен
     for n in sorted(model):
-        with open(os.path.join(out, "projects", n + ".cmake"), "w") as fh:
-            fh.write(projs[n].cmake(SRC, R1117))
+        write_if_changed(os.path.join(out, "projects", n + ".cmake"),
+                         projs[n].cmake(SRC, R1117))
 
     # --- манифест (аналог wine_app.manifest/wine_manifest.rc в драйвере) ----
     app_manifest = os.path.join(SRC, "Application.manifest")
@@ -416,10 +487,8 @@ def main():
         merged = text.replace("</assembly>", crt_and_priv + "</assembly>")
         if "Microsoft.VC90.CRT" not in merged:
             merged = text
-        with open(os.path.join(out, "wine_app.manifest"), "w", encoding="utf-8") as fh:
-            fh.write(merged)
-        with open(os.path.join(out, "wine_manifest.rc"), "w") as fh:
-            fh.write('1 24 "wine_app.manifest"\n')
+        write_if_changed(os.path.join(out, "wine_app.manifest"), merged)
+        write_if_changed(os.path.join(out, "wine_manifest.rc"), '1 24 "wine_app.manifest"\n')
         # тоже custom command: rc ищет wine_app.manifest относительно CWD
         manifest_cmd = ('add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res\n'
                         '  COMMAND rc /fo${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res wine_manifest.rc\n'
@@ -489,16 +558,14 @@ def main():
     top.append("target_link_options(PW_Game PRIVATE " + " ".join(lf) + ")")
     top.append("set_target_properties(PW_Game PROPERTIES OUTPUT_NAME PW_Game)")
 
-    with open(os.path.join(out, "CMakeLists.txt"), "w") as fh:
-        fh.write("# СГЕНЕРИРОВАННО из model.json (Tools/ClientCMake/gen_cmake.py) — не править руками\n")
-        fh.write("\n".join(top) + "\n")
+    write_if_changed(
+        os.path.join(out, "CMakeLists.txt"),
+        "# СГЕНЕРИРОВАННО из model.json (Tools/ClientCMake/gen_cmake.py) — не править руками\n"
+        + "\n".join(top) + "\n")
 
     for n in model:
         for wrel, content in projs[n].wrappers.items():
-            wpath = os.path.join(out, wrel)
-            os.makedirs(os.path.dirname(wpath), exist_ok=True)
-            with open(wpath, "w") as fh:
-                fh.write(content)
+            write_if_changed(os.path.join(out, wrel), content)
 
     n_src = sum(len(projs[n].srcs) for n in model)
     n_wrap = sum(len(projs[n].wrappers) for n in model)

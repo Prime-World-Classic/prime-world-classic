@@ -205,7 +205,10 @@ echo "== доп. флаги cl: ${PW_EXTRA_OPTS:-<нет>}"
 echo "== 1/3. model.json + генерация CMake"
 python3 "$WCB/parse_vcproj.py" "$BR/Src" "$CCT/model.json" "$CFG" >/dev/null
 [ "$DO_CLEAN" = 1 ] && rm -rf "$BUILD"
-rm -rf "$GEN"
+# gen/ НЕ пересоздаётся каждый прогон: gen_cmake.py пишет файлы только при
+# изменении содержимого, и ninja не перекомпилирует 1074 PCH-обёртки из-за
+# свежего mtime (полный прогон ~40 мин против перелинковки за минуты).
+if [ "$DO_CLEAN" = 1 ]; then rm -rf "$GEN"; fi
 python3 "$CCT/gen_cmake.py" "$BR/Src" "$CCT/model.json" "$GEN"
 [ "$DO_GEN_ONLY" = 1 ] && exit 0
 
