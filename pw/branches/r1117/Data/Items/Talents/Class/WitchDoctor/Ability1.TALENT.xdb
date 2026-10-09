@@ -1401,7 +1401,7 @@
 			<instantApply>false</instantApply>
 		</DispatchImmediate>
 	</dispatch>
-	<flags>323</flags>
+	<flags>259</flags>
 	<forceBonus>6</forceBonus>
 	<image href="/UI/Styles/Icons/Heroes/WitchDoctor/A1.ITEX" />
 	<imageSecondState href="/UI/Styles/Icons/Heroes/WitchDoctor/A1_1.ITEX" />
