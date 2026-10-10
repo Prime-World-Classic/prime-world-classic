@@ -16,20 +16,24 @@ CFileIterator::CFileIterator( const CFileIterator::filename_type & mask ) :
     mask_( mask ), path_(), ind_( 0 )
 {
   path_ = mask_;
-  size_t pos = path_.rfind( '\\' );
-  if ( pos == CFileIterator::filename_type::npos ) { path_.clear(); }
+	// Normalize the filesystem path before separating its directory and filename mask.
+	std::replace( path_.begin(), path_.end(), '\\', '/' );
+	size_t pos = path_.rfind( '/' );
+	if ( pos == CFileIterator::filename_type::npos ) { mask_ = path_; path_.clear(); }
   else
   {
 	  mask_ = path_.substr( pos + 1 );
-	  path_ = path_.substr( 0, pos );
+		path_ = path_.substr( 0, pos + 1 );
   }
+	// The shared callers use the Windows all-files mask, including extensionless directories.
+	if ( mask_ == "*.*" )
+		mask_ = "*";
 
   data_.gl_pathc = 0;
   data_.gl_pathv = NULL;
   data_.gl_offs = 1;
   // HACK: пока так, потом надо исправить на более высоком уровне
-  CFileIterator::filename_type msk( mask );
-  std::replace( msk.begin(), msk.end(), '\\', '/' );
+	CFileIterator::filename_type msk( path_ + mask_ );
   const int globRes = ::glob( msk.c_str(), 0, NULL, &data_ );
   if ( globRes == 0 )
   {
@@ -57,7 +61,8 @@ const SWin32Time CFileIterator::GetLastWriteTime() const
 
 void CFileIterator::Close()
 {
-  if ( IsValid() )
+	// Next() also closes an exhausted iterator, whose index is no longer valid.
+	if ( data_.gl_pathv )
   {
     ::globfree( &data_ );
     memset( &data_, 0, sizeof( data_ ) );

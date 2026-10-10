@@ -1,4 +1,8 @@
 #include "StdAfx.h"
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+// GCC requires the enum definition before the legacy EFaction forward declaration.
+#include "DBStats.h"
+#endif
 #include "HeroRankCalculator.h"
 #include "DBHeroRanks.h"
 #include "DBServer.h"
@@ -57,4 +61,3 @@ const wstring & HeroRankCalculator::GetRankName( NDb::EFaction faction, const ND
 
 
 NI_DEFINE_REFCOUNT( NGameX::HeroRankCalculator )
-

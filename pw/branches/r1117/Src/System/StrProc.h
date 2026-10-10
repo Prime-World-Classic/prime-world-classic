@@ -209,7 +209,11 @@ unsigned char HexSymbolToHalfByte( const char chr )
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // перевод UNICODE => UTF-8 и обратно
+/// Encode native wide text as UTF-8. Linux rejects invalid scalars by clearing the output.
+/// Linux conversions are locale-independent, preserve embedded NULs, and replace the output.
 void UnicodeToUTF8( string *pRes, const wstring &szString );
+/// Decode UTF-8 to native wide text. Linux clears the output for malformed/truncated input.
+/// Linux preserves supplementary scalars and embedded NULs; the Windows implementation is unchanged.
 void UTF8ToUnicode( wstring *pRes, const string &szString );
 void StripXmlEscapes( wstring & result, const wstring & text );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

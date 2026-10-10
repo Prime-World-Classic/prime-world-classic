@@ -1906,6 +1906,9 @@ void FlashRenderer::Render( int firstElement, int lastElement, const Render::Tex
       continue;
 
     case LinuxFlashDrawCommand::DrawText:
+			// FlashFontsRender has already mapped text into global UI coordinates.
+			// Keep the movie's scissor/stencil, but do not apply its subviewport twice.
+			glViewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
       SetLinuxOpenGLUiRendererFlashTextStyle(
         command.textPartID,
         command.textTexture,
@@ -2208,10 +2211,12 @@ void FlashRenderer::BeginDisplay(
   float x0, float x1, float y0, float y1,
   bool useScissorRect )
 {
-  currentDisplayState.viewportX = viewport_x0;
-  currentDisplayState.viewportY = viewport_y0;
-  currentDisplayState.viewportWidth = viewport_width;
-  currentDisplayState.viewportHeight = viewport_height;
+	// BeginDisplay receives UI layout units; OpenGL viewport/scissor take physical pixels.
+	// Round both edges to keep adjacent controls aligned at fractional UI scales.
+	currentDisplayState.viewportX = static_cast<int>(floorf(viewport_x0 * widthScale + 0.5f));
+	currentDisplayState.viewportY = static_cast<int>(floorf(viewport_y0 * heightScale + 0.5f));
+	currentDisplayState.viewportWidth = static_cast<int>(floorf((viewport_x0 + viewport_width) * widthScale + 0.5f)) - currentDisplayState.viewportX;
+	currentDisplayState.viewportHeight = static_cast<int>(floorf((viewport_y0 + viewport_height) * heightScale + 0.5f)) - currentDisplayState.viewportY;
   currentDisplayState.displayX0 = x0;
   currentDisplayState.displayX1 = x1;
   currentDisplayState.displayY0 = y0;

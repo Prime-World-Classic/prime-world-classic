@@ -1365,13 +1365,3 @@ bool ExecutableString::GetVariantValue(NScript::VariantValue&, const char*) cons
 {
   return false;
 }
-
-void CTextRef::DropCache()
-{
-}
-
-const wstring& CTextRef::GetText() const
-{
-  static wstring empty;
-  return empty;
-}

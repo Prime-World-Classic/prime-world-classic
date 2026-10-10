@@ -5,6 +5,10 @@
 
 #include <cstdio>
 #include <System/ported/cwfn.h>
+#if defined(__linux__)
+#include <climits>
+#include <iconv.h>
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace NStr 
@@ -291,8 +295,55 @@ void* StringToBin( const char *pszData, void *pBuffer, int *pnSize )
 // **
 // ************************************************************************************************************************ //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if defined(__linux__)
+namespace
+{
+/// WCHAR_T iconv conversions can admit non-Unicode values; reject them in either direction.
+bool ContainsOnlyUnicodeScalars(const wstring& text)
+{
+	for (wstring::const_iterator it = text.begin(); it != text.end(); ++it)
+	{
+		const unsigned int codePoint = static_cast<unsigned int>(*it);
+		if (codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff))
+			return false;
+	}
+	return true;
+}
+
+/// Convert an explicit byte range between stateless encodings, without consulting the locale.
+bool ConvertUnicodeBytes(const char* from, const char* to, const void* input, size_t inputBytes,
+	void* output, size_t* outputBytes)
+{
+	iconv_t converter = iconv_open(to, from);
+	if (converter == (iconv_t)-1)
+		return false;
+	char* source = const_cast<char*>(static_cast<const char*>(input));
+	char* destination = static_cast<char*>(output);
+	const bool converted = iconv(converter, &source, &inputBytes, &destination, outputBytes) != (size_t)-1
+		&& inputBytes == 0;
+	iconv_close(converter);
+	return converted;
+}
+}
+#endif
+
 void UnicodeToUTF8( string *pRes, const wstring &szString )
 {
+#if defined(__linux__)
+	pRes->clear();
+	// nstl strings use signed lengths; reserve at most four UTF-8 bytes per scalar.
+	if (szString.empty() || szString.size() > (INT_MAX - 1) / 4 || !ContainsOnlyUnicodeScalars(szString))
+		return;
+	pRes->resize(szString.size() * 4);
+	size_t bytesLeft = pRes->size();
+	if (!ConvertUnicodeBytes("WCHAR_T", "UTF-8", szString.data(),
+		static_cast<size_t>(szString.size()) * sizeof(wchar_t), &(*pRes)[0], &bytesLeft))
+	{
+		pRes->clear();
+		return;
+	}
+	pRes->resize(pRes->size() - static_cast<int>(bytesLeft));
+#else
 	pRes->resize( 0 );
 	pRes->reserve( szString.size() * 2 );
 	for ( wstring::const_iterator it = szString.begin(); it != szString.end(); ++it )
@@ -312,9 +363,27 @@ void UnicodeToUTF8( string *pRes, const wstring &szString )
 			*pRes += ( 0x80 | chr & 0x3F );
 		}
 	}
+#endif
 }
 void UTF8ToUnicode( wstring *pRes, const string &szString )
 {
+#if defined(__linux__)
+	pRes->clear();
+	if (szString.empty() || szString.size() > (INT_MAX - 1) / sizeof(wchar_t))
+		return;
+	// One wchar_t per input byte covers the worst case (ASCII), including embedded NULs.
+	pRes->resize(szString.size());
+	const size_t capacity = static_cast<size_t>(pRes->size()) * sizeof(wchar_t);
+	size_t bytesLeft = capacity;
+	if (!ConvertUnicodeBytes("UTF-8", "WCHAR_T", szString.data(), szString.size(), &(*pRes)[0], &bytesLeft))
+	{
+		pRes->clear();
+		return;
+	}
+	pRes->resize(static_cast<int>((capacity - bytesLeft) / sizeof(wchar_t)));
+	if (!ContainsOnlyUnicodeScalars(*pRes))
+		pRes->clear();
+#else
 	pRes->resize( 0 );
 	pRes->reserve( szString.size() );
 	string::const_iterator it = szString.begin();
@@ -344,6 +413,7 @@ void UTF8ToUnicode( wstring *pRes, const string &szString )
 		}
 		++it;
 	}
+#endif
 }
 
 

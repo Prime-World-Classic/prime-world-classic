@@ -13,6 +13,7 @@
 #include "../../FontTags.h"
 #include "../../FontsRenderInterface.h"
 #include "../../FlashMovie.h"
+#include "../../FlashText.h"
 #include "../../TextContainer.h"
 
 #include "../display/Stage.h"
@@ -419,7 +420,11 @@ EventObject * TextFieldObject::CreateTextEvent( wchar_t * text )
     FlashCore()->internConstantStringLatin1( "textInput" )->atom(), //type
     trueAtom, //bubbles
     trueAtom, //cancelable
+#if defined(__linux__)
+		flash::CreateAvmStringFromWide(core(), text)->atom(), // Native keyboard text uses 32-bit wchar_t.
+#else
     FlashCore()->internStringUTF16( (const wchar *)text )->atom(), //text
+#endif
   };
 
   ScriptObject * scriptObject = FlashCore()->atomToScriptObject( eventClass->construct( 4, args ) );
@@ -520,15 +525,26 @@ void TextFieldObject::set_type(AvmString value)
 
 AvmString TextFieldObject::get_text()
 {
+#if defined(__linux__)
+	return flash::CreateAvmStringFromWide(core(), textContainer->Text());
+#else
   return String::createUTF16( core(), (const wchar*)textContainer->Text().c_str(), textContainer->Text().size() );
+#endif
 }
 
 
 void TextFieldObject::set_text(AvmString value)
 {
+#if defined(__linux__)
+	// Text layout and font rendering consume native wchar_t, not Tamarin UTF-16 units.
+	const wstring tmp = flash::CreateWideStringFromAvm(value);
+	SetText(tmp.c_str());
+	SetCaret(tmp.size());
+#else
   StUTF16String tmp( value );
   SetText( (const wchar_t *)tmp.c_str() );
   SetCaret(tmp.length());
+#endif
 }
 
 
@@ -748,7 +764,11 @@ AvmString TextFieldObject::getLineText(int lineIndex)
   int start = 0, length = 0;
   wstring substr;
   textContainer->AccessMarkup().GetLineInfo( lineIndex, min, max, start, length, &substr );
+#if defined(__linux__)
+	return flash::CreateAvmStringFromWide(core(), substr);
+#else
   return String::createUTF16( core(), (const wchar*)substr.c_str(), substr.size() );
+#endif
 }
 
 
@@ -773,8 +793,13 @@ void TextFieldObject::replaceText(int beginIndex, int endIndex, AvmString newTex
 {
   NI_ALWAYS_ASSERT("Not yet implemented"); // SwfDebugLog::CallLog( "TextFieldObject", "replaceText" );
 
+#if defined(__linux__)
+	const wstring tmp = flash::CreateWideStringFromAvm(newText);
+	ReplaceText(beginIndex, endIndex, tmp.c_str());
+#else
   StUTF16String tmp( newText );
   ReplaceText( beginIndex, endIndex, (const wchar_t *)( tmp.c_str() ) );
+#endif
 }
 
 

@@ -5,6 +5,7 @@
 
 #include "Flash/GameSWFIntegration/FlashBaseClasses.h"
 #include "Flash/GameSWFIntegration/FlashEnterFunction.h"
+#include "Flash/GameSWFIntegration/FlashText.h"
 
 #define FLASH_INTERFACE_ENTER_FUNCTION(_numParam) \
   if ( !mainInterface ) return undefinedAtom;\
@@ -46,14 +47,23 @@ avmplus::Atom FVar::GetAtom( avmplus::Toplevel * _toplevel ) const
     }
   case Float: return _toplevel->core()->doubleToAtom( valueFloat );
   case ConstChar: return _toplevel->core()->newStringLatin1( valueChar )->atom();
-  case WString: return _toplevel->core()->newStringUTF16( (wchar*)valueWString.c_str() )->atom();
+  case WString:
+#if defined(__linux__)
+		return flash::CreateAvmStringFromWide(_toplevel->core(), valueWString)->atom();
+#else
+		return _toplevel->core()->newStringUTF16( (wchar*)valueWString.c_str() )->atom();
+#endif
   case WStringArray:
     {
       avmplus::ArrayObject* array = _toplevel->arrayClass->newArray( valueWSArray.size() );
 
       for ( int i = 0; i < valueWSArray.size(); ++i )
       {
+#if defined(__linux__)
+				array->setIntProperty(i, flash::CreateAvmStringFromWide(_toplevel->core(), valueWSArray[i])->atom());
+#else
         array->setIntProperty( i, _toplevel->core()->newStringUTF16( (wchar*)valueWSArray[i].c_str() )->atom() );
+#endif
       }
 
       return array->atom();

@@ -175,6 +175,10 @@ void WinFileSystem::GetDirectories( vector<string> *pDirectories, const string &
   NI_PROFILE_FUNCTION
 
   string fullPath = NFile::Combine( fileSystemRoot, root );
+#if defined( NV_LINUX_PLATFORM )
+	// Disk paths must use native separators even when XDB callers pass backslashes.
+	fullPath = FixFolderPath( fullPath );
+#endif
 
   if ( !NFile::DoesFolderExist( fullPath ) )
     return;
@@ -259,6 +263,9 @@ Stream* WinFileSystem::OpenFile( const string &fileName, EFileAccess access, EFi
 void WinFileSystem::GetFilesInternal( vector<string> *pFiles, const string &root, const string & relativeFolder, const string & mask, bool recursive )
 {
   string fullPath = NFile::Combine( fileSystemRoot, root );
+#if defined( NV_LINUX_PLATFORM )
+	fullPath = FixFolderPath( fullPath );
+#endif
 
 	if ( !NFile::DoesFolderExist( fullPath ) )
 		return;

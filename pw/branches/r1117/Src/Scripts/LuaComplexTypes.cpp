@@ -239,26 +239,29 @@ namespace Lua
 
   wstring lua_values<const wstring &>::get(lua_State *L, int idx)
   {
-    wstring result;
+		wstring result;
+		if (CheckStackParameterIdx(L, idx) && lua_istable(L, idx))
+		{
+			NORMALIZE_INDEX();
+			lua_getfield(L, idx, "size");
+			const lua_Number length = lua_isnumber(L, -1) ? lua_tonumber(L, -1) : -1;
+			lua_pop(L, 1);
 
-    if( CheckStackParameterIdx(L, idx) )
-    {
-      NORMALIZE_INDEX();
-
-      int length = 0;
-      lua_pushstring(L, "size");   
-      lua_gettable(L,   idx);
-      if(lua_isnumber(L, -1))
-        length = static_cast<int>(lua_tonumber(L, -1));
-
-      lua_pushstring(L, "c_wstr");
-      lua_gettable(L,   idx);
-      if(!lua_isnil(L, -1))
-        if( wchar_t const* data = reinterpret_cast<wchar_t const*>(lua_tostring(L, -1)) )
-          result.assign(data, length);
-    }
-
-    return result;
+			lua_getfield(L, idx, "c_wstr");
+			size_t bytes = 0;
+			const char* data = lua_tolstring(L, -1, &bytes);
+			// The Lua table carries native wchar_t bytes; validate its count before copying.
+			// memcpy also avoids assuming that Lua's byte string is wchar_t-aligned.
+			if (data && length >= 0 && length <= INT_MAX && length <= bytes / sizeof(wchar_t)
+				&& length == floor(length))
+			{
+				result.resize(static_cast<int>(length));
+				if (!result.empty())
+					memcpy(&result[0], data, result.size() * sizeof(wchar_t));
+			}
+			lua_pop(L, 1);
+		}
+		return result;
   }
 
   int lua_values<const wstring &>::put(lua_State *L, wstring const& value)
@@ -278,7 +281,7 @@ namespace Lua
     lua_settable(L, -3);
 
     lua_pushstring(L, "c_wstr");
-    lua_pushlstring(L, reinterpret_cast<char const*>(value.c_str()), value.size() * 2);
+		lua_pushlstring(L, reinterpret_cast<char const*>(value.c_str()), value.size() * sizeof(wchar_t));
     lua_settable(L, -3);
 
     return 1;

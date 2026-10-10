@@ -58,7 +58,7 @@ PFBaseHero::PFBaseHero(PFWorld* pWorld, const SpawnInfo &info, NDb::EUnitType un
   , experience(0.0f), pPlayer(0), giveWorldGoldOffset(0.0f), distanceRun(0.0f), pDbHero(info.pHero), isolated(false)
   , ripTime(0.0f), inTeamId(info.inTeamId), redeemCost(0.0f), redeemCostRecalculateDelay(-1.0f), cloneCounter(0)
   , abilityModsActualizationTime(-1.0f), fountainPos(VNULL3), canControlMount(false), force(0.0f), raiting(info.playerInfo.heroRating)
-  , originalFaction(_originalFaction), takeModDmg(1.0f), takeTypeUnit(NDb::ESpellTarget(0)), heroSkinId(info.playerInfo.heroSkin)
+	, originalFaction(_originalFaction != NDb::FACTION_NEUTRAL ? _originalFaction : faction), takeModDmg(1.0f), takeTypeUnit(NDb::ESpellTarget(0)), heroSkinId(info.playerInfo.heroSkin)
   , playerGender(NCore::ESex::Male), scriptControlledProgressValue(0.0f), partyId(info.playerInfo.partyId), heroState(EHeroState::First)
   , isAnimatedAvatar(info.playerInfo.isAnimatedAvatar), leagueIndex(info.playerInfo.leagueIndex), ownLeaguePlace(0)
   , timeSinceLastSlice(0.0f), slicesCount(0), isMuted(info.playerInfo.chatMuted), flagId(info.playerInfo.flagId)
@@ -238,9 +238,39 @@ bool PFBaseHero::IsMale() const { return GetDbGender() != NDb::GENDER_FEMALE; }
 const wstring& PFBaseHero::GetPlayerName() const { return IsValid(pPlayer) ? pPlayer->GetPlayerName() : g_linuxHeroEmptyText; }
 const wstring & PFBaseHero::GetDescription() const { return pDbHero ? pDbHero->description.GetText() : NNameMap::wstrNoname; }
 const NDb::UnitDeathParameters* PFBaseHero::GetDeathParams() const { return pDbHero ? pDbHero->deathParameters.GetPtr() : 0; }
-const NDb::Texture * PFBaseHero::GetUiAvatarImage() const { return GetUiAvatarImage(dynamic_cast<const NDb::Hero*>(pDbHero.GetPtr()), GetFaction(), heroSkinId); }
-const NDb::Texture * PFBaseHero::GetUiAvatarImage(const NDb::Hero* dbHeroPtr, NDb::EFaction faction, const string& skinId) { (void)faction; (void)skinId; return dbHeroPtr ? dbHeroPtr->image.GetPtr() : 0; }
-const NDb::HeroSkin* PFBaseHero::GetHeroSkin(const NDb::Hero* dbHeroPtr, const string& skinId) { (void)skinId; return dbHeroPtr && !dbHeroPtr->heroSkins.empty() ? dbHeroPtr->heroSkins[0].GetPtr() : 0; }
+/// Keep the original faction's portrait when gameplay temporarily changes allegiance.
+const NDb::Texture* PFBaseHero::GetUiAvatarImage() const
+{
+	return GetUiAvatarImage(dynamic_cast<const NDb::Hero*>(pDbHero.GetPtr()), GetOriginalFaction(), heroSkinId);
+}
+
+/// Match Windows portrait selection: a skin overrides only the faction images it supplies.
+const NDb::Texture* PFBaseHero::GetUiAvatarImage(const NDb::Hero* dbHeroPtr, NDb::EFaction faction, const string& skinId)
+{
+	if (!dbHeroPtr)
+		return 0;
+	const NDb::HeroSkin* skin = GetHeroSkin(dbHeroPtr, skinId);
+	switch (faction)
+	{
+	case NDb::FACTION_FREEZE:
+		return skin && skin->heroImageA ? skin->heroImageA.GetPtr() : dbHeroPtr->heroImageA.GetPtr();
+	case NDb::FACTION_BURN:
+		return skin && skin->heroImageB ? skin->heroImageB.GetPtr() : dbHeroPtr->heroImageB.GetPtr();
+	default:
+		return dbHeroPtr->image;
+	}
+}
+
+/// Empty, default, and unknown skin IDs use the base hero; ignore absent DB entries.
+const NDb::HeroSkin* PFBaseHero::GetHeroSkin(const NDb::Hero* dbHeroPtr, const string& skinId)
+{
+	if (!dbHeroPtr || skinId.empty() || skinId == "default")
+		return 0;
+	for (int i = 0; i < dbHeroPtr->heroSkins.size(); ++i)
+		if (dbHeroPtr->heroSkins[i] && dbHeroPtr->heroSkins[i]->persistentId == skinId)
+			return dbHeroPtr->heroSkins[i];
+	return 0;
+}
 const NDb::Texture * PFBaseHero::GetUiMinimapImage() const { return 0; }
 void PFBaseHero::DropCooldowns( DropCooldownParams const& dropCooldownParams ) { (void)dropCooldownParams; }
 void PFBaseHero::DropImpulsesCooldowns() {}

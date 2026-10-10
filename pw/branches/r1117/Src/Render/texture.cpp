@@ -171,7 +171,9 @@ bool Texture2D::EnsureLinuxPixelStorage()
     static_cast<size_t>(desc.Width) * static_cast<size_t>(desc.Height) * bytesPerPixel;
   if (linuxPixels.size() != requiredSize)
   {
-    linuxPixels.resize(requiredSize);
+	// Unlike std::vector, nstl leaves bytes uninitialized without an explicit value.
+	// Font atlas padding must stay transparent when allocations reuse image memory.
+	linuxPixels.resize(requiredSize, 0);
     linuxPixelsDirty = true;
   }
 

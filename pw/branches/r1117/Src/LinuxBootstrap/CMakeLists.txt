@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(PrimeWorldLinuxBootstrap LANGUAGES C CXX)
+# Port checkpoint version; keep the shared network/replay version independent.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" PW_LINUX_PORT_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/VERSION")
+project(PrimeWorldLinuxBootstrap VERSION "${PW_LINUX_PORT_VERSION}" LANGUAGES C CXX)
 
 find_package(Threads REQUIRED)
 
@@ -436,6 +439,10 @@ add_library(
 
 add_executable(
   PrimeWorldLinuxClient
+	adventure_presentation.cpp
+	hero_presentation_probe.cpp
+	text_runtime_probe.cpp
+	../System/FileSystem/TestFileSystem.cpp
   ../Client/DefaultScreenBase.cpp
   ../Client/CommandBinds.cpp
   ../Client/Console.cpp
@@ -448,10 +455,12 @@ add_executable(
   ../Client/TooltipsScreenLogic.cpp
   ../Core/BaseFSM.cpp
   ../PW_Client/Game.cpp
+	../PF_GameLogic/AdventureFlashInterface.cpp
   ../PW_Client/LoadingFlashInterface.cpp
   ../PW_Client/LoadingHeroes.cpp
   ../PW_Client/LoadingScreen.cpp
   ../PW_Client/LoadingScreenLogic.cpp
+	../PF_GameLogic/HeroRankCalculator.cpp
   ../PW_Client/LoadingStatusHandler.cpp
   ../PW_Client/LocalGameContext.cpp
   ../PW_Client/LocalCmdScheduler.cpp
@@ -808,6 +817,7 @@ add_executable(
   ../System/StrFormatter.cpp
   ../System/Stream.cpp
   ../System/StrProc.cpp
+	../System/Texts.cpp
   ../System/NameMap.cpp
   ../System/SyncProcessorState.cpp
   ../System/SystemLog.cpp
@@ -879,6 +889,21 @@ add_executable(
   PrimeWorldLinuxSwfProbe
   swf_probe.cpp
 )
+
+enable_testing()
+add_executable(PrimeWorldLinuxPresentationProbe session_presentation_probe.cpp)
+add_test(NAME LinuxSessionPresentation COMMAND PrimeWorldLinuxPresentationProbe)
+set_tests_properties(LinuxSessionPresentation PROPERTIES TIMEOUT 30)
+add_test(NAME LinuxBootstrapInput COMMAND PrimeWorldLinuxClient --bootstrap-input-probe)
+set_tests_properties(LinuxBootstrapInput PROPERTIES TIMEOUT 30)
+add_test(NAME LinuxTextRuntime COMMAND PrimeWorldLinuxClient --bootstrap-text-runtime-probe)
+add_test(NAME LinuxFlashVmRuntime COMMAND PrimeWorldLinuxClient --bootstrap-flash-vm-probe)
+add_test(NAME LinuxFlashUiHost COMMAND PrimeWorldLinuxClient --bootstrap-flash-ui-host-probe)
+add_test(NAME LinuxHeroPresentation COMMAND PrimeWorldLinuxClient --bootstrap-hero-presentation-probe)
+add_test(NAME LinuxAdventureFlashBridge COMMAND PrimeWorldLinuxClient --bootstrap-adventure-flash-probe)
+set_tests_properties(LinuxAdventureFlashBridge PROPERTIES TIMEOUT 30)
+set_tests_properties(LinuxTextRuntime LinuxFlashVmRuntime LinuxFlashUiHost LinuxHeroPresentation
+	PROPERTIES ENVIRONMENT "LC_ALL=C" TIMEOUT 30)
 
 add_library(
   PrimeWorldLinuxGameplayProbe
@@ -993,6 +1018,7 @@ target_link_libraries(
 add_library(
   PrimeWorldLinuxFlashVmRuntimeProbe
   OBJECT
+  adventure_flash_probe.cpp
   flash_vm_runtime_probe.cpp
 )
 target_link_libraries(
@@ -1154,6 +1180,8 @@ add_library(
   ../PW_Client/LocalCmdScheduler.cpp
   ../PW_Client/LoadingScreen.cpp
   ../PW_Client/LoadingScreenLogic.cpp
+	../PF_GameLogic/AdventureFlashInterface.cpp
+	../PF_GameLogic/HeroRankCalculator.cpp
   ../PW_Client/LoadingStatusHandler.cpp
   ../PW_Client/LocalGameContext.cpp
   ../PW_Client/NewLobbyClientPW.cpp
@@ -1679,6 +1707,9 @@ set_source_files_properties(
 
 set_source_files_properties(
   ../PF_GameLogic/PFRenderInterface.cpp
+	../PF_GameLogic/AdventureFlashInterface.cpp
+	adventure_presentation.cpp
+	hero_presentation_probe.cpp
   ../Client/DefaultScreenBase.cpp
   ../Client/CommandBinds.cpp
   ../Client/Console.cpp
@@ -1796,6 +1827,7 @@ set_source_files_properties(
   ../PW_Client/LocalCmdScheduler.cpp
   ../PW_Client/LoadingScreen.cpp
   ../PW_Client/LoadingScreenLogic.cpp
+	../PF_GameLogic/HeroRankCalculator.cpp
   ../PW_Client/LoadingStatusHandler.cpp
   ../PW_Client/LocalGameContext.cpp
   ../PW_Client/NewLobbyClientPW.cpp

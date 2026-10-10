@@ -3,6 +3,9 @@
 #include "Texts.h"
 #include "BinChunkSerializer.h"
 #include "FileSystem/FileStream.h"
+#if defined(__linux__)
+#include <iconv.h>
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 namespace
 {
@@ -21,6 +24,39 @@ inline const wstring& GetEmptyString()
   static wstring empty;
   return empty;
 }
+#if defined(__linux__)
+/// Decode the UTF-16LE payload after its BOM into native wchar_t, independent of locale.
+bool ReadUtf16Payload(Stream* stream, int size, wstring* text)
+{
+	if (size % 2 != 0)
+		return false;
+	if (size == 0)
+		return true;
+
+	vector<char> bytes(size);
+	if (stream->Read(&bytes[0], size) != size)
+		return false;
+
+	// One native character per UTF-16 code unit also leaves room for surrogate pairs.
+	text->resize(size / 2, 0);
+	iconv_t converter = iconv_open("WCHAR_T", "UTF-16LE");
+	if (converter == (iconv_t)-1)
+	{
+		text->clear();
+		return false;
+	}
+	char* input = &bytes[0];
+	char* output = reinterpret_cast<char*>(&(*text)[0]);
+	size_t inputBytes = size;
+	const size_t capacity = text->size() * sizeof(wchar_t);
+	size_t outputBytes = capacity;
+	const bool valid = iconv(converter, &input, &inputBytes, &output, &outputBytes) != (size_t)-1
+		&& inputBytes == 0;
+	iconv_close(converter);
+	text->resize(valid ? (capacity - outputBytes) / sizeof(wchar_t) : 0);
+	return valid;
+}
+#endif
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 } // namespace
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,10 +95,15 @@ const wstring& CTextRef::GetText() const
 			}
 			else
 			{
+#if defined(__linux__)
+				if (!ReadUtf16Payload(pStream, size - 2, &text))
+					systemLog(NLogg::LEVEL_WARNING) << "Invalid UTF-16 text file '" << fileName << "'!" << endl;
+#else
 				int count = (size - 2) / 2;
 				
 				text.resize( count, 0 );
 				pStream->Read( (void *)text.data(), count*2 );
+#endif
 			}
 		}
 	}

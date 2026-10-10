@@ -6,6 +6,7 @@
 #include "../UI/FlashContainer2.h"
 #include "PF_GameLogic/DBSessionRoots.h"
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+#include "../System/CmdLineLite.h"
 #include "PF_GameLogic/StringExecutorBootstrap.h"
 #else
 #include "PF_GameLogic/StringExecutor.h"
@@ -121,8 +122,18 @@ void LoadingScreenLogic::OnLoadedScreenLayout()
   SetProgress( 0 );
 
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-  flashWnd = UI::GetChildChecked<UI::FlashContainer2>( pBaseWindow, "FlashScreen", true );
-  NI_ASSERT(IsValid(flashWnd), "doesnt have FlashScreen in children, will crush!");
+	// Only the explicit headless probe may use Linux's unbound Flash capture without a layout.
+	if (!pBaseWindow)
+	{
+		NI_VERIFY(!uiData && !loadingStatusHandler &&
+			CmdLineLite::Instance().IsKeyDefined("--bootstrap-hero-presentation-probe"),
+			"Loading layout is required outside the Linux capture-only probe", return);
+	}
+	else
+	{
+		flashWnd = UI::GetChildChecked<UI::FlashContainer2>(pBaseWindow, "FlashScreen", true);
+		NI_ASSERT(IsValid(flashWnd), "doesnt have FlashScreen in children, will crush!");
+	}
   flashInterface = new LoadingFlashInterface( flashWnd, "LoaderWindowInterface" );
   loadingHeroes = new LoadingHeroes(flashInterface, m_heroDb);
 
@@ -329,23 +340,9 @@ void LoadingScreenLogic::SetProgress( float pro )
     loadingHeroes->SetMyProgress(pro);
 }
 
+/// Apply the same force accumulation and matchmaking visibility rules on both platforms.
 void LoadingScreenLogic::recalcTeamForce(const HeroInfo& heroInfo)
 {
-#if defined(PW_LINUX_DB_BOOTSTRAP)
-  const uint val = heroInfo.force > 0.0f ? static_cast<uint>(heroInfo.force) : 0;
-
-  if (heroInfo.team == NCore::ETeam::Team1)
-  {
-    leftTeamForce += val;
-  }
-  else if (heroInfo.team == NCore::ETeam::Team2)
-  {
-    rightTeamForce += val;
-  }
-
-  isShowTeamForce = true;
-  return;
-#else
   if (!advMapDescription->matchmakingSettings)
     return; 
   rankMMCalculator = new NGameX::HeroRankCalculator(advMapDescription->matchmakingSettings);
@@ -372,7 +369,6 @@ void LoadingScreenLogic::recalcTeamForce(const HeroInfo& heroInfo)
   tamburFlag = tamburFlag && rankMMCalculator->GetMMRank(heroInfo.raiting).useForceMM;
 
   isShowTeamForce = isShowTeamForce && (!heroInfo.isNovice && tamburFlag && mapType == NDb::MAPTYPE_PVP && heroInfo.basket != NCore::EBasket::Newbie && partyFlag ) ; 
-#endif
 }
 
 void LoadingScreenLogic::AddPlayer( int userId, const NCore::PlayerStartInfo& info, 

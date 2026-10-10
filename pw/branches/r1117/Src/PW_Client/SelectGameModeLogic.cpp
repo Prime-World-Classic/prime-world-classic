@@ -24,6 +24,20 @@ static int s_reconnect_team = 1;
 namespace UI
 {
 
+namespace
+{
+/// Match the narrow caption encoding consumed by ImageLabel through the shipped Lua handlers.
+string EncodeLobbyCaption(const wstring& text)
+{
+#if defined(__linux__)
+	string utf8;
+	NStr::UnicodeToUTF8(&utf8, text);
+	return utf8;
+#else
+	return NStr::ToMBCS(text);
+#endif
+}
+}
 
 #pragma warning(push)
 #pragma warning(disable:4686)
@@ -97,7 +111,7 @@ void SelectGameModeLogic::AddMapEntry( int index, const char * id, const wchar_t
   NI_PROFILE_FUNCTION
   UI::Window * games = pBaseWindow->FindChild( "Maps" );
   if ( games )
-    games->CallHandler( "CppAddMap", index, id, NStr::ToMBCS( title ).c_str(), NStr::ToMBCS( description ).c_str() );
+		games->CallHandler("CppAddMap", index, id, EncodeLobbyCaption(title).c_str(), EncodeLobbyCaption(description).c_str());
 }
 
 
@@ -116,13 +130,13 @@ void SelectGameModeLogic::UpdateSessionInfo( const lobby::SDevGameInfo & info )
       NWorld::IMapCollection * maps = screen->GameCtx()->Maps();
       int mapIndex = maps->FindMapById( info.mapId.c_str() );
       if ( mapIndex >= 0 )
-        title = NStr::ToMBCS( maps->MapTitle( mapIndex ) );
+				title = EncodeLobbyCaption(maps->MapTitle(mapIndex));
     }
 
     NScript::NamedValues params;
     params.SetValue( "currentPlayers", info.playersCount );
     params.SetValue( "maxPlayers", info.maxPlayers );
-    params.SetValue( "name", NStr::ToMBCS( info.name ) );
+		params.SetValue("name", EncodeLobbyCaption(info.name));
     params.SetValue( "mapTitle", title );
     params.SetValue( "started", false );
 

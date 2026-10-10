@@ -116,6 +116,10 @@
 #include "LoadingHeroes.h"
 #include "LoadingScreen.h"
 #include "LoadingScreenLogic.h"
+#include "LinuxBootstrap/session_presentation.h"
+#include "LinuxBootstrap/world_hud_layout.h"
+#include "LinuxBootstrap/adventure_presentation.h"
+#include "LinuxBootstrap/adventure_flash_probe.h"
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
@@ -146,6 +150,8 @@
 #include "UI/Window.h"
 #include "UI/Flash/GameSWFIntegration/SwfTypes.h"
 #include "LinuxBootstrap/flash_vm_runtime_probe.h"
+#include "LinuxBootstrap/text_runtime_probe.h"
+#include "LinuxBootstrap/hero_presentation_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
 #include "libdb/Db.h"
@@ -248,7 +254,12 @@ struct LinuxClientLaunchSettings
   double bootstrapClickIntervalSeconds;
   std::vector<LinuxBootstrapClickSpec> bootstrapClickScript;
   bool diagnosticsOverlay;
+	bool bootstrapLegacyLobbyOverlay;
   bool bootstrapLegacyHeroOverlay;
+	bool bootstrapLoadingUiProbe;
+	bool bootstrapLegacySessionOverlay;
+	bool bootstrapWorldDebug;
+	bool bootstrapAdventureUi = false;
   bool bootstrapNetworkStatusProbe;
   std::string bootstrapFrameCapturePath;
   double bootstrapFrameCaptureAfterSeconds;
@@ -281,7 +292,11 @@ struct LinuxClientLaunchSettings
       bootstrapClickAfterSeconds(0.5),
       bootstrapClickIntervalSeconds(0.25),
       diagnosticsOverlay(false),
+			bootstrapLegacyLobbyOverlay(false),
       bootstrapLegacyHeroOverlay(false),
+			bootstrapLoadingUiProbe(false),
+			bootstrapLegacySessionOverlay(false),
+			bootstrapWorldDebug(false),
       bootstrapNetworkStatusProbe(false),
       bootstrapFrameCaptureAfterSeconds(2.0),
       replayStartPaused(false),
@@ -4221,6 +4236,11 @@ struct LinuxBootstrapScreenRuntime
   bool schedulerStarted;
   bool transceiverStepped;
   bool mapLoadingJobCompleted;
+	LinuxBootstrap::SessionPresentation sessionPresentation = LinuxBootstrap::SessionPresentation::Loading;
+	size_t nativeWorldPresentationFrames = 0;
+	size_t loadingToWorldTransitions = 0;
+	LinuxBootstrap::WorldHudLayout worldHudLayout;
+	LinuxBootstrap::AdventurePresentation adventureUi;
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
   bool replayFileInputActive;
@@ -4930,6 +4950,9 @@ struct LinuxBootstrapScreenRuntime
   bool productionHeroRadioSelectionReady;
   std::string productionHeroRadioSelectionId;
   size_t productionHeroPresentationFrames;
+	size_t productionLoadingPresentationFrames;
+	size_t productionLobbyPresentationFrames;
+	size_t legacyLobbyOverlayPresentationFrames;
   size_t legacyHeroOverlayPresentationFrames;
   bool bootstrapFrameCaptureAttempted;
   bool bootstrapFrameCaptureSucceeded;
@@ -6292,6 +6315,9 @@ struct LinuxBootstrapScreenRuntime
       productionHeroRadioSelectionReady(false),
       productionHeroRadioSelectionId("none"),
       productionHeroPresentationFrames(0),
+			productionLoadingPresentationFrames(0),
+			productionLobbyPresentationFrames(0),
+			legacyLobbyOverlayPresentationFrames(0),
       legacyHeroOverlayPresentationFrames(0),
       bootstrapFrameCaptureAttempted(false),
       bootstrapFrameCaptureSucceeded(false),
@@ -7659,10 +7685,40 @@ bool ResolveLinuxBootstrapKeySym(const std::string& keyName, int* keySym)
   }
   else
   {
-    return false;
+		// Keep the existing aliases, then use X11's native key-name table for gameplay keys.
+		const KeySym nativeKey = XStringToKeysym(TrimAscii(keyName).c_str());
+		if (nativeKey == NoSymbol)
+			return false;
+		*keySym = static_cast<int>(nativeKey);
   }
 
   return true;
+}
+
+/// Exercise the real script key resolver without opening a window or loading game assets.
+bool RunLinuxBootstrapInputProbe()
+{
+	const struct { const char* name; int symbol; } cases[] = {
+		{"q", XK_q}, {"x", XK_x}, {"s", XK_s}, {"t", XK_t}, {"e", XK_e},
+		{"1", XK_1}, {"9", XK_9}, {" A ", XK_A}, {"Escape", XK_Escape},
+		{"page-up", XK_Prior}, {"ENTER", XK_Return}, {"plus", XK_plus},
+		{"", 0}, {"not-a-key", 0}
+	};
+	unsigned failures = 0;
+	for (const auto& test : cases)
+	{
+		int symbol = 0;
+		const bool found = ResolveLinuxBootstrapKeySym(test.name, &symbol);
+		if (found != (test.symbol != 0) || (found && symbol != test.symbol))
+		{
+			fprintf(stdout, "Bootstrap input: '%s' FAIL\n", test.name);
+			++failures;
+		}
+	}
+	if (ResolveLinuxBootstrapKeySym("q", 0))
+		++failures;
+	fprintf(stdout, "Bootstrap input: 15 key checks, failures=%u\n", failures);
+	return failures == 0;
 }
 
 bool ParseLinuxBootstrapWaitSeconds(const std::string& value, double* waitSeconds)
@@ -7838,6 +7894,8 @@ void ReadBootstrapClickScript(
     {
       script->push_back(spec);
     }
+		else
+			fprintf(stderr, "Ignoring invalid bootstrap input token: %s\n", tokens[i].c_str());
   }
 }
 
@@ -7879,11 +7937,24 @@ bool ReadBootstrapLegacyHeroOverlayFlag(int argc, char** argv)
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-legacy-hero-overlay");
 }
 
+bool ReadBootstrapLegacyLobbyOverlayFlag(int argc, char** argv)
+{
+	(void)argc;
+	(void)argv;
+	return CmdLineLite::Instance().IsKeyDefined("--bootstrap-legacy-lobby-overlay");
+}
+
 bool ReadBootstrapNetworkStatusProbeFlag(int argc, char** argv)
 {
   (void)argc;
   (void)argv;
   return CmdLineLite::Instance().IsKeyDefined("--bootstrap-network-status-probe");
+}
+
+/// Inspect the shipped loading SWF without the bootstrap's loading/world overlay.
+bool ReadBootstrapLoadingUiProbeFlag()
+{
+	return CmdLineLite::Instance().IsKeyDefined("--bootstrap-loading-ui-probe");
 }
 
 std::string ReadBootstrapFrameCapturePath(int argc, char** argv)
@@ -30172,6 +30243,89 @@ void ShutdownLinuxRenderBootstrap(LinuxRenderBootstrap* renderBootstrap)
   renderBootstrap->started = false;
 }
 
+/// Verify production layout scaling, global text placement, clipping, and GL state restoration.
+bool RunLinuxFlashViewportProbe(Render::IUIRenderer* uiRenderer, unsigned int width, unsigned int height)
+{
+#if defined(PW_LINUX_OPENGL_BOOTSTRAP)
+	if (width < 256 || height < 192)
+		return false;
+	const CVec4 oldResolution = uiRenderer->GetResolutionCoefs();
+	glPushAttrib(GL_VIEWPORT_BIT | GL_SCISSOR_BIT | GL_COLOR_BUFFER_BIT);
+	const GLint viewport[] = {7, 11, static_cast<GLint>(width) - 14, static_cast<GLint>(height) - 22};
+	Render::Texture2DRef atlas = Render::CreateTexture2D(1, 1, 1, Render::RENDER_POOL_MANAGED, Render::FORMAT_A8R8G8B8);
+	Render::LockedRect pixels = atlas->LockRect(0, Render::LOCK_DEFAULT);
+	if (!pixels.data)
+	{
+		glPopAttrib();
+		return false;
+	}
+	memset(pixels.data, 255, 4);
+	atlas->UnlockRect(0);
+	const float scales[][2] = {{1.0f, 1.0f}, {0.5f, 0.5f}, {0.5f, 0.75f}};
+	bool passed = true;
+	for (unsigned int sample = 0; sample < sizeof(scales) / sizeof(scales[0]); ++sample)
+	{
+		const float sx = scales[sample][0], sy = scales[sample][1];
+		glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+		glDisable(GL_SCISSOR_TEST);
+		glClearColor(0, 0, 0, 1);
+		glClear(GL_COLOR_BUFFER_BIT);
+		uiRenderer->SetResolutionCoefs(2.0f * sx / viewport[2], 2.0f * sy / viewport[3], sx, sy);
+		uiRenderer->StartFrame();
+		uiRenderer->BeginQueue();
+		Render::IFlashRenderer* flash = uiRenderer->GetFlashRenderer();
+		flash->BeginDisplay(static_cast<int>(40 / sx), static_cast<int>(36 / sy),
+			static_cast<int>(160 / sx), static_cast<int>(96 / sy), 0, 100, 0, 100, true);
+		Render::ShapeVertex triangle[3] = {};
+		triangle[0].x = -100; triangle[0].y = -100;
+		triangle[1].x = 300; triangle[1].y = -100;
+		triangle[2].x = -100; triangle[2].y = 300;
+		for (int i = 0; i < 3; ++i)
+			triangle[i].color = Render::Color(255, 0, 0, 255);
+		flash->DrawTriangleList(triangle, 3, 1);
+		// Flash fonts already emit global UI coordinates, not local movie coordinates.
+		Render::UIQuad text(Render::UIPoint(80 / sx, 60 / sy), Render::UIPoint(216 / sx, 108 / sy),
+			CVec2(0.5f, 0.5f), CVec2(0.5f, 0.5f), CVec2(0, 0), CVec2(1, 1));
+		Render::SMaterialParams params;
+		params.color0 = Render::Color(0, 255, 0, 255);
+		flash->RenderTextBevel(false, flash::SWF_RGBA(0, 0, 0, 0), atlas.GetPtr());
+		uiRenderer->BeginText();
+		uiRenderer->AddTextQuad(text, params);
+		uiRenderer->EndText(0);
+		flash->EndDisplay();
+		uiRenderer->EndQueue();
+		glEnable(GL_SCISSOR_TEST);
+		glScissor(3, 5, 37, 39);
+		uiRenderer->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
+		const auto matches = [&](int x, int y, unsigned char r, unsigned char g) {
+			unsigned char pixel[4] = {};
+			glReadPixels(viewport[0] + x, viewport[1] + viewport[3] - y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+			if (pixel[0] != r || pixel[1] != g || pixel[2] != 0)
+				fprintf(stdout, "Flash viewport pixel (%d,%d): %u,%u,%u,%u expected=%u,%u,0\n",
+					x, y, pixel[0], pixel[1], pixel[2], pixel[3], r, g);
+			return pixel[0] == r && pixel[1] == g && pixel[2] == 0;
+		};
+		const bool geometry = matches(48, 44, 255, 0) && matches(192, 124, 255, 0);
+		const bool textAligned = matches(120, 84, 0, 255);
+		const bool clipped = matches(32, 44, 0, 0) && matches(208, 84, 0, 0) && matches(48, 140, 0, 0);
+		GLint restoredViewport[4] = {}, restoredScissor[4] = {};
+		glGetIntegerv(GL_VIEWPORT, restoredViewport);
+		glGetIntegerv(GL_SCISSOR_BOX, restoredScissor);
+		const bool restored = memcmp(viewport, restoredViewport, sizeof(viewport)) == 0 &&
+			glIsEnabled(GL_SCISSOR_TEST) && restoredScissor[0] == 3 && restoredScissor[1] == 5 &&
+			restoredScissor[2] == 37 && restoredScissor[3] == 39;
+		fprintf(stdout, "Flash viewport probe: scale=%.2f/%.2f geometry=%s text=%s clip=%s restore=%s\n",
+			sx, sy, geometry ? "yes" : "NO", textAligned ? "yes" : "NO", clipped ? "yes" : "NO", restored ? "yes" : "NO");
+		passed = geometry && textAligned && clipped && restored && passed;
+	}
+	uiRenderer->SetResolutionCoefs(oldResolution.x, oldResolution.y, oldResolution.z, oldResolution.w);
+	glPopAttrib();
+	return passed;
+#else
+	return false;
+#endif
+}
+
 // Exercises queued Flash commands through the native OpenGL UI renderer and checks
 // replay state, texturing, masking, fill morphing, and framebuffer output.
 bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
@@ -31068,8 +31222,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
     fprintf(stderr, "Flash renderer probe failed: unexpected replay state or framebuffer output.\n");
   }
 
+	const bool viewportPassed = RunLinuxFlashViewportProbe(uiRenderer, width, height);
   uiRenderer->Release();
-  return passed;
+	return passed && viewportPassed;
 #else
   (void)width;
   (void)height;
@@ -31544,8 +31699,9 @@ bool InitializeLinuxOverlayFreeType(
   std::string primeWorldError;
   std::string fallbackError;
 
-  if (TryInitializeLinuxOverlayFreeTypeFace(overlay, primeWorldFont, pixelSize, &primeWorldError) ||
-      TryInitializeLinuxOverlayFreeTypeFace(overlay, fallbackFont, pixelSize, &fallbackError))
+	// Dense native HUD captions use the bundled UI text face, not the decorative title face.
+	if (TryInitializeLinuxOverlayFreeTypeFace(overlay, fallbackFont, pixelSize, &fallbackError) ||
+		TryInitializeLinuxOverlayFreeTypeFace(overlay, primeWorldFont, pixelSize, &primeWorldError))
   {
     return true;
   }
@@ -31922,7 +32078,8 @@ bool InjectLinuxBootstrapLobbyClick(
 {
   if (!inputState ||
       !settings.bootstrapClickEnabled ||
-      !runtime.visibleMenuReady ||
+		!LinuxBootstrap::CanDispatchBootstrapInput(runtime.visibleMenuReady,
+			runtime.loadingInitialized && IsValid(runtime.loadingScreen)) ||
       clickIndex >= settings.bootstrapClickScript.size())
   {
     return false;
@@ -32078,6 +32235,36 @@ bool IsLinuxBootstrapLoadingScreenActive(const LinuxBootstrapScreenRuntime* runt
     IsValid(runtime->loadingScreen);
 }
 
+/// Loading objects remain alive for progress/status/replay bookkeeping after the visual handoff.
+bool IsLinuxWorldPresentationActive(const LinuxBootstrapScreenRuntime* runtime)
+{
+	return IsLinuxBootstrapLoadingScreenActive(runtime) &&
+		runtime->sessionPresentation == LinuxBootstrap::SessionPresentation::World;
+}
+
+/// Keep rendering and input on the same presentation, including inspection and compatibility modes.
+void UpdateLinuxSessionPresentation(const LinuxClientLaunchSettings& settings,
+	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime* runtime)
+{
+	if (!IsLinuxBootstrapLoadingScreenActive(runtime))
+		return;
+	const bool renderReady = runtime->productionLoadingPresentationFrames > 0 && map.tactical.ready &&
+		(!map.terrainElementPayloads.empty() || !map.staticGeometryPayloads.empty());
+	const LinuxBootstrap::SessionPresentation next = LinuxBootstrap::ResolveSessionPresentation(
+		settings.bootstrapLoadingUiProbe, settings.bootstrapLegacySessionOverlay,
+		runtime->mapLoadingJobCompleted,
+		(runtime->transceiverWorldAttached || runtime->replayInputWorldAttached) && IsValid(runtime->transceiverWorld), renderReady);
+	if (next == LinuxBootstrap::SessionPresentation::World && next != runtime->sessionPresentation)
+	{
+		++runtime->loadingToWorldTransitions;
+		runtime->characterPreviewDragging = false;
+		runtime->mapPreviewDragging = false;
+		runtime->mapPreviewPanning = false;
+	}
+	runtime->sessionPresentation = next;
+	runtime->loadingScreen->ShowMainWindow(next != LinuxBootstrap::SessionPresentation::World);
+}
+
 const Game::LoadingFlashInterface* GetActiveLinuxLoadingFlashInterface(
   const LinuxBootstrapScreenRuntime* runtime)
 {
@@ -32129,7 +32316,7 @@ bool IsLinuxVisibleMenuActive(
   const LinuxBootstrapScreenRuntime* runtime
 )
 {
-  return runtime &&
+  return settings.bootstrapLegacyLobbyOverlay && runtime &&
     runtime->visibleMenuReady &&
     !IsLinuxBootstrapHeroScreenActive(runtime) &&
     !IsLinuxBootstrapLoadingScreenActive(runtime) &&
@@ -32540,7 +32727,8 @@ LinuxLiveMinimapLayout ResolveLinuxLiveMinimapLayout(
   int screenWidth,
   int screenHeight,
   bool loadingActive,
-  const LinuxSelectedMapPreview* selectedMapPreview
+  const LinuxSelectedMapPreview* selectedMapPreview,
+	bool nativeWorld
 )
 {
   LinuxLiveMinimapLayout layout;
@@ -32552,13 +32740,16 @@ LinuxLiveMinimapLayout ResolveLinuxLiveMinimapLayout(
     return layout;
   }
 
-  layout.mapSize = loadingActive ?
+	const LinuxBootstrap::WorldHudLayout dock = LinuxBootstrap::ResolveWorldHudLayout(screenWidth, screenHeight);
+	if (nativeWorld && !dock.ready)
+		return layout;
+  layout.mapSize = nativeWorld ? dock.minimap.width : loadingActive ?
     std::max(128, std::min(150, screenWidth / 8)) :
     std::max(168, std::min(236, screenWidth / 6));
   const int padding = 8;
-  layout.panelX = std::max(14, screenWidth - layout.mapSize - 24);
-  layout.panelY = 42;
-  if (loadingActive)
+  layout.panelX = nativeWorld ? dock.minimap.x : std::max(14, screenWidth - layout.mapSize - 24);
+  layout.panelY = nativeWorld ? dock.minimap.y : 42;
+  if (loadingActive && !nativeWorld)
   {
     const int rosterH = std::max(150, std::min(188, screenHeight / 4 + 8));
     const int rosterY = std::max(64, screenHeight - rosterH - 48);
@@ -32569,7 +32760,8 @@ LinuxLiveMinimapLayout ResolveLinuxLiveMinimapLayout(
       chatY + chatH + 8,
       std::min(rosterY - layout.mapSize - 12, screenHeight - layout.mapSize - 46));
   }
-  layout.panelY = std::max(
+	if (!nativeWorld)
+		layout.panelY = std::max(
     38,
     std::min(layout.panelY, std::max(38, screenHeight - layout.mapSize - 46)));
   layout.innerX = layout.panelX + padding;
@@ -33100,7 +33292,9 @@ void BuildLinuxBootstrapHeroPlayerPreview(
         true;
       const string heroTitleText = (heroTitle.empty() ? heroId : heroTitle).c_str();
       const wstring nicknameW = NStr::ToUnicode(nickname);
-      const wstring heroTitleW = NStr::ToUnicode(heroTitleText);
+			// Catalog titles come from UTF-16 textrefs decoded to UTF-8, not the process locale.
+			wstring heroTitleW;
+			NStr::UTF8ToUnicode(&heroTitleW, heroTitleText);
       const wchar_t* readyText = ready ? L"<style:green>ready</style>" : L"<style:money>not ready</style>";
 
       lines->push_back(NStr::StrFmtW(
@@ -33294,7 +33488,8 @@ void UpdateLinuxBootstrapHeroScreenPreview(
   preview->runtimeHeroPlayersReady = debugPlayersLabel != 0;
   if (debugPlayersLabel && preview->runtimeHeroPlayersText.empty())
   {
-    const string caption = debugPlayersLabel->GetCaptionText();
+		string caption;
+		NStr::UnicodeToUTF8(&caption, debugPlayersLabel->GetCaptionTextW());
     if (!caption.empty())
     {
       preview->runtimeHeroPlayersText = caption.c_str();
@@ -42254,6 +42449,7 @@ void EnsureLinuxBootstrapLoadingScreen(
   EnsureLinuxBootstrapGameScheduler(settings, runtime);
   DriveLinuxBootstrapGameScheduler(settings, selectedMapPreview, runtime);
   DriveLinuxBootstrapLoadingRuntime(runtime);
+  UpdateLinuxSessionPresentation(settings, selectedMapPreview, runtime);
   UpdateLinuxBootstrapLoadingScreenPreview(loadingUiPreview, *runtime, preview);
 }
 
@@ -42561,8 +42757,9 @@ void DriveLinuxBootstrapScreenRuntime(
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
-    HandleLinuxReplayInputControls(inputState, settings.width, settings.height, runtime);
-    for (size_t i = 0; i < inputState.frameEvents.size(); ++i)
+		if (runtime->sessionPresentation != LinuxBootstrap::SessionPresentation::Loading)
+			HandleLinuxReplayInputControls(inputState, settings.width, settings.height, runtime);
+		for (size_t i = 0; !IsLinuxWorldPresentationActive(runtime) && i < inputState.frameEvents.size(); ++i)
     {
       DispatchLinuxBootstrapUiEvent(runtime->loadingScreen, inputState.frameEvents[i], runtime);
     }
@@ -42570,6 +42767,7 @@ void DriveLinuxBootstrapScreenRuntime(
     EnsureLinuxBootstrapGameScheduler(settings, runtime);
     DriveLinuxBootstrapGameScheduler(settings, selectedMapPreview, runtime);
     DriveLinuxBootstrapLoadingRuntime(runtime);
+    UpdateLinuxSessionPresentation(settings, selectedMapPreview, runtime);
     runtime->loadingScreen->Step(NMainFrame::IsAppActive());
     preview->runtimeBootstrapScreenEventCount += inputState.frameEvents.size();
     UpdateLinuxVisibleMenuRuntime(runtime);
@@ -42629,8 +42827,11 @@ void DrawLinuxBootstrapScreenRuntime(
 
   if (IsLinuxBootstrapLoadingScreenActive(runtime))
   {
-    runtime->loadingScreen->Draw(NMainFrame::IsAppActive());
-    DrawLinuxBootstrapNetworkStatusScreen(runtime, preview);
+		if (!IsLinuxWorldPresentationActive(runtime))
+		{
+			runtime->loadingScreen->Draw(NMainFrame::IsAppActive());
+			DrawLinuxBootstrapNetworkStatusScreen(runtime, preview);
+		}
     UpdateLinuxBootstrapScreenPreview(loadingUiPreview, *runtime, preview);
     return;
   }
@@ -43796,7 +43997,10 @@ bool HandleLinuxCharacterPreviewInput(
     return false;
   }
 
-  if (IsLinuxBootstrapHeroScreenActive(runtime) && !settings.bootstrapLegacyHeroOverlay)
+	if ((IsLinuxBootstrapHeroScreenActive(runtime) && !settings.bootstrapLegacyHeroOverlay) ||
+		(IsLinuxBootstrapLoadingScreenActive(runtime) && runtime->sessionPresentation == LinuxBootstrap::SessionPresentation::Loading) ||
+		(!IsLinuxBootstrapHeroScreenActive(runtime) && !IsLinuxBootstrapLoadingScreenActive(runtime) &&
+			!settings.bootstrapLegacyLobbyOverlay))
   {
     runtime->characterPreviewDragging = false;
     return false;
@@ -43810,7 +44014,7 @@ bool HandleLinuxCharacterPreviewInput(
 
   bool changed = false;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
-  const LinuxScreenRect previewRect = ResolveLinuxCharacterPreviewRect(
+  const LinuxScreenRect previewRect = IsLinuxWorldPresentationActive(runtime) ? LinuxScreenRect() : ResolveLinuxCharacterPreviewRect(
     settings.width,
     settings.height,
     loadingActive
@@ -43910,6 +44114,8 @@ bool HandleLinuxCharacterPreviewInput(
     switch (message.msg)
     {
       case NMainFrame::SWindowsMsg::KEY_DOWN:
+				if (IsLinuxWorldPresentationActive(runtime))
+					break;
         switch (message.nKey)
         {
           case XK_a:
@@ -45369,6 +45575,8 @@ bool IsLinuxMapPreviewUiReservedPoint(
   {
     return false;
   }
+	if (IsLinuxWorldPresentationActive(runtime) && runtime->worldHudLayout.Contains(x, y))
+		return true;
 
   if (IsPointInsideLinuxScreenRect(heroPreviewRect, x, y) ||
       IsPointInsideLinuxLiveHudCommandSurface(runtime, x, y))
@@ -45390,6 +45598,7 @@ bool HandleLinuxMapPreviewInput(
 {
   if (!runtime ||
       IsLinuxDiagnosticsOverlayActive(settings, runtime) ||
+		(IsLinuxBootstrapLoadingScreenActive(runtime) && runtime->sessionPresentation == LinuxBootstrap::SessionPresentation::Loading) ||
       !selectedMapPreview.tactical.ready)
   {
     return false;
@@ -45410,7 +45619,7 @@ bool HandleLinuxMapPreviewInput(
   }
 
   bool changed = false;
-  const LinuxScreenRect heroPreviewRect = ResolveLinuxCharacterPreviewRect(
+  const LinuxScreenRect heroPreviewRect = IsLinuxWorldPresentationActive(runtime) ? LinuxScreenRect() : ResolveLinuxCharacterPreviewRect(
     settings.width,
     settings.height,
     loadingActive
@@ -53010,6 +53219,7 @@ struct LinuxOverlayUiRenderContext
 void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContext)
 {
   const LinuxSelectedMapPreview* selectedMapPreview = renderContext.selectedMapPreview;
+	const bool debugGeometry = !IsLinuxWorldPresentationActive(renderContext.screenRuntime) || renderContext.settings->bootstrapWorldDebug;
   if (renderContext.screenRuntime)
   {
     renderContext.screenRuntime->mapPreviewRendererStaticMeshDrawn = false;
@@ -53268,6 +53478,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
       terrainElementMaterialStats.missingGL;
   }
 
+	if (debugGeometry)
+	{
   SetOpenGlColor(54, 83, 88, 150);
   glBegin(GL_LINES);
   const int gridLines = 12;
@@ -53290,6 +53502,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   glVertex3f(extentX, 0.1f, extentZ);
   glVertex3f(-extentX, 0.1f, extentZ);
   glEnd();
+	}
 
   size_t staticPayloads = 0;
   size_t staticTriangles = 0;
@@ -53366,6 +53579,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
       animatedMaterialStats.missingGL;
   }
 
+	if (debugGeometry)
+	{
   size_t scriptAreas = 0;
   const size_t scriptAreaSegments = DrawLinuxMapScriptAreaPreview(
     selectedMapPreview,
@@ -53497,6 +53712,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewEngineStartHumanSlots = engineHumanSlots;
     renderContext.screenRuntime->mapPreviewEngineStartBotSlots = engineBotSlots;
   }
+
+	}
 
   NWorld::PFWorld* dynamicWorld = renderContext.screenRuntime ?
     dynamic_cast<NWorld::PFWorld*>(renderContext.screenRuntime->transceiverWorld.GetPtr()) :
@@ -58528,7 +58745,9 @@ void DrawLinuxLiveHudPercentBar(
   SetOpenGlColor(92, 111, 124, 230);
   DrawOpenGlBorderRect(x, y, width, height);
   SetOpenGlColor(241, 244, 239, 238);
-  DrawOpenGlText(overlay, x + 8, y + height - 6, text);
+	// Use font metrics and width truncation instead of a fixed baseline that crosses the row above.
+	DrawOpenGlTextInBox(overlay, x + 8, y, std::max(1, width - 16), height, text,
+		LINUX_OPENGL_TEXT_ALIGN_LEFT, LINUX_OPENGL_TEXT_VALIGN_CENTER, false);
 }
 
 void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
@@ -58570,17 +58789,21 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
   const LinuxLiveUnitHudState& hero = runtime->liveHeroState;
   const LinuxLiveUnitHudState& target = runtime->liveTargetState;
   const bool hasTarget = target.ready;
+	const bool nativeWorld = IsLinuxWorldPresentationActive(runtime);
+	const LinuxBootstrap::WorldHudLayout& dock = runtime->worldHudLayout;
+	if (nativeWorld && !dock.ready)
+		return;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
-  const int panelWidth = loadingActive ?
+  const int panelWidth = nativeWorld ? dock.hero.width : loadingActive ?
     std::min(std::max(520, width / 2 - 24), std::max(360, width - 84)) :
     std::min(std::max(720, width * 3 / 5), std::max(360, width - 88));
-  const int panelHeight = hasTarget ? 176 : 138;
+  const int panelHeight = nativeWorld ? dock.hero.height : hasTarget ? 176 : 138;
   const int rosterH = std::max(150, std::min(188, height / 4 + 8));
   const int rosterTop = std::max(64, height - rosterH - 48);
-  const int panelLeft = loadingActive ?
+  const int panelLeft = nativeWorld ? dock.hero.x : loadingActive ?
     std::max(42, width - panelWidth - 42) :
     std::max(44, (width - panelWidth) / 2);
-  const int panelTop = loadingActive ?
+  const int panelTop = nativeWorld ? dock.hero.y : loadingActive ?
     std::max(126, rosterTop - panelHeight - 14) :
     std::max(72, height - 38 - panelHeight - 18);
   const int padding = 10;
@@ -58663,6 +58886,9 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     hero.objectId,
     hero.level,
     hero.gold);
+	if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+		snprintf(buffer, sizeof(buffer), "%s  Lv %d  Gold %d",
+			heroPreview ? MakeOpenGlOverlayText(overlay, heroPreview->title, "Hero").c_str() : "Hero", hero.level, hero.gold);
   DrawOpenGlTextInBox(
     overlay,
     textLeft,
@@ -58686,6 +58912,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
     static_cast<double>(hero.x),
     static_cast<double>(hero.y),
     hero.moving ? "moving" : (hero.dead ? "dead" : "ready"));
+	if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+		snprintf(buffer, sizeof(buffer), "%s", hero.dead ? "Dead" : hero.moving ? "Moving" : "Ready");
   DrawOpenGlTextInBox(
     overlay,
     textLeft,
@@ -58956,6 +59184,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       target.objectId,
       DescribeLinuxLiveHudUnitKind(target.kind),
       target.faction);
+		if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+			snprintf(buffer, sizeof(buffer), "%s", DescribeLinuxLiveHudUnitKind(target.kind));
     DrawOpenGlTextInBox(
       overlay,
       targetX + 8,
@@ -58975,6 +59205,8 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       "dist %.1f  %s",
       static_cast<double>(target.distance),
       target.source.empty() ? "none" : target.source.c_str());
+		if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+			snprintf(buffer, sizeof(buffer), "Distance %.1f", static_cast<double>(target.distance));
     DrawOpenGlTextInBox(
       overlay,
       targetX + 8,
@@ -58999,7 +59231,7 @@ void DrawLinuxLiveHudOverlay(const LinuxOverlayUiRenderContext& renderContext)
       targetX + 8,
       targetY + 50,
       std::max(120, targetPanelWidth - 16),
-      16,
+      20,
       target.lifePercent,
       target.lifePercent < 0.28f ? 224 : 215,
       target.lifePercent < 0.28f ? 72 : 184,
@@ -59117,7 +59349,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
   const int height = renderContext.height;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
   const LinuxLiveMinimapLayout layout =
-    ResolveLinuxLiveMinimapLayout(width, height, loadingActive, selectedMapPreview);
+    ResolveLinuxLiveMinimapLayout(width, height, loadingActive, selectedMapPreview, IsLinuxWorldPresentationActive(runtime));
   if (!layout.ready)
   {
     return;
@@ -59477,6 +59709,7 @@ void DrawLinuxLiveMinimapOverlay(const LinuxOverlayUiRenderContext& renderContex
       static_cast<unsigned long>(objectiveHealthBars));
   }
   SetOpenGlColor(182, 197, 197, 224);
+	if (!IsLinuxWorldPresentationActive(runtime) || renderContext.settings->bootstrapWorldDebug)
   DrawOpenGlTextInBox(
     overlay,
     panelX + padding,
@@ -59782,12 +60015,16 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
   const int width = renderContext.width;
   const int height = renderContext.height;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
-  const int panelW = std::min(std::max(650, width / 2), std::max(360, width - 84));
+	const bool nativeWorld = IsLinuxWorldPresentationActive(runtime);
+	const LinuxBootstrap::WorldHudLayout& dock = runtime->worldHudLayout;
+	if (nativeWorld && !dock.ready)
+		return;
+  const int panelW = nativeWorld ? dock.scoreboard.width - 16 : std::min(std::max(650, width / 2), std::max(360, width - 84));
   const int panelH = 74;
-  const int panelX = loadingActive ?
+  const int panelX = nativeWorld ? dock.scoreboard.x + 8 : loadingActive ?
     std::max(42, width - panelW - 42) :
     std::max(42, (width - panelW) / 2);
-  const int panelY = loadingActive ?
+  const int panelY = nativeWorld ? dock.scoreboard.y + 7 : loadingActive ?
     std::max(164, std::min(226, height / 4)) :
     18;
   const int gap = 10;
@@ -59841,6 +60078,11 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     sizeof(buffer),
     "World step %d",
     runtime->transceiverWorldStep >= 0 ? runtime->transceiverWorldStep : 0);
+	if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+	{
+		const int seconds = std::max(0, static_cast<int>(world->GetTimeElapsed()));
+		snprintf(buffer, sizeof(buffer), "%02d:%02d", seconds / 60, seconds % 60);
+	}
   SetOpenGlColor(245, 236, 204, 242);
   DrawOpenGlTextInBox(
     overlay,
@@ -59883,6 +60125,8 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     "Obj T%lu  Main %lu",
     static_cast<unsigned long>(scoreboardTowerMarkers),
     static_cast<unsigned long>(scoreboardMainBuildingMarkers));
+	if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+		snprintf(buffer, sizeof(buffer), "Towers %lu", static_cast<unsigned long>(scoreboardTowerMarkers));
   SetOpenGlColor(184, 200, 199, 226);
   DrawOpenGlTextInBox(
     overlay,
@@ -59902,6 +60146,8 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     "Cmd %lu  Replay %lu B",
     static_cast<unsigned long>(runtime->transceiverCommands),
     static_cast<unsigned long>(runtime->replayWriterBytesWritten));
+	if (nativeWorld && !renderContext.settings->bootstrapWorldDebug)
+		snprintf(buffer, sizeof(buffer), "Bases %lu", static_cast<unsigned long>(scoreboardMainBuildingMarkers));
   SetOpenGlColor(152, 173, 178, 222);
   DrawOpenGlTextInBox(
     overlay,
@@ -59915,7 +60161,7 @@ void DrawLinuxLiveScoreboardOverlay(const LinuxOverlayUiRenderContext& renderCon
     false
   );
 
-  if (neutralTeam.creeps > 0)
+  if (neutralTeam.creeps > 0 && (!nativeWorld || renderContext.settings->bootstrapWorldDebug))
   {
     snprintf(
       buffer,
@@ -63793,7 +64039,42 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
   {
     if (IsLinuxBootstrapLoadingScreenActive(renderContext.screenRuntime))
     {
-      RenderWindowOverlayOpenGlVisibleMenu(renderContext);
+			if (IsLinuxWorldPresentationActive(renderContext.screenRuntime))
+			{
+				++renderContext.screenRuntime->nativeWorldPresentationFrames;
+				renderContext.screenRuntime->visibleMenuPath = "Native OpenGL world";
+				renderContext.screenRuntime->worldHudLayout = LinuxBootstrap::ResolveWorldHudLayout(width, height);
+				glClearColor(0.06f, 0.09f, 0.07f, 1.0f);
+				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				DrawLinuxBootstrap3DPreview(renderContext);
+				ApplyOpenGl2DProjection(width, height);
+				const bool adventureReady = renderContext.settings->bootstrapAdventureUi &&
+					renderContext.screenRuntime->adventureUi.Initialize(UI::GetUser());
+				if (adventureReady)
+				{
+					renderContext.screenRuntime->adventureUi.Step(renderContext.inputState->lastDeltaSeconds);
+					renderContext.screenRuntime->adventureUi.Render();
+				}
+				else
+				{
+				DrawLinuxLiveScoreboardOverlay(renderContext);
+				DrawLinuxLiveMinimapOverlay(renderContext);
+				DrawLinuxLiveHudOverlay(renderContext);
+				}
+				if (renderContext.settings->bootstrapWorldDebug)
+					DrawLinuxLiveEventFeedOverlay(renderContext);
+				DrawLinuxReplayInputControlOverlay(renderContext);
+				DrawLinuxBootstrapNetworkStatusScreen(renderContext.screenRuntime,
+					const_cast<LinuxUiRootPreview*>(renderContext.uiRootPreview));
+				Render::GetUIRenderer()->Render(Render::ERenderWhat::_2D, Render::Texture2DRef(), Render::Texture2DRef());
+			}
+			else if (renderContext.screenRuntime->sessionPresentation == LinuxBootstrap::SessionPresentation::Loading)
+			{
+				++renderContext.screenRuntime->productionLoadingPresentationFrames;
+				renderContext.screenRuntime->visibleMenuPath = "Production Loading XDB/SWF + Game::LoadingScreen";
+			}
+			else
+				RenderWindowOverlayOpenGlVisibleMenu(renderContext);
     }
     else if (IsLinuxBootstrapHeroScreenActive(renderContext.screenRuntime))
     {
@@ -63812,9 +64093,21 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
         ++renderContext.screenRuntime->productionHeroPresentationFrames;
       }
     }
-    else
+		else if (renderContext.screenRuntime)
     {
-      RenderWindowOverlayOpenGlLobbySelectGameMode(renderContext);
+			if (renderContext.settings->bootstrapLegacyLobbyOverlay)
+			{
+				++renderContext.screenRuntime->legacyLobbyOverlayPresentationFrames;
+				renderContext.screenRuntime->visibleMenuPath =
+					"Legacy Linux lobby overlay + NGameX::SelectGameModeScreen";
+				RenderWindowOverlayOpenGlLobbySelectGameMode(renderContext);
+			}
+			else
+			{
+				++renderContext.screenRuntime->productionLobbyPresentationFrames;
+				renderContext.screenRuntime->visibleMenuPath =
+					"Production Lobby_SelectGameMode XDB/Lua + NGameX::SelectGameModeScreen";
+			}
     }
     return;
   }
@@ -64784,6 +65077,11 @@ void WriteStartupLog(
   logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
   logFile << "  bootstrapLegacyHeroOverlay="
           << (settings.bootstrapLegacyHeroOverlay ? "yes" : "no") << "\n";
+	logFile << "  bootstrapLoadingUiProbe=" << (settings.bootstrapLoadingUiProbe ? "yes" : "no") << "\n";
+	logFile << "  bootstrapLegacySessionOverlay=" << (settings.bootstrapLegacySessionOverlay ? "yes" : "no") << "\n";
+	logFile << "  bootstrapWorldDebug=" << (settings.bootstrapWorldDebug ? "yes" : "no") << "\n";
+	logFile << "  bootstrapLegacyLobbyOverlay="
+		<< (settings.bootstrapLegacyLobbyOverlay ? "yes" : "no") << "\n";
   logFile << "  bootstrapNetworkStatusProbe="
           << (settings.bootstrapNetworkStatusProbe ? "yes" : "no") << "\n";
   logFile << "  bootstrapFrameCapture="
@@ -67115,6 +67413,47 @@ void AppendRuntimeInputLog(
   UI::Window* finalFirstGameRow = finalGamesList ? finalGamesList->GetItemByIndex(0) : 0;
   UI::Window* finalSecondGameRow = finalGamesList ? finalGamesList->GetItemByIndex(1) : 0;
   UI::Window* finalThirdGameRow = finalGamesList ? finalGamesList->GetItemByIndex(2) : 0;
+	// Compare every Lua-populated row with its source data, including off-screen rows.
+	const auto captionMatches = [](UI::Window* row, const char* name, const wstring& expected) {
+		UI::ImageLabel* label = row ? dynamic_cast<UI::ImageLabel*>(row->FindChild(name)) : 0;
+		return label && label->GetCaptionTextW() == expected;
+	};
+	NWorld::IMapCollection* finalMapCollection = IsValid(screenRuntime.gameContext) ?
+		screenRuntime.gameContext->Maps() : 0;
+	NDb::Ptr<NDb::MapList> finalCustomMapList = NDb::Get<NDb::MapList>(NDb::DBID("/Tech/Default/_.MAPLST.xdb"));
+	const int expectedMapTexts = IsValid(finalCustomMapList) ? finalCustomMapList->maps.size() : 0;
+	int matchedMapTexts = 0;
+	if (finalMapCollection && finalMapsList)
+		for (int i = 0; i < expectedMapTexts; ++i)
+		{
+			UI::Window* row = i < finalMapsList->GetItemsCount() ? finalMapsList->GetItemByIndex(i) : 0;
+			if (captionMatches(row, "Title", finalMapCollection->CustomTitle(i)) &&
+				captionMatches(row, "TitleActive", finalMapCollection->CustomTitle(i)) &&
+				captionMatches(row, "Descr", finalMapCollection->CustomDescription(i)))
+				++matchedMapTexts;
+		}
+	const size_t expectedSessionTexts = IsValid(screenRuntime.gameContext) ?
+		screenRuntime.gameContext->GetVisibleGameCount() : 0;
+	size_t matchedSessionTexts = 0;
+	if (finalMapCollection && finalGamesList)
+		for (size_t i = 0; i < expectedSessionTexts; ++i)
+		{
+			const lobby::SDevGameInfo* info = screenRuntime.gameContext->GetVisibleGameByRow(i);
+			UI::Window* row = i < static_cast<size_t>(finalGamesList->GetItemsCount()) ?
+				finalGamesList->GetItemByIndex(i) : 0;
+			const int mapIndex = info ? finalMapCollection->FindMapById(info->mapId.c_str()) : -1;
+			if (info && mapIndex >= 0 && captionMatches(row, "Name", info->name) &&
+				captionMatches(row, "Map", finalMapCollection->MapTitle(mapIndex)))
+				++matchedSessionTexts;
+		}
+	logFile << "  finalProductionLobbyText=maps:" << matchedMapTexts << "/" << expectedMapTexts
+		<< " sessions:" << matchedSessionTexts << "/" << expectedSessionTexts
+		<< " catalog:" << (finalMapCollection ? finalMapCollection->MapsListSize() : 0) << "\n";
+	logFile << "  finalStartingLobbyPresentation="
+		<< (screenRuntime.legacyLobbyOverlayPresentationFrames > 0 ? "legacy-linux-overlay" :
+			(screenRuntime.productionLobbyPresentationFrames > 0 ? "production-xdb-lua" : "inactive"))
+		<< " productionFrames:" << screenRuntime.productionLobbyPresentationFrames
+		<< " legacyFrames:" << screenRuntime.legacyLobbyOverlayPresentationFrames << "\n";
   UI::RadioPanel* finalJoinModePanel = finalProductionLobbyRoot ?
     dynamic_cast<UI::RadioPanel*>(finalProductionLobbyRoot->FindChild("Panel")) :
     0;
@@ -67353,6 +67692,10 @@ void AppendRuntimeInputLog(
           << "\n";
   const NDb::UIFontStyle* finalProductionDefaultFont =
     UI::SkinStyles::GetFontStyle("default");
+	string finalProductionHeroReadyCaption;
+	if (finalProductionHeroReady)
+		NStr::UnicodeToUTF8(&finalProductionHeroReadyCaption, finalProductionHeroReady->GetCaptionTextW());
+	logFile << "  finalProductionHeroReadyCaption=" << finalProductionHeroReadyCaption.c_str() << "\n";
   Render::Texture2DRef finalProductionFontTexture =
     UI::GetFontRenderer()->GetFontsTexture();
   logFile << "  finalProductionHeroFont="
@@ -67725,6 +68068,19 @@ void AppendRuntimeInputLog(
 #endif
   const Game::LoadingFlashInterface* finalLoadingFlashInterface =
     GetActiveLinuxLoadingFlashInterface(&screenRuntime);
+	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
+	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
+	logFile << "  finalAdventureUi=" << (screenRuntime.adventureUi.IsReady() ? "ready" : "inactive")
+		<< " attempted:" << screenRuntime.adventureUi.WasAttempted()
+		<< " frames:" << screenRuntime.adventureUi.GetFrames() << "\n";
+	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")
+		<< " hero:" << screenRuntime.worldHudLayout.hero.x << "," << screenRuntime.worldHudLayout.hero.y
+		<< "," << screenRuntime.worldHudLayout.hero.width << "," << screenRuntime.worldHudLayout.hero.height
+		<< " minimap:" << screenRuntime.worldHudLayout.minimap.x << "," << screenRuntime.worldHudLayout.minimap.y
+		<< "," << screenRuntime.worldHudLayout.minimap.width << "," << screenRuntime.worldHudLayout.minimap.height << "\n";
+	logFile << "  finalLoadingToWorldTransitions=" << screenRuntime.loadingToWorldTransitions << "\n";
+	logFile << "  finalSessionPresentation=" << (IsLinuxWorldPresentationActive(&screenRuntime) ? "world" :
+		(screenRuntime.sessionPresentation == LinuxBootstrap::SessionPresentation::LegacyOverlay ? "legacy" : "loading")) << "\n";
   logFile << "  finalProductionLoadingFlashInterface="
           << (finalLoadingFlashInterface &&
               finalLoadingFlashInterface->IsProductionInterfaceBound() ?
@@ -67732,6 +68088,19 @@ void AppendRuntimeInputLog(
   logFile << "  finalProductionLoadingFlashCalls="
           << (finalLoadingFlashInterface ?
               finalLoadingFlashInterface->GetProductionCallCount() : 0) << "\n";
+	if (finalLoadingFlashInterface)
+	{
+		const vector<Game::LoadingFlashHeroState>& heroes = finalLoadingFlashInterface->GetHeroes();
+		unsigned int portraitPaths = 0;
+		for (int i = 0; i < heroes.size(); ++i)
+		{
+			if (!heroes[i].iconPath.empty())
+				++portraitPaths;
+			logFile << "  finalLoadingHeroPortrait[" << heroes[i].slotId << "]="
+				<< (heroes[i].iconPath.empty() ? "<none>" : heroes[i].iconPath.c_str()) << "\n";
+		}
+		logFile << "  finalLoadingHeroPortraitPaths=" << portraitPaths << "/" << heroes.size() << "\n";
+	}
   logFile << "  finalVisibleLoadingInfoDrawn="
           << (screenRuntime.visibleLoadingInfoDrawn ? "yes" : "no") << "\n";
   logFile << "  finalVisibleLoadingInfoLines="
@@ -70005,6 +70374,18 @@ int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
 
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-adventure-flash-probe"))
+		return RunPrimeWorldLinuxAdventureFlashProbe() ? 0 : 1;
+
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-input-probe"))
+		return RunLinuxBootstrapInputProbe() ? 0 : 1;
+
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-hero-presentation-probe"))
+		return RunPrimeWorldLinuxHeroPresentationProbe() ? 0 : 1;
+
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-text-runtime-probe"))
+		return RunPrimeWorldLinuxTextRuntimeProbe() ? 0 : 1;
+
   if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-lua-runtime-probe"))
     return RunPrimeWorldLinuxLuaRuntimeProbe() ? 0 : 1;
 
@@ -70034,6 +70415,11 @@ int main(int argc, char** argv)
   settings.bootstrapClickEnabled = !settings.bootstrapClickScript.empty();
   settings.diagnosticsOverlay = ReadDiagnosticsOverlayFlag(argc, argv);
   settings.bootstrapLegacyHeroOverlay = ReadBootstrapLegacyHeroOverlayFlag(argc, argv);
+	settings.bootstrapLoadingUiProbe = ReadBootstrapLoadingUiProbeFlag();
+	settings.bootstrapLegacySessionOverlay = CmdLineLite::Instance().IsKeyDefined("--bootstrap-legacy-session-overlay");
+	settings.bootstrapWorldDebug = CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-debug");
+	settings.bootstrapAdventureUi = CmdLineLite::Instance().IsKeyDefined("--bootstrap-adventure-ui-probe");
+	settings.bootstrapLegacyLobbyOverlay = ReadBootstrapLegacyLobbyOverlayFlag(argc, argv);
   settings.bootstrapNetworkStatusProbe = ReadBootstrapNetworkStatusProbeFlag(argc, argv);
   settings.bootstrapFrameCapturePath = ReadBootstrapFrameCapturePath(argc, argv);
   settings.bootstrapFrameCaptureAfterSeconds = ReadBootstrapFrameCaptureAfterSeconds(argc, argv);
@@ -71724,6 +72110,7 @@ int main(int argc, char** argv)
     HandleLinuxMapPreviewInput(settings, inputState, selectedMapPreview, &screenRuntime);
     UpdateArtworkSelectionState(inputState, &artworkState);
     const bool browserNavigationLocked =
+      !settings.bootstrapLegacyLobbyOverlay ||
       IsLinuxBootstrapHeroScreenActive(&screenRuntime) ||
       IsLinuxBootstrapLoadingScreenActive(&screenRuntime);
     if (!browserNavigationLocked)
@@ -73512,6 +73899,7 @@ int main(int argc, char** argv)
     screenRuntime.worldLastAppliedAwardAmount,
     screenRuntime.worldLastAppliedAwardHeroGoldBefore,
     screenRuntime.worldLastAppliedAwardHeroGoldAfter);
+	screenRuntime.adventureUi.Reset();
   if (uiInitialized)
   {
     UI::Release();

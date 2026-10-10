@@ -335,16 +335,29 @@ void ImageLabel::SetCaptionTextW( const wstring & text )
 
 
 
+/// Narrow caption APIs use UTF-8 on Linux and the active code page on Windows.
 string ImageLabel::GetCaptionText()
 {    
+#if defined(__linux__)
+	string utf8;
+	NStr::UnicodeToUTF8(&utf8, Text.GetText());
+	return utf8;
+#else
   return NStr::ToMBCS( Text.GetText() ); 
+#endif
 }
 
 
 
 void ImageLabel::SetCaptionTextA( const char *text )
 {
+#if defined(__linux__)
+	wstring unicode;
+	NStr::UTF8ToUnicode(&unicode, string(text));
+	SetCaptionTextW(unicode);
+#else
   SetCaptionTextW( NStr::ToUnicode( text ) );
+#endif
 }
 
 

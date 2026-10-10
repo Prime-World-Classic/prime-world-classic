@@ -4,6 +4,12 @@
 #include "IFlashChat.h"
 #include "System/StarForce/HiddenVars.h"
 
+#if defined(__linux__)
+// GCC needs the generated definitions before the unscoped enum declarations below.
+#include "DBAbility.h"
+#include "DBPFEffect.h"
+#endif
+
 namespace avmplus
 {
   class DisplayObjectObject;

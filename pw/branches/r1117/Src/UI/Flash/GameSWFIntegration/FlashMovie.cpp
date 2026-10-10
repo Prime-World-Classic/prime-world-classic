@@ -3,6 +3,7 @@
 #include "../../Defines.h"
 
 #include "FlashMovie.h"
+#include "FlashText.h"
 
 #include "Render/FlashRendererInterface.h"
 
@@ -247,7 +248,11 @@ void Movie::SetLocalizationProperty( const char* _name, const wchar_t* _value )
     return;
 
   avmplus::Stringp name = core->internConstantStringLatin1( _name );
+#if defined(__linux__)
+	avmplus::Stringp value = CreateAvmStringFromWide(core, _value ? _value : L"");
+#else
   avmplus::Stringp value = core->newStringUTF16( (const wchar *) _value );
+#endif
 
   SetPropertyToObject(localization, name, value->atom());
 }
@@ -907,9 +912,14 @@ void Movie::OnFSCommand( avmplus::AvmString listnerId, avmplus::AvmString arg )
   NI_VERIFY(listener, NStr::StrFmt( "listener for key %s somehow died", listnerIdT.c_str() ), return);
 
   avmplus::StUTF8String argT( arg );
+#if defined(__linux__)
+	const wstring argTW = CreateWideStringFromAvm(arg);
+	listener->OnFSCommand(parentWnd, listnerIdT.c_str(), argT.c_str(), argTW.c_str());
+#else
   avmplus::StUTF16String argTW( arg );
   
   listener->OnFSCommand( parentWnd, listnerIdT.c_str(), argT.c_str(), (wchar_t*)argTW.c_str() );
+#endif
   
 }
 
