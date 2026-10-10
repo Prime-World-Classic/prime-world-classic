@@ -281,6 +281,17 @@ int main(int argc, char** argv)
 		Check(inspection.HudCalls() == 6, "Changed health was not sent");
 		using Kind = PwRufflePointerCapture::Kind;
 		inspection.Focus(true);
+		inspection.TakeGameplayEvents();
+		inspection.Pointer(Kind::Move, 285, 683, 0, 0, 1280, 720);
+		Check(inspection.Pointer(Kind::Down, 285, 683, 0, 0, 1280, 720), "Authored shortcut press escaped");
+		Check(inspection.Pointer(Kind::Up, 285, 683, 0, 0, 1280, 720), "Authored shortcut release escaped");
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
+		const auto requests = inspection.TakeGameplayEvents();
+		Check(std::count_if(requests.begin(), requests.end(), [](const auto& event)
+		{
+			return event.kind == PwRuffleGameplayEvent::Kind::TalentClicked && event.column == 2 && event.row == 0;
+		}) == 1, "Original shortcut did not emit exact talent request");
+		Check(inspection.TakeGameplayEvents().empty(), "Authored callback delivered twice");
 		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD press escaped to world");
 		Check(inspection.Pointer(Kind::Up, 640, 100, 0, 0, 1280, 720), "HUD release escaped to world");
 		Check(!inspection.Pointer(Kind::Down, 640, 100, 0, 0, 1280, 720), "World press was captured");
@@ -289,6 +300,7 @@ int main(int argc, char** argv)
 		Check(!inspection.Pointer(Kind::Wheel, 640, 100, 0, 1, 1280, 720), "World wheel captured");
 		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD focus-test press failed");
 		inspection.Focus(false);
+		Check(inspection.PendingCallbacks() == 0, "Focus loss retained gameplay requests");
 		inspection.Focus(true);
 		const auto inputsBefore = inspection.PointerEvents();
 		Check(inspection.Pointer(Kind::Up, 1160, 565, 0, 0, 1280, 720), "Orphan HUD release escaped");

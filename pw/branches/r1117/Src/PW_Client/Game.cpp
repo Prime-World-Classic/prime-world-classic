@@ -4251,6 +4251,7 @@ struct LinuxBootstrapScreenRuntime
 	LinuxBootstrap::AdventurePresentation adventureUi;
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 	PwRuffleClientInspection ruffleInspection;
+	size_t ruffleGameplayRequests = 0;
 #endif
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
@@ -68359,6 +68360,9 @@ void AppendRuntimeInputLog(
 		<< " attempted:" << screenRuntime.ruffleInspection.WasAttempted()
 		<< " frames:" << screenRuntime.ruffleInspection.Frames()
 		<< " discardedCallbacks:" << screenRuntime.ruffleInspection.DiscardedCallbacks()
+		<< " receivedCallbacks:" << screenRuntime.ruffleInspection.ReceivedCallbacks()
+		<< " pendingCallbacks:" << screenRuntime.ruffleInspection.PendingCallbacks()
+		<< " gameplayRequests:" << screenRuntime.ruffleGameplayRequests
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
 		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
@@ -72332,6 +72336,8 @@ int main(int argc, char** argv)
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
+		// Consume outside rendering; gameplay validation is a separate engine boundary.
+		screenRuntime.ruffleGameplayRequests += screenRuntime.ruffleInspection.TakeGameplayEvents().size();
 #endif
     if (uiRootPreview.runtimeInitialized)
     {

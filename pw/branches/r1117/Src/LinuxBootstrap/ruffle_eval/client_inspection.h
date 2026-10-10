@@ -6,6 +6,7 @@
 #include "action_state.h"
 #include "minimap_frame.h"
 #include "pointer_capture.h"
+#include "gameplay_event_queue.h"
 #include <cstddef>
 
 /** Borrowed artwork and owned marker snapshot, consumed synchronously by Draw. */
@@ -39,11 +40,15 @@ public:
 	/** Release VM buttons on native focus loss; duplicate notifications are skipped. */
 	void Focus(bool focused);
 	/** Release native resources; diagnostics/counters survive for final logging. */
-	bool Reset() { pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
+	bool Reset() { events_.Clear(); pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
+	/** Consume validated requests once. The caller must revalidate live gameplay state. */
+	std::vector<PwRuffleGameplayEvent> TakeGameplayEvents() { return events_.Drain(); }
 	bool WasAttempted() const { return attempted_; }
 	bool IsReady() const { return host_.IsReady(); }
 	size_t Frames() const { return frames_; }
-	size_t DiscardedCallbacks() const { return callbacks_; }
+	size_t DiscardedCallbacks() const { return events_.Discarded(); }
+	size_t ReceivedCallbacks() const { return events_.Received(); }
+	size_t PendingCallbacks() const { return events_.Pending(); }
 	/** Count error flags already pending before any call into the inspection host. */
 	size_t PriorGlErrors() const { return priorGlErrors_; }
 	/** Successful authored hero calls, excluding unchanged snapshots. */
@@ -56,7 +61,8 @@ public:
 private:
 	PwRuffleNativeHost host_;
 	bool attempted_ = false;
-	size_t frames_ = 0, callbacks_ = 0;
+	size_t frames_ = 0;
+	PwRuffleGameplayEventQueue events_;
 	size_t priorGlErrors_ = 0;
 	std::string error_;
 	std::string identity_, values_;

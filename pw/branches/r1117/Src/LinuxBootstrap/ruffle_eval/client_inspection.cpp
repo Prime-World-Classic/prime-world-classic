@@ -21,7 +21,7 @@ void PwRuffleClientInspection::Focus(bool focused)
 		return;
 	}
 	focused_ = focused;
-	if (!focused) pointerCapture_.Reset();
+	if (!focused) { pointerCapture_.Reset(); events_.Clear(); }
 }
 
 bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x, int y,
@@ -160,12 +160,14 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 		}
 		if (!host_.Draw(width, height, std::clamp(deltaMs, 0.0, 250.0), error_))
 			throw std::runtime_error(error_);
-		// Drain only; inspection must never execute an unbound gameplay command.
+		// Publish only after the frame and runtime diagnostics pass. Execution belongs
+		// to the client command loop, never to a renderer or a Flash callback stack.
 		request(R"({"action":"events"})");
-		callbacks_ += nlohmann::json::parse(response).size();
+		const auto callbacks = response;
 		request(R"({"action":"stats"})");
 		if (nlohmann::json::parse(response).at("runtime_errors") != 0)
 			throw std::runtime_error("Combat SWF reported runtime errors");
+		events_.Append(callbacks);
 		++frames_;
 		return true;
 	}

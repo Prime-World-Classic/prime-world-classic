@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.11.2`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.12.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -83,7 +83,18 @@ across two complete load/draw/close cycles, transparent background preservation,
 nonblank authored UI, GLX/EGL restoration, invalid-request recovery, and zero
 runtime errors. Combat startup is advanced three frames before first presentation.
 
-### Client Inspection (0.11.0)
+### Authored Callback Transport (0.12.0)
+
+`gameplay_events.h` decodes the shipped talent and minimap FSCommands with the
+existing nlohmann JSON parser and strict bounded scalar parsing. Coordinates and
+row/column identity are preserved. Unknown and informational callbacks are inert;
+malformed batches and queue overflow fail atomically. The actionable queue is
+capped at 1024 and drained exactly once outside rendering. Blur, teardown and
+failure clear pending requests. This checkpoint counts requests but does not yet
+execute gameplay commands. The real-SWF probe clicks an authored shortcut and
+verifies its exact talent coordinates and empty second drain.
+
+### Client Inspection (0.12.0)
 
 The Linux CMake option `PW_LINUX_RUFFLE_INSPECTION` defaults to OFF. When enabled,
 `--bootstrap-ruffle-library /absolute/path/libpw_bridge.so` requests the original
