@@ -62,17 +62,28 @@ gen_crashrpt() {
 gen_censor() {
     local out="$BR/Tools/Censor/lib/Release/x64"
     local c="$(zfwd "$BR/Tools/Censor")"
+    # CensorshipCore .cpp рассчитывают на PCH клиента (в их заголовках <string>
+    # нет, а std::wstring используется) — подставляем прелюдию.
+    printf '#include <string>\n' > "$BUILD/censor/prelude.h"
+    local prelude="$(zfwd "$BUILD/censor/prelude.h")"
     cat > "$BUILD/censor/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.15)
 project(censor CXX)
 set(CMAKE_CXX_FLAGS "")
 set(CMAKE_CXX_FLAGS_RELEASE "")
-add_library(CensorDll SHARED ${c}/dllmain.cpp ${c}/stdafx.cpp ${c}/CensorTest.cpp)
+# CensorDll — тонкая обёртка поверх CensorshipCore (Src/Game/PF/Server/CensorshipCore)
+# и nstl-ассоциативных контейнеров (Src/System/ntree.cpp): в x86 эти символы
+# брались из CensorDll.lib, который линковался с ними сам. Их тоже компилируем
+# внутрь DLL, иначе 11 незакрытых символов (CensorFilter::Censor*, nstl::_Rebalance).
+add_library(CensorDll SHARED ${c}/dllmain.cpp ${c}/stdafx.cpp ${c}/CensorTest.cpp
+  $(zfwd "$BR/Src/Game/PF/Server/CensorshipCore/Censor.cpp")
+  $(zfwd "$BR/Src/Game/PF/Server/CensorshipCore/CensorAsyncManager.cpp")
+  $(zfwd "$BR/Src/System/ntree.cpp"))
 set_target_properties(CensorDll PROPERTIES OUTPUT_NAME CensorDll)
 # CensorTest.cpp тянет клиентский заголовок Game/PF/Server/CensorshipCore/Censor.h
 target_include_directories(CensorDll PRIVATE ${c} $(zfwd "$BR/Src") $(zfwd "$V/boost"))
 target_compile_definitions(CensorDll PRIVATE CENSORLIB_EXPORT _CRT_SECURE_NO_WARNINGS WIN32 NDEBUG _WINDOWS _UNICODE UNICODE)
-target_compile_options(CensorDll PRIVATE /O2 /MT /EHsc /std:c++14 /wd4996 /wd4267)
+target_compile_options(CensorDll PRIVATE /O2 /MT /EHsc /std:c++14 /wd4996 /wd4267 "/FI$prelude")
 EOF
     DEST="$out" ARTIFACTS="CensorDll.dll CensorDll.lib"
 }
