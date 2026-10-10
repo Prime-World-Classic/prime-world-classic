@@ -57,6 +57,29 @@ upload, then restores the original asset. Malformed byte counts, mismatched
 dimensions, non-bitmap, disposed and released handles fail. This enables texture
 transport; the game's live minimap producer is not connected yet.
 
+### Native GL Composition (0.6.0)
+
+[native_host.h](native_host.h) loads an explicit absolute DSO path and checks ABI
+and required exports. Ruffle uses its own EGL context while the caller's GLX
+context is detached; context/draw/read drawable and EGL API selection are
+restored before compositing or returning. Caller EGL contexts are rejected.
+All calls and teardown stay on one thread; reset before destroying the original
+compatibility context. A reported Rust panic poisons the host until reset.
+
+[gl_compositor.h](gl_compositor.h) documents supported state and caller limits.
+It uploads top-down straight-alpha RGBA into one reusable texture and composites
+with source-over alpha while restoring legacy GL state. No GPU object is shared
+with Ruffle. It does not swap, interpret FSCommands, or feed live game data.
+The lifecycle rules follow the [GLX specification](https://registry.khronos.org/OpenGL/specs/gl/glx1.4.pdf)
+and [EGL specification](https://registry.khronos.org/EGL/specs/eglspec.1.4.withchanges.pdf).
+
+The mock compositor probe checks orientation, alpha, updates/resizing, malformed
+inputs, full matrix stacks, shaders, multitexture state, matrices, masks, and PBO/
+pixel-store restoration. The real combat-SWF probe checks three viewport sizes
+across two complete load/draw/close cycles, transparent background preservation,
+nonblank authored UI, GLX/EGL restoration, invalid-request recovery, and zero
+runtime errors. Combat startup is advanced three frames before first presentation.
+
 ### Core Adapter Contract
 
 - Native `:/...` game-root and movie-relative image paths, normalized and confined
@@ -156,6 +179,8 @@ cmake -S "$EVAL" -B /tmp/pw-ruffle-cpp -DPW_RUFFLE_LIBRARY="$CARGO_TARGET_DIR/de
 cmake --build /tmp/pw-ruffle-cpp --parallel 2
 timeout 90 /tmp/pw-ruffle-cpp/PrimeWorldRuffleBridgeProbe "$DATA" "$DATA/UI/Screens/Loading/Flash/pwl.swf" /tmp/pw-cpp-loading.png loading
 timeout 90 /tmp/pw-ruffle-cpp/PrimeWorldRuffleBridgeProbe "$DATA" "$DATA/UI/Screens/Combat/Flash/main.swf" /tmp/pw-cpp-combat.png combat
+timeout 60 /tmp/pw-ruffle-cpp/PrimeWorldRuffleGlCompositorProbe
+timeout 90 /tmp/pw-ruffle-cpp/PrimeWorldRuffleNativeHostProbe "$CARGO_TARGET_DIR/debug/examples/libpw_bridge.so" "$DATA" "$DATA/UI/Screens/Combat/Flash/main.swf"
 ```
 
 These commands need native GPU/display access. C++ probes are deliberately not
@@ -167,8 +192,8 @@ in README remain headless. No server is needed for any of these probes.
 The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
-isolated resizable offscreen framebuffer; live engine compositing, renderer
-state restoration across both engines, live minimap texture binding, native
+isolated resizable offscreen framebuffer. Standalone GLX composition and state
+restoration now have native GPU evidence; live minimap texture binding, native
 window input mapping, audio events, and live HUD/game-state binding are not implemented
 by ABI v1. Callback polling proves transport, not execution of gameplay commands.
 
