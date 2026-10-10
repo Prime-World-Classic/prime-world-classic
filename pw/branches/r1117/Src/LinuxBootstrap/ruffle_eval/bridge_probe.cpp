@@ -56,6 +56,58 @@ static Json Call(const char* path, const char* method, Json arguments)
 	return {{"path", path}, {"method", method}, {"args", arguments}};
 }
 
+/** Hash rendered pixels without advancing time, releasing ownership even on assertion failure. */
+static uint64_t FrameHash(Host& host)
+{
+	PwRuffleFrame frame{};
+	Response diagnostic;
+	const int status = pw_ruffle_render(host.id, &frame, &diagnostic.bytes);
+	uint64_t hash = 14695981039346656037ull;
+	for (size_t i = 0; i < frame.rgba.len; ++i) hash = (hash ^ frame.rgba.data[i]) * 1099511628211ull;
+	pw_ruffle_buffer_free(&frame.rgba);
+	Check(status == PW_RUFFLE_OK, "Bitmap frame capture failed");
+	return hash;
+}
+
+/** Attach host-owned pixels to a real SWF Bitmap and verify GPU cache invalidation. */
+static void BitmapChecks(Host& host)
+{
+	const auto original = host.Request({{"path", "logo.ico_ld.content"}, {"op", "get"}, {"method", "bitmapData"}, {"args", Json::array()}}).at("id");
+	const auto bitmap = host.Request({{"action", "bitmap_create"}, {"width", 8}, {"height", 8}}).at("id");
+	const uint64_t id = std::stoull(bitmap.get<std::string>());
+	std::vector<uint8_t> pixels(8*8*4);
+	const auto fill = [&](uint8_t r,uint8_t g,uint8_t b,uint8_t a) {
+		for (size_t i=0;i<pixels.size();i+=4) { pixels[i]=r; pixels[i+1]=g; pixels[i+2]=b; pixels[i+3]=a; }
+	};
+	const auto upload = [&](uint32_t w,uint32_t h,size_t len,int expected) {
+		Response diagnostic;
+		Check(pw_ruffle_bitmap_upload(host.id,id,w,h,pixels.data(),len,&diagnostic.bytes)==expected,"Bitmap upload status mismatch");
+	};
+	fill(255,0,0,255);
+	upload(8,8,pixels.size(),PW_RUFFLE_OK);
+	Check(host.Request({{"receiver", bitmap}, {"method", "getPixel32"}, {"args", {0,0}}}).at("value")==4294901760u,"RGBA channels reversed");
+	host.Request({{"path", "logo.ico_ld.content"}, {"op", "set"}, {"method", "bitmapData"}, {"args", {{{"$handle",bitmap}}}}});
+	const uint64_t red = FrameHash(host);
+	fill(0,255,0,128);
+	upload(8,8,pixels.size(),PW_RUFFLE_OK);
+	Check(host.Request({{"receiver", bitmap}, {"method", "getPixel32"}, {"args", {0,0}}}).at("value")==2147548928u,"Alpha conversion failed");
+	Check(FrameHash(host)!=red,"Bitmap upload did not invalidate rendered pixels");
+	upload(8,8,pixels.size()-1,PW_RUFFLE_INVALID_ARGUMENT);
+	upload(4,16,pixels.size(),PW_RUFFLE_ERROR);
+	const auto display = host.Request({{"path", "logo.ico_ld"}, {"op", "get"}, {"method", "content"}, {"args", Json::array()}}).at("id");
+	{
+		Response diagnostic;
+		Check(pw_ruffle_bitmap_upload(host.id,std::stoull(display.get<std::string>()),8,8,pixels.data(),pixels.size(),&diagnostic.bytes)==PW_RUFFLE_ERROR,"Non-bitmap handle accepted");
+	}
+	host.Request({{"action", "release"}, {"id",display}});
+	host.Request({{"path", "logo.ico_ld.content"}, {"op", "set"}, {"method", "bitmapData"}, {"args", {{{"$handle",original}}}}});
+	host.Request({{"receiver", bitmap}, {"method", "dispose"}, {"args", Json::array()}});
+	upload(8,8,pixels.size(),PW_RUFFLE_ERROR);
+	host.Request({{"action", "release"}, {"id",bitmap}});
+	upload(8,8,pixels.size(),PW_RUFFLE_ERROR);
+	host.Request({{"action", "release"}, {"id",original}});
+}
+
 int main(int argc, char** argv)
 {
 	try
@@ -83,6 +135,7 @@ int main(int argc, char** argv)
 			for (const auto& position : {std::make_pair("backGround", -320), std::make_pair("logo", 295)})
 				Check(host.Request({{"path", position.first}, {"op", "get"}, {"method", "x"}, {"args", Json::array()}}).at("value") == position.second, "Synchronous layout mismatch");
 			host.Request(Call("LoaderWindowInterface", "SetLoadingStatusText", {"Prime World"}));
+			BitmapChecks(host);
 		}
 		else
 		{

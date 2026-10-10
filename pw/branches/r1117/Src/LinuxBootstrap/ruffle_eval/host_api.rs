@@ -2,11 +2,14 @@
 //! Rooted handles never expose GC objects or Tamarin Atoms to the native host.
 
 use crate::Player;
+use crate::avm2::object::BitmapDataObject;
 use crate::avm2::pw_handles::ObjectHandleStore;
 use crate::avm2::{Activation, FunctionArgs, Multiname, Value};
+use crate::bitmap::bitmap_data::{BitmapData, Color};
 use crate::display_object::TDisplayObject;
 use crate::external::Value as ExternalValue;
 use crate::string::AvmString;
+use ruffle_render::bitmap::PixelRegion;
 
 /// Owned host value or opaque rooted object ID. IDs must not travel as floating point.
 #[derive(Debug)]
@@ -16,6 +19,68 @@ pub enum HostValue {
 }
 
 impl Player {
+	/// Validate a full tightly packed RGBA8 upload before reading foreign memory.
+	pub fn pw_bitmap_byte_len(width: u32, height: u32) -> Result<usize, String> {
+		if width == 0 || height == 0 || width > 2048 || height > 2048 {
+			return Err("Bitmap dimensions must be between 1 and 2048".into());
+		}
+		Ok(width as usize * height as usize * 4)
+	}
+
+	/// Create a transparent native bitmap and retain its AVM2 BitmapData identity.
+	pub fn pw_create_bitmap(
+		&mut self,
+		handles: &mut ObjectHandleStore,
+		width: u32,
+		height: u32,
+	) -> Result<u64, String> {
+		Self::pw_bitmap_byte_len(width, height)?;
+		self.mutate_with_update_context(|context| {
+			handles
+				.validate_domain(context.dynamic_root)
+				.map_err(|e| e.to_string())?;
+			let data = BitmapData::new(context.gc(), width, height, true, 0);
+			let object = BitmapDataObject::from_bitmap_data(context, data);
+			handles
+				.retain(context.gc(), context.dynamic_root, object.into())
+				.map_err(|e| e.to_string())
+		})
+	}
+
+	/// Replace every pixel while preserving BitmapData identity and invalidating GPU/display caches.
+	/// Input is straight RGBA, converted once to Ruffle's premultiplied internal representation.
+	pub fn pw_upload_bitmap(
+		&mut self,
+		handles: &ObjectHandleStore,
+		id: u64,
+		width: u32,
+		height: u32,
+		rgba: &[u8],
+	) -> Result<(), String> {
+		if rgba.len() != Self::pw_bitmap_byte_len(width, height)? {
+			return Err("Bitmap byte length mismatch".into());
+		}
+		self.mutate_with_update_context(|context| {
+			let object = handles
+				.resolve(context.dynamic_root, id)
+				.map_err(|e| e.to_string())?;
+			let data = object.as_bitmap_data().ok_or("Handle is not BitmapData")?;
+			if data.disposed() || data.width() != width || data.height() != height {
+				return Err("Disposed bitmap or dimension mismatch".into());
+			}
+			let data = data.overwrite_cpu_pixels_from_gpu(context.gc()).0;
+			let mut write = data.borrow_mut(context.gc());
+			let transparent = write.transparency();
+			for (destination, pixel) in write.raw_pixels_mut().iter_mut().zip(rgba.chunks_exact(4))
+			{
+				*destination = Color::rgba(pixel[0], pixel[1], pixel[2], pixel[3])
+					.to_premultiplied_alpha(transparent);
+			}
+			write.set_cpu_dirty(context.gc(), PixelRegion::for_whole_size(width, height));
+			Ok(())
+		})
+	}
+
 	/// Access a named public interface without leaking GC objects to the host.
 	/// Supports synchronous call/get/set; object-valued results fail explicitly.
 	pub fn pw_invoke(
@@ -144,5 +209,21 @@ impl Player {
 				.map(HostValue::Scalar)
 				.map_err(|e| format!("{e:?}"))
 		})
+	}
+}
+
+#[cfg(test)]
+mod bitmap_tests {
+	use super::*;
+	#[test]
+	fn full_bitmap_upload_size_is_bounded() {
+		for (w, h) in [(0, 1), (1, 0), (2049, 1), (u32::MAX, u32::MAX)] {
+			assert!(Player::pw_bitmap_byte_len(w, h).is_err());
+		}
+		assert_eq!(
+			Player::pw_bitmap_byte_len(2048, 2048).unwrap(),
+			16 * 1024 * 1024
+		);
+		assert_eq!(Player::pw_bitmap_byte_len(3, 7).unwrap(), 84);
 	}
 }

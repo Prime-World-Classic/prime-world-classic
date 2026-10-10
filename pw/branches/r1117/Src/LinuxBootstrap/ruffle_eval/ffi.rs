@@ -94,6 +94,51 @@ pub unsafe extern "C" fn pw_ruffle_render(
 	})
 }
 
+/// Copy one full straight-alpha RGBA image into a rooted BitmapData.
+/// # Safety
+/// Input must be valid for len bytes and must not alias writable diagnostic storage.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn pw_ruffle_bitmap_upload(
+	host: u64,
+	bitmap: u64,
+	width: u32,
+	height: u32,
+	data: *const u8,
+	len: usize,
+	diagnostic: *mut Buffer,
+) -> i32 {
+	if diagnostic.is_null() {
+		return BAD_ARGUMENT;
+	}
+	unsafe {
+		*diagnostic = Buffer {
+			data: std::ptr::null_mut(),
+			len: 0,
+		};
+	}
+	if data.is_null() || ruffle_core::Player::pw_bitmap_byte_len(width, height).ok() != Some(len) {
+		return BAD_ARGUMENT;
+	}
+	boundary(|| {
+		HOSTS.with(|hosts| {
+			let Ok(mut hosts) = hosts.try_borrow_mut() else {
+				return BUSY;
+			};
+			let Some(host) = hosts.get_mut(&host) else {
+				return BAD_HOST;
+			};
+			let rgba = unsafe { std::slice::from_raw_parts(data, len) };
+			unsafe {
+				response(
+					diagnostic,
+					host.upload_bitmap(bitmap, width, height, rgba)
+						.map(|()| json!({"updated":true})),
+				)
+			}
+		})
+	})
+}
+
 /// Convert panics to a status; foreign callers must then close the affected host.
 fn boundary(action: impl FnOnce() -> i32) -> i32 {
 	catch_unwind(AssertUnwindSafe(action)).unwrap_or(PANIC)
@@ -288,6 +333,20 @@ mod tests {
 		assert!(unsafe { parse(std::ptr::null(), 1) }.is_err());
 		assert!(unsafe { parse(b"{}".as_ptr(), 65537) }.is_err());
 		assert_eq!(pw_ruffle_close(0), BAD_HOST);
+		assert_eq!(
+			unsafe { pw_ruffle_bitmap_upload(0, 0, 1, 1, std::ptr::null(), 4, &mut buffer) },
+			BAD_ARGUMENT
+		);
+		assert_eq!(
+			unsafe {
+				pw_ruffle_bitmap_upload(0, 0, u32::MAX, u32::MAX, b"RGBA".as_ptr(), 4, &mut buffer)
+			},
+			BAD_ARGUMENT
+		);
+		assert_eq!(
+			unsafe { pw_ruffle_bitmap_upload(0, 0, 1, 1, b"RGBA".as_ptr(), 4, &mut buffer) },
+			BAD_HOST
+		);
 		let mut frame = Frame {
 			width: 99,
 			height: 99,

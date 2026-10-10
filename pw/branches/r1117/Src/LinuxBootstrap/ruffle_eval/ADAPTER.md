@@ -40,7 +40,24 @@ The real combat chat field receives supplementary Unicode and stops accepting
 text after blur. This does not yet provide IME, clipboard, text-edit commands,
 layout-specific physical-key mapping, or a native game-window event adapter.
 
-### Core Adapter
+### Dynamic Bitmaps (0.5.0)
+
+`bitmap_create` with integer width/height returns a rooted transparent BitmapData
+handle. The additive `pw_ruffle_bitmap_upload` export accepts a complete, borrowed,
+tightly packed straight-alpha RGBA image; dimensions must match and be 1..2048.
+Pixels are copied/premultiplied once and Ruffle's CPU/GPU/display caches are marked
+dirty without replacing the BitmapData identity. Pass the handle through the
+existing object-argument API and release it normally. Display objects can retain
+their own references after the host releases a handle. Bounds are per bitmap,
+not a complete VM/GPU memory budget. There is no partial-region API yet.
+
+The C++ loading test attaches an 8x8 host bitmap to the actual SWF, checks
+getPixel32 channel/alpha results and changed rendered pixels after a second
+upload, then restores the original asset. Malformed byte counts, mismatched
+dimensions, non-bitmap, disposed and released handles fail. This enables texture
+transport; the game's live minimap producer is not connected yet.
+
+### Core Adapter Contract
 
 - Native `:/...` game-root and movie-relative image paths, normalized and confined
   to the canonical Data tree. Symlink/parent escapes, URLs, directories, malformed
@@ -151,7 +168,7 @@ The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
 isolated resizable offscreen framebuffer; live engine compositing, renderer
-state restoration across both engines, dynamic minimap texture upload, native
+state restoration across both engines, live minimap texture binding, native
 window input mapping, audio events, and live HUD/game-state binding are not implemented
 by ABI v1. Callback polling proves transport, not execution of gameplay commands.
 

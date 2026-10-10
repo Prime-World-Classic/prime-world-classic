@@ -177,8 +177,31 @@ impl Host {
 		})
 	}
 
+	/// Full native pixel replacement with no JSON/base64 copies or AVM2 pointers.
+	pub fn upload_bitmap(
+		&mut self,
+		id: u64,
+		width: u32,
+		height: u32,
+		rgba: &[u8],
+	) -> Result<(), String> {
+		self.player
+			.lock()
+			.map_err(|e| e.to_string())?
+			.pw_upload_bitmap(&self.handles, id, width, height, rgba)
+	}
+
 	fn execute(&mut self, request: &Json) -> Result<Json, String> {
 		match request["action"].as_str().unwrap_or("invoke") {
+			"bitmap_create" => {
+				let (width, height) = dimensions(request)?;
+				let handle = self
+					.player
+					.lock()
+					.map_err(|e| e.to_string())?
+					.pw_create_bitmap(&mut self.handles, width, height)?;
+				Ok(json!({"type":"handle","id":handle.to_string()}))
+			}
 			"input" => {
 				let events = input::events(&request["event"])?;
 				let count = events.len();

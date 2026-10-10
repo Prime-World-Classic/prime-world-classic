@@ -62,6 +62,15 @@ int32_t pw_ruffle_request(PwRuffleHost host, const uint8_t* request, size_t len,
  */
 int32_t pw_ruffle_render(PwRuffleHost host, PwRuffleFrame* frame, PwRuffleBuffer* diagnostic);
 
+/** Replace a complete rooted BitmapData with tightly packed straight-alpha RGBA8.
+ * Dimensions must match the existing bitmap and be 1..2048. Data is borrowed
+ * only during the call; len must equal width*height*4. Disposed, stale, foreign,
+ * or wrong-type handles fail. Existing display users retain the same identity.
+ * Additive ABI v1 export; no engine/GPU/Tamarin pointers cross the boundary.
+ */
+int32_t pw_ruffle_bitmap_upload(PwRuffleHost host, uint64_t bitmap, uint32_t width, uint32_t height,
+	const uint8_t* data, size_t len, PwRuffleBuffer* diagnostic);
+
 /** Release all roots/runtime state. Unknown, stale, or wrong-thread IDs fail. */
 int32_t pw_ruffle_close(PwRuffleHost host);
 
