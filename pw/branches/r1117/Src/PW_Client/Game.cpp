@@ -56013,6 +56013,50 @@ const LinuxTextureAssetPreview* ResolveLinuxLobbyPreferredMinimap(
   return 0;
 }
 
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+/** Reuse decoded map art and world visibility; no diagnostic-only enemy markers. */
+PwRuffleMinimapState CaptureLinuxRuffleMinimap(const LinuxOverlayUiRenderContext& context)
+{
+	PwRuffleMinimapState result;
+	NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(context.screenRuntime);
+	NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(context.screenRuntime, world, 0, 0);
+	const auto* texture = ResolveLinuxLobbyPreferredMinimap(context.selectedMapPreview);
+	if (!world || !hero || !texture || !texture->artwork.ready) return result;
+	const auto& art = texture->artwork;
+	result.matchSeconds = static_cast<int>(world->GetTimeElapsed());
+	result.background = {art.rgba.data(), art.rgba.size(), static_cast<unsigned>(art.width),
+		static_cast<unsigned>(art.height), static_cast<size_t>(art.width) * 4};
+	// Artwork and scene positions use terrain meters. The Linux world's current
+	// GetMapSize still reports tile counts (820 vs 410 meters on MOBA).
+	const auto& terrain = context.selectedMapPreview->terrainHeightmap;
+	if (terrain.worldWidth <= 0 || terrain.worldHeight <= 0) return PwRuffleMinimapState();
+	result.bounds = {0, 0, terrain.worldWidth, terrain.worldHeight};
+	vector<NWorld::LinuxDynamicWorldMarker> markers;
+	world->GetLinuxDynamicWorldMarkers(markers, PwRuffleMinimapMarker::MaxCount);
+	for (int i = 0; i < markers.size(); ++i)
+	{
+		const auto& source = markers[i];
+		PwRuffleMinimapMarker marker;
+		marker.worldX = source.x; marker.worldY = source.y;
+		marker.dead = source.dead;
+		marker.self = source.objectId == hero->GetObjectId();
+		using Team = PwRuffleMinimapMarker::Team;
+		using Kind = PwRuffleMinimapMarker::Kind;
+		marker.team = source.faction == NDb::FACTION_NEUTRAL ? Team::Neutral :
+			source.faction == hero->GetFaction() ? Team::Ally : Team::Enemy;
+		if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_HERO) marker.kind = Kind::Hero;
+		else if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_COMMON_CREEP ||
+			source.kind == NWorld::LinuxDynamicWorldMarker::KIND_NEUTRAL_CREEP) marker.kind = Kind::Creep;
+		else if (source.kind == NWorld::LinuxDynamicWorldMarker::KIND_TOWER ||
+			source.kind == NWorld::LinuxDynamicWorldMarker::KIND_MAIN_BUILDING) marker.kind = Kind::Objective;
+		const auto* unit = world->FindLinuxUnitByObjectId(source.objectId);
+		marker.visible = unit && unit->IsVisibleForFaction(hero->GetFaction());
+		result.markers.push_back(marker);
+	}
+	return result;
+}
+#endif
+
 std::string ResolveLinuxLobbyLineupSlotTitle(
   const LinuxWindowOverlay* overlay,
   const LinuxHeroCatalog& heroCatalog,
@@ -64233,7 +64277,8 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 						renderContext.settings->bootstrapRuffleLibrary, data.string(), width, height,
 						renderContext.inputState->lastDeltaSeconds * 1000.0,
 						CaptureLinuxRuffleHero(renderContext.screenRuntime),
-						CaptureLinuxRuffleActions(renderContext.screenRuntime));
+						CaptureLinuxRuffleActions(renderContext.screenRuntime),
+						CaptureLinuxRuffleMinimap(renderContext));
 				}
 #endif
 				const bool adventureReady = !ruffleReady && renderContext.settings->bootstrapAdventureUi &&
@@ -68269,6 +68314,7 @@ void AppendRuntimeInputLog(
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
 		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
+		<< " minimapUploads:" << screenRuntime.ruffleInspection.MinimapUploads()
 		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
 #endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")

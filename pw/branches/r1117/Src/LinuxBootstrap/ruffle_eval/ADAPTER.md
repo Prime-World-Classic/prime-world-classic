@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.9.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.10.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -100,13 +100,22 @@ Live local-hero identity, the original portrait and level/health/energy/regen va
 are bound through the authored methods. Plain engine-independent snapshots are
 validated and only changed values are sent. A different hero identity disables
 this session's inspection instead of mixing players or appending force tables.
-Rank/premium/flag decorations and custom-energy colors remain unbound. Minimap,
-audio and interactive combat bindings are not yet connected. Actual talent icons,
+Rank/premium/flag decorations and custom-energy colors remain unbound. Audio and
+interactive combat bindings are not yet connected. Actual talent icons,
 purchase state, resource restrictions and cooldowns now populate the authored grid
 and action bar. Initial purchased shortcuts use the authored prerequisite state
 transition; updates do not recreate existing shortcuts. Loadout replacement/respec
 and inventory/portal/global cooldown remain unbound. This flag remains
 for integration inspection, not playing a match.
+
+The original minimap now receives a retained 270x270 BitmapData with native map
+artwork, visible living world markers and the simulation clock. Uploads are skipped
+when pixels are unchanged. The shipped SWF lacks the circular mask present in the
+available ActionScript source, so the adapter applies that documented circle to
+the bitmap alpha before upload. Background and markers use the existing terrain
+preview's meter dimensions; the Linux world's tile-count size is not suitable.
+This is a north-up inspection map: primitive markers, no nature blending, explored
+fog texture, last-seen state, authored map offset/rotation, or camera footprint.
 
 The recurring engine GL error was fixed in 0.7.1: hero materials now upload before
 opening a triangle batch. Cold/warm two-material pixel regressions cover it.

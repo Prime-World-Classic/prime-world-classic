@@ -11,6 +11,7 @@ if(NOT TARGET PwRuffleNativeHost)
 	add_library(PwRuffleNativeHost STATIC
 		"${CMAKE_CURRENT_LIST_DIR}/hud_calls.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/action_calls.cpp"
+		"${CMAKE_CURRENT_LIST_DIR}/minimap_frame.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/client_inspection.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/native_host.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/gl_compositor.cpp")

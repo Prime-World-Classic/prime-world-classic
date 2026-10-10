@@ -6,6 +6,7 @@
 #include <GL/glx.h>
 #include <nlohmann/json.hpp>
 #include <array>
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -137,6 +138,7 @@ int main(int argc, char** argv)
 		vitals.isCameraLocked = false; vitals.ultimateCooldown = -1;
 		Check(host.Open(argv[1], argv[2], argv[3], error), error);
 		Check(host.Request(R"({"path":"LocalizationResources","method":"LocalizationComplete","args":[]})", response, error), error);
+		Check(host.Request(R"({"path":"mainInterface","method":"HideAllWindows","args":[]})", response, error), error);
 		Check(host.Request(R"({"action":"step","frames":3})", response, error), error);
 		for (const auto& calls : {PwRuffleHeroIdentityCalls(hud), PwRuffleHeroValueCalls(hud)})
 			for (const auto& call : calls) Check(host.Request(call.dump(), response, error), error);
@@ -178,19 +180,71 @@ int main(int argc, char** argv)
 		Check(host.Draw(1280, 720, 16, error), error);
 		Check(host.Request(R"({"action":"stats"})", response, error), error);
 		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Talent binding runtime errors");
-		Check(host.Reset(), "Hero/action test teardown failed");
+		Check(host.Request(R"({"action":"bitmap_create","width":270,"height":270})", response, error), error);
+		const auto bitmap = nlohmann::json::parse(response).at("id").get<std::string>();
+		const auto bitmapId = std::stoull(bitmap);
+		std::vector<uint8_t> mapPixels(270 * 270 * 4, 255);
+		Check(host.Request(nlohmann::json{{"path", "miniMap_mc.miniMapAnim_mc.mapImage"}, {"op", "set"},
+			{"method", "bitmapData"}, {"args", {{{"$handle", bitmap}}}}}.dump(), response, error), error);
+		Check(host.Request(R"({"path":"miniMap_mc.miniMapAnim_mc","method":"correctSize","args":[]})", response, error), error);
+		// Isolate pixel transport from the authored startup fade; do not advance time here.
+		Check(host.Request(R"({"path":"miniMap_mc","op":"set","method":"alpha","args":[1]})", response, error), error);
+		for (const auto color : {std::array<uint8_t, 3>{213, 43, 67}, {31, 109, 227}})
+		{
+			for (size_t i = 0; i < mapPixels.size(); i += 4)
+			{
+				std::copy(color.begin(), color.end(), mapPixels.begin() + i);
+				mapPixels[i + 3] = 255;
+			}
+			PwRuffleMinimapFrame clipped{270, 270, 1080, mapPixels};
+			PwRuffleClipMinimapFrame(clipped);
+			mapPixels = std::move(clipped.rgba);
+			Check(host.UploadBitmap(bitmapId, 270, 270, mapPixels.data(), mapPixels.size(), error), error);
+			window.CheckCurrent();
+			glDisable(GL_SCISSOR_TEST);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glClearColor(17 / 255.f, 203 / 255.f, 71 / 255.f, 1);
+			glClear(GL_COLOR_BUFFER_BIT);
+			Check(host.Draw(1280, 720, 0, error), error);
+			std::array<uint8_t, 4> pixel{};
+			glReadPixels(1160, 155, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+			std::cout << "minimap pixel=" << unsigned(pixel[0]) << ',' << unsigned(pixel[1]) << ',' << unsigned(pixel[2]) << '\n';
+			Check(std::equal(color.begin(), color.end(), pixel.begin()), "Original minimap did not display updated bitmap pixels");
+			glReadPixels(1018, 270, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
+			Check(pixel[0] == 17 && pixel[1] == 203 && pixel[2] == 71, "Minimap escaped its authored circular boundary");
+		}
+		Check(!host.UploadBitmap(bitmapId, 270, 270, mapPixels.data(), mapPixels.size() - 1, error), "Accepted short map buffer");
+		Check(!host.UploadBitmap(bitmapId, 135, 540, mapPixels.data(), mapPixels.size(), error), "Accepted wrong bitmap dimensions");
+		window.CheckCurrent();
+		Check(host.Request(R"({"action":"stats"})", response, error), error);
+		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Minimap binding runtime errors");
+		Check(host.Reset(), "Hero/action/minimap test teardown failed");
 		PwRuffleClientInspection inspection;
+		const std::array<uint8_t, 4> background{43, 67, 109, 255};
+		PwRuffleMinimapState minimap;
+		minimap.background = {background.data(), background.size(), 1, 1, 4};
+		minimap.bounds = {0, 0, 100, 100};
+		minimap.matchSeconds = 75;
+		PwRuffleMinimapMarker marker;
+		marker.worldX = marker.worldY = 50;
+		marker.kind = PwRuffleMinimapMarker::Kind::Hero;
+		marker.self = marker.visible = true;
+		minimap.markers.push_back(marker);
 		glEnd(); // A mock engine error must be reported separately, not disable composition.
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions), inspection.Error());
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions, minimap), inspection.Error());
 		Check(inspection.Frames() == 1 && inspection.PriorGlErrors() == 1, "Prior engine GL error was lost");
 		Check(inspection.HudCalls() == 5, "Hero initialization call count");
 		const auto initialActionCalls = inspection.ActionCalls();
 		Check(initialActionCalls > 0, "Talent initialization was not sent");
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions), inspection.Error());
+		Check(inspection.MinimapUploads() == 1, "Minimap initial upload missing");
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions, minimap), inspection.Error());
+		Check(inspection.MinimapUploads() == 1, "Unchanged minimap uploaded again");
 		Check(inspection.ActionCalls() == initialActionCalls, "Unchanged talents were rebound");
 		Check(inspection.HudCalls() == 5, "Unchanged hero was rebound");
 		vitals.health = 207;
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated), inspection.Error());
+		minimap.markers[0].worldX = 75;
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
+		Check(inspection.MinimapUploads() == 2, "Moving minimap marker not uploaded");
 		Check(inspection.ActionCalls() > initialActionCalls, "Talent updates were not sent");
 		Check(inspection.HudCalls() == 6, "Changed health was not sent");
 		window.CheckCurrent();

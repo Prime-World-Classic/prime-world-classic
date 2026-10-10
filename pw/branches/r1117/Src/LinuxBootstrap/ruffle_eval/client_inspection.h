@@ -4,7 +4,17 @@
 #include "native_host.h"
 #include "hud_state.h"
 #include "action_state.h"
+#include "minimap_frame.h"
 #include <cstddef>
+
+/** Borrowed artwork and owned marker snapshot, consumed synchronously by Draw. */
+struct PwRuffleMinimapState
+{
+	PwRuffleMinimapBackgroundView background;
+	PwRuffleMinimapWorldBounds bounds;
+	std::vector<PwRuffleMinimapMarker> markers;
+	std::optional<int> matchSeconds; ///< Actual simulation clock, not presentation uptime.
+};
 
 /** Explicitly opt-in combat SWF inspection, not the live game HUD backend.
  * Live hero data is displayed; game inputs and gameplay callbacks are not routed.
@@ -17,7 +27,8 @@ class PwRuffleClientInspection final
 public:
 	/** Initialize once, advance bounded time, and draw the original combat movie. */
 	bool Draw(const std::string& library, const std::string& data, unsigned width, unsigned height, double deltaMs,
-		const PwRuffleHudState& hud = {}, const PwRuffleActionState& actions = {});
+		const PwRuffleHudState& hud = {}, const PwRuffleActionState& actions = {},
+		const PwRuffleMinimapState& minimap = {});
 	/** Release native resources; diagnostics/counters survive for final logging. */
 	bool Reset() { return host_.Reset(); }
 	bool WasAttempted() const { return attempted_; }
@@ -29,6 +40,7 @@ public:
 	/** Successful authored hero calls, excluding unchanged snapshots. */
 	size_t HudCalls() const { return hudCalls_; }
 	size_t ActionCalls() const { return actionCalls_; }
+	size_t MinimapUploads() const { return minimapUploads_; }
 	const std::string& Error() const { return error_; }
 private:
 	PwRuffleNativeHost host_;
@@ -40,6 +52,10 @@ private:
 	size_t hudCalls_ = 0;
 	std::optional<PwRuffleActionState> actions_;
 	size_t actionCalls_ = 0;
+	std::string minimapBitmap_;
+	std::vector<uint8_t> minimapPixels_;
+	size_t minimapUploads_ = 0;
+	int matchSeconds_ = -1;
 };
 
 #endif

@@ -65,6 +65,7 @@ struct PwRuffleNativeHost::Impl
 	decltype(&pw_ruffle_open) open = nullptr;
 	decltype(&pw_ruffle_request) request = nullptr;
 	decltype(&pw_ruffle_render) render = nullptr;
+	decltype(&pw_ruffle_bitmap_upload) upload = nullptr;
 	decltype(&pw_ruffle_close) close = nullptr;
 	decltype(&pw_ruffle_buffer_free) free = nullptr;
 	PwRuffleGlCompositor compositor;
@@ -131,6 +132,7 @@ bool PwRuffleNativeHost::Open(const std::string& library, const std::string& dat
 		impl_->open = Symbol<decltype(impl_->open)>(impl_->library, "pw_ruffle_open");
 		impl_->request = Symbol<decltype(impl_->request)>(impl_->library, "pw_ruffle_request");
 		impl_->render = Symbol<decltype(impl_->render)>(impl_->library, "pw_ruffle_render");
+		impl_->upload = Symbol<decltype(impl_->upload)>(impl_->library, "pw_ruffle_bitmap_upload");
 		impl_->close = Symbol<decltype(impl_->close)>(impl_->library, "pw_ruffle_close");
 		impl_->free = Symbol<decltype(impl_->free)>(impl_->library, "pw_ruffle_buffer_free");
 		const std::string config = nlohmann::json{{"data", data}, {"movie", movie}}.dump();
@@ -166,6 +168,27 @@ bool PwRuffleNativeHost::Request(const std::string& request, std::string& respon
 		const auto parsed = nlohmann::json::parse(request);
 		if (parsed.value("action", std::string()) == "surface")
 			impl_->width = impl_->height = 0;
+		error.clear();
+		return true;
+	}
+	catch (const std::exception& exception) { error = exception.what(); return false; }
+}
+
+bool PwRuffleNativeHost::UploadBitmap(uint64_t bitmap, unsigned width, unsigned height,
+	const uint8_t* pixels, size_t length, std::string& error)
+{
+	try
+	{
+		if (!IsReady()) throw std::runtime_error("Native Ruffle host is closed");
+		if (!bitmap || !width || !height || width > 2048 || height > 2048 || !pixels ||
+			length != uint64_t(width) * height * 4)
+			throw std::runtime_error("Invalid native bitmap upload");
+		Impl::Buffer diagnostic(impl_->free);
+		ContextScope context;
+		const int status = impl_->upload(impl_->host, bitmap, width, height, pixels, length, &diagnostic.bytes);
+		if (status == PW_RUFFLE_PANIC) impl_->poisoned = true;
+		if (!context.Restore()) throw std::runtime_error("Cannot restore engine GLX context after bitmap upload");
+		if (status != PW_RUFFLE_OK) throw std::runtime_error("Ruffle bitmap upload: " + diagnostic.Text());
 		error.clear();
 		return true;
 	}

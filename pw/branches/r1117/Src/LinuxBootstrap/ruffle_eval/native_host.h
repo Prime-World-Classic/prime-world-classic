@@ -2,6 +2,8 @@
 #define PW_RUFFLE_EVAL_NATIVE_HOST_H
 
 #include <memory>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 
 /** Optional Linux inspection host. Loads an explicit native DSO, never Wine.
@@ -23,6 +25,12 @@ public:
 	bool Open(const std::string& library, const std::string& data, const std::string& movie, std::string& error);
 	/** Execute a JSON request once. Response is copied before its foreign buffer is freed. */
 	bool Request(const std::string& request, std::string& response, std::string& error);
+	/** Replace rooted BitmapData pixels without JSON/base64 or shared GPU objects.
+	 * The input is borrowed for this call; the native ABI validates shape and handle.
+	 * Preserves the caller's GLX context on both success and rejection.
+	 */
+	bool UploadBitmap(uint64_t bitmap, unsigned width, unsigned height,
+		const uint8_t* pixels, size_t length, std::string& error);
 	/** Resize transparently, advance 0..250 ms, and composite into the current framebuffer.
 	 * Uses bounded CPU readback; this is an inspection path, not a performance backend.
 	 * Does not swap buffers, route game input, or interpret queued FSCommands.
