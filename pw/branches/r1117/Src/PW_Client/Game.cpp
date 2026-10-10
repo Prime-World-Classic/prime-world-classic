@@ -30335,6 +30335,8 @@ bool RunLinuxFlashViewportProbe(Render::IUIRenderer* uiRenderer, unsigned int wi
 #endif
 }
 
+bool RunLinuxHeroMeshTextureProbe();
+
 // Exercises queued Flash commands through the native OpenGL UI renderer and checks
 // replay state, texturing, masking, fill morphing, and framebuffer output.
 bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
@@ -31232,8 +31234,9 @@ bool RunLinuxFlashRendererProbe(unsigned int width, unsigned int height)
   }
 
 	const bool viewportPassed = RunLinuxFlashViewportProbe(uiRenderer, width, height);
+	const bool heroTexturesPassed = RunLinuxHeroMeshTextureProbe();
   uiRenderer->Release();
-	return passed && viewportPassed;
+	return passed && viewportPassed && heroTexturesPassed;
 #else
   (void)width;
   (void)height;
@@ -54379,6 +54382,11 @@ bool DrawLinuxHeroMeshPreview(
   }
 
   const LinuxHeroMeshPreview& meshPreview = heroPreview->sceneAsset.meshPreview;
+	// A cold material can upload a texture. Resolve it before opening any primitive batch.
+	std::vector<GLuint> diffuseTextures;
+	diffuseTextures.reserve(heroPreview->sceneAsset.skinDiffuseTextures.size());
+	for (size_t index = 0; index < heroPreview->sceneAsset.skinDiffuseTextures.size(); ++index)
+		diffuseTextures.push_back(ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, index));
   const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
   const float scale = 5.2f / assetHeight;
   std::vector<Matrix43> skinMatrices;
@@ -54407,10 +54415,7 @@ bool DrawLinuxHeroMeshPreview(
       textureIndex = kLinuxHeroPreviewNoDiffuseTexture;
     }
 
-    const GLuint diffuseTexture =
-      textureIndex != kLinuxHeroPreviewNoDiffuseTexture ?
-      ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, textureIndex) :
-      0;
+		const GLuint diffuseTexture = textureIndex < diffuseTextures.size() ? diffuseTextures[textureIndex] : 0;
     if (!batchOpen || currentTexture != diffuseTexture)
     {
       if (batchOpen)
@@ -54493,6 +54498,70 @@ bool DrawLinuxHeroMeshPreview(
   }
 
   return true;
+}
+
+/// Render two cold-cache materials through the actual preview draw path, then repeat warm.
+bool RunLinuxHeroMeshTextureProbe()
+{
+	LinuxWindowOverlay overlay;
+	overlay.ready = overlay.openglReady = true;
+	LinuxSelectedHeroDbPreview hero;
+	LinuxHeroMeshPreview& mesh = hero.sceneAsset.meshPreview;
+	mesh.ready = mesh.boundsValid = true;
+	mesh.minX = -0.5f; mesh.maxX = 0.5f;
+	mesh.minY = mesh.maxY = mesh.minZ = 0;
+	mesh.maxZ = 1;
+	for (size_t material = 0; material < 2; ++material)
+	{
+		LinuxTextureAssetPreview texture;
+		texture.sourceFile = material ? "__hero_probe_green" : "__hero_probe_red";
+		texture.artworkLoaded = texture.artwork.ready = true;
+		texture.artwork.width = texture.artwork.height = 1;
+		texture.artwork.rgba = {static_cast<unsigned char>(material ? 0 : 255),
+			static_cast<unsigned char>(material ? 255 : 0), 0, 255};
+		hero.sceneAsset.skinDiffuseTextures.push_back(texture);
+		for (int corner = 0; corner < 3; ++corner)
+		{
+			LinuxHeroMeshPreviewVertex vertex;
+			vertex.x = (material ? 0.25f : -0.25f) + (corner == 0 ? -0.2f : corner == 1 ? 0.2f : 0);
+			vertex.z = corner == 2 ? 0.9f : 0.1f;
+			vertex.u = vertex.v = 0.5f;
+			vertex.texCoordValid = true;
+			vertex.diffuseTextureIndex = material;
+			mesh.triangleVertices.push_back(vertex);
+		}
+	}
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+	glPushClientAttrib(GL_CLIENT_PIXEL_STORE_BIT);
+	glViewport(0, 0, 128, 128);
+	glDisable(GL_DEPTH_TEST); glDisable(GL_SCISSOR_TEST); glDisable(GL_CULL_FACE);
+	glDisable(GL_BLEND); glDisable(GL_LIGHTING);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+	glMatrixMode(GL_PROJECTION); glPushMatrix(); glLoadIdentity(); glOrtho(-3, 3, 0, 6, -1, 1);
+	glMatrixMode(GL_MODELVIEW); glPushMatrix(); glLoadIdentity();
+	bool passed = true;
+	for (int repeat = 0; repeat < 2; ++repeat)
+	{
+		glClearColor(0, 0, 0, 1); glClear(GL_COLOR_BUFFER_BIT);
+		const bool drawn = DrawLinuxHeroMeshPreview(&overlay, &hero, 255, 255, 255, 0, false);
+		const GLenum drawError = glGetError();
+		unsigned char left[4]{}, right[4]{};
+		glReadPixels(36, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, left);
+		glReadPixels(92, 32, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, right);
+		const bool pixels = left[0] > 240 && left[1] < 8 && right[0] < 8 && right[1] > 240;
+		const bool cache = overlay.heroPreviewDiffuseTextureCache.size() == 2;
+		passed = passed && drawn && drawError == GL_NO_ERROR && pixels && cache;
+		fprintf(stdout, "Hero texture probe: cache=%s GL=%u pixels=%s entries=%lu\n",
+			repeat ? "warm" : "cold", drawError, pixels ? "yes" : "NO",
+			static_cast<unsigned long>(overlay.heroPreviewDiffuseTextureCache.size()));
+	}
+	for (const auto& texture : overlay.heroPreviewDiffuseTextureCache)
+		glDeleteTextures(1, &texture.second.texture);
+	glMatrixMode(GL_MODELVIEW); glPopMatrix();
+	glMatrixMode(GL_PROJECTION); glPopMatrix();
+	glPopClientAttrib(); glPopAttrib();
+	return passed && glGetError() == GL_NO_ERROR;
 }
 
 size_t ResolveLinuxHeroRendererMaterialTextureIndex(

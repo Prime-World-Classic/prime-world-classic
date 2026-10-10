@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.7.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.7.1`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -100,11 +100,11 @@ No live hero state, minimap, audio, or interactive combat bindings are claimed.
 The authored chrome may be empty or contain fallback text until those contracts
 are connected. This flag is for visual integration inspection, not playing a match.
 
-The engine currently leaves a pre-existing GL error at this presentation boundary.
-Inspection counts those flags separately as `priorGlErrors` and starts with a clean
-queue. Errors during drawing or state restoration still fail inspection; this
-does not fix or hide the existing engine error. The native probe injects such an
-error and checks reporting/recovery, plus missing-library disable/fallback.
+The recurring engine GL error was fixed in 0.7.1: hero materials now upload before
+opening a triangle batch. Cold/warm two-material pixel regressions cover it.
+Inspection still counts any prior engine flags separately as `priorGlErrors`;
+errors during drawing or state restoration fail inspection. The native probe
+injects a prior error and checks reporting/recovery and missing-library fallback.
 
 From the repository root, after building the adapter above:
 
