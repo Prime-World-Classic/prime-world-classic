@@ -120,6 +120,7 @@
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
 #include "LinuxBootstrap/frame_pose_cache.h"
+#include "LinuxBootstrap/map_view.h"
 #include "LinuxBootstrap/interactive_clock.h"
 #include "System/LinuxKeyInput.h"
 #include "LinuxBootstrap/world_hud_layout.h"
@@ -44391,7 +44392,7 @@ bool ProjectLinuxMapPreviewScreenToWorld(
   const float extentZ = std::max(14.0f, rangeY * scale * 0.5f + 8.0f);
   const float previewZoom = std::max(0.55f, std::min(2.25f, runtime.mapPreviewZoom));
   const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
-  const float aspect = static_cast<float>(settings.width) / static_cast<float>(settings.height);
+	const LinuxBootstrap::MapView view(viewExtent, settings.width, settings.height);
   const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
   const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
 
@@ -44399,8 +44400,8 @@ bool ProjectLinuxMapPreviewScreenToWorld(
     static_cast<float>(mouseX) * 2.0f / static_cast<float>(settings.width) - 1.0f;
   const float ndcY =
     1.0f - static_cast<float>(mouseY) * 2.0f / static_cast<float>(settings.height);
-  float originX = ndcX * viewExtent * aspect;
-  float originY = ndcY * viewExtent + 8.0f;
+  float originX = ndcX * view.halfWidth;
+  float originY = ndcY * view.halfHeight + 8.0f;
   float originZ = 210.0f;
   float dirX = 0.0f;
   float dirY = 0.0f;
@@ -53852,7 +53853,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     std::max(0.55f, std::min(2.25f, renderContext.screenRuntime->mapPreviewZoom)) :
     1.0f;
   const float viewExtent = std::max(48.0f, std::max(extentX, extentZ) * 1.38f) / previewZoom;
-  const float aspect = height > 0 ? static_cast<float>(width) / static_cast<float>(height) : 1.0f;
+	const LinuxBootstrap::MapView view(viewExtent, width, height);
   const float centerX = (tactical.minX + tactical.maxX) * 0.5f;
   const float centerY = (tactical.minY + tactical.maxY) * 0.5f;
 
@@ -53868,10 +53869,10 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glOrtho(
-    -viewExtent * aspect,
-    viewExtent * aspect,
-    -viewExtent,
-    viewExtent,
+    -view.halfWidth,
+    view.halfWidth,
+    -view.halfHeight,
+    view.halfHeight,
     -220.0,
     220.0);
 
@@ -72707,6 +72708,14 @@ int main(int argc, char** argv)
 		using ProfileClock = std::chrono::steady_clock;
 		const auto inputStart = ProfileClock::now();
     NMainFrame::PumpMessages();
+		// Input layouts and world picking must use the same live viewport as drawing.
+		XWindowAttributes viewport = {};
+		if (overlay.ready && XGetWindowAttributes(overlay.display, overlay.window, &viewport) &&
+			viewport.width > 0 && viewport.height > 0)
+		{
+			settings.width = viewport.width;
+			settings.height = viewport.height;
+		}
     UpdateInputState(&inputState);
     NHPTimer::STime now = 0;
     NHPTimer::GetTime(now);

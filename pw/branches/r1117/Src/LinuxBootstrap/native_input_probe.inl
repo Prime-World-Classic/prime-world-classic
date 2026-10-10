@@ -98,6 +98,28 @@ bool RunLinuxNativeInputProbe()
 	press(XK_F10);
 	HandleLinuxVisibleMenuHotkeys(settings, input, catalog, &browser, heroes, &lineup, ui, &runtime, &consumed);
 	check(runtime.diagnosticsOverlayActive, "F10 diagnostics");
+	// Real forward/inverse map projection must retain both edges in tall windows.
+	LinuxSelectedMapPreview map;
+	map.tactical.ready = true;
+	map.tactical.minX = map.tactical.minY = 0;
+	map.tactical.maxX = map.tactical.maxY = 410;
+	runtime.mapPreviewRenderedPitchDegrees = 56;
+	runtime.mapPreviewRenderedYawDegrees = 0;
+	runtime.mapPreviewZoom = 1.18f;
+	runtime.mapPreviewPanX = runtime.mapPreviewPanZ = 0;
+	for (const auto size : {std::pair<int, int>{1280, 720}, {2160, 3840}, {720, 1280}, {960, 768}})
+	{
+		settings.width = size.first; settings.height = size.second;
+		for (float x : {20.f, 205.f, 390.f})
+		{
+			int sx = 0, sy = 0;
+			float wx = 0, wy = 0;
+			check(ProjectLinuxMapPreviewWorldToScreen(settings, map, runtime, CVec2(x, 205), &sx, &sy) &&
+				sx >= 0 && sx < size.first && sy >= 0 && sy < size.second, "map edge remains in resized viewport");
+			check(ProjectLinuxMapPreviewScreenToWorld(settings, map, runtime, sx, sy, &wx, &wy, false) &&
+				fabs(wx - x) < 3 && fabs(wy - 205) < 3, "resized map projection round trip");
+		}
+	}
 	fprintf(stdout, "Native input: %u checks, %u failures\n", checks, failures);
 	return failures == 0;
 }
