@@ -28,7 +28,12 @@ template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectB
 {
 	return CastToUserObjectImpl(object, type, static_cast<void*>(nullptr));
 }
-template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, void*);
+/** Preserve concrete target identity through the registered unit caster. */
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase* object, NWorld::PFBaseUnit* type, CObjectBase*)
+{
+	return CastToUserObjectImpl(object, type, static_cast<void*>(nullptr));
+}
 template<> NWorld::AIWorldFacets::VotingForSurrenderLogic* CastToUserObjectImpl<NWorld::AIWorldFacets::VotingForSurrenderLogic>(CObjectBase*, NWorld::AIWorldFacets::VotingForSurrenderLogic*, CObjectBase*) { return 0; }
 
 namespace NWorld

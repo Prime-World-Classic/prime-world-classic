@@ -1,8 +1,10 @@
 #include "../System/systemStdAfx.h"
-namespace NWorld { class PFBaseHero; }
+namespace NWorld { class PFBaseHero; class PFBaseUnit; }
 // Use the engine specialization; a new weak template copy could hide a link-order bug.
 template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(
 	CObjectBase*, NWorld::PFBaseHero*, CObjectBase*);
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
+	CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*);
 #include "visibility_lifecycle_probe.h"
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFBaseMovingUnit.h"
@@ -392,6 +394,24 @@ void HeroRespawn(Checks& checks)
 	if (restored) restored->Execute(fixture.world);
 	checks.Check(hero->IsMoving(), "packed command retains its intended hero");
 	hero->Stop(false);
+	// Restored unit targets must retain identity even for concrete derived classes.
+	CObj<ProbeUnit> enemy = new ProbeUnit(fixture.world, db);
+	enemy->ChangeFaction(Enemy);
+	PFBaseUnit* exactUnit = enemy.GetPtr();
+	checks.Check(CastToUserObject(static_cast<CObjectBase*>(exactUnit), exactUnit) == exactUnit,
+		"unit cast retains derived object identity");
+	checks.Check(CastToUserObject(static_cast<CObjectBase*>(exactHero), exactUnit) == exactHero,
+		"unit cast accepts a hero subclass");
+	checks.Check(CastToUserObject(static_cast<CObjectBase*>(fixture.world), exactUnit) == nullptr,
+		"unit cast rejects other world object types");
+	CObj<NCore::WorldCommand> attack = CreateCmdAttackTarget(exactHero, exactUnit, false);
+	CObj<NCore::PackedWorldCommand> packedAttack = new NCore::PackedWorldCommand(attack,
+		fixture.world->GetPointerSerialization(), 1984, 0);
+	CObj<NCore::WorldCommand> restoredAttack = packedAttack->GetWorldCommand(fixture.world->GetPointerSerialization());
+	checks.Check(restoredAttack && restoredAttack->CanExecute(), "packed attack command restores");
+	checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackTargetObjectId == exactUnit->GetObjectId(),
+		"packed attack retains the exact target before execution");
+	enemy->CloseWarFog(true);
 	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 	hero->SetForbidRespawn(true);
 	fixture.Tick();

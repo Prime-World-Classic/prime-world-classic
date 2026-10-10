@@ -5,7 +5,7 @@ namespace NWorld
 class PFBaseUnit;
 }
 
-template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
+template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*);
 
 #include "PFWorld.h"
 #include "PFBaseMovingUnit.h"
