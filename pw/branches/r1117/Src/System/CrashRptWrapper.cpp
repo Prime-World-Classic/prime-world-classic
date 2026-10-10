@@ -138,7 +138,9 @@ void InstallToCurrentThread()
   if ( !s_installed )
     return;
 
+#if !defined(_M_X64)
   crInstallToCurrentThread2( 0 );
+#endif
 }
 
 
@@ -157,8 +159,8 @@ void UninstallFromCurrentThread()
 
 void AddFileToReport( const char * filename, const char * description )
 {
-  if ( s_installed )
 #if !defined(_M_X64)
+  if ( s_installed )
     crAddFile2( filename, NULL, description, CR_AF_MAKE_FILE_COPY );
 #endif
 }
@@ -167,8 +169,8 @@ void AddFileToReport( const char * filename, const char * description )
 
 void AddTagToReport( const char * name, const char * value )
 {
-  if ( s_installed )
 #if !defined(_M_X64)
+  if ( s_installed )
     crAddProperty( name, value );
 #endif
 }
