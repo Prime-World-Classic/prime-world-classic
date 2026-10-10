@@ -69,6 +69,9 @@ int main(int argc, char** argv)
 		const bool loading = std::string(argv[4]) == "loading";
 		Check(loading || std::string(argv[4]) == "combat", "Unknown mode");
 		host.Request(Call("LocalizationResources", "LocalizationComplete", Json::array()));
+		host.Request({{"action", "tick"}, {"delta_ms", 16.0}});
+		host.Request({{"action", "tick"}, {"delta_ms", -1}}, PW_RUFFLE_ERROR);
+		host.Request({{"action", "input"}, {"event", {{"type", "focus"}, {"focused", true}}}});
 		if (loading)
 		{
 			const Json name = Json::parse("\"\\u0411\\u043e\\u0442\"");
@@ -83,6 +86,21 @@ int main(int argc, char** argv)
 		}
 		else
 		{
+			const auto text = host.Request({{"path", "chatBar.chatInput_mc"}, {"op", "get"}, {"method", "text_txt"}, {"args", Json::array()}}).at("id");
+			host.Request({{"receiver", text}, {"op", "set"}, {"method", "type"}, {"args", {"input"}}});
+			host.Request({{"receiver", text}, {"op", "set"}, {"method", "text"}, {"args", {""}}});
+			host.Request({{"path", "stage"}, {"op", "set"}, {"method", "focus"}, {"args", {{{"$handle", text}}}}});
+			const Json unicode = Json::parse("\"PW \\u0411\\u043e\\u0442 \\ud83d\\ude00\"");
+			host.Request({{"action", "input"}, {"event", {{"type", "text"}, {"text", unicode}}}});
+			Check(host.Request({{"receiver", text}, {"op", "get"}, {"method", "text"}, {"args", Json::array()}}).at("value") == unicode, "Native Unicode input did not reach chat");
+			host.Request({{"action", "input"}, {"event", {{"type", "key_down"}, {"key", "Shift"}}}});
+			host.Request({{"action", "input"}, {"event", {{"type", "focus"}, {"focused", false}}}});
+			Check(host.Request({{"path", "stage"}, {"op", "get"}, {"method", "focus"}, {"args", Json::array()}}).at("type") == "null", "Focus loss did not clear the stage");
+			host.Request({{"action", "input"}, {"event", {{"type", "text"}, {"text", "ignored"}}}});
+			Check(host.Request({{"receiver", text}, {"op", "get"}, {"method", "text"}, {"args", Json::array()}}).at("value") == unicode, "Blurred chat accepted input");
+			host.Request({{"action", "input"}, {"event", {{"type", "mouse_move"}, {"x", 2}, {"y", 2}}}});
+			host.Request({{"action", "input"}, {"event", {{"type", "wheel"}, {"lines", -1}}}});
+			host.Request({{"action", "release"}, {"id", text}});
 			Check(host.Request(Call("mainInterface", "IsWindowVisible", {0})).at("type") == "boolean", "Boolean return lost");
 			Check(host.Request(Call("mainInterface", "GetTalentActionBarIndex", {0, 0})).at("value") == -1, "Integer return lost");
 			const auto object = host.Request(Call("mainInterface", "GetActionBarItemDisplayObject", {0, false})).at("id");

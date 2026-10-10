@@ -12,6 +12,8 @@ FILES = {'host_api.rs': 'core/src/primeworld.rs', 'primeworld.rs': 'core/example
 	'native_assets.rs': 'core/src/primeworld_assets.rs', 'native_loader.rs': 'core/src/primeworld_loader.rs',
 	'loader_regression.rs': 'core/src/avm2/loader_regression.rs',
 	'handles.rs': 'core/src/avm2/pw_handles.rs', 'runtime.rs': 'core/examples/pw_runtime/mod.rs',
+	'input.rs': 'core/examples/pw_runtime/input.rs',
+	'input_state.rs': 'core/examples/pw_runtime/input_state.rs',
 	'handles_probe.rs': 'core/examples/handles_probe.rs', 'ffi.rs': 'core/examples/pw_bridge.rs'}
 
 

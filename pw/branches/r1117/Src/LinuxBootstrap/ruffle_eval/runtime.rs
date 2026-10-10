@@ -1,5 +1,8 @@
 //! Shared native host used by the live handle test and experimental C ABI.
 
+mod input;
+mod input_state;
+
 use ruffle_core::backend::navigator::NullExecutor;
 use ruffle_core::external::{FsCommandProvider, Value};
 use ruffle_core::limits::ExecutionLimit;
@@ -77,8 +80,17 @@ fn dimensions(request: &Json) -> Result<(u32, u32), String> {
 	Ok((width as u32, height as u32))
 }
 
+/// Millisecond time slices are finite and bounded; callers subdivide long pauses.
+fn delta_ms(request: &Json) -> Result<f64, String> {
+	request["delta_ms"]
+		.as_f64()
+		.filter(|dt| dt.is_finite() && (0.0..=250.0).contains(dt))
+		.ok_or("delta_ms must be between 0 and 250".into())
+}
+
 /// Thread-confined Player and its host-owned roots, callbacks, and diagnostic counter.
 pub struct Host {
+	input: input_state::InputState,
 	handles: ObjectHandleStore,
 	player: Arc<Mutex<Player>>,
 	executor: NullExecutor,
@@ -113,6 +125,7 @@ impl Host {
 			.map_err(|e| e.to_string())?;
 			let commands = Rc::new(RefCell::new(Vec::new()));
 			let player = PlayerBuilder::new()
+				.with_autoplay(true)
 				.with_movie(movie)
 				.with_renderer(renderer)
 				.with_navigator(navigator)
@@ -132,6 +145,7 @@ impl Host {
 				return Err("SWF construction reported runtime errors".into());
 			}
 			Ok(Self {
+				input: input_state::InputState::default(),
 				handles,
 				player,
 				executor,
@@ -165,6 +179,25 @@ impl Host {
 
 	fn execute(&mut self, request: &Json) -> Result<Json, String> {
 		match request["action"].as_str().unwrap_or("invoke") {
+			"input" => {
+				let events = input::events(&request["event"])?;
+				let count = events.len();
+				let mut player = self.player.lock().map_err(|e| e.to_string())?;
+				let mut handled = false;
+				for event in events {
+					for event in self.input.expand(event)? {
+						handled |= player.handle_event(event);
+					}
+				}
+				Ok(json!({"events":count,"handled":handled}))
+			}
+			"tick" => {
+				let dt = delta_ms(request)?;
+				self.executor.run();
+				self.player.lock().map_err(|e| e.to_string())?.tick(dt);
+				self.executor.run();
+				Ok(json!({"delta_ms":dt}))
+			}
 			"surface" => {
 				let (width, height) = dimensions(request)?;
 				let transparent = request["transparent"]
@@ -269,6 +302,15 @@ impl Host {
 #[cfg(test)]
 mod surface_tests {
 	use super::*;
+	#[test]
+	fn reject_invalid_time_slices() {
+		for dt in [json!(null), json!("16"), json!(-1), json!(251)] {
+			assert!(delta_ms(&json!({"delta_ms":dt})).is_err());
+		}
+		for dt in [0.0, 16.25, 250.0] {
+			assert_eq!(delta_ms(&json!({"delta_ms":dt})).unwrap(), dt);
+		}
+	}
 	#[test]
 	fn reject_invalid_or_oversized_surfaces() {
 		for request in [

@@ -27,7 +27,20 @@ The C++ probe checks three sizes, including an odd-width frame, alpha coverage,
 buffer ownership, invalid resize recovery, and the unchanged loading/combat
 contract. Before implementation the first resize failed with Unknown host action.
 
-### Existing Adapter
+### Input And Time (0.4.0)
+
+`{"action":"tick","delta_ms":16.0}` advances the autoplay Player through Ruffle's
+existing timer/frame scheduler; finite slices must be between 0 and 250 ms.
+Rendering remains independent. `{"action":"input","event":{...}}` fully validates
+an event before dispatch. [input.rs](input.rs) documents exact mouse, wheel,
+key, Unicode-text, and focus schemas. Coordinates are viewport pixels.
+The host tracks at most 128 held keys and releases held controls outside the
+movie on focus loss, then clears focus. Unknown/oversized events fail explicitly.
+The real combat chat field receives supplementary Unicode and stops accepting
+text after blur. This does not yet provide IME, clipboard, text-edit commands,
+layout-specific physical-key mapping, or a native game-window event adapter.
+
+### Core Adapter
 
 - Native `:/...` game-root and movie-relative image paths, normalized and confined
   to the canonical Data tree. Symlink/parent escapes, URLs, directories, malformed
@@ -138,8 +151,8 @@ The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
 isolated resizable offscreen framebuffer; live engine compositing, renderer
-state restoration across both engines, dynamic minimap texture upload, input,
-focus, audio events, and live HUD/game-state binding are not implemented
+state restoration across both engines, dynamic minimap texture upload, native
+window input mapping, audio events, and live HUD/game-state binding are not implemented
 by ABI v1. Callback polling proves transport, not execution of gameplay commands.
 
 The next client integration should be opt-in and Linux-only, after these gates
