@@ -82,6 +82,45 @@ bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x,
 	}
 }
 
+bool PwRuffleClientInspection::UseActionSlot(unsigned slot, unsigned width, unsigned height)
+{
+	if (slot >= PwRuffleActionState::ActionSlots || !host_.IsReady() || !actions_ ||
+		!focused_.value_or(false) || !host_.MatchesViewport(width, height)) return false;
+	try
+	{
+		using Json = nlohmann::json;
+		const auto request = [&](const Json& value)
+		{
+			std::string response;
+			if (!host_.Request(value.dump(), response, error_)) throw std::runtime_error(error_);
+			return Json::parse(response);
+		};
+		for (const auto* path : {"EscMenuNonclickable_mc", "chatBar.chatInput_mc"})
+			if (request({{"path", path}, {"op", "get"}, {"method", "visible"},
+				{"args", Json::array()}}).at("value").get<bool>()) return false;
+		if (request({{"action", "focus_state"}}).at("text").get<bool>()) return false;
+		for (const auto& talent : actions_->talents)
+		{
+			if (talent.purchase != PwRuffleActionState::PurchaseState::Bought ||
+				!talent.active.value_or(false)) continue;
+			const auto index = request({{"path", "mainInterface"}, {"method", "GetTalentActionBarIndex"},
+				{"args", {talent.column, talent.row}}}).at("value").get<int>();
+			if (index != static_cast<int>(slot)) continue;
+			request({{"path", "mainInterface"}, {"method", "UseSlot"}, {"args", {slot}}});
+			++shortcutCalls_;
+			return true;
+		}
+		return false;
+	}
+	catch (const std::exception& error)
+	{
+		error_ = error.what();
+		std::fprintf(stderr, "Ruffle shortcut disabled: %s\n", error_.c_str());
+		Reset();
+		return false;
+	}
+}
+
 bool PwRuffleClientInspection::Draw(const std::string& library, const std::string& data,
 	unsigned width, unsigned height, double deltaMs, const PwRuffleHudState& hud,
 	const PwRuffleActionState& actions, const PwRuffleMinimapState& minimap)

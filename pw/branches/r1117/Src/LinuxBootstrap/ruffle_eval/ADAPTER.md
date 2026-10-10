@@ -5,11 +5,30 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.15.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.16.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
 ## Implemented Boundary
+
+### Native Action Controls (0.16.0)
+
+The opt-in client routes top-row `1` through `0` to the authored action bar's ten
+talent slots. It queries `GetTalentActionBarIndex` before `mainInterface.UseSlot`;
+empty, inventory and portal slots are not guessed. The resulting original
+callback still passes live gameplay validation. Held/repeated/blocked keys cannot
+become fresh actions until release; captured edges never fall through to legacy
+world controls. Shift/Ctrl/Alt/Super chords, lost focus, stale viewport, authored
+modal/chat state and focused text fields are inert. Chat text/IME, rebinding,
+inventory and portal hotkeys remain outside this path.
+
+The additive `focus_state` JSON request returns `{"text":bool}` from Ruffle's
+actual focus tracker without retaining an object handle. Rebuild the explicit
+DSO with this checkpoint before using shortcuts. Its C ABI version is unchanged.
+Only opt-in builds normalize X11 release/press autorepeat pairs and preserve
+modifier metadata; the default Linux input behavior is unchanged. Native Escape
+(`27`) and synthetic X11 Escape both cancel targeting. Pending talents receive
+the original SWF's `Chosen` status, cleared after cast, cancellation or invalidation.
 
 ### Surface Transport (0.3.0)
 

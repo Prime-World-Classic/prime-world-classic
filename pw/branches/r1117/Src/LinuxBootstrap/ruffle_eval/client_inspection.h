@@ -39,6 +39,11 @@ public:
 		double wheelLines, unsigned width, unsigned height);
 	/** Release VM buttons on native focus loss; duplicate notifications are skipped. */
 	void Focus(bool focused);
+	/** Invoke a mapped, purchased talent through authored UseSlot. Empty slots,
+	 * modal/chat/text focus and stale viewports are inert. The caller owns key
+	 * repeat/release policy and revalidates the resulting gameplay callback.
+	 */
+	bool UseActionSlot(unsigned slot, unsigned width, unsigned height);
 	/** Release native resources; diagnostics/counters survive for final logging. */
 	bool Reset() { ++inputEpoch_; ++controlEpoch_; minimapBounds_.reset(); events_.Clear(); pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
 	/** Consume validated requests once. The caller must revalidate live gameplay state. */
@@ -62,6 +67,7 @@ public:
 	/** Successful authored hero calls, excluding unchanged snapshots. */
 	size_t HudCalls() const { return hudCalls_; }
 	size_t ActionCalls() const { return actionCalls_; }
+	size_t ShortcutCalls() const { return shortcutCalls_; }
 	size_t MinimapUploads() const { return minimapUploads_; }
 	size_t PointerEvents() const { return pointerEvents_; }
 	size_t ConsumedPointerEvents() const { return consumedPointerEvents_; }
@@ -80,6 +86,7 @@ private:
 	size_t hudCalls_ = 0;
 	std::optional<PwRuffleActionState> actions_;
 	size_t actionCalls_ = 0;
+	size_t shortcutCalls_ = 0;
 	std::string minimapBitmap_;
 	std::vector<uint8_t> minimapPixels_;
 	size_t minimapUploads_ = 0;

@@ -301,6 +301,12 @@ impl Host {
 				}
 				Ok(json!({"frames":frames}))
 			}
+			// Inspect VM focus by display type, not a class-name string or guessed UI path.
+			"focus_state" => {
+				let text = self.player.lock().map_err(|e| e.to_string())?
+					.mutate_with_update_context(|context| context.focus_tracker.get_as_edit_text().is_some());
+				Ok(json!({"text": text}))
+			}
 			"stats" => Ok(
 				json!({"handles":self.handles.len(), "runtime_errors":self.errors.load(Ordering::Relaxed),
 					"primeworld_mouse_events":cfg!(feature = "primeworld_mouse_events")}),

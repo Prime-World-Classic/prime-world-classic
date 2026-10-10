@@ -285,6 +285,18 @@ int main(int argc, char** argv)
 			Check(host.Request(R"({"path":"mainInterface","method":"IsWindowVisible","args":[0]})", response, error), error);
 			Check(nlohmann::json::parse(response).at("value") == visible, "Authored talent window did not toggle through pointer events");
 		}
+		Check(host.Request(R"({"action":"focus_state"})", response, error), error);
+		Check(!nlohmann::json::parse(response).at("text").get<bool>(), "MovieClip focus misclassified as text");
+		Check(host.Request(R"({"path":"chatBar.chatInput_mc","op":"get","method":"text_txt","args":[]})", response, error), error);
+		const auto textHandle = nlohmann::json::parse(response).at("id");
+		Check(host.Request(nlohmann::json{{"path", "stage"}, {"op", "set"}, {"method", "focus"},
+			{"args", {{{"$handle", textHandle}}}}}.dump(), response, error), error);
+		Check(host.Request(R"({"action":"focus_state"})", response, error), error);
+		Check(nlohmann::json::parse(response).at("text").get<bool>(), "Real TextField focus not detected");
+		Check(host.Request(R"({"path":"stage","op":"set","method":"focus","args":[null]})", response, error), error);
+		Check(host.Request(nlohmann::json{{"action", "release"}, {"id", textHandle}}.dump(), response, error), error);
+		Check(host.Request(R"({"action":"focus_state"})", response, error), error);
+		Check(!nlohmann::json::parse(response).at("text").get<bool>(), "Cleared focus still blocks shortcuts");
 		Check(host.Reset(), "Hero/action/minimap/input test teardown failed");
 		PwRuffleClientInspection inspection;
 		const std::array<uint8_t, 4> background{43, 67, 109, 255};
@@ -332,6 +344,17 @@ int main(int argc, char** argv)
 			return event.kind == PwRuffleGameplayEvent::Kind::TalentClicked && event.column == 2 && event.row == 0;
 		}) == 1, "Original shortcut did not emit exact talent request");
 		Check(inspection.TakeGameplayEvents().empty(), "Authored callback delivered twice");
+		Check(!inspection.UseActionSlot(10, 1280, 720), "Out-of-range shortcut accepted");
+		Check(!inspection.UseActionSlot(9, 1280, 720), "Empty shortcut accepted");
+		Check(!inspection.UseActionSlot(0, 960, 768), "Stale viewport shortcut accepted");
+		Check(inspection.UseActionSlot(0, 1280, 720), "Authored mapped shortcut rejected: " + inspection.Error());
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
+		const auto shortcutRequests = inspection.TakeGameplayEvents();
+		Check(std::count_if(shortcutRequests.begin(), shortcutRequests.end(), [](const auto& event)
+		{
+			return event.kind == PwRuffleGameplayEvent::Kind::TalentClicked && event.column == 2 && event.row == 0;
+		}) == 1, "Native shortcut did not follow authored slot mapping");
+		Check(inspection.ShortcutCalls() == 1 && inspection.TakeGameplayEvents().empty(), "Shortcut was delivered twice");
 		Check(inspection.MinimapBounds() && inspection.MinimapBounds()->maxX == 100,
 			"Input has no composed minimap bounds");
 		PwRuffleMinimapInput minimapInput;
@@ -367,6 +390,7 @@ int main(int argc, char** argv)
 		const auto epoch = inspection.InputEpoch();
 		const auto controlEpoch = inspection.ControlEpoch();
 		inspection.Focus(false);
+		Check(!inspection.UseActionSlot(0, 1280, 720), "Unfocused shortcut accepted");
 		Check(inspection.InputEpoch() != epoch, "Focus loss did not cancel gesture epoch");
 		Check(inspection.ControlEpoch() != controlEpoch, "Focus loss retained ability selection epoch");
 		Check(inspection.PendingCallbacks() == 0, "Focus loss retained gameplay requests");

@@ -125,6 +125,7 @@
 #include "LinuxBootstrap/ruffle_eval/talent_input.h"
 #include "LinuxBootstrap/ruffle_eval/minimap_input.h"
 #include "LinuxBootstrap/ruffle_eval/talent_target_input.h"
+#include "LinuxBootstrap/ruffle_eval/action_key_input.h"
 #include "LinuxBootstrap/ground_talent_target.h"
 #endif
 #include <chrono>
@@ -4269,6 +4270,7 @@ struct LinuxBootstrapScreenRuntime
 	size_t ruffleInputEpoch = 0, ruffleMinimapMoves = 0, ruffleMinimapCameras = 0;
 	CVec2 ruffleMinimapLastTarget = CVec2(0, 0);
 	PwRuffleTalentTargetInput ruffleTargetInput;
+	PwRuffleActionKeyInput ruffleActionKeys;
 	size_t ruffleTargetArmed = 0, ruffleTargetCasts = 0, ruffleTargetRejected = 0, ruffleTargetCanceled = 0;
 #endif
   bool visibleMenuReady;
@@ -32310,7 +32312,7 @@ void DriveLinuxRufflePointer(LinuxWindowOverlay* overlay, LinuxBootstrapScreenRu
 		const auto message = input->rawMessages[i];
 		using TargetKind = PwRuffleTalentTargetInput::Kind;
 		const bool escape = (message.msg == NMainFrame::SWindowsMsg::KEY_DOWN ||
-			message.msg == NMainFrame::SWindowsMsg::KEY_UP) && message.nKey == XK_Escape;
+			message.msg == NMainFrame::SWindowsMsg::KEY_UP) && PwRuffleIsEscapeKey(message.nKey);
 		if (escape || message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_DOWN ||
 			message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_DBLCLK ||
 			message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_UP)
@@ -51450,6 +51452,33 @@ void DriveLinuxRuffleTargeting(const LinuxClientLaunchSettings& settings, const 
 	input->rawMessages.resize(kept);
 }
 
+/** Keep digit gestures out of legacy world controls and invoke the authored action slot. */
+void DriveLinuxRuffleKeys(const LinuxClientLaunchSettings& settings, LinuxWindowOverlay* overlay,
+	LinuxBootstrapScreenRuntime* runtime, LinuxInputState* input)
+{
+	if (!runtime->ruffleInspection.WasAttempted()) return;
+	auto* hero = ResolveLinuxRuffleCommandHero(settings, runtime);
+	XWindowAttributes viewport = {};
+	const bool allowed = hero && !hero->IsDead() && overlay &&
+		XGetWindowAttributes(overlay->display, overlay->window, &viewport) &&
+		viewport.width > 0 && viewport.height > 0 && NMainFrame::MakeOpenGLContextCurrent();
+	size_t kept = 0;
+	for (const auto& message : input->rawMessages)
+	{
+		if (message.msg != NMainFrame::SWindowsMsg::KEY_DOWN && message.msg != NMainFrame::SWindowsMsg::KEY_UP)
+		{
+			input->rawMessages[kept++] = message;
+			continue;
+		}
+		const auto decision = runtime->ruffleActionKeys.Key(message.msg == NMainFrame::SWindowsMsg::KEY_DOWN,
+			message.nKey, allowed && !(message.dwFlags & (ShiftMask | ControlMask | Mod1Mask | Mod4Mask)),
+			runtime->ruffleInspection.ControlEpoch(), message.nRep > 1);
+		if (decision.slot) runtime->ruffleInspection.UseActionSlot(*decision.slot, viewport.width, viewport.height);
+		if (!decision.consume) input->rawMessages[kept++] = message;
+	}
+	input->rawMessages.resize(kept);
+}
+
 /** Drain once per input frame before transceiver stepping, outside the renderer. */
 void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings,
 	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime* runtime)
@@ -51619,6 +51648,9 @@ PwRuffleActionState CaptureLinuxRuffleActions(LinuxBootstrapScreenRuntime* runti
 		if (!(talent->IsEnoughMana() || (talent->IsMultiState() && talent->IsOn())))
 			entry.status = talent->DoesSpendLifeInsteadEnergy() ? TalentStatus::NotEnoughLife : TalentStatus::NotEnoughMana;
 		if (talent->IsForbidded() || !talent->IsActive()) entry.status = TalentStatus::Disabled;
+		if (runtime->ruffleTargetInput.IsChosen({hero->GetObjectId(), row, column,
+			runtime->ruffleInspection.ControlEpoch()}) && CanArmLinuxGroundTalent(hero, row, column))
+			entry.status = TalentStatus::Chosen;
 		entry.alternativeState = (talent->IsOn() && talent->IsMultiState()) || talent->IsSecondState();
 		state.talents.push_back(entry);
 	}
@@ -68676,6 +68708,7 @@ void AppendRuntimeInputLog(
 		<< " targetArmed:" << screenRuntime.ruffleTargetArmed << " targetCasts:" << screenRuntime.ruffleTargetCasts
 		<< " targetRejected:" << screenRuntime.ruffleTargetRejected << " targetCanceled:" << screenRuntime.ruffleTargetCanceled
 		<< " targetPending:" << screenRuntime.ruffleTargetInput.Pending().has_value()
+		<< " shortcutCalls:" << screenRuntime.ruffleInspection.ShortcutCalls()
 		<< " minimapMoves:" << screenRuntime.ruffleMinimapMoves
 		<< " minimapCameras:" << screenRuntime.ruffleMinimapCameras
 		<< " minimapTarget:" << screenRuntime.ruffleMinimapLastTarget.x << "," << screenRuntime.ruffleMinimapLastTarget.y
@@ -72662,6 +72695,7 @@ int main(int argc, char** argv)
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
+		DriveLinuxRuffleKeys(settings, &overlay, &screenRuntime, &inputState);
 		DriveLinuxRuffleGameplay(settings, selectedMapPreview, &screenRuntime);
 		DriveLinuxRuffleTargeting(settings, selectedMapPreview, &overlay, &screenRuntime, &inputState);
 #endif

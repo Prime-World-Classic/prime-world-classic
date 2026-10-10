@@ -1551,8 +1551,9 @@ option(PW_LINUX_RUFFLE_INSPECTION "Enable explicit native Ruffle combat inspecti
 if(PW_LINUX_RUFFLE_INSPECTION)
 	include("${CMAKE_CURRENT_SOURCE_DIR}/ruffle_eval/native_host.cmake")
 	target_link_libraries(PrimeWorldLinuxClient PRIVATE PwRuffleNativeHost)
-	# Limit the opt-in macro to the Linux client entry point, not shared game code.
-	set_property(SOURCE ../PW_Client/Game.cpp APPEND PROPERTY COMPILE_DEFINITIONS PW_LINUX_RUFFLE_INSPECTION=1)
+	# Limit the opt-in macro to Linux presentation/input, not shared game code.
+	set_property(SOURCE ../PW_Client/Game.cpp ../System/MainFrame_linux.cpp
+		APPEND PROPERTY COMPILE_DEFINITIONS PW_LINUX_RUFFLE_INSPECTION=1)
 endif()
 
 target_link_libraries(

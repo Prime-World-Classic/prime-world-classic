@@ -10,6 +10,10 @@
 #include <X11/Xutil.h>
 #include <GL/glx.h>
 
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+#include "../LinuxBootstrap/ruffle_eval/action_key_input.h"
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
 #include <mutex>
@@ -178,14 +182,14 @@ void PushCursorMessage()
   PushMouseMessage(msg, x, y, 0);
 }
 
-void PushKeyMessage(NMainFrame::SWindowsMsg::EMsg msgType, int key, int repeat)
+void PushKeyMessage(NMainFrame::SWindowsMsg::EMsg msgType, int key, int repeat, unsigned long flags = 0)
 {
   NMainFrame::SWindowsMsg msg = {};
   NHPTimer::GetTime(msg.time);
   msg.msg = msgType;
   msg.nKey = key;
   msg.nRep = repeat;
-  msg.dwFlags = 0;
+  msg.dwFlags = flags;
   PushMessage(msg);
 }
 
@@ -600,23 +604,30 @@ void ProcessButtonRelease(const XButtonEvent& event)
   }
 }
 
-void ProcessKeyEvent(XKeyEvent& event, bool pressed)
+void ProcessKeyEvent(XKeyEvent& event, bool pressed, int repeat = 1)
 {
   KeySym keySym = NoSymbol;
   char buffer[32] = {0};
   const int textLen = XLookupString(&event, buffer, sizeof(buffer), &keySym, nullptr);
+	unsigned long flags = 0;
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	flags = event.state;
+	// Keep digit gesture identity stable when Shift changes while the key is held.
+	const KeySym unshifted = XLookupKeysym(&event, 0);
+	if (unshifted >= XK_0 && unshifted <= XK_9) keySym = unshifted;
+#endif
 
   PushKeyMessage(
     pressed ? NMainFrame::SWindowsMsg::KEY_DOWN : NMainFrame::SWindowsMsg::KEY_UP,
     ToVirtualKey(keySym),
-    1
+		repeat, flags
   );
 
   if (pressed && textLen > 0)
   {
     for (int i = 0; i < textLen; ++i)
     {
-      PushKeyMessage(NMainFrame::SWindowsMsg::KEY_CHAR, static_cast<unsigned char>(buffer[i]), 1);
+			PushKeyMessage(NMainFrame::SWindowsMsg::KEY_CHAR, static_cast<unsigned char>(buffer[i]), repeat, flags);
     }
   }
 }
@@ -757,6 +768,22 @@ void PumpMessages()
         break;
 
       case KeyRelease:
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+				// X11 autorepeat is an adjacent release/press pair, not a physical Up.
+				if (XPending(g_display) > 0)
+				{
+					XEvent next = {};
+					XPeekEvent(g_display, &next);
+					if (next.type == KeyPress && PwRuffleIsX11AutoRepeatPair(
+						{false, event.xkey.window, event.xkey.keycode, event.xkey.time},
+						{true, next.xkey.window, next.xkey.keycode, next.xkey.time}))
+					{
+						XNextEvent(g_display, &next);
+						ProcessKeyEvent(next.xkey, true, 2);
+						break;
+					}
+				}
+#endif
         ProcessKeyEvent(event.xkey, false);
         break;
 
