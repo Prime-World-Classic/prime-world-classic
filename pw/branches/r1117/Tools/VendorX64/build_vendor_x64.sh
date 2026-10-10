@@ -29,6 +29,9 @@ BR="$REPO/pw/branches/r1117"
 V="$BR/Vendor"
 VX="$BR/Tools/VendorX64"
 BUILD="$VX/build"
+# внешние источники вендоров (не в репозитории): jpeg 6b, freetype, OpenSSL.
+# URL+sha256 — у каждого gen_*; распаковка: см. PLAN_client_modern.md, этап 3.
+VSRC="${VSRC:-$HOME/pwbuild/vendor-src}"
 
 WINEPREFIX="${WINEPREFIX:-$HOME/.wine-vs}"
 CMAKE_DIR="${PW_CMAKE_DIR:-$HOME/pwbuild/wintools/cmake-3.31.6-windows-x86_64}"
@@ -40,12 +43,34 @@ JOBS="${PW_BUILD_JOBS:-8}"
 # CURL_STATICLIB и линкует libcurl.lib статически — собираем STATIC. SSL:
 # x86-ный libcurl был собран с OpenSSL (ssleay32MT/libeay32MT в списке линковок),
 # x64-ного OpenSSL в дереве нет, поэтому https идёт через Windows Schannel.
+# ------------------------------------------------------------------ libcurl
+# curl 7.22.0 из дерева (Vendor/libcurl/src/curl-7.22.0). Штатный CMake вендора
+# неполный (нет CMake/Utilities.cmake), Makefile.msc отсутствует — поэтому свой
+# список TU. x86-ная либа в дереве — СТАТИЧЕСКАЯ libcurl.lib (CURL_STATICLIB),
+# значит и x64 — статическая. Конфиг — lib/config-win32.h (подхватывается
+# curl_setup.h сам при WIN32+BUILDING_LIBCURL).
 gen_curl() {
     local out="$V/libcurl/lib/Release/x64"
+    local c="$V/libcurl/src/curl-7.22.0"
+    [ -f "$c/lib/easy.c" ] || { echo "   !! нет источников curl: $c" >&2; return 1; }
+    cat > "$BUILD/curl/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.15)
+project(curl C)
+set(CMAKE_C_FLAGS "")
+set(CMAKE_C_FLAGS_RELEASE "")
+include_directories($(zfwd "$c/include") $(zfwd "$c/lib"))
+file(GLOB CURL_SRC $(zfwd "$c/lib")/*.c)
+# GSSAPI/SPNEGO (нет gssapi.h на Windows; config-win32.h его и не включает) и
+# darwinssl (Apple) в win32-сборку не входят.
+list(FILTER CURL_SRC EXCLUDE REGEX "/(gssapi|spnego|darwinssl)\\.c\$")
+add_library(libcurl STATIC \${CURL_SRC})
+set_target_properties(libcurl PROPERTIES OUTPUT_NAME libcurl)
+# LDAP: config-win32.h включает USE_WIN32_LDAP -> 15 отсылок на wldap32
+# (__imp_ldap_*), которой в списке либ клиента нет. LDAP клиенту не нужен.
+target_compile_definitions(libcurl PRIVATE BUILDING_LIBCURL CURL_STATICLIB CURL_DISABLE_LDAP _CRT_SECURE_NO_WARNINGS)
+target_compile_options(libcurl PRIVATE /O2 /MT /wd4018 /wd4090 /wd4100 /wd4127 /wd4244 /wd4245 /wd4267 /wd4701 /wd4996)
+EOF
     DEST="$out" ARTIFACTS="libcurl.lib"
-    SRC="$V/libcurl/src/curl-7.22.0"
-    EXTRA="-DBUILD_SHARED_LIBS=OFF -DBUILD_CURL_EXE=OFF -DENABLE_SCHANNEL=ON "
-    EXTRA="$EXTRA -DUSE_OPENSSL=OFF -DHTTP_ONLY=ON -DENABLE_MANUAL=OFF -DCURL_STATIC_CRT=ON"
 }
 
 # ------------------------------------------------------------------ CrashRpt
@@ -88,7 +113,190 @@ EOF
     DEST="$out" ARTIFACTS="CensorDll.dll CensorDll.lib"
 }
 
-ALL_TARGETS="zlib jpeg jsoncpp ace terabit curl crashrpt censor"
+# Tamarin (AVM2) — 99 из 211 незакрытых символов x64-клиента. x86-ная либа —
+# СТАТИЧЕСКАЯ Vendor/Tamarin/lib/Release/Tamarin.lib, поэтому и x64 — статическая.
+# Конфигурация x64 в этом вендоре САМА: platform/system-selection.h при _M_X64
+# определяет AVMSYSTEM_AMD64/SIXTYFOURBIT -> AVMSYSTEM_64BIT=1 (клиент видит тот
+# же заголовок, поэтому ABI Atom=64 сходится с Src/UI/FlashInterface.h).
+gen_tamarin() {
+    local s="$BR/Vendor/Tamarin/source"
+    DEST="$BR/Vendor/Tamarin/lib/Release/x64"
+    ARTIFACTS="Tamarin.lib"
+    local sw="$(zfwd "$s")"
+    cat > "$BUILD/tamarin/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.15)
+project(tamarin C CXX ASM_MASM)
+set(CMAKE_CXX_FLAGS "")
+set(CMAKE_CXX_FLAGS_RELEASE "")
+# include-пути повторяют AdditionalIncludeDirectories клиента (model.json),
+# иначе клиентские TU и Tamarin.lib увидят разные раскладки.
+include_directories($sw/core $sw/MMgc $sw/VMPI $sw/nanojit $sw/pcre $sw/platform
+  $sw/eval $sw/extensions $sw/shell $sw/vprof $BR/Vendor/Tamarin)
+file(GLOB TAM_CORE $sw/core/*.cpp)
+file(GLOB TAM_MMG  $sw/MMgc/*.cpp)
+file(GLOB TAM_VMPI $sw/VMPI/*.cpp)
+file(GLOB TAM_NJ   $sw/nanojit/*.cpp)
+file(GLOB TAM_PCRE $sw/pcre/*.cpp)
+file(GLOB TAM_PL   $sw/platform/win32/*.cpp)
+list(FILTER TAM_MMG  EXCLUDE REGEX "/GCTests\\.cpp\$")
+# core/builtin.cpp и pcre/ucptable.cpp НЕ самостоятельные TU: они включаются
+# текстом (core/AbcData.cpp:41 #include "builtin.cpp"; pcre_ucp_findchar.cpp:52
+# #include "ucptable.c" — wine regcase находит .cpp). Отдельная компиляция даёт
+# «uint32_t/cnode не объявлен».
+list(FILTER TAM_CORE EXCLUDE REGEX "/builtin\\.cpp\$")
+list(FILTER TAM_PCRE EXCLUDE REGEX "/ucptable\\.cpp\$")
+# pcre_ucp_findchar.cpp в этом вендоре НЕ совместим с ucpinternal.h/ucptable.cpp
+# (код ждёт cnode с полями f0_*/f1_*/f2_*, заголовок — трёхполевой cnode: дерево
+# pcre здесь разношерстное). Вызов _pcre_ucp_findchar в дереве больше нигде не
+# встречается — TU мёртвая, исключаем целиком.
+list(FILTER TAM_PCRE EXCLUDE REGEX "/pcre_ucp_findchar\\.cpp\$")
+# x86-ный inline asm: core/CdeclThunk.cpp (thunk'и вызовов cdecl, VMCFG только для
+# IA32) и platform/win32/win32setjmp.cpp. На x64 Tamarin их не использует.
+list(FILTER TAM_CORE EXCLUDE REGEX "/CdeclThunk\\.cpp\$")
+list(FILTER TAM_PL   EXCLUDE REGEX "/win32setjmp\\.cpp\$")
+# VMPI: платформа выбирается на этапе компиляции #ifdef'ами, но Symbian/Mac/Unix
+# варианты в win32-сборке не участвуют.
+list(FILTER TAM_VMPI EXCLUDE REGEX "(Symbian|Mac|Unix|Posix|WinMo)[A-Za-z]*\\.cpp\$")
+list(FILTER TAM_NJ   EXCLUDE REGEX "/Native(ARM|PPC|Sparc|i386)\\.cpp\$")
+list(FILTER TAM_PCRE EXCLUDE REGEX "/(pcredemo|pcregrep|pcretest|dftables|pcreposix)\\.cpp\$")
+# Vtune.cpp требует vtune-заголовков, coff.cpp — профиль-инструментия; ни то ни
+# другое клиентом не вызывается.
+list(FILTER TAM_PL   EXCLUDE REGEX "/(Vtune|coff)\\.cpp\$")
+# x64: setjmp64/longjmp64/modInternal — masm (win64setjmp.asm); x86-ный
+# win32setjmp.cpp под x64 не компилируется (inline asm).
+set(TAM_ASM $sw/platform/win32/win64setjmp.asm)
+add_library(Tamarin STATIC
+  \${TAM_CORE} \${TAM_MMG} \${TAM_VMPI} \${TAM_NJ} \${TAM_PCRE} \${TAM_PL} \${TAM_ASM})
+# Машинно-генерированные и «голые» TU (core/builtin.cpp, pcre/*) не имеют ни одного
+# #include — в штатной сборке Tamarin они получают заголовки через PCH. Заменяем PCH
+# принудительным включением avmplus.h (то же делает клиентский
+# Src/UI/Flash/GameSWFIntegration/TamarinPCH.h).
+set_source_files_properties(\${TAM_CORE} PROPERTIES COMPILE_OPTIONS "/FIavmplus.h")
+# pcre: часть TU (pcre_dfa_exec.cpp) включает config.h только под HAVE_CONFIG_H, а
+# pcre_ucp_findchar.cpp — не включает вовсе; без него pcre_internal.h не знает
+# LINK_SIZE/NEWLINE (#error C1189). config.h кладём принудительно первым.
+set_source_files_properties(\${TAM_PCRE} PROPERTIES COMPILE_OPTIONS "/FIconfig.h;/FIavmplus.h")
+target_compile_definitions(Tamarin PRIVATE
+  WIN32 _WINDOWS NDEBUG _SHIPPING STATIC_LIB _CRT_SECURE_NO_WARNINGS _SCL_SECURE_NO_WARNINGS)
+target_compile_options(Tamarin PRIVATE /O2 /MT /EHsc /std:c++14 /wd4996 /wd4244 /wd4267 /wd4018 /wd4099 /wd4311 /wd4312 /wd4715 /wd4100 /wd4101)
+EOF
+}
+
+# ------------------------------------------------------------------ freetype
+# Клиентские заголовки Vendor/freetype/include = freetype 2.4.4 (x86-ная либа —
+# freetype244MT.lib, статическая). Исходников в дереве нет — внешний источник:
+#   https://downloads.sourceforge.net/freetype/freetype-2.4.4.tar.gz
+#   sha256: 3ffd21fe6be219f01be7e41a40a01bbadc8ff6f4f79c4f29cc29dfcf4cc8f5f9
+#   каталог: $VSRC/freetype-2.4.4
+# Заголовки берём ВЕНДОРСКИЕ (клиентские), а не из архива — раскладки обязаны
+# совпадать с тем, что видят TU клиента.
+gen_freetype() {
+    local out="$V/freetype/lib/x64"
+    local f="$VSRC/freetype-2.4.4"
+    [ -f "$f/src/base/ftbase.c" ] || { echo "   !! нет источников freetype: $f" >&2; return 1; }
+    local inc; inc="$(zfwd "$V/freetype/include")"
+    local d
+    for d in "$f"/src/*/; do
+        case "$(basename "$d")" in tools|dlg) continue ;; esac
+        inc="$inc;$(zfwd "$d")"
+    done
+    cat > "$BUILD/freetype/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.15)
+project(freetype C)
+set(CMAKE_C_FLAGS "")
+set(CMAKE_C_FLAGS_RELEASE "")
+include_directories($inc)
+file(GLOB FT_SRC $f/src/*/*.c)
+list(FILTER FT_SRC EXCLUDE REGEX "/(ftsystem|ftdebug|ftmac)\\.c\$")
+# Модули autofit и gzip — ОДИН TU каждый (autofit.c / ftgzip.c включают
+# остальные .c текстом): отдельная компиляция даёт C2129/C2006. CMake-регекспы
+# lookahead не умеют, поэтому каталог исключается целиком, а нужный TU
+# добавляется явно.
+list(FILTER FT_SRC EXCLUDE REGEX "/(autofit|gzip)/")
+add_library(freetype244MT STATIC \${FT_SRC} $(zfwd "$f/src/base/ftsystem.c") $(zfwd "$f/src/base/ftdebug.c")
+  $(zfwd "$f/src/gzip/ftgzip.c") $(zfwd "$f/src/autofit/autofit.c"))
+set_target_properties(freetype244MT PROPERTIES OUTPUT_NAME freetype244MT)
+target_compile_definitions(freetype244MT PRIVATE FT2_BUILD_LIBRARY _CRT_SECURE_NO_WARNINGS)
+target_compile_options(freetype244MT PRIVATE /O2 /MT /wd4018 /wd4100 /wd4131 /wd4244 /wd4267 /wd4701 /wd4996)
+EOF
+    DEST="$out" ARTIFACTS="freetype244MT.lib"
+}
+
+# ------------------------------------------------------------------ OpenSSL
+# Клиентские заголовки Vendor/OpenSSL/include — 0.9.8i, либы — libeay32MT.lib /
+# ssleay32MT.lib (статические). Исходников в дереве нет; x64 собирается из
+# 1.0.2u: код клиента трогает только публичный API (<openssl/ossl_typ.h>,
+# SSL_*/BIO_*/ERR_*), полей структур не видит — ABI-совместимо.
+#   внешний источник: https://www.openssl.org/source/old/1.0.2/openssl-1.0.2u.tar.gz
+#   sha256: ecd0c6ffb493dd06707d38b14bb4d8c2288bb7033735606569d8f90f89669d16
+# Штатный путь (ms\do_win64a + nmake) не годится: util/mk1mf.pl строит пути с
+# обратным слэшем и под host-perl не находит источники («no rule for
+# crypto\\constant_time_test»), а Windows-perl в префиксе нет. Поэтому — свой
+# CMake-список TU (no-asm).
+gen_openssl() {
+    local out="$V/OpenSSL/lib/x64"
+    local o="$VSRC/openssl-1.0.2u"
+    [ -f "$o/crypto/cryptlib.c" ] || { echo "   !! нет источников OpenSSL: $o" >&2; return 1; }
+    # В tar.gz с GitHub-релиза симлинки include/openssl/*.h ОТСУТСТВУЮТ (в 1.0.2
+    # это именно симлинки на crypto/*/*.h) — восстанавливаем их сами, затем
+    # генерируем opensslconf.h.
+    if [ ! -e "$o/include/openssl/e_os2.h" ]; then
+        mkdir -p "$o/include/openssl"
+        local h
+        for h in "$o"/*.h "$o"/crypto/*.h "$o"/crypto/*/*.h "$o"/ssl/*.h "$o"/engines/*.h; do
+            [ -f "$h" ] || continue
+            ln -sf "$h" "$o/include/openssl/$(basename "$h")"
+        done
+    fi
+    [ -f "$o/include/openssl/opensslconf.h" ] || (cd "$o" && perl Configure VC-WIN64A no-asm >/dev/null)
+    local EAY_DIRS="" d
+    for d in "$o"/crypto/*/; do EAY_DIRS="$EAY_DIRS $(zfwd "${d%/}")"; done
+    cat > "$BUILD/openssl/CMakeLists.txt" <<EOF
+cmake_minimum_required(VERSION 3.15)
+project(openssl C)
+set(CMAKE_C_FLAGS "")
+set(CMAKE_C_FLAGS_RELEASE "")
+# каждый crypto/<dir> в include path: внутренние заголовки (asn1_locl.h,
+# modes_lcl.h, bn_lcl.h …) включаются по имени из СОСЕДНИХ подкаталогов
+foreach(d ${EAY_DIRS})
+  include_directories(\${d})
+endforeach()
+include_directories($(zfwd "$o") $(zfwd "$o/include") $(zfwd "$o/crypto") $(zfwd "$o/ms"))
+file(GLOB_RECURSE EAY_SRC $(zfwd "$o")/crypto/*.c)
+file(GLOB        SSL_SRC $(zfwd "$o")/ssl/*.c)
+# asm-варианты (в т.ч. crypto32/x86), engine (требует динамических движков) и
+# fips в no-asm сборке не участвуют
+list(FILTER EAY_SRC EXCLUDE REGEX "/(asm|crypto32|engine|fips)/")
+# LPdir_* — реализации opendir для разных ОС; для Windows нужна только LPdir_win.c
+# LPdir_* (opendir-обвязка; LPdir.h в tar.gz отсутствует), скоростные тесты
+# (*speed.c, *_test.c) и bss_rtcp.c (VMS iodef.h) в библиотеку не входят.
+list(FILTER EAY_SRC EXCLUDE REGEX "/LPdir_[a-z0-9]*\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "(speed|opts|_spd|test)\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "/(exp|ssl_task)\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "/(bss_rtcp|e_bprint|u_multiss)\\.c\$")
+add_library(libeay32MT STATIC \${EAY_SRC})
+add_library(ssleay32MT STATIC \${SSL_SRC})
+set_target_properties(libeay32MT PROPERTIES OUTPUT_NAME libeay32MT)
+set_target_properties(ssleay32MT PROPERTIES OUTPUT_NAME ssleay32MT)
+foreach(t libeay32MT ssleay32MT)
+  target_compile_definitions(\${t} PRIVATE OPENSSL_NO_ASM OPENSSL_NO_SSL2 OPENSSL_NO_HEARTBEATS _CRT_SECURE_NO_WARNINGS)
+  target_compile_options(\${t} PRIVATE /O2 /MT /wd4018 /wd4090 /wd4100 /wd4127 /wd4244 /wd4245 /wd4267 /wd4701 /wd4706 /wd4996 /wd4715 /wd4312)
+endforeach()
+EOF
+    DEST="$out" ARTIFACTS="libeay32MT.lib ssleay32MT.lib"
+}
+
+# В список по умолчанию НЕ входят:
+#   jpeg     — заголовки клиента (Vendor/jpeglib/include) это САМОДЕЛЬНЫЙ вариант
+#            jpeg: jpeg_decompress_struct не совпадает ни с 6b (нет data_unit/
+#            J_CODEC_PROCESS/min_codec_data_unit), ни с 8.0 из дерева (есть
+#            is_baseline). Ни 6b, ни 8.0 под них не собираются; x64-либу из
+#            Vendor/CrashRpt/thirdparty/jpeg (8.0, C-linkage) использовать
+#            нельзя — убрана из Vendor/jpeglib/lib/x64. Практичный путь:
+#            перевести Src/UI/Flash/GameSWFIntegration/JPEGReader.cpp на стоковый
+#            jpeg (8) и собрать его (8 незакрытых символа).
+#   crashrpt — требует VC.ATL (atldef.h), в тулчейне ~/.wine-vs его нет.
+ALL_TARGETS="zlib jsoncpp ace terabit curl censor tamarin freetype openssl"
 
 TARGETS=()
 for arg in "$@"; do
@@ -153,19 +361,53 @@ EOF
 # ------------------------------------------------------------------ jpeg
 # Источник — Vendor/CrashRpt/thirdparty/jpeg (46 .c), заголовки — Vendor/jpeglib/include
 # (в нём же jconfig.h, которым этот jpeg собран). Статическая либа, как x86 jpeglib.lib.
+# ------------------------------------------------------------------ jpeg
+# ВАЖНО (ABI): клиентские заголовки Vendor/jpeglib/include — это jpeg **6b**
+# (JPEG_LIB_VERSION 62, jconfig.h: HAVE_BOOLEAN + boolean = unsigned char), и
+# x86-ный Vendor/jpeglib/lib/jpeglib.lib скомпилирован **как C++** (экспорты
+# вида ?jpeg_read_header@@YAHPAUjpeg_decompress_struct@@E@Z). Исходники в
+# Vendor/CrashRpt/thirdparty/jpeg — jpeg 8.0 и C-linkage: либа из них НЕ
+# совместима (раскладки struct jpeg_decompress_struct разные). Поэтому x64
+# собирается из настоящих источников 6b.
+#   внешний источник: https://www.ijg.org/files/jpegsrc.v6b.tar.gz
+#   sha256: 75c3ec241e9996504fe02a9ed4d12f16b74ade713972f3db9e65ce95cd27e35d
+#   каталог: $VSRC/jpeg-6b   (VSRC по умолчанию ~/pwbuild/vendor-src)
 gen_jpeg() {
     local out="$V/jpeglib/lib/x64"
+    local js="$VSRC/jpeg-6b"
+    [ -f "$js/jdapistd.c" ] || { echo "   !! нет источников jpeg 6b: $js (см. комментарий в этом скрипте)" >&2; return 1; }
+    # Копируем библиотечные .c в плоский каталог БЕЗ заголовков 6b: quoted
+    # #include "jconfig.h"/"jpeglib.h" ищутся в каталоге источника, и иначе
+    #sources из архива подхватили бы СВОЙ jconfig.h (не windows) вместо
+    # Vendor/jpeglib/include.
+    mkdir -p "$BUILD/jpeg/src"
+    rm -f "$BUILD/jpeg/src"/*.c
+    local f
+    for f in "$js"/j*.c; do
+        # Заголовки клиента (Vendor/jpeglib/include) помечены «6b 27-Mar-1998», но
+        # сторона СЖАТИЯ в них переписана (jpeg_c_codec вместо jpeg_c_coef_controller
+        # и т.п.), поэтому из 6b компилируется только декодер + общая обвязка:
+        # jc*.c/jdtrans/jquant*/jfdct* под этими заголовками не собираются и
+        # клиенту не нужны (в Src/ используется только decompress API).
+        case "$(basename "$f")" in
+            c*|jc*|jpegtran*|rd*|wr*|jmemdos*|jmemmac*|jmemansi*|jmemname*|jdtrans*|jquant*|jfdct*) continue ;;
+        esac
+        cp -f "$f" "$BUILD/jpeg/src/"
+    done
     cat > "$BUILD/jpeg/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.15)
-project(jpeg C)
-set(CMAKE_C_FLAGS "")
-set(CMAKE_C_FLAGS_RELEASE "")
-include_directories($(zfwd "$V/CrashRpt/thirdparty/jpeg") $(zfwd "$V/jpeglib/include"))
-file(GLOB JPEG_SRC $(zfwd "$V/CrashRpt/thirdparty/jpeg")/*.c)
+project(jpeg CXX)
+set(CMAKE_CXX_FLAGS "")
+set(CMAKE_CXX_FLAGS_RELEASE "")
+# заголовки — КЛИЕНТСКИЕ (Vendor/jpeglib/include), не из архива
+include_directories($(zfwd "$V/jpeglib/include") $(zfwd "$BUILD/jpeg/src"))
+file(GLOB JPEG_SRC $(zfwd "$BUILD/jpeg/src")/*.c)
 add_library(jpeglib STATIC \${JPEG_SRC})
 set_target_properties(jpeglib PROPERTIES OUTPUT_NAME jpeglib)
+# C++ (как x86-ная либа): иначе экспорты без манглинга и клиент их не найдёт
+set_source_files_properties(\${JPEG_SRC} PROPERTIES LANGUAGE CXX)
 target_compile_definitions(jpeglib PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
-target_compile_options(jpeglib PRIVATE /O2 /MT /wd4996 /wd4267 /wd4244 /wd4100 /wd4018 /wd4131 /wd4715 /wd4701)
+target_compile_options(jpeglib PRIVATE /O2 /MT /EHsc /wd4996 /wd4267 /wd4244 /wd4100 /wd4018 /wd4131 /wd4715 /wd4701 /wd4127)
 EOF
     DEST="$out" ARTIFACTS="jpeglib.lib"
 }

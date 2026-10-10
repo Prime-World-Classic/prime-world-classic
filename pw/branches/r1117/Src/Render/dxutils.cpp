@@ -309,9 +309,14 @@ void SharedD3DBufferST<_DynBuffer>::QuerySize(UINT _size)
 }
 
 // Explicit instantiation
-INTERMODULE_EXPORT void SharedD3DBufferST<DXVertexBufferDynamicRef>::QuerySize(UINT _size);
-INTERMODULE_EXPORT void SharedD3DBufferST<DXIndexBufferDynamicRef>::QuerySize(UINT _size);
-INTERMODULE_EXPORT void SharedD3DBufferST<DXIndexBufferDynamicRef16>::QuerySize(UINT _size);
+// Ѕыло: INTERMODULE_EXPORT void ...; Ч при INTERMODULE_EXPORT == __declspec(dllimport)
+// современное это уже explicit instantiation DECLARATION, котора€ подавл€ет
+// не€вную инстанциацию, а определени€ в TU нет (LNK2019 на ?QuerySize@...;
+// VS2008 таких объ€влений не понимал и инстанцировал сам). “еперь Ч €вные
+// определени€: корректны и дл€ VS2008, и дл€ cl 19.
+template void SharedD3DBufferST<DXVertexBufferDynamicRef>::QuerySize(UINT _size);
+template void SharedD3DBufferST<DXIndexBufferDynamicRef>::QuerySize(UINT _size);
+template void SharedD3DBufferST<DXIndexBufferDynamicRef16>::QuerySize(UINT _size);
 
 
 template<class _DynBuffer>

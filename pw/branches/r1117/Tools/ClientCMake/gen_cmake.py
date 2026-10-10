@@ -116,8 +116,15 @@ X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32", "comsuppw", "comsuppwd", "cxxtes
 # UCRT (x64) не экспортирует легаси-имена CRT, которые использует код клиента
 # (System/PersistEvents.cpp — stricmp, FileSystem/FilePileLoader.cpp — strnicmp;
 # заголовки их объявляют, либы нет). /ALTERNATENAME закрывает без правок кода.
+# close/open/read/fileno — POSIX-имена CRT, которые использует libcurl
+# (lib/file.c — обработчик file://); UCRT x64 их не экспортирует (OLDNAMES.lib —
+# только x86).
 X64_LINK_ALTERNATES = ("/ALTERNATENAME:stricmp=_stricmp",
-                       "/ALTERNATENAME:strnicmp=_strnicmp")
+                       "/ALTERNATENAME:strnicmp=_strnicmp",
+                       "/ALTERNATENAME:close=_close",
+                       "/ALTERNATENAME:open=_open",
+                       "/ALTERNATENAME:read=_read",
+                       "/ALTERNATENAME:fileno=_fileno")
 
 
 def x64_lib(name):
