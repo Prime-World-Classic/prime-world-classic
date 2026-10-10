@@ -6,7 +6,7 @@ use ruffle_core::limits::ExecutionLimit;
 use ruffle_core::primeworld_loader::GameNavigator;
 use ruffle_core::pw_handles::ObjectHandleStore;
 use ruffle_core::tag_utils::movie_from_path;
-use ruffle_core::{HostValue, Player, PlayerBuilder};
+use ruffle_core::{HostValue, Player, PlayerBuilder, ViewportDimensions};
 use ruffle_render_wgpu::{backend::WgpuRenderBackend, target::TextureTarget, wgpu};
 use serde_json::{Value as Json, json};
 use std::cell::RefCell;
@@ -59,6 +59,22 @@ fn id(value: &Json) -> Result<u64, String> {
 		.ok_or("Handle must be a decimal string")?
 		.parse()
 		.map_err(|_| "Invalid handle".into())
+}
+
+/// Bound both texture dimensions and total readback allocation before touching the GPU.
+fn dimensions(request: &Json) -> Result<(u32, u32), String> {
+	let width = request["width"]
+		.as_u64()
+		.filter(|n| (1..=4096).contains(n))
+		.ok_or("Invalid surface width")?;
+	let height = request["height"]
+		.as_u64()
+		.filter(|n| (1..=4096).contains(n))
+		.ok_or("Invalid surface height")?;
+	if width * height > 8 * 1024 * 1024 {
+		return Err("Surface exceeds 32 MiB RGBA limit".into());
+	}
+	Ok((width as u32, height as u32))
 }
 
 /// Thread-confined Player and its host-owned roots, callbacks, and diagnostic counter.
@@ -132,8 +148,37 @@ impl Host {
 		tracing::dispatcher::with_default(&dispatch, || self.execute(request))
 	}
 
+	/// Return tightly packed, top-down straight-alpha RGBA owned by the caller.
+	/// Ruffle's capture_frame removes GPU row padding and unmultiples alpha.
+	pub fn frame(&mut self) -> Result<image::RgbaImage, String> {
+		let dispatch = self.dispatch.clone();
+		tracing::dispatcher::with_default(&dispatch, || {
+			let mut player = self.player.lock().map_err(|e| e.to_string())?;
+			player.render();
+			let renderer = <dyn std::any::Any>::downcast_mut::<WgpuRenderBackend<TextureTarget>>(
+				player.renderer_mut(),
+			)
+			.ok_or("Wrong renderer")?;
+			renderer.capture_frame().ok_or("Capture failed".into())
+		})
+	}
+
 	fn execute(&mut self, request: &Json) -> Result<Json, String> {
 		match request["action"].as_str().unwrap_or("invoke") {
+			"surface" => {
+				let (width, height) = dimensions(request)?;
+				let transparent = request["transparent"]
+					.as_bool()
+					.ok_or("Missing transparent boolean")?;
+				let mut player = self.player.lock().map_err(|e| e.to_string())?;
+				player.set_window_mode(if transparent { "transparent" } else { "opaque" });
+				player.set_viewport_dimensions(ViewportDimensions {
+					width,
+					height,
+					scale_factor: 1.0,
+				});
+				Ok(json!({"width":width,"height":height,"transparent":transparent}))
+			}
 			"invoke" => {
 				let receiver = request.get("receiver").map(id).transpose()?;
 				let path = request["path"].as_str().unwrap_or("");
@@ -205,14 +250,7 @@ impl Host {
 			),
 			"capture" => {
 				let output = request["path"].as_str().ok_or("Missing output path")?;
-				let mut player = self.player.lock().map_err(|e| e.to_string())?;
-				player.render();
-				let renderer =
-					<dyn std::any::Any>::downcast_mut::<WgpuRenderBackend<TextureTarget>>(
-						player.renderer_mut(),
-					)
-					.ok_or("Wrong renderer")?;
-				let frame = renderer.capture_frame().ok_or("Capture failed")?;
+				let frame = self.frame()?;
 				let first = frame.get_pixel(0, 0);
 				let pixels = frame.pixels().filter(|pixel| *pixel != first).count();
 				if pixels == 0 {
@@ -224,6 +262,27 @@ impl Host {
 				)
 			}
 			_ => Err("Unknown host action".into()),
+		}
+	}
+}
+
+#[cfg(test)]
+mod surface_tests {
+	use super::*;
+	#[test]
+	fn reject_invalid_or_oversized_surfaces() {
+		for request in [
+			json!({}),
+			json!({"width":0,"height":1}),
+			json!({"width":1.5,"height":1}),
+			json!({"width":-1,"height":10}),
+			json!({"width":4097,"height":1}),
+			json!({"width":4096,"height":4096}),
+		] {
+			assert!(dimensions(&request).is_err());
+		}
+		for (w, h) in [(1, 1), (257, 193), (1280, 720), (3840, 2160)] {
+			assert_eq!(dimensions(&json!({"width":w,"height":h})).unwrap(), (w, h));
 		}
 	}
 }

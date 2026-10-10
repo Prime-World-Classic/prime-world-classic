@@ -26,6 +26,74 @@ pub struct Buffer {
 	pub len: usize,
 }
 
+/// C-owned frame metadata; its pixel allocation uses the same buffer-free function.
+#[repr(C)]
+pub struct Frame {
+	pub width: u32,
+	pub height: u32,
+	pub stride: u32,
+	pub rgba: Buffer,
+}
+
+/// Render one top-down straight-alpha RGBA frame without advancing the movie.
+/// # Safety
+/// Both outputs must be valid, initially unowned, writable, and non-aliasing.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn pw_ruffle_render(
+	host: u64,
+	output: *mut Frame,
+	diagnostic: *mut Buffer,
+) -> i32 {
+	if output.is_null() || diagnostic.is_null() {
+		return BAD_ARGUMENT;
+	}
+	unsafe {
+		*output = Frame {
+			width: 0,
+			height: 0,
+			stride: 0,
+			rgba: Buffer {
+				data: std::ptr::null_mut(),
+				len: 0,
+			},
+		};
+		*diagnostic = Buffer {
+			data: std::ptr::null_mut(),
+			len: 0,
+		};
+	}
+	boundary(|| {
+		HOSTS.with(|hosts| {
+			let Ok(mut hosts) = hosts.try_borrow_mut() else {
+				return BUSY;
+			};
+			let Some(host) = hosts.get_mut(&host) else {
+				return BAD_HOST;
+			};
+			match host.frame() {
+				Ok(frame) => {
+					let (width, height) = frame.dimensions();
+					let bytes = frame.into_raw().into_boxed_slice();
+					let len = bytes.len();
+					unsafe {
+						*output = Frame {
+							width,
+							height,
+							stride: width * 4,
+							rgba: Buffer {
+								data: Box::into_raw(bytes) as *mut u8,
+								len,
+							},
+						};
+					}
+					0
+				}
+				Err(error) => unsafe { response(diagnostic, Err(error)) },
+			}
+		})
+	})
+}
+
 /// Convert panics to a status; foreign callers must then close the affected host.
 fn boundary(action: impl FnOnce() -> i32) -> i32 {
 	catch_unwind(AssertUnwindSafe(action)).unwrap_or(PANIC)
@@ -220,6 +288,27 @@ mod tests {
 		assert!(unsafe { parse(std::ptr::null(), 1) }.is_err());
 		assert!(unsafe { parse(b"{}".as_ptr(), 65537) }.is_err());
 		assert_eq!(pw_ruffle_close(0), BAD_HOST);
+		let mut frame = Frame {
+			width: 99,
+			height: 99,
+			stride: 99,
+			rgba: Buffer {
+				data: std::ptr::null_mut(),
+				len: 0,
+			},
+		};
+		assert_eq!(
+			unsafe { pw_ruffle_render(0, &mut frame, &mut buffer) },
+			BAD_HOST
+		);
+		assert_eq!(
+			(frame.width, frame.height, frame.stride, frame.rgba.len),
+			(0, 0, 0, 0)
+		);
+		assert_eq!(
+			unsafe { pw_ruffle_render(0, std::ptr::null_mut(), &mut buffer) },
+			BAD_ARGUMENT
+		);
 		assert_eq!(boundary(|| panic!("controlled FFI boundary test")), PANIC);
 	}
 }

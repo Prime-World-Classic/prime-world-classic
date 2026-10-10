@@ -106,6 +106,25 @@ int main(int argc, char** argv)
 		Check(stats.at("handles") == 0 && stats.at("runtime_errors") == 0, "Leaked handles or runtime errors");
 		const auto frame = host.Request({{"action", "capture"}, {"path", argv[3]}});
 		Check(frame.at("width") == 1280 && frame.at("height") == 720 && frame.at("non_background_pixels") > 1000, "Invalid framebuffer");
+		for (const auto& size : {std::make_pair(640,480), std::make_pair(257,193), std::make_pair(1280,720)})
+		{
+			host.Request({{"action", "surface"}, {"width", size.first}, {"height", size.second}, {"transparent", true}});
+			host.Request({{"action", "surface"}, {"width", 0}, {"height", size.second}, {"transparent", true}}, PW_RUFFLE_ERROR);
+			PwRuffleFrame pixels{};
+			Response diagnostic;
+			const int result = pw_ruffle_render(host.id, &pixels, &diagnostic.bytes);
+			const bool dimensions = pixels.width == unsigned(size.first) && pixels.height == unsigned(size.second) &&
+				pixels.stride == pixels.width * 4 && pixels.rgba.len == size_t(pixels.stride) * pixels.height;
+			size_t transparent = 0, visible = 0;
+			for (size_t i = 3; i < pixels.rgba.len; i += 4)
+			{
+				transparent += pixels.rgba.data[i] == 0;
+				visible += pixels.rgba.data[i] > 0;
+			}
+			pw_ruffle_buffer_free(&pixels.rgba);
+			Check(result == PW_RUFFLE_OK && dimensions && visible > 100, "Raw frame layout failed");
+			Check(loading || transparent > 100, "Combat background is not transparent");
+		}
 		const auto id = host.id;
 		Check(pw_ruffle_close(id) == PW_RUFFLE_OK, "Close failed");
 		host.id = 0;

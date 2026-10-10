@@ -11,6 +11,24 @@ the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
 ## Implemented Boundary
 
+### Surface Transport (0.3.0)
+
+The additive ABI v1 export `pw_ruffle_render` returns owned top-down RGBA8 with
+straight alpha and no row padding. Free `frame.rgba` with the existing buffer
+function on all return paths; a successful all-transparent frame is valid.
+Rendering does not advance time. The `surface` JSON action accepts integer
+`width`, `height`, and a `transparent` boolean, capped at 4096 per dimension and
+8,388,608 pixels (32 MiB). Invalid requests leave the surface unchanged.
+The default remains opaque 1280x720. This transport uses native GPU readback,
+not shared GL textures or a zero-copy performance claim. Older ABI v1 libraries
+can lack the new symbol; an embedding consumer must check its presence.
+
+The C++ probe checks three sizes, including an odd-width frame, alpha coverage,
+buffer ownership, invalid resize recovery, and the unchanged loading/combat
+contract. Before implementation the first resize failed with Unknown host action.
+
+### Existing Adapter
+
 - Native `:/...` game-root and movie-relative image paths, normalized and confined
   to the canonical Data tree. Symlink/parent escapes, URLs, directories, malformed
   files, unsupported formats, and oversized images fail explicitly.
@@ -118,10 +136,10 @@ in README remain headless. No server is needed for any of these probes.
 
 The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
-also do not prove Windows font-metric parity. The Rust host renders only an
-isolated fixed-size offscreen framebuffer; live engine compositing, renderer
+also do not prove Windows font-metric parity. The Rust host renders an
+isolated resizable offscreen framebuffer; live engine compositing, renderer
 state restoration across both engines, dynamic minimap texture upload, input,
-focus, audio events, resize, and live HUD/game-state binding are not implemented
+focus, audio events, and live HUD/game-state binding are not implemented
 by ABI v1. Callback polling proves transport, not execution of gameplay commands.
 
 The next client integration should be opt-in and Linux-only, after these gates
