@@ -20,8 +20,9 @@
 #       ошибке и не требовать exe (обзор ошибок компиляции, линковка может
 #       упасть на вендорных x86-либах)
 #   PW_BUILD_JOBS=8 ./build_client_cmake.sh
-#   PW_EXTRA_OPTS="/std:c++17 /WX-"  — доп. флаги cl во все TU (как в
-#       build_client_wine.sh); PW_MACHINE=X86|X64 — /MACHINE у линкера.
+#   PW_EXTRA_OPTS="/std:c++17"  — доп. флаги cl во все TU; ОНИ ДОБАВЛЯЮТСЯ к
+#       дефолтам тулчейна (для vs2022 это "/WX- /MT"), а не заменяют их;
+#       PW_DEFAULT_OPTS задаёт дефолты вручную. PW_MACHINE=X86|X64 — /MACHINE.
 #
 # Тулчейны:
 #   vs2008 (по умолчанию) — эталон: cl 15.00, x86, Windows SDK v6.0A,
@@ -160,6 +161,7 @@ case "$TOOLCHAIN" in
     CL_INC="$VC_WIN\VC\include;$VC_WIN\VC\atlmfc\include;$SDK_WIN\Include"
     CL_LIB="$VC_WIN\VC\lib;$VC_WIN\VC\atlmfc\lib;$SDK_WIN\Lib"
     : "${PW_MACHINE:=X86}"
+    : "${PW_DEFAULT_OPTS:=}"
     ;;
   vs2022)
     # версия MSVC и SDK берутся из префикса (в префиксе сейчас 14.44.35207 +
@@ -184,7 +186,7 @@ case "$TOOLCHAIN" in
     # msvcp140.dll), зато есть весь статический CRT x64 (libcmt/libcpmt/
     # libvcruntime) — проверено 2026-10-08. cl берёт последнее вхождение флага.
     # Внимание: все вендорные .lib под x64 надо собирать тоже /MT.
-    : "${PW_EXTRA_OPTS:=/WX- /MT}"
+    : "${PW_DEFAULT_OPTS:=/WX- /MT}"
     # comsuppw.lib/comsuppwd.lib удалены из VC начиная с VS2017 15.3 — _com_error и
     # _com_ptr_t переехали в <comdef.h>, линковать их нечем. vcproj их всё ещё
     # просит → снимаем только для нового тулчейна.
@@ -193,6 +195,11 @@ case "$TOOLCHAIN" in
     : "${PW_DROP_NODEFAULT:=libcmt.lib}"
     ;;
 esac
+# PW_EXTRA_OPTS ДОПОЛНЯЕТ дефолты тулчейна (PW_DEFAULT_OPTS), а не заменяет их.
+# Раньше присваивание PW_EXTRA_OPTS="/Zi /FS" молча снимало и /WX- (vcproj просит
+# /WX -> C2220 на безобидном C4458), и /MT (в ~/.wine-vs нет msvcprt.lib ->
+# LNK1104): отладочная сборка падала по причинам, к отладке не относящимся.
+PW_EXTRA_OPTS="${PW_DEFAULT_OPTS:-} ${PW_EXTRA_OPTS:-}"
 export PW_MACHINE
 export PW_EXTRA_OPTS
 export PW_DROP_LIBS="${PW_DROP_LIBS:-}"
