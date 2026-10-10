@@ -122,6 +122,7 @@
 #include "LinuxBootstrap/adventure_flash_probe.h"
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 #include "LinuxBootstrap/ruffle_eval/client_inspection.h"
+#include "LinuxBootstrap/ruffle_eval/talent_input.h"
 #endif
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
@@ -250,6 +251,7 @@ struct LinuxClientLaunchSettings
   bool spectator;
   bool tutorial;
   bool bootstrapCreateGame;
+	bool bootstrapInteractiveWorld = false;
   bool bootstrapFlashRendererProbe;
   bool bootstrapClickEnabled;
   int bootstrapClickBaseX;
@@ -4252,6 +4254,9 @@ struct LinuxBootstrapScreenRuntime
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 	PwRuffleClientInspection ruffleInspection;
 	size_t ruffleGameplayRequests = 0;
+	size_t ruffleTalentCommands = 0, ruffleRejectedRequests = 0, ruffleNeedsTarget = 0;
+	int ruffleTalentRequestSteps[36] = {};
+	int ruffleInitialPrime = -1, ruffleCurrentPrime = -1;
 #endif
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
@@ -41898,7 +41903,7 @@ void DriveLinuxBootstrapGameScheduler(
   }
   else if (runtime->transceiver && runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps)
   {
-    if (runtime->transceiverWorld)
+    if (runtime->transceiverWorld && !settings.bootstrapInteractiveWorld)
     {
       NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
       UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
@@ -41987,8 +41992,11 @@ void DriveLinuxBootstrapGameScheduler(
       NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
       if (world)
       {
-        UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
-        UpdateLinuxBootstrapCreepDuelProof(runtime, world);
+        if (!settings.bootstrapInteractiveWorld)
+        {
+          UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
+          UpdateLinuxBootstrapCreepDuelProof(runtime, world);
+        }
         UpdateLinuxMapPreviewCommandMoveHeroProgress(runtime, world);
       runtime->worldPlayers = world->GetPlayersCount();
       runtime->worldPresentPlayers = world->GetPresentPlayersCount();
@@ -44069,13 +44077,17 @@ bool HandleLinuxCharacterPreviewInput(
   }
 
   // Keep automated create-game smoke deterministic; normal runs still accept live input.
-  if (settings.bootstrapCreateGame && runtime->liveHeroState.ready)
+  if (settings.bootstrapCreateGame && !settings.bootstrapInteractiveWorld && runtime->liveHeroState.ready)
   {
     return false;
   }
 
   bool changed = false;
   const bool loadingActive = IsLinuxBootstrapLoadingScreenActive(runtime);
+	bool nativeHudInput = true;
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	nativeHudInput = !runtime->ruffleInspection.IsReady();
+#endif
   const LinuxScreenRect previewRect = IsLinuxWorldPresentationActive(runtime) ? LinuxScreenRect() : ResolveLinuxCharacterPreviewRect(
     settings.width,
     settings.height,
@@ -44085,7 +44097,7 @@ bool HandleLinuxCharacterPreviewInput(
   for (size_t i = 0; i < inputState.rawMessages.size(); ++i)
   {
     const NMainFrame::SWindowsMsg& message = inputState.rawMessages[i];
-    if (HandleLinuxLiveHudInputMessage(message, runtime))
+    if (nativeHudInput && HandleLinuxLiveHudInputMessage(message, runtime))
     {
       changed = true;
       continue;
@@ -44098,7 +44110,7 @@ bool HandleLinuxCharacterPreviewInput(
 
     float liveMinimapWorldX = 0.0f;
     float liveMinimapWorldY = 0.0f;
-    const bool liveMinimapPoint =
+    const bool liveMinimapPoint = nativeHudInput &&
       ProjectLinuxLiveMinimapScreenToWorld(
         *runtime,
         message.x,
@@ -45675,7 +45687,7 @@ bool HandleLinuxMapPreviewInput(
     return false;
   }
   // Keep automated create-game smoke deterministic; normal runs still accept map input.
-  if (settings.bootstrapCreateGame)
+  if (settings.bootstrapCreateGame && !settings.bootstrapInteractiveWorld)
   {
     return false;
   }
@@ -51228,6 +51240,111 @@ size_t ResolveLinuxDynamicHeroLineupIndex(
 }
 
 #ifdef PW_LINUX_RUFFLE_INSPECTION
+/** Resolve ownership from the scheduler, never from the inspection hero fallback. */
+NWorld::PFBaseHero* ResolveLinuxRuffleCommandHero(const LinuxClientLaunchSettings& settings,
+	LinuxBootstrapScreenRuntime* runtime)
+{
+	if (!settings.bootstrapInteractiveWorld || settings.spectator || !runtime ||
+		runtime->replayFileInputActive || !IsLinuxWorldPresentationActive(runtime) ||
+		!runtime->mapLoadingJobCompleted || !runtime->transceiver || !runtime->localScheduler ||
+		!runtime->localScheduler->IsAllClientsReady() || runtime->transceiver->IsAsynced() ||
+		!runtime->ruffleInspection.IsReady() || !NMainFrame::IsAppActive()) return 0;
+	auto* world = GetLinuxBootstrapRuntimeWorld(runtime);
+	if (!world || world->GetTimeScale() <= 0) return 0;
+	auto* player = world->GetPlayerByUID(runtime->localScheduler->GetMyClientID());
+	auto* hero = player && !player->IsBot() && player->IsPlaying() ? player->GetHero() : 0;
+	if (!hero || hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) ||
+		hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME)) return 0;
+	return hero;
+}
+
+/** Submit through the normal scheduler/replay path; no direct hero mutation. */
+bool SubmitLinuxRuffleCommand(LinuxBootstrapScreenRuntime* runtime, NCore::WorldCommand* raw)
+{
+	CObj<NCore::WorldCommand> command = raw;
+	if (!command) return false;
+	command->SetId(runtime->localScheduler->GetMyClientID());
+	if (!command->CanExecute()) return false;
+	runtime->transceiver->SendCommand(command, true);
+	++runtime->transceiverRuntimeCommandsSent;
+	++runtime->transceiverProductionRuntimeCommandsSent;
+	return true;
+}
+
+/** Revalidate the exact authored row/column against current simulation state. */
+bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
+	NWorld::PFBaseMaleHero* hero, LinuxBootstrapScreenRuntime* runtime)
+{
+	if (!hero || event.row < 0 || event.row >= 6 || event.column < 0 || event.column >= 6) return false;
+	auto* talent = hero->GetTalent(event.row, event.column);
+	if (!talent) return false;
+	auto* world = GetLinuxBootstrapRuntimeWorld(runtime);
+	const int slot = event.row * 6 + event.column;
+	const int step = world->GetStepNumber() + 1;
+	if (runtime->ruffleTalentRequestSteps[slot] == step) return false;
+	PwRuffleTalentInputState state;
+	state.controlsAllowed = state.exists = true;
+	state.bought = talent->IsActivated();
+	state.canBuy = hero->CanActivateTalent(event.row, event.column) == NWorld::ETalentActivation::Ok;
+	state.canUse = talent->CanBeUsed();
+	state.active = talent->IsActive();
+	state.alive = !hero->IsDead();
+	state.on = talent->IsOn();
+	state.targetless = talent->GetTargetType() == 0;
+	state.usesAttackTarget = (talent->GetFlags() & NDb::ABILITYFLAGS_USEATTACKTARGET) != 0;
+	state.hasAttackTarget = IsValid(hero->GetCurrentTarget());
+	using Request = PwRuffleTalentRequest;
+	const auto request = PwRuffleResolveTalentInput(event, state);
+	bool sent = false;
+	if (request == Request::Buy)
+		sent = SubmitLinuxRuffleCommand(runtime, NWorld::CreateCmdActivateTalent(hero, event.row, event.column));
+	else if (request == Request::Self || request == Request::AttackTarget)
+	{
+		NWorld::PFBaseUnit* unit = request == Request::Self ? hero : hero->GetCurrentTarget();
+		if (!unit || unit->IsDead() || !unit->IsVisibleForFaction(hero->GetFaction())) return false;
+		const NWorld::Target target(unit);
+		if (!talent->IsTargetValid(target) || talent->CheckCastLimitations(target)) return false;
+		const unsigned targets = talent->GetTargetType();
+		if (targets && unit == hero && !(targets & NDb::SPELLTARGET_SELF) &&
+			!(talent->IsMultiState() && talent->IsOn())) return false;
+		if (targets && unit != hero)
+		{
+			const unsigned kind = static_cast<unsigned>(unit->GetUnitKind());
+			if (kind >= 32 || !(targets & (1u << kind))) return false;
+			if (!(targets & (unit->GetFaction() == hero->GetFaction() ? NDb::SPELLTARGET_ALLY : NDb::SPELLTARGET_ENEMY))) return false;
+			// The current native command casts immediately; do not bypass range with it.
+			const float range = talent->GetUseRange(target);
+			const float distance = fabs(unit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D());
+			if (!std::isfinite(range) || range < 0 || (range > 0 && distance > range)) return false;
+		}
+		sent = SubmitLinuxRuffleCommand(runtime,
+			NWorld::CreateCmdUseTalent(hero, event.row, event.column, target, false));
+	}
+	else if (request == Request::NeedsTarget) ++runtime->ruffleNeedsTarget;
+	if (sent)
+	{
+		runtime->ruffleTalentRequestSteps[slot] = step;
+		++runtime->ruffleTalentCommands;
+		fprintf(stdout, "Ruffle talent command: %s row=%d column=%d prime=%d step=%d\n",
+			request == Request::Buy ? "buy" : "use", event.row, event.column, hero->GetGold(), step - 1);
+	}
+	return sent;
+}
+
+/** Drain once per input frame before transceiver stepping, outside the renderer. */
+void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings, LinuxBootstrapScreenRuntime* runtime)
+{
+	auto events = runtime->ruffleInspection.TakeGameplayEvents();
+	runtime->ruffleGameplayRequests += events.size();
+	auto* hero = ResolveLinuxRuffleCommandHero(settings, runtime);
+	for (const auto& event : events)
+	{
+		const bool accepted = event.kind == PwRuffleGameplayEvent::Kind::TalentClicked &&
+			DispatchLinuxRuffleTalent(event, dynamic_cast<NWorld::PFBaseMaleHero*>(hero), runtime);
+		if (!accepted) ++runtime->ruffleRejectedRequests;
+	}
+}
+
 /** Snapshot production hero inputs without exposing engine pointers to the VM. */
 PwRuffleHudState CaptureLinuxRuffleHero(LinuxBootstrapScreenRuntime* runtime)
 {
@@ -51276,6 +51393,12 @@ PwRuffleHudState CaptureLinuxRuffleHero(LinuxBootstrapScreenRuntime* runtime)
 	values.resurrectionSeconds = static_cast<int>(hero->GetRespawnDelay());
 	values.channeling = hero->GetChannellingProgress();
 	values.isCameraLocked = false; // Native map camera is free, not hero-attached.
+	runtime->ruffleCurrentPrime = hero->GetGold();
+	if (runtime->ruffleInitialPrime < 0) runtime->ruffleInitialPrime = runtime->ruffleCurrentPrime;
+	auto& development = state.development.emplace();
+	development.prime = runtime->ruffleCurrentPrime;
+	// Local bootstrap has no paid-currency account or purchase service attached.
+	development.gold = 0;
 	return state;
 }
 
@@ -65355,6 +65478,7 @@ void WriteStartupLog(
   logFile << "  launchHeroSelector=" << (settings.heroSelector.empty() ? "<none>" : settings.heroSelector) << "\n";
   logFile << "  demoCycleSeconds=" << settings.demoCycleSeconds << "\n";
   logFile << "  bootstrapCreateGame=" << (settings.bootstrapCreateGame ? "yes" : "no") << "\n";
+	logFile << "  bootstrapInteractiveWorld=" << settings.bootstrapInteractiveWorld << "\n";
   logFile << "  bootstrapFlashRendererProbe=" << (settings.bootstrapFlashRendererProbe ? "yes" : "no") << "\n";
   logFile << "  diagnosticsOverlay=" << (settings.diagnosticsOverlay ? "yes" : "no") << "\n";
   logFile << "  bootstrapLegacyHeroOverlay="
@@ -68363,6 +68487,10 @@ void AppendRuntimeInputLog(
 		<< " receivedCallbacks:" << screenRuntime.ruffleInspection.ReceivedCallbacks()
 		<< " pendingCallbacks:" << screenRuntime.ruffleInspection.PendingCallbacks()
 		<< " gameplayRequests:" << screenRuntime.ruffleGameplayRequests
+		<< " talentCommands:" << screenRuntime.ruffleTalentCommands
+		<< " rejectedRequests:" << screenRuntime.ruffleRejectedRequests
+		<< " needsTarget:" << screenRuntime.ruffleNeedsTarget
+		<< " prime:" << screenRuntime.ruffleInitialPrime << "->" << screenRuntime.ruffleCurrentPrime
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
 		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
@@ -70709,6 +70837,7 @@ int main(int argc, char** argv)
   settings.runSeconds = ReadRunSeconds(argc, argv);
   settings.demoCycleSeconds = ReadDemoCycleSeconds(argc, argv);
   settings.bootstrapCreateGame = ReadBootstrapCreateGameFlag(argc, argv);
+	settings.bootstrapInteractiveWorld = CmdLineLite::Instance().IsKeyDefined("--bootstrap-interactive-world");
   settings.bootstrapFlashRendererProbe = ReadBootstrapFlashRendererProbeFlag(argc, argv);
   settings.bootstrapClickDouble = ReadBootstrapClickDoubleFlag(argc, argv);
   settings.bootstrapClickAfterSeconds = ReadBootstrapClickAfterSeconds(argc, argv);
@@ -72336,8 +72465,7 @@ int main(int argc, char** argv)
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
-		// Consume outside rendering; gameplay validation is a separate engine boundary.
-		screenRuntime.ruffleGameplayRequests += screenRuntime.ruffleInspection.TakeGameplayEvents().size();
+		DriveLinuxRuffleGameplay(settings, &screenRuntime);
 #endif
     if (uiRootPreview.runtimeInitialized)
     {

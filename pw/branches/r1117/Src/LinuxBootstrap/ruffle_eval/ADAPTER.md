@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.12.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.13.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -94,7 +94,27 @@ failure clear pending requests. This checkpoint counts requests but does not yet
 execute gameplay commands. The real-SWF probe clicks an authored shortcut and
 verifies its exact talent coordinates and empty second drain.
 
-### Client Inspection (0.12.0)
+### Local Talent Commands (0.13.0)
+
+Add `--bootstrap-interactive-world` to disable automated gameplay proof commands
+and permit manual native input. With both Ruffle opt-ins, exact authored talent
+clicks now submit normal purchase or immediate-use commands through the client
+scheduler and replay writer. Live ownership, session readiness, focus, control
+flags and talent availability are rechecked; spectator/replay requests are inert.
+Duplicate requests for the same talent in one world step are suppressed. Uses
+carry `issuedByScript=false`. Targetless/toggle/current attack-target casts add
+client-side visibility/type/faction/range/limitation checks; talents needing manual targeting
+are rejected and counted until the two-step targeting flow is implemented.
+The native command implementation still differs from Windows (including immediate
+casts rather than the full approach/cast state machine); do not infer command parity.
+
+Linux map loading now allocates authored starting prime as on Windows. Live prime
+and talent states update after execution, without proof-only currency grants.
+Paid currency is zero in this offline bootstrap, which has no account/payment
+service; that is not a live-account balance binding. Hidden compatibility HUD and
+minimap hit regions no longer intercept world clicks while Ruffle is active.
+
+### Client Inspection (0.13.0)
 
 The Linux CMake option `PW_LINUX_RUFFLE_INSPECTION` defaults to OFF. When enabled,
 `--bootstrap-ruffle-library /absolute/path/libpw_bridge.so` requests the original
@@ -105,15 +125,15 @@ argument, the existing Linux path remains active and no Ruffle host is opened.
 The inspection initializes localization/window visibility, advances the startup
 timeline, follows viewport size, clamps frame time, and reports frames/errors in
 `finalRuffleInspection`. Initialization/render/runtime failure disables inspection
-and retains the existing HUD fallback. FSCommands are drained and counted, **not
-executed**. Mouse motion/buttons/wheel and focus now reach Ruffle before native
-world controls; keyboard/text input and gameplay command dispatch remain unbound.
+and retains the existing HUD fallback. Only the allowlisted local talent commands
+above execute in interactive mode. Mouse motion/buttons/wheel and focus reach
+Ruffle before native world controls; keyboard/text input remains unbound.
 Live local-hero identity, the original portrait and level/health/energy/regen values
 are bound through the authored methods. Plain engine-independent snapshots are
 validated and only changed values are sent. A different hero identity disables
 this session's inspection instead of mixing players or appending force tables.
 Rank/premium/flag decorations and custom-energy colors remain unbound. Audio and
-gameplay action bindings are not yet connected. Actual talent icons,
+most gameplay action bindings are not yet connected. Actual talent icons,
 purchase state, resource restrictions and cooldowns now populate the authored grid
 and action bar. Initial purchased shortcuts use the authored prerequisite state
 transition; updates do not recreate existing shortcuts. Loadout replacement/respec

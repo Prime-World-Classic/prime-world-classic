@@ -42,6 +42,7 @@ template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(C
 #include "HybridServer/PeeredTypes.h"
 #include "System/Crc32Checksum.h"
 #include "System/LoadingProgress.h"
+#include "LinuxBootstrap/starting_prime.h"
 
 NI_DEFINE_REFCOUNT( NGameX::IAdventureScreen );
 REGISTER_SAVELOAD_CLASS_NM(PFWorld, NWorld);
@@ -363,6 +364,14 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
     advMapSettings = IsValid(advMapDescription->mapSettings) ? advMapDescription->mapSettings :
       (IsValid(advMapDescription->map) ? advMapDescription->map->mapSettings : NDb::Ptr<NDb::AdvMapSettings>());
   }
+	// Match the Windows map's authored per-team allocation, not proof-only grants.
+	if (IsValid(advMapSettings) && IsValid(advMapDescription))
+	{
+		const int startingPrime = LinuxBootstrap::ResolveStartingPrime(
+			advMapSettings->primeSettings.startPrimePerTeam, advMapDescription->teamSize);
+		for (int i = 0; i < GetPlayersCount(); ++i)
+			if (GetPlayer(i) && GetPlayer(i)->GetHero()) GetPlayer(i)->GetHero()->AddGold(startingPrime, false);
+	}
   if (!triggerMarkerHandler && IsValid(advMapSettings))
     triggerMarkerHandler = new TriggerMarkerHandler(this, advMapSettings);
   if (!pResolver)
