@@ -588,6 +588,9 @@ def main():
     lf += ["/NODEFAULTLIB:" + x for x in pwg.nodefault]
     if os.environ.get("PW_MACHINE", "X86") == "X64":
         lf += list(X64_LINK_ALTERNATES)
+    # PW_EXTRA_OPTS уходит в cl; для линкера — отдельная переменная
+    # (например PW_EXTRA_LINK_OPTS="/MAP" для разбора крэш-стеков по RVA)
+    lf += os.environ.get("PW_EXTRA_LINK_OPTS", "").split()
     top.append("target_link_options(PW_Game PRIVATE " + " ".join(lf) + ")")
     top.append("set_target_properties(PW_Game PROPERTIES OUTPUT_NAME PW_Game)")
 
