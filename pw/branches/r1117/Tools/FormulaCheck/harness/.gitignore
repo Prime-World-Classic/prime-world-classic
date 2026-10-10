@@ -1,0 +1,13 @@
+# артефакты сборки обвязки (источники — vm_harness.cpp, native_exec.cpp, build_harness.sh)
+obj-*/
+cmd-*.cmd
+*.exe
+*.obj
+*.pdb
+# генерируется: gen_accessors.py --mock / gen_ref_cpp.py
+MockFormulaPars.h
+ref_*.cpp
+ref_*.map
+ref_table.h
+ref_table.cpp
+ref_skip.txt
