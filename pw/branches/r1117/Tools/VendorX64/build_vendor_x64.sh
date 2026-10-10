@@ -195,6 +195,14 @@ gen_freetype() {
     local f="$VSRC/freetype-2.4.4"
     [ -f "$f/src/base/ftbase.c" ] || { echo "   !! нет источников freetype: $f" >&2; return 1; }
     local inc; inc="$(zfwd "$V/freetype/include")"
+    local FT_INCL="" f2 b
+    for f2 in "$f"/src/*/*.c; do
+        b="$(basename "$f2")"
+        if grep -qs "#include \"$b\"" "$f"/src/*/*.c; then
+            FT_INCL="$FT_INCL|${b%.c}"
+        fi
+    done
+    FT_INCL="${FT_INCL#|}"
     local d
     for d in "$f"/src/*/; do
         case "$(basename "$d")" in tools|dlg) continue ;; esac
@@ -207,14 +215,14 @@ set(CMAKE_C_FLAGS "")
 set(CMAKE_C_FLAGS_RELEASE "")
 include_directories($inc)
 file(GLOB FT_SRC $f/src/*/*.c)
-list(FILTER FT_SRC EXCLUDE REGEX "/(ftsystem|ftdebug|ftmac)\\.c\$")
-# Модули autofit и gzip — ОДИН TU каждый (autofit.c / ftgzip.c включают
-# остальные .c текстом): отдельная компиляция даёт C2129/C2006. CMake-регекспы
-# lookahead не умеют, поэтому каталог исключается целиком, а нужный TU
-# добавляется явно.
-list(FILTER FT_SRC EXCLUDE REGEX "/(autofit|gzip)/")
-add_library(freetype244MT STATIC \${FT_SRC} $(zfwd "$f/src/base/ftsystem.c") $(zfwd "$f/src/base/ftdebug.c")
-  $(zfwd "$f/src/gzip/ftgzip.c") $(zfwd "$f/src/autofit/autofit.c"))
+# Значительная часть src/<mod>/*.c включается текстом в TU модуля
+# (ftbase.c <- ftobjs.c/ftcalc.c/…, pshinter.c <- pshmod.c, autofit.c <- aflatin.c,
+# ftgzip.c <- zutil.c, truetype.c <- ttobjs.c …). Отдельная компиляция таких файлов
+# даёт LNK2005 при линковке клиента. Правило берём из самого дерева: исключаем
+# любой .c, который встречается в чужом #include "<file>.c" (ftsystem.c/ftdebug.c
+# никем не включаются -> остаются).
+list(FILTER FT_SRC EXCLUDE REGEX "/(${FT_INCL})\\.c\$")
+add_library(freetype244MT STATIC \${FT_SRC})
 set_target_properties(freetype244MT PROPERTIES OUTPUT_NAME freetype244MT)
 target_compile_definitions(freetype244MT PRIVATE FT2_BUILD_LIBRARY _CRT_SECURE_NO_WARNINGS)
 target_compile_options(freetype244MT PRIVATE /O2 /MT /wd4018 /wd4100 /wd4131 /wd4244 /wd4267 /wd4701 /wd4996)
@@ -234,7 +242,9 @@ EOF
 # crypto\\constant_time_test»), а Windows-perl в префиксе нет. Поэтому — свой
 # CMake-список TU (no-asm).
 gen_openssl() {
-    local out="$V/OpenSSL/lib/x64"
+    # каталог именно lib/static/x64: vcproj-ный путь линковки — vendor/openSSL/lib/static,
+    # а gen_cmake.py для x64 добавляет «<этот же каталог>/x64», если он существует
+    local out="$V/OpenSSL/lib/static/x64"
     local o="$VSRC/openssl-1.0.2u"
     [ -f "$o/crypto/cryptlib.c" ] || { echo "   !! нет источников OpenSSL: $o" >&2; return 1; }
     # В tar.gz с GitHub-релиза симлинки include/openssl/*.h ОТСУТСТВУЮТ (в 1.0.2
@@ -248,7 +258,16 @@ gen_openssl() {
             ln -sf "$h" "$o/include/openssl/$(basename "$h")"
         done
     fi
-    [ -f "$o/include/openssl/opensslconf.h" ] || (cd "$o" && perl Configure VC-WIN64A no-asm >/dev/null)
+    # Фичи, которые клиенту не нужны (OCSP/CMS/COMP/TS/SRP/JPAKE/KRB5), выключаются
+    # на уровне Configure -> opensslconf.h, чтобы заголовки и либа были согласованы.
+    # Это же снимает большую часть TU, которые не собираются под cl 19.
+    (cd "$o" && perl Configure VC-WIN64A no-asm no-ssl2 no-ocsp no-cms no-comp \
+        no-ts no-srp no-jpake no-ec2m no-krb5 no-hw >/dev/null)
+    mkdir -p "$BUILD/openssl"
+    # cversion.c требует buildinf.h, который в штатной сборке генерирует mk1mf.pl
+    { printf '#define PLATFORM "VC-WIN64A"\n'
+      printf '#define DATE "%s"\n' "$(date '+%a %b %d %T %Z %Y')"
+      printf '#define CFLAGS "/MT /O2"\n'; } > "$BUILD/openssl/buildinf.h"
     local EAY_DIRS="" d
     for d in "$o"/crypto/*/; do EAY_DIRS="$EAY_DIRS $(zfwd "${d%/}")"; done
     cat > "$BUILD/openssl/CMakeLists.txt" <<EOF
@@ -261,12 +280,32 @@ set(CMAKE_C_FLAGS_RELEASE "")
 foreach(d ${EAY_DIRS})
   include_directories(\${d})
 endforeach()
-include_directories($(zfwd "$o") $(zfwd "$o/include") $(zfwd "$o/crypto") $(zfwd "$o/ms"))
+include_directories($(zfwd "$BUILD/openssl") $(zfwd "$o") $(zfwd "$o/include") $(zfwd "$o/crypto") $(zfwd "$o/ms"))
 file(GLOB_RECURSE EAY_SRC $(zfwd "$o")/crypto/*.c)
 file(GLOB        SSL_SRC $(zfwd "$o")/ssl/*.c)
 # asm-варианты (в т.ч. crypto32/x86), engine (требует динамических движков) и
 # fips в no-asm сборке не участвуют
-list(FILTER EAY_SRC EXCLUDE REGEX "/(asm|crypto32|engine|fips)/")
+list(FILTER EAY_SRC EXCLUDE REGEX "/(asm|crypto32|fips)/")
+# ядро ENGINE нужно (ssleay ссылается на ENGINE_get_*/ENGINE_register_*), а
+# встроенные реализации «железных» движков (e_*.c: atalla/aep/nuron/ubsec/…) — нет
+list(FILTER EAY_SRC EXCLUDE REGEX "/engine/e_[a-z0-9]*\\.c\$")
+# каталоги фич, выключенных в Configure (см. выше)
+# md2/rc5/store выключены самим Configure (VC-WIN64A по умолчанию), их TU
+# дают «#error: RC5 is disabled»; s390xcap.c/ppccap.c — платформенные capability
+# ocsp НЕ исключается: на него ссылается ssleay (SSL_free, t1_lib) и x_all.c,
+# даже когда фича выключена в Configure
+list(FILTER EAY_SRC EXCLUDE REGEX "/(cms|comp|ts|srp|jpake|krb5|md2|rc5|store)/")
+list(FILTER EAY_SRC EXCLUDE REGEX "/(s390xcap|ppccap|sparcv9cap)\\.c\$")
+# не-библиотечные файлы: cnf_save.c и rc4/rc4.c — демо с main(); des/des.c —
+# легаси-реализация DES (заменена des_enc.c и др.), read_pwd.c — app-обвязка
+# (K&R-объявления), cversion.c — buildinf.h которого генерирует mk1mf.pl;
+# ecp_nistz256* выключен через OPENSSL_NO_EC_NISTP_64_GCC_128 (ставит Configure)
+list(FILTER EAY_SRC EXCLUDE REGEX "/(cnf_save|cversion|read_pwd|e_dsa)\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "/des/des\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "/rc4/rc4\\.c\$")
+list(FILTER EAY_SRC EXCLUDE REGEX "ecp_nistz256")
+# x509v3/v3conf.c — тестовое приложение с main()
+list(FILTER EAY_SRC EXCLUDE REGEX "/v3conf\\.c\$")
 # LPdir_* — реализации opendir для разных ОС; для Windows нужна только LPdir_win.c
 # LPdir_* (opendir-обвязка; LPdir.h в tar.gz отсутствует), скоростные тесты
 # (*speed.c, *_test.c) и bss_rtcp.c (VMS iodef.h) в библиотеку не входят.
@@ -274,12 +313,18 @@ list(FILTER EAY_SRC EXCLUDE REGEX "/LPdir_[a-z0-9]*\\.c\$")
 list(FILTER EAY_SRC EXCLUDE REGEX "(speed|opts|_spd|test)\\.c\$")
 list(FILTER EAY_SRC EXCLUDE REGEX "/(exp|ssl_task)\\.c\$")
 list(FILTER EAY_SRC EXCLUDE REGEX "/(bss_rtcp|e_bprint|u_multiss)\\.c\$")
+list(FILTER SSL_SRC EXCLUDE REGEX "(test|ssl_task)\\.c\$")
 add_library(libeay32MT STATIC \${EAY_SRC})
 add_library(ssleay32MT STATIC \${SSL_SRC})
 set_target_properties(libeay32MT PROPERTIES OUTPUT_NAME libeay32MT)
 set_target_properties(ssleay32MT PROPERTIES OUTPUT_NAME ssleay32MT)
 foreach(t libeay32MT ssleay32MT)
-  target_compile_definitions(\${t} PRIVATE OPENSSL_NO_ASM OPENSSL_NO_SSL2 OPENSSL_NO_HEARTBEATS _CRT_SECURE_NO_WARNINGS)
+  target_compile_definitions(\${t} PRIVATE OPENSSL_NO_ASM OPENSSL_NO_SSL2 OPENSSL_NO_HEARTBEATS
+    OPENSSL_NO_OCSP OPENSSL_NO_CMS OPENSSL_NO_COMP
+    # o_str.c без этого тянет <strings.h>: для OPENSSL_SYS_WINDOWS e_os.h сам
+    # определяет strcasecmp/strncasecmp как _stricmp/_strnicmp
+    OPENSSL_IMPLEMENTS_strncasecmp _CRT_SECURE_NO_WARNINGS
+    WIN32_LEAN_AND_MEAN)
   target_compile_options(\${t} PRIVATE /O2 /MT /wd4018 /wd4090 /wd4100 /wd4127 /wd4244 /wd4245 /wd4267 /wd4701 /wd4706 /wd4996 /wd4715 /wd4312)
 endforeach()
 EOF
@@ -296,7 +341,7 @@ EOF
 #            перевести Src/UI/Flash/GameSWFIntegration/JPEGReader.cpp на стоковый
 #            jpeg (8) и собрать его (8 незакрытых символа).
 #   crashrpt — требует VC.ATL (atldef.h), в тулчейне ~/.wine-vs его нет.
-ALL_TARGETS="zlib jsoncpp ace terabit curl censor tamarin freetype openssl"
+ALL_TARGETS="zlib jpeg jsoncpp ace terabit curl censor tamarin freetype openssl"
 
 TARGETS=()
 for arg in "$@"; do
@@ -359,55 +404,34 @@ EOF
 }
 
 # ------------------------------------------------------------------ jpeg
-# Источник — Vendor/CrashRpt/thirdparty/jpeg (46 .c), заголовки — Vendor/jpeglib/include
-# (в нём же jconfig.h, которым этот jpeg собран). Статическая либа, как x86 jpeglib.lib.
-# ------------------------------------------------------------------ jpeg
-# ВАЖНО (ABI): клиентские заголовки Vendor/jpeglib/include — это jpeg **6b**
-# (JPEG_LIB_VERSION 62, jconfig.h: HAVE_BOOLEAN + boolean = unsigned char), и
-# x86-ный Vendor/jpeglib/lib/jpeglib.lib скомпилирован **как C++** (экспорты
-# вида ?jpeg_read_header@@YAHPAUjpeg_decompress_struct@@E@Z). Исходники в
-# Vendor/CrashRpt/thirdparty/jpeg — jpeg 8.0 и C-linkage: либа из них НЕ
-# совместима (раскладки struct jpeg_decompress_struct разные). Поэтому x64
-# собирается из настоящих источников 6b.
-#   внешний источник: https://www.ijg.org/files/jpegsrc.v6b.tar.gz
-#   sha256: 75c3ec241e9996504fe02a9ed4d12f16b74ade713972f3db9e65ce95cd27e35d
-#   каталог: $VSRC/jpeg-6b   (VSRC по умолчанию ~/pwbuild/vendor-src)
+# Заголовки клиента (Vendor/jpeglib/include) — САМОДЕЛЬНЫЙ вариант jpeg:
+# jpeg_decompress_struct с data_unit/J_CODEC_PROCESS/min_codec_data_unit/lossless и
+# без is_baseline; не совпадает ни с ijg 6b, ни с jpeg 8.0. Его источников в дереве
+# нет, поэтому под x64 клиент (Src/UI/Flash/GameSWFIntegration/JPEGReader.cpp —
+# единственный потребитель) переключён на СТОКОВЫЙ jpeg 8 из
+# Vendor/CrashRpt/thirdparty/jpeg, и из него же собирается jpeglib.lib x64.
+# x86 как был линкует готовый Vendor/jpeglib/lib/jpeglib.lib (его заголовки —
+# Vendor/jpeglib/include): выбор заголовка сделан #if defined(_M_X64) в JPEGReader.cpp.
+# Либа — как C (стоковый jpeg так и написан; C++-компиляция даёт C2440 на
+# неявных void*-приведениях в jdatadst.c/jdatasrc.c), а клиентский TU подключает
+# заголовки через extern "C" (см. JPEGReader.cpp).
 gen_jpeg() {
     local out="$V/jpeglib/lib/x64"
-    local js="$VSRC/jpeg-6b"
-    [ -f "$js/jdapistd.c" ] || { echo "   !! нет источников jpeg 6b: $js (см. комментарий в этом скрипте)" >&2; return 1; }
-    # Копируем библиотечные .c в плоский каталог БЕЗ заголовков 6b: quoted
-    # #include "jconfig.h"/"jpeglib.h" ищутся в каталоге источника, и иначе
-    #sources из архива подхватили бы СВОЙ jconfig.h (не windows) вместо
-    # Vendor/jpeglib/include.
-    mkdir -p "$BUILD/jpeg/src"
-    rm -f "$BUILD/jpeg/src"/*.c
-    local f
-    for f in "$js"/j*.c; do
-        # Заголовки клиента (Vendor/jpeglib/include) помечены «6b 27-Mar-1998», но
-        # сторона СЖАТИЯ в них переписана (jpeg_c_codec вместо jpeg_c_coef_controller
-        # и т.п.), поэтому из 6b компилируется только декодер + общая обвязка:
-        # jc*.c/jdtrans/jquant*/jfdct* под этими заголовками не собираются и
-        # клиенту не нужны (в Src/ используется только decompress API).
-        case "$(basename "$f")" in
-            c*|jc*|jpegtran*|rd*|wr*|jmemdos*|jmemmac*|jmemansi*|jmemname*|jdtrans*|jquant*|jfdct*) continue ;;
-        esac
-        cp -f "$f" "$BUILD/jpeg/src/"
-    done
+    local jsrc="$V/CrashRpt/thirdparty/jpeg"
+    [ -f "$jsrc/jdapistd.c" ] || { echo "   !! нет источников jpeg: $jsrc" >&2; return 1; }
     cat > "$BUILD/jpeg/CMakeLists.txt" <<EOF
 cmake_minimum_required(VERSION 3.15)
-project(jpeg CXX)
-set(CMAKE_CXX_FLAGS "")
-set(CMAKE_CXX_FLAGS_RELEASE "")
-# заголовки — КЛИЕНТСКИЕ (Vendor/jpeglib/include), не из архива
-include_directories($(zfwd "$V/jpeglib/include") $(zfwd "$BUILD/jpeg/src"))
-file(GLOB JPEG_SRC $(zfwd "$BUILD/jpeg/src")/*.c)
+project(jpeg C)
+set(CMAKE_C_FLAGS "")
+set(CMAKE_C_FLAGS_RELEASE "")
+include_directories($(zfwd "$jsrc"))
+file(GLOB JPEG_SRC $(zfwd "$jsrc")/*.c)
+# jaricom.c НЕ исключать: в нём таблица jpeg_aritab, на которую ссылаются
+# jcarith.c/jdarith.c
 add_library(jpeglib STATIC \${JPEG_SRC})
 set_target_properties(jpeglib PROPERTIES OUTPUT_NAME jpeglib)
-# C++ (как x86-ная либа): иначе экспорты без манглинга и клиент их не найдёт
-set_source_files_properties(\${JPEG_SRC} PROPERTIES LANGUAGE CXX)
 target_compile_definitions(jpeglib PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
-target_compile_options(jpeglib PRIVATE /O2 /MT /EHsc /wd4996 /wd4267 /wd4244 /wd4100 /wd4018 /wd4131 /wd4715 /wd4701 /wd4127)
+target_compile_options(jpeglib PRIVATE /O2 /MT /EHsc /wd4018 /wd4100 /wd4127 /wd4131 /wd4244 /wd4267 /wd4701 /wd4996)
 EOF
     DEST="$out" ARTIFACTS="jpeglib.lib"
 }

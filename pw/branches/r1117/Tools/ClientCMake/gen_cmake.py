@@ -112,7 +112,11 @@ X64_LINKDIR_DROP = ("Vendor/Gl/lib",)
 #   comsuppw/comsuppwd — удалены из VC с VS2017 15.3 (_com_error теперь в
 #     <comdef.h>); в тулчейне 14.44 их нет физически.
 # Возврат любой либы — PW_DROP_LIBS="".
-X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32", "comsuppw", "comsuppwd", "cxxtest"}
+#   crashrpt — x64-сборка CrashRpt требует VC.ATL (atldef.h), которого в тулчейне
+#     нет; обращения к cr* в System/CrashRptWrapper.cpp закрыты #if !defined(_M_X64)
+#     (exception-лог пишется как раньше), поэтому либа не нужна вовсе.
+X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32", "comsuppw", "comsuppwd", "cxxtest",
+                        "crashrpt"}
 # UCRT (x64) не экспортирует легаси-имена CRT, которые использует код клиента
 # (System/PersistEvents.cpp — stricmp, FileSystem/FilePileLoader.cpp — strnicmp;
 # заголовки их объявляют, либы нет). /ALTERNATENAME закрывает без правок кода.
@@ -124,7 +128,8 @@ X64_LINK_ALTERNATES = ("/ALTERNATENAME:stricmp=_stricmp",
                        "/ALTERNATENAME:close=_close",
                        "/ALTERNATENAME:open=_open",
                        "/ALTERNATENAME:read=_read",
-                       "/ALTERNATENAME:fileno=_fileno")
+                       "/ALTERNATENAME:fileno=_fileno",
+                       "/ALTERNATENAME:strdup=_strdup")
 
 
 def x64_lib(name):
