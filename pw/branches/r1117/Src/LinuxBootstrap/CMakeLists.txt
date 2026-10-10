@@ -442,6 +442,7 @@ add_executable(
 	adventure_presentation.cpp
 	hero_presentation_probe.cpp
 	world_grid_probe.cpp
+	fog_grid_probe.cpp
 	text_runtime_probe.cpp
 	../System/FileSystem/TestFileSystem.cpp
   ../Client/DefaultScreenBase.cpp
@@ -897,6 +898,8 @@ target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
 add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-grid-probe)
 set_tests_properties(LinuxWorldGrid PROPERTIES TIMEOUT 30)
+add_test(NAME LinuxFogGrid COMMAND PrimeWorldLinuxClient --bootstrap-fog-grid-probe)
+set_tests_properties(LinuxFogGrid PROPERTIES TIMEOUT 30)
 add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxTalentCostProbe)
 add_executable(PrimeWorldLinuxPresentationProbe session_presentation_probe.cpp)
 add_test(NAME LinuxSessionPresentation COMMAND PrimeWorldLinuxPresentationProbe)

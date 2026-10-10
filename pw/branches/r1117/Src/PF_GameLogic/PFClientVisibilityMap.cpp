@@ -1082,7 +1082,11 @@ namespace Detail
     if (tile.y >= combinedVisMap.GetSizeY())
       return false;
 
+#if defined(PW_LINUX_NULL_RENDER)
+		return combinedVisMap[tile.y][tile.x];
+#else
     return combinedVisMap[tile.x][tile.y];
+#endif
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

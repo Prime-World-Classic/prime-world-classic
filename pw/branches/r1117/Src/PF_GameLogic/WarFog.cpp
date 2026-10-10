@@ -15,6 +15,36 @@
 
 namespace
 {
+	/**
+	 * @brief Address a logical fog cell without changing the legacy Windows layout.
+	 *
+	 * Linux uses CArray2D's canonical [y][x] layout for global maps and object-local
+	 * caches. This changes Linux serialized cell bytes: legacy Linux/Windows fog
+	 * snapshots need explicit migration before Linux use, even on square grids.
+	 * Windows retains [x][y], its existing snapshot bytes and GPU orientation.
+	 * Storage-order mask traversal and image/texture uploads are not cell lookups.
+	 */
+	template <class T>
+	static inline T& FogCell(CArray2D<T>& map, const int x, const int y)
+	{
+#if defined(PW_LINUX_NULL_RENDER)
+		return map[y][x];
+#else
+		return map[x][y];
+#endif
+	}
+
+	/** Const counterpart with the same platform-specific logical cell contract. */
+	template <class T>
+	static inline const T& FogCell(const CArray2D<T>& map, const int x, const int y)
+	{
+#if defined(PW_LINUX_NULL_RENDER)
+		return map[y][x];
+#else
+		return map[x][y];
+#endif
+	}
+
   template <class T>
   static inline bool CheckArrayIndex(const CArray2D<T>& arr, const int x, const int y)
   {
@@ -393,8 +423,13 @@ void FogOfWar::ApplyHeightMap( const CArray2D<float>& _heights, const NScene::IH
     {
       int xFrom = x * visTileSize;
       int yFrom = y * visTileSize;
+#if defined(PW_LINUX_NULL_RENDER)
+			int xTo = Min(xFrom + visTileSize, _heights.GetSizeX());
+			int yTo = Min(yFrom + visTileSize, _heights.GetSizeY());
+#else
       int xTo   = Min(xFrom + visTileSize, _heights.GetSizeY());
       int yTo   = Min(yFrom + visTileSize, _heights.GetSizeX());
+#endif
 
       float minHeight = FLT_MAX;
 
@@ -412,7 +447,7 @@ void FogOfWar::ApplyHeightMap( const CArray2D<float>& _heights, const NScene::IH
         }
       }
 
-      heights[x][y] = minHeight;
+			FogCell(heights, x, y) = minHeight;
     }
   }
 }
@@ -540,13 +575,17 @@ void FogOfWar::ChangeTeam( int id, int team )
 bool FogOfWar::IsTileVisible( const SVector& tile, int team ) const
 {
   NI_VERIFY(IsValidTeam(team), "Invalid team!", return false);
+#if defined(PW_LINUX_NULL_RENDER)
+	// Integer division would otherwise fold a negative normal tile into cell zero.
+	if (tile.x < 0 || tile.y < 0) return false;
+#endif
 
   const int x = tile.x / visTileSize;
   const int y = tile.y / visTileSize;
 
   NI_VERIFY(IsValidPosition(x, y), "Invalid tile position!", return false);
 
-  return visibilityMap[team][x][y];
+	return FogCell(visibilityMap[team], x, y);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -572,8 +611,8 @@ bool FogOfWar::CanObjectSeePosition( int id, const SVector & target ) const
     return false;
 
   return
-    (object.visibleTiles[x][y]) ||
-    (object.potentiallyVisibleTiles[x][y] && IsTileVisible(target, object.oldParams.team));
+		(FogCell(object.visibleTiles, x, y)) ||
+		(FogCell(object.potentiallyVisibleTiles, x, y) && IsTileVisible(target, object.oldParams.team));
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -697,9 +736,9 @@ void FogOfWar::FillVisibilityMap( const SVector & pos, const int visRad, const i
 
   // Mark center
   if( unmark )
-    visMap[x][y]--;
+		FogCell(visMap, x, y)--;
   else
-    visMap[x][y]++;
+		FogCell(visMap, x, y)++;
 
   if (circles.size() < visRadius)
     AddCircles(visRadius - circles.size(), circles);
@@ -722,24 +761,24 @@ void FogOfWar::FillVisibilityMap( const SVector & pos, const int visRad, const i
       if (IsVisible(circle[j], sectors))
       {
         if( unmark )
-          visMap[pos.x][pos.y]--;
+					FogCell(visMap, pos.x, pos.y)--;
         else
-          visMap[pos.x][pos.y]++;
+					FogCell(visMap, pos.x, pos.y)++;
       }
 
-      float heightDelta = heights[pos.x][pos.y] - heights[x][y];
+			float heightDelta = FogCell(heights, pos.x, pos.y) - FogCell(heights, x, y);
       bool  heightLimit = useHeightsDelta && (heightDelta > maxHeightsDelta);
 
       // Has obstacle?
-      if (obstacles[pos.x][pos.y] || heightLimit)
+			if (FogCell(obstacles, pos.x, pos.y) || heightLimit)
       {
         // Handle obstacleDeepVisibility only if not height limit
         if (!heightLimit && !circle[j].isVisible && i+1-circle[j].fromRadius < obstacleDeepVisibility )
         {
           if( unmark )
-            visMap[pos.x][pos.y]--;
+						FogCell(visMap, pos.x, pos.y)--;
           else
-            visMap[pos.x][pos.y]++;
+						FogCell(visMap, pos.x, pos.y)++;
         }
         // Add sector
         AddSector(FogOfWar::SectorData(circle[j].angleMin, circle[j].angleMax, i+1), sectors );
@@ -760,10 +799,14 @@ void FogOfWar::ChangeObstacle( const vector<SVector> & tiles, bool remove )
   for (int i=0; i< tiles.size(); i++)
   {
     SVector visTile = ConvertToVisTile(tiles[i]);
+#if defined(PW_LINUX_NULL_RENDER)
+		NI_VERIFY(CheckArrayIndex(obstacles, visTile.x, visTile.y), "bad tile", continue);
+#else
     NI_VERIFY(visTile.x>=0 && visTile.x<=obstacles.GetSizeX(), "bad tile", continue);
     NI_VERIFY(visTile.y>=0 && visTile.y<=obstacles.GetSizeY(), "bad tile", continue);
+#endif
     
-    byte & tileVisValue = obstacles[visTile.x][visTile.y];
+		byte & tileVisValue = FogCell(obstacles, visTile.x, visTile.y);
     remove? tileVisValue--: tileVisValue++;
 
     NI_VERIFY(tileVisValue>=0, "remove obstacle was called more times than add", tileVisValue=0);
@@ -826,7 +869,7 @@ void FogOfWar::ObjectInfo::UnMark(FogOfWar *pWarfog)
   {
     for (int j = 0; j < visibleTiles.GetSizeY(); ++j)
     {
-      if (!visibleTiles[i][j])
+			if (!FogCell(visibleTiles, i, j))
         continue;
 
       const int px = origin.x + i;
@@ -835,7 +878,7 @@ void FogOfWar::ObjectInfo::UnMark(FogOfWar *pWarfog)
       const bool shouldUnmark = CheckArrayIndex(visibilityMap, px, py);
 
       if (shouldUnmark)
-        visibilityMap[px][py]--;
+				FogCell(visibilityMap, px, py)--;
     }
   }
 }
@@ -868,7 +911,7 @@ void FogOfWar::ObjectInfo::Mark(FogOfWar *pWarfog)
   // Mark center
   ShouldMarkTile(newParams.position);
 
-  pWarfog->visibilityMap[newParams.team][newParams.position.x][newParams.position.y]++;
+	FogCell(pWarfog->visibilityMap[newParams.team], newParams.position.x, newParams.position.y)++;
 
   isValidVisibleTiles = true;
 
@@ -898,7 +941,7 @@ void FogOfWar::ObjectInfo::Mark(FogOfWar *pWarfog)
         {
           if (ShouldMarkTile(pos))
           {
-            visibilityMap[pos.x][pos.y]++;
+						FogCell(visibilityMap, pos.x, pos.y)++;
           }
         }
         else
@@ -909,19 +952,19 @@ void FogOfWar::ObjectInfo::Mark(FogOfWar *pWarfog)
       if( cancelHidingSectors ) continue; // prevent hiding tiles by sectors
 
       // Has obstacle?
-      if (pWarfog->obstacles[pos.x][pos.y])
+			if (FogCell(pWarfog->obstacles, pos.x, pos.y))
       {
         // Handle obstacleDeepVisibility only if not height limit
         if (!circle[j].isVisible && i+1-circle[j].fromRadius < pWarfog->obstacleDeepVisibility)
         {
           if (ShouldMarkTile(pos))
-            visibilityMap[pos.x][pos.y]++;
+						FogCell(visibilityMap, pos.x, pos.y)++;
         }
         // Add sector
         AddSector(FogOfWar::SectorData(circle[j].angleMin, circle[j].angleMax, i+1), obstacleSectors);
       }
 
-      float heightDelta = pWarfog->heights[pos.x][pos.y] - pWarfog->heights[newParams.position.x][newParams.position.y];
+			float heightDelta = FogCell(pWarfog->heights, pos.x, pos.y) - FogCell(pWarfog->heights, newParams.position.x, newParams.position.y);
       bool  heightLimit = pWarfog->useHeightsDelta && (heightDelta > pWarfog->maxHeightsDelta);
 
       if (heightLimit)
@@ -943,8 +986,8 @@ bool FogOfWar::ObjectInfo::ShouldMarkTile( const SVector & tile )
 {
   SVector relative = tile - newParams.position + SVector(newParams.visRadius, newParams.visRadius);
 
-  bool markTile = (visibleTiles[relative.x][relative.y] == 0);
-  visibleTiles[relative.x][relative.y]++;
+	bool markTile = (FogCell(visibleTiles, relative.x, relative.y) == 0);
+	FogCell(visibleTiles, relative.x, relative.y)++;
   return markTile;
 }
 
@@ -952,8 +995,8 @@ bool FogOfWar::ObjectInfo::ShouldMarkTileAsHeightLimited( const SVector & tile )
 {
   SVector relative = tile - newParams.position + SVector(newParams.visRadius, newParams.visRadius);
 
-  bool markTile = (potentiallyVisibleTiles[relative.x][relative.y] == 0);
-  potentiallyVisibleTiles[relative.x][relative.y]++;
+	bool markTile = (FogCell(potentiallyVisibleTiles, relative.x, relative.y) == 0);
+	FogCell(potentiallyVisibleTiles, relative.x, relative.y)++;
   return markTile;
 }
 
@@ -990,14 +1033,14 @@ void FogOfWar::Dump( const char* fileName)
     for( int x = 0; x < width; ++x )
     {
       int invertY = height -1 - y;
-      if (obstacles[x][y])
+			if (FogCell(obstacles, x, y))
       {
         PutColor(image, obstacleColor, x, invertY);
       }
 
       for (int t=0; t<3; t++)
       {
-        if (visibilityMap[t][x][y])
+				if (FogCell(visibilityMap[t], x, y))
           PutColor(image, teamColors[t], x, invertY);
       }
     }
@@ -1155,14 +1198,14 @@ void FogOfWar::DrawWarFogDebug(NWorld::PFWorld* pWorld) const
   {
     for ( int y = min.y; y < max.y; ++y)
     {
-      CVec3 pos((float)x * warfogToWorld, (float)y * warfogToWorld, heights[x][y]);
-      bool isTileVisible = visibilityMap[g_showWarFog-1][x][y];
+			CVec3 pos((float)x * warfogToWorld, (float)y * warfogToWorld, FogCell(heights, x, y));
+			bool isTileVisible = FogCell(visibilityMap[g_showWarFog-1], x, y);
       Render::Color const * color = (isTileVisible) ? (&color1) : (&color2);
 
       DrawWarFogTile(pos, color, warfogToWorld, 0.1f);
 
       // Draw obstacle if set at current tile
-      if (obstacles[x][y])
+			if (FogCell(obstacles, x, y))
       {
         Render::Color const * color = (isTileVisible) ? (&color3) : (&color4);
 
@@ -1181,8 +1224,8 @@ void FogOfWar::DrawWarFogDebug(NWorld::PFWorld* pWorld) const
         || warfogY < 0 || warfogY >= heights.GetSizeY())
       continue;
 
-    CVec3 pos((float)warfogX * warfogToWorld, (float)warfogY * warfogToWorld, heights[warfogX][warfogY]);
-    Render::Color const * color = (visibilityMap[g_showWarFog-1][warfogX][warfogY]) ? (&color5) : (&color6);
+		CVec3 pos((float)warfogX * warfogToWorld, (float)warfogY * warfogToWorld, FogCell(heights, warfogX, warfogY));
+		Render::Color const * color = (FogCell(visibilityMap[g_showWarFog-1], warfogX, warfogY)) ? (&color5) : (&color6);
 
     DrawWarFogTile(pos, color, warfogToWorld, 0.3f);
 

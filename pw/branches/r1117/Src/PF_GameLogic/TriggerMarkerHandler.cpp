@@ -89,7 +89,7 @@ void TriggerMarkerHandler::ApplyMarkerVisibility(FogOfWar* fog, const SVector& t
     visTile.y >= 0 &&
     visTile.x < visMap->GetSizeX() &&
     visTile.y < visMap->GetSizeY();
-  const int visibilityBefore = canReadCenter ? (*visMap)[visTile.x][visTile.y] : -1;
+	const int visibilityBefore = canReadCenter ? (*visMap)[visTile.y][visTile.x] : -1;
 #endif
 
   fog->FillVisibilityMap(tile, radius, faction, unmark);
@@ -99,7 +99,7 @@ void TriggerMarkerHandler::ApplyMarkerVisibility(FogOfWar* fog, const SVector& t
     ++linuxFogClearCalls;
   else
     ++linuxFogFillCalls;
-  const int visibilityAfter = canReadCenter ? (*visMap)[visTile.x][visTile.y] : -1;
+	const int visibilityAfter = canReadCenter ? (*visMap)[visTile.y][visTile.x] : -1;
   if (visibilityBefore != visibilityAfter)
     ++linuxFogVisibilityChanges;
   linuxLastFogVisibilityBefore = visibilityBefore;

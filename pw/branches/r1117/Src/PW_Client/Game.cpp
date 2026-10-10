@@ -156,6 +156,7 @@
 #include "LinuxBootstrap/text_runtime_probe.h"
 #include "LinuxBootstrap/hero_presentation_probe.h"
 #include "LinuxBootstrap/world_grid_probe.h"
+#include "LinuxBootstrap/fog_grid_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
 #include "libdb/Db.h"
@@ -70676,6 +70677,8 @@ int main(int argc, char** argv)
   InitializeCmdLine(argc, argv);
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-grid-probe"))
 		return RunPrimeWorldLinuxWorldGridProbe() ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-fog-grid-probe"))
+		return RunPrimeWorldLinuxFogGridProbe() ? 0 : 1;
 
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-adventure-flash-probe"))
 		return RunPrimeWorldLinuxAdventureFlashProbe() ? 0 : 1;
