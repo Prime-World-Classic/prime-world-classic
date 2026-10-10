@@ -394,6 +394,25 @@ void HeroRespawn(Checks& checks)
 	if (restored) restored->Execute(fixture.world);
 	checks.Check(hero->IsMoving(), "packed command retains its intended hero");
 	hero->Stop(false);
+	{
+		Fixture other(checks);
+		move->Execute(nullptr);
+		checks.Check(!hero->IsMoving(), "move execution rejects missing world");
+		hero->Stop(false);
+		move->Execute(other.world);
+		checks.Check(!hero->IsMoving(), "move execution rejects a foreign-world hero");
+		hero->Stop(false);
+		for (NCore::WorldCommand* rawCommand : {CreateCmdMoveHero(exactHero, CVec2(40, 20)),
+			CreateCmdCombatMoveHero(exactHero, CVec2(40, 20)), CreateCmdStopHero(exactHero),
+			CreateCmdHold(exactHero), CreateCmdCancelChannelling(exactHero)})
+		{
+			CObj<NCore::WorldCommand> command = rawCommand;
+			CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(command,
+				fixture.world->GetPointerSerialization(), 1984, 0);
+			CObj<NCore::WorldCommand> missing = packet->GetWorldCommand(other.world->GetPointerSerialization());
+			checks.Check(missing && !missing->CanExecute(), "restored command rejects missing actor");
+		}
+	}
 	// Restored unit targets must retain identity even for concrete derived classes.
 	CObj<ProbeUnit> enemy = new ProbeUnit(fixture.world, db);
 	enemy->ChangeFaction(Enemy);

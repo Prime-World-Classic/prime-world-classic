@@ -102,70 +102,12 @@ namespace NWorld
     if (outResolvedByClientId)
       *outResolvedByClientId = false;
 
-    if (!world)
-      return IsValid(preferredHero) ? preferredHero : 0;
-
-    if (IsValid(preferredHero))
-    {
-      PFBaseHero* liveHero =
-        dynamic_cast<PFBaseHero*>(world->FindLinuxUnitByObjectId(preferredHero->GetObjectId()));
-      if (IsValid(liveHero))
-      {
-        if (outResolvedFromWorld)
-          *outResolvedFromWorld = liveHero != preferredHero;
-        return liveHero;
-      }
-
-      return preferredHero;
-    }
-
-    if (clientId > 0)
-    {
-      PFPlayer* player = world->GetPlayerByUID(clientId);
-      if (player && IsValid(player->GetHero()))
-      {
-        if (outResolvedFromWorld)
-          *outResolvedFromWorld = true;
-        if (outResolvedByClientId)
-          *outResolvedByClientId = true;
-        return player->GetHero();
-      }
-    }
-
-    for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
-    {
-      PFPlayer* player = world->GetPlayer(playerIndex);
-      if (player && player->IsLocal() && IsValid(player->GetHero()))
-      {
-        if (outResolvedFromWorld)
-          *outResolvedFromWorld = true;
-        return player->GetHero();
-      }
-    }
-
-    for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
-    {
-      PFPlayer* player = world->GetPlayer(playerIndex);
-      if (player && player->GetUserID() > 0 && IsValid(player->GetHero()))
-      {
-        if (outResolvedFromWorld)
-          *outResolvedFromWorld = true;
-        return player->GetHero();
-      }
-    }
-
-    for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
-    {
-      PFPlayer* player = world->GetPlayer(playerIndex);
-      if (player && IsValid(player->GetHero()))
-      {
-        if (outResolvedFromWorld)
-          *outResolvedFromWorld = true;
-        return player->GetHero();
-      }
-    }
-
-    return 0;
+		// Local AI shares the scheduler UID; it is not a substitute for actor identity.
+		(void)clientId;
+		if (!world || !IsValid(preferredHero) || preferredHero->GetWorld() != world)
+			return 0;
+		return world->FindLinuxUnitByObjectId(preferredHero->GetObjectId()) == preferredHero ?
+			preferredHero : 0;
   }
 
   static PFBaseMaleHero* ResolveLinuxBootstrapCommandMaleHero(
@@ -541,7 +483,7 @@ namespace NWorld
   bool CmdCombatMoveHero::CanExecute() const
   {
 #if defined(PW_LINUX_NULL_RENDER)
-    return !IsValid(pHero) || pHero->CanMove();
+    return IsValid(pHero) && pHero->CanMove();
 #else
     return IsValid(pHero) && pHero->CanMove();
 #endif
@@ -600,9 +542,9 @@ namespace NWorld
     g_linuxHeroMoveCommandDiagnostics.lastHeroCheck = heroCheck ? 1 : 0;
     g_linuxHeroMoveCommandDiagnostics.lastControlsCheck = controlsCheck ? 1 : 0;
     g_linuxHeroMoveCommandDiagnostics.lastCanMoveCheck = canMoveCheck ? 1 : 0;
-    if ((heroCheck && controlsCheck && canMoveCheck) || !heroCheck)
+    if (heroCheck && controlsCheck && canMoveCheck)
       ++g_linuxHeroMoveCommandDiagnostics.canExecuteAccepted;
-    return (heroCheck && controlsCheck && canMoveCheck) || !heroCheck;
+    return heroCheck && controlsCheck && canMoveCheck;
 #else
     return IsValid(pHero) && pHero->CanMove();
 #endif
@@ -664,7 +606,7 @@ namespace NWorld
   bool CmdStopHero::CanExecute() const
   {
 #if defined(PW_LINUX_NULL_RENDER)
-    return true;
+    return IsValid(pHero);
 #else
     return IsValid(pHero);
 #endif
@@ -876,7 +818,7 @@ namespace NWorld
   bool CmdHold::CanExecute() const
   {
 #if defined(PW_LINUX_NULL_RENDER)
-    return !IsValid(pHero) || !pHero->IsDead();
+    return IsValid(pHero) && !pHero->IsDead();
 #else
     return IsValid(pHero) && !pHero->IsDead();
 #endif
@@ -924,7 +866,7 @@ namespace NWorld
   bool CmdCancelChannelling::CanExecute() const
   {
 #if defined(PW_LINUX_NULL_RENDER)
-    return true;
+    return IsValid(pHero);
 #else
     return IsValid(pHero);
 #endif
