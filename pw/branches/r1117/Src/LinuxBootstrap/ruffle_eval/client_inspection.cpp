@@ -21,7 +21,7 @@ void PwRuffleClientInspection::Focus(bool focused)
 		return;
 	}
 	focused_ = focused;
-	if (!focused) { ++inputEpoch_; pointerCapture_.Reset(); events_.Clear(); }
+	if (!focused) { ++inputEpoch_; ++controlEpoch_; pointerCapture_.Reset(); events_.Clear(); }
 }
 
 bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x, int y,

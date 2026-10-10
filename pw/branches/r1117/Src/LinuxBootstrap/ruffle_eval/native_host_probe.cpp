@@ -322,8 +322,10 @@ int main(int argc, char** argv)
 		Check(inspection.Pointer(Kind::Up, 285, 683, 0, 0, 1280, 720), "Authored shortcut release escaped");
 		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
 		const auto leaveEpoch = inspection.InputEpoch();
+		const auto leaveControlEpoch = inspection.ControlEpoch();
 		inspection.Pointer(Kind::Leave, -1, -1, 0, 0, 1280, 720);
 		Check(inspection.InputEpoch() != leaveEpoch, "Pointer leave did not cancel held gestures");
+		Check(inspection.ControlEpoch() == leaveControlEpoch, "Pointer leave canceled ability selection");
 		const auto requests = inspection.TakeGameplayEvents();
 		Check(std::count_if(requests.begin(), requests.end(), [](const auto& event)
 		{
@@ -363,8 +365,10 @@ int main(int argc, char** argv)
 		Check(!inspection.Pointer(Kind::Wheel, 640, 100, 0, 1, 1280, 720), "World wheel captured");
 		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD focus-test press failed");
 		const auto epoch = inspection.InputEpoch();
+		const auto controlEpoch = inspection.ControlEpoch();
 		inspection.Focus(false);
 		Check(inspection.InputEpoch() != epoch, "Focus loss did not cancel gesture epoch");
+		Check(inspection.ControlEpoch() != controlEpoch, "Focus loss retained ability selection epoch");
 		Check(inspection.PendingCallbacks() == 0, "Focus loss retained gameplay requests");
 		inspection.Focus(true);
 		const auto inputsBefore = inspection.PointerEvents();

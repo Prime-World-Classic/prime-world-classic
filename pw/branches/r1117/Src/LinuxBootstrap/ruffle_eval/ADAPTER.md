@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.14.2`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.15.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -135,6 +135,23 @@ original event names. The client checks the explicit capability in `stats` and
 falls back with a diagnostic when an older/noncompatible DSO is supplied. No game
 SWF or Windows event implementation is rewritten; this is not double-right-click
 support or a general Ruffle event renaming change.
+
+### Ground Talent Targeting (0.15.0)
+
+An eligible authored talent click can arm its exact hero/row/column. A fresh world
+left press selects a ground position and submits through the existing transceiver;
+invalid or out-of-range points keep the selection. Right press or Escape cancels
+without issuing a move. Captured releases remain consumed after casting or canceling.
+Pending ownership is revalidated on each frame; hero, focus, viewport or session
+changes invalidate it. Pointer leave alone does not erase a selected talent.
+
+This path only supports standard `SPELLTARGET_LAND` talents. Unit picking, line of
+sight and alternative-target semantics remain unsupported; Linux visibility methods
+still contain stubs and must not be treated as proof of those rules. Projection uses
+the actual window dimensions and rejects off-map points instead of clamping them.
+Terrain-height intersection and automatic approach-to-cast remain unimplemented.
+The manual human ground command rechecks live ownership, activation/resources,
+target bounds and range at execution; scripted/bot commands retain their legacy path.
 
 ### Profiling (0.14.1)
 

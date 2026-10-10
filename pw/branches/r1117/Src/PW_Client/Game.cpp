@@ -124,6 +124,8 @@
 #include "LinuxBootstrap/ruffle_eval/client_inspection.h"
 #include "LinuxBootstrap/ruffle_eval/talent_input.h"
 #include "LinuxBootstrap/ruffle_eval/minimap_input.h"
+#include "LinuxBootstrap/ruffle_eval/talent_target_input.h"
+#include "LinuxBootstrap/ground_talent_target.h"
 #endif
 #include <chrono>
 #include "LoadingStatusHandler.h"
@@ -4266,6 +4268,8 @@ struct LinuxBootstrapScreenRuntime
 	PwRuffleMinimapInput ruffleMinimapInput;
 	size_t ruffleInputEpoch = 0, ruffleMinimapMoves = 0, ruffleMinimapCameras = 0;
 	CVec2 ruffleMinimapLastTarget = CVec2(0, 0);
+	PwRuffleTalentTargetInput ruffleTargetInput;
+	size_t ruffleTargetArmed = 0, ruffleTargetCasts = 0, ruffleTargetRejected = 0, ruffleTargetCanceled = 0;
 #endif
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
@@ -32304,6 +32308,21 @@ void DriveLinuxRufflePointer(LinuxWindowOverlay* overlay, LinuxBootstrapScreenRu
 	for (size_t i = 0; i < input->rawMessages.size(); ++i)
 	{
 		const auto message = input->rawMessages[i];
+		using TargetKind = PwRuffleTalentTargetInput::Kind;
+		const bool escape = (message.msg == NMainFrame::SWindowsMsg::KEY_DOWN ||
+			message.msg == NMainFrame::SWindowsMsg::KEY_UP) && message.nKey == XK_Escape;
+		if (escape || message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_DOWN ||
+			message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_DBLCLK ||
+			message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_UP)
+		{
+			const auto& pending = runtime->ruffleTargetInput.Pending();
+			const auto cancel = runtime->ruffleTargetInput.Consume({escape ?
+				(message.msg == NMainFrame::SWindowsMsg::KEY_DOWN ? TargetKind::EscapeDown : TargetKind::EscapeUp) :
+				(message.msg == NMainFrame::SWindowsMsg::MOUSE_RB_UP ? TargetKind::RightUp : TargetKind::RightDown), false},
+				{pending ? pending->heroObjectId : -1, inspection.ControlEpoch(), NMainFrame::IsAppActive()});
+			if (cancel.canceled) ++runtime->ruffleTargetCanceled;
+			if (cancel.consume) continue;
+		}
 		Kind kind = Kind::Move;
 		unsigned button = 0;
 		bool pointer = true;
@@ -44325,7 +44344,8 @@ bool ProjectLinuxMapPreviewScreenToWorld(
   int mouseX,
   int mouseY,
   float* worldX,
-  float* worldY
+  float* worldY,
+	bool clampToMap = true
 )
 {
   if (worldX) *worldX = 0.0f;
@@ -44389,6 +44409,9 @@ bool ProjectLinuxMapPreviewScreenToWorld(
   const float mapZ = originZ + dirZ * t;
   float projectedX = centerX + mapX / scale;
   float projectedY = centerY + mapZ / scale;
+	if (!clampToMap && (!std::isfinite(projectedX) || !std::isfinite(projectedY) ||
+		projectedX < tactical.minX || projectedX >= tactical.maxX ||
+		projectedY < tactical.minY || projectedY >= tactical.maxY)) return false;
   projectedX = std::max(tactical.minX, std::min(tactical.maxX, projectedX));
   projectedY = std::max(tactical.minY, std::min(tactical.maxY, projectedY));
 
@@ -51296,6 +51319,16 @@ bool SubmitLinuxRuffleCommand(LinuxBootstrapScreenRuntime* runtime, NCore::World
 }
 
 /** Revalidate the exact authored row/column against current simulation state. */
+bool CanArmLinuxGroundTalent(NWorld::PFBaseMaleHero* hero, int row, int column)
+{
+	if (!hero || hero->IsDead() || row < 0 || row >= 6 || column < 0 || column >= 6) return false;
+	auto* talent = hero->GetTalent(row, column);
+	return talent && talent->GetDBDesc() && talent->IsActivated() && talent->IsActive() && talent->CanBeUsed() &&
+		(talent->GetTargetType() & NDb::SPELLTARGET_LAND) && !(talent->GetTargetType() & NDb::SPELLTARGET_LINEOFSIGHT) &&
+		!talent->GetDBDesc()->requireLineOfSight && talent->GetDBDesc()->alternativeTargets.empty();
+}
+
+/** Accept purchases/immediate casts or arm the exact supported ground-target talent. */
 bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 	NWorld::PFBaseMaleHero* hero, LinuxBootstrapScreenRuntime* runtime)
 {
@@ -51344,15 +51377,77 @@ bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 		sent = SubmitLinuxRuffleCommand(runtime,
 			NWorld::CreateCmdUseTalent(hero, event.row, event.column, target, false));
 	}
-	else if (request == Request::NeedsTarget) ++runtime->ruffleNeedsTarget;
+	else if (request == Request::NeedsTarget)
+	{
+		++runtime->ruffleNeedsTarget;
+		if (!CanArmLinuxGroundTalent(hero, event.row, event.column)) return false;
+		const auto epoch = runtime->ruffleInspection.ControlEpoch();
+		if (!runtime->ruffleTargetInput.Arm({hero->GetObjectId(), event.row, event.column, epoch},
+			{hero->GetObjectId(), epoch, true})) return false;
+		runtime->ruffleTalentRequestSteps[slot] = step;
+		++runtime->ruffleTargetArmed;
+		fprintf(stdout, "Ruffle ground target armed: row=%d column=%d range=%.3f\n",
+			event.row, event.column, talent->GetUseRange());
+		return true;
+	}
 	if (sent)
 	{
+		runtime->ruffleTargetInput.Invalidate();
 		runtime->ruffleTalentRequestSteps[slot] = step;
 		++runtime->ruffleTalentCommands;
 		fprintf(stdout, "Ruffle talent command: %s row=%d column=%d prime=%d step=%d\n",
 			request == Request::Buy ? "buy" : "use", event.row, event.column, hero->GetGold(), step - 1);
 	}
 	return sent;
+}
+
+/** Drain once per input frame before transceiver stepping, outside the renderer. */
+void DriveLinuxRuffleTargeting(const LinuxClientLaunchSettings& settings, const LinuxSelectedMapPreview& map,
+	LinuxWindowOverlay* overlay, LinuxBootstrapScreenRuntime* runtime, LinuxInputState* input)
+{
+	auto* hero = dynamic_cast<NWorld::PFBaseMaleHero*>(ResolveLinuxRuffleCommandHero(settings, runtime));
+	const auto& pending = runtime->ruffleTargetInput.Pending();
+	PwRuffleTalentTargetInput::Context context{hero ? hero->GetObjectId() : -1,
+		runtime->ruffleInspection.ControlEpoch(), hero && (!pending || CanArmLinuxGroundTalent(hero, pending->row, pending->column))};
+	const bool wasPending = pending.has_value();
+	if (!runtime->ruffleTargetInput.Revalidate(context) && wasPending) ++runtime->ruffleTargetCanceled;
+	size_t kept = 0;
+	using Kind = PwRuffleTalentTargetInput::Kind;
+	for (const auto& message : input->rawMessages)
+	{
+		Kind kind;
+		if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DOWN ||
+			message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK) kind = Kind::LeftDown;
+		else if (message.msg == NMainFrame::SWindowsMsg::MOUSE_LB_UP) kind = Kind::LeftUp;
+		else if (message.msg == NMainFrame::SWindowsMsg::MOUSE_MOVE) kind = Kind::Move;
+		else { input->rawMessages[kept++] = message; continue; }
+		const auto decision = runtime->ruffleTargetInput.Consume({kind, true}, context);
+		if (decision.request)
+		{
+			bool submitted = false;
+			XWindowAttributes attributes = {};
+			float x = 0, y = 0;
+			if (overlay && XGetWindowAttributes(overlay->display, overlay->window, &attributes) &&
+				message.x >= 0 && message.y >= 0 && message.x < attributes.width && message.y < attributes.height)
+			{
+				auto viewport = settings;
+				viewport.width = attributes.width; viewport.height = attributes.height;
+				if (ProjectLinuxMapPreviewScreenToWorld(viewport, map, *runtime, message.x, message.y, &x, &y, false))
+				{
+					const NWorld::Target target(CVec2(x, y));
+					const auto& key = decision.request->key;
+					if (NWorld::CanUseLinuxGroundTalent(hero, key.row, key.column, target, runtime->localScheduler->GetMyClientID()))
+						submitted = SubmitLinuxRuffleCommand(runtime, NWorld::CreateCmdUseTalent(hero, key.row, key.column, target, false));
+				}
+			}
+			runtime->ruffleTargetInput.Complete(*decision.request, submitted);
+			if (submitted) { ++runtime->ruffleTargetCasts; ++runtime->ruffleTalentCommands; }
+			else ++runtime->ruffleTargetRejected;
+			fprintf(stdout, "Ruffle ground target: %s position=%.3f,%.3f\n", submitted ? "submitted" : "rejected", x, y);
+		}
+		if (!decision.consume) input->rawMessages[kept++] = message;
+	}
+	input->rawMessages.resize(kept);
 }
 
 /** Drain once per input frame before transceiver stepping, outside the renderer. */
@@ -68578,6 +68673,9 @@ void AppendRuntimeInputLog(
 		<< " talentCommands:" << screenRuntime.ruffleTalentCommands
 		<< " rejectedRequests:" << screenRuntime.ruffleRejectedRequests
 		<< " needsTarget:" << screenRuntime.ruffleNeedsTarget
+		<< " targetArmed:" << screenRuntime.ruffleTargetArmed << " targetCasts:" << screenRuntime.ruffleTargetCasts
+		<< " targetRejected:" << screenRuntime.ruffleTargetRejected << " targetCanceled:" << screenRuntime.ruffleTargetCanceled
+		<< " targetPending:" << screenRuntime.ruffleTargetInput.Pending().has_value()
 		<< " minimapMoves:" << screenRuntime.ruffleMinimapMoves
 		<< " minimapCameras:" << screenRuntime.ruffleMinimapCameras
 		<< " minimapTarget:" << screenRuntime.ruffleMinimapLastTarget.x << "," << screenRuntime.ruffleMinimapLastTarget.y
@@ -72565,6 +72663,7 @@ int main(int argc, char** argv)
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
 		DriveLinuxRuffleGameplay(settings, selectedMapPreview, &screenRuntime);
+		DriveLinuxRuffleTargeting(settings, selectedMapPreview, &overlay, &screenRuntime, &inputState);
 #endif
 		const auto updateStart = ProfileClock::now();
     if (uiRootPreview.runtimeInitialized)

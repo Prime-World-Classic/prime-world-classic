@@ -22,10 +22,71 @@
 #include "PF_GameLogic/PFWorld.h"
 #include "PF_GameLogic/PFPlayer.h"
 #include "PF_GameLogic/HeroActions.h"
+#include "ground_talent_target.h"
 
 namespace NWorld
 {
 #if defined(PW_LINUX_NULL_RENDER)
+	/** Gather live engine facts; never resolve a fallback hero or substitute a talent. */
+	bool CanUseLinuxGroundTalent(PFBaseMaleHero* hero, int row, int column,
+		const Target& target, int clientId)
+	{
+		if (!IsValid(hero) || !target.IsPosition() || row < 0 || row >= 6 ||
+			column < 0 || column >= 6 || clientId < 0)
+			return false;
+		PFWorld* world = hero->GetWorld();
+		PFPlayer* player = hero->GetPlayer();
+		if (!world || !IsValid(player)) return false;
+		PFTalent* talent = hero->GetTalent(row, column);
+		if (!IsValid(talent) || !talent->GetDBDesc()) return false;
+		const NDb::Ability* db = talent->GetDBDesc();
+		const CVec3& position = target.GetPosition();
+		const CVec2& bounds = world->GetMapSize();
+		LinuxBootstrap::GroundTalentTargetState state;
+		state.row = row;
+		state.column = column;
+		state.clientId = clientId;
+		state.ownerClientId = player->GetUserID();
+		state.exactHero = player->GetHero() == hero && world->GetPlayerByUID(clientId) == player &&
+			world->FindLinuxUnitByObjectId(hero->GetObjectId()) == hero;
+		state.human = !player->IsBot();
+		state.playing = player->IsPlaying();
+		state.alive = !hero->IsDead();
+		state.controlsAllowed = !hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPLAYERCONTROL) &&
+			!hero->CheckFlagType(NDb::UNITFLAGTYPE_INMINIGAME);
+		state.bought = talent->IsActivated();
+		state.active = talent->IsActive();
+		state.usable = talent->CanBeUsed();
+		state.position = true;
+		state.land = (talent->GetTargetType() & NDb::SPELLTARGET_LAND) != 0;
+		state.lineOfSight = (talent->GetTargetType() & NDb::SPELLTARGET_LINEOFSIGHT) != 0 || db->requireLineOfSight;
+		state.alternativeTargets = !db->alternativeTargets.empty() || target.GetDBAlternativeTarget() != 0;
+		state.x = position.x;
+		state.y = position.y;
+		state.z = position.z;
+		state.width = bounds.x;
+		state.height = bounds.y;
+		if (!LinuxBootstrap::IsLinuxGroundTalentReady(state)) return false;
+		state.targetValid = talent->IsTargetValid(target);
+		if (!state.targetValid) return false;
+		state.castAllowed = talent->CheckCastLimitations(target) == 0;
+		if (!state.castAllowed) return false;
+		state.useRange = talent->GetUseRange(target);
+		state.outOfRangeAllowed = (talent->GetFlags() & NDb::ABILITYFLAGS_CANUSEOUTOFRANGE) != 0;
+		if (std::isfinite(state.useRange) && state.useRange > 0 && !state.outOfRangeAllowed)
+			state.inRange = hero->IsTargetInRange(target, state.useRange);
+		return LinuxBootstrap::CanUseLinuxGroundTalentState(state);
+	}
+
+	/** Known bots/scripts keep legacy behavior; unresolved manual ground heroes fail closed. */
+	static bool NeedsLinuxGroundTalentValidation(PFBaseMaleHero* hero, const Target& target,
+		bool issuedByScript)
+	{
+		PFPlayer* player = IsValid(hero) ? hero->GetPlayer() : 0;
+		return LinuxBootstrap::NeedsLinuxGroundTalentValidation(issuedByScript, target.IsPosition(),
+			IsValid(player) && player->IsBot());
+	}
+
   static LinuxHeroMoveCommandDiagnostics g_linuxHeroMoveCommandDiagnostics = {};
   static LinuxHeroGameplayCommandDiagnostics g_linuxHeroGameplayCommandDiagnostics = {};
 
@@ -1104,7 +1165,9 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanChecks;
-    const bool accepted = !IsValid(pHero) || !pHero->IsDead();
+		const bool manualGround = NeedsLinuxGroundTalentValidation(pHero, target, issuedByScript);
+		const bool accepted = manualGround ? CanUseLinuxGroundTalent(pHero, level, slot, target, GetId()) :
+			(!IsValid(pHero) || !pHero->IsDead());
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.useTalentCanAccepted;
     g_linuxHeroGameplayCommandDiagnostics.useTalentLevel = level;
@@ -1131,7 +1194,8 @@ namespace NWorld
     PFBaseMaleHero* hero = 0;
 #if defined(PW_LINUX_NULL_RENDER)
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
-    hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
+		const bool manualGround = NeedsLinuxGroundTalentValidation(pHero, target, issuedByScript);
+		hero = manualGround ? pHero.GetPtr() : ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
     AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target);
     g_linuxHeroGameplayCommandDiagnostics.useTalentTargetType = static_cast<int>(resolvedTarget.GetType());
     g_linuxHeroGameplayCommandDiagnostics.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(resolvedTarget);
@@ -1140,7 +1204,9 @@ namespace NWorld
     hero = pHero;
 #endif
 #if defined(PW_LINUX_NULL_RENDER)
-    PFTalent* talent = IsValid(hero) ? hero->GetTalent(level, slot) : 0;
+		const bool manualGroundAllowed = !manualGround || (world && IsValid(hero) &&
+			hero->GetWorld() == world && CanUseLinuxGroundTalent(hero, level, slot, resolvedTarget, GetId()));
+		PFTalent* talent = IsValid(hero) && manualGroundAllowed ? hero->GetTalent(level, slot) : 0;
     if (talent)
     {
       g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepBefore =
@@ -1150,7 +1216,8 @@ namespace NWorld
       g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownBefore =
         talent->GetCurrentCooldown();
     }
-    const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(talent);
+		const bool canUse = manualGround ? manualGroundAllowed :
+			(IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(talent));
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
@@ -1158,7 +1225,7 @@ namespace NWorld
       if (instance)
         ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
     }
-    talent = IsValid(hero) ? hero->GetTalent(level, slot) : 0;
+		talent = IsValid(hero) && manualGroundAllowed ? hero->GetTalent(level, slot) : 0;
     if (talent)
     {
       g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepAfter =

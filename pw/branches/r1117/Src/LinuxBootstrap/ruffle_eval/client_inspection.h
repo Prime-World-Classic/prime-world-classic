@@ -40,7 +40,7 @@ public:
 	/** Release VM buttons on native focus loss; duplicate notifications are skipped. */
 	void Focus(bool focused);
 	/** Release native resources; diagnostics/counters survive for final logging. */
-	bool Reset() { ++inputEpoch_; minimapBounds_.reset(); events_.Clear(); pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
+	bool Reset() { ++inputEpoch_; ++controlEpoch_; minimapBounds_.reset(); events_.Clear(); pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
 	/** Consume validated requests once. The caller must revalidate live gameplay state. */
 	std::vector<PwRuffleGameplayEvent> TakeGameplayEvents() { return events_.Drain(); }
 	bool WasAttempted() const { return attempted_; }
@@ -53,6 +53,8 @@ public:
 	size_t PendingCallbacks() const { return events_.Pending(); }
 	/** Reset held gestures after draining prior-frame callbacks when this changes. */
 	size_t InputEpoch() const { return inputEpoch_; }
+	/** Focus/viewport/session cancellation, excluding pointer leave (selection survives it). */
+	size_t ControlEpoch() const { return controlEpoch_; }
 	/** Bounds of the last successfully composed native bitmap, not a guessed world extent. */
 	const std::optional<PwRuffleMinimapWorldBounds>& MinimapBounds() const { return minimapBounds_; }
 	/** Count error flags already pending before any call into the inspection host. */
@@ -70,6 +72,7 @@ private:
 	size_t frames_ = 0;
 	PwRuffleGameplayEventQueue events_;
 	size_t inputEpoch_ = 0;
+	size_t controlEpoch_ = 0;
 	std::optional<PwRuffleMinimapWorldBounds> minimapBounds_;
 	size_t priorGlErrors_ = 0;
 	std::string error_;
