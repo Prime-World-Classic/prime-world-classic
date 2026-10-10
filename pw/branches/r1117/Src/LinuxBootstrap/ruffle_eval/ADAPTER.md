@@ -1,11 +1,11 @@
 # Native Adapter Checkpoint
 
-The second five-chunk batch advances the isolated Ruffle prototype into a native
-C++-callable library. **It is not linked into PrimeWorldLinuxClient.** The default
+The prototype now provides a native C++-callable library and an **opt-in Linux
+combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.2.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.7.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -65,6 +65,9 @@ context is detached; context/draw/read drawable and EGL API selection are
 restored before compositing or returning. Caller EGL contexts are rejected.
 All calls and teardown stay on one thread; reset before destroying the original
 compatibility context. A reported Rust panic poisons the host until reset.
+Optional builds discover system EGL through `pkg-config egl`, avoiding unrelated
+application-bundled implementations. A teardown failure retains the loader
+reference instead of unloading code potentially still in use.
 
 [gl_compositor.h](gl_compositor.h) documents supported state and caller limits.
 It uploads top-down straight-alpha RGBA into one reusable texture and composites
@@ -79,6 +82,43 @@ pixel-store restoration. The real combat-SWF probe checks three viewport sizes
 across two complete load/draw/close cycles, transparent background preservation,
 nonblank authored UI, GLX/EGL restoration, invalid-request recovery, and zero
 runtime errors. Combat startup is advanced three frames before first presentation.
+
+### Client Inspection (0.7.0)
+
+The Linux CMake option `PW_LINUX_RUFFLE_INSPECTION` defaults to OFF. When enabled,
+`--bootstrap-ruffle-library /absolute/path/libpw_bridge.so` requests the original
+combat SWF over the existing native 3D world. Both opt-ins are required. The DSO
+is loaded at runtime, not linked or downloaded by the client build. Without the
+argument, the existing Linux path remains active and no Ruffle host is opened.
+
+The inspection initializes localization/window visibility, advances the startup
+timeline, follows viewport size, clamps frame time, and reports frames/errors in
+`finalRuffleInspection`. Initialization/render/runtime failure disables inspection
+and retains the existing HUD fallback. FSCommands are drained and counted, **not
+executed**. Native game controls remain native; they are not routed into Ruffle.
+No live hero state, minimap, audio, or interactive combat bindings are claimed.
+The authored chrome may be empty or contain fallback text until those contracts
+are connected. This flag is for visual integration inspection, not playing a match.
+
+The engine currently leaves a pre-existing GL error at this presentation boundary.
+Inspection counts those flags separately as `priorGlErrors` and starts with a clean
+queue. Errors during drawing or state restoration still fail inspection; this
+does not fix or hide the existing engine error. The native probe injects such an
+error and checks reporting/recovery, plus missing-library disable/fallback.
+
+From the repository root, after building the adapter above:
+
+```sh
+ROOT="$PWD"
+cmake -S "$ROOT/pw/branches/r1117/Src/LinuxBootstrap" -B /tmp/primeworld-linux-bootstrap -DPW_LINUX_RUFFLE_INSPECTION=ON
+cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClient --parallel 4
+cd "$ROOT/pw/branches/r1117/Bin"
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --seconds 60 --bootstrap-create-game --bootstrap-ruffle-library /tmp/pw-ruffle-target/debug/examples/libpw_bridge.so
+```
+
+Omit the library argument for ordinary startup, or configure the option OFF to
+remove the adapter and its EGL/nlohmann build requirements altogether. A missing
+library produces a diagnostic and the existing HUD, not a silent backend switch.
 
 ### Core Adapter Contract
 
@@ -110,7 +150,8 @@ runtime errors. Combat startup is advanced three frames before first presentatio
   are contained; callers must close a host after PANIC.
 
 The [ABI header](bridge.h) is the pointer/ownership contract. JSON actions are
-`invoke` (default), `release`, `clear`, `step`, `events`, `stats`, and `capture`.
+`invoke` (default), `release`, `clear`, `step`, `tick`, `input`, `surface`,
+`bitmap_create`, `events`, `stats`, and `capture`.
 Invocation `op` is `call`, `get`, or `set`. A root `path` or a retained `receiver`
 selects the object. Arguments tagged `{"$handle":"123"}` pass a retained object;
 other arguments are ordinary JSON data. Handle IDs in JSON must be decimal
@@ -143,8 +184,11 @@ one fresh buffer; there is no sizing retry that could duplicate side effects.
   INIT, LoaderContext, IO_ERROR recovery, nested load/unload during added,
   removed, and INIT, independent Loaders, and temporary root cleanup. Pre-fix
   runs reproduced a domain panic and five failing lifecycle/error tests.
-- The integrated core suite passes all 152 tests, along with two standalone-host
-  unit tests, one ABI unit test, and 13 Python preparation/fixture/harness tests.
+- The clean integrated core suite passes all 153 tests, along with two standalone-
+  host tests, 20 ABI/runtime/input tests, and 13 Python preparation/fixture/harness
+  tests. Both prepare runs are idempotent; all three native examples build offline
+  with the lockfile. The client and its maintained probes build; all seven
+  headless client CTests pass with allocator perturbation and the C locale.
 
 The [port plan](../LINUX_PORT_PLAN.md) records final regression results and
 temporary log/capture locations. Temporary files under `/tmp` are not durable.
@@ -153,7 +197,8 @@ The source pin remains `1b24dd3a6925eecdd1d7fa49e165814e7ed2163d`
 
 ## Reproduce From A Clean Checkout
 
-Use the requirements in [README](README.md), plus a C++17 compiler, CMake, and
+Use the requirements in [README](README.md), plus a C++17 compiler, CMake,
+pkg-config, X11/OpenGL/EGL development libraries, and
 [nlohmann/json](https://github.com/nlohmann/json) headers for the C++ probe.
 The decoder API is documented at [dds 0.2.0](https://docs.rs/dds/0.2.0/dds/).
 The Rust source, exact dependency checksums, and integration changes are staged
@@ -192,12 +237,12 @@ in README remain headless. No server is needed for any of these probes.
 The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
-isolated resizable offscreen framebuffer. Standalone GLX composition and state
-restoration now have native GPU evidence; live minimap texture binding, native
+isolated resizable offscreen framebuffer. GLX composition/state restoration and
+opt-in client inspection are implemented; live minimap texture binding, native
 window input mapping, audio events, and live HUD/game-state binding are not implemented
 by ABI v1. Callback polling proves transport, not execution of gameplay commands.
 
-The next client integration should be opt-in and Linux-only, after these gates
-have evidence. Keep the original Windows runtime available and run a Windows
+Keep further client integration opt-in and Linux-only until fidelity and live
+bindings have evidence. Keep the original Windows runtime and run a Windows
 build gate before changing shared client interfaces. This batch does not claim
 a playable game, a stable upstream C ABI, or complete Windows visual parity.

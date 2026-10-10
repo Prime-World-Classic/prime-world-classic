@@ -120,6 +120,9 @@
 #include "LinuxBootstrap/world_hud_layout.h"
 #include "LinuxBootstrap/adventure_presentation.h"
 #include "LinuxBootstrap/adventure_flash_probe.h"
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+#include "LinuxBootstrap/ruffle_eval/client_inspection.h"
+#endif
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
@@ -260,6 +263,9 @@ struct LinuxClientLaunchSettings
 	bool bootstrapLegacySessionOverlay;
 	bool bootstrapWorldDebug;
 	bool bootstrapAdventureUi = false;
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	std::string bootstrapRuffleLibrary;
+#endif
   bool bootstrapNetworkStatusProbe;
   std::string bootstrapFrameCapturePath;
   double bootstrapFrameCaptureAfterSeconds;
@@ -4241,6 +4247,9 @@ struct LinuxBootstrapScreenRuntime
 	size_t loadingToWorldTransitions = 0;
 	LinuxBootstrap::WorldHudLayout worldHudLayout;
 	LinuxBootstrap::AdventurePresentation adventureUi;
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	PwRuffleClientInspection ruffleInspection;
+#endif
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
   bool replayFileInputActive;
@@ -64048,14 +64057,25 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 				DrawLinuxBootstrap3DPreview(renderContext);
 				ApplyOpenGl2DProjection(width, height);
-				const bool adventureReady = renderContext.settings->bootstrapAdventureUi &&
+				bool ruffleReady = false;
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+				if (!renderContext.settings->bootstrapRuffleLibrary.empty())
+				{
+					const LinuxClientEnvironment& environment = *renderContext.environment;
+					const fs::path data = (environment.baseDir.empty() ? environment.gameRoot : environment.baseDir) / "Data";
+					ruffleReady = renderContext.screenRuntime->ruffleInspection.Draw(
+						renderContext.settings->bootstrapRuffleLibrary, data.string(), width, height,
+						renderContext.inputState->lastDeltaSeconds * 1000.0);
+				}
+#endif
+				const bool adventureReady = !ruffleReady && renderContext.settings->bootstrapAdventureUi &&
 					renderContext.screenRuntime->adventureUi.Initialize(UI::GetUser());
 				if (adventureReady)
 				{
 					renderContext.screenRuntime->adventureUi.Step(renderContext.inputState->lastDeltaSeconds);
 					renderContext.screenRuntime->adventureUi.Render();
 				}
-				else
+				else if (!ruffleReady)
 				{
 				DrawLinuxLiveScoreboardOverlay(renderContext);
 				DrawLinuxLiveMinimapOverlay(renderContext);
@@ -68073,6 +68093,14 @@ void AppendRuntimeInputLog(
 	logFile << "  finalAdventureUi=" << (screenRuntime.adventureUi.IsReady() ? "ready" : "inactive")
 		<< " attempted:" << screenRuntime.adventureUi.WasAttempted()
 		<< " frames:" << screenRuntime.adventureUi.GetFrames() << "\n";
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	logFile << "  finalRuffleInspection=" << (screenRuntime.ruffleInspection.IsReady() ? "ready" : "inactive")
+		<< " attempted:" << screenRuntime.ruffleInspection.WasAttempted()
+		<< " frames:" << screenRuntime.ruffleInspection.Frames()
+		<< " discardedCallbacks:" << screenRuntime.ruffleInspection.DiscardedCallbacks()
+		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
+		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
+#endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")
 		<< " hero:" << screenRuntime.worldHudLayout.hero.x << "," << screenRuntime.worldHudLayout.hero.y
 		<< "," << screenRuntime.worldHudLayout.hero.width << "," << screenRuntime.worldHudLayout.hero.height
@@ -70419,6 +70447,10 @@ int main(int argc, char** argv)
 	settings.bootstrapLegacySessionOverlay = CmdLineLite::Instance().IsKeyDefined("--bootstrap-legacy-session-overlay");
 	settings.bootstrapWorldDebug = CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-debug");
 	settings.bootstrapAdventureUi = CmdLineLite::Instance().IsKeyDefined("--bootstrap-adventure-ui-probe");
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	const char* ruffleLibrary = CmdLineLite::Instance().GetStringKey("--bootstrap-ruffle-library", 0);
+	settings.bootstrapRuffleLibrary = ruffleLibrary ? ruffleLibrary : "";
+#endif
 	settings.bootstrapLegacyLobbyOverlay = ReadBootstrapLegacyLobbyOverlayFlag(argc, argv);
   settings.bootstrapNetworkStatusProbe = ReadBootstrapNetworkStatusProbeFlag(argc, argv);
   settings.bootstrapFrameCapturePath = ReadBootstrapFrameCapturePath(argc, argv);
@@ -73900,6 +73932,10 @@ int main(int argc, char** argv)
     screenRuntime.worldLastAppliedAwardHeroGoldBefore,
     screenRuntime.worldLastAppliedAwardHeroGoldAfter);
 	screenRuntime.adventureUi.Reset();
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+	if (!screenRuntime.ruffleInspection.Reset())
+		fprintf(stderr, "Ruffle inspection teardown failed; library retained\n");
+#endif
   if (uiInitialized)
   {
     UI::Release();

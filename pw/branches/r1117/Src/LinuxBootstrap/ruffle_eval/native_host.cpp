@@ -202,7 +202,12 @@ bool PwRuffleNativeHost::Draw(unsigned width, unsigned height, double deltaMs, s
 			throw std::runtime_error("Cannot restore engine GLX context after Ruffle render");
 		if (status != PW_RUFFLE_OK)
 			throw std::runtime_error("Ruffle render: " + diagnostic.Text());
-		return impl_->compositor.Draw(frame, 0, 0, static_cast<int>(width), static_cast<int>(height), error);
+		if (!impl_->compositor.Draw(frame, 0, 0, static_cast<int>(width), static_cast<int>(height), error))
+			return false;
+		const GLenum restoredError = glGetError();
+		if (restoredError != GL_NO_ERROR)
+			throw std::runtime_error("Compositor state restoration: OpenGL error " + std::to_string(restoredError));
+		return true;
 	}
 	catch (const std::exception& exception) { error = exception.what(); return false; }
 }

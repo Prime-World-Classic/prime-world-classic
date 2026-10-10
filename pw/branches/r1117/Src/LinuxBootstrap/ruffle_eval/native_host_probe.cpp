@@ -1,4 +1,5 @@
 #include "native_host.h"
+#include "client_inspection.h"
 #include <EGL/egl.h>
 #include <GL/glx.h>
 #include <nlohmann/json.hpp>
@@ -119,6 +120,16 @@ int main(int argc, char** argv)
 			Check(!host.IsReady(), "Host remained open");
 			window.CheckCurrent();
 		}
+		PwRuffleClientInspection inspection;
+		glEnd(); // A mock engine error must be reported separately, not disable composition.
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16), inspection.Error());
+		Check(inspection.Frames() == 1 && inspection.PriorGlErrors() == 1, "Prior engine GL error was lost");
+		window.CheckCurrent();
+		Check(inspection.Reset(), "Inspection teardown failed");
+		PwRuffleClientInspection missing;
+		Check(!missing.Draw("/nonexistent/pw-ruffle.so", argv[2], 1280, 720, 16) &&
+			missing.WasAttempted() && !missing.IsReady() && !missing.Error().empty(), "Missing-library fallback failed");
+		Check(!missing.Draw(argv[1], argv[2], 1280, 720, 16), "Disabled inspection unexpectedly retried");
 		std::cout << "Native Ruffle/GLX context probe PASS\n";
 		return 0;
 	}

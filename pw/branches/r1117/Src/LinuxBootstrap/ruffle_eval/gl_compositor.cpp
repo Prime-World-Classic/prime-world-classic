@@ -200,11 +200,11 @@ namespace
 	}
 
 	/** Report one GL error without draining an unbounded external error source. */
-	bool CheckGl(std::string& error)
+	bool CheckGl(std::string& error, const char* stage)
 	{
 		const GLenum code = glGetError();
 		if (code == GL_NO_ERROR) return true;
-		error = "OpenGL error " + std::to_string(code);
+		error = std::string(stage) + ": OpenGL error " + std::to_string(code);
 		return false;
 	}
 }
@@ -245,7 +245,7 @@ bool PwRuffleGlCompositor::Draw(const PwRuffleFrame& frame, int x, int y, int wi
 		error = "A current desktop OpenGL 2.1+ compatibility context is required";
 		return false;
 	}
-	if (!CheckGl(error)) return false;
+	if (!CheckGl(error, "Host entry")) return false;
 	if (major > 3 || (major == 3 && minor >= 2))
 	{
 		GLint profile = 0;
@@ -286,7 +286,7 @@ bool PwRuffleGlCompositor::Draw(const PwRuffleFrame& frame, int x, int y, int wi
 		return false;
 	}
 	const Features features(major, minor, reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS)));
-	if (!CheckGl(error)) return false;
+	if (!CheckGl(error, "State validation")) return false;
 	const SavedState saved(features);
 	PreparePixels(features);
 	PrepareDraw(features, units, clipPlanes);
@@ -306,7 +306,7 @@ bool PwRuffleGlCompositor::Draw(const PwRuffleFrame& frame, int x, int y, int wi
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, frame.width, frame.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, frame.rgba.data);
 	else
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, frame.width, frame.height, GL_RGBA, GL_UNSIGNED_BYTE, frame.rgba.data);
-	if (!CheckGl(error)) return false;
+	if (!CheckGl(error, "Texture upload")) return false;
 	width_ = frame.width;
 	height_ = frame.height;
 	glBegin(GL_QUADS);
@@ -315,5 +315,5 @@ bool PwRuffleGlCompositor::Draw(const PwRuffleFrame& frame, int x, int y, int wi
 	glTexCoord2f(1, 1); glVertex2f(1, 1);
 	glTexCoord2f(0, 1); glVertex2f(0, 1);
 	glEnd();
-	return CheckGl(error);
+	return CheckGl(error, "Quad draw");
 }

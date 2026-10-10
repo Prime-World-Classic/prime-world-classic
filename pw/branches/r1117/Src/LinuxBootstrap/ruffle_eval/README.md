@@ -1,14 +1,15 @@
 # Native Ruffle Evaluation
 
-This is an isolated compatibility experiment, **not the client's Flash backend**.
-The Linux client still uses its existing Tamarin/OpenGL path. Windows project
+This is a compatibility experiment with opt-in native client inspection,
+**not the default Flash backend**. The Linux client normally uses Tamarin/OpenGL. Windows project
 files and the DirectX path are unchanged. No Wine, browser, or shipped-SWF edits
 are involved. The Windows build was not run on this Linux host.
 
 ## Decision
 
 The follow-up adapter now provides synchronous native DDS loading, rooted object
-handles, and an experimental C ABI exercised from C++. See [adapter status and
+handles, frame/input/bitmap transport, and optional GLX composition through an
+experimental C ABI. See [adapter status and
 reproduction](ADAPTER.md) for the current implementation. The original evaluation
 results below are retained as before/after evidence, not current blockers for the
 explicit native-image mode.
