@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.8.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.9.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -101,7 +101,11 @@ are bound through the authored methods. Plain engine-independent snapshots are
 validated and only changed values are sent. A different hero identity disables
 this session's inspection instead of mixing players or appending force tables.
 Rank/premium/flag decorations and custom-energy colors remain unbound. Minimap,
-audio and interactive combat bindings are not yet connected. This flag remains
+audio and interactive combat bindings are not yet connected. Actual talent icons,
+purchase state, resource restrictions and cooldowns now populate the authored grid
+and action bar. Initial purchased shortcuts use the authored prerequisite state
+transition; updates do not recreate existing shortcuts. Loadout replacement/respec
+and inventory/portal/global cooldown remain unbound. This flag remains
 for integration inspection, not playing a match.
 
 The recurring engine GL error was fixed in 0.7.1: hero materials now upload before

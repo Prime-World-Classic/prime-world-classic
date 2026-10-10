@@ -2,6 +2,7 @@
 
 #if defined(PW_LINUX_NULL_RENDER)
 
+#include "../LinuxBootstrap/talent_cost.h"
 #include "DBGameLogic.h"
 #include "DBUnit.h"
 
@@ -105,7 +106,12 @@ void PFTalent::RestartCooldown( float cooldownTime_ )
 
 int PFTalent::GetMoneyCost() const
 {
-  return IsValid( pDBTalentDesc ) ? pDBTalentDesc->naftaCost : 0;
+	if (!IsValid(pDBTalentDesc)) return 0;
+	const PFWorld* world = GetWorld();
+	const NDb::AILogicParameters* ai = world && world->GetAIWorld() ? &world->GetAIWorld()->GetAIParameters() : 0;
+	const int count = ai ? ai->talentNaftaCostByLevel.size() : 0;
+	return LinuxBootstrap::ResolveTalentCost(pDBTalentDesc->naftaCost, GetTalentLevel(),
+		count ? &ai->talentNaftaCostByLevel[0] : 0, count);
 }
 
 int PFTalent::GetVendorCost() const

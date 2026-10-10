@@ -3,6 +3,7 @@
 
 #include "native_host.h"
 #include "hud_state.h"
+#include "action_state.h"
 #include <cstddef>
 
 /** Explicitly opt-in combat SWF inspection, not the live game HUD backend.
@@ -16,7 +17,7 @@ class PwRuffleClientInspection final
 public:
 	/** Initialize once, advance bounded time, and draw the original combat movie. */
 	bool Draw(const std::string& library, const std::string& data, unsigned width, unsigned height, double deltaMs,
-		const PwRuffleHudState& hud = {});
+		const PwRuffleHudState& hud = {}, const PwRuffleActionState& actions = {});
 	/** Release native resources; diagnostics/counters survive for final logging. */
 	bool Reset() { return host_.Reset(); }
 	bool WasAttempted() const { return attempted_; }
@@ -27,6 +28,7 @@ public:
 	size_t PriorGlErrors() const { return priorGlErrors_; }
 	/** Successful authored hero calls, excluding unchanged snapshots. */
 	size_t HudCalls() const { return hudCalls_; }
+	size_t ActionCalls() const { return actionCalls_; }
 	const std::string& Error() const { return error_; }
 private:
 	PwRuffleNativeHost host_;
@@ -36,6 +38,8 @@ private:
 	std::string error_;
 	std::string identity_, values_;
 	size_t hudCalls_ = 0;
+	std::optional<PwRuffleActionState> actions_;
+	size_t actionCalls_ = 0;
 };
 
 #endif

@@ -1,5 +1,6 @@
 #include "client_inspection.h"
 #include "hud_calls.h"
+#include "action_calls.h"
 #include <GL/gl.h>
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -9,7 +10,8 @@
 #include <stdexcept>
 
 bool PwRuffleClientInspection::Draw(const std::string& library, const std::string& data,
-	unsigned width, unsigned height, double deltaMs, const PwRuffleHudState& hud)
+	unsigned width, unsigned height, double deltaMs, const PwRuffleHudState& hud,
+	const PwRuffleActionState& actions)
 {
 	if (library.empty() || (attempted_ && !host_.IsReady())) return false;
 	try
@@ -53,6 +55,10 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 			for (const auto& call : values) { request(call.dump().c_str()); ++hudCalls_; }
 			values_ = values.dump();
 		}
+		const auto actionCalls = actions_ ? PwRuffleActionUpdateCalls(actions, *actions_) : PwRuffleActionInitCalls(actions);
+		if (!actionCalls.empty() && identity_.empty()) throw std::runtime_error("Talents require hero identity");
+		for (const auto& call : actionCalls) { request(call.dump().c_str()); ++actionCalls_; }
+		if (!actions.talents.empty()) actions_ = actions;
 		if (!host_.Draw(width, height, std::clamp(deltaMs, 0.0, 250.0), error_))
 			throw std::runtime_error(error_);
 		// Drain only; inspection must never execute an unbound gameplay command.

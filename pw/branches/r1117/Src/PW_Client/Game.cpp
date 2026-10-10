@@ -51228,6 +51228,50 @@ PwRuffleHudState CaptureLinuxRuffleHero(LinuxBootstrapScreenRuntime* runtime)
 	values.isCameraLocked = false; // Native map camera is free, not hero-attached.
 	return state;
 }
+
+/** Match TalentPanelNew/ActionBarController using live talents, never preview icons. */
+PwRuffleActionState CaptureLinuxRuffleActions(LinuxBootstrapScreenRuntime* runtime)
+{
+	PwRuffleActionState state;
+	NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+	NWorld::PFBaseMaleHero* hero = dynamic_cast<NWorld::PFBaseMaleHero*>(FindLinuxBootstrapControlledHero(runtime, world, 0, 0));
+	if (!hero) return state;
+	using Purchase = PwRuffleActionState::PurchaseState;
+	using TalentStatus = PwRuffleActionState::SlotState;
+	for (int row = 0; row < static_cast<int>(PwRuffleActionState::Rows); ++row)
+	for (int column = 0; column < static_cast<int>(PwRuffleActionState::Columns); ++column)
+	{
+		const NWorld::PFTalent* talent = hero->GetTalent(row, column);
+		if (!talent || !talent->GetTalentDesc()) continue;
+		const auto& db = talent->GetTalentDesc();
+		PwRuffleActionState::Talent entry;
+		entry.column = column; entry.row = row;
+		if (db->image) entry.iconPath = db->image->textureFileName.c_str();
+		if (db->imageSecondState) entry.alternativeIconPath = db->imageSecondState->textureFileName.c_str();
+		entry.active = talent->IsActive();
+		entry.desiredIndex = talent->GetActionBarIndex();
+		entry.upgradeLevel = db->upgradeLevel;
+		entry.classTalent = talent->IsClass();
+		entry.cost = talent->GetNaftaCost();
+		const auto activation = hero->CanActivateTalent(row, column);
+		entry.purchase = talent->IsActivated() ? Purchase::Bought :
+			activation == NWorld::ETalentActivation::Ok ? Purchase::CanBuy :
+			activation == NWorld::ETalentActivation::NoMoney ? Purchase::NotEnoughPrime : Purchase::NotEnoughDevPoints;
+		entry.cooldown = talent->GetCurrentCooldown();
+		entry.maxCooldown = talent->GetCooldown();
+		entry.status = TalentStatus::Active;
+		if (talent->CanBeUsed()) entry.status = talent->IsMultiState() ?
+			(talent->IsOn() ? TalentStatus::ActiveSpecial : TalentStatus::ActivatedSpecial) : TalentStatus::Active;
+		// Preserve production precedence: cast limitation, resource lack, then forbid/passive.
+		if (!talent->IsCastSelfLimitationPassed()) entry.status = TalentStatus::Disabled;
+		if (!(talent->IsEnoughMana() || (talent->IsMultiState() && talent->IsOn())))
+			entry.status = talent->DoesSpendLifeInsteadEnergy() ? TalentStatus::NotEnoughLife : TalentStatus::NotEnoughMana;
+		if (talent->IsForbidded() || !talent->IsActive()) entry.status = TalentStatus::Disabled;
+		entry.alternativeState = (talent->IsOn() && talent->IsMultiState()) || talent->IsSecondState();
+		state.talents.push_back(entry);
+	}
+	return state;
+}
 #endif
 
 bool IsLinuxDynamicMarkerForSelectedHero(
@@ -64188,7 +64232,8 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 					ruffleReady = renderContext.screenRuntime->ruffleInspection.Draw(
 						renderContext.settings->bootstrapRuffleLibrary, data.string(), width, height,
 						renderContext.inputState->lastDeltaSeconds * 1000.0,
-						CaptureLinuxRuffleHero(renderContext.screenRuntime));
+						CaptureLinuxRuffleHero(renderContext.screenRuntime),
+						CaptureLinuxRuffleActions(renderContext.screenRuntime));
 				}
 #endif
 				const bool adventureReady = !ruffleReady && renderContext.settings->bootstrapAdventureUi &&
@@ -68223,6 +68268,7 @@ void AppendRuntimeInputLog(
 		<< " discardedCallbacks:" << screenRuntime.ruffleInspection.DiscardedCallbacks()
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
+		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
 		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
 #endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")

@@ -1,6 +1,7 @@
 #include "native_host.h"
 #include "client_inspection.h"
 #include "hud_calls.h"
+#include "action_calls.h"
 #include <EGL/egl.h>
 #include <GL/glx.h>
 #include <nlohmann/json.hpp>
@@ -149,16 +150,48 @@ int main(int argc, char** argv)
 		}
 		Check(host.Request(R"({"action":"stats"})", response, error), error);
 		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Hero binding runtime errors");
-		Check(host.Reset(), "Hero test teardown failed");
+		PwRuffleActionState actions;
+		PwRuffleActionState::Talent talent;
+		talent.column = 1; talent.row = 0; talent.iconPath = "UI/Styles/Icons/Talents/_570.dds";
+		talent.active = true; talent.desiredIndex = 3; talent.upgradeLevel = 0;
+		talent.classTalent = true; talent.cost = 300;
+		talent.purchase = PwRuffleActionState::PurchaseState::Bought;
+		talent.status = PwRuffleActionState::SlotState::Active;
+		talent.cooldown = 0; talent.maxCooldown = 12; talent.alternativeState = false;
+		actions.talents.push_back(talent);
+		talent.column = 2; talent.desiredIndex = -1; talent.purchase = PwRuffleActionState::PurchaseState::NotEnoughPrime;
+		actions.talents.push_back(talent);
+		for (const auto& call : PwRuffleActionInitCalls(actions)) Check(host.Request(call.dump(), response, error), error);
+		const auto slotIndex = [&](int column)
+		{
+			Check(host.Request(nlohmann::json{{"path", "mainInterface"}, {"method", "GetTalentActionBarIndex"},
+				{"args", {column, 0}}}.dump(), response, error), error);
+			return nlohmann::json::parse(response).at("value").get<int>();
+		};
+		Check(slotIndex(1) == 3 && slotIndex(2) == -1, "Bought/unbought shortcut initialization mismatch");
+		auto updated = actions;
+		updated.talents[1].purchase = PwRuffleActionState::PurchaseState::Bought;
+		updated.talents[0].cooldown = 4.5;
+		for (const auto& call : PwRuffleActionUpdateCalls(updated, actions)) Check(host.Request(call.dump(), response, error), error);
+		Check(slotIndex(1) == 3 && slotIndex(2) == 0, "New purchase shortcut placement mismatch");
+		Check(PwRuffleActionUpdateCalls(updated, updated).empty(), "Repeated action snapshot generated calls");
+		Check(host.Draw(1280, 720, 16, error), error);
+		Check(host.Request(R"({"action":"stats"})", response, error), error);
+		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Talent binding runtime errors");
+		Check(host.Reset(), "Hero/action test teardown failed");
 		PwRuffleClientInspection inspection;
 		glEnd(); // A mock engine error must be reported separately, not disable composition.
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions), inspection.Error());
 		Check(inspection.Frames() == 1 && inspection.PriorGlErrors() == 1, "Prior engine GL error was lost");
 		Check(inspection.HudCalls() == 5, "Hero initialization call count");
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
+		const auto initialActionCalls = inspection.ActionCalls();
+		Check(initialActionCalls > 0, "Talent initialization was not sent");
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, actions), inspection.Error());
+		Check(inspection.ActionCalls() == initialActionCalls, "Unchanged talents were rebound");
 		Check(inspection.HudCalls() == 5, "Unchanged hero was rebound");
 		vitals.health = 207;
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated), inspection.Error());
+		Check(inspection.ActionCalls() > initialActionCalls, "Talent updates were not sent");
 		Check(inspection.HudCalls() == 6, "Changed health was not sent");
 		window.CheckCurrent();
 		Check(inspection.Reset(), "Inspection teardown failed");

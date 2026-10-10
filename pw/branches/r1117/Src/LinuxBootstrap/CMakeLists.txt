@@ -891,6 +891,10 @@ add_executable(
 )
 
 enable_testing()
+add_executable(PrimeWorldLinuxTalentCostProbe talent_cost_probe.cpp)
+target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
+add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxTalentCostProbe)
 add_executable(PrimeWorldLinuxPresentationProbe session_presentation_probe.cpp)
 add_test(NAME LinuxSessionPresentation COMMAND PrimeWorldLinuxPresentationProbe)
 set_tests_properties(LinuxSessionPresentation PROPERTIES TIMEOUT 30)
