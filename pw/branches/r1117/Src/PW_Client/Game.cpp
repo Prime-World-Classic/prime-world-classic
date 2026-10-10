@@ -170,6 +170,7 @@
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
 #include "LinuxBootstrap/visibility_lifecycle_probe.h"
+#include "LinuxBootstrap/scheduler_drain_probe.h"
 #include "LinuxBootstrap/ability_display.h"
 #include "LinuxBootstrap/fog_grid_probe.h"
 #include "Scripts/Script.h"
@@ -41894,7 +41895,17 @@ void DriveLinuxBootstrapGameScheduler(
 	const size_t maxBootstrapTransceiverStepsPerDrive = interactive ?
 		runtime->interactiveClock.Advance(now, runtime->mapLoadingJobCompleted) : (finiteBootstrapRun ? 3 : 1);
 	// Interactive scheduling occurs only with a matching consumer tick, including zero-tick frames.
-	bool schedulerStepped = interactive;
+	if (finiteBootstrapRun && !interactive && !runtime->replayFileInputActive &&
+		runtime->transceiver && runtime->transceiverProcessedSteps >= maxBootstrapTransceiverSteps)
+		runtime->localScheduler->CloseLinuxInput();
+	const int finishStep = runtime->localScheduler->GetLinuxInputFinishStep();
+	const bool draining = finishStep >= 0;
+	// Seal admission first, then consume the existing tail including replay's +1 step.
+	const auto canDriveWorld = [&]() {
+		return runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps ||
+			(draining && runtime->transceiverWorldStep < finishStep);
+	};
+	bool schedulerStepped = interactive || draining;
 
   if (runtime->replayFileInputActive)
   {
@@ -41974,9 +41985,9 @@ void DriveLinuxBootstrapGameScheduler(
       ++runtime->schedulerTickCount;
     }
   }
-  else if (runtime->transceiver && runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps)
+  else if (runtime->transceiver && canDriveWorld())
   {
-    if (runtime->transceiverWorld && !settings.bootstrapInteractiveWorld)
+    if (runtime->transceiverWorld && !settings.bootstrapInteractiveWorld && !draining)
     {
       NWorld::PFWorld* world = dynamic_cast<NWorld::PFWorld*>(runtime->transceiverWorld.GetPtr());
       UpdateLinuxBootstrapSelectedTargetAttackProof(runtime, world);
@@ -42014,7 +42025,7 @@ void DriveLinuxBootstrapGameScheduler(
 
     for (size_t stepIndex = 0;
       stepIndex < maxBootstrapTransceiverStepsPerDrive &&
-        runtime->transceiverProcessedSteps < maxBootstrapTransceiverSteps;
+        canDriveWorld();
       ++stepIndex)
     {
       const bool primeTransceiverBuffer = runtime->transceiverStepCalls == 0;
@@ -71096,6 +71107,8 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-scheduler-drain-probe"))
+		return RunPrimeWorldLinuxSchedulerDrainProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))

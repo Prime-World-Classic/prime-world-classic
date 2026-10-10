@@ -43,6 +43,13 @@ public:
   void StartGame() { gameReady = true; }
   size_t GetBufferedSegmentCount() const { return readySegments.size(); }
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+	/** Close finite-run admission; retain queued input through this replay step. */
+	int CloseLinuxInput()
+	{
+		if (linuxInputFinishStep < 0) linuxInputFinishStep = stepIndex + 1;
+		return linuxInputFinishStep;
+	}
+	int GetLinuxInputFinishStep() const { return linuxInputFinishStep; }
   void QueueLinuxClientStatus(int status);
   size_t GetLinuxProducedStatusCount() const { return linuxProducedStatusCount; }
   size_t GetLinuxConsumedStatusCount() const { return linuxConsumedStatusCount; }
@@ -62,6 +69,7 @@ private:
   NCore::StepsDelaySettings defaultStepsDelaySettings;
   WeakMT<NCore::ReplayWriter> replayWriter;
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+	int linuxInputFinishStep = -1;
   size_t                    linuxProducedStatusCount;
   size_t                    linuxConsumedStatusCount;
 #endif

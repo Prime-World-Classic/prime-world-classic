@@ -45,10 +45,9 @@ The default HUD is a compatibility presentation. Omitting
 it is not a manually played session. Do not run full clients concurrently because
 they share replay output paths.
 
-Known automatic-proof limitation at this checkpoint: the finite smoke run can
-freeze its world-step consumer while the scheduler continues recording commands.
-The replay evidence gate correctly rejects that mismatch. Use the interactive
-command above for manual testing; this does not claim the capped smoke is fixed.
+The finite automatic proof closes command admission at its simulation limit,
+drains accepted commands through the final replay step, then freezes the world.
+Use interactive mode above for manual testing without that artificial step cap.
 
 ## Original Combat HUD
 

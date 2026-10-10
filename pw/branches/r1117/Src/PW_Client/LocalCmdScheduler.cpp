@@ -29,6 +29,9 @@ nextStepTime( 0 )
 
 void LocalCmdScheduler::SendMessage( CObjectBase * pMsg, bool isPlayerCommand )
 {
+#if defined(PW_LINUX_DB_BOOTSTRAP)
+	if (linuxInputFinishStep >= 0) return;
+#endif
   if ( !gameReady )
     return;
 
@@ -42,6 +45,7 @@ void LocalCmdScheduler::SendMessage( CObjectBase * pMsg, bool isPlayerCommand )
 #if defined(PW_LINUX_DB_BOOTSTRAP)
 void LocalCmdScheduler::QueueLinuxClientStatus(int statusValue)
 {
+	if (linuxInputFinishStep >= 0) return;
   if ( !gameReady || !currentSegment )
     return;
 
