@@ -155,6 +155,7 @@
 #include "LinuxBootstrap/flash_vm_runtime_probe.h"
 #include "LinuxBootstrap/text_runtime_probe.h"
 #include "LinuxBootstrap/hero_presentation_probe.h"
+#include "LinuxBootstrap/world_grid_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
 #include "libdb/Db.h"
@@ -56073,8 +56074,7 @@ PwRuffleMinimapState CaptureLinuxRuffleMinimap(const LinuxOverlayUiRenderContext
 	result.matchSeconds = static_cast<int>(world->GetTimeElapsed());
 	result.background = {art.rgba.data(), art.rgba.size(), static_cast<unsigned>(art.width),
 		static_cast<unsigned>(art.height), static_cast<size_t>(art.width) * 4};
-	// Artwork and scene positions use terrain meters. The Linux world's current
-	// GetMapSize still reports tile counts (820 vs 410 meters on MOBA).
+	// Use the decoded artwork's terrain extent; PFWorld now uses the same meter contract.
 	const auto& terrain = context.selectedMapPreview->terrainHeightmap;
 	if (terrain.worldWidth <= 0 || terrain.worldHeight <= 0) return PwRuffleMinimapState();
 	result.bounds = {0, 0, terrain.worldWidth, terrain.worldHeight};
@@ -68584,6 +68584,14 @@ void AppendRuntimeInputLog(
   logFile << "  finalGameTransceiverProcessedSteps=" << screenRuntime.transceiverProcessedSteps << "\n";
   logFile << "  finalGameTransceiverNextStep=" << screenRuntime.transceiverNextStep << "\n";
   logFile << "  finalGameTransceiverWorldStep=" << screenRuntime.transceiverWorldStep << "\n";
+	if (const auto* world = dynamic_cast<const NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()))
+	{
+		const auto* grid = world->GetTileMap();
+		logFile << "  finalWorldGrid=meters:" << world->GetMapSize().x << "," << world->GetMapSize().y;
+		if (grid) logFile << " tiles:" << grid->GetSizeX() << "," << grid->GetSizeY()
+			<< " metersPerTile:" << grid->GetTileSize();
+		logFile << "\n";
+	}
   logFile << "  finalGameTransceiverCommandBatches=" << screenRuntime.transceiverCommandBatches << "\n";
   logFile << "  finalGameTransceiverCommands=" << screenRuntime.transceiverCommands << "\n";
   logFile << "  finalGameTransceiverRuntimeCommandsSent="
@@ -70666,6 +70674,8 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-grid-probe"))
+		return RunPrimeWorldLinuxWorldGridProbe() ? 0 : 1;
 
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-adventure-flash-probe"))
 		return RunPrimeWorldLinuxAdventureFlashProbe() ? 0 : 1;

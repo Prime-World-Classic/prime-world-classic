@@ -317,12 +317,21 @@ bool PFWorld::LoadMap(const NDb::AdvMapDescription* _advMapDescription, const ND
   if (IsValid(advMapDescription) && IsValid(advMapDescription->map) && IsValid(advMapDescription->map->terrain))
   {
     const NDb::Terrain* terrain = advMapDescription->map->terrain;
-    const int tilesX = terrain->elemXCount * terrain->tilesPerElement;
-    const int tilesY = terrain->elemYCount * terrain->tilesPerElement;
-    mapSize = CVec2(static_cast<float>(tilesX), static_cast<float>(tilesY));
+		if (terrain->elemXCount <= 0 || terrain->elemYCount <= 0 || terrain->tilesPerElement <= 0)
+			return false;
+		const int64_t tilesX64 = int64_t(terrain->elemXCount) * terrain->tilesPerElement;
+		const int64_t tilesY64 = int64_t(terrain->elemYCount) * terrain->tilesPerElement;
+		// Bound the native passability allocation before narrowing or multiplying dimensions.
+		if (tilesX64 > 16 * 1024 * 1024 / tilesY64) return false;
+		const int tilesX = static_cast<int>(tilesX64);
+		const int tilesY = static_cast<int>(tilesY64);
+		// Match Terrain::Patch::SIZE_OF_PATCH and Terrain::Initialize without linking the renderer.
+		const float metersPerElement = 10.f;
+		const float metersPerTile = metersPerElement / terrain->tilesPerElement;
+		mapSize = CVec2(terrain->elemXCount * metersPerElement, terrain->elemYCount * metersPerElement);
     if (!pTileMap)
       pTileMap = new TileMap(this);
-    pTileMap->Prepare(tilesX, tilesY, 1.0f);
+    pTileMap->Prepare(tilesX, tilesY, metersPerTile);
     if (!pAIWorld)
     {
       pAIWorld = new PFAIWorld(this);

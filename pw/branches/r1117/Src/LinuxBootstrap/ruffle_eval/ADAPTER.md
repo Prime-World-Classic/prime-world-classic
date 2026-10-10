@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.11.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.11.1`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -127,7 +127,7 @@ artwork, visible living world markers and the simulation clock. Uploads are skip
 when pixels are unchanged. The shipped SWF lacks the circular mask present in the
 available ActionScript source, so the adapter applies that documented circle to
 the bitmap alpha before upload. Background and markers use the existing terrain
-preview's meter dimensions; the Linux world's tile-count size is not suitable.
+preview's meter dimensions, now consistent with the corrected Linux world grid.
 This is a north-up inspection map: primitive markers, no nature blending, explored
 fog texture, last-seen state, authored map offset/rotation, or camera footprint.
 
