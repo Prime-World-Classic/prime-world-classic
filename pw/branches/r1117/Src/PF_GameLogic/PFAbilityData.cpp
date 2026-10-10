@@ -3,6 +3,7 @@
 #if defined(PW_LINUX_NULL_RENDER)
 
 #include "../LinuxBootstrap/formula_context.h"
+#include <cmath>
 #include "DBGameLogic.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
@@ -284,17 +285,14 @@ void PFAbilityData::LevelUp()
 bool PFAbilityData::IsReady() const { return cooldown[abilityState] < EPS_VALUE; }
 bool PFAbilityData::IsEnoughMana() const
 {
-  if (!IsValid(pOwner))
-    return false;
-
-  if (DoesSpendLifeInsteadEnergy())
-    return GetManaCost() <= pOwner->GetLife();
-
-  return GetManaCost() <= pOwner->GetMana();
+	if (!IsValid(pOwner) || !std::isfinite(manaCost) || manaCost < 0)
+		return false;
+	const float available = DoesSpendLifeInsteadEnergy() ? pOwner->GetLife() : pOwner->GetMana();
+	return std::isfinite(available) && available >= manaCost;
 }
 void PFAbilityData::SpendMana() const
 {
-  if (!IsValid(pOwner))
+  if (!IsEnoughMana())
     return;
 
   if (DoesSpendLifeInsteadEnergy())
@@ -357,11 +355,18 @@ float PFAbilityData::GetModifiedValue(float value, NDb::EAbilityModMode mode) co
 }
 float PFAbilityData::GetBaseManaCost() const
 {
-  if (!pDBDesc || !IsValid(pOwner))
-    return 0.0f;
-
-  const float rawCost = pDBDesc->manaCost(pOwner, pOwner, this, 0.0f);
-  return pOwner->GetManaCostModifier(DoesSpendLifeInsteadEnergy()) * rawCost;
+	if (!pDBDesc || !IsValid(pOwner))
+		return std::numeric_limits<float>::quiet_NaN();
+	// An absent DB cost has a zero default; compiled-only or invalid text is not absent.
+	const auto& expression = pDBDesc->manaCost;
+	const auto raw = expression.sString.empty() && expression.compiledString.empty()
+		? LinuxBootstrap::NumericFormulaResult{LinuxBootstrap::NumericFormulaError::None, 0}
+		: LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), pOwner.GetPtr(), pOwner.GetPtr(), this);
+	const float modifier = pOwner->GetManaCostModifier(DoesSpendLifeInsteadEnergy());
+	if (!raw.Succeeded() || raw.value < 0 || !std::isfinite(modifier) || modifier < 0)
+		return std::numeric_limits<float>::quiet_NaN();
+	const float cost = raw.value * modifier;
+	return std::isfinite(cost) ? cost : std::numeric_limits<float>::quiet_NaN();
 }
 void PFAbilityData::RecalculateManaCost()
 {
@@ -369,6 +374,9 @@ void PFAbilityData::RecalculateManaCost()
     manaCost = GetBaseManaCost();
   else
     manaCost = GetModifiedValue(GetBaseManaCost(), NDb::ABILITYMODMODE_MANACOST);
+	// Failed expressions and invalid discounts must not grant free casts or resources.
+	if (!std::isfinite(manaCost) || manaCost < 0)
+		manaCost = std::numeric_limits<float>::quiet_NaN();
 }
 void PFAbilityData::RecalculateCooldown()
 {

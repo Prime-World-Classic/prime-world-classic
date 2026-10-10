@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdio>
 #include <string>
+#include <limits>
 
 namespace
 {
@@ -28,6 +29,14 @@ public:
 	float GetBaseIntellect() const override { return baseIntellect; }
 	float GetIntellect() const override { return intellect; }
 	float GetRange() const override { return range; }
+	float costModifier = 1;
+	float GetManaCostModifier(bool = false) const override { return costModifier; }
+	/** Set deterministic pools without production regeneration or stat loading. */
+	void SetResources(float life, float mana)
+	{
+		maxHealth = maxEnergy = 1000;
+		health = life; energy = mana;
+	}
 };
 }
 
@@ -53,6 +62,13 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
 			check(ability->GetUseRange() == 14, "strength branch uses live range, not zero fallback");
 			check(ability->CalcParam("A1_ManaCost", unit.GetPtr(), unit.GetPtr(), nullptr) == 70, "shipped local constant");
+			check(ability->GetManaCost() == 70, "shipped talent costs seventy mana");
+			unit->SetResources(100, 69);
+			check(!ability->IsEnoughMana(), "insufficient authored mana rejected");
+			unit->SetResources(100, 70);
+			check(ability->IsEnoughMana(), "exact mana cost accepted");
+			ability->SpendMana();
+			check(unit->GetMana() == 0 && unit->GetLife() == 100, "actual authored mana deducted");
 			check(unit->IsTargetInRange(NWorld::Target(CVec3(14, 0, 0)), ability->GetUseRange()), "exact range boundary accepted");
 			check(!unit->IsTargetInRange(NWorld::Target(CVec3(14.01f, 0, 0)), ability->GetUseRange()), "outside range rejected");
 			unit->baseIntellect = 55; unit->intellect = 160;
@@ -65,6 +81,65 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 			check(ability->GetUseRange() == 15.5f, "range is not cached across changes");
 		}
 		CObj<RangeUnit> unit = new RangeUnit;
+		for (const char* expression : {"sRange*2", "-1", "cMissing", "1/0"})
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->manaCost.sString = expression;
+			NDb::Ptr<NDb::Ability> db = raw;
+			unit->SetResources(100, 100);
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			const bool valid = expression[0] == 's';
+			check(valid ? ability->GetManaCost() == 28 : std::isnan(ability->GetManaCost()), "checked cost expression");
+			check(ability->IsEnoughMana() == valid, "invalid costs are unaffordable");
+			ability->SpendMana();
+			check(unit->GetMana() == (valid ? 72 : 100), "invalid costs cannot alter mana");
+			if (valid)
+			{
+				unit->range = 16; ability->Update(0, true);
+				check(ability->GetManaCost() == 32, "cost refresh follows live stats");
+				unit->SetResources(100, 31); ability->SpendMana();
+				check(unit->GetMana() == 31, "insufficient mana is not partially spent");
+				unit->range = 14;
+			}
+		}
+		for (float modifier : {-1.f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::max()})
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->manaCost.sString = "20";
+			NDb::Ptr<NDb::Ability> db = raw;
+			unit->SetResources(100, 100); unit->costModifier = modifier;
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			check(std::isnan(ability->GetManaCost()) && !ability->IsEnoughMana(), "invalid or overflowing modifier fails closed");
+			ability->SpendMana(); check(unit->GetMana() == 100, "invalid modifier cannot mutate resource");
+		}
+		unit->costModifier = 1;
+		for (const char* expression : {"0", ""})
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->manaCost.sString = expression;
+			NDb::Ptr<NDb::Ability> db = raw;
+			unit->SetResources(100, 0);
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			check(ability->GetManaCost() == 0 && ability->IsEnoughMana(), "authored free ability accepted");
+			unit->SetResources(100, std::numeric_limits<float>::infinity());
+			check(!ability->IsEnoughMana(), "nonfinite resource pool rejected");
+		}
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->manaCost.compiledString = "unavailable-bytecode";
+			NDb::Ptr<NDb::Ability> db = raw;
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			check(std::isnan(ability->GetManaCost()), "compiled-only cost is not an absent default");
+		}
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->manaCost.sString = "sRange+6";
+			raw->flags = NDb::ABILITYFLAGS_SPENDLIFEINSTEADENERGY;
+			NDb::Ptr<NDb::Ability> db = raw;
+			unit->SetResources(100, 100); unit->costModifier = 2;
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			check(ability->GetManaCost() == 40 && ability->IsEnoughMana(), "life cost applies owner modifier");
+			ability->SpendMana();
+			check(unit->GetLife() == 60 && unit->GetMana() == 100, "life cost preserves mana");
+			unit->SetResources(39, 100);
+			check(!ability->IsEnoughMana(), "life affordability uses health");
+			unit->costModifier = 1;
+		}
 		{
 			NDb::Ability* raw = new NDb::Ability;
 			NDb::UnitConstantsContainer* constants = new NDb::UnitConstantsContainer;
