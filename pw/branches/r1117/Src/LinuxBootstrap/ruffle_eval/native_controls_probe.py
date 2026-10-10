@@ -1,22 +1,30 @@
 #!/usr/bin/env python3
-'''Run the 60-second opt-in gameplay gate with window-addressed X11 events.'''
+'''Run a bounded opt-in gameplay gate with window-addressed X11 events.'''
 
 import argparse
+import math
 from pathlib import Path
 import subprocess
 import time
 
-from gameplay_gate import EvidenceError, validate
+from gameplay_gate import EvidenceError, validate_interactive
 
 
-def command(binary, library, capture):
+def check_timing(seconds, control_delay):
+	'''Leave enough time for setup, native controls and a settled replay tail.'''
+	if not isinstance(seconds, int) or not 60 <= seconds <= 600 or not math.isfinite(control_delay) or not 0 <= control_delay <= seconds - 40:
+		raise EvidenceError('Require 60..600 seconds and a finite control delay in 0..seconds-40')
+
+
+def command(binary, library, capture, seconds=60):
 	'''Keep purchase setup deterministic; gameplay controls use X11, not the script.'''
-	return ['stdbuf', '-oL', '-eL', str(binary), '--seconds', '60', '--width', '1280',
+	check_timing(seconds, 0)
+	return ['stdbuf', '-oL', '-eL', str(binary), '--seconds', str(seconds), '--width', '1280',
 		'--height', '720', '--bootstrap-create-game', '--bootstrap-interactive-world',
 		'--bootstrap-ruffle-library', str(library), '--bootstrap-click-after', '12',
 		'--bootstrap-click-interval', '3', '--bootstrap-click-script',
 		'1119,971;-156,835;1119,971', '--bootstrap-frame-capture', str(capture),
-		'--bootstrap-frame-capture-after', '45']
+		'--bootstrap-frame-capture-after', str(seconds - 15)]
 
 
 def tool(*args, deadline=None):
@@ -104,20 +112,33 @@ def owned_window(process, deadline):
 	return window
 
 
-def run(binary, library, bin_dir, output):
+def probe_alias_keys(window, deadline=None):
+	'''Former VK/XK collisions must neither submit gameplay actions nor move the camera.'''
+	for key in ('F4', 'F5', 'F6', 'KP_1', 'KP_3', 'Delete', 'Insert', 'F2', 'F9'):
+		if tool('getwindowfocus', deadline=deadline) != window:
+			raise EvidenceError('Game lost focus during special-key probe')
+		tool('key', '--window', window, key, deadline=deadline)
+
+
+def run(binary, library, bin_dir, output, seconds=60, control_delay=0, min_cast_step=0):
 	'''Launch one window, retain logs/capture, validate execution, and reap on every path.'''
-	deadline = time.monotonic() + 180
+	check_timing(seconds, control_delay)
+	if not isinstance(min_cast_step, int) or min_cast_step < 0:
+		raise EvidenceError('Minimum cast step must be a nonnegative integer')
+	deadline = time.monotonic() + seconds + 120
 	capture = output.with_suffix('.png')
 	if capture.exists():
 		raise EvidenceError(f'Refusing to replace capture: {capture}')
 	with output.open('x', encoding='utf-8') as stream:
-		process = subprocess.Popen(command(binary, library, capture), cwd=bin_dir,
+		process = subprocess.Popen(command(binary, library, capture, seconds), cwd=bin_dir,
 			stdout=stream, stderr=subprocess.STDOUT)
 		try:
 			wait = lambda needle, count: wait_for(process, output, needle, count, deadline)
 			wait('Ruffle talent command: buy row=0 column=0', 1)
 			pause(4, deadline)  # The final setup click closes the authored talent window.
+			pause(control_delay, deadline)
 			window = owned_window(process, deadline)
+			probe_alias_keys(window, deadline)
 			drive(window, wait, deadline)
 			status = process.wait(timeout=max(1, deadline - time.monotonic()))
 			if status != 0:
@@ -135,7 +156,7 @@ def run(binary, library, bin_dir, output):
 	if len(paths) != 1:
 		raise EvidenceError('Missing or ambiguous client log directory')
 	client_log = Path(paths[0]) / 'linux-client-shell.log'
-	result = validate(text, client_log.read_text(encoding='utf-8'), 'targeting')
+	result = validate_interactive(text, client_log.read_text(encoding='utf-8'), seconds, min_cast_step)
 	return result, client_log
 
 
@@ -146,10 +167,13 @@ def main():
 	parser.add_argument('--library', type=Path, required=True)
 	parser.add_argument('--bin-dir', type=Path, required=True)
 	parser.add_argument('--output', type=Path, required=True)
+	parser.add_argument('--seconds', type=int, default=60)
+	parser.add_argument('--control-delay', type=float, default=0)
+	parser.add_argument('--min-cast-step', type=int, default=0)
 	args = parser.parse_args()
 	try:
 		result, client_log = run(args.binary.resolve(strict=True), args.library.resolve(strict=True),
-			args.bin_dir.resolve(strict=True), args.output.absolute())
+			args.bin_dir.resolve(strict=True), args.output.absolute(), args.seconds, args.control_delay, args.min_cast_step)
 	except (OSError, ValueError, subprocess.SubprocessError) as error:
 		parser.exit(1, f'Native controls FAILED: {error}\n')
 	print(f'Native controls PASSED: {result}\nClient log: {client_log}')

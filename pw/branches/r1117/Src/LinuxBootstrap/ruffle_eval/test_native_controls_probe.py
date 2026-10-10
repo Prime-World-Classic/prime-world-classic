@@ -16,6 +16,28 @@ class NativeControlsTests(unittest.TestCase):
 		self.assertEqual(args[args.index('--seconds') + 1], '60')
 		self.assertEqual(args[args.index('--bootstrap-click-script') + 1], '1119,971;-156,835;1119,971')
 
+	def test_long_run_configuration(self):
+		args = probe.command(Path('/client'), Path('/bridge'), Path('/capture'), 90)
+		self.assertEqual(args[args.index('--seconds') + 1], '90')
+		self.assertEqual(args[args.index('--bootstrap-frame-capture-after') + 1], '75')
+		probe.check_timing(90, 50)
+		for seconds, delay in ((59, 0), (601, 0), (90.5, 0), (90, -1), (90, 51),
+			(90, float('nan')), (90, float('inf'))):
+			with self.subTest(seconds=seconds, delay=delay), self.assertRaises(probe.EvidenceError):
+				probe.check_timing(seconds, delay)
+
+	def test_alias_keys_are_window_addressed(self):
+		with patch.object(probe, 'tool', return_value='42') as tool:
+			probe.probe_alias_keys('42')
+			keys = [call.args for call in tool.call_args_list if call.args[0] == 'key']
+			self.assertEqual([args[3] for args in keys],
+				['F4', 'F5', 'F6', 'KP_1', 'KP_3', 'Delete', 'Insert', 'F2', 'F9'])
+			self.assertTrue(all(args[1:3] == ('--window', '42') for args in keys))
+		with patch.object(probe, 'tool', return_value='99') as tool:
+			with self.assertRaises(probe.EvidenceError):
+				probe.probe_alias_keys('42')
+			self.assertEqual(tool.call_count, 1)
+
 	def test_minimized_window_restored_before_viewport_check(self):
 		process = Mock(pid=123)
 		with patch.object(probe, 'tool', side_effect=['42', '', 'WIDTH=1280\nHEIGHT=720']) as tool:

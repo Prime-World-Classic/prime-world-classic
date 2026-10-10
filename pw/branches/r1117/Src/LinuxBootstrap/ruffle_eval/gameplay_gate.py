@@ -135,6 +135,7 @@ def hero_execution(stdout):
 	require(before == -1 and after >= 0, 'talent last-use step must change from -1 to a nonnegative step')
 	pair(state[1], '->', lambda item: integer(item, signed=True))
 	require(pair(state[2], '->', number) == (0, 10), 'actual talent cooldown must change 0->10')
+	return after
 
 
 def validate(stdout, client_log, mode):
@@ -183,8 +184,33 @@ def validate(stdout, client_log, mode):
 			for key, value in expected.items():
 				require(ruffle[key] == value, f'Ruffle {key}: expected {value}, got {ruffle[key]}')
 	if mode == 'targeting':
-		hero_execution(stdout)
+		require(hero_execution(stdout) <= step, 'cast execution is ahead of the world')
 	return {'mode': mode, 'world_step': step, 'replay_commands': commands}
+
+
+def validate_interactive(stdout, client_log, seconds, min_cast_step=0):
+	'''Check the fixed MOBA/Plane driver, clock continuity and unrelated native-key aliases.'''
+	require(math.isfinite(seconds) and seconds > 0 and isinstance(min_cast_step, int) and min_cast_step >= 0,
+		'invalid interactive evidence boundaries')
+	result = validate(stdout, client_log, 'targeting')
+	cast_step = hero_execution(stdout)
+	require(cast_step >= min_cast_step, 'cast executed before the requested late-session boundary')
+	clock = fields(record(client_log, 'finalInteractiveClock', '='), ':',
+		'ticks pumps pendingSeconds discardedSeconds')
+	ticks, pumps = integer(clock['ticks']), integer(clock['pumps'])
+	pending, discarded = number(clock['pendingSeconds']), number(clock['discardedSeconds'])
+	require(ticks > 0 and pumps > 0 and 0 <= ticks - result['world_step'] <= 3,
+		'interactive clock and world progress disagree')
+	require(0 <= pending <= 0.5 and discarded >= 0, 'invalid interactive clock debt')
+	require(abs(ticks * 0.1 + pending + discarded - seconds) <= 2, 'interactive clock is not wall paced')
+	world = fields(record(stdout, 'Final game transceiver runtime', ': '), '=')
+	for key in ('heroStopCommands', 'heroAttackCommands', 'heroCancelCommands', 'heroUseUnitCommands', 'heroUseTalentCommands'):
+		require(integer(world.get(key, '')) == 0, f'native special key aliased {key}')
+	for name, expected in (('BaseYaw', -42), ('Pitch', 56), ('Zoom', 1.18)):
+		require(number(record(client_log, 'finalMap3DPreview' + name, '=')) == expected,
+			'native special key changed the camera')
+	result.update(cast_step=cast_step, clock_ticks=ticks)
+	return result
 
 
 def main(argv=None):
@@ -193,9 +219,17 @@ def main(argv=None):
 	parser.add_argument('--stdout', required=True, type=Path)
 	parser.add_argument('--client-log', required=True, type=Path)
 	parser.add_argument('--mode', required=True, choices=('targeting', 'default'))
+	parser.add_argument('--interactive-seconds', type=float)
+	parser.add_argument('--min-cast-step', type=int, default=0)
 	args = parser.parse_args(argv)
 	try:
-		result = validate(args.stdout.read_text(encoding='utf-8'), args.client_log.read_text(encoding='utf-8'), args.mode)
+		stdout, client_log = args.stdout.read_text(encoding='utf-8'), args.client_log.read_text(encoding='utf-8')
+		if args.interactive_seconds is not None:
+			require(args.mode == 'targeting', 'interactive validation requires targeting mode')
+			result = validate_interactive(stdout, client_log, args.interactive_seconds, args.min_cast_step)
+		else:
+			require(args.min_cast_step == 0, 'minimum cast step requires interactive validation')
+			result = validate(stdout, client_log, args.mode)
 	except (OSError, UnicodeError, ValueError) as error:
 		print(f'Gameplay gate FAILED: {error}', file=sys.stderr)
 		return 1

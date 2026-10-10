@@ -2,30 +2,33 @@
 
 The prototype now provides a native C++-callable library and an **opt-in Linux
 combat inspection path**. It is not the default Flash backend. The default
-Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
+Tamarin/OpenGL backend remains selected; Windows/DirectX projects are unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.16.1`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.16.6`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
 ## Implemented Boundary
 
-### Repeatable Gameplay Gates (0.16.1)
+### Repeatable Gameplay Gates (0.16.6)
 
 `gameplay_gate.py --stdout OUTPUT --client-log CLIENT_LOG --mode targeting`
 validates complete native logs, exact selection/cancel/reject/cast counts, actual
 purchase and ground-command execution, cooldown transition, world progress and
 cross-checked replay counts. Default mode accepts no Ruffle activity. Missing,
 duplicated, malformed, nonfinite and contradictory records fail; a submission
-message alone is not cast evidence. These are integration checks, not a security
+message alone is not cast evidence, and a cast cannot be ahead of the world step.
+These are integration checks, not a security
 boundary or proof of full gameplay/Windows parity.
 
 The opt-in display driver requires `xdotool`, `stdbuf`, X11 and the rebuilt native
 client/DSO. It opens a 60-second window, uses the existing script only to buy the
 talent, then sends window-addressed X11 keys/pointer input. Repeated `1` Downs
 exercise held-key suppression; right press and native Escape cancel before the
-final cast. Server release/press repeat pairs remain covered by the key probe,
+final cast. Former function/keypad VK collisions are sent too; the driver verifies
+that they did not create legacy gameplay commands or alter the camera. Its extra
+clock checks require real-time progression and bounded debt. Server release/press repeat pairs remain covered by the key probe,
 not this driver. Every key/button edge targets the launched window, even during
 cleanup; no global held key can repeat into another application. The driver
 checks focus before input, refuses existing output files, bounds runtime
@@ -43,6 +46,32 @@ python3 -B pw/branches/r1117/Src/LinuxBootstrap/ruffle_eval/native_controls_prob
 Paths above describe this development workspace; substitute your own build and
 data locations. The copied opt-in executable is temporary, not a packaged release.
 
+For the sustained-session regression, use a new output path and append
+`--seconds 90 --control-delay 50 --min-cast-step 650`. This buys the talent normally,
+waits an additional 50 seconds after closing the talent window, then requires an
+actual cast after step 650. Durations are bounded to 60..600 seconds; delay must
+leave 40 seconds for setup, controls and replay settling. The previous accelerated
+finite scheduler could stop consuming commands while continuing to record them;
+this test must not be replaced with earlier input or relaxed replay validation.
+For offline revalidation, append `--interactive-seconds 90 --min-cast-step 650`
+to `gameplay_gate.py --mode targeting` with the retained stdout/client-log paths.
+
+### Native Keys And Local Clock (0.16.4/0.16.5)
+
+Linux key edges retain both the original X11 keysym and the existing virtual key.
+Bindings and legacy keysym handlers use the original identity; text/UI retains VK.
+This fixes function/keypad/navigation collisions in default and opt-in builds.
+Scripted edges carry both fields too, but still do not prove live input delivery.
+Three headless probes cover conversion, the actual producer with mocked X lookups,
+and real handlers with mock catalogs/runtime state. Windows message layout is unchanged.
+
+`--bootstrap-interactive-world` advances the local scheduler and transceiver using
+a monotonic 100 ms budget, independently of render rate and `--seconds`. Loading
+resets its epoch; focus loss does not pause this offline world. At most three steps
+run per pump and 500 ms debt is retained. `finalInteractiveClock` records discarded
+stall time, ticks and remainder. Noninteractive accelerated smoke tests and replay
+controls retain their prior pacing. This is not online timing parity.
+
 ### Native Action Controls (0.16.0)
 
 The opt-in client routes top-row `1` through `0` to the authored action bar's ten
@@ -58,8 +87,8 @@ The additive `focus_state` JSON request returns `{"text":bool}` from Ruffle's
 actual focus tracker without retaining an object handle. Rebuild the explicit
 DSO with this checkpoint before using shortcuts. Its C ABI version is unchanged.
 Only opt-in builds normalize X11 release/press autorepeat pairs and preserve
-modifier metadata; the default Linux input behavior is unchanged. Native Escape
-(`27`) and synthetic X11 Escape both cancel targeting. Pending talents receive
+modifier metadata. Both configurations now retain raw keysym identity as described
+above. Native and scripted Escape (`27`) cancel targeting. Pending talents receive
 the original SWF's `Chosen` status, cleared after cast, cancellation or invalidation.
 
 ### Surface Transport (0.3.0)
@@ -224,6 +253,12 @@ discovery and drawing/swap stages across the complete native main loop. Its draw
 stage includes the Ruffle work above; explicit frame sleep and pre-loop startup
 are excluded. Compare the same map, viewport, script and build configuration.
 
+`finalNativeDrawStage.*` partitions scene setup, surface, terrain/static/animated
+meshes, debug geometry, dynamic units, world overlays and buffer swap into CPU
+submission/wait counts, totals and peaks. These are subsets of outer draw time,
+not GPU execution times. Animated map resources are retained until map replacement
+or renderer teardown; `finalAnimatedMapCache` reports builds/hits/failures.
+
 ### Optimized Native Builds (0.14.2)
 
 Use the existing compiler optimization paths before changing GPU transport:
@@ -244,7 +279,8 @@ sources or changes the default client backend. Mock-tool tests pin its arguments
 environment overrides, invalid-job rejection and preparation-failure behavior.
 
 Linux CMake's `PW_LINUX_OPTIMIZE_PRESENTATION` defaults ON and applies `-O2` only
-to the native bootstrap presentation and isolated C++ Ruffle host. It does not
+to the native bootstrap presentation, Linux SmartRenderer CPU transforms/skinning,
+and isolated C++ Ruffle host. It does not
 define `NDEBUG`, change Windows projects, or optimize the legacy world closure.
 Set it OFF for unoptimized debugging/comparisons. Ruffle inspection itself remains
 default-OFF. Use the release DSO explicitly when launching an inspection client.
@@ -437,8 +473,9 @@ ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
 isolated resizable offscreen framebuffer. GLX composition/state restoration and
 opt-in client inspection now bind hero/talent/prime snapshots, native pointer input,
-the minimap bitmap and selected gameplay commands. Keyboard/text/IME, audio,
-inventory/portal/global cooldown and two-step ability targeting remain unbound.
+the minimap bitmap and selected gameplay commands, including authored talent
+shortcuts and validated ground targeting. Text/IME, audio, inventory/portal/global
+cooldown, general unit picking and LOS targeting remain unbound.
 Purchases and minimap moves use the local transceiver; this is not full Windows
 command parity, online-match integration, or a shared-texture performance path.
 
