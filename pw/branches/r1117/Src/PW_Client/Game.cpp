@@ -119,6 +119,7 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "LinuxBootstrap/interactive_clock.h"
 #include "System/LinuxKeyInput.h"
 #include "LinuxBootstrap/world_hud_layout.h"
 #include "LinuxBootstrap/adventure_presentation.h"
@@ -4242,6 +4243,7 @@ struct LinuxBootstrapScreenRuntime
 	size_t profiledFrames = 0;
 	double profileInputMs = 0, profileUpdateMs = 0, profileAssetsMs = 0, profileDrawMs = 0;
 	LinuxBootstrap::DrawProfile drawProfile;
+	LinuxBootstrap::InteractiveClock interactiveClock;
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
   Strong<Game::DebugVarsSender> debugVarsSender;
   Strong<NGameX::SelectGameModeScreen> gameModeScreen;
@@ -41718,6 +41720,7 @@ void EnsureLinuxBootstrapGameScheduler(
 
   if (!runtime->transceiver)
   {
+		runtime->interactiveClock.Reset();
     runtime->transceiver = new NCore::Transceiver(
       runtime->localScheduler,
       DEFAULT_GAME_STEP_LENGTH,
@@ -41872,16 +41875,20 @@ void DriveLinuxBootstrapGameScheduler(
   }
 
   const bool finiteBootstrapRun = settings.runSeconds > 0.0;
+	const bool interactive = settings.bootstrapInteractiveWorld && !runtime->replayFileInputActive;
   size_t maxBootstrapTransceiverSteps = static_cast<size_t>(-1);
-  if (finiteBootstrapRun)
+  if (finiteBootstrapRun && !interactive)
   {
     maxBootstrapTransceiverSteps = static_cast<size_t>(
       ceil((settings.runSeconds + 5.0) * 1000.0 / static_cast<double>(DEFAULT_GAME_STEP_LENGTH)));
     if (maxBootstrapTransceiverSteps < 160)
       maxBootstrapTransceiverSteps = 160;
   }
-  const size_t maxBootstrapTransceiverStepsPerDrive = finiteBootstrapRun ? 3 : 1;
-  bool schedulerStepped = false;
+	const double now = std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
+	const size_t maxBootstrapTransceiverStepsPerDrive = interactive ?
+		runtime->interactiveClock.Advance(now, runtime->mapLoadingJobCompleted) : (finiteBootstrapRun ? 3 : 1);
+	// Interactive scheduling occurs only with a matching consumer tick, including zero-tick frames.
+	bool schedulerStepped = interactive;
 
   if (runtime->replayFileInputActive)
   {
@@ -42009,7 +42016,8 @@ void DriveLinuxBootstrapGameScheduler(
       for (int i = 0; i < schedulerSteps; ++i)
       {
         ++runtime->schedulerTickCount;
-        runtime->localScheduler->Step(finiteBootstrapRun ? 0.1f : NMainLoop::GetTimeDelta());
+				runtime->localScheduler->Step(interactive || finiteBootstrapRun ?
+					static_cast<float>(DEFAULT_GAME_STEP_LENGTH) / 1000.0f : NMainLoop::GetTimeDelta());
         schedulerStepped = true;
       }
 
@@ -68712,6 +68720,10 @@ void AppendRuntimeInputLog(
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
 		<< " input:" << screenRuntime.profileInputMs << " update:" << screenRuntime.profileUpdateMs
 		<< " assets:" << screenRuntime.profileAssetsMs << " draw:" << screenRuntime.profileDrawMs << "\n";
+	logFile << "  finalInteractiveClock=ticks:" << screenRuntime.interactiveClock.ticks
+		<< " pumps:" << screenRuntime.interactiveClock.pumps
+		<< " pendingSeconds:" << screenRuntime.interactiveClock.PendingSeconds()
+		<< " discardedSeconds:" << screenRuntime.interactiveClock.discardedSeconds << "\n";
 	for (int stage = 0; stage < LinuxBootstrap::DrawProfile::Count; ++stage)
 	{
 		const auto& sample = screenRuntime.drawProfile.samples[stage];

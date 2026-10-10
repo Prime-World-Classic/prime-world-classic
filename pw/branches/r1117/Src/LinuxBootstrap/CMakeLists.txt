@@ -893,6 +893,10 @@ add_executable(
 )
 
 enable_testing()
+add_executable(PrimeWorldLinuxInteractiveClockProbe interactive_clock_probe.cpp)
+target_compile_features(PrimeWorldLinuxInteractiveClockProbe PRIVATE cxx_std_17)
+add_test(NAME LinuxInteractiveClock COMMAND PrimeWorldLinuxInteractiveClockProbe)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxInteractiveClockProbe)
 add_executable(PrimeWorldLinuxKeyInputProbe key_input_probe.cpp)
 target_compile_features(PrimeWorldLinuxKeyInputProbe PRIVATE cxx_std_17)
 target_include_directories(PrimeWorldLinuxKeyInputProbe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
