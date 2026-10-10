@@ -31,6 +31,9 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Chunk 4 regression: the real DB/VFS talent fixture first reproduced eight failures; all 16 engine assertions now pass, including changing stats, equal-stat branch, target context, missing owner, exact/outside distance boundaries and failure versus zero. All 21 client CTests pass with allocator perturbation/C locale. Only four required unit properties are supported so far; constants, costs, cooldown expressions and full formula semantics are not implied.
 - Chunk 4 native evidence: 60-second default-OFF run exits cleanly and passes strict gameplay/replay validation at world step 649 with 109 commands (`/tmp/pw-b3-range-native.log`, inspected `.png`, `Bin/logs/2026.10.10-22.44.40/linux-client-shell.log`). The simplified scene/HUD remains visible; this is not an authored-UI manual cast gate.
 
+- Chunk 5/10 COMPLETE (`0.17.2`): checked range and `CalcParam` resolve `cName` through the existing ability constants map, preserving local-over-global lookup and per-ability isolation. Evaluation-local caching retains no values between calls. Cycles, missing names, more than 16 active constants or 128 evaluated expressions fail closed. Conditional branches remain lazy. Misc symbols and full function support are still unsupported.
+- Chunk 5 gates: regression-first nested/missing/cycle cases reproduced seven failures. All 30 actual engine/DB assertions and all 21 client CTests now pass with allocator perturbation/C locale. A mock loaded world proves AI global lookup and local shadowing; shipped Plane mana constant resolves to 70. This checkpoint does not yet connect mana/cooldown consumers or claim successful resource spending.
+
 ### Previous Rendering/Input Batch
 
 

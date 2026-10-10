@@ -431,7 +431,7 @@ float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const
 		return std::numeric_limits<float>::quiet_NaN();
 	// A failed expression is not the production meaning of a valid zero range.
 	return LinuxBootstrap::EvaluateUnitNumericFormula(pDBDesc->useRange.sString.c_str(),
-		pOwner.GetPtr(), pTarget ? pTarget : pOwner.GetPtr()).value;
+		pOwner.GetPtr(), pTarget ? pTarget : pOwner.GetPtr(), this).value;
 }
 float PFAbilityData::GetUseRange(const NWorld::Target & target) const
 {
@@ -572,11 +572,12 @@ int PFAbilityData::GetSmartRandom( int outcomesNumber, float probDecrement, cons
 }
 float PFAbilityData::CalcParam(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver, IMiscFormulaPars const* pMisc) const
 {
-  NDb::UnitConstant const* pConstant = GetConstant(name);
-  if (!pConstant)
-    return 0.0f;
-
-  return pConstant->var(pSender, pReceiver, pMisc ? pMisc : this, 0.0f);
+	// Misc symbols are not supported yet; local/global names still belong to this ability.
+	(void)pMisc;
+	if (!name || !*name || !GetConstant(name))
+		return std::numeric_limits<float>::quiet_NaN();
+	return LinuxBootstrap::EvaluateUnitNumericFormula(std::string("c") + name,
+		pSender, pReceiver, this).value;
 }
 NDb::UnitConstant const* PFAbilityData::GetConstant(char const *name) const { return pConstantsMap ? pConstantsMap->Get( name ) : 0; }
 float PFAbilityData::GetConstant(const char *name, IUnitFormulaPars const *pSender, IUnitFormulaPars const* pReceiver) const { return CalcParam(name, pSender, pReceiver, this); }
