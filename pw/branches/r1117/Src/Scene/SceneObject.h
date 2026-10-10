@@ -234,7 +234,7 @@ private:
 
 	friend class SceneObjectsPool;
 
-	DWORD     dwDBHash;
+	const void * dwDBHash;
 	Placement placement;
 	int       whenWasRendered;
 	int       freezeCount;

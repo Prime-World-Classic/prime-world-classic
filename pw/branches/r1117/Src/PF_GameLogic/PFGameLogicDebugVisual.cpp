@@ -40,7 +40,7 @@ public:
   UnitDebugInfo& GetUnitInfo( NWorld::PFBaseUnit* pUnit )
   {
     UnitDebugInfo* pInfo = NULL;
-    UnitsMap::iterator iUnit =  unitsMap.find( reinterpret_cast<DWORD>(pUnit) );
+    UnitsMap::iterator iUnit =  unitsMap.find( static_cast<const void*>(pUnit) );
     if ( iUnit != unitsMap.end() )
     {
       pInfo = iUnit->second;
@@ -48,14 +48,14 @@ public:
     else
     {
       pInfo = new UnitDebugInfo();
-      unitsMap.insert( make_pair(reinterpret_cast<DWORD>(pUnit), pInfo) );
+      unitsMap.insert( make_pair(static_cast<const void*>(pUnit), pInfo) );
     }
 
     NI_ASSERT( pInfo, "Unit info not found!" );
     return *pInfo;
   }
 private:
-  typedef hash_map< DWORD, UnitDebugInfo* > UnitsMap;
+  typedef hash_map< const void*, UnitDebugInfo* > UnitsMap;
   UnitsMap unitsMap;
 };
 

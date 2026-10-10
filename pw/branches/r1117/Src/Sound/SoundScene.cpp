@@ -191,16 +191,18 @@ inline int GetRefCount( FMOD::Sound * pSound )
 {
 	threading::MutexLock lock( NSoundScene::fmodMutex );
 
-	int refCount = 0;
-	pSound->getUserData( reinterpret_cast<void **>(&refCount) ); // refCount is stored as void *
-	return refCount;
+	// x64: FMOD writes a pointer sized value into the storage, so the storage must
+	// be pointer sized too (an int here got overwritten with 8 bytes -> stack smash)
+	void *userData = 0;
+	pSound->getUserData( &userData ); // refCount is stored as void *
+	return (int)(ptrdiff_t)userData;
 }
 
 int SetRefCount(FMOD::Sound * pSound, int refCount)
 {
 	threading::MutexLock lock( NSoundScene::fmodMutex );
 
-	pSound->setUserData( reinterpret_cast<void *>(refCount) ); // refCount is stored as void *
+	pSound->setUserData( (void *)(ptrdiff_t)refCount ); // refCount is stored as void *
 	return refCount;
 }
 

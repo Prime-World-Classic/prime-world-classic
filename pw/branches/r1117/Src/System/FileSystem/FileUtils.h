@@ -190,8 +190,11 @@ const bool IsXPointerName( const string &szFileName );
 double GetFreeDiskSpace( const char *pszDrive );
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int CreateFileWithDir( const char* fileName );
-int OpenFileWithDir( const char* fileName );
+// Return value is a Win32 HANDLE (or a POSIX fd on Linux). A HANDLE is 64-bit on
+// x64, so the return type must be pointer sized: int silently truncated it
+// (x64 build: C4312 at every call site, broken handles in log/minidump writers).
+ptrdiff_t CreateFileWithDir( const char* fileName );
+ptrdiff_t OpenFileWithDir( const char* fileName );
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

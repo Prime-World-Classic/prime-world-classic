@@ -32,7 +32,8 @@ private:
     int totalObjectsCreated;
   };
 
-	typedef nstl::hash_map<DWORD, ObjectsPool*> PoolsMap;
+	// key is the DB object pointer (see GetPool): pointer sized, DWORD truncated it on x64
+typedef nstl::hash_map<const void*, ObjectsPool*> PoolsMap;
 	PoolsMap poolsMap;
 
 	friend struct SceneObjectsPoolDeletePolicy;

@@ -118,7 +118,8 @@ void CurlClient::InitCurl()
 
   if ( s_debugCurl ) {
     curl_easy_setopt( _curl, CURLOPT_VERBOSE, (LONG)1 );
-    curl_easy_setopt( _curl, CURLOPT_DEBUGFUNCTION, (LONG)CurlCb_debug_callback );
+    // no (LONG) cast: setopt is varargs, and on x64 a LONG truncated the callback address
+curl_easy_setopt( _curl, CURLOPT_DEBUGFUNCTION, CurlCb_debug_callback );
   }
 
   curl_easy_setopt( _curl, CURLOPT_NOPROGRESS, 1L );

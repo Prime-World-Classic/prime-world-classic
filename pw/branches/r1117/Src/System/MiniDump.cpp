@@ -24,11 +24,11 @@ void CreateMiniDump( const struct tm &tim, EXCEPTION_POINTERS* ExceptionInfo, Mi
 
 	sprintf_s( desc, "%s%s", exceptionType == EXCEPTION_ASSERT ? "assert" : "exception", dumpFlags == MINI_DUMP ? "" : "-full" );
 
-	static int dumpFileHandle;
+	static ptrdiff_t dumpFileHandle;
 	dumpFileHandle = NFile::CreateFileWithDir( NDebug::GenerateDebugFileName( tim, desc, "dmp" ).c_str() );
 	//dumpFileHandle = CreateFile( NDebug::GenerateDebugFileName( time, desc, "dmp" ).c_str(), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0 );
 
-	if( dumpFileHandle != (int)INVALID_HANDLE_VALUE ) //just to avoid any exception
+	if( dumpFileHandle != (ptrdiff_t)INVALID_HANDLE_VALUE ) //just to avoid any exception
 	{
 		dumpExceptionInfo.ThreadId = GetCurrentThreadId();
 		dumpExceptionInfo.ExceptionPointers	= ExceptionInfo;
