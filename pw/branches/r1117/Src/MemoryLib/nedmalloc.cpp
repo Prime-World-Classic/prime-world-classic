@@ -67,6 +67,24 @@ DEALINGS IN THE SOFTWARE.
 
 
 /*#define FORCEINLINE*/
+
+/* ===== client-modern (x64): heap alignment =====
+ * dlmalloc defaults to MALLOC_ALIGNMENT=8 (16 only on Darwin - see malloc.c.h),
+ * so on x64 operator new handed out 8-byte aligned objects while the compiler
+ * assumes `this` is aligned to the type's requirement and emits movaps for
+ * alignas(16) members (SSE structs: Placement/Matrix43, AABB, ...). That is a
+ * #GP, which Windows reports as ACCESS_VIOLATION read at
+ * 0xFFFFFFFFFFFFFFFF (verified by experiment: an unaligned movaps produces
+ * exactly this exception code and parameters while RDI is valid) - see
+ * PLAN_client_modern.md, stage 3, crash in the scene component ctor.
+ * Upstream dlmalloc uses 2*sizeof(size_t)=16 on 64-bit targets too.
+ * x86 build is unaffected. */
+#ifndef MALLOC_ALIGNMENT
+#if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
+#define MALLOC_ALIGNMENT ((size_t)16U)
+#endif
+#endif
+
 #include "malloc.c.h"
 #ifdef NDEBUG               /* Disable assert checking on release builds */
  #undef DEBUG
