@@ -364,7 +364,7 @@ void MovingUnit::Step(float timeDelta)
 }
 void MovingUnit::PreStep(float) {}
 void MovingUnit::MovingUnitStep(float) {}
-void MovingUnit::NotifyMoving(bool) {}
+void MovingUnit::NotifyMoving(bool teleported) { if (pOwner) pOwner->NotifyMoving(teleported); }
 void MovingUnit::OnDie() { moveState = MOVE_STATE_DEAD; }
 void MovingUnit::AttachUnit(CPtr<PFBaseMovingUnit> const& unit) { DetachUnit(); pAttached = unit; if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_MOUNTED; pAttached->world.SetCenter(origin); } }
 void MovingUnit::DetachUnit() { if (IsValid(pAttached)) { pAttached->world.moveState = MOVE_STATE_IDLE; pAttached->world.SetCenter(origin); } pAttached = 0; }
@@ -490,7 +490,18 @@ void MovingUnit::NotifyClientTeleport() {}
 bool MovingUnit::ClientIsVisible() const { return true; }
 const CVec2 MovingUnit::GetCenter(CVec2 const& origin_) const { return origin_; }
 const CVec2 MovingUnit::GetOrigin(CVec2 const& center) const { return center; }
-void MovingUnit::SetCenter(CVec2 const& center) { origin = center; if (pOwner) { pOwner->position = CVec3(center, pOwner->position.z); if (isMarkedOnMap && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld()) pOwner->GetWorld()->GetAIWorld()->OnUnitMove(*pOwner); } }
+void MovingUnit::SetCenter(CVec2 const& center)
+{
+	origin = center;
+	if (pOwner)
+	{
+		pOwner->position = CVec3(center, pOwner->position.z);
+		if (isMarkedOnMap && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld())
+			pOwner->GetWorld()->GetAIWorld()->OnUnitMove(*pOwner);
+		// Linux walking, teleport, placement and attachments all converge here.
+		NotifyMoving(false);
+	}
+}
 void MovingUnit::SetOrigin(CVec2 const& origin_) { origin = origin_; }
 void MovingUnit::UpdateMoveDir(CVec2 const& dst) { CVec2 dir = dst - origin; if (fabs2(dir) > EPS_VALUE) Normalize(&dir); moveDir = dir; }
 int MovingUnit::UnitRangeSorter(const void* a, const void* b)
@@ -565,8 +576,8 @@ void PFBaseMovingUnit::Stop(bool notifyClient) { if (!forbidStop) { world.Stop(n
 bool PFBaseMovingUnit::Step(float dtInSeconds) { random = (random + 1) % RANDOM_MAX; world.Step(dtInSeconds); return PFBaseUnit::Step(dtInSeconds); }
 void PFBaseMovingUnit::StepInvisibility() { PFBaseUnit::StepInvisibility(); }
 void PFBaseMovingUnit::MovingUnitStep(float worldTimeDelta) { world.MovingUnitStep(worldTimeDelta); position = world.GetCenter3(); }
-void PFBaseMovingUnit::NotifyMoving(bool) {}
-void PFBaseMovingUnit::UpdateWarFog() {}
+void PFBaseMovingUnit::NotifyMoving(bool) { if (!IsDead()) UpdateWarFog(); }
+void PFBaseMovingUnit::UpdateWarFog() { UpdateLinuxWarFogPosition(); }
 PathMap* PFBaseMovingUnit::BuildPathMap(float) { return 0; }
 void PFBaseMovingUnit::OnDie() { world.OnDie(); PFBaseUnit::OnDie(); }
 void PFBaseMovingUnit::OnUnitDie(CPtr<PFBaseUnit> killer, int flags, PFBaseUnitDamageDesc const* damageDesc) { world.OnDie(); PFBaseUnit::OnUnitDie(killer, flags, damageDesc); }

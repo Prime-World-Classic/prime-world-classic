@@ -17,6 +17,8 @@
 #include "Scripts/lua.hpp"
 #include "LuaScript.h"
 
+#include <cmath>
+
 bool bUseOldUpdateHistoryMethod = false;
 
 extern "C"
@@ -651,8 +653,47 @@ NAMEMAP_END
 NAMEMAP_BEGIN(PFBaseUnit::ConditionsResolver)
 NAMEMAP_END
 
-PFBaseUnit::WarFogData::WarFogData() : warFogObjectID(WAR_FOG_BAD_ID), timeOut(0.0f), visRadius(0.0f) {}
+PFBaseUnit::WarFogData::WarFogData() : warFogObjectID(WAR_FOG_BAD_ID), timeOut(-1.0f), visRadius(0.0f) {}
 void PFBaseUnit::WarFogData::Clear() { warFogObjectID = WAR_FOG_BAD_ID; timeOut = -1.0f; visRadius = 0.0f; }
+
+/** Validate before TileMap narrows floating-point coordinates to integer tiles. */
+static bool LinuxWarFogTile(const TileMap* tiles, const CVec3& position, SVector& tile)
+{
+	if (!tiles || !std::isfinite(tiles->GetTileSize()) || tiles->GetTileSize() <= 0.0f ||
+		tiles->GetSizeX() <= 0 || tiles->GetSizeY() <= 0 ||
+		!std::isfinite(position.x) || !std::isfinite(position.y))
+		return false;
+	const double x = double(position.x) / tiles->GetTileSize();
+	const double y = double(position.y) / tiles->GetTileSize();
+	if (x < 0 || y < 0 || x >= tiles->GetSizeX() || y >= tiles->GetSizeY())
+		return false;
+	tile = tiles->GetTile(position.AsVec2D());
+	return !tiles->IsPointOutsideMap(tile.x, tile.y);
+}
+
+/** Store meters in WarFogData; only the FogOfWar API receives normal tile radii.
+ * Reject pathological radii before upstream allocates quadratic observer caches.
+ * 4096 normal tiles is a Linux observer budget, not a clamp of authored values.
+ */
+static bool LinuxWarFogRadius(const TileMap* tiles, float radius, int& tileRadius)
+{
+	if (!tiles || !std::isfinite(radius) || radius <= 0.0f ||
+		!std::isfinite(tiles->GetTileSize()) || tiles->GetTileSize() <= 0.0f)
+		return false;
+	const double count = double(radius) / tiles->GetTileSize();
+	if (count > 4096.0)
+		return false;
+	tileRadius = tiles->GetLenghtInTiles(radius);
+	return tileRadius >= 0 && tileRadius <= 4096;
+}
+
+/** ISOLATED is a composite; CheckFlag(mask) tests any bit, not all bits. */
+static bool LinuxWarFogFullyIsolated(const PFBaseUnit& unit)
+{
+	for (unsigned bit = 1; bit <= NDb::UNITFLAG_FORBIDUSETALENTS; bit <<= 1)
+		if (!unit.CheckFlag(bit)) return false;
+	return true;
+}
 
 PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _dbUnitDesc )
   : PFLogicObject(_pWorld, pos, _dbUnitDesc)
@@ -687,6 +728,7 @@ PFBaseUnit::PFBaseUnit( PFWorld* _pWorld, const CVec3& pos, const NDb::Unit* _db
     pAttackAbility = new PFBaseAttackData(CPtr<PFBaseUnit>(this), _dbUnitDesc->attackAbility);
 
   health = maxHealth;
+	visUnitData.resize(NDb::KnownEnum<NDb::EFaction>::SizeOf());
   if (_pWorld && _pWorld->GetAIWorld())
     derivativeStatsContainer = _pWorld->GetAIWorld()->GetAIParameters().derivativeStats;
   LinuxInitializeUnitGeometry(this, _pWorld, _dbUnitDesc);
@@ -734,6 +776,7 @@ PFBaseUnit::PFBaseUnit()
   , attackSectorsAngle(0.0f)
 {
   LinuxInitializeUnitGeometry(this, 0, 0);
+	visUnitData.resize(NDb::KnownEnum<NDb::EFaction>::SizeOf());
   condsResolver.Init(this);
   attackSectorsCount = max(GetObjectSize() * FP_2PI / 2.0f, 3.0f);
   InitAttackSectors(attackSectorsCount);
@@ -745,9 +788,10 @@ PFBaseUnit::PFBaseUnit()
 
 void PFBaseUnit::OnDestroyContents()
 {
+	PFBaseUnit::CloseWarFog(true);
   LinuxUnregisterBootstrapUnit(this);
 }
-void PFBaseUnit::OnDie() {}
+void PFBaseUnit::OnDie() { PFBaseUnit::CloseWarFog(true); }
 void PFBaseUnit::InitializeLifeEnergy()
 {
   maxHealth = GetStatValue(NDb::STAT_LIFE);
@@ -773,6 +817,7 @@ void PFBaseUnit::InitBaseAttack()
 
 void PFBaseUnit::Initialize(InitData const& data)
 {
+	CloseWarFog(true);
   dbUnitDesc = dynamic_cast<const NDb::Unit*>(data.pObjectDesc);
   if (GetWorld() && GetWorld()->GetAIWorld())
     derivativeStatsContainer = GetWorld()->GetAIWorld()->GetAIParameters().derivativeStats;
@@ -790,6 +835,7 @@ void PFBaseUnit::Initialize(InitData const& data)
     pImage = dbUnitDesc->image;
   }
   InitializeLifeEnergy();
+	OpenWarFog();
 }
 
 void PFBaseUnit::ModifyStatsByForce(const NDb::MapForceStatModifierApplication) {}
@@ -1409,13 +1455,89 @@ bool PFBaseUnit::Step(float dtInSeconds)
 
   timeSinceLevelUp += dtInSeconds;
   StepLastAttackData(dtInSeconds);
-  StepWarFog(dtInSeconds);
   return PFLogicObject::Step(dtInSeconds);
 }
 
 void PFBaseUnit::StepInvisibility() {}
-void PFBaseUnit::StepWarFog(float) {}
-void PFBaseUnit::ResetWarFog() { for (int i = 0; i < visUnitData.size(); ++i) visUnitData[i].Clear(); }
+
+void PFBaseUnit::UpdateLinuxWarFogPosition()
+{
+	if (IsDead())
+		return; // Deferred death keeps observers until the final OnUnitDie/OnDie.
+	PFWorld* world = GetWorld();
+	FogOfWar* fog = world ? world->GetFogOfWar() : 0;
+	SVector tile;
+	if (!fog || LinuxWarFogFullyIsolated(*this) ||
+		!LinuxWarFogTile(GetTileMap(), GetPosition(), tile))
+	{
+		PFBaseUnit::CloseWarFog(true);
+		return;
+	}
+	for (int i = 0; i < visUnitData.size(); ++i)
+		if (visUnitData[i].warFogObjectID != WAR_FOG_BAD_ID)
+			fog->MoveObject(visUnitData[i].warFogObjectID, tile);
+}
+
+void PFBaseUnit::StepWarFog(float dtInSeconds)
+{
+	if (IsDead())
+		return;
+	UpdateLinuxWarFogPosition();
+	PFWorld* world = GetWorld();
+	FogOfWar* fog = world ? world->GetFogOfWar() : 0;
+	if (!fog)
+		return;
+	const int ownFaction = GetWarfogFaction();
+	const float dt = std::isfinite(dtInSeconds) && dtInSeconds > 0.0f ? dtInSeconds : 0.0f;
+	for (int i = 0; i < visUnitData.size(); ++i)
+	{
+		WarFogData& data = visUnitData[i];
+		if (data.warFogObjectID == WAR_FOG_BAD_ID)
+			continue;
+		if (i == ownFaction)
+		{
+			int radius;
+			const float meters = GetVisibilityRange();
+			if (LinuxWarFogRadius(GetTileMap(), meters, radius))
+			{
+				fog->ChangeVisibility(data.warFogObjectID, radius);
+				data.visRadius = meters;
+				continue;
+			}
+		}
+		else if (data.timeOut == -1.0f)
+			continue;
+		else if (std::isfinite(data.timeOut) && data.timeOut > dt)
+		{
+			data.timeOut -= dt;
+			continue;
+		}
+		fog->RemoveObject(data.warFogObjectID);
+		data.Clear();
+	}
+}
+
+void PFBaseUnit::StepLinuxWarFog(PFWorld* world, float dtInSeconds)
+{
+	if (!world || !world->GetFogOfWar())
+		return;
+	const float dt = std::isfinite(dtInSeconds) && dtInSeconds > 0.0f ? dtInSeconds : 0.0f;
+	vector<CPtr<PFBaseUnit> > units;
+	GetLinuxBootstrapUnits(units);
+	for (int i = 0; i < units.size(); ++i)
+		if (IsValid(units[i]) && units[i]->GetWorld() == world)
+			units[i]->StepWarFog(dt);
+	world->GetFogOfWar()->StepVisibility(dt);
+}
+
+void PFBaseUnit::ResetWarFog()
+{
+	const vector<WarFogData> saved(visUnitData);
+	PFBaseUnit::CloseWarFog(true);
+	for (int i = 0; i < saved.size(); ++i)
+		if (saved[i].warFogObjectID != WAR_FOG_BAD_ID)
+			OpenWarFog(static_cast<NDb::EFaction>(i), saved[i].timeOut, saved[i].visRadius);
+}
 bool PFBaseUnit::OnDispatchApply(PFDispatch const&) { return canApplyDispatch; }
 void PFBaseUnit::OnMiss(CPtr<PFBaseUnit> const&) {}
 void PFBaseUnit::CheckAppliedApplicators() {}
@@ -1803,11 +1925,84 @@ bool PFBaseUnit::IsVisibleForEnemy(int) const { return visibleForEnemy; }
 bool PFBaseUnit::IsVisibleForFaction(int) const { return true; }
 bool PFBaseUnit::IsVisibleForFactionInternal(const NDb::EFaction) const { return true; }
 void PFBaseUnit::SetVulnerable(bool vulnerable) { if (vulnerable) RemoveFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); else AddFlag(NDb::UNITFLAG_FORBIDTAKEDAMAGE); }
-void PFBaseUnit::Hide(bool hide) { if (hide) AddFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE); else RemoveFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE); UpdateHiddenState(!hide); }
-void PFBaseUnit::ChangeFaction(NDb::EFaction newFaction) { PFLogicObject::ChangeFaction(newFaction); }
-void PFBaseUnit::OpenWarFog() {}
-void PFBaseUnit::OpenWarFog(NDb::EFaction, float, float) {}
-void PFBaseUnit::CloseWarFog(bool) {}
+void PFBaseUnit::Hide(bool hide)
+{
+	if (hide) AddFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE);
+	else RemoveFlag(NDb::UNITFLAG_ISOLATED | NDb::UNITFLAG_INVISIBLE);
+	UpdateHiddenState(!hide);
+	if (hide) CloseWarFog(true);
+	else OpenWarFog();
+}
+
+void PFBaseUnit::ChangeFaction(NDb::EFaction newFaction)
+{
+	if (newFaction == GetFaction())
+		return;
+	CloseWarFog(true);
+	PFLogicObject::ChangeFaction(newFaction);
+	OpenWarFog();
+}
+
+void PFBaseUnit::OpenWarFog()
+{
+	OpenWarFog(GetWarfogFaction(), -1.0f, GetVisibilityRange());
+}
+
+void PFBaseUnit::OpenWarFog(NDb::EFaction faction, float timeout, float radius)
+{
+	if (IsDead() || LinuxWarFogFullyIsolated(*this) ||
+		faction < 0 || faction >= visUnitData.size() ||
+		!std::isfinite(timeout) || (timeout <= 0.0f && timeout != -1.0f))
+		return;
+	PFWorld* world = GetWorld();
+	FogOfWar* fog = world ? world->GetFogOfWar() : 0;
+	SVector tile;
+	int tiles;
+	if (!fog || !LinuxWarFogTile(GetTileMap(), GetPosition(), tile) ||
+		!LinuxWarFogRadius(GetTileMap(), radius, tiles))
+		return;
+	WarFogData& data = visUnitData[faction];
+	const bool existing = data.warFogObjectID != WAR_FOG_BAD_ID;
+	if (existing)
+	{
+		fog->MoveObject(data.warFogObjectID, tile);
+		fog->ChangeVisibility(data.warFogObjectID, tiles);
+	}
+	else
+		data.warFogObjectID = fog->AddObject(tile, faction, tiles);
+	if (data.warFogObjectID == WAR_FOG_BAD_ID)
+		return;
+	data.visRadius = radius;
+	// Own vision is permanent; -1 dominates extensions of any other existing slot.
+	if (faction == GetWarfogFaction() || timeout == -1.0f || (existing && data.timeOut == -1.0f))
+		data.timeOut = -1.0f;
+	else
+		data.timeOut = existing ? Max(timeout, data.timeOut) : timeout;
+}
+
+void PFBaseUnit::CloseWarFog(bool immediately)
+{
+	PFWorld* world = GetWorld();
+	FogOfWar* fog = world ? world->GetFogOfWar() : 0;
+	const NDb::UnitDeathParameters* death = !immediately ? GetDeathParams() : 0;
+	SVector tile;
+	const bool keepTemporary = fog && death && LinuxWarFogTile(GetTileMap(), GetPosition(), tile);
+	for (int i = 0; i < visUnitData.size(); ++i)
+	{
+		WarFogData& data = visUnitData[i];
+		if (fog && data.warFogObjectID != WAR_FOG_BAD_ID)
+		{
+			const bool own = i == GetWarfogFaction();
+			const float lifetime = own && death ? death->observeOffset : data.timeOut;
+			int radius;
+			if (keepTemporary && std::isfinite(lifetime) && lifetime > 0.0f &&
+				LinuxWarFogRadius(GetTileMap(), own ? GetVisibilityRange() : data.visRadius, radius))
+				fog->AddTempObject(tile, i, radius, lifetime);
+			fog->RemoveObject(data.warFogObjectID);
+		}
+		data.Clear();
+	}
+}
 const NDb::UnitDeathParameters* PFBaseUnit::GetDeathParams() const { return dbUnitDesc ? dbUnitDesc->deathParameters.GetPtr() : 0; }
 const wstring& PFBaseUnit::GetFactionName() const { static wstring empty; return empty; }
 PFVoxelMap* PFBaseUnit::GetVoxelMap() const { return GetWorld() ? GetWorld()->GetAIWorld() : 0; }

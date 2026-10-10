@@ -227,6 +227,7 @@ void PFBaseHero::DoResurrect()
   DropTarget();
   Stop(false);
   OnRessurect();
+	OpenWarFog();
   activatedWhileLastDeathtime.clear();
   respawnDelay = -1.0f;
   advanceRespawnDelay = -1.0f;

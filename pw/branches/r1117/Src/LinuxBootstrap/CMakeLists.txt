@@ -443,6 +443,7 @@ add_executable(
 	hero_presentation_probe.cpp
 	world_grid_probe.cpp
 	formula_range_probe.cpp
+	visibility_lifecycle_probe.cpp
 	formula_context.cpp
 	fog_grid_probe.cpp
 	text_runtime_probe.cpp
@@ -963,6 +964,8 @@ target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
 add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-grid-probe)
 add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+add_test(NAME LinuxVisibilityLifecycle COMMAND PrimeWorldLinuxClient --bootstrap-visibility-lifecycle-probe)
+set_tests_properties(LinuxVisibilityLifecycle PROPERTIES TIMEOUT 30)
 set_tests_properties(LinuxFormulaRange PROPERTIES TIMEOUT 30)
 set_tests_properties(LinuxWorldGrid PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxFogGrid COMMAND PrimeWorldLinuxClient --bootstrap-fog-grid-probe)

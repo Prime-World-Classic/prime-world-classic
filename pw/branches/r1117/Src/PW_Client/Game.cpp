@@ -169,6 +169,7 @@
 #include "LinuxBootstrap/hero_presentation_probe.h"
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
+#include "LinuxBootstrap/visibility_lifecycle_probe.h"
 #include "LinuxBootstrap/fog_grid_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
@@ -71093,6 +71094,8 @@ int main(int argc, char** argv)
   InitializeCmdLine(argc, argv);
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
 		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-visibility-lifecycle-probe"))
+		return RunPrimeWorldLinuxVisibilityLifecycleProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-grid-probe"))
 		return RunPrimeWorldLinuxWorldGridProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-fog-grid-probe"))

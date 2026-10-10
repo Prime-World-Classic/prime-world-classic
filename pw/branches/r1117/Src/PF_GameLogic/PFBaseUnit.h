@@ -983,6 +983,11 @@ public:
   virtual void             OpenWarFog(NDb::EFaction _faction, float timeout, float radius);
   virtual void             CloseWarFog(bool immediately = false);
 
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Update all observers owned by one world, then flush FogOfWar once per tick. */
+	static void StepLinuxWarFog(PFWorld* world, float dtInSeconds);
+#endif
+
   virtual const NDb::UnitDeathParameters* GetDeathParams() const;
 
   virtual void             ForceIdle();
@@ -999,6 +1004,11 @@ protected:
 
   virtual void             StepWarFog(float dtInSeconds);
   virtual void             StepInvisibility();
+
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Synchronize existing observer handles only; never implicitly reopen vision. */
+	void UpdateLinuxWarFogPosition();
+#endif
 
 #ifndef _SHIPPING
   string                   debugDescription;

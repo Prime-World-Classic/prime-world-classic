@@ -582,6 +582,8 @@ bool PFWorld::Step(float dtInSeconds, float)
     }
   }
   KillDeadUnits(false);
+	// Visibility-only phase includes stationary units without stepping their gameplay.
+	PFBaseUnit::StepLinuxWarFog(this, dtInSeconds);
   StepLinuxPFStatistics(pStatistics, dtInSeconds);
   if (triggerMarkerHandler)
     triggerMarkerHandler->Step(dtInSeconds);
