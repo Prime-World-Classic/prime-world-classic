@@ -185,9 +185,9 @@ void __declspec(naked) __cdecl DataExecutor::ExecuteFreeStackless() const
 {
   //the stack here is: ret_addr(ExecuteFreeStackless), this, epb, ret_addr(ExecuteFree), this, desired stack
   //we want stack like: ret_addr(ExecuteFree), desired stack and we need to calculate call address
-  static unsigned const binaryCode       =  offsetof(DataExecutor, pBinaryCode);
-  static unsigned const entryPointOffset =  offsetof(DataExecutor, nEntryPointOffset);
   //call address is binaryCode + entryPointOffset
+  //(fields are addressed from asm directly: modern cl initializes "static const = offsetof(...)"
+  // dynamically, which is not allowed in a naked function - C2489)
   __asm 
   {
     mov nLastExecutionStatus, 0 //init
@@ -201,10 +201,8 @@ void __declspec(naked) __cdecl DataExecutor::ExecuteFreeStackless() const
     add esp, 8
     //find call address
     mov ecx , dword ptr [esp + 4] //this
-    mov eax , binaryCode
-    mov eax , dword ptr [ecx + eax] 
-    mov edx , entryPointOffset
-    mov edx , dword ptr [ecx + edx] 
+    mov eax , dword ptr [ecx]DataExecutor.pBinaryCode
+    mov edx , dword ptr [ecx]DataExecutor.nEntryPointOffset
     add eax , edx                    //eax now have call address
     //modify stack to have our epilogue called
     mov edx, ExecuteFreeStackless_Epilogue         

@@ -41,7 +41,8 @@ import sys
 CFG = os.environ.get("PW_CFG", "ShippingSingleExe|Win32")
 # wine-буква, под которой виден unix-корень (Z: = /). Нужна для #include внутри
 # PCH-обёрток (это C++, CMake там не работает).
-WINROOT = os.environ.get("PW_WIN_ROOT", "Z:")
+# На нативной Windows (build_client_win.ps1) пути уже виндовые — префикса нет.
+WINROOT = os.environ.get("PW_WIN_ROOT", "" if os.name == "nt" else "Z:")
 
 # имена проектов из модели (ставится в main) — чтобы исключить .lib самих
 # проектов из AdditionalDependencies
@@ -393,6 +394,17 @@ class Proj:
                               if os.path.splitext(os.path.basename(x))[0].lower() not in drop]
             self.link_dirs = [x64_libdir(d, R1117) for d in self.link_dirs
                               if not any(d.endswith(s) for s in X64_LINKDIR_DROP)]
+        # x86 + новый MSVC (build_client_win.ps1): пересобранные v143-либы лежат в
+        # <dir>/<PW_X86_VENDOR_SUBDIR> рядом с VC90-ными (Tools/VendorWin). Подкаталог
+        # ставится в поиск раньше родителя; остальные либы берутся из родителя, как прежде.
+        x86_sub = os.environ.get("PW_X86_VENDOR_SUBDIR", "")
+        if os.environ.get("PW_MACHINE", "X86") == "X86" and x86_sub:
+            dirs = []
+            for d in self.link_dirs:
+                if os.path.isdir(os.path.join(R1117, d, x86_sub)):
+                    dirs.append(q(d) + "/" + x86_sub)
+                dirs.append(d)
+            self.link_dirs = dirs
         # PW_DROP_NODEFAULT — убрать из vcproj-списка «не линковать эти CRT»:
         # x64-сборка идёт на /MT (статический CRT), а vcproj запрещает libcmt.lib,
         # потому что сам он /MD.
@@ -568,8 +580,11 @@ def main():
     if pwg.link_dirs:
         top.append("target_link_directories(PW_Game PRIVATE " +
                    " ".join(f"${{R1117}}/{d}" for d in pwg.link_dirs) + ")")
-    if pwg.link_libs:
-        top.append("target_link_libraries(PW_Game PRIVATE " + " ".join(pwg.link_libs) + ")")
+    # PW_EXTRA_LINK_LIBS — либы, которых нет в vcproj, но требует тулчейн
+    # (x86 + v143: legacy_stdio_definitions.lib для VC90-либ, см. build_client_win.ps1)
+    link_libs = pwg.link_libs + os.environ.get("PW_EXTRA_LINK_LIBS", "").split()
+    if link_libs:
+        top.append("target_link_libraries(PW_Game PRIVATE " + " ".join(link_libs) + ")")
     lf = ["/MACHINE:" + os.environ.get("PW_MACHINE", "X86")] + WINE_LINK_FLAGS
     if pwg.laa == "2":
         lf.append("/LARGEADDRESSAWARE")     # бит LAA: 4 ГБ вместо 2 ГБ (см. PLAN_client_oom.md)

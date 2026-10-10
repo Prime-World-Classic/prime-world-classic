@@ -64,7 +64,12 @@ def main():
     for name, pdir in sorted(dirs.items()):
         refs = os.path.join(pdir, name.lower() + ".refs")
         if not os.path.isfile(refs):
-            continue
+            # Server/NetworkAIO/transport.vcproj -> .refs лежит в transport/transport.refs
+            # (ACE.dll, IOTerabit.dll, TProactor.dll; без них exe не стартует). Пути в нём —
+            # от каталога проекта, как и у остальных .refs.
+            refs = os.path.join(pdir, name, name.lower() + ".refs")
+            if not os.path.isfile(refs):
+                continue
         section = None
         for raw in open(refs, encoding="utf-8", errors="replace"):
             line = raw.strip()
