@@ -9,6 +9,77 @@
 #include <filesystem>
 #include <stdexcept>
 
+void PwRuffleClientInspection::Focus(bool focused)
+{
+	if (!host_.IsReady() || (focused_ && *focused_ == focused)) return;
+	std::string response;
+	if (!host_.Request(nlohmann::json{{"action", "input"}, {"event", {{"type", "focus"},
+		{"focused", focused}}}}.dump(), response, error_))
+	{
+		std::fprintf(stderr, "Ruffle focus disabled: %s\n", error_.c_str());
+		Reset();
+		return;
+	}
+	focused_ = focused;
+	if (!focused) pointerCapture_.Reset();
+}
+
+bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x, int y,
+	unsigned button, double wheelLines, unsigned width, unsigned height)
+{
+	using Kind = PwRufflePointerCapture::Kind;
+	if (!host_.IsReady()) return false;
+	if (!host_.MatchesViewport(width, height))
+	{
+		Focus(false);
+		return kind == Kind::Down || kind == Kind::Up || kind == Kind::Wheel;
+	}
+	if (focused_ && !*focused_) return false;
+	try
+	{
+		std::string response;
+		const auto request = [&](const nlohmann::json& value)
+		{
+			if (!host_.Request(value.dump(), response, error_)) throw std::runtime_error(error_);
+		};
+		bool hit = host_.ContainsPixel(x, y);
+		if (kind == Kind::Down || kind == Kind::Up || kind == Kind::Wheel)
+		{
+			// Flash uses an invisible modal shield. Alpha coverage alone misses it.
+			request({{"path", "EscMenuNonclickable_mc"}, {"op", "get"}, {"method", "visible"}, {"args", nlohmann::json::array()}});
+			hit = hit || nlohmann::json::parse(response).at("value").get<bool>();
+		}
+		const auto decision = pointerCapture_.Route(kind, hit, button);
+		if (decision.forward)
+		{
+			nlohmann::json event;
+			if (kind == Kind::Leave) event = {{"type", "mouse_leave"}};
+			else if (kind == Kind::Wheel) event = {{"type", "wheel"}, {"lines", wheelLines}};
+			else
+			{
+				event = {{"type", kind == Kind::Move ? "mouse_move" : kind == Kind::Down ? "mouse_down" : "mouse_up"},
+					{"x", x}, {"y", y}};
+				if (kind != Kind::Move)
+				{
+					const char* buttons[] = {"left", "middle", "right"};
+					event["button"] = buttons[button];
+				}
+			}
+			request({{"action", "input"}, {"event", event}});
+			++pointerEvents_;
+		}
+		if (decision.consume) ++consumedPointerEvents_;
+		return decision.consume;
+	}
+	catch (const std::exception& error)
+	{
+		error_ = error.what();
+		std::fprintf(stderr, "Ruffle pointer disabled: %s\n", error_.c_str());
+		Reset();
+		return true; // A failed HUD gesture must not become a world command.
+	}
+}
+
 bool PwRuffleClientInspection::Draw(const std::string& library, const std::string& data,
 	unsigned width, unsigned height, double deltaMs, const PwRuffleHudState& hud,
 	const PwRuffleActionState& actions, const PwRuffleMinimapState& minimap)
@@ -102,7 +173,7 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 	{
 		error_ = error.what();
 		std::fprintf(stderr, "Ruffle inspection disabled: %s\n", error_.c_str());
-		host_.Reset();
+		Reset();
 		return false;
 	}
 }

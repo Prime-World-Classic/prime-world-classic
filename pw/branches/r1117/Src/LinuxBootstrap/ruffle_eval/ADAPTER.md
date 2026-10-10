@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.10.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.11.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -83,7 +83,7 @@ across two complete load/draw/close cycles, transparent background preservation,
 nonblank authored UI, GLX/EGL restoration, invalid-request recovery, and zero
 runtime errors. Combat startup is advanced three frames before first presentation.
 
-### Client Inspection (0.7.0)
+### Client Inspection (0.11.0)
 
 The Linux CMake option `PW_LINUX_RUFFLE_INSPECTION` defaults to OFF. When enabled,
 `--bootstrap-ruffle-library /absolute/path/libpw_bridge.so` requests the original
@@ -95,18 +95,32 @@ The inspection initializes localization/window visibility, advances the startup
 timeline, follows viewport size, clamps frame time, and reports frames/errors in
 `finalRuffleInspection`. Initialization/render/runtime failure disables inspection
 and retains the existing HUD fallback. FSCommands are drained and counted, **not
-executed**. Native game controls remain native; they are not routed into Ruffle.
+executed**. Mouse motion/buttons/wheel and focus now reach Ruffle before native
+world controls; keyboard/text input and gameplay command dispatch remain unbound.
 Live local-hero identity, the original portrait and level/health/energy/regen values
 are bound through the authored methods. Plain engine-independent snapshots are
 validated and only changed values are sent. A different hero identity disables
 this session's inspection instead of mixing players or appending force tables.
 Rank/premium/flag decorations and custom-energy colors remain unbound. Audio and
-interactive combat bindings are not yet connected. Actual talent icons,
+gameplay action bindings are not yet connected. Actual talent icons,
 purchase state, resource restrictions and cooldowns now populate the authored grid
 and action bar. Initial purchased shortcuts use the authored prerequisite state
 transition; updates do not recreate existing shortcuts. Loadout replacement/respec
 and inventory/portal/global cooldown remain unbound. This flag remains
 for integration inspection, not playing a match.
+
+Pointer capture uses the last composed frame's nonzero alpha coverage and the
+authored invisible escape-menu shield, not a replacement layout or a Flash-object
+hit test. Each button keeps its initial HUD/world owner until release, so dragging
+between them cannot turn into a second command. Focus loss releases held VM input.
+Resize discards stale coverage and consumes queued clicks/wheel until a matching
+frame exists. Failure disables inspection and retains the existing HUD. Transparent
+interactive regions other than the known modal shield and same-frame layout changes
+still need object-level hit testing; keyboard/text/IME and gameplay FSCommands need
+separate integration. The pure capture probe covers all three buttons and mixed
+ownership. The real-SWF probe opens/closes the original talent window and checks
+HUD/world routing, focus reset and repeated resize events. A
+60-second client run also opens that window through its normal raw-input queue.
 
 The original minimap now receives a retained 270x270 BitmapData with native map
 artwork, visible living world markers and the simulation clock. Uploads are skipped

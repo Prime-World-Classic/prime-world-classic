@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <cmath>
 #include <stdexcept>
+#include <vector>
 
 namespace
 {
@@ -70,6 +71,7 @@ struct PwRuffleNativeHost::Impl
 	decltype(&pw_ruffle_buffer_free) free = nullptr;
 	PwRuffleGlCompositor compositor;
 	unsigned width = 0, height = 0;
+	std::vector<uint8_t> alpha;
 	bool poisoned = false;
 	bool unloadUnsafe = false;
 
@@ -90,6 +92,19 @@ struct PwRuffleNativeHost::Impl
 PwRuffleNativeHost::PwRuffleNativeHost() : impl_(new Impl) {}
 PwRuffleNativeHost::~PwRuffleNativeHost() { Reset(); }
 bool PwRuffleNativeHost::IsReady() const { return impl_->host != 0 && !impl_->poisoned; }
+
+bool PwRuffleNativeHost::MatchesViewport(unsigned width, unsigned height) const
+{
+	return IsReady() && impl_->width == width && impl_->height == height &&
+		!impl_->alpha.empty() && impl_->alpha.size() == uint64_t(width) * height;
+}
+
+bool PwRuffleNativeHost::ContainsPixel(int x, int y) const
+{
+	return x >= 0 && y >= 0 && static_cast<unsigned>(x) < impl_->width &&
+		static_cast<unsigned>(y) < impl_->height && MatchesViewport(impl_->width, impl_->height) &&
+		impl_->alpha[static_cast<size_t>(y) * impl_->width + x] != 0;
+}
 
 bool PwRuffleNativeHost::Reset() noexcept
 {
@@ -112,6 +127,7 @@ bool PwRuffleNativeHost::Reset() noexcept
 		dlclose(impl_->library);
 	impl_->library = nullptr;
 	impl_->width = impl_->height = 0;
+	impl_->alpha.clear();
 	impl_->poisoned = false;
 	return true;
 }
@@ -225,11 +241,15 @@ bool PwRuffleNativeHost::Draw(unsigned width, unsigned height, double deltaMs, s
 			throw std::runtime_error("Cannot restore engine GLX context after Ruffle render");
 		if (status != PW_RUFFLE_OK)
 			throw std::runtime_error("Ruffle render: " + diagnostic.Text());
+		if (frame.width != width || frame.height != height)
+			throw std::runtime_error("Ruffle frame does not match the requested viewport");
 		if (!impl_->compositor.Draw(frame, 0, 0, static_cast<int>(width), static_cast<int>(height), error))
 			return false;
 		const GLenum restoredError = glGetError();
 		if (restoredError != GL_NO_ERROR)
 			throw std::runtime_error("Compositor state restoration: OpenGL error " + std::to_string(restoredError));
+		impl_->alpha.resize(static_cast<size_t>(width) * height);
+		for (size_t i = 0; i < impl_->alpha.size(); ++i) impl_->alpha[i] = frame.rgba.data[i * 4 + 3];
 		return true;
 	}
 	catch (const std::exception& exception) { error = exception.what(); return false; }

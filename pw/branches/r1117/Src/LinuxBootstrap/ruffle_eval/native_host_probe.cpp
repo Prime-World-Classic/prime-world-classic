@@ -103,6 +103,8 @@ int main(int argc, char** argv)
 				glScissor(1, 2, 11, 13);
 				const EGLenum api = eglQueryAPI();
 				Check(host.Draw(size[0], size[1], 16, error), error);
+				Check(host.MatchesViewport(size[0], size[1]) && !host.MatchesViewport(size[0] + 1, size[1]), "Stale coverage dimensions");
+				Check(!host.ContainsPixel(-1, 0) && !host.ContainsPixel(size[0], 0), "Coverage escaped viewport");
 				window.CheckCurrent();
 				Check(eglQueryAPI() == api, "EGL client API changed");
 				GLint viewport[4];
@@ -212,13 +214,43 @@ int main(int argc, char** argv)
 			Check(std::equal(color.begin(), color.end(), pixel.begin()), "Original minimap did not display updated bitmap pixels");
 			glReadPixels(1018, 270, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel.data());
 			Check(pixel[0] == 17 && pixel[1] == 203 && pixel[2] == 71, "Minimap escaped its authored circular boundary");
+			Check(host.ContainsPixel(1160, 565) && !host.ContainsPixel(1018, 449), "Alpha coverage disagrees with minimap pixels");
 		}
 		Check(!host.UploadBitmap(bitmapId, 270, 270, mapPixels.data(), mapPixels.size() - 1, error), "Accepted short map buffer");
 		Check(!host.UploadBitmap(bitmapId, 135, 540, mapPixels.data(), mapPixels.size(), error), "Accepted wrong bitmap dimensions");
 		window.CheckCurrent();
 		Check(host.Request(R"({"action":"stats"})", response, error), error);
 		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Minimap binding runtime errors");
-		Check(host.Reset(), "Hero/action/minimap test teardown failed");
+		// Locate the actual authored button through getBounds, not hard-coded artwork coordinates.
+		const std::string buttonPath = "actionBarContainer.actionBar_mc.talents_btn";
+		Check(host.Request(nlohmann::json{{"path", buttonPath}, {"op", "get"}, {"method", "root"},
+			{"args", nlohmann::json::array()}}.dump(), response, error), error);
+		const auto root = nlohmann::json::parse(response).at("id");
+		Check(host.Request(nlohmann::json{{"path", buttonPath}, {"method", "getBounds"},
+			{"args", {{{"$handle", root}}}}}.dump(), response, error), error);
+		const auto rect = nlohmann::json::parse(response).at("id");
+		const auto coordinate = [&](const char* field)
+		{
+			Check(host.Request(nlohmann::json{{"receiver", rect}, {"op", "get"}, {"method", field},
+				{"args", nlohmann::json::array()}}.dump(), response, error), error);
+			return nlohmann::json::parse(response).at("value").get<double>();
+		};
+		const double buttonX = coordinate("x") + coordinate("width") / 2;
+		const double buttonY = coordinate("y") + coordinate("height") / 2;
+		std::cout << "Talent window button=" << buttonX << ',' << buttonY << '\n';
+		for (const bool visible : {true, false})
+		{
+			for (const char* type : {"mouse_move", "mouse_down", "mouse_up"})
+			{
+				nlohmann::json event{{"type", type}, {"x", buttonX}, {"y", buttonY}};
+				if (std::string(type) != "mouse_move") event["button"] = "left";
+				Check(host.Request(nlohmann::json{{"action", "input"}, {"event", event}}.dump(), response, error), error);
+			}
+			Check(host.Draw(1280, 720, 16, error), error);
+			Check(host.Request(R"({"path":"mainInterface","method":"IsWindowVisible","args":[0]})", response, error), error);
+			Check(nlohmann::json::parse(response).at("value") == visible, "Authored talent window did not toggle through pointer events");
+		}
+		Check(host.Reset(), "Hero/action/minimap/input test teardown failed");
 		PwRuffleClientInspection inspection;
 		const std::array<uint8_t, 4> background{43, 67, 109, 255};
 		PwRuffleMinimapState minimap;
@@ -247,6 +279,27 @@ int main(int argc, char** argv)
 		Check(inspection.MinimapUploads() == 2, "Moving minimap marker not uploaded");
 		Check(inspection.ActionCalls() > initialActionCalls, "Talent updates were not sent");
 		Check(inspection.HudCalls() == 6, "Changed health was not sent");
+		using Kind = PwRufflePointerCapture::Kind;
+		inspection.Focus(true);
+		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD press escaped to world");
+		Check(inspection.Pointer(Kind::Up, 640, 100, 0, 0, 1280, 720), "HUD release escaped to world");
+		Check(!inspection.Pointer(Kind::Down, 640, 100, 0, 0, 1280, 720), "World press was captured");
+		Check(!inspection.Pointer(Kind::Up, 1160, 565, 0, 0, 1280, 720), "World release became a HUD click");
+		Check(inspection.Pointer(Kind::Wheel, 1160, 565, 0, 1, 1280, 720), "HUD wheel escaped");
+		Check(!inspection.Pointer(Kind::Wheel, 640, 100, 0, 1, 1280, 720), "World wheel captured");
+		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD focus-test press failed");
+		inspection.Focus(false);
+		inspection.Focus(true);
+		const auto inputsBefore = inspection.PointerEvents();
+		Check(inspection.Pointer(Kind::Up, 1160, 565, 0, 0, 1280, 720), "Orphan HUD release escaped");
+		Check(inspection.PointerEvents() == inputsBefore, "Focus loss retained held pointer");
+		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 960, 768), "Stale resize coverage accepted");
+		Check(inspection.Pointer(Kind::Up, 640, 100, 0, 0, 960, 768), "Stale resize release escaped to world");
+		Check(inspection.Pointer(Kind::Wheel, 640, 100, 0, 1, 960, 768), "Stale resize wheel escaped to world");
+		Check(inspection.Pointer(Kind::Down, 640, 100, 2, 0, 960, 768), "Second stale resize press escaped to world");
+		Check(inspection.PointerEvents() == inputsBefore, "Resize forwarded stale pointer coordinates");
+		inspection.Focus(true);
+		Check(inspection.Draw(argv[1], argv[2], 960, 768, 16, hud, updated, minimap), inspection.Error());
 		window.CheckCurrent();
 		Check(inspection.Reset(), "Inspection teardown failed");
 		PwRuffleClientInspection missing;

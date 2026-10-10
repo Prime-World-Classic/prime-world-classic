@@ -36,6 +36,10 @@ public:
 	 * Does not swap buffers, route game input, or interpret queued FSCommands.
 	 */
 	bool Draw(unsigned width, unsigned height, double deltaMs, std::string& error);
+	/** Last composed alpha coverage in top-left window pixels, not a Flash object hit test. */
+	bool ContainsPixel(int x, int y) const;
+	/** Input must not use a stale coverage map after the native window resizes. */
+	bool MatchesViewport(unsigned width, unsigned height) const;
 	/** Close before destroying GLX. On failed teardown, retain the DSO instead of
 	 * unloading code potentially still in use; destruction deliberately leaks that
 	 * loader reference. Returns false when teardown cannot be confirmed.

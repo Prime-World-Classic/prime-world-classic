@@ -32254,6 +32254,53 @@ bool IsLinuxWorldPresentationActive(const LinuxBootstrapScreenRuntime* runtime)
 		runtime->sessionPresentation == LinuxBootstrap::SessionPresentation::World;
 }
 
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+/** Route pointer ownership before native map controls inspect the same raw events. */
+void DriveLinuxRufflePointer(LinuxWindowOverlay* overlay, LinuxBootstrapScreenRuntime* runtime,
+	LinuxInputState* input)
+{
+	if (!overlay || !overlay->openglReady || !IsLinuxWorldPresentationActive(runtime) ||
+		!runtime->ruffleInspection.IsReady()) return;
+	if (!NMainFrame::MakeOpenGLContextCurrent()) return;
+	auto& inspection = runtime->ruffleInspection;
+	inspection.Focus(NMainFrame::IsAppActive());
+	XWindowAttributes attributes = {};
+	if (!XGetWindowAttributes(overlay->display, overlay->window, &attributes) ||
+		attributes.width <= 0 || attributes.height <= 0) return;
+	using Kind = PwRufflePointerCapture::Kind;
+	size_t kept = 0;
+	for (size_t i = 0; i < input->rawMessages.size(); ++i)
+	{
+		const auto message = input->rawMessages[i];
+		Kind kind = Kind::Move;
+		unsigned button = 0;
+		bool pointer = true;
+		switch (message.msg)
+		{
+		case NMainFrame::SWindowsMsg::MOUSE_MOVE: break;
+		case NMainFrame::SWindowsMsg::MOUSE_OUT:
+		case NMainFrame::SWindowsMsg::MOUSE_DISABLED: kind = Kind::Leave; break;
+		case NMainFrame::SWindowsMsg::MOUSE_LB_DOWN:
+		case NMainFrame::SWindowsMsg::MOUSE_LB_DBLCLK: kind = Kind::Down; break;
+		case NMainFrame::SWindowsMsg::MOUSE_MB_DOWN:
+		case NMainFrame::SWindowsMsg::MOUSE_MB_DBLCLK: kind = Kind::Down; button = 1; break;
+		case NMainFrame::SWindowsMsg::MOUSE_RB_DOWN:
+		case NMainFrame::SWindowsMsg::MOUSE_RB_DBLCLK: kind = Kind::Down; button = 2; break;
+		case NMainFrame::SWindowsMsg::MOUSE_LB_UP: kind = Kind::Up; break;
+		case NMainFrame::SWindowsMsg::MOUSE_MB_UP: kind = Kind::Up; button = 1; break;
+		case NMainFrame::SWindowsMsg::MOUSE_RB_UP: kind = Kind::Up; button = 2; break;
+		case NMainFrame::SWindowsMsg::MOUSE_WHEEL: kind = Kind::Wheel; break;
+		default: pointer = false; break;
+		}
+		const bool consumed = pointer && inspection.Pointer(kind, message.x, message.y, button,
+			kind == Kind::Wheel ? GET_WHEEL_DELTA_WPARAM(message.dwFlags) / 120.0 : 0.0,
+			attributes.width, attributes.height);
+		if (!consumed) input->rawMessages[kept++] = message;
+	}
+	input->rawMessages.resize(kept);
+}
+#endif
+
 /// Keep rendering and input on the same presentation, including inspection and compatibility modes.
 void UpdateLinuxSessionPresentation(const LinuxClientLaunchSettings& settings,
 	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime* runtime)
@@ -68315,6 +68362,8 @@ void AppendRuntimeInputLog(
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
 		<< " actionCalls:" << screenRuntime.ruffleInspection.ActionCalls()
 		<< " minimapUploads:" << screenRuntime.ruffleInspection.MinimapUploads()
+		<< " pointerEvents:" << screenRuntime.ruffleInspection.PointerEvents()
+		<< " consumedPointerEvents:" << screenRuntime.ruffleInspection.ConsumedPointerEvents()
 		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
 #endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")
@@ -72268,6 +72317,9 @@ int main(int argc, char** argv)
       }
     }
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
+#endif
     if (uiRootPreview.runtimeInitialized)
     {
       NMainLoop::SetTemporaryTimeDelta(inputState.lastDeltaSeconds);

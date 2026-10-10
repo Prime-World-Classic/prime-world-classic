@@ -5,6 +5,7 @@
 #include "hud_state.h"
 #include "action_state.h"
 #include "minimap_frame.h"
+#include "pointer_capture.h"
 #include <cstddef>
 
 /** Borrowed artwork and owned marker snapshot, consumed synchronously by Draw. */
@@ -17,7 +18,7 @@ struct PwRuffleMinimapState
 };
 
 /** Explicitly opt-in combat SWF inspection, not the live game HUD backend.
- * Live hero data is displayed; game inputs and gameplay callbacks are not routed.
+ * Live hero data and pointer events are bound; gameplay callbacks are not executed.
  * Failed initialization,
  * rendering, or runtime diagnostics disable this instance and let the caller
  * retain its existing presentation. Reset before destroying the GLX context.
@@ -29,8 +30,16 @@ public:
 	bool Draw(const std::string& library, const std::string& data, unsigned width, unsigned height, double deltaMs,
 		const PwRuffleHudState& hud = {}, const PwRuffleActionState& actions = {},
 		const PwRuffleMinimapState& minimap = {});
+	/** Forward native pointer events; true means the native world must not consume
+	 * the same event. Visible HUD pixels and the authored modal shield reserve input.
+	 * This does not dispatch gameplay FSCommands, keyboard/text input or IME.
+	 */
+	bool Pointer(PwRufflePointerCapture::Kind kind, int x, int y, unsigned button,
+		double wheelLines, unsigned width, unsigned height);
+	/** Release VM buttons on native focus loss; duplicate notifications are skipped. */
+	void Focus(bool focused);
 	/** Release native resources; diagnostics/counters survive for final logging. */
-	bool Reset() { return host_.Reset(); }
+	bool Reset() { pointerCapture_.Reset(); focused_.reset(); return host_.Reset(); }
 	bool WasAttempted() const { return attempted_; }
 	bool IsReady() const { return host_.IsReady(); }
 	size_t Frames() const { return frames_; }
@@ -41,6 +50,8 @@ public:
 	size_t HudCalls() const { return hudCalls_; }
 	size_t ActionCalls() const { return actionCalls_; }
 	size_t MinimapUploads() const { return minimapUploads_; }
+	size_t PointerEvents() const { return pointerEvents_; }
+	size_t ConsumedPointerEvents() const { return consumedPointerEvents_; }
 	const std::string& Error() const { return error_; }
 private:
 	PwRuffleNativeHost host_;
@@ -56,6 +67,9 @@ private:
 	std::vector<uint8_t> minimapPixels_;
 	size_t minimapUploads_ = 0;
 	int matchSeconds_ = -1;
+	PwRufflePointerCapture pointerCapture_;
+	std::optional<bool> focused_;
+	size_t pointerEvents_ = 0, consumedPointerEvents_ = 0;
 };
 
 #endif
