@@ -6,6 +6,7 @@
 #include <dlfcn.h>
 #include <nlohmann/json.hpp>
 #include <cmath>
+#include <chrono>
 #include <stdexcept>
 #include <vector>
 
@@ -74,6 +75,7 @@ struct PwRuffleNativeHost::Impl
 	std::vector<uint8_t> alpha;
 	bool poisoned = false;
 	bool unloadUnsafe = false;
+	FrameTiming timing;
 
 	/** All foreign buffers are released even if copying a diagnostic throws. */
 	struct Buffer
@@ -92,6 +94,7 @@ struct PwRuffleNativeHost::Impl
 PwRuffleNativeHost::PwRuffleNativeHost() : impl_(new Impl) {}
 PwRuffleNativeHost::~PwRuffleNativeHost() { Reset(); }
 bool PwRuffleNativeHost::IsReady() const { return impl_->host != 0 && !impl_->poisoned; }
+PwRuffleNativeHost::FrameTiming PwRuffleNativeHost::Timing() const { return impl_->timing; }
 
 bool PwRuffleNativeHost::MatchesViewport(unsigned width, unsigned height) const
 {
@@ -167,6 +170,7 @@ bool PwRuffleNativeHost::Open(const std::string& library, const std::string& dat
 
 bool PwRuffleNativeHost::Request(const std::string& request, std::string& response, std::string& error)
 {
+	const auto start = std::chrono::steady_clock::now();
 	response.clear();
 	try
 	{
@@ -184,6 +188,8 @@ bool PwRuffleNativeHost::Request(const std::string& request, std::string& respon
 		const auto parsed = nlohmann::json::parse(request);
 		if (parsed.value("action", std::string()) == "surface")
 			impl_->width = impl_->height = 0;
+		++impl_->timing.requests;
+		impl_->timing.requestMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 		error.clear();
 		return true;
 	}
@@ -193,6 +199,7 @@ bool PwRuffleNativeHost::Request(const std::string& request, std::string& respon
 bool PwRuffleNativeHost::UploadBitmap(uint64_t bitmap, unsigned width, unsigned height,
 	const uint8_t* pixels, size_t length, std::string& error)
 {
+	const auto start = std::chrono::steady_clock::now();
 	try
 	{
 		if (!IsReady()) throw std::runtime_error("Native Ruffle host is closed");
@@ -205,6 +212,8 @@ bool PwRuffleNativeHost::UploadBitmap(uint64_t bitmap, unsigned width, unsigned 
 		if (status == PW_RUFFLE_PANIC) impl_->poisoned = true;
 		if (!context.Restore()) throw std::runtime_error("Cannot restore engine GLX context after bitmap upload");
 		if (status != PW_RUFFLE_OK) throw std::runtime_error("Ruffle bitmap upload: " + diagnostic.Text());
+		++impl_->timing.uploads;
+		impl_->timing.uploadMs += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 		error.clear();
 		return true;
 	}
@@ -229,8 +238,11 @@ bool PwRuffleNativeHost::Draw(unsigned width, unsigned height, double deltaMs, s
 			impl_->width = width;
 			impl_->height = height;
 		}
+		using Clock = std::chrono::steady_clock;
+		const auto tickStart = Clock::now();
 		if (!Request(nlohmann::json{{"action", "tick"}, {"delta_ms", deltaMs}}.dump(), response, error))
 			return false;
+		const auto renderStart = Clock::now();
 		Impl::Buffer diagnostic(impl_->free), pixels(impl_->free);
 		PwRuffleFrame frame{};
 		ContextScope context;
@@ -243,13 +255,21 @@ bool PwRuffleNativeHost::Draw(unsigned width, unsigned height, double deltaMs, s
 			throw std::runtime_error("Ruffle render: " + diagnostic.Text());
 		if (frame.width != width || frame.height != height)
 			throw std::runtime_error("Ruffle frame does not match the requested viewport");
+		const auto compositeStart = Clock::now();
 		if (!impl_->compositor.Draw(frame, 0, 0, static_cast<int>(width), static_cast<int>(height), error))
 			return false;
 		const GLenum restoredError = glGetError();
 		if (restoredError != GL_NO_ERROR)
 			throw std::runtime_error("Compositor state restoration: OpenGL error " + std::to_string(restoredError));
+		const auto coverageStart = Clock::now();
 		impl_->alpha.resize(static_cast<size_t>(width) * height);
 		for (size_t i = 0; i < impl_->alpha.size(); ++i) impl_->alpha[i] = frame.rgba.data[i * 4 + 3];
+		const auto elapsed = [](auto from, auto to) { return std::chrono::duration<double, std::milli>(to - from).count(); };
+		++impl_->timing.frames;
+		impl_->timing.tickMs += elapsed(tickStart, renderStart);
+		impl_->timing.renderMs += elapsed(renderStart, compositeStart);
+		impl_->timing.compositeMs += elapsed(compositeStart, coverageStart);
+		impl_->timing.coverageMs += elapsed(coverageStart, Clock::now());
 		return true;
 	}
 	catch (const std::exception& exception) { error = exception.what(); return false; }

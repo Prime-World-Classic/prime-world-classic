@@ -125,6 +125,7 @@
 #include "LinuxBootstrap/ruffle_eval/talent_input.h"
 #include "LinuxBootstrap/ruffle_eval/minimap_input.h"
 #endif
+#include <chrono>
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
 #include "Game/PF/Client/LobbyPvx/NewReplay.h"
@@ -4222,6 +4223,9 @@ struct LinuxBootstrapReplayFileProof
 
 struct LinuxBootstrapScreenRuntime
 {
+	// Disjoint main-loop wall-time stages; setup and the explicit sleep are excluded.
+	size_t profiledFrames = 0;
+	double profileInputMs = 0, profileUpdateMs = 0, profileAssetsMs = 0, profileDrawMs = 0;
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
   Strong<Game::DebugVarsSender> debugVarsSender;
   Strong<NGameX::SelectGameModeScreen> gameModeScreen;
@@ -68557,6 +68561,9 @@ void AppendRuntimeInputLog(
     GetActiveLinuxLoadingFlashInterface(&screenRuntime);
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
 	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
+	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
+		<< " input:" << screenRuntime.profileInputMs << " update:" << screenRuntime.profileUpdateMs
+		<< " assets:" << screenRuntime.profileAssetsMs << " draw:" << screenRuntime.profileDrawMs << "\n";
 	logFile << "  finalAdventureUi=" << (screenRuntime.adventureUi.IsReady() ? "ready" : "inactive")
 		<< " attempted:" << screenRuntime.adventureUi.WasAttempted()
 		<< " frames:" << screenRuntime.adventureUi.GetFrames() << "\n";
@@ -68582,6 +68589,12 @@ void AppendRuntimeInputLog(
 		<< " pointerEvents:" << screenRuntime.ruffleInspection.PointerEvents()
 		<< " consumedPointerEvents:" << screenRuntime.ruffleInspection.ConsumedPointerEvents()
 		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
+	const auto timing = screenRuntime.ruffleInspection.Timing();
+	logFile << "  finalRuffleTimingMs=frames:" << timing.frames << " tick:" << timing.tickMs
+		<< " renderReadback:" << timing.renderMs << " composite:" << timing.compositeMs
+		<< " coverage:" << timing.coverageMs << " requests:" << timing.requests
+		<< " requestInclusive:" << timing.requestMs << " uploads:" << timing.uploads
+		<< " upload:" << timing.uploadMs << "\n";
 #endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")
 		<< " hero:" << screenRuntime.worldHudLayout.hero.x << "," << screenRuntime.worldHudLayout.hero.y
@@ -72507,6 +72520,8 @@ int main(int argc, char** argv)
 
   while (!NMainFrame::IsExit())
   {
+		using ProfileClock = std::chrono::steady_clock;
+		const auto inputStart = ProfileClock::now();
     NMainFrame::PumpMessages();
     UpdateInputState(&inputState);
     NHPTimer::STime now = 0;
@@ -72551,6 +72566,7 @@ int main(int argc, char** argv)
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
 		DriveLinuxRuffleGameplay(settings, selectedMapPreview, &screenRuntime);
 #endif
+		const auto updateStart = ProfileClock::now();
     if (uiRootPreview.runtimeInitialized)
     {
       NMainLoop::SetTemporaryTimeDelta(inputState.lastDeltaSeconds);
@@ -72746,12 +72762,14 @@ int main(int argc, char** argv)
       }
     }
 
+		const auto assetsStart = ProfileClock::now();
     ProbeLinuxDynamicWorldUnitMeshPreviews(
       environment,
       dynamic_cast<NWorld::PFWorld*>(screenRuntime.transceiverWorld.GetPtr()),
       &dynamicUnitMeshPreviews,
       0);
 
+		const auto drawStart = ProfileClock::now();
     DrawWindowOverlay(
       &overlay,
       &renderBootstrap,
@@ -72786,6 +72804,12 @@ int main(int argc, char** argv)
       elapsedSeconds
     );
 
+		const auto duration = [](auto from, auto to) { return std::chrono::duration<double, std::milli>(to - from).count(); };
+		++screenRuntime.profiledFrames;
+		screenRuntime.profileInputMs += duration(inputStart, updateStart);
+		screenRuntime.profileUpdateMs += duration(updateStart, assetsStart);
+		screenRuntime.profileAssetsMs += duration(assetsStart, drawStart);
+		screenRuntime.profileDrawMs += duration(drawStart, ProfileClock::now());
     if (settings.runSeconds > 0.0)
     {
       if (elapsedSeconds >= settings.runSeconds)

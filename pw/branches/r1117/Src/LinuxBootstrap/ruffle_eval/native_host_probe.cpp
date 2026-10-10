@@ -8,6 +8,7 @@
 #include <nlohmann/json.hpp>
 #include <array>
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -73,7 +74,8 @@ int main(int argc, char** argv)
 {
 	try
 	{
-		Check(argc == 4, "Usage: PrimeWorldRuffleNativeHostProbe LIBRARY DATA COMBAT_SWF");
+		const bool benchmark = argc == 5 && std::string(argv[4]) == "--benchmark";
+		Check(argc == 4 || benchmark, "Usage: PrimeWorldRuffleNativeHostProbe LIBRARY DATA COMBAT_SWF [--benchmark]");
 		WindowContext window;
 		window.Open();
 		PwRuffleNativeHost host;
@@ -82,6 +84,38 @@ int main(int argc, char** argv)
 		Check(!host.Open("/nonexistent/pw-ruffle.so", argv[2], argv[3], error), "Accepted missing library");
 		Check(!host.Request("{}", response, error), "Accepted request while closed");
 		window.CheckCurrent();
+		if (benchmark)
+		{
+			Check(host.Open(argv[1], argv[2], argv[3], error), error);
+			Check(host.Request(R"({"path":"LocalizationResources","method":"LocalizationComplete","args":[]})", response, error), error);
+			Check(host.Request(R"({"path":"mainInterface","method":"HideAllWindows","args":[]})", response, error), error);
+			for (int i = 0; i < 5; ++i) Check(host.Draw(1280, 720, 16, error), error);
+			const auto before = host.Timing();
+			for (int i = 0; i < 60; ++i)
+			{
+				Check(host.Draw(1280, 720, 1000.0 / 60, error), error);
+				window.CheckCurrent();
+			}
+			const auto after = host.Timing();
+			Check(after.frames - before.frames == 60, "Timing did not count successful frames");
+			const double tick = (after.tickMs - before.tickMs) / 60;
+			const double render = (after.renderMs - before.renderMs) / 60;
+			const double composite = (after.compositeMs - before.compositeMs) / 60;
+			const double coverage = (after.coverageMs - before.coverageMs) / 60;
+			for (double stage : {tick, render, composite, coverage})
+				Check(std::isfinite(stage) && stage >= 0, "Invalid measured stage time");
+			Check(host.MatchesViewport(1280, 720) && !host.ContainsPixel(640, 100), "Benchmark lost transparent coverage");
+			Check(host.Request(R"({"action":"stats"})", response, error), error);
+			Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Benchmark SWF runtime errors");
+			std::cout << nlohmann::json{{"frames", 60}, {"width", 1280}, {"height", 720},
+				{"tick_ms", tick}, {"render_readback_ms", render}, {"composite_ms", composite},
+				{"coverage_ms", coverage}, {"draw_ms", tick + render + composite + coverage},
+				{"gl_renderer", reinterpret_cast<const char*>(glGetString(GL_RENDERER))}}.dump() << '\n';
+			Check(!host.Draw(0, 720, 16, error) && host.Timing().frames == after.frames,
+				"Failed draw changed successful timing counters");
+			Check(host.Reset() && host.Timing().frames == after.frames, "Teardown lost profiling counters");
+			return 0;
+		}
 		for (int cycle = 0; cycle < 2; ++cycle)
 		{
 			Check(host.Open(argv[1], argv[2], argv[3], error), error);

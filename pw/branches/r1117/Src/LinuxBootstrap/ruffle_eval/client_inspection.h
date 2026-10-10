@@ -46,6 +46,8 @@ public:
 	bool WasAttempted() const { return attempted_; }
 	bool IsReady() const { return host_.IsReady(); }
 	size_t Frames() const { return frames_; }
+	/** Native draw stages, independent of host initialization and UI calls. */
+	PwRuffleNativeHost::FrameTiming Timing() const { return host_.Timing(); }
 	size_t DiscardedCallbacks() const { return events_.Discarded(); }
 	size_t ReceivedCallbacks() const { return events_.Received(); }
 	size_t PendingCallbacks() const { return events_.Pending(); }

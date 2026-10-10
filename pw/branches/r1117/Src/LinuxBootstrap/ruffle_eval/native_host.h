@@ -16,6 +16,16 @@
 class PwRuffleNativeHost final
 {
 public:
+	/** Successful draw wall times in milliseconds, excluding setup/resize.
+	 * Render includes ABI allocation, GPU work and CPU readback, not GPU timestamps.
+	 */
+	struct FrameTiming
+	{
+		size_t frames = 0;
+		double tickMs = 0, renderMs = 0, compositeMs = 0, coverageMs = 0;
+		size_t requests = 0, uploads = 0;
+		double requestMs = 0, uploadMs = 0; ///< Inclusive: requestMs also contains tick/resize requests.
+	};
 	PwRuffleNativeHost();
 	~PwRuffleNativeHost();
 	PwRuffleNativeHost(const PwRuffleNativeHost&) = delete;
@@ -46,6 +56,8 @@ public:
 	 */
 	bool Reset() noexcept;
 	bool IsReady() const;
+	/** Counters survive Reset for shutdown diagnostics. */
+	FrameTiming Timing() const;
 
 private:
 	struct Impl;

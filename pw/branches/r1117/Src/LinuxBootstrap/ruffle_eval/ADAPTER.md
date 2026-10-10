@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.14.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.14.1`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -135,6 +135,26 @@ original event names. The client checks the explicit capability in `stats` and
 falls back with a diagnostic when an older/noncompatible DSO is supplied. No game
 SWF or Windows event implementation is rewritten; this is not double-right-click
 support or a general Ruffle event renaming change.
+
+### Profiling (0.14.1)
+
+`PrimeWorldRuffleNativeHostProbe LIBRARY DATA COMBAT_SWF --benchmark` measures
+60 original-SWF draws at 1280x720 after five warmup frames. JSON output reports
+average wall milliseconds for VM tick, render/readback, composition and alpha
+coverage, plus the actual GL renderer. It verifies context restoration, runtime
+errors and counter behavior without hardware-specific performance assertions.
+This isolated HUD does not populate the full match's talents, heroes or minimap;
+its draw time is not a whole-game FPS claim.
+
+The client also records cumulative stages in `finalRuffleTimingMs`, plus total
+request and bitmap-upload costs. `requestInclusive` includes tick and resize
+requests, so it must not be added to the draw-stage sum without subtracting that
+overlap. Failed calls do not count as successful work; counters survive teardown.
+Setup, world rendering, frame pacing and other client work are not draw timings.
+`finalClientTimingMs` separately measures disjoint input, update/UI, dynamic asset
+discovery and drawing/swap stages across the complete native main loop. Its draw
+stage includes the Ruffle work above; explicit frame sleep and pre-loop startup
+are excluded. Compare the same map, viewport, script and build configuration.
 
 ### Client Inspection (0.14.0)
 
