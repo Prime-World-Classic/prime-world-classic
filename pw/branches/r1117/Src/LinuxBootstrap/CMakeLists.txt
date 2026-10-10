@@ -442,6 +442,8 @@ add_executable(
 	adventure_presentation.cpp
 	hero_presentation_probe.cpp
 	world_grid_probe.cpp
+	formula_range_probe.cpp
+	formula_context.cpp
 	fog_grid_probe.cpp
 	text_runtime_probe.cpp
 	../System/FileSystem/TestFileSystem.cpp
@@ -910,6 +912,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
 endif()
 add_executable(PrimeWorldLinuxNumericFormulaProbe formula_numeric_probe.cpp)
 target_link_libraries(PrimeWorldLinuxNumericFormulaProbe PRIVATE PrimeWorldLinuxNumericFormula Threads::Threads)
+target_link_libraries(PrimeWorldLinuxClient PRIVATE PrimeWorldLinuxNumericFormula)
 add_test(NAME LinuxNumericFormula COMMAND PrimeWorldLinuxNumericFormulaProbe)
 set_tests_properties(LinuxNumericFormula PROPERTIES TIMEOUT 30)
 add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxNumericFormulaProbe)
@@ -959,6 +962,8 @@ add_executable(PrimeWorldLinuxTalentCostProbe talent_cost_probe.cpp)
 target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
 add_test(NAME LinuxWorldGrid COMMAND PrimeWorldLinuxClient --bootstrap-world-grid-probe)
+add_test(NAME LinuxFormulaRange COMMAND PrimeWorldLinuxClient --bootstrap-formula-range-probe "${CMAKE_CURRENT_SOURCE_DIR}/../../Data/")
+set_tests_properties(LinuxFormulaRange PROPERTIES TIMEOUT 30)
 set_tests_properties(LinuxWorldGrid PROPERTIES TIMEOUT 30)
 add_test(NAME LinuxFogGrid COMMAND PrimeWorldLinuxClient --bootstrap-fog-grid-probe)
 set_tests_properties(LinuxFogGrid PROPERTIES TIMEOUT 30)

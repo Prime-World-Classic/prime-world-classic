@@ -2,6 +2,7 @@
 
 #if defined(PW_LINUX_NULL_RENDER)
 
+#include "../LinuxBootstrap/formula_context.h"
 #include "DBGameLogic.h"
 #include "PFAbilityData.h"
 #include "PFAbilityInstance.h"
@@ -148,7 +149,7 @@ void PFAbilityData::Update(float dt, bool fullUpdate)
       PFBaseUnit const* pTarget = pOwner->GetCurrentTarget();
       castSelfLimitationPassed = IsValid(pTarget)
         && UnitMaskingPredicate(pOwner, pDBDesc->targetType)(*pTarget)
-        && pOwner->IsTargetInRange(pTarget, pDBDesc->useRange(pOwner, pTarget, this, 0.0f))
+        && pOwner->IsTargetInRange(pTarget, GetUseRange(pTarget))
         && !pTarget->IsInvalidAbilityTarget();
     }
   }
@@ -422,15 +423,15 @@ void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cool
 }
 float PFAbilityData::GetUseRange() const
 {
-  if (!pDBDesc || !IsValid(pOwner))
-    return 0.0f;
-  return pDBDesc->useRange(pOwner, pOwner, this, 0.0f);
+	return GetUseRange(pOwner.GetPtr());
 }
 float PFAbilityData::GetUseRange(const PFBaseUnit * pTarget) const
 {
-  if (!pDBDesc || !IsValid(pOwner))
-    return 0.0f;
-  return pDBDesc->useRange(pOwner, pTarget ? pTarget : pOwner.GetPtr(), this, 0.0f);
+	if (!pDBDesc || !IsValid(pOwner))
+		return std::numeric_limits<float>::quiet_NaN();
+	// A failed expression is not the production meaning of a valid zero range.
+	return LinuxBootstrap::EvaluateUnitNumericFormula(pDBDesc->useRange.sString.c_str(),
+		pOwner.GetPtr(), pTarget ? pTarget : pOwner.GetPtr()).value;
 }
 float PFAbilityData::GetUseRange(const NWorld::Target & target) const
 {

@@ -168,6 +168,7 @@
 #include "LinuxBootstrap/text_runtime_probe.h"
 #include "LinuxBootstrap/hero_presentation_probe.h"
 #include "LinuxBootstrap/world_grid_probe.h"
+#include "LinuxBootstrap/formula_range_probe.h"
 #include "LinuxBootstrap/fog_grid_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
@@ -51355,6 +51356,7 @@ bool CanArmLinuxGroundTalent(NWorld::PFBaseMaleHero* hero, int row, int column)
 	if (!hero || hero->IsDead() || row < 0 || row >= 6 || column < 0 || column >= 6) return false;
 	auto* talent = hero->GetTalent(row, column);
 	return talent && talent->GetDBDesc() && talent->IsActivated() && talent->IsActive() && talent->CanBeUsed() &&
+		std::isfinite(talent->GetUseRange()) &&
 		(talent->GetTargetType() & NDb::SPELLTARGET_LAND) && !(talent->GetTargetType() & NDb::SPELLTARGET_LINEOFSIGHT) &&
 		!talent->GetDBDesc()->requireLineOfSight && talent->GetDBDesc()->alternativeTargets.empty();
 }
@@ -71089,6 +71091,8 @@ const char* SelectWindowTitle(const LinuxClientEnvironment& environment)
 int main(int argc, char** argv)
 {
   InitializeCmdLine(argc, argv);
+	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-formula-range-probe"))
+		return RunPrimeWorldLinuxFormulaRangeProbe(CmdLineLite::Instance().GetStringKey("--bootstrap-formula-range-probe", "")) ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-world-grid-probe"))
 		return RunPrimeWorldLinuxWorldGridProbe() ? 0 : 1;
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-fog-grid-probe"))
