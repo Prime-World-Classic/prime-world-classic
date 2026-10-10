@@ -1,0 +1,98 @@
+diff --git a/core/Cargo.toml b/core/Cargo.toml
+index 48e3d1e6..2f6c851b 100644
+--- a/core/Cargo.toml
++++ b/core/Cargo.toml
+@@ -60,7 +60,8 @@ png = { version = "0.18.0", optional = true }
+ flv-rs = { path = "../flv" }
+ async-channel = { workspace = true }
+ jpegxr = { git = "https://github.com/ruffle-rs/jpegxr", rev = "2a429b0d71ab416e10b73d4dbdcf34cfe2900395", optional = true }
+-image = { workspace = true, features = ["tiff"] }
++image = { workspace = true, features = ["tiff", "png"] }
++dds = { version = "=0.2.0", default-features = false }
+ enum-map = { workspace = true }
+ ttf-parser = "0.25"
+ num-bigint = "0.4"
+@@ -97,3 +98,13 @@ serde = ["serde/derive"]
+
+ [build-dependencies]
+ build_playerglobal = { path = "build_playerglobal" }
++
++[dev-dependencies]
++ruffle_render_wgpu = { path = "../render/wgpu" }
++tracing-subscriber = { workspace = true }
++image = { workspace = true, features = ["png"] }
++
++[[example]]
++name = "pw_bridge"
++path = "examples/pw_bridge.rs"
++crate-type = ["cdylib"]
+diff --git a/core/src/avm2.rs b/core/src/avm2.rs
+index bbb5c46e..38f7c19f 100644
+--- a/core/src/avm2.rs
++++ b/core/src/avm2.rs
+@@ -45,6 +45,7 @@ macro_rules! avm_debug {
+ }
+
+ pub mod activation;
++pub mod pw_handles;
+ mod amf;
+ pub mod api_version;
+ mod array;
+@@ -56,6 +57,8 @@ mod dynamic_map;
+ mod e4x;
+ pub mod error;
+ mod events;
++#[cfg(test)]
++mod loader_regression;
+ mod filters;
+ mod flv;
+ mod function;
+diff --git a/core/src/avm2/globals/flash/display/loader.rs b/core/src/avm2/globals/flash/display/loader.rs
+index 20ed31f5..a32f6769 100644
+--- a/core/src/avm2/globals/flash/display/loader.rs
++++ b/core/src/avm2/globals/flash/display/loader.rs
+@@ -67,6 +67,9 @@ pub fn load<'gc>(
+     let this = this.as_object().unwrap();
+
+     let url_request = args.get_object(activation, 0, "request")?;
++	if crate::primeworld_loader::try_load(activation, this, url_request, args.try_get_object(1))? {
++		return Ok(Value::Undefined);
++	}
+     let context = args.try_get_object(1);
+
+     let loader_info = this
+diff --git a/core/src/avm2/object/loaderinfo_object.rs b/core/src/avm2/object/loaderinfo_object.rs
+index 9906b5dc..3d917d9e 100644
+--- a/core/src/avm2/object/loaderinfo_object.rs
++++ b/core/src/avm2/object/loaderinfo_object.rs
+@@ -264,6 +264,14 @@ impl<'gc> LoaderInfoObject<'gc> {
+     }
+
+     pub fn unload(self, context: &mut UpdateContext<'gc>) {
++		if crate::primeworld_loader::try_unload(context, self) {
++			return;
++		}
++		self.pw_unload_inner(context);
++	}
++
++	/// Original unload body, entered once by the opt-in game loader's reentry guard.
++	pub(crate) fn pw_unload_inner(self, context: &mut UpdateContext<'gc>) {
+         // Reset properties
+         let movie = &context.root_swf;
+         let empty_swf = Arc::new(SwfMovie::empty(movie.version(), Some(movie.url().into())));
+diff --git a/core/src/lib.rs b/core/src/lib.rs
+index cfd25a33..e677e139 100644
+--- a/core/src/lib.rs
++++ b/core/src/lib.rs
+@@ -38,6 +38,11 @@ mod net_connection;
+ mod orphan_manager;
+ pub mod pixel_bender;
+ mod player;
++pub use avm2::pw_handles;
++pub use primeworld::HostValue;
++mod primeworld;
++pub mod primeworld_assets;
++pub mod primeworld_loader;
+ mod prelude;
+ pub mod socket;
+ mod streams;

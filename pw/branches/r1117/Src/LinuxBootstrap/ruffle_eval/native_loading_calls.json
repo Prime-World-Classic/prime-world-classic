@@ -1,0 +1,21 @@
+[
+	{"path":"LocalizationResources","method":"LocalizationComplete","args":[]},
+	{"path":"LoaderWindowInterface","method":"SetLoadingState","args":[true]},
+	{"path":"LoaderWindowInterface","method":"SetMapBack","args":[":/UI/Styles/LoadingBack/PVP.dds",":/UI/Styles/LoadingBack/PVP_Logo.dds"]},
+	{"path":"backGround.ico_ld.content.bitmapData","op":"get","method":"width","args":[],"expect":1920},
+	{"path":"backGround.ico_ld.content.bitmapData","op":"get","method":"height","args":[],"expect":1080},
+	{"path":"logo.ico_ld.content.bitmapData","op":"get","method":"width","args":[],"expect":690},
+	{"path":"logo.ico_ld.content.bitmapData","op":"get","method":"height","args":[],"expect":320},
+	{"path":"backGround","op":"get","method":"x","args":[],"expect":-320},
+	{"path":"backGround","op":"get","method":"y","args":[],"expect":-180},
+	{"path":"logo","op":"get","method":"x","args":[],"expect":295},
+	{"path":"logo","op":"get","method":"y","args":[],"expect":200},
+	{"path":"LoaderWindowInterface","method":"SetLoadingStatusText","args":["Native DDS loading"]},
+	{"path":"LoaderWindowInterface","method":"SetTip","args":["Prime World"]},
+	{"path":"LoaderWindowInterface","method":"SetMapBack","args":[":/UI/Styles/LoadingBack/PVP.dds",":/UI/Styles/LoadingBack/PVP_Logo.dds"]},
+	{"path":"logo.ico_ld","op":"get","method":"numChildren","args":[],"expect":1},
+	{"path":"logo.ico_ld","method":"unload","args":[]},
+	{"path":"logo.ico_ld","op":"get","method":"numChildren","args":[],"expect":0},
+	{"path":"LoaderWindowInterface","method":"SetMapBack","args":[":/UI/Styles/LoadingBack/PVP.dds",":/UI/Styles/LoadingBack/PVP_Logo.dds"]},
+	{"path":"logo.ico_ld","op":"get","method":"numChildren","args":[],"expect":1}
+]

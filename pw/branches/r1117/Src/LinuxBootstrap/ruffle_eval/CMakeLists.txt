@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.16)
+# Share the port checkpoint version, not Ruffle's source version or ABI protocol number.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION" PW_LINUX_PORT_VERSION LIMIT_COUNT 1)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../VERSION")
+project(PrimeWorldRuffleBridgeProbe VERSION "${PW_LINUX_PORT_VERSION}" LANGUAGES CXX)
+
+# Separate test project: the client never acquires a Rust/Ruffle dependency here.
+set(PW_RUFFLE_LIBRARY "" CACHE FILEPATH "Absolute path to the experimental libpw_bridge.so")
+if(NOT EXISTS "${PW_RUFFLE_LIBRARY}")
+	message(FATAL_ERROR "Build the pinned Ruffle pw_bridge example and set PW_RUFFLE_LIBRARY")
+endif()
+find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp REQUIRED)
+find_package(Threads REQUIRED)
+add_library(PwRuffleBridge SHARED IMPORTED)
+set_target_properties(PwRuffleBridge PROPERTIES IMPORTED_LOCATION "${PW_RUFFLE_LIBRARY}")
+add_executable(PrimeWorldRuffleBridgeProbe bridge_probe.cpp)
+target_compile_features(PrimeWorldRuffleBridgeProbe PRIVATE cxx_std_17)
+target_include_directories(PrimeWorldRuffleBridgeProbe PRIVATE "${NLOHMANN_JSON_INCLUDE_DIR}")
+target_link_libraries(PrimeWorldRuffleBridgeProbe PRIVATE PwRuffleBridge Threads::Threads)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(PrimeWorldRuffleBridgeProbe PRIVATE -Wall -Wextra -Werror)
+endif()

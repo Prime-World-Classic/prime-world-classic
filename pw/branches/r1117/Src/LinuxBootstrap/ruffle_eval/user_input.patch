@@ -1,0 +1,26 @@
+diff --git a/core/src/avm2/globals/flash/text/TextField.as b/core/src/avm2/globals/flash/text/TextField.as
+--- a/core/src/avm2/globals/flash/text/TextField.as
++++ b/core/src/avm2/globals/flash/text/TextField.as
+@@ -10,6 +10,22 @@ package flash.text {
+     [Ruffle(InstanceAllocator)]
+     public class TextField extends InteractiveObject {
+         internal var _useRichTextClipboard:Boolean;
++
++		// Evaluation only: removes the missing-trait exception. This is NOT the
++		// Prime World markup, punctuation-spacing, or reflow implementation.
++		private var _pwUserInput:Boolean = false;
++
++		public function get userInput():Boolean {
++			return this._pwUserInput;
++		}
++
++		public function set userInput(value:Boolean):void {
++			this._pwUserInput = value;
++			// Standard Flash condenseWhite affects HTML, unlike PW's ordinary text.
++			// Leave existing text untouched so this experiment cannot imply parity.
++			this.condenseWhite = !value;
++		}
++
+
+         public native function get alwaysShowSelection():Boolean;
+         public native function set alwaysShowSelection(value:Boolean):void;

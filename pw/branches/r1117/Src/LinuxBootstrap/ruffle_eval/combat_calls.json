@@ -1,0 +1,8 @@
+[
+	{"path": "LocalizationResources", "method": "LocalizationComplete", "args": []},
+	{"path": "mainInterface", "method": "IsWindowVisible", "args": [0], "expect_type": "boolean"},
+	{"path": "mainInterface", "method": "OnEscape", "args": [], "expect_type": "boolean"},
+	{"path": "mainInterface", "method": "GetTalentActionBarIndex", "args": [0, 0], "expect_type": "number"},
+	{"path": "mainInterface", "method": "GetActionBarItemDisplayObject", "args": [0, false], "expect_error": "Object return requires a rooted handle adapter"},
+	{"path": "mainInterface", "method": "NoSuchPrimeWorldMethod", "args": [], "expect_error": "Error"}
+]

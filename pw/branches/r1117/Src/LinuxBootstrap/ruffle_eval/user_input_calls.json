@@ -1,0 +1,8 @@
+[
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "get", "method": "userInput", "args": [], "expect": true, "expect_type": "boolean"},
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "set", "method": "userInput", "args": [false]},
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "get", "method": "userInput", "args": [], "expect": false},
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "get", "method": "condenseWhite", "args": [], "expect": true},
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "set", "method": "userInput", "args": [true]},
+	{"path": "chatBar.chatInput_mc.text_txt", "op": "get", "method": "condenseWhite", "args": [], "expect": false}
+]
