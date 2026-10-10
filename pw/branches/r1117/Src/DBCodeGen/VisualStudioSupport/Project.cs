@@ -45,7 +45,11 @@ namespace DBCodeGen.VisualStudioSupport
 		{
 			string fullFilePath = GetFileNameInProject( fileName );
 			if ( files.ContainsKey( fullFilePath.ToLower() ) )
+			{
+				// дубликат в чужом проекте (например, UniServerApp.vcproj) не должен ронять генерацию
 				Trace.TraceError( "File \"{0}\" defined twice for project \"{1}\"", fileName, projectName );
+				return;
+			}
 			files.Add( fullFilePath.ToLower(), fileName );
 		}
 
