@@ -18,6 +18,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include "../PF_GameLogic/TileMap.h"
 #include "../PF_GameLogic/WarFog.h"
 #include "../PF_GameLogic/HeroActions.h"
+#include "../PF_GameLogic/PointersHolder.h"
 #include "../Core/WorldCommand.h"
 #include "../Core/GameCommand.h"
 
@@ -430,6 +431,44 @@ void HeroRespawn(Checks& checks)
 	checks.Check(restoredAttack && restoredAttack->CanExecute(), "packed attack command restores");
 	checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackTargetObjectId == exactUnit->GetObjectId(),
 		"packed attack retains the exact target before execution");
+	{
+		CObj<PointersHolder> missingTarget = new PointersHolder(fixture.world, 0);
+		missingTarget->Add(exactHero, fixture.world->GetPointerSerialization()->GetObjectID(exactHero));
+		for (NCore::WorldCommand* rawCommand : {CreateCmdAttackTarget(exactHero, exactUnit),
+			CreateCmdFollowUnit(exactHero, exactUnit), CreateCmdUseUnit(exactHero, exactUnit)})
+		{
+			CObj<NCore::WorldCommand> command = rawCommand;
+			CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(command,
+				fixture.world->GetPointerSerialization(), 1984, 0);
+			CObj<NCore::WorldCommand> missing = packet->GetWorldCommand(missingTarget);
+			checks.Check(missing && !missing->CanExecute(), "restored command rejects missing target");
+			hero->AssignTarget(exactUnit, true);
+			ResetLinuxHeroGameplayCommandDiagnostics();
+			if (missing) missing->Execute(fixture.world);
+			checks.Check(GetLinuxHeroGameplayCommandDiagnostics().attackExecuteCalls == 0,
+				"missing target does not attack the current selection");
+			checks.Check(hero->GetCurrentTarget() == exactUnit, "missing target preserves current order");
+			hero->DropTarget();
+		}
+		Fixture other(checks);
+		CObj<ProbeUnit> foreign = new ProbeUnit(other.world, db);
+		foreign->ChangeFaction(Enemy);
+		CObj<NCore::WorldCommand> foreignAttack = CreateCmdAttackTarget(exactHero, foreign);
+		checks.Check(!foreignAttack->CanExecute(), "foreign-world target rejected at admission");
+		foreignAttack->Execute(fixture.world);
+		checks.Check(!hero->GetCurrentTarget(), "foreign-world target rejected at execution");
+		hero->DropTarget();
+		foreign->CloseWarFog(true);
+	}
+	enemy->ChangeFaction(Ally);
+	checks.Check(!attack->CanExecute(), "queued attack rejects a target that becomes allied");
+	attack->Execute(fixture.world);
+	checks.Check(!hero->GetCurrentTarget(), "execution does not attack a newly allied target");
+	enemy->ChangeFaction(Enemy);
+	enemy->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+	checks.Check(!attack->CanExecute(), "queued attack rejects a target that dies");
+	attack->Execute(fixture.world);
+	checks.Check(!hero->GetCurrentTarget(), "execution does not acquire a dead target");
 	enemy->CloseWarFog(true);
 	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 	hero->SetForbidRespawn(true);

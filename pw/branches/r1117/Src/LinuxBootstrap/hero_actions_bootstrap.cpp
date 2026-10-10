@@ -162,43 +162,13 @@ namespace NWorld
     PFBaseHero* sourceHero,
     PFBaseUnit* preferredTarget)
   {
-    if (IsValid(preferredTarget) && preferredTarget != sourceHero)
-      return preferredTarget;
-
-    if (sourceHero)
-    {
-      CPtr<PFBaseUnit> currentTarget = sourceHero->GetCurrentTarget();
-      if (IsValid(currentTarget) && currentTarget != sourceHero)
-        return currentTarget.GetPtr();
-    }
-
-    if (!world)
-      return 0;
-
-    for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
-    {
-      PFPlayer* player = world->GetPlayer(playerIndex);
-      PFBaseHero* hero = player ? player->GetHero() : 0;
-      if (IsValid(hero) &&
-          hero != sourceHero &&
-          !hero->IsDead() &&
-          (!sourceHero || hero->GetFaction() != sourceHero->GetFaction()))
-      {
-        return hero;
-      }
-    }
-
-    for (int playerIndex = 0; playerIndex < world->GetPlayersCount(); ++playerIndex)
-    {
-      PFPlayer* player = world->GetPlayer(playerIndex);
-      PFBaseHero* hero = player ? player->GetHero() : 0;
-      if (IsValid(hero) && hero != sourceHero && !hero->IsDead())
-      {
-        return hero;
-      }
-    }
-
-    return 0;
+		// A stale target never substitutes the current selection or another player.
+		if (!world || !IsValid(sourceHero) || sourceHero->IsDead() ||
+			sourceHero->GetWorld() != world || !IsValid(preferredTarget) ||
+			preferredTarget == sourceHero || preferredTarget->IsDead() || preferredTarget->GetWorld() != world)
+			return 0;
+		return world->FindLinuxUnitByObjectId(preferredTarget->GetObjectId()) == preferredTarget ?
+			preferredTarget : 0;
   }
 
   static float ResolveLinuxBootstrapCommandAttackRange(
@@ -650,11 +620,8 @@ namespace NWorld
       &g_linuxHeroGameplayCommandDiagnostics.attackTargetFaction,
       &g_linuxHeroGameplayCommandDiagnostics.attackTargetPlayerId,
       pTarget);
-    if (!IsValid(pHero) || !IsValid(pTarget))
-    {
-      ++g_linuxHeroGameplayCommandDiagnostics.attackCanAccepted;
-      return true;
-    }
+		if (!IsValid(pHero) || !ResolveLinuxBootstrapCommandTargetUnit(pHero->GetWorld(), pHero, pTarget))
+			return false;
 #endif
     const bool accepted = IsValid(pHero) &&
       IsValid(pTarget) &&
@@ -675,6 +642,8 @@ namespace NWorld
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
     hero = ResolveLinuxBootstrapCommandHero(world, pHero, GetId(), 0, 0);
     targetUnit = ResolveLinuxBootstrapCommandTargetUnit(world, hero, pTarget);
+		if (IsValid(hero) && IsValid(targetUnit) && hero->GetFaction() == targetUnit->GetFaction())
+			return;
 #else
     hero = pHero;
     targetUnit = pTarget;
@@ -774,8 +743,8 @@ namespace NWorld
   bool CmdFollowUnit::CanExecute() const
   {
 #if defined(PW_LINUX_NULL_RENDER)
-    if (!IsValid(pHero) || !IsValid(pUnit))
-      return true;
+		if (!IsValid(pHero) || !ResolveLinuxBootstrapCommandTargetUnit(pHero->GetWorld(), pHero, pUnit))
+			return false;
 #endif
     return IsValid(pHero) &&
       IsValid(pUnit) &&
@@ -1271,11 +1240,8 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.useUnitCanChecks;
-    if (!IsValid(pHero) || !IsValid(pUnit))
-    {
-      ++g_linuxHeroGameplayCommandDiagnostics.useUnitCanAccepted;
-      return true;
-    }
+		if (!IsValid(pHero) || !ResolveLinuxBootstrapCommandTargetUnit(pHero->GetWorld(), pHero, pUnit))
+			return false;
 #endif
     const bool accepted = IsValid(pHero) && IsValid(pUnit) && !pHero->IsDead() && !pUnit->IsDead();
 #if defined(PW_LINUX_NULL_RENDER)
