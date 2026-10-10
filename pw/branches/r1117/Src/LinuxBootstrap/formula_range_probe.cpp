@@ -81,6 +81,50 @@ bool RunPrimeWorldLinuxFormulaRangeProbe(const char* dataRoot)
 			check(ability->GetUseRange() == 15.5f, "range is not cached across changes");
 		}
 		CObj<RangeUnit> unit = new RangeUnit;
+		for (const char* expression : {"sRange/2", "0", "", "-1", "cMissing", "1/0"})
+		{
+			NDb::Ability* raw = new NDb::Ability; raw->cooldownTime.sString = expression;
+			NDb::Ptr<NDb::Ability> db = raw;
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			const bool valid = expression[0] == 's' || expression[0] == '0' || !*expression;
+			const float expected = expression[0] == 's' ? 7.f : 0.f;
+			check(valid ? ability->GetCooldown() == expected : std::isnan(ability->GetCooldown()), "checked cooldown duration");
+			check(ability->IsReady() == valid, "invalid duration cannot be initially ready");
+			ability->RestartCooldown();
+			check(ability->IsReady() == (valid && expected == 0), "restart honors valid duration");
+			if (!valid)
+			{
+				ability->Update(10, false); ability->DropCooldown(true, 0, false);
+				check(!ability->IsReady(), "update and reset cannot bypass invalid duration");
+			}
+		}
+		{
+			NDb::Ability* raw = new NDb::Ability;
+			raw->cooldownTime.sString = "sRange/2"; raw->cooldownTimeSecondState.sString = "cMissing";
+			NDb::Ptr<NDb::Ability> db = raw;
+			CObj<NWorld::PFAbilityData> ability = new NWorld::PFAbilityData(unit.GetPtr(), db, NDb::ABILITYTYPEID_SPECIAL, false, false);
+			ability->SetState(EAbilityState::Second);
+			check(!ability->IsReady(), "second-state invalid formula isolated");
+			ability->SetState(EAbilityState::First);
+			check(ability->IsReady(), "first state still usable");
+			ability->RestartCooldown(); ability->Update(2.5f, false);
+			check(ability->GetCurrentCooldown() == 4.5f, "cooldown advances by elapsed time");
+			ability->Update(4.5f, false); check(ability->IsReady(), "cooldown expiry");
+			unit->range = 16; ability->RecalculateAndRestartCooldown();
+			check(ability->GetCurrentCooldown() == 8, "restart recalculates live duration");
+			ability->DropCooldown(false, .5f, true); ability->DropCooldown(false, 1, false);
+			check(ability->GetCurrentCooldown() == 3, "percentage then absolute reduction");
+			for (float invalid : {-1.f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()})
+			{
+				ability->Update(invalid, false); ability->DropCooldown(false, invalid, false);
+				check(ability->GetCurrentCooldown() == 3, "invalid time and reduction are inert");
+			}
+			ability->RestartCooldown(std::numeric_limits<float>::quiet_NaN());
+			check(!ability->IsReady(), "invalid explicit restart fails closed");
+			ability->RecalculateAndRestartCooldown();
+			check(ability->GetCurrentCooldown() == 8, "valid recalculation recovers invalid restart");
+			unit->range = 14;
+		}
 		for (const char* expression : {"sRange*2", "-1", "cMissing", "1/0"})
 		{
 			NDb::Ability* raw = new NDb::Ability; raw->manaCost.sString = expression;

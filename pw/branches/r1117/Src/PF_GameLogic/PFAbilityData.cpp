@@ -117,6 +117,7 @@ PFMicroAI* PFAbilityData::CreateMicroAI() const
 }
 void PFAbilityData::Update(float dt, bool fullUpdate)
 {
+	if (!std::isfinite(dt) || dt < 0) return;
   if (fullUpdate)
   {
     isInPassivePartUpdate = true;
@@ -282,7 +283,12 @@ void PFAbilityData::LevelUp()
     ApplyPassivePart(true);
 }
 
-bool PFAbilityData::IsReady() const { return cooldown[abilityState] < EPS_VALUE; }
+bool PFAbilityData::IsReady() const
+{
+	return std::isfinite(cooldownTime[abilityState]) && cooldownTime[abilityState] >= 0
+		&& std::isfinite(cooldown[abilityState]) && cooldown[abilityState] >= 0
+		&& cooldown[abilityState] < EPS_VALUE;
+}
 bool PFAbilityData::IsEnoughMana() const
 {
 	if (!IsValid(pOwner) || !std::isfinite(manaCost) || manaCost < 0)
@@ -380,20 +386,30 @@ void PFAbilityData::RecalculateManaCost()
 }
 void PFAbilityData::RecalculateCooldown()
 {
-  if (!pDBDesc || !IsValid(pOwner))
-  {
-    cooldownTime[EAbilityState::First] = 0.0f;
-    cooldownTime[EAbilityState::Second] = 0.0f;
-    return;
-  }
-
-  cooldownTime[EAbilityState::First] =
-    GetModifiedValue(pDBDesc->cooldownTime(pOwner, pOwner, this, 0.0f), NDb::ABILITYMODMODE_COOLDOWN);
-  cooldownTime[EAbilityState::Second] =
-    GetModifiedValue(pDBDesc->cooldownTimeSecondState(pOwner, pOwner, this, 0.0f), NDb::ABILITYMODMODE_COOLDOWN);
+	const float invalid = std::numeric_limits<float>::quiet_NaN();
+	if (!pDBDesc || !IsValid(pOwner))
+	{
+		cooldownTime[EAbilityState::First] = cooldownTime[EAbilityState::Second] = invalid;
+		return;
+	}
+	const auto duration = [&](const auto& expression) {
+		// Preserve the absent-field default, not the old invalid-expression fallback.
+		const float raw = expression.sString.empty() && expression.compiledString.empty() ? 0
+			: LinuxBootstrap::EvaluateUnitNumericFormula(expression.sString.c_str(), pOwner.GetPtr(), pOwner.GetPtr(), this).value;
+		if (!std::isfinite(raw) || raw < 0) return invalid;
+		const float modified = GetModifiedValue(raw, NDb::ABILITYMODMODE_COOLDOWN);
+		return std::isfinite(modified) && modified >= 0 ? modified : invalid;
+	};
+	cooldownTime[EAbilityState::First] = duration(pDBDesc->cooldownTime);
+	cooldownTime[EAbilityState::Second] = duration(pDBDesc->cooldownTimeSecondState);
 }
 void PFAbilityData::RestartCooldown(float cooldownTime_)
 {
+	if (!std::isfinite(cooldownTime_))
+	{
+		cooldownTime[abilityState] = cooldown[abilityState] = std::numeric_limits<float>::quiet_NaN();
+		return;
+	}
   if (cooldownTime_ >= 0.0f)
     cooldownTime[abilityState] = cooldownTime_;
   cooldown[abilityState] = cooldownTime[abilityState];
@@ -413,6 +429,9 @@ void PFAbilityData::DropCooldown(bool forAllStates, float cooldownReduction, boo
 }
 void PFAbilityData::DropCooldown(EAbilityState::Enum forAbilityState, float cooldownReduction, bool reduceByPercent)
 {
+	if (!std::isfinite(cooldownReduction) || cooldownReduction < 0
+		|| !std::isfinite(cooldownTime[forAbilityState]) || cooldownTime[forAbilityState] < 0
+		|| !std::isfinite(cooldown[forAbilityState]) || cooldown[forAbilityState] < 0) return;
   if (cooldownReduction == 0.0f)
   {
     cooldown[forAbilityState] = 0.0f;
