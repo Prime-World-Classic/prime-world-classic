@@ -51177,6 +51177,59 @@ size_t ResolveLinuxDynamicHeroLineupIndex(
   return static_cast<size_t>(-1);
 }
 
+#ifdef PW_LINUX_RUFFLE_INSPECTION
+/** Snapshot production hero inputs without exposing engine pointers to the VM. */
+PwRuffleHudState CaptureLinuxRuffleHero(LinuxBootstrapScreenRuntime* runtime)
+{
+	PwRuffleHudState state;
+	NWorld::PFWorld* world = GetLinuxBootstrapRuntimeWorld(runtime);
+	NWorld::PFBaseHero* hero = FindLinuxBootstrapControlledHero(runtime, world, 0, 0);
+	const NDb::Ptr<NDb::DBUIData> uiData = ResolveLoadingUiDataResource();
+	if (!hero || !hero->GetPlayer() || !IsValid(uiData)) return state;
+	auto& identity = state.hero.emplace();
+	identity.heroId = hero->GetPlayerId();
+	string name, description;
+	NStr::UnicodeToUTF8(&name, hero->GetPlayerName());
+	NStr::UnicodeToUTF8(&description, hero->GetDescription());
+	identity.heroName = name.c_str();
+	identity.heroClass = description.c_str();
+	if (hero->GetUiAvatarImage()) identity.portraitPath = hero->GetUiAvatarImage()->textureFileName.c_str();
+	identity.isMale = hero->GetZZimaSex() == ZZSEX_MALE;
+	identity.isBot = hero->GetPlayer()->IsBot();
+	identity.force = static_cast<int>(hero->GetForce(true));
+	identity.faction = hero->GetFaction();
+	identity.originalFaction = hero->GetFaction() == NDb::FACTION_NEUTRAL ? NDb::FACTION_NEUTRAL : hero->GetOriginalFaction();
+	identity.rating = hero->GetRaiting();
+	identity.damageType = hero->GetBaseAttackDamageType();
+	identity.partyId = hero->GetPartyId();
+	identity.leagueIndex = hero->GetLeagueIndex();
+	identity.ownLeaguePlace = hero->GetOwnLeaguePlace();
+	for (int i = 0; i < hero->GetLeaguePlaces().size(); ++i)
+		identity.leaguePlaces.push_back(hero->GetLeaguePlaces()[i]);
+	for (int i = 0; i < uiData->forceColors.forceColors.size(); ++i)
+	{
+		const auto& entry = uiData->forceColors.forceColors[i];
+		identity.forceColors.push_back({entry.force, entry.color.Dummy});
+	}
+	auto& values = state.values.emplace();
+	values.level = hero->GetNaftaLevel();
+	values.health = Round(hero->GetHealth());
+	values.maxHealth = Round(hero->GetMaxHealth());
+	if (!hero->IsDead() && hero->GetHealth() < 1) values.health = 1;
+	values.energy = hero->IsDead() ? 0 : Round(hero->HasCustomEnergy() ? hero->GetCustomEnergyValue() : hero->GetMana());
+	values.maxEnergy = Round(hero->HasCustomEnergy() ? hero->GetCustomEnergyMaximum() : hero->GetMaxMana());
+	values.energyRegen = hero->HasCustomEnergy() ? hero->GetCustomEnergyRegeneration() : hero->GetEnergyRegenTotal();
+	values.healthRegen = hero->GetLifeRegenTotal();
+	values.ultimateCooldown = hero->GetUltimateCD();
+	values.isVisible = hero->IsVisibleForFaction(hero->GetFaction());
+	values.isPickable = !hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDPICK);
+	values.resurrectionSeconds = static_cast<int>(hero->GetRespawnDelay());
+	values.channeling = hero->GetChannellingProgress();
+	values.isCameraLocked = false; // Native map camera is free, not hero-attached.
+	return state;
+}
+#endif
+
 bool IsLinuxDynamicMarkerForSelectedHero(
   const NWorld::LinuxDynamicWorldMarker& marker,
   const LinuxLocalMatchPreview* localMatchPreview,
@@ -64134,7 +64187,8 @@ void RenderWindowOverlayOpenGlUi(const LinuxOverlayUiRenderContext& renderContex
 					const fs::path data = (environment.baseDir.empty() ? environment.gameRoot : environment.baseDir) / "Data";
 					ruffleReady = renderContext.screenRuntime->ruffleInspection.Draw(
 						renderContext.settings->bootstrapRuffleLibrary, data.string(), width, height,
-						renderContext.inputState->lastDeltaSeconds * 1000.0);
+						renderContext.inputState->lastDeltaSeconds * 1000.0,
+						CaptureLinuxRuffleHero(renderContext.screenRuntime));
 				}
 #endif
 				const bool adventureReady = !ruffleReady && renderContext.settings->bootstrapAdventureUi &&
@@ -68168,6 +68222,7 @@ void AppendRuntimeInputLog(
 		<< " frames:" << screenRuntime.ruffleInspection.Frames()
 		<< " discardedCallbacks:" << screenRuntime.ruffleInspection.DiscardedCallbacks()
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
+		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
 		<< " error:" << screenRuntime.ruffleInspection.Error() << "\n";
 #endif
 	logFile << "  finalNativeWorldHudLayout=" << (screenRuntime.worldHudLayout.ready ? "ready" : "hidden")

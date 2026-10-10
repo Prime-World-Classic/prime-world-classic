@@ -1,4 +1,5 @@
 #include "client_inspection.h"
+#include "hud_calls.h"
 #include <GL/gl.h>
 #include <nlohmann/json.hpp>
 #include <algorithm>
@@ -8,7 +9,7 @@
 #include <stdexcept>
 
 bool PwRuffleClientInspection::Draw(const std::string& library, const std::string& data,
-	unsigned width, unsigned height, double deltaMs)
+	unsigned width, unsigned height, double deltaMs, const PwRuffleHudState& hud)
 {
 	if (library.empty() || (attempted_ && !host_.IsReady())) return false;
 	try
@@ -38,6 +39,20 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 			request(R"({"action":"step","frames":3})");
 		}
 		if (!std::isfinite(deltaMs)) throw std::runtime_error("Nonfinite inspection frame time");
+		const auto identities = PwRuffleHeroIdentityCalls(hud);
+		const auto values = PwRuffleHeroValueCalls(hud);
+		if (!identity_.empty() && identity_ != identities.dump())
+			throw std::runtime_error("Hero identity changed; reopen inspection for the new session");
+		if (identity_.empty() && !identities.empty())
+		{
+			for (const auto& call : identities) { request(call.dump().c_str()); ++hudCalls_; }
+			identity_ = identities.dump();
+		}
+		if (values_ != values.dump())
+		{
+			for (const auto& call : values) { request(call.dump().c_str()); ++hudCalls_; }
+			values_ = values.dump();
+		}
 		if (!host_.Draw(width, height, std::clamp(deltaMs, 0.0, 250.0), error_))
 			throw std::runtime_error(error_);
 		// Drain only; inspection must never execute an unbound gameplay command.

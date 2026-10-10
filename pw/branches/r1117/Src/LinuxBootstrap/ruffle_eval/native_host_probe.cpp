@@ -1,5 +1,6 @@
 #include "native_host.h"
 #include "client_inspection.h"
+#include "hud_calls.h"
 #include <EGL/egl.h>
 #include <GL/glx.h>
 #include <nlohmann/json.hpp>
@@ -120,10 +121,45 @@ int main(int argc, char** argv)
 			Check(!host.IsReady(), "Host remained open");
 			window.CheckCurrent();
 		}
+		// Distinct mock values must reach the shipped SWF's public player model.
+		PwRuffleHudState hud;
+		auto& hero = hud.hero.emplace();
+		hero.heroId = 7; hero.heroName = "Bridge QA"; hero.heroClass = "Test hero";
+		hero.isMale = true; hero.isBot = false; hero.force = 123;
+		hero.faction = 2; hero.originalFaction = 1; hero.rating = 1500;
+		hero.damageType = 0; hero.forceColors = {{0, 0xffffff}, {200, 0xff0000}};
+		auto& vitals = hud.values.emplace();
+		vitals.level = 6; vitals.health = 301; vitals.maxHealth = 907;
+		vitals.energy = 59; vitals.maxEnergy = 311; vitals.isVisible = true;
+		vitals.isPickable = true; vitals.resurrectionSeconds = -1;
+		vitals.channeling = 0; vitals.healthRegen = 2; vitals.energyRegen = 3;
+		vitals.isCameraLocked = false; vitals.ultimateCooldown = -1;
+		Check(host.Open(argv[1], argv[2], argv[3], error), error);
+		Check(host.Request(R"({"path":"LocalizationResources","method":"LocalizationComplete","args":[]})", response, error), error);
+		Check(host.Request(R"({"action":"step","frames":3})", response, error), error);
+		for (const auto& calls : {PwRuffleHeroIdentityCalls(hud), PwRuffleHeroValueCalls(hud)})
+			for (const auto& call : calls) Check(host.Request(call.dump(), response, error), error);
+		const nlohmann::json heroFields{{"HeroId", 7}, {"Level", 6}, {"CurrentHealth", 301},
+			{"MaximumHealth", 907}, {"CurrentMana", 59}, {"MaximumMana", 311}, {"IsOurHero", true}};
+		for (const auto& field : heroFields.items())
+		{
+			Check(host.Request(nlohmann::json{{"path", "Players.0"}, {"op", "get"}, {"method", field.key()},
+				{"args", nlohmann::json::array()}}.dump(), response, error), error);
+			Check(nlohmann::json::parse(response).at("value") == field.value(), "Authored hero model mismatch: " + field.key());
+		}
+		Check(host.Request(R"({"action":"stats"})", response, error), error);
+		Check(nlohmann::json::parse(response).at("runtime_errors") == 0, "Hero binding runtime errors");
+		Check(host.Reset(), "Hero test teardown failed");
 		PwRuffleClientInspection inspection;
 		glEnd(); // A mock engine error must be reported separately, not disable composition.
-		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16), inspection.Error());
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
 		Check(inspection.Frames() == 1 && inspection.PriorGlErrors() == 1, "Prior engine GL error was lost");
+		Check(inspection.HudCalls() == 5, "Hero initialization call count");
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
+		Check(inspection.HudCalls() == 5, "Unchanged hero was rebound");
+		vitals.health = 207;
+		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud), inspection.Error());
+		Check(inspection.HudCalls() == 6, "Changed health was not sent");
 		window.CheckCurrent();
 		Check(inspection.Reset(), "Inspection teardown failed");
 		PwRuffleClientInspection missing;

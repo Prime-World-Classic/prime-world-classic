@@ -9,6 +9,7 @@ if(NOT TARGET PwRuffleNativeHost)
 	find_library(PW_NATIVE_EGL_LIBRARY NAMES EGL PATHS "${PW_NATIVE_EGL_LIBDIR}" NO_DEFAULT_PATH REQUIRED)
 	find_path(NLOHMANN_JSON_INCLUDE_DIR nlohmann/json.hpp REQUIRED)
 	add_library(PwRuffleNativeHost STATIC
+		"${CMAKE_CURRENT_LIST_DIR}/hud_calls.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/client_inspection.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/native_host.cpp"
 		"${CMAKE_CURRENT_LIST_DIR}/gl_compositor.cpp")
