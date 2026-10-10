@@ -117,6 +117,7 @@
 #include "LoadingScreen.h"
 #include "LoadingScreenLogic.h"
 #include "LinuxBootstrap/session_presentation.h"
+#include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/world_hud_layout.h"
 #include "LinuxBootstrap/adventure_presentation.h"
 #include "LinuxBootstrap/adventure_flash_probe.h"
@@ -4229,6 +4230,7 @@ struct LinuxBootstrapScreenRuntime
 	// Disjoint main-loop wall-time stages; setup and the explicit sleep are excluded.
 	size_t profiledFrames = 0;
 	double profileInputMs = 0, profileUpdateMs = 0, profileAssetsMs = 0, profileDrawMs = 0;
+	LinuxBootstrap::DrawProfile drawProfile;
   StrongMT<LinuxBootstrapGameContextUi> gameContext;
   Strong<Game::DebugVarsSender> debugVarsSender;
   Strong<NGameX::SelectGameModeScreen> gameModeScreen;
@@ -53711,6 +53713,8 @@ struct LinuxOverlayUiRenderContext
 
 void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContext)
 {
+	using Profile = LinuxBootstrap::DrawProfile;
+	LinuxBootstrap::DrawProfileLaps<> profile(renderContext.screenRuntime ? &renderContext.screenRuntime->drawProfile : nullptr);
   const LinuxSelectedMapPreview* selectedMapPreview = renderContext.selectedMapPreview;
 	const bool debugGeometry = !IsLinuxWorldPresentationActive(renderContext.screenRuntime) || renderContext.settings->bootstrapWorldDebug;
   if (renderContext.screenRuntime)
@@ -53893,6 +53897,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
   size_t terrainVertices = 0;
   size_t terrainTriangles = 0;
+	profile.Mark(Profile::Setup);
   const bool terrainDrawn = DrawLinuxMapTerrainHeightmapPreview(
     selectedMapPreview->terrainHeightmap,
     centerX,
@@ -53936,6 +53941,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   }
 
   size_t terrainElementPayloads = 0;
+	profile.Mark(Profile::Surface);
   size_t terrainElementTriangles = 0;
   LinuxRendererMaterialSlotStats terrainElementMaterialStats;
   const size_t terrainElementBatches = DrawLinuxMapRendererTerrainElementPayloads(
@@ -53972,6 +53978,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
       terrainElementMaterialStats.missingGL;
   }
 
+	profile.Mark(Profile::Terrain);
 	if (debugGeometry)
 	{
   SetOpenGlColor(54, 83, 88, 150);
@@ -53999,6 +54006,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 	}
 
   size_t staticPayloads = 0;
+	profile.Mark(Profile::Debug);
   size_t staticTriangles = 0;
   LinuxRendererMaterialSlotStats staticMaterialStats;
   const size_t staticBatches = DrawLinuxMapRendererStaticMeshPayloads(
@@ -54036,6 +54044,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
   }
 
   size_t animatedPayloads = 0;
+	profile.Mark(Profile::Static);
   size_t animatedTriangles = 0;
   LinuxRendererMaterialSlotStats animatedMaterialStats;
   const size_t animatedBatches = DrawLinuxMapRendererAnimatedMeshPayloads(
@@ -54073,6 +54082,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
       animatedMaterialStats.missingGL;
   }
 
+	profile.Mark(Profile::Animated);
 	if (debugGeometry)
 	{
   size_t scriptAreas = 0;
@@ -54209,6 +54219,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
 
 	}
 
+	profile.Mark(Profile::Debug);
   NWorld::PFWorld* dynamicWorld = renderContext.screenRuntime ?
     dynamic_cast<NWorld::PFWorld*>(renderContext.screenRuntime->transceiverWorld.GetPtr()) :
     0;
@@ -54288,6 +54299,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
       renderContext.overlay ? renderContext.overlay->heroPreviewDiffuseTextureFailedSourceFiles.size() : 0;
   }
 
+	profile.Mark(Profile::Units);
   DrawLinuxMapPreviewSelectedTarget(
     selectedMapPreview,
     dynamicWorld,
@@ -54317,6 +54329,7 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.elapsedSeconds);
 
   glDisable(GL_DEPTH_TEST);
+	profile.Mark(Profile::Overlays);
 }
 
 unsigned int HashLinuxHeroPreviewString(const std::string& value)
@@ -65117,7 +65130,9 @@ bool DrawWindowOverlayOpenGl(
       UI::PresentFrame(uiSyncTime, true);
     }
     MaybeCaptureLinuxOpenGlFrame(settings, screenRuntime, elapsedSeconds, width, height);
+    LinuxBootstrap::DrawProfileLaps<> swapProfile(screenRuntime ? &screenRuntime->drawProfile : nullptr);
     renderBootstrap->renderingInterface->Present();
+    swapProfile.Mark(LinuxBootstrap::DrawProfile::Swap);
   }
   else
   {
@@ -65130,7 +65145,9 @@ bool DrawWindowOverlayOpenGl(
       UI::PresentFrame(uiSyncTime, true);
     }
     MaybeCaptureLinuxOpenGlFrame(settings, screenRuntime, elapsedSeconds, width, height);
+    LinuxBootstrap::DrawProfileLaps<> swapProfile(screenRuntime ? &screenRuntime->drawProfile : nullptr);
     NMainFrame::SwapOpenGLBuffers();
+    swapProfile.Mark(LinuxBootstrap::DrawProfile::Swap);
   }
 
   return true;
@@ -68691,6 +68708,12 @@ void AppendRuntimeInputLog(
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
 		<< " input:" << screenRuntime.profileInputMs << " update:" << screenRuntime.profileUpdateMs
 		<< " assets:" << screenRuntime.profileAssetsMs << " draw:" << screenRuntime.profileDrawMs << "\n";
+	for (int stage = 0; stage < LinuxBootstrap::DrawProfile::Count; ++stage)
+	{
+		const auto& sample = screenRuntime.drawProfile.samples[stage];
+		logFile << "  finalNativeDrawStage." << LinuxBootstrap::DrawProfile::Name(static_cast<LinuxBootstrap::DrawProfile::Stage>(stage))
+			<< "=calls:" << sample.calls << " totalMs:" << sample.totalMs << " peakMs:" << sample.peakMs << "\n";
+	}
 	logFile << "  finalAdventureUi=" << (screenRuntime.adventureUi.IsReady() ? "ready" : "inactive")
 		<< " attempted:" << screenRuntime.adventureUi.WasAttempted()
 		<< " frames:" << screenRuntime.adventureUi.GetFrames() << "\n";

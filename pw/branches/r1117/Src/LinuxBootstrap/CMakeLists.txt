@@ -893,6 +893,10 @@ add_executable(
 )
 
 enable_testing()
+add_executable(PrimeWorldLinuxDrawProfileProbe draw_profile_probe.cpp)
+target_compile_features(PrimeWorldLinuxDrawProfileProbe PRIVATE cxx_std_17)
+add_test(NAME LinuxDrawProfile COMMAND PrimeWorldLinuxDrawProfileProbe)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxDrawProfileProbe)
 add_executable(PrimeWorldLinuxTalentCostProbe talent_cost_probe.cpp)
 target_compile_features(PrimeWorldLinuxTalentCostProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxTalentCost COMMAND PrimeWorldLinuxTalentCostProbe)
