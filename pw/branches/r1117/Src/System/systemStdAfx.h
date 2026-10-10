@@ -42,7 +42,11 @@
 
 
 #ifndef STARFORCE_PROTECTED
-  #if( defined(_SHIPPING ) && defined(STATIC_LIB) )
+  // x64: StarForce (sakijapi.lib) существует только для x86, а вызовы PSA_* из
+  // System/StarForce/StarForce.cpp без этой либы не слинковать. Сам .cpp уже
+  // поддерживает вариант «без защиты» (все тела под #ifdef STARFORCE_PROTECTED),
+  // поэтому на x64 просто не включаем режим защиты. См. PLAN_client_modern.md, этап 3.
+  #if( defined(_SHIPPING ) && defined(STATIC_LIB) ) && !defined(_M_X64)
     #define STARFORCE_PROTECTED
   #endif
 #endif  

@@ -8,7 +8,13 @@
 #include "Version.h"
 #include "FileSystem/FilePath.h"
 #include "FileSystem/FileUtils.h"
+#if !defined(_M_X64)
 #include <CrashRpt.h>
+#else
+// x64: CrashRpt под x64 не собран (его сборка требует VC.ATL, см. PLAN_client_modern.md,
+// этап 3). Обёртка остаётся на месте, но обработчик не регистрируется, а
+// постобработка сбоя (запись exception-лога) работает. Возврат — после VC.ATL.
+#endif
 
 
 namespace CrashRptWrapper
@@ -20,6 +26,11 @@ static bool s_installed = false;
 
 void InstallForProcess( const char * uploadUrl, bool useBinaryEncoding, bool noGui, const char * productTitleOverride, const char * privacyPolicyUrl, bool enableLogging /*= false*/, bool sendQueuedReports /*= true*/ )
 {
+#if defined(_M_X64)
+  (void)uploadUrl; (void)useBinaryEncoding; (void)noGui; (void)productTitleOverride;
+  (void)privacyPolicyUrl; (void)enableLogging; (void)sendQueuedReports;
+  return;
+#else
   if ( s_installed )
     return;
 
@@ -103,6 +114,7 @@ void InstallForProcess( const char * uploadUrl, bool useBinaryEncoding, bool noG
   crAddProperty( "ComputerName", computerName );
 
   s_installed = true;
+#endif // _M_X64
 }
 
 
@@ -112,7 +124,9 @@ void UninstallFromProcess()
   if ( !s_installed )
     return;
 
+#if !defined(_M_X64)
   crUninstall();
+#endif
 
   s_installed = false;
 }
@@ -134,7 +148,9 @@ void UninstallFromCurrentThread()
   if ( !s_installed )
     return;
 
+#if !defined(_M_X64)
   crUninstallFromCurrentThread();
+#endif
 }
 
 
@@ -142,7 +158,9 @@ void UninstallFromCurrentThread()
 void AddFileToReport( const char * filename, const char * description )
 {
   if ( s_installed )
+#if !defined(_M_X64)
     crAddFile2( filename, NULL, description, CR_AF_MAKE_FILE_COPY );
+#endif
 }
 
 
@@ -150,7 +168,9 @@ void AddFileToReport( const char * filename, const char * description )
 void AddTagToReport( const char * name, const char * value )
 {
   if ( s_installed )
+#if !defined(_M_X64)
     crAddProperty( name, value );
+#endif
 }
 
 
@@ -165,9 +185,13 @@ static BOOL WINAPI CrashCallback( PEXCEPTION_POINTERS pExceptionPointers, LPVOID
   string excepFilename;
   NBSU::WriteExceptionLogFile( t, pExceptionPointers, entries, &excepFilename );
 
+#if !defined(_M_X64)
   crAddFile2( excepFilename.c_str(), NULL, "Exception Description", CR_AF_MAKE_FILE_COPY );
+#endif
 #ifndef _SHIPPING
+#if !defined(_M_X64)
   crAddScreenshot( CR_AS_MAIN_WINDOW );
+#endif
 #endif _SHIPPING
 
   return TRUE;

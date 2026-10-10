@@ -82,10 +82,10 @@ def q(p):
 # --- x64: вендорские имена/пути из vcproj описаны для x86 -------------------
 # При PW_MACHINE=X64 подменяем только то, что реально есть в дереве (проверено
 # по Vendor/): DirectX Lib/x64, DTW lib/amd64, FMOD x64-либы. Пересобранное
-# нашим скриптом (Tools/VendorX64/build_vendor_x64.sh) кладётся в <dir>/x64 рядом
-# с x86-ной либой: zlib/lib/x64, jpeglib/lib/x64, JsonCpp/lib/Release/x64.
-# Остальное (ACE, Terabit, Tamarin, libcurl, OpenSSL, freetype, CrashRpt,
-# CxxTest) под x64 ещё не собрано — см. PLAN_client_modern.md, этап 3.
+# скриптом Tools/VendorX64/build_vendor_x64.sh кладётся в <dir>/x64 рядом с
+# x86-ной либой: zlib, jpeglib, JsonCpp, ACE_wrappers, Terabit.
+# Ещё не собрано: Tamarin, freetype, OpenSSL, libcurl, CrashRpt (нужен VC.ATL),
+# CensorDll — см. PLAN_client_modern.md, этап 3.
 X64_LIB_RENAME = {
     "fmodex_vc": "fmodex64_vc",
     "fmodexl_vc": "fmodexl64_vc",
@@ -93,18 +93,31 @@ X64_LIB_RENAME = {
     "fmod_event_net": "fmod_event_net64",
     # Steam: в вендоре есть redistributable_bin/win64/steam_api64.lib
     "steam_api": "steam_api64",
-    # GlU32.Lib — x86-ный GLU; под x64 берём Glu32.lib из Windows SDK (он в LIB)
-    "glu32": "Glu32",
 }
 X64_DIR_REMAP = (("Lib/x86", "Lib/x64"), ("lib/i386", "lib/amd64"), ("lib/x86", "lib/x64"),
                  ("redistributable_bin", "redistributable_bin/win64"))
+# Каталоги, которые под x64 из поиска убираются целиком: Vendor/Gl/lib содержит
+# только x86-ный GlU32.Lib, а x64-ный GlU32.Lib есть в Windows SDK (он в LIB), так
+# что поиск по вендору лишь подсовывает либу чужой архитектуры (LNK4272 +
+# незакрытые gluNewTess/gluTessBegin*).
+X64_LINKDIR_DROP = ("Vendor/Gl/lib",)
 # x86-only вендор, под x64 отсутствует в дереве и не пересобирается:
 #   gtrtst32.lib — DirectShow-хелпер (Vendor/DirectShow/Lib): ссылок из Src/ нет;
-#   sakijapi.lib — StarForce (Vendor/StarForce): x64-дистрибутива нет, но вызовы
-#   PSA_* есть в Src/System/StarForce/StarForce.cpp (строки 73/104/110/117/148) —
-#   под x64 эти места надо глушить (_M_X64-guard в StarForce.cpp), иначе LNK2019 на PSA_*.
+#   sakijapi.lib — StarForce: x64-дистрибутива нет; вызовы PSA_* в
+#     Src/System/StarForce/StarForce.cpp закрыты тем, что на x64 не определяется
+#     STARFORCE_PROTECTED (gate в System/systemStdAfx.h) — все тела функций там
+#     уже под #ifdef STARFORCE_PROTECTED, вариант «без защиты» компилируется;
+#   cxxtest.lib — в сборке клиента (и x86, и x64) НОЛЬ *.xtest.cpp TU, либа
+#     в AdditionalDependencies мертва;
+#   comsuppw/comsuppwd — удалены из VC с VS2017 15.3 (_com_error теперь в
+#     <comdef.h>); в тулчейне 14.44 их нет физически.
 # Возврат любой либы — PW_DROP_LIBS="".
-X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32"}
+X64_LIB_DROP_DEFAULT = {"sakijapi", "gtrtst32", "comsuppw", "comsuppwd", "cxxtest"}
+# UCRT (x64) не экспортирует легаси-имена CRT, которые использует код клиента
+# (System/PersistEvents.cpp — stricmp, FileSystem/FilePileLoader.cpp — strnicmp;
+# заголовки их объявляют, либы нет). /ALTERNATENAME закрывает без правок кода.
+X64_LINK_ALTERNATES = ("/ALTERNATENAME:stricmp=_stricmp",
+                       "/ALTERNATENAME:strnicmp=_strnicmp")
 
 
 def x64_lib(name):
@@ -371,7 +384,8 @@ class Proj:
             drop |= X64_LIB_DROP_DEFAULT
             self.link_libs = [x64_lib(x) for x in self.link_libs
                               if os.path.splitext(os.path.basename(x))[0].lower() not in drop]
-            self.link_dirs = [x64_libdir(d, R1117) for d in self.link_dirs]
+            self.link_dirs = [x64_libdir(d, R1117) for d in self.link_dirs
+                              if not any(d.endswith(s) for s in X64_LINKDIR_DROP)]
         # PW_DROP_NODEFAULT — убрать из vcproj-списка «не линковать эти CRT»:
         # x64-сборка идёт на /MT (статический CRT), а vcproj запрещает libcmt.lib,
         # потому что сам он /MD.
@@ -555,6 +569,8 @@ def main():
     elif pwg.laa == "1":
         lf.append("/LARGEADDRESSAWARE:NO")
     lf += ["/NODEFAULTLIB:" + x for x in pwg.nodefault]
+    if os.environ.get("PW_MACHINE", "X86") == "X64":
+        lf += list(X64_LINK_ALTERNATES)
     top.append("target_link_options(PW_Game PRIVATE " + " ".join(lf) + ")")
     top.append("set_target_properties(PW_Game PROPERTIES OUTPUT_NAME PW_Game)")
 
