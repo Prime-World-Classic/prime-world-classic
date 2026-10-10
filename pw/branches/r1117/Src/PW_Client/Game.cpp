@@ -119,6 +119,7 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "LinuxBootstrap/frame_pose_cache.h"
 #include "LinuxBootstrap/interactive_clock.h"
 #include "System/LinuxKeyInput.h"
 #include "LinuxBootstrap/world_hud_layout.h"
@@ -340,6 +341,7 @@ struct LinuxAnimatedMapResource
 struct LinuxWindowOverlay
 {
 	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
+	std::size_t dynamicPoseBuilds = 0, dynamicPoseHits = 0;
   struct OpenGlTexture
   {
     GLuint texture;
@@ -51239,7 +51241,8 @@ bool DrawLinuxHeroMeshPreview(
   unsigned char accentG,
   unsigned char accentB,
   double elapsedSeconds,
-  bool drawWireframe
+  bool drawWireframe,
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses = nullptr
 );
 
 bool IsLinuxMapHeroMeshPreviewReady(const LinuxSelectedHeroDbPreview* heroPreview)
@@ -52268,7 +52271,8 @@ bool DrawLinuxMapHeroMeshReplica(
   double elapsedSeconds,
   unsigned char red,
   unsigned char green,
-  unsigned char blue
+  unsigned char blue,
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
 )
 {
   if (!overlay ||
@@ -52298,7 +52302,7 @@ bool DrawLinuxMapHeroMeshReplica(
     green,
     blue,
     elapsedSeconds,
-    false);
+    false, poses);
   glPopMatrix();
   return drawn;
 }
@@ -52314,7 +52318,8 @@ bool DrawLinuxMapUnitMeshReplica(
   double elapsedSeconds,
   unsigned char red,
   unsigned char green,
-  unsigned char blue
+  unsigned char blue,
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
 )
 {
   if (!overlay ||
@@ -52351,7 +52356,7 @@ bool DrawLinuxMapUnitMeshReplica(
     green,
     blue,
     elapsedSeconds,
-    false);
+    false, poses);
   glPopMatrix();
   return drawn;
 }
@@ -52835,6 +52840,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   size_t statusBars = 0;
   size_t directionArrows = 0;
   size_t heroMeshCandidates = 0;
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex> poses;
   size_t creepMeshCandidates = 0;
   size_t heroMeshes = 0;
   size_t heroMeshTriangleCount = 0;
@@ -53095,7 +53101,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
             elapsedSeconds,
             red,
             green,
-            blue))
+            blue, &poses))
       {
         ++heroMeshes;
         heroMeshTriangleCount += markerHeroPreview->sceneAsset.meshPreview.drawnTriangleCount;
@@ -53140,7 +53146,7 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
             elapsedSeconds,
             red,
             green,
-            blue))
+            blue, &poses))
       {
         ++creepMeshes;
         creepMeshTriangleCount += markerUnitPreview->sceneAsset.meshPreview.drawnTriangleCount;
@@ -53164,6 +53170,11 @@ size_t DrawLinuxMapDynamicWorldMarkerPreview(
   if (creepMeshReplicas) *creepMeshReplicas = creepMeshes;
   if (creepMeshTriangles) *creepMeshTriangles = creepMeshTriangleCount;
   if (selectedHeroBadges) *selectedHeroBadges = selectedHeroBadgeCount;
+	if (overlay)
+	{
+		overlay->dynamicPoseBuilds += poses.builds;
+		overlay->dynamicPoseHits += poses.hits;
+	}
   return drawn;
 }
 
@@ -54873,7 +54884,8 @@ bool DrawLinuxHeroMeshPreview(
   unsigned char accentG,
   unsigned char accentB,
   double elapsedSeconds,
-  bool drawWireframe
+  bool drawWireframe,
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex>* poses
 )
 {
   if (!heroPreview ||
@@ -54892,21 +54904,24 @@ bool DrawLinuxHeroMeshPreview(
 		diffuseTextures.push_back(ResolveLinuxHeroPreviewDiffuseTexture(overlay, heroPreview, index));
   const float assetHeight = std::max(0.1f, meshPreview.maxZ - meshPreview.minZ);
   const float scale = 5.2f / assetHeight;
-  std::vector<Matrix43> skinMatrices;
-  const bool animatedSkinning =
-    ComputeLinuxHeroAnimationSkinMatrices(heroPreview->sceneAsset, elapsedSeconds, &skinMatrices);
-  const std::vector<Matrix43>* skinMatricesPtr = animatedSkinning ? &skinMatrices : 0;
+	LinuxBootstrap::FramePoseCache<LinuxHeroMeshPreviewVertex> localPoses;
+	const auto& vertices = (poses ? poses : &localPoses)->Get(&heroPreview->sceneAsset, elapsedSeconds, [&]() {
+		std::vector<Matrix43> matrices;
+		const bool animated = ComputeLinuxHeroAnimationSkinMatrices(heroPreview->sceneAsset, elapsedSeconds, &matrices);
+		std::vector<LinuxHeroMeshPreviewVertex> result;
+		result.reserve(meshPreview.triangleVertices.size());
+		for (const auto& vertex : meshPreview.triangleVertices)
+			result.push_back(BuildLinuxHeroMeshPreviewRenderVertex(vertex, animated ? &matrices : nullptr));
+		return result;
+	});
   GLuint currentTexture = 0;
   bool batchOpen = false;
   bool textureEnabled = false;
   for (size_t i = 0; i + 2 < meshPreview.triangleVertices.size(); i += 3)
   {
-    const LinuxHeroMeshPreviewVertex a =
-      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i], skinMatricesPtr);
-    const LinuxHeroMeshPreviewVertex b =
-      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 1], skinMatricesPtr);
-    const LinuxHeroMeshPreviewVertex c =
-      BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 2], skinMatricesPtr);
+		const auto& a = vertices[i];
+		const auto& b = vertices[i + 1];
+		const auto& c = vertices[i + 2];
     size_t textureIndex = a.diffuseTextureIndex;
     if (textureIndex == kLinuxHeroPreviewNoDiffuseTexture ||
         textureIndex != b.diffuseTextureIndex ||
@@ -54984,12 +54999,9 @@ bool DrawLinuxHeroMeshPreview(
     glBegin(GL_LINES);
     for (size_t i = 0; i + 2 < meshPreview.triangleVertices.size(); i += 3)
     {
-      const LinuxHeroMeshPreviewVertex a =
-        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i], skinMatricesPtr);
-      const LinuxHeroMeshPreviewVertex b =
-        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 1], skinMatricesPtr);
-      const LinuxHeroMeshPreviewVertex c =
-        BuildLinuxHeroMeshPreviewRenderVertex(meshPreview.triangleVertices[i + 2], skinMatricesPtr);
+			const auto& a = vertices[i];
+			const auto& b = vertices[i + 1];
+			const auto& c = vertices[i + 2];
       EmitLinuxHeroMeshPreviewVertex(meshPreview, a, scale);
       EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
       EmitLinuxHeroMeshPreviewVertex(meshPreview, b, scale);
@@ -68715,6 +68727,8 @@ void AppendRuntimeInputLog(
 	logFile << "  finalAnimatedMapCache=builds:" << overlay.animatedMapResources.builds
 		<< " hits:" << overlay.animatedMapResources.hits << " failures:" << overlay.animatedMapResources.failures
 		<< " entries:" << overlay.animatedMapResources.Size() << "\n";
+	logFile << "  finalDynamicPoseCache=builds:" << overlay.dynamicPoseBuilds
+		<< " hits:" << overlay.dynamicPoseHits << "\n";
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
 	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
