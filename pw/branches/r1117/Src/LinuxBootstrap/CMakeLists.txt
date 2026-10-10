@@ -893,6 +893,26 @@ add_executable(
 )
 
 enable_testing()
+# Isolate the checked parser from legacy engine precompiled headers and flags.
+add_library(PrimeWorldLinuxNumericFormula STATIC
+	formula_numeric.cpp
+	third_party/muparser/src/muParser.cpp
+	third_party/muparser/src/muParserBase.cpp
+	third_party/muparser/src/muParserBytecode.cpp
+	third_party/muparser/src/muParserCallback.cpp
+	third_party/muparser/src/muParserError.cpp
+	third_party/muparser/src/muParserTokenReader.cpp)
+target_compile_features(PrimeWorldLinuxNumericFormula PUBLIC cxx_std_17)
+target_compile_definitions(PrimeWorldLinuxNumericFormula PRIVATE MUPARSER_STATIC)
+target_include_directories(PrimeWorldLinuxNumericFormula PRIVATE third_party/muparser/include)
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	target_compile_options(PrimeWorldLinuxNumericFormula PRIVATE -O2 -fexceptions -fno-fast-math)
+endif()
+add_executable(PrimeWorldLinuxNumericFormulaProbe formula_numeric_probe.cpp)
+target_link_libraries(PrimeWorldLinuxNumericFormulaProbe PRIVATE PrimeWorldLinuxNumericFormula Threads::Threads)
+add_test(NAME LinuxNumericFormula COMMAND PrimeWorldLinuxNumericFormulaProbe)
+set_tests_properties(LinuxNumericFormula PROPERTIES TIMEOUT 30)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxNumericFormulaProbe)
 add_executable(PrimeWorldLinuxInteractiveClockProbe interactive_clock_probe.cpp)
 target_compile_features(PrimeWorldLinuxInteractiveClockProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxInteractiveClock COMMAND PrimeWorldLinuxInteractiveClockProbe)
