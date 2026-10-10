@@ -1,5 +1,9 @@
 ﻿<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <!-- E1a: нативные C++/CLI-сборки редактора пока берутся готовыми (docs/x64/EDITOR.md) -->
+    <EditorNativeBinDir Condition="'$(EditorNativeBinDir)' == ''">$(MSBuildThisFileDirectory)..\..\Bin_Original\</EditorNativeBinDir>
+  </PropertyGroup>
+  <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">Win32</Platform>
     <ProjectGuid>{2521247A-CE57-4FAA-BBF0-3158313680F0}</ProjectGuid>
@@ -7,7 +11,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>EditorPlugins</RootNamespace>
     <AssemblyName>EditorPlugins</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Win32' ">
     <DebugSymbols>True</DebugSymbols>
@@ -20,7 +24,7 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Win32' ">
@@ -33,7 +37,7 @@
     <WarningLevel>4</WarningLevel>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Shipping|Win32' ">
@@ -75,9 +79,9 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
-    <Reference Include="WeifenLuo.WinFormsUI.Docking, Version=2.1.6643.41644, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="WeifenLuo.WinFormsUI.Docking, Version=2.3.1.31872, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\Vendor\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
+      <HintPath>..\..\Vendor\WinFormsUI\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -693,10 +697,10 @@
       <Project>{AEB9B15A-6C51-4B9B-8838-7254064A4E98}</Project>
       <Name>EditorLib</Name>
     </ProjectReference>
-    <ProjectReference Include="..\EditorNative\EditorNative.vcproj">
-      <Project>{8661805A-1298-4D53-8666-1FB9922886AF}</Project>
-      <Name>EditorNative</Name>
-    </ProjectReference>
+    <Reference Include="EditorNative">
+      <HintPath>$(EditorNativeBinDir)EditorNative.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <ProjectReference Include="..\libdb.NET\libdb.NET.csproj">
       <Project>{2369C873-8C70-4197-8CAB-67D34C9D5412}</Project>
       <Name>libdb.NET</Name>
@@ -705,10 +709,10 @@
       <Project>{5DFA0790-582A-4A71-93AE-A5D31AA7864F}</Project>
       <Name>MayaExeInteraction</Name>
     </ProjectReference>
-    <ProjectReference Include="..\PF_EditorNative\PF_EditorNative.vcproj">
-      <Project>{8661805A-1298-4D53-8666-1FB9922886AE}</Project>
-      <Name>PF_EditorNative</Name>
-    </ProjectReference>
+    <Reference Include="PF_EditorNative">
+      <HintPath>$(EditorNativeBinDir)PF_EditorNative.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <ProjectReference Include="..\PF_Types.DBTypes\PF_Types.DBTypes.csproj">
       <Project>{66E75FE1-7475-4096-B532-F8F8C033FE9A}</Project>
       <Name>PF_Types.DBTypes</Name>

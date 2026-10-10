@@ -49,9 +49,10 @@ namespace libdb.Diagnostics
 			int lineNumber = -1;
 
 			StackTrace stack = new StackTrace( 1, true );
-			if ( stack.FrameCount > 0 )
+			// CLR 4 JIT встраивает TraceXxx в вызывающий метод, и второго кадра может не быть
+			StackFrame frame = stack.FrameCount > 1 ? stack.GetFrame( 1 ) : null;
+			if ( frame != null )
 			{
-				StackFrame frame = stack.GetFrame( 1 );
 				fileName = frame.GetFileName();
 				lineNumber = frame.GetFileLineNumber();
 			}

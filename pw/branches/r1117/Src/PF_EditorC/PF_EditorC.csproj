@@ -1,5 +1,9 @@
 ﻿<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
+    <!-- E1a: нативные C++/CLI-сборки редактора пока берутся готовыми (docs/x64/EDITOR.md) -->
+    <EditorNativeBinDir Condition="'$(EditorNativeBinDir)' == ''">$(MSBuildThisFileDirectory)..\..\Bin_Original\</EditorNativeBinDir>
+  </PropertyGroup>
+  <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">Win32</Platform>
     <ProjectGuid>{86950324-2A27-4EE5-91ED-E6D24CEEE253}</ProjectGuid>
@@ -22,7 +26,7 @@
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|Win32' ">
     <DebugSymbols>False</DebugSymbols>
@@ -34,7 +38,7 @@
     <WarningLevel>4</WarningLevel>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|Win32' ">
@@ -48,7 +52,7 @@
     <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     <UseVSHostingProcess>False</UseVSHostingProcess>
     <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Shipping|Win32' ">
@@ -88,6 +92,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="..\CommonAssemblyInfo.cs">
       <Link>CommonAssemblyInfo.cs</Link>
       <SubType>Code</SubType>
@@ -107,10 +114,10 @@
       <Project>{AEB9B15A-6C51-4B9B-8838-7254064A4E98}</Project>
       <Name>EditorLib</Name>
     </ProjectReference>
-    <ProjectReference Include="..\EditorNative\EditorNative.vcproj">
-      <Project>{8661805A-1298-4D53-8666-1FB9922886AF}</Project>
-      <Name>EditorNative</Name>
-    </ProjectReference>
+    <Reference Include="EditorNative">
+      <HintPath>$(EditorNativeBinDir)EditorNative.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <ProjectReference Include="..\EditorPlugins\EditorPlugins.csproj">
       <Project>{2521247A-CE57-4FAA-BBF0-3158313680F0}</Project>
       <Name>EditorPlugins</Name>

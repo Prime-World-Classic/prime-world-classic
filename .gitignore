@@ -207,3 +207,5 @@ pw/branches/r1117/Src/Game/PF/UniServer/UniServerApp.auto.bak-debug/
 # по Vendor/*/lib/x64 — их коммитим, как x86-ные .lib в дереве)
 pw/branches/r1117/Tools/VendorX64/build/
 pw/branches/r1117/Tools/VendorX64/vendor_env.cmd
+# рабочая папка редактора (Tools/EditorBuild/build_editor.ps1): Bin + локальная копия Profiles
+pw/branches/r1117/_EditorRun/

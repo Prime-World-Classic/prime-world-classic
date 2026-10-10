@@ -120,11 +120,6 @@
   <metadata name="objectsBrowserToolStrip.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>351, 15</value>
   </metadata>
-  <data name="objectsBrowserControl.ExtensionsFilter" mimetype="application/x-microsoft.net.object.binary.base64">
-    <value>
-        app_key_binary
-</value>
-  </data>
   <metadata name="myBreadcrumbControl1.TrayLocation" type="System.Drawing.Point, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
     <value>523, 15</value>
   </metadata>
