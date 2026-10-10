@@ -489,11 +489,10 @@ def main():
     # CRT-зависимость манифеста — по компилятору/мишени: VS2008/x86 — VC90.CRT,
     # VS2022 — VC143.CRT (для x64-сборок этапа 3)
     if os.environ.get("PW_MACHINE", "X86") == "X64":
+        # CRT-зависимости в манифесте НЕТ: и клиент, и весь вендор под x64 собраны
+        # /MT (в тулчейне нет msvcprt.lib), поэтому side-by-side сборка VC143.CRT
+        # дала бы ошибку активации контекста на машине без VC++2022
         crt_and_priv = (
-            '<dependency><dependentAssembly><assemblyIdentity type="win32" '
-            'name="Microsoft.VC143.CRT" version="14.44.35207" '
-            'processorArchitecture="x64" publicKeyToken="1fc8b3b9a1e18e3b"/>'
-            '</dependentAssembly></dependency>'
             '<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security>'
             '<requestedPrivileges><requestedExecutionLevel level="asInvoker" '
             'uiAccess="false"/></requestedPrivileges></security></trustInfo>\n')
@@ -510,8 +509,13 @@ def main():
     manifest_res = None
     if os.path.isfile(app_manifest):
         text = open(app_manifest, encoding="utf-8-sig").read()
+        if os.environ.get("PW_MACHINE", "X86") == "X64":
+            # базовый Application.manifest написан под x86 (assemblyIdentity и
+            # Common-Controls с processorArchitecture="X86") — без amd64 манифест
+            # к x64-экзешнику не применяется
+            text = text.replace('processorArchitecture="X86"', 'processorArchitecture="amd64"')
         merged = text.replace("</assembly>", crt_and_priv + "</assembly>")
-        if "Microsoft.VC90.CRT" not in merged:
+        if "requestedExecutionLevel" not in merged:
             merged = text
         write_if_changed(os.path.join(out, "wine_app.manifest"), merged)
         write_if_changed(os.path.join(out, "wine_manifest.rc"), '1 24 "wine_app.manifest"\n')
@@ -519,6 +523,7 @@ def main():
         manifest_cmd = ('add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res\n'
                         '  COMMAND rc /fo${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res wine_manifest.rc\n'
                         '  DEPENDS ${CMAKE_CURRENT_LIST_DIR}/wine_manifest.rc\n'
+                        '          ${CMAKE_CURRENT_LIST_DIR}/wine_app.manifest\n'
                         '  WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR})')
         manifest_res = "${CMAKE_CURRENT_BINARY_DIR}/wine_manifest.res"
 
