@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.14.1`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.14.2`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -155,6 +155,31 @@ Setup, world rendering, frame pacing and other client work are not draw timings.
 discovery and drawing/swap stages across the complete native main loop. Its draw
 stage includes the Ruffle work above; explicit frame sleep and pre-loop startup
 are excluded. Compare the same map, viewport, script and build configuration.
+
+### Optimized Native Builds (0.14.2)
+
+Use the existing compiler optimization paths before changing GPU transport:
+
+```sh
+export CARGO_HOME=/tmp/pw-ruffle-cargo
+export CARGO_TARGET_DIR=/tmp/pw-ruffle-target
+bash pw/branches/r1117/Src/LinuxBootstrap/ruffle_eval/build_native.sh /tmp/pw-ruffle-surface-final 4
+```
+
+The script validates the pinned checkout using `prepare.py`, then builds offline
+with locked dependencies and the Prime World mouse feature. It explicitly uses
+release optimization with `panic=unwind` and overflow checks. Upstream's default
+release `panic=abort` bypasses the C ABI panic boundary and is not this preset.
+The resulting library is `$CARGO_TARGET_DIR/release/examples/libpw_bridge.so`.
+Existing debug libraries remain usable for comparison; the script never downloads
+sources or changes the default client backend. Mock-tool tests pin its arguments,
+environment overrides, invalid-job rejection and preparation-failure behavior.
+
+Linux CMake's `PW_LINUX_OPTIMIZE_PRESENTATION` defaults ON and applies `-O2` only
+to the native bootstrap presentation and isolated C++ Ruffle host. It does not
+define `NDEBUG`, change Windows projects, or optimize the legacy world closure.
+Set it OFF for unoptimized debugging/comparisons. Ruffle inspection itself remains
+default-OFF. Use the release DSO explicitly when launching an inspection client.
 
 ### Client Inspection (0.14.0)
 

@@ -1538,6 +1538,11 @@ find_package(JPEG REQUIRED)
 find_package(PNG REQUIRED)
 find_package(ZLIB REQUIRED)
 
+option(PW_LINUX_OPTIMIZE_PRESENTATION "Optimize the native presentation without disabling assertions" ON)
+if(PW_LINUX_OPTIMIZE_PRESENTATION AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+	set_property(SOURCE ../PW_Client/Game.cpp APPEND PROPERTY COMPILE_OPTIONS -O2)
+endif()
+
 option(PW_LINUX_RUFFLE_INSPECTION "Enable explicit native Ruffle combat inspection (not the default HUD)" OFF)
 if(PW_LINUX_RUFFLE_INSPECTION)
 	include("${CMAKE_CURRENT_SOURCE_DIR}/ruffle_eval/native_host.cmake")
