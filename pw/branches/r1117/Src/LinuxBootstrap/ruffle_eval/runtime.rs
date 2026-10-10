@@ -302,7 +302,8 @@ impl Host {
 				Ok(json!({"frames":frames}))
 			}
 			"stats" => Ok(
-				json!({"handles":self.handles.len(), "runtime_errors":self.errors.load(Ordering::Relaxed)}),
+				json!({"handles":self.handles.len(), "runtime_errors":self.errors.load(Ordering::Relaxed),
+					"primeworld_mouse_events":cfg!(feature = "primeworld_mouse_events")}),
 			),
 			"capture" => {
 				let output = request["path"].as_str().ok_or("Missing output path")?;

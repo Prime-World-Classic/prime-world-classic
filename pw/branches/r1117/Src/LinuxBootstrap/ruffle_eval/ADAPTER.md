@@ -5,7 +5,7 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.13.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.14.0`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
@@ -114,7 +114,29 @@ Paid currency is zero in this offline bootstrap, which has no account/payment
 service; that is not a live-account balance binding. Hidden compatibility HUD and
 minimap hit regions no longer intercept world clicks while Ruffle is active.
 
-### Client Inspection (0.13.0)
+### Local Minimap Commands (0.14.0)
+
+Interactive sessions project the original minimap's normalized coordinates using
+the last composed bitmap's bounds and north-up orientation. Right press submits
+one ground move; left press/drag repositions the native camera. Outside-circle,
+invalid, repeated or canceled gestures cannot acquire another destination. Focus,
+resize and teardown publish an input epoch so native gesture state resets with
+the callback queue. Pointer leave preserves completed prior-frame callbacks, then
+cancels held gestures; focus loss still discards pending requests. Signals,
+camera-lock toggle and minimap ability targeting are
+not connected. Interactive mode retains manual rotation/zoom but disables the
+automatic rotating-map preview. Scripted native checks accept `x,y:right`.
+
+The shipped ActionScript expects Tamarin's `mouseRightDown`, `mouseRightUp` and
+`clickRight`, not standard Flash's right-button names. `mouse_events.patch` adds
+the **default-OFF** Cargo feature `primeworld_mouse_events` to the pinned Ruffle
+checkout. Build the Prime World DSO with it enabled; standard builds retain their
+original event names. The client checks the explicit capability in `stats` and
+falls back with a diagnostic when an older/noncompatible DSO is supplied. No game
+SWF or Windows event implementation is rewritten; this is not double-right-click
+support or a general Ruffle event renaming change.
+
+### Client Inspection (0.14.0)
 
 The Linux CMake option `PW_LINUX_RUFFLE_INSPECTION` defaults to OFF. When enabled,
 `--bootstrap-ruffle-library /absolute/path/libpw_bridge.so` requests the original
@@ -125,7 +147,7 @@ argument, the existing Linux path remains active and no Ruffle host is opened.
 The inspection initializes localization/window visibility, advances the startup
 timeline, follows viewport size, clamps frame time, and reports frames/errors in
 `finalRuffleInspection`. Initialization/render/runtime failure disables inspection
-and retains the existing HUD fallback. Only the allowlisted local talent commands
+and retains the existing HUD fallback. Only the allowlisted talent/minimap commands
 above execute in interactive mode. Mouse motion/buttons/wheel and focus reach
 Ruffle before native world controls; keyboard/text input remains unbound.
 Live local-hero identity, the original portrait and level/health/energy/regen values
@@ -147,8 +169,8 @@ between them cannot turn into a second command. Focus loss releases held VM inpu
 Resize discards stale coverage and consumes queued clicks/wheel until a matching
 frame exists. Failure disables inspection and retains the existing HUD. Transparent
 interactive regions other than the known modal shield and same-frame layout changes
-still need object-level hit testing; keyboard/text/IME and gameplay FSCommands need
-separate integration. The pure capture probe covers all three buttons and mixed
+still need object-level hit testing; keyboard/text/IME and remaining gameplay
+FSCommands need separate integration. The pure capture probe covers all three buttons and mixed
 ownership. The real-SWF probe opens/closes the original talent window and checks
 HUD/world routing, focus reset and repeated resize events. A
 60-second client run also opens that window through its normal raw-input queue.
@@ -175,7 +197,7 @@ ROOT="$PWD"
 cmake -S "$ROOT/pw/branches/r1117/Src/LinuxBootstrap" -B /tmp/primeworld-linux-bootstrap -DPW_LINUX_RUFFLE_INSPECTION=ON
 cmake --build /tmp/primeworld-linux-bootstrap --target PrimeWorldLinuxClient --parallel 4
 cd "$ROOT/pw/branches/r1117/Bin"
-/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --seconds 60 --bootstrap-create-game --bootstrap-ruffle-library /tmp/pw-ruffle-target/debug/examples/libpw_bridge.so
+/tmp/primeworld-linux-bootstrap/PrimeWorldLinuxClient --seconds 60 --width 1280 --height 720 --bootstrap-create-game --bootstrap-interactive-world --bootstrap-ruffle-library /tmp/pw-ruffle-target/debug/examples/libpw_bridge.so
 ```
 
 Omit the library argument for ordinary startup, or configure the option OFF to
@@ -276,10 +298,10 @@ python3 "$EVAL/prepare.py" "$RUFFLE" --user-input
 export CARGO_HOME=/tmp/pw-ruffle-cargo
 export CARGO_TARGET_DIR=/tmp/pw-ruffle-target
 export CARGO_PROFILE_DEV_DEBUG=0
-cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --lib --features default_font -j4
-cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example primeworld --features default_font -j4
-cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example pw_bridge --features default_font -j4
-cargo build --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example primeworld --example handles_probe --example pw_bridge --features default_font -j4
+cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --lib --features default_font,primeworld_mouse_events -j4
+cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example primeworld --features default_font,primeworld_mouse_events -j4
+cargo test --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example pw_bridge --features default_font,primeworld_mouse_events -j4
+cargo build --manifest-path "$RUFFLE/Cargo.toml" --locked -p ruffle_core --example primeworld --example handles_probe --example pw_bridge --features default_font,primeworld_mouse_events -j4
 timeout 60 "$CARGO_TARGET_DIR/debug/examples/primeworld" "$DATA/UI/Screens/Loading/Flash/pwl.swf" "$EVAL/native_loading_calls.json" /tmp/pw-native-loading.png "$DATA"
 timeout 60 "$CARGO_TARGET_DIR/debug/examples/handles_probe" "$DATA" "$DATA/UI/Screens/Combat/Flash/main.swf"
 cmake -S "$EVAL" -B /tmp/pw-ruffle-cpp -DPW_RUFFLE_LIBRARY="$CARGO_TARGET_DIR/debug/examples/libpw_bridge.so"
@@ -300,9 +322,11 @@ The `userInput` shim remains incomplete: standard `condenseWhite` is not PW's
 ordinary-text markup, punctuation handling, or reflow. Bundled fallback fonts
 also do not prove Windows font-metric parity. The Rust host renders an
 isolated resizable offscreen framebuffer. GLX composition/state restoration and
-opt-in client inspection are implemented; live minimap texture binding, native
-window input mapping, audio events, and live HUD/game-state binding are not implemented
-by ABI v1. Callback polling proves transport, not execution of gameplay commands.
+opt-in client inspection now bind hero/talent/prime snapshots, native pointer input,
+the minimap bitmap and selected gameplay commands. Keyboard/text/IME, audio,
+inventory/portal/global cooldown and two-step ability targeting remain unbound.
+Purchases and minimap moves use the local transceiver; this is not full Windows
+command parity, online-match integration, or a shared-texture performance path.
 
 Keep further client integration opt-in and Linux-only until fidelity and live
 bindings have evidence. Keep the original Windows runtime and run a Windows

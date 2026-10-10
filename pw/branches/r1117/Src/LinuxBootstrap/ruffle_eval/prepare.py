@@ -55,7 +55,7 @@ def prepare(source, user_input=False):
 		raise RuntimeError('Expected Ruffle revision ' + REVISION)
 	# Untracked source and optional builtin modifications must not be silently clobbered.
 	files = stage_plan(source)
-	patches = [HERE / 'host.patch', HERE / 'deps.patch']
+	patches = [HERE / 'host.patch', HERE / 'deps.patch', HERE / 'mouse_events.patch']
 	if user_input:
 		patches.append(HERE / 'user_input.patch')
 	pending = [patch for patch in patches if patch_needed(source, patch)]

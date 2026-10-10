@@ -21,7 +21,7 @@ void PwRuffleClientInspection::Focus(bool focused)
 		return;
 	}
 	focused_ = focused;
-	if (!focused) { pointerCapture_.Reset(); events_.Clear(); }
+	if (!focused) { ++inputEpoch_; pointerCapture_.Reset(); events_.Clear(); }
 }
 
 bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x, int y,
@@ -35,6 +35,8 @@ bool PwRuffleClientInspection::Pointer(PwRufflePointerCapture::Kind kind, int x,
 		return kind == Kind::Down || kind == Kind::Up || kind == Kind::Wheel;
 	}
 	if (focused_ && !*focused_) return false;
+	// Leaving cancels held gestures, not completed callbacks from the last frame.
+	if (kind == Kind::Leave) ++inputEpoch_;
 	try
 	{
 		std::string response;
@@ -107,6 +109,9 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 			attempted_ = true;
 			const auto movie = std::filesystem::path(data) / "UI/Screens/Combat/Flash/main.swf";
 			if (!host_.Open(library, data, movie.string(), error_)) throw std::runtime_error(error_);
+			request(R"({"action":"stats"})");
+			if (!nlohmann::json::parse(response).value("primeworld_mouse_events", false))
+				throw std::runtime_error("Ruffle library requires the primeworld_mouse_events compatibility feature");
 			request(R"({"path":"LocalizationResources","method":"LocalizationComplete","args":[]})");
 			request(R"({"path":"mainInterface","method":"HideAllWindows","args":[]})");
 			request(R"({"action":"step","frames":3})");
@@ -168,6 +173,8 @@ bool PwRuffleClientInspection::Draw(const std::string& library, const std::strin
 		if (nlohmann::json::parse(response).at("runtime_errors") != 0)
 			throw std::runtime_error("Combat SWF reported runtime errors");
 		events_.Append(callbacks);
+		minimapBounds_ = minimap.background.pixels ?
+			std::optional<PwRuffleMinimapWorldBounds>(minimap.bounds) : std::nullopt;
 		++frames_;
 		return true;
 	}

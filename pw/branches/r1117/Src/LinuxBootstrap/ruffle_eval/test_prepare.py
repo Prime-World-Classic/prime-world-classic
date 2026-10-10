@@ -10,6 +10,16 @@ import prepare
 
 
 class PrepareTests(unittest.TestCase):
+	@patch('prepare.patch_needed', return_value=False)
+	@patch('prepare.git')
+	def test_mouse_feature_definition_staged_without_enabling_it(self, git, needed):
+		'''The compatibility feature exists in prepared checkouts but stays opt-in.'''
+		git.return_value = subprocess.CompletedProcess([], 0, stdout=prepare.REVISION + '\n', stderr='')
+		with tempfile.TemporaryDirectory() as temporary:
+			prepare.prepare(Path(temporary))
+		self.assertIn(prepare.HERE / 'mouse_events.patch', [call.args[1] for call in needed.call_args_list])
+		self.assertNotIn(prepare.HERE / 'user_input.patch', [call.args[1] for call in needed.call_args_list])
+
 	def test_missing_and_identical_destinations(self):
 		'''Repeated staging is idempotent without overwriting the source checkout.'''
 		with tempfile.TemporaryDirectory() as temporary:

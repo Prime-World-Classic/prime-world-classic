@@ -1,0 +1,75 @@
+diff --git a/core/Cargo.toml b/core/Cargo.toml
+--- a/core/Cargo.toml
++++ b/core/Cargo.toml
+@@ -81,4 +81,6 @@
+ [features]
+ default = []
++# Prime World's Tamarin right-button names; standard Flash remains the default.
++primeworld_mouse_events = []
+ lzma = ["lzma-rs", "swf/lzma"]
+ avm_debug = []
+diff --git a/core/src/avm2/object/event_object.rs b/core/src/avm2/object/event_object.rs
+index 71e1ced3..8bd5dec3 100644
+--- a/core/src/avm2/object/event_object.rs
++++ b/core/src/avm2/object/event_object.rs
+@@ -18,6 +18,33 @@ use ruffle_macros::istr;
+ use std::cell::{Ref, RefMut};
+ use std::fmt::Debug;
+
++/// Opt-in Tamarin names used by Prime World's original ActionScript handlers.
++fn primeworld_right_mouse_event(standard: &str) -> &str {
++	if cfg!(feature = "primeworld_mouse_events") {
++		match standard {
++			"rightMouseDown" => "mouseRightDown",
++			"rightMouseUp" => "mouseRightUp",
++			"rightClick" => "clickRight",
++			_ => standard,
++		}
++	} else {
++		standard
++	}
++}
++
++#[cfg(test)]
++mod primeworld_mouse_tests {
++	#[test]
++	fn names_are_opt_in_and_preserve_other_events() {
++		for (standard, legacy) in [("rightMouseDown", "mouseRightDown"),
++			("rightMouseUp", "mouseRightUp"), ("rightClick", "clickRight"),
++			("mouseDown", "mouseDown"), ("middleClick", "middleClick")] {
++			assert_eq!(super::primeworld_right_mouse_event(standard),
++				if cfg!(feature = "primeworld_mouse_events") { legacy } else { standard });
++		}
++	}
++}
++
+ /// A class instance allocator that allocates Event objects.
+ pub fn event_allocator<'gc>(
+     class: ClassObject<'gc>,
+@@ -164,7 +191,7 @@ impl<'gc> EventObject<'gc> {
+     ) -> EventObject<'gc> {
+         let event_name = match button {
+             MouseButton::Left => istr!("mouseDown"),
+-            MouseButton::Right => istr!("rightMouseDown"),
++            MouseButton::Right => AvmString::new_utf8(activation.gc(), primeworld_right_mouse_event("rightMouseDown")),
+             MouseButton::Middle => istr!("middleMouseDown"),
+             MouseButton::Unknown => unreachable!(),
+         };
+@@ -179,7 +206,7 @@ impl<'gc> EventObject<'gc> {
+     ) -> EventObject<'gc> {
+         let event_name = match button {
+             MouseButton::Left => istr!("mouseUp"),
+-            MouseButton::Right => istr!("rightMouseUp"),
++            MouseButton::Right => AvmString::new_utf8(activation.gc(), primeworld_right_mouse_event("rightMouseUp")),
+             MouseButton::Middle => istr!("middleMouseUp"),
+             MouseButton::Unknown => unreachable!(),
+         };
+@@ -194,7 +221,7 @@ impl<'gc> EventObject<'gc> {
+     ) -> EventObject<'gc> {
+         let event_name = match button {
+             MouseButton::Left => istr!("click"),
+-            MouseButton::Right => istr!("rightClick"),
++            MouseButton::Right => AvmString::new_utf8(activation.gc(), primeworld_right_mouse_event("rightClick")),
+             MouseButton::Middle => istr!("middleClick"),
+             MouseButton::Unknown => unreachable!(),
+         };

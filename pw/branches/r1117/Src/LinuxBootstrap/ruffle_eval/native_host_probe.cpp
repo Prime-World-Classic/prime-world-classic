@@ -1,4 +1,5 @@
 #include "native_host.h"
+#include "minimap_input.h"
 #include "client_inspection.h"
 #include "hud_calls.h"
 #include "action_calls.h"
@@ -286,12 +287,40 @@ int main(int argc, char** argv)
 		Check(inspection.Pointer(Kind::Down, 285, 683, 0, 0, 1280, 720), "Authored shortcut press escaped");
 		Check(inspection.Pointer(Kind::Up, 285, 683, 0, 0, 1280, 720), "Authored shortcut release escaped");
 		Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
+		const auto leaveEpoch = inspection.InputEpoch();
+		inspection.Pointer(Kind::Leave, -1, -1, 0, 0, 1280, 720);
+		Check(inspection.InputEpoch() != leaveEpoch, "Pointer leave did not cancel held gestures");
 		const auto requests = inspection.TakeGameplayEvents();
 		Check(std::count_if(requests.begin(), requests.end(), [](const auto& event)
 		{
 			return event.kind == PwRuffleGameplayEvent::Kind::TalentClicked && event.column == 2 && event.row == 0;
 		}) == 1, "Original shortcut did not emit exact talent request");
 		Check(inspection.TakeGameplayEvents().empty(), "Authored callback delivered twice");
+		Check(inspection.MinimapBounds() && inspection.MinimapBounds()->maxX == 100,
+			"Input has no composed minimap bounds");
+		PwRuffleMinimapInput minimapInput;
+		for (const unsigned button : {2u, 0u})
+		{
+			inspection.Pointer(Kind::Move, 1160, 565, button, 0, 1280, 720);
+			Check(inspection.Pointer(Kind::Down, 1160, 565, button, 0, 1280, 720), "Minimap press escaped");
+			Check(inspection.Pointer(Kind::Up, 1160, 565, button, 0, 1280, 720), "Minimap release escaped");
+			Check(inspection.Draw(argv[1], argv[2], 1280, 720, 16, hud, updated, minimap), inspection.Error());
+			inspection.Pointer(Kind::Leave, -1, -1, 0, 0, 1280, 720);
+			int requests = 0;
+			for (const auto& event : inspection.TakeGameplayEvents())
+			{
+				std::cout << "Minimap callback button=" << button << " command=" << event.command << " flag=" << event.flag
+					<< " xy=" << event.x << ',' << event.y << '\n';
+				const auto request = minimapInput.Consume(event, *inspection.MinimapBounds());
+				if (request.action == PwRuffleMinimapRequest::Action::NoAction) continue;
+				++requests;
+				Check(request.action == (button == 2 ? PwRuffleMinimapRequest::Action::Move :
+					PwRuffleMinimapRequest::Action::Camera), "Authored minimap button semantics changed");
+				Check(request.worldX > 50 && request.worldX < 65 && request.worldY > 50 && request.worldY < 65,
+					"Authored minimap normalized projection/orientation mismatch");
+			}
+			Check(requests == 1, "Authored minimap did not emit exactly one destination");
+		}
 		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD press escaped to world");
 		Check(inspection.Pointer(Kind::Up, 640, 100, 0, 0, 1280, 720), "HUD release escaped to world");
 		Check(!inspection.Pointer(Kind::Down, 640, 100, 0, 0, 1280, 720), "World press was captured");
@@ -299,7 +328,9 @@ int main(int argc, char** argv)
 		Check(inspection.Pointer(Kind::Wheel, 1160, 565, 0, 1, 1280, 720), "HUD wheel escaped");
 		Check(!inspection.Pointer(Kind::Wheel, 640, 100, 0, 1, 1280, 720), "World wheel captured");
 		Check(inspection.Pointer(Kind::Down, 1160, 565, 0, 0, 1280, 720), "HUD focus-test press failed");
+		const auto epoch = inspection.InputEpoch();
 		inspection.Focus(false);
+		Check(inspection.InputEpoch() != epoch, "Focus loss did not cancel gesture epoch");
 		Check(inspection.PendingCallbacks() == 0, "Focus loss retained gameplay requests");
 		inspection.Focus(true);
 		const auto inputsBefore = inspection.PointerEvents();
@@ -314,6 +345,7 @@ int main(int argc, char** argv)
 		Check(inspection.Draw(argv[1], argv[2], 960, 768, 16, hud, updated, minimap), inspection.Error());
 		window.CheckCurrent();
 		Check(inspection.Reset(), "Inspection teardown failed");
+		Check(!inspection.MinimapBounds(), "Shutdown retained minimap input bounds");
 		PwRuffleClientInspection missing;
 		Check(!missing.Draw("/nonexistent/pw-ruffle.so", argv[2], 1280, 720, 16) &&
 			missing.WasAttempted() && !missing.IsReady() && !missing.Error().empty(), "Missing-library fallback failed");

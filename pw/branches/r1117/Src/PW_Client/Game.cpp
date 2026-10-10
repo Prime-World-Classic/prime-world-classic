@@ -123,6 +123,7 @@
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 #include "LinuxBootstrap/ruffle_eval/client_inspection.h"
 #include "LinuxBootstrap/ruffle_eval/talent_input.h"
+#include "LinuxBootstrap/ruffle_eval/minimap_input.h"
 #endif
 #include "LoadingStatusHandler.h"
 #include "LocalCmdScheduler.h"
@@ -226,6 +227,7 @@ struct LinuxBootstrapClickSpec
   int wheelDelta;
   int keySym;
   bool moveOnly;
+	bool rightClick = false;
   double waitSeconds;
 
   LinuxBootstrapClickSpec()
@@ -4257,6 +4259,9 @@ struct LinuxBootstrapScreenRuntime
 	size_t ruffleTalentCommands = 0, ruffleRejectedRequests = 0, ruffleNeedsTarget = 0;
 	int ruffleTalentRequestSteps[36] = {};
 	int ruffleInitialPrime = -1, ruffleCurrentPrime = -1;
+	PwRuffleMinimapInput ruffleMinimapInput;
+	size_t ruffleInputEpoch = 0, ruffleMinimapMoves = 0, ruffleMinimapCameras = 0;
+	CVec2 ruffleMinimapLastTarget = CVec2(0, 0);
 #endif
   bool visibleMenuReady;
   bool diagnosticsOverlayActive;
@@ -7713,6 +7718,8 @@ bool ResolveLinuxBootstrapKeySym(const std::string& keyName, int* keySym)
 }
 
 /// Exercise the real script key resolver without opening a window or loading game assets.
+bool ParseBootstrapClickSpecToken(const std::string& token, bool defaultDoubleClick, LinuxBootstrapClickSpec* spec);
+
 bool RunLinuxBootstrapInputProbe()
 {
 	const struct { const char* name; int symbol; } cases[] = {
@@ -7734,7 +7741,14 @@ bool RunLinuxBootstrapInputProbe()
 	}
 	if (ResolveLinuxBootstrapKeySym("q", 0))
 		++failures;
-	fprintf(stdout, "Bootstrap input: 15 key checks, failures=%u\n", failures);
+	LinuxBootstrapClickSpec click;
+	if (!ParseBootstrapClickSpecToken("1350,800:right", true, &click) || !click.rightClick || click.doubleClick) ++failures;
+	if (!ParseBootstrapClickSpecToken("-36,835:single", false, &click) || click.rightClick) ++failures;
+	if (!ParseBootstrapClickSpecToken("1350,800:double", false, &click) || click.rightClick || !click.doubleClick) ++failures;
+	if (ParseBootstrapClickSpecToken("1350,800:invalid-button", false, &click)) ++failures;
+	if (ParseBootstrapClickSpecToken("1350,800:right", false, 0)) ++failures;
+	if (ParseBootstrapClickSpecToken("5000,800:right", false, &click)) ++failures;
+	fprintf(stdout, "Bootstrap input: 15 key and 6 pointer checks, failures=%u\n", failures);
 	return failures == 0;
 }
 
@@ -7772,6 +7786,7 @@ bool ParseBootstrapClickSpecToken(
   {
     return false;
   }
+	spec->rightClick = false;
 
   const std::string trimmed = TrimAscii(token);
   if (trimmed.empty())
@@ -7853,6 +7868,11 @@ bool ParseBootstrapClickSpecToken(
     if (option == "double" || option == "dbl" || option == "2")
     {
       spec->doubleClick = true;
+    }
+    else if (option == "right")
+    {
+      spec->rightClick = true;
+      spec->doubleClick = false;
     }
     else if (option == "single" || option == "click" || option == "1")
     {
@@ -32155,9 +32175,9 @@ bool InjectLinuxBootstrapLobbyClick(
   inputState->rawMessages.push_back(message);
 
   message.dwFlags = 0;
-  message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
+  message.msg = click.rightClick ? NMainFrame::SWindowsMsg::MOUSE_RB_DOWN : NMainFrame::SWindowsMsg::MOUSE_LB_DOWN;
   inputState->rawMessages.push_back(message);
-  message.msg = NMainFrame::SWindowsMsg::MOUSE_LB_UP;
+  message.msg = click.rightClick ? NMainFrame::SWindowsMsg::MOUSE_RB_UP : NMainFrame::SWindowsMsg::MOUSE_LB_UP;
   inputState->rawMessages.push_back(message);
 
   if (click.doubleClick)
@@ -51332,16 +51352,76 @@ bool DispatchLinuxRuffleTalent(const PwRuffleGameplayEvent& event,
 }
 
 /** Drain once per input frame before transceiver stepping, outside the renderer. */
-void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings, LinuxBootstrapScreenRuntime* runtime)
+void DriveLinuxRuffleGameplay(const LinuxClientLaunchSettings& settings,
+	const LinuxSelectedMapPreview& map, LinuxBootstrapScreenRuntime* runtime)
 {
 	auto events = runtime->ruffleInspection.TakeGameplayEvents();
 	runtime->ruffleGameplayRequests += events.size();
 	auto* hero = ResolveLinuxRuffleCommandHero(settings, runtime);
+	const bool canceled = !hero || runtime->ruffleInputEpoch != runtime->ruffleInspection.InputEpoch();
 	for (const auto& event : events)
 	{
-		const bool accepted = event.kind == PwRuffleGameplayEvent::Kind::TalentClicked &&
-			DispatchLinuxRuffleTalent(event, dynamic_cast<NWorld::PFBaseMaleHero*>(hero), runtime);
-		if (!accepted) ++runtime->ruffleRejectedRequests;
+		if (event.kind == PwRuffleGameplayEvent::Kind::TalentClicked)
+		{
+			if (!DispatchLinuxRuffleTalent(event, dynamic_cast<NWorld::PFBaseMaleHero*>(hero), runtime))
+				++runtime->ruffleRejectedRequests;
+			continue;
+		}
+		const auto& bounds = runtime->ruffleInspection.MinimapBounds();
+		if (!hero || !bounds)
+		{
+			runtime->ruffleMinimapInput.Reset();
+			++runtime->ruffleRejectedRequests;
+			continue;
+		}
+		const auto request = runtime->ruffleMinimapInput.Consume(event, *bounds);
+		using Action = PwRuffleMinimapRequest::Action;
+		if (request.action == Action::NoAction) continue;
+		auto* world = GetLinuxBootstrapRuntimeWorld(runtime);
+		const auto worldSize = world->GetMapSize();
+		if (!std::isfinite(request.worldX) || !std::isfinite(request.worldY) ||
+			request.worldX < 0 || request.worldY < 0 ||
+			request.worldX >= worldSize.x || request.worldY >= worldSize.y)
+		{
+			runtime->ruffleMinimapInput.Reset();
+			++runtime->ruffleRejectedRequests;
+			continue;
+		}
+		const CVec2 target(static_cast<float>(request.worldX), static_cast<float>(request.worldY));
+		if (request.action == Action::Move)
+		{
+			if (hero->IsDead() || !hero->CanMove() ||
+				!SubmitLinuxRuffleCommand(runtime, NWorld::CreateCmdMoveHero(hero, target, false)))
+			{
+				++runtime->ruffleRejectedRequests;
+				continue;
+			}
+			++runtime->ruffleMinimapMoves;
+			runtime->ruffleMinimapLastTarget = target;
+			RecordLinuxMapPreviewActionCommand(runtime, "move", "ruffle-minimap", hero->GetPosition().AsVec2D(),
+				target, hero->GetPlayerId(), runtime->localScheduler->GetMyClientID(), -1, -1);
+			fprintf(stdout, "Ruffle minimap move: %.3f,%.3f step=%d\n", target.x, target.y, world->GetStepNumber());
+		}
+		else if (map.tactical.ready)
+		{
+			// Use the existing preview's world-to-model transform for the camera center.
+			const auto& tactical = map.tactical;
+			const float scale = 92.0f / std::max(1.0f,
+				std::max(tactical.maxX - tactical.minX, tactical.maxY - tactical.minY));
+			runtime->mapPreviewPanX = ((tactical.minX + tactical.maxX) * 0.5f - target.x) * scale;
+			runtime->mapPreviewPanZ = ((tactical.minY + tactical.maxY) * 0.5f - target.y) * scale;
+			ClampLinuxMapPreviewCamera(runtime);
+			runtime->mapPreviewLastAction = "ruffle-minimap-camera";
+			++runtime->mapPreviewInputCount;
+			++runtime->ruffleMinimapCameras;
+		}
+	}
+	// Published callbacks precede this input frame's leave/focus notification.
+	// Keep completed actions, but never carry their drag ownership past cancellation.
+	if (canceled)
+	{
+		runtime->ruffleMinimapInput.Reset();
+		runtime->ruffleInputEpoch = runtime->ruffleInspection.InputEpoch();
 	}
 }
 
@@ -53656,7 +53736,8 @@ void DrawLinuxBootstrap3DPreview(const LinuxOverlayUiRenderContext& renderContex
     renderContext.screenRuntime->mapPreviewYawDegrees :
     kLinuxMapPreviewDefaultYawDegrees;
   const float mapYaw = NormalizeLinuxPreviewYawValue(
-    baseYaw + static_cast<float>(renderContext.elapsedSeconds * 4.5)
+    baseYaw + (renderContext.settings && renderContext.settings->bootstrapInteractiveWorld ?
+      0.0f : static_cast<float>(renderContext.elapsedSeconds * 4.5))
   );
   if (renderContext.screenRuntime)
   {
@@ -68490,6 +68571,9 @@ void AppendRuntimeInputLog(
 		<< " talentCommands:" << screenRuntime.ruffleTalentCommands
 		<< " rejectedRequests:" << screenRuntime.ruffleRejectedRequests
 		<< " needsTarget:" << screenRuntime.ruffleNeedsTarget
+		<< " minimapMoves:" << screenRuntime.ruffleMinimapMoves
+		<< " minimapCameras:" << screenRuntime.ruffleMinimapCameras
+		<< " minimapTarget:" << screenRuntime.ruffleMinimapLastTarget.x << "," << screenRuntime.ruffleMinimapLastTarget.y
 		<< " prime:" << screenRuntime.ruffleInitialPrime << "->" << screenRuntime.ruffleCurrentPrime
 		<< " priorGlErrors:" << screenRuntime.ruffleInspection.PriorGlErrors()
 		<< " hudCalls:" << screenRuntime.ruffleInspection.HudCalls()
@@ -72465,7 +72549,7 @@ int main(int argc, char** argv)
     AppendLinuxSystemInputEvents(&inputState, firstSyntheticMessage);
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 		DriveLinuxRufflePointer(&overlay, &screenRuntime, &inputState);
-		DriveLinuxRuffleGameplay(settings, &screenRuntime);
+		DriveLinuxRuffleGameplay(settings, selectedMapPreview, &screenRuntime);
 #endif
     if (uiRootPreview.runtimeInitialized)
     {
