@@ -2,6 +2,7 @@
 '''Validate bounded native gameplay evidence offline; never launch the client.'''
 
 import argparse
+from decimal import Decimal, InvalidOperation
 import math
 from pathlib import Path
 import re
@@ -72,6 +73,55 @@ STORAGE_FIELDS = '''valid segments commands statuses failures steps segmentMatch
 statusMatch header client stepLength map error source'''
 
 
+SESSION_EFFECTS = {
+	'ability-applicator': ('db=yes units=yes passive=yes/yes/1/1/1 removed=yes/0/0 '
+		'active=yes/yes/yes/1/1/1 removed=yes/0/0'),
+	'unit-combat': ('db=yes units=yes slot=yes/yes/yes/1/1 removed=yes/0/0 '
+		'external=yes/yes/1/1 removed=yes/0/0 baseattack=yes/yes/yes/yes/1/1 removed=yes/0/0'),
+	'unit-instant': ('formula=yes/0.25 db=yes units=yes damage=yes/yes/1.00->0.75 '
+		'heal=yes/yes/0.50->0.75 energy=yes/yes/0.50->0.75 kill=yes/yes nafta=yes/yes/0->3 '
+		'baseattack=yes/yes/yes/yes/1.00->0.80'),
+	'unit-chain': ('db=yes units=yes spell=yes/yes/1.00->0.85 proxy=yes/yes/yes/0.12/1.00->0.88 '
+		'dispell=yes/yes/yes/1->0 refresh=yes/yes/4.00->0.00 abilityend=yes/yes '
+		'periodic=yes/yes/1.00->0.94 probability=yes/yes/1.00->0.93'),
+}
+
+
+def session_effects(stdout):
+	'''Pin complete deterministic built-in checks, including repeated removal sections.
+
+	These are engine mock diagnostics, not live variable stats. A full token match
+	checks every success flag, count and resulting value without losing duplicate
+	field names such as removed= in a dictionary. Either mode requires all four.
+	'''
+	for effect, expected in SESSION_EFFECTS.items():
+		name = f'Session effects {effect} runtime'
+		actual = record(stdout, name, ': ')
+		require(actual.split() == expected.split(), f'{name}: unsuccessful or malformed built-in check')
+
+
+def talent_payment(stdout, cast_step):
+	'''Require one real Plane A1 mana payment, tied to the successful ground cast step.'''
+	selected = record(stdout, 'Selected lineup hero', ': ')
+	require(re.fullmatch(r'.+ \(plane\)', selected) is not None, 'targeting requires the shipped Plane hero')
+	paid = fields(record(stdout, 'Native talent formula payment', ': '), '=',
+		'slot range cost pool before after step')
+	require(paid['slot'] == '0,0' and paid['pool'] == 'mana', 'Plane payment slot/pool mismatch')
+	values = {}
+	for key in ('range', 'cost', 'before', 'after'):
+		number(paid[key])  # Reuse the strict decimal syntax and finite float boundary.
+		try:
+			values[key] = Decimal(paid[key])
+		except InvalidOperation as error:
+			raise EvidenceError(f'bad payment {key}: {paid[key]}') from error
+	require(values['range'] == 14 and values['cost'] == 70, 'Plane formula range/cost mismatch')
+	require(values['before'] >= 0 and values['after'] >= 0, 'negative mana balance')
+	# Compare logged decimals exactly at the 0.01 boundary, without relative tolerance.
+	require(abs(values['before'] - values['after'] - values['cost']) <= Decimal('0.01'),
+		'Plane mana deduction must be 70 within 0.01')
+	require(integer(paid['step']) == cast_step, 'payment step does not match executed ground cast')
+
+
 def replay(stdout):
 	'''Cross-check successful capture/storage flags, counts, byte totals and step ranges.'''
 	capture = fields(record(stdout, 'Final replay capture validation', ': '), '=', CAPTURE_FIELDS)
@@ -121,7 +171,7 @@ def hero_execution(stdout):
 	count, bought = sections['activate']
 	require(set(bought) == {'can', 'slot', 'progress', 'dev', 'gold'}, 'purchase fields')
 	require(count == '2/2/1/1' and bought['can'] == '1' and pair(bought['gold'], '->') == (400, 100), 'purchase execution')
-	require(all(0 <= value < 6 for value in pair(bought['slot'], ',')), 'purchase slot')
+	require(bought['slot'] == '0,0', 'Plane purchase slot must be 0,0')
 	for key in ('progress', 'dev'):
 		pair(bought[key], '->')
 	count, used = sections['useTalent']
@@ -145,6 +195,7 @@ def validate(stdout, client_log, mode):
 		require('Ruffle' not in stdout, 'default stdout contains Ruffle activity')
 	for name, text in (('stdout', stdout), ('client log', client_log)):
 		require(text.endswith('\n') and '\0' not in text, f'{name}: truncated or invalid text')
+	session_effects(stdout)
 	finish = 'Prime World Linux client shell finished.'
 	require(record(stdout, finish, '') == '', 'malformed completion record')
 	timing = fields(record(client_log, 'finalClientTimingMs', '='), ':', 'frames input update assets draw')
@@ -179,12 +230,14 @@ def validate(stdout, client_log, mode):
 			require(status == 'ready' and ruffle['attempted'] == 1 and ruffle['frames'] > 0, 'Ruffle not ready')
 			require(prime == (400, 100), 'Ruffle purchase prime mismatch')
 			expected = {'priorGlErrors': 0, 'pendingCallbacks': 0, 'targetPending': 0, 'targetArmed': 3,
-				'targetCanceled': 2, 'targetCasts': 1, 'targetRejected': 1, 'shortcutCalls': 3,
+				'targetCanceled': 2, 'targetCasts': 1, 'targetRejected': 2, 'shortcutCalls': 3,
 				'talentCommands': 2, 'minimapMoves': 0}
 			for key, value in expected.items():
 				require(ruffle[key] == value, f'Ruffle {key}: expected {value}, got {ruffle[key]}')
 	if mode == 'targeting':
-		require(hero_execution(stdout) <= step, 'cast execution is ahead of the world')
+		cast_step = hero_execution(stdout)
+		require(cast_step <= step, 'cast execution is ahead of the world')
+		talent_payment(stdout, cast_step)
 	return {'mode': mode, 'world_step': step, 'replay_commands': commands}
 
 

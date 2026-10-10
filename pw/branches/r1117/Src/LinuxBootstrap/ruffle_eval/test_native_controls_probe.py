@@ -1,6 +1,7 @@
 '''Mock the driver without opening a window or sending host input.'''
 
 from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -55,15 +56,71 @@ class NativeControlsTests(unittest.TestCase):
 	def test_sequence(self):
 		with patch.object(probe, 'tool', return_value='42') as tool, patch.object(probe.time, 'sleep'):
 			wait = Mock()
+			events = Mock()
+			events.attach_mock(tool, 'tool')
+			events.attach_mock(wait, 'wait')
 			probe.drive('42', wait)
 			keys = [call.args for call in tool.call_args_list if call.args[0] in ('key', 'keydown', 'keyup')]
 			self.assertEqual(keys, [('keydown', '--window', '42', '1')] * 4 +
 				[('keyup', '--window', '42', '1'), ('key', '--window', '42', '1'),
 				('key', '--window', '42', 'Escape'), ('key', '--window', '42', '1')])
 			self.assertEqual(wait.call_args_list[-1].args, ('Ruffle ground target: submitted', 1))
+			sequence = [(name, args) for name, args, _ in events.mock_calls
+				if name == 'wait' or (name == 'tool' and args[0] in ('mousemove', 'click', 'key'))]
+			self.assertEqual(sequence, [
+				('wait', ('Ruffle ground target armed:', 1)),
+				('tool', ('mousemove', '--window', '42', 640, 100)),
+				('tool', ('click', '--window', '42', 1)),
+				('wait', ('Ruffle ground target: rejected', 1)),
+				('tool', ('mousemove', '--window', '42', 640, 360)),
+				('tool', ('click', '--window', '42', 1)),
+				('wait', ('Ruffle ground target: rejected', 2)),
+				('tool', ('mousemove', '--window', '42', 864, 519)),
+				('tool', ('click', '--window', '42', 3)),
+				('tool', ('key', '--window', '42', '1')),
+				('wait', ('Ruffle ground target armed:', 2)),
+				('tool', ('key', '--window', '42', 'Escape')),
+				('tool', ('key', '--window', '42', '1')),
+				('wait', ('Ruffle ground target armed:', 3)),
+				('tool', ('mousemove', '--window', '42', 864, 519)),
+				('tool', ('click', '--window', '42', 1)),
+				('wait', ('Ruffle ground target: submitted', 1))])
 			moves = [call.args for call in tool.call_args_list if call.args[0] == 'mousemove']
 			self.assertEqual(moves[-1], moves[-2])
 			self.assertTrue(all('--sync' not in args for args in moves))
+
+	def test_missing_range_rejection_stops_before_cancel_or_cast(self):
+		'''The center click must produce the second rejection while the first arm persists.'''
+		def wait(needle, count):
+			if (needle, count) == ('Ruffle ground target: rejected', 2):
+				raise probe.EvidenceError('second rejection missing')
+		with patch.object(probe, 'tool', return_value='42') as tool, patch.object(probe.time, 'sleep'):
+			with self.assertRaisesRegex(probe.EvidenceError, 'second rejection missing'):
+				probe.drive('42', wait)
+			self.assertEqual([call.args for call in tool.call_args_list if call.args[0] == 'click'],
+				[('click', '--window', '42', 1)] * 2)
+			self.assertFalse(any(call.args[0] == 'key' for call in tool.call_args_list))
+
+	def test_startup_exit_never_drives_window_or_validates_partial_log(self):
+		'''An exited process cannot proceed to controls or partial-log validation.'''
+		with tempfile.TemporaryDirectory() as directory, \
+			patch.object(probe.subprocess, 'Popen') as start, patch.object(probe, 'tool') as tool, \
+			patch.object(probe, 'drive') as drive, patch.object(probe, 'validate_interactive') as validate:
+			start.return_value.poll.return_value = 1
+			with self.assertRaisesRegex(probe.EvidenceError, 'Client exited'):
+				probe.run(Path('/mock-client'), Path('/mock-library'), Path(directory), Path(directory) / 'out')
+			tool.assert_not_called()
+			drive.assert_not_called()
+			validate.assert_not_called()
+
+	def test_startup_failure_never_sends_input(self):
+		'''Mock launch failures require neither a display nor a cleanup command to another PID.'''
+		with tempfile.TemporaryDirectory() as directory, \
+			patch.object(probe.subprocess, 'Popen', side_effect=OSError('mock launch failed')), \
+			patch.object(probe, 'tool') as tool:
+			with self.assertRaisesRegex(OSError, 'mock launch failed'):
+				probe.run(Path('/mock-client'), Path('/mock-library'), Path(directory), Path(directory) / 'out')
+			tool.assert_not_called()
 
 	def test_focus_loss_never_sends_input(self):
 		with patch.object(probe, 'tool', return_value='99') as tool:

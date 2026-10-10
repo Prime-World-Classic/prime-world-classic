@@ -56,7 +56,7 @@ def wait_for(process, output, needle, count, deadline):
 
 
 def drive(window, wait, deadline=None):
-	'''Repeat a held Down, reject a click, cancel with right/Escape, then cast once.
+	'''Repeat a held Down, reject off-map/out-of-range clicks, cancel twice, then cast.
 
 	All key/button edges explicitly address the launched window, including cleanup.
 	This tests the real X11 message path but does not simulate server repeat pairs;
@@ -87,6 +87,9 @@ def drive(window, wait, deadline=None):
 	wait('Ruffle ground target armed:', 1)
 	click(640, 100, 1)
 	wait('Ruffle ground target: rejected', 1)
+	# Fixed 1280x720 Plane setup: map center is valid terrain, outside the 14-unit range.
+	click(640, 360, 1)
+	wait('Ruffle ground target: rejected', 2)
 	click(864, 519, 3)
 	pause(1.5, deadline)
 	key('1')

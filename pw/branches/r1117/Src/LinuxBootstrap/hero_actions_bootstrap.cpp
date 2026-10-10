@@ -1221,9 +1221,21 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
+			const bool recordPayment = manualGround && talent;
+			const bool life = recordPayment && talent->DoesSpendLifeInsteadEnergy();
+			const float before = recordPayment ? (life ? hero->GetLife() : hero->GetMana()) : 0;
+			const float cost = recordPayment ? talent->GetManaCost() : 0;
+			const float range = recordPayment ? talent->GetUseRange(resolvedTarget) : 0;
       CObj<PFAbilityInstance> instance = hero->UseTalent(talent, resolvedTarget);
       if (instance)
+      {
         ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
+				// Evidence is sampled around actual execution, before regeneration can run.
+				if (recordPayment)
+					fprintf(stdout, "Native talent formula payment: slot=%d,%d range=%.6g cost=%.6g pool=%s before=%.6g after=%.6g step=%d\n",
+						level, slot, range, cost, life ? "life" : "mana", before,
+						life ? hero->GetLife() : hero->GetMana(), talent->GetLastUseStep());
+      }
     }
 		talent = IsValid(hero) && manualGroundAllowed ? hero->GetTalent(level, slot) : 0;
     if (talent)

@@ -170,6 +170,7 @@
 #include "LinuxBootstrap/world_grid_probe.h"
 #include "LinuxBootstrap/formula_range_probe.h"
 #include "LinuxBootstrap/visibility_lifecycle_probe.h"
+#include "LinuxBootstrap/ability_display.h"
 #include "LinuxBootstrap/fog_grid_probe.h"
 #include "Scripts/Script.h"
 #include "Scripts/lua.hpp"
@@ -51670,8 +51671,10 @@ PwRuffleActionState CaptureLinuxRuffleActions(LinuxBootstrapScreenRuntime* runti
 		entry.purchase = talent->IsActivated() ? Purchase::Bought :
 			activation == NWorld::ETalentActivation::Ok ? Purchase::CanBuy :
 			activation == NWorld::ETalentActivation::NoMoney ? Purchase::NotEnoughPrime : Purchase::NotEnoughDevPoints;
-		entry.cooldown = talent->GetCurrentCooldown();
-		entry.maxCooldown = talent->GetCooldown();
+		const auto display = LinuxBootstrap::MakeAbilityCooldownDisplay(talent->GetCurrentCooldown(),
+			talent->GetCooldown(), talent->GetManaCost());
+		entry.cooldown = display.current;
+		entry.maxCooldown = display.maximum;
 		entry.status = TalentStatus::Active;
 		if (talent->CanBeUsed()) entry.status = talent->IsMultiState() ?
 			(talent->IsOn() ? TalentStatus::ActiveSpecial : TalentStatus::ActivatedSpecial) : TalentStatus::Active;
@@ -51684,6 +51687,7 @@ PwRuffleActionState CaptureLinuxRuffleActions(LinuxBootstrapScreenRuntime* runti
 			runtime->ruffleInspection.ControlEpoch()}) && CanArmLinuxGroundTalent(hero, row, column))
 			entry.status = TalentStatus::Chosen;
 		entry.alternativeState = (talent->IsOn() && talent->IsMultiState()) || talent->IsSecondState();
+		if (!display.supported) entry.status = TalentStatus::Disabled;
 		state.talents.push_back(entry);
 	}
 	return state;

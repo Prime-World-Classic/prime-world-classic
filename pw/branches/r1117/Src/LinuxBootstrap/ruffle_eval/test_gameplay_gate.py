@@ -10,12 +10,27 @@ import unittest
 import gameplay_gate as gate
 
 
+SESSION_EFFECTS = '''Session effects ability-applicator runtime: db=yes units=yes passive=yes/yes/1/1/1 removed=yes/0/0 active=yes/yes/yes/1/1/1 removed=yes/0/0
+Session effects unit-combat runtime: db=yes units=yes slot=yes/yes/yes/1/1 removed=yes/0/0 external=yes/yes/1/1 removed=yes/0/0 baseattack=yes/yes/yes/yes/1/1 removed=yes/0/0
+Session effects unit-instant runtime: formula=yes/0.25 db=yes units=yes damage=yes/yes/1.00->0.75 heal=yes/yes/0.50->0.75 energy=yes/yes/0.50->0.75 kill=yes/yes nafta=yes/yes/0->3 baseattack=yes/yes/yes/yes/1.00->0.80
+Session effects unit-chain runtime: db=yes units=yes spell=yes/yes/1.00->0.85 proxy=yes/yes/yes/0.12/1.00->0.88 dispell=yes/yes/yes/1->0 refresh=yes/yes/4.00->0.00 abilityend=yes/yes periodic=yes/yes/1.00->0.94 probability=yes/yes/1.00->0.93
+'''
+
+REGRESSED_SESSION_EFFECTS = '''Session effects ability-applicator runtime: db=yes units=yes passive=yes/yes/1/1/1 removed=yes/0/0 active=yes/no/no/0/0/0 removed=yes/0/0
+Session effects unit-combat runtime: db=yes units=yes slot=no/no/no/0/0 removed=no/0/0 external=no/no/0/0 removed=yes/0/0 baseattack=yes/yes/no/no/0/0 removed=yes/0/0
+Session effects unit-instant runtime: formula=yes/0.25 db=yes units=yes damage=no/no/1.00->1.00 heal=no/no/0.50->0.50 energy=no/no/0.50->0.50 kill=no/no nafta=no/no/0->0 baseattack=yes/yes/no/no/1.00->1.00
+Session effects unit-chain runtime: db=yes units=yes spell=no/no/1.00->1.00 proxy=yes/yes/yes/0.12/1.00->0.88 dispell=no/no/no/0->0 refresh=yes/yes/4.00->0.00 abilityend=no/no periodic=no/no/1.00->1.00 probability=no/no/1.00->1.00
+'''
+
+PAYMENT = 'Native talent formula payment: slot=0,0 range=14 cost=70 pool=mana before=725 after=655 step=496\n'
+
+
 def fixture(mode='targeting'):
 	'''Generate a complete shape-matched mock; never claim this is native evidence.'''
 	counts = dict.fromkeys(gate.RUFFLE_COUNTERS.split(), 0)
 	if mode == 'targeting':
 		counts.update(attempted=1, frames=20, talentCommands=2, targetArmed=3,
-			targetCanceled=2, targetCasts=1, targetRejected=1, shortcutCalls=3)
+			targetCanceled=2, targetCasts=1, targetRejected=2, shortcutCalls=3)
 	ruffle = ' '.join(f'{key}:{value}' for key, value in counts.items())
 	status = 'ready' if mode == 'targeting' else 'inactive'
 	client = ('  finalClientTimingMs=frames:21 input:1 update:2 assets:0 draw:3\n'
@@ -35,11 +50,90 @@ def fixture(mode='targeting'):
 		'portal=0/0/0/0 can=0 consumable=0/0/0/0 can=0 buy=0/0/0/0 can=0 '
 		'raise=0/0/0/0 can=0 init=0/0/0/0 can=0 pickup=0/0/0/0 can=0 object=0\n'
 		'Prime World Linux client shell finished.\n')
+	stdout = SESSION_EFFECTS + ('Selected lineup hero: Plane (plane)\n' + PAYMENT if mode == 'targeting' else '') + stdout
 	return stdout, client
 
 
 class GameplayGateTests(unittest.TestCase):
 	'''Reject malformed counters, false success flags, omissions and duplicate evidence.'''
+
+	def test_startup_failure_cannot_be_masked_by_successful_cast(self):
+		'''Pinned mock records reproduce cost-native's regression with an otherwise good tail.'''
+		for mode in ('default', 'targeting'):
+			stdout, client = fixture(mode)
+			for good, bad in zip(SESSION_EFFECTS.splitlines(True), REGRESSED_SESSION_EFFECTS.splitlines(True)):
+				with self.subTest(mode=mode, record=good), self.assertRaisesRegex(gate.EvidenceError, 'Session effects'):
+					gate.validate(stdout.replace(good, bad), client, mode)
+			with self.assertRaisesRegex(gate.EvidenceError, 'Session effects'):
+				gate.validate(stdout.replace(SESSION_EFFECTS, REGRESSED_SESSION_EFFECTS), client, mode)
+
+	def test_session_records_missing_duplicate_or_malformed_in_both_modes(self):
+		'''Even a failed record followed by a successful duplicate must be rejected.'''
+		for mode in ('default', 'targeting'):
+			stdout, client = fixture(mode)
+			for good in SESSION_EFFECTS.splitlines(True):
+				bad = good.replace('yes', 'no', 1)
+				for replacement in ('', good + good, bad + good, good + bad,
+					good.replace(': ', ':'), good.rstrip() + ' unexpected=yes\n'):
+					with self.subTest(mode=mode, record=good, replacement=replacement), \
+						self.assertRaisesRegex(gate.EvidenceError, 'Session effects'):
+						gate.validate(stdout.replace(good, replacement), client, mode)
+
+	def test_every_session_flag_and_counter_is_checked(self):
+		'''Mutate individual success flags and numeric results, not just db/units readiness.'''
+		for mode in ('default', 'targeting'):
+			stdout, client = fixture(mode)
+			for good in SESSION_EFFECTS.splitlines(True):
+				for match in re.finditer(r'yes|[0-9]+(?:\.[0-9]+)?', good):
+					bad = good[:match.start()] + ('no' if match[0] == 'yes' else '999') + good[match.end():]
+					with self.subTest(mode=mode, record=bad), self.assertRaisesRegex(gate.EvidenceError, 'Session effects'):
+						gate.validate(stdout.replace(good, bad), client, mode)
+
+	def test_payment_variable_balances_and_tolerance(self):
+		'''Actual mana balances may vary, but the finite nonnegative deduction stays 70.'''
+		stdout, client = fixture()
+		for before, after in (('725', '655'), ('1000.25', '930.25'), ('70', '0'),
+			('725', '655.01'), ('725', '654.99'), ('70.01', '0'), ('69.99', '0'), ('7.25e2', '6.55e2')):
+			with self.subTest(before=before, after=after):
+				changed = stdout.replace('before=725 after=655', f'before={before} after={after}')
+				gate.validate(changed, client, 'targeting')
+
+	def test_payment_schema_and_plane_values(self):
+		'''One complete payment record is required; another talent/hero cannot substitute.'''
+		stdout, client = fixture()
+		mutations = (('slot=0,0', 'slot=0,1'), ('slot=0,0', 'slot=00,0'), ('range=14', 'range=0'),
+			('range=14', 'range=14.01'), ('cost=70', 'cost=0'), ('cost=70', 'cost=71'),
+			('range=14', 'range=14.000000000000001'), ('cost=70', 'cost=70.000000000000001'),
+			('pool=mana', 'pool=energy'), ('pool=mana', 'pool=health'), ('step=496', 'step=495'),
+			('step=496', 'step=-1'), ('step=496', 'step=496.0'), ('range=14', 'range=nan'),
+			('cost=70', 'cost=inf'), ('step=496', 'step=496x'))
+		for old, new in mutations:
+			with self.subTest(old=old, new=new), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace(PAYMENT, PAYMENT.replace(old, new)), client, 'targeting')
+		for token in PAYMENT.split(': ', 1)[1].split():
+			for replacement in ('', token + ' ' + token):
+				with self.subTest(token=token, replacement=replacement), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout.replace(PAYMENT, PAYMENT.replace(token, replacement)), client, 'targeting')
+		for replacement in ('', PAYMENT + PAYMENT, PAYMENT.replace(': ', ':'), PAYMENT.rstrip() + ' extra=1\n',
+			PAYMENT.replace('before=725', 'before=0') + PAYMENT):
+			with self.subTest(replacement=replacement), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace(PAYMENT, replacement), client, 'targeting')
+		for old, new in (('(plane)', '(other)'), ('activate=2/2/1/1 can=1 slot=0,0', 'activate=2/2/1/1 can=1 slot=0,1')):
+			with self.subTest(old=old, new=new), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace(old, new), client, 'targeting')
+
+	def test_payment_rejects_bad_balances_and_wrong_deduction(self):
+		'''No hardcoded pool sizes, nonfinite values, negative balances or relative tolerance.'''
+		stdout, client = fixture()
+		for field in ('before', 'after'):
+			for invalid in ('nan', 'inf', '-inf', '1e309', '-1', '-1e-999', '', '725x', '1e-9999999999999999999999999999'):
+				changed = re.sub(r'\b' + field + r'=[0-9]+', field + '=' + invalid, PAYMENT)
+				with self.subTest(field=field, invalid=invalid), self.assertRaises(gate.EvidenceError):
+					gate.validate(stdout.replace(PAYMENT, changed), client, 'targeting')
+		for before, after in (('725', '725'), ('725', '655.02'), ('725', '654.98'), ('0', '70'),
+			('70.010001', '0'), ('69.989999', '0'), ('1000000070', '1000000001')):
+			with self.subTest(before=before, after=after), self.assertRaises(gate.EvidenceError):
+				gate.validate(stdout.replace('before=725 after=655', f'before={before} after={after}'), client, 'targeting')
 
 	def test_cast_step_cannot_exceed_world(self):
 		'''A recorded future command is not an executed cast in this world.'''
@@ -51,7 +145,7 @@ class GameplayGateTests(unittest.TestCase):
 		'''Reject frozen, accelerated, future-cast and alias-contaminated mock sessions.'''
 		stdout, client = fixture()
 		stdout = stdout.replace('replayBytes=50', 'replayBytes=50 heroStopCommands=0 heroAttackCommands=0 '
-			'heroCancelCommands=0 heroUseUnitCommands=0 heroUseTalentCommands=0').replace('-1->496/', '-1->750/')
+			'heroCancelCommands=0 heroUseUnitCommands=0 heroUseTalentCommands=0').replace('-1->496/', '-1->750/').replace('step=496', 'step=750')
 		client += ('finalInteractiveClock=ticks:1001 pumps:1800 pendingSeconds:0.05 discardedSeconds:0.1\n'
 			'finalMap3DPreviewBaseYaw=-42\nfinalMap3DPreviewPitch=56\nfinalMap3DPreviewZoom=1.18\n')
 		self.assertEqual(gate.validate_interactive(stdout, client, 100, 650)['cast_step'], 750)
@@ -66,7 +160,10 @@ class GameplayGateTests(unittest.TestCase):
 			('heroCancelCommands=0', 'heroCancelCommands=1'),
 			('heroUseUnitCommands=0', 'heroUseUnitCommands=1'), ('heroUseTalentCommands=0', 'heroUseTalentCommands=1')):
 			with self.subTest(before=before, after=after), self.assertRaises(gate.EvidenceError):
-				gate.validate_interactive(stdout.replace(before, after), client, 100, 650)
+				changed = stdout.replace(before, after)
+				if before == '-1->750/':
+					changed = changed.replace('step=750', 'step=' + after[len('-1->'):-1])
+				gate.validate_interactive(changed, client, 100, 650)
 		with self.assertRaises(gate.EvidenceError):
 			gate.validate_interactive(stdout, client, 60, 650)
 		for line in client.splitlines(keepends=True):
@@ -110,7 +207,8 @@ class GameplayGateTests(unittest.TestCase):
 					with self.assertRaises(gate.EvidenceError):
 						gate.validate(stdout, changed, 'targeting')
 		for before, after in (('targetArmed:3', 'targetArmed:4'), ('targetCanceled:2', 'targetCanceled:1'),
-			('targetCasts:1', 'targetCasts:0'), ('targetRejected:1', 'targetRejected:0'),
+			('targetCasts:1', 'targetCasts:0'), ('targetRejected:2', 'targetRejected:0'),
+			('targetRejected:2', 'targetRejected:1'), ('targetRejected:2', 'targetRejected:3'),
 			('shortcutCalls:3', 'shortcutCalls:2'), ('talentCommands:2', 'talentCommands:1'),
 			('prime:400->100', 'prime:400->200'), ('pendingCallbacks:0', 'pendingCallbacks:1'),
 			('targetPending:0', 'targetPending:1'), ('minimapMoves:0', 'minimapMoves:1'),
@@ -150,19 +248,19 @@ class GameplayGateTests(unittest.TestCase):
 				gate.validate(stdout.replace('talentState=-1->496/', 'talentState=' + step + '/'),
 					client, 'targeting')
 
-	def test_ground_execution_resource_pair(self):
-		'''Resource values need valid syntax, not equality or a prescribed delta.'''
+	def test_ground_execution_active_instance_pair(self):
+		'''The second talentState pair counts active instances, not mana payment.'''
 		stdout, client = fixture()
 		for step in (0, 1, 496):
-			for resource in ('0->0', '725->700', '-1->5', '5->-1'):
-				with self.subTest(step=step, resource=resource):
+			for instances in ('0->0', '1->0', '-1->5', '5->-1'):
+				with self.subTest(step=step, instances=instances):
 					changed = stdout.replace('talentState=-1->496/0->0/',
-						f'talentState=-1->{step}/{resource}/')
+						f'talentState=-1->{step}/{instances}/').replace('step=496', f'step={step}')
 					gate.validate(changed, client, 'targeting')
-		for resource in ('nan->0', '0->inf', '0->1x', '0.5->1', '0', '0->1->2'):
-			with self.subTest(resource=resource), self.assertRaises(gate.EvidenceError):
+		for instances in ('nan->0', '0->inf', '0->1x', '0.5->1', '0', '0->1->2'):
+			with self.subTest(instances=instances), self.assertRaises(gate.EvidenceError):
 				gate.validate(stdout.replace('talentState=-1->496/0->0/',
-					'talentState=-1->496/' + resource + '/'), client, 'targeting')
+					'talentState=-1->496/' + instances + '/'), client, 'targeting')
 
 	def test_truncation_and_wrong_mode(self):
 		'''Incomplete files and targeting activity in default mode are rejected.'''
