@@ -893,6 +893,10 @@ add_executable(
 )
 
 enable_testing()
+add_executable(PrimeWorldLinuxSceneResourceCacheProbe scene_resource_cache_probe.cpp)
+target_compile_features(PrimeWorldLinuxSceneResourceCacheProbe PRIVATE cxx_std_17)
+add_test(NAME LinuxSceneResourceCache COMMAND PrimeWorldLinuxSceneResourceCacheProbe)
+add_dependencies(PrimeWorldLinuxClient PrimeWorldLinuxSceneResourceCacheProbe)
 add_executable(PrimeWorldLinuxDrawProfileProbe draw_profile_probe.cpp)
 target_compile_features(PrimeWorldLinuxDrawProfileProbe PRIVATE cxx_std_17)
 add_test(NAME LinuxDrawProfile COMMAND PrimeWorldLinuxDrawProfileProbe)
@@ -1548,7 +1552,9 @@ find_package(ZLIB REQUIRED)
 
 option(PW_LINUX_OPTIMIZE_PRESENTATION "Optimize the native presentation without disabling assertions" ON)
 if(PW_LINUX_OPTIMIZE_PRESENTATION AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-	set_property(SOURCE ../PW_Client/Game.cpp APPEND PROPERTY COMPILE_OPTIONS -O2)
+	# CPU vertex transforms/skinning are presentation code, not world simulation.
+	set_property(SOURCE ../PW_Client/Game.cpp ../Render/smartrenderer.cpp
+		APPEND PROPERTY COMPILE_OPTIONS -O2)
 endif()
 
 option(PW_LINUX_RUFFLE_INSPECTION "Enable explicit native Ruffle combat inspection (not the default HUD)" OFF)

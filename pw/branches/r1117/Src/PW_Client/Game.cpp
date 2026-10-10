@@ -118,6 +118,7 @@
 #include "LoadingScreenLogic.h"
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
+#include "LinuxBootstrap/scene_resource_cache.h"
 #include "LinuxBootstrap/world_hud_layout.h"
 #include "LinuxBootstrap/adventure_presentation.h"
 #include "LinuxBootstrap/adventure_flash_probe.h"
@@ -326,8 +327,17 @@ struct LinuxClientLaunchSettings
   }
 };
 
+/** Persistent map resources are cleared before replacing payloads or the GL renderer. */
+struct LinuxAnimatedMapResource
+{
+	Render::SkeletalMesh mesh;
+	const SkeletalAnimationDataWrapper* animation = nullptr;
+	std::vector<size_t> slotTextureIndices;
+};
+
 struct LinuxWindowOverlay
 {
+	LinuxBootstrap::SceneResourceCache<LinuxAnimatedMapResource> animatedMapResources;
   struct OpenGlTexture
   {
     GLuint texture;
@@ -53492,61 +53502,46 @@ size_t DrawLinuxMapRendererAnimatedMeshPayloads(
       continue;
     }
 
-    const SkeletalAnimationDataWrapper* animationData =
-      Render::RenderResourceManager::LoadSkeletalAnimation(
-        nstl::string(payload.animationRootFile.c_str()));
-    if (!animationData || !animationData->GetData())
-    {
-      continue;
-    }
-
-    Matrix43 worldMatrix;
-    payload.placement.GetMatrix(&worldMatrix);
-    Render::SkeletalMesh skeletalMesh;
-    skeletalMesh.Initialize(
-      worldMatrix,
-      nstl::string(payload.skeletonRootFile.c_str()));
-    if (!skeletalMesh.GetSkeletonWrapper())
-    {
-      continue;
-    }
-
-    std::vector<unsigned int> slotIndexes;
-    std::vector<size_t> slotTextureIndices(16, kLinuxHeroPreviewNoDiffuseTexture);
-    for (size_t skinIndex = 0; skinIndex < payload.skinGeometryPayloads.size(); ++skinIndex)
-    {
-      const LinuxMapSkinGeometryPayloadPreview& skinPayload =
-        payload.skinGeometryPayloads[skinIndex];
-      if (skinPayload.rootGeometryFile.empty())
-      {
-        continue;
-      }
-
-      NDb::SkinPartBase skinPart;
-      skinPart.geometryFileName = nstl::string(skinPayload.rootGeometryFile.c_str());
-      CopyLinuxPreviewMaterialReferences(skinPayload.materialReferences, &skinPart);
-
-      unsigned int partIndexes[16] = {0};
-      unsigned int partsCount = 0;
-      skeletalMesh.AddSkinPart(&skinPart, partIndexes, &partsCount);
-      for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
-      {
-        slotIndexes.push_back(partIndexes[partIndex]);
-        if (partIndexes[partIndex] < slotTextureIndices.size())
-        {
-          slotTextureIndices[partIndexes[partIndex]] =
-            ResolveLinuxSkeletalRendererMaterialTextureIndex(
-              skinPayload.rootGeometryFile,
-              skinPayload.materialDiffuseTextureIndices,
-              partIndex);
-        }
-      }
-    }
-
-    if (slotIndexes.empty())
-    {
-      continue;
-    }
+	auto* resource = overlay->animatedMapResources.Get(payloadIndex, payloads.size(), [&]() {
+		auto result = std::make_unique<LinuxAnimatedMapResource>();
+		result->animation = Render::RenderResourceManager::LoadSkeletalAnimation(
+			nstl::string(payload.animationRootFile.c_str()));
+		if (!result->animation || !result->animation->GetData())
+			return std::unique_ptr<LinuxAnimatedMapResource>();
+		Matrix43 worldMatrix;
+		payload.placement.GetMatrix(&worldMatrix);
+		Render::SkeletalMesh& skeletalMesh = result->mesh;
+		skeletalMesh.Initialize(worldMatrix, nstl::string(payload.skeletonRootFile.c_str()));
+		if (!skeletalMesh.GetSkeletonWrapper())
+			return std::unique_ptr<LinuxAnimatedMapResource>();
+		std::vector<unsigned int> slotIndexes;
+		result->slotTextureIndices.assign(16, kLinuxHeroPreviewNoDiffuseTexture);
+		auto& slotTextureIndices = result->slotTextureIndices;
+		for (const auto& skinPayload : payload.skinGeometryPayloads)
+		{
+			if (skinPayload.rootGeometryFile.empty()) continue;
+			NDb::SkinPartBase skinPart;
+			skinPart.geometryFileName = nstl::string(skinPayload.rootGeometryFile.c_str());
+			CopyLinuxPreviewMaterialReferences(skinPayload.materialReferences, &skinPart);
+			unsigned int partIndexes[16] = {0};
+			unsigned int partsCount = 0;
+			skeletalMesh.AddSkinPart(&skinPart, partIndexes, &partsCount);
+			for (unsigned int partIndex = 0; partIndex < partsCount; ++partIndex)
+			{
+				slotIndexes.push_back(partIndexes[partIndex]);
+				if (partIndexes[partIndex] < slotTextureIndices.size())
+					slotTextureIndices[partIndexes[partIndex]] = ResolveLinuxSkeletalRendererMaterialTextureIndex(
+						skinPayload.rootGeometryFile, skinPayload.materialDiffuseTextureIndices, partIndex);
+			}
+		}
+		if (slotIndexes.empty())
+			return std::unique_ptr<LinuxAnimatedMapResource>();
+		return result;
+	});
+	if (!resource) continue;
+	Render::SkeletalMesh& skeletalMesh = resource->mesh;
+	const auto* animationData = resource->animation;
+	const auto& slotTextureIndices = resource->slotTextureIndices;
 
     Render::SkeletalAnimationSampler sampler(0.0f, animationData);
     const SkeletalAnimationData* animation = animationData->GetData();
@@ -67867,6 +67862,7 @@ void WriteLinuxLiveHudStateLog(
 
 void AppendRuntimeInputLog(
   const LinuxClientEnvironment& environment,
+	const LinuxWindowOverlay& overlay,
   const LinuxInputState& inputState,
   const LinuxLaunchPreview& launchPreview,
   const LinuxSessionPreview& sessionPreview,
@@ -68703,6 +68699,9 @@ void AppendRuntimeInputLog(
 #endif
   const Game::LoadingFlashInterface* finalLoadingFlashInterface =
     GetActiveLinuxLoadingFlashInterface(&screenRuntime);
+	logFile << "  finalAnimatedMapCache=builds:" << overlay.animatedMapResources.builds
+		<< " hits:" << overlay.animatedMapResources.hits << " failures:" << overlay.animatedMapResources.failures
+		<< " entries:" << overlay.animatedMapResources.Size() << "\n";
 	logFile << "  finalProductionLoadingPresentationFrames=" << screenRuntime.productionLoadingPresentationFrames << "\n";
 	logFile << "  finalNativeWorldPresentationFrames=" << screenRuntime.nativeWorldPresentationFrames << "\n";
 	logFile << "  finalClientTimingMs=frames:" << screenRuntime.profiledFrames
@@ -72850,6 +72849,7 @@ int main(int argc, char** argv)
 
     if (previousSelectedIndex != mapBrowserState.selectedIndex)
     {
+			overlay.animatedMapResources.Clear();
       ProbeSelectedMapPreview(environment, mapCatalog, mapBrowserState, &selectedMapPreview);
       if (!localMatchChanged)
       {
@@ -72981,6 +72981,7 @@ int main(int argc, char** argv)
 
   AppendRuntimeInputLog(
     environment,
+		overlay,
     inputState,
     launchPreview,
     sessionPreview,
@@ -74620,6 +74621,7 @@ int main(int argc, char** argv)
     UI::Release();
   }
   runtimeUiRoot = NDb::Ptr<NDb::UIRoot>();
+	overlay.animatedMapResources.Clear();
   ShutdownLinuxRenderBootstrap(&renderBootstrap);
   ShutdownWindowOverlay(&overlay);
   Input::BindsManager::Instance()->SetBinds(0);
