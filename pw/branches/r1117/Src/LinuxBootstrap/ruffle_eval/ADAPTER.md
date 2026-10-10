@@ -5,11 +5,43 @@ combat inspection path**. It is not the default Flash backend. The default
 Tamarin/OpenGL client and Windows/DirectX projects remain unchanged. No Wine or
 browser is involved. Windows was not built on this host.
 
-This feature checkpoint is tagged `linux-native-v0.16.0`. Both Linux CMake projects
+This feature checkpoint is tagged `linux-native-v0.16.1`. Both Linux CMake projects
 read the port release version from [VERSION](../VERSION). This does not change
 the game's network/replay version, the pinned Ruffle revision, or C ABI v1.
 
 ## Implemented Boundary
+
+### Repeatable Gameplay Gates (0.16.1)
+
+`gameplay_gate.py --stdout OUTPUT --client-log CLIENT_LOG --mode targeting`
+validates complete native logs, exact selection/cancel/reject/cast counts, actual
+purchase and ground-command execution, cooldown transition, world progress and
+cross-checked replay counts. Default mode accepts no Ruffle activity. Missing,
+duplicated, malformed, nonfinite and contradictory records fail; a submission
+message alone is not cast evidence. These are integration checks, not a security
+boundary or proof of full gameplay/Windows parity.
+
+The opt-in display driver requires `xdotool`, `stdbuf`, X11 and the rebuilt native
+client/DSO. It opens a 60-second window, uses the existing script only to buy the
+talent, then sends window-addressed X11 keys/pointer input. Repeated `1` Downs
+exercise held-key suppression; right press and native Escape cancel before the
+final cast. Server release/press repeat pairs remain covered by the key probe,
+not this driver. Every key/button edge targets the launched window, even during
+cleanup; no global held key can repeat into another application. The driver
+checks focus before input, refuses existing output files, bounds runtime
+and reaps its child on failure. Do not interact with the window during this test.
+It is not registered as an unattended CTest; only its mock tests are.
+
+```sh
+python3 -B pw/branches/r1117/Src/LinuxBootstrap/ruffle_eval/native_controls_probe.py \
+	--binary /tmp/PrimeWorldLinuxClient-ruffle-controls \
+	--library /tmp/pw-ruffle-target/release/examples/libpw_bridge.so \
+	--bin-dir /home/vitaly/p/Prime-World--codex-of-andrei/pw/branches/r1117/Bin \
+	--output /tmp/pw-manual-controls-check.log
+```
+
+Paths above describe this development workspace; substitute your own build and
+data locations. The copied opt-in executable is temporary, not a packaged release.
 
 ### Native Action Controls (0.16.0)
 
@@ -230,7 +262,8 @@ timeline, follows viewport size, clamps frame time, and reports frames/errors in
 `finalRuffleInspection`. Initialization/render/runtime failure disables inspection
 and retains the existing HUD fallback. Only the allowlisted talent/minimap commands
 above execute in interactive mode. Mouse motion/buttons/wheel and focus reach
-Ruffle before native world controls; keyboard/text input remains unbound.
+Ruffle before native world controls; the number shortcuts above are bound, while
+general keyboard/text input remains unbound.
 Live local-hero identity, the original portrait and level/health/energy/regen values
 are bound through the authored methods. Plain engine-independent snapshots are
 validated and only changed values are sent. A different hero identity disables
@@ -250,7 +283,7 @@ between them cannot turn into a second command. Focus loss releases held VM inpu
 Resize discards stale coverage and consumes queued clicks/wheel until a matching
 frame exists. Failure disables inspection and retains the existing HUD. Transparent
 interactive regions other than the known modal shield and same-frame layout changes
-still need object-level hit testing; keyboard/text/IME and remaining gameplay
+still need object-level hit testing; general keyboard/text/IME and remaining gameplay
 FSCommands need separate integration. The pure capture probe covers all three buttons and mixed
 ownership. The real-SWF probe opens/closes the original talent window and checks
 HUD/world routing, focus reset and repeated resize events. A
