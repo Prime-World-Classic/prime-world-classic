@@ -19,7 +19,15 @@ namespace NWorld
 
 }
 
-template<> inline NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase*, NWorld::PFBaseHero*, CObjectBase*) { return 0; }
+template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase*, NWorld::PFBaseHero*, void*);
+/** Use the registered concrete caster even where the hero type is incomplete.
+ * A null weak specialization loses packed bot-command recipients and can redirect
+ * their orders through the bootstrap's local-player fallback.
+ */
+template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(CObjectBase* object, NWorld::PFBaseHero* type, CObjectBase*)
+{
+	return CastToUserObjectImpl(object, type, static_cast<void*>(nullptr));
+}
 template<> inline NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectBase*, NWorld::PFBaseUnit*, CObjectBase*) { return 0; }
 template<> NWorld::AIWorldFacets::VotingForSurrenderLogic* CastToUserObjectImpl<NWorld::AIWorldFacets::VotingForSurrenderLogic>(CObjectBase*, NWorld::AIWorldFacets::VotingForSurrenderLogic*, CObjectBase*) { return 0; }
 

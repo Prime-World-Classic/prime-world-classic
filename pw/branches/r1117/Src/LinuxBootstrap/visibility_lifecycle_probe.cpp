@@ -1,4 +1,8 @@
 #include "../System/systemStdAfx.h"
+namespace NWorld { class PFBaseHero; }
+// Use the engine specialization; a new weak template copy could hide a link-order bug.
+template<> NWorld::PFBaseHero* CastToUserObjectImpl<NWorld::PFBaseHero>(
+	CObjectBase*, NWorld::PFBaseHero*, CObjectBase*);
 #include "visibility_lifecycle_probe.h"
 #include "../PF_GameLogic/StringExecutorBootstrap.h"
 #include "../PF_GameLogic/PFBaseMovingUnit.h"
@@ -11,6 +15,9 @@
 #include "../Terrain/DBTerrain.h"
 #include "../PF_GameLogic/TileMap.h"
 #include "../PF_GameLogic/WarFog.h"
+#include "../PF_GameLogic/HeroActions.h"
+#include "../Core/WorldCommand.h"
+#include "../Core/GameCommand.h"
 
 #include <cmath>
 #include <cstdio>
@@ -372,6 +379,19 @@ void HeroRespawn(Checks& checks)
 	spawn.pHero = db;
 	spawn.placement = Placement(CVec3(20, 20, 0), QNULL, CVec3(1, 1, 1));
 	CObj<PFBaseHero> hero = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Ally, Ally);
+	PFBaseHero* exactHero = hero.GetPtr();
+	checks.Check(CastToUserObject(static_cast<CObjectBase*>(exactHero), exactHero) == exactHero,
+		"hero cast retains concrete object identity");
+	checks.Check(CastToUserObject(static_cast<CObjectBase*>(fixture.world), exactHero) == nullptr,
+		"hero cast rejects other world object types");
+	CObj<NCore::WorldCommand> move = CreateCmdMoveHero(exactHero, CVec2(40, 20), false);
+	CObj<NCore::PackedWorldCommand> packed = new NCore::PackedWorldCommand(move,
+		fixture.world->GetPointerSerialization(), 1984, 0);
+	CObj<NCore::WorldCommand> restored = packed->GetWorldCommand(fixture.world->GetPointerSerialization());
+	checks.Check(restored && restored->CanExecute(), "actual packed hero command restores");
+	if (restored) restored->Execute(fixture.world);
+	checks.Check(hero->IsMoving(), "packed command retains its intended hero");
+	hero->Stop(false);
 	hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
 	hero->SetForbidRespawn(true);
 	fixture.Tick();
