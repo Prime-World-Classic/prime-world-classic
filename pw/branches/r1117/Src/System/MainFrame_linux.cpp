@@ -1,9 +1,9 @@
 #include "systemStdAfx.h"
 #include "MainFrame.h"
-#include "VirtualKey.h"
 
 #if defined(NV_LINUX_PLATFORM)
 
+#include "LinuxKeyInput.h"
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
@@ -182,85 +182,18 @@ void PushCursorMessage()
   PushMouseMessage(msg, x, y, 0);
 }
 
-void PushKeyMessage(NMainFrame::SWindowsMsg::EMsg msgType, int key, int repeat, unsigned long flags = 0)
+/// Queue VK or text unchanged, attaching raw identity only to key edges.
+void PushKeyMessage(NMainFrame::SWindowsMsg::EMsg msgType, int key, int repeat,
+	unsigned long flags = 0, unsigned long nativeKeySym = 0)
 {
-  NMainFrame::SWindowsMsg msg = {};
-  NHPTimer::GetTime(msg.time);
-  msg.msg = msgType;
-  msg.nKey = key;
-  msg.nRep = repeat;
-  msg.dwFlags = flags;
-  PushMessage(msg);
-}
-
-int ToVirtualKey(KeySym keySym)
-{
-  namespace Key = NMainFrame::EVirtualKeyCode;
-
-  if (keySym >= XK_0 && keySym <= XK_9)
-    return static_cast<int>(keySym);
-  if (keySym >= XK_A && keySym <= XK_Z)
-    return static_cast<int>(keySym);
-  if (keySym >= XK_a && keySym <= XK_z)
-    return static_cast<int>('A' + keySym - XK_a);
-  if (keySym >= XK_F1 && keySym <= XK_F24)
-    return Key::F1 + static_cast<int>(keySym - XK_F1);
-  if (keySym >= XK_KP_0 && keySym <= XK_KP_9)
-    return Key::Numpad0 + static_cast<int>(keySym - XK_KP_0);
-
-  switch (keySym)
-  {
-    case XK_BackSpace: return Key::Backspace;
-    case XK_Tab:
-    case XK_ISO_Left_Tab: return Key::Tab;
-    case XK_Return:
-    case XK_KP_Enter: return Key::Enter;
-    case XK_Shift_L:
-    case XK_Shift_R: return Key::Shift;
-    case XK_Control_L:
-    case XK_Control_R: return Key::Control;
-    case XK_Alt_L:
-    case XK_Alt_R:
-    case XK_Meta_L:
-    case XK_Meta_R: return Key::Alt;
-    case XK_Pause: return Key::Pause;
-    case XK_Caps_Lock: return Key::CapsLock;
-    case XK_Escape: return Key::Escape;
-    case XK_space:
-    case XK_KP_Space: return Key::Space;
-    case XK_Page_Up:
-    case XK_KP_Page_Up: return Key::PageUp;
-    case XK_Page_Down:
-    case XK_KP_Page_Down: return Key::PageDown;
-    case XK_End:
-    case XK_KP_End: return Key::End;
-    case XK_Home:
-    case XK_KP_Home: return Key::Home;
-    case XK_Left:
-    case XK_KP_Left: return Key::Left;
-    case XK_Up:
-    case XK_KP_Up: return Key::Up;
-    case XK_Right:
-    case XK_KP_Right: return Key::Right;
-    case XK_Down:
-    case XK_KP_Down: return Key::Down;
-    case XK_Insert:
-    case XK_KP_Insert: return Key::Insert;
-    case XK_Delete:
-    case XK_KP_Delete: return Key::Delete;
-    case XK_Super_L: return Key::LeftSystem;
-    case XK_Super_R: return Key::RightSystem;
-    case XK_Menu: return Key::ContextMenu;
-    case XK_KP_Multiply: return Key::Multiply;
-    case XK_KP_Add: return Key::Add;
-    case XK_KP_Separator: return Key::Separator;
-    case XK_KP_Subtract: return Key::Subtract;
-    case XK_KP_Decimal: return Key::Decimal;
-    case XK_KP_Divide: return Key::Divide;
-    case XK_Num_Lock: return Key::NumLock;
-    case XK_Scroll_Lock: return Key::ScrollLock;
-    default: return static_cast<int>(keySym);
-  }
+	NMainFrame::SWindowsMsg msg = {};
+	NHPTimer::GetTime(msg.time);
+	msg.msg = msgType;
+	msg.nKey = key;
+	msg.nRep = repeat;
+	msg.dwFlags = flags;
+	msg.nativeKeySym = nativeKeySym;
+	PushMessage(msg);
 }
 
 HCURSOR CreateHiddenCursor()
@@ -606,30 +539,30 @@ void ProcessButtonRelease(const XButtonEvent& event)
 
 void ProcessKeyEvent(XKeyEvent& event, bool pressed, int repeat = 1)
 {
-  KeySym keySym = NoSymbol;
-  char buffer[32] = {0};
-  const int textLen = XLookupString(&event, buffer, sizeof(buffer), &keySym, nullptr);
+	KeySym keySym = NoSymbol;
+	char buffer[32] = {0};
+	const int textLen = XLookupString(&event, buffer, sizeof(buffer), &keySym, nullptr);
 	unsigned long flags = 0;
+	KeySym unshifted = NoSymbol;
 #ifdef PW_LINUX_RUFFLE_INSPECTION
 	flags = event.state;
 	// Keep digit gesture identity stable when Shift changes while the key is held.
-	const KeySym unshifted = XLookupKeysym(&event, 0);
-	if (unshifted >= XK_0 && unshifted <= XK_9) keySym = unshifted;
+	unshifted = XLookupKeysym(&event, 0);
 #endif
+	const NMainFrame::LinuxKeyInput key = NMainFrame::NormalizeLinuxKeyInput(keySym, unshifted);
 
-  PushKeyMessage(
-    pressed ? NMainFrame::SWindowsMsg::KEY_DOWN : NMainFrame::SWindowsMsg::KEY_UP,
-    ToVirtualKey(keySym),
-		repeat, flags
-  );
+	PushKeyMessage(
+		pressed ? NMainFrame::SWindowsMsg::KEY_DOWN : NMainFrame::SWindowsMsg::KEY_UP,
+		key.virtualKey, repeat, flags, key.nativeKeySym
+	);
 
-  if (pressed && textLen > 0)
-  {
-    for (int i = 0; i < textLen; ++i)
-    {
+	if (pressed && textLen > 0)
+	{
+		for (int i = 0; i < textLen; ++i)
+		{
 			PushKeyMessage(NMainFrame::SWindowsMsg::KEY_CHAR, static_cast<unsigned char>(buffer[i]), repeat, flags);
-    }
-  }
+		}
+	}
 }
 }
 
@@ -648,6 +581,7 @@ bool GetMessage(SWindowsMsg* result)
   g_messages.clear();
   g_nextMessage = 0;
   result->msg = SWindowsMsg::TIME;
+	result->nativeKeySym = 0;
   NHPTimer::GetTime(result->time);
   return false;
 }

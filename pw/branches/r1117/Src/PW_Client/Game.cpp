@@ -119,6 +119,7 @@
 #include "LinuxBootstrap/session_presentation.h"
 #include "LinuxBootstrap/draw_profile.h"
 #include "LinuxBootstrap/scene_resource_cache.h"
+#include "System/LinuxKeyInput.h"
 #include "LinuxBootstrap/world_hud_layout.h"
 #include "LinuxBootstrap/adventure_presentation.h"
 #include "LinuxBootstrap/adventure_flash_probe.h"
@@ -854,7 +855,7 @@ private:
     {
       case NMainFrame::SWindowsMsg::KEY_DOWN:
       case NMainFrame::SWindowsMsg::KEY_UP:
-        if (TranslateKeySymToControlName(message.nKey, &controlName))
+        if (TranslateKeySymToControlName(message.nativeKeySym, &controlName))
         {
           AppendKeyEvent(controlName.c_str(), message.msg == NMainFrame::SWindowsMsg::KEY_DOWN);
         }
@@ -32163,7 +32164,9 @@ bool InjectLinuxBootstrapLobbyClick(
   if (click.keySym != 0)
   {
     message.msg = NMainFrame::SWindowsMsg::KEY_DOWN;
-    message.nKey = click.keySym;
+		const auto key = NMainFrame::NormalizeLinuxKeyInput(click.keySym);
+		message.nKey = key.virtualKey;
+		message.nativeKeySym = key.nativeKeySym;
     message.nRep = 1;
     inputState->rawMessages.push_back(message);
     message.msg = NMainFrame::SWindowsMsg::KEY_UP;
@@ -43005,7 +43008,7 @@ void UpdateMapBrowserState(
       continue;
     }
 
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_Up:
         if (reserveArrowKeysForVisibleMenu)
@@ -43063,7 +43066,7 @@ void UpdateArtworkSelectionState(
       continue;
     }
 
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_Left:
         StepArtworkMode(artworkState, -1, "keyboard");
@@ -43121,7 +43124,7 @@ void UpdateLoadingUiState(
     }
 
     bool changed = false;
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_s:
       case XK_S:
@@ -43385,7 +43388,7 @@ bool UpdateLocalMatchPreviewState(
       continue;
     }
 
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_comma:
       case XK_less:
@@ -43669,7 +43672,7 @@ bool HandleLinuxVisibleMenuHotkeys(
       continue;
     }
 
-    if (message.nKey == XK_F10)
+    if (message.nativeKeySym == XK_F10)
     {
       runtime->diagnosticsOverlayActive = !runtime->diagnosticsOverlayActive;
       runtime->visibleMenuLastAction = runtime->diagnosticsOverlayActive ?
@@ -43686,7 +43689,7 @@ bool HandleLinuxVisibleMenuHotkeys(
       continue;
     }
 
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_Up:
       case XK_w:
@@ -43722,7 +43725,7 @@ bool HandleLinuxVisibleMenuHotkeys(
       case XK_plus:
       {
         const int delta =
-          message.nKey == XK_Right || message.nKey == XK_plus ? 1 : -1;
+          message.nativeKeySym == XK_Right || message.nativeKeySym == XK_plus ? 1 : -1;
         bool handledAdjustment = true;
         bool adjusted = false;
         switch (runtime->visibleMenuSelectedAction)
@@ -44027,7 +44030,7 @@ bool HandleLinuxLiveGameplayHotkeyMessage(
   bool handled = true;
   bool sent = false;
   const char* failedAction = "live-hotkey-command-failed";
-  const int talentSlotIndex = ResolveLinuxLiveHotkeyTalentSlotIndex(message.nKey);
+  const int talentSlotIndex = ResolveLinuxLiveHotkeyTalentSlotIndex(message.nativeKeySym);
   if (talentSlotIndex >= 0)
   {
     sent =
@@ -44040,7 +44043,7 @@ bool HandleLinuxLiveGameplayHotkeyMessage(
   }
   else
   {
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_s:
       case XK_S:
@@ -44247,7 +44250,7 @@ bool HandleLinuxCharacterPreviewInput(
       case NMainFrame::SWindowsMsg::KEY_DOWN:
 				if (IsLinuxWorldPresentationActive(runtime))
 					break;
-        switch (message.nKey)
+        switch (message.nativeKeySym)
         {
           case XK_a:
           case XK_A:
@@ -45634,7 +45637,7 @@ bool HandleLinuxReplayInputControls(
       continue;
     }
 
-    switch (message.nKey)
+    switch (message.nativeKeySym)
     {
       case XK_p:
       case XK_P:
@@ -45698,6 +45701,8 @@ bool HandleLinuxReplayInputControls(
 
   return changed;
 }
+
+#include "LinuxBootstrap/native_input_probe.inl"
 
 bool IsLinuxMapPreviewUiReservedPoint(
   const LinuxBootstrapScreenRuntime* runtime,
@@ -45777,7 +45782,7 @@ bool HandleLinuxMapPreviewInput(
             -1,
             false);
         }
-        switch (message.nKey)
+        switch (message.nativeKeySym)
         {
           case XK_q:
           case XK_Q:
@@ -71066,7 +71071,7 @@ int main(int argc, char** argv)
 		return RunPrimeWorldLinuxAdventureFlashProbe() ? 0 : 1;
 
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-input-probe"))
-		return RunLinuxBootstrapInputProbe() ? 0 : 1;
+		return RunLinuxBootstrapInputProbe() && RunLinuxNativeInputProbe() ? 0 : 1;
 
 	if (CmdLineLite::Instance().IsKeyDefined("--bootstrap-hero-presentation-probe"))
 		return RunPrimeWorldLinuxHeroPresentationProbe() ? 0 : 1;

@@ -50,6 +50,10 @@ struct SWindowsMsg
     struct { int nKey, nRep; };	 // key
   };
   unsigned long dwFlags;
+#if defined(NV_LINUX_PLATFORM)
+	/// Original XLookupString keysym for key edges; zero for text and non-key messages.
+	unsigned long nativeKeySym = 0;
+#endif
 };
 // WinFrame _interface
 bool GetMessage( SWindowsMsg *pRes );
