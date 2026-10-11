@@ -749,14 +749,20 @@ bool PFWorld::LoadSceneMapObjects( const NDb::AdvMapDescription* advMapDesc, con
   ObjectsLoader<PFSimpleBuilding>(this).Load(objects, NDb::Building::typeId, "Building", objectsLoaded, progress); MAP_LOADING_IP;
   ObjectsLoader<PFGlyphSpawner>(this).Load(objects, NDb::GlyphSpawner::typeId, "GlyphSpawner", objectsLoaded, progress); MAP_LOADING_IP;
   ObjectsLoader<PFShop>(this).Load(objects, NDb::Shop::typeId, "Shop", objectsLoaded, progress ); MAP_LOADING_IP;
+  DebugTrace("mapload: after Shop");
 #ifndef VISUAL_CUTTED
   if( ObjectsLoader<PFMinigamePlace>(this).Load(objects, NDb::MinigamePlace::typeId, "MinigamePlace", objectsLoaded, progress) )
   {
+    DebugTrace("mapload: MinigamePlace present -> InitMinigames");
     InitMinigames();
+    DebugTrace("mapload: InitMinigames done");
   }
+  DebugTrace("mapload: after MinigamePlace");
   LoadPureClientObjectsOfType<NGameX::PFPureClientCritter>( adventureScreen, pScene, objects, NDb::Critter::typeId, "Critter", objectsLoaded, progress ); MAP_LOADING_IP;
+  DebugTrace("mapload: after Critter");
 #endif
   ObjectsLoader<PFTower>(this).Load(objects, NDb::Tower::typeId, "Tower", objectsLoaded, progress); MAP_LOADING_IP;
+  DebugTrace("mapload: after Tower");
   progress->SetPartialProgress( EMapLoadStages::MapObjects, 0.95f );
 
   // ������ ����������� ���������, ��� ��� ����� �������� �����
@@ -842,6 +848,7 @@ bool PFWorld::LoadSceneMapObjects( const NDb::AdvMapDescription* advMapDesc, con
     }
   }
 
+  DebugTrace("mapload: all map objects loaded");
   return true;
 
 }
