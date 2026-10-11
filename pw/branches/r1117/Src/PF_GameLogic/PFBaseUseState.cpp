@@ -14,13 +14,28 @@ PFBaseUseState::PFBaseUseState(CPtr<PFBaseUnit> const& owner, Target const& targ
 {
 }
 
-bool PFBaseUseState::NeedToGetClose() const { return false; }
+/** Range admission retains self/no-limit policy and rejects malformed authored ranges. */
+bool PFBaseUseState::NeedToGetClose() const
+{
+	if (!IsUnitValid(pOwner) || (target.IsUnit() && target.GetUnit() == pOwner)) return false;
+	const float range = GetUseRange();
+	if (!std::isfinite(range)) return true;
+	if ((GetAbilityFlags() & NDb::ABILITYFLAGS_CANUSEOUTOFRANGE) || range <= 0) return false;
+	return !pOwner->IsTargetInRange(target, range);
+}
 bool PFBaseUseState::IsCastFinished() const { return true; }
 bool PFBaseUseState::IsAbilityFinished() const { return true; }
 bool PFBaseUseState::IsBlocking() const { return false; }
-bool PFBaseUseState::IsEjecting() const { return true; }
+bool PFBaseUseState::IsEjecting() const { return !(GetAbilityFlags() & NDb::ABILITYFLAGS_MOMENTARY); }
 void PFBaseUseState::OnLeave() { pAbilityInstance = 0; }
-unsigned int PFBaseUseState::GetAbilityFlags() const { return 0; }
+/** An authored alternative activity overrides the base ability's flags. */
+unsigned int PFBaseUseState::GetAbilityFlags() const
+{
+	const NDb::AlternativeTarget* alternative = target.GetDBAlternativeTarget();
+	if (alternative && alternative->alternativeActivity) return alternative->alternativeActivity->flags;
+	const NDb::Ability* ability = GetDBDesc();
+	return ability ? ability->flags : 0;
+}
 void PFBaseUseState::DumpStateToConsole(int depths) { (void)depths; }
 
 } // namespace NWorld
