@@ -1,0 +1,4 @@
+# Намеренные расхождения <sString> <-> <compiledString>: код в блоке и исходник
+# эквивалентны по поведению, но компилируются в разный код (batch_check их флагает).
+# Формат: <путь к .xdb> <TAB> <префикс sString> <TAB> <почему>
+Data/Items/Talents/Class/MagicGirl/spell_A1_InstantDmg.SPLL.xdb	cA1_Damage + (((pSecond != 0	исходник содержал `tal("MagicGirl_A1u") + pSecond != 0` (сложение указателя с int, MSVC-экстенсия); блок считает (pSecond + 4*tal != 0) && mIsNight. Новый текст (pSecond != 0 || tal(...)) && mIsNight — точный эквивалент по таблице случаев, но код другой. См. TASK_parity_and_balance.md

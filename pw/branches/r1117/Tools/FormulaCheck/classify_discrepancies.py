@@ -23,6 +23,7 @@ batch_check.py на «артефакты сравнения» и настоящ�
   python3 Tools/FormulaCheck/classify_discrepancies.py /tmp/formula_full_2026-10-11.log
 """
 import argparse
+import os
 import re
 import sys
 
@@ -109,9 +110,29 @@ def main():
         seen.add(k)
         items.append(it)
     stats = {}
+    # намеренные расхождения (эквивалентные переписывания исходника): не баг
+    allow = {}
+    al = os.path.join(os.path.dirname(os.path.abspath(__file__)), "parity_allowlist.txt")
+    for ln in open(al, encoding="utf-8") if os.path.exists(al) else []:
+        ln = ln.strip()
+        if not ln or ln.startswith("#"):
+            continue
+        parts = ln.split("\t")
+        if len(parts) >= 2:
+            allow.setdefault(parts[0], []).append((parts[1], parts[2] if len(parts) > 2 else ""))
+
+    def intentional(path, src):
+        for pref, why in allow.get(path, []):
+            if src.startswith(pref):
+                return why
+        return None
+
     for it in items:
         f, s = it["fields"].get("fresh", ""), it["fields"].get("stored", "")
-        if it["kind"] in ("NOSYM", "CERR"):
+        why = intentional(it["file"], it["fields"].get("src", ""))
+        if why:
+            cls = "INTENTIONAL"
+        elif it["kind"] in ("NOSYM", "CERR"):
             cls = "TOOL_LIMIT"
         elif it["kind"] == "CONST" and is_padding(f, s):
             cls = "PADDING"
@@ -122,10 +143,12 @@ def main():
         else:
             cls = "REAL"
         stats[cls] = stats.get(cls, 0) + 1
-        if cls == "REAL" or args.verbose:
+        if cls in ("REAL", "INTENTIONAL") or args.verbose:
             print("%-8s %-6s %s" % (cls, it["kind"], it["file"]))
             print("         src=%s" % it["fields"].get("src", "")[:150])
-            if cls != "REAL":
+            if cls == "INTENTIONAL":
+                print("         причина: %s" % why[:200])
+            elif cls != "REAL":
                 print("         fresh =%s" % f[:150])
                 print("         stored=%s" % s[:150])
     print("\nитого:", stats, "всего расхождений:", len(items))
