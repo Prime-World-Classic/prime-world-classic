@@ -105,6 +105,8 @@ class ProbeUnit : public PFBaseUnit
 {
 	NDb::EFaction vision;
 public:
+	bool mounted = false;
+	bool IsMounted() const override { return mounted; }
 	ProbeUnit(PFWorld* world, const NDb::Unit* db, NDb::EFaction faction,
 		const CVec3& position, NDb::EFaction fogFaction)
 		: PFBaseUnit(world, position, db), vision(fogFaction)
@@ -120,6 +122,7 @@ public:
 	void Cache(bool enemy, bool neutral) { visibleForEnemy = enemy; visibleForNeutral = neutral; }
 	void Radius(float meters) { GetStat(NDb::STAT_VISIBILITYRANGE)->SetCoreValue(meters); }
 	void Relocate(const CVec3& value) { position = value; }
+	void MoveIndexed(const CVec3& value) { position = value; GetWorld()->GetAIWorld()->OnUnitMove(*this); }
 	void VisionFaction(NDb::EFaction value) { vision = value; }
 	int Id() const
 	{
@@ -214,6 +217,52 @@ void CachedVisibility(Checks& checks)
 	target->CloseWarFog(true);
 }
 
+/** Target acquisition must not retry a rejected spatial result with weaker visibility rules. */
+void TargetAcquisition(Checks& checks)
+{
+	Fixture fixture(checks);
+	if (!fixture.loaded) return;
+	CObj<ProbeUnit> viewer = new ProbeUnit(fixture.world, fixture.unitDb, Ally, CVec3(20, 20, 0), Ally);
+	CObj<ProbeUnit> target = new ProbeUnit(fixture.world, fixture.unitDb, Enemy, CVec3(60, 20, 0), Enemy);
+	fixture.Tick();
+	checks.Check(!target->IsVisibleForFaction(Ally), "acquisition fixture starts outside team fog");
+	checks.Check(!viewer->FindTarget(80, false), "fog-hidden target cannot use registry fallback");
+	CObj<ProbeUnit> teammate = new ProbeUnit(fixture.world, fixture.unitDb, Ally, CVec3(60, 20, 0), Ally);
+	fixture.Tick();
+	checks.Check(viewer->FindTarget(80, false) == target, "shared fog admits indexed target");
+	target->AddFlag(NDb::UNITFLAG_INVISIBLE); target->UpdateInvisibility();
+	checks.Check(!viewer->FindTarget(80, false), "invisible target cannot use registry fallback");
+	target->RemoveFlag(NDb::UNITFLAG_INVISIBLE); target->UpdateInvisibility();
+	target->mounted = true;
+	checks.Check(!viewer->FindTarget(80, false), "mounted target retains selector exclusion");
+	checks.Check(viewer->FindTarget(80, false, NDb::SPELLTARGET_AFFECTMOUNTED) == target, "explicit mounted targeting remains available");
+	target->mounted = false;
+	target->AddFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+	checks.Check(!viewer->FindTarget(80, false), "forbidden auto target rejected");
+	target->RemoveFlag(NDb::UNITFLAG_FORBIDAUTOTARGETME);
+	viewer->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+	checks.Check(!viewer->FindTarget(80, false), "owner forbid-select gate retained");
+	checks.Check(viewer->FindTarget(80, false, 0, false) == target, "explicit owner forbid bypass retained");
+	viewer->RemoveFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+	fixture.world->GetAIWorld()->RemoveObject(*target);
+	checks.Check(!viewer->FindTarget(80, false), "registry cannot resurrect an unindexed target");
+	fixture.world->GetAIWorld()->AddObject(*target);
+	checks.Check(viewer->FindTarget(80, false) == target, "reinserted target is available");
+	teammate->MoveIndexed(CVec3(20, 60, 0)); fixture.Tick();
+	checks.Check(!viewer->FindTarget(80, false), "explored former sight does not permit reacquisition");
+	target->MoveIndexed(CVec3(24 + target->GetObjectSize() * .5f, 20, 0)); fixture.Tick();
+	checks.Check(viewer->FindTarget(5, false) == target, "near visible target admitted including collision size");
+	checks.Check(!viewer->FindTarget(1, false), "actual target range retained");
+	for (float radius : {-1.f, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+		std::numeric_limits<float>::max()})
+		checks.Check(!viewer->FindTarget(radius, false), "malformed acquisition radius cannot trigger fallback");
+	checks.Check(viewer->FindTarget(0, false) == target, "existing zero-range visibility default retained");
+	CObj<ProbeUnit> detachedViewer = new ProbeUnit(nullptr, fixture.unitDb, Ally, CVec3(20, 20, 0), Ally);
+	CObj<ProbeUnit> detachedTarget = new ProbeUnit(nullptr, fixture.unitDb, Enemy, CVec3(22, 20, 0), Enemy);
+	checks.Check(!detachedViewer->FindTarget(80, false), "missing spatial world fails closed");
+	viewer->CloseWarFog(true); target->CloseWarFog(true); teammate->CloseWarFog(true);
+}
+
 /** Query observer ownership through GetWarfogFaction, but object allegiance through GetFaction. */
 void IndependentVisionAndRange(Checks& checks)
 {
@@ -304,6 +353,7 @@ bool RunPrimeWorldLinuxVisibilityQueryProbe()
 			checks.density = density;
 			PersonalAndShared(checks);
 			CachedVisibility(checks);
+			TargetAcquisition(checks);
 			IndependentVisionAndRange(checks);
 			InvalidQueries(checks);
 		}

@@ -1067,11 +1067,12 @@ private:
 
 CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, bool checkForbid)
 {
+	if (!std::isfinite(fRange) || fRange < 0.0f) return CPtr<PFBaseUnit>();
   if (IsDead() || (checkForbid && CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)))
     return CPtr<PFBaseUnit>();
 
   const float range = fRange > EPS_VALUE ? fRange : GetVisibilityRange();
-  if (range <= EPS_VALUE)
+  if (!std::isfinite(range) || range <= EPS_VALUE)
     return CPtr<PFBaseUnit>();
 
   if (GetWorld() && GetWorld()->GetAIWorld())
@@ -1088,42 +1089,11 @@ CPtr<PFBaseUnit> PFBaseUnit::FindTarget(float fRange, bool, int targetFlags, boo
     LinuxAIWorldTargetScan targetFinder(*this, range);
     pAIWorld->ForAllUnitsInRange(GetPosition(), searchRadius, targetFinder, UnitMaskingPredicate(GetOppositeFactionFlags(), targetTypesToFind, this));
 
-    CPtr<PFBaseUnit> aiWorldTarget = targetFinder.GetTarget();
-    if (IsValid(aiWorldTarget))
-      return aiWorldTarget;
+		// A rejected indexed candidate must not be retried with weaker fog or selector rules.
+		return targetFinder.GetTarget();
   }
 
-  vector<CPtr<PFBaseUnit> > units;
-  GetLinuxBootstrapUnits(units);
-
-  CPtr<PFBaseUnit> bestTarget;
-  float bestDistance2 = FLT_MAX;
-  const CVec2 origin = GetPosition().AsVec2D();
-  for (vector<CPtr<PFBaseUnit> >::iterator it = units.begin(); it != units.end(); ++it)
-  {
-    PFBaseUnit* candidate = it->GetPtr();
-    if (!candidate || candidate == this || candidate->GetWorld() != GetWorld())
-      continue;
-    if (candidate->IsDead() || !candidate->IsVulnerable())
-      continue;
-    if (candidate->GetFaction() == GetFaction())
-      continue;
-    if (candidate->GetFaction() == NDb::FACTION_NEUTRAL && GetFaction() != NDb::FACTION_NEUTRAL)
-      continue;
-    if (!CanAttackTarget(candidate) || !CanSelectTarget(candidate, false))
-      continue;
-    if (!IsTargetInRange(candidate, range))
-      continue;
-
-    const float distance2 = fabs2(candidate->GetPosition().AsVec2D() - origin);
-    if (distance2 < bestDistance2)
-    {
-      bestDistance2 = distance2;
-      bestTarget = candidate;
-    }
-  }
-
-  return bestTarget;
+	return CPtr<PFBaseUnit>();
 }
 void PFBaseUnit::OnBeingTargeted(PFBaseUnit& attacker)
 {
