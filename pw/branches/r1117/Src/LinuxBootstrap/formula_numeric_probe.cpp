@@ -174,6 +174,12 @@ void LazySymbols()
 void NumericFunctions()
 {
 	ExpectValue("min(4, 9)", 4);
+	ExpectValue("f2l(-3.9)", -3);
+	ExpectValue("f2l(3.9)", 3);
+	ExpectValue("f2l(-2147483648)", -2147483648.f);
+	ExpectError("f2l(2147483648)", Error::NonFiniteValue);
+	ExpectError("f2l(-2147483904)", Error::NonFiniteValue);
+	ExpectValue("1 ? 2 : f2l(1e39)", 2);
 	ExpectValue("min \t (4, 9)", 4);
 	ExpectValue("max(4, 9)", 9);
 	ExpectValue("clamp(-1, 2, 8)", 2);
@@ -227,6 +233,14 @@ void NumericFunctions()
 /** Context function transport is bounded, lazy, exception-contained and evaluation-local. */
 void ContextFunctions()
 {
+	int randomCalls = 0;
+	const NumericFunctionResolver random = [&](const std::string& name, const double* args, std::size_t count, double& value) {
+		++randomCalls; value = args[1]; return name == "random" && count == 2;
+	};
+	Check(EvaluateNumericFormula("random(3,7)", {}, random).value == 7 && randomCalls == 1, "two-argument random callback");
+	for (const char* expression : {"random()", "random(1)", "random(1,2,3)", "0 ? random(1) : 2"})
+		Check(!EvaluateNumericFormula(expression, {}, random).Succeeded() && randomCalls == 1, "random arity checked before callback");
+	Check(EvaluateNumericFormula("1 ? 4 : random(1,2)").value == 4, "unselected random requires no callback");
 	int calls = 0;
 	const NumericFunctionResolver resolver = [&](const std::string& name, const double* args,
 		std::size_t count, double& value) {

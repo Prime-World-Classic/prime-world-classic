@@ -98,6 +98,20 @@ void DamageFormulas(Checks& check, PFWorld* world)
 	run("25", 0, "false");
 	sender->GetStat(NDb::STAT_STRENGTH)->SetCoreValue(115);
 	run("cDamage", 130);
+	world->GetRndGen()->SetSeed(731);
+	NRandom::RandomGenerator expected(731);
+	for (int i = 0; i < 12; ++i)
+		run("random(10,20)", float(expected.Next(10, 20)));
+	run("random(f2l(sDamageMin),f2l(sDamageMax))", float(expected.Next(103, 126)));
+	check(world->GetRndGen()->Next() == expected.Next(), "base attack uses the existing seeded world stream");
+	world->GetRndGen()->SetSeed(732); expected.SetSeed(732);
+	run("random(5,5)", 5); run("random(5,3)", 5);
+	for (const char* expression : {"random(2,4)+missing", "random(2,4)+1/0", "random(-2147483648,2147483647)",
+		"random(f2l(1e39),3)", "random(1,2,3)", "f2l(2147483648)"}) run(expression, 0);
+	run("random(10,20)", 0, "false");
+	run("1 ? 7 : random(10,20)", 7);
+	check(world->GetRndGen()->Next() == expected.Next(), "invalid disabled and unselected formulas do not advance RNG");
+	run("f2l(-3.9)+10", 7);
 }
 }
 

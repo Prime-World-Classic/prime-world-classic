@@ -10,7 +10,7 @@ namespace LinuxBootstrap
 /** Independent scalar bindings; false means unknown symbol or unavailable context. */
 using NumericSymbolResolver = std::function<bool(const std::string&, double&)>;
 
-/** Only abilityScale/damageScale use this callback, with three or four finite arguments.
+/** abilityScale/damageScale use three or four arguments; random uses exactly two.
  * Arguments and names are borrowed for the call; false means unavailable context.
  * Selected calls are not cached. The callback must write a finite result on success.
  */
@@ -59,11 +59,12 @@ inline constexpr std::size_t NumericFormulaMaxIdentifier = 64;
  * a guarantee of bit-identical Windows floating-point execution.
  *
  * Explicit functions: min/max/clamp, parameter-first lerp, round, abs, sqrt,
- * floor and ceil. The first five use FormulaPars float argument semantics;
+ * floor, ceil and checked float-to-int f2l. The first five use FormulaPars float argument semantics;
  * round follows its float +/-0.5 then floor/ceil rule. Other helpers use double.
  * Boolean literals true/false are numeric 1/0. Commas are argument separators only.
  * abilityScale/damageScale additionally accept three or four arguments through
  * the optional context callback. Arity is checked even in unselected branches.
+ * random accepts exactly two arguments through that callback; this layer owns no RNG.
  * No other functions, assignment, strings, lists, logical/bitwise/power operators,
  * comments, casts, hex/octal literals, or ambient built-in constants. Whitespace
  * is ASCII space, tab, CR and LF. Repeated unary signs require parentheses:

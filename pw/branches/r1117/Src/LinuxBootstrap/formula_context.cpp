@@ -5,6 +5,7 @@
 #include "../PF_GameLogic/PFBaseUnit.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFAIWorld.h"
+#include "../PF_GameLogic/PFApplicator.h"
 #include <algorithm>
 #include <map>
 #include <vector>
@@ -15,10 +16,11 @@ namespace
 {
 
 /** Exact IUnitFormulaPars getter names after the s/t prefix; no aliases or inferred Base names.
- * This fixed 40-property whitelist covers pools/maxima, direct combat/movement stats,
+ * This fixed 42-property whitelist covers pools/maxima, direct combat/movement stats,
  * regeneration/drain/evasion/critical multiplier and their corresponding base values.
  * BaseAttack is a modified stat; BaseBaseAttack is its unmodified counterpart.
- * Derived stats, economy and object/boolean/misc properties are not in this table.
+ * Only the existing DamageMin/Max derived getters are exposed; other derived,
+ * economy and object/boolean/misc properties are not inferred.
  */
 struct UnitNumericProperty
 {
@@ -48,6 +50,8 @@ constexpr UnitNumericProperty unitNumericProperties[] = {
 	{"BaseAttack", &IUnitFormulaPars::GetBaseAttack},
 	{"Stamina", &IUnitFormulaPars::GetStamina},
 	{"Will", &IUnitFormulaPars::GetWill},
+	{"DamageMin", &IUnitFormulaPars::GetDamageMin},
+	{"DamageMax", &IUnitFormulaPars::GetDamageMax},
 	{"BaseLife", &IUnitFormulaPars::GetBaseLife},
 	{"BaseEnergy", &IUnitFormulaPars::GetBaseEnergy},
 	{"BaseRange", &IUnitFormulaPars::GetBaseRange},
@@ -75,6 +79,7 @@ struct Context
 	const IUnitFormulaPars* sender;
 	const IUnitFormulaPars* target;
 	const NWorld::PFAbilityData* ability;
+	NRandom::RandomGenerator* random = nullptr;
 	unsigned expressions = 0;
 	std::vector<std::string> active;
 	std::map<std::string, float> constants;
@@ -92,6 +97,16 @@ struct Context
 	/** Validate before the existing helper can mask invalid arithmetic or narrow to int. */
 	bool Scale(const std::string& name, const double* args, std::size_t count, double& value)
 	{
+		if (name == "random")
+		{
+			if (!random || count != 2) return false;
+			for (std::size_t i = 0; i < count; ++i)
+				if (!std::isfinite(args[i]) || args[i] < std::numeric_limits<int>::min() || args[i] > std::numeric_limits<int>::max()) return false;
+			const int low = static_cast<int>(args[0]), high = static_cast<int>(args[1]);
+			if (low < high && static_cast<long long>(high) - low + 1 > std::numeric_limits<int>::max()) return false;
+			value = random->Next(low, high);
+			return true;
+		}
 		if ((name != "abilityScale" && name != "damageScale") || (count != 3 && count != 4) || !ability) return false;
 		const NWorld::PFBaseUnit* owner = ability->GetOwner();
 		const auto* world = owner ? owner->GetWorld() : nullptr;
@@ -162,5 +177,18 @@ NumericFormulaResult EvaluateUnitNumericFormula(const std::string& expression,
 {
 	Context context{sender, target, ability};
 	return context.Evaluate(expression);
+}
+
+NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& expression,
+	const NWorld::PFBaseApplicator& app)
+{
+	const CPtr<NWorld::PFBaseUnit> owner = app.GetAbilityOwner();
+	NWorld::PFWorld* world = IsValid(owner) ? owner->GetWorld() : nullptr;
+	if (world != app.GetWorld()) world = nullptr;
+	NRandom::RandomGenerator staged = world ? *world->GetRndGen() : NRandom::RandomGenerator();
+	Context context{owner, app.GetReceiver(), app.GetAbilityData(), world ? &staged : nullptr};
+	const auto result = context.Evaluate(expression);
+	if (result.Succeeded() && world) *world->GetRndGen() = staged;
+	return result;
 }
 }

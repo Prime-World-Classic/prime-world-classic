@@ -27,30 +27,7 @@ namespace
 float ReadLinuxApplicatorAmount(const PFBaseApplicator& app, const ExecutableFloatString& formula)
 {
 	if (formula.sString.empty() && formula.compiledString.empty()) return 0.0f;
-	return LinuxBootstrap::EvaluateUnitNumericFormula(formula.sString.c_str(),
-		app.GetAbilityOwner(), app.GetReceiver(), app.GetAbilityData()).value;
-}
-
-float GetLinuxBaseAttackDamageFallback(
-  const ExecutableFloatString& formula,
-  const CPtr<PFBaseUnit>& sender)
-{
-  if (!IsValid(sender))
-    return 0.0f;
-
-	// Temporary compatibility for the single authored base-attack expression only.
-	std::string text;
-	for (const char ch : formula.sString)
-		if (ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n') text += ch;
-	if (text != "random(f2l(sDamageMin),f2l(sDamageMax))")
-		return std::numeric_limits<float>::quiet_NaN();
-
-  const float damageMin = sender->GetDamageMin();
-  const float damageMax = sender->GetDamageMax();
-  if (damageMin <= 0.0f && damageMax <= 0.0f)
-    return 0.0f;
-
-  return (Max(0.0f, damageMin) + Max(0.0f, damageMax)) * 0.5f;
+	return LinuxBootstrap::EvaluateApplicatorNumericFormula(formula.sString.c_str(), app).value;
 }
 }
 
@@ -71,8 +48,6 @@ bool PFApplDamage::Start()
   if (IsValid(pReceiver))
   {
 	damage = IsDelegated() && delegateDamageDesc ? delegateDamageDesc->amount : ReadLinuxApplicatorAmount(*this, GetDB().damage);
-	if (!std::isfinite(damage) && !IsDelegated())
-      damage = GetLinuxBaseAttackDamageFallback(GetDB().damage, GetAbilityOwner());
 	if (!std::isfinite(damage) || damage <= 0.0f) return true;
     PFBaseUnit::DamageDesc desc;
     desc.pSender = GetAbilityOwner();

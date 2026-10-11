@@ -94,10 +94,19 @@ double SquareRoot(double value) { return Finite(std::sqrt(value)); }
 double Floor(double value) { return Finite(std::floor(value)); }
 double Ceil(double value) { return Finite(std::ceil(value)); }
 
+/** FormulaPars f2l narrows to float then truncates toward zero; reject unsafe int casts. */
+double FloatToInteger(double value)
+{
+	const float v = Narrow(value);
+	if (double(v) < std::numeric_limits<int>::min() || double(v) > std::numeric_limits<int>::max())
+		throw Error::NonFiniteValue;
+	return static_cast<int>(v);
+}
+
 bool IsNumericFunction(const std::string& name)
 {
 	return name == "min" || name == "max" || name == "clamp" || name == "lerp" ||
-		name == "round" || name == "abs" || name == "sqrt" || name == "floor" || name == "ceil";
+		name == "round" || name == "abs" || name == "sqrt" || name == "floor" || name == "ceil" || name == "f2l";
 }
 
 /** Stable map entries are callback userdata, owned only by the current evaluation. */
@@ -149,6 +158,11 @@ double ResolveFunction(FunctionBinding& binding, const double* args, std::size_t
 	catch (...) { throw Error::ResolverFailure; }
 	if (!found) throw Error::UnknownSymbol;
 	return Finite(value);
+}
+double ResolveTwo(void* data, double a, double b)
+{
+	const double args[] = {a, b};
+	return ResolveFunction(*static_cast<FunctionBinding*>(data), args, 2);
 }
 double ResolveThree(void* data, double a, double b, double c)
 {
@@ -203,6 +217,7 @@ void Configure(mu::Parser& parser)
 	parser.DefineFun("sqrt", SquareRoot, false);
 	parser.DefineFun("floor", Floor, false);
 	parser.DefineFun("ceil", Ceil, false);
+	parser.DefineFun("f2l", FloatToInteger, false);
 }
 
 /**
@@ -268,7 +283,7 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			while (next < expression.size() && IsSpace(expression[next])) ++next;
 			if (next < expression.size() && expression[next] == '(')
 			{
-				if (name == "abilityScale" || name == "damageScale")
+				if (name == "abilityScale" || name == "damageScale" || name == "random")
 				{
 					const std::string token = "pw_call_" + std::to_string(calls.size());
 					pendingContext = &calls.emplace(token, FunctionBinding{&functions, name, token}).first->second;
@@ -326,7 +341,12 @@ std::string BindTokens(const std::string& expression, const NumericSymbolResolve
 			const auto& frame = functionParentheses.back();
 			if (frame.context)
 			{
-				if (frame.arguments == 3)
+				if (frame.context->name == "random")
+				{
+					if (frame.arguments != 2) throw Error::InvalidExpression;
+					parser.DefineFunUserData(frame.context->token, ResolveTwo, frame.context, false);
+				}
+				else if (frame.arguments == 3)
 					parser.DefineFunUserData(frame.context->token, ResolveThree, frame.context, false);
 				else if (frame.arguments == 4)
 					parser.DefineFunUserData(frame.context->token, ResolveFour, frame.context, false);

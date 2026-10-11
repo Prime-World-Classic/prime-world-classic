@@ -3,7 +3,7 @@
 #include "formula_numeric.h"
 
 struct IUnitFormulaPars;
-namespace NWorld { class PFAbilityData; }
+namespace NWorld { class PFAbilityData; class PFBaseApplicator; }
 
 namespace LinuxBootstrap
 {
@@ -19,4 +19,11 @@ namespace LinuxBootstrap
 NumericFormulaResult EvaluateUnitNumericFormula(const std::string& expression,
 	const IUnitFormulaPars* sender, const IUnitFormulaPars* target,
 	const NWorld::PFAbilityData* ability = nullptr);
+
+/** Evaluate an applicator with live receiver/owner/upgrader context and seeded random.
+ * RNG is staged locally and committed only after successful numeric evaluation.
+ * Missing worlds cannot provide random; pure formulas remain usable without one.
+ */
+NumericFormulaResult EvaluateApplicatorNumericFormula(const std::string& expression,
+	const NWorld::PFBaseApplicator& applicator);
 }
