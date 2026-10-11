@@ -141,6 +141,14 @@ void PFStatistics::NotifyItemTransfer(PFBaseHero* from, PFBaseHero* to, const ND
   linuxLastItemTransferHadItem = dbItem ? 1 : 0;
 }
 
+/** Mirror Windows accounting when a hero has an initialized statistics object. */
+void PFStatistics::AddHealedAmount(CPtr<PFBaseHero> pHero, float amount)
+{
+	if (!IsValid(pHero)) return;
+	if (PFHeroStatistics* statistics = pHero->GetHeroStatistics().GetPtr())
+		statistics->AddHealedAmount(amount);
+}
+
 void PFStatistics::AddFlagRaised(CPtr<PFBaseUnit> pRaiser)
 {
   ++linuxFlagRaisedCalls;

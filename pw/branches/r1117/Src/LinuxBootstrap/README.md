@@ -30,7 +30,7 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" --output-on-failure
 
 Several maintained probes are compile-only object targets, not runnable programs.
 The client CTests include actual engine formula, resource, cooldown, world-grid,
-fog/stealth, packed-command identity and scheduler-draining fixtures. Passing them
+fog/stealth, bounded voxel traversal, packed-command policy and scheduler-draining fixtures. Passing them
 does not establish a complete match.
 
 Run from the game Bin directory so asset paths resolve:
@@ -101,14 +101,20 @@ or duplicated final records; wait for the process to exit before validating logs
 ## Remaining Boundaries
 
 - Rendering uses real assets but still has simplified materials and presentation.
-- Numeric formulas support bounded arithmetic/conditionals, nine checked numeric
-	helpers, checked abilityScale/damageScale STAT contexts and 40 exact unit
-	properties through s/t prefixes. Unsupported abilities remain unavailable,
-	not silently free. Damage applicators still use the legacy executor.
+- Numeric formulas support bounded arithmetic/conditionals, checked helpers,
+	abilityScale/damageScale contexts and 42 exact unit properties through s/t
+	prefixes. Damage, healing and cooldown-refresh applicators use checked live
+	contexts; applicator-only random uses the seeded world stream with failed
+	evaluation rollback. Unsupported expressions fail closed. Generic RetrieveParam,
+	full formula-language coverage and atomic downstream cast refunds remain unfinished.
 - Fog observers, visibility queries and stealth/true-sight caches use simulation
-	state. Rendered fog, complete stealth ability events/effects and spatial-scan
-	performance parity remain incomplete.
-- Production damage formulas, complete casting/movement behavior, remaining HUD
+	state. True sight uses bounded voxel queries and AI target selection cannot retry
+	hidden targets through the registry. Rendered fog, complete stealth events/effects
+	and measured whole-world performance parity remain incomplete.
+- Manual attacks check visibility and legality before replacing an order. The
+	bootstrap script visibility/priming bypass is not Windows combat parity; player
+	authorization, mounted routing and full attack/chase states still need work.
+- Critical rolls/outgoing combat events, complete casting/movement behavior, remaining HUD
 	actions, online integration and a complete local match are not acceptance claims.
 - Linux source guards preserve the Windows path, but an actual Windows build and
 	runtime regression run are still required.
@@ -119,7 +125,7 @@ The focused checks run without a graphical session through CTest:
 
 ```sh
 env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
-	-R 'Linux(NumericFormula|FormulaRange|Visibility.*|SchedulerDrain)$' \
+	-R 'Linux(NumericFormula|FormulaRange|ApplicatorFormula|VoxelRange|Visibility.*|SchedulerDrain)$' \
 	--output-on-failure
 ```
 
@@ -127,13 +133,18 @@ env LC_ALL=C MALLOC_PERTURB_=165 ctest --test-dir "$BUILD" \
 	malformed syntax, finite arithmetic, budgets and independent parser ownership.
 - [Formula context](formula_range_probe.cpp): real base/modified stats, resource
 	pools, constants, scaling parameters, range, costs and cooldowns.
+- [Applicators](applicator_formula_probe.cpp): actual damage/heal/refresh consumers,
+	seeded random, disabled/invalid/dead guards, mana routing, delegation and hero healing.
+- [Voxel queries](voxel_range_probe.cpp): bounded numeric admission, rectangular
+	geometry, inclusive circles, ordering and retained live callback semantics.
 - [Visibility queries](visibility_query_probe.cpp) and
 	[stealth state](visibility_stealth_probe.cpp): rectangular maps, faction fog,
 	true sight, target loss, movement, death and one scheduled refresh per unit.
 - [Unit lifecycle](visibility_lifecycle_probe.cpp): observer lifecycle and exact
-	serialized command actors/targets, including missing and foreign-world objects.
+	serialized command actors/targets, policy changes after queueing, and preservation
+	of prior orders on rejection, including missing and foreign-world objects.
 - [Scheduler drain](scheduler_drain_probe.cpp): preserve admitted commands and
 	statuses while closing finite smoke input and draining the replay boundary.
 
 Use the graphical acceptance driver above as well; these checks do not prove
-complete stealth abilities, damage applicator integration or visual parity.
+complete stealth abilities, the full combat pipeline or Windows visual parity.

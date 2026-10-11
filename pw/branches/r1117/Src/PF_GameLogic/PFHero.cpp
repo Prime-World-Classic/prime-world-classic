@@ -156,7 +156,14 @@ bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; r
 float PFBaseHero::OnBeforeDamage(const DamageDesc &desc) { return PFCreature::OnBeforeDamage(desc); }
 float PFBaseHero::OnDamage(const DamageDesc &desc) { return PFCreature::OnDamage(desc); }
 void PFBaseHero::OnAddGold(CPtr<PFBaseUnit> pSender, float amount, bool showGold) { PFBaseUnit::OnAddGold(pSender, amount, showGold); }
-float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods) { (void)pSender; (void)ignoreHealingMods; return amount; }
+/** Restore the real resource pool before reporting the capped result to hero statistics. */
+float PFBaseHero::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHealingMods)
+{
+	const float healed = PFCreature::OnHeal(pSender, amount, ignoreHealingMods);
+	if (!IsClone() && GetWorld() && GetWorld()->GetStatistics())
+		GetWorld()->GetStatistics()->AddHealedAmount(this, healed);
+	return healed;
+}
 float PFBaseHero::GetTimeToRespawn() const { return respawnDelay; }
 void PFBaseHero::RecalculateRedeemCost() { redeemCost = 0.0f; }
 void PFBaseHero::RemoveCorpse() {}

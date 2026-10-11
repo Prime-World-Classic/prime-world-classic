@@ -139,10 +139,19 @@ void DamageFormulas(Checks& check, PFWorld* world)
 }
 
 /** Health and energy are independent pools; report actual capped restoration. */
-static void HealingFormulas(Checks& check, NWorld::PFWorld* world)
+static void HealingFormulas(Checks& check, NWorld::PFWorld* world, bool heroTarget = false)
 {
 	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
 	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_FREEZE, 20);
+	if (heroTarget)
+	{
+		// Preserve the same stats so virtual hero healing is compared with ordinary units.
+		NDb::Hero* raw = new NDb::Hero; raw->stats = receiver->DbUnitDesc()->stats;
+		NDb::Ptr<NDb::Hero> db = raw;
+		PFBaseHero::SpawnInfo spawn; spawn.pHero = db;
+		spawn.placement = Placement(CVec3(5, 5, 0), QNULL, CVec3(1, 1, 1));
+		receiver = new PFBaseHero(world, spawn, NDb::UNITTYPE_HEROMALE, NDb::FACTION_FREEZE, NDb::FACTION_FREEZE);
+	}
 	const auto run = [&](const char* expression, NDb::EHealTarget pool, float restored,
 		bool enabled = true, bool dead = false, bool forbidden = false) {
 		NDb::HealApplicator* raw = new NDb::HealApplicator;
@@ -297,7 +306,11 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		PFWorld* world = dynamic_cast<PFWorld*>(owner.GetPtr());
 		const bool loaded = world && world->LoadMap(db, 0, NCore::TPlayersStartInfo(), 0, false, PFResourcesCollection::TalentMap());
 		check(loaded, "applicator mock map loads");
-		if (loaded) { DamageFormulas(check, world); HealingFormulas(check, world); CooldownFormulas(check, world); DamageRouting(check, world); }
+		if (loaded)
+		{
+			DamageFormulas(check, world); HealingFormulas(check, world); HealingFormulas(check, world, true);
+			CooldownFormulas(check, world); DamageRouting(check, world);
+		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
 	std::printf("Applicator formulas: %d checks, %d failures\n", check.count, check.failed);
