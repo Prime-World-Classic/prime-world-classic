@@ -14,8 +14,8 @@ namespace EditorPlugins.Editors.TextRef
 		{
 			public int LocationX = 100;
 			public int LocationY = 100;
-			public int Width = 300;
-			public int Height = 400;
+			public int Width = 600;
+			public int Height = 500;
 			public bool WordWrap = true;
 		}
 
@@ -90,7 +90,10 @@ namespace EditorPlugins.Editors.TextRef
 		private void TextRefEditorForm_Load( object sender, EventArgs e )
 		{
 			var c= application.Application.Settings.Get<TextRefEditorFormConfig>();
+			// two text boxes (original + English): a small size saved by older versions would squeeze them
+			this.MinimumSize = new System.Drawing.Size( 500, 450 );
 			this.SetBounds(c.LocationX, c.LocationY, c.Width, c.Height);
+			splitTexts.SplitterDistance = splitTexts.Height / 2;
 			cbWordWrap.Checked = c.WordWrap;
 		}
 
