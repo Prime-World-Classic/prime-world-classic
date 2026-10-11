@@ -39,6 +39,8 @@
 			<ChannellingApplicator parent="/Items/Talents/Class/Mage/Channeling.APLR">
 				<lifeTime>
 					<compiledString>FQwAAAABAAAAGAAAAENoYW5uZWxUaW1lAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>cChannelTime</sString>
 				</lifeTime>
 				<stopSpell href="/Items/Talents/Class/Mage/Ability4.TALENT" id="5661ACBA-8427-4803-BE02-9BE8A5191F9A">
 					<Spell>

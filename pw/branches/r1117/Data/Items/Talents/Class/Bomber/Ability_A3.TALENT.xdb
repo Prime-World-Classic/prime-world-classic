@@ -190,9 +190,13 @@
 								<StatusApplicator parent="/Heroes/DefaultStatus/_BLIND_status.APLR">
 									<customCounter>
 										<compiledString>FQAAAAAAAAAAVYvsM8Bdww==</compiledString>
+										<returnType>int</returnType>
+										<sString>0</sString>
 									</customCounter>
 									<customProgress>
 										<compiledString>FQAAAAABAAAABQAAAFWL7NkFCwAAAF3DAACAvw==</compiledString>
+										<returnType>float</returnType>
+										<sString>-1</sString>
 									</customProgress>
 									<enabled>
 										<compiledString>FS0AAAAGAAAAOgAAAE0AAABZAAAAbwAAAHsAAACRAAAAQmxpbmRfQ29uZGl0aW9uAEltbXVuZTJDb250cm9sAABBbGxvd0NvbnRyb2wAVYvsUYtFDFCLTQhRaAAAAACLVRCLAotNEItQUP/S3B27AAAA3+D2xER7ImgQAAAAi0UMixCLTQyLgogBAAD/0NwduwAAAN/g9sREeytoIAAAAItNDIsRi00Mi4KIAQAA/9DcHbMAAADf4PbERHsJx0X8AAAAAOsHx0X8AQAAAIpF/IvlXcMAAAAAAADwPwAAAAAAAAAA</compiledString>
@@ -201,9 +205,13 @@
 									</enabled>
 									<lifeTime>
 										<compiledString>FQ8AAAABAAAAGwAAAEJsaW5kX0R1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+										<returnType>float</returnType>
+										<sString>cBlind_Duration</sString>
 									</lifeTime>
 									<startCondition>
 										<compiledString>FRUAAAACAAAAIgAAADUAAABCbGluZF9TdGFydENvbmRpdGlvbgBVi+xRi0UMUItNCFFoAAAAAItVEIsCi00Qi1BQ/9LcHVEAAADf4PbERHsGxkX/AesExkX/AIpF/4vlXcMAAAAAAAAAAA==</compiledString>
+										<returnType>bool</returnType>
+										<sString>cBlind_StartCondition</sString>
 									</startCondition>
 								</StatusApplicator>
 							</Item>

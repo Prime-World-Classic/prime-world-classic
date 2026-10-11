@@ -9,6 +9,8 @@
 	</enabled>
 	<lifeTime>
 		<compiledString>FQwAAAABAAAAGAAAAENoYW5uZWxUaW1lAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cChannelTime</sString>
 	</lifeTime>
 	<scaleWhenInterrupted>
 		<compiledString></compiledString>

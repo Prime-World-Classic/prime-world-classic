@@ -18,19 +18,29 @@
 		<BaseAttack parent="/Creeps/Normals/Normal1/AttackAbilityMelee.ATCK">
 			<aoeSize>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</aoeSize>
 			<caption></caption>
 			<castAllowRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</castAllowRange>
 			<cooldownTime>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTime>
 			<cooldownTimeSecondState>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</cooldownTimeSecondState>
 			<manaCost>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</manaCost>
 			<passiveApplicators>
 				<Item href="/Creeps/Normals/Normal1/status_ManaburnSatyr.APLR" />
@@ -38,6 +48,8 @@
 			<targetType>10224127</targetType>
 			<useRange>
 				<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+				<returnType>float</returnType>
+				<sString>0</sString>
 			</useRange>
 		</BaseAttack>
 	</attackAbility>

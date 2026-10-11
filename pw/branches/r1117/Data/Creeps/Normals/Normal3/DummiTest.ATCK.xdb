@@ -60,9 +60,13 @@
 	</constants>
 	<cooldownTime>
 		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
 	</cooldownTime>
 	<manaCost>
 		<compiledString>FQAAAAAAAAAAVYvs2e5dwwAAAAA=</compiledString>
+		<returnType>float</returnType>
+		<sString>0</sString>
 	</manaCost>
 	<passiveApplicators>
 		<Item href="/Creeps/Normals/Normal3/DummiTest.ATCK" id="68A21208-F4A0-41A4-8CFA-545C7BE61960">

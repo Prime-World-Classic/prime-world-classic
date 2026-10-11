@@ -155,6 +155,8 @@
 								<DamageApplicator parent="/GameLogic/GeneralApplicators/CommonDamage.APLR">
 									<damage>
 										<compiledString>FQcAAAABAAAAEwAAAERhbWFnZQBVi+yLRQxQi00IUWgAAAAAi1UQiwKLTRCLUFD/0l3D</compiledString>
+										<returnType>float</returnType>
+										<sString>cDamage</sString>
 									</damage>
 									<damageType>Energy</damageType>
 									<enabled>

@@ -4,5 +4,7 @@
 	<BackLink DBID="/Items/Talents/Gender/_1/GroupProcessor.EVNT" Count="1" />
 	<lifeTime>
 		<compiledString>FQkAAAABAAAAFQAAAER1cmF0aW9uAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+		<returnType>float</returnType>
+		<sString>cDuration</sString>
 	</lifeTime>
 </StatusApplicator>

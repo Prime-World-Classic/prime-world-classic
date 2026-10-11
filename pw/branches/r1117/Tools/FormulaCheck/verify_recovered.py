@@ -20,6 +20,7 @@ import collections
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -69,32 +70,72 @@ def fresh_signatures(obj_path):
     return out
 
 
+def scan_with_src(root, wanted):
+    """элементы с blob из wanted и непустым sString: {blob: (sString, путь)}"""
+    out = {}
+    for dp, _d, fs in os.walk(root):
+        for fn in sorted(fs):
+            if not fn.endswith('.xdb'):
+                continue
+            path = os.path.join(dp, fn)
+            try:
+                t = ET.parse(path)
+            except ET.ParseError as e:
+                print("не парсится %s: %s" % (path, e))
+                continue
+            for el in t.getroot().iter():
+                c = el.find('compiledString')
+                s = el.find('sString')
+                if c is None or not (c.text or '').strip():
+                    continue
+                comp = ' '.join((c.text or '').split())
+                if comp not in wanted:
+                    continue
+                src = ' '.join(((s.text if s is not None else '') or '').split())
+                if src:
+                    out.setdefault(comp, (src, path))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("root", nargs="?", default="Data")
     ap.add_argument("--work", default="/tmp/vrec")
+    ap.add_argument("--json", help="записать доказанное соответствие blob -> {sString, returnType}")
+    ap.add_argument("--check-json", help="режим проверки после патча: для blob из справочника "
+                                         "взять ТЕКУЩИЙ контент и убедиться, что он компилируется в него")
     a = ap.parse_args()
     os.makedirs(a.work, exist_ok=True)
 
     index, orphans, _n = RS.scan(a.root)
-    groups = collections.OrderedDict()
-    for path, chain, comp in orphans:
-        groups.setdefault(comp, []).append((path, chain))
-    print("уникальных blob без sString: %d (всего вхождений: %d)"
-          % (len(groups), len(orphans)))
-
-    # кандидаты: (tag) -> (blob, sString, returnType); tag = g<i>r<j>
     items = []
     tags = {}
-    for i, (comp, where) in enumerate(groups.items()):
-        variants = list(index.get(comp, collections.Counter()))
-        for j, s in enumerate(variants):
-            for k, rt in enumerate(RET_TYPES):
-                tag = "g%dr%dc%d" % (i, k, j)
-                tags[tag] = (i, s, rt)
-                items.append((tag, s, rt))
-        print("  blob %d: %d вариант(ов) текста, %d вхождений: %s"
-              % (i, len(variants), len(where), " | ".join(repr(x) for x in variants[:6])))
+    if a.check_json:
+        import json
+        cm = json.load(open(a.check_json, encoding="utf-8"))
+        found = scan_with_src(a.root, cm)
+        print("режим проверки патча: blob в справочнике %d, найдено в контенте %d"
+              % (len(cm), len(found)))
+        groups = {b: [(p, "")] for b, (_s, p) in found.items()}
+        for i, b in enumerate(found):
+            tag = "p%dc0" % i
+            tags[tag] = (i, cm[b]["sString"], cm[b]["returnType"])
+            items.append((tag, cm[b]["sString"], cm[b]["returnType"]))
+    else:
+        groups = collections.OrderedDict()
+        for path, chain, comp in orphans:
+            groups.setdefault(comp, []).append((path, chain))
+        print("уникальных blob без sString: %d (всего вхождений: %d)"
+              % (len(groups), len(orphans)))
+        for i, (comp, where) in enumerate(groups.items()):
+            variants = list(index.get(comp, collections.Counter()))
+            for j, s in enumerate(variants):
+                for k, rt in enumerate(RET_TYPES):
+                    tag = "g%dr%dc%d" % (i, k, j)
+                    tags[tag] = (i, s, rt)
+                    items.append((tag, s, rt))
+            print("  blob %d: %d вариант(ов) текста, %d вхождений: %s"
+                  % (i, len(variants), len(where), " | ".join(repr(x) for x in variants[:6])))
 
     # хранимые сигнатуры
     stored = {}
@@ -135,6 +176,16 @@ def main():
                       % (i, s, rt, len(f_code), len(s_code)))
 
     print("\nдоказано совпадением кода: %d из %d blob" % (len(matched), len(groups)))
+    if a.json:
+        import json
+        out = {}
+        for i, comp in enumerate(groups):
+            if i in matched:
+                s, rt = matched[i]
+                out[comp] = dict(sString=s, returnType=rt, n=len(groups[comp]),
+                                 where=[p for p, _c in groups[comp][:3]])
+        json.dump(out, open(a.json, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        print("записано: %s (%d blob)" % (a.json, len(out)))
     for i, comp in enumerate(groups):
         where = groups[comp]
         s, rt = matched.get(i, (None, None))

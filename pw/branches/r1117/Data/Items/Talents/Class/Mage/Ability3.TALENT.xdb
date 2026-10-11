@@ -115,6 +115,8 @@
 				</applicatorsOnSelf>
 				<lifeTime>
 					<compiledString>FQwAAAABAAAAGAAAAENoYW5uZWxUaW1lAFWL7ItFDFCLTQhRaAAAAACLVRCLAotNEItQUP/SXcM=</compiledString>
+					<returnType>float</returnType>
+					<sString>cChannelTime</sString>
 				</lifeTime>
 				<removeStartSpellEffectOnInterrupt>true</removeStartSpellEffectOnInterrupt>
 				<stopSpell href="/Items/Talents/Class/Mage/Ability3.TALENT" id="DA3CA06E-0634-4A0B-BBBB-3A2A559991F9">
