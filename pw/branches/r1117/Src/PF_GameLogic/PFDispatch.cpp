@@ -142,9 +142,11 @@ bool PFDispatch::Step(float dtInSeconds)
   (void)dtInSeconds;
   if ( IsObjectDead() )
     return false;
-  if ( state == STATE_PROCEED || state == STATE_READY_TO_APPLY || state == STATE_WAIT_TO_APPLY )
+	// Authored subtypes decide when travel ends; the base only retries blocked application.
+	if (state == STATE_WAIT_TO_APPLY || (!pDBDispatch &&
+		(state == STATE_PROCEED || state == STATE_READY_TO_APPLY)))
     Apply(false);
-  return !IsObjectDead();
+	return false;
 }
 
 float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )

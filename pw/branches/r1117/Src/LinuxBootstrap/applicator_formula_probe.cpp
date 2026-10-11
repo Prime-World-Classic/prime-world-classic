@@ -1281,6 +1281,8 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "dispatch_b11_02_immediate_tests.inc"
 #include "dispatch_b11_08_attack_tests.inc"
 #include "dispatch_b11_world_immediate_tests.inc"
+#include "dispatch_b11_03_timed_tests.inc"
+#include "dispatch_b11_09_world_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1375,8 +1377,12 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CollisionReachB11(check, world);
 			DispatchFactoryB11(check, world);
 			DispatchImmediateB11(check, world);
-			DispatchAttackB11(check, world, 1);
+			DispatchAttackB11(check, world, 2);
 			DispatchWorldImmediateB11(check);
+			DispatchTimedB11(check, world);
+			DispatchWorldMixedB11(check);
+			DispatchWorldLifecycleB11(check);
+			DispatchWorldMutationB11(check);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

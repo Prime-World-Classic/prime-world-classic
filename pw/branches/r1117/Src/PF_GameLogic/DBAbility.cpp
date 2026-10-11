@@ -7284,7 +7284,8 @@ void DispatchByTime::Assign( const DispatchByTime& _dispatchByTime )
 NWorld::PFDispatch* DispatchByTime::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
-	return 0;
+	// Keep formula lifetime, persistent stepping and sender-death policy in the original algorithm.
+	return NWorld::FCreateDispatch<NWorld::PFDispatchByTime>( *this, cp );
 #else
 
 	return NWorld::FCreateDispatch<NWorld::PFDispatchByTime>( *this, cp );
