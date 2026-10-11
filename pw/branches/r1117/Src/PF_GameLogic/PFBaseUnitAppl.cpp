@@ -177,16 +177,48 @@ void PFBaseUnit::RemoveEventListener(CPtr<PFBaseUnitEventListener> pListener)
     eventListeners.erase(it);
 }
 
-void PFBaseUnit::EventHappened(const PFBaseUnitEvent &evt)
+/**
+ * Borrow evt synchronously and visit entry identities in their captured order.
+ * CObj snapshots pin contents until this dispatch returns; CPtr cannot do that.
+ * Before each callback, recheck live registration and pre-call IsAlive(). Never
+ * reuse a live iterator after OnEvent: nested events or callbacks may erase it.
+ *
+ * Additions are deferred from this event, but a nested event takes a new snapshot
+ * and sees them. A pending removed/readded identity retains its snapshot turn;
+ * no identity is delivered twice within this invocation. FLAGS_REMOVE wins over
+ * re-registration of the same identity. As on Windows, self SetAlive(false)
+ * without FLAGS_REMOVE is pruned only when a dispatch next samples it as dead.
+ * Caller must keep this unit and evt alive for the complete synchronous call.
+ */
+void PFBaseUnit::EventHappened(const PFBaseUnitEvent& evt)
 {
-  for (nstl::list<CObj<PFBaseUnitEventListener>>::iterator it = eventListeners.begin(); it != eventListeners.end();)
-  {
-    PFBaseUnitEventListener* pListener = *it;
-    if (!pListener || !pListener->IsAlive() || (pListener->OnEvent(&evt) & PFBaseUnitEventListener::FLAGS_REMOVE))
-      it = eventListeners.erase(it);
-    else
-      ++it;
-  }
+	if (eventListeners.empty())
+		return;
+
+	const nstl::list<CObj<PFBaseUnitEventListener>> snapshot(eventListeners);
+	for (nstl::list<CObj<PFBaseUnitEventListener>>::const_iterator it = snapshot.begin(); it != snapshot.end(); ++it)
+	{
+		PFBaseUnitEventListener* listener = it->GetPtr();
+		if (nstl::find(eventListeners.begin(), eventListeners.end(), listener) == eventListeners.end())
+			continue;
+
+		if (!listener || !listener->IsAlive())
+		{
+			nstl::list<CObj<PFBaseUnitEventListener>>::iterator live =
+				nstl::find(eventListeners.begin(), eventListeners.end(), listener);
+			eventListeners.erase(live);
+			continue;
+		}
+
+		const unsigned int flags = listener->OnEvent(&evt);
+		if (flags & PFBaseUnitEventListener::FLAGS_REMOVE)
+		{
+			nstl::list<CObj<PFBaseUnitEventListener>>::iterator live =
+				nstl::find(eventListeners.begin(), eventListeners.end(), listener);
+			if (live != eventListeners.end())
+				eventListeners.erase(live);
+		}
+	}
 }
 
 void PFBaseUnit::AddAbilityUpgradeApplicator(PFApplAbilityUpgrade *pAppl)

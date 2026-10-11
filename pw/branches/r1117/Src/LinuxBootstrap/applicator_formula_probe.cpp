@@ -1184,6 +1184,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DeferredDeath(check, world);
 			DamageLimiter(check, world);
 			EventOrderingB7Regression(check, world);
+			EventReentrancyB7Regression(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
