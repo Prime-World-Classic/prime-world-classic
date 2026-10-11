@@ -163,6 +163,24 @@ def emit_mock(parsed):
     print("void const * MockP(int nKind, int nSelfIface);   // 0 = unit, 1 = misc")
     print("void   MockX(int nIface, int nSlot, char const * cpName);")
     print("")
+    # Аргументы аксессоров в mock'е сами по себе не используются (значение зависит от
+    # имени/слота), поэтому golden-дифф по одному только результату НЕ замечает,
+    # что VM передаёт аргументы неверно (поймано на клиенте: FindApplicator с мусором
+    # вместо pMisc -> AV в dynamic_cast). Mock заодно копит контрольную сумму
+    # аргументов; харнес сравнивает её между эталонным прогоном и прогоном VM.
+    print('#include <string.h>')
+    print('#include <excpt.h>')
+    print("")
+    print("extern unsigned long long g_mockDigest;")
+    print("extern unsigned long long g_mockCallHash;")
+    print("void MockDigestBytes(void const * p, unsigned n);")
+    print("void MockTraceStr(char const * cpName, char const * cpArg);   // MOCK_TRACE=1")
+    print("inline void MockDigest(char const * s) { if (!s) { MockDigestBytes(0, 0u); return; }")
+    print("  __try { MockDigestBytes(s, (unsigned)strlen(s)); }")
+    print("  __except (EXCEPTION_EXECUTE_HANDLER) { MockDigestBytes(\"<<bad>>\", 7u); } }")
+    print("inline void MockDigest(bool v) { char c = v ? 1 : 0; MockDigestBytes(&c, 1u); }")
+    print("template <class T> inline void MockDigest(T const & v) { MockDigestBytes(&v, (unsigned)sizeof(v)); }")
+    print("")
     q = chr(34)
     UNIT_PTR = ("GetObjectMaster", "GetObjectFavorite", "GetObjectTarget")
     for ii, iface in enumerate(IFACES):
@@ -193,7 +211,10 @@ def emit_mock(parsed):
                 # имя метода передаём ключом: mock возвращает значения по имени
                 body = ("return %s(%d, %d, " + q + "%s" + q + ");") % (CALL[rc], ii, slot, meth)
             rtype = ret if rc == "P" else RET[rc]
-            print("  virtual %s %s(%s) const { %s }" % (rtype, meth, ps, body))
+            dig = " ".join("MockDigest(a%d);" % k for k in range(len(params)))
+            tr = " ".join('MockTraceStr("%s", a%d);' % (meth, k)
+                           for k, x in enumerate(params) if "char" in x)
+            print("  virtual %s %s(%s) const { %s %s %s }" % (rtype, meth, ps, tr, dig, body))
         print("};")
         print("")
     print("#endif")

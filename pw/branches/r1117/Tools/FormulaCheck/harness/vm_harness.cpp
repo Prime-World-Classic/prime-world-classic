@@ -40,6 +40,66 @@ static MockUnitFormulaPars   g_unit;
 static MockMiscFormulaPars   g_misc;
 static MockCustomFormulaPars g_custom;
 
+// Контрольная сумма аргументов всех вызванных аксессоров (mock копит её в MockDigest).
+// Результат формулы сам по себе не отличает «аргумент передан неверно» от «значение
+// такое» — mock-аксессоры возвращают детерминированные значения по имени/слоту и
+// аргументы не используют. Без сравнения суммы golden-дифф не видел, что VM передаёт
+// в аксессоры мусор (на клиенте это вылезло как AV в dynamic_cast у FindApplicator).
+unsigned long long g_mockDigest = 0;
+unsigned long long g_mockCallHash = 0x9E3779B97F4A7C15ull;
+
+// Контрольная сумма строится как СУММА хэшей отдельных вызовов (iface+slot+имя+
+// аргументы): порядок вызовов не важен (C++ и VM считают выражения в разном порядке,
+// для mock-значений это безразлично), а вот состав вызовов и аргументы — важны.
+static unsigned long long MixU(unsigned long long h, unsigned long long v)
+{
+  h += v;
+  h *= 1099511628211ull;
+  h ^= h >> 23;
+  return h;
+}
+
+static void MockFold(int nIface, int nSlot, char const * cpName)
+{
+  unsigned long long h = 1469598103934665603ull;
+  h = MixU(h, (unsigned)(unsigned char)nIface);
+  h = MixU(h, (unsigned)(unsigned char)nSlot);
+  if (cpName)
+    for (; *cpName; ++cpName) h = MixU(h, (unsigned char)*cpName);
+  h = MixU(h, g_mockCallHash);
+  g_mockDigest += h;
+  g_mockCallHash = 0x9E3779B97F4A7C15ull;
+}
+
+// MOCK_TRACE=1 — печатает цепочку вызовов аксессоров (только строковые аргументы),
+// раздельно для прогона VM и эталона: по расхождению видно, ГДЕ именно VM передаёт
+// не то (имя константы/переменной, тип аргумента, лишний или пропущенный вызов).
+static int g_mockTrace = -1;
+static char const * g_mockPhase = "";
+
+void MockTraceStr(char const * cpName, char const * cpArg)
+{
+  if (g_mockTrace < 0) g_mockTrace = getenv("MOCK_TRACE") ? 1 : 0;
+  if (!g_mockTrace) return;
+  char safe[128];
+  if (!cpArg) snprintf(safe, sizeof(safe), "(null)");
+  else
+  {
+    safe[0] = 0;
+    __try { snprintf(safe, sizeof(safe), "%s", cpArg); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { snprintf(safe, sizeof(safe), "<<bad>>"); }
+  }
+  fprintf(stderr, "  %s %s(%s)\n", g_mockPhase, cpName, safe);
+}
+
+void MockDigestBytes(void const * p, unsigned n)
+{
+  unsigned char const * b = (unsigned char const *)p;
+  unsigned long long h = g_mockCallHash * 1099511628211ull + n + 1ull;
+  for (unsigned i = 0; i < n; ++i) { h ^= b[i]; h *= 1099511628211ull; }
+  g_mockCallHash = h;
+}
+
 static unsigned HashStr(char const * cpS)
 {
   unsigned h = 2166136261u;
@@ -56,18 +116,21 @@ static unsigned Mix(unsigned a, unsigned b)
 
 float MockF(int nIface, int nSlot, char const * cpName)
 {
+  MockFold(nIface, nSlot, cpName);
   unsigned h = Mix(HashStr(cpName) ^ HashStr(g_strKey), g_seed + (unsigned)(nIface * 100 + nSlot));
   return (float)((double)(h % 20000) / 100.0 - 100.0);
 }
 
 int MockI(int nIface, int nSlot, char const * cpName)
 {
+  MockFold(nIface, nSlot, cpName);
   unsigned h = Mix(HashStr(cpName) ^ HashStr(g_strKey), g_seed + (unsigned)(nIface * 100 + nSlot) + 7u);
   return (int)(h % 400) - 200;
 }
 
 bool MockB(int nIface, int nSlot, char const * cpName)
 {
+  MockFold(nIface, nSlot, cpName);
   unsigned h = Mix(HashStr(cpName) ^ HashStr(g_strKey), g_seed + (unsigned)(nIface * 100 + nSlot) + 13u);
   return (h >> 5) & 1u;
 }
@@ -80,11 +143,11 @@ CVec2 MockV(int nIface, int nSlot, char const * cpName)
   return v;
 }
 
-void MockX(int, int, char const *) {}
+void MockX(int nIface, int nSlot, char const * cpName) { MockFold(nIface, nSlot, cpName); }
 
 void const * MockP(int nKind, int nSelfIface)
 {
-  (void)nSelfIface;
+  MockFold(nKind, nSelfIface, 0);
   if (nKind == 0) return (void const *)&g_unit;
   if (nKind == 2) return (void const *)&g_custom;
   return (void const *)&g_misc;
@@ -94,7 +157,7 @@ void const * MockP(int nKind, int nSelfIface)
 struct Stats
 {
   int nTotal, nOk, nCompileErr, nRunErr;
-  int nMatch, nDiff, nNoNative;
+  int nMatch, nDiff, nNoNative, nDigestDiff;
 };
 
 static void PrintHeadline(char const * cpTag, Stats & s)
@@ -103,6 +166,7 @@ static void PrintHeadline(char const * cpTag, Stats & s)
          cpTag, s.nTotal, s.nOk, s.nCompileErr, s.nRunErr);
 #if defined(HARNESS_NATIVE) || defined(HARNESS_REF)
   printf(" | MATCH=%d DIFF=%d NO_REF=%d", s.nMatch, s.nDiff, s.nNoNative);
+  printf(" MATCH_NO_DIGEST=%d", s.nDigestDiff);
 #endif
   printf("\n");
 }
@@ -171,9 +235,13 @@ int main(int argc, char ** argv)
     if (getenv("VM_TRACE")) fprintf(stderr, "  compiled ok, ops=%d\n", pVM->GetOpCount());
     double res = 0;
     char   resTxt[64];
+    g_mockDigest = 0;
+    g_mockCallHash = 0x9E3779B97F4A7C15ull;
+    g_mockPhase = "VM ";
     if (!strcmp(pRet, "int"))       res = (double)pVM->ExecuteInt(&g_unit, &g_unit, &g_misc);
     else if (!strcmp(pRet, "bool")) res = pVM->ExecuteBool(&g_unit, &g_unit, &g_misc) ? 1 : 0;
     else                            res = (double)pVM->ExecuteFloat(&g_unit, &g_unit, &g_misc);
+    unsigned long long digVM = g_mockDigest;
     if (getenv("VM_TRACE")) fprintf(stderr, "  executed\n");
 
     int nErr = pVM->GetRuntimeError();
@@ -186,6 +254,7 @@ int main(int argc, char ** argv)
 
     char cmpTxt[16] = "SKIP";
     double refRes = 0; int nRef = -1;
+    unsigned long long digRef = 0;
 #ifdef HARNESS_NATIVE
     nRef = HarnessNativeRun(pRet, pComp, &g_unit, &g_unit, &g_misc, &refRes);
 #endif
@@ -194,7 +263,11 @@ int main(int argc, char ** argv)
     {
       int nOk = 0;
       int k = (nIdx - 1) / kRefBatchSize;
+      g_mockDigest = 0;
+      g_mockCallHash = 0x9E3779B97F4A7C15ull;
+      g_mockPhase = "REF";
       if (k < kRefTableCount) refRes = kRefTable[k](nIdx, &g_unit, &g_unit, &g_misc, &nOk);
+      digRef = g_mockDigest;
       nRef = nOk ? 0 : -1;
     }
 #endif
@@ -205,12 +278,27 @@ int main(int argc, char ** argv)
       else if (!strcmp(pRet, "bool") || !strcmp(pRet, "boolean"))
                                                      sprintf(refTxt, "%s", refRes != 0.0 ? "1" : "0");
       else                                           sprintf(refTxt, "%.9g", refRes);
-      if (SameResult(pRet, res, refRes)) { strcpy(cmpTxt, "MATCH"); ++st.nMatch; }
+      if (SameResult(pRet, res, refRes))
+      {
+        if (digVM == digRef) { strcpy(cmpTxt, "MATCH"); ++st.nMatch; }
+        else
+        {
+          // значение совпало, но набор вызовов аксессоров другой: для части форм
+          // (talconstNoCheck/mastertal/тернарники) эталонный C++ делает лишние
+          // вызовы либо идёт другим путём — на результат не влияет, но держим на
+          // счету: рост этого числа = подозрение на передачу аргументов.
+          strcpy(cmpTxt, "MATCH*"); ++st.nDigestDiff;
+          if (st.nDigestDiff <= nMaxReport)
+            fprintf(stderr, "MDIG[%d] vm=%s ref=%s dig=%llu/%llu | %s | %s\n", nIdx, resTxt, refTxt,
+                    digVM, digRef, pRet, pSrc);
+        }
+      }
       else
       {
         strcpy(cmpTxt, "DIFF"); ++st.nDiff;
         if (st.nDiff <= nMaxReport)
-          fprintf(stderr, "DIFF[%d] vm=%s ref=%s | %s | %s\n", nIdx, resTxt, refTxt, pRet, pSrc);
+          fprintf(stderr, "DIFF[%d] vm=%s ref=%s dig=%llu/%llu | %s | %s\n", nIdx, resTxt, refTxt,
+                  digVM, digRef, pRet, pSrc);
       }
     }
     else { strcpy(cmpTxt, "NO_REF"); ++st.nNoNative; }

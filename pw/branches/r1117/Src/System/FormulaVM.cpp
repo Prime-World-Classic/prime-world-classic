@@ -32,6 +32,15 @@ enum FmType { FT_F = 0, FT_D = 1, FT_I = 2, FT_B = 3, FT_V = 4, FT_P = 5, FT_U =
 
 #include "FormulaAccessors.inc"
 
+// See OP_ACC in Run(): last accessor call of the last executed formula.
+extern "C" {
+  char const          * g_formulaVmSource = 0;
+  char const          * g_formulaVmAcc    = 0;
+  unsigned __int64      g_formulaVmVals[8];
+  int                   g_formulaVmSig    = -1;
+  int                   g_formulaVmNArgs  = -1;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // встроенные функции (в отличие от макросов FormulaPars.h — это реальные вызовы)
 enum EFmBuiltIn
@@ -1677,7 +1686,24 @@ FormulaVM::Val const * FormulaVM::Run(void const * pFirst, void const * pSecond,
         void const * self = pRecv->p;
         if (self == 0) { m_nRuntimeErr = 4; pOp = 0; break; }
         void const * ap[6];
-        for (int i = 0; i < nArgs; ++i) ap[i] = &st[sp - nArgs + i];
+        // ВАЖНО: ap[i] — это адрес ЗНАЧЕНИЯ (FormulaAccCall разбирает его как
+        // int const*/float const*/void const* const* и т.п.), а не адрес Val:
+        // Val = { unsigned char t; union {...} }, union из-за выравнивания лежит со
+        // смещением 8. Взятие &st[...] давало мусор (байт тега +padding): аксессоры
+        // получали мусор вместо аргументов, а на клиенте это кончилось AV в
+        // dynamic_cast внутри FindApplicator (мусор вместо pMisc). Поймано харнесом
+        // только после того, как mock стал сверять контрольную сумму аргументов.
+        for (int i = 0; i < nArgs; ++i) ap[i] = (void const *)&st[sp - nArgs + i].d;
+        // Post-mortem aid: an accessor may crash inside game code (dynamic_cast on a
+        // bad argument), where no C++ handler can tell us WHICH formula and WHICH
+        // arguments were in play. PW_Game.cpp's vectored handler dumps these.
+        g_formulaVmSource = m_cpSource;
+        g_formulaVmAcc = e.cpName;
+        g_formulaVmSig = e.nSig;
+        g_formulaVmNArgs = nArgs;
+        g_formulaVmVals[0] = (unsigned __int64)(uintptr_t)self;
+        for (int i = 0; i < nArgs && i + 1 < 8; ++i)
+          g_formulaVmVals[i + 1] = *(unsigned __int64 *)&st[sp - nArgs + i].d;
         float rf = 0; int ri = 0; bool rb = false; CVec2 rv(0, 0); void const * rp = 0;
         if (kFormulaSigHasV[e.nSig])
         {
