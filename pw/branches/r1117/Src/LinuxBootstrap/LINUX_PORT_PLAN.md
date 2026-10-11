@@ -46,6 +46,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 12/20 COMPLETE (`0.44.0`): authored dispatch creation calls the DB runtime factory, restores PFDispatchImmediate and client start delay, and rejects unsupported descriptors instead of substituting instant damage. Descriptor-less bootstrap casts remain compatible. Four baseline failures reproduced; all 4,795 assertions, 28 CTests and six maintained builds pass; generated DB/header Windows conditional views also match B11 baseline. Evidence `/tmp/pw-b11-c12-{before,after,build,ctest}.log`. Deferred subtype scheduling and attack ownership are deliberately not claimed yet; linear/timed/continuous factories remain disabled until their verified checkpoints.
 
+- Chunk 13/20 COMPLETE (`0.45.0`): authored immediate dispatches honor instantApply; real unit/attack holders own deferred updates, launch no longer cancels its payload, and explicit cancellation is terminal. Native world snapshots only detached dispatches before gameplay, rechecks ownership/death at execution and avoids double-stepping holder-owned work. No serialized fields or vtable changes. Combine sidecar 02/08/09 to avoid publishing broken deferred ownership. Immediate/base-attack/world fixtures reproduce 34 failures; all 4,871 assertions, 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c13-{before,after,fixed-build,ctest}.log`. Integration caught and fixed the sidecar zero-delta guard breaking three visibility suites: zero world ticks still flush visibility but do not advance gameplay. Timed/linear tests are enabled only when those factories land; full deferred subtype and live combat acceptance remain pending.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

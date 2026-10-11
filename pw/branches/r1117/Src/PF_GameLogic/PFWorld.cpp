@@ -9,6 +9,8 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(CObjectB
 
 #include "PFWorld.h"
 #include "PFBaseMovingUnit.h"
+#include "PFBaseAttackData.h"
+#include <cmath>
 #include "PFHero.h"
 #include "PFResourcesCollectionClient.h"
 #include "DBAdvMap.h"
@@ -506,8 +508,39 @@ void PFWorld::ExecuteCommands(const NCore::TPackedCommands& commands)
 
   SyncFPUEnd(nfpu::AT_CMD_EXECUTE);
 }
+/** Ordinary casts and base attacks retain distinct unit-stepped holders; subspells own neither. */
+static bool LinuxDispatchOwnedByUnit(const PFDispatch& dispatch)
+{
+	const PFAbilityInstance* ability = dispatch.GetAbility();
+	if (!IsValid(ability))
+		return false;
+	if (ability->OwnsNativeDispatch(&dispatch))
+		return true;
+	const PFBaseAttackInstance* attack = dynamic_cast<const PFBaseAttackInstance*>(ability);
+	return attack && attack->OwnsNativeAttackDispatch(&dispatch);
+}
+
 bool PFWorld::Step(float dtInSeconds, float)
 {
+	// Invalid ticks cannot advance travel, run movement, or poison the shared simulation clock.
+	if (!std::isfinite(dtInSeconds) || dtInSeconds < 0.0f)
+		return true;
+	ProcessAddRemove();
+	if (dtInSeconds == 0.0f)
+	{
+		// Existing zero-duration calls flush visibility without advancing gameplay.
+		PFBaseUnit::StepLinuxWarFog(this, 0.0f);
+		return true;
+	}
+	vector<CObj<PFDispatch> > detachedDispatches;
+	auto collectDispatch = [&](PF_Core::WorldObjectBase& object) {
+		PFDispatch* dispatch = dynamic_cast<PFDispatch*>(&object);
+		if (dispatch && dispatch->GetWorld() == this && !dispatch->IsObjectDead()
+			&& dispatch->Started() && !LinuxDispatchOwnedByUnit(*dispatch))
+			detachedDispatches.push_back(CObj<PFDispatch>(dispatch));
+	};
+	// Snapshot before units/spawners: children created during this tick start travelling next tick.
+	ForAllObjectsBeingStepped(collectDispatch);
   if (dtInSeconds > 0.0f)
     ++step;
   timeElapsed += dtInSeconds;
@@ -581,6 +614,13 @@ bool PFWorld::Step(float dtInSeconds, float)
       }
     }
   }
+	for (vector<CObj<PFDispatch> >::iterator it = detachedDispatches.begin(); it != detachedDispatches.end(); ++it)
+	{
+		// Callbacks may cancel siblings, flush registration, or transfer ownership during this phase.
+		if (IsValid(*it) && !(*it)->IsObjectDead() && (*it)->Started() && !LinuxDispatchOwnedByUnit(**it))
+			(*it)->Step(dtInSeconds);
+	}
+	ProcessAddRemove();
   KillDeadUnits(false);
 	// Visibility-only phase includes stationary units without stepping their gameplay.
 	PFBaseUnit::StepLinuxWarFog(this, dtInSeconds);

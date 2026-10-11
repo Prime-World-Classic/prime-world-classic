@@ -27,6 +27,10 @@ public:
   void                        DoAttack();
   bool                        IsAttackFinished() const { return isAttackFinished; }
   bool                        IsReadyToDie() const;
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Base attacks have a distinct holder; detached world stepping must exclude that payload too. */
+	bool OwnsNativeAttackDispatch(const PFDispatch* value) const { return dispatch.Get().GetPtr() == value; }
+#endif
 
 private:
   PFBaseAttackInstance() {} // ~~~ HACK : for CPtr/CObj support only! ~~~

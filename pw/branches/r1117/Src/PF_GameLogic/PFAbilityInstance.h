@@ -58,6 +58,10 @@ public:
   void                  SetWarFogOpened(NDb::EFaction faction, bool opened = true);
 
   unsigned int          GetFlags() const;
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Identify the existing ordinary holder without adding scheduling state or serialized fields. */
+	bool OwnsNativeDispatch(const PFDispatch* value) const { return dispatch.Get().GetPtr() == value; }
+#endif
   
 protected:
   PFAbilityInstance() {} // ~~~ HACK : for CPtr/CObj support only! ~~~
@@ -68,6 +72,10 @@ protected:
     ~PFDispatchHolder();
     void Attach(CPtr<PFDispatch> const& pDispatch_);
     void Start();
+#if defined(PW_LINUX_NULL_RENDER)
+		/** Advance the retained native dispatch from its owning unit's simulation. */
+		void Step(float dt);
+#endif
     void Cancel();
     CPtr<PFDispatch> const& Get() const;
   private:

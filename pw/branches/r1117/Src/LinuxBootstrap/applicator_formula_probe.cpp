@@ -1277,6 +1277,10 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "talent_purchase_b11_tests.inc"
 #include "collision_reach_b11_tests.inc"
 #include "dispatch_b11_01_factory_tests.inc"
+#include "dispatch_b11_common_tests.inc"
+#include "dispatch_b11_02_immediate_tests.inc"
+#include "dispatch_b11_08_attack_tests.inc"
+#include "dispatch_b11_world_immediate_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1370,6 +1374,9 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			TalentPurchaseB11(check, world);
 			CollisionReachB11(check, world);
 			DispatchFactoryB11(check, world);
+			DispatchImmediateB11(check, world);
+			DispatchAttackB11(check, world, 1);
+			DispatchWorldImmediateB11(check);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

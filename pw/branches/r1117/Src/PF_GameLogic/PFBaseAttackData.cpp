@@ -5,6 +5,7 @@
 #include "PFBaseAttackData.h"
 #include "PFBaseUnit.h"
 #include "PFDispatchFactory.h"
+#include <cmath>
 
 namespace NWorld
 {
@@ -20,6 +21,9 @@ PFBaseAttackInstance::PFBaseAttackInstance(CObj<PFBaseAttackData> const& pAttack
 
 void PFBaseAttackInstance::ApplyAttack()
 {
+	// Explicit cancellation and completed launch are terminal, including repeated public calls.
+	if (isAttackFinished)
+		return;
   PFBaseAttackData const* pAttackData = static_cast<PFBaseAttackData const*>(GetData());
   if (!pAttackData || !pAttackData->GetDBDesc())
     return;
@@ -43,18 +47,25 @@ void PFBaseAttackInstance::ApplyAttack()
 
 void PFBaseAttackInstance::DoAttack()
 {
+	if (isAttackFinished)
+		return;
+	isAttackFinished = true;
   if ( IsUnitValid( target.GetUnit() ) && ( allowAllies || !IsValid( pOwner ) || pOwner->GetFaction() != target.GetUnit()->GetFaction() ) )
   {
     if ( IsValid( pOwner ) )
       pOwner->OnAttackDispatchStarted();
     dispatch.Start();
+		// Launch cleanup must not cancel the retained travelling payload.
+		attackDelay = 0.0f;
+		target = AbilityTarget();
   }
-  isAttackFinished = true;
-  Cancel();
+	else
+		Cancel();
 }
 
 void PFBaseAttackInstance::Cancel()
 {
+	isAttackFinished = true;
   attackDelay = 0.0f;
   target = AbilityTarget();
   dispatch.Cancel();
@@ -62,14 +73,24 @@ void PFBaseAttackInstance::Cancel()
 
 bool PFBaseAttackInstance::IsReadyToDie() const
 {
-  return isAttackFinished && !GetActiveApplicatorsCount();
+	return isAttackFinished && !IsValid(dispatch.Get()) && !GetActiveApplicatorsCount();
 }
 
 bool PFBaseAttackInstance::Update(float dt)
 {
-  attackDelay -= dt;
-  if ( attackDelay < EPS_VALUE && !isAttackFinished )
-    DoAttack();
+	if (!std::isfinite(dt) || dt <= 0.0f)
+		return IsReadyToDie();
+	if (!isAttackFinished)
+	{
+		attackDelay -= dt;
+		if (attackDelay < EPS_VALUE)
+			DoAttack();
+	}
+	else
+	{
+		// A newly launched dispatch starts travelling on the next tick, not during its windup.
+		dispatch.Step(dt);
+	}
   return IsReadyToDie();
 }
 
@@ -123,6 +144,9 @@ bool PFBaseAttackData::DoAttack(Target const& target, bool allowAllies)
 
 void PFBaseAttackData::Update(float dt, bool fullUpdate)
 {
+	// Keep malformed or zero simulation ticks out of both attack travel and cooldown updates.
+	if (!std::isfinite(dt) || dt <= 0.0f)
+		return;
   struct AttackInstancesUpdater
   {
     float dt;

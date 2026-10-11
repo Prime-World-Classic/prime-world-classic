@@ -52,7 +52,9 @@ PFDispatch *CreateDispatch(CObj<PFAbilityInstance> const &pAbility,
   if (start && pDispatch)
   {
     pDispatch->Start();
-    pDispatch->Step(0.0f);
+		// Authored OnStart owns instant application; deferred subtypes await simulation.
+		if (!dcp.pDBDispatch)
+			pDispatch->Step(0.0f);
   }
   return pDispatch;
 }

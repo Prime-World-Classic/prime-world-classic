@@ -185,8 +185,8 @@ bool PFAbilityInstance::Update(float dt)
   }
 	else if (IsValid(dispatch.Get()))
 	{
-		// Retry an unapplied native payload from its existing unit-owned instance, without reactivation.
-		dispatch.Start();
+		// Native worlds do not drain the general object ring; the owning unit advances this dispatch.
+		dispatch.Step(dt);
 		if (!IsValid(dispatch.Get()))
 			abilityApplicatorsFinished = true;
 	}
@@ -322,12 +322,29 @@ void PFAbilityInstance::PFDispatchHolder::Start()
   CObj<PFDispatch> dispatchGuard(pDispatch.GetValidPtr());
   if ( IsValid(dispatchGuard) && !dispatchGuard->IsObjectDead() )
   {
-    dispatchGuard->PFDispatch::Start();
-    dispatchGuard->PFDispatch::Step(0.0f);
+		dispatchGuard->Start();
+		// Preserve descriptor-less bootstrap casts without overriding authored OnStart timing.
+		if (!dispatchGuard->GetDBBase())
+			dispatchGuard->Step(0.0f);
 		// Keep ownership while the dispatch still holds unapplied applicators.
 		if (dispatchGuard->IsObjectDead() || dispatchGuard->GetApplicators().empty())
 			pDispatch = NULL;
   }
+	else
+		pDispatch = NULL;
+}
+
+void PFAbilityInstance::PFDispatchHolder::Step(float dt)
+{
+	CObj<PFDispatch> dispatchGuard(pDispatch.GetValidPtr());
+	if (IsValid(dispatchGuard) && !dispatchGuard->IsObjectDead())
+	{
+		// Dispatch travel must not advance on invalid or zero-length simulation ticks.
+		if (std::isfinite(dt) && dt > 0.0f)
+			dispatchGuard->Step(dt);
+		if (dispatchGuard->IsObjectDead() || dispatchGuard->GetApplicators().empty())
+			pDispatch = NULL;
+	}
 	else
 		pDispatch = NULL;
 }
