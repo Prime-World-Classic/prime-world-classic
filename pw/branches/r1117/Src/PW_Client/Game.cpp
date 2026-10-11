@@ -175,6 +175,25 @@ extern "C" INTERMODULE_EXPORT void TooSmartLinker();
 
 namespace
 {
+// Language of the texts, last token of the launch protocol (allTokens[7]):
+// "en" or "en-US". Returns the short code ("en") or an empty string when the
+// token does not look like a language code.
+string ParseProtocolLanguage( const char * token )
+{
+  int len = (int)strlen( token );
+  if ( len != 2 && !( len == 5 && token[2] == '-' ) )
+    return string();
+
+  for ( int i = 0; i < len; ++i )
+    if ( i != 2 && !isalpha( (unsigned char)token[i] ) )
+      return string();
+
+  string shortCode( token, 2 );
+  for ( int i = 0; i < 2; ++i )
+    shortCode[i] = (char)tolower( (unsigned char)shortCode[i] );
+  return shortCode;
+}
+
 void ShowLocalizedErrorMB(LPCWSTR pszName, LPCWSTR pszDefault)
 {
   // get the current language from the 'lang.cfg' file
@@ -1157,36 +1176,6 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   RootFileSystem::RegisterFileSystem( new fileSystem::PileFileSystem(callback), callback );
   RootFileSystem::RegisterFileSystem( new WinFileSystem( NFile::GetBaseDir() + "Data", false ) );
 
-  {
-    string earlyProtocol = CmdLineLite::Instance().GetStringKey( "protocol", "" );
-    if(!earlyProtocol.empty()) {
-      const char* delim = "/";
-      char* line = const_cast<char*>(earlyProtocol.c_str());
-      char* tok = strtok(line, delim);
-      vector<string> tokens;
-      tokens.reserve(6);
-      while(tok) { tokens.push_back(tok); tok = strtok(0, delim); }
-      if(tokens.size() >= 6) {
-        string langPart = tokens[5];
-        // tokens[5] is also the server IP block (hex, length is a multiple of 8):
-        // take it as a language only if it looks like "en" or "en-US"
-        int langLen = (int)langPart.size();
-        bool isLangCode = ( langLen == 2 || ( langLen == 5 && langPart[2] == '-' ) );
-        for(int i = 0; isLangCode && i < langLen; ++i)
-          if(i != 2 && !isalpha((unsigned char)langPart[i])) isLangCode = false;
-        if(isLangCode) {
-          if((int)langPart.size() == 2) {
-            string upper = langPart;
-            for(int i = 0; i < (int)upper.size(); ++i) upper[i] = toupper(upper[i]);
-            g_language = langPart + "-" + upper;
-          } else {
-            g_language = langPart;
-          }
-        }
-      }
-    }
-  }
-
   if (g_language.empty())
   {
     g_language = "ru-RU";
@@ -1273,7 +1262,7 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
   } else {
     // Manual tokenization instead of strtok. The protocol line has a fixed,
     // predictable structure:
-    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort]".
+    // "scheme://method/<token>/<version>/<mirror>[/ipBlock][/basePort][/language]".
     // strtok would overwrite the internal buffer of protocolLineStr (std::string)
     // with NUL separators, which is undefined behavior and can corrupt adjacent
     // state; here the separators are only located and the tokens are copied.
@@ -1351,6 +1340,21 @@ int __stdcall PseudoWinMain( HINSTANCE hInstance, HWND hWnd, LPTSTR lpCmdLine, S
       }
       Network::SetClusterBasePort(basePort);
       systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol server base port: " << basePort << endl;
+    }
+
+    // Optional last token (allTokens[7]) — language of the texts chosen in the
+    // launcher ("en" / "en-US"), always after the IP block and the base port. Only the
+    // texts follow it (<name>_en.txt, see Texts.cpp): the "language" var keeps
+    // selecting Data/Localization/<language> piles, voice and splashes, and is
+    // not saved to the profile from here. A malformed token is ignored.
+    if (allTokens.size() >= 8) {
+      string textLanguage = ParseProtocolLanguage( allTokens[7].c_str() );
+      if (!textLanguage.empty()) {
+        SetCurrentLanguage( textLanguage );
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Protocol text language: " << textLanguage.c_str() << endl;
+      } else {
+        systemLog( NLogg::LEVEL_MESSAGE ) << "Ignored protocol language token: \"" << allTokens[7].c_str() << "\"" << endl;
+      }
     }
 
     usedServer = usedServer % GetServerIpCount();
