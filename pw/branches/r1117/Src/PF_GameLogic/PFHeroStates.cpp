@@ -25,6 +25,7 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 #include "PFAIWorld.h"
 #include "PathChecker.h"
 #include "RegionPointChecker.h"
+#include "PFBaseUnitEvent.h"
 
 namespace NWorld
 {
@@ -422,16 +423,20 @@ bool PFInteractObjectState::OnStep( float dt )
 void PFInteractObjectState::OnLeave()
 {
 	Cleanup(true);
+	if (pActionInstance && IsValid(pOwner))
+		pOwner->EventHappened(PFBaseUnitEvent(NDb::BASEUNITEVENT_CHANNELINGCANCELED));
 }
 
 bool PFInteractObjectState::IsActionFinished() const
 {
-  return true;
+	return !pActionInstance || (pActionInstance->IsActivated() &&
+		(!IsValid(pOwner) || !pOwner->IsInChannelling()));
 }
 
 bool PFInteractObjectState::CanBeInterrupted() const
 {
-  return true;
+	// Preserve Windows policy: a finished action leaves atomically on the next state step.
+	return pActionInstance ? !IsActionFinished() : HeroStateFSM::CanBeInterrupted();
 }
 
 void PFInteractObjectState::ApproachObject()
