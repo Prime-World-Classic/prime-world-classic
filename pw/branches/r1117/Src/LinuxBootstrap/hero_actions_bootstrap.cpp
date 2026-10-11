@@ -408,9 +408,9 @@ namespace NWorld
 	{
 	public:
 		LinuxTalentCommandState(PFBaseMaleHero* hero, PFTalent* talent, const Target& target,
-			int level, int slot, bool recordPayment)
+			int level, int slot, bool recordPayment, bool portalCommand = false)
 			: PFHeroUseTalentState(hero, talent, target), commandTalent(talent),
-			level(level), slot(slot), recordPayment(recordPayment) {}
+			level(level), slot(slot), recordPayment(recordPayment), portalCommand(portalCommand) {}
 	protected:
 		bool OnStep(float dt) override
 		{
@@ -427,6 +427,11 @@ namespace NWorld
 			if (sample && IsValid(pAbilityInstance))
 			{
 				auto& diagnostic = g_linuxHeroGameplayCommandDiagnostics;
+				if (portalCommand)
+				{
+					++diagnostic.usePortalActionAccepted;
+					return finished;
+				}
 				++diagnostic.useTalentActionAccepted;
 				diagnostic.useTalentLevel = level; diagnostic.useTalentSlot = slot;
 				diagnostic.useTalentTargetType = static_cast<int>(target.GetType());
@@ -449,7 +454,7 @@ namespace NWorld
 	private:
 		CPtr<PFTalent> commandTalent;
 		int level, slot;
-		bool recordPayment;
+		bool recordPayment, portalCommand;
 	};
 #endif
 
@@ -1165,7 +1170,8 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanChecks;
-		const bool accepted = CanUseLinuxTalentCommand(pHero, IsValid(pHero) ? pHero->GetPortal() : nullptr);
+		const bool accepted = CanUseLinuxTalentCommand(pHero, IsValid(pHero) ? pHero->GetPortal() : nullptr) &&
+			IsLinuxAbilityCommandTarget(pHero->GetWorld(), target);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.usePortalCanAccepted;
     const CVec3 portalTarget = target.AcquirePosition();
@@ -1186,7 +1192,7 @@ namespace NWorld
 #if defined(PW_LINUX_NULL_RENDER)
     PFWorld* world = dynamic_cast<PFWorld*>(pWorld);
     hero = ResolveLinuxBootstrapCommandMaleHero(world, pHero, GetId());
-    AbilityTarget resolvedTarget = ResolveLinuxBootstrapAbilityTarget(world, target);
+		AbilityTarget resolvedTarget = target;
     const CVec3 portalTarget = resolvedTarget.AcquirePosition();
     g_linuxHeroGameplayCommandDiagnostics.usePortalTargetX = portalTarget.x;
     g_linuxHeroGameplayCommandDiagnostics.usePortalTargetY = portalTarget.y;
@@ -1194,7 +1200,8 @@ namespace NWorld
     hero = pHero;
 #endif
 #if defined(PW_LINUX_NULL_RENDER)
-		const bool canUse = CanUseLinuxTalentCommand(hero, IsValid(hero) ? hero->GetPortal() : nullptr);
+		const bool canUse = CanUseLinuxTalentCommand(hero, IsValid(hero) ? hero->GetPortal() : nullptr) &&
+			IsLinuxAbilityCommandTarget(world, resolvedTarget);
 #else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->GetPortal() && hero->GetPortal()->CanBeUsed();
 #endif
@@ -1204,8 +1211,8 @@ namespace NWorld
     if (canUse)
     {
 #if defined(PW_LINUX_NULL_RENDER)
-      ++g_linuxHeroGameplayCommandDiagnostics.usePortalActionAccepted;
-      hero->UseTalent(hero->GetPortal(), resolvedTarget);
+			hero->EnqueueState(new LinuxTalentCommandState(hero, hero->GetPortal(), resolvedTarget,
+				-1, -2, false, true), true);
 #else
       hero->UseTalent(hero->GetPortal(), target);
 #endif

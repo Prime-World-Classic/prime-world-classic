@@ -1317,6 +1317,8 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			ConsumableCommandTargetsB10(check, world);
 			TalentCommandAdmissionB10(check, world);
 			TalentCommandQueueB10(check, world);
+			TalentCommandQueueB10(check, world, true);
+			PortalCommandTargetsB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

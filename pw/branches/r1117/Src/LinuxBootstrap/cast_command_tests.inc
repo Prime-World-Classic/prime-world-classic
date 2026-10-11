@@ -200,7 +200,7 @@ static void TalentCommandAdmissionB10(Checks& check, PFWorld* world)
 }
 
 /** Packed talent orders must approach before payment; diagnostics observe actual casting. */
-static void TalentCommandQueueB10(Checks& check, PFWorld* world)
+static void TalentCommandQueueB10(Checks& check, PFWorld* world, bool portal = false)
 {
 	for (int policy = 0; policy < 3; ++policy)
 	{
@@ -210,9 +210,15 @@ static void TalentCommandQueueB10(Checks& check, PFWorld* world)
 		NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
 		raw->useRange.sString = "4"; raw->manaCost.sString = "70";
 		raw->naftaCost = 0; raw->cooldownTime.sString = "0"; raw->requireLineOfSight = false;
-		NDb::Ptr<NDb::Talent> db = raw; hero->InstallTalent(db);
-		PFTalent* talent = hero->GetTalent(0, 0);
-		CObj<NCore::WorldCommand> source = CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(CVec3(15, 5, 0)), true);
+		NDb::Ptr<NDb::Talent> db = raw;
+		if (portal) hero->InstallPortal(db); else hero->InstallTalent(db);
+		PFTalent* talent = portal ? hero->GetPortal() : hero->GetTalent(0, 0);
+		CObj<NCore::WorldCommand> source = portal ? CreateCmdUsePortal(hero.GetPtr(), Target(CVec3(15, 5, 0)), true) :
+			CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(CVec3(15, 5, 0)), true);
+		const auto actualCasts = [portal]() {
+			const auto diagnostic = GetLinuxHeroGameplayCommandDiagnostics();
+			return portal ? diagnostic.usePortalActionAccepted : diagnostic.useTalentActionAccepted;
+		};
 		CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(source,
 			world->GetPointerSerialization(), 1984, 0);
 		CObj<NCore::WorldCommand> command = packet->GetWorldCommand(world->GetPointerSerialization());
@@ -220,7 +226,7 @@ static void TalentCommandQueueB10(Checks& check, PFWorld* world)
 		check(command && command->CanExecute(), "packed talent order admits its exact actor and purchased talent");
 		if (command) command->Execute(world);
 		check(hero->HasQueuedStates() && hero->GetMana() == 200 && talent->GetLastUseStep() == -1 &&
-			GetLinuxHeroGameplayCommandDiagnostics().useTalentActionAccepted == 0,
+			actualCasts() == 0,
 			"talent command admission neither pays nor reports an actual cast");
 		hero->Simulate(0);
 		check(hero->IsMoving() && hero->GetMana() == 200,
@@ -229,12 +235,31 @@ static void TalentCommandQueueB10(Checks& check, PFWorld* world)
 		if (policy == 2) talent->AddForbid();
 		for (int i = 0; i < 100 && talent->GetLastUseStep() == -1; ++i) hero->Simulate(0.1f);
 		check(hero->GetMana() == (policy == 0 ? 130.f : 200.f) &&
-			GetLinuxHeroGameplayCommandDiagnostics().useTalentActionAccepted == (policy == 0 ? 1 : 0),
+			actualCasts() == (policy == 0 ? 1 : 0),
 			"talent casts once at arrival and never after cancellation or permission loss");
-		check(policy != 0 || (hero->IsPositionInRange(CVec2(15, 5), 4) &&
-			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepBefore == -1 &&
-			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepAfter == talent->GetLastUseStep()),
+		check(policy != 0 || (hero->IsPositionInRange(CVec2(15, 5), 4) && (portal ||
+			(GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepBefore == -1 &&
+			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepAfter == talent->GetLastUseStep()))),
 			"cast diagnostics capture actual state-driven talent execution");
+		hero->DoStop();
+	}
+}
+
+/** Portal position admission uses the same finite, half-open map boundary as other casts. */
+static void PortalCommandTargetsB10(Checks& check, PFWorld* world)
+{
+	CObj<B10CommandHero> hero = CommandHeroB10(world);
+	NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
+	raw->useRange.sString = "4"; raw->manaCost.sString = "0"; raw->naftaCost = 0;
+	raw->requireLineOfSight = false;
+	NDb::Ptr<NDb::Talent> db = raw; hero->InstallPortal(db);
+	for (CVec3 point : {CVec3(-1, 5, 0), CVec3(5, std::numeric_limits<float>::infinity(), 0),
+		CVec3(world->GetMapSize().x, 5, 0)})
+	{
+		CObj<NCore::WorldCommand> command = CreateCmdUsePortal(hero.GetPtr(), Target(point), true);
+		check(!command->CanExecute(), "portal command rejects malformed/off-map targets before queueing");
+		command->Execute(world);
+		check(!hero->HasQueuedStates(), "direct portal execution cannot queue a malformed target");
 		hero->DoStop();
 	}
 }
