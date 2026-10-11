@@ -5,6 +5,7 @@
 #include "PFBaseMovingUnit.h"
 #include "PFUniTarget.h"
 #include "PFBaseAttackData.h"
+#include "LinuxBootstrap/formula_context.h"
 
 namespace
 {
@@ -230,14 +231,26 @@ bool PFBaseUnitAttackState::OnStep(float dt)
 	}
   if (!pOwner->IsTargetInAttackRange(pTarget, true))
   {
+		const PFBaseAttackData* attack = pOwner->GetAttackAbility();
+		// The authored predicate gates approach, not already-in-range attacks.
+		if (attack && attack->GetDBDesc() && !attack->GetDBDesc()->allowChase.sString.empty())
+		{
+			const auto result = LinuxBootstrap::EvaluateUnitNumericFormula(
+				attack->GetDBDesc()->allowChase.sString.c_str(), pOwner.GetPtr(), pTarget.GetPtr(), attack);
+			if (!result.Succeeded() || result.value == 0.0f) return true;
+		}
 		const float chaseRange = ignoreChaseRange ? 0.0f : pOwner->GetChaseRange();
 		if (!allowChase || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)
 			|| (!strongTarget && pOwner->IsHoldingPosition()) || !std::isfinite(chaseRange)
 			|| (chaseRange > EPS_VALUE && !pOwner->IsTargetInRange(pTarget, chaseRange)))
 			return true;
 		float range = pOwner->GetAttackRange();
-		if (const PFBaseAttackData* attack = pOwner->GetAttackAbility())
-			range = attack->GetUseRange(pTarget.GetPtr());
+		if (attack && attack->GetDBDesc() && !attack->GetDBDesc()->useRange.sString.empty())
+		{
+			const float authored = attack->GetUseRange(pTarget.GetPtr());
+			if (!std::isfinite(authored)) return true;
+			if (authored > 0.0f) range = authored;
+		}
 		if (!std::isfinite(range) || range < 0) return true;
 		pOwner->MoveTo(pTarget.GetPtr(), range * 0.9f);
     return false;

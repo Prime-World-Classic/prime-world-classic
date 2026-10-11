@@ -63,3 +63,45 @@ static void DefaultTargetRanges(Checks& checks)
 	}
 	NDb::SessionRoot::InitRoot(saved);
 }
+
+/** Actual attack orders use checked target-dependent range and chase expressions. */
+static void AttackFormulaPolicy(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	struct Case { const char* expression; bool chase; };
+	for (const Case policy : {Case{"", true}, Case{"0", false}, Case{"1", true},
+		Case{"-1", true}, Case{"sLife == tLife", true}, Case{"sLife > tLife", false},
+		Case{"unknownPolicy", false}, Case{"1/0", false}})
+	{
+		NDb::Unit* raw = new NDb::Unit; Configure(*raw);
+		AddStat(*const_cast<NDb::StatsContainer*>(raw->stats.GetPtr()), NDb::STAT_RANGE, "4");
+		NDb::BaseAttack* attack = new NDb::BaseAttack;
+		attack->useRange.sString = "sRange + tRange";
+		attack->allowChase.sString = policy.expression;
+		raw->attackAbility = attack;
+		NDb::Ptr<NDb::Unit> db = raw;
+		CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(20, 20, 0));
+		CObj<ProbeMover> target = new ProbeMover(fixture.world, *db, CVec3(28, 20, 0));
+		target->ChangeFaction(Enemy); fixture.Tick();
+		checks.Check(owner->IsTargetInAttackRange(target.GetPtr(), true),
+			"attack range uses both live sender and target properties");
+		attack->useRange.sString = "unknownRange";
+		target->TeleportTo(CVec2(22, 20));
+		checks.Check(!owner->IsTargetInAttackRange(target.GetPtr(), true),
+			"invalid attack range never falls back to an unrelated stat");
+		target->TeleportTo(CVec2(28, 20));
+		attack->useRange.sString = "4";
+		owner->SetUnitSpeed(4); owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE);
+		owner->EnqueueState(new PFBaseUnitAttackState(fixture.world, owner.GetPtr(), target.GetPtr(), true), true);
+		owner->Step(0.1f);
+		checks.Check(owner->IsMoving() == policy.chase, "authored chase expression controls approach");
+		checks.Check(owner->IsIdle() != policy.chase, "denied chase ends the order without damage");
+		checks.Check(target->GetHealth() == 100, "chase policy cannot synthesize damage");
+		owner->Cleanup(); owner->Stop(false);
+		target->TeleportTo(CVec2(22, 20));
+		owner->EnqueueState(new PFBaseUnitAttackState(fixture.world, owner.GetPtr(), target.GetPtr(), true), true);
+		owner->Step(0.0f);
+		checks.Check(!owner->IsIdle() && !owner->IsMoving(), "chase permission never forbids an already-in-range attack");
+		owner->Cleanup(); owner->Stop(false);
+	}
+}

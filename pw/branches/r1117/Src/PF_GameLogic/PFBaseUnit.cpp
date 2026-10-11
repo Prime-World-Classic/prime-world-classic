@@ -1213,9 +1213,13 @@ bool PFBaseUnit::IsTargetInAttackRange(const PFLogicObject* pTarget, bool useTar
 
   if (useTargetInFormula && IsValid(pAttackAbility) && pAttackAbility->GetDBDesc())
   {
-    const float range = pAttackAbility->GetDBDesc()->useRange(this, pTarget, pAttackAbility.GetPtr());
-    if (range > 0.0f)
-      return IsTargetInRange(pTarget, range);
+		if (!pAttackAbility->GetDBDesc()->useRange.sString.empty())
+		{
+			const float range = LinuxBootstrap::EvaluateUnitNumericFormula(
+				pAttackAbility->GetDBDesc()->useRange.sString.c_str(), this, pTarget, pAttackAbility.GetPtr()).value;
+			if (!std::isfinite(range)) return false;
+			if (range > 0.0f) return IsTargetInRange(pTarget, range);
+		}
   }
 
   return IsObjectInRange(pTarget, GetAttackRange());

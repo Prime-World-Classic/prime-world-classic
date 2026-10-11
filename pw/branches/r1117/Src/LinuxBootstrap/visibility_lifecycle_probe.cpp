@@ -852,6 +852,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			AttackStateLifecycle(checks);
 			AuthoredTargetRanges(checks);
 			DefaultTargetRanges(checks);
+			AttackFormulaPolicy(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);
