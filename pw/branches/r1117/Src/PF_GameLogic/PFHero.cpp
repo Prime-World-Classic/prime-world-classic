@@ -148,9 +148,55 @@ void PFBaseHero::AddTSliceSalary(float salary) { (void)salary; }
 void PFBaseHero::OnDie() { PFCreature::OnDie(); }
 void PFBaseHero::CallForTowerHelp( const CPtr<PFBaseUnit>& pTarget ) { (void)pTarget; }
 
-void PFHeroBehaviour::OnDamage( const PFBaseUnitDamageDesc& desc ) { (void)desc; }
-bool PFHeroBehaviour::OnStep( float dtInSeconds ) { (void)dtInSeconds; return false; }
-void PFHeroBehaviour::OnTarget( const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget ) { (void)pTarget; (void)bStrongTarget; }
+/** Preserve hero help and strong retaliation policies without mount redirection. */
+void PFHeroBehaviour::OnDamage(const PFBaseUnitDamageDesc& desc)
+{
+	if (!IsUnitValid(pUnit) || !GetWorld() || pUnit->GetWorld() != GetWorld()
+		|| !IsTargetValid(desc.pSender) || desc.pSender->GetWorld() != GetWorld()
+		|| desc.pSender->GetFaction() == pUnit->GetFaction())
+		return;
+	PFBaseHero* hero = dynamic_cast<PFBaseHero*>(pUnit.GetPtr());
+	if (!hero)
+		return;
+	if (desc.pSender->IsTrueHero() || desc.pSender->IsAlphaSummon())
+		hero->CallForTowerHelp(desc.pSender);
+	if (!desc.dontAttackBack && !desc.pSender->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOTARGETME)
+		&& desc.pSender->IsVisibleForFaction(pUnit->GetFaction()))
+	{
+		if (pUnit->IsIdle() && !pUnit->HasQueuedStates()
+			&& !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDSELECTTARGET)
+			&& !pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDAUTOATTACK))
+			pUnit->PushState(new PFBaseUnitAttackState(GetWorld(), pUnit, desc.pSender, true));
+		if (screamCooldown < 0 && desc.pSender->IsTrueHero() && GetWorld()->GetAIWorld())
+		{
+			screamCooldown = GetWorld()->GetAIWorld()->GetAIParameters().heroScreamDelay;
+			DoScream(desc.pSender, ScreamTarget::ScreamForHelp);
+		}
+	}
+}
+
+/** Advance the Windows cooldown so help screams can become eligible. */
+bool PFHeroBehaviour::OnStep(float dtInSeconds)
+{
+	if (screamCooldown >= 0)
+		screamCooldown -= dtInSeconds;
+	return true;
+}
+
+/** Queue authored orders once; keep an active same-target attack unchanged. */
+void PFHeroBehaviour::OnTarget(const CPtr<PFBaseUnit>& pTarget, bool bStrongTarget)
+{
+	if (!IsUnitValid(pUnit) || !GetWorld() || pUnit->GetWorld() != GetWorld()
+		|| !IsTargetValid(pTarget) || pTarget->GetWorld() != GetWorld()
+		|| pTarget == pUnit || pTarget->GetFaction() == pUnit->GetFaction()
+		|| !dynamic_cast<PFBaseHero*>(pUnit.GetPtr())
+		|| pUnit->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDATTACK))
+		return;
+	const IPFState* state = pUnit->GetCurrentState();
+	if (!state || state->GetTypeId() != PFBaseUnitAttackState::typeId
+		|| static_cast<const PFBaseUnitAttackState*>(state)->GetTarget() != pTarget)
+		pUnit->EnqueueState(new PFBaseUnitAttackState(GetWorld(), pUnit, pTarget, bStrongTarget), true);
+}
 
 bool PFBaseHero::OnDispatchApply(PFDispatch const &dispatch) { (void)dispatch; return true; }
 /** Apply the authored attacker mask without dereferencing a missing sender. */
