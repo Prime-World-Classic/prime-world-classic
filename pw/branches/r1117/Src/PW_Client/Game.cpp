@@ -36428,8 +36428,9 @@ bool PrepareLinuxBootstrapCreepDuelProof(
 
   attacker->SetVulnerable(true);
   targetUnit->SetVulnerable(true);
-  attacker->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), false);
-  targetUnit->AssignTarget(CPtr<NWorld::PFBaseUnit>(attacker), false);
+	// Stage once, then let behavior-created orders own movement and combat.
+	attacker->OnTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), true);
+	targetUnit->OnTarget(CPtr<NWorld::PFBaseUnit>(attacker), true);
 
   runtime->mapPreviewCreepDuelProofPrepared = true;
   runtime->mapPreviewCreepDuelProofActive = true;
@@ -36497,57 +36498,6 @@ void UpdateLinuxBootstrapCreepDuelProof(
   runtime->mapPreviewCreepDuelProofTargetY = targetUnit->GetPosition().y;
   runtime->mapPreviewCreepDuelProofDistanceAfter =
     fabs(targetUnit->GetPosition().AsVec2D() - attacker->GetPosition().AsVec2D());
-
-  if (runtime->mapPreviewCreepDuelProofActive &&
-      !attacker->IsDead() &&
-      !targetUnit->IsDead())
-  {
-    attacker->AssignTarget(CPtr<NWorld::PFBaseUnit>(targetUnit), false);
-    targetUnit->AssignTarget(CPtr<NWorld::PFBaseUnit>(attacker), false);
-
-    NWorld::PFBaseMovingUnit* movingTarget =
-      dynamic_cast<NWorld::PFBaseMovingUnit*>(targetUnit);
-    if (movingTarget)
-    {
-      const CVec2 attackerPosition = attacker->GetPosition().AsVec2D();
-      CVec2 direction = targetUnit->GetPosition().AsVec2D() - attackerPosition;
-      const float distance = fabs(direction);
-      if (distance > EPS_VALUE)
-      {
-        direction = direction / distance;
-      }
-      else
-      {
-        direction = CVec2(1.0f, 0.0f);
-      }
-
-      const float attackRange =
-        ResolveLinuxBootstrapUnitAttackProofRange(attacker, targetUnit);
-      const float keepDistance =
-        std::max(1.5f, std::min(3.5f, attackRange * 0.45f));
-      if (!attacker->IsTargetInAttackRange(targetUnit, true) ||
-          distance > std::max(keepDistance + 0.75f, attackRange * 0.8f))
-      {
-        movingTarget->Stop(false);
-        movingTarget->TeleportTo(
-          ClampLinuxBootstrapMoveTargetToMap(
-            world,
-            attackerPosition + direction * keepDistance),
-          false,
-          false);
-      }
-      else
-      {
-        movingTarget->Stop(false);
-      }
-    }
-
-    if (attacker->IsTargetInAttackRange(targetUnit, true) &&
-        attacker->IsReadyToAttack())
-    {
-      attacker->DoAttack(false);
-    }
-  }
 
   const int currentWorldStep = world->GetStepNumber();
   runtime->mapPreviewCreepDuelProofLastWorldStep = currentWorldStep;
