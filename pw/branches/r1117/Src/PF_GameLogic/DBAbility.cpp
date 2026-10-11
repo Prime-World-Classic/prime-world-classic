@@ -17,6 +17,7 @@
 #include "../Scene/DBScene.h"
 #include "DBAbility.h"
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+#include <cmath>
 #include "PFDispatchStrike1.h"
 #include "PFApplAura.h"
 #include "PFApplHelper.h"
@@ -7284,6 +7285,9 @@ void DispatchByTime::Assign( const DispatchByTime& _dispatchByTime )
 NWorld::PFDispatch* DispatchByTime::Create( NWorld::PFDispatchCreateParams const &cp ) const
 {
 #if defined(PW_LINUX_DB_BOOTSTRAP)
+	// Reject invalid travel before construction, activation payment or persistent side effects.
+	if (!std::isfinite(NWorld::PFDispatch::EvaluateNativeParameter(cp, lifeTime)))
+		return 0;
 	// Keep formula lifetime, persistent stepping and sender-death policy in the original algorithm.
 	return NWorld::FCreateDispatch<NWorld::PFDispatchByTime>( *this, cp );
 #else

@@ -65,6 +65,11 @@ public:
     , pUpgraderAbilityData( IsValid(cp.pParentApplicator) ? cp.pParentApplicator->GetUpgraderAbilityData() : 0 )
   {}
   virtual void OnDie();
+#if defined(PW_LINUX_NULL_RENDER)
+	/** Evaluate checked native parameters with original endpoints; failures remain NaN. */
+	static float EvaluateNativeParameter(const PFDispatchCreateParams& cp,
+		const ExecutableFloatString& parameter, float defaultValue = 0.0f);
+#endif
 
   virtual bool Step(float dtInSeconds);
   virtual void OnMove(CVec3 const &/*pos*/, bool /*isDone*/) {}

@@ -50,6 +50,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 14/20 COMPLETE (`0.46.0`): restore original timed-dispatch factory and base retry policy; travel deadlines, blocked arrival and authored sender-death behavior run through production algorithms. Enable timed base attacks plus mixed ordinary/attack/periodic world tests, mutation-safe cancellation/registration and next-tick newborn delivery. Baseline 4,955 checks/28 failures; final 4,988/0 (positive-path assertions become reachable), 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c14-{before,after,build,ctest}.log`. Native malformed lifetime formulas are the next checkpoint; no claim of complete formula or projectile coverage.
 
+- Chunk 15/20 COMPLETE (`0.46.1`): native dispatch lifetime formulas use the existing checked evaluator with original sender/target, local constants and parent-applicator context. Malformed, nonfinite or compiled-only lifetime data fails before construction, payment, cooldown or persistent side effects; missing data keeps its default. Fourteen baseline failures reproduced; all 5,012 assertions, 28 CTests, six builds and Windows/shared audits pass. Evidence `/tmp/pw-b11-c15-{before,after,build,ctest}.log`. Original authored negative lifetime semantics remain intact; unsupported formula syntax is not silently accepted.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

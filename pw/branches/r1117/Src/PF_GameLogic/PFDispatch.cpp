@@ -9,6 +9,7 @@
 #include "PFDispatchFactory.h"
 #include "PFApplMod.h"
 #include "PFAIWorld.h"
+#include "../LinuxBootstrap/formula_context.h"
 
 namespace NWorld
 {
@@ -151,9 +152,26 @@ bool PFDispatch::Step(float dtInSeconds)
 
 float PFDispatch::RetrieveParam( const ExecutableFloatString& par, float defaultValue )
 {
-  IUnitFormulaPars * const pOriginalTarget = originalTarget.IsUnit() ? originalTarget.GetUnit().GetPtr() : pSender.GetPtr();
-  IMiscFormulaPars * const pMisc = IsValid( pParentApplicator ) ? (IMiscFormulaPars*)pParentApplicator.GetPtr() : ( IsValid( pAbility ) ? (IMiscFormulaPars*)pAbility->GetData() : 0 );
-  return par( pSender, pOriginalTarget, pMisc, defaultValue );
+	PFDispatchCreateParams cp(pAbility, originalTarget, source, flagsForApplicators, pParentApplicator);
+	cp.pSender = pSender;
+	return EvaluateNativeParameter(cp, par, defaultValue);
+}
+
+float PFDispatch::EvaluateNativeParameter(const PFDispatchCreateParams& cp,
+	const ExecutableFloatString& parameter, float defaultValue)
+{
+	// Only absent data uses a default; malformed and compiled-only expressions must fail closed.
+	if (parameter.sString.empty() && parameter.compiledString.empty())
+		return defaultValue;
+	const IUnitFormulaPars* originalTarget = cp.target.IsUnit() ? cp.target.GetUnit().GetPtr() : cp.pSender.GetPtr();
+	if (IsValid(cp.pParentApplicator))
+	{
+		// This existing context evaluator binds an explicit target plus parent variables without RNG.
+		return LinuxBootstrap::EvaluateDamageReductionNumericFormula(parameter.sString.c_str(),
+			cp.pSender, originalTarget, cp.pParentApplicator).value;
+	}
+	return LinuxBootstrap::EvaluateUnitNumericFormula(parameter.sString.c_str(), cp.pSender,
+		originalTarget, IsValid(cp.pAbility) ? cp.pAbility->GetData() : nullptr).value;
 }
 
 void PFDispatch::OpenWarFog()
