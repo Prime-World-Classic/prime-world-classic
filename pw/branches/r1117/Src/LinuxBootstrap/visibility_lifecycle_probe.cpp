@@ -863,6 +863,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			BuildingMoveLifecycle(checks);
 			RegionMovement(checks);
 			CombatMoveLifecycle(checks);
+			BuildingCombatLifecycle(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

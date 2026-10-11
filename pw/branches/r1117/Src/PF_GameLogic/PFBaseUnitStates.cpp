@@ -456,12 +456,33 @@ PFBaseUnitCombatMoveToBuildingState::PFBaseUnitCombatMoveToBuildingState(const C
 
 bool PFBaseUnitCombatMoveToBuildingState::OnStep(float dt)
 {
-  FSMStep(dt);
-  return GetCurrentState() == 0;
+	if (!IsUnitValid(pOwner) || !IsUnitValid(pTarget) || !IsValid(pWorld)
+		|| pOwner->GetWorld() != pWorld.GetPtr() || pTarget->GetWorld() != pWorld.GetPtr()) return true;
+	if (!std::isfinite(dt) || dt < 0) return false;
+	FSMStep(dt);
+	IPFState* state = GetCurrentState();
+	if (!state) return true;
+	if (dynamic_cast<PFBaseUnitMoveToBuildingState*>(state))
+	{
+		if (targetSearchTimer > 0)
+		{
+			targetSearchTimer -= dt;
+			return false;
+		}
+		targetSearchTimer = targetSearchInterval;
+		PFBaseUnit* enemy = pOwner->CheckFlag(NDb::UNITFLAG_INVISIBLE) ? nullptr
+			: pOwner->FindTarget(pOwner->GetTargetingRange());
+		if (enemy && enemy != pTarget.GetPtr())
+			PushState(new PFBaseUnitAttackState(pWorld, pOwner, enemy, false, false, false, false, false));
+	}
+	return false;
 }
 
 void PFBaseUnitCombatMoveToBuildingState::OnLeave()
 {
+	Cleanup();
+	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial() && !pOwner->IsMounted())
+		pOwner->Stop(false);
 }
 
 } // namespace NWorld

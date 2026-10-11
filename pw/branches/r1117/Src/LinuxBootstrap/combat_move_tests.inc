@@ -56,3 +56,46 @@ static void CombatMoveLifecycle(Checks& checks)
 	for (int i = 0; i < 4; ++i) hero->Step(0);
 	checks.Check(hero->IsIdle() && !hero->IsMoving(), "hero alert move ends after its combat state finishes");
 }
+
+/** Building combat may briefly engage nearby enemies but never chase away from its order. */
+static void BuildingCombatLifecycle(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	for (int policy = 0; policy < 3; ++policy)
+	{
+		NDb::Unit* raw = new NDb::Unit; Configure(*raw);
+		AddStat(*const_cast<NDb::StatsContainer*>(raw->stats.GetPtr()), NDb::STAT_RANGE, "4");
+		NDb::Ptr<NDb::Unit> db = raw;
+		CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(20, 20, 0));
+		CObj<ProbeMover> enemy = new ProbeMover(fixture.world, *db, CVec3(24, 20, 0));
+		CObj<ProbeUnit> building = new ProbeUnit(fixture.world, db);
+		building->Relocate(CVec3(40, 20, 0)); building->ChangeFaction(Enemy);
+		enemy->ChangeFaction(Enemy); enemy->SetObjectSize(2); fixture.Tick();
+		owner->RemoveFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); owner->SetUnitSpeed(4);
+		CObj<B9Region> region = new B9Region;
+		if (policy == 1) owner->AddFlag(NDb::UNITFLAG_INVISIBLE);
+		if (policy == 2) building->KillUnit(nullptr, PFBaseUnit::UNITDIEFLAGS_FORBIDREWARDS);
+		owner->EnqueueState(new PFBaseUnitCombatMoveToBuildingState(fixture.world, owner.GetPtr(), building.GetPtr(), region, false), true);
+		for (int i = 0; i < 3; ++i) owner->Step(0);
+		if (policy == 0)
+		{
+			checks.Check(owner->GetCurrentTarget() == enemy.GetPtr() && !owner->IsMoving(), "building move engages nearby enemy through a nested attack");
+			enemy->TeleportTo(CVec2(30, 20));
+			for (int i = 0; i < 4; ++i) owner->Step(0);
+			checks.Check(!owner->GetCurrentTarget() && owner->IsMoving(), "distant enemy cannot turn building interruption into chase");
+			enemy->TeleportTo(CVec2(24, 20));
+			owner->Step(0); owner->Step(0);
+			checks.Check(!owner->GetCurrentTarget(), "building search observes its cooldown between interruptions");
+			owner->Step(0.21f); owner->Step(0); owner->Step(0);
+			checks.Check(owner->GetCurrentTarget() == enemy.GetPtr(), "elapsed search cooldown permits a new interruption");
+		}
+		else if (policy == 1)
+			checks.Check(!owner->GetCurrentTarget() && owner->IsMoving(), "invisible building mover skips automatic selection");
+		else
+			checks.Check(owner->IsIdle() && !owner->IsMoving(), "destroyed building terminates combat approach");
+		owner->Cleanup();
+		checks.Check(!owner->GetCurrentTarget() && !owner->IsMoving(), "building combat cleanup releases nested attack and motion");
+		owner->Stop(false);
+	}
+}
