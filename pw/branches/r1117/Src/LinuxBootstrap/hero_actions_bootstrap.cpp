@@ -889,10 +889,9 @@ namespace NWorld
     if (canUse)
     {
 #if defined(PW_LINUX_NULL_RENDER)
-      CObj<PFAbilityInstance> instance =
-        hero->UseConsumable(slot, resolvedTarget, hero->IsLocal());
-      if (instance)
-        ++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
+			hero->EnqueueState(new PFHeroUseConsumableState(hero, slot, resolvedTarget), true);
+			// Command acceptance is queue admission, not an already paid/completed cast.
+			++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
 #else
       hero->EnqueueState(new PFHeroUseConsumableState(hero, slot, target), true);
 #endif
