@@ -128,7 +128,8 @@ def convert_formula(s, alt_second=False):
     """sString -> C++-выражение ровно в том порядке, как в FormulaBuilder."""
     out = s
     for rx, rep in RULES_C:
-        if alt_second and ("pSecond" in rep or "pSecond->UnitCheck" in rep):
+        # rep бывает callabe (GET_OBJECT_EVAL) — фильтр по подстроке только для строк
+        if alt_second and isinstance(rep, str) and "pSecond" in rep:
             continue
         out = rx.sub(rep, out)
     return out
