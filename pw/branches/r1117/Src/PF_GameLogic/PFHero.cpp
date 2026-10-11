@@ -433,8 +433,8 @@ void PFBaseHero::DropConsumable( int slot, const CVec2& target) { (void)target; 
 void PFBaseHero::AddConsumableCooldown(CObj<PFConsumable> const& pConsumable) { (void)pConsumable; }
 void PFBaseHero::OnSerialize(IBinSaver& f) { (void)f; }
 void PFBaseHero::InitializeCustomEnergyVariables() { customEnergy = false; customEnergyValue = 0; customEnergyMaximum = 0; customEnergyRegeneration = 0; }
-bool PFBaseHero::CanUseConsumable(int slot) const { return IsSlotValid(slot) && consumables[slot] && consumables[slot]->GetQuantity() > 0 && consumables[slot]->CanBeUsed(); }
-bool PFBaseHero::CanUseConsumables() const { return true; }
+bool PFBaseHero::CanUseConsumable(int slot) const { return CanUseConsumables() && IsSlotValid(slot) && consumables[slot] && consumables[slot]->GetQuantity() > 0 && consumables[slot]->CanBeUsed(); }
+bool PFBaseHero::CanUseConsumables() const { return !CheckFlagType(NDb::UNITFLAGTYPE_FORBIDUSECONSUMABLES); }
 CObj<PFAbilityInstance> PFBaseHero::UseConsumable( CObj<PFConsumable>& pConsumable, const Target& target, bool isLocal )
 {
   (void)isLocal;

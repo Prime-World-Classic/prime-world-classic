@@ -105,34 +105,50 @@ PFHeroUseConsumableState::PFHeroUseConsumableState( PFBaseMaleHero * _pOwner, in
 {
 }
 
+/** Approach before payment, recheck inventory, then observe unit-owned cast work. */
 bool PFHeroUseConsumableState::OnStep( float dt )
 {
-  if ( !IsUnitValid( pOwner ) || !IsValid( hero ) )
-    return true;
-
-  if ( !target.IsValid() )
-  {
-    if ( !hero->IsMovingSpecial() )
-      hero->Stop();
-    return true;
-  }
-
-  if ( !pAbilityInstance )
-  {
-    if ( !hero->CanUseConsumable( slot ) )
-      return true;
-
-    pAbilityInstance = hero->UseConsumable( slot, target, hero->IsLocal() );
-    return !pAbilityInstance || pAbilityInstance->IsFinished();
-  }
-
-  pAbilityInstance->Update( dt );
-  return pAbilityInstance->IsFinished();
+	if (!IsUnitValid(hero)) return true;
+	if (!std::isfinite(dt) || dt < 0) return false;
+	if (!pAbilityInstance)
+	{
+		const float range = GetUseRange();
+		const CVec3 position = target.AcquirePosition();
+		if (!target.IsValid() || !std::isfinite(range) || range < 0
+			|| !std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z)
+			|| (target.IsUnit() && target.GetUnit()->GetWorld() != hero->GetWorld())
+			|| (NeedToGetClose() && hero->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE)))
+		{
+			if (!hero->IsMovingSpecial() && !hero->IsMounted()) hero->Stop(false);
+			return true;
+		}
+	}
+	FSMStep(dt);
+	if (GetCurrentState()) return false;
+	if (!pAbilityInstance)
+	{
+		const PFConsumable* item = GetConsumable();
+		if (!item || !IsValid(item->GetAbility()) || !hero->CanUseConsumable(slot) || NeedToGetClose()
+			|| (target.IsUnit() && !target.GetUnit()->IsVisibleForFaction(hero->GetFaction()))) return true;
+		if (item->GetAbility()->IsAbilitySupposedToStopUnit() && hero->IsMoving()
+			&& !hero->IsMovingSpecial() && !hero->IsMounted()) hero->Stop(false);
+		pAbilityInstance = hero->UseConsumable(slot, target, hero->IsLocal());
+		if (!pAbilityInstance) return true;
+	}
+	const bool finished = IsCastFinished();
+	if (waitForChanneling && finished && dt > 0) waitForChanneling = false;
+	return !waitForChanneling && finished;
 }
 
 float PFHeroUseConsumableState::GetUseRange() const
 {
-  return -1.0f;
+	const PFConsumable* item = GetConsumable();
+	if (!item || !IsValid(item->GetAbility())) return -1;
+	const NDb::AlternativeTarget* alternative = target.GetDBAlternativeTarget();
+	if (alternative && alternative->alternativeActivity)
+		return LinuxBootstrap::EvaluateUnitNumericFormula(alternative->alternativeActivity->useRange.sString.c_str(),
+			pOwner.GetPtr(), pOwner.GetPtr(), item->GetAbility().GetPtr()).value;
+	return item->GetAbility()->GetUseRange();
 }
 
 NDb::Ability const* PFHeroUseConsumableState::GetDBDesc() const
