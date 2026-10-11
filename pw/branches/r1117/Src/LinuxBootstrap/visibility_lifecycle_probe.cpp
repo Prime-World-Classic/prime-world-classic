@@ -10,6 +10,7 @@ template<> NWorld::PFBaseUnit* CastToUserObjectImpl<NWorld::PFBaseUnit>(
 #include "../PF_GameLogic/PFBaseMovingUnit.h"
 #include "../PF_GameLogic/PFHero.h"
 #include "../PF_GameLogic/PFBaseAttackData.h"
+#include "../PF_GameLogic/PFBaseUnitStates.h"
 #include "../PF_GameLogic/PFWorld.h"
 #include "../PF_GameLogic/PFResourcesCollectionClient.h"
 #include "../PF_GameLogic/DBAdvMap.h"
@@ -740,6 +741,48 @@ void AttackCommandPolicy(Checks& checks)
 }
 
 /** Invoke from an isolated engine probe process after applying the observer patch. */
+/** Serialized attack orders must leave combat to simulation, with no bootstrap priming. */
+static void AttackOrderScheduling(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	for (bool script : {false, true})
+	{
+		NDb::Hero* raw = new NDb::Hero; Configure(*raw);
+		NDb::StatsContainer* stats = const_cast<NDb::StatsContainer*>(raw->stats.GetPtr());
+		AddStat(*stats, NDb::STAT_RANGE, "4"); AddStat(*stats, NDb::STAT_BASEATTACK, "20");
+		NDb::BaseAttack* attack = new NDb::BaseAttack;
+		attack->useRange.sString = "4"; attack->manaCost.sString = "0";
+		raw->attackAbility = attack;
+		NDb::Ptr<NDb::Hero> db = raw;
+		PFBaseHero::SpawnInfo spawn; spawn.pHero = db;
+		spawn.placement = Placement(CVec3(20, 20, 0), QNULL, CVec3(1, 1, 1));
+		CObj<PFBaseHero> hero = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Ally, Ally);
+		spawn.placement.pos.x = 28;
+		CObj<PFBaseHero> target = new PFBaseHero(fixture.world, spawn, NDb::UNITTYPE_HEROMALE, Enemy, Enemy);
+		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET); target->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		fixture.Tick(); hero->GetAttackAbility()->RestartCooldown(0.5f);
+		const float prepared = hero->GetAttackAbility()->GetPreparedness();
+		const CVec3 position = target->GetPosition(); const float health = target->GetHealth();
+		CObj<NCore::WorldCommand> command = PackedAttack(fixture, hero, target, script);
+		checks.Check(command && command->CanExecute(), "real packed distant attack is admitted");
+		if (command) command->Execute(fixture.world);
+		checks.Check(fabs2(target->GetPosition()-position) == 0, "attack order never teleports its target");
+		checks.Check(target->GetHealth() == health, "attack command never deals command-time fallback damage");
+		checks.Check(hero->GetAttackAbility()->GetPreparedness() == prepared, "attack order does not reset cooldown");
+		checks.Check(hero->HasQueuedStates(), "attack command queues the existing combat state");
+		hero->Step(0.1f);
+		checks.Check(dynamic_cast<const PFBaseUnitAttackState*>(hero->GetCurrentState()) != nullptr,
+			"simulation owns the queued attack state");
+		CObj<NCore::WorldCommand> stop = CreateCmdStopHero(hero.GetPtr()); stop->Execute(fixture.world);
+		hero->Step(0.1f);
+		checks.Check(!hero->GetCurrentTarget() && hero->IsIdle() && !hero->IsMoving(), "stop cancels the combat order");
+		command->Execute(fixture.world); hero->Step(0.1f);
+		CObj<NCore::WorldCommand> move = CreateCmdMoveHero(hero.GetPtr(), CVec2(20, 25)); move->Execute(fixture.world);
+		checks.Check(!hero->GetCurrentTarget() && !dynamic_cast<const PFBaseUnitAttackState*>(hero->GetCurrentState()),
+			"movement replaces the old attack order");
+	}
+}
+
 bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> savedRoot = NDb::SessionRoot::GetRoot();
@@ -760,6 +803,7 @@ bool RunPrimeWorldLinuxVisibilityLifecycleProbe()
 			InvalidAndWorldIsolation(checks);
 			HeroRespawn(checks);
 			AttackCommandPolicy(checks);
+			AttackOrderScheduling(checks);
 		}
 	NDb::SessionRoot::InitRoot(savedRoot);
 	std::printf("Visibility lifecycle: %d checks, %d failures\n", checks.count, checks.failures);

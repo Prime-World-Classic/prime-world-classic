@@ -258,7 +258,8 @@ void PFBaseHero::DoResurrect()
   respawnDelay = -1.0f;
   advanceRespawnDelay = -1.0f;
 }
-void PFBaseHero::DoStop() { Stop(); }
+/** A stop command replaces the queued/current order, not just its movement. */
+void PFBaseHero::DoStop() { Cleanup(); DropTarget(); Stop(); }
 int PFBaseHero::GetOriginalTeamId() const { return inTeamId; }
 int PFBaseHero::GetZZimaSex() const { return playerGender; }
 bool PFBaseHero::IsMale() const { return GetDbGender() != NDb::GENDER_FEMALE; }
@@ -474,6 +475,8 @@ int PFBaseHero::GetHeroAchievementCount( const char* achievId ) const { (void)ac
 bool PFBaseHero::CanMove() const { return true; }
 void PFBaseHero::Move(const CVec2 & target)
 {
+  Cleanup();
+  DropTarget();
   CPtr<PFBaseMovingUnit> pHeroOrMount = ControlsMount() ? GetMount() : this;
   if (!IsValid(pHeroOrMount))
   {

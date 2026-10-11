@@ -1397,6 +1397,7 @@ bool PFBaseUnit::Step(float dtInSeconds)
     AutoTarget(dtInSeconds);
 
   if (!IsDead() &&
+      !GetCurrentState() && !HasQueuedStates() &&
       IsUnitValid(pCurrentTarget) &&
       pCurrentTarget != this &&
       pCurrentTarget->GetFaction() != GetFaction() &&

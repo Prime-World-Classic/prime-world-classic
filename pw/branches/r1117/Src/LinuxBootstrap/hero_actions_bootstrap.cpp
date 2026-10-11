@@ -198,81 +198,6 @@ namespace NWorld
     return range > EPS_VALUE ? range : 4.0f;
   }
 
-  static void PrimeLinuxBootstrapScriptedAttackTarget(
-    PFBaseHero* hero,
-    PFBaseUnit* targetUnit)
-  {
-    if (!hero || !targetUnit || hero == targetUnit)
-      return;
-
-    PFBaseMovingUnit* movingTarget = dynamic_cast<PFBaseMovingUnit*>(targetUnit);
-    if (!movingTarget)
-      return;
-
-    const float attackRange =
-      ResolveLinuxBootstrapCommandAttackRange(hero, targetUnit);
-    if (hero->IsTargetInAttackRange(targetUnit, true))
-      return;
-
-    const CVec2 heroPosition = hero->GetPosition().AsVec2D();
-    CVec2 direction = targetUnit->GetPosition().AsVec2D() - heroPosition;
-    const float distance = fabs(direction);
-    if (distance > EPS_VALUE)
-      direction = direction / distance;
-    else
-      direction = CVec2(1.0f, 0.0f);
-
-    const float proofDistance =
-      Max(1.5f, Min(4.0f, attackRange * 0.55f));
-    movingTarget->Stop(false);
-    movingTarget->TeleportTo(heroPosition + direction * proofDistance, false, false);
-    targetUnit->DropTarget();
-    targetUnit->SetVulnerable(true);
-  }
-
-  static float ResolveLinuxBootstrapCommandFallbackDamage(PFBaseHero* hero)
-  {
-    if (!hero)
-      return 0.0f;
-
-    const float damageMin = hero->GetDamageMin();
-    const float damageMax = hero->GetDamageMax();
-    if (damageMin <= 0.0f && damageMax <= 0.0f)
-      return 0.0f;
-
-    return (Max(0.0f, damageMin) + Max(0.0f, damageMax)) * 0.5f;
-  }
-
-  static bool ApplyLinuxBootstrapCommandAttackFallbackDamage(
-    PFBaseHero* hero,
-    PFBaseAttackData* attackData,
-    PFBaseUnit* targetUnit)
-  {
-    if (!hero || !targetUnit)
-      return false;
-
-    const float damage = ResolveLinuxBootstrapCommandFallbackDamage(hero);
-    if (damage <= EPS_VALUE)
-      return false;
-
-    PFBaseUnit::DamageDesc desc;
-    desc.pSender = hero;
-    desc.amount = damage;
-    desc.damageType =
-      attackData && attackData->GetDamageType() != NDb::APPLICATORDAMAGETYPE_NATIVE
-        ? attackData->GetDamageType()
-        : hero->GetNativeDamageType();
-    desc.flags = PFBaseApplicator::FLAG_BASE_ATTACK;
-    desc.damageMode = NDb::DAMAGEMODE_ZERO;
-    desc.dontAttackBack = false;
-    desc.delegated = false;
-    desc.ignoreDefences = false;
-    desc.pDealerApplicator = 0;
-    desc.delegatedDamage = 0.0f;
-    desc.isDelegatedCriticalDamage = false;
-    targetUnit->OnDamage(desc);
-    return true;
-  }
 
   static int GetLinuxBootstrapTargetObjectId(const Target& target)
   {
@@ -681,7 +606,12 @@ namespace NWorld
 #endif
       hero->OnTarget(targetUnit, true);
 #if defined(PW_LINUX_NULL_RENDER)
+      // Commands establish orders; simulation owns movement, cooldowns and damage.
+      hero->Cleanup();
+      hero->Stop(false);
       hero->AssignTarget(targetUnit, true);
+      hero->EnqueueState(new PFBaseUnitAttackState(hero->GetWorld(), hero, targetUnit,
+        true, false, issuedByScript), true);
       const float lifeBefore = targetUnit->GetLife();
       g_linuxHeroGameplayCommandDiagnostics.attackLifeBefore = lifeBefore;
       g_linuxHeroGameplayCommandDiagnostics.attackRange =
@@ -692,13 +622,6 @@ namespace NWorld
         hero->IsTargetInAttackRange(targetUnit, true) ? 1 : 0;
       g_linuxHeroGameplayCommandDiagnostics.attackReadyBeforeDrop =
         hero->IsReadyToAttack() ? 1 : 0;
-      if (issuedByScript)
-      {
-        PrimeLinuxBootstrapScriptedAttackTarget(hero, targetUnit);
-        hero->AssignTarget(targetUnit, true);
-        if (PFBaseAttackData* attackData = hero->GetAttackAbility())
-          attackData->DropCooldown(false, 0.0f, false);
-      }
       const bool canAttack = hero->CanAttackTarget(targetUnit);
       const bool inRangeAfterPrime = hero->IsTargetInAttackRange(targetUnit, true);
       g_linuxHeroGameplayCommandDiagnostics.attackCanAttack =
@@ -709,37 +632,11 @@ namespace NWorld
         hero->IsReadyToAttack() ? 1 : 0;
       g_linuxHeroGameplayCommandDiagnostics.attackDistanceAfterPrime =
         fabs(targetUnit->GetPosition().AsVec2D() - hero->GetPosition().AsVec2D());
-      bool attackResult = false;
-      if (canAttack && inRangeAfterPrime)
-      {
-        attackResult = hero->DoAttack(false);
-      }
-      g_linuxHeroGameplayCommandDiagnostics.attackDoAttackResult =
-        attackResult ? 1 : 0;
+      g_linuxHeroGameplayCommandDiagnostics.attackDoAttackResult = 0;
       g_linuxHeroGameplayCommandDiagnostics.attackLifeAfter =
         targetUnit->GetLife();
-      if (issuedByScript &&
-          canAttack &&
-          inRangeAfterPrime &&
-          g_linuxHeroGameplayCommandDiagnostics.attackLifeAfter + 0.25f >=
-            lifeBefore)
-      {
-        PFBaseAttackData* attackData = hero->GetAttackAbility();
-        if (ApplyLinuxBootstrapCommandAttackFallbackDamage(
-              hero,
-              attackData,
-              targetUnit))
-        {
-          g_linuxHeroGameplayCommandDiagnostics.attackFallbackDamageApplied = 1;
-          g_linuxHeroGameplayCommandDiagnostics.attackLifeAfter =
-            targetUnit->GetLife();
-        }
-      }
-      if (g_linuxHeroGameplayCommandDiagnostics.attackLifeAfter + 0.25f <
-          lifeBefore)
-      {
-        g_linuxHeroGameplayCommandDiagnostics.attackActionAccepted = 1;
-      }
+      g_linuxHeroGameplayCommandDiagnostics.attackFallbackDamageApplied = 0;
+      g_linuxHeroGameplayCommandDiagnostics.attackActionAccepted = 1;
 #endif
     }
   }
