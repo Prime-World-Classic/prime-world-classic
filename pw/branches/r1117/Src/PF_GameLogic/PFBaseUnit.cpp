@@ -1591,7 +1591,8 @@ void PFBaseUnit::ApplyDamageReduction(float& damage, NDb::EApplicatorDamageType 
 	const auto& formula = type == NDb::APPLICATORDAMAGETYPE_ENERGY ? ai.energyDamageReduction : ai.physicalDamageReduction;
 	if (formula.sString.empty() && formula.compiledString.empty()) return;
 	const auto result = LinuxBootstrap::EvaluateDamageReductionNumericFormula(formula.sString.c_str(), desc.pSender, this, desc.pDealerApplicator);
-	damage = result.Succeeded() && result.value > 0 ? result.value : 0.0f;
+	// Keep failure distinct from valid zero, which a damage listener may modify.
+	damage = result.value;
 }
 /** Drain flat stat amounts from post-event, health-capped damage, as on Windows.
  * Buildings cannot supply either resource. Energy restoration being forbidden
@@ -1627,7 +1628,7 @@ void PFBaseUnit::ApplyDrains(const DamageDesc& desc, float damage)
 }
 float PFBaseUnit::OnDamage(const DamageDesc& desc)
 {
-  if (!IsVulnerable())
+  if (!IsVulnerable() || !std::isfinite(desc.amount) || !std::isfinite(GetHealth()))
     return 0.0f;
   if (desc.damageType < 0 || desc.damageType >= NDb::KnownEnum<NDb::EApplicatorDamageType>::SizeOf())
     return 0.0f;
@@ -1641,12 +1642,16 @@ float PFBaseUnit::OnDamage(const DamageDesc& desc)
         : NDb::APPLICATORDAMAGETYPE_MATERIAL;
   }
 
-  float damage = Max<float>(0.0f, normalizedDesc.amount);
+  float damage = normalizedDesc.amount;
   if (!normalizedDesc.ignoreDefences)
     ApplyDamageReduction(damage, static_cast<NDb::EApplicatorDamageType>(normalizedDesc.damageType), normalizedDesc);
+	if (!std::isfinite(damage)) return 0.0f;
 
   PFBaseUnitDamageEvent damageEvent(normalizedDesc, damage);
   EventHappened(damageEvent);
+	// Normalization uses a local descriptor, but delegation writes belong to the caller.
+	desc.delegatedDamage = std::isfinite(normalizedDesc.delegatedDamage) ? normalizedDesc.delegatedDamage : 0.0f;
+	if (!std::isfinite(damageEvent.damage2Deal) || !std::isfinite(GetHealth())) return 0.0f;
   damage = Min<float>(Max<float>(0.0f, damageEvent.damage2Deal), GetHealth());
 
   if (IsDead() || damage <= 0.0f)
@@ -1711,7 +1716,7 @@ float PFBaseUnit::OnHeal(CPtr<PFBaseUnit> pSender, float amount, bool ignoreHeal
 }
 float PFBaseUnit::OnBurnEnergy(CPtr<PFBaseUnit>, float amount)
 {
-  if (amount <= 0.0f)
+  if (!std::isfinite(amount) || amount <= 0.0f || !std::isfinite(GetMana()) || GetMana() < 0)
     return 0.0f;
   const float burned = Min<float>(GetMana(), amount);
   TakeMana(burned);
@@ -1719,10 +1724,13 @@ float PFBaseUnit::OnBurnEnergy(CPtr<PFBaseUnit>, float amount)
 }
 float PFBaseUnit::OnHealEnergy(CPtr<PFBaseUnit>, float amount)
 {
-  if (amount <= 0.0f || CheckFlag(NDb::UNITFLAG_FORBIDENERGYRESTORE))
+  if (!std::isfinite(amount) || amount <= 0.0f || CheckFlag(NDb::UNITFLAG_FORBIDENERGYRESTORE))
     return 0.0f;
   const float before = GetMana();
-  ChangeMana(amount);
+	const float maximum = GetMaxEnergy();
+	if (!std::isfinite(before) || !std::isfinite(maximum) || before < 0 || maximum < before) return 0.0f;
+	// Cap before addition so a finite large heal cannot overflow the resource pool.
+	ChangeMana(Min(amount, maximum - before));
   return GetMana() - before;
 }
 void PFBaseUnit::OnAddGold(CPtr<PFBaseUnit>, float amount, bool)

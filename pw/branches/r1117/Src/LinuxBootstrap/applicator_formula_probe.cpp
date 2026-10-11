@@ -301,10 +301,12 @@ static void DamageRouting(Checks& check, PFWorld* world)
 }
 
 /** Critical hits consume exactly the existing world Roll, including 0/100 percent. */
-static void CriticalDamage(Checks& check, PFWorld* world)
+static void CriticalDamage(Checks& check, PFWorld* world, bool deadSender = false)
 {
 	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
 	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	// In-flight damage keeps its valid owner even after that owner dies.
+	if (deadSender) sender->ChangeHealth(-1000);
 	for (float bonus : {0.0f, 70.0f, 200.0f})
 	for (bool enabled : {false, true})
 	for (auto kind : {NDb::APPLICATORDAMAGETYPE_PURE, NDb::APPLICATORDAMAGETYPE_MANA})
@@ -822,6 +824,103 @@ static void HealingDrainComposition(Checks& check, PFWorld* world)
 	check(receiver->GetMana() == 40 && sender->GetMana() == 60, "life modifiers do not modify energy drain");
 }
 
+/** Observe the real incoming event and supply controlled numeric/metadata changes. */
+struct IncomingListener : CObjectBase, PFBaseUnitEventListener
+{
+	OBJECT_BASIC_METHODS(IncomingListener);
+public:
+	int calls = 0, lastHits = 0;
+	float replacement = 7, initial = 0;
+	unsigned int OnEvent(const PFBaseUnitEvent* event) override
+	{
+		if (event->GetType() == NDb::BASEUNITEVENT_LASTHIT) ++lastHits;
+		if (const auto* damage = dynamic_cast<const PFBaseUnitDamageEvent*>(event))
+		{
+			++calls; initial = damage->damage2Deal;
+			damage->damage2Deal = replacement;
+			damage->pDesc->delegatedDamage = 3;
+		}
+		return 0;
+	}
+};
+
+/** Invalid direct calls cannot be rescued by listeners or turn into lethal damage/drains. */
+static void IncomingBoundaries(Checks& check, PFWorld* world, NDb::AILogicParameters* ai)
+{
+	const float nan = std::numeric_limits<float>::quiet_NaN(), inf = std::numeric_limits<float>::infinity();
+	const auto run = [&](float amount, float replacement, bool invulnerable = false, bool dead = false) {
+		CObj<PFBaseUnit> sender = DrainParticipant(world, NDb::FACTION_FREEZE, true);
+		CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, false);
+		sender->SetHealth(400); sender->SetEnergy(50); receiver->SetHealth(400); receiver->SetEnergy(50);
+		sender->GetStat(NDb::STAT_LIFEDRAIN)->SetCoreValue(30);
+		sender->GetStat(NDb::STAT_ENERGYDRAIN)->SetCoreValue(20);
+		receiver->AddFlag(NDb::UNITFLAG_FORBIDREWARDS);
+		if (dead) receiver->ChangeHealth(-1000);
+		if (invulnerable) receiver->SetVulnerable(false);
+		CObj<IncomingListener> listener = new IncomingListener; listener->replacement = replacement;
+		receiver->AddEventListener(listener.GetPtr());
+		PFBaseUnit::DamageDesc desc; desc.pSender = sender; desc.amount = amount;
+		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE; desc.flags = 0; desc.dontAttackBack = true;
+		desc.ignoreDefences = true; desc.pDealerApplicator = nullptr;
+		desc.damageMode = static_cast<NDb::EDamageMode>(NDb::DAMAGEMODE_APPLYLIFEDRAINS | NDb::DAMAGEMODE_APPLYENERGYDRAINS);
+		const bool event = std::isfinite(amount) && !invulnerable;
+		const float expected = event && !dead && std::isfinite(replacement) ? Min(400.0f, Max(0.0f, replacement)) : 0;
+		check(receiver->OnDamage(desc) == expected, "incoming damage reports finite actual amount");
+		check(listener->calls == (event ? 1 : 0), "direct numeric validation precedes incoming listeners");
+		if (event) check(listener->initial == amount, "incoming listener sees unclamped finite original amount");
+		check(receiver->GetHealth() == (dead ? 0 : 400) - expected, "incoming invalid result cannot kill");
+		check(sender->GetHealth() == 400 + Min(30.0f, expected), "incoming amount caps life drain");
+		check(receiver->GetMana() == 50 - Min(20.0f, expected), "incoming amount caps victim energy drain");
+		check(sender->GetMana() == 50 + Min(20.0f, expected), "incoming amount caps restored energy");
+		check(listener->lastHits == (expected == 400 ? 1 : 0), "only finite lethal damage emits last hit");
+		check(desc.delegatedDamage == (event ? 3 : 0), "incoming delegated metadata reaches caller");
+		receiver->RemoveEventListener(listener.GetPtr());
+	};
+	for (float bad : {nan, inf, -inf}) { run(bad, 7); run(100, bad); }
+	for (float value : {-5.0f, 0.0f, 7.0f, 75.0f, std::numeric_limits<float>::max()}) run(100, value);
+	run(std::numeric_limits<float>::max(), 7); run(0, 7); run(-5, 7);
+	run(100, 7, true); run(100, 7, false, true);
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40), receiver = Unit(world, NDb::FACTION_BURN, 20);
+	CObj<IncomingListener> listener = new IncomingListener; receiver->AddEventListener(listener.GetPtr());
+	NDb::DamageApplicator* raw = new NDb::DamageApplicator; raw->damage.sString = "25"; raw->damageType = NDb::APPLICATORDAMAGETYPE_PURE;
+	NDb::Ptr<NDb::DamageApplicator> db = raw;
+	const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+	pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+	CObj<Damage> app = new Damage(pars);
+	check(app->Init() && app->Run(), "incoming metadata actual applicator completes");
+	check(app->GetDamageDealed() == 7 && app->GetVariable("damageDealed") == 10, "applicator reports listener delegated total");
+	const auto saved = ai->physicalDamageReduction;
+	ai->physicalDamageReduction.sString = "missing";
+	raw->damageType = NDb::APPLICATORDAMAGETYPE_MATERIAL;
+	receiver->SetHealth(1000); listener->calls = 0;
+	app = new Damage(pars);
+	check(app->Init() && app->Run(), "invalid defence application completes");
+	check(app->GetDamageDealed() == 0 && receiver->GetHealth() == 1000, "incoming modifier cannot revive an invalid defence formula");
+	check(listener->calls == 0, "invalid defence stops before incoming events");
+	ai->physicalDamageReduction = saved;
+	receiver->RemoveEventListener(listener.GetPtr());
+}
+
+/** Direct energy callbacks are independently guarded, not only their applicator callers. */
+static void EnergyBoundaries(Checks& check, PFWorld* world)
+{
+	for (int kind = 0; kind < 3; ++kind)
+	for (float amount : {std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity(),
+		-std::numeric_limits<float>::infinity(), -1.0f, 0.0f, 7.0f, 500.0f, std::numeric_limits<float>::max()})
+	for (bool forbidden : {false, true})
+	{
+		CObj<PFBaseUnit> receiver = HealingReceiver(world, kind);
+		receiver->SetHealth(400); receiver->SetEnergy(50);
+		if (forbidden) receiver->AddFlag(NDb::UNITFLAG_FORBIDENERGYRESTORE);
+		const float admitted = std::isfinite(amount) && amount > 0 ? amount : 0;
+		const float burned = Min(admitted, 50.0f), healed = forbidden ? 0 : Min(admitted, 150.0f);
+		check(receiver->OnBurnEnergy(nullptr, amount) == burned && receiver->GetMana() == 50-burned, "finite direct energy burn");
+		receiver->SetEnergy(50);
+		check(receiver->OnHealEnergy(nullptr, amount) == healed && receiver->GetMana() == 50+healed, "finite direct energy restoration");
+		check(receiver->GetHealth() == 400, "direct energy callbacks preserve health");
+	}
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -845,7 +944,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 		{
 			DamageFormulas(check, world); HealingFormulas(check, world); HealingFormulas(check, world, true);
 			CooldownFormulas(check, world); DamageRouting(check, world);
-			CriticalDamage(check, world);
+			CriticalDamage(check, world); CriticalDamage(check, world, true);
 			OutgoingDamage(check, world);
 			PreDamage(check, world);
 			DamageNotifications(check, world);
@@ -853,6 +952,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DefenceReduction(check, world, ai);
 			HealingModifiers(check, world);
 			DamageDrains(check, world); HealingDrainComposition(check, world);
+			IncomingBoundaries(check, world, ai); EnergyBoundaries(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

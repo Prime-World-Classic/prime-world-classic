@@ -78,7 +78,7 @@ bool PFApplDamage::Start()
 	if (GetDB().damageMode & NDb::DAMAGEMODE_COULDBECRITICAL)
 	{
 		const CPtr<PFBaseUnit> owner = GetAbilityOwner();
-		if (!IsUnitValid(owner) || !owner->GetWorld()) return true;
+		if (!IsValid(owner) || !owner->GetWorld()) return true;
 		const float chance = owner->GetCritChance(), multiplier = owner->GetCritMult();
 		if (!std::isfinite(chance) || chance < 0 || chance > 100
 			|| !std::isfinite(multiplier) || multiplier < 0) return true;
