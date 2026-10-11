@@ -78,6 +78,8 @@ void PFAbilityInstance::Cancel()
   activateDelay = -1.0f;
   castTime = -1.0f;
   dispatch.Cancel();
+	// A cancelled preactivation dispatch will never deliver an ability-end notification.
+	NotifyAbilityEnd();
   if ( IsValid( pOwner ) )
     pOwner->SetChannellingProgress( 0.0f );
 }
@@ -231,6 +233,12 @@ void PFAbilityInstance::LogAbilityUsed() const
 
 void PFAbilityInstance::Interrupt()
 {
+	// Interrupting dispatched work preserves effects; pending work has nothing to finish it.
+	if (!IsActivated())
+	{
+		dispatch.Cancel();
+		NotifyAbilityEnd();
+	}
   castTime = -1.0f;
   activateDelay = -1.0f;
 }
