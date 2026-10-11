@@ -230,6 +230,19 @@ def emit_mock(parsed):
     print("};")
     print("static const unsigned kMockAllSlotsCount = %d;" % len(all_slots))
     print("")
+    # Имена ICustomFormulaPars. У pSecond ДВА статических типа (перегрузки Execute:
+    # IUnitFormulaPars и ICustomFormulaPars), поэтому харнес по этим подстрокам в
+    # исходнике формулы решает, какой mock-объект отдавать как pSecond.
+    cust = []
+    for (rc, ac, meth, ret, args) in parsed.get(IFACES[2], []):
+        cust.append((meth[3:] if meth.startswith("Get") else meth, meth))
+    print("static char const * const kMockCustomNames[] = {")
+    if not cust:
+        print('  "",')
+    for stem, meth in cust:
+        print("  %s, %s," % ((q + meth + q), (q + stem + q)))
+    print("};")
+    print("")
     print("#endif")
 
 

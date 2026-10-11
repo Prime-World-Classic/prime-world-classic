@@ -23,6 +23,7 @@ FormulaExecutor::FormulaExecutor(unsigned char const *dataBuffer, unsigned int n
 int FormulaExecutor::s_nVmCompiled = 0;
 int FormulaExecutor::s_nVmFailed   = 0;
 static int s_nVmNoSource = 0;
+static int s_nVmCustomRecv = 0;
 
 // Runtime errors of the VM are reported to the log a limited number of times:
 // a battle calls formulas thousands of times per second. Division by zero is
@@ -77,6 +78,13 @@ FormulaExecutor::FormulaExecutor(char const * /*cpBase64String*/, char const *cp
   }
   else if (pVM != NULL)
   {
+    // The VM cannot know pSecond's static type: the client has two Execute
+    // overloads (pSecond as IUnitFormulaPars and as ICustomFormulaPars). A name
+    // that resolved to the custom interface (rPos2D) is rare, and in a unit
+    // context it would silently call a foreign vtable slot - so it goes to the log.
+    if (pVM->UsesCustomReceiver() && ++s_nVmCustomRecv <= 8)
+      DebugTrace("FormulaVM: \"%s\" resolves receiver as ICustomFormulaPars", cpSource);
+
     // positive signal for E2E: formulas really are compiled into the VM
     if ((++s_nVmCompiled % 2000) == 0)
       DebugTrace("FormulaVM: %d formulas compiled", s_nVmCompiled);

@@ -356,12 +356,28 @@ private:
     return FI_UNIT;
   }
 
+  // ICustomFormulaPars (единственный метод - GetPos2D) разрешается по имени:
+  // его имя не пересекается с именами IUnitFormulaPars, поэтому дискриминация
+  // однозначна. Нужно это потому, что у клиента ДВЕ перегрузки Execute:
+  // pSecond как IUnitFormulaPars (FormulaExecutor.h:52) и pSecond как
+  // ICustomFormulaPars (FormulaExecutor.h:62); в x86-компиляции статический тип
+  // pSecond известен из контекста, в VM - нет. Поэтому факт разрешения в
+  // кастомный интерфейс отмечается флагом и выводится логом (FormulaExecutor):
+  // rPos2D в unit-контексте дал бы вызов чужого vtable-слота молча.
+  int FindAccCustom(char const * cpName)
+  {
+    int nIdx = FindAcc(FI_CUSTOM, cpName);
+    if (nIdx >= 0) m_vm.m_bCustomRecvUsed = true;
+    return nIdx;
+  }
+
   // вызов метода без аргументов (receiver на стеке)
   int CallNoArg(char const * cpName)
   {
     int nIface = RecvIface();
     int idx = FindAcc(nIface, cpName);
     if (idx < 0) idx = FindAcc(FI_UNIT, cpName);
+    if (idx < 0) idx = FindAccCustom(cpName);
     if (idx < 0) { Err("нет такого метода у интерфейса формулы"); return FT_I; }
     if (kFormulaSigArgs[kFormulaAcc[idx].nSig] != 0) { Err("метод требует аргументы"); return FT_I; }
     E(FormulaVM::OP_ACC, idx);
@@ -375,6 +391,7 @@ private:
   {
     int nIface = RecvIface();
     int idx = FindAcc(nIface, cpName);
+    if (idx < 0) idx = FindAccCustom(cpName);
     if (idx < 0) { Err("нет такого метода у интерфейса формулы"); return FT_I; }
     int nSig  = kFormulaAcc[idx].nSig;
     int nArgs = kFormulaSigArgs[nSig];
@@ -1309,6 +1326,11 @@ private:
       (void)nSaveIface;
       // явный интерфейс из префикса
       int idx = FindAcc(iface, mname);
+      if (idx < 0 && iface == FI_UNIT && cpName[0] == 'r')
+      {
+        idx = FindAccCustom(mname);
+        if (idx >= 0) m_lastKind = FR_CUSTOM;
+      }
       if (idx < 0) { Err("нет аксессора для имени"); return FT_I; }
       if (kFormulaSigArgs[kFormulaAcc[idx].nSig] != 0) { Err("метод требует аргументы"); return FT_I; }
       E(FormulaVM::OP_ACC, idx);
@@ -1337,6 +1359,7 @@ FormulaVM::FormulaVM()
   , m_pDoubles(0), m_nDoubles(0), m_nDoublesCap(0)
   , m_pStrPool(0), m_nStrPool(0), m_nStrPoolCap(0)
   , m_cpError(0), m_cpSource(0), m_cpReturnType(0), m_nRuntimeErr(0)
+  , m_bCustomRecvUsed(false)
 {
   m_errBuf[0] = 0;
 }

@@ -44,6 +44,9 @@ public:
   int          GetOpCount() const { return m_nOps; }
   // 0 = ок; иначе код ошибки времени выполнения (0-й деление, null-self и т.п.)
   int          GetRuntimeError() const { return m_nRuntimeErr; }
+  // Формула использует receiver как ICustomFormulaPars (rPos2D): у клиента две
+  // перегрузки Execute для pSecond, статический тип в VM неизвестен — см. log.
+  bool         UsesCustomReceiver() const { return m_bCustomRecvUsed; }
 
   // Коды времени выполнения (см. Run): 1..3 — деление/остаток на ноль, для
   // контента это легально (x86-blob тоже даёт inf/0). Начиная с FM_ERR_HARD —
@@ -137,6 +140,7 @@ private:
   char *            m_cpSource;
   char const *      m_cpReturnType;
   mutable int       m_nRuntimeErr;
+  bool              m_bCustomRecvUsed;
 };
 
 #endif // FORMULAVM_H_

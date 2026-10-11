@@ -44,7 +44,7 @@
 				<condition>
 					<compiledString>FQAAAAAAAAAAVYvsg+wUVo1F+FCLTQyLEYtNDIsC/9CLSARRixBSi0UQixCLTRCLgowAAAD/0Ivwi00IixGLTQiLgpABAAD/0DvwdDSNTfBRi1UMiwKLTQyLEP/Si0gEUYsQUotFEIsQi00Qi4KMAAAA/9CFwHQJx0XsAQAAAOsHx0XsAAAAAIpF7F6L5V3D</compiledString>
 					<returnType>boolean</returnType>
-					<sString>appl.GetNatureTypeInPos(rPos2D) != sFctn &amp;&amp; appl.GetNatureTypeInPos(rPos2D) != 0</sString>
+					<sString>appl.GetNatureTypeInPos(rPos2D) != sFctn &amp;&amp; appl.GetNatureTypeInPos(rPos2D) != TERR_N</sString>
 				</condition>
 				<uiEvent href="/UI/Events/ErrorMessages/CastError_UnsuitablePlace.UIEV" />
 			</PositionCastLimitation>

@@ -16,11 +16,17 @@ r"""gen_slot_probe.py — синтетический корпус для пок�
 сумме вызовов (iface+slot+имя+аргументы) — т.е. проверяет именно слот и
 маршаллинг аргументов.
 
-Не выразимы в DSL (остаются слепой зоной, печатаются в stderr):
+Не выразимы обобщённой правилом (остаются слепой зоной, печатаются в stderr):
   * аксессоры с указателем/CVec2 в аргументах (DSL не принимает такие литералы);
   * IMiscFormulaPars с аргументами (в DSL аксессоры misc доступны только как
     mX()/mIsX() без параметров);
-  * void-аксессоры (не могут быть выражением).
+  * void-аксессоры (не могут быть выражением);
+  * ICustomFormulaPars (receiver имеет статический тип ICustomFormulaPars только
+    в части контекстов; в DSL это имя `rPos2D`).
+Для части из них есть ручные пробы EXTRA (одна строка покрывает сразу несколько
+аксессоров), например `appl.GetNatureTypeInPos(rPos2D) != 0` покрывает
+ICustomFormulaPars.GetPos2D (iface 2, slot 0) и IMiscFormulaPars.GetNatureTypeInPos
+(iface 1, slot 35, аргумент CVec2).
 
 Запуск (из pw/branches/r1117):
   python3 Tools/FormulaCheck/gen_slot_probe.py > /tmp/slot_probe.tsv
@@ -40,6 +46,12 @@ import gen_accessors as GA  # noqa: E402
 LIT = {"F": "1.5", "I": "2", "U": "2", "E": "1", "B": "true", "S": '"probe"'}
 # символ возврата -> колонка retType в TSV (как в реальном корпусе)
 RET = {"F": "float", "I": "int", "U": "int", "B": "bool"}
+
+# Ручные пробы для аксессоров, которые обобщённое правило не строит
+# (CVec2-аргументы, ICustomFormulaPars). Формы взяты из реального контента.
+EXTRA = [
+    ("int", "appl.GetNatureTypeInPos(rPos2D) != 0"),
+]
 
 
 def main():
@@ -77,6 +89,9 @@ def main():
                 expr = "%s.%s(%s)" % (recv, meth, ", ".join(lit))
             print("%s\t%s\t" % (RET[rc], expr))
             n_ok += 1
+    for rt, expr in EXTRA:
+        print("%s\t%s\t" % (rt, expr))
+        n_ok += 1
     for k in sorted(skipped):
         sys.stderr.write("SKIP %-22s x%d\n" % (k, skipped[k]))
     sys.stderr.write("проб: %d, пропущено: %d\n" % (n_ok, sum(skipped.values())))

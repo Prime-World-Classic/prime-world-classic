@@ -157,6 +157,19 @@ void const * MockP(int nKind, int nSelfIface)
   return (void const *)&g_misc;
 }
 
+// pSecond имеет два статических типа: Execute(..., IUnitFormulaPars const *pSecond, ...)
+// и Execute(..., ICustomFormulaPars const *pSecond, ...) (FormulaExecutor.h:52/:62).
+// Формулы вида rPos2D обращаются к ICustomFormulaPars, и им вторым аргументом надо
+// отдавать mock кастомного интерфейса — один и тот же объект и для VM, и для
+// эталонного C++ (иначе сверка бессмысленна, а каст чужого mock'а = AV).
+static bool UsesCustomSecond(char const * pSrc)
+{
+  if (!pSrc) return false;
+  for (unsigned i = 0; i < sizeof(kMockCustomNames) / sizeof(kMockCustomNames[0]); ++i)
+    if (*kMockCustomNames[i] && strstr(pSrc, kMockCustomNames[i])) return true;
+  return false;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 struct Stats
 {
@@ -239,12 +252,13 @@ int main(int argc, char ** argv)
     if (getenv("VM_TRACE")) fprintf(stderr, "  compiled ok, ops=%d\n", pVM->GetOpCount());
     double res = 0;
     char   resTxt[64];
+    void const * pSecond = UsesCustomSecond(pSrc) ? (void const *)&g_custom : (void const *)&g_unit;
     g_mockDigest = 0;
     g_mockCallHash = 0x9E3779B97F4A7C15ull;
     g_mockPhase = "VM ";
-    if (!strcmp(pRet, "int"))       res = (double)pVM->ExecuteInt(&g_unit, &g_unit, &g_misc);
-    else if (!strcmp(pRet, "bool")) res = pVM->ExecuteBool(&g_unit, &g_unit, &g_misc) ? 1 : 0;
-    else                            res = (double)pVM->ExecuteFloat(&g_unit, &g_unit, &g_misc);
+    if (!strcmp(pRet, "int"))       res = (double)pVM->ExecuteInt(&g_unit, pSecond, &g_misc);
+    else if (!strcmp(pRet, "bool")) res = pVM->ExecuteBool(&g_unit, pSecond, &g_misc) ? 1 : 0;
+    else                            res = (double)pVM->ExecuteFloat(&g_unit, pSecond, &g_misc);
     unsigned long long digVM = g_mockDigest;
     if (getenv("VM_TRACE")) fprintf(stderr, "  executed\n");
 
@@ -260,7 +274,7 @@ int main(int argc, char ** argv)
     double refRes = 0; int nRef = -1;
     unsigned long long digRef = 0;
 #ifdef HARNESS_NATIVE
-    nRef = HarnessNativeRun(pRet, pComp, &g_unit, &g_unit, &g_misc, &refRes);
+    nRef = HarnessNativeRun(pRet, pComp, &g_unit, pSecond, &g_misc, &refRes);
 #endif
 #ifdef HARNESS_REF
     if (kRefTableCount > 0)
@@ -270,7 +284,7 @@ int main(int argc, char ** argv)
       g_mockDigest = 0;
       g_mockCallHash = 0x9E3779B97F4A7C15ull;
       g_mockPhase = "REF";
-      if (k < kRefTableCount) refRes = kRefTable[k](nIdx, &g_unit, &g_unit, &g_misc, &nOk);
+      if (k < kRefTableCount) refRes = kRefTable[k](nIdx, &g_unit, pSecond, &g_misc, &nOk);
       digRef = g_mockDigest;
       nRef = nOk ? 0 : -1;
     }

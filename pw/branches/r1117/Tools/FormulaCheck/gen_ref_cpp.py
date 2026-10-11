@@ -19,6 +19,7 @@ x87 (80-битные промежуточные значения). На x64 то
 Запуск: python3 Tools/FormulaCheck/gen_ref_cpp.py /tmp/formulas.tsv [размер_пачки]
 """
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -28,9 +29,26 @@ import verify_formulas as VF          # noqa: E402
 OUT_DIR = os.path.join(HERE, "harness")
 
 
+def custom_second_methods():
+    """имена аксессоров ICustomFormulaPars из FormulaAccessors.inc (iface 2).
+    У клиента две перегрузки Execute: pSecond как IUnitFormulaPars и как
+    ICustomFormulaPars (FormulaExecutor.h:52/:62); эталонный C++ обязан объявить
+    pSecond тем типом, который реально используется в формуле, иначе GetPos2D
+    в нём не компилируется."""
+    inc = os.path.join(HERE, os.pardir, os.pardir, "Src", "System", "FormulaAccessors.inc")
+    names = set()
+    if os.path.exists(inc):
+        for ln in open(inc, encoding="utf-8", errors="replace"):
+            m = re.match(r'\s*\{"(\w+)",\s*2,\s*\d+,', ln)
+            if m:
+                names.add(m.group(1))
+    return names
+
+
 def main():
     tsv = sys.argv[1] if len(sys.argv) > 1 else "/tmp/formulas.tsv"
     batch = int(sys.argv[2]) if len(sys.argv) > 2 else 1000
+    CUSTOM_METHS = custom_second_methods()
 
     skip = set()
     for a in sys.argv[3:]:
@@ -68,14 +86,17 @@ def main():
                 sys.stderr.write("skip %d: %s\n" % (i + 1, e))
                 continue
             ctype = {"int": "int", "bool": "bool", "boolean": "bool"}.get(rt, "float")
+            second = "ICustomFormulaPars" if any("pSecond->%s" % m in body
+                                                for m in CUSTOM_METHS) else "IUnitFormulaPars"
             linemap.append((sum(x.count("\n") for x in out) + sum(x.count("\n") for x in bodies) + 1, i + 1))
             # «;» отдельной строкой: в sString бывают «; // комментарий», и
             # точка с запятой в конце строки ушла бы в комментарий
-            bodies.append("%s fml_%d(IUnitFormulaPars const *pFirst, IUnitFormulaPars const *pSecond,"
+            bodies.append("%s fml_%d(IUnitFormulaPars const *pFirst, %s const *pSecond,"
                           " IMiscFormulaPars const *pMisc)\n{\n  return %s\n  ;\n}\n"
-                          % (ctype, i + 1, body))
+                          % (ctype, i + 1, second, body))
             cases.append('    case %d: *pOk = 1; return (double)fml_%d((IUnitFormulaPars const *)pFirst,'
-                         ' (IUnitFormulaPars const *)pSecond, (IMiscFormulaPars const *)pMisc);' % (i + 1, i + 1))
+                         ' (%s const *)pSecond, (IMiscFormulaPars const *)pMisc);'
+                         % (i + 1, i + 1, second))
         out.append("".join(bodies))
         out.append("\nextern \"C\" double HarnessRefCall_%d(int idx, void const *pFirst, void const *pSecond,"
                    " void const *pMisc, int *pOk)\n{\n  *pOk = 0;\n  switch (idx)\n  {\n" % k)
