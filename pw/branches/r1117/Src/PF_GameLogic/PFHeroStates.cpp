@@ -24,6 +24,7 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 #include "PFPickupable.h"
 #include "PFAIWorld.h"
 #include "PathChecker.h"
+#include "RegionPointChecker.h"
 
 namespace NWorld
 {
@@ -376,35 +377,51 @@ PFInteractObjectState::PFInteractObjectState( PFBaseHero * _pOwner, const Target
   , range( 0.0f )
   , used( false )
 {
+	if (IsUnitValid(pOwner) && target.IsUnitValid() && pOwner->GetWorld() == target.GetUnit()->GetWorld())
+	{
+		PFBuilding* building = dynamic_cast<PFBuilding*>(target.GetUnit().GetPtr());
+		if (building && !building->GetOccupiedTiles().empty())
+			pointChecking = new RegionPointChecker(pOwner->GetWorld(), building->GetOccupiedTiles(),
+				pOwner->GetObjectTileSize() + 1);
+	}
 }
 
 void PFInteractObjectState::NeedStopOnLeave( bool val )
 {
-  (void)val;
+	if (PFBaseUnitMoveToBuildingState* approach = dynamic_cast<PFBaseUnitMoveToBuildingState*>(GetCurrentState()))
+		approach->NeedStopOnLeave(val);
 }
 
 void PFInteractObjectState::OnEnter()
 {
+	if (IsUnitValid(pOwner) && target.IsValid() && !pOwner->IsMounted() &&
+		std::isfinite(GetRange()) && GetRange() >= 0 && !IsObjectInRange())
+		ApproachObject();
 }
 
 bool PFInteractObjectState::OnStep( float dt )
 {
-  (void)dt;
-  if ( !IsUnitValid( pOwner ) || !target.IsValid() )
-    return true;
-
-  if ( !used )
-  {
-    used = true;
-    DoAction();
-    return false;
-  }
-
-  return IsActionFinished();
+	if (!IsUnitValid(pOwner) || !target.IsValid() || pOwner->IsMounted() ||
+		!std::isfinite(dt) || dt < 0 || !std::isfinite(GetRange()) || GetRange() < 0 ||
+		(target.IsObject() && target.GetObject()->GetWorld() != pOwner->GetWorld()))
+		return true;
+	FSMStep(dt);
+	if (GetCurrentState())
+		return false;
+	if (!used && IsObjectInRange())
+	{
+		used = true;
+		if (pOwner->IsMoving() && !pOwner->IsMovingSpecial())
+			pOwner->Stop();
+		DoAction();
+		return false;
+	}
+	return IsActionFinished();
 }
 
 void PFInteractObjectState::OnLeave()
 {
+	Cleanup(true);
 }
 
 bool PFInteractObjectState::IsActionFinished() const
@@ -419,11 +436,37 @@ bool PFInteractObjectState::CanBeInterrupted() const
 
 void PFInteractObjectState::ApproachObject()
 {
+	if (!IsUnitValid(pOwner) || !target.IsValid() || pOwner->IsMounted() ||
+		pOwner->IsMovingSpecial() || pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+		return;
+	if (target.IsUnit())
+	{
+		PFBaseUnit* unit = target.GetUnit();
+		if (!IsUnitValid(unit) || unit->GetWorld() != pOwner->GetWorld())
+			return;
+		if (pointChecking)
+			PushState(new PFBaseUnitMoveToBuildingState(pOwner, unit, pointChecking));
+		else if (unit->IsVisibleForFaction(pOwner->GetFaction()))
+			PushState(new PFBaseUnitChaseState(pOwner.GetPtr(), true, GetRange(), 0.f, unit, true));
+	}
+	else
+	{
+		const CVec2 position = target.AcquirePosition().AsVec2D();
+		if (std::isfinite(position.x) && std::isfinite(position.y))
+			PushState(new PFBaseUnitMoveToState(pOwner.GetPtr(), position, GetRange()));
+	}
 }
 
 bool PFInteractObjectState::IsObjectInRange() const
 {
-  return true;
+	if (!IsUnitValid(pOwner) || !target.IsValid() || !std::isfinite(GetRange()) || GetRange() < 0)
+		return false;
+	if (pointChecking)
+	{
+		TileMap* map = pOwner->GetTileMap();
+		return IsValid(map) && pointChecking->IsGoodTile(map->GetTile(pOwner->GetPosition().AsVec2D()));
+	}
+	return pOwner->IsTargetInRange(target, GetRange());
 }
 
 PFHeroUseUnitState::PFHeroUseUnitState( PFBaseHero* _pOwner, PFBaseUnit* _pUnit )
