@@ -114,7 +114,8 @@ namespace libdb.DB
 
     private static string AddLanguageSuffix(string fileName, string langCode)
     {
-      if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(langCode))
+      // ru is the original language: its texts live in files without a suffix
+      if (string.IsNullOrEmpty(fileName) || string.IsNullOrEmpty(langCode) || langCode == "ru")
         return fileName;
       if (!fileName.EndsWith(".txt"))
         return fileName;

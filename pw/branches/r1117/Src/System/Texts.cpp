@@ -51,8 +51,9 @@ string GetLocalizedFileName( const string & fileName )
   if ( fileName.empty() )
     return fileName;
 
+  // ru is the original language: its texts live in files without a suffix
   string langCode = GetLanguageShortCode();
-  if ( langCode.empty() )
+  if ( langCode.empty() || langCode == "ru" )
     return fileName;
 
   int len = (int)fileName.size();
