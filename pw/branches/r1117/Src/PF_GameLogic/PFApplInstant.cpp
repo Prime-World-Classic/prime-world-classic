@@ -97,6 +97,13 @@ bool PFApplDamage::Start()
     desc.ignoreDefences = ignoreDefences;
     desc.pDealerApplicator = this;
     desc.isDelegatedCriticalDamage = isCritical;
+	if (IsValid(desc.pSender))
+	{
+		PFOutgoingDamageEvent event(pReceiver, desc, damage);
+		desc.pSender->EventHappened(event);
+		if (!std::isfinite(event.damage) || event.damage <= 0) return true;
+		desc.amount = event.damage;
+	}
     damageDealed = pReceiver->OnDamage(desc);
   }
   return true;

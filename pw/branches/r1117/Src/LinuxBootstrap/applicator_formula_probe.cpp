@@ -323,6 +323,52 @@ static void CriticalDamage(Checks& check, PFWorld* world)
 	}
 }
 
+/** Real event registration with a controlled listener result, not a replacement damage path. */
+struct OutgoingListener : CObjectBase, PFBaseUnitEventListener
+{
+	OBJECT_BASIC_METHODS(OutgoingListener);
+public:
+	int calls = 0;
+	float replacement = 11;
+	const PFBaseUnit* target = nullptr;
+	unsigned int OnEvent(const PFBaseUnitEvent* event) override
+	{
+		if (const auto* outgoing = dynamic_cast<const PFOutgoingDamageEvent*>(event))
+		{
+			++calls; target = outgoing->pTaker; outgoing->damage = replacement;
+		}
+		return 0;
+	}
+};
+
+static void OutgoingDamage(Checks& check, PFWorld* world)
+{
+	CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 40);
+	CObj<PFBaseUnit> receiver = Unit(world, NDb::FACTION_BURN, 20);
+	CObj<OutgoingListener> listener = new OutgoingListener;
+	sender->AddEventListener(listener.GetPtr());
+	for (float amount : {11.0f, 75.0f, 0.0f, -3.0f, std::numeric_limits<float>::infinity(), std::numeric_limits<float>::quiet_NaN()})
+	for (bool mana : {false, true})
+	{
+		NDb::DamageApplicator* raw = new NDb::DamageApplicator;
+		raw->damage.sString = "25"; raw->damageType = mana ? NDb::APPLICATORDAMAGETYPE_MANA : NDb::APPLICATORDAMAGETYPE_PURE;
+		NDb::Ptr<NDb::DamageApplicator> db = raw;
+		const Target target(receiver.GetPtr()); PFApplCreatePars pars(CObj<PFAbilityInstance>(), target);
+		pars.pWorld = world; pars.pOwner = sender; pars.pDBAppl = db;
+		CObj<Damage> app = new Damage(pars);
+		receiver->SetHealth(1000); receiver->SetEnergy(200);
+		listener->calls = 0; listener->target = nullptr; listener->replacement = amount;
+		const float expected = mana ? 25 : (std::isfinite(amount) && amount > 0 ? amount : 0);
+		check(app->Init() && app->Run(), "outgoing applicator completes");
+		check(listener->calls == (mana ? 0 : 1), "outgoing health-only event delivered once");
+		check(listener->target == (mana ? nullptr : receiver.GetPtr()), "outgoing event receiver identity");
+		check(app->GetDamageDealed() == expected, "outgoing modified amount reported");
+		check(receiver->GetHealth() == 1000 - (mana ? 0 : expected), "outgoing health delta");
+		check(receiver->GetMana() == (mana ? 175 : 200), "outgoing event does not affect mana routing");
+	}
+	sender->RemoveEventListener(listener.GetPtr());
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -347,6 +393,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DamageFormulas(check, world); HealingFormulas(check, world); HealingFormulas(check, world, true);
 			CooldownFormulas(check, world); DamageRouting(check, world);
 			CriticalDamage(check, world);
+			OutgoingDamage(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
