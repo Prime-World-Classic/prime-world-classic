@@ -1271,6 +1271,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "creep_recovery_b11_tests.inc"
 #include "consumable_groups_b11_tests.inc"
 #include "consumable_sale_b11_tests.inc"
+#include "talent_purchase_b11_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1361,6 +1362,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CreepRecoveryB11(check, world);
 			ConsumableGroupsB11(check, world);
 			ConsumableSaleB11(check, world);
+			TalentPurchaseB11(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

@@ -40,6 +40,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 - Chunk 9/20 COMPLETE (`0.43.1`): consumable sales refund half the modified stack value with original integer rounding instead of silently deleting items. Restore ability-modified money cost and validate finite/nonnegative/representable prices and bounded gold before removing inventory; missing/repeated sales are inert. Six baseline failures reproduced; all 4,749 assertions, 28 CTests, six builds and Windows/shared byte audits pass. Evidence `/tmp/pw-b11-c9-{before,after,build,ctest}.log`. This restores the sale transaction, not complete shop-command authorization or original shop UI.
 
+- Chunk 10/20 COMPLETE (`0.43.2`): native talent-purchase commands recheck exact live actor/control, bounded nonempty talent slot, ownership and authored activation/price eligibility at admission and execution. Missing packed actors remain missing; late death/control/funds loss and duplicate purchases cannot activate/pay. Sixteen baseline failures reproduced; all 4,783 assertions, 28 CTests, six builds and Windows/shared source audits pass. Evidence `/tmp/pw-b11-c10-{before,after,build,ctest}.log`. Shared Windows HeroActions.cpp remains unchanged; full player/network authorization and shop fallback routing are separate gaps.
+
 <!-- B11 next checkpoint -->
 
 ### Previous Batch B10

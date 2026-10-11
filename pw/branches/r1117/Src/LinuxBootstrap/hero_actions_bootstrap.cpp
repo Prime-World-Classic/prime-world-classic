@@ -143,6 +143,14 @@ namespace NWorld
 			slot >= 0 && slot < PFTalentsSet::SLOTS_COUNT ? hero->GetTalent(level, slot) : nullptr;
 	}
 
+	/** Recheck purchase ownership, control and authored eligibility at both boundaries. */
+	static bool CanActivateLinuxTalentCommand(PFBaseMaleHero* hero, int level, int slot)
+	{
+		PFTalent* talent = LinuxCommandTalent(hero, level, slot);
+		return CanUseLinuxCastingActor(hero) && IsValid(talent) && talent->GetOwner() == hero
+			&& hero->CanActivateTalent(level, slot) == ETalentActivation::Ok;
+	}
+
 	/** Commands may enqueue only bought, active and usable talents owned by their actor. */
 	static bool CanUseLinuxTalentCommand(PFBaseMaleHero* hero, PFTalent* talent)
 	{
@@ -1021,7 +1029,7 @@ namespace NWorld
   {
 #if defined(PW_LINUX_NULL_RENDER)
     ++g_linuxHeroGameplayCommandDiagnostics.activateTalentCanChecks;
-    const bool accepted = !IsValid(pHero) || !pHero->IsDead();
+    const bool accepted = CanActivateLinuxTalentCommand(pHero, level, slot);
     if (accepted)
       ++g_linuxHeroGameplayCommandDiagnostics.activateTalentCanAccepted;
     g_linuxHeroGameplayCommandDiagnostics.activateTalentLevel = level;
@@ -1057,7 +1065,11 @@ namespace NWorld
         hero->GetGold();
     }
 #endif
+#if defined(PW_LINUX_NULL_RENDER)
+		const bool canActivate = CanActivateLinuxTalentCommand(hero, level, slot);
+#else
     const bool canActivate = IsValid(hero) && hero->CanActivateTalent(level, slot) == ETalentActivation::Ok;
+#endif
 #if defined(PW_LINUX_NULL_RENDER)
     g_linuxHeroGameplayCommandDiagnostics.activateTalentCanActivate = canActivate ? 1 : 0;
 #endif
