@@ -131,10 +131,41 @@ void PFBaseUnit::CleanupTauntApplicatorsStack()
   tauntApplicators.clear();
 }
 
+/**
+ * Register an owning CObj exactly in Windows insertion order.
+ * Defaults append FIFO, ignoring numeric priority. Non-default types precede
+ * defaults, ascending by enum value, then descending by strict float priority.
+ * Equal/unordered priorities stay after earlier entries; existing identities
+ * do not move. Preserve Linux's null/invalid-CPtr guard (Windows has none).
+ */
 void PFBaseUnit::AddEventListener(CPtr<PFBaseUnitEventListener> pListener)
 {
-  if (IsValid(pListener) && nstl::find(eventListeners.begin(), eventListeners.end(), pListener) == eventListeners.end())
-    eventListeners.push_back(pListener.GetPtr());
+	if (!IsValid(pListener))
+		return;
+	if (nstl::find(eventListeners.begin(), eventListeners.end(), pListener) != eventListeners.end())
+		return;
+
+	struct PosFinder
+	{
+		explicit PosFinder(const PFBaseUnitEventListener* listener) : listener(listener) {}
+		bool operator()(const CObj<PFBaseUnitEventListener>& item) const
+		{
+			const PFBaseUnitEventListener::EListenerType newType = listener->GetListenerType();
+			const PFBaseUnitEventListener::EListenerType itemType = item->GetListenerType();
+			if (itemType == PFBaseUnitEventListener::LISTENER_DEFAULT || newType < itemType)
+				return true;
+			if (newType == itemType)
+				return listener->GetListenerPriority() > item->GetListenerPriority();
+			return false;
+		}
+		const PFBaseUnitEventListener* listener;
+	};
+
+	if (pListener->GetListenerType() == PFBaseUnitEventListener::LISTENER_DEFAULT)
+		eventListeners.push_back(pListener.GetPtr());
+	else
+		eventListeners.insert(nstl::find_if(eventListeners.begin(), eventListeners.end(), PosFinder(pListener.GetPtr())),
+			pListener.GetPtr());
 }
 
 void PFBaseUnit::RemoveEventListener(CPtr<PFBaseUnitEventListener> pListener)

@@ -17,7 +17,7 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 
 ## Current Verified State
 
-- Batch B7 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `f3d58268f` / `0.25.5`. Progress 3/10; combat lifecycle and production attack orders are the current scope. Parent owns integration and publication; bounded event-dispatch helper works only in scratch. Windows branches remain preserved. No full playable-match claim.
+- Batch B7 authorized for exactly ten chunks, publishing each verified chunk separately. Baseline `f3d58268f` / `0.25.5`. Progress 5/10; combat lifecycle and production attack orders are the current scope. Parent owns integration and publication; bounded event-dispatch helper works only in scratch. Windows branches remain preserved. No full playable-match claim.
 
 ### Current Batch
 
@@ -30,6 +30,8 @@ Deliver a native Linux client for Prime World without Wine, while keeping the Wi
 - Chunk 3 checkpoint correction (`0.26.3`): the `0.26.2` tag was published while VERSION still contained `0.26.1` after a rejected multi-file documentation patch. Preserve published history, correct VERSION with a follow-up commit/tag, and use `0.26.3` as the consistent chunk-3 checkpoint. No combat behavior changed in this correction.
 
 - Chunk 4/10 COMPLETE (`0.26.4`): restore per-receiver damage timeLimiter using the most recent applicator DB identity and Windows inclusive comparison. Couple it with StepLastAttackData advancement; invalid/backward elapsed time is ignored and finite accumulation saturates instead of overflowing. Negative authored limits disable suppression; malformed nonfinite limits fail closed. Five valid-fixture baseline failures reproduced; all 3,573 engine assertions and 28 CTests pass. Mock identified resources use the existing cache loaded-resource API; caller-owned descriptors now initialize all fields explicitly after the new dynamic cast exposed incomplete test setup. Windows suffix unchanged. Throttling updates before downstream reduction/events, matching Windows; this is not rollback of arbitrary callbacks or full attack-history parity.
+
+- Chunk 5/10 COMPLETE (`0.26.5`): integrate reviewed listener ordering draft. Defaults append FIFO; nondefault listeners precede defaults by type and descending strict float priority, preserving equal/unordered insertion behavior and duplicate identity positions. Actual engine tests reproduce nine ordering failures, then pass all 3,592 assertions and 28 CTests. New event_dispatch_tests.inc separates mock listener data from combat fixtures and checks complete order/shared-payload traces, duplicate/null registration, explicit re-registration and removal flags. Windows PFBaseUnitAppl suffix unchanged. Callback mutation safety is the next checkpoint, not claimed here.
 
 ### Previous Combat Pipeline Batch
 

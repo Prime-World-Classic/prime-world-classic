@@ -1145,6 +1145,8 @@ static void DamageLimiter(Checks& check, PFWorld* world)
 	check(receiver->OnDamage(direct) == 10 && receiver->OnDamage(direct) == 10, "direct damage has no DB limiter");
 }
 
+#include "event_dispatch_tests.inc"
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -1181,6 +1183,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			BehaviourDamage(check, world);
 			DeferredDeath(check, world);
 			DamageLimiter(check, world);
+			EventOrderingB7Regression(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);
