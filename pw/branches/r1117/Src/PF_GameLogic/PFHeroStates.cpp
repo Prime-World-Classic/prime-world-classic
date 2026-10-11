@@ -22,6 +22,8 @@ template<> NWorld::PFTalent* CastToUserObjectImpl<NWorld::PFTalent>(CObjectBase*
 #include "LinuxBootstrap/formula_context.h"
 #include "PFFlagpole.h"
 #include "PFPickupable.h"
+#include "PFAIWorld.h"
+#include "PathChecker.h"
 
 namespace NWorld
 {
@@ -245,21 +247,51 @@ PFHeroFollowUnitState::PFHeroFollowUnitState(CPtr<PFBaseHero> const& pOwner, CPt
   , pCurrentTarget( 0 )
   , forceFollowRange( forceRange )
 {
+	if (IsUnitValid(pOwner) && pOwner->GetWorld() && pOwner->GetWorld()->GetAIWorld())
+	{
+		if (range <= 0)
+			range = pOwner->GetWorld()->GetAIWorld()->GetAIParameters().followRange;
+		else if (IsValid(pUnit) && dynamic_cast<PFBuilding*>(pUnit.GetPtr()))
+			range = 2.f;
+		followRange = range;
+		if (forceRange > 0 && forceRange < range)
+			forceRange = range;
+		forceFollowRange = forceRange;
+	}
 }
 
 void PFHeroFollowUnitState::OnLeave()
 {
+	Cleanup(true);
+	if (moveInitiated && IsUnitValid(pOwner) && !pOwner->IsMounted() && !pOwner->IsMovingSpecial())
+		pOwner->Stop();
+	moveInitiated = false;
 }
 
 bool PFHeroFollowUnitState::OnStep(float dt)
 {
-  (void)dt;
-  return true;
+	if (!IsUnitValid(pOwner) || !IsUnitValid(pUnit) || pOwner == pUnit ||
+		pOwner->GetWorld() != pUnit->GetWorld() || pOwner->IsMounted() ||
+		!std::isfinite(dt) || dt < 0 || !std::isfinite(followRange) || followRange < 0 ||
+		!std::isfinite(forceFollowRange))
+		return true;
+	if (pOwner->IsMovingSpecial())
+		return false;
+	if (pOwner->IsTargetInRange(pUnit, followRange))
+	{
+		pOwner->Stop();
+		moveInitiated = false;
+	}
+	else if (!pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+		DoMove();
+	return false;
 }
 
 void PFHeroFollowUnitState::DoMove()
 {
-  moveInitiated = false;
+	// Keep the Windows object-range checker, with a distance fallback for native straight motion.
+	CObj<IPointChecking> checking = new ObjectRangeChecking(pUnit, pOwner, followRange);
+	moveInitiated = pOwner->MoveTo(pUnit, followRange + pUnit->GetObjectSize() * .5f, checking);
 }
 
 PFHeroHoldState::PFHeroHoldState( CPtr<PFWorld> const& pWorld, CPtr<PFBaseHero> const& pOwner, bool stopOnEnter )
@@ -423,6 +455,9 @@ bool PFHeroSuspendState::IsOwnerSuitable() const
 }
 
 } // namespace NWorld
+
+REGISTER_WORLD_OBJECT_NM(RangeChecking, NWorld)
+REGISTER_WORLD_OBJECT_NM(ObjectRangeChecking, NWorld)
 
 REGISTER_WORLD_OBJECT_NM(PFHeroUseConsumableState,  NWorld)
 REGISTER_WORLD_OBJECT_NM(PFHeroPickupObjectState,   NWorld)
