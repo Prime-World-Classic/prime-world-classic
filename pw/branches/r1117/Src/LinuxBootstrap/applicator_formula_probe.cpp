@@ -1254,6 +1254,7 @@ static void BaseAttackExecution(Checks& check, PFWorld* world)
 #include "cast_target_range_tests.inc"
 #include "consumable_inventory_b10_tests.inc"
 #include "consumable_simulation_b10_tests.inc"
+#include "applicator_simulation_b10_tests.inc"
 
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
@@ -1328,6 +1329,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			CastTargetRangesB10(check, world);
 			ConsumableInventoryB10(check, world);
 			ConsumableSimulationB10(check, world);
+			ApplicatorSimulationB10(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

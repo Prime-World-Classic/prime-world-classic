@@ -1444,6 +1444,9 @@ bool PFBaseUnit::Step(float dtInSeconds)
 	// The existing order queue must advance on live simulation units, as on Windows.
 	if (!IsDead() && std::isfinite(dtInSeconds) && dtInSeconds >= 0.0f)
 		FsmStep(dtInSeconds);
+	// Effects use the same post-order ring lifecycle as the Windows simulation.
+	if (std::isfinite(dtInSeconds) && dtInSeconds >= 0.0f)
+		StepApplicators(dtInSeconds);
   return PFLogicObject::Step(dtInSeconds);
 }
 
