@@ -973,6 +973,49 @@ static void HeroDamageModifiers(Checks& check, PFWorld* world)
 	check(hero->OnDamage(desc) == 25 && hero->GetHealth() == 975, "isolation removal restores damage");
 }
 
+/** Observe the actual behavior hook, including its post-health/pre-death timing. */
+struct DamageBehaviour : PFBaseBehaviour
+{
+	int calls = 0, deaths = 0;
+	float observedHealth = -1;
+	PFBaseUnitDamageDesc observed;
+	explicit DamageBehaviour(PFBaseMovingUnit* unit) : PFBaseBehaviour(unit) {}
+	void OnDamage(const PFBaseUnitDamageDesc& desc) override
+	{
+		++calls; observed = desc; observedHealth = pUnit->GetHealth();
+	}
+	void OnUnitDie(CPtr<PFBaseUnit>) override { ++deaths; }
+};
+
+static void BehaviourDamage(Checks& check, PFWorld* world)
+{
+	for (bool enabled : {false, true})
+	for (bool automaticOnly : {false, true})
+	for (float amount : {0.0f, 20.0f, 2000.0f})
+	{
+		CObj<PFBaseUnit> sender = Unit(world, NDb::FACTION_FREEZE, 20);
+		CObj<PFBaseUnit> receiver = DrainParticipant(world, NDb::FACTION_BURN, false);
+		NDb::UnitTargetingParameters* raw = new NDb::UnitTargetingParameters;
+		raw->onlyAutoTargeting = automaticOnly;
+		receiver->OverrideTargetingParams(raw);
+		CObj<DamageBehaviour> behavior = new DamageBehaviour(static_cast<PFBaseMovingUnit*>(receiver.GetPtr()));
+		receiver->AddBehaviourOnTop(behavior.GetPtr());
+		if (!enabled) behavior->Disable();
+		PFBaseUnitDamageDesc desc; desc.pSender = sender; desc.amount = amount;
+		desc.damageType = NDb::APPLICATORDAMAGETYPE_PURE; desc.dontAttackBack = true;
+		check(receiver->OnDamage(desc) == Min(amount, 1000.0f), "behavior damage preserves capped damage");
+		const int expectedCalls = enabled && !automaticOnly ? 1 : 0;
+		check(behavior->calls == expectedCalls, "damage notifies enabled nonautomatic behavior once");
+		if (expectedCalls)
+		{
+			check(behavior->observedHealth == Max(0.0f, 1000-amount), "behavior runs after health changes");
+			check(behavior->observed.pSender == sender.GetPtr() && behavior->observed.amount == amount
+				&& behavior->observed.dontAttackBack, "behavior retains original combat metadata");
+		}
+		check(behavior->deaths == (amount >= 1000 ? 1 : 0), "death behavior remains after damage callback");
+	}
+}
+
 bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 {
 	const NDb::Ptr<NDb::SessionRoot> saved = NDb::SessionRoot::GetRoot();
@@ -1006,6 +1049,7 @@ bool RunPrimeWorldLinuxApplicatorFormulaProbe()
 			DamageDrains(check, world); HealingDrainComposition(check, world);
 			IncomingBoundaries(check, world, ai); EnergyBoundaries(check, world);
 			HeroDamageModifiers(check, world);
+			BehaviourDamage(check, world);
 		}
 	}
 	NDb::SessionRoot::InitRoot(saved);

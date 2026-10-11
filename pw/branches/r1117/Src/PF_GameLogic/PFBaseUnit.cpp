@@ -1654,11 +1654,15 @@ float PFBaseUnit::OnDamage(const DamageDesc& desc)
 	if (!std::isfinite(damageEvent.damage2Deal) || !std::isfinite(GetHealth())) return 0.0f;
   damage = Min<float>(Max<float>(0.0f, damageEvent.damage2Deal), GetHealth());
 
-  if (IsDead() || damage <= 0.0f)
+  if (IsDead())
     return 0.0f;
 
   ApplyDrains(normalizedDesc, damage);
   TakeHealth(damage);
+	// Behaviors observe the committed pool before last-hit/death callbacks.
+	const NDb::UnitTargetingParameters* targeting = GetTargetingParamsPtr();
+	if ((!targeting || !targeting->onlyAutoTargeting) && HasBehaviour() && Behaviour()->IsEnabled())
+		Behaviour()->OnDamage(normalizedDesc);
 
   if (IsDead())
   {
