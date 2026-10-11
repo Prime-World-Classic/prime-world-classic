@@ -384,6 +384,19 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity = firstQuantity;
   }
 
+	/** Pending command work stops when live actor/control admission is lost. */
+	class LinuxConsumableCommandState : public PFHeroUseConsumableState
+	{
+	public:
+		using PFHeroUseConsumableState::PFHeroUseConsumableState;
+	protected:
+		bool OnStep(float dt) override
+		{
+			if (!pAbilityInstance && !CanUseLinuxCastingActor(hero)) return true;
+			return PFHeroUseConsumableState::OnStep(dt);
+		}
+	};
+
 	/** Observe the production use state without replacing its approach/cast lifecycle.
 	 * Diagnostics are transient bootstrap evidence, not additional serialized gameplay state.
 	 * Payment text is emitted only for an activation in this call, before regeneration can run.
@@ -398,7 +411,7 @@ namespace NWorld
 	protected:
 		bool OnStep(float dt) override
 		{
-			if (!pAbilityInstance && (!IsUnitValid(hero) || !IsValid(commandTalent) ||
+			if (!pAbilityInstance && (!CanUseLinuxTalentCommand(hero, commandTalent) ||
 				!CanUseLinuxAuthoredTalentTarget(hero, commandTalent, target)))
 				return true;
 			const bool hadInstance = IsValid(pAbilityInstance);
@@ -973,7 +986,7 @@ namespace NWorld
     if (canUse)
     {
 #if defined(PW_LINUX_NULL_RENDER)
-			hero->EnqueueState(new PFHeroUseConsumableState(hero, slot, resolvedTarget), true);
+			hero->EnqueueState(new LinuxConsumableCommandState(hero, slot, resolvedTarget), true);
 			// Command acceptance is queue admission, not an already paid/completed cast.
 			++g_linuxHeroGameplayCommandDiagnostics.useConsumableActionAccepted;
 #else

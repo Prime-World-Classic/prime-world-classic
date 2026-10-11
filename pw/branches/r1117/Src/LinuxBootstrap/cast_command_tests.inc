@@ -335,3 +335,47 @@ static void QueuedTalentTargetChangesB10(Checks& check, PFWorld* world)
 		if (policy == 2) target->SetInvalidAbilityTarget(false);
 	}
 }
+
+/** Control loss must cancel pending work both before entry and while its movement child is active. */
+static void QueuedCastControlLossB10(Checks& check, PFWorld* world)
+{
+	for (int kind = 0; kind < 3; ++kind)
+	for (bool approaching : {false, true})
+	for (NDb::EUnitFlag flag : {NDb::UNITFLAG_FORBIDPLAYERCONTROL, NDb::UNITFLAG_INMINIGAME})
+	{
+		CObj<B10CommandHero> hero = CommandHeroB10(world);
+		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); hero->SetUnitSpeed(4);
+		NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->useRange.sString = "4"; raw->manaCost.sString = "70"; raw->naftaCost = 0;
+		raw->requireLineOfSight = false; raw->cooldownTime.sString = "0";
+		NDb::Ptr<NDb::Talent> db = raw;
+		if (kind == 1) hero->InstallTalent(db);
+		if (kind == 2) hero->InstallPortal(db);
+		if (kind == 0)
+		{
+			NDb::Consumable* item = new NDb::Consumable;
+			item->useRange.sString = "4"; item->manaCost.sString = "70";
+			item->requireLineOfSight = false; item->maxQuantity = 5;
+			hero->TakeConsumable(item, 2);
+		}
+		const Target point(CVec3(15, 5, 0));
+		CObj<NCore::WorldCommand> command = kind == 0 ? CreateCmdUseConsumable(hero.GetPtr(), 0, point) :
+			kind == 1 ? CreateCmdUseTalent(hero.GetPtr(), 0, 0, point, true) : CreateCmdUsePortal(hero.GetPtr(), point, true);
+		check(command->CanExecute(), "control-loss fixture starts from an admitted cast order");
+		command->Execute(world);
+		if (approaching)
+		{
+			hero->Simulate(0);
+			check(hero->IsMoving() && hero->GetMana() == 200,
+				"control-loss fixture enters a real prepayment movement child");
+		}
+		hero->AddFlag(flag);
+		for (int i = 0; i < 50; ++i) hero->Simulate(0.1f);
+		check(hero->GetMana() == 200 && (kind != 0 || hero->GetConsumable(0)->GetQuantity() == 2),
+			"pending casts cannot pay after player-control loss or minigame entry");
+		check(!hero->IsMoving() && !hero->HasQueuedStates() && !hero->GetCurrentState(),
+			"control loss releases the queued cast and its active movement child");
+		hero->RemoveFlag(flag); hero->DoStop();
+	}
+}
