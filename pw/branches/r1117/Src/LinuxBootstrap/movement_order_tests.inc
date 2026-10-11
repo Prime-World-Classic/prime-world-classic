@@ -199,3 +199,35 @@ static void ChaseLifecycle(Checks& checks)
 		owner->Cleanup(); owner->Stop(false);
 	}
 }
+
+/** Routes resume from their nearest forward section rather than their first point. */
+static void PathMoveLifecycle(Checks& checks)
+{
+	Fixture fixture(checks); if (!fixture.loaded) return;
+	NDb::Unit* raw = new NDb::Unit; Configure(*raw); NDb::Ptr<NDb::Unit> db = raw;
+	CObj<ProbeMover> owner = new ProbeMover(fixture.world, *db, CVec3(30, 20, 0));
+	owner->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); owner->SetUnitSpeed(4);
+	vector<CVec2> points; points.push_back(CVec2(10, 20)); points.push_back(CVec2(40, 20)); points.push_back(CVec2(50, 20));
+	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points, 0.5f), true);
+	owner->Step(0.0f); owner->Step(0.1f);
+	checks.Check(owner->GetPosition().x > 30, "route selects nearest forward waypoint instead of backtracking");
+	owner->Stop(false); owner->Step(0.0f);
+	checks.Check(owner->IsMoving(), "route resumes after ordinary interruption");
+	for (int i = 0; i < 160 && !owner->IsIdle(); ++i) owner->Step(0.1f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving() && owner->IsPositionInRange(CVec2(50, 20), 0.5f),
+		"route completes and stops at its final waypoint");
+	owner->TeleportTo(CVec2(30, 20));
+	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points, 0.5f), true);
+	owner->Step(0.0f); owner->Cleanup();
+	checks.Check(!owner->IsMoving(), "route cleanup stops ordinary movement");
+	owner->Stop(false); owner->AddFlag(NDb::UNITFLAG_FORBIDMOVE);
+	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points, 0.5f), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "forbidden route movement ends its state");
+	owner->RemoveFlag(NDb::UNITFLAG_FORBIDMOVE); owner->Cleanup(); owner->Stop(false);
+	points[1].x = std::numeric_limits<float>::quiet_NaN();
+	owner->EnqueueState(new PFBaseUnitPathMovingState(owner.GetPtr(), points, 0.5f), true);
+	owner->Step(0.0f);
+	checks.Check(owner->IsIdle() && !owner->IsMoving(), "invalid route is rejected before moving");
+	owner->Cleanup(); owner->Stop(false);
+}

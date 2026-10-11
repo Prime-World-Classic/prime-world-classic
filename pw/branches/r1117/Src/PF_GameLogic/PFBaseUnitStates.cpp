@@ -125,29 +125,63 @@ PFBaseUnitPathMovingState::PFBaseUnitPathMovingState( CPtr<PFBaseMovingUnit> con
 
 bool PFBaseUnitPathMovingState::OnStep( float dt )
 {
-  (void)dt;
-  if (!IsValid(pOwner) || wayPoints.empty())
-    return true;
-  if (isFirstMove || pOwner->IsPositionInRange(currentPoint, range))
-  {
-    if (!isFirstMove)
-      wayPoints.erase(wayPoints.begin());
-    if (wayPoints.empty())
-      return true;
-    currentPoint = wayPoints.front();
-    pOwner->MoveTo(currentPoint);
-    isFirstMove = false;
-  }
-  return false;
+	(void)dt;
+	if (!IsUnitValid(pOwner) || wayPoints.empty() || !std::isfinite(range)
+		|| pOwner->CheckFlagType(NDb::UNITFLAGTYPE_FORBIDMOVE))
+		return true;
+	for (const CVec2& point : wayPoints)
+		if (!std::isfinite(point.x) || !std::isfinite(point.y))
+			return true;
+	if (isFirstMove || pOwner->IsPositionInRange(currentPoint, range))
+	{
+		currentPoint = GetNextWaypoint();
+		isFirstMove = false;
+		if (!pOwner->MoveTo(currentPoint))
+			return true;
+	}
+	if (pOwner->IsPositionInRange(currentPoint, range) && currentPoint == wayPoints.back())
+		return true;
+	if (!pOwner->IsMoving() && !pOwner->IsMounted() && !pOwner->MoveTo(currentPoint))
+		return true;
+	return false;
 }
 
+/** Select the nearest forward route section using the Windows waypoint policy. */
 const CVec2& PFBaseUnitPathMovingState::GetNextWaypoint() const
 {
-  return currentPoint;
+	const CVec2& position = pOwner->GetPosition().AsVec2D();
+	const float radius2 = fabs2(range);
+	float minDistance = -1;
+	vector<CVec2>::const_iterator nearest = wayPoints.begin();
+	for (vector<CVec2>::const_iterator point = wayPoints.begin(); point != wayPoints.end(); ++point)
+	{
+		const float distance2 = fabs2(*point - position);
+		if (minDistance < 0 || minDistance > distance2)
+		{
+			minDistance = distance2;
+			nearest = point;
+		}
+	}
+	vector<CVec2>::const_iterator next = nearest + 1;
+	while (next != wayPoints.end() && minDistance < radius2)
+	{
+		minDistance = fabs2(*next - position);
+		if (minDistance >= radius2)
+			break;
+		nearest = next++;
+	}
+	if (next == wayPoints.end())
+		return *nearest;
+	const CVec2 currentSection = *nearest - position;
+	if (fabs2(currentSection) < radius2)
+		return *next;
+	return (*next - *nearest) * currentSection >= 0 ? *nearest : *next;
 }
 
 void PFBaseUnitPathMovingState::OnLeave()
 {
+	if (IsValid(pOwner) && pOwner->IsMoving() && !pOwner->IsMovingSpecial() && !pOwner->IsMounted())
+		pOwner->Stop(false);
 }
 
 PFBaseUnitChaseState::PFBaseUnitChaseState(PFBaseMovingUnit * pOwner, bool _requireLineOfSight, float _attackRange, float _chaseRange, PFBaseUnit * target, bool _strongTarget, bool ignoreVisibility_, bool useAttackRange_)
