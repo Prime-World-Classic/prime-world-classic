@@ -399,6 +399,58 @@ namespace NWorld
     g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstType = firstType;
     g_linuxHeroGameplayCommandDiagnostics.aiConsumableProbeFirstQuantity = firstQuantity;
   }
+
+	/** Observe the production use state without replacing its approach/cast lifecycle.
+	 * Diagnostics are transient bootstrap evidence, not additional serialized gameplay state.
+	 * Payment text is emitted only for an activation in this call, before regeneration can run.
+	 */
+	class LinuxTalentCommandState : public PFHeroUseTalentState
+	{
+	public:
+		LinuxTalentCommandState(PFBaseMaleHero* hero, PFTalent* talent, const Target& target,
+			int level, int slot, bool recordPayment)
+			: PFHeroUseTalentState(hero, talent, target), commandTalent(talent),
+			level(level), slot(slot), recordPayment(recordPayment) {}
+	protected:
+		bool OnStep(float dt) override
+		{
+			const bool hadInstance = IsValid(pAbilityInstance);
+			const bool sample = !hadInstance && IsUnitValid(hero) && IsValid(commandTalent);
+			const bool life = sample && commandTalent->DoesSpendLifeInsteadEnergy();
+			const float before = sample ? (life ? hero->GetLife() : hero->GetMana()) : 0;
+			const int beforeStep = sample ? commandTalent->GetLastUseStep() : -1;
+			const int beforeInstances = sample ? commandTalent->GetActiveInstancesCount() : 0;
+			const float beforeCooldown = sample ? commandTalent->GetCurrentCooldown() : 0;
+			const float cost = sample && recordPayment ? commandTalent->GetManaCost() : 0;
+			const float range = sample && recordPayment ? commandTalent->GetUseRange(target) : 0;
+			const bool finished = PFHeroUseTalentState::OnStep(dt);
+			if (sample && IsValid(pAbilityInstance))
+			{
+				auto& diagnostic = g_linuxHeroGameplayCommandDiagnostics;
+				++diagnostic.useTalentActionAccepted;
+				diagnostic.useTalentLevel = level; diagnostic.useTalentSlot = slot;
+				diagnostic.useTalentTargetType = static_cast<int>(target.GetType());
+				diagnostic.useTalentTargetObjectId = GetLinuxBootstrapTargetObjectId(target);
+				diagnostic.useTalentTargetFaction = GetLinuxBootstrapTargetFaction(target);
+				diagnostic.useTalentLastUseStepBefore = beforeStep;
+				diagnostic.useTalentLastUseStepAfter = commandTalent->GetLastUseStep();
+				diagnostic.useTalentActiveInstancesBefore = beforeInstances;
+				diagnostic.useTalentActiveInstancesAfter = commandTalent->GetActiveInstancesCount();
+				diagnostic.useTalentCooldownBefore = beforeCooldown;
+				diagnostic.useTalentCooldownAfter = commandTalent->GetCurrentCooldown();
+				if (recordPayment && pAbilityInstance->IsActivated())
+					fprintf(stdout, "Native talent formula payment: slot=%d,%d range=%.6g cost=%.6g pool=%s before=%.6g after=%.6g step=%d\n",
+						level, slot, range, cost,
+						life ? "life" : "mana", before, life ? hero->GetLife() : hero->GetMana(),
+						commandTalent->GetLastUseStep());
+			}
+			return finished;
+		}
+	private:
+		CPtr<PFTalent> commandTalent;
+		int level, slot;
+		bool recordPayment;
+	};
 #endif
 
   DEFINE_2_PARAM_CMD_CHECK( 0x2C5B9CC0, CmdCombatMoveHero, CPtr<PFBaseHero>, pHero, CVec2, target );
@@ -1082,44 +1134,12 @@ namespace NWorld
 		const bool manualGroundAllowed = !manualGround || (world && IsValid(hero) &&
 			hero->GetWorld() == world && CanUseLinuxGroundTalent(hero, level, slot, resolvedTarget, GetId()));
 		PFTalent* talent = manualGroundAllowed ? LinuxCommandTalent(hero, level, slot) : nullptr;
-    if (talent)
-    {
-      g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepBefore =
-        talent->GetLastUseStep();
-      g_linuxHeroGameplayCommandDiagnostics.useTalentActiveInstancesBefore =
-        talent->GetActiveInstancesCount();
-      g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownBefore =
-        talent->GetCurrentCooldown();
-    }
 		const bool canUse = manualGroundAllowed && CanUseLinuxTalentCommand(hero, talent);
     g_linuxHeroGameplayCommandDiagnostics.useTalentCanUse = canUse ? 1 : 0;
     if (canUse)
     {
-			const bool recordPayment = manualGround && talent;
-			const bool life = recordPayment && talent->DoesSpendLifeInsteadEnergy();
-			const float before = recordPayment ? (life ? hero->GetLife() : hero->GetMana()) : 0;
-			const float cost = recordPayment ? talent->GetManaCost() : 0;
-			const float range = recordPayment ? talent->GetUseRange(resolvedTarget) : 0;
-      CObj<PFAbilityInstance> instance = hero->UseTalent(talent, resolvedTarget);
-      if (instance)
-      {
-        ++g_linuxHeroGameplayCommandDiagnostics.useTalentActionAccepted;
-				// Evidence is sampled around actual execution, before regeneration can run.
-				if (recordPayment)
-					fprintf(stdout, "Native talent formula payment: slot=%d,%d range=%.6g cost=%.6g pool=%s before=%.6g after=%.6g step=%d\n",
-						level, slot, range, cost, life ? "life" : "mana", before,
-						life ? hero->GetLife() : hero->GetMana(), talent->GetLastUseStep());
-      }
-    }
-		talent = manualGroundAllowed ? LinuxCommandTalent(hero, level, slot) : nullptr;
-    if (talent)
-    {
-      g_linuxHeroGameplayCommandDiagnostics.useTalentLastUseStepAfter =
-        talent->GetLastUseStep();
-      g_linuxHeroGameplayCommandDiagnostics.useTalentActiveInstancesAfter =
-        talent->GetActiveInstancesCount();
-      g_linuxHeroGameplayCommandDiagnostics.useTalentCooldownAfter =
-        talent->GetCurrentCooldown();
+			hero->EnqueueState(new LinuxTalentCommandState(hero, talent, resolvedTarget,
+				level, slot, manualGround), true);
     }
 #else
     const bool canUse = IsValid(hero) && !hero->IsDead() && hero->CanUseTalent(level, slot);

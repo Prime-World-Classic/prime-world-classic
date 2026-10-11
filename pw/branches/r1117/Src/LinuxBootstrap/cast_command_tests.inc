@@ -198,3 +198,43 @@ static void TalentCommandAdmissionB10(Checks& check, PFWorld* world)
 		hero->DoStop();
 	}
 }
+
+/** Packed talent orders must approach before payment; diagnostics observe actual casting. */
+static void TalentCommandQueueB10(Checks& check, PFWorld* world)
+{
+	for (int policy = 0; policy < 3; ++policy)
+	{
+		CObj<B10CommandHero> hero = CommandHeroB10(world);
+		hero->AddFlag(NDb::UNITFLAG_FORBIDSELECTTARGET);
+		hero->SetMoveFlags(MOVE_FLAG_NO_COLLIDE); hero->SetUnitSpeed(4);
+		NDb::Talent* raw = new NDb::Talent; raw->type = NDb::ABILITYTYPE_ACTIVE;
+		raw->useRange.sString = "4"; raw->manaCost.sString = "70";
+		raw->naftaCost = 0; raw->cooldownTime.sString = "0"; raw->requireLineOfSight = false;
+		NDb::Ptr<NDb::Talent> db = raw; hero->InstallTalent(db);
+		PFTalent* talent = hero->GetTalent(0, 0);
+		CObj<NCore::WorldCommand> source = CreateCmdUseTalent(hero.GetPtr(), 0, 0, Target(CVec3(15, 5, 0)), true);
+		CObj<NCore::PackedWorldCommand> packet = new NCore::PackedWorldCommand(source,
+			world->GetPointerSerialization(), 1984, 0);
+		CObj<NCore::WorldCommand> command = packet->GetWorldCommand(world->GetPointerSerialization());
+		ResetLinuxHeroGameplayCommandDiagnostics();
+		check(command && command->CanExecute(), "packed talent order admits its exact actor and purchased talent");
+		if (command) command->Execute(world);
+		check(hero->HasQueuedStates() && hero->GetMana() == 200 && talent->GetLastUseStep() == -1 &&
+			GetLinuxHeroGameplayCommandDiagnostics().useTalentActionAccepted == 0,
+			"talent command admission neither pays nor reports an actual cast");
+		hero->Simulate(0);
+		check(hero->IsMoving() && hero->GetMana() == 200,
+			"real unit simulation approaches a queued talent target before payment");
+		if (policy == 1) hero->DoStop();
+		if (policy == 2) talent->AddForbid();
+		for (int i = 0; i < 100 && talent->GetLastUseStep() == -1; ++i) hero->Simulate(0.1f);
+		check(hero->GetMana() == (policy == 0 ? 130.f : 200.f) &&
+			GetLinuxHeroGameplayCommandDiagnostics().useTalentActionAccepted == (policy == 0 ? 1 : 0),
+			"talent casts once at arrival and never after cancellation or permission loss");
+		check(policy != 0 || (hero->IsPositionInRange(CVec2(15, 5), 4) &&
+			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepBefore == -1 &&
+			GetLinuxHeroGameplayCommandDiagnostics().useTalentLastUseStepAfter == talent->GetLastUseStep()),
+			"cast diagnostics capture actual state-driven talent execution");
+		hero->DoStop();
+	}
+}
